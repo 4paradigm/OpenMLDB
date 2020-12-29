@@ -28,6 +28,7 @@
 #include "test/base_test.h"
 #include "vm/catalog.h"
 DECLARE_bool(enable_distsql);
+DECLARE_bool(enable_localtablet);
 
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> RtiDBSchema;
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> RtiDBIndex;
@@ -553,6 +554,7 @@ static void SimpleWindowOutputLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_cas
     }
 }
 static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case) {  // NOLINT
+    const bool is_procedure = fesql::sqlcase::SQLCase::IS_PROCEDURE();
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
@@ -570,6 +572,9 @@ static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sq
     rtidb::sdk::SQLSDKTest::CreateDB(sql_case, router);
     rtidb::sdk::SQLSDKTest::CreateTables(sql_case, router, 8);
     rtidb::sdk::SQLSDKTest::InsertTables(sql_case, router, true);
+    if (is_procedure) {
+        rtidb::sdk::SQLSDKTest::CreateProcedure(sql_case, router);
+    }
     {
         // execute SQL
         std::string sql = sql_case.sql_str();
@@ -598,7 +603,6 @@ static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sq
             return;
         }
 
-
         if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
             rtidb::sdk::SQLSDKTest::CheckSchema(request_table.columns(), *(request_row->GetSchema().get()));
         }
@@ -610,25 +614,46 @@ static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sq
 
         if (!fesql::sqlcase::SQLCase::IS_DEBUG()) {
             for (int i = 0; i < 10; i++) {
-                auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
-                rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                if (is_procedure) {
+                    LOG(INFO) << "--------syn procedure----------";
+                    auto rs = router->CallProcedure(sql_case.db(), sql_case.inputs()[0].name_, request_row, &status);
+                    rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                } else {
+                    auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
+                    rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                }
             }
             LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
         }
         if (fesql::sqlcase::SQLCase::IS_DEBUG() || fesql::sqlcase::SQLCase::IS_PERF()) {
             for (auto _ : state) {
-                auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
-                rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
                 state.SkipWithError("benchmark case debug");
-                if (!rs) FAIL() << "sql case expect success == true";
+                if (is_procedure) {
+                    LOG(INFO) << "--------syn procedure----------";
+                    auto rs = router->CallProcedure(sql_case.db(), sql_case.inputs()[0].name_, request_row, &status);
+                    rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    if (!rs) FAIL() << "sql case expect success == true";
+                } else {
+                    auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
+                    rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    if (!rs) FAIL() << "sql case expect success == true";
+                }
                 break;
             }
         } else {
-            for (auto _ : state) {
-                benchmark::DoNotOptimize(router->ExecuteSQL(sql_case.db(), sql, request_row, &status));
+            if (is_procedure) {
+                for (auto _ : state) {
+                    benchmark::DoNotOptimize(
+                        router->CallProcedure(sql_case.db(), sql_case.inputs()[0].name_, request_row, &status));
+                }
+            } else {
+                for (auto _ : state) {
+                    benchmark::DoNotOptimize(router->ExecuteSQL(sql_case.db(), sql, request_row, &status));
+                }
             }
         }
     }
+    rtidb::sdk::SQLSDKTest::DropProcedure(sql_case, router);
     rtidb::sdk::SQLSDKTest::DropTables(sql_case, router);
 }
 
@@ -643,7 +668,7 @@ FROM {0}
 last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - {ts_diff} >= {1}.x7
 last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - {ts_diff} >= {2}.x7;
 )");
-    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0)*1000/2));
+    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0) * 1000 / 2));
     BM_RequestQuery(state, sql_case);
 }
 static void BM_SimpleLastJoinTable4(benchmark::State& state) {  // NOLINT
@@ -658,7 +683,7 @@ last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - {ts_diff} >= {2}.x
 last join {3} order by {3}.x7 on {0}.c3 = {3}.x3 and {0}.c7 - {ts_diff} >= {3}.x7
 last join {4} order by {4}.x7 on {0}.c4 = {4}.x4 and {0}.c7 - {ts_diff} >= {4}.x7;
 )";
-    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0)*1000/2));
+    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0) * 1000 / 2));
     BM_RequestQuery(state, sql_case);
 }
 
@@ -684,7 +709,7 @@ window w1 as (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDI
 last join {1} as t2 order by t2.x7 on c2 = t2.x2 and c7 - {ts_diff} >= t2.x7
 ;
 )";
-    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0)*1000/2));
+    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0) * 1000 / 2));
     BM_RequestQuery(state, sql_case);
 }
 static void BM_SimpleWindowOutputLastJoinTable4(benchmark::State& state) {  // NOLINT
@@ -710,7 +735,7 @@ static void BM_SimpleWindowOutputLastJoinTable4(benchmark::State& state) {  // N
         last join {1} as t3 order by t3.x7 on c3 = t3.x3 and c7 - {ts_diff} >= t3.x7
         last join {1} as t4 order by t4.x7 on c4 = t4.x4 and c7 - {ts_diff} >= t4.x7;
 )";
-    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0)*1000/2));
+    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0) * 1000 / 2));
     BM_RequestQuery(state, sql_case);
 }
 
@@ -834,21 +859,14 @@ BENCHMARK(BM_SimpleInsertFunction)->Args({10})->Args({100})->Args({1000})->Args(
 BENCHMARK(BM_InsertPlaceHolderFunction)->Args({10})->Args({100})->Args({1000})->Args({10000});
 
 BENCHMARK(BM_InsertPlaceHolderBatchFunction)->Args({10})->Args({100})->Args({1000})->Args({10000});
-static bool IS_CLUSTER() {
-    const char* env_name = "FESQL_CLUSTER";
-    char* value = getenv(env_name);
-    if (value != nullptr && strcmp(value, "true") == 0) {
-        return true;
-    }
-    return false;
-}
 int main(int argc, char** argv) {
-    FLAGS_enable_distsql = IS_CLUSTER();
+    FLAGS_enable_distsql = fesql::sqlcase::SQLCase::IS_CLUSTER();
+    FLAGS_enable_localtablet = !fesql::sqlcase::SQLCase::IS_DISABLE_LOCALTABLET();
     ::benchmark::Initialize(&argc, argv);
     if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
     ::rtidb::sdk::MiniCluster mini_cluster(6181);
     mc = &mini_cluster;
-    if (!IS_CLUSTER()) {
+    if (!fesql::sqlcase::SQLCase::IS_CLUSTER()) {
         mini_cluster.SetUp(1);
     } else {
         mini_cluster.SetUp();

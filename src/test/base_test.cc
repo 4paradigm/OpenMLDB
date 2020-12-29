@@ -33,7 +33,7 @@ std::string SQLCaseTest::FindRtidbDirPath(const std::string &dirname) {
         }
     }
     if (current_path.filename().string() == dirname) {
-        LOG(INFO) << "Dir Path is : " << current_path.string() << std::endl;
+        DLOG(INFO) << "Dir Path is : " << current_path.string() << std::endl;
         return current_path.string();
     }
     return std::string();
@@ -264,7 +264,7 @@ void SQLCaseTest::PrintResultSet(std::shared_ptr<fesql::sdk::ResultSet> rs) {
         t.endOfRow();
         return;
     }
-
+    rs->Reset();
     while (rs->Next()) {
         for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {
             std::string str = rs->GetAsString(idx);
@@ -400,6 +400,7 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::string &
     LOG(INFO) << "ResultSet Rows: \n";
     PrintResultSet(rs);
     LOG(INFO) << "order: " << order_col;
+
     fesql::codec::RowView row_view(schema);
     int order_idx = -1;
     for (int i = 0; i < schema.size(); i++) {
@@ -408,27 +409,33 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::string &
             break;
         }
     }
-    std::map<std::string, fesql::codec::Row> rows_map;
+    std::map<std::string, std::pair<fesql::codec::Row, bool>> rows_map;
     if (order_idx >= 0) {
         int32_t row_id = 0;
         for (auto row : rows) {
             row_view.Reset(row.buf());
             std::string key = row_view.GetAsString(order_idx);
             LOG(INFO) << "Get Order String: " << row_id++ << " key: " << key;
-            rows_map.insert(std::make_pair(key, row));
+            rows_map.insert(std::make_pair(key, std::make_pair(row, false)));
         }
     }
     int32_t index = 0;
     rs->Reset();
+    std::vector<fesql::codec::Row> result_rows;
     while (rs->Next()) {
         if (order_idx >= 0) {
             std::string key = rs->GetAsString(order_idx);
             LOG(INFO) << "key : " << key;
-            row_view.Reset(rows_map[key].buf());
+            ASSERT_TRUE(rows_map.find(key) != rows_map.cend())
+                <<"CheckRows fail: row[" << index << "] order not expected";
+            ASSERT_FALSE(rows_map[key].second) <<
+                "CheckRows fail: row[" << index << "] duplicate key";
+            row_view.Reset(rows_map[key].first.buf());
+            CheckRow(row_view, rs);
+            rows_map[key].second = true;
         } else {
             row_view.Reset(rows[index++].buf());
         }
-        CheckRow(row_view, rs);
     }
 }
 

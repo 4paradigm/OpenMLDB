@@ -93,17 +93,23 @@ class SchemaAdapter {
 
         for (int32_t i = 0; i < index.size(); i++) {
             const ::rtidb::common::ColumnKey& key = index.Get(i);
-            for (int32_t k = 0; k < key.ts_name_size(); k++) {
-                ::fesql::type::IndexDef* index = output->Add();
-                if (k > 0) {
-                    index->set_name(key.index_name() + std::to_string(k));
-                } else {
-                    index->set_name(key.index_name());
+            if (key.ts_name_size() > 0) {
+                for (int32_t k = 0; k < key.ts_name_size(); k++) {
+                    ::fesql::type::IndexDef* index = output->Add();
+                    if (k > 0) {
+                        index->set_name(key.index_name() + std::to_string(k));
+                    } else {
+                        index->set_name(key.index_name());
+                    }
+                    auto keys = index->mutable_first_keys();
+                    keys->CopyFrom(key.col_name());
+                    index->set_second_key(key.ts_name(k));
+                    index->set_ts_offset(k);
                 }
-                auto keys = index->mutable_first_keys();
-                keys->CopyFrom(key.col_name());
-                index->set_second_key(key.ts_name(k));
-                index->set_ts_offset(k);
+            } else {
+                ::fesql::type::IndexDef* index = output->Add();
+                index->set_name(key.index_name());
+                index->mutable_first_keys()->CopyFrom(key.col_name());
             }
         }
         return true;
@@ -111,8 +117,12 @@ class SchemaAdapter {
 
     static bool ConvertSchema(const RtiDBSchema& rtidb_schema,
                               ::fesql::vm::Schema* output) {
-        if (output == nullptr || rtidb_schema.empty()) {
+        if (output == nullptr) {
             LOG(WARNING) << "output ptr is null";
+            return false;
+        }
+        if (rtidb_schema.empty()) {
+            LOG(WARNING) << "rtidb_schema is empty";
             return false;
         }
         for (int32_t i = 0; i < rtidb_schema.size(); i++) {

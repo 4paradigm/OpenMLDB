@@ -38,7 +38,7 @@ TEST_F(SQLRequestRowTest, str_null) {
     ::fesql::sdk::SchemaImpl* schema_impl =
         new ::fesql::sdk::SchemaImpl(schema);
     std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
-    SQLRequestRow rr(schema_shared);
+    SQLRequestRow rr(schema_shared, std::set<std::string>());
     rr.Init(0);
     ASSERT_TRUE(rr.AppendNULL());
     ASSERT_TRUE(rr.Build());
@@ -55,7 +55,7 @@ TEST_F(SQLRequestRowTest, not_null) {
     ::fesql::sdk::SchemaImpl* schema_impl =
         new ::fesql::sdk::SchemaImpl(schema);
     std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
-    SQLRequestRow rr(schema_shared);
+    SQLRequestRow rr(schema_shared, std::set<std::string>());
     rr.Init(0);
     ASSERT_FALSE(rr.AppendNULL());
     ASSERT_FALSE(rr.Build());
@@ -71,7 +71,7 @@ TEST_F(SQLRequestRowTest, invalid_str_len) {
     ::fesql::sdk::SchemaImpl* schema_impl =
         new ::fesql::sdk::SchemaImpl(schema);
     std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
-    SQLRequestRow rr(schema_shared);
+    SQLRequestRow rr(schema_shared, std::set<std::string>());
     rr.Init(1);
     std::string hello = "hello";
     ASSERT_FALSE(rr.AppendString(hello));
@@ -99,11 +99,10 @@ void InitSimpleSchema(::fesql::vm::Schema* schema) {
 TEST_F(SQLRequestRowTest, normal_test) {
     ::fesql::vm::Schema schema;
     InitSimpleSchema(&schema);
-
     ::fesql::sdk::SchemaImpl* schema_impl =
         new ::fesql::sdk::SchemaImpl(schema);
     std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
-    SQLRequestRow rr(schema_shared);
+    SQLRequestRow rr(schema_shared, std::set<std::string>());
     ASSERT_TRUE(rr.Init(5));
     ASSERT_TRUE(rr.AppendInt32(32));
     ASSERT_TRUE(rr.AppendString("hello"));
@@ -118,6 +117,66 @@ TEST_F(SQLRequestRowTest, normal_test) {
     ASSERT_EQ(32, i32);
 }
 
+TEST_F(SQLRequestRowTest, GetRecordVal) {
+    ::fesql::vm::Schema schema;
+    {
+        ::fesql::type::ColumnDef* column = schema.Add();
+        column->set_type(::fesql::type::kInt16);
+        column->set_name("col0");
+        column = schema.Add();
+        column->set_type(::fesql::type::kInt16);
+        column->set_name("col1");
+        column = schema.Add();
+        column->set_type(::fesql::type::kInt32);
+        column->set_name("col2");
+        column = schema.Add();
+        column->set_type(::fesql::type::kInt32);
+        column->set_name("col3");
+        column = schema.Add();
+        column->set_type(::fesql::type::kInt64);
+        column->set_name("col4");
+        column = schema.Add();
+        column->set_type(::fesql::type::kInt64);
+        column->set_name("col5");
+        column = schema.Add();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col6");
+        column = schema.Add();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col7");
+        column = schema.Add();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col8");
+    }
+
+    ::fesql::sdk::SchemaImpl* schema_impl =
+        new ::fesql::sdk::SchemaImpl(schema);
+    std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
+    std::set<std::string> record_set {"col1", "col3", "col5", "col7", "col8"};
+    SQLRequestRow rr(schema_shared, record_set);
+    ASSERT_TRUE(rr.Init(8));
+    ASSERT_TRUE(rr.AppendInt16(0));
+    ASSERT_TRUE(rr.AppendInt16(1));
+    ASSERT_TRUE(rr.AppendInt32(2));
+    ASSERT_TRUE(rr.AppendInt32(3));
+    ASSERT_TRUE(rr.AppendInt64(4));
+    ASSERT_TRUE(rr.AppendInt64(5));
+    ASSERT_TRUE(rr.AppendString("col6"));
+    ASSERT_TRUE(rr.AppendNULL());
+    ASSERT_TRUE(rr.AppendString("col8"));
+    ASSERT_TRUE(rr.Build());
+    std::string val;
+    ASSERT_TRUE(rr.GetRecordVal("col1", &val));
+    ASSERT_EQ(val, "1");
+    ASSERT_TRUE(rr.GetRecordVal("col3", &val));
+    ASSERT_EQ(val, "3");
+    ASSERT_TRUE(rr.GetRecordVal("col5", &val));
+    ASSERT_EQ(val, "5");
+    ASSERT_FALSE(rr.GetRecordVal("col6", &val));
+    ASSERT_FALSE(rr.GetRecordVal("col7", &val));
+    ASSERT_TRUE(rr.GetRecordVal("col8", &val));
+    ASSERT_EQ(val, "col8");
+}
 
 class SQLRequestRowBatchTest : public ::testing::Test {
  public:
@@ -129,14 +188,14 @@ class SQLRequestRowBatchTest : public ::testing::Test {
             new ::fesql::sdk::SchemaImpl(schema);
         std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
 
-        auto r1 = std::make_shared<SQLRequestRow>(schema_shared);
+        auto r1 = std::make_shared<SQLRequestRow>(schema_shared, std::set<std::string>());
         r1->Init(5);
         r1->AppendInt32(32);
         r1->AppendString("hello");
         r1->AppendInt64(64);
         r1->Build();
 
-        auto r2 = std::make_shared<SQLRequestRow>(schema_shared);
+        auto r2 = std::make_shared<SQLRequestRow>(schema_shared, std::set<std::string>());
         r2->Init(5);
         r2->AppendInt32(32);
         r2->AppendString("world");

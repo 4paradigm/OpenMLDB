@@ -55,7 +55,7 @@ SQLInsertRow::SQLInsertRow(
       default_map_(default_map),
       default_string_length_(default_string_length),
       rb_(table_info->column_desc_v1()),
-      val_() {
+      val_(), str_size_(0) {
     std::map<std::string, uint32_t> column_name_map;
     uint32_t index_cnt = 0;
     for (int idx = 0; idx < table_info_->column_desc_v1_size(); idx++) {
@@ -82,7 +82,8 @@ SQLInsertRow::SQLInsertRow(
 }
 
 bool SQLInsertRow::Init(int str_length) {
-    uint32_t row_size = rb_.CalTotalLength(str_length + default_string_length_);
+    str_size_ = str_length + default_string_length_;
+    uint32_t row_size = rb_.CalTotalLength(str_size_);
     val_.resize(row_size);
     int8_t* buf = reinterpret_cast<int8_t*>(&(val_[0]));
     bool ok = rb_.SetBuffer(reinterpret_cast<int8_t*>(buf), row_size);
@@ -240,21 +241,23 @@ bool SQLInsertRow::AppendString(const std::string& val) {
             PackDimension(val);
         }
     }
+    str_size_ -= val.size();
     if (rb_.AppendString(val.c_str(), val.size())) {
         return MakeDefault();
     }
     return false;
 }
 
-bool SQLInsertRow::AppendString(const char* val, uint32_t length) {
+bool SQLInsertRow::AppendString(const char* string_buffer_var_name, uint32_t length) {
     if (IsDimension()) {
         if (0 == length) {
             PackDimension(fesql::codec::EMPTY_STRING);
         } else {
-            PackDimension(std::string(val, length));
+            PackDimension(std::string(string_buffer_var_name, length));
         }
     }
-    if (rb_.AppendString(val, length)) {
+    str_size_ -= length;
+    if (rb_.AppendString(string_buffer_var_name, length)) {
         return MakeDefault();
     }
     return false;
@@ -296,7 +299,13 @@ bool SQLInsertRow::AppendNULL() {
     return false;
 }
 
-bool SQLInsertRow::IsComplete() { return rb_.IsComplete(); }
+bool SQLInsertRow::IsComplete() {
+    return rb_.IsComplete();
+}
+
+bool SQLInsertRow::Build() {
+    return str_size_ == 0;
+}
 
 }  // namespace sdk
 }  // namespace rtidb

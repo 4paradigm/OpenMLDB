@@ -33,7 +33,9 @@ def getCreateSql(name:str,columns:list,inexs:list):
             keyStr = ss[1]
             if("|" in ss[1]):
                 keyStr = ",".join(ss[1].split("|"))
-        if len(ss)==3:
+        if len(ss)==2:
+            createSql+="index(key=(%s))," % (keyStr)
+        elif len(ss)==3:
             createSql+="index(key=(%s),ts=%s)," % (keyStr,ss[2])
         elif len(ss)==4:
             createSql += "index(key=(%s),ts=%s,ttl=%s)," % (keyStr, ss[2],ss[3])

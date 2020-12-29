@@ -1,7 +1,7 @@
 include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src)
 
 add_library(rtidb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/blob_server.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc)
-add_library(rtidb_codec STATIC codec/codec.cc codec/sdk_codec.cc)
+add_library(rtidb_codec STATIC codec/codec.cc codec/sdk_codec.cc codec/sql_rpc_row_codec.cc)
 add_library(rtidb_catalog STATIC catalog/tablet_catalog.cc catalog/sdk_catalog.cc catalog/distribute_iterator.cc catalog/client_manager.cc)
 add_library(client STATIC client/tablet_client.cc client/ns_client.cc client/bs_client.cc)
 add_library(rtidb_flags flags.cc)
@@ -162,6 +162,9 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_executable(new_server_env_test nameserver/new_server_env_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc)
     target_link_libraries(new_server_env_test gtest ${BIN_LIBS})
 
+    add_executable(sql_cluster_availability_test tablet/sql_cluster_availability_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc sdk/sql_router.cc)
+    target_link_libraries(sql_cluster_availability_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+
     add_executable(parse_log tools/parse_log.cc)
     target_link_libraries(parse_log ${BIN_LIBS})
 
@@ -304,6 +307,9 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 
         add_executable(field_codec_test codec/field_codec_test.cc)
         target_link_libraries(field_codec_test gtest ${BIN_LIBS})
+
+        add_executable(sql_rpc_row_codec_test codec/sql_rpc_row_codec_test.cc)
+        target_link_libraries(sql_rpc_row_codec_test gtest ${BIN_LIBS})
 
         add_executable(glog_wapper_test base/glog_wapper_test.cc)
         target_link_libraries(glog_wapper_test  gtest ${BIN_LIBS})

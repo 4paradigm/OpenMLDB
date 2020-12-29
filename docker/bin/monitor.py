@@ -99,6 +99,32 @@ def get_data(url):
         return servers
     return parse_data()
 
+def get_mem(url):
+    memory_by_application = 0
+    memory_central_cache_freelist = 0
+    memory_acutal_used = 0
+    resp = request.urlopen(url)
+    for i in resp:
+        line = i.decode().strip()
+        if line.rfind("use by application") > 0:
+            try:
+                memory_by_application = int(line.split()[1])
+            except Exception as e:
+                memory_by_application = 0
+        elif line.rfind("central cache freelist") > 0:
+            try:
+                memory_central_cache_freelist = line.split()[2]
+            except Exception as e:
+                memory_central_cache_freelist = 0
+        elif line.rfind("Actual memory used") > 0:
+            try:
+                memory_acutal_used = line.split()[2]
+            except Exception as e:
+                memory_acutal_used = 0
+        else:
+            continue
+    return memory_by_application, memory_central_cache_freelist, memory_acutal_used
+
 def get_conf():
     conf_map = {}
     with do_open(work_dir + "/conf/monitor.conf", "r") as conf_file:
@@ -160,6 +186,7 @@ if __name__ == "__main__":
             "rtidb_" + cur_method, cur_method, ["latency", "type"])
 
     gauge["log"] = Gauge("rtidb_log", "log", ["role", "type"])
+    gauge["memory"] = Gauge("rtidb_memory", "memory", ["role", "type"])
 
     endpoint = ""
     if "endpoint" in conf_map:
@@ -167,8 +194,11 @@ if __name__ == "__main__":
     if "endpoint" in env_dist:
         endpoint = env_dist["endpoint"]
     url = ""
+    mem_url = ""
     if endpoint != "":
         url = "http://" + endpoint + "/status"
+        mem_url = "http://{}/TabletServer/ShowMemPool".format(endpoint)
+
     log_file_name = conf_map["log_dir"] + "/monitor.log"
     if not os.path.exists(conf_map["log_dir"]):
         os.mkdir(conf_map["log_dir"])
@@ -223,6 +253,12 @@ if __name__ == "__main__":
                             result[method_data][key])
                 log_file.write(data + "\n")
                 log_file.flush()
+            if len(mem_url) < 1:
+                continue
+            mema, memb, memc = get_mem(mem_url)
+            gauge["memory"].labels("memory", "use_by_application").set(mema)
+            gauge["memory"].labels("memory", "central_cache_freelist").set(memb)
+            gauge["memory"].labels("memory", "actual_memory_used").set(memc)
         except Exception as e:
             traceback.print_exc(file=log_file)
             log_file.write("has exception {}\n".format(e))

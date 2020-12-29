@@ -18,6 +18,14 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
+	<repositories>
+		<repository>
+			<id>4pd-nexus-public</id>
+			<name>4Paradigm nexus maven public</name>
+			<url>https://nexus.4pd.io/repository/maven-public/</url>
+		</repository>
+	</repositories>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.openjdk.jmh</groupId>
@@ -25,9 +33,57 @@
 			<version>1.22</version>
 		</dependency>
 		<dependency>
+			<groupId>com._4paradigm</groupId>
+			<artifactId>rtidb-client</artifactId>
+			<version>1.5.1.1-RELEASE</version>
+			<exclusions>
+				<exclusion>
+					<artifactId>log4j</artifactId>
+					<groupId>log4j</groupId>
+				</exclusion>
+				<exclusion>
+					<artifactId>slf4j-log4j12</artifactId>
+					<groupId>org.slf4j</groupId>
+				</exclusion>
+				<exclusion>
+					<artifactId>slf4j-api</artifactId>
+					<groupId>org.slf4j</groupId>
+				</exclusion>
+				<exclusion>
+					<artifactId>protobuf-java</artifactId>
+					<groupId>com.google.protobuf</groupId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>com._4paradigm.featuredb</groupId>
+			<artifactId>featuredb-driver</artifactId>
+			<version>0.9.7.10-rc1</version>
+			<exclusions>
+				<exclusion>
+					<artifactId>log4j</artifactId>
+					<groupId>log4j</groupId>
+				</exclusion>
+				<exclusion>
+					<artifactId>slf4j-log4j12</artifactId>
+					<groupId>org.slf4j</groupId>
+				</exclusion>
+				<exclusion>
+					<artifactId>slf4j-api</artifactId>
+					<groupId>org.slf4j</groupId>
+				</exclusion>
+			</exclusions>
+
+		</dependency>
+		<dependency>
 			<groupId>org.openjdk.jmh</groupId>
 			<artifactId>jmh-generator-annprocess</artifactId>
 			<version>1.22</version>
+		</dependency>
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>org.json</artifactId>
+			<version>chargebee-1.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com._4paradigm.sql</groupId>

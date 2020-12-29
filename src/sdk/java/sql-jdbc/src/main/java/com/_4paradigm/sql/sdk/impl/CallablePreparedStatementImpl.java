@@ -7,8 +7,6 @@ import com._4paradigm.sql.jdbc.CallablePreparedStatement;
 import com._4paradigm.sql.jdbc.SQLResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
@@ -20,7 +18,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
     }
 
     @Override
-    public java.sql.ResultSet executeQuery() throws SQLException {
+    public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
         dataBuild();
         Status status = new Status();
@@ -29,7 +27,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
             logger.error("call procedure failed: {}", status.getMsg());
             throw new SQLException("call procedure fail, msg: " + status.getMsg());
         }
-        ResultSet rs = new SQLResultSet(resultSet);
+        SQLResultSet rs = new SQLResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
         }

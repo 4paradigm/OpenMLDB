@@ -563,7 +563,8 @@ TEST_F(TabletCatalogTest, iterator_test_discontinuous) {
 }
 
 TEST_F(TabletCatalogTest, get_tablet) {
-    auto local_tablet = std::make_shared<fesql::vm::LocalTablet>(nullptr);
+    auto local_tablet =
+        std::make_shared<fesql::vm::LocalTablet>(nullptr, std::shared_ptr<fesql::vm::CompileInfoCache>());
     uint32_t pid_num = 8;
     TestArgs *args = PrepareMultiPartitionTable("t1", pid_num);
     auto handler = std::make_shared<TabletTableHandler>(args->meta[0], local_tablet);

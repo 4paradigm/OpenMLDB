@@ -17,7 +17,7 @@ import java.util.Map;
 public class FESQLClusterBenchmarkTest {
     private static Logger logger = LoggerFactory.getLogger(FESQLClusterBenchmark.class);
     @Test
-    public void windowLastJoinTest() throws SQLException {
+    public void execSQLTest() throws SQLException {
         FESQLClusterBenchmark benchmark = new FESQLClusterBenchmark(true);
         benchmark.setWindowNum(1000);
         benchmark.setup();

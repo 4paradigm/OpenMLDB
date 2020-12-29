@@ -54,6 +54,7 @@ class SqlClusterTest : public ::testing::Test {
 };
 
 std::shared_ptr<rtidb::sdk::SQLRouter> GetNewSQLRouter() {
+    ::fesql::vm::Engine::InitializeGlobalLLVM();
     rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = FLAGS_zk_cluster;
     sql_opt.zk_path = FLAGS_zk_root_path;

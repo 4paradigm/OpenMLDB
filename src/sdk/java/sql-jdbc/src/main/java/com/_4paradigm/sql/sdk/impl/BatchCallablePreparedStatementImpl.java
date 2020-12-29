@@ -5,8 +5,6 @@ import com._4paradigm.sql.jdbc.CallablePreparedStatement;
 import com._4paradigm.sql.jdbc.SQLResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
@@ -27,7 +25,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
     }
 
     @Override
-    public ResultSet executeQuery() throws SQLException {
+    public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
         Status status = new Status();
         com._4paradigm.sql.ResultSet resultSet = router.ExecuteSQLBatchRequest(
@@ -35,7 +33,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         if (status.getCode() != 0 || resultSet == null) {
             throw new SQLException("execute sql fail: " + status.getMsg());
         }
-        ResultSet rs = new SQLResultSet(resultSet);
+        SQLResultSet rs = new SQLResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
         }

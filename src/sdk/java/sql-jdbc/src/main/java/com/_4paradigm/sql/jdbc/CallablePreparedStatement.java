@@ -2,7 +2,6 @@ package com._4paradigm.sql.jdbc;
 
 import com._4paradigm.sql.SQLRouter;
 import com._4paradigm.sql.Status;
-import com._4paradigm.sql.sdk.impl.CallablePreparedStatementImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

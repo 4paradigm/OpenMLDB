@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
-import java.sql.ResultSet;
 import java.util.List;
 
 
@@ -30,7 +29,7 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
     }
 
     @Override
-    public ResultSet executeQuery() throws SQLException {
+    public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
         Status status = new Status();
         com._4paradigm.sql.ResultSet resultSet = router.ExecuteSQLBatchRequest(
@@ -38,7 +37,7 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
         if (resultSet == null) {
             throw new SQLException("execute sql fail: " + status.getMsg());
         }
-        ResultSet rs = new SQLResultSet(resultSet);
+        SQLResultSet rs = new SQLResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
         }

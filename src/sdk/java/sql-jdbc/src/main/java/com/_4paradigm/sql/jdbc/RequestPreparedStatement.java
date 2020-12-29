@@ -1,20 +1,19 @@
 package com._4paradigm.sql.jdbc;
 
 import com._4paradigm.sql.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.sql.*;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.util.*;
 
 public class RequestPreparedStatement implements PreparedStatement {
-    private static final Logger logger = LoggerFactory.getLogger(RequestPreparedStatement.class);
+    public static final Charset CHARSET = Charset.forName("utf-8");
     protected String db;
     protected String currentSql;
     protected SQLRouter router;
@@ -74,7 +73,7 @@ public class RequestPreparedStatement implements PreparedStatement {
     }
 
     @Override
-    public java.sql.ResultSet executeQuery() throws SQLException {
+    public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
         dataBuild();
         Status status = new Status();
@@ -82,7 +81,7 @@ public class RequestPreparedStatement implements PreparedStatement {
         if (resultSet == null) {
             throw new SQLException("execute sql fail");
         }
-        ResultSet rs = new SQLResultSet(resultSet);
+        SQLResultSet rs = new SQLResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
         }
@@ -183,9 +182,10 @@ public class RequestPreparedStatement implements PreparedStatement {
             setNull(i);
             return;
         }
-        stringsLen.put(i, s.length());
+        byte bytes[] = s.getBytes(CHARSET);
+        stringsLen.put(i, bytes.length);
         hasSet.set(i - 1, true);
-        currentDatas.set(i - 1, s);
+        currentDatas.set(i - 1, bytes);
     }
 
     @Override
@@ -259,20 +259,17 @@ public class RequestPreparedStatement implements PreparedStatement {
     }
 
     protected void dataBuild() throws SQLException {
+        if (this.currentRow == null) {
+            throw new SQLException("currentRow is null");
+        }
         for (int i = 0; i < this.hasSet.size(); i++) {
             if (!this.hasSet.get(i)) {
                 throw new SQLException("data not enough");
             }
         }
-        if (this.currentRow == null) {
-            throw new SQLException("currentRow is null");
-        }
         int strLen = 0;
-        if (!this.stringsLen.isEmpty()) {
-            for (Integer k : this.stringsLen.keySet()) {
-                Integer len = this.stringsLen.get(k);
-                strLen += len;
-            }
+        for (Map.Entry<Integer, Integer> entry : stringsLen.entrySet()) {
+            strLen += entry.getValue();
         }
         boolean ok = this.currentRow.Init(strLen);
         if (!ok) {
@@ -283,30 +280,33 @@ public class RequestPreparedStatement implements PreparedStatement {
             Object data = this.currentDatas.get(i);
             if (data == null) {
                 ok = this.currentRow.AppendNULL();
-            } else if (DataType.kTypeBool.equals(dataType)) {
-                ok = this.currentRow.AppendBool((boolean) data);
-            } else if (DataType.kTypeDate.equals(dataType)) {
-                java.sql.Date date = (java.sql.Date)data;
-                ok = this.currentRow.AppendDate(date.getYear() + 1900, date.getMonth() + 1, date.getDate());
-            } else if (DataType.kTypeDouble.equals(dataType)) {
-                ok = this.currentRow.AppendDouble((double) data);
-            } else if (DataType.kTypeFloat.equals(dataType)) {
-                ok = this.currentRow.AppendFloat((float) data);
-            } else if (DataType.kTypeInt16.equals(dataType)) {
-                ok = this.currentRow.AppendInt16((short) data);
-            } else if (DataType.kTypeInt32.equals(dataType)) {
-                ok = this.currentRow.AppendInt32((int) data);
-            } else if (DataType.kTypeInt64.equals(dataType)) {
-                ok = this.currentRow.AppendInt64((long) data);
-            } else if (DataType.kTypeString.equals(dataType)) {
-                ok = this.currentRow.AppendString((String) data);
-            } else if (DataType.kTypeTimestamp.equals(dataType)) {
-                ok = this.currentRow.AppendTimestamp((long) data);
             } else {
-                throw new SQLException("unkown data type " + dataType.toString());
+                if (DataType.kTypeBool.equals(dataType)) {
+                    ok = this.currentRow.AppendBool((boolean) data);
+                } else if (DataType.kTypeDate.equals(dataType)) {
+                    java.sql.Date date = (java.sql.Date) data;
+                    ok = this.currentRow.AppendDate(date.getYear() + 1900, date.getMonth() + 1, date.getDate());
+                } else if (DataType.kTypeDouble.equals(dataType)) {
+                    ok = this.currentRow.AppendDouble((double) data);
+                } else if (DataType.kTypeFloat.equals(dataType)) {
+                    ok = this.currentRow.AppendFloat((float) data);
+                } else if (DataType.kTypeInt16.equals(dataType)) {
+                    ok = this.currentRow.AppendInt16((short) data);
+                } else if (DataType.kTypeInt32.equals(dataType)) {
+                    ok = this.currentRow.AppendInt32((int) data);
+                } else if (DataType.kTypeInt64.equals(dataType)) {
+                    ok = this.currentRow.AppendInt64((long) data);
+                } else if (DataType.kTypeString.equals(dataType)) {
+                    byte[] bdata = (byte[])data;
+                    ok = this.currentRow.AppendString(bdata, bdata.length);
+                } else if (DataType.kTypeTimestamp.equals(dataType)) {
+                    ok = this.currentRow.AppendTimestamp((long) data);
+                } else {
+                    throw new SQLException("unkown data type " + dataType.toString());
+                }
             }
             if (!ok) {
-                throw new SQLException("apend data failed, idx is " + i);
+                throw new SQLException("append data failed, idx is " + i);
             }
         }
         if (!this.currentRow.Build()) {

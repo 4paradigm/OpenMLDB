@@ -53,11 +53,11 @@ const std::string LOGO =  // NOLINT
     " | | |  __ / |__| | |_) |\n"
     " |_|  \\___||_____/|____/\n";
 
-const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) +  // NOLINT
-                            "." +                                  // NOLINT
+const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) + "." +  // NOLINT
                             std::to_string(RTIDB_VERSION_MEDIUM) + "." +
                             std::to_string(RTIDB_VERSION_MINOR) + "." +
-                            std::to_string(RTIDB_VERSION_BUG);
+                            std::to_string(RTIDB_VERSION_BUG) + "." +
+                            RTIDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
 
 std::string db = "";  // NOLINT
 ::rtidb::sdk::ClusterSDK *cs = NULL;
@@ -157,7 +157,12 @@ void PrintTableIndex(std::ostream &stream,
         t.add(std::to_string(i + 1));
         t.add(index.name());
         t.add(index.first_keys(0));
-        t.add(index.second_key());
+        std::string ts_name = index.second_key();
+        if (ts_name.empty()) {
+            t.add("-");
+        } else {
+            t.add(index.second_key());
+        }
         std::ostringstream oss;
         for (int i = 0; i < index.ttl_size(); i++) {
             oss << index.ttl(i);
@@ -353,6 +358,17 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
                 ::fesql::type::IndexDef* index_def = index_list.Mutable(i);
                 index_def->set_ttl_type(ttl_it->second);
                 const std::string& ts_name = index_def->second_key();
+                if (ts_name.empty()) {
+                    if (ttl_type == ::rtidb::api::kAbsAndLat || ttl_type == ::rtidb::api::kAbsOrLat) {
+                        index_def->add_ttl(table->ttl_desc().abs_ttl());
+                        index_def->add_ttl(table->ttl_desc().lat_ttl());
+                    } else if (ttl_type == ::rtidb::api::kAbsoluteTime) {
+                        index_def->add_ttl(table->ttl_desc().abs_ttl());
+                    } else {
+                        index_def->add_ttl(table->ttl_desc().lat_ttl());
+                    }
+                    continue;
+                }
                 auto col_it = col_map.find(ts_name);
                 if (col_it == col_map.end()) {
                     std::cout << "ts name not found in col_map" << std::endl;

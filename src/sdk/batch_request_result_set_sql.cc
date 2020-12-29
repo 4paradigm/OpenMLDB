@@ -92,7 +92,8 @@ bool SQLBatchRequestResultSet::Init() {
     if (!common_schema_.empty()) {
         uint32_t row_size = 0;
         cntl_->response_attachment().copy_to(&row_size, 4, 2);
-        position_ += row_size;
+        common_buf_size_ = row_size;
+        position_ = row_size;
         cntl_->response_attachment().append_to(&common_buf_, row_size, 0);
         common_row_view_->Reset(common_buf_);
     }
@@ -116,6 +117,9 @@ bool SQLBatchRequestResultSet::Next() {
     index_++;
     if (index_ < static_cast<int32_t>(response_->count()) &&
         position_ < byte_size_) {
+        if (non_common_schema_.empty()) {
+            return true;
+        }
         // get row size
         uint32_t row_size = 0;
         cntl_->response_attachment().copy_to(&row_size, 4, position_ + 2);
@@ -136,7 +140,7 @@ bool SQLBatchRequestResultSet::Next() {
 
 bool SQLBatchRequestResultSet::Reset() {
     index_ = -1;
-    position_ = 0;
+    position_ = common_buf_size_;
     return true;
 }
 

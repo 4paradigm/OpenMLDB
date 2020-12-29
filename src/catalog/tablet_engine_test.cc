@@ -22,6 +22,7 @@
 #include "storage/mem_table.h"
 #include "storage/table.h"
 #include "test/base_test.h"
+#include "timer.h"  // NOLINT
 #include "vm/engine.h"
 namespace rtidb {
 namespace catalog {
@@ -50,6 +51,7 @@ void StoreData(std::shared_ptr<TestArgs> args, std::shared_ptr<fesql::storage::T
     fesql::codec::RowView row_view(sql_table->GetTableDef().columns());
     int column_size = sql_table->GetTableDef().columns_size();
     auto sql_schema = sql_table->GetTableDef().columns();
+    uint64_t ts = ::baidu::common::timer::get_micros() / 1000;
     for (auto row : rows) {
         std::map<uint32_t, rtidb::codec::Dimension> dimensions;
         std::vector<uint64_t> ts_dimensions;
@@ -81,8 +83,12 @@ void StoreData(std::shared_ptr<TestArgs> args, std::shared_ptr<fesql::storage::T
             ts_dim->set_ts(ts_dimensions[i]);
             ts_dim->set_idx(i);
         }
-        bool ok = table->Put(dims, ts_dims, row.ToString());
-        ASSERT_TRUE(ok);
+        if (ts_dimensions.empty()) {
+            ASSERT_TRUE(table->Put(ts, row.ToString(), dims));
+            ts--;
+        } else {
+            ASSERT_TRUE(table->Put(dims, ts_dims, row.ToString()));
+        }
     }
     LOG(INFO) << "store data done!";
 }
@@ -148,7 +154,9 @@ void TabletEngineTest::BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // N
     fesql::base::Status get_status;
     fesql::vm::Engine engine(catalog);
     fesql::vm::BatchRunSession session;
-    //    session.EnableDebug();
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        session.EnableDebug();
+    }
     bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_EQ(sql_case.expect().success_, ok);
     if (!sql_case.expect().success_) {
@@ -200,7 +208,8 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
     ASSERT_TRUE(catalog->Init());
     fesql::vm::Engine engine(catalog, options);
 
-    catalog->SetLocalTablet(std::shared_ptr<fesql::vm::Tablet>(new fesql::vm::LocalTablet(&engine)));
+    catalog->SetLocalTablet(std::shared_ptr<fesql::vm::Tablet>(
+        new fesql::vm::LocalTablet(&engine, std::shared_ptr<fesql::vm::CompileInfoCache>())));
     // Init catalog
     std::map<std::string, std::pair<std::shared_ptr<TestArgs>, std::shared_ptr<::fesql::storage::Table>>>
         name_table_map;
@@ -231,7 +240,9 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
     std::cout << sql_str << std::endl;
     fesql::base::Status get_status;
     fesql::vm::RequestRunSession session;
-    //    session.EnableDebug();
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        session.EnableDebug();
+    }
     bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_EQ(sql_case.expect().success_, ok);
     if (!sql_case.expect().success_) {
@@ -339,9 +350,6 @@ INSTANTIATE_TEST_SUITE_P(EngineLastJoinQuery, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/last_join_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinWindowQuery, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/last_join_window_query.yaml")));
-
-INSTANTIATE_TEST_SUITE_P(EngineRequestLastJoinWindowQuery, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/last_join_window_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineWindowQuery, TabletEngineTest,

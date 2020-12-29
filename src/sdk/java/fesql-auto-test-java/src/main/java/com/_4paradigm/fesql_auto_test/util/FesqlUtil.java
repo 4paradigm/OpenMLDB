@@ -1030,8 +1030,4 @@ public class FesqlUtil {
         }
         logger.info("RESULT:\n{} row in set\n{}", rs.Size(), sb.toString());
     }
-
-    public static String getStoredProcedureSql(String sql, List<InputDesc> inputs) {
-        return inputs.get(0).getProcedure(sql);
-    }
 }

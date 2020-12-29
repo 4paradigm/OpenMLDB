@@ -325,7 +325,7 @@ public class SQLResultSet implements ResultSet {
     }
 
     @Override
-    public ResultSetMetaData getMetaData() throws SQLException {
+    public SQLResultSetMetaData getMetaData() throws SQLException {
         checkClosed();
         checkResultSetNull();
         return new SQLResultSetMetaData(this.resultSet.GetSchema());

@@ -82,12 +82,15 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
         const ::fesql::type::IndexDef& index_def = index_list_.Get(i);
         ::fesql::vm::IndexSt index_st;
         index_st.index = i;
-        int32_t pos = GetColumnIndex(index_def.second_key());
-        if (pos < 0) {
-            LOG(WARNING) << "fail to get second key " << index_def.second_key();
-            return false;
+        index_st.ts_pos = ::fesql::vm::INVALID_POS;
+        if (!index_def.second_key().empty()) {
+            int32_t pos = GetColumnIndex(index_def.second_key());
+            if (pos < 0) {
+                LOG(WARNING) << "fail to get second key " << index_def.second_key();
+                return false;
+            }
+            index_st.ts_pos = pos;
         }
-        index_st.ts_pos = pos;
         index_st.name = index_def.name();
         for (int32_t j = 0; j < index_def.first_keys_size(); j++) {
             const std::string& key = index_def.first_keys(j);
@@ -105,7 +108,7 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
     return true;
 }
 
-std::unique_ptr<::fesql::codec::RowIterator> TabletTableHandler::GetIterator() const {
+std::unique_ptr<::fesql::codec::RowIterator> TabletTableHandler::GetIterator() {
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
     if (!tables->empty()) {
         return std::unique_ptr<catalog::FullTableIterator>(new catalog::FullTableIterator(tables));
@@ -137,7 +140,7 @@ const ::fesql::codec::Row TabletTableHandler::Get(int32_t pos) {
     return iter->Valid() ? iter->GetValue() : ::fesql::codec::Row();
 }
 
-::fesql::codec::RowIterator* TabletTableHandler::GetRawIterator() const {
+::fesql::codec::RowIterator* TabletTableHandler::GetRawIterator() {
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
     if (!tables->empty()) {
         return new catalog::FullTableIterator(tables);
@@ -220,6 +223,21 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
                    << client_tablet->GetName();
     }
     return client_tablet;
+}
+
+std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::string& index_name,
+                                                                   const std::vector<std::string>& pks) {
+    std::shared_ptr<TabletsAccessor> tablets_accessor = std::shared_ptr<TabletsAccessor>(new TabletsAccessor());
+    for (const auto &pk : pks) {
+        auto tablet_accessor = GetTablet(index_name, pk);
+        if (tablet_accessor) {
+            tablets_accessor->AddTabletAccessor(tablet_accessor);
+        } else {
+            LOG(WARNING) << "fail to get tablet: pk " << pk << " not exist";
+            return std::shared_ptr<TabletsAccessor>();
+        }
+    }
+    return tablets_accessor;
 }
 
 TabletCatalog::TabletCatalog()

@@ -32,7 +32,6 @@
 #include "parser/parser.h"
 #include "sdk/cluster_sdk.h"
 #include "sdk/sql_router.h"
-#include "vm/engine.h"
 #include "boost/compute/detail/lru_cache.hpp"
 
 namespace rtidb {
@@ -54,8 +53,8 @@ static std::shared_ptr<::fesql::sdk::Schema> ConvertToSchema(
     return std::make_shared<::fesql::sdk::SchemaImpl>(schema);
 }
 
-struct RouterCache {
-    RouterCache(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+struct SQLCache {
+    SQLCache(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
                 DefaultValueMap default_map, uint32_t str_length)
         : table_info(table_info),
           default_map(default_map),
@@ -64,16 +63,19 @@ struct RouterCache {
         column_schema = rtidb::sdk::ConvertToSchema(table_info);
     }
 
-    explicit RouterCache(std::shared_ptr<::fesql::sdk::Schema> column_schema)
+    SQLCache(std::shared_ptr<::fesql::sdk::Schema> column_schema,
+            const ::fesql::vm::Router& input_router)
         : table_info(),
           default_map(),
           column_schema(column_schema),
-          str_length(0) {}
+          str_length(0),
+          router(input_router) {}
 
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
     std::shared_ptr<::fesql::sdk::Schema> column_schema;
     uint32_t str_length;
+    ::fesql::vm::Router router;
 };
 
 class SQLClusterRouter : public SQLRouter {
@@ -160,10 +162,10 @@ class SQLClusterRouter : public SQLRouter {
             const std::string& db, const std::string& sp_name, int64_t timeout_ms,
             std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status);
 
- private:
     std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
-        const std::string& db, const std::string& sql);
+        const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row);
 
+ private:
     void GetTables(::fesql::vm::PhysicalOpNode* node,
                    std::set<std::string>* tables);
 
@@ -172,11 +174,11 @@ class SQLClusterRouter : public SQLRouter {
             ::fesql::sdk::Status* status);
 
     bool IsConstQuery(::fesql::vm::PhysicalOpNode* node);
-    std::shared_ptr<RouterCache> GetCache(const std::string& db,
+    std::shared_ptr<SQLCache> GetCache(const std::string& db,
                                           const std::string& sql);
 
     void SetCache(const std::string& db, const std::string& sql,
-                  std::shared_ptr<RouterCache> router_cache);
+                  std::shared_ptr<SQLCache> router_cache);
 
     bool GetSQLPlan(const std::string& sql, ::fesql::node::NodeManager* nm,
                     ::fesql::node::PlanNodeList* plan);
@@ -208,8 +210,7 @@ class SQLClusterRouter : public SQLRouter {
  private:
     SQLRouterOptions options_;
     ClusterSDK* cluster_sdk_;
-    ::fesql::vm::Engine* engine_;
-    std::map<std::string, boost::compute::detail::lru_cache<std::string, std::shared_ptr<RouterCache>>>
+    std::map<std::string, boost::compute::detail::lru_cache<std::string, std::shared_ptr<SQLCache>>>
         input_lru_cache_;
     ::rtidb::base::SpinMutex mu_;
     ::rtidb::base::Random rand_;

@@ -1,183 +1,69 @@
 package com._4paradigm.sql.jmh;
 
-import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
-import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
+import com._4paradigm.sql.tools.Util;
+import com._4paradigm.sql.tools.Relation;
+import com._4paradigm.sql.tools.TableInfo;
 import org.openjdk.jmh.annotations.*;
-import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
+import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.sql.*;
 import java.sql.Date;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+
 @BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
 @Threads(1)
-@Fork(value = 1, jvmArgs = {"-Xms8G", "-Xmx8G"})
+@Fork(value = 1, jvmArgs = {"-Xms32G", "-Xmx32G"})
 @Warmup(iterations = 1)
 
 public class FESQLFZBenchmark {
     private SqlExecutor executor;
     private String db;
-    private String ddlUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.txt.ddl.txt";
-    private String scriptUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.txt";
-    private String relationUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.relation.txt";
     private int pkNum = 1;
     @Param({"500", "1000", "2000"})
-    private int windowNum = 10;
+    private int windowNum = 2000;
     private Map<String, TableInfo> tableMap;
     private String script;
     private String mainTable;
     List<Map<String, String>> mainTableValue;
     int pkBase = 1000000;
-
     public FESQLFZBenchmark() {
-        executor = BenchmarkConfig.GetSqlExecutor();
+        this(false);
+    }
+    public FESQLFZBenchmark(boolean enableDebug ) {
+        executor = BenchmarkConfig.GetSqlExecutor(enableDebug);
         db = "db" + System.nanoTime();
         tableMap = new HashMap<>();
         mainTableValue = new ArrayList<>();
     }
 
-    class TableInfo {
-        private String name;
-        private String ddl;
-        private Map<String, Integer> schemaPos;
-        private Map<Integer, String> schemaPosName;
-        private List<String> schema;
-        private Set<Integer> tsIndex;
-        private Set<Integer> index;
-        private Map<Integer, String> relation;
-        public TableInfo(String ddl, Map<String, Map<String, String>> relationMap) {
-            this.ddl = ddl + ";";
-            String[] arr = ddl.split("index\\(")[0].split("\\(");
-            name = arr[0].split(" ")[2].replaceAll("`", "");
-            String indexStr = relationMap.get(name).get("index");
-            String tsIndexStr = relationMap.get(name).get("ts");
-
-            String[] filed = arr[1].split(",");
-            schema = new ArrayList<>();
-            schemaPos = new HashMap<>();
-            schemaPosName = new HashMap<>();
-            for (int i = 0; i < filed.length; i++) {
-                String[] tmp = filed[i].split(" ");
-                if (tmp.length < 2) {
-                    continue;
-                }
-                schema.add(tmp[1].trim());
-                String fieldName = tmp[0].replaceAll("`", "");
-                schemaPos.put(fieldName, i);
-                schemaPosName.put(i, fieldName);
-            }
-            index = new HashSet<>();
-            for (String val : indexStr.trim().split(",")) {
-                String[] tmp = val.split("\\|");
-                for (String field : tmp) {
-                    index.add(schemaPos.get(field));
-                }
-            }
-            tsIndex = new HashSet<>();
-            if (!tsIndexStr.equals("null")) {
-                for (String val : tsIndexStr.trim().split(",")) {
-                    tsIndex.add(schemaPos.get(val));
-                }
-            }
-            String relationStr = relationMap.get(name).get("relation");
-            relation = new HashMap<>();
-            if (!relationStr.equals("null")) {
-                String[] val = relationStr.trim().split("\\|");
-                if (val.length == 2) {
-                    relation.put(schemaPos.get(val[1]), val[0]);
-                }
-            }
-            if (name.equals(mainTable)) {
-                for (Map.Entry<String, Map<String, String>> entry : relationMap.entrySet()) {
-                    if (entry.getKey().equals(mainTable)) {
-                        continue;
-                    }
-                    String curRelationStr = entry.getValue().get("relation");
-                    String[] tmp = curRelationStr.trim().split("\\|");
-                    index.add(schemaPos.get(tmp[0]));
-                }
-            }
-        }
-
-        public String getDDL() { return ddl; }
-        public Set<Integer> getTsIndex() { return tsIndex; }
-        public String getName() { return name; }
-        public Set<Integer> getIndex() { return index; }
-        public List<String> getSchema() { return schema; }
-        public Map<String, Integer> getSchemaPos() { return schemaPos; }
-        public Map<Integer, String> getRelation() { return relation; }
-        public Map<Integer, String> getSchemaPosName() { return schemaPosName; }
-    }
-
-    public String getContent(String httpUrl) {
-        try {
-            URL url = new URL(httpUrl);
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            con.setRequestMethod("GET");
-            con.connect();
-            if (con.getResponseCode() == 200) {
-                InputStream is = con.getInputStream();
-                StringBuilder builder = new StringBuilder();
-                int len = 0;
-                byte[] buffer = new byte[1024];
-                while ((len = is.read(buffer)) != -1) {
-                    byte[] temp = new byte[len];
-                    System.arraycopy(buffer, 0 , temp, 0, len);
-                    builder.append(new String(temp, "utf-8"));
-                }
-                return builder.toString();
-            } else {
-                System.out.println("request failed");
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return "";
+    public void setWindowNum(int windowNum) {
+        this.windowNum = windowNum;
     }
 
     public void init() {
-        String rawScript = getContent(scriptUrl);
+        String rawScript = Util.getContent(BenchmarkConfig.scriptUrl);
         script = rawScript.trim().replace("\n", " ");
-        String relation = getContent(relationUrl);
-        String[] arr = relation.trim().split("\n");
-        Map<String, Map<String, String>> relationMap = new HashMap<>();
-        for (String item : arr) {
-            String[] tmp = item.trim().split(" ");
-            if (tmp.length < 5) {
-                System.out.println("parse relation error");
-                continue;
-            }
-            if (tmp[1].equals("null")) {
-                mainTable = tmp[0];
-            }
-            Map<String, String> tableMap = new HashMap<>();
-            tableMap.put("main", tmp[1]);
-            tableMap.put("relation", tmp[2]);
-            tableMap.put("index", tmp[3]);
-            tableMap.put("ts", tmp[4]);
-            relationMap.put(tmp[0], tableMap);
-        }
-        String ddl = getContent(ddlUrl);
-        arr = ddl.split(";");
+        Relation relation = new Relation(Util.getContent(BenchmarkConfig.relationUrl));
+        mainTable = relation.getMainTable();
+        String ddl = Util.getContent(BenchmarkConfig.ddlUrl);
+        String[] arr = ddl.split(";");
         for (String item : arr) {
             item = item.trim().replace("\n", "");
             if (item.isEmpty()) {
                 continue;
             }
-            TableInfo table = new TableInfo(item, relationMap);
+            TableInfo table = new TableInfo(item, relation);
             tableMap.put(table.getName(), table);
         }
+        System.out.println(db);
     }
 
     public void putData() {
@@ -202,7 +88,7 @@ public class FESQLFZBenchmark {
         List<String> schema = table.getSchema();
         Set<Integer> index = table.getIndex();
         Set<Integer> tsIndex = table.getTsIndex();
-        Map<Integer, String> relation = table.getRelation();
+        Map<Integer, String> relation = table.getColRelation();
 
         Map<String, String> valueMap;
         for (int i = 0; i < pkNum; i++) {
@@ -217,7 +103,7 @@ public class FESQLFZBenchmark {
                 builder.append("insert into ");
                 builder.append(table.getName());
                 builder.append(" values(");
-                for (int pos = 0; pos < table.schema.size(); pos++) {
+                for (int pos = 0; pos < schema.size(); pos++) {
                     if (pos > 0) {
                         builder.append(", ");
                     }
@@ -273,6 +159,7 @@ public class FESQLFZBenchmark {
                 }
                 builder.append(");");
                 String exeSql = builder.toString();
+                //System.out.println(exeSql);
                 executor.executeInsert(db, exeSql);
             }
             if (isMainTable) {
@@ -324,6 +211,7 @@ public class FESQLFZBenchmark {
             return;
         }
         for (TableInfo table : tableMap.values()) {
+            //System.out.println(table.getDDL());
             if (!executor.executeDDL(db, table.getDDL())) {
                 return;
             }
@@ -333,10 +221,10 @@ public class FESQLFZBenchmark {
 
     @TearDown
     public void teardown() throws SQLException {
-        for (String name : tableMap.keySet()) {
+        /*for (String name : tableMap.keySet()) {
             executor.executeDDL(db, "drop table " + name + ";");
         }
-        executor.dropDB(db);
+        executor.dropDB(db);*/
     }
 
     @Benchmark
@@ -345,6 +233,42 @@ public class FESQLFZBenchmark {
             PreparedStatement ps = getPreparedStatement();
             ResultSet resultSet = ps.executeQuery();
             /*resultSet.next();
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            Map<String, String> val = new HashMap<>();
+            int stringNum = 0;
+            for (int i = 0; i < metaData.getColumnCount(); i++) {
+                String columnName = metaData.getColumnName(i + 1);
+                System.out.println(columnName + ":" + String.valueOf(i));
+                int columnType = metaData.getColumnType(i + 1);
+                if (columnType == Types.VARCHAR) {
+                    val.put(columnName, String.valueOf(resultSet.getString(i + 1)));
+                    stringNum++;
+                    System.out.println(columnName + ":" + String.valueOf(i) + ":" + resultSet.getString(i+ 1));
+
+                } else if (columnType == Types.DOUBLE) {
+                    val.put(columnName, String.valueOf(resultSet.getDouble(i + 1)));
+                } else if (columnType == Types.INTEGER) {
+                    val.put(columnName, String.valueOf(resultSet.getInt(i + 1)));
+                } else if (columnType == Types.BIGINT) {
+                    val.put(columnName, String.valueOf(resultSet.getLong(i + 1)));
+                } else if (columnType == Types.TIMESTAMP) {
+                    val.put(columnName, String.valueOf(resultSet.getTimestamp(i + 1)));
+                } else if (columnType == Types.DATE) {
+                    val.put(columnName, String.valueOf(resultSet.getDate(i+ 1)));
+                }
+            }
+            System.out.println("string num" + stringNum);
+            ps.close();*/
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public Map<String, String> execSQLTest() {
+        try {
+            PreparedStatement ps = getPreparedStatement();
+            ResultSet resultSet = ps.executeQuery();
+            resultSet.next();
             ResultSetMetaData metaData = resultSet.getMetaData();
             Map<String, String> val = new HashMap<>();
             for (int i = 0; i < metaData.getColumnCount(); i++) {
@@ -360,14 +284,14 @@ public class FESQLFZBenchmark {
                     val.put(columnName, String.valueOf(resultSet.getLong(i + 1)));
                 } else if (columnType == Types.TIMESTAMP) {
                     val.put(columnName, String.valueOf(resultSet.getTimestamp(i + 1)));
-                } else if (columnType == Types.DATE) {
-                    val.put(columnName, String.valueOf(resultSet.getDate(i+ 1)));
                 }
-            }*/
+            }
             ps.close();
+            return val;
         } catch (Exception e) {
             e.printStackTrace();
         }
+        return null;
     }
 
     public static void main(String[] args) throws RunnerException {
