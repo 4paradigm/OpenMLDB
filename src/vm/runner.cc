@@ -21,6 +21,7 @@
 
 namespace fesql {
 namespace vm {
+#define MAX_DEBUG_BATCH_SiZE 5
 #define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_MAX 20
 
@@ -665,7 +666,7 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
         switch (bias) {
             case kNoBias:
             case kRightBias: {
-                new_right = BuildProxyRunnerForClusterTask(new_left);
+                new_left = BuildProxyRunnerForClusterTask(new_left);
                 runner->AddProducer(new_left.GetRoot());
                 runner->AddProducer(new_right.GetRoot());
                 return ClusterTask::TaskMergeToRight(runner, new_left,
@@ -975,6 +976,10 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
         oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
             << "\n";
         for (size_t idx = 0; idx < outputs->GetSize(); idx++) {
+            if (idx >= MAX_DEBUG_BATCH_SiZE) {
+                oss << ">= MAX_DEBUG_BATCH_SiZE...\n";
+                break;
+            }
             Runner::PrintData(oss, output_schemas_, outputs->Get(idx));
         }
         LOG(INFO) << oss.str();
@@ -1065,6 +1070,10 @@ std::shared_ptr<DataHandlerList> RequestRunner::BatchRequestRun(
         oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
             << "\n";
         for (size_t idx = 0; idx < res->GetSize(); idx++) {
+            if (idx >= MAX_DEBUG_BATCH_SiZE) {
+                oss << ">= MAX_DEBUG_BATCH_SiZE...\n";
+                break;
+            }
             Runner::PrintData(oss, output_schemas_, res->Get(idx));
         }
         LOG(INFO) << oss.str();
@@ -2570,6 +2579,10 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
         oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
             << "\n";
         for (size_t idx = 0; idx < outputs->GetSize(); idx++) {
+            if (idx >= MAX_DEBUG_BATCH_SiZE) {
+                oss << ">= MAX_DEBUG_BATCH_SiZE...\n";
+                break;
+            }
             Runner::PrintData(oss, output_schemas_, outputs->Get(idx));
         }
         LOG(INFO) << oss.str();
