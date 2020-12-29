@@ -184,12 +184,12 @@ public class SQLRouterSmokeTest {
             impl3.closeOnCompletion();
             Assert.assertTrue(impl3.isCloseOnCompletion());
             ok = impl3.execute();
+            Assert.assertTrue(ok);
             try {
                 impl3.execute();
             } catch (Exception e) {
                 Assert.assertEquals("preparedstatement closed", e.getMessage());
             }
-            Assert.assertTrue(ok);
             insert = "insert into tsql1010 values(?, ?, ?, 'zhenzhou', 5);";
             PreparedStatement impl4 = router.getInsertPreparedStmt(dbname, insert);
             impl4.close();
@@ -198,7 +198,8 @@ public class SQLRouterSmokeTest {
             impl5.setLong(1, 1004);
             impl5.setDate(2, d5);
             impl5.setString(3, "henan");
-            impl5.execute();
+            ok = impl5.execute();
+            Assert.assertTrue(ok);
             // select
             String select1 = "select * from tsql1010;";
             ResultSet rs1 = router.executeSQL(dbname, select1);
