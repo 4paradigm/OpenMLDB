@@ -56,6 +56,7 @@ struct SQLContext {
     EngineMode engine_mode;
     bool is_performance_sensitive = false;
     bool is_cluster_optimized = false;
+    bool is_batch_request_optimized = false;
     // the sql content
     std::string sql;
     // the database
@@ -121,6 +122,18 @@ class SQLCompiler {
                              const ::fesql::node::PlanNodeList& plan_list,
                              ::llvm::Module* llvm_module,
                              PhysicalOpNode** output);
+    Status BuildBatchModePhysicalPlan(
+        SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+        ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+        PhysicalOpNode** output);
+    Status BuildRequestModePhysicalPlan(
+        SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+        ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+        PhysicalOpNode** output);
+    Status BuildBatchRequestModePhysicalPlan(
+        SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+        ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+        PhysicalOpNode** output);
 
  private:
     const std::shared_ptr<Catalog> cl_;

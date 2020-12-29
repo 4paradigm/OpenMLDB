@@ -24,8 +24,42 @@ namespace vm {
 #define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_MAX 20
 
+// Build Runner for each physical node
+// return cluster task of given runner
+//
+// DataRunner(kProviderTypePartition) --> cluster task
+// RequestRunner --> local task
+// DataRunner(kProviderTypeTable) --> LocalTask, Unsupport in distribute
+// database
+//
+// SimpleProjectRunner --> inherit task
+// TableProjectRunner --> inherit task
+// WindowAggRunner --> LocalTask , Unsupport in distribute database
+// GroupAggRunner --> LocalTask, Unsupport in distribute database
+//
+// RowProjectRunner --> inherit task
+// ConstProjectRunner --> local task
+//
+// RequestUnionRunner
+//      --> complete route_info of right cluster task
+//      --> build proxy runner if need
+// RequestJoinRunner
+//      --> complete route_info of right cluster task
+//      --> build proxy runner if need
+// kPhysicalOpJoin
+//      --> kJoinTypeLast->RequestJoinRunner
+//              --> complete route_info of right cluster task
+//              --> build proxy runner if need
+//      --> kJoinTypeConcat
+//              --> build proxy runner if need
+// kPhysicalOpPostRequestUnion
+//      --> build proxy runner if need
+// GroupRunner --> LocalTask, Unsupport in distribute database
+// kPhysicalOpFilter
+// kPhysicalOpLimit
+// kPhysicalOpRename
 ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
-    auto fail = ClusterTask();
+    auto fail = InvalidTask();
     if (nullptr == node) {
         status.msg = "fail to build runner : physical node is null";
         status.code = common::kOpGenError;
@@ -35,7 +69,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
     auto iter = task_map_.find(node);
     if (iter != task_map_.cend()) {
         iter->second.GetRoot()->EnableCache();
-        return ClusterTask((iter->second));
+        return iter->second;
     }
     switch (node->GetOpType()) {
         case kPhysicalOpDataProvider: {
@@ -46,7 +80,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         dynamic_cast<const PhysicalTableProviderNode*>(node);
                     auto runner = nm_->RegisterNode(new DataRunner(
                         id_++, node->schemas_ctx(), provider->table_handler_));
-                    return RegisterTask(node, ClusterTask(runner));
+                    return RegisterTask(node, CommonTask(runner));
                 }
                 case kProviderTypePartition: {
                     auto provider =
@@ -58,16 +92,17 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                            provider->index_name_)));
                     if (support_cluster_optimized_) {
                         return RegisterTask(
-                            node, ClusterTask(runner, provider->table_handler_,
-                                              provider->index_name_));
+                            node, UnCompletedClusterTask(
+                                      runner, provider->table_handler_,
+                                      provider->index_name_));
                     } else {
-                        return RegisterTask(node, ClusterTask(runner));
+                        return RegisterTask(node, CommonTask(runner));
                     }
                 }
                 case kProviderTypeRequest: {
                     auto runner = nm_->RegisterNode(
                         new RequestRunner(id_++, node->schemas_ctx()));
-                    return RegisterTask(node, ClusterTask(runner));
+                    return RegisterTask(node, BuildRequestTask(runner));
                 }
                 default: {
                     status.msg = "fail to support data provider type " +
@@ -87,28 +122,20 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 LOG(WARNING) << status;
                 return fail;
             }
-            auto input = cluster_task.GetRoot();
             auto op = dynamic_cast<const PhysicalSimpleProjectNode*>(node);
             auto runner = new SimpleProjectRunner(id_++, node->schemas_ctx(),
                                                   op->GetLimitCnt(),
                                                   op->project().fn_info());
-            if (Runner::IsProxyRunner(input->type_) && !input->need_cache()) {
-                cluster_job_.AddRunnerToTask(
-                    nm_->RegisterNode(runner),
-                    dynamic_cast<ProxyRequestRunner*>(input)->task_id());
-                input->set_output_schemas(runner->output_schemas());
-                return RegisterTask(node, cluster_task);
-            }
-            runner->AddProducer(input);
-            cluster_task.SetRoot(runner);
-            return RegisterTask(node, cluster_task);
+            return RegisterTask(
+                node,
+                UnaryInheritTask(cluster_task, nm_->RegisterNode(runner)));
         }
         case kPhysicalOpConstProject: {
             auto op = dynamic_cast<const PhysicalConstProjectNode*>(node);
             auto runner = new ConstProjectRunner(id_++, node->schemas_ctx(),
                                                  op->GetLimitCnt(),
                                                  op->project().fn_info());
-            return RegisterTask(node, ClusterTask(nm_->RegisterNode(runner)));
+            return RegisterTask(node, CommonTask(nm_->RegisterNode(runner)));
         }
         case kPhysicalOpProject: {
             auto cluster_task =  // NOLINT
@@ -133,36 +160,35 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     auto runner = new TableProjectRunner(
                         id_++, node->schemas_ctx(), op->GetLimitCnt(),
                         op->project().fn_info());
-                    runner->AddProducer(input);
-                    cluster_task.SetRoot(nm_->RegisterNode(runner));
-                    return RegisterTask(node, cluster_task);
+                    return RegisterTask(
+                        node, UnaryInheritTask(cluster_task,
+                                               nm_->RegisterNode(runner)));
                 }
                 case kAggregation: {
                     auto runner = new AggRunner(id_++, node->schemas_ctx(),
                                                 op->GetLimitCnt(),
                                                 op->project().fn_info());
-                    if (Runner::IsProxyRunner(input->type_) &&
-                        !input->need_cache()) {
-                        cluster_job_.AddRunnerToTask(
-                            nm_->RegisterNode(runner),
-                            dynamic_cast<ProxyRequestRunner*>(input)
-                                ->task_id());
-                        input->set_output_schemas(runner->output_schemas());
-                        return RegisterTask(node, cluster_task);
-                    }
-                    runner->AddProducer(input);
-                    cluster_task.SetRoot(nm_->RegisterNode(runner));
-                    return RegisterTask(node, cluster_task);
+                    return RegisterTask(
+                        node, UnaryInheritTask(cluster_task,
+                                               nm_->RegisterNode(runner)));
                 }
                 case kGroupAggregation: {
+                    if (support_cluster_optimized_) {
+                        // 边界检查, 分布式计划暂时不支持表拼接
+                        status.msg =
+                            "fail to build cluster with group agg project";
+                        status.code = common::kOpGenError;
+                        LOG(WARNING) << status;
+                        return fail;
+                    }
                     auto op =
                         dynamic_cast<const PhysicalGroupAggrerationNode*>(node);
                     auto runner = new GroupAggRunner(
                         id_++, node->schemas_ctx(), op->GetLimitCnt(),
                         op->group_, op->project().fn_info());
-                    runner->AddProducer(input);
-                    cluster_task.SetRoot(nm_->RegisterNode(runner));
-                    return RegisterTask(node, cluster_task);
+                    return RegisterTask(
+                        node, UnaryInheritTask(cluster_task,
+                                               nm_->RegisterNode(runner)));
                 }
                 case kWindowAggregation: {
                     if (support_cluster_optimized_) {
@@ -180,10 +206,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         id_++, node->schemas_ctx(), op->GetLimitCnt(),
                         op->window_, op->project().fn_info(),
                         op->instance_not_in_window(), op->need_append_input());
-                    runner->AddProducer(input);
                     size_t input_slices =
                         input->output_schemas()->GetSchemaSourceSize();
-
                     if (!op->window_unions_.Empty()) {
                         for (auto window_union :
                              op->window_unions_.window_unions_) {
@@ -191,11 +215,6 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                             auto union_table = union_task.GetRoot();
                             if (nullptr == union_table) {
                                 return RegisterTask(node, fail);
-                            }
-                            if (!cluster_task.IsClusterTask()) {
-                                cluster_task = union_task;
-                                cluster_task.SetIndexKey(
-                                    window_union.second.partition());
                             }
                             runner->AddWindowUnion(window_union.second,
                                                    union_table);
@@ -210,39 +229,22 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                             if (nullptr == join_right_runner) {
                                 return RegisterTask(node, fail);
                             }
-
-                            // set runner partition id, if main table depend on
-                            // no window(partition)
-                            if (!cluster_task.IsClusterTask()) {
-                                cluster_task = join_task;
-                                cluster_task.SetIndexKey(
-                                    window_join.second.index_key_);
-                            }
                             runner->AddWindowJoin(window_join.second,
                                                   input_slices,
                                                   join_right_runner);
                         }
                     }
-
-                    cluster_task.SetRoot(nm_->RegisterNode(runner));
-                    return RegisterTask(node, cluster_task);
+                    return RegisterTask(
+                        node, UnaryInheritTask(cluster_task,
+                                               nm_->RegisterNode(runner)));
                 }
                 case kRowProject: {
                     auto runner = new RowProjectRunner(
                         id_++, node->schemas_ctx(), op->GetLimitCnt(),
                         op->project().fn_info());
-                    if (kRunnerRequestRunProxy == input->type_) {
-                        cluster_job_.AddRunnerToTask(
-                            nm_->RegisterNode(runner),
-                            dynamic_cast<ProxyRequestRunner*>(input)
-                                ->task_id());
-                        input->set_output_schemas(runner->output_schemas());
-                        return RegisterTask(node, cluster_task);
-                    } else {
-                        runner->AddProducer(input);
-                        cluster_task.SetRoot(nm_->RegisterNode(runner));
-                        return RegisterTask(node, cluster_task);
-                    }
+                    return RegisterTask(
+                        node, UnaryInheritTask(cluster_task,
+                                               nm_->RegisterNode(runner)));
                 }
                 default: {
                     status.msg = "fail to support project type " +
@@ -290,13 +292,16 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         index_key = window_union.second.index_key_;
                         right_task = union_task;
                         right_task.SetRoot(right);
+                    } else if (support_cluster_optimized_) {
+                        LOG(WARNING) << "Fail to build RequestUnionRunner with "
+                                        "multi union table in cluster mode";
+                        return ClusterTask();
                     }
                 }
             }
-            auto cluster_task = BuildRequestRunnerWithProxy(
-                nm_->RegisterNode(runner), left_task, right_task, index_key,
-                status);
-            return RegisterTask(node, cluster_task);
+            return RegisterTask(node, BinaryInherit(left_task, right_task,
+                                                    nm_->RegisterNode(runner),
+                                                    index_key, kRightBias));
         }
         case kPhysicalOpRequestJoin: {
             auto left_task =  // NOLINT
@@ -327,18 +332,18 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         right->output_schemas()->GetSchemaSourceSize(),
                         op->output_right_only());
 
-                    auto cluster_task = BuildRequestRunnerWithProxy(
-                        nm_->RegisterNode(runner), left_task, right_task,
-                        op->join().index_key(), status);
-                    return RegisterTask(node, cluster_task);
+                    return RegisterTask(
+                        node, BinaryInherit(left_task, right_task,
+                                            nm_->RegisterNode(runner),
+                                            op->join().index_key(), kLeftBias));
                 }
                 case node::kJoinTypeConcat: {
                     auto runner = new ConcatRunner(id_++, node->schemas_ctx(),
                                                    op->GetLimitCnt());
-                    auto cluster_task = BuildRequestRunnerWithProxy(
-                        nm_->RegisterNode(runner), left_task, right_task, Key(),
-                        status);
-                    return RegisterTask(node, cluster_task);
+                    return RegisterTask(
+                        node, BinaryInherit(left_task, right_task,
+                                            nm_->RegisterNode(runner), Key(),
+                                            kNoBias));
                 }
                 default: {
                     status.code = common::kOpGenError;
@@ -378,34 +383,30 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                             left->output_schemas()->GetSchemaSourceSize(),
                             right->output_schemas()->GetSchemaSourceSize(),
                             op->output_right_only_);
-                        auto cluster_task = BuildBatchRequestRunnerWithProxy(
-                            nm_->RegisterNode(runner), left_task, right_task,
-                            op->join().index_key(), status);
-                        return RegisterTask(node, cluster_task);
+                        return RegisterTask(
+                            node,
+                            BinaryInherit(left_task, right_task,
+                                          nm_->RegisterNode(runner),
+                                          op->join().index_key(), kLeftBias));
                     } else {
                         auto runner = new LastJoinRunner(
                             id_++, node->schemas_ctx(), op->GetLimitCnt(),
                             op->join_,
                             left->output_schemas()->GetSchemaSourceSize(),
                             right->output_schemas()->GetSchemaSourceSize());
-                        runner->AddProducer(left);
-                        runner->AddProducer(right);
-                        left_task.SetRoot(nm_->RegisterNode(runner));
-                        return RegisterTask(node, left_task);
+                        return RegisterTask(
+                            node, BinaryInherit(left_task, right_task,
+                                                nm_->RegisterNode(runner),
+                                                Key(), kLeftBias));
                     }
                 }
                 case node::kJoinTypeConcat: {
                     auto runner = new ConcatRunner(id_++, node->schemas_ctx(),
                                                    op->GetLimitCnt());
-                    ClusterTask task = BuildProxyRunnerForConcatedProxyNode(
-                        runner, left, right);
-                    if (task.IsValid()) {
-                        return task;
-                    }
-                    runner->AddProducer(left);
-                    runner->AddProducer(right);
-                    left_task.SetRoot(nm_->RegisterNode(runner));
-                    return RegisterTask(node, left_task);
+                    return RegisterTask(
+                        node, BinaryInherit(left_task, right_task,
+                                            nm_->RegisterNode(runner),
+                                            op->join().index_key(), kNoBias));
                 }
                 default: {
                     status.code = common::kOpGenError;
@@ -431,18 +432,16 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 LOG(WARNING) << status;
                 return fail;
             }
-            auto input = cluster_task.GetRoot();
             auto op = dynamic_cast<const PhysicalGroupNode*>(node);
             auto runner = new GroupRunner(id_++, node->schemas_ctx(),
                                           op->GetLimitCnt(), op->group());
-            runner->AddProducer(input);
-            cluster_task.SetRoot(nm_->RegisterNode(runner));
-            return RegisterTask(node, cluster_task);
+            return RegisterTask(
+                node,
+                UnaryInheritTask(cluster_task, nm_->RegisterNode(runner)));
         }
         case kPhysicalOpFilter: {
             auto cluster_task =  // NOLINT
                 Build(node->producers().at(0), status);
-            auto input = cluster_task.GetRoot();
             if (!cluster_task.IsValid()) {
                 status.msg = "fail to build input runner";
                 status.code = common::kOpGenError;
@@ -452,9 +451,9 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto op = dynamic_cast<const PhysicalFilterNode*>(node);
             auto runner = new FilterRunner(id_++, node->schemas_ctx(),
                                            op->GetLimitCnt(), op->filter_);
-            runner->AddProducer(input);
-            cluster_task.SetRoot(nm_->RegisterNode(runner));
-            return RegisterTask(node, cluster_task);
+            return RegisterTask(
+                node,
+                UnaryInheritTask(cluster_task, nm_->RegisterNode(runner)));
         }
         case kPhysicalOpLimit: {
             auto cluster_task =  // NOLINT
@@ -465,16 +464,13 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 LOG(WARNING) << status;
                 return fail;
             }
-            auto input = cluster_task.GetRoot();
             auto op = dynamic_cast<const PhysicalLimitNode*>(node);
             if (op->GetLimitCnt() == 0 || op->GetLimitOptimized()) {
                 return RegisterTask(node, cluster_task);
             }
             auto runner =
                 new LimitRunner(id_++, node->schemas_ctx(), op->GetLimitCnt());
-            runner->AddProducer(input);
-            cluster_task.SetRoot(nm_->RegisterNode(runner));
-            return RegisterTask(node, cluster_task);
+            return RegisterTask(node, UnaryInheritTask(cluster_task, runner));
         }
         case kPhysicalOpRename: {
             return Build(node->producers().at(0), status);
@@ -495,12 +491,11 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 return fail;
             }
             auto union_op = dynamic_cast<PhysicalPostRequestUnionNode*>(node);
-            auto runner = nm_->RegisterNode(new PostRequestUnionRunner(
-                id_++, node->schemas_ctx(), union_op->request_ts()));
-            runner->AddProducer(left_task.GetRoot());
-            runner->AddProducer(right_task.GetRoot());
-            left_task.SetRoot(runner);
-            return RegisterTask(node, left_task);
+            auto runner = new PostRequestUnionRunner(id_++, node->schemas_ctx(),
+                                                     union_op->request_ts());
+            return RegisterTask(node, BinaryInherit(left_task, right_task,
+                                                    nm_->RegisterNode(runner),
+                                                    Key(), kRightBias));
         }
         default: {
             status.code = common::kOpGenError;
@@ -512,155 +507,249 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         }
     }
 }
-// runner(left_row,right) -->
-// proxy_request_run(left, task_id) : task[runner(request, right)]
-ClusterTask RunnerBuilder::BuildRequestRunnerWithProxy(
-    Runner* runner, const ClusterTask& left_task, const ClusterTask& right_task,
-    const Key& index_key, Status& status) {
-    return BuildProxyRunner(runner, left_task, right_task, index_key, false,
-                            status);
-}
 
-// runner(left_table,right) -->
-// proxy_batch_request_run(left, task_id) : task[runner(batch_request, right)]
-ClusterTask RunnerBuilder::BuildBatchRequestRunnerWithProxy(
-    Runner* runner, const ClusterTask& left_task, const ClusterTask& right_task,
-    const Key& index_key, Status& status) {
-    return BuildProxyRunner(runner, left_task, right_task, index_key, true,
-                            status);
+ClusterTask RunnerBuilder::BinaryInherit(const ClusterTask& left,
+                                         const ClusterTask& right,
+                                         Runner* runner, const Key& index_key,
+                                         const TaskBiasType bias) {
+    if (support_cluster_optimized_) {
+        return BuildClusterTaskForBinaryRunner(left, right, runner, index_key,
+                                               bias);
+    } else {
+        return BuildLocalTaskForBinaryRunner(left, right, runner);
+    }
 }
-ClusterTask RunnerBuilder::BuildProxyRunner(
-    Runner* runner, const ClusterTask& left_task, const ClusterTask& right_task,
-    const Key& index_key, const bool is_batch_request, Status& status) {
-    auto left = left_task.GetRoot();
-    auto right = right_task.GetRoot();
-    auto task = left_task;
-    if (support_cluster_optimized_ && right_task.IsClusterTask()) {
-        runner->AddProducer(nm_->RegisterNode(
-            new RequestRunner(id_++, left->output_schemas())));
-        runner->AddProducer(right);
-        auto remote_task = right_task;
-        remote_task.SetRoot(runner);
-        remote_task.SetIndexKey(index_key);
-        auto remote_task_id = cluster_job_.AddTask(remote_task);
-        if (-1 == remote_task_id) {
-            LOG(WARNING) << "fail to add remote task id";
+ClusterTask RunnerBuilder::BuildLocalTaskForBinaryRunner(
+    const ClusterTask& left, const ClusterTask& right, Runner* runner) {
+    if (left.IsClusterTask() || right.IsClusterTask()) {
+        LOG(WARNING) << "fail to build local task for binary runner";
+        return ClusterTask();
+    }
+    runner->AddProducer(left.GetRoot());
+    runner->AddProducer(right.GetRoot());
+    return ClusterTask(runner);
+}
+ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
+    const ClusterTask& left, const ClusterTask& right, Runner* runner,
+    const Key& index_key, const TaskBiasType bias) {
+    if (nullptr == runner) {
+        LOG(WARNING) << "Fail to build cluster task for null runner";
+        return ClusterTask();
+    }
+    ClusterTask new_left = left;
+    ClusterTask new_right = right;
+
+    Runner* right_runner = new_right.GetRoot();
+    Runner* left_runner = new_left.GetRoot();
+    // if index key is valid, try to complete route info of right cluster
+    // task
+    if (index_key.ValidKey()) {
+        if (!right.IsClusterTask()) {
+            LOG(WARNING) << "Fail to buidl cluster task for "
+                         << "[" << runner->id_ << "]"
+                         << RunnerTypeName(runner->type_)
+                         << ": can't handler local task with index key";
             return ClusterTask();
         }
-        if (is_batch_request) {
-            auto proxy_runner = nm_->RegisterNode(new ProxyRequestRunner(
-                id_++, static_cast<uint32_t>(remote_task_id),
-                runner->output_schemas()));
-
-            if (Runner::IsProxyRunner(left->type_) && !left->need_cache()) {
-                cluster_job_.AddRunnerToTask(
-                    proxy_runner,
-                    dynamic_cast<ProxyRequestRunner*>(left)->task_id());
-                left->set_output_schemas(proxy_runner->output_schemas());
-                return left_task;
-            } else {
-                proxy_runner->AddProducer(left);
-                return ClusterTask(proxy_runner);
-            }
-        } else {
-            auto proxy_runner = nm_->RegisterNode(new ProxyRequestRunner(
-                id_++, static_cast<uint32_t>(remote_task_id),
-                runner->output_schemas()));
-            proxy_runner->AddProducer(left);
-            return ClusterTask(proxy_runner);
+        if (right.IsCompletedClusterTask()) {
+            LOG(WARNING) << "Fail to complete cluster task for "
+                         << "[" << runner->id_ << "]"
+                         << RunnerTypeName(runner->type_)
+                         << ": task is completed already";
+            return ClusterTask();
         }
-    } else if (support_cluster_optimized_ &&
-               Runner::IsProxyRunner(left->type_) &&
-               Runner::IsProxyRunner(right->type_)) {
-        runner->AddProducer(left);
-        runner->AddProducer(right);
-        task.SetRoot(runner);
-        if (!task.IsClusterTask()) {
-            task.SetIndexKey(
-                cluster_job_
-                    .GetTask(dynamic_cast<ProxyRequestRunner*>(left)->task_id())
-                    .GetIndexKey());
+        runner->AddProducer(nm_->RegisterNode(
+            new RequestRunner(id_++, left_runner->output_schemas())));
+        runner->AddProducer(right_runner);
+        // build complete cluster task
+        const RouteInfo& right_route_info = new_right.GetRouteInfo();
+        ClusterTask cluster_task(
+            runner, std::vector<Runner*>({runner}),
+            RouteInfo(right_route_info.index_, index_key,
+                      std::make_shared<ClusterTask>(new_left),
+                      right_route_info.table_handler_));
+        // TODO(chenjing): opt
+        if (new_left.IsCompletedClusterTask()) {
+            return BuildProxyRunnerForClusterTask(cluster_task);
+        } else {
+            return cluster_task;
+        }
+    }
+
+    // Concat
+    //      Agg1(Proxy(RequestUnion(Request, DATA))
+    //      Agg2(Proxy(RequestUnion(Request, DATA))
+    // -->
+    // Proxy(Concat
+    //          Agg1(RequestUnion(Request,DATA)
+    //          Agg2(RequestUnion(Request,DATA)
+    //      )
+
+    // if left and right is completed cluster task
+    while (new_left.IsCompletedClusterTask() &&
+           new_right.IsCompletedClusterTask()) {
+        // merge left and right task if tasks can be merged
+        if (ClusterTask::TaskCanBeMerge(new_left, new_right)) {
+            ClusterTask task =
+                ClusterTask::TaskMerge(runner, new_left, new_right);
+            runner->AddProducer(new_left.GetRoot());
+            runner->AddProducer(new_right.GetRoot());
+            return task;
+        }
+        switch (bias) {
+            case kNoBias: {
+                // Add build left proxy task into cluster job,
+                // and update new_left
+                new_left = BuildProxyRunnerForClusterTask(new_left);
+                new_right = BuildProxyRunnerForClusterTask(new_right);
+                break;
+            }
+            case kLeftBias: {
+                // build proxy runner for right task
+                new_right = BuildProxyRunnerForClusterTask(new_right);
+                break;
+            }
+            case kRightBias: {
+                // build proxy runner for right task
+                new_left = BuildProxyRunnerForClusterTask(new_left);
+                break;
+            }
+        }
+    }
+    if (new_left.IsUnCompletedClusterTask() ||
+        new_left.IsUnCompletedClusterTask()) {
+        LOG(WARNING) << "Fail to build cluster task, can't handler "
+                        "uncompleted cluster task";
+        return ClusterTask();
+    }
+
+    // prepare left and right for runner
+
+    // left local task + right cluster task
+    if (new_right.IsCompletedClusterTask()) {
+        switch (bias) {
+            case kNoBias:
+            case kLeftBias: {
+                new_right = BuildProxyRunnerForClusterTask(new_right);
+                runner->AddProducer(new_left.GetRoot());
+                runner->AddProducer(new_right.GetRoot());
+                return ClusterTask::TaskMergeToLeft(runner, new_left,
+                                                    new_right);
+            }
+            case kRightBias: {
+                auto new_left_root_input =
+                    ClusterTask::GetRequestInput(new_left);
+                auto new_right_root_input =
+                    ClusterTask::GetRequestInput(new_right);
+                // task can be merge simply when their inputs are the same
+                if (new_right_root_input == new_left_root_input) {
+                    runner->AddProducer(new_left.GetRoot());
+                    runner->AddProducer(new_right.GetRoot());
+                    return ClusterTask::TaskMergeToRight(runner, new_left,
+                                                         new_right);
+                } else if (new_left_root_input == nullptr) {
+                    // reset replace inputs as request runner
+                    new_right.ResetInputs(nullptr);
+                    runner->AddProducer(new_left.GetRoot());
+                    runner->AddProducer(new_right.GetRoot());
+                    return ClusterTask::TaskMergeToRight(runner, new_left,
+                                                         new_right);
+                } else {
+                    LOG(WARNING) << "fail to merge local left task and cluster "
+                                    "right task";
+                    return ClusterTask();
+                }
+            }
+        }
+    } else if (new_left.IsCompletedClusterTask()) {
+        switch (bias) {
+            case kNoBias:
+            case kRightBias: {
+                new_right = BuildProxyRunnerForClusterTask(new_left);
+                runner->AddProducer(new_left.GetRoot());
+                runner->AddProducer(new_right.GetRoot());
+                return ClusterTask::TaskMergeToRight(runner, new_left,
+                                                     new_right);
+            }
+            case kLeftBias: {
+                auto new_left_root_input =
+                    ClusterTask::GetRequestInput(new_right);
+                auto new_right_root_input =
+                    ClusterTask::GetRequestInput(new_right);
+                // task can be merge simply
+                if (new_right_root_input == new_left_root_input) {
+                    runner->AddProducer(new_left.GetRoot());
+                    runner->AddProducer(new_right.GetRoot());
+                    return ClusterTask::TaskMergeToLeft(runner, new_left,
+                                                        new_right);
+                } else if (new_right_root_input == nullptr) {
+                    // reset replace inputs as request runner
+                    new_left.ResetInputs(nullptr);
+                    runner->AddProducer(new_left.GetRoot());
+                    runner->AddProducer(new_right.GetRoot());
+                    return ClusterTask::TaskMergeToLeft(runner, new_left,
+                                                        new_right);
+                } else {
+                    LOG(WARNING) << "fail to merge cluster left task and local "
+                                    "right task";
+                    return ClusterTask();
+                }
+            }
         }
     } else {
-        runner->AddProducer(left);
-        runner->AddProducer(right);
-        task.SetRoot(runner);
+        runner->AddProducer(new_left.GetRoot());
+        runner->AddProducer(new_right.GetRoot());
+        return ClusterTask::TaskMergeToLeft(runner, new_left, new_right);
     }
+}
+ClusterTask RunnerBuilder::BuildProxyRunnerForClusterTask(
+    const ClusterTask& task) {
+    if (!task.IsCompletedClusterTask()) {
+        LOG(WARNING)
+            << "Fail to build proxy runner, cluster task is uncompleted";
+        return ClusterTask();
+    }
+    // return cached proxy runner
+    Runner* proxy_runner = nullptr;
+    auto find_iter = proxy_runner_map_.find(task.GetRoot());
+    if (find_iter != proxy_runner_map_.cend()) {
+        proxy_runner = find_iter->second;
+        proxy_runner->EnableCache();
+    } else {
+        uint32_t remote_task_id = cluster_job_.AddTask(task);
+        proxy_runner = nm_->RegisterNode(new ProxyRequestRunner(
+            id_++, remote_task_id, task.GetRoot()->output_schemas()));
+        proxy_runner_map_.insert(std::make_pair(task.GetRoot(), proxy_runner));
+    }
+
+    if (task.GetInput()) {
+        return UnaryInheritTask(*task.GetInput(), proxy_runner);
+    } else {
+        return UnaryInheritTask(*request_task_, proxy_runner);
+    }
+}
+ClusterTask RunnerBuilder::UnCompletedClusterTask(
+    Runner* runner, const std::shared_ptr<TableHandler> table_handler,
+    std::string index) {
+    return ClusterTask(runner, table_handler, index);
+}
+ClusterTask RunnerBuilder::BuildRequestTask(RequestRunner* runner) {
+    if (nullptr == runner) {
+        LOG(WARNING) << "fail to build request task with null runner";
+        return ClusterTask();
+    }
+    ClusterTask request_task(runner);
+    request_task_ = std::make_shared<ClusterTask>(request_task);
+    return request_task;
+}
+
+ClusterTask RunnerBuilder::UnaryInheritTask(const ClusterTask& input,
+                                            Runner* runner) {
+    ClusterTask task = input;
+    runner->AddProducer(task.GetRoot());
+    task.SetRoot(runner);
     return task;
 }
-// build proxy for special structure
-// concat_node
-//      +left_proxy_node
-//      +right_proxy_node
-//         +simple_project
-//              +left_proxy_node
-ClusterTask RunnerBuilder::BuildProxyRunnerForConcatedProxyNode(
-    ConcatRunner* runner, Runner* left, Runner* right) {
-    ClusterTask empty_task;
-    // optimize special physical structure
-    if (!Runner::IsProxyRunner(left->type_) ||
-        !Runner::IsProxyRunner(right->type_) || right->need_cache()) {
-        return empty_task;
-    }
-    auto left_proxy_task = cluster_job_.GetTask(
-        dynamic_cast<ProxyRequestRunner*>(left)->task_id());
-    auto left_task_root = left_proxy_task.GetRoot();
-    if (nullptr == left_task_root) {
-        return empty_task;
-    }
-
-    // try to find physical structure
-    // concat_node
-    //      +left_proxy_node
-    //      +right_proxy_node
-    //         +simple_project
-    //              +left_proxy_node
-    auto simple_project = right->GetProducers()[0];
-    if (simple_project->type_ != kRunnerSimpleProject ||
-        simple_project->need_cache()) {
-        return empty_task;
-    }
-    if (simple_project->GetProducers()[0] == left) {
-        // if simple_project child == left
-        // try to reduce 2 left_proxy_node, and create new proxy node
-        // concat_node[task of new_proxy]
-        //      + left_task_root
-        //      + new_right_proxy
-        //          + new_simple_project
-        //              + left_task_root
-
-        // new simple project using left_proxy_root as producer
-        auto new_simple_project = nm_->RegisterNode(new SimpleProjectRunner(
-            id_++, simple_project->output_schemas(), simple_project->limit_cnt_,
-            dynamic_cast<SimpleProjectRunner*>(simple_project)->project_gen_));
-        new_simple_project->AddProducer(left_task_root);
-
-        // new right proxy runner
-        // copy task id and output schema from old right
-        auto new_right = nm_->RegisterNode(new ProxyRequestRunner(
-            id_++, dynamic_cast<ProxyRequestRunner*>(right)->task_id(),
-            right->output_schemas()));
-
-        new_right->AddProducer(new_simple_project);
-
-        runner->AddProducer(left_task_root);
-        runner->AddProducer(new_right);
-        auto remote_task = left_proxy_task;
-        remote_task.SetRoot(runner);
-        auto remote_task_id = cluster_job_.AddTask(remote_task);
-        if (-1 == remote_task_id) {
-            LOG(WARNING) << "fail to add remote task id";
-            return ClusterTask();
-        }
-        auto proxy_runner = nm_->RegisterNode(
-            new ProxyRequestRunner(id_++, static_cast<uint32_t>(remote_task_id),
-                                   runner->output_schemas()));
-        proxy_runner->AddProducer(left->GetProducers()[0]);
-        return ClusterTask(proxy_runner);
-    }
-    return empty_task;
-}
-
 bool Runner::GetColumnBool(RowView* row_view, int idx, type::Type type) {
     bool key = false;
     switch (type) {
@@ -1819,7 +1908,7 @@ const Row Runner::RowLastJoinTable(size_t left_slices, const Row& left_row,
     }
     auto right_iter = right_table->GetIterator();
     if (!right_iter) {
-        LOG(WARNING) << "Last Join right table is empty";
+        DLOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices, left_row, right_slices, Row());
     }
     right_iter->SeekToFirst();
@@ -2524,7 +2613,8 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
                 rows.push_back(iter->GetValue());
                 iter->Next();
             }
-            return RunWithRowsInput(ctx, rows);
+            return RunWithRowsInput(ctx, rows,
+                                    producers_[0]->need_batch_cache());
         }
         default: {
             LOG(WARNING)
@@ -2547,25 +2637,49 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
     }
     switch (batch_input->Get(0)->GetHanlderType()) {
         case kRowHandler: {
-            std::vector<Row> rows;
-            if (!ExtractRows(batch_input, rows)) {
-                LOG(WARNING)
-                    << "run proxy runner with rows fail, batch rows is empty";
-                return fail_ptr;
-            }
-            std::shared_ptr<TableHandler> table = RunWithRowsInput(ctx, rows);
-            if (!table) {
-                LOG(WARNING)
-                    << "run proxy runner with rows fail, result table is null";
-                return fail_ptr;
-            }
+            bool input_batch_is_common = producers_[0]->need_batch_cache();
+            if (input_batch_is_common) {
+                Row row;
+                if (!ExtractRow(batch_input->Get(0), &row)) {
+                    LOG(WARNING) << "run proxy runner with rows fail, batch "
+                                    "rows is empty";
+                    return fail_ptr;
+                }
+                std::shared_ptr<TableHandler> table = RunWithRowsInput(
+                    ctx, std::vector<Row>({row}), input_batch_is_common);
+                if (!table) {
+                    LOG(WARNING) << "run proxy runner with rows fail, result "
+                                    "table is null";
+                    return fail_ptr;
+                }
 
-            std::shared_ptr<DataHandlerVector> outputs =
-                std::make_shared<DataHandlerVector>();
-            for (size_t idx = 0; idx < rows.size(); idx++) {
-                outputs->Add(std::make_shared<AysncRowHandler>(idx, table));
+                std::shared_ptr<DataHandlerRepeater> outputs =
+                    std::make_shared<DataHandlerRepeater>(
+                        std::make_shared<AysncRowHandler>(0, table),
+                        batch_input->GetSize());
+                return outputs;
+            } else {
+                std::vector<Row> rows;
+                if (!ExtractRows(batch_input, rows)) {
+                    LOG(WARNING) << "run proxy runner with rows fail, batch "
+                                    "rows is empty";
+                    return fail_ptr;
+                }
+                std::shared_ptr<TableHandler> table =
+                    RunWithRowsInput(ctx, rows, input_batch_is_common);
+                if (!table) {
+                    LOG(WARNING) << "run proxy runner with rows fail, result "
+                                    "table is null";
+                    return fail_ptr;
+                }
+
+                std::shared_ptr<DataHandlerVector> outputs =
+                    std::make_shared<DataHandlerVector>();
+                for (size_t idx = 0; idx < rows.size(); idx++) {
+                    outputs->Add(std::make_shared<AysncRowHandler>(idx, table));
+                }
+                return outputs;
             }
-            return outputs;
         }
         case kTableHandler: {
             std::shared_ptr<DataHandlerVector> outputs =
@@ -2577,7 +2691,7 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
                                     "rows is empty";
                     return fail_ptr;
                 }
-                outputs->Add(RunWithRowsInput(ctx, rows));
+                outputs->Add(RunWithRowsInput(ctx, rows, false));
             }
             return outputs;
         }
@@ -2649,7 +2763,7 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::RunWithRowInput(
 // out_table = Proxy(in_table) , remote table left join
 std::shared_ptr<TableHandler> ProxyRequestRunner::RunWithRowsInput(
     RunnerContext& ctx,  // NOLINT
-    const std::vector<Row>& rows) {
+    const std::vector<Row>& rows, const bool request_is_common) {
     // basic cluster task validate
     auto fail_ptr = std::shared_ptr<TableHandler>();
 
@@ -2671,24 +2785,32 @@ std::shared_ptr<TableHandler> ProxyRequestRunner::RunWithRowsInput(
         return fail_ptr;
     }
     // collect pk list from rows
-    std::string pk = "";
+    std::shared_ptr<Tablet> tablet = std::shared_ptr<Tablet>();
     KeyGenerator generator(task.GetIndexKey().fn_info());
-    std::vector<std::string> pks;
-    for (auto& row : rows) {
-        pks.push_back(generator.Gen(row));
+    if (request_is_common) {
+        std::string pk = generator.Gen(rows[0]);
+        tablet = table_handler->GetTablet(task.index(), pk);
+    } else {
+        std::vector<std::string> pks;
+        for (auto& row : rows) {
+            pks.push_back(generator.Gen(row));
+        }
+        tablet = table_handler->GetTablet(task.index(), pks);
     }
-    auto tablet = table_handler->GetTablet(task.index(), pks);
     if (!tablet) {
         LOG(WARNING) << "fail to run proxy runner with rows: tablet is null";
         return fail_ptr;
     }
     if (ctx.sp_name().empty()) {
         return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
-                                cluster_job->sql(), rows, false,
-                                ctx.is_debug());
+                                cluster_job->sql(),
+                                ctx.cluster_job()->common_column_indices(),
+                                rows, request_is_common, false, ctx.is_debug());
     } else {
         return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
-                                ctx.sp_name(), rows, true, ctx.is_debug());
+                                ctx.sp_name(),
+                                ctx.cluster_job()->common_column_indices(),
+                                rows, request_is_common, true, ctx.is_debug());
     }
     return fail_ptr;
 }
@@ -2706,10 +2828,12 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
-                          : fn_schema_.Get(pos).type() == fesql::type::kDate
-                              ? std::to_string(row_view.GetDateUnsafe(pos))
-                              : row_view.GetAsString(pos);
+        std::string key =
+            row_view.IsNULL(pos)
+                ? codec::NONETOKEN
+                : fn_schema_.Get(pos).type() == fesql::type::kDate
+                      ? std::to_string(row_view.GetDateUnsafe(pos))
+                      : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -2729,10 +2853,12 @@ const std::string KeyGenerator::Gen(const Row& row) {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
-                          : fn_schema_.Get(pos).type() == fesql::type::kDate
-                              ? std::to_string(row_view.GetDateUnsafe(pos))
-                              : row_view.GetAsString(pos);
+        std::string key =
+            row_view.IsNULL(pos)
+                ? codec::NONETOKEN
+                : fn_schema_.Get(pos).type() == fesql::type::kDate
+                      ? std::to_string(row_view.GetDateUnsafe(pos))
+                      : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }

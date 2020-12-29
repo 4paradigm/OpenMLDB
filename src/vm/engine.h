@@ -53,6 +53,7 @@ class EngineOptions {
           plan_only_(false),
           performance_sensitive_(true),
           cluster_optimized_(false),
+          batch_request_optimized_(true),
           max_sql_cache_size_(50) {}
     inline void set_keep_ir(bool flag) { this->keep_ir_ = flag; }
     inline bool is_keep_ir() const { return this->keep_ir_; }
@@ -70,6 +71,10 @@ class EngineOptions {
 
     inline bool is_cluster_optimzied() const { return cluster_optimized_; }
     inline void set_cluster_optimized(bool flag) { cluster_optimized_ = flag; }
+    bool is_batch_request_optimized() const { return batch_request_optimized_; }
+    void set_batch_request_optimized(bool flag) {
+        batch_request_optimized_ = flag;
+    }
     inline void set_max_sql_cache_size(uint32_t size) {
         max_sql_cache_size_ = size;
     }
@@ -86,6 +91,7 @@ class EngineOptions {
     bool plan_only_;
     bool performance_sensitive_;
     bool cluster_optimized_;
+    bool batch_request_optimized_;
     uint32_t max_sql_cache_size_;
 };
 
@@ -322,11 +328,13 @@ class LocalTabletTableHandler : public MemTableHandler {
  public:
     LocalTabletTableHandler(uint32_t task_id,
                             const BatchRequestRunSession session,
-                            const std::vector<Row> requests)
+                            const std::vector<Row> requests,
+                            const bool request_is_common)
         : status_(base::Status::Running()),
           task_id_(task_id),
           session_(session),
-          requests_(requests) {}
+          requests_(requests),
+          request_is_common_(request_is_common) {}
     ~LocalTabletTableHandler() {}
     Row At(uint64_t pos) override {
         if (!status_.isRunning()) {
@@ -368,6 +376,7 @@ class LocalTabletTableHandler : public MemTableHandler {
     uint32_t task_id_;
     BatchRequestRunSession session_;
     const std::vector<Row> requests_;
+    const bool request_is_common_;
 };
 class LocalTablet : public Tablet {
  public:
@@ -391,23 +400,29 @@ class LocalTablet : public Tablet {
         }
         if (is_procedure) {
             if (!sp_cache_) {
-                return std::shared_ptr<RowHandler>(
+                auto error = std::shared_ptr<RowHandler>(
                     new ErrorRowHandler(common::kProcedureNotFound,
                                         "SubQuery Fail: procedure not found, "
                                         "procedure cache not exist"));
+                LOG(WARNING) << error->GetStatus();
+                return error;
             }
             auto request_compile_info =
                 sp_cache_->GetRequestInfo(db, sql, status);
             if (!status.isOK()) {
-                return std::shared_ptr<RowHandler>(new ErrorRowHandler(
+                auto error = std::shared_ptr<RowHandler>(new ErrorRowHandler(
                     status.code, "SubQuery Fail: " + status.msg));
+                LOG(WARNING) << error->GetStatus();
+                return error;
             }
             session.SetSpName(sql);
             session.SetCompileInfo(request_compile_info);
         } else {
             if (!engine_->Get(sql, db, session, status)) {
-                return std::shared_ptr<RowHandler>(new ErrorRowHandler(
+                auto error = std::shared_ptr<RowHandler>(new ErrorRowHandler(
                     status.code, "SubQuery Fail: " + status.msg));
+                LOG(WARNING) << error->GetStatus();
+                return error;
             }
         }
 
@@ -416,38 +431,50 @@ class LocalTablet : public Tablet {
     }
     virtual std::shared_ptr<TableHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
-        const std::vector<Row>& in_rows, const bool is_procedure,
-        const bool is_debug) {
+        const std::set<size_t>& common_column_indices,
+        const std::vector<Row>& in_rows, const bool request_is_common,
+        const bool is_procedure, const bool is_debug) {
         DLOG(INFO) << "Local tablet SubQuery batch request: task id "
                    << task_id;
         BatchRequestRunSession session;
+        for (size_t idx : common_column_indices) {
+            session.AddCommonColumnIdx(idx);
+        }
         base::Status status;
         if (is_debug) {
             session.EnableDebug();
         }
         if (is_procedure) {
             if (!sp_cache_) {
-                return std::shared_ptr<TableHandler>(
+                auto error = std::shared_ptr<TableHandler>(
                     new ErrorTableHandler(common::kProcedureNotFound,
                                           "SubQuery Fail: procedure not found, "
                                           "procedure cache not exist"));
+                LOG(WARNING) << error->GetStatus();
+                return error;
             }
             auto request_compile_info =
                 sp_cache_->GetBatchRequestInfo(db, sql, status);
             if (!status.isOK()) {
-                return std::shared_ptr<TableHandler>(new ErrorTableHandler(
-                    status.code, "SubQuery Fail: " + status.msg));
+                auto error =
+                    std::shared_ptr<TableHandler>(new ErrorTableHandler(
+                        status.code, "SubQuery Fail: " + status.msg));
+                LOG(WARNING) << error->GetStatus();
+                return error;
             }
             session.SetSpName(sql);
             session.SetCompileInfo(request_compile_info);
         } else {
             if (!engine_->Get(sql, db, session, status)) {
-                return std::shared_ptr<TableHandler>(new ErrorTableHandler(
-                    status.code, "SubQuery Fail: " + status.msg));
+                auto error =
+                    std::shared_ptr<TableHandler>(new ErrorTableHandler(
+                        status.code, "SubQuery Fail: " + status.msg));
+                LOG(WARNING) << error->GetStatus();
+                return error;
             }
         }
-        return std::make_shared<LocalTabletTableHandler>(task_id, session,
-                                                         in_rows);
+        return std::make_shared<LocalTabletTableHandler>(
+            task_id, session, in_rows, request_is_common);
     }
     const std::string& GetName() const { return name_; }
 

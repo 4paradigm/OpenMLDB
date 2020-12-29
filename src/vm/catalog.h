@@ -19,6 +19,7 @@
 #define SRC_VM_CATALOG_H_
 #include <node/sql_node.h>
 #include <map>
+#include <set>
 #include <memory>
 #include <string>
 #include <utility>
@@ -218,6 +219,8 @@ class ErrorTableHandler : public TableHandler {
         const std::string& idx_name) {
         return std::unique_ptr<WindowIterator>();
     }
+    virtual Row At(uint64_t pos) { return Row(); }
+    const uint64_t GetCount() override { return 0; }
     const std::string GetHandlerTypeName() override {
         return "ErrorTableHandler";
     }
@@ -277,7 +280,12 @@ class AysncRowHandler : public RowHandler {
           schema_(nullptr),
           idx_(idx),
           aysnc_table_handler_(aysnc_table_handler),
-          value_() {}
+          value_() {
+        if (!aysnc_table_handler_) {
+            status_ = base::Status(fesql::common::kNullPointer,
+                                   "async table handler is null");
+        }
+    }
     virtual ~AysncRowHandler() {}
     const Row& GetValue() override {
         if (!status_.isRunning()) {
@@ -312,7 +320,10 @@ class Tablet {
                                                  const bool is_debug) = 0;
     virtual std::shared_ptr<TableHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
-        const std::vector<Row>& in_rows, const bool is_procedure,
+        const std::set<size_t>& common_column_indices,
+        const std::vector<Row>& in_rows,
+        const bool request_is_common,
+        const bool is_procedure,
         const bool is_debug) = 0;
 };
 

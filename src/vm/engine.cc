@@ -162,7 +162,13 @@ bool Engine::Get(const std::string& sql, const std::string& db,
         session.SetCompileInfo(info);
         return true;
     }
-
+    // TODO(baoxinqi): IsCompatibleCache fail, return false, or reset status.
+    if (!status.isOK()) {
+        LOG(WARNING) << status;
+        status = base::Status::OK();
+    }
+    DLOG(INFO) << "Compile FESQL ...";
+    status = base::Status::OK();
     info = std::shared_ptr<CompileInfo>(new CompileInfo());
     auto& sql_context = info->get_sql_context();
     sql_context.sql = sql;
@@ -170,6 +176,8 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     sql_context.engine_mode = session.engine_mode();
     sql_context.is_performance_sensitive = options_.is_performance_sensitive();
     sql_context.is_cluster_optimized = options_.is_cluster_optimzied();
+    sql_context.is_batch_request_optimized =
+        options_.is_batch_request_optimized();
 
     auto batch_req_sess = dynamic_cast<BatchRequestRunSession*>(&session);
     if (batch_req_sess) {
@@ -235,8 +243,24 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     explain_output->physical_plan = ctx.physical_plan_str;
     explain_output->ir = ctx.ir;
     explain_output->request_name = ctx.request_name;
-    explain_output->router.SetMainTable(ctx.request_name);
-    explain_output->router.Parse(ctx.physical_plan);
+    if (engine_mode == ::fesql::vm::kBatchMode) {
+        std::set<std::string> tables;
+        base::Status status;
+        for (auto iter = ctx.logical_plan.cbegin();
+             iter != ctx.logical_plan.cend(); iter++) {
+            if (!GetDependentTables(*iter, &tables, status)) {
+                LOG(WARNING) << "fail to get dependent tables " << sql
+                             << " in db " << db << " with error " << status;
+                break;
+            }
+        }
+        if (!tables.empty()) {
+            explain_output->router.SetMainTable(*tables.begin());
+        }
+    } else {
+        explain_output->router.SetMainTable(ctx.request_name);
+        explain_output->router.Parse(ctx.physical_plan);
+    }
     return true;
 }
 

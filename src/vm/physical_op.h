@@ -1219,6 +1219,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
     const SchemasContext *joined_schemas_ctx() const {
         return &joined_schemas_ctx_;
     }
+    const bool output_right_only() const { return output_right_only_; }
 
     base::Status WithNewChildren(node::NodeManager *nm,
                                  const std::vector<PhysicalOpNode *> &children,
