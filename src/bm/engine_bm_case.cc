@@ -70,8 +70,8 @@ static const int64_t RunTableRequest(
 }
 
 int32_t MapTopFn(int64_t limit) {
-    double d[5];
     std::string key = "key";
+    double d[5];
     codec::StringRef rkey(key.size(), key.c_str());
     for (int j = 0; j < 5; j++) {
         std::map<codec::StringRef, int32_t> state;
@@ -690,8 +690,16 @@ void EngineRequestSimpleSelectDate(benchmark::State* state,
 void EngineBenchmarkOnCase(const std::string& yaml_path,
                            const std::string& case_id,
                            vm::EngineMode engine_mode,
-                           const vm::EngineOptions& engine_options,
                            benchmark::State* state) {
+    vm::EngineOptions engine_options;
+    if (engine_mode == vm::kBatchRequestMode) {
+        size_t enable_batch_opt_flag = state->range(0);
+        if (enable_batch_opt_flag == 1) {
+            engine_options.set_batch_request_optimized(true);
+        } else {
+            engine_options.set_batch_request_optimized(false);
+        }
+    }
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     std::vector<SQLCase> cases;
