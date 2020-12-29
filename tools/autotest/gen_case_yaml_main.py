@@ -11,4 +11,5 @@ if __name__ == "__main__":
     index = currentPath.rfind('fesql')
     prePath = currentPath[0:index]
     casePath = prePath+"fesql/cases/auto_gen_cases"
+    print("casePath:"+casePath)
     gen_case_yaml(casePath)
