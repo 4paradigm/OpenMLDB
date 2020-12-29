@@ -1979,15 +1979,18 @@ void TabletImpl::SubQuery(RpcController* ctrl,
     ProcessQuery(ctrl, request, response, &buf);
 }
 
-void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
-                                      const rtidb::api::SQLBatchRequestQueryRequest* request,
-                                      rtidb::api::SQLBatchRequestQueryResponse* response,
-                                      Closure* done) {
+void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl, const rtidb::api::SQLBatchRequestQueryRequest* request,
+                                      rtidb::api::SQLBatchRequestQueryResponse* response, Closure* done) {
+    DLOG(INFO) << "handle query batch request begin!";
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
+    return ProcessBatchRequestQuery(ctrl, request, response, buf);
+}
+void TabletImpl::ProcessBatchRequestQuery(
+    RpcController* ctrl, const rtidb::api::SQLBatchRequestQueryRequest* request,
+    rtidb::api::SQLBatchRequestQueryResponse* response, butil::IOBuf& buf) {
     ::fesql::base::Status status;
-
     ::fesql::vm::BatchRequestRunSession session;
     // run session
     if (request->is_debug()) {
@@ -1998,9 +2001,11 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
         std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
         {
             fesql::base::Status status;
-            request_compile_info = sp_cache_->GetBatchRequestInfo(request->db(), request->sp_name(), status);
+            request_compile_info = sp_cache_->GetBatchRequestInfo(
+                request->db(), request->sp_name(), status);
             if (!status.isOK()) {
-                response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
+                response->set_code(
+                    ::rtidb::base::ReturnCode::kProcedureNotFound);
                 response->set_msg(status.msg);
                 PDLOG(WARNING, status.msg.c_str());
                 return;
@@ -2031,14 +2036,17 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
         response->set_code(::rtidb::base::kSQLCompileError);
         return;
     }
-    const auto& batch_request_info = compile_info->get_sql_context().batch_request_info;
+    const auto& batch_request_info =
+        compile_info->get_sql_context().batch_request_info;
     size_t common_column_num = batch_request_info.common_column_indices.size();
-    bool has_common_row = common_column_num > 0 &&
-        common_column_num < static_cast<size_t>(session.GetRequestSchema().size());
+    bool has_common_and_uncommon_row =
+        !request->has_task_id() && common_column_num > 0 &&
+        common_column_num <
+        static_cast<size_t>(session.GetRequestSchema().size());
     size_t input_row_num = request->row_sizes().size();
     if (request->common_slices() > 0 && input_row_num > 0) {
         input_row_num -= 1;
-    } else if (has_common_row) {
+    } else if (has_common_and_uncommon_row) {
         response->set_msg("input common row is missing");
         response->set_code(::rtidb::base::kSQLRunError);
         return;
@@ -2047,7 +2055,7 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
     auto& io_buf = static_cast<brpc::Controller*>(ctrl)->request_attachment();
     size_t buf_offset = 0;
     std::vector<::fesql::codec::Row> input_rows(input_row_num);
-    if (has_common_row) {
+    if (has_common_and_uncommon_row) {
         size_t common_size = request->row_sizes().Get(0);
         ::fesql::codec::Row common_row;
         if (!codec::DecodeRpcRow(io_buf, buf_offset, common_size,
@@ -2083,7 +2091,12 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
         }
     }
     std::vector<::fesql::codec::Row> output_rows;
-    int32_t run_ret = session.Run(input_rows, output_rows);
+    int32_t run_ret = 0;
+    if (request->has_task_id()) {
+        session.Run(request->task_id(), input_rows, output_rows);
+    } else {
+        session.Run(input_rows, output_rows);
+    }
     if (run_ret != 0) {
         response->set_msg(status.msg);
         response->set_code(::rtidb::base::kSQLRunError);
@@ -2093,10 +2106,13 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
 
     // fill output data
     size_t output_col_num = session.GetSchema().size();
-    auto& output_common_indices = batch_request_info.output_common_column_indices;
-    bool has_common_slice = !output_common_indices.empty() &&
-                            output_common_indices.size() < output_col_num;
-    if (has_common_slice && !output_rows.empty()) {
+    auto& output_common_indices =
+        batch_request_info.output_common_column_indices;
+    bool has_common_and_uncomon_slice =
+        !request->has_task_id() && !output_common_indices.empty() &&
+        output_common_indices.size() < output_col_num;
+
+    if (has_common_and_uncomon_slice && !output_rows.empty()) {
         const auto& first_row = output_rows[0];
         if (first_row.GetRowPtrCnt() != 2) {
             response->set_msg("illegal row ptrs: expect 2");
@@ -2112,7 +2128,7 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
     }
     response->set_non_common_slices(1);
     for (auto& output_row : output_rows) {
-        if (has_common_slice) {
+        if (has_common_and_uncomon_slice) {
             if (output_row.GetRowPtrCnt() != 2) {
                 response->set_msg("illegal row ptrs: expect 2");
                 response->set_code(::rtidb::base::kSQLRunError);
@@ -2144,7 +2160,14 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
                << " with record cnt " << output_rows.size()
                << " with schema size " << session.GetSchema().size();
 }
-
+void TabletImpl::SubBatchRequestQuery(RpcController* ctrl, const rtidb::api::SQLBatchRequestQueryRequest* request,
+                                      rtidb::api::SQLBatchRequestQueryResponse* response, Closure* done) {
+    DLOG(INFO) << "handle subquery batch request begin!";
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
+    butil::IOBuf& buf = cntl->response_attachment();
+    return ProcessBatchRequestQuery(ctrl, request, response, buf);
+}
 void TabletImpl::BatchQuery(RpcController* controller,
                             const rtidb::api::BatchQueryRequest* request,
                             rtidb::api::BatchQueryResponse* response,
