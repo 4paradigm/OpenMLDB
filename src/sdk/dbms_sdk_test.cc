@@ -602,9 +602,9 @@ void CheckRows(const vm::Schema &schema, const std::string &order_col,
             std::string key = rs->GetAsString(order_idx);
             LOG(INFO) << "key : " << key;
             ASSERT_TRUE(rows_map.find(key) != rows_map.cend())
-                                <<"CheckRows fail: row[" << index << "] order not expected";
-            ASSERT_FALSE(rows_map[key].second) <<
-                                               "CheckRows fail: row[" << index << "] duplicate key";
+                << "CheckRows fail: row[" << index << "] order not expected";
+            ASSERT_FALSE(rows_map[key].second)
+                << "CheckRows fail: row[" << index << "] duplicate key";
             row_view.Reset(rows_map[key].first.buf());
             rows_map[key].second = true;
         } else {
