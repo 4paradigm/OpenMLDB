@@ -785,23 +785,6 @@ void delete_iterator(int8_t *input) {
 
 }  // namespace v1
 
-void InitUDFSymbol(vm::FeSQLJIT *jit_ptr) {
-    ::llvm::orc::MangleAndInterner mi(jit_ptr->getExecutionSession(),
-                                      jit_ptr->getDataLayout());
-    InitUDFSymbol(jit_ptr->getMainJITDylib(), mi);
-}  // NOLINT
-void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
-                   ::llvm::orc::MangleAndInterner &mi) {  // NOLINT
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_memery_pool_alloc",
-        reinterpret_cast<void *>(&udf::v1::AllocManagedStringBuf));
-}
-bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
-               ::llvm::orc::MangleAndInterner &mi,  // NOLINT
-               const std::string &fn_name, void *fn_ptr) {
-    return ::fesql::vm::FeSQLJIT::AddSymbol(jd, mi, fn_name, fn_ptr);
-}
-
 bool RegisterMethod(const std::string &fn_name, fesql::node::TypeNode *ret,
                     std::initializer_list<fesql::node::TypeNode *> args,
                     void *fn_ptr) {
@@ -813,8 +796,8 @@ bool RegisterMethod(const std::string &fn_name, fesql::node::TypeNode *ret,
     }
     auto header = dynamic_cast<node::FnNodeFnHeander *>(
         nm.MakeFnHeaderNode(fn_name, fn_args, ret));
-    DefaultUDFLibrary::get()->AddExternalSymbol(header->GeIRFunctionName(),
-                                                fn_ptr);
+    DefaultUDFLibrary::get()->AddExternalFunction(header->GeIRFunctionName(),
+                                                  fn_ptr);
     return true;
 }
 
@@ -972,17 +955,6 @@ void RegisterNativeUDFToModule() {
     RegisterMethod("delete_iterator", bool_ty, {iter_row_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<codec::Row>));
 }
-void InitCLibSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
-                    ::llvm::orc::MangleAndInterner &mi) {  // NOLINT
-    AddSymbol(jd, mi, "fmod",
-              (reinterpret_cast<void *>(
-                  static_cast<double (*)(double, double)>(&fmod))));
-    AddSymbol(jd, mi, "fmodf", (reinterpret_cast<void *>(&fmodf)));
-}
-void InitCLibSymbol(vm::FeSQLJIT *jit_ptr) {  // NOLINT
-    ::llvm::orc::MangleAndInterner mi(jit_ptr->getExecutionSession(),
-                                      jit_ptr->getDataLayout());
-    InitCLibSymbol(jit_ptr->getMainJITDylib(), mi);
-}
+
 }  // namespace udf
 }  // namespace fesql

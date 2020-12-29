@@ -89,6 +89,8 @@ class EngineOptions {
         return options;
     }
 
+    fesql::vm::JITOptions& jit_options() { return jit_options_; }
+
  private:
     bool keep_ir_;
     bool compile_only_;
@@ -97,6 +99,7 @@ class EngineOptions {
     bool cluster_optimized_;
     bool batch_request_optimized_;
     uint32_t max_sql_cache_size_;
+    JITOptions jit_options_;
 };
 
 class CompileInfo {

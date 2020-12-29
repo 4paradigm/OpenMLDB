@@ -1328,7 +1328,7 @@ class ExternalFuncRegistryHelper
         cur_def_ = def;
 
         auto registry = std::make_shared<ExternalFuncRegistry>(name(), def);
-        library()->AddExternalSymbol(fn_name_, fn_ptr_);
+        library()->AddExternalFunction(fn_name_, fn_ptr_);
         this->InsertRegistry(arg_types_, variadic_pos_ >= 0, registry);
         reset();
     }
@@ -1557,7 +1557,7 @@ class UDAFRegistryHelperImpl : UDFRegistryHelper<UDAFRegistry> {
             std::make_shared<ExprUDFGen>([fn](UDFResolveContext* ctx) {
                 return ctx->node_manager()->MakeFuncNode(fn, {}, nullptr);
             });
-        library()->AddExternalSymbol(fname, fn_ptr);
+        library()->AddExternalFunction(fname, fn_ptr);
         return *this;
     }
 
@@ -1587,7 +1587,7 @@ class UDAFRegistryHelperImpl : UDFRegistryHelper<UDAFRegistry> {
             std::make_shared<ExprUDFGen<>>([fn](UDFResolveContext* ctx) {
                 return ctx->node_manager()->MakeFuncNode(fn, {}, nullptr);
             });
-        library()->AddExternalSymbol(fname, fn_ptr.ptr);
+        library()->AddExternalFunction(fname, fn_ptr.ptr);
         return *this;
     }
 
@@ -1664,7 +1664,7 @@ class UDAFRegistryHelperImpl : UDFRegistryHelper<UDAFRegistry> {
                 update_nullable_, -1, return_by_arg));
         auto registry = std::make_shared<ExternalFuncRegistry>(fname, fn);
         udaf_gen_.update_gen = registry;
-        library()->AddExternalSymbol(fname, fn_ptr);
+        library()->AddExternalFunction(fname, fn_ptr);
         return *this;
     }
 
@@ -1710,7 +1710,7 @@ class UDAFRegistryHelperImpl : UDFRegistryHelper<UDAFRegistry> {
                 false));
         auto registry = std::make_shared<ExternalFuncRegistry>(fname, fn);
         udaf_gen_.merge_gen = registry;
-        library()->AddExternalSymbol(fname, fn_ptr);
+        library()->AddExternalFunction(fname, fn_ptr);
         return *this;
     }
 
@@ -1736,7 +1736,7 @@ class UDAFRegistryHelperImpl : UDFRegistryHelper<UDAFRegistry> {
         auto registry = std::make_shared<ExternalFuncRegistry>(fname, fn);
         auto state_tag = state_ty_->GetName();
         udaf_gen_.output_gen = registry;
-        library()->AddExternalSymbol(fname, fn_ptr);
+        library()->AddExternalFunction(fname, fn_ptr);
         return *this;
     }
 

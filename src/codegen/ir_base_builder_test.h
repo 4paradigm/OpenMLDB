@@ -199,12 +199,10 @@ class ModuleTestFunction {
                        std::unique_ptr<::llvm::LLVMContext> llvm_ctx) {
         llvm::InitializeNativeTarget();
         llvm::InitializeNativeTargetAsmPrinter();
-        ::llvm::ExitOnError ExitOnErr;
-        jit = std::move(ExitOnErr(vm::FeSQLJITBuilder().create()));
+        jit =
+            std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
         jit->Init();
-        auto& jd = jit->getMainJITDylib();
-        ::llvm::orc::MangleAndInterner mi(jit->getExecutionSession(),
-                                          jit->getDataLayout());
+        InitBuiltinJITSymbols(jit.get());
         if (library != nullptr) {
             library->InitJITSymbols(jit.get());
         } else {
@@ -216,21 +214,13 @@ class ModuleTestFunction {
             LOG(WARNING) << "fail to verify codegen module";
             return;
         }
-
-        ::fesql::vm::InitCodecSymbol(jd, mi);
-        ::fesql::udf::InitUDFSymbol(jd, mi);
-
-        ExitOnErr(jit->addIRModule(::llvm::orc::ThreadSafeModule(
-            std::move(module), std::move(llvm_ctx))));
-        auto load_fn = ExitOnErr(jit->lookup(fn_name));
-        this->fn_ptr = reinterpret_cast<void*>(load_fn.getAddress());
-
-        auto load_proxy_fn = ExitOnErr(jit->lookup(proxy_fn_name));
+        jit->AddModule(std::move(module), std::move(llvm_ctx));
+        this->fn_ptr = const_cast<int8_t*>(jit->FindFunction(fn_name));
         this->proxy_fn_ptr =
-            reinterpret_cast<void*>(load_proxy_fn.getAddress());
+            const_cast<int8_t*>(jit->FindFunction(proxy_fn_name));
     }
 
-    std::unique_ptr<vm::FeSQLJIT> jit = nullptr;
+    std::unique_ptr<vm::FeSQLJITWrapper> jit = nullptr;
     void* fn_ptr = nullptr;
     void* proxy_fn_ptr = nullptr;
 };

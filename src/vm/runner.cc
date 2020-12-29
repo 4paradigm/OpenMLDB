@@ -695,6 +695,8 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
                     return ClusterTask();
                 }
             }
+            default:
+                return ClusterTask();
         }
     } else {
         runner->AddProducer(new_left.GetRoot());
