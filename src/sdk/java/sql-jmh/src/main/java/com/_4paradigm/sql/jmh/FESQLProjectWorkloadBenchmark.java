@@ -4,6 +4,7 @@ import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.ScanOption;
 import com._4paradigm.sql.TableReader;
 import com._4paradigm.sql.sdk.SdkOption;
+import com._4paradigm.sql.Status;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
 import org.openjdk.jmh.annotations.*;
@@ -227,22 +228,22 @@ public class FESQLProjectWorkloadBenchmark {
         }
     }
 
-    @Benchmark
+    //@Benchmark
     public void project100bm() {
         executor.executeSQL(db, query100);
     }
 
-    @Benchmark
+    //@Benchmark
     public void project200bm() {
         executor.executeSQL(db, query200);
     }
 
-    @Benchmark
+   // @Benchmark
     public void project500bm() {
         executor.executeSQL(db, query500);
     }
 
-    @Benchmark
+    //@Benchmark
     public void projectWhere361m() {
         executor.executeSQL(db, query361);
     }
@@ -250,7 +251,8 @@ public class FESQLProjectWorkloadBenchmark {
     @Benchmark
     public void projectScan361m() {
         ScanOption so = new ScanOption();
-        reader.Scan(db, "ddl500", "500_key", st, et, so);
+ 	Status status = new Status();
+        reader.Scan(db, "ddl500", "500_key", st, et, so, status);
     }
 
     public static void main(String[] args) throws Exception {

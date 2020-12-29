@@ -127,14 +127,8 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     }
 }
 
-
-static bool Async3Times(const std::string& db,
-        const std::string& table,
-        const std::string& key,
-        int64_t st, int64_t et,
-        std::shared_ptr<rtidb::sdk::TableReader> reader,
-        fesql::sdk::Status* status) {
-
+static bool Async3Times(const std::string& db, const std::string& table, const std::string& key, int64_t st, int64_t et,
+                        std::shared_ptr<rtidb::sdk::TableReader> reader, fesql::sdk::Status* status) {
     ::rtidb::sdk::ScanOption so;
     std::vector<std::shared_ptr<::rtidb::sdk::ScanFuture>> tasks;
     for (int i = 0; i < 3; i++) {
@@ -186,9 +180,7 @@ static void BM_SimpleTableReaderAsyncMulti(benchmark::State& state) {  // NOLINT
         return;
     }
     for (auto _ : state) {
-        benchmark::DoNotOptimize(
-                Async3Times(db, "t1", key, st, et, reader, &status)
-                );
+        benchmark::DoNotOptimize(Async3Times(db, "t1", key, st, et, reader, &status));
     }
 }
 
@@ -228,13 +220,11 @@ static void BM_SimpleTableReaderAsync(benchmark::State& state) {  // NOLINT
         return;
     }
     for (auto _ : state) {
-        benchmark::DoNotOptimize(
-                reader->AsyncScan(db, "t1", key, st, et, so, 10, &status)->GetResultSet(&status)
-                );
+        benchmark::DoNotOptimize(reader->AsyncScan(db, "t1", key, st, et, so, 10, &status)->GetResultSet(&status));
     }
 }
 
-static void BM_SimpleTableReaderSync(benchmark::State& state) { // NOLINT
+static void BM_SimpleTableReaderSync(benchmark::State& state) {  // NOLINT
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
@@ -1009,7 +999,13 @@ BENCHMARK(BM_InsertPlaceHolderFunction)->Args({10})->Args({100})->Args({1000})->
 BENCHMARK(BM_InsertPlaceHolderBatchFunction)->Args({10})->Args({100})->Args({1000})->Args({10000});
 BENCHMARK(BM_SimpleTableReaderSync)->Args({10})->Args({100})->Args({1000})->Args({2000})->Args({4000})->Args({10000});
 BENCHMARK(BM_SimpleTableReaderAsync)->Args({10})->Args({100})->Args({1000})->Args({2000})->Args({4000})->Args({10000});
-BENCHMARK(BM_SimpleTableReaderAsyncMulti)->Args({10})->Args({100})->Args({1000})->Args({2000})->Args({4000})->Args({10000});
+BENCHMARK(BM_SimpleTableReaderAsyncMulti)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({2000})
+    ->Args({4000})
+    ->Args({10000});
 
 int main(int argc, char** argv) {
     FLAGS_enable_distsql = fesql::sqlcase::SQLCase::IS_CLUSTER();
