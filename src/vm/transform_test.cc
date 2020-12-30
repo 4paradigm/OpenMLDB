@@ -1055,7 +1055,7 @@ INSTANTIATE_TEST_CASE_P(
             "sum(t1.col3) OVER w1 as w1_col3_sum, "
             "sum(t1.col2) OVER w1 as w1_col2_sum "
             "FROM t1 last join t2 order by t2.col5 on t1.col1 = t2.col1 "
-            "WINDOW w1 AS (PARTITION BY t1.col0 ORDER BY t1.col5 RANGE "
+            "WINDOW w1 AS (PARTITION BY t1.col0 ORDER BY t1.col5 ROWS_RANGE "
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
