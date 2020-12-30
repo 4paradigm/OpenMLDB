@@ -217,10 +217,16 @@ bool Engine::Get(const std::string& sql, const std::string& db,
 }
 
 bool Engine::Explain(const std::string& sql, const std::string& db,
-                     EngineMode engine_mode, ExplainOutput* explain_output,
-                     base::Status* status) {
+                     EngineMode engine_mode,
+                     const std::set<size_t>& common_column_indices,
+                     ExplainOutput* explain_output, base::Status* status) {
     if (explain_output == NULL || status == NULL) {
         LOG(WARNING) << "input args is invalid";
+        return false;
+    }
+    if (!common_column_indices.empty() && engine_mode != kBatchRequestMode) {
+        LOG(WARNING)
+            << "common column config can only be valid in batch request mode";
         return false;
     }
     SQLContext ctx;
@@ -229,6 +235,8 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     ctx.db = db;
     ctx.is_performance_sensitive = options_.is_performance_sensitive();
     ctx.is_cluster_optimized = options_.is_cluster_optimzied();
+    ctx.is_batch_request_optimized = !common_column_indices.empty();
+    ctx.batch_request_info.common_column_indices = common_column_indices;
     SQLCompiler compiler(
         std::atomic_load_explicit(&cl_, std::memory_order_acquire), true, true,
         true);
@@ -262,7 +270,28 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
         explain_output->router.SetMainTable(ctx.request_name);
         explain_output->router.Parse(ctx.physical_plan);
     }
+    if (engine_mode == ::fesql::vm::kBatchRequestMode) {
+        // fill common output column info
+        auto& output_common_indices =
+            ctx.batch_request_info.output_common_column_indices;
+        int schema_size = explain_output->output_schema.size();
+        for (size_t idx : output_common_indices) {
+            if (idx >= schema_size) {
+                LOG(WARNING)
+                    << "Output common column indice out of bound: " << idx;
+                return false;
+            }
+            auto* column = explain_output->output_schema.Mutable(idx);
+            column->set_is_constant(true);
+        }
+    }
     return true;
+}
+
+bool Engine::Explain(const std::string& sql, const std::string& db,
+                     EngineMode engine_mode, ExplainOutput* explain_output,
+                     base::Status* status) {
+    return Explain(sql, db, engine_mode, {}, explain_output, status);
 }
 
 void Engine::ClearCacheLocked(const std::string& db) {
