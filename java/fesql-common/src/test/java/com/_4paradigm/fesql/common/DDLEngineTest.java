@@ -28,78 +28,24 @@ public class DDLEngineTest {
     public Object[][] getSqlScript() {
         return new Object[][] {
                 new Object[] {
-                        "几千列的场景",
-                        "ddl/4k.json",
-                        "ddl/4k.txt",
+                        "support small short smallint",
+                        "ddl/ut/type.json",
+                        "ddl/ut/type.txt",
                         1,
-                        1,
-                        ""
+                        2,
+                        "create table `main`(\n" +
+                                "`col1` smallint,\n" +
+                                "`col2` int,\n" +
+                                "`col3` bigint,\n" +
+                                "`col4` float,\n" +
+                                "`col5` double,\n" +
+                                "`col6` bool,\n" +
+                                "`col7` string,\n" +
+                                "`col8` timestamp,\n" +
+                                "`col9` date,\n" +
+                                "index(key=(`col2`), ttl=1, ttl_type=latest)\n" +
+                                ") replicanum=1, partitionnum=2 ;\n"
                 },
-                new Object[] {
-                        "all_op",
-                        "ddl/failed/all_op.json",
-                        "ddl/failed/all_op.txt",
-                        1,
-                        1,
-                        ""
-                },
-                new Object[] {
-                        "multi_table_cnt_window",
-                        "ddl/multi_table_cnt_window.json",
-                        "ddl/multi_table_cnt_window.txt",
-                        1,
-                        1,
-                        ""
-                },
-                new Object[] {
-                        "multi_table_max_cnt_window",
-                        "ddl/multi_table_max_cnt_window.json",
-                        "ddl/multi_table_max_cnt_window_more.txt",
-                        1,
-                        1,
-                        ""
-                },
-                new Object[] {
-                        "multi col",
-                        "ddl/multi_table_max_cnt_window.json",
-                        "ddl/multi_table_max_cnt_window.txt",
-                        1,
-                        1,
-                        ""
-                },
-                new Object[] {
-                        "multi col",
-                        "ddl/multi_table_min_cnt_window.json",
-                        "ddl/multi_table_min_cnt_window_more.txt",
-                        1,
-                        1,
-                        ""
-                },
-                new Object[] {
-                        "multi col",
-                        "ddl/multi_table_min_cnt_window.json",
-                        "ddl/multi_table_min_cnt_window.txt",
-                        1,
-                        1,
-                        ""
-                },
-                new Object[] {
-                        "multi col",
-                        "ddl/multi_table_multi_relation.json",
-                        "ddl/multi_table_multi_relation.txt",
-                        1,
-                        1,
-                        ""
-                },
-                new Object[] {
-                        "multi col",
-                        "ddl/rong_e.json",
-                        "ddl/rong_e.txt",
-                        1,
-                        1,
-                        ""
-                }
-
         };
     }
 
@@ -195,18 +141,14 @@ public class DDLEngineTest {
         FileUtils.write(file, content, "UTF-8");
     }
 
-    @Test(dataProvider = "build_more_index", enabled = false)
+    @Test(dataProvider = "build_more_index")
     public void testDDL(String desc, String schemaPath, String sqlPath, int replicaNumber, int partitionNumber, String expct) {
         logger.info(desc);
         File file = new File(DDLEngineTest.class.getClassLoader().getResource(schemaPath).getPath());
         File sql = new File(DDLEngineTest.class.getClassLoader().getResource(sqlPath).getPath());
-//        File output = new File()
         try {
             String ddl = genDDL(FileUtils.readFileToString(sql, "UTF-8"), FileUtils.readFileToString(file, "UTF-8"), replicaNumber, partitionNumber);
-            File output = new File(DDLEngineTest.class.getClassLoader().getResource(sqlPath).getPath() + ".ddl.txt");
-            FileUtils.touch(output);
-            FileUtils.write(output, ddl, "UTF-8");
-//            getTableDefs(FileUtils.readFileToString(file, "UTF-8"));
+            Assert.assertEquals(ddl, expct);
         } catch (IOException e) {
             e.printStackTrace();
             logger.error("{}", e);

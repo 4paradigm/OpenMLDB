@@ -298,7 +298,7 @@ public class DDLEngine {
         if (type.equalsIgnoreCase("bigint") || type.equalsIgnoreCase("long")) {
             return TypeOuterClass.Type.kInt64;
         }
-        if (type.equalsIgnoreCase("smallint") || type.equalsIgnoreCase("small")) {
+        if (type.equalsIgnoreCase("smallint") || type.equalsIgnoreCase("small") || type.equalsIgnoreCase("short")) {
             return TypeOuterClass.Type.kInt16;
         }
         if (type.equalsIgnoreCase("int")) {
@@ -322,6 +322,7 @@ public class DDLEngine {
         if (type.equalsIgnoreCase("date")) {
             return TypeOuterClass.Type.kDate;
         }
+        logger.error("fesql can't get this type {}", type);
         return null;
     }
 
@@ -353,6 +354,7 @@ public class DDLEngine {
         if (TypeOuterClass.Type.kDate == type) {
             return "date";
         }
+        logger.error("fesql can't get this type {}", type);
         return null;
     }
 
