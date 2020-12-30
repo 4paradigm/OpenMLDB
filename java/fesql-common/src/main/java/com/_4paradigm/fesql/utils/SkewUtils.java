@@ -103,10 +103,16 @@ public class SkewUtils {
         sql.append("end as " + output + "\n");
         return sql.toString();
     }
-
-    public static String explodeDataSql(String table, int quantile, List<String> schemas, String tag1, String tag2) {
+    // watershed 水位线 windowSize 窗口的大小，0表示无限
+    public static String explodeDataSql(String table, int quantile, List<String> schemas, String tag1, String tag2, long watershed, long windowSize) {
         List<String> sqls = new ArrayList<>();
-        // big
+        // 默认需要爬坡
+        boolean isClibing = true;
+        // if window size = 0, then there is no conut window, only time window
+        if (windowSize > 0 && watershed / quantile > windowSize) {
+            isClibing = false;
+        }
+        // gen lots of sql
         for (int i = 0; i < quantile; i++) {
             if (i == 0) {
                 String sql = String.format("select * from %s", table);
@@ -120,11 +126,19 @@ public class SkewUtils {
                 sql.append(table + ".`" + e + "`,");
             }
             sql.append("\n");
-            sql.append(String.format("%d as `%s`, %s.`%s` from %s\nwhere\n", i, tag1, table, tag2, table));
+
             List<String> whereExpr = new ArrayList<>();
-            // explode 1, 2, 3, 4
-            for (int explode = i + 1; explode <= quantile; explode++) {
-                whereExpr.add(String.format("`%s` = %d", tag2, explode));
+            if (isClibing) {
+                sql.append(String.format("%d as `%s`, %s.`%s` from %s\nwhere\n", i, tag1, table, tag2, table));
+                // explode 1, 2, 3, 4
+                for (int explode = i + 1; explode <= quantile; explode++) {
+                    whereExpr.add(String.format("`%s` = %d", tag2, explode));
+                }
+            } else {
+                sql.append(String.format("%s.`%s` - 1, %s.`%s` from %s\nwhere\n", table, tag1, table, tag2, table));
+                sql.append(String.format("`%s` != 1", tag2));
+                sqls.add(sql.toString());
+                break;
             }
             sql.append(StringUtils.join(whereExpr, " or "));
             sqls.add(sql.toString());
