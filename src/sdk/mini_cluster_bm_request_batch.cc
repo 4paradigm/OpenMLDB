@@ -21,7 +21,6 @@
 #include "sdk/mini_cluster_bm.h"
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
-DECLARE_bool(enable_batch_request_optimized);
 ::rtidb::sdk::MiniCluster* mc;
 #define DEFINE_BATCH_REQUEST_CASE(NAME, PATH, CASE_ID)                     \
     static void BM_BatchRequest_##NAME(benchmark::State& state) {          \

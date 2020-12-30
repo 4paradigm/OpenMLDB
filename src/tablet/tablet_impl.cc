@@ -73,7 +73,6 @@ DECLARE_uint32(task_check_interval);
 DECLARE_uint32(load_index_max_wait_time);
 DECLARE_bool(use_name);
 DECLARE_bool(enable_distsql);
-DECLARE_bool(enable_batch_request_optimized);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -116,8 +115,7 @@ TabletImpl::TabletImpl()
       follower_(false),
       catalog_(new ::rtidb::catalog::TabletCatalog()),
       engine_(catalog_, *(fesql::vm::EngineOptions()
-                              .set_cluster_optimized(FLAGS_enable_distsql)
-                              ->set_batch_request_optimized(FLAGS_enable_batch_request_optimized))),
+                              .set_cluster_optimized(FLAGS_enable_distsql))),
       zk_cluster_(),
       zk_path_(),
       endpoint_(),

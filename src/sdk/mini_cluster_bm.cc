@@ -252,7 +252,7 @@ void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_
                 continue;
             }
             // don't repeat request in debug mode
-            for(size_t repeat_idx = 1; repeat_idx < sql_case.batch_request_.repeat_; repeat_idx++) {
+            for (size_t repeat_idx = 1; repeat_idx < sql_case.batch_request_.repeat_; repeat_idx++) {
                 ASSERT_TRUE(row_batch->AddRow(request_row));
             }
         }
