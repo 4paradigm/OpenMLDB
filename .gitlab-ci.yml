@@ -36,11 +36,7 @@ build_fesql_on_linux:
     stage: build
     script:
         - bash tools/compile_and_test.sh
-        - bash tools/cicd/gen_intermediate_cicd_artifacts.sh linux
         - bash tools/documentation/export_udf_doc.sh
-    artifacts:
-        paths:
-            - intermediate_cicd_artifact_linux.tar.gz
 
 #build_fesql_on_mac:
 #    stage: test
@@ -55,21 +51,7 @@ build_fesql_on_linux:
 #    artifacts:
 #        paths:
 #            - intermediate_cicd_artifact_mac.tar.gz
-
-test_java_sdk_on_linux:
-    stage: test
-    script:
-        - bash tools/cicd/extract_intermediate_cicd_artifacts.sh linux
-        - bash tools/test_java_sdk.sh
-    dependencies:
-        - build_fesql_on_linux
-    artifacts:
-        reports:
-            junit:
-                - java/fesql-spark/target/surefire-reports/*.xml
-                - java/fesql-jdbc/target/surefire-reports/*.xml
-
-# test_java_sdk_on_mac:
+#test_java_sdk_on_mac:
 #    stage: test
 #    variables:
 #        CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
@@ -89,35 +71,6 @@ test_java_sdk_on_linux:
 #                - java/fesql-spark/target/surefire-reports/*.xml
 #                - java/fesql-jdbc/target/surefire-reports/*.xml
 
-test_py3sdk_linux:
-    stage: test
-    script:
-        - bash tools/cicd/extract_intermediate_cicd_artifacts.sh linux
-        - bash tools/run_py3_ut.sh
-    dependencies:
-        - build_fesql_on_linux
-    artifacts:
-        reports:
-            junit:
-                - python/test/*.xml
-
-                  #test_py3sdk_mac:
-                  #    stage: test
-                  #    variables:
-                  #        CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
-                  #        CICD_RUNNER_TAG: "macos"
-                  #    tags:
-                  #        - macos
-                  #    script:
-                  #        - bash tools/run_py3_ut.sh
-                  #    after_script:
-                  #        - cd onebox && sh stop_all.sh
-                  #    artifacts:
-                  #        reports:
-                  #            junit:
-                  #                - python/test/*.xml
-                  #
-                  
 micro_benchmark:
     stage: deploy
     script:
@@ -130,18 +83,17 @@ micro_benchmark:
             - ./micro_bench_report.txt
             - ./benchmark_compare.html
         ## expose_as: "micro_benchmark"
-
-deploy_jar:
-    stage: deploy
-    script:
-        - bash tools/cicd/extract_intermediate_cicd_artifacts.sh linux
-#        - bash tools/cicd/extract_intermediate_cicd_artifacts.sh mac
-        - bash tools/cicd/deploy_fesql_spark_jar.sh
-    dependencies:
-        - build_fesql_on_linux
-#        - build_fesql_on_mac
-    artifacts:
-        paths:
-            - ./java/fesql-spark/target/*.jar
+              #deploy_jar:
+              #    stage: deploy
+              #    script:
+              #        - bash tools/cicd/extract_intermediate_cicd_artifacts.sh linux
+              ##        - bash tools/cicd/extract_intermediate_cicd_artifacts.sh mac
+              #        - bash tools/cicd/deploy_fesql_spark_jar.sh
+              #    dependencies:
+              #        - build_fesql_on_linux
+              ##        - build_fesql_on_mac
+              #    artifacts:
+              #        paths:
+              #            - ./java/fesql-spark/target/*.jar
 
 

@@ -12,4 +12,3 @@ if [[ -x "$(command -v pages)" ]]; then
     pages public false
 fi
 exit ${TEST_SUCCESS}
-
