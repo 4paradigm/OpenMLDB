@@ -14,25 +14,27 @@
  * limitations under the License.
  */
 
-#include "case/sql_case.h"
 #include "benchmark/benchmark.h"
 #include "bm/engine_bm_case.h"
+#include "case/sql_case.h"
 
 namespace fesql {
 namespace bm {
 using namespace ::llvm;  // NOLINT
 
-#define DEFINE_REQUEST_CASE(NAME, PATH, CASE_ID)                       \
+#define DEFINE_REQUEST_CASE(NAME, PATH, CASE_ID)                        \
     static void BM_Request_##NAME(benchmark::State& state) {            \
         EngineBenchmarkOnCase(PATH, CASE_ID, vm::kRequestMode, &state); \
-    }                                                                        \
+    }                                                                   \
     BENCHMARK(BM_Request_##NAME);
 
 const char* DEFAULT_YAML_PATH = "/cases/benchmark/request_benchmark.yaml";
 DEFINE_REQUEST_CASE(BM_SimpleLastJoin2Right, DEFAULT_YAML_PATH, "0");
 DEFINE_REQUEST_CASE(BM_SimpleLastJoin4Right, DEFAULT_YAML_PATH, "1");
-DEFINE_REQUEST_CASE(BM_SimpleWindowOutputLastJoinTable2, DEFAULT_YAML_PATH, "2");
-DEFINE_REQUEST_CASE(BM_SimpleWindowOutputLastJoinTable4, DEFAULT_YAML_PATH, "3");
+DEFINE_REQUEST_CASE(BM_SimpleWindowOutputLastJoinTable2, DEFAULT_YAML_PATH,
+                    "2");
+DEFINE_REQUEST_CASE(BM_SimpleWindowOutputLastJoinTable4, DEFAULT_YAML_PATH,
+                    "3");
 DEFINE_REQUEST_CASE(BM_LastJoin4WindowOutput, DEFAULT_YAML_PATH, "4");
 DEFINE_REQUEST_CASE(BM_LastJoin8WindowOutput, DEFAULT_YAML_PATH, "5");
 
