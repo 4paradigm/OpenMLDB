@@ -71,12 +71,12 @@ object Fesql {
 //    sess.
 
 
-//    if (config.getInstanceFormat.equals("parquet")) {
-//      res.sparkDf.write.mode("overwrite").parquet(output)
-//    }
-//    if (config.getInstanceFormat.equals("csv")) {
-//      res.sparkDf.write.mode("overwrite").csv(output)
-//    }
+    if (config.getInstanceFormat.equals("parquet")) {
+      res.sparkDf.write.mode("overwrite").parquet(output)
+    }
+    if (config.getInstanceFormat.equals("csv")) {
+      res.sparkDf.write.mode("overwrite").csv(output)
+    }
 
 //    sess.stop()
   }
