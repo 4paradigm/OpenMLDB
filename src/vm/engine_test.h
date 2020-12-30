@@ -468,9 +468,9 @@ void DoEngineCheckExpect(const SQLCase& sql_case,
     } else {
         sorted_output = SortRows(schema, output, sql_case.expect().order_);
     }
-    if (sql_case.expect().schema_.empty() &&
+    if (sql_case.expect().schema_.empty() ||
         sql_case.expect().columns_.empty()) {
-        LOG(INFO) << "Expect result empty, Real result:\n";
+        LOG(INFO) << "Expect result columns empty, Real result:\n";
         PrintRows(schema, sorted_output);
     } else {
         // Check Output Schema
@@ -802,28 +802,47 @@ class RequestEngineTestRunner : public EngineTestRunner {
 
     Status PrepareData() override {
         request_rows_.clear();
+        const bool has_batch_request =
+            !sql_case_.batch_request_.columns_.empty();
         auto request_session =
             std::dynamic_pointer_cast<RequestRunSession>(session_);
         CHECK_TRUE(request_session != nullptr, common::kSQLError);
         std::string request_name = request_session->GetRequestName();
 
+        if (has_batch_request) {
+            CHECK_TRUE(1 == sql_case_.batch_request_.rows_.size(), kSQLError,
+                       "RequestEngine can't handler multi rows batch requests");
+            CHECK_TRUE(sql_case_.ExtractInputData(sql_case_.batch_request_,
+                                                  request_rows_),
+                       kSQLError, "Extract case request rows failed");
+        }
         for (int32_t i = 0; i < sql_case_.CountInputs(); i++) {
             std::string input_name = idx_table_name_map_[i];
-            if (input_name == request_name) {
+
+            if (input_name == request_name && !has_batch_request) {
                 CHECK_TRUE(sql_case_.ExtractInputData(request_rows_, i),
-                           kSQLError, "Extract case input rows failed");
+                           kSQLError, "Extract case request rows failed");
+                auto request_table = name_table_map_[request_name];
+                CHECK_TRUE(request_table->Init(), kSQLError,
+                           "Init request table failed");
+                continue;
             } else {
                 std::vector<Row> rows;
-                sql_case_.ExtractInputData(rows, i);
+                if (!sql_case_.inputs_[i].rows_.empty() ||
+                    !sql_case_.inputs_[i].data_.empty()) {
+                    CHECK_TRUE(sql_case_.ExtractInputData(rows, i), kSQLError,
+                               "Extract case request rows failed");
+                }
+
                 if (sql_case_.inputs()[i].repeat_ > 1) {
-                    std::vector<Row> repeat_rows;
+                    std::vector<Row> store_rows;
                     for (int64_t j = 0; j < sql_case_.inputs()[i].repeat_;
                          j++) {
                         for (auto row : rows) {
-                            repeat_rows.push_back(row);
+                            store_rows.push_back(row);
                         }
                     }
-                    StoreData(name_table_map_[input_name].get(), repeat_rows);
+                    StoreData(name_table_map_[input_name].get(), store_rows);
                 } else {
                     StoreData(name_table_map_[input_name].get(), rows);
                 }
@@ -833,14 +852,15 @@ class RequestEngineTestRunner : public EngineTestRunner {
     }
 
     Status Compute(std::vector<Row>* outputs) override {
+        const bool has_batch_request =
+            !sql_case_.batch_request_.columns_.empty() &&
+            !sql_case_.batch_request_.schema_.empty();
         auto request_session =
-            std::dynamic_pointer_cast<RequestRunSession>(session_);
+                std::dynamic_pointer_cast<RequestRunSession>(session_);
         CHECK_TRUE(request_session != nullptr, common::kSQLError);
 
         std::string request_name = request_session->GetRequestName();
         auto request_table = name_table_map_[request_name];
-        CHECK_TRUE(request_table->Init(), kSQLError,
-                   "Init request table failed");
         for (auto in_row : request_rows_) {
             Row out_row;
             int run_ret = request_session->Run(in_row, &out_row);
@@ -848,10 +868,13 @@ class RequestEngineTestRunner : public EngineTestRunner {
                 return_code_ = ENGINE_TEST_RET_EXECUTION_ERROR;
                 return Status(kSQLError, "Run request session failed");
             }
-            CHECK_TRUE(
-                request_table->Put(reinterpret_cast<const char*>(in_row.buf()),
-                                   in_row.size()),
-                kSQLError);
+            if (!has_batch_request) {
+                CHECK_TRUE(request_table->Put(
+                               reinterpret_cast<const char*>(in_row.buf()),
+                               in_row.size()),
+                           kSQLError);
+            }
+
             outputs->push_back(out_row);
         }
         return Status::OK();

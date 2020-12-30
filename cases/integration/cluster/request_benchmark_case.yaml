@@ -1,0 +1,139 @@
+debugs: []
+cases:
+  - id: 0
+    desc: BM_SimpleLastJoin4Right, 同时拼接2张副表
+    mode: batch-unsupport
+    inputs:
+      -
+        columns: ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+      -
+        columns: ["rid int", "x1 string", "x6 double", "x7 timestamp"]
+        indexs: ["index1:x1:x7"]
+        repeat: 100
+        rows:
+          - [1, "a", 1.0, 1590738990000]
+          - [2, "b", 1.0, 1590738990000]
+          - [3, "c", 1.0, 1590738990000]
+          - [4, "a", 1.0, 1590738980000]
+          - [5, "b", 1.0, 1590738980000]
+          - [6, "c", 1.0, 1590738980000]
+          - [7, "a", 1.0, 1590738970000]
+          - [8, "b", 1.0, 1590738970000]
+          - [9, "c", 1.0, 1590738970000]
+      -
+        columns: ["rid int", "x2 string", "x6 double", "x7 timestamp"]
+        indexs: ["index2:x2:x7"]
+        repeat: 100
+        rows:
+          - [1, "aa", 1.0, 1590738990000]
+          - [2, "bb", 1.0, 1590738990000]
+          - [3, "cc", 1.0, 1590738990000]
+          - [4, "aa", 1.0, 1590738980000]
+          - [5, "bb", 1.0, 1590738980000]
+          - [6, "cc", 1.0, 1590738980000]
+          - [7, "aa", 1.0, 1590738970000]
+          - [8, "bb", 1.0, 1590738970000]
+          - [9, "cc", 1.0, 1590738970000]
+
+    batch_request:
+      columns: [ "id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp" ]
+      rows:
+        - [1, "a", "bb", "ccc", "aaaa", 1.0, 1590738991000]
+    sql: |
+      SELECT {0}.id, {0}.c1, {0}.c2, {0}.c3, {0}.c4, {0}.c7, {1}.x1, {1}.x7 as t1_x7, {2}.x2, {2}.x7 as t2_x7
+      FROM {0}
+      last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10000 >= {1}.x7
+      last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - 10000 >= {2}.x7;
+    expect:
+      success: true
+      columns: ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c7 timestamp",
+                "x1 string", "t1_x7 timestamp", "x2 string", "t2_x7 timestamp"]
+      rows:
+        - [1, "a", "bb", "ccc", "aaaa", 1590738991000, "a", 1590738980000, "bb", 1590738980000]
+
+
+  - id: 1
+    desc: BM_SimpleLastJoin4Right, 同时拼接4张副表
+    mode: batch-unsupport
+    inputs:
+      -
+        columns: ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+      -
+        columns: ["rid int", "x1 string", "x6 double", "x7 timestamp"]
+        indexs: ["index1:x1:x7"]
+        repeat: 100
+        rows:
+          - [1, "a", 1.0, 1590738990000]
+          - [2, "b", 1.0, 1590738990000]
+          - [3, "c", 1.0, 1590738990000]
+          - [4, "a", 1.0, 1590738980000]
+          - [5, "b", 1.0, 1590738980000]
+          - [6, "c", 1.0, 1590738980000]
+          - [7, "a", 1.0, 1590738970000]
+          - [8, "b", 1.0, 1590738970000]
+          - [9, "c", 1.0, 1590738970000]
+      -
+        columns: ["rid int", "x2 string", "x6 double", "x7 timestamp"]
+        indexs: ["index2:x2:x7"]
+        repeat: 100
+        rows:
+          - [1, "aa", 1.0, 1590738990000]
+          - [2, "bb", 1.0, 1590738990000]
+          - [3, "cc", 1.0, 1590738990000]
+          - [4, "aa", 1.0, 1590738980000]
+          - [5, "bb", 1.0, 1590738980000]
+          - [6, "cc", 1.0, 1590738980000]
+          - [7, "aa", 1.0, 1590738970000]
+          - [8, "bb", 1.0, 1590738970000]
+          - [9, "cc", 1.0, 1590738970000]
+      -
+        columns: ["rid int", "x3 string", "x6 double", "x7 timestamp"]
+        indexs: ["index3:x3:x7"]
+        repeat: 100
+        rows:
+          - [1, "aaa", 1.0, 1590738990000]
+          - [2, "bbb", 1.0, 1590738990000]
+          - [3, "ccc", 1.0, 1590738990000]
+          - [4, "aaa", 1.0, 1590738980000]
+          - [5, "bbb", 1.0, 1590738980000]
+          - [6, "ccc", 1.0, 1590738980000]
+          - [7, "aaa", 1.0, 1590738970000]
+          - [8, "bbb", 1.0, 1590738970000]
+          - [9, "ccc", 1.0, 1590738970000]
+      -
+        columns: ["rid int", "x4 string", "x6 double", "x7 timestamp"]
+        indexs: ["index4:x4:x7"]
+        repeat: 100
+        rows:
+          - [1, "aaaa", 1.0, 1590738990000]
+          - [2, "bbbb", 1.0, 1590738990000]
+          - [3, "cccc", 1.0, 1590738990000]
+          - [4, "aaaa", 1.0, 1590738980000]
+          - [5, "bbbb", 1.0, 1590738980000]
+          - [6, "cccc", 1.0, 1590738980000]
+          - [7, "aaaa", 1.0, 1590738970000]
+          - [8, "bbbb", 1.0, 1590738970000]
+          - [9, "cccc", 1.0, 1590738970000]
+
+    batch_request:
+      columns: [ "id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp" ]
+      rows:
+        - [1, "a", "bb", "ccc", "aaaa", 1.0, 1590738991000]
+    sql: |
+      SELECT {0}.id, {0}.c1, {0}.c2, {0}.c3, {0}.c4, {0}.c7, {1}.x1, {1}.x7 as t1_x7, {2}.x2, {2}.x7 as t2_x7,
+      {3}.x3, {3}.x7 as t3_x7, {4}.x4, {4}.x7 as t4_x7
+      FROM {0}
+      last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10000 >= {1}.x7
+      last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - 10000 >= {2}.x7
+      last join {3} order by {3}.x7 on {0}.c3 = {3}.x3 and {0}.c7 - 10000 >= {3}.x7
+      last join {4} order by {4}.x7 on {0}.c4 = {4}.x4 and {0}.c7 - 10000 >= {4}.x7;
+    expect:
+      success: true
+      columns: ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c7 timestamp",
+                "x1 string", "t1_x7 timestamp", "x2 string", "t2_x7 timestamp",
+                "x3 string", "t3_x7 timestamp", "x4 string", "t4_x7 timestamp"]
+      rows:
+        - [1, "a", "bb", "ccc", "aaaa", 1590738991000, "a", 1590738980000, "bb", 1590738980000, "ccc", 1590738980000, "aaaa", 1590738980000]
+

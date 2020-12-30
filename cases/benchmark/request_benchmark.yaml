@@ -1,0 +1,52 @@
+db: batch_request_bm
+debugs: []
+cases:
+  - id: 0
+    desc: BM_SimpleLastJoin4Right, 同时拼接4张副表
+    mode: batch-unsupport
+    inputs:
+      -
+        columns: ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+      -
+        columns: ["rid int", "x1 string", "x6 double", "x7 timestamp"]
+        indexs: ["index1:x1:x7"]
+        rows:
+          - [1, "a", 1.0, 1590738990000]
+          - [2, "b", 1.0, 1590738990000]
+          - [3, "c", 1.0, 1590738990000]
+      -
+        columns: ["rid int", "x2 string", "x6 double", "x7 timestamp"]
+        indexs: ["index1:x1:x7"]
+        rows:
+          - [4, "aa", 1.0, 1590738990000]
+          - [5, "bb", 1.0, 1590738990000]
+          - [6, "cc", 1.0, 1590738990000]
+      -
+        columns: ["rid int", "x3 string", "x6 double", "x7 timestamp"]
+        indexs: ["index1:x1:x7"]
+        rows:
+          - [7, "aaa", 1.0, 1590738990000]
+          - [8, "bbb", 1.0, 1590738990000]
+          - [9, "ccc", 1.0, 1590738990000]
+      -
+        columns: ["rid int", "x4 string", "x6 double", "x7 timestamp"]
+        indexs: ["index1:x1:x7"]
+        rows:
+          - [10, "aaaa", 1.0, 1590738990000]
+          - [11, "bbbb", 1.0, 1590738990000]
+          - [12, "cccc", 1.0, 1590738990000]
+
+    batch_request:
+      columns : ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
+      rows:
+        - [1, "a", "bb", "ccc", "aaaa", 1.0, 1590738991000]
+    sql: |
+      SELECT {0}.id, {0}.c1, {0}.c2, {0}.c3, {0}.c4, {0}.c7, {1}.x1, {1}.x7, {2}.x2, {2}.x7
+      FROM {0}
+      last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - {ts_diff} >= {1}.x7
+      last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - {ts_diff} >= {2}.x7;
+    expect:
+      success: true
+
+
