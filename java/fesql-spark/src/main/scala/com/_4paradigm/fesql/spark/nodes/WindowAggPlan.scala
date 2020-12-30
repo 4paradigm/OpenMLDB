@@ -219,6 +219,7 @@ object WindowAggPlan {
    * @return
    */
   def improveSkew(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: DataFrame, config: WindowAggConfig): DataFrame = {
+    input.cache()
     val windowOp = node.window()
     val groupByExprs = windowOp.partition().keys()
     val keysName = new util.ArrayList[String]()
@@ -264,6 +265,7 @@ object WindowAggPlan {
     logger.info(s"skew analyze sql : ${analyzeSQL}")
     input.createOrReplaceTempView(table)
     val reportDf = ctx.sparksql(analyzeSQL)
+//    reportDf.show()
     reportDf.createOrReplaceTempView(reportTable)
     val keysMap = new util.HashMap[String, String]()
     var keyScala = keysName.asScala
@@ -285,7 +287,7 @@ object WindowAggPlan {
     val skewTable = "FESQL_TEMP_WINDOW_SKEW_" + System.currentTimeMillis()
     logger.info("skew explode table {}", skewTable)
     skewDf.createOrReplaceTempView(skewTable)
-    val explodeSql = SkewUtils.explodeDataSql(skewTable, quantile.intValue(), schemas, FesqlConfig.skewTag, FesqlConfig.skewPosition)
+    val explodeSql = SkewUtils.explodeDataSql(skewTable, quantile.intValue(), schemas, FesqlConfig.skewTag, FesqlConfig.skewPosition, FesqlConfig.skewCnt.longValue(), config.rowPreceding)
     logger.info(s"skew explode sql : ${explodeSql}")
     skewDf = ctx.sparksql(explodeSql)
     skewDf.cache()
@@ -369,7 +371,7 @@ object WindowAggPlan {
     val limitInputIter = if (config.limitCnt > 0) inputIter.take(config.limitCnt) else inputIter
 
     // todo isSkew need to be check
-    var cnt = 0
+    var cnt: Long = 0L
 
     if (config.skewTagIdx != 0) {
       FesqlConfig.mode = "skew"
@@ -384,7 +386,7 @@ object WindowAggPlan {
 
         val tag = row.getInt(config.skewTagIdx)
         val position = row.getInt(config.skewPositionIdx)
-        if (cnt % (100 * 100) == 0) {
+        if (cnt % FesqlConfig.printSamplePartition == 0) {
           val str = new StringBuffer()
           str.append(row.get(config.orderIdx))
           str.append(",")
@@ -409,7 +411,7 @@ object WindowAggPlan {
           computer.checkPartition(row, lastRow)
         }
         lastRow = row
-        if (cnt % (100 * 100) == 0) {
+        if (cnt % FesqlConfig.printSamplePartition == 0) {
           val str = new StringBuffer()
           str.append(row.get(config.orderIdx))
           str.append(",")

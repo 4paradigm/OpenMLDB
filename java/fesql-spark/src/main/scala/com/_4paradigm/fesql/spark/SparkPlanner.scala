@@ -41,6 +41,7 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
         case FesqlConfig.configPartitions => FesqlConfig.paritions = v.toInt
         case FesqlConfig.configTimeZone => FesqlConfig.timeZone = v.asInstanceOf[String]
         case FesqlConfig.configTinyData => FesqlConfig.tinyData = v.toLong
+        case FesqlConfig.configPrintSamplePartition => FesqlConfig.printSamplePartition = v.toLong
         case _ => ""
       }
     }
