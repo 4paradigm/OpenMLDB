@@ -273,7 +273,7 @@ object WindowAggPlan {
     val schemas = scala.collection.JavaConverters.seqAsJavaList(input.schema.fieldNames)
 
 
-    val tagSQL = SkewUtils.genPercentileTagSql(table, reportTable, quantile.intValue(), schemas, keysMap, ts, FesqlConfig.skewTag, FesqlConfig.skewPosition, FesqlConfig.skewCntName)
+    val tagSQL = SkewUtils.genPercentileTagSql(table, reportTable, quantile.intValue(), schemas, keysMap, ts, FesqlConfig.skewTag, FesqlConfig.skewPosition, FesqlConfig.skewCntName, FesqlConfig.skewCnt.longValue())
     logger.info(s"skew tag sql : ${tagSQL}")
     var skewDf = ctx.sparksql(tagSQL)
 
@@ -426,12 +426,11 @@ object WindowAggPlan {
         Some(computer.compute(row))
       })
     }
-//    computer.delete()
-    resIter
-//    AutoDestructibleIterator(resIter) {
-//      computer.delete()
-//    }
+    AutoDestructibleIterator(resIter) {
+      computer.delete()
+    }
   }
+
 
   def windowAggIterWithUnionFlag(computer: WindowComputer,
                                  inputIter: Iterator[Row],

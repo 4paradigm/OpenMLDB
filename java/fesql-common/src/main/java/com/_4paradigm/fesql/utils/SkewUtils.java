@@ -53,18 +53,19 @@ public class SkewUtils {
      * @param tag1 skewTag
      * @param tag2 skewPosition
      * @param tag3 skewCntName
+     * @param tag4 skewCnt = 100
      * @return
      */
-    public static String genPercentileTagSql(String table1, String table2, int quantile, List<String> schemas, Map<String, String> keysMap, String ts, String tag1, String tag2, String tag3) {
+    public static String genPercentileTagSql(String table1, String table2, int quantile, List<String> schemas, Map<String, String> keysMap, String ts, String tag1, String tag2, String tag3, long tag4) {
         StringBuffer sql = new StringBuffer();
         sql.append("select \n");
         for (String e : schemas) {
             sql.append(table1 + ".`" + e + "`,");
         }
 
-        sql.append(caseWhenTag(table1, table2, ts, quantile, tag1, tag3));
+        sql.append(caseWhenTag(table1, table2, ts, quantile, tag1, tag3, tag4));
         sql.append(",");
-        sql.append(caseWhenTag(table1, table2, ts, quantile, tag2, tag3));
+        sql.append(caseWhenTag(table1, table2, ts, quantile, tag2, tag3, tag4));
 
 
         sql.append(String.format("from `%s` left join `%s` on ", table1, table2));
@@ -86,10 +87,10 @@ public class SkewUtils {
      * @param output
      * @return
      */
-    public static String caseWhenTag(String table1, String table2, String ts, int quantile, String output, String con1) {
+    public static String caseWhenTag(String table1, String table2, String ts, int quantile, String output, String con1, long cnt) {
         StringBuffer sql = new StringBuffer();
         sql.append("\ncase\n");
-        sql.append(String.format("when `%s`.`%s` < %s then 1\n", table2, con1, quantile));
+        sql.append(String.format("when `%s`.`%s` < %s then 1\n", table2, con1, cnt));
         for (int i = 0; i < quantile; i++) {
             if (i == 0) {
                 sql.append(String.format("when `%s`.`%s` <= percentile_%s then %d\n", table1, ts, i, quantile - i));

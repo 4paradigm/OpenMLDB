@@ -78,7 +78,7 @@ object Fesql {
       res.sparkDf.write.mode("overwrite").csv(output)
     }
 
-//    sess.stop()
+    sess.stop()
   }
 
 }
