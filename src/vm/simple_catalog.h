@@ -54,9 +54,9 @@ class SimpleCatalogTableHandler : public TableHandler {
     std::shared_ptr<PartitionHandler> GetPartition(
         const std::string &index_name) override;
 
-    std::unique_ptr<RowIterator> GetIterator() const override;
+    std::unique_ptr<RowIterator> GetIterator() override;
 
-    RowIterator *GetRawIterator() const override;
+    RowIterator *GetRawIterator() override;
 
  private:
     std::string db_name_;

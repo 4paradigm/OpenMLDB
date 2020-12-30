@@ -27,158 +27,19 @@
 #include "codegen/fn_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
-#include "llvm/Bitcode/BitcodeReader.h"
-#include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/raw_ostream.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "udf/default_udf_library.h"
-#include "udf/udf.h"
 #include "vm/runner.h"
 #include "vm/transform.h"
 
+using ::fesql::base::Status;
 using fesql::common::kPlanError;
 
 namespace fesql {
 namespace vm {
-
-void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
-                     ::llvm::orc::MangleAndInterner& mi) {  // NOLINT
-    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "malloc",
-                                   (reinterpret_cast<void*>(&malloc)));
-    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "memset",
-                                   (reinterpret_cast<void*>(&memset)));
-    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "memcpy",
-                                   (reinterpret_cast<void*>(&memcpy)));
-    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "__bzero",
-                                   (reinterpret_cast<void*>(&bzero)));
-
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_get_bool_field",
-        reinterpret_cast<void*>(
-            static_cast<int8_t (*)(const int8_t*, uint32_t, uint32_t, int8_t*)>(
-                &codec::v1::GetBoolField)));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_get_int16_field",
-        reinterpret_cast<void*>(
-            static_cast<int16_t (*)(const int8_t*, uint32_t, uint32_t,
-                                    int8_t*)>(&codec::v1::GetInt16Field)));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_get_int32_field",
-        reinterpret_cast<void*>(
-            static_cast<int32_t (*)(const int8_t*, uint32_t, uint32_t,
-                                    int8_t*)>(&codec::v1::GetInt32Field)));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_get_int64_field",
-        reinterpret_cast<void*>(
-            static_cast<int64_t (*)(const int8_t*, uint32_t, uint32_t,
-                                    int8_t*)>(&codec::v1::GetInt64Field)));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_get_float_field",
-        reinterpret_cast<void*>(
-            static_cast<float (*)(const int8_t*, uint32_t, uint32_t, int8_t*)>(
-                &codec::v1::GetFloatField)));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_get_double_field",
-        reinterpret_cast<void*>(
-            static_cast<double (*)(const int8_t*, uint32_t, uint32_t, int8_t*)>(
-                &codec::v1::GetDoubleField)));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_get_timestamp_field",
-        reinterpret_cast<void*>(
-            static_cast<codec::Timestamp (*)(const int8_t*, uint32_t, uint32_t,
-                                             int8_t*)>(
-                &codec::v1::GetTimestampField)));
-
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_get_str_addr_space",
-        reinterpret_cast<void*>(&codec::v1::GetAddrSpace));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_get_str_field",
-        reinterpret_cast<void*>(
-            static_cast<int32_t (*)(const int8_t*, uint32_t, uint32_t, uint32_t,
-                                    uint32_t, uint32_t, const char**, uint32_t*,
-                                    int8_t*)>(&codec::v1::GetStrField)));
-    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_col",
-                                   reinterpret_cast<void*>(&codec::v1::GetCol));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_get_str_col",
-        reinterpret_cast<void*>(&codec::v1::GetStrCol));
-
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_get_inner_range_list",
-        reinterpret_cast<void*>(&codec::v1::GetInnerRangeList));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_get_inner_rows_list",
-        reinterpret_cast<void*>(&codec::v1::GetInnerRowsList));
-
-    // encode
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_encode_int16_field",
-        reinterpret_cast<void*>(&codec::v1::AppendInt16));
-
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_encode_int32_field",
-        reinterpret_cast<void*>(&codec::v1::AppendInt32));
-
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_encode_int64_field",
-        reinterpret_cast<void*>(&codec::v1::AppendInt64));
-
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_encode_float_field",
-        reinterpret_cast<void*>(&codec::v1::AppendFloat));
-
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_encode_double_field",
-        reinterpret_cast<void*>(&codec::v1::AppendDouble));
-
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_encode_string_field",
-        reinterpret_cast<void*>(&codec::v1::AppendString));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_encode_calc_size",
-        reinterpret_cast<void*>(&codec::v1::CalcTotalLength));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_encode_nullbit",
-        reinterpret_cast<void*>(&codec::v1::AppendNullBit));
-
-    // row iteration
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_get_row_iter",
-        reinterpret_cast<void*>(&fesql::vm::GetRowIter));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_row_iter_has_next",
-        reinterpret_cast<void*>(&fesql::vm::RowIterHasNext));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_row_iter_next",
-        reinterpret_cast<void*>(&fesql::vm::RowIterNext));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_row_iter_get_cur_slice",
-        reinterpret_cast<void*>(&fesql::vm::RowIterGetCurSlice));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_row_iter_get_cur_slice_size",
-        reinterpret_cast<void*>(&fesql::vm::RowIterGetCurSliceSize));
-
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_row_iter_delete",
-        reinterpret_cast<void*>(&fesql::vm::RowIterDelete));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_get_row_slice",
-        reinterpret_cast<void*>(&fesql::vm::RowGetSlice));
-    fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_get_row_slice_size",
-        reinterpret_cast<void*>(&fesql::vm::RowGetSliceSize));
-}
-
-void InitCodecSymbol(vm::FeSQLJIT* jit_ptr) {
-    ::llvm::orc::MangleAndInterner mi(jit_ptr->getExecutionSession(),
-                                      jit_ptr->getDataLayout());
-    InitCodecSymbol(jit_ptr->getMainJITDylib(), mi);
-}
-
-using ::fesql::base::Status;
 
 SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir,
                          bool dump_plan, bool plan_only)
@@ -331,40 +192,32 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         m->print(::llvm::errs(), NULL, true, true);
         return false;
     }
-    ::llvm::Expected<std::unique_ptr<FeSQLJIT>> jit_expected(
-        FeSQLJITBuilder().create());
-    {
-        ::llvm::Error e = jit_expected.takeError();
-        if (e) {
-            status.msg = "fail to init jit let";
-            status.code = common::kJitError;
-            LOG(WARNING) << status;
-            return false;
-        }
+    // ::llvm::errs() << *(m.get());
+    auto jit = std::unique_ptr<FeSQLJITWrapper>(
+        FeSQLJITWrapper::Create(ctx.jit_options));
+    if (jit == nullptr || !jit->Init()) {
+        status.msg = "fail to init jit let";
+        status.code = common::kJitError;
+        LOG(WARNING) << status;
+        return false;
     }
-    ctx.jit = std::move(*jit_expected);
-    ctx.jit->Init();
-    if (false == ctx.jit->OptModule(m.get())) {
+    InitBuiltinJITSymbols(jit.get());
+    ctx.udf_library->InitJITSymbols(jit.get());
+    if (!jit->OptModule(m.get())) {
         LOG(WARNING) << "fail to opt ir module for sql " << ctx.sql;
         return false;
     }
-
     if (keep_ir_) {
         KeepIR(ctx, m.get());
     }
-
-    ::llvm::Error e = ctx.jit->addIRModule(
-        ::llvm::orc::ThreadSafeModule(std::move(m), std::move(llvm_ctx)));
-    if (e) {
+    if (!jit->AddModule(std::move(m), std::move(llvm_ctx))) {
         LOG(WARNING) << "fail to add ir module  for sql " << ctx.sql;
         return false;
     }
-    ctx.udf_library->InitJITSymbols(ctx.jit.get());
-    InitCodecSymbol(ctx.jit.get());
-    udf::InitUDFSymbol(ctx.jit.get());
-    if (!ResolvePlanFnAddress(ctx.physical_plan, ctx.jit, status)) {
+    if (!ResolvePlanFnAddress(ctx.physical_plan, jit, status)) {
         return false;
     }
+    ctx.jit = std::move(jit);
     DLOG(INFO) << "compile sql " << ctx.sql << " done";
     return true;
 }
@@ -382,6 +235,100 @@ std::string EngineModeName(EngineMode mode) {
     }
 }
 
+Status SQLCompiler::BuildBatchModePhysicalPlan(
+    SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+    ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+    PhysicalOpNode** output) {
+    vm::BatchModeTransformer transformer(&ctx->nm, ctx->db, cl_, llvm_module,
+                                         library, ctx->is_performance_sensitive,
+                                         ctx->is_cluster_optimized);
+    transformer.AddDefaultPasses();
+    CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output),
+                 "Fail to generate physical plan (batch mode)");
+    ctx->schema = *(*output)->GetOutputSchema();
+    return Status::OK();
+}
+
+Status SQLCompiler::BuildRequestModePhysicalPlan(
+    SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+    ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+    PhysicalOpNode** output) {
+    vm::RequestModeTransformer transformer(
+        &ctx->nm, ctx->db, cl_, llvm_module, library, {},
+        ctx->is_performance_sensitive, ctx->is_cluster_optimized, false);
+    transformer.AddDefaultPasses();
+    CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output),
+                 "Fail to generate physical plan (request mode)");
+    ctx->request_schema = transformer.request_schema();
+    CHECK_TRUE(codec::SchemaCodec::Encode(transformer.request_schema(),
+                                          &ctx->encoded_request_schema),
+               kPlanError, "Fail to encode request schema");
+    ctx->request_name = transformer.request_name();
+    ctx->schema = *(*output)->GetOutputSchema();
+    return Status::OK();
+}
+
+Status SQLCompiler::BuildBatchRequestModePhysicalPlan(
+    SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+    ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+    PhysicalOpNode** output) {
+    vm::RequestModeTransformer transformer(
+        &ctx->nm, ctx->db, cl_, llvm_module, library,
+        ctx->batch_request_info.common_column_indices,
+        ctx->is_performance_sensitive, ctx->is_cluster_optimized,
+        ctx->is_batch_request_optimized);
+    transformer.AddDefaultPasses();
+    PhysicalOpNode* output_plan = nullptr;
+    CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, &output_plan),
+                 "Fail to generate physical plan (batch request mode)");
+    *output = output_plan;
+
+    ctx->request_schema = transformer.request_schema();
+    CHECK_TRUE(codec::SchemaCodec::Encode(transformer.request_schema(),
+                                          &ctx->encoded_request_schema),
+               kPlanError, "Fail to encode request schema");
+    ctx->request_name = transformer.request_name();
+
+    // set batch request output schema
+    const auto& output_common_indices =
+        transformer.batch_request_info().output_common_column_indices;
+    ctx->batch_request_info.output_common_column_indices =
+        output_common_indices;
+    ctx->batch_request_info.common_node_set =
+        transformer.batch_request_info().common_node_set;
+    if (!output_common_indices.empty() &&
+        output_common_indices.size() < output_plan->GetOutputSchemaSize()) {
+        CHECK_TRUE(output_plan->GetOutputSchemaSourceSize() == 2, kPlanError,
+                   "Output plan should take 2 schema sources for "
+                   "non-trival common columns");
+        CHECK_TRUE(output_plan->GetOutputSchemaSource(0)->size() ==
+                       output_common_indices.size(),
+                   kPlanError, "Illegal common column schema size");
+        ctx->schema.Clear();
+        size_t common_col_idx = 0;
+        size_t non_common_col_idx = 0;
+        for (size_t i = 0; i < (*output)->GetOutputSchemaSize(); ++i) {
+            if (output_common_indices.find(i) != output_common_indices.end()) {
+                *(ctx->schema.Add()) =
+                    output_plan->GetOutputSchemaSource(0)->GetSchema()->Get(
+                        common_col_idx);
+                common_col_idx += 1;
+            } else {
+                *(ctx->schema.Add()) =
+                    output_plan->GetOutputSchemaSource(1)->GetSchema()->Get(
+                        non_common_col_idx);
+                non_common_col_idx += 1;
+            }
+        }
+    } else {
+        CHECK_TRUE(output_plan->GetOutputSchemaSourceSize() == 1, kPlanError,
+                   "Output plan should take 1 schema source for trival "
+                   "common columns");
+        ctx->schema = *(*output)->GetOutputSchema();
+    }
+    return Status::OK();
+}
+
 Status SQLCompiler::BuildPhysicalPlan(
     SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
     ::llvm::Module* llvm_module, PhysicalOpNode** output) {
@@ -393,98 +340,16 @@ Status SQLCompiler::BuildPhysicalPlan(
 
     switch (ctx->engine_mode) {
         case kBatchMode: {
-            vm::BatchModeTransformer transformer(
-                &ctx->nm, ctx->db, cl_, llvm_module, library,
-                ctx->is_performance_sensitive, ctx->is_cluster_optimized);
-            transformer.AddDefaultPasses();
-            CHECK_STATUS(
-                transformer.TransformPhysicalPlan(plan_list, output),
-                "Fail to generate physical plan (batch mode) for sql: \n",
-                ctx->sql);
-            ctx->schema = *(*output)->GetOutputSchema();
-            return Status::OK();
+            return BuildBatchModePhysicalPlan(ctx, plan_list, llvm_module,
+                                              library, output);
         }
         case kRequestMode: {
-            vm::RequestModeTransformer transformer(
-                &ctx->nm, ctx->db, cl_, llvm_module, library, {},
-                ctx->is_performance_sensitive, ctx->is_cluster_optimized);
-            transformer.AddDefaultPasses();
-            CHECK_STATUS(
-                transformer.TransformPhysicalPlan(plan_list, output),
-                "Fail to generate physical plan (request mode) for sql: \n",
-                ctx->sql);
-            ctx->request_schema = transformer.request_schema();
-            CHECK_TRUE(codec::SchemaCodec::Encode(transformer.request_schema(),
-                                                  &ctx->encoded_request_schema),
-                       kPlanError, "Fail to encode request schema");
-            ctx->request_name = transformer.request_name();
-            ctx->schema = *(*output)->GetOutputSchema();
-            return Status::OK();
+            return BuildRequestModePhysicalPlan(ctx, plan_list, llvm_module,
+                                                library, output);
         }
         case kBatchRequestMode: {
-            vm::RequestModeTransformer transformer(
-                &ctx->nm, ctx->db, cl_, llvm_module, library,
-                ctx->batch_request_info.common_column_indices,
-                ctx->is_performance_sensitive, ctx->is_cluster_optimized);
-            transformer.AddDefaultPasses();
-            PhysicalOpNode* output_plan = nullptr;
-            CHECK_STATUS(
-                transformer.TransformPhysicalPlan(plan_list, &output_plan),
-                "Fail to generate physical plan (batch request mode) for sql: "
-                "\n",
-                ctx->sql);
-            *output = output_plan;
-
-            ctx->request_schema = transformer.request_schema();
-            CHECK_TRUE(codec::SchemaCodec::Encode(transformer.request_schema(),
-                                                  &ctx->encoded_request_schema),
-                       kPlanError, "Fail to encode request schema");
-            ctx->request_name = transformer.request_name();
-
-            // set batch request output schema
-            const auto& output_common_indices =
-                transformer.batch_request_info().output_common_column_indices;
-            ctx->batch_request_info.output_common_column_indices =
-                output_common_indices;
-            ctx->batch_request_info.common_node_set =
-                transformer.batch_request_info().common_node_set;
-            if (!output_common_indices.empty() &&
-                output_common_indices.size() <
-                    output_plan->GetOutputSchemaSize()) {
-                CHECK_TRUE(output_plan->GetOutputSchemaSourceSize() == 2,
-                           kPlanError,
-                           "Output plan should take 2 schema sources for "
-                           "non-trival common columns");
-                CHECK_TRUE(output_plan->GetOutputSchemaSource(0)->size() ==
-                               output_common_indices.size(),
-                           kPlanError, "Illegal common column schema size");
-                ctx->schema.Clear();
-                size_t common_col_idx = 0;
-                size_t non_common_col_idx = 0;
-                for (size_t i = 0; i < (*output)->GetOutputSchemaSize(); ++i) {
-                    if (output_common_indices.find(i) !=
-                        output_common_indices.end()) {
-                        *(ctx->schema.Add()) =
-                            output_plan->GetOutputSchemaSource(0)
-                                ->GetSchema()
-                                ->Get(common_col_idx);
-                        common_col_idx += 1;
-                    } else {
-                        *(ctx->schema.Add()) =
-                            output_plan->GetOutputSchemaSource(1)
-                                ->GetSchema()
-                                ->Get(non_common_col_idx);
-                        non_common_col_idx += 1;
-                    }
-                }
-            } else {
-                CHECK_TRUE(output_plan->GetOutputSchemaSourceSize() == 1,
-                           kPlanError,
-                           "Output plan should take 1 schema source for trival "
-                           "common columns");
-                ctx->schema = *(*output)->GetOutputSchema();
-            }
-            return Status::OK();
+            return BuildBatchRequestModePhysicalPlan(
+                ctx, plan_list, llvm_module, library, output);
         }
         default:
             return Status(kPlanError, "Unknown engine mode: " +
@@ -502,6 +367,7 @@ bool SQLCompiler::BuildClusterJob(SQLContext& ctx, Status& status) {  // NOLINT
                            vm::kBatchRequestMode == ctx.engine_mode;
     RunnerBuilder runner_builder(&ctx.nm, ctx.sql,
                                  ctx.is_cluster_optimized && is_request_mode,
+                                 ctx.batch_request_info.common_column_indices,
                                  ctx.batch_request_info.common_node_set);
     ctx.cluster_job = runner_builder.BuildClusterJob(ctx.physical_plan, status);
     return status.isOK();
@@ -537,7 +403,7 @@ bool SQLCompiler::Parse(SQLContext& ctx,
     return true;
 }
 bool SQLCompiler::ResolvePlanFnAddress(vm::PhysicalOpNode* node,
-                                       std::unique_ptr<FeSQLJIT>& jit,
+                                       std::unique_ptr<FeSQLJITWrapper>& jit,
                                        Status& status) {
     if (nullptr == node) {
         status.msg = "fail to resolve project fn address: node is null";
@@ -602,18 +468,15 @@ bool SQLCompiler::ResolvePlanFnAddress(vm::PhysicalOpNode* node,
     if (!node->GetFnInfos().empty()) {
         for (auto info_ptr : node->GetFnInfos()) {
             if (!info_ptr->fn_name().empty()) {
-                DLOG(INFO) << "start to resolve fn address "
+                DLOG(INFO) << "Start to resolve fn address "
                            << info_ptr->fn_name();
-                ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
-                    jit->lookup(info_ptr->fn_name()));
-                ::llvm::Error e = symbol.takeError();
-                if (e) {
-                    LOG(WARNING) << "fail to resolve fn address "
-                                 << info_ptr->fn_name() << " not found in jit";
-                    return false;
+                auto addr = jit->FindFunction(info_ptr->fn_name());
+                if (addr == nullptr) {
+                    LOG(WARNING) << "Fail to find jit function "
+                                 << info_ptr->fn_name() << " for node\n"
+                                 << *node;
                 }
-                const_cast<FnInfo*>(info_ptr)->SetFnPtr(
-                    reinterpret_cast<int8_t*>(symbol->getAddress()));
+                const_cast<FnInfo*>(info_ptr)->SetFnPtr(addr);
             }
         }
     }

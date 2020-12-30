@@ -17,6 +17,7 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "udf/udf_registry.h"
+#include "vm/jit_wrapper.h"
 
 using ::fesql::common::kCodegenError;
 
@@ -272,16 +273,13 @@ Status UDFLibrary::ResolveFunction(const std::string& name,
     return this->ResolveFunction(name, &ctx, result);
 }
 
-void UDFLibrary::AddExternalSymbol(const std::string& name, void* addr) {
+void UDFLibrary::AddExternalFunction(const std::string& name, void* addr) {
     external_symbols_.insert(std::make_pair(name, addr));
 }
 
-void UDFLibrary::InitJITSymbols(llvm::orc::LLJIT* jit_ptr) {
-    ::llvm::orc::MangleAndInterner mi(jit_ptr->getExecutionSession(),
-                                      jit_ptr->getDataLayout());
+void UDFLibrary::InitJITSymbols(vm::FeSQLJITWrapper* jit_ptr) {
     for (auto& pair : external_symbols_) {
-        fesql::vm::FeSQLJIT::AddSymbol(jit_ptr->getMainJITDylib(), mi,
-                                       pair.first, pair.second);
+        jit_ptr->AddExternalFunction(pair.first, pair.second);
     }
 }
 

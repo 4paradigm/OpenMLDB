@@ -227,8 +227,9 @@ class ClusterOptimized : public TransformUpPysicalPass {
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
-    bool SimplifyJoinLeftInput(PhysicalRequestJoinNode* join_op,
-                               const Join& join, PhysicalOpNode** out);
+    bool SimplifyJoinLeftInput(PhysicalOpNode* join_op, const Join& join,
+                               const SchemasContext* joined_schema_ctx,
+                               PhysicalOpNode** out);
 };
 
 typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
@@ -409,7 +410,8 @@ class RequestModeTransformer : public BatchModeTransformer {
                            ::llvm::Module* module, udf::UDFLibrary* library,
                            const std::set<size_t>& common_column_indices,
                            const bool performance_sensitive,
-                           const bool cluster_optimized);
+                           const bool cluster_optimized,
+                           const bool enable_batch_request_opt);
     virtual ~RequestModeTransformer();
 
     const Schema& request_schema() const { return request_schema_; }
@@ -432,6 +434,7 @@ class RequestModeTransformer : public BatchModeTransformer {
                                    PhysicalOpNode** output);
 
  private:
+    bool enable_batch_request_opt_;
     vm::Schema request_schema_;
     std::string request_name_;
     BatchRequestInfo batch_request_info_;

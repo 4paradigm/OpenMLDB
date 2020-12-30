@@ -100,10 +100,14 @@ using fesql::node::DataType;
 %ignore fesql::vm::RowHandler;
 %ignore fesql::vm::TableHandler;
 %ignore fesql::vm::PartitionHandler;
+%ignore fesql::vm::ErrorRowHandler;
+%ignore fesql::vm::ErrorTableHandler;
 %ignore fesql::vm::SimpleCatalogTableHandler;
 %ignore fesql::vm::DataHandlerList;
 %ignore fesql::vm::DataHandlerVector;
 %ignore fesql::vm::DataHandlerRepeater;
+%ignore fesql::vm::LocalTabletTableHandler;
+%ignore fesql::vm::AysncRowHandler;
 %ignore DataTypeName; // TODO: Geneerate duplicated class
 %ignore fesql::vm::FeSQLJITWrapper::AddModule;
 

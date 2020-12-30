@@ -44,10 +44,16 @@ fesql_add_src_and_tests(passes)
 get_property(SRC_FILE_LIST_STR GLOBAL PROPERTY PROP_SRC_FILE_LIST)
 string(REPLACE " " ";" SRC_FILE_LIST ${SRC_FILE_LIST_STR})
 
+# compile llvm extension sources without rtti
+if (LLVM_EXT_ENABLE)
+    add_subdirectory(llvm_ext)
+    add_definitions(-DLLVM_EXT_ENABLE)
+endif()
+
 # fesql core library
 add_library(fesql_core STATIC ${SRC_FILE_LIST} $<TARGET_OBJECTS:fesql_proto> $<TARGET_OBJECTS:fesql_parser>)
 target_link_libraries(fesql_core
-    ${yaml_libs} ${LLVM_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs})
+    ${yaml_libs} ${LLVM_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB})
 
 # fesql core unittests
 if (TESTING_ENABLE)

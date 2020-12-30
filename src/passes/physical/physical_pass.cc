@@ -284,7 +284,7 @@ Status BuildColumnReplacement(const node::ExprNode* expr,
 
             // (2) pick the column at the same index
             size_t total_idx = origin_col_idx;
-            for (size_t i = 0; i < origin_col_idx; ++i) {
+            for (size_t i = 0; i < origin_schema_idx; ++i) {
                 total_idx += origin_schema->GetSchemaSource(i)->size();
             }
             bool index_is_valid = false;

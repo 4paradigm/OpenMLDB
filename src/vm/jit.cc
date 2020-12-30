@@ -23,6 +23,7 @@ extern "C" {
 #include <cstdlib>
 }
 #include "glog/logging.h"
+#include "llvm/ExecutionEngine/JITEventListener.h"
 #include "llvm/ExecutionEngine/JITSymbol.h"
 #include "llvm/ExecutionEngine/Orc/CompileUtils.h"
 #include "llvm/ExecutionEngine/Orc/Core.h"
@@ -35,10 +36,14 @@ extern "C" {
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Utils.h"
+#ifdef LLVM_EXT_ENABLE
+#include "llvm_ext/symbol_resolve.h"
+#endif
 
 namespace fesql {
 namespace vm {
@@ -48,13 +53,8 @@ FeSQLJIT::FeSQLJIT(::llvm::orc::LLJITBuilderState& s, ::llvm::Error& e)
     : LLJIT(s, e) {}
 FeSQLJIT::~FeSQLJIT() {}
 
-::llvm::Error FeSQLJIT::AddIRModule(::llvm::orc::JITDylib& jd,  // NOLINT
-                                    ::llvm::orc::ThreadSafeModule tsm,
-                                    ::llvm::orc::VModuleKey key) {
-    if (auto err = applyDataLayout(*tsm.getModule())) return err;
-    DLOG(INFO) << "add a module with key " << key << " with ins cnt "
-               << tsm.getModule()->getInstructionCount();
-    ::llvm::legacy::FunctionPassManager fpm(tsm.getModule());
+static void RunDefaultOptPasses(::llvm::Module* m) {
+    ::llvm::legacy::FunctionPassManager fpm(m);
     // Add some optimizations.
     fpm.add(::llvm::createInstructionCombiningPass());
     fpm.add(::llvm::createReassociatePass());
@@ -62,11 +62,18 @@ FeSQLJIT::~FeSQLJIT() {}
     fpm.add(::llvm::createCFGSimplificationPass());
     fpm.add(::llvm::createPromoteMemoryToRegisterPass());
     fpm.doInitialization();
-    ::llvm::Module::iterator it;
-    ::llvm::Module::iterator end = tsm.getModule()->end();
-    for (it = tsm.getModule()->begin(); it != end; ++it) {
+    for (auto it = m->begin(); it != m->end(); ++it) {
         fpm.run(*it);
     }
+}
+
+::llvm::Error FeSQLJIT::AddIRModule(::llvm::orc::JITDylib& jd,  // NOLINT
+                                    ::llvm::orc::ThreadSafeModule tsm,
+                                    ::llvm::orc::VModuleKey key) {
+    if (auto err = applyDataLayout(*tsm.getModule())) return err;
+    DLOG(INFO) << "add a module with key " << key << " with ins cnt "
+               << tsm.getModule()->getInstructionCount();
+    RunDefaultOptPasses(tsm.getModule());
     DLOG(INFO) << "after opt with ins cnt "
                << tsm.getModule()->getInstructionCount();
     return CompileLayer->add(jd, std::move(tsm), key);
@@ -76,22 +83,9 @@ bool FeSQLJIT::OptModule(::llvm::Module* m) {
     if (auto err = applyDataLayout(*m)) {
         return false;
     }
-    DLOG(INFO) << "before opt with ins cnt " << m->getInstructionCount();
-    ::llvm::legacy::FunctionPassManager fpm(m);
-    fpm.add(::llvm::createPromoteMemoryToRegisterPass());
-    // Add some optimizations.
-    fpm.add(::llvm::createInstructionCombiningPass());
-    fpm.add(::llvm::createReassociatePass());
-    fpm.add(::llvm::createGVNPass());
-    fpm.add(::llvm::createCFGSimplificationPass());
-    fpm.add(::llvm::createPromoteMemoryToRegisterPass());
-    fpm.doInitialization();
-    ::llvm::Module::iterator it;
-    ::llvm::Module::iterator end = m->end();
-    for (it = m->begin(); it != end; ++it) {
-        fpm.run(*it);
-    }
-    DLOG(INFO) << "after opt with ins cnt " << m->getInstructionCount();
+    DLOG(INFO) << "Module before opt:\n" << LLVMToString(*m);
+    RunDefaultOptPasses(m);
+    DLOG(INFO) << "Module after opt:\n" << LLVMToString(*m);
     return true;
 }
 
@@ -151,15 +145,189 @@ bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd,
         LOG(WARNING) << "fail to add symbol " << fn_name;
         return false;
     } else {
-        DLOG(INFO) << "add fn symbol " << fn_name << " done";
         return true;
     }
 }
 
-bool InitBasicSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
-                     ::llvm::orc::MangleAndInterner& mi) {  // NOLINT
+bool FeSQLLLJITWrapper::Init() {
+    DLOG(INFO) << "Start to initialize fesql jit";
+    auto jit =
+        ::llvm::Expected<std::unique_ptr<FeSQLJIT>>(FeSQLJITBuilder().create());
+    {
+        ::llvm::Error e = jit.takeError();
+        if (e) {
+            LOG(WARNING) << "fail to init jit let";
+            return false;
+        }
+    }
+    this->jit_ = std::move(jit.get());
+    jit_->Init();
+
+    this->mi_ = std::unique_ptr<::llvm::orc::MangleAndInterner>(
+        new ::llvm::orc::MangleAndInterner(jit_->getExecutionSession(),
+                                           jit_->getDataLayout()));
     return true;
 }
+
+bool FeSQLLLJITWrapper::OptModule(::llvm::Module* module) {
+    return jit_->OptModule(module);
+}
+
+bool FeSQLLLJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
+                                  std::unique_ptr<llvm::LLVMContext> llvm_ctx) {
+    ::llvm::Error e = jit_->addIRModule(
+        ::llvm::orc::ThreadSafeModule(std::move(module), std::move(llvm_ctx)));
+    if (e) {
+        LOG(WARNING) << "fail to add ir module: " << LLVMToString(e);
+        return false;
+    }
+    return true;
+}
+
+RawPtrHandle FeSQLLLJITWrapper::FindFunction(const std::string& funcname) {
+    if (funcname == "") {
+        return 0;
+    }
+    ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(jit_->lookup(funcname));
+    ::llvm::Error e = symbol.takeError();
+    if (e) {
+        LOG(WARNING) << "fail to resolve fn address of" << funcname << ": "
+                     << LLVMToString(e);
+        return 0;
+    }
+    return reinterpret_cast<const int8_t*>(symbol->getAddress());
+}
+
+bool FeSQLLLJITWrapper::AddExternalFunction(const std::string& name,
+                                            void* addr) {
+    return fesql::vm::FeSQLJIT::AddSymbol(jit_->getMainJITDylib(), *mi_, name,
+                                          addr);
+}
+
+#ifdef LLVM_EXT_ENABLE
+bool FeSQLMCJITWrapper::Init() { return true; }
+
+bool FeSQLMCJITWrapper::OptModule(::llvm::Module* module) {
+    DLOG(INFO) << "Module before opt:\n" << LLVMToString(*module);
+    RunDefaultOptPasses(module);
+    DLOG(INFO) << "Module after opt:\n" << LLVMToString(*module);
+    return true;
+}
+
+bool FeSQLMCJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
+                                  std::unique_ptr<llvm::LLVMContext> llvm_ctx) {
+    if (llvm::verifyModule(*module, &llvm::errs(), nullptr)) {
+        // note: destruct module before ctx
+        module = nullptr;
+        llvm_ctx = nullptr;
+        return false;
+    }
+    if (execution_engine_ == nullptr) {
+        const ::llvm::DataLayout& module_layout = module->getDataLayout();
+        llvm::EngineBuilder engine_builder(std::move(module));
+
+        auto resolver = new FeSQLSymbolResolver(
+            module_layout.isDefault()
+                ? engine_builder.selectTarget()->createDataLayout()
+                : module_layout);
+
+        execution_engine_ =
+            engine_builder.setEngineKind(llvm::EngineKind::JIT)
+                .setErrorStr(&err_str_)
+                .setVerifyModules(true)
+                .setOptLevel(::llvm::CodeGenOpt::Level::Default)
+                .setSymbolResolver(
+                    std::unique_ptr<::llvm::LegacyJITSymbolResolver>(
+                        ::llvm::cast<::llvm::LegacyJITSymbolResolver>(
+                            resolver)))
+                .create();
+        if (execution_engine_ == nullptr || !err_str_.empty()) {
+            LOG(WARNING) << "Create mcjit execution engine failed, "
+                         << err_str_;
+            return false;
+        }
+        for (auto& pair : extern_functions_) {
+            resolver->addSymbol(pair.first, pair.second);
+        }
+    } else {
+        execution_engine_->addModule(std::move(module));
+    }
+    if (jit_options_.is_enable_vtune()) {
+        auto listener = ::llvm::JITEventListener::createIntelJITEventListener();
+        if (listener == nullptr) {
+            LOG(WARNING) << "Intel jit events is not enabled";
+        } else {
+            execution_engine_->RegisterJITEventListener(listener);
+        }
+    }
+    if (jit_options_.is_enable_gdb()) {
+        auto listener =
+            ::llvm::JITEventListener::createGDBRegistrationListener();
+        if (listener == nullptr) {
+            LOG(WARNING) << "GDB jit events is not enabled";
+        } else {
+#if LLVM_VERSION_MAJOR != 9
+            // register duplicate gdb listener LLVM 9 is illegal
+            // and  mcjit register it automatically in this version.
+            // execution_engine_->RegisterJITEventListener(listener);
+            LOG(WARNING) << "Use LLVM major version=" << LLVM_VERSION_MAJOR
+                         << ", gdb event support may not be automatic";
+#endif
+        }
+    }
+    if (jit_options_.is_enable_perf()) {
+        auto listener = ::llvm::JITEventListener::createPerfJITEventListener();
+        if (listener == nullptr) {
+            LOG(WARNING) << "Perf jit events is not enabled";
+        } else {
+            execution_engine_->RegisterJITEventListener(listener);
+        }
+    }
+    execution_engine_->finalizeObject();
+    return CheckError();
+}
+
+bool FeSQLMCJITWrapper::AddExternalFunction(const std::string& name,
+                                            void* addr) {
+    if (execution_engine_ != nullptr) {
+        LOG(WARNING)
+            << "Can not register external symbol after engine initialized: "
+            << name;
+        return false;
+    }
+    extern_functions_[name] = addr;
+    return true;
+}
+
+fesql::vm::RawPtrHandle FeSQLMCJITWrapper::FindFunction(
+    const std::string& funcname) {
+    if (!CheckInitialized()) {
+        return nullptr;
+    }
+    auto addr = execution_engine_->getFunctionAddress(funcname);
+    if (!CheckError()) {
+        return nullptr;
+    }
+    return reinterpret_cast<int8_t*>(addr);
+}
+
+bool FeSQLMCJITWrapper::CheckError() {
+    if (!err_str_.empty()) {
+        LOG(WARNING) << "Detect jit error: " << err_str_;
+        err_str_.clear();
+        return false;
+    }
+    return true;
+}
+
+bool FeSQLMCJITWrapper::CheckInitialized() const {
+    if (execution_engine_ == nullptr) {
+        LOG(WARNING) << "JIT engine is not initialized";
+        return false;
+    }
+    return true;
+}
+#endif
 
 }  // namespace vm
 }  // namespace fesql
