@@ -1408,6 +1408,19 @@ TEST_F(PlannerTest, CreateSpParseTest) {
     int ret = parser_->parse(sql, parser_trees, manager_, status);
     ASSERT_EQ(0, ret);
 
+    sql = "show procedure status;";
+    ret = parser_->parse(sql, parser_trees, manager_, status);
+    ASSERT_EQ(0, ret);
+    sql = "show procedure;";
+    ret = parser_->parse(sql, parser_trees, manager_, status);
+    ASSERT_EQ(1, ret);
+    sql = "show create procedure test.sp1;";
+    ret = parser_->parse(sql, parser_trees, manager_, status);
+    ASSERT_EQ(0, ret);
+    sql = "show create procedure sp1;";
+    ret = parser_->parse(sql, parser_trees, manager_, status);
+    ASSERT_EQ(0, ret);
+
     sql =
         "create procedure sp1(const c1 string, const c3 int, c4 bigint,"
         "c5 float, c6 double, c7 timestamp, c8 date) "
