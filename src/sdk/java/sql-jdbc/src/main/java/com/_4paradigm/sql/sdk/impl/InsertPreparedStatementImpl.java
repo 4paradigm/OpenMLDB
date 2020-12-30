@@ -1,6 +1,7 @@
 package com._4paradigm.sql.sdk.impl;
 
 import com._4paradigm.sql.*;
+import com._4paradigm.sql.jdbc.SQLInsertMetaData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -380,7 +381,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     @Override
     @Deprecated
     public ResultSetMetaData getMetaData() throws SQLException {
-        throw new SQLException("current do not support this method");
+        return new SQLInsertMetaData(this.currentDatasType, this.currentSchema, this.scehmaIdxs);
     }
 
     @Override

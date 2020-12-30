@@ -12,6 +12,7 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
@@ -92,6 +93,7 @@ public class FESQLInsertRowBenchmark {
             row.AppendString(s1);
             row.AppendInt64(System.currentTimeMillis());
         }
+        PreparedStatement p = executor.getInsertPreparedStmt("", "");
 
         executor.executeInsert(db, format, rows);
         //counter ++;
