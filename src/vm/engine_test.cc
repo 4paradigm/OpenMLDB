@@ -559,6 +559,48 @@ TEST_F(EngineTest, RouterTest) {
     }
 }
 
+TEST_F(EngineTest, ExplainBatchRequestTest) {
+    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
+    fesql::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_name("t1");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col1");
+    index->set_second_key("col5");
+    index = table_def.add_indexes();
+    index->set_name("index2");
+    index->add_first_keys("col2");
+    index->set_second_key("col5");
+    auto catalog = BuildCommonCatalog(table_def, table);
+
+    std::set<size_t> common_column_indices({2, 3, 5});
+    std::string sql =
+        "select col0, col1, col2, sum(col1) over w1, \n"
+        "sum(col2) over w1, sum(col5) over w1 from t1 \n"
+        "window w1 as (partition by col2 \n"
+        "order by col5 rows between 3 preceding and current row);";
+    EngineOptions options;
+    options.set_compile_only(true);
+    options.set_performance_sensitive(false);
+    Engine engine(catalog, options);
+    ExplainOutput explain_output;
+    base::Status status;
+    ASSERT_TRUE(engine.Explain(sql, "db", kBatchRequestMode,
+                               common_column_indices, &explain_output,
+                               &status));
+    ASSERT_TRUE(status.isOK()) << status;
+    auto& output_schema = explain_output.output_schema;
+    ASSERT_EQ(false, output_schema.Get(0).is_constant());
+    ASSERT_EQ(false, output_schema.Get(1).is_constant());
+    ASSERT_EQ(true, output_schema.Get(2).is_constant());
+    ASSERT_EQ(false, output_schema.Get(3).is_constant());
+    ASSERT_EQ(true, output_schema.Get(4).is_constant());
+    ASSERT_EQ(true, output_schema.Get(5).is_constant());
+}
+
 }  // namespace vm
 }  // namespace fesql
 
