@@ -1,7 +1,7 @@
 debugs: []
 cases:
   - id: 0
-    desc: BM_SimpleLastJoin4Right, 同时拼接2张副表
+    desc: BM_SimpleLastJoin2Right, 同时拼接2张副表
     mode: batch-unsupport
     inputs:
       -

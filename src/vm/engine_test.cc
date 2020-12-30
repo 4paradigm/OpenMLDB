@@ -153,7 +153,7 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     EngineTestClusterRequestBenchmarkCase, EngineTest,
     testing::ValuesIn(
-        InitCases("/cases/integration/cluster/request_benchmark_case.yaml")));
+        InitCases("/cases/benchmark/request_benchmark.yaml")));
 
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();

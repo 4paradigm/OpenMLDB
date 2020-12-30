@@ -751,6 +751,7 @@ void EngineBenchmarkOnCase(const std::string& yaml_path,
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     std::vector<SQLCase> cases;
+    LOG(INFO) << "BENCHMARK LOAD SQL CASE";
     SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
                                     yaml_path, cases);
     const SQLCase* target_case = nullptr;
@@ -762,20 +763,35 @@ void EngineBenchmarkOnCase(const std::string& yaml_path,
     }
     if (target_case == nullptr) {
         LOG(WARNING) << "Fail to find case #" << case_id << " in " << yaml_path;
+        state->SkipWithError("BENCHMARK CASE LOAD FAIL: fail to find case");
         return;
     }
+    LOG(INFO) << "BENCHMARK INIT Engine Runner";
     std::unique_ptr<vm::EngineTestRunner> engine_runner;
     if (engine_mode == vm::kBatchMode) {
         engine_runner = std::unique_ptr<vm::BatchEngineTestRunner>(
             new vm::BatchEngineTestRunner(*target_case, engine_options));
     } else if (engine_mode == vm::kRequestMode) {
-        LOG(WARNING) << "Request mode case can not benchmark now";
-        return;
+        engine_runner = std::unique_ptr<vm::RequestEngineTestRunner>(
+            new vm::RequestEngineTestRunner(*target_case, engine_options));
     } else {
         engine_runner = std::unique_ptr<vm::BatchRequestEngineTestRunner>(
             new vm::BatchRequestEngineTestRunner(
                 *target_case, engine_options,
                 target_case->batch_request().common_column_indices_));
+    }
+    if (SQLCase::IS_DEBUG()) {
+        LOG(INFO) << "BENCHMARK CASE TEST: BEGIN";
+        for (auto _ : *state) {
+            engine_runner->RunCheck();
+            if (engine_runner->return_code() == ENGINE_TEST_RET_SUCCESS) {
+                state->SkipWithError("BENCHMARK CASE TEST: OK");
+            } else {
+                state->SkipWithError("BENCHMARK CASE TEST: FAIL");
+            }
+            break;
+        }
+        return;
     }
     base::Status status = engine_runner->Compile();
     if (!status.isOK()) {
