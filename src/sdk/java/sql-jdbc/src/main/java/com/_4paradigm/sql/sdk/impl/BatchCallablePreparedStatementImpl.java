@@ -3,13 +3,11 @@ package com._4paradigm.sql.sdk.impl;
 import com._4paradigm.sql.*;
 import com._4paradigm.sql.jdbc.CallablePreparedStatement;
 import com._4paradigm.sql.jdbc.SQLResultSet;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
 public class BatchCallablePreparedStatementImpl extends CallablePreparedStatement {
-    private static final Logger logger = LoggerFactory.getLogger(BatchCallablePreparedStatementImpl.class);
     private ColumnIndicesSet commonColumnIndices;
     private SQLRequestRowBatch currentRowBatch;
 
@@ -45,7 +43,6 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         Status status = new Status();
         QueryFuture queryFuture = router.CallSQLBatchRequestProcedure(db, spName, unit.toMillis(timeOut), currentRowBatch, status);
         if (status.getCode() != 0 || queryFuture == null) {
-            logger.error("call procedure failed: {}", status.getMsg());
             throw new SQLException("call procedure fail, msg: " + status.getMsg());
         }
         return new com._4paradigm.sql.sdk.QueryFuture(queryFuture);
@@ -61,7 +58,6 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         Status status = new Status();
         this.currentRow = router.GetRequestRow(db, currentSql, status);
         if (status.getCode() != 0 || this.currentRow == null) {
-            logger.error("getRequestRow failed: {}", status.getMsg());
             throw new SQLException("getRequestRow failed!, msg: " + status.getMsg());
         }
         status.delete();
