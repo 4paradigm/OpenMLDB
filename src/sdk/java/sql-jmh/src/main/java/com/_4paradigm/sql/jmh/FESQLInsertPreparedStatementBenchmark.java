@@ -39,6 +39,7 @@ public class FESQLInsertPreparedStatementBenchmark {
     private String format = "insert into perf values(?, ?, 100.0, 200.0, 'hello world');";
     private String format2 = "insert into %s values('%s', %d, 100.0, 200.0, 'hello world');";
     private long counter = 0;
+
     public FESQLInsertPreparedStatementBenchmark() {
         SdkOption sdkOption = new SdkOption();
         sdkOption.setSessionTimeout(30000);
@@ -66,7 +67,7 @@ public class FESQLInsertPreparedStatementBenchmark {
         if (!setupOk) {
             return;
         }
-        for (int i = 0; i < recordSize/100; i++) {
+        for (int i = 0; i < recordSize / 100; i++) {
             String sql = String.format(format2, "perf2", "pkxxx" + i, System.currentTimeMillis());
             executor.executeInsert(db, sql);
         }
@@ -88,16 +89,16 @@ public class FESQLInsertPreparedStatementBenchmark {
          */
         long idx = counter;
         PreparedStatement impl = null;
-        for (int i = 0; i < 10; i++) {
-            String s1 = "pkxxx" + idx + i;
-            try {
-                impl = executor.getInsertPreparedStmt(db, format);
+        try {
+            impl = executor.getInsertPreparedStmt(db, format);
+            for (int i = 0; i < 10; i++) {
+                String s1 = "pkxxx" + idx + i;
                 impl.setString(1, s1);
                 impl.setLong(2, System.currentTimeMillis());
                 impl.addBatch();
-            } catch (Exception e) {
-                e.printStackTrace();
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         try {
             impl.executeBatch();
