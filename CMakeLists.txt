@@ -29,17 +29,36 @@ set(FESQL_VERSION_MEDIUM 1)
 set(FESQL_VERSION_MINOR 0)
 set(FESQL_VERSION_BUG 0)
 
+option(TESTING_ENABLE "Enable Test" ON)
+option(COVERAGE_ENABLE "Enable Coverage" ON)
+option(PYSDK_ENABLE "Enable pysdk" ON)
+option(JAVASDK_ENABLE "Enable javasdk" ON)
+option(EXPRIRMENT_ENABLE "Enable experiments" OFF)
+option(LLVM_EXT_ENABLE "Enable llvm ext sources" OFF)
+
 if (CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif ()
 message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
+
+# llvm dependency
+if (NOT DEFINED LLVM_DIR) 
+    set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
+endif()
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-llvm_map_components_to_libnames(LLVM_LIBS support core orcjit nativecodegen)
+
+if (LLVM_EXT_ENABLE)
+    llvm_map_components_to_libnames(LLVM_LIBS
+        support core orcjit nativecodegen
+        mcjit executionengine IntelJITEvents PerfJITEvents object)
+else() 
+    llvm_map_components_to_libnames(LLVM_LIBS
+        support core orcjit nativecodegen)
+endif()
 
 find_package(Threads)
 
@@ -70,11 +89,6 @@ configure_file(
         "${PROJECT_SOURCE_DIR}/src/fe_version.h"
 )
 
-option(TESTING_ENABLE "Enable Test" ON)
-option(COVERAGE_ENABLE "Enable Coverage" ON)
-option(PYSDK_ENABLE "Enable pysdk" ON)
-option(JAVASDK_ENABLE "Enable javasdk" ON)
-option(EXPRIRMENT_ENABLE "Enable experiments" OFF)
 if (TESTING_ENABLE)
     enable_testing()
 endif ()

@@ -1,0 +1,8 @@
+message(STATUS "Enable fesql llvm ext sources")
+add_library(fesql_llvm_ext STATIC symbol_resolve.cc)
+if (NOT ${LLVM_ENABLE_RTTI})
+    message(STATUS "Compile fesql llvm ext with -fno-rtti")
+    target_compile_options(fesql_llvm_ext PRIVATE -fno-rtti)
+endif()
+target_link_libraries(fesql_llvm_ext ${LLVM_LIBS})
+set(LLVM_EXT_LIB fesql_llvm_ext PARENT_SCOPE)

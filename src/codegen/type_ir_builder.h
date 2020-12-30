@@ -22,6 +22,7 @@
 #include <vector>
 #include "base/fe_status.h"
 #include "codec/fe_row_codec.h"
+#include "codegen/ir_base_builder.h"
 #include "node/node_enum.h"
 #include "node/sql_node.h"
 #include "node/type_node.h"
