@@ -10,4 +10,6 @@ rm -r java/fesql-native/target/classes
 tar cfz intermediate_cicd_artifact_${SUFFIX}.tar.gz \
 	./java/fesql-native \
 	./java/fesql-proto \
+	build/python/dist/*.whl \
 	build/src/fesql
+
