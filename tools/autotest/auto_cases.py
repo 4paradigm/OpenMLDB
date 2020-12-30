@@ -1,3 +1,4 @@
+import datetime
 import sys
 import os
 import argparse
@@ -10,8 +11,6 @@ import time
 import subprocess
 import multiprocessing
 import traceback
-
-
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s: %(message)s')
 
@@ -72,6 +71,7 @@ SQL_PRESERVED_NAMES = {
     "string",
 }
 
+current_time = datetime.datetime.now()
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -102,6 +102,9 @@ def parse_args():
     parser.add_argument("--use_alias_name", default="true", type=parse_bool,
                         help="Whether add \"AS ALIAS_NAME\" to expr")
 
+    parser.add_argument("--rows_between", default="0,1", help="""
+                        用于指定窗口的类型，1为rows，0为rows_range""")
+
     parser.add_argument("--rows_preceding", default=3, help="""
                         Specify window row preceding,
                         can be integer, integer range or integer list,
@@ -111,6 +114,29 @@ def parse_args():
                         Specify window row following,
                         can be integer, integer range or integer list,
                         -1 denote UNBOUND and 0 denote CURRENT""")
+
+    parser.add_argument("--rows_range_unit", default="0,s,m,h,d", help="""
+                        rows_range窗口的单位，0：表示无单位""")
+
+    parser.add_argument("--begin_time", default="0", help="""
+                        生成数据ts列的时间范围的开始时间,传入毫秒级时间戳，0表示1970-01-01""")
+
+    parser.add_argument("--end_time", default="0", help="""
+                        生成数据ts列的时间范围的结束时间,传入毫秒级时间戳，0表示当前时间""")
+
+    parser.add_argument("--gen_time_mode", default="auto", help="""
+                        生成时间的模式，提供三种模式：
+                        auto：根据时间窗口的大小扩展2倍生成时间，例如时间窗口从6s前到2s前，则生成从12s前到0s前的时间，
+                            如果是rows窗口，则根据be生成时间
+                        be：根据执行的begin和end来生成时间
+                        自己指定时间范围：例如 1d，生成1天内的时间，
+                            目前支持的时间范围：S 毫秒，s 秒，m 分，h 小时，d 天""")
+
+    parser.add_argument("--auto_time_multiple", default="2", help="""
+                        根据窗口自动生成time时，根据窗口大小扩展的倍数，默认为2，为1时生成的时间均在窗口内""")
+
+    parser.add_argument("--ts_type", default="0,1", help="""
+                        ts列的类型，1表示timestamp 0表示bigint 默认随机重timestamp和bigint中随机选一个""")
 
     parser.add_argument("--prob_sample_exist_column", default=0.4, type=float,
                         help="Probability weight to sample an existing column")
@@ -138,7 +164,8 @@ def parse_args():
                         help="Show udf summary information")
     parser.add_argument("--max_cases", default=None, type=int,
                         help="Maximum num cases to run, default no limit")
-
+    parser.add_argument("--yaml_count", default=10, type=int,
+                        help="生成yaml的数量默认为10")
     return parser.parse_args(sys.argv[1:])
 
 
@@ -173,6 +200,13 @@ def parse_range(range_str):
         end += 1
     return int(content[0]), int(content[1])
 
+def sample_string_config(spec:str):
+    items = spec.split(",")
+    items = [_.strip() for _ in items if _.strip() != ""]
+    res = random.choice(items)
+    if res=="0":
+        res = ""
+    return res
 
 def sample_integer_config(spec):
     """
@@ -210,26 +244,32 @@ class UDFDesc:
 
 
 class UDFPool:
+    '''
+        UDFPool 初始化方法
+        :param udf_config_file: yml文件路径
+        :param args: 脚本传入的参数列表，Namespace
+        '''
     def __init__(self, udf_config_file, args):
         self.args = args
-
+        # 根据用户输入的参数 获取需要进行测试的函数名列表
         filter_names = None
         if args.udf_filter is not None:
             filter_names = frozenset(args.udf_filter.split(","))
 
         self.udfs = []
         self.udafs = []
+        # 单行函数字典 key为函数名，value为list 是该函数名下为udf的所有函数声明
         self.udfs_dict = {}
+        # 聚合函数字典 key为函数名，value为list 是该函数名下为udaf的所有函数声明
         self.udafs_dict = {}
         self.picked_functions = []
-
+        # 函数唯一id 与 UDFDesc 对应字典
         self.udf_by_unique_id = {}
         self.history_failures = []
         self.history_successes = []
 
         with open(os.path.join(udf_config_file)) as yaml_file:
             udf_defs = yaml.load(yaml_file.read())
-
         unique_id_counter = 0
         for name in udf_defs:
             if filter_names is not None and name not in filter_names:
@@ -241,7 +281,7 @@ class UDFPool:
                 for sig in item["signatures"]:
                     arg_types = sig["arg_types"]
                     return_type = sig["return_type"]
-
+                    # row类型是内部类型，sql里不支持
                     if any([_.endswith("row") for _ in arg_types]):
                         continue
 
@@ -286,6 +326,13 @@ class UDFPool:
         return cands
 
     def sample_function(self, is_udaf=None, expect_dtype=None):
+        '''
+        挑选一个函数
+        :param is_udaf: 是否是udaf
+        :param expect_dtype: 期望的函数返回类型
+        :return: UDFDesc
+        '''
+        # 创建一个函数 用来判断返回类型是否符合预期
         filter_func = lambda x: expect_dtype is None or x.return_type == expect_dtype
         if is_udaf:
             cands = self.filter_functions(self.udafs, filter_func)
@@ -299,6 +346,7 @@ class UDFPool:
             raise ValueError("No function found for type: " + expect_dtype)
 
         strategy = self.args.udf_error_strategy
+        # 根据错误策略选择函数，如果某一个函数出现了错误，减少函数的概率
         if strategy is None:
             picked = random.choice(cands)
         else:
@@ -334,6 +382,12 @@ class UDFPool:
 
 class ColumnInfo:
     def __init__(self, name, dtype, nullable=True):
+        '''
+        ColumnInfo 初始化方法
+        :param name: 列名
+        :param dtype: 列类型
+        :param nullable: 是否为null，默认可以为null
+        '''
         self.name = name
         self.dtype = dtype
         self.nullable = nullable
@@ -348,6 +402,10 @@ class ColumnsPool:
         self.normal_columns = []
     
     def get_all_columns(self):
+        '''
+        获取所有列
+        :return: ColumnInfo的list
+        '''
         res = []
         if self.index_column is not None:
             res.append(self.index_column)
@@ -357,9 +415,22 @@ class ColumnsPool:
         return res
         
     def set_unique_id(self, name, dtype):
+        '''
+        设置索引列
+        :param name: "id"
+        :param dtype: "int64"
+        :return: 无返回
+        '''
         self.index_column = ColumnInfo(name, dtype, nullable=False)
 
     def add_order_column(self, name, dtype, nullable=False):
+        '''
+        增加排序列
+        :param name: 列名
+        :param dtype: 类型
+        :param nullable: 是否为null，默认不为空
+        :return:
+        '''
         column = ColumnInfo(name, dtype, nullable=nullable)
         self.order_columns.append(column)
         return column
@@ -371,6 +442,11 @@ class ColumnsPool:
 
     @staticmethod
     def sample_index(p):
+        '''
+        获取落在某一个概率中的 索引位置
+        :param p:
+        :return:
+        '''
         weight = sum(p)
         p = [_ / weight for _ in p]
         samples = np.random.multinomial(1, p)
@@ -378,14 +454,27 @@ class ColumnsPool:
 
     @staticmethod
     def do_create_new_column(prefix, cands, dtype, nullable):
+        '''
+        创建一个新的列
+        :param prefix: 前缀
+        :param cands: 列的list
+        :param dtype: 列类型
+        :param nullable: 是否为null
+        :return:
+        '''
+        #如果类型为空就从pk类型中选择一个
         if dtype is None:
             dtype = random.choice(PRIMITIVE_TYPES)
+        #如果是 类型的list 就从list中选择一个
         elif isinstance(dtype, list) or isinstance(dtype, set):
             dtype = random.choice(dtype)
+        #如果nullable 不填，默认为true
         if nullable is None:
             nullable = True
+        #生成列名
         name = prefix + "_" + str(len(cands)) + "_" + str(dtype)
         column = ColumnInfo(name, dtype=dtype, nullable=nullable)
+        # 生成的列添加到集合中
         cands.append(column)
         return column
 
@@ -394,6 +483,16 @@ class ColumnsPool:
                          dtype=None,
                          nullable=None,
                          allow_const=False):
+        '''
+        生成一个列样本
+        :param prefix:
+        :param column_list:
+        :param downward:
+        :param dtype:
+        :param nullable:
+        :param allow_const:
+        :return:
+        '''
         # probabilities for random generate leaf expression
         prob_use_existing = self.args.prob_sample_exist_column
         prob_use_new = self.args.prob_sample_new_column
@@ -408,9 +507,14 @@ class ColumnsPool:
             probs.append(prob_use_constant)
 
         idx = self.sample_index(probs)
-
+        #idx==0 表示 是prob_use_existing
         if idx == 0:
             def is_compatible_column(c):
+                '''
+                判断采样出的列是否满足nullable和数据类型约束
+                :param c:
+                :return:
+                '''
                 if nullable is not None and c.nullable != nullable:
                     return False
                 elif dtype is not None:
@@ -422,6 +526,7 @@ class ColumnsPool:
                 return True
 
             candidates = list(filter(is_compatible_column, column_list))
+            #如果candidates为0，则创建一个列
             if len(candidates) == 0:
                 if downward:
                     return self.do_create_new_column(prefix, column_list, dtype, nullable)
@@ -432,9 +537,16 @@ class ColumnsPool:
         elif idx == 1 and downward:
             return self.do_create_new_column(prefix, column_list, dtype, nullable)
         else:
+            # 返回的是一个常量
             return gen_literal_const(dtype, nullable=False)
 
     def sample_partition_column(self, downward=True, nullable=False):
+        '''
+        pk样本
+        :param downward:
+        :param nullable:
+        :return:
+        '''
         return self.do_sample_column("pk", self.partition_columns,
                                      downward=downward,
                                      allow_const=False,
@@ -442,13 +554,29 @@ class ColumnsPool:
                                      nullable=nullable)
 
     def sample_order_column(self, downward=True, nullable=False):
+        '''
+        order样本
+        :param downward:
+        :param nullable:
+        :return:
+        '''
+        ts_type = sample_integer_config(self.args.ts_type)
+        order_type = VALID_ORDER_TYPES[ts_type]
         return self.do_sample_column("order", self.order_columns,
                                      downward=downward,
                                      allow_const=False,
-                                     dtype=VALID_ORDER_TYPES,
+                                     dtype=order_type,
                                      nullable=nullable)
 
     def sample_column(self, downward=True, dtype=None, nullable=None, allow_const=False):
+        '''
+        普通列样本
+        :param downward:
+        :param dtype:
+        :param nullable:
+        :param allow_const:
+        :return:
+        '''
         return self.do_sample_column("c", self.normal_columns,
                                      downward=downward,
                                      allow_const=allow_const,
@@ -457,31 +585,58 @@ class ColumnsPool:
 
 
 class WindowDesc:
-    def __init__(self, name, preceding, following, rows_between=True):
+    '''
+        定义WindowDesc，ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+        :param name: 窗口的名字
+        :param preceding:
+        :param following:
+        :param rows_between: 窗口类型 0 为RANGE 1为 ROWS
+        '''
+    def __init__(self, name, preceding, following, rows_between=True, rows_range_unit=""):
         self.name = name
         self.preceding = str(preceding)
         self.following = str(following)
         self.rows_between = rows_between
+        self.rows_range_unit = rows_range_unit
 
     def get_frame_def_string(self):
+        '''
+        获取定义窗口的字符串，暂不支持单位
+        :return: ROWS BETWEEN 3 PRECEDING AND CURRENT ROW
+                ROWS_RANGE BETWEEN
+        '''
         res = ""
         if self.rows_between:
             res += "ROWS BETWEEN "
         else:
-            res += "RANGE BETWEEN "
+            res += "ROWS_RANGE BETWEEN "
         if self.preceding.lower().startswith("current"):
             res += "CURRENT "
             # if self.rows_between:
             res += "ROW"
         else:
-            res += self.preceding + " PRECEDING"
+            if self.rows_between:
+                res += self.preceding + " PRECEDING"
+            else:
+                res += self.preceding + self.rows_range_unit + " PRECEDING"
         res += " AND "
         if self.following.lower().startswith("current"):
             res += "CURRENT "
             # if self.rows_between:
             res += "ROW"
         else:
-            res += self.following + " FOLLOWING"
+            # 判断如果 following > preceding 则进行重置，随机从0-preceding 生成一个数字
+            # if not self.preceding.lower().startswith("current"):
+            #     preceding = int(self.preceding)
+            #     following = int(self.following)
+            #     if following > preceding:
+            #         following = random.randint(0,preceding)
+            #         self.following=str(following)
+
+            if self.rows_between:
+                res += self.following + " PRECEDING"
+            else:
+                res += self.following + self.rows_range_unit + " PRECEDING"
         return res
 
 
@@ -533,10 +688,16 @@ def random_literal_string():
     upper_letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     digits = "0123456789"
     cands = lower_letters + upper_letters + digits
-    return "\"" + "".join(random.choice(cands) for _ in range(strlen)) + "\""
+    return "".join(random.choice(cands) for _ in range(strlen))
 
 
 def gen_literal_const(dtype, nullable):
+    '''
+    根据类型生成常量
+    :param dtype:
+    :param nullable:
+    :return:
+    '''
     if dtype is None:
         dtype = random.choice(PRIMITIVE_TYPES)
     if dtype == "bool":
@@ -568,6 +729,19 @@ def sample_expr(udf_pool, column_pool,
                 downward=True,
                 alias_name=None,
                 depth=1):
+    '''
+    生成表达式样本
+    :param udf_pool:
+    :param column_pool:
+    :param is_udaf:
+    :param expect_dtype:
+    :param over_window:
+    :param allow_const:
+    :param downward:
+    :param alias_name:
+    :param depth:
+    :return:
+    '''
 
     # generate leaf expression
     if depth <= 0:
@@ -728,20 +902,94 @@ def sample_double(nullable=True):
         return random.uniform(lower, upper)
 
 
-def sample_date(nullable=True):
-    res = sample_timestamp(nullable=nullable)
+def sample_date(args, nullable=True):
+    res = sample_timestamp(args, nullable=nullable)
     if res is not None:
-        res = time.strftime("%Y-%m-%d", time.localtime(res))
+        res = time.strftime("%Y-%m-%d", time.localtime(res/1000))
     return res
 
+def compute_pre_time(gen_time_mode:str):
+    '''
+    根据字符串计算当前时间之前的时间
+    :param gen_time_mode:
+    :return: 毫秒级时间戳，int
+    '''
+    time_unit = gen_time_mode[-1]
+    time_num = int(gen_time_mode[0:-1])
+    time_compute = {
+        'S':current_time-datetime.timedelta(milliseconds=time_num),
+        's':current_time-datetime.timedelta(seconds=time_num),
+        'm':current_time-datetime.timedelta(minutes=time_num),
+        'h':current_time-datetime.timedelta(hours=time_num),
+        'd':current_time-datetime.timedelta(days=time_num)
+    }
+    if time_unit not in time_compute:
+        raise Exception("不支持的时间单位")
+    pre_time=int(time_compute[time_unit].timestamp()*1000)
+    return pre_time
 
-def sample_timestamp(nullable=True):
+def gen_time_unit(gen_time_mode:str):
+    begin_time=compute_pre_time(gen_time_mode)
+    end_time=int(current_time.timestamp()*1000)
+    gen_time = random.randint(begin_time, end_time)
+    return gen_time
+
+def gen_time_be(args):
+    begin_time = int(args.begin_time)
+    end_time = int(args.end_time)
+    if end_time == 0:
+        end_time = int(current_time.timestamp()*1000)
+    gen_time = random.randint(begin_time, end_time)
+    return gen_time
+
+def gen_time_auto(w:WindowDesc,args):
+    # 0 ：时间窗口
+    multiple = int(args.auto_time_multiple)
+    if w.rows_between == 0:
+        rows_range_unit = w.rows_range_unit
+        if rows_range_unit == "":
+            rows_range_unit = "S"
+        if w.preceding.lower().startswith("current"):
+            begin_num = 0
+        else:
+            begin_num = int(w.preceding)*multiple
+        begin_time = compute_pre_time(str(begin_num)+rows_range_unit)
+        if w.following.lower().startswith("current"):
+            end_num = 0
+        else:
+            end_num = int(w.following)//multiple
+        end_time = compute_pre_time(str(end_num)+rows_range_unit)
+        gen_time = random.randint(begin_time, end_time)
+        return gen_time
+    else:
+        return gen_time_be(args)
+
+def sample_ts_timestamp(args,w_def:WindowDesc, nullable=True):
     if nullable:
         if random.randint(0, 3) == 0:
             return None
-    lower = int(time.mktime(time.strptime("2000-01-01", "%Y-%m-%d")))
-    upper = int(time.mktime(time.strptime("2020-01-01", "%Y-%m-%d")))
-    return random.randint(lower, upper)
+    gen_time_mode = args.gen_time_mode.strip()
+    if gen_time_mode == "auto":
+        return gen_time_auto(w_def,args)
+    elif gen_time_mode == "be":
+        return gen_time_be(args)
+    else:
+        return gen_time_unit(gen_time_mode)
+
+def sample_timestamp(args, nullable=True):
+    if nullable:
+        if random.randint(0, 3) == 0:
+            return None
+    # lower = int(time.mktime(time.strptime("2000-01-01", "%Y-%m-%d")))
+    # upper = int(time.mktime(time.strptime("2020-01-01", "%Y-%m-%d")))
+    # return random.randint(lower, upper)
+    return gen_time_be(args)
+
+def sample_ts_value(dtype, args, w_def:WindowDesc, nullable=True):
+    if dtype == "int64":
+        return sample_int64(nullable=nullable)
+    else:
+        return sample_ts_timestamp(args, w_def, nullable)
 
 
 def sample_string(nullable=True):
@@ -752,6 +1000,13 @@ def sample_string(nullable=True):
 
 
 def sample_window_def(name, args):
+    '''
+    得到WindowDesc
+    :param name: 窗口名字
+    :param args:
+    :return: WindowDesc
+    '''
+    # 根据规则随机生成一个整数，默认值为3
     preceding = sample_integer_config(args.rows_preceding)
     if preceding == 0:
         preceding = "CURRENT"
@@ -762,11 +1017,11 @@ def sample_window_def(name, args):
         following = "CURRENT"
     elif following == -1:
         following = "UNBOUNDED"
-    rows_between = random.randint(0, 1) == 0
-    return WindowDesc(name, preceding, following, rows_between=rows_between)
+    rows_between = sample_integer_config(args.rows_between)
+    rows_range_unit = sample_string_config(args.rows_range_unit)
+    return WindowDesc(name, preceding, following, rows_between=rows_between, rows_range_unit=rows_range_unit)
 
-
-def sample_value(dtype, nullable=True):
+def sample_value(dtype, args, nullable=True):
     if dtype == "bool":
         return sample_bool(nullable=nullable)
     elif dtype == "int16":
@@ -780,19 +1035,28 @@ def sample_value(dtype, nullable=True):
     elif dtype == "double":
         return sample_double(nullable=nullable)
     elif dtype == "date":
-        return sample_date(nullable=nullable)
+        return sample_date(args, nullable=nullable)
     elif dtype == "timestamp":
-        return sample_timestamp(nullable=nullable)
+        return sample_timestamp(args, nullable=nullable)
     elif dtype == "string":
         return sample_string(nullable=nullable)
     else:
         raise ValueError("Can not sample from dtype: " + str(dtype))
 
 
-def gen_simple_data(columns, args,
+def gen_simple_data(columns, args, w_def:WindowDesc,
                     index_column=None,
                     partition_columns=None,
                     order_columns=None):
+    '''
+    生成样本数据
+    :param columns:
+    :param args:
+    :param index_column:
+    :param partition_columns:
+    :param order_columns:
+    :return:
+    '''
     columns_dict = {}
     for idx, col in enumerate(columns):
         columns_dict[col.name] = idx
@@ -822,7 +1086,7 @@ def gen_simple_data(columns, args,
             group = []
             num_pk = sample_integer_config(args.num_pk)
             for _ in range(num_pk):
-                pk = sample_value(col.dtype, nullable=False)
+                pk = sample_value(col.dtype, args, nullable=False)
                 group.append(pk)
             pk_groups.append(group)
 
@@ -838,11 +1102,11 @@ def gen_simple_data(columns, args,
                 row[partition_idxs[k]] = pk_val
             for k in order_idxs:
                 order_col = columns[k]
-                order_val = sample_value(order_col.dtype, order_col.nullable)
+                order_val = sample_ts_value(order_col.dtype, args, w_def, order_col.nullable)
                 row[k] = order_val
             for k in normal_column_idxs:
                 normal_col = columns[k]
-                value = sample_value(normal_col.dtype, normal_col.nullable)
+                value = sample_value(normal_col.dtype, args, normal_col.nullable)
                 row[k] = value
             rows.append(row)
 
@@ -893,8 +1157,10 @@ def sample_window_project(input_name, input_columns,
 
     for i in range(expr_num):
         alias_name = None
+        #生成别名
         if args.use_alias_name:
             alias_name = window_def.name + "_out_" + str(i)
+        #生成一个新的表达式
         new_expr = sample_expr(udf_defs, input_columns,
                                is_udaf=True,
                                over_window=window_def.name,
@@ -941,11 +1207,11 @@ def gen_single_window_test(test_name, udf_pool, args):
     sql_string = window_query.text.strip() + ";"
 
     all_columns = input_columns.get_all_columns()
-    data = gen_simple_data(all_columns, args,
+    data = gen_simple_data(all_columns, args, window_def,
                            index_column=input_columns.index_column,
                            partition_columns=input_columns.partition_columns,
                            order_columns=input_columns.order_columns)
-
+    # 组装 yml
     input_table = {
         "columns": ["%s %s" % (c.name, c.dtype) for c in all_columns],
         "indexs": ["index1:%s:%s" % (
@@ -1034,6 +1300,7 @@ def worker_run(udf_pool, args, shared_states):
 
 
 def run(args):
+    # 加载yml文件 封装成UDFDesc 并进行分类 创建了 UDFPool
     udf_pool = UDFPool(args.udf_path, args)
     logging.info("Successfully load udf information from %s", args.udf_path)
 
@@ -1078,10 +1345,26 @@ def run(args):
                          ", ".join(top_udfs(history_udf_failures))) + "]"
     logging.info("Wait workers to exit...")
 
+def gen_case_yaml(case_dir=None):
+    args = parse_args()
+    udf_pool = UDFPool(args.udf_path, args)
+    begin = time.time()
+    case_num = args.yaml_count
+    if case_dir == None:
+        case_dir = args.log_dir
+    if not os.path.exists(case_dir):
+        os.makedirs(case_dir)
+    for i in range(case_num):
+        test_name = str(uuid.uuid1())
+        case = gen_single_window_test(test_name, udf_pool, args)
+        yamlName = "auto_gen_case_"+str(i)+".yaml"
+        with open(os.path.join(case_dir, yamlName), "w") as yaml_file:
+            yaml_file.write(yaml.dump(case))
+    end = time.time()
+    print("use time:"+str(end-begin))
 
 def main(args):
     run(args)
-
 
 if __name__ == "__main__":
     main(parse_args())

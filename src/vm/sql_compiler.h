@@ -28,7 +28,7 @@
 #include "proto/fe_common.pb.h"
 #include "udf/udf_library.h"
 #include "vm/catalog.h"
-#include "vm/jit.h"
+#include "vm/jit_wrapper.h"
 #include "vm/runner.h"
 
 namespace fesql {
@@ -67,7 +67,8 @@ struct SQLContext {
     fesql::vm::ClusterJob cluster_job;
     // TODO(wangtaize) add a light jit engine
     // eg using bthead to compile ir
-    std::unique_ptr<FeSQLJIT> jit = nullptr;
+    JITOptions jit_options;
+    std::unique_ptr<FeSQLJITWrapper> jit = nullptr;
     Schema schema;
     Schema request_schema;
     std::string request_name;
@@ -85,10 +86,6 @@ struct SQLContext {
     SQLContext() {}
     ~SQLContext() {}
 };
-
-void InitCodecSymbol(::llvm::orc::JITDylib& jd,            // NOLINT
-                     ::llvm::orc::MangleAndInterner& mi);  // NOLINT
-void InitCodecSymbol(vm::FeSQLJIT* jit_ptr);
 
 bool RegisterFeLibs(udf::UDFLibrary* lib, base::Status& status,  // NOLINT
                     const std::string& libs_home = "",
@@ -115,8 +112,8 @@ class SQLCompiler {
     void KeepIR(SQLContext& ctx, llvm::Module* m);  // NOLINT
 
     bool ResolvePlanFnAddress(PhysicalOpNode* node,
-                              std::unique_ptr<FeSQLJIT>& jit,  // NOLINT
-                              Status& status);                 // NOLINT
+                              std::unique_ptr<FeSQLJITWrapper>& jit,  // NOLINT
+                              Status& status);                        // NOLINT
 
     Status BuildPhysicalPlan(SQLContext* ctx,
                              const ::fesql::node::PlanNodeList& plan_list,

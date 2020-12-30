@@ -23,31 +23,62 @@
 #include <vector>
 #include "base/fe_status.h"
 #include "base/raw_buffer.h"
+#include "llvm/ExecutionEngine/Orc/Core.h"
 #include "llvm/IR/Module.h"
-#include "vm/catalog.h"
 #include "vm/core_api.h"
-#include "vm/jit.h"
 
 namespace fesql {
 namespace vm {
 
+class JITOptions;
+
 class FeSQLJITWrapper {
  public:
     FeSQLJITWrapper() {}
-    ~FeSQLJITWrapper() {}
+    virtual ~FeSQLJITWrapper() {}
     FeSQLJITWrapper(const FeSQLJITWrapper&) = delete;
 
-    bool Init();
+    virtual bool Init() = 0;
 
-    bool AddModule(std::unique_ptr<llvm::Module> module,
-                   std::unique_ptr<llvm::LLVMContext> llvm_ctx);
+    virtual bool OptModule(::llvm::Module* module) = 0;
+
+    virtual bool AddModule(std::unique_ptr<llvm::Module> module,
+                           std::unique_ptr<llvm::LLVMContext> llvm_ctx) = 0;
+
+    virtual bool AddExternalFunction(const std::string& name, void* addr) = 0;
 
     bool AddModuleFromBuffer(const base::RawBuffer&);
 
-    fesql::vm::RawPtrHandle FindFunction(const std::string& funcname);
+    virtual fesql::vm::RawPtrHandle FindFunction(
+        const std::string& funcname) = 0;
+
+    static FeSQLJITWrapper* Create(const JITOptions& jit_options);
+    static FeSQLJITWrapper* Create();
+
+    static bool InitJITSymbols(FeSQLJITWrapper* jit);
+};
+
+void InitBuiltinJITSymbols(FeSQLJITWrapper* jit_ptr);
+
+class JITOptions {
+ public:
+    bool is_enable_mcjit() const { return enable_mcjit_; }
+    void set_enable_mcjit(bool flag) { enable_mcjit_ = flag; }
+
+    bool is_enable_vtune() const { return enable_vtune_; }
+    void set_enable_vtune(bool flag) { enable_vtune_ = flag; }
+
+    bool is_enable_gdb() const { return enable_gdb_; }
+    void set_enable_gdb(bool flag) { enable_gdb_ = flag; }
+
+    bool is_enable_perf() const { return enable_perf_; }
+    void set_enable_perf(bool flag) { enable_perf_ = flag; }
 
  private:
-    std::unique_ptr<FeSQLJIT> jit_;
+    bool enable_mcjit_ = false;
+    bool enable_vtune_ = false;
+    bool enable_gdb_ = false;
+    bool enable_perf_ = false;
 };
 
 }  // namespace vm

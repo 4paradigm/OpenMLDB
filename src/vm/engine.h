@@ -85,6 +85,8 @@ class EngineOptions {
         return options;
     }
 
+    fesql::vm::JITOptions& jit_options() { return jit_options_; }
+
  private:
     bool keep_ir_;
     bool compile_only_;
@@ -93,6 +95,7 @@ class EngineOptions {
     bool cluster_optimized_;
     bool batch_request_optimized_;
     uint32_t max_sql_cache_size_;
+    JITOptions jit_options_;
 };
 
 class CompileInfo {
@@ -253,9 +256,15 @@ class Engine {
                             EngineMode engine_mode,
                             std::set<std::string>* tables,
                             base::Status& status);  // NOLINT
+
     bool Explain(const std::string& sql, const std::string& db,
                  EngineMode engine_mode, ExplainOutput* explain_output,
                  base::Status* status);
+    bool Explain(const std::string& sql, const std::string& db,
+                 EngineMode engine_mode,
+                 const std::set<size_t>& common_column_indices,
+                 ExplainOutput* explain_output, base::Status* status);
+
     inline void UpdateCatalog(std::shared_ptr<Catalog> cl) {
         std::atomic_store_explicit(&cl_, cl, std::memory_order_release);
     }

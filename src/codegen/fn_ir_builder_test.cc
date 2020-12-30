@@ -74,7 +74,6 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("custom_fn", *ctx);
-    auto lib = udf::DefaultUDFLibrary::get();
     FnIRBuilder fn_ir_builder(m.get());
     node::FnNodeFnDef *fn_def = dynamic_cast<node::FnNodeFnDef *>(trees[0]);
     LOG(INFO) << *fn_def;
@@ -93,17 +92,13 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     }
     LOG(INFO) << "after opt with ins cnt " << m->getInstructionCount();
     m->print(::llvm::errs(), NULL, true, true);
-    auto J = ExitOnErr(LLJITBuilder().create());
-    auto &jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-    lib->InitJITSymbols(J.get());
-    ::fesql::vm::InitCodecSymbol(jd, mi);
-    ::fesql::udf::InitUDFSymbol(jd, mi);
-
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    auto test_jit = ExitOnErr(J->lookup(fn_def->header_->GeIRFunctionName()));
-    R (*test_fn)(V1, V2) = (R(*)(V1, V2))test_jit.getAddress();
+    auto jit =
+        std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
+    jit->Init();
+    vm::FeSQLJITWrapper::InitJITSymbols(jit.get());
+    ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
+    auto test_fn =
+        (R(*)(V1, V2))jit->FindFunction(fn_def->header_->GeIRFunctionName());
     R result = test_fn(a, b);
     LOG(INFO) << "exp: " << std::to_string(exp)
               << ", result: " << std::to_string(result);
