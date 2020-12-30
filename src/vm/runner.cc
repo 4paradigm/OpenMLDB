@@ -2848,7 +2848,7 @@ const std::string KeyGenerator::Gen(const Row& row) {
     // TODO(wtz) 避免不必要的row project
     if (row.size() == 0) {
         LOG(WARNING) << "fail to gen key: row view reset fail";
-        return "NA";
+        return "";
     }
     Row key_row = CoreAPI::RowProject(fn_, row, true);
     std::string keys = "";
