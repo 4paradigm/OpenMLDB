@@ -553,6 +553,38 @@ class MemCatalog : public Catalog {
     Databases dbs_;
 };
 
+/**
+ * Result table handler specified for request union:
+ * (1) The first row is fixed to be the request row
+ * (2) O(1) time construction
+ */
+class RequestUnionTableHandler : public TableHandler {
+ public:
+    RequestUnionTableHandler(uint64_t request_ts, const Row& request_row,
+                             const std::shared_ptr<TableHandler>& window)
+        : request_ts_(request_ts), request_row_(request_row), window_(window) {}
+    ~RequestUnionTableHandler() {}
+
+    std::unique_ptr<RowIterator> GetIterator() override {
+        return std::unique_ptr<RowIterator>(GetRawIterator());
+    }
+    RowIterator* GetRawIterator() override;
+
+    const Types& GetTypes() override { return window_->GetTypes(); }
+    const IndexHint& GetIndex() override { return window_->GetIndex(); }
+    std::unique_ptr<WindowIterator> GetWindowIterator(const std::string&) {
+        return nullptr;
+    }
+    const Schema* GetSchema() override { return window_->GetSchema(); }
+    const std::string& GetName() override { return window_->GetName(); }
+    const std::string& GetDatabase() override { return window_->GetDatabase(); }
+
+ private:
+    uint64_t request_ts_;
+    const Row request_row_;
+    std::shared_ptr<TableHandler> window_;
+};
+
 // row iter interfaces for llvm
 void GetRowIter(int8_t* input, int8_t* iter);
 bool RowIterHasNext(int8_t* iter);

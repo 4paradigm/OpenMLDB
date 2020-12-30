@@ -230,6 +230,8 @@ static Status UpdateProjectExpr(
                 dynamic_cast<const node::ColumnRefNode*>(column_expr);
             CHECK_STATUS(schemas_ctx->ResolveColumnRefIndex(
                 column_ref, &schema_idx, &col_idx));
+        } else {
+            return Status(kPlanError, "Illegal column expression");
         }
         size_t total_idx = col_idx;
         for (size_t i = 0; i < schema_idx; ++i) {

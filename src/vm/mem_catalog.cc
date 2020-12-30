@@ -315,6 +315,59 @@ void MemTableIterator::Next() {
 const Row& MemTableIterator::GetValue() { return *iter_; }
 bool MemTableIterator::IsSeekable() const { return true; }
 
+/**
+ * Iterator implementation for request union table
+ */
+class RequestUnionIterator : public RowIterator {
+ public:
+    RequestUnionIterator(uint64_t request_ts, const Row* request_row,
+                         RowIterator* window_iter)
+        : request_ts_(request_ts),
+          request_row_(request_row),
+          window_iter_(window_iter) {}
+    ~RequestUnionIterator() { delete window_iter_; }
+    bool Valid() const override {
+        return window_iter_start_ ? window_iter_->Valid() : true;
+    }
+    void Next() override {
+        if (window_iter_start_) {
+            window_iter_->Next();
+        } else {
+            window_iter_start_ = true;
+        }
+    }
+    const uint64_t& GetKey() const override {
+        return window_iter_start_ ? window_iter_->GetKey() : request_ts_;
+    }
+    const Row& GetValue() override {
+        return window_iter_start_ ? window_iter_->GetValue() : *request_row_;
+    }
+    void Seek(const uint64_t& key) override {
+        if (request_ts_ <= key) {
+            SeekToFirst();
+        } else {
+            window_iter_start_ = true;
+            window_iter_->Seek(key);
+        }
+    }
+    void SeekToFirst() override {
+        window_iter_->SeekToFirst();
+        window_iter_start_ = false;
+    }
+    bool IsSeekable() const override { return window_iter_->IsSeekable(); }
+
+ private:
+    uint64_t request_ts_;
+    const Row* request_row_;
+    RowIterator* window_iter_;
+    bool window_iter_start_ = false;
+};
+
+RowIterator* RequestUnionTableHandler::GetRawIterator() {
+    return new RequestUnionIterator(request_ts_, &request_row_,
+                                    window_->GetRawIterator());
+}
+
 // row iter interfaces for llvm
 void GetRowIter(int8_t* input, int8_t* iter_addr) {
     auto list_ref = reinterpret_cast<codec::ListRef<Row>*>(input);
