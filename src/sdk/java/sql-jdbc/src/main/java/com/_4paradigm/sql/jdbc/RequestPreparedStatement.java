@@ -7,10 +7,13 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.sql.*;
 import java.sql.Date;
 import java.sql.ResultSet;
-import java.util.*;
+import java.sql.*;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class RequestPreparedStatement implements PreparedStatement {
     public static final Charset CHARSET = Charset.forName("utf-8");
@@ -25,7 +28,7 @@ public class RequestPreparedStatement implements PreparedStatement {
     protected boolean closeOnComplete = false;
     protected Map<Integer, Integer> stringsLen = new HashMap<>();
 
-    private void checkNull() throws SQLException{
+    private void checkNull() throws SQLException {
         if (db == null) {
             throw new SQLException("db is null");
         }
@@ -49,7 +52,7 @@ public class RequestPreparedStatement implements PreparedStatement {
         }
     }
 
-    protected void checkClosed() throws SQLException{
+    protected void checkClosed() throws SQLException {
         if (closed) {
             throw new SQLException("preparedstatement closed");
         }
@@ -78,8 +81,8 @@ public class RequestPreparedStatement implements PreparedStatement {
         dataBuild();
         Status status = new Status();
         com._4paradigm.sql.ResultSet resultSet = router.ExecuteSQL(db, currentSql, currentRow, status);
-        if (resultSet == null) {
-            throw new SQLException("execute sql fail");
+        if (resultSet == null || status.getCode() != 0) {
+            throw new SQLException("execute sql fail, msg: " + status.getMsg());
         }
         SQLResultSet rs = new SQLResultSet(resultSet);
         if (closeOnComplete) {
@@ -171,7 +174,7 @@ public class RequestPreparedStatement implements PreparedStatement {
     }
 
     private boolean checkNotAllowNull(int i) {
-        return this.currentSchema.IsColumnNotNull(i -1);
+        return this.currentSchema.IsColumnNotNull(i - 1);
     }
 
     @Override
@@ -264,7 +267,7 @@ public class RequestPreparedStatement implements PreparedStatement {
         }
         for (int i = 0; i < this.hasSet.size(); i++) {
             if (!this.hasSet.get(i)) {
-                throw new SQLException("data not enough");
+                throw new SQLException("data not enough, index is " + i);
             }
         }
         int strLen = 0;

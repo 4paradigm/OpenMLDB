@@ -90,7 +90,10 @@ class QueryFutureImpl : public QueryFuture {
     }
 
     std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(fesql::sdk::Status* status) override {
-        if (!callback_ || !status || !callback_->GetResponse() || !callback_->GetController()) {
+        if (!status) {
+            return nullptr;
+        }
+        if (!callback_ || !callback_->GetResponse() || !callback_->GetController()) {
             status->code = fesql::common::kRpcError;
             status->msg = "request error, response or controller null";
             return nullptr;
@@ -138,7 +141,10 @@ class BatchQueryFutureImpl : public QueryFuture {
     }
 
     std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(fesql::sdk::Status* status) override {
-        if (!callback_ || !status || !callback_->GetResponse() || !callback_->GetController()) {
+        if (!status) {
+            return nullptr;
+        }
+        if (!callback_ || !callback_->GetResponse() || !callback_->GetController()) {
             status->code = fesql::common::kRpcError;
             status->msg = "request error, response or controller null";
             return nullptr;
@@ -780,7 +786,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     }
     if (!client->Query(db, sql, row->GetRow(), cntl.get(), response.get(),
                              options_.enable_debug)) {
-        status->msg = "request server error";
+        status->msg = "request server error, msg: " + response->msg();
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     if (response->code() != ::rtidb::base::kOk) {
@@ -1074,7 +1080,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
                              options_.enable_debug);
     if (!ok) {
         status->code = -1;
-        status->msg = "request server error";
+        status->msg = "request server error" + response->msg();
         LOG(WARNING) << status->msg;
         return nullptr;
     }
@@ -1109,7 +1115,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProc
             options_.enable_debug);
     if (!ok) {
         status->code = -1;
-        status->msg = "request server error";
+        status->msg = "request server error, msg: " + response->msg();
         return nullptr;
     }
     if (response->code() != ::rtidb::base::kOk) {
@@ -1234,7 +1240,6 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVect
                 return false;
             }
             sp_info.mutable_output_schema()->CopyFrom(rtidb_output_schema);
-            // TODO(wb) get main table
             sp_info.set_main_table(explain_output.request_name);
             // get dependent tables, and fill sp_info
             std::set<std::string> tables;
@@ -1324,7 +1329,6 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
     std::shared_ptr<rtidb::api::QueryResponse> response =
         std::make_shared<rtidb::api::QueryResponse>();
     std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
-    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
     rtidb::RpcCallback<rtidb::api::QueryResponse>* callback =
             new rtidb::RpcCallback<rtidb::api::QueryResponse>(response, cntl);
 
@@ -1334,7 +1338,7 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
             options_.enable_debug, callback);
     if (!ok) {
         status->code = -1;
-        status->msg = "request server error";
+        status->msg = "request server error, msg: " + response->msg();
         LOG(WARNING) << status->msg;
         return std::shared_ptr<rtidb::sdk::QueryFuture>();
     }
@@ -1355,7 +1359,6 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestPr
     }
 
     std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
-    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
     auto response = std::make_shared<rtidb::api::SQLBatchRequestQueryResponse>();
     rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback =
            new rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>(response, cntl);
@@ -1366,7 +1369,7 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestPr
             db, sp_name, row_batch, options_.enable_debug, timeout_ms, callback);
     if (!ok) {
         status->code = -1;
-        status->msg = "request server error";
+        status->msg = "request server error, msg: " + response->msg();
         LOG(WARNING) << status->msg;
         return nullptr;
     }
