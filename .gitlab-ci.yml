@@ -535,4 +535,3 @@ fesql_auto_gen_case:
   dependencies:
     - build
   when: manual
- 
