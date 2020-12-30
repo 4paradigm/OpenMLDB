@@ -722,6 +722,9 @@ ClusterTask RunnerBuilder::BuildProxyRunnerForClusterTask(
         uint32_t remote_task_id = cluster_job_.AddTask(task);
         proxy_runner = nm_->RegisterNode(new ProxyRequestRunner(
             id_++, remote_task_id, task.GetRoot()->output_schemas()));
+        if (task.GetRoot()->need_batch_cache()) {
+            proxy_runner->EnableBatchCache();
+        }
         proxy_runner_map_.insert(std::make_pair(task.GetRoot(), proxy_runner));
     }
 
@@ -2553,19 +2556,20 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
     // if need batch cache_, we only need to compute the first line
     // and repeat the output
     if (need_batch_cache_) {
-        std::vector<std::shared_ptr<DataHandler>> inputs(
-            {proxy_batch_input->Get(0)});
-        auto res = Run(ctx, inputs);
+        std::shared_ptr<DataHandlerVector> proxy_one_row_batch_input =
+            std::make_shared<DataHandlerVector>();
+        proxy_one_row_batch_input->Add(proxy_batch_input->Get(0));
+        auto res = RunBatchInput(ctx, proxy_one_row_batch_input);
         if (ctx.is_debug()) {
             std::ostringstream oss;
             oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
                 << " HIT BATCH CACHE!"
                 << "\n";
-            Runner::PrintData(oss, output_schemas_, res);
+            Runner::PrintData(oss, output_schemas_, res->Get(0));
             LOG(INFO) << oss.str();
         }
         auto repeated_data = std::shared_ptr<DataHandlerList>(
-            new DataHandlerRepeater(res, proxy_batch_input->GetSize()));
+            new DataHandlerRepeater(res->Get(0), proxy_batch_input->GetSize()));
         if (need_cache_) {
             ctx.SetBatchCache(id_, repeated_data);
         }
@@ -2654,7 +2658,7 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
     switch (batch_input->Get(0)->GetHanlderType()) {
         case kRowHandler: {
             bool input_batch_is_common = producers_[0]->need_batch_cache();
-            if (input_batch_is_common) {
+            if (input_batch_is_common || 1 == batch_input->GetSize()) {
                 Row row;
                 if (!ExtractRow(batch_input->Get(0), &row)) {
                     LOG(WARNING) << "run proxy runner with rows fail, batch "
