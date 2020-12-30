@@ -748,6 +748,11 @@ void EngineBenchmarkOnCase(const std::string& yaml_path,
             engine_options.set_batch_request_optimized(false);
         }
     }
+    if (fesql::sqlcase::SQLCase::IS_CLUSTER()) {
+        engine_options.set_cluster_optimized(true);
+    } else {
+        engine_options.set_cluster_optimized(false);
+    }
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     std::vector<SQLCase> cases;
