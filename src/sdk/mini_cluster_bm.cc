@@ -89,7 +89,10 @@ void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,
         }
 
         fesql::codec::RowView row_view(request_table.columns());
-        ASSERT_EQ(1, request_rows.size());
+        if (1!= request_rows.size()) {
+            state.SkipWithError("benmark error: request rows size should be 1");
+            return;
+        }
         row_view.Reset(request_rows[0].buf());
         rtidb::sdk::SQLSDKTest::CovertFesqlRowToRequestRow(&row_view, request_row);
 
@@ -97,7 +100,7 @@ void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,
             for (int i = 0; i < 10; i++) {
                 if (is_procedure) {
                     LOG(INFO) << "--------syn procedure----------";
-                    auto rs = router->CallProcedure(sql_case.db(), sql_case.inputs()[0].name_, request_row, &status);
+                    auto rs = router->CallProcedure(sql_case.db(), sql_case.sp_name_, request_row, &status);
                     rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
                 } else {
                     auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
@@ -108,16 +111,39 @@ void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,
         }
         if (fesql::sqlcase::SQLCase::IS_DEBUG() || fesql::sqlcase::SQLCase::IS_PERF()) {
             for (auto _ : state) {
-                state.SkipWithError("benchmark case debug");
                 if (is_procedure) {
                     LOG(INFO) << "--------syn procedure----------";
-                    auto rs = router->CallProcedure(sql_case.db(), sql_case.inputs()[0].name_, request_row, &status);
+                    auto rs = router->CallProcedure(sql_case.db(), sql_case.sp_name_, request_row, &status);
                     if (!rs) FAIL() << "sql case expect success == true";
                     rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    fesql::type::TableDef output_table;
+                    std::vector<fesql::codec::Row> rows;
+                    if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
+                        ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
+                        rtidb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
+                    }
+
+                    if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
+                        ASSERT_TRUE(sql_case.ExtractOutputData(rows));
+                        rtidb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
+                    }
+                    state.SkipWithError("BENCHMARK DEBUG");
                 } else {
                     auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
                     if (!rs) FAIL() << "sql case expect success == true";
                     rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    fesql::type::TableDef output_table;
+                    std::vector<fesql::codec::Row> rows;
+                    if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
+                        ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
+                        rtidb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
+                    }
+
+                    if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
+                        ASSERT_TRUE(sql_case.ExtractOutputData(rows));
+                        rtidb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
+                    }
+                    state.SkipWithError("BENCHMARK DEBUG");
                 }
                 break;
             }
@@ -125,7 +151,7 @@ void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,
             if (is_procedure) {
                 for (auto _ : state) {
                     benchmark::DoNotOptimize(
-                        router->CallProcedure(sql_case.db(), sql_case.inputs()[0].name_, request_row, &status));
+                        router->CallProcedure(sql_case.db(), sql_case.sp_name_, request_row, &status));
                 }
             } else {
                 for (auto _ : state) {
