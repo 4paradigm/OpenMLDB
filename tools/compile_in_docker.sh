@@ -4,7 +4,7 @@
 
 rm thirdparty
 ln -sf /depends/thirdparty thirdparty
-source /opt/rh/devtoolset-7/enabl
+source /opt/rh/devtoolset-7/enable
 
 PWD=`pwd`
 
