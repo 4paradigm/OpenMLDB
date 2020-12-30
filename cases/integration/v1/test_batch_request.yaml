@@ -309,3 +309,34 @@ cases:
         - [2, 11.0, 11.0, 11.0, 11.0, 11.0, 11.0]
         - [4, 11.0, 11.0, 11.0, 11.0, 11.0, 11.0]
         - [7, 11.0, 11.0, 11.0, 11.0, 11.0, 11.0]
+
+  - id: 8
+    desc: batch request with one common window and one non-common window, current time == history time
+    inputs:
+      -
+        columns: ["id int","k1 bigint","k2 bigint","k3 timestamp", "k4 timestamp",
+                  "c1 double","c2 double","c3 double","c4 double","c5 double","c6 double"]
+        indexs: ["index1:k1:k3", "index2:k2:k4"]
+        repeat: 10
+        rows:
+          - [1,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+          - [3,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+          - [5,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+          - [6,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+    batch_request:
+      columns : ["id int","k1 bigint","k2 bigint","k3 timestamp", "k4 timestamp",
+                 "c1 double","c2 double","c3 double","c4 double","c5 double","c6 double"]
+      rows:
+        - [2,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+    sql: |
+      SELECT {0}.id, sum(c1) over w1 as m1, sum(c2) over w1 as m2, sum(c3) over w1 as m3,
+             sum(c4) over w2 as m4, sum(c5) over w2 as m5, sum(c6) over w2 as m6
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k3 ROWS BETWEEN 10 PRECEDING AND CURRENT ROW),
+             w2 AS (PARTITION BY {0}.k2 ORDER BY {0}.k4 ROWS BETWEEN 20 PRECEDING AND CURRENT ROW);
+    expect:
+      success: true
+      order: id
+      columns: [ "id int","m1 double","m2 double","m3 double","m4 double","m5 double","m6 double"]
+      rows:
+        - [2, 11.0, 11.0, 11.0, 21.0, 21.0, 21.0]

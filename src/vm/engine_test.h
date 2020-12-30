@@ -468,11 +468,6 @@ void DoEngineCheckExpect(const SQLCase& sql_case,
     } else {
         sorted_output = SortRows(schema, output, sql_case.expect().order_);
     }
-
-    if (!sql_case.expect().schema_.empty() ||
-        !sql_case.expect().columns_.empty()) {
-
-    }
     if (sql_case.expect().schema_.empty() &&
         sql_case.expect().columns_.empty()) {
         LOG(INFO) << "Expect result empty, Real result:\n";

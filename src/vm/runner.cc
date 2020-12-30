@@ -2458,8 +2458,9 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(
                                       &union_segment_status);
     uint64_t cnt = 1;
     while (-1 != max_union_pos) {
-        if (cnt > rows_start_preceding &&
-            union_segment_status[max_union_pos].key_ < start) {
+        if (range_gen_.OutOfRange(
+                cnt > rows_start_preceding,
+                union_segment_status[max_union_pos].key_ < start)) {
             break;
         }
 

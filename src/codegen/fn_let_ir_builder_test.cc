@@ -280,7 +280,8 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
         "sum(col4) OVER w1 as w1_col4_sum,  "
         "sum(col2) OVER w1 as w1_col2_sum,  "
         "sum(col5) OVER w1 as w1_col5_sum  "
-        "FROM t1 WINDOW w1 AS (PARTITION BY COL2 ORDER BY `TS` RANGE BETWEEN 3 "
+        "FROM t1 WINDOW w1 AS (PARTITION BY COL2 ORDER BY `TS` ROWS_RANGE "
+        "BETWEEN 3 "
         "PRECEDING AND 3 FOLLOWING) limit 10;";
 
     int8_t* ptr = NULL;
@@ -323,7 +324,7 @@ TEST_F(FnLetIRBuilderTest, test_join_window_project_mix) {
         "sum(t2.col2) OVER w1 as w1_col2_sum,  "
         "sum(t1.col5) OVER w1 as w1_col5_sum  "
         "FROM t1 last join t2 order by t2.col5 on t1.col1=t2.col1 "
-        "WINDOW w1 AS (PARTITION BY COL2 ORDER BY `TS` RANGE BETWEEN 3 "
+        "WINDOW w1 AS (PARTITION BY COL2 ORDER BY `TS` ROWS_RANGE BETWEEN 3 "
         "PRECEDING AND 3 FOLLOWING) limit 10;";
 
     int8_t* ptr = NULL;
@@ -392,7 +393,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
         "min(col4) OVER w1 as w1_col4_min,  "
         "min(col2) OVER w1 as w1_col2_min,  "
         "min(col5) OVER w1 as w1_col5_min  "
-        "FROM t1 WINDOW w1 AS (PARTITION BY COL2 ORDER BY `TS` RANGE BETWEEN 3 "
+        "FROM t1 WINDOW w1 AS (PARTITION BY COL2 ORDER BY `TS` ROWS_RANGE "
+        "BETWEEN 3 "
         "PRECEDING AND 3 FOLLOWING) limit 10;";
     int8_t* ptr = NULL;
     std::vector<Row> window;
@@ -424,7 +426,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
         "max(col2) OVER w1 as w1_col2_max,  "
         "max(col5) OVER w1 as w1_col5_max  "
         "FROM t1 WINDOW "
-        "w1 AS (PARTITION BY COL2 ORDER BY `TS` RANGE BETWEEN 3 PRECEDING AND "
+        "w1 AS (PARTITION BY COL2 ORDER BY `TS` ROWS_RANGE BETWEEN 3 PRECEDING "
+        "AND "
         "3 "
         "FOLLOWING) limit 10;";
 
@@ -475,9 +478,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
         "test_at(col1,1) OVER w1 as col1_at_1, "
         "count_list(col3,2) OVER w1 as col3_at_1 "
         "FROM t1 WINDOW "
-        "w1 AS (PARTITION BY COL2 ORDER BY `TS` RANGE BETWEEN 3 PRECEDING AND "
-        "3 "
-        "FOLLOWING) limit 10;";
+        "w1 AS (PARTITION BY COL2 ORDER BY `TS` ROWS_RANGE BETWEEN 3 PRECEDING
+AND " "3 " "FOLLOWING) limit 10;";
 
     int8_t* ptr = NULL;
     std::vector<Row> window;
