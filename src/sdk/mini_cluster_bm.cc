@@ -230,6 +230,9 @@ void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_
             for (size_t idx : sql_case.batch_request_.common_column_indices_) {
                 common_column_indices->AddCommonColumnIdx(idx);
             }
+        } else {
+            // clear common column indices when disable batch_request_optimized
+            sql_case.batch_request_.common_column_indices_.clear();
         }
         if (is_procedure) {
             rtidb::sdk::SQLSDKTest::CreateProcedure(sql_case, router);
