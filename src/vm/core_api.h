@@ -24,6 +24,7 @@ namespace vm {
 
 class CoreAPI;
 class Window;
+class FeSQLJITWrapper;
 
 typedef const int8_t* RawPtrHandle;
 

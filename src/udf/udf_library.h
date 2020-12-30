@@ -19,9 +19,13 @@
 #include "base/fe_status.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
-#include "vm/jit.h"
 
 namespace fesql {
+
+namespace vm {
+class FeSQLJITWrapper;
+}
+
 namespace udf {
 
 using fesql::base::Status;
@@ -121,8 +125,8 @@ class UDFLibrary {
         return ExprUDFTemplateRegistryHelper<FTemplate>(name, this);
     }
 
-    void AddExternalSymbol(const std::string& name, void* addr);
-    void InitJITSymbols(::llvm::orc::LLJIT* jit_ptr);
+    void AddExternalFunction(const std::string& name, void* addr);
+    void InitJITSymbols(vm::FeSQLJITWrapper* jit_ptr);
 
     node::NodeManager* node_manager() { return &nm_; }
 

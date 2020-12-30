@@ -19,6 +19,7 @@
 #define SRC_VM_CATALOG_H_
 #include <node/sql_node.h>
 #include <map>
+#include <set>
 #include <memory>
 #include <string>
 #include <utility>
@@ -41,7 +42,6 @@ using fesql::codec::Schema;
 using fesql::codec::WindowIterator;
 
 constexpr uint32_t INVALID_POS = UINT32_MAX;
-
 struct IndexSt {
     std::string name;
     uint32_t index;
@@ -54,6 +54,9 @@ typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
 
 class PartitionHandler;
+class TableHandler;
+class RowHandler;
+class Tablet;
 
 enum HandlerType { kRowHandler, kTableHandler, kPartitionHandler };
 enum OrderType { kDescOrder, kAscOrder, kNoneOrder };
@@ -115,10 +118,10 @@ class RowHandler : public DataHandler {
     RowHandler() {}
 
     virtual ~RowHandler() {}
-    std::unique_ptr<RowIterator> GetIterator() const override {
+    std::unique_ptr<RowIterator> GetIterator() override {
         return std::unique_ptr<RowIterator>();
     }
-    RowIterator* GetRawIterator() const override { return nullptr; }
+    RowIterator* GetRawIterator() override { return nullptr; }
     const uint64_t GetCount() override { return 0; }
     Row At(uint64_t pos) override { return Row(); }
     const HandlerType GetHanlderType() override { return kRowHandler; }
@@ -142,6 +145,7 @@ class ErrorRowHandler : public RowHandler {
     const Schema* GetSchema() override { return nullptr; }
     const std::string& GetName() override { return table_name_; }
     const std::string& GetDatabase() override { return db_; }
+    virtual base::Status GetStatus() { return status_; }
 
  private:
     base::Status status_;
@@ -149,22 +153,6 @@ class ErrorRowHandler : public RowHandler {
     std::string db_;
     const Schema* schema_;
     Row row_;
-};
-
-class Tablet {
- public:
-    Tablet() {}
-    virtual ~Tablet() {}
-    virtual std::shared_ptr<RowHandler> SubQuery(uint32_t task_id,
-                                                 const std::string& db,
-                                                 const std::string& sql,
-                                                 const fesql::codec::Row& row,
-                                                 const bool is_procedure,
-                                                 const bool is_debug) = 0;
-    virtual std::shared_ptr<RowHandler> SubQuery(
-        uint32_t task_id, const std::string& db, const std::string& sql,
-        const std::vector<fesql::codec::Row>& rows, const bool is_procedure,
-        const bool is_debug) = 0;
 };
 
 class TableHandler : public DataHandler {
@@ -193,16 +181,68 @@ class TableHandler : public DataHandler {
                                               const std::string& pk) {
         return std::shared_ptr<Tablet>();
     }
+    virtual std::shared_ptr<Tablet> GetTablet(
+        const std::string& index_name, const std::vector<std::string>& pks) {
+        return std::shared_ptr<Tablet>();
+    }
 };
+class ErrorTableHandler : public TableHandler {
+ public:
+    ErrorTableHandler()
+        : status_(common::kCallMethodError, "error"),
+          table_name_(""),
+          db_(""),
+          schema_(nullptr),
+          types_(),
+          index_hint_() {}
+    ErrorTableHandler(common::StatusCode status_code,
+                      const std::string& msg_str)
+        : status_(status_code, msg_str),
+          table_name_(""),
+          db_(""),
+          schema_(nullptr),
+          types_(),
+          index_hint_() {}
+    ~ErrorTableHandler() {}
 
+    const Types& GetTypes() override { return types_; }
+    inline const Schema* GetSchema() override { return schema_; }
+    inline const std::string& GetName() override { return table_name_; }
+    inline const IndexHint& GetIndex() override { return index_hint_; }
+    inline const std::string& GetDatabase() override { return db_; }
+
+    std::unique_ptr<RowIterator> GetIterator() {
+        return std::unique_ptr<RowIterator>();
+    }
+    RowIterator* GetRawIterator() { return nullptr; }
+    std::unique_ptr<WindowIterator> GetWindowIterator(
+        const std::string& idx_name) {
+        return std::unique_ptr<WindowIterator>();
+    }
+    virtual Row At(uint64_t pos) { return Row(); }
+    const uint64_t GetCount() override { return 0; }
+    const std::string GetHandlerTypeName() override {
+        return "ErrorTableHandler";
+    }
+    virtual base::Status GetStatus() { return status_; }
+
+ protected:
+    base::Status status_;
+    const std::string table_name_;
+    const std::string db_;
+    const Schema* schema_;
+    Types types_;
+    IndexHint index_hint_;
+    OrderType order_type_;
+};
 class PartitionHandler : public TableHandler {
  public:
     PartitionHandler() : TableHandler() {}
     ~PartitionHandler() {}
-    virtual std::unique_ptr<RowIterator> GetIterator() const {
+    virtual std::unique_ptr<RowIterator> GetIterator() {
         return std::unique_ptr<RowIterator>();
     }
-    RowIterator* GetRawIterator() const { return nullptr; }
+    RowIterator* GetRawIterator() { return nullptr; }
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) {
         return std::unique_ptr<WindowIterator>();
@@ -228,6 +268,63 @@ class PartitionHandler : public TableHandler {
         return "PartitionHandler";
     }
     const OrderType GetOrderType() const { return kNoneOrder; }
+};
+class AysncRowHandler : public RowHandler {
+ public:
+    AysncRowHandler(size_t idx,
+                    std::shared_ptr<TableHandler> aysnc_table_handler)
+        : RowHandler(),
+          status_(base::Status::Running()),
+          table_name_(""),
+          db_(""),
+          schema_(nullptr),
+          idx_(idx),
+          aysnc_table_handler_(aysnc_table_handler),
+          value_() {
+        if (!aysnc_table_handler_) {
+            status_ = base::Status(fesql::common::kNullPointer,
+                                   "async table handler is null");
+        }
+    }
+    virtual ~AysncRowHandler() {}
+    const Row& GetValue() override {
+        if (!status_.isRunning()) {
+            return value_;
+        }
+        value_ = aysnc_table_handler_->At(idx_);
+        status_ = aysnc_table_handler_->GetStatus();
+        return value_;
+    }
+    const Schema* GetSchema() override { return schema_; }
+    const std::string& GetName() override { return table_name_; }
+    const std::string& GetDatabase() override { return db_; }
+    base::Status status_;
+    std::string table_name_;
+    std::string db_;
+    const Schema* schema_;
+    size_t idx_;
+    std::shared_ptr<TableHandler> aysnc_table_handler_;
+    Row value_;
+};
+
+class Tablet {
+ public:
+    Tablet() {}
+    virtual ~Tablet() {}
+    virtual const std::string& GetName() const = 0;
+    virtual std::shared_ptr<RowHandler> SubQuery(uint32_t task_id,
+                                                 const std::string& db,
+                                                 const std::string& sql,
+                                                 const fesql::codec::Row& row,
+                                                 const bool is_procedure,
+                                                 const bool is_debug) = 0;
+    virtual std::shared_ptr<TableHandler> SubQuery(
+        uint32_t task_id, const std::string& db, const std::string& sql,
+        const std::set<size_t>& common_column_indices,
+        const std::vector<Row>& in_rows,
+        const bool request_is_common,
+        const bool is_procedure,
+        const bool is_debug) = 0;
 };
 
 // database/table/schema/type management
