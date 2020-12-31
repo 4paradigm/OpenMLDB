@@ -26,7 +26,7 @@ using namespace ::llvm;  // NOLINT
     static void BM_BatchRequest_##NAME(benchmark::State& state) {            \
         EngineBenchmarkOnCase(PATH, CASE_ID, vm::kBatchRequestMode, &state); \
     }                                                                        \
-    BENCHMARK(BM_BatchRequest_##NAME)->Args({0})->Args({1});
+    BENCHMARK(BM_BatchRequest_##NAME)->Args({0})->Args({1})->ArgNames({"batch_request_optimized"});
 
 const char* DEFAULT_YAML_PATH = "/cases/benchmark/batch_request_benchmark.yaml";
 

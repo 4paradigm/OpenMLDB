@@ -11,6 +11,7 @@
 #define SRC_BM_ENGINE_BM_CASE_H_
 #include <string>
 #include "benchmark/benchmark.h"
+#include "case/sql_case.h"
 #include "vm/engine.h"
 
 namespace fesql {
@@ -86,8 +87,14 @@ void EngineRequestSimpleUDF(benchmark::State* state, MODE mode);
 void EngineRequestSimpleSelectTimestamp(benchmark::State* state, MODE mode);
 void EngineRequestSimpleSelectDate(benchmark::State* state, MODE mode);
 
+void SQLCaseInputRepeatConfig(const std::string& tag, const int value,
+                        fesql::sqlcase::SQLCase* sql_case);
 void EngineBenchmarkOnCase(const std::string& yaml_path,
                            const std::string& case_id,
+                           vm::EngineMode engine_mode, benchmark::State* state);
+fesql::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml_path,
+                                          const std::string& case_id);
+void EngineBenchmarkOnCase(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                            vm::EngineMode engine_mode, benchmark::State* state);
 
 }  // namespace bm

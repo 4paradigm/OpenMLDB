@@ -27,6 +27,21 @@ using namespace ::llvm;  // NOLINT
     }                                                                   \
     BENCHMARK(BM_Request_##NAME);
 
+#define DEFINE_REQUEST_WINDOW_CASE(NAME, PATH, CASE_ID)             \
+    static void BM_Request_##NAME(benchmark::State& state) {        \
+        auto sql_case = LoadSQLCaseWithID(PATH, CASE_ID);           \
+        if (!fesql::sqlcase::SQLCase::IS_DEBUG()) {                 \
+            SQLCaseInputRepeatConfig("window_size", state.range(0), \
+                                     &sql_case);                    \
+        }                                                           \
+        EngineBenchmarkOnCase(sql_case, vm::kRequestMode, &state);  \
+    }                                                               \
+    BENCHMARK(BM_Request_##NAME)                                    \
+        ->ArgNames({"window_size"})                                 \
+        ->Args({100})                                               \
+        ->Args({1000})                                              \
+        ->Args({2000});
+
 const char* DEFAULT_YAML_PATH = "/cases/benchmark/request_benchmark.yaml";
 DEFINE_REQUEST_CASE(BM_SimpleLastJoin2Right, DEFAULT_YAML_PATH, "0");
 DEFINE_REQUEST_CASE(BM_SimpleLastJoin4Right, DEFAULT_YAML_PATH, "1");
@@ -34,8 +49,8 @@ DEFINE_REQUEST_CASE(BM_SimpleWindowOutputLastJoinTable2, DEFAULT_YAML_PATH,
                     "2");
 DEFINE_REQUEST_CASE(BM_SimpleWindowOutputLastJoinTable4, DEFAULT_YAML_PATH,
                     "3");
-DEFINE_REQUEST_CASE(BM_LastJoin4WindowOutput, DEFAULT_YAML_PATH, "4");
-DEFINE_REQUEST_CASE(BM_LastJoin8WindowOutput, DEFAULT_YAML_PATH, "5");
+DEFINE_REQUEST_WINDOW_CASE(BM_LastJoin4WindowOutput, DEFAULT_YAML_PATH, "4");
+DEFINE_REQUEST_WINDOW_CASE(BM_LastJoin8WindowOutput, DEFAULT_YAML_PATH, "5");
 
 }  // namespace bm
 }  // namespace fesql

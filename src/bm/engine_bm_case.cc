@@ -734,11 +734,55 @@ void EngineRequestSimpleSelectDate(benchmark::State* state,
         "cases/resource/benchmark_t1_with_time_one_row.yaml";
     EngineRequestModeSimpleQueryBM("db", "t1", sql, 1, resource, state, mode);
 }
+void SQLCaseInputRepeatConfig(const std::string& tag, const int repeat_value,
+                              fesql::sqlcase::SQLCase* sql_case) {
+    if (nullptr == sql_case) {
+        LOG(WARNING) << "Fail to config null sql case";
+        return;
+    }
 
+    for (size_t idx = 0; idx < sql_case->inputs_.size(); idx++) {
+        if (sql_case->inputs_[idx].repeat_tag_ == tag) {
+            LOG(INFO) << "config input " << idx << " " << tag << " "
+                      << repeat_value;
+            sql_case->inputs_[idx].repeat_ = repeat_value;
+        }
+    }
+}
 void EngineBenchmarkOnCase(const std::string& yaml_path,
                            const std::string& case_id,
                            vm::EngineMode engine_mode,
                            benchmark::State* state) {
+    SQLCase target_case = LoadSQLCaseWithID(yaml_path, case_id);
+    if (target_case.id() != case_id) {
+        LOG(WARNING) << "Fail to find case #" << case_id << " in " << yaml_path;
+        state->SkipWithError("BENCHMARK CASE LOAD FAIL: fail to find case");
+        return;
+    }
+    EngineBenchmarkOnCase(target_case, engine_mode, state);
+}
+fesql::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml_path,
+                                          const std::string& case_id) {
+    std::vector<SQLCase> cases;
+    LOG(INFO) << "BENCHMARK LOAD SQL CASE";
+    SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
+                                    yaml_path, cases);
+
+    for (const auto& sql_case : cases) {
+        if (sql_case.id() == case_id) {
+            return sql_case;
+        }
+    }
+    return SQLCase();
+}
+void EngineBenchmarkOnCase(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
+                           vm::EngineMode engine_mode,
+                           benchmark::State* state) {
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+
+    LOG(INFO) << "BENCHMARK INIT Engine Runner";
+
     vm::EngineOptions engine_options;
     if (engine_mode == vm::kBatchRequestMode) {
         size_t enable_batch_opt_flag = state->range(0);
@@ -753,37 +797,18 @@ void EngineBenchmarkOnCase(const std::string& yaml_path,
     } else {
         engine_options.set_cluster_optimized(false);
     }
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    std::vector<SQLCase> cases;
-    LOG(INFO) << "BENCHMARK LOAD SQL CASE";
-    SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
-                                    yaml_path, cases);
-    const SQLCase* target_case = nullptr;
-    for (const auto& sql_case : cases) {
-        if (sql_case.id() == case_id) {
-            target_case = &sql_case;
-            break;
-        }
-    }
-    if (target_case == nullptr) {
-        LOG(WARNING) << "Fail to find case #" << case_id << " in " << yaml_path;
-        state->SkipWithError("BENCHMARK CASE LOAD FAIL: fail to find case");
-        return;
-    }
-    LOG(INFO) << "BENCHMARK INIT Engine Runner";
     std::unique_ptr<vm::EngineTestRunner> engine_runner;
     if (engine_mode == vm::kBatchMode) {
         engine_runner = std::unique_ptr<vm::BatchEngineTestRunner>(
-            new vm::BatchEngineTestRunner(*target_case, engine_options));
+            new vm::BatchEngineTestRunner(sql_case, engine_options));
     } else if (engine_mode == vm::kRequestMode) {
         engine_runner = std::unique_ptr<vm::RequestEngineTestRunner>(
-            new vm::RequestEngineTestRunner(*target_case, engine_options));
+            new vm::RequestEngineTestRunner(sql_case, engine_options));
     } else {
         engine_runner = std::unique_ptr<vm::BatchRequestEngineTestRunner>(
             new vm::BatchRequestEngineTestRunner(
-                *target_case, engine_options,
-                target_case->batch_request().common_column_indices_));
+                sql_case, engine_options,
+                sql_case.batch_request().common_column_indices_));
     }
     if (SQLCase::IS_DEBUG()) {
         LOG(INFO) << "BENCHMARK CASE TEST: BEGIN";
