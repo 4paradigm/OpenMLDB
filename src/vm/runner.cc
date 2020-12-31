@@ -748,7 +748,6 @@ ClusterTask RunnerBuilder::BuildRequestTask(RequestRunner* runner) {
     request_task_ = std::make_shared<ClusterTask>(request_task);
     return request_task;
 }
-
 ClusterTask RunnerBuilder::UnaryInheritTask(const ClusterTask& input,
                                             Runner* runner) {
     ClusterTask task = input;
@@ -756,49 +755,58 @@ ClusterTask RunnerBuilder::UnaryInheritTask(const ClusterTask& input,
     task.SetRoot(runner);
     return task;
 }
-bool Runner::GetColumnBool(RowView* row_view, int idx, type::Type type) {
+
+bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
+                           type::Type type) {
     bool key = false;
     switch (type) {
         case fesql::type::kInt32: {
-            int32_t value;
-            if (0 == row_view->GetInt32(idx, &value)) {
-                return value == 0 ? false : true;
+            int32_t value = 0;
+            if (0 == row_view->GetValue(buf, idx, type,
+                                        reinterpret_cast<void*>(&value))) {
+                return !value == 0;
             }
             break;
         }
         case fesql::type::kInt64: {
-            int64_t value;
-            if (0 == row_view->GetInt64(idx, &value)) {
-                return value == 0 ? false : true;
+            int64_t value = 0;
+            if (0 == row_view->GetValue(buf, idx, type,
+                                        reinterpret_cast<void*>(&value))) {
+                return !value == 0;
             }
             break;
         }
         case fesql::type::kInt16: {
             int16_t value;
-            if (0 == row_view->GetInt16(idx, &value)) {
-                return value == 0 ? false : true;
+            if (0 == row_view->GetValue(buf, idx, type,
+                                        reinterpret_cast<void*>(&value))) {
+                return !value == 0;
             }
             break;
         }
         case fesql::type::kFloat: {
             float value;
-            if (0 == row_view->GetFloat(idx, &value)) {
-                return value == 0 ? false : true;
+            if (0 == row_view->GetValue(buf, idx, type,
+                                        reinterpret_cast<void*>(&value))) {
+                return !value == 0;
             }
             break;
         }
         case fesql::type::kDouble: {
             double value;
-            if (0 == row_view->GetDouble(idx, &value)) {
-                return value == 0 ? false : true;
+            if (0 == row_view->GetValue(buf, idx, type,
+                                        reinterpret_cast<void*>(&value))) {
+                return !value == 0;
             }
             break;
         }
         case fesql::type::kBool: {
             bool value;
-            if (0 == row_view->GetBool(idx, &value)) {
+            if (0 == row_view->GetValue(buf, idx, type,
+                                        reinterpret_cast<void*>(&value))) {
                 return value;
             }
+            break;
         }
         default: {
             LOG(WARNING) << "fail to get bool for "
@@ -855,48 +863,38 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
     }
 }
 
-int64_t Runner::GetColumnInt64(RowView* row_view, int key_idx,
-                               type::Type key_type) {
+int64_t Runner::GetColumnInt64(const int8_t* buf, const RowView* row_view,
+                               int key_idx, type::Type key_type) {
     int64_t key = -1;
     switch (key_type) {
         case fesql::type::kInt32: {
-            int32_t value;
-            if (0 == row_view->GetInt32(key_idx, &value)) {
+            int32_t value = 0;
+            if (0 == row_view->GetValue(buf, key_idx, key_type,
+                                        reinterpret_cast<void*>(&value))) {
                 return static_cast<int64_t>(value);
             }
             break;
         }
         case fesql::type::kInt64: {
-            int64_t value;
-            if (0 == row_view->GetInt64(key_idx, &value)) {
+            int64_t value = 0;
+            if (0 == row_view->GetValue(buf, key_idx, key_type,
+                                        reinterpret_cast<void*>(&value))) {
                 return value;
             }
             break;
         }
         case fesql::type::kInt16: {
             int16_t value;
-            if (0 == row_view->GetInt16(key_idx, &value)) {
-                return static_cast<int64_t>(value);
-            }
-            break;
-        }
-        case fesql::type::kFloat: {
-            float value;
-            if (0 == row_view->GetFloat(key_idx, &value)) {
-                return static_cast<int64_t>(value);
-            }
-            break;
-        }
-        case fesql::type::kDouble: {
-            double value;
-            if (0 == row_view->GetDouble(key_idx, &value)) {
+            if (0 == row_view->GetValue(buf, key_idx, key_type,
+                                        reinterpret_cast<void*>(&value))) {
                 return static_cast<int64_t>(value);
             }
             break;
         }
         case fesql::type::kTimestamp: {
             int64_t value;
-            if (0 == row_view->GetTimestamp(key_idx, &value)) {
+            if (0 == row_view->GetValue(buf, key_idx, key_type,
+                                        reinterpret_cast<void*>(&value))) {
                 return static_cast<int64_t>(value);
             }
             break;
@@ -2865,40 +2863,89 @@ const std::string KeyGenerator::GenConst() {
     return keys;
 }
 const std::string KeyGenerator::Gen(const Row& row) {
-    Row key_row = CoreAPI::RowProject(fn_, row, true);
-    RowView row_view(row_view_);
-    if (!row_view.Reset(key_row.buf())) {
+    // TODO(wtz) 避免不必要的row project
+    if (row.size() == 0) {
         LOG(WARNING) << "fail to gen key: row view reset fail";
-        return "NA";
+        return "";
     }
+    Row key_row = CoreAPI::RowProject(fn_, row, true);
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
-        if (key == "") {
-            key = codec::EMPTY_STRING;
-        }
         if (!keys.empty()) {
             keys.append("|");
         }
-        keys.append(key);
+        if (row_view_.IsNULL(key_row.buf(), pos)) {
+            keys.append(codec::NONETOKEN);
+            continue;
+        }
+        ::fesql::type::Type type = fn_schema_.Get(pos).type();
+        switch (type) {
+            case ::fesql::type::kVarchar: {
+                const char* buf = nullptr;
+                uint32_t size = 0;
+                if (row_view_.GetValue(key_row.buf(), pos, &buf, &size) == 0) {
+                    if (size == 0) {
+                        keys.append(codec::EMPTY_STRING.c_str(),
+                                    codec::EMPTY_STRING.size());
+                    } else {
+                        keys.append(buf, size);
+                    }
+                }
+                break;
+            }
+            case fesql::type::kDate: {
+                int32_t buf = 0;
+                if (row_view_.GetValue(key_row.buf(), pos, type,
+                                       reinterpret_cast<void*>(&buf)) == 0) {
+                    keys.append(std::to_string(buf));
+                }
+                break;
+            }
+            case fesql::type::kBool: {
+                bool buf = false;
+                if (row_view_.GetValue(key_row.buf(), pos, type,
+                                       reinterpret_cast<void*>(&buf)) == 0) {
+                    keys.append(buf ? "true" : "false");
+                }
+                break;
+            }
+            case fesql::type::kInt16: {
+                int16_t buf = 0;
+                if (row_view_.GetValue(key_row.buf(), pos, type,
+                                       reinterpret_cast<void*>(&buf)) == 0)
+                    keys.append(std::to_string(buf));
+                break;
+            }
+            case fesql::type::kInt32: {
+                int32_t buf = 0;
+                if (row_view_.GetValue(key_row.buf(), pos, type,
+                                       reinterpret_cast<void*>(&buf)) == 0)
+                    keys.append(std::to_string(buf));
+                break;
+            }
+            case fesql::type::kInt64:
+            case fesql::type::kTimestamp: {
+                int64_t buf = 0;
+                if (row_view_.GetValue(key_row.buf(), pos, type,
+                                       reinterpret_cast<void*>(&buf)) == 0)
+                    keys.append(std::to_string(buf));
+                break;
+            }
+            default:
+                continue;
+        }
     }
     return keys;
 }
+
 const int64_t OrderGenerator::Gen(const Row& row) {
     Row order_row = CoreAPI::RowProject(fn_, row, true);
-    RowView row_view(row_view_);
-    row_view.Reset(order_row.buf());
-    return Runner::GetColumnInt64(&row_view, idxs_[0],
+    return Runner::GetColumnInt64(order_row.buf(), &row_view_, idxs_[0],
                                   fn_schema_.Get(idxs_[0]).type());
 }
+
 const bool ConditionGenerator::Gen(const Row& row) const {
-    RowView row_view(row_view_);
-    return CoreAPI::ComputeCondition(fn_, row, &row_view, idxs_[0]);
+    return CoreAPI::ComputeCondition(fn_, row, &row_view_, idxs_[0]);
 }
 const Row ProjectGenerator::Gen(const Row& row) {
     return CoreAPI::RowProject(fn_, row, false);

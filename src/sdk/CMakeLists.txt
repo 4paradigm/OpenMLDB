@@ -92,14 +92,16 @@ if(APPLE)
            SUFFIX ".dylib")
   	set_target_properties(fesql_jsdk_complete PROPERTIES
            SUFFIX ".dylib")
+endif()
+endif()
+
+if(PYSDK_ENABLE)
+if(APPLE)
   	set_target_properties(fesql_pysdk PROPERTIES
            SUFFIX ".so")
   	set_property(TARGET fesql_pysdk APPEND PROPERTY
     			 LINK_FLAGS "-flat_namespace -undefined suppress")
 endif()
-endif()
-
-if(PYSDK_ENABLE)
 
 #######################
 ## Python Packaging  ##

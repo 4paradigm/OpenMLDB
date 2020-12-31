@@ -465,8 +465,10 @@ class Runner : public node::NodeBase<Runner> {
     virtual std::shared_ptr<DataHandler> RunWithCache(
         RunnerContext& ctx);  // NOLINT
 
-    static int64_t GetColumnInt64(RowView* view, int pos, type::Type type);
-    static bool GetColumnBool(RowView* view, int idx, type::Type type);
+    static int64_t GetColumnInt64(const int8_t* buf, const RowView* view,
+                                  int pos, type::Type type);
+    static bool GetColumnBool(const int8_t* buf, const RowView* view, int idx,
+                              type::Type type);
     static Row WindowProject(const int8_t* fn, const uint64_t key,
                              const Row row, const bool is_instance,
                              size_t append_slices, Window* window);
