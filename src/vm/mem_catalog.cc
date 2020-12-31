@@ -364,8 +364,12 @@ class RequestUnionIterator : public RowIterator {
 };
 
 RowIterator* RequestUnionTableHandler::GetRawIterator() {
-    return new RequestUnionIterator(request_ts_, &request_row_,
-                                    window_->GetRawIterator());
+    auto window_iter = window_->GetRawIterator();
+    if (window_iter == nullptr) {
+        LOG(WARNING) << "Illegal window iterator";
+        return nullptr;
+    }
+    return new RequestUnionIterator(request_ts_, &request_row_, window_iter);
 }
 
 // row iter interfaces for llvm

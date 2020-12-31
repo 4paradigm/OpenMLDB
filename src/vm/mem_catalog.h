@@ -575,6 +575,7 @@ class RequestUnionTableHandler : public TableHandler {
     std::unique_ptr<WindowIterator> GetWindowIterator(const std::string&) {
         return nullptr;
     }
+    const OrderType GetOrderType() const { return window_->GetOrderType(); }
     const Schema* GetSchema() override { return window_->GetSchema(); }
     const std::string& GetName() override { return window_->GetName(); }
     const std::string& GetDatabase() override { return window_->GetDatabase(); }
