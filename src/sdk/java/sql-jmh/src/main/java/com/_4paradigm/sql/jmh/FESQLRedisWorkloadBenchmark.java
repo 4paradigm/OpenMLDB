@@ -190,8 +190,8 @@ public class FESQLRedisWorkloadBenchmark {
     @Benchmark
     public void insert100Bm() {
         String key = "100_"+ String.valueOf(counter.incrementAndGet());
-        PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl100Insert);
         try {
+            PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl100Insert);
             for (int i = 0; i < 98; i++) {
                 impl.setString(i+1, "value10000000000");
             }
@@ -206,8 +206,8 @@ public class FESQLRedisWorkloadBenchmark {
     @Benchmark
     public void insert500Bm() {
         String key = "500_"+ String.valueOf(counter.incrementAndGet());
-        PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl500Insert);
         try {
+            PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl500Insert);
             for (int i = 0; i < 498; i++) {
                 impl.setString(i+1, "value10000000000");
             }
@@ -221,8 +221,8 @@ public class FESQLRedisWorkloadBenchmark {
     @Benchmark
     public void insert200Bm() {
         String key = "200_"+ String.valueOf(counter.incrementAndGet());
-        PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl200Insert);
         try {
+            PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl200Insert);
             for (int i = 0; i < 198; i++) {
                 impl.setString(i+1, "value10000000000");
             }

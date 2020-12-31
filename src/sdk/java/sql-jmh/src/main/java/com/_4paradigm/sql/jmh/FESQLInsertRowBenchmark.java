@@ -93,11 +93,14 @@ public class FESQLInsertRowBenchmark {
             row.AppendString(s1);
             row.AppendInt64(System.currentTimeMillis());
         }
-        PreparedStatement p = executor.getInsertPreparedStmt("", "");
+        try {
+            executor.executeInsert(db, format, rows);
+            //counter ++;
+            counter += 10;
+        } catch (Exception e) {
 
-        executor.executeInsert(db, format, rows);
-        //counter ++;
-        counter += 10;
+        }
+
     }
 
     @Benchmark
