@@ -408,7 +408,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
     }
     uint64_t collected_offset = CollectDeletedKey(end_offset);
     uint64_t start_time = ::baidu::common::timer::now_time();
-    WriteHandle* wh = new WriteHandle(snapshot_name_tmp, fd, compressed);
+    WriteHandle* wh = new WriteHandle(compressed, snapshot_name_tmp, fd);
     ::rtidb::api::Manifest manifest;
     bool has_error = false;
     uint64_t write_count = 0;
@@ -819,7 +819,7 @@ int MemTableSnapshot::ExtractIndexData(
     if (compressed) {
         full_path += COMPRESS_SUBFIX;
     }
-    WriteHandle* wh = new WriteHandle(snapshot_name_tmp, fd, compressed);
+    WriteHandle* wh = new WriteHandle(compressed, snapshot_name_tmp, fd);
     ::rtidb::api::Manifest manifest;
     bool has_error = false;
     uint64_t write_count = 0;

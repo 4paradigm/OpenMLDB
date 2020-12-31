@@ -142,7 +142,7 @@ TEST_F(LogWRTest, TestWriteAndRead) {
     FILE* fd_w = fopen(full_path.c_str(), "ab+");
     ASSERT_TRUE(fd_w != NULL);
     WritableFile* wf = NewWritableFile(fname, fd_w);
-    Writer writer(wf, false);
+    Writer writer(false, wf);
     FILE* fd_r = fopen(full_path.c_str(), "rb");
     ASSERT_TRUE(fd_r != NULL);
     SequentialFile* rf = NewSeqFile(fname, fd_r);
@@ -174,7 +174,7 @@ TEST_F(LogWRTest, TestLogEntry) {
     FILE* fd_w = fopen(full_path.c_str(), "ab+");
     ASSERT_TRUE(fd_w != NULL);
     WritableFile* wf = NewWritableFile(fname, fd_w);
-    Writer writer(wf, false);
+    Writer writer(false, wf);
 
     ::rtidb::api::LogEntry entry;
     entry.set_pk("test0");
@@ -235,7 +235,7 @@ TEST_F(LogWRTest, TestWait) {
     FILE* fd_w = fopen(full_path.c_str(), "ab+");
     ASSERT_TRUE(fd_w != NULL);
     WritableFile* wf = NewWritableFile(fname, fd_w);
-    Writer writer(wf, false);
+    Writer writer(false, wf);
     std::string val(1024 * 5, 'a');
     Slice sval(val.c_str(), val.size());
     Status status = writer.AddRecord(sval);
@@ -283,7 +283,7 @@ TEST_F(LogWRTest, TestGoBack) {
     FILE* fd_w = fopen(full_path.c_str(), "ab+");
     ASSERT_TRUE(fd_w != NULL);
     WritableFile* wf = NewWritableFile(fname, fd_w);
-    Writer writer(wf, false);
+    Writer writer(false, wf);
     FILE* fd_r = fopen(full_path.c_str(), "rb");
     ASSERT_TRUE(fd_r != NULL);
     SequentialFile* rf = NewSeqFile(fname, fd_r);

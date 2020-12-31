@@ -26,7 +26,7 @@ static void InitTypeCrc(uint32_t* type_crc) {
     }
 }
 
-Writer::Writer(WritableFile* dest, bool compressed)
+Writer::Writer(bool compressed, WritableFile* dest)
 : dest_(dest), block_offset_(0), compressed_(compressed), buffer_(nullptr), compress_buf_(nullptr) {
     InitTypeCrc(type_crc_);
 #ifdef PZFPGA_ENABLE
@@ -43,7 +43,7 @@ Writer::Writer(WritableFile* dest, bool compressed)
     }
 }
 
-Writer::Writer(WritableFile* dest, uint64_t dest_length, bool compressed)
+Writer::Writer(bool compressed, WritableFile* dest, uint64_t dest_length)
     : dest_(dest), compressed_(compressed), buffer_(nullptr), compress_buf_(nullptr) {
     InitTypeCrc(type_crc_);
 #ifdef PZFPGA_ENABLE

@@ -23,12 +23,12 @@ class Writer {
     // Create a writer that will append data to "*dest".
     // "*dest" must be initially empty.
     // "*dest" must remain live while this Writer is in use.
-    Writer(WritableFile* dest, bool compressed);
+    Writer(bool compressed, WritableFile* dest);
 
     // Create a writer that will append data to "*dest".
     // "*dest" must have initial length "dest_length".
     // "*dest" must remain live while this Writer is in use.
-    Writer(WritableFile* dest, uint64_t dest_length, bool compressed);
+    Writer(bool compressed, WritableFile* dest, uint64_t dest_length);
 
     ~Writer();
 
@@ -62,10 +62,10 @@ struct WriteHandle {
     FILE* fd_;
     WritableFile* wf_;
     Writer* lw_;
-    WriteHandle(const std::string& fname, FILE* fd, bool compressed, uint64_t dest_length = 0)
+    WriteHandle(bool compressed, const std::string& fname, FILE* fd, uint64_t dest_length = 0)
         : fd_(fd), wf_(NULL), lw_(NULL) {
         wf_ = ::rtidb::log::NewWritableFile(fname, fd);
-        lw_ = new Writer(wf_, dest_length, compressed);
+        lw_ = new Writer(compressed, wf_, dest_length);
     }
 
     ::rtidb::base::Status Write(const ::rtidb::base::Slice& slice) {
