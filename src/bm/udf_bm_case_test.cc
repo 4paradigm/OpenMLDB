@@ -30,6 +30,13 @@ TEST_F(UDFBMCaseTest, SumMemTableCol1_TEST) {
     SumMemTableCol(nullptr, TEST, 10000L, "col1");
 }
 
+TEST_F(UDFBMCaseTest, SumRequestUnionTableCol1_TEST) {
+    SumRequestUnionTableCol(nullptr, TEST, 10L, "col1");
+    SumRequestUnionTableCol(nullptr, TEST, 100L, "col1");
+    SumRequestUnionTableCol(nullptr, TEST, 1000L, "col1");
+    SumRequestUnionTableCol(nullptr, TEST, 10000L, "col1");
+}
+
 TEST_F(UDFBMCaseTest, CopyMemSegment_TEST) {
     CopyMemSegment(nullptr, TEST, 10L);
     CopyMemSegment(nullptr, TEST, 100L);
@@ -71,6 +78,13 @@ TEST_F(UDFBMCaseTest, MemTableIterate_TEST) {
     MemTableIterate(nullptr, TEST, 100L);
     MemTableIterate(nullptr, TEST, 1000L);
 }
+
+TEST_F(UDFBMCaseTest, RequestUnionTableIterate_TEST) {
+    RequestUnionTableIterate(nullptr, TEST, 10L);
+    RequestUnionTableIterate(nullptr, TEST, 100L);
+    RequestUnionTableIterate(nullptr, TEST, 1000L);
+}
+
 TEST_F(UDFBMCaseTest, CTimeDay_TEST) { CTimeDay(nullptr, TEST, 1); }
 TEST_F(UDFBMCaseTest, CTimeMonth) { CTimeMonth(nullptr, TEST, 1); }
 TEST_F(UDFBMCaseTest, CTimeYear_TEST) { CTimeYear(nullptr, TEST, 1); }

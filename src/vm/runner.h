@@ -1007,8 +1007,7 @@ class RouteInfo {
           table_handler_(table_handler) {}
     ~RouteInfo() {}
     const bool IsCompleted() const {
-        return table_handler_ && !index_.empty() &&
-               index_key_.ValidKey();
+        return table_handler_ && !index_.empty() && index_key_.ValidKey();
     }
     const bool IsCluster() const { return table_handler_ && !index_.empty(); }
     static const bool EqualWith(const RouteInfo& info1,
@@ -1286,10 +1285,9 @@ class RunnerBuilder {
     std::unordered_map<fesql::vm::Runner*, ::fesql::vm::Runner*>
         proxy_runner_map_;
     std::set<size_t> batch_common_node_set_;
-    ClusterTask BinaryInherit(const ClusterTask& left,
-                                         const ClusterTask& right,
-                                         Runner* runner, const Key& index_key,
-                                         const TaskBiasType bias = kNoBias);
+    ClusterTask BinaryInherit(const ClusterTask& left, const ClusterTask& right,
+                              Runner* runner, const Key& index_key,
+                              const TaskBiasType bias = kNoBias);
     ClusterTask BuildLocalTaskForBinaryRunner(const ClusterTask& left,
                                               const ClusterTask& right,
                                               Runner* runner);

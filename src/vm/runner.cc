@@ -2497,24 +2497,21 @@ std::shared_ptr<DataHandler> PostRequestUnionRunner::Run(
     if (!left || !right) {
         return nullptr;
     }
-    if (kRowHandler != left->GetHanlderType()) {
+    auto request = std::dynamic_pointer_cast<RowHandler>(left);
+    if (!request) {
+        LOG(WARNING) << "Post request union left input is not valid";
         return nullptr;
     }
+    const Row request_row = request->GetValue();
+    int64_t request_key = request_ts_gen_.Gen(request_row);
 
-    auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
-    int64_t request_key = request_ts_gen_.Gen(request);
-
-    auto result_table =
-        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
-    result_table->AddRow(request_key, request);
-
-    auto window_table = std::dynamic_pointer_cast<MemTimeTableHandler>(right);
-    auto window_iter = window_table->GetIterator();
-    while (window_iter->Valid()) {
-        result_table->AddRow(window_iter->GetKey(), window_iter->GetValue());
-        window_iter->Next();
+    auto window_table = std::dynamic_pointer_cast<TableHandler>(right);
+    if (!window_table) {
+        LOG(WARNING) << "Post request union right input is not valid";
+        return nullptr;
     }
-    return result_table;
+    return std::make_shared<RequestUnionTableHandler>(request_key, request_row,
+                                                      window_table);
 }
 
 std::shared_ptr<DataHandler> AggRunner::Run(
