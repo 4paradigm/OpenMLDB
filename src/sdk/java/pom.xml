@@ -71,12 +71,12 @@
 
   <distributionManagement>
     <repository>
-      <id>4pd-nexus-releases</id>
+      <id>4pd-nexus</id>
       <uniqueVersion>true</uniqueVersion>
       <url>https://nexus.4pd.io/repository/maven-releases/</url>
     </repository>
     <snapshotRepository>
-      <id>4pd-nexus-snapshots</id>
+      <id>4pd-nexus</id>
       <uniqueVersion>true</uniqueVersion>
       <url>https://nexus.4pd.io/repository/maven-snapshots/</url>
     </snapshotRepository>
