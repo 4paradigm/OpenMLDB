@@ -161,6 +161,11 @@ INSTANTIATE_TEST_CASE_P(
     EngineTestSparkAds, EngineTest,
     testing::ValuesIn(
         InitCases("/cases/integration/spark/test_ads.yaml")));
+// 单表-新闻场景
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSparkNews, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/spark/test_news.yaml")));
 
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
