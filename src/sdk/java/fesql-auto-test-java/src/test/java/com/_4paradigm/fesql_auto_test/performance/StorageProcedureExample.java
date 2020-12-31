@@ -87,7 +87,7 @@ public class StorageProcedureExample extends BaseExample {
         CallablePreparedStatement callablePreparedStmt = sqlExecutor.getCallablePreparedStmt(db, spName);
         ResultSetMetaData metaData = callablePreparedStmt.getMetaData();
         if (setData(callablePreparedStmt, metaData, "bb")) return;
-        QueryFuture future = callablePreparedStmt.executeQeuryAsync(100, TimeUnit.MILLISECONDS);
+        QueryFuture future = callablePreparedStmt.executeQueryAsync(100, TimeUnit.MILLISECONDS);
         System.out.println("done: " + future.isDone());
         ResultSet sqlResultSet = future.get();
         Assert.assertTrue(sqlResultSet.next());

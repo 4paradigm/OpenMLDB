@@ -1,6 +1,7 @@
 package com._4paradigm.fesql_auto_test.performance;
 
 import com._4paradigm.sql.jdbc.CallablePreparedStatement;
+import com._4paradigm.sql.sdk.ProcedureInfo;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlException;
 import com._4paradigm.sql.sdk.SqlExecutor;
@@ -63,6 +64,7 @@ public class ComplexSql3Example extends BaseExample {
     }
 
     public void callProcedureWithPstms() throws Exception {
+        ProcedureInfo xjd10 = sqlExecutor.showProcedure(db, "xjd10");
         CallablePreparedStatement callablePreparedStmt = sqlExecutor.getCallablePreparedStmt(db, "xjd10");
         ResultSetMetaData metaData = callablePreparedStmt.getMetaData();
         if (setData(callablePreparedStmt, metaData, "bb")) return;
