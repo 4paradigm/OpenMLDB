@@ -32,7 +32,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
     }
 
     @Override
-    public com._4paradigm.sql.sdk.QueryFuture executeQeuryAsync(long timeOut, TimeUnit unit) throws SQLException {
+    public com._4paradigm.sql.sdk.QueryFuture executeQueryAsync(long timeOut, TimeUnit unit) throws SQLException {
         checkClosed();
         dataBuild();
         Status status = new Status();

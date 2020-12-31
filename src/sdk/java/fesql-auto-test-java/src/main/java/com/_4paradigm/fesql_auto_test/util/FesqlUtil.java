@@ -8,8 +8,6 @@ import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.jdbc.CallablePreparedStatement;
 import com._4paradigm.sql.jdbc.SQLResultSet;
 import com._4paradigm.sql.sdk.SqlExecutor;
-import com._4paradigm.sql.sdk.impl.BatchCallablePreparedStatementImpl;
-import com._4paradigm.sql.sdk.impl.CallablePreparedStatementImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.joda.time.DateTime;
@@ -606,7 +604,7 @@ public class FesqlUtil {
             if (!isAsyn) {
                 sqlResultSet = rps.executeQuery();
             } else {
-                com._4paradigm.sql.sdk.QueryFuture future = rps.executeQeuryAsync(10000, TimeUnit.MILLISECONDS);
+                com._4paradigm.sql.sdk.QueryFuture future = rps.executeQueryAsync(10000, TimeUnit.MILLISECONDS);
                 try {
                     sqlResultSet = future.get();
                 } catch (InterruptedException e) {
@@ -855,7 +853,7 @@ public class FesqlUtil {
                                                                    List<Object> objects) throws SQLException {
         boolean success = setRequestData(requestPs, objects);
         if (success) {
-            com._4paradigm.sql.sdk.QueryFuture future = requestPs.executeQeuryAsync(100, TimeUnit.MILLISECONDS);
+            com._4paradigm.sql.sdk.QueryFuture future = requestPs.executeQueryAsync(100, TimeUnit.MILLISECONDS);
             java.sql.ResultSet sqlResultSet = null;
             try {
                 sqlResultSet = future.get();
@@ -938,9 +936,10 @@ public class FesqlUtil {
             obj = rs.getBoolean(index + 1);
         } else if (columnType == Types.DATE) {
             try {
-                obj = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-                        .parse(rs.getNString(index + 1) + " 00:00:00").getTime());
-            } catch (ParseException e) {
+//                obj = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+//                        .parse(rs.getNString(index + 1) + " 00:00:00").getTime());
+                obj = rs.getDate(index + 1);
+            } catch (Exception e) {
                 e.printStackTrace();
                 return null;
             }

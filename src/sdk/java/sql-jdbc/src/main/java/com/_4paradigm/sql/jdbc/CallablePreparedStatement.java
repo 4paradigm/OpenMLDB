@@ -48,7 +48,7 @@ public class CallablePreparedStatement extends RequestPreparedStatement {
         this.spName = null;
     }
 
-    public com._4paradigm.sql.sdk.QueryFuture executeQeuryAsync(long timeOut, TimeUnit unit) throws SQLException {
+    public com._4paradigm.sql.sdk.QueryFuture executeQueryAsync(long timeOut, TimeUnit unit) throws SQLException {
         throw new SQLException("current do not support this method");
     }
 }
