@@ -1122,11 +1122,11 @@ bool SQLCase::CreateSQLCasesFromYaml(
             sql_case.standard_sql_ = false;
         }
         if (sql_case_node["batch_request_optimized"]) {
-            sql_case.batch_request_optimized_ = sql_case_node["batch_request_optimized"].as<bool>();
+            sql_case.batch_request_optimized_ =
+                sql_case_node["batch_request_optimized"].as<bool>();
         } else {
             sql_case.batch_request_optimized_ = true;
         }
-
 
         if (sql_case_node["standard_sql_compatible"]) {
             sql_case.standard_sql_compatible_ =

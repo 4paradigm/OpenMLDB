@@ -233,9 +233,9 @@ class SQLCase {
         return false;
     }
 
-    static fesql::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& dir_path,
-                                              const std::string& yaml_path,
-                                              const std::string& case_id);
+    static fesql::sqlcase::SQLCase LoadSQLCaseWithID(
+        const std::string& dir_path, const std::string& yaml_path,
+        const std::string& case_id);
     void SQLCaseRepeatConfig(const std::string& tag, const int value) {
         for (size_t idx = 0; idx < inputs_.size(); idx++) {
             if (inputs_[idx].repeat_tag_ == tag) {
@@ -245,8 +245,7 @@ class SQLCase {
             }
         }
         if (batch_request_.repeat_tag_ == tag) {
-            LOG(INFO) << "config batch request " << tag << " "
-                      << value;
+            LOG(INFO) << "config batch request " << tag << " " << value;
             batch_request_.repeat_ = value;
         }
     }

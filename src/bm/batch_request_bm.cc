@@ -39,11 +39,11 @@ using namespace ::llvm;  // NOLINT
         ->ArgNames({"batch_request_optimized", "window_scale", "batch_scale"}) \
         ->Args({0, 10, 10})                                                    \
         ->Args({1, 10, 10})                                                    \
-        ->Args({0, 1000, 10})                                                   \
-        ->Args({1, 1000, 10})                                                   \
+        ->Args({0, 1000, 10})                                                  \
+        ->Args({1, 1000, 10})                                                  \
         ->Args({0, 10, 100})                                                   \
         ->Args({1, 10, 100})                                                   \
-        ->Args({0, 1000, 100})                                                  \
+        ->Args({0, 1000, 100})                                                 \
         ->Args({1, 1000, 100});
 
 const char* DEFAULT_YAML_PATH = "/cases/benchmark/batch_request_benchmark.yaml";
