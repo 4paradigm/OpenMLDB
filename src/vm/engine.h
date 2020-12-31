@@ -260,9 +260,15 @@ class Engine {
                             EngineMode engine_mode,
                             std::set<std::string>* tables,
                             base::Status& status);  // NOLINT
+
     bool Explain(const std::string& sql, const std::string& db,
                  EngineMode engine_mode, ExplainOutput* explain_output,
                  base::Status* status);
+    bool Explain(const std::string& sql, const std::string& db,
+                 EngineMode engine_mode,
+                 const std::set<size_t>& common_column_indices,
+                 ExplainOutput* explain_output, base::Status* status);
+
     inline void UpdateCatalog(std::shared_ptr<Catalog> cl) {
         std::atomic_store_explicit(&cl_, cl, std::memory_order_release);
     }
