@@ -156,6 +156,11 @@ INSTANTIATE_TEST_CASE_P(
     EngineTestSparkFQZ, EngineTest,
     testing::ValuesIn(
         InitCases("/cases/integration/spark/test_fqz_studio.yaml")));
+// 单表-广告场景
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSparkFQZ, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/spark/test_ads.yaml")));
 
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
