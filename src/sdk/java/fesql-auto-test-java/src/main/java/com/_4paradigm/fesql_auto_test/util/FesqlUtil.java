@@ -5,6 +5,7 @@ import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.sql.*;
 import com._4paradigm.sql.ResultSet;
+import com._4paradigm.sql.jdbc.CallablePreparedStatement;
 import com._4paradigm.sql.jdbc.SQLResultSet;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.BatchCallablePreparedStatementImpl;
@@ -511,7 +512,7 @@ public class FesqlUtil {
             for (int k = 0; k < objects.length; k++) {
                 objects[k] = rows.get(i).get(k);
             }
-            CallablePreparedStatementImpl rps = null;
+            CallablePreparedStatement rps = null;
             java.sql.ResultSet resultSet = null;
             try {
                 rps = executor.getCallablePreparedStmt(dbName, spName);
@@ -522,7 +523,7 @@ public class FesqlUtil {
                 if (!isAsyn) {
                     resultSet = buildRequestPreparedStatment(rps, rows.get(i));
                 } else {
-                    resultSet = buildRequestPreparedStatmentAsyn(rps, rows.get(i));
+                    resultSet = buildRequestPreparedStatmentAsync(rps, rows.get(i));
                 }
                 if (resultSet == null) {
                     fesqlResult.setOk(false);
@@ -587,7 +588,7 @@ public class FesqlUtil {
                 rowArray[i][j] = row.get(j);
             }
         }
-        BatchCallablePreparedStatementImpl rps = null;
+        CallablePreparedStatement rps = null;
         java.sql.ResultSet sqlResultSet = null;
         try {
             rps = executor.getCallablePreparedStmtBatch(dbName, spName);
@@ -605,7 +606,7 @@ public class FesqlUtil {
             if (!isAsyn) {
                 sqlResultSet = rps.executeQuery();
             } else {
-                com._4paradigm.sql.sdk.QueryFuture future = rps.executeQeuryAsyn(10000, TimeUnit.MILLISECONDS);
+                com._4paradigm.sql.sdk.QueryFuture future = rps.executeQeuryAsync(10000, TimeUnit.MILLISECONDS);
                 try {
                     sqlResultSet = future.get();
                 } catch (InterruptedException e) {
@@ -850,11 +851,11 @@ public class FesqlUtil {
         }
     }
 
-    private static java.sql.ResultSet buildRequestPreparedStatmentAsyn(CallablePreparedStatementImpl requestPs,
+    private static java.sql.ResultSet buildRequestPreparedStatmentAsync(CallablePreparedStatement requestPs,
                                                                    List<Object> objects) throws SQLException {
         boolean success = setRequestData(requestPs, objects);
         if (success) {
-            com._4paradigm.sql.sdk.QueryFuture future = requestPs.executeQeuryAsyn(100, TimeUnit.MILLISECONDS);
+            com._4paradigm.sql.sdk.QueryFuture future = requestPs.executeQeuryAsync(100, TimeUnit.MILLISECONDS);
             java.sql.ResultSet sqlResultSet = null;
             try {
                 sqlResultSet = future.get();

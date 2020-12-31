@@ -68,7 +68,7 @@ public class StorageProcedureExample extends BaseExample {
     }
 
     public void callProcedureWithPstms() throws Exception {
-        CallablePreparedStatementImpl callablePreparedStmt = sqlExecutor.getCallablePreparedStmt(db, spName);
+        CallablePreparedStatement callablePreparedStmt = sqlExecutor.getCallablePreparedStmt(db, spName);
         ResultSetMetaData metaData = callablePreparedStmt.getMetaData();
         if (setData(callablePreparedStmt, metaData, "bb")) return;
         ResultSet sqlResultSet = callablePreparedStmt.executeQuery();
@@ -83,11 +83,11 @@ public class StorageProcedureExample extends BaseExample {
         callablePreparedStmt.close();
     }
 
-    public void callProcedureWithPstmsAsyn() throws Exception {
-        CallablePreparedStatementImpl callablePreparedStmt = sqlExecutor.getCallablePreparedStmt(db, spName);
+    public void callProcedureWithPstmsAsync() throws Exception {
+        CallablePreparedStatement callablePreparedStmt = sqlExecutor.getCallablePreparedStmt(db, spName);
         ResultSetMetaData metaData = callablePreparedStmt.getMetaData();
         if (setData(callablePreparedStmt, metaData, "bb")) return;
-        QueryFuture future = callablePreparedStmt.executeQeuryAsyn(100, TimeUnit.MILLISECONDS);
+        QueryFuture future = callablePreparedStmt.executeQeuryAsync(100, TimeUnit.MILLISECONDS);
         System.out.println("done: " + future.isDone());
         ResultSet sqlResultSet = future.get();
         Assert.assertTrue(sqlResultSet.next());
@@ -143,7 +143,7 @@ public class StorageProcedureExample extends BaseExample {
             example.createProcedure();
             System.out.println("create ok");
             example.callProcedureWithPstms();
-            example.callProcedureWithPstmsAsyn();
+            example.callProcedureWithPstmsAsync();
         } catch (Exception e) {
             e.printStackTrace();
         }

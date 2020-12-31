@@ -38,7 +38,8 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         return rs;
     }
 
-    public com._4paradigm.sql.sdk.QueryFuture executeQeuryAsyn(long timeOut, TimeUnit unit) throws SQLException {
+    @Override
+    public com._4paradigm.sql.sdk.QueryFuture executeQeuryAsync(long timeOut, TimeUnit unit) throws SQLException {
         checkClosed();
         Status status = new Status();
         QueryFuture queryFuture = router.CallSQLBatchRequestProcedure(db, spName, unit.toMillis(timeOut), currentRowBatch, status);

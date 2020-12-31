@@ -5,6 +5,7 @@ import com._4paradigm.sql.Status;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 public class CallablePreparedStatement extends RequestPreparedStatement {
     protected String spName;
@@ -45,5 +46,9 @@ public class CallablePreparedStatement extends RequestPreparedStatement {
     public void close() throws SQLException {
         super.close();
         this.spName = null;
+    }
+
+    public com._4paradigm.sql.sdk.QueryFuture executeQeuryAsync(long timeOut, TimeUnit unit) throws SQLException {
+        throw new SQLException("current do not support this method");
     }
 }

@@ -63,7 +63,7 @@ public class ComplexSql3Example extends BaseExample {
     }
 
     public void callProcedureWithPstms() throws Exception {
-        CallablePreparedStatementImpl callablePreparedStmt = sqlExecutor.getCallablePreparedStmt(db, "xjd10");
+        CallablePreparedStatement callablePreparedStmt = sqlExecutor.getCallablePreparedStmt(db, "xjd10");
         ResultSetMetaData metaData = callablePreparedStmt.getMetaData();
         if (setData(callablePreparedStmt, metaData, "bb")) return;
         ResultSet sqlResultSet = callablePreparedStmt.executeQuery();
@@ -73,7 +73,7 @@ public class ComplexSql3Example extends BaseExample {
         }
         System.out.println("call ok");
 
-        BatchCallablePreparedStatementImpl batchPsmt = sqlExecutor.getCallablePreparedStmtBatch(db, "xjd10");
+        CallablePreparedStatement batchPsmt = sqlExecutor.getCallablePreparedStmtBatch(db, "xjd10");
         metaData = batchPsmt.getMetaData();
         metaData = batchPsmt.getMetaData();
         if (setData(batchPsmt, metaData, "bb")) return;
