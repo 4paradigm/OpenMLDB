@@ -3,10 +3,14 @@ package com._4paradigm.fesql.spark
 import com._4paradigm.fesql.FeSqlLibrary
 import com._4paradigm.fesql.`type`.TypeOuterClass._
 import com._4paradigm.fesql.common.{SQLEngine, UnsupportedFesqlException}
+import com._4paradigm.fesql.spark.api.{FesqlDataframe, FesqlSession}
+import com._4paradigm.fesql.spark.element.FesqlConfig
 import com._4paradigm.fesql.spark.nodes._
 import com._4paradigm.fesql.spark.utils.FesqlUtil
 import com._4paradigm.fesql.vm._
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.catalyst.QueryPlanningTracker
+import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -19,9 +23,27 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
   // Ensure native initialized
   FeSqlLibrary.initCore()
   Engine.InitializeGlobalLLVM()
+  var node: PhysicalOpNode = _
+
 
   def this(session: SparkSession) = {
-    this(session, Map())
+    this(session, session.conf.getAll)
+    for ((k, v) <- config.asInstanceOf[Map[String, String]]) {
+      logger.info(s"spark plan fesql config: ${k} = ${v}")
+      k match {
+        case FesqlConfig.configSkewRadio => FesqlConfig.skewRatio = v.toDouble
+        case FesqlConfig.configSkewLevel => FesqlConfig.skewLevel = v.toInt
+        case FesqlConfig.configSkewCnt => FesqlConfig.skewCnt = v.toInt
+        case FesqlConfig.configSkewCntName => FesqlConfig.skewCntName = v.asInstanceOf[String]
+        case FesqlConfig.configSkewTag => FesqlConfig.skewTag = v.asInstanceOf[String]
+        case FesqlConfig.configSkewPosition => FesqlConfig.skewPosition = v.asInstanceOf[String]
+        case FesqlConfig.configMode => FesqlConfig.mode = v.asInstanceOf[String]
+        case FesqlConfig.configPartitions => FesqlConfig.paritions = v.toInt
+        case FesqlConfig.configTimeZone => FesqlConfig.timeZone = v.asInstanceOf[String]
+        case FesqlConfig.configTinyData => FesqlConfig.tinyData = v.toLong
+        case _ => ""
+      }
+    }
   }
 
   def plan(sql: String, tableDict: Map[String, DataFrame]): SparkInstance = {
@@ -33,17 +55,17 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
       case (name, df) => planCtx.registerDataFrame(name, df)
     }
 
-    withSQLEngine(sql, FesqlUtil.getDatabase("spark_db", tableDict)) { engine =>
+    withSQLEngine(sql, FesqlUtil.getDatabase(FesqlConfig.configDBName, tableDict)) { engine =>
       val irBuffer = engine.getIRBuffer
       planCtx.setModuleBuffer(irBuffer)
 
       val root = engine.getPlan
+      node = root
       logger.info("Get FeSQL physical plan: ")
       root.Print()
       visitPhysicalNodes(root, planCtx)
     }
   }
-
 
   def visitPhysicalNodes(root: PhysicalOpNode, ctx: PlanContext): SparkInstance = {
     val optCache = ctx.getPlanResult(root)
@@ -93,7 +115,6 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
         throw new UnsupportedFesqlException(s"Plan type $opType not supported")
     }
   }
-
 
   private def withSQLEngine[T](sql: String, db: Database)(body: SQLEngine => T): T = {
     val engine = new SQLEngine(sql, db)

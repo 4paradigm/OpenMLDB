@@ -21,6 +21,7 @@
 		<spark.version>3.0.0</spark.version>
 		<scalaCompatVersion>${scala.binary.version}</scalaCompatVersion>
 		<scalatest.skip>false</scalatest.skip>
+		<hadoop.version>2.7.1</hadoop.version>
 	</properties>
 
 	<dependencies>
@@ -63,6 +64,35 @@
 			<artifactId>scalatest_${scala.binary.version}</artifactId>
 			<version>3.0.0</version>
 			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.hadoop</groupId>
+			<artifactId>hadoop-common</artifactId>
+			<version>${hadoop.version}</version>
+			<scope>provided</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>com.google.protobuf</groupId>
+					<artifactId>protobuf-java</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>asm</groupId>
+					<artifactId>asm</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.hadoop</groupId>
+			<artifactId>hadoop-hdfs</artifactId>
+			<version>${hadoop.version}</version>
+			<scope>provided</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>com.google.protobuf</groupId>
+					<artifactId>protobuf-java</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 	</dependencies>
 
