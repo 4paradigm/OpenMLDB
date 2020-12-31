@@ -26,7 +26,7 @@ case class FesqlDataframe(fesqlSession: FesqlSession, sparkDf: DataFrame) {
   def tiny(number: Long): FesqlDataframe = {
     sparkDf.createOrReplaceTempView(tableName)
     val sqlCode = s"select * from ${tableName} limit ${number};"
-    new FesqlDataframe(fesqlSession, sparkDf.sqlContext.sql(sqlCode))
+    new FesqlDataframe(fesqlSession, fesqlSession.sparksql(sqlCode).sparkDf)
   }
 
   /**
