@@ -137,8 +137,9 @@ public class SQLRouterSmokeTest {
         java.sql.Date d5 = new java.sql.Date(2019, 5, 5);
         String date1 = String.format("%s-%02d-%02d", d1.getYear() + 1900, d1.getMonth(), d1.getDate());
         String fullInsert = String.format("insert into tsql1010 values(1000, '%s', 'guangdong', '广州', 1);", date1);
-        PreparedStatement ps = router.getInsertPreparedStmt(dbname, fullInsert);
         try {
+
+            PreparedStatement ps = router.getInsertPreparedStmt(dbname, fullInsert);
             Assert.assertEquals(ps.getMetaData().getColumnCount(), 0);
             ps.close();
         } catch (Exception e) {
@@ -146,8 +147,8 @@ public class SQLRouterSmokeTest {
         }
 
         String insert1 = "insert into tsql1010 values(?, '2019-01-12', 'xx', 'xx', 1);";
-        ps = router.getInsertPreparedStmt(dbname, insert1);
         try {
+            PreparedStatement ps = router.getInsertPreparedStmt(dbname, insert1);
             Assert.assertEquals(ps.getMetaData().getColumnCount(), 1);
             String col = ps.getMetaData().getColumnName(1);
             Assert.assertEquals(col, "col1");
