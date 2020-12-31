@@ -419,7 +419,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
         " (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     std::string sp_ddl =
         "create procedure " + sp_name +
-        " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
+        " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, const c7 timestamp, c8 date" + ")" +
         " begin " + sql + " end;";
     if (!router->ExecuteDDL(db, sp_ddl, &status)) {
         FAIL() << "fail to create procedure";
@@ -471,6 +471,9 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     ASSERT_EQ(input_schema.GetColumnType(4), fesql::sdk::kTypeDouble);
     ASSERT_EQ(input_schema.GetColumnType(5), fesql::sdk::kTypeTimestamp);
     ASSERT_EQ(input_schema.GetColumnType(6), fesql::sdk::kTypeDate);
+    ASSERT_TRUE(input_schema.IsConstant(0));
+    ASSERT_TRUE(input_schema.IsConstant(1));
+    ASSERT_TRUE(!input_schema.IsConstant(2));
 
     auto& output_schema = sp_info->GetOutputSchema();
     ASSERT_EQ(output_schema.GetColumnCnt(), 3u);
@@ -480,6 +483,10 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     ASSERT_EQ(output_schema.GetColumnType(0), fesql::sdk::kTypeString);
     ASSERT_EQ(output_schema.GetColumnType(1), fesql::sdk::kTypeInt32);
     ASSERT_EQ(output_schema.GetColumnType(2), fesql::sdk::kTypeInt64);
+    ASSERT_TRUE(output_schema.IsConstant(0));
+    ASSERT_TRUE(output_schema.IsConstant(1));
+    ASSERT_TRUE(!output_schema.IsConstant(2));
+
     // drop procedure
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table trans;", &status));
 }
