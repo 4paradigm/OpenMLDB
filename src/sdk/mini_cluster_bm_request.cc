@@ -21,10 +21,10 @@
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
 ::rtidb::sdk::MiniCluster* mc;
-#define DEFINE_REQUEST_CASE(NAME, PATH, CASE_ID)                        \
-   static void BM_Request_##NAME(benchmark::State& state) {          \
+#define DEFINE_REQUEST_CASE(NAME, PATH, CASE_ID)                      \
+    static void BM_Request_##NAME(benchmark::State& state) {          \
         MiniBenchmarkOnCase(PATH, CASE_ID, kRequestMode, mc, &state); \
-    }                                                                      \
+    }                                                                 \
     BENCHMARK(BM_Request_##NAME);
 
 const char* DEFAULT_YAML_PATH = "/cases/benchmark/request_benchmark.yaml";
