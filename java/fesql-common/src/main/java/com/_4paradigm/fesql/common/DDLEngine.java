@@ -425,6 +425,10 @@ public class DDLEngine {
     }
 
     public static String sql2Feconfig(String sql, TypeOuterClass.Database db) {
+        if (sql == null || sql.isEmpty()) {
+            logger.error("sql script is null or empty, so return null");
+            return null;
+        }
         RequestEngine engine = null;
         try {
             engine = new RequestEngine(sql, db);
