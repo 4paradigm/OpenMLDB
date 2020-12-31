@@ -1,7 +1,7 @@
 db: template_name
 cases:
 - id: 1
-  desc: yaml 测试用例模版
+  desc: 单表-广告场景
   inputs:
   - columns:
     - "id string"
