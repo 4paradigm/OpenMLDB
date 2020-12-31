@@ -8,7 +8,8 @@ cases:
         columns: ["id int","k1 bigint","k2 bigint","k3 timestamp", "k4 timestamp",
                   "c1 double","c2 double","c3 double","c4 double","c5 double","c6 double"]
         indexs: ["index1:k1:k3", "index2:k2:k4"]
-        repeat: 100
+        repeat: 10
+        repeat_tag: window_scale
         rows:
           - [1,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
           - [3,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
@@ -16,7 +17,8 @@ cases:
           - [6,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
     batch_request:
       common_column_indices: [1,3,5,6,7]
-      repeat: 100
+      repeat: 1
+      repeat_tag: batch_scale
       columns : ["id int","k1 bigint","k2 bigint","k3 timestamp", "k4 timestamp",
                  "c1 double","c2 double","c3 double","c4 double","c5 double","c6 double"]
       rows:
@@ -30,7 +32,13 @@ cases:
       WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k3 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW),
              w2 AS (PARTITION BY {0}.k2 ORDER BY {0}.k4 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);
     expect:
-      success: true
+      columns: ["id int", "m1 double", "m2 double", "m3 double", "m4 double", "m5 double", "m6 double"]
+      repeat_tag: batch_scale
+      repeat: 1
+      rows:
+        - [2, 41.0, 41.0, 41.0, 41.0, 41.0, 41.0]
+        - [4, 41.0, 41.0, 41.0, 41.0, 41.0, 41.0]
+        - [7, 41.0, 41.0, 41.0, 41.0, 41.0, 41.0]
 
   - id: 1
     desc: batch request with common window and common and non-common aggregations, window is small
@@ -41,11 +49,13 @@ cases:
                   "c4 double","c5 double","c6 double"]
         indexs: ["index1:k1:k2",]
         repeat: 10
+        repeat_tag: window_scale
         rows:
           - [1,1,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
     batch_request:
       common_column_indices: [1,2,3,5,7]
-      repeat: 100
+      repeat_tag: batch_size
+      repeat: 1
       columns : ["id int","k1 bigint","k2 timestamp",
                  "c1 double","c2 double","c3 double",
                  "c4 double","c5 double","c6 double"]
@@ -57,33 +67,11 @@ cases:
       FROM {0}
       WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k2 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);
     expect:
-      success: true
+      columns: ["id int", "m1 double", "m2 double", "m3 double", "m4 double", "m5 double", "m6 double"]
+      repeat_tag: batch_scale
+      repeat: 1
+      rows:
+        - [2, 11.0, 11.0, 11.0, 11.0, 11.0, 11.0]
 
-  - id: 2
-    desc: batch request with common window and common and non-common aggregations, window is large
-    inputs:
-      -
-        columns: ["id int","k1 bigint","k2 timestamp",
-                  "c1 double","c2 double","c3 double",
-                  "c4 double","c5 double","c6 double"]
-        indexs: ["index1:k1:k2",]
-        repeat: 1000
-        rows:
-          - [1,1,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
-    batch_request:
-      common_column_indices: [1,2,3,5,7]
-      repeat: 100
-      columns : ["id int","k1 bigint","k2 timestamp",
-                 "c1 double","c2 double","c3 double",
-                 "c4 double","c5 double","c6 double"]
-      rows:
-        - [2,1,1590738991000,1.0,1.0,1.0,1.0,1.0,1.0]
-    sql: |
-      SELECT {0}.id, sum(c1) over w1 as m1, sum(c2) over w1 as m2, sum(c3) over w1 as m3, 
-             sum(c4) over w1 as m4, sum(c5) over w1 as m5, sum(c6) over w1 as m6 
-      FROM {0}
-      WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k2 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);
-    expect:
-      success: true
 
 

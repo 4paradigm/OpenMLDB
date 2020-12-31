@@ -734,6 +734,11 @@ void EngineRequestSimpleSelectDate(benchmark::State* state,
         "cases/resource/benchmark_t1_with_time_one_row.yaml";
     EngineRequestModeSimpleQueryBM("db", "t1", sql, 1, resource, state, mode);
 }
+fesql::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml,
+                                          const std::string& case_id) {
+    return fesql::sqlcase::SQLCase::LoadSQLCaseWithID(
+        fesql::sqlcase::FindFesqlDirPath(), yaml, case_id);
+}
 void EngineBenchmarkOnCase(const std::string& yaml_path,
                            const std::string& case_id,
                            vm::EngineMode engine_mode,
@@ -757,12 +762,8 @@ void EngineBenchmarkOnCase(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
 
     vm::EngineOptions engine_options;
     if (engine_mode == vm::kBatchRequestMode) {
-        size_t enable_batch_opt_flag = state->range(0);
-        if (enable_batch_opt_flag == 1) {
-            engine_options.set_batch_request_optimized(true);
-        } else {
-            engine_options.set_batch_request_optimized(false);
-        }
+        engine_options.set_batch_request_optimized(
+            sql_case.batch_request_optimized_);
     }
     if (fesql::sqlcase::SQLCase::IS_CLUSTER()) {
         engine_options.set_cluster_optimized(true);

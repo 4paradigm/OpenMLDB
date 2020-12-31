@@ -236,13 +236,18 @@ class SQLCase {
     static fesql::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& dir_path,
                                               const std::string& yaml_path,
                                               const std::string& case_id);
-    void SQLCaseInputRepeatConfig(const std::string& tag, const int value) {
+    void SQLCaseRepeatConfig(const std::string& tag, const int value) {
         for (size_t idx = 0; idx < inputs_.size(); idx++) {
             if (inputs_[idx].repeat_tag_ == tag) {
                 LOG(INFO) << "config input " << idx << " " << tag << " "
                           << value;
                 inputs_[idx].repeat_ = value;
             }
+        }
+        if (batch_request_.repeat_tag_ == tag) {
+            LOG(INFO) << "config batch request " << tag << " "
+                      << value;
+            batch_request_.repeat_ = value;
         }
     }
 
@@ -257,6 +262,7 @@ class SQLCase {
     bool debug_;
     bool standard_sql_;
     bool standard_sql_compatible_;
+    bool batch_request_optimized_;
     std::string batch_plan_;
     std::string request_plan_;
     std::string cluster_request_plan_;

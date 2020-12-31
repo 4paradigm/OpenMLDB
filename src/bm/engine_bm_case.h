@@ -87,6 +87,8 @@ void EngineRequestSimpleUDF(benchmark::State* state, MODE mode);
 void EngineRequestSimpleSelectTimestamp(benchmark::State* state, MODE mode);
 void EngineRequestSimpleSelectDate(benchmark::State* state, MODE mode);
 
+fesql::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml,
+                                          const std::string& case_id);
 void EngineBenchmarkOnCase(const std::string& yaml_path,
                            const std::string& case_id,
                            vm::EngineMode engine_mode, benchmark::State* state);
