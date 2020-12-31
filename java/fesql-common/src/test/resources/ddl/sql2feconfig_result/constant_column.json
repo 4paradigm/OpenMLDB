@@ -1,0 +1,974 @@
+{
+  "tableInfo": {
+    "sql_table": [
+      {
+        "name": "instanceKey_1",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_itemId_original_0",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_reqId_original_1",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_tags_original_2",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_instanceKey_original_3",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_eventTime_original_4",
+        "type": "timestamp"
+      },
+      {
+        "name": "behaviourTable_tdid_original_5",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_eventDay_original_6",
+        "type": "timestamp"
+      },
+      {
+        "name": "behaviourTable_platform_original_7",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_startday_original_8",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_starthour_original_9",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_startweekday_original_10",
+        "type": "int"
+      },
+      {
+        "name": "behaviourTable_startperiod_original_11",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_yumid_original_12",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_tags_combine_219",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_tdid_combine_219",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_yumid_combine_219",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_tdid_combine_220",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_yumid_combine_220",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_instanceKey_window_top1_ratio_226",
+        "type": "double"
+      },
+      {
+        "name": "behaviourTable_reqId_window_top1_ratio_227",
+        "type": "double"
+      },
+      {
+        "name": "behaviourTable_itemId_window_top1_ratio_228",
+        "type": "double"
+      },
+      {
+        "name": "behaviourTable_itemId_window_top1_ratio_229",
+        "type": "double"
+      },
+      {
+        "name": "behaviourTable_instanceKey_window_top1_ratio_230",
+        "type": "double"
+      },
+      {
+        "name": "behaviourTable_reqId_window_top1_ratio_231",
+        "type": "double"
+      },
+      {
+        "name": "behaviourTable_platform_combine_232",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_platform_combine_233",
+        "type": "string"
+      },
+      {
+        "name": "behaviourTable_instanceKey_window_unique_count_234",
+        "type": "bigint"
+      },
+      {
+        "name": "behaviourTable_reqId_window_unique_count_235",
+        "type": "bigint"
+      },
+      {
+        "name": "behaviourTable_yumid_window_count_236",
+        "type": "bigint"
+      },
+      {
+        "name": "behaviourTable_startperiod_window_count_237",
+        "type": "bigint"
+      },
+      {
+        "name": "behaviourTable_starthour_window_count_238",
+        "type": "bigint"
+      },
+      {
+        "name": "behaviourTable_startday_window_count_239",
+        "type": "bigint"
+      },
+      {
+        "name": "behaviourTable_platform_window_count_240",
+        "type": "bigint"
+      },
+      {
+        "name": "behaviourTable_tags_window_count_241",
+        "type": "bigint"
+      },
+      {
+        "name": "instanceKey_14",
+        "type": "string"
+      },
+      {
+        "name": "bo_aie_recommendation_biz_date_multi_direct_13",
+        "type": "timestamp"
+      },
+      {
+        "name": "bo_aie_recommendation_ingestionTime_multi_direct_14",
+        "type": "timestamp"
+      },
+      {
+        "name": "bo_aie_recommendation_u_afternoon_avgta_multi_direct_15",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_afternoon_maxta_multi_direct_16",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_afternoon_minta_multi_direct_17",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_afternoon_std_ta_multi_direct_18",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_afternoon_sumta_multi_direct_19",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_afternoon_tc_multi_direct_20",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_avg_city_tier_multi_direct_21",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_avg_delivery_party_size_multi_direct_22",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_avg_discount_multi_direct_23",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_avg_party_size_multi_direct_24",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_avg_preorder_party_size_multi_direct_25",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_avg_ta_by_ps_multi_direct_26",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_breakfast_avgta_multi_direct_27",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_breakfast_maxta_multi_direct_28",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_breakfast_minta_multi_direct_29",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_breakfast_std_ta_multi_direct_30",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_breakfast_sumta_multi_direct_31",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_breakfast_tc_multi_direct_32",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_breakfastcard_flag_multi_direct_33",
+        "type": "int"
+      },
+      {
+        "name": "bo_aie_recommendation_u_burger_sell_price_multi_direct_34",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_burger_sold_multi_direct_35",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_chicken_burger_soldratio_crusty_multi_direct_36",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_chicken_burger_soldratio_orlean_multi_direct_37",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_chicken_burger_soldratio_spicy_multi_direct_38",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_chickensnack_sell_price_multi_direct_39",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_chickensnack_sold_multi_direct_40",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_cob_sell_price_multi_direct_41",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_cob_sold_multi_direct_42",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_coffee_sell_price_multi_direct_43",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_coffee_sold_multi_direct_44",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_coffeecard_flag_multi_direct_45",
+        "type": "int"
+      },
+      {
+        "name": "bo_aie_recommendation_u_combo_product_number_multi_direct_46",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_congee_sell_price_multi_direct_47",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_congee_sold_multi_direct_48",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_cor_ta_da_multi_direct_49",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_croissant_sell_price_multi_direct_50",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_croissant_sold_multi_direct_51",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_csd_sell_price_multi_direct_52",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_csd_sold_multi_direct_53",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_dabing_sell_price_multi_direct_54",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_dabing_sold_multi_direct_55",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_dashencard_flag_multi_direct_56",
+        "type": "int"
+      },
+      {
+        "name": "bo_aie_recommendation_u_delivery_ta_multi_direct_57",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_delivery_tc_multi_direct_58",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_deliverycard_flag_multi_direct_59",
+        "type": "int"
+      },
+      {
+        "name": "bo_aie_recommendation_u_dinner_avgta_multi_direct_60",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_dinner_maxta_multi_direct_61",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_dinner_minta_multi_direct_62",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_dinner_std_ta_multi_direct_63",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_dinner_sumta_multi_direct_64",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_dinner_tc_multi_direct_65",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_distinct_city_multi_direct_66",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_distinct_daypart_multi_direct_67",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_distinct_store_multi_direct_68",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_distinct_work_day_multi_direct_69",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_eggtart_sell_price_multi_direct_70",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_eggtart_sold_multi_direct_71",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_fri_avgta_multi_direct_72",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_fri_maxta_multi_direct_73",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_fri_minta_multi_direct_74",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_fri_std_ta_multi_direct_75",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_fri_sumta_multi_direct_76",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_fri_tc_multi_direct_77",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_icecream_sell_price_multi_direct_78",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_icecream_sold_multi_direct_79",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_juice_sell_price_multi_direct_80",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_juice_sold_multi_direct_81",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_kids_meal_toy_num_multi_direct_82",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lasttrans_b_city_multi_direct_83",
+        "type": "string"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lasttrans_b_city_tier_multi_direct_84",
+        "type": "int"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lasttrans_b_date_multi_direct_85",
+        "type": "string"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lasttrans_b_daypart_multi_direct_86",
+        "type": "string"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lasttrans_b_sell_code_multi_direct_87",
+        "type": "string"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lasttrans_b_store_code_multi_direct_88",
+        "type": "string"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lasttrans_b_ta_multi_direct_89",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lasttrans_nb_city_multi_direct_90",
+        "type": "string"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lasttrans_nb_city_tier_multi_direct_91",
+        "type": "int"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lasttrans_nb_date_multi_direct_92",
+        "type": "string"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lasttrans_nb_daypart_multi_direct_93",
+        "type": "string"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lasttrans_nb_sell_code_multi_direct_94",
+        "type": "string"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lasttrans_nb_store_code_multi_direct_95",
+        "type": "string"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lasttrans_nb_ta_multi_direct_96",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_latenight_avgta_multi_direct_97",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_latenight_maxta_multi_direct_98",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_latenight_minta_multi_direct_99",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_latenight_std_ta_multi_direct_100",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_latenight_sumta_multi_direct_101",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_latenight_tc_multi_direct_102",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lto_sell_price_multi_direct_103",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lto_sold_multi_direct_104",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lunch_avgta_multi_direct_105",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lunch_maxta_multi_direct_106",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lunch_minta_multi_direct_107",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lunch_std_ta_multi_direct_108",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lunch_sumta_multi_direct_109",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_lunch_tc_multi_direct_110",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_max_city_tier_multi_direct_111",
+        "type": "int"
+      },
+      {
+        "name": "bo_aie_recommendation_u_max_delivery_party_size_multi_direct_112",
+        "type": "int"
+      },
+      {
+        "name": "bo_aie_recommendation_u_max_discount_multi_direct_113",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_max_party_size_multi_direct_114",
+        "type": "int"
+      },
+      {
+        "name": "bo_aie_recommendation_u_max_preorder_party_size_multi_direct_115",
+        "type": "int"
+      },
+      {
+        "name": "bo_aie_recommendation_u_min_city_tier_multi_direct_116",
+        "type": "int"
+      },
+      {
+        "name": "bo_aie_recommendation_u_min_delivery_party_size_multi_direct_117",
+        "type": "int"
+      },
+      {
+        "name": "bo_aie_recommendation_u_min_discount_multi_direct_118",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_min_party_size_multi_direct_119",
+        "type": "int"
+      },
+      {
+        "name": "bo_aie_recommendation_u_min_preorder_party_size_multi_direct_120",
+        "type": "int"
+      },
+      {
+        "name": "bo_aie_recommendation_u_mon_avgta_multi_direct_121",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_mon_maxta_multi_direct_122",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_mon_minta_multi_direct_123",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_mon_std_ta_multi_direct_124",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_mon_sumta_multi_direct_125",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_mon_tc_multi_direct_126",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_morning_avgta_multi_direct_127",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_morning_maxta_multi_direct_128",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_morning_minta_multi_direct_129",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_morning_std_ta_multi_direct_130",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_morning_sumta_multi_direct_131",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_morning_tc_multi_direct_132",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_nonbreakfast_avgta_multi_direct_133",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_nonbreakfast_maxta_multi_direct_134",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_nonbreakfast_minta_multi_direct_135",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_nonbreakfast_std_ta_multi_direct_136",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_nonbreakfast_sumta_multi_direct_137",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_nonbreakfast_tc_multi_direct_138",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_nonfood_sell_price_multi_direct_139",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_nonfood_sold_multi_direct_140",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_nutrition_sell_price_multi_direct_141",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_nutrition_sold_multi_direct_142",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_panini_sell_price_multi_direct_143",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_panini_sold_multi_direct_144",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_pie_sell_price_multi_direct_145",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_pie_sold_multi_direct_146",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_preorder_ta_multi_direct_147",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_preorder_tc_multi_direct_148",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_rice_sell_price_multi_direct_149",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_rice_sold_multi_direct_150",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_riceroll_sell_price_multi_direct_151",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_riceroll_sold_multi_direct_152",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sat_avgta_multi_direct_153",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sat_maxta_multi_direct_154",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sat_minta_multi_direct_155",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sat_std_ta_multi_direct_156",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sat_sumta_multi_direct_157",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sat_tc_multi_direct_158",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_side_sell_price_multi_direct_159",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_side_sold_multi_direct_160",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sidefrenchfries_sell_price_multi_direct_161",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sidefrenchfries_sold_multi_direct_162",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sideothers_sell_price_multi_direct_163",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sideothers_sold_multi_direct_164",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_single_product_number_multi_direct_165",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_std_city_tier_multi_direct_166",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_std_delivery_party_size_multi_direct_167",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_std_discount_multi_direct_168",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_std_party_size_multi_direct_169",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_std_preorder_party_size_multi_direct_170",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_std_ta_by_ps_multi_direct_171",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sum_discount_multi_direct_172",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sun_avgta_multi_direct_173",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sun_maxta_multi_direct_174",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sun_minta_multi_direct_175",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sun_std_ta_multi_direct_176",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sun_sumta_multi_direct_177",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_sun_tc_multi_direct_178",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_ta_multi_direct_179",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_tc_multi_direct_180",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_tea_sell_price_multi_direct_181",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_tea_sold_multi_direct_182",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_thu_avgta_multi_direct_183",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_thu_maxta_multi_direct_184",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_thu_minta_multi_direct_185",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_thu_std_ta_multi_direct_186",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_thu_sumta_multi_direct_187",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_thu_tc_multi_direct_188",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_tier1_tc_multi_direct_189",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_tier2_tc_multi_direct_190",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_tier3_tc_multi_direct_191",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_tier4_tc_multi_direct_192",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_tier5_tc_multi_direct_193",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_tier6_tc_multi_direct_194",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_trade_up_num_multi_direct_195",
+        "type": "int"
+      },
+      {
+        "name": "bo_aie_recommendation_u_tue_avgta_multi_direct_196",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_tue_maxta_multi_direct_197",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_tue_minta_multi_direct_198",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_tue_std_ta_multi_direct_199",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_tue_sumta_multi_direct_200",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_tue_tc_multi_direct_201",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_twister_sell_price_multi_direct_202",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_twister_sold_multi_direct_203",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_waffle_sell_price_multi_direct_204",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_waffle_sold_multi_direct_205",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_wen_avgta_multi_direct_206",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_wen_maxta_multi_direct_207",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_wen_minta_multi_direct_208",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_wen_std_ta_multi_direct_209",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_wen_sumta_multi_direct_210",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_wen_tc_multi_direct_211",
+        "type": "bigint"
+      },
+      {
+        "name": "bo_aie_recommendation_u_wing_sell_price_multi_direct_212",
+        "type": "double"
+      },
+      {
+        "name": "bo_aie_recommendation_u_wing_sold_multi_direct_213",
+        "type": "bigint"
+      },
+      {
+        "name": "feedbackTable_actionValue_multi_direct_214",
+        "type": "int"
+      },
+      {
+        "name": "feedbackTable_eventTime_multi_direct_215",
+        "type": "timestamp"
+      },
+      {
+        "name": "feedbackTable_ingestionTime_multi_direct_216",
+        "type": "timestamp"
+      },
+      {
+        "name": "feedbackTable_itemId_multi_direct_217",
+        "type": "string"
+      },
+      {
+        "name": "feedbackTable_reqId_multi_direct_218",
+        "type": "string"
+      }
+    ]
+  }
+}
