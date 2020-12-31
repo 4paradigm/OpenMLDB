@@ -1,9 +1,6 @@
 package com._4paradigm.sql.sdk;
 
-import com._4paradigm.sql.ResultSet;
-import com._4paradigm.sql.SQLInsertRow;
-import com._4paradigm.sql.SQLInsertRows;
-import com._4paradigm.sql.SQLRequestRow;
+import com._4paradigm.sql.*;
 import com._4paradigm.sql.sdk.impl.BatchCallablePreparedStatementImpl;
 import com._4paradigm.sql.sdk.impl.CallablePreparedStatementImpl;
 
