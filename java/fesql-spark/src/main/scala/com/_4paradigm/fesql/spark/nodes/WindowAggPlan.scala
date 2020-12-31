@@ -46,7 +46,10 @@ object WindowAggPlan {
 
     val windowAggConfig = createWindowAggConfig(ctx, node)
     // group and sort
-    logger.info(s"genDefault mode: ${FesqlConfig.mode}")
+    if (FesqlConfig.print) {
+      logger.info(s"genDefault mode: ${FesqlConfig.mode}")
+    }
+
     val inputDf = if (FesqlConfig.mode.equals(FesqlConfig.skew)) {
       improveSkew(ctx, node, input.getDf(ctx.getSparkSession), windowAggConfig)
     } else {
@@ -58,7 +61,10 @@ object WindowAggPlan {
 
     val resultRDD = inputDf.rdd.mapPartitionsWithIndex {
       case (partitionIndex, iter) =>
-        logger.info(s"partitionIndex ${partitionIndex}")
+
+        if (FesqlConfig.print) {
+          logger.info(s"partitionIndex ${partitionIndex}")
+        }
         // create computer
         val computer = createComputer(partitionIndex, hadoopConf, windowAggConfig)
 
@@ -272,7 +278,6 @@ object WindowAggPlan {
     keyScala.foreach(e => keysMap.put(e, e))
     val schemas = scala.collection.JavaConverters.seqAsJavaList(input.schema.fieldNames)
 
-
     val tagSQL = SkewUtils.genPercentileTagSql(table, reportTable, quantile.intValue(), schemas, keysMap, ts, FesqlConfig.skewTag, FesqlConfig.skewPosition, FesqlConfig.skewCntName, FesqlConfig.skewCnt.longValue())
     logger.info(s"skew tag sql : ${tagSQL}")
     var skewDf = ctx.sparksql(tagSQL)
@@ -306,7 +311,6 @@ object WindowAggPlan {
     // todo order desc asc
     val sortedDf = groupedDf.sortWithinPartitions(keyScala.map(skewDf(_)): _*)
     sortedDf.cache()
-//    sortedDf.show()
     sortedDf
   }
 
@@ -376,7 +380,10 @@ object WindowAggPlan {
     if (config.skewTagIdx != 0) {
       FesqlConfig.mode = "skew"
     }
-    logger.info(s"windowAggIter mode: ${FesqlConfig.mode}")
+    if (FesqlConfig.print) {
+      logger.info(s"windowAggIter mode: ${FesqlConfig.mode}")
+    }
+
     val resIter = if (FesqlConfig.mode.equals(FesqlConfig.skew)) {
       limitInputIter.flatMap(row => {
         if (lastRow != null) {
@@ -411,18 +418,20 @@ object WindowAggPlan {
           computer.checkPartition(row, lastRow)
         }
         lastRow = row
-        if (cnt % FesqlConfig.printSamplePartition == 0) {
-          val str = new StringBuffer()
-          str.append(row.get(config.orderIdx))
-          str.append(",")
-          for (e <- config.groupIdxs) {
-            str.append(row.get(e))
+        if (FesqlConfig.print) {
+          if (cnt % FesqlConfig.printSamplePartition == 0) {
+            val str = new StringBuffer()
+            str.append(row.get(config.orderIdx))
             str.append(",")
+            for (e <- config.groupIdxs) {
+              str.append(row.get(e))
+              str.append(",")
+            }
+            str.append(" window size = " + computer.getWindow.size())
+            logger.info(s"threadId = ${Thread.currentThread().getId} cnt = ${cnt} rowInfo = ${str.toString}")
           }
-          str.append(" window size = " + computer.getWindow.size())
-          logger.info(s"threadId = ${Thread.currentThread().getId} cnt = ${cnt} rowInfo = ${str.toString}")
+          cnt += 1
         }
-        cnt += 1
         Some(computer.compute(row))
       })
     }

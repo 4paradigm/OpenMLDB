@@ -48,6 +48,7 @@ object Fesql {
     val inputTables = config.getTables
     for ((name, path) <- inputTables.asScala) {
       logger.info(s"Try load table $name from: $path")
+
       if (FesqlConfig.tinyData > 0) {
         sess.read(path).tiny(FesqlConfig.tinyData).createOrReplaceTempView(name)
       } else {
