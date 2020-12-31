@@ -583,7 +583,7 @@ int32_t RowView::GetPrimaryFieldOffset(uint32_t idx) {
     return offset_vec_.at(idx);
 }
 int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
-                          ::fesql::type::Type type, void* val) {
+                          ::fesql::type::Type type, void* val) const {
     if (schema_.size() == 0 || row == NULL) {
         return -1;
     }
@@ -772,20 +772,20 @@ std::string RowView::GetAsString(uint32_t idx) {
 }
 
 int32_t RowView::GetValue(const int8_t* row, uint32_t idx, const char** val,
-                          uint32_t* length) {
+                          uint32_t* length) const {
     if (schema_.size() == 0 || row == NULL || length == NULL) {
         return -1;
     }
     if ((int32_t)idx >= schema_.size()) {
         LOG(WARNING) << "idx out of index";
-        return false;
+        return -1;
     }
     const ::fesql::type::ColumnDef& column = schema_.Get(idx);
     if (column.type() != ::fesql::type::kVarchar) {
         LOG(WARNING) << "type mismatch required is "
                      << ::fesql::type::Type_Name(::fesql::type::kVarchar)
                      << " but is " << fesql::type::Type_Name(column.type());
-        return false;
+        return -1;
     }
     uint32_t size = GetSize(row);
     if (size <= HEADER_LENGTH) {

@@ -146,19 +146,21 @@ class RowView {
     static inline uint32_t GetSize(const int8_t* row) {
         return *(reinterpret_cast<const uint32_t*>(row + VERSION_LENGTH));
     }
-
     int32_t GetValue(const int8_t* row, uint32_t idx, ::fesql::type::Type type,
-                     void* val);
+                     void* val) const;
 
     int32_t GetInteger(const int8_t* row, uint32_t idx,
                        ::fesql::type::Type type, int64_t* val);
+
     int32_t GetValue(const int8_t* row, uint32_t idx, const char** val,
-                     uint32_t* length);
+                     uint32_t* length) const;
+
     std::string GetAsString(uint32_t idx);
     std::string GetRowString();
     int32_t GetPrimaryFieldOffset(uint32_t idx);
     const Schema* GetSchema() const { return &schema_; }
-    inline bool IsNULL(const int8_t* row, uint32_t idx) {
+
+    inline bool IsNULL(const int8_t* row, uint32_t idx) const {
         const int8_t* ptr = row + HEADER_LENGTH + (idx >> 3);
         return *(reinterpret_cast<const uint8_t*>(ptr)) & (1 << (idx & 0x07));
     }
