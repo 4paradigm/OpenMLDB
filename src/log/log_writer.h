@@ -23,7 +23,7 @@ class Writer {
     // Create a writer that will append data to "*dest".
     // "*dest" must be initially empty.
     // "*dest" must remain live while this Writer is in use.
-    explicit Writer(WritableFile* dest, bool compressed);
+    Writer(WritableFile* dest, bool compressed);
 
     // Create a writer that will append data to "*dest".
     // "*dest" must have initial length "dest_length".

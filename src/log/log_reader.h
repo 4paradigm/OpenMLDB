@@ -53,7 +53,7 @@ class Reader {
     // The Reader will start reading at the first record located at physical
     // position >= initial_offset within the file.
     Reader(SequentialFile* file, Reporter* reporter, bool checksum,
-           uint64_t initial_offset, bool for_snaphot);
+           uint64_t initial_offset, bool compressed);
 
     ~Reader();
 
