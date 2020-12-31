@@ -56,7 +56,6 @@ object Fesql {
       }
     }
 
-//    val rquestEngine = new RequestEngine(sqlScript, FesqlUtil.getDatabase(FesqlConfig.configDBName, sess.registeredTables.toMap))
     val feconfig = sql2Feconfig(sqlScript, FesqlUtil.getDatabase(FesqlConfig.configDBName, sess.registeredTables.toMap))//parseOpSchema(rquestEngine.getPlan)
     val tableInfoRDD = sess.getSparkSession.sparkContext.parallelize(Seq(feconfig)).repartition(1)
     HDFSUtil.deleteIfExist(config.getOutputPath + "/../config")
@@ -64,9 +63,6 @@ object Fesql {
 
     val output = config.getOutputPath
     val res = sess.fesql(sqlScript)
-//    sess.
-
-
     if (config.getInstanceFormat.equals("parquet")) {
       res.sparkDf.write.mode("overwrite").parquet(output)
     }
