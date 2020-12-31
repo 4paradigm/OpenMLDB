@@ -27,19 +27,19 @@ using namespace ::llvm;  // NOLINT
     }                                                                   \
     BENCHMARK(BM_Request_##NAME);
 
-#define DEFINE_REQUEST_WINDOW_CASE(NAME, PATH, CASE_ID)             \
-    static void BM_Request_##NAME(benchmark::State& state) {        \
-        auto sql_case = LoadSQLCaseWithID(PATH, CASE_ID);           \
-        if (!fesql::sqlcase::SQLCase::IS_DEBUG()) {                 \
-            SQLCaseInputRepeatConfig("window_size", state.range(0), \
-                                     &sql_case);                    \
-        }                                                           \
-        EngineBenchmarkOnCase(sql_case, vm::kRequestMode, &state);  \
-    }                                                               \
-    BENCHMARK(BM_Request_##NAME)                                    \
-        ->ArgNames({"window_size"})                                 \
-        ->Args({100})                                               \
-        ->Args({1000})                                              \
+#define DEFINE_REQUEST_WINDOW_CASE(NAME, PATH, CASE_ID)                       \
+    static void BM_Request_##NAME(benchmark::State& state) {                  \
+        auto sql_case = fesql::sqlcase::SQLCase::LoadSQLCaseWithID(           \
+            fesql::sqlcase::FindFesqlDirPath(), PATH, CASE_ID);               \
+        if (!fesql::sqlcase::SQLCase::IS_DEBUG()) {                           \
+            sql_case.SQLCaseInputRepeatConfig("window_size", state.range(0)); \
+        }                                                                     \
+        EngineBenchmarkOnCase(sql_case, vm::kRequestMode, &state);            \
+    }                                                                         \
+    BENCHMARK(BM_Request_##NAME)                                              \
+        ->ArgNames({"window_size"})                                           \
+        ->Args({100})                                                         \
+        ->Args({1000})                                                        \
         ->Args({2000});
 
 const char* DEFAULT_YAML_PATH = "/cases/benchmark/request_benchmark.yaml";

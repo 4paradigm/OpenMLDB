@@ -811,7 +811,7 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
         table->repeat_ = schema_data["repeat"].as<int64_t>();
     }
     if (schema_data["repeat_tag"]) {
-        table->repeat_tag_= schema_data["repeat_tag"].as<std::string>();
+        table->repeat_tag_ = schema_data["repeat_tag"].as<std::string>();
     }
     if (schema_data["rows"]) {
         table->rows_.clear();
@@ -1172,7 +1172,20 @@ bool SQLCase::CreateSQLCasesFromYaml(
     }
     return true;
 }
+fesql::sqlcase::SQLCase SQLCase::LoadSQLCaseWithID(const std::string& dir_path,
+                                                   const std::string& yaml_path,
+                                                   const std::string& case_id) {
+    std::vector<SQLCase> cases;
+    LOG(INFO) << "BENCHMARK LOAD SQL CASE";
+    SQLCase::CreateSQLCasesFromYaml(dir_path, yaml_path, cases);
 
+    for (const auto& sql_case : cases) {
+        if (sql_case.id() == case_id) {
+            return sql_case;
+        }
+    }
+    return SQLCase();
+}
 std::string FindFesqlDirPath() {
     boost::filesystem::path current_path(boost::filesystem::current_path());
     boost::filesystem::path fesql_path;

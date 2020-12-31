@@ -193,6 +193,10 @@ class SQLCase {
         if (value != nullptr && strcmp(value, "true") == 0) {
             return true;
         }
+        value = getenv("FESQL_DEBUG");
+        if (value != nullptr && strcmp(value, "true") == 0) {
+            return true;
+        }
         return false;
     }
     static bool IS_CLUSTER() {
@@ -227,6 +231,19 @@ class SQLCase {
             return true;
         }
         return false;
+    }
+
+    static fesql::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& dir_path,
+                                              const std::string& yaml_path,
+                                              const std::string& case_id);
+    void SQLCaseInputRepeatConfig(const std::string& tag, const int value) {
+        for (size_t idx = 0; idx < inputs_.size(); idx++) {
+            if (inputs_[idx].repeat_tag_ == tag) {
+                LOG(INFO) << "config input " << idx << " " << tag << " "
+                          << value;
+                inputs_[idx].repeat_ = value;
+            }
+        }
     }
 
     const YAML::Node raw_node() const { return raw_node_; }
