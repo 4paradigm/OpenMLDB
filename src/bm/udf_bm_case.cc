@@ -163,6 +163,32 @@ void MemTableIterate(benchmark::State* state, MODE mode, int64_t data_size) {
     }
 }
 
+void RequestUnionTableIterate(benchmark::State* state, MODE mode,
+                              int64_t data_size) {
+    auto table_handler = std::make_shared<vm::MemTimeTableHandler>();
+    type::TableDef table_def;
+    BuildData(table_def, *table_handler.get(), data_size);
+    codec::Row request_row = table_handler->GetBackRow().second;
+    table_handler->PopBackRow();
+
+    auto request_union = std::make_shared<vm::RequestUnionTableHandler>(
+        0, request_row, table_handler);
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(
+                    TableHanlderIterate(request_union.get()));
+            }
+            break;
+        }
+        case TEST: {
+            if (data_size != TableHanlderIterateTest(request_union.get())) {
+                FAIL();
+            }
+        }
+    }
+}
+
 void MemSegmentIterate(benchmark::State* state, MODE mode, int64_t data_size) {
     vm::MemTimeTableHandler table_hanlder;
     type::TableDef table_def;
@@ -407,14 +433,10 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     }
 }
 
-void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
-                    const std::string& col_name) {
-    vm::MemTableHandler window;
-    type::TableDef table_def;
-    BuildData(table_def, window, data_size);
-
+void DoSumTableCol(vm::TableHandler* window, benchmark::State* state, MODE mode,
+                   int64_t data_size, const std::string& col_name) {
     vm::SchemasContext schemas_context;
-    schemas_context.BuildTrivial({&table_def});
+    schemas_context.BuildTrivial({window->GetSchema()});
     codegen::MemoryWindowDecodeIRBuilder builder(&schemas_context, nullptr);
 
     size_t schema_idx;
@@ -435,7 +457,7 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
 
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
     codec::ListRef<> window_ref;
-    window_ref.list = reinterpret_cast<int8_t*>(&window);
+    window_ref.list = reinterpret_cast<int8_t*>(window);
     ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
                      reinterpret_cast<int8_t*>(&window_ref), 0, info->idx,
                      info->offset, info->type, buf));
@@ -521,6 +543,32 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
             }
         }
     }
+}
+
+void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
+                    const std::string& col_name) {
+    type::TableDef table_def;
+    std::vector<Row> buffer;
+    BuildOnePkTableData(table_def, buffer, data_size);
+    vm::MemTableHandler window(&table_def.columns());
+    for (int i = 0; i < data_size - 1; ++i) {
+        window.AddRow(buffer[i]);
+    }
+    DoSumTableCol(&window, state, mode, data_size, col_name);
+}
+
+void SumRequestUnionTableCol(benchmark::State* state, MODE mode,
+                             int64_t data_size, const std::string& col_name) {
+    type::TableDef table_def;
+    std::vector<Row> buffer;
+    BuildOnePkTableData(table_def, buffer, data_size);
+    auto window = std::make_shared<vm::MemTableHandler>(&table_def.columns());
+    for (int i = 0; i < data_size - 1; ++i) {
+        window->AddRow(buffer[i]);
+    }
+    auto request_union = std::make_shared<vm::RequestUnionTableHandler>(
+        1, buffer[data_size - 1], window);
+    DoSumTableCol(request_union.get(), state, mode, data_size, col_name);
 }
 
 bool CTimeDays(int data_size) {
