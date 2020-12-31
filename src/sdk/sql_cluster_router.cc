@@ -1222,9 +1222,22 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVect
                 }
             }
             // get input schema, check input parameter, and fill sp_info
+            std::set<size_t> input_common_column_indices;
+            for (int i = 0; i < schema->size(); ++i) {
+                if (schema->Get(i).is_constant()) {
+                    input_common_column_indices.insert(i);
+                }
+            }
+            bool ok;
             fesql::vm::ExplainOutput explain_output;
-            bool ok = cluster_sdk_->GetEngine()->Explain(
+            if (input_common_column_indices.empty()) {
+                ok = cluster_sdk_->GetEngine()->Explain(
                     sql, db, fesql::vm::kRequestMode, &explain_output, &sql_status);
+            } else {
+                ok = cluster_sdk_->GetEngine()->Explain(
+                    sql, db, fesql::vm::kBatchRequestMode, input_common_column_indices,
+                    &explain_output, &sql_status);
+            }
             if (!ok) {
                 *msg = "fail to explain sql" + sql_status.msg;
                 return false;
