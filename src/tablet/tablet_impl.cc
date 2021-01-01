@@ -5554,7 +5554,9 @@ void TabletImpl::RunRequestQuery(RpcController* ctrl, const rtidb::api::QueryReq
         response.set_msg("fail to encode sql output row");
         return;
     }
-    response.set_schema(session.GetEncodedSchema());
+    if (!request.has_task_id()) {
+        response.set_schema(session.GetEncodedSchema());
+    }
     response.set_byte_size(buf_total_size);
     response.set_count(1);
     response.set_row_slices(1);

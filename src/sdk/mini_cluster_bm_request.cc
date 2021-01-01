@@ -32,15 +32,20 @@ const char* DEFAULT_YAML_PATH = "/cases/benchmark/request_benchmark.yaml";
 DEFINE_REQUEST_CASE(BM_SimpleLastJoin2Right, DEFAULT_YAML_PATH, "0");
 DEFINE_REQUEST_CASE(BM_SimpleLastJoin4Right, DEFAULT_YAML_PATH, "1");
 
-#define DEFINE_REQUEST_WINDOW_CASE(NAME, PATH, CASE_ID)                       \
-    static void BM_Request_##NAME(benchmark::State& state) {                  \
-        auto sql_case = LoadSQLCaseWithID(PATH, CASE_ID);                     \
-        if (!fesql::sqlcase::SQLCase::IS_DEBUG()) {                           \
-            sql_case.SQLCaseInputRepeatConfig("window_size", state.range(0)); \
-        }                                                                     \
-        MiniBenchmarkOnCase(sql_case, kRequestMode, mc, &state);              \
-    }                                                                         \
-    BENCHMARK(BM_Request_##NAME)->ArgNames({"window_size"})->Args({100})->Args({1000})->Args({2000});
+#define DEFINE_REQUEST_WINDOW_CASE(NAME, PATH, CASE_ID)                   \
+    static void BM_Request_##NAME(benchmark::State& state) {              \
+        auto sql_case = LoadSQLCaseWithID(PATH, CASE_ID);                 \
+        if (!fesql::sqlcase::SQLCase::IS_DEBUG()) {                       \
+            sql_case.SQLCaseRepeatConfig("window_scale", state.range(0)); \
+        }                                                                 \
+        MiniBenchmarkOnCase(sql_case, kRequestMode, mc, &state);          \
+    }                                                                     \
+    BENCHMARK(BM_Request_##NAME)                                          \
+        ->Unit(benchmark::kMicrosecond)                                   \
+        ->ArgNames({"window_scale"})                                      \
+        ->Args({100})                                                     \
+        ->Args({1000})                                                    \
+        ->Args({2000});
 
 DEFINE_REQUEST_WINDOW_CASE(BM_SimpleWindowOutputLastJoinTable2, DEFAULT_YAML_PATH, "2");
 DEFINE_REQUEST_WINDOW_CASE(BM_SimpleWindowOutputLastJoinTable4, DEFAULT_YAML_PATH, "3");

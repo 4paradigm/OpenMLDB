@@ -307,10 +307,32 @@ void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_
                                                                    &status);
                     rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
                     if (!rs) FAIL() << "sql case expect success == true";
+                    fesql::type::TableDef output_table;
+                    std::vector<fesql::codec::Row> rows;
+                    if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
+                        ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
+                        rtidb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
+                    }
+
+                    if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
+                        ASSERT_TRUE(sql_case.ExtractOutputData(rows));
+                        rtidb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
+                    }
                 } else {
                     auto rs = router->ExecuteSQLBatchRequest(sql_case.db(), sql, row_batch, &status);
-                    rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
                     if (!rs) FAIL() << "sql case expect success == true";
+                    rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    fesql::type::TableDef output_table;
+                    std::vector<fesql::codec::Row> rows;
+                    if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
+                        ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
+                        rtidb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
+                    }
+
+                    if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
+                        ASSERT_TRUE(sql_case.ExtractOutputData(rows));
+                        rtidb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
+                    }
                 }
                 break;
             }
