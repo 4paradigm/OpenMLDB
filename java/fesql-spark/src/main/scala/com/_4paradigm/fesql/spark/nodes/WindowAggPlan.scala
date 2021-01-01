@@ -536,7 +536,7 @@ object WindowAggPlan {
 
     // window state
     protected var window = new WindowInterface(
-      config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, config.rowPreceding.intValue())
+      config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, if (config.startOffset == 0 && config.rowPreceding.intValue() > 0) config.rowPreceding.intValue() + 1 else 0)
 
     def compute(row: Row): Row = {
       // call encode
@@ -575,8 +575,12 @@ object WindowAggPlan {
     def resetWindow(): Unit = {
       // TODO: wrap iter to hook iter end; now last window is leak
       window.delete()
+      var max_size = 0
+      if (config.startOffset == 0 && config.rowPreceding > 0) {
+        max_size = config.rowPreceding.intValue() + 1
+      }
       window = new WindowInterface(
-        config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, config.rowPreceding.intValue())
+        config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, max_size)
     }
 
     def delete(): Unit = {

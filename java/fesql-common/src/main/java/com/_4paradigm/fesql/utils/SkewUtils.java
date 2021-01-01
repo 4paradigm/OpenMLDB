@@ -50,7 +50,7 @@ public class SkewUtils {
      * @param schemas
      * @param keysMap
      * @param ts
-     * @param tag1 skewTag
+     * @param tag1 skewTag 标签位
      * @param tag2 skewPosition
      * @param tag3 skewCntName
      * @param tag4 skewCnt = 100
