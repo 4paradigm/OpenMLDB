@@ -54,7 +54,7 @@ cases:
           - [1,1,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
     batch_request:
       common_column_indices: [1,2,3,5,7]
-      repeat_tag: batch_size
+      repeat_tag: batch_scale
       repeat: 1
       columns : ["id int","k1 bigint","k2 timestamp",
                  "c1 double","c2 double","c3 double",
