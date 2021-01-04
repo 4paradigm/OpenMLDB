@@ -980,6 +980,11 @@ cmd_stmt:
                 free($4);
                 free($6);
             }
+            |SHOW CREATE PROCEDURE sp_name
+            {
+                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdShowCreateSp, "", $4);
+                free($4);
+            }
 			|SHOW PROCEDURE STATUS
 			{
 				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdShowProcedures);
