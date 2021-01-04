@@ -202,6 +202,15 @@ class SQLCase {
         }
         return false;
     }
+    static bool IS_BATCH_REQUEST_OPT() {
+        const char* env_name = "FESQL_BATCH_REQUEST_OPT";
+        char* value = getenv(env_name);
+        if (value != nullptr && strcmp(value, "true") == 0) {
+            return true;
+        }
+        return false;
+    }
+
     static bool IS_DISABLE_LOCALTABLET() {
         const char* env_name = "FESQL_DISTABLE_LOCALTABLET";
         char* value = getenv(env_name);

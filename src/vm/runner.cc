@@ -21,6 +21,7 @@
 
 namespace fesql {
 namespace vm {
+#define MAX_DEBUG_BATCH_SiZE 5
 #define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_MAX 20
 
@@ -665,7 +666,7 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
         switch (bias) {
             case kNoBias:
             case kRightBias: {
-                new_right = BuildProxyRunnerForClusterTask(new_left);
+                new_left = BuildProxyRunnerForClusterTask(new_left);
                 runner->AddProducer(new_left.GetRoot());
                 runner->AddProducer(new_right.GetRoot());
                 return ClusterTask::TaskMergeToRight(runner, new_left,
@@ -721,6 +722,9 @@ ClusterTask RunnerBuilder::BuildProxyRunnerForClusterTask(
         uint32_t remote_task_id = cluster_job_.AddTask(task);
         proxy_runner = nm_->RegisterNode(new ProxyRequestRunner(
             id_++, remote_task_id, task.GetRoot()->output_schemas()));
+        if (task.GetRoot()->need_batch_cache()) {
+            proxy_runner->EnableBatchCache();
+        }
         proxy_runner_map_.insert(std::make_pair(task.GetRoot(), proxy_runner));
     }
 
@@ -973,6 +977,10 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
         oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
             << "\n";
         for (size_t idx = 0; idx < outputs->GetSize(); idx++) {
+            if (idx >= MAX_DEBUG_BATCH_SiZE) {
+                oss << ">= MAX_DEBUG_BATCH_SiZE...\n";
+                break;
+            }
             Runner::PrintData(oss, output_schemas_, outputs->Get(idx));
         }
         LOG(INFO) << oss.str();
@@ -1063,6 +1071,10 @@ std::shared_ptr<DataHandlerList> RequestRunner::BatchRequestRun(
         oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
             << "\n";
         for (size_t idx = 0; idx < res->GetSize(); idx++) {
+            if (idx >= MAX_DEBUG_BATCH_SiZE) {
+                oss << ">= MAX_DEBUG_BATCH_SiZE...\n";
+                break;
+            }
             Runner::PrintData(oss, output_schemas_, res->Get(idx));
         }
         LOG(INFO) << oss.str();
@@ -2447,8 +2459,9 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(
                                       &union_segment_status);
     uint64_t cnt = 1;
     while (-1 != max_union_pos) {
-        if (cnt > rows_start_preceding &&
-            union_segment_status[max_union_pos].key_ < start) {
+        if (range_gen_.OutOfRange(
+                cnt > rows_start_preceding,
+                union_segment_status[max_union_pos].key_ < start)) {
             break;
         }
 
@@ -2538,19 +2551,20 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
     // if need batch cache_, we only need to compute the first line
     // and repeat the output
     if (need_batch_cache_) {
-        std::vector<std::shared_ptr<DataHandler>> inputs(
-            {proxy_batch_input->Get(0)});
-        auto res = Run(ctx, inputs);
+        std::shared_ptr<DataHandlerVector> proxy_one_row_batch_input =
+            std::make_shared<DataHandlerVector>();
+        proxy_one_row_batch_input->Add(proxy_batch_input->Get(0));
+        auto res = RunBatchInput(ctx, proxy_one_row_batch_input);
         if (ctx.is_debug()) {
             std::ostringstream oss;
             oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
                 << " HIT BATCH CACHE!"
                 << "\n";
-            Runner::PrintData(oss, output_schemas_, res);
+            Runner::PrintData(oss, output_schemas_, res->Get(0));
             LOG(INFO) << oss.str();
         }
         auto repeated_data = std::shared_ptr<DataHandlerList>(
-            new DataHandlerRepeater(res, proxy_batch_input->GetSize()));
+            new DataHandlerRepeater(res->Get(0), proxy_batch_input->GetSize()));
         if (need_cache_) {
             ctx.SetBatchCache(id_, repeated_data);
         }
@@ -2565,6 +2579,10 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
         oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
             << "\n";
         for (size_t idx = 0; idx < outputs->GetSize(); idx++) {
+            if (idx >= MAX_DEBUG_BATCH_SiZE) {
+                oss << ">= MAX_DEBUG_BATCH_SiZE...\n";
+                break;
+            }
             Runner::PrintData(oss, output_schemas_, outputs->Get(idx));
         }
         LOG(INFO) << oss.str();
@@ -2635,7 +2653,7 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
     switch (batch_input->Get(0)->GetHanlderType()) {
         case kRowHandler: {
             bool input_batch_is_common = producers_[0]->need_batch_cache();
-            if (input_batch_is_common) {
+            if (input_batch_is_common || 1 == batch_input->GetSize()) {
                 Row row;
                 if (!ExtractRow(batch_input->Get(0), &row)) {
                     LOG(WARNING) << "run proxy runner with rows fail, batch "

@@ -221,7 +221,8 @@ TEST_F(PlannerTest, SelectPlanWithWindowProjectTest) {
     int ret = parser_->parse(
         "SELECT COL1, SUM(AMT) OVER w1 as w_amt_sum FROM t \n"
         "WINDOW w1 AS (PARTITION BY COL2\n"
-        "              ORDER BY `TS` RANGE BETWEEN 3 PRECEDING AND CURRENT ROW"
+        "              ORDER BY `TS` ROWS_RANGE BETWEEN 3 PRECEDING AND "
+        "CURRENT ROW"
         ") limit 10;",
         list, manager_, status);
     ASSERT_EQ(0, ret);
@@ -280,9 +281,11 @@ TEST_F(PlannerTest, SelectPlanWithMultiWindowProjectTest) {
         "SELECT sum(col1) OVER w1 as w1_col1_sum, sum(col1) OVER w2 as "
         "w2_col1_sum FROM t1 "
         "WINDOW "
-        "w1 AS (PARTITION BY col2 ORDER BY `TS` RANGE BETWEEN 1d PRECEDING AND "
+        "w1 AS (PARTITION BY col2 ORDER BY `TS` ROWS_RANGE BETWEEN 1d "
+        "PRECEDING AND "
         "1s PRECEDING), "
-        "w2 AS (PARTITION BY col3 ORDER BY `TS` RANGE BETWEEN 2d PRECEDING AND "
+        "w2 AS (PARTITION BY col3 ORDER BY `TS` ROWS_RANGE BETWEEN 2d "
+        "PRECEDING AND "
         "1s PRECEDING) "
         "limit 10;";
     int ret = parser_->parse(sql, list, manager_, status);
@@ -427,9 +430,11 @@ TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
         "test_col_at(col1, 1) OVER w2 as w2_col1_at_1 "
         "FROM t1 "
         "WINDOW "
-        "w1 AS (PARTITION BY col2 ORDER BY `TS` RANGE BETWEEN 1d PRECEDING AND "
+        "w1 AS (PARTITION BY col2 ORDER BY `TS` ROWS_RANGE BETWEEN 1d "
+        "PRECEDING AND "
         "1s PRECEDING), "
-        "w2 AS (PARTITION BY col3 ORDER BY `TS` RANGE BETWEEN 2d PRECEDING AND "
+        "w2 AS (PARTITION BY col3 ORDER BY `TS` ROWS_RANGE BETWEEN 2d "
+        "PRECEDING AND "
         "1s PRECEDING) "
         "limit 10;";
     std::cout << sql << std::endl;

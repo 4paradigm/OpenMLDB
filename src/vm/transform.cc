@@ -1531,6 +1531,9 @@ Status BatchModeTransformer::CheckHistoryWindowFrame(
     CHECK_TRUE(w_ptr != nullptr, kPlanError,
                "Invalid Request Window: null window");
     const node::FrameNode* frame = w_ptr->frame_node();
+    CHECK_TRUE(frame->frame_type() != node::kFrameRange, kPlanError,
+               "Invalid Request Window: Non-support FrameType RANGE,"
+               "use ROWS or ROWS_RANGE");
     CHECK_TRUE(
         frame->GetHistoryRangeEnd() <= 0 || frame->GetHistoryRowsEnd() <= 0,
         kPlanError, "Invalid Request Window: end frame can't exceed CURRENT");

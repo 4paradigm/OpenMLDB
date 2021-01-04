@@ -3,7 +3,6 @@ debugs: []
 cases:
   - id: 0
     desc: batch request with one common window and one non-common window
-    mode: cluster-unsupport
     inputs:
       -
         columns: ["id int","k1 bigint","k2 bigint","k3 timestamp", "k4 timestamp",
@@ -21,19 +20,20 @@ cases:
       columns : ["id int","k1 bigint","k2 bigint","k3 timestamp", "k4 timestamp",
                  "c1 double","c2 double","c3 double","c4 double","c5 double","c6 double"]
       rows:
-        - [2,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
-        - [4,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
-        - [7,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+        - [2,1,2,1590738991000,1590738991000,1.0,1.0,1.0,1.0,1.0,1.0]
+        - [4,1,2,1590738991000,1590738991000,1.0,1.0,1.0,1.0,1.0,1.0]
+        - [7,1,2,1590738991000,1590738991000,1.0,1.0,1.0,1.0,1.0,1.0]
     sql: |
       SELECT {0}.id, sum(c1) over w1 as m1, sum(c2) over w1 as m2, sum(c3) over w1 as m3, 
              sum(c4) over w2 as m4, sum(c5) over w2 as m5, sum(c6) over w2 as m6 
       FROM {0}
-      WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k3 ROWS BETWEEN 20 PRECEDING AND CURRENT ROW), 
-             w2 AS (PARTITION BY {0}.k2 ORDER BY {0}.k4 ROWS BETWEEN 20 PRECEDING AND CURRENT ROW);
+      WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k3 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW),
+             w2 AS (PARTITION BY {0}.k2 ORDER BY {0}.k4 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);
+    expect:
+      success: true
 
   - id: 1
     desc: batch request with common window and common and non-common aggregations, window is small
-    mode: cluster-unsupport
     inputs:
       -
         columns: ["id int","k1 bigint","k2 timestamp",
@@ -50,16 +50,17 @@ cases:
                  "c1 double","c2 double","c3 double",
                  "c4 double","c5 double","c6 double"]
       rows:
-        - [2,1,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+        - [2,1,1590738991000,1.0,1.0,1.0,1.0,1.0,1.0]
     sql: |
       SELECT {0}.id, sum(c1) over w1 as m1, sum(c2) over w1 as m2, sum(c3) over w1 as m3, 
              sum(c4) over w1 as m4, sum(c5) over w1 as m5, sum(c6) over w1 as m6 
       FROM {0}
-      WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k2 ROWS BETWEEN 20 PRECEDING AND CURRENT ROW);
+      WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k2 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);
+    expect:
+      success: true
 
   - id: 2
     desc: batch request with common window and common and non-common aggregations, window is large
-    mode: cluster-unsupport
     inputs:
       -
         columns: ["id int","k1 bigint","k2 timestamp",
@@ -76,10 +77,13 @@ cases:
                  "c1 double","c2 double","c3 double",
                  "c4 double","c5 double","c6 double"]
       rows:
-        - [2,1,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+        - [2,1,1590738991000,1.0,1.0,1.0,1.0,1.0,1.0]
     sql: |
       SELECT {0}.id, sum(c1) over w1 as m1, sum(c2) over w1 as m2, sum(c3) over w1 as m3, 
              sum(c4) over w1 as m4, sum(c5) over w1 as m5, sum(c6) over w1 as m6 
       FROM {0}
-      WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k2 ROWS BETWEEN 20 PRECEDING AND CURRENT ROW);
+      WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k2 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);
+    expect:
+      success: true
+
 
