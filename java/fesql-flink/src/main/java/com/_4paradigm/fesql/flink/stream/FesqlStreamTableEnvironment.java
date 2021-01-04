@@ -152,7 +152,7 @@ public class FesqlStreamTableEnvironment {
         try {
             return fesqlQuery(query);
         } catch (Exception e) {
-            logger.warn("Fail to execute with FESQL, error message: " + e.getMessage());
+            logger.warn("Fail to execute with FESQL, error message: {}", e.getMessage());
             e.printStackTrace();
             return null;
         }

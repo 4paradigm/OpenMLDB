@@ -1,5 +1,6 @@
 package com._4paradigm.fesql.spark
 
+import com._4paradigm.fesql.spark.element.FesqlConfig
 import org.apache.spark.sql.SparkSession
 import org.scalatest.{BeforeAndAfter, FunSuite}
 
@@ -9,7 +10,7 @@ abstract class SparkTestSuite extends FunSuite with BeforeAndAfter {
   private val tlsSparkSession = new ThreadLocal[SparkSession]()
 
   before {
-    val sess = SparkSession.builder().master("local").getOrCreate()
+    val sess = SparkSession.builder().master("local").config(FesqlConfig.configMode, "skew")getOrCreate()
     tlsSparkSession.set(sess)
   }
 

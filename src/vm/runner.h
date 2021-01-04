@@ -453,8 +453,10 @@ class Runner : public node::NodeBase<Runner> {
     virtual std::shared_ptr<DataHandler> RunWithCache(
         RunnerContext& ctx);  // NOLINT
 
-    static int64_t GetColumnInt64(RowView* view, int pos, type::Type type);
-    static bool GetColumnBool(RowView* view, int idx, type::Type type);
+    static int64_t GetColumnInt64(const int8_t* buf, const RowView* view,
+                                  int pos, type::Type type);
+    static bool GetColumnBool(const int8_t* buf, const RowView* view, int idx,
+                              type::Type type);
     static Row WindowProject(const int8_t* fn, const uint64_t key,
                              const Row row, const bool is_instance,
                              size_t append_slices, Window* window);
@@ -993,8 +995,7 @@ class RouteInfo {
           table_handler_(table_handler) {}
     ~RouteInfo() {}
     const bool IsCompleted() const {
-        return table_handler_ && !index_.empty() &&
-               index_key_.ValidKey();
+        return table_handler_ && !index_.empty() && index_key_.ValidKey();
     }
     const bool IsCluster() const { return table_handler_ && !index_.empty(); }
     static const bool EqualWith(const RouteInfo& info1,
@@ -1272,10 +1273,9 @@ class RunnerBuilder {
     std::unordered_map<fesql::vm::Runner*, ::fesql::vm::Runner*>
         proxy_runner_map_;
     std::set<size_t> batch_common_node_set_;
-    ClusterTask BinaryInherit(const ClusterTask& left,
-                                         const ClusterTask& right,
-                                         Runner* runner, const Key& index_key,
-                                         const TaskBiasType bias = kNoBias);
+    ClusterTask BinaryInherit(const ClusterTask& left, const ClusterTask& right,
+                              Runner* runner, const Key& index_key,
+                              const TaskBiasType bias = kNoBias);
     ClusterTask BuildLocalTaskForBinaryRunner(const ClusterTask& left,
                                               const ClusterTask& right,
                                               Runner* runner);

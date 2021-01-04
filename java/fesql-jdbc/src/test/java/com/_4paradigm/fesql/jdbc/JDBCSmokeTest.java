@@ -49,7 +49,6 @@ public class JDBCSmokeTest {
         sdk.ExecuteQuery(dbname, createTable, status);
         String insert = "insert into t1 values(1000, 'hello');";
         sdk.ExecuteQuery(dbname, insert, status);
-        System.out.println(status.getMsg());
         Assert.assertEquals(0, status.getCode());
         String query = "select col1 + 1, col2 from t1;";
         ResultSet rs = sdk.ExecuteQuery(dbname, query, status);
