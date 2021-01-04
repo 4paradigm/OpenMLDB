@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["max"]
+debugs: ["top_n_key_count_cate_where-normal"]
 cases:
   -
     id: 0
@@ -37,22 +37,22 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, min(c2) OVER w1 as m2,min(c3) OVER w1 as m3,min(c4) OVER w1 as m4,min(c5) OVER w1 as m5,min(c6) OVER w1 as m6,min(c7) OVER w1 as m7,min(c8) OVER w1 as m8,min(c9) OVER w1 as m9,min(c10) OVER w1 as m10 FROM {0} WINDOW
+      SELECT id, c1, min(c2) OVER w1 as m2,min(c3) OVER w1 as m3,min(c4) OVER w1 as m4,min(c5) OVER w1 as m5,min(c6) OVER w1 as m6,min(c7) OVER w1 as m7,min(c8) OVER w1 as m8,min(c9) OVER w1 as m9 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double","m7 timestamp","m8 date","m9 string","m10 bool"]
+      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double","m7 timestamp","m8 date","m9 string"]
       rows:
-        - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
-        - [2,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",false]
-        - [3,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",false]
-        - [4,"aa",3,3,32,1.3,2.3,1590738991000,"2020-05-02","b",false]
+        - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+        - [2,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+        - [3,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+        - [4,"aa",3,3,32,1.3,2.3,1590738991000,"2020-05-02","b"]
   -
     id: 2
     desc: count
     inputs:
       -
-        columns : ["id int","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
         indexs: ["index1:c1:c7"]
         rows:
           - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -60,16 +60,16 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, count(c2) OVER w1 as m2,count(c3) OVER w1 as m3,count(c4) OVER w1 as m4,count(c5) OVER w1 as m5,count(c6) OVER w1 as m6,count(c7) OVER w1 as m7,count(c8) OVER w1 as m8,count(c9) OVER w1 as m9,count(c10) OVER w1 as m10 FROM {0} WINDOW
+      SELECT id, c1, count(c2) OVER w1 as m2,count(c3) OVER w1 as m3,count(c4) OVER w1 as m4,count(c5) OVER w1 as m5,count(c6) OVER w1 as m6,count(c7) OVER w1 as m7,count(c8) OVER w1 as m8,count(c9) OVER w1 as m9 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double","m7 timestamp","m8 date","m9 string","m10 bool"]
+      columns: ["id int","c1 string","m2 bigint","m3 bigint","m4 bigint","m5 bigint","m6 bigint","m7 bigint","m8 bigint","m9 bigint"]
       rows:
-        - [1,"aa",1,1,1,1,1,1,1,1,1]
-        - [2,"aa",2,2,2,2,2,2,2,2,2]
-        - [3,"aa",3,3,3,3,3,3,3,3,3]
-        - [4,"aa",2,2,2,2,3,2,2,2,2]
+        - [1,"aa",1,1,1,1,1,1,1,1]
+        - [2,"aa",2,2,2,2,2,2,2,2]
+        - [3,"aa",3,3,3,3,3,3,3,3]
+        - [4,"aa",2,2,2,2,2,3,2,2]
   -
     id: 3
     desc: sum
@@ -83,16 +83,16 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, sum(c2) OVER w1 as m2,sum(c3) OVER w1 as m3,sum(c4) OVER w1 as m4,sum(c5) OVER w1 as m5,sum(c6) OVER w1 as m6,sum(c10) OVER w1 as m10 FROM {0} WINDOW
+      SELECT id, c1, sum(c2) OVER w1 as m2,sum(c3) OVER w1 as m3,sum(c4) OVER w1 as m4,sum(c5) OVER w1 as m5,sum(c6) OVER w1 as m6 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double","m10 smallint"]
+      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double"]
       rows:
-        - [1,"aa",1,1,30,1.1,2.1,1]
-        - [2,"aa",5,5,63,2.5,4.5,1]
-        - [3,"aa",8,8,95,3.7999997,6.799999999999999,2]
-        - [4,"aa",7,7,65,2.7,4.7,1]
+        - [1,"aa",1,1,30,1.1,2.1]
+        - [2,"aa",5,5,63,2.5,4.5]
+        - [3,"aa",8,8,95,3.7999997,6.799999999999999]
+        - [4,"aa",7,7,65,2.7,4.7]
   -
     id: 4
     desc: avg
@@ -106,18 +106,60 @@ cases:
           - [3,"aa",1,1,33,1.1,2.1,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, avg(c2) OVER w1 as m2,avg(c3) OVER w1 as m3,avg(c4) OVER w1 as m4,avg(c5) OVER w1 as m5,avg(c6) OVER w1 as m6,avg(c10) OVER w1 as m10 FROM {0} WINDOW
+      SELECT id, c1, avg(c2) OVER w1 as m2,avg(c3) OVER w1 as m3,avg(c4) OVER w1 as m4,avg(c5) OVER w1 as m5,avg(c6) OVER w1 as m6 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int","c1 string","m2 double","m3 double","m4 double","m5 double","m6 double","m10 double"]
+      columns: ["id int","c1 string","m2 double","m3 double","m4 double","m5 double","m6 double"]
       rows:
-        - [1,"aa",1,1,30,1.100000023841858,2.1,1]
-        - [2,"aa",2.5,2.5,31.5,1.25,2.25,1.5]
-        - [3,"aa",2,2,32,1.200000007947286,2.1999999999999997,0.666666666666]
-        - [4,"aa",2.5,2.5,33,1.25,2.25,0.33333333333]
+        - [1,"aa",1,1,30,1.100000023841858,2.1]
+        - [2,"aa",2.5,2.5,31.5,1.25,2.25]
+        - [3,"aa",2,2,32,1.200000007947286,2.1999999999999997]
+        - [4,"aa",2.5,2.5,33,1.25,2.25]
   -
     id: 5
+    desc: distinct_count
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-02","c",false]
+          - [3,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-02","c",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    sql: |
+      SELECT id, c1, distinct_count(c2) OVER w1 as m2,distinct_count(c3) OVER w1 as m3,distinct_count(c4) OVER w1 as m4,distinct_count(c5) OVER w1 as m5,distinct_count(c6) OVER w1 as m6,distinct_count(c7) OVER w1 as m7,distinct_count(c8) OVER w1 as m8,distinct_count(c9) OVER w1 as m9 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 bigint","m3 bigint","m4 bigint","m5 bigint","m6 bigint","m7 bigint","m8 bigint","m9 bigint"]
+      rows:
+        - [1,"aa",1,1,1,1,1,1,1,1]
+        - [2,"aa",2,2,2,2,2,2,2,2]
+        - [3,"aa",2,2,2,2,2,2,2,2]
+        - [4,"aa",2,2,2,2,2,2,2,2]
+  -
+    id: 6
+    desc: max/max/count/sum/avg/distinct_count-bool
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",1,1,33,1.1,2.1,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    dataProvider:
+      - ["max","max","count","sum","avg","distinct_count"]
+    sql: |
+      SELECT id, c1, d[0](c10) OVER w1 as m10 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 7
     desc: sum-timestamp
     inputs:
       -
@@ -140,7 +182,7 @@ cases:
         - [3, 4772216973000]
         - [4, 3181477983000]
   -
-    id: 6
+    id: 8
     desc: avg-timestamp
     inputs:
       -
@@ -156,7 +198,7 @@ cases:
     expect:
       success: false
   -
-    id: 7
+    id: 9
     desc: sum-date
     inputs:
       -
@@ -172,7 +214,7 @@ cases:
     expect:
       success: false
   -
-    id: 8
+    id: 10
     desc: sum-string
     inputs:
       -
@@ -188,7 +230,7 @@ cases:
     expect:
       success: false
   -
-    id: 9
+    id: 11
     desc: avg-date
     inputs:
       -
@@ -204,7 +246,7 @@ cases:
     expect:
       success: false
   -
-    id: 10
+    id: 12
     desc: avg-string
     inputs:
       -
@@ -220,30 +262,7 @@ cases:
     expect:
       success: false
   -
-    id: 2
-    desc: distinct_count
-    inputs:
-      -
-        columns : ["id int","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:c1:c7"]
-        rows:
-          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
-          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
-          - [3,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-02","c",true]
-          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
-    sql: |
-      SELECT id, c1, distinct_count(c2) OVER w1 as m2,distinct_count(c3) OVER w1 as m3,distinct_count(c4) OVER w1 as m4,distinct_count(c5) OVER w1 as m5,distinct_count(c6) OVER w1 as m6,distinct_count(c7) OVER w1 as m7,distinct_count(c8) OVER w1 as m8,distinct_count(c9) OVER w1 as m9,distinct_count(c10) OVER w1 as m10 FROM {0} WINDOW
-      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
-    expect:
-      order: id
-      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double","m7 timestamp","m8 date","m9 string","m10 bool"]
-      rows:
-        - [1,"aa",1,1,1,1,1,1,1,1,1]
-        - [2,"aa",2,2,2,2,2,2,2,2,2]
-        - [3,"aa",2,2,2,2,2,2,2,2,2]
-        - [4,"aa",1,1,1,1,1,1,1,1,1]
-  -
-    id: 0
+    id: 13
     desc: MAX_WHERE-normal
     inputs:
       -
@@ -255,18 +274,18 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, max_where(c2,c2<4) OVER w1 as m2,max_where(c3,c3<4) OVER w1 as m3,max_where(c4,c4<33) OVER w1 as m4,max_where(c5,c5<=1.3) OVER w1 as m5,max_where(c6,c6!=null) OVER w1 as m6,max_where(c10,c10) OVER w1 as m10 FROM {0} WINDOW
+      SELECT id, c1, max_where(c2,c2<4) OVER w1 as m2,max_where(c3,c3<4) OVER w1 as m3,max_where(c4,c10) OVER w1 as m4,max_where(c5,c5<=1.3) OVER w1 as m5,max_where(c6,c6<=2.3) OVER w1 as m6 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double","m10 bool"]
+      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double"]
       rows:
-        - [1,"aa",1,1,30,1.1,2.1,true]
-        - [2,"aa",1,2,30,1.1,2.3,true]
-        - [3,"aa",2,3,32,1.3,2.3,true]
-        - [4,"aa",3,4,32,1.3,2.3,true]
+        - [1,"aa",1,1,30,1.1,2.1]
+        - [2,"aa",1,1,30,1.1,2.1]
+        - [3,"aa",3,3,32,1.3,2.3]
+        - [4,"aa",3,3,32,1.3,2.3]
   -
-    id: 0
+    id: 14
     desc: MIN_WHERE-normal
     inputs:
       -
@@ -278,19 +297,19 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, min_where(c2,c2>2) OVER w1 as m2,min_where(c3,c3>=3) OVER w1 as m3,min_where(c4,c4<33) OVER w1 as m4,min_where(c5,c5<=2) OVER w1 as m5,min_where(c6,c6!=null) OVER w1 as m6,min_where(c10,c10) OVER w1 as m10 FROM {0} WINDOW
+      SELECT id, c1, min_where(c2,c2>2) OVER w1 as m2,min_where(c3,c3>=3) OVER w1 as m3,min_where(c4,c4<33) OVER w1 as m4,min_where(c5,c5<=2) OVER w1 as m5,min_where(c6,c10) OVER w1 as m6 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double","m10 bool"]
+      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double"]
       rows:
-        - [1,"aa",1,1,30,1.1,2.1,true]
-        - [2,"aa",1,2,30,1.1,2.3,true]
-        - [3,"aa",2,3,32,1.3,2.3,true]
-        - [4,"aa",3,4,32,1.3,2.3,true]
+        - [1,"aa",32767,2147483647,30,1.1,2.1]
+        - [2,"aa",4,4,30,1.1,2.1]
+        - [3,"aa",3,3,30,1.1,2.1]
+        - [4,"aa",3,3,32,1.3,2.3]
   -
-    id: 0
-    desc: MAX_WHERE-normal
+    id: 15
+    desc: SUM_WHERE-normal
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
@@ -301,19 +320,19 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, max_where(c2,c2<4) OVER w1 as m2,max_where(c3,c3<4) OVER w1 as m3,max_where(c4,c4<33) OVER w1 as m4,max_where(c5,c5<=1.3) OVER w1 as m5,max_where(c6,c6!=null) OVER w1 as m6,max_where(c10,c10) OVER w1 as m10 FROM {0} WINDOW
+      SELECT id, c1, sum_where(c2,c2<4) OVER w1 as m2,sum_where(c3,c3<4) OVER w1 as m3,sum_where(c4,c4<33) OVER w1 as m4,sum_where(c5,c5<=1.3) OVER w1 as m5,sum_where(c6,c10) OVER w1 as m6 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double","m10 bool"]
+      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double"]
       rows:
-        - [1,"aa",1,1,30,1.1,2.1,true]
-        - [2,"aa",1,2,30,1.1,2.3,true]
-        - [3,"aa",2,3,32,1.3,2.3,true]
-        - [4,"aa",3,4,32,1.3,2.3,true]
+        - [1,"aa",1,1,30,1.1,2.1]
+        - [2,"aa",1,1,30,1.1,2.1]
+        - [3,"aa",4,4,62,2.4,4.4]
+        - [4,"aa",3,3,32,1.3,2.3]
   -
-    id: 0
-    desc: MAX_WHERE-normal
+    id: 16
+    desc: AVG_WHERE-normal
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
@@ -324,19 +343,19 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, max_where(c2,c2<4) OVER w1 as m2,max_where(c3,c3<4) OVER w1 as m3,max_where(c4,c4<33) OVER w1 as m4,max_where(c5,c5<=1.3) OVER w1 as m5,max_where(c6,c6!=null) OVER w1 as m6,max_where(c10,c10) OVER w1 as m10 FROM {0} WINDOW
+      SELECT id, c1, avg_where(c2,c2<4) OVER w1 as m2,avg_where(c3,c3<4) OVER w1 as m3,avg_where(c4,c4<33) OVER w1 as m4,avg_where(c5,c5<=1.3) OVER w1 as m5,avg_where(c6,c10) OVER w1 as m6 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double","m10 bool"]
+      columns: ["id int","c1 string","m2 double","m3 double","m4 double","m5 double","m6 double"]
       rows:
-        - [1,"aa",1,1,30,1.1,2.1,true]
-        - [2,"aa",1,2,30,1.1,2.3,true]
-        - [3,"aa",2,3,32,1.3,2.3,true]
-        - [4,"aa",3,4,32,1.3,2.3,true]
+        - [1,"aa",1,1,30,1.1,2.1]
+        - [2,"aa",1,2,30,1.1,2.1]
+        - [3,"aa",2,2,31,1.2,2.2]
+        - [4,"aa",3,3,32,1.3,2.3]
   -
-    id: 0
-    desc: MAX_WHERE-normal
+    id: 17
+    desc: COUNT_WHERE-normal
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
@@ -347,16 +366,1312 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, max_where(c2,c2<4) OVER w1 as m2,max_where(c3,c3<4) OVER w1 as m3,max_where(c4,c4<33) OVER w1 as m4,max_where(c5,c5<=1.3) OVER w1 as m5,max_where(c6,c6!=null) OVER w1 as m6,max_where(c10,c10) OVER w1 as m10 FROM {0} WINDOW
+      SELECT id, c1, count_where(c2,c2<4) OVER w1 as m2,count_where(c3,c3<4) OVER w1 as m3,count_where(c4,c4<33) OVER w1 as m4,count_where(c5,c5<=1.3) OVER w1 as m5,count_where(c6,c10) OVER w1 as m6,count_where(c7,c10) OVER w1 as m7,count_where(c8,c10) OVER w1 as m8,count_where(c9,c10) OVER w1 as m9 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double","m10 bool"]
+      columns: ["id int","c1 string","m2 bigint","m3 bigint","m4 bigint","m5 bigint","m6 bigint","m7 bigint","m8 bigint","m9 bigint"]
       rows:
-        - [1,"aa",1,1,30,1.1,2.1,true]
-        - [2,"aa",1,2,30,1.1,2.3,true]
-        - [3,"aa",2,3,32,1.3,2.3,true]
-        - [4,"aa",3,4,32,1.3,2.3,true]
+        - [1,"aa",1,1,1,1,1,1,1,1]
+        - [2,"aa",1,1,1,1,1,1,1,1]
+        - [3,"aa",2,2,2,2,2,2,2,2]
+        - [4,"aa",1,1,1,1,1,1,1,1]
+  -
+    id: 18
+    desc: AVG_WHERE/MAX_WHERE/MIN_WHERE/SUM_WHERE-fail
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    dataProvider:
+      - ["avg_where","sum_where","max_where","min_where"]
+      - ["c7","c8","c9","c10"]
+    sql: |
+      SELECT id, c1, d[0](d[1],c10) OVER w1 as m2 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 19
+    desc: COUNT_WHERE-fail
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    dataProvider:
+      - ["count_where"]
+      - ["c10"]
+    sql: |
+      SELECT id, c1, d[0](d[1],c10) OVER w1 as m2 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 20
+    desc: max_cate-normal
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT id, {0}.c1,
+      max_cate({0}.c2,d[0]) OVER w1 as m2,
+      max_cate({0}.c3,d[0]) OVER w1 as m3,
+      max_cate({0}.c4,d[0]) OVER w1 as m4,
+      max_cate({0}.c5,d[0]) OVER w1 as m5,
+      max_cate({0}.c6,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+      rows:
+        - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+        - [2,"aa","1:4","1:4","1:33","1:1.400000","1:2.400000"]
+        - [3,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+        - [4,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:4","1:4","1:33","1:1.400000","1:2.400000"]
+          - [3,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+          - [4,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:4","1:4","1:33","1:1.400000","1:2.400000"]
+          - [3,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+          - [4,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:4","30:4","30:33","30:1.400000","30:2.400000"]
+          - [3,"aa","30:4,32:3","30:4,32:3","30:33,32:32","30:1.400000,32:1.300000","30:2.400000,32:2.300000"]
+          - [4,"aa","30:4,32:3","30:4,32:3","30:33,32:32","30:1.400000,32:1.300000","30:2.400000,32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:4","2020-05-29 15:56:30:4","2020-05-29 15:56:30:33","2020-05-29 15:56:30:1.400000","2020-05-29 15:56:30:2.400000"]
+          - [3,"aa","2020-05-29 15:56:30:4,2020-05-29 15:56:32:3","2020-05-29 15:56:30:4,2020-05-29 15:56:32:3","2020-05-29 15:56:30:33,2020-05-29 15:56:32:32","2020-05-29 15:56:30:1.400000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.400000,2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:30:4,2020-05-29 15:56:32:3","2020-05-29 15:56:30:4,2020-05-29 15:56:32:3","2020-05-29 15:56:30:33,2020-05-29 15:56:32:32","2020-05-29 15:56:30:1.400000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.400000,2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:4","2020-05-01:4","2020-05-01:33","2020-05-01:1.400000","2020-05-01:2.400000"]
+          - [3,"aa","2020-05-01:4,2020-05-02:3","2020-05-01:4,2020-05-02:3","2020-05-01:33,2020-05-02:32","2020-05-01:1.400000,2020-05-02:1.300000","2020-05-01:2.400000,2020-05-02:2.300000"]
+          - [4,"aa","2020-05-01:4,2020-05-02:3","2020-05-01:4,2020-05-02:3","2020-05-01:33,2020-05-02:32","2020-05-01:1.400000,2020-05-02:1.300000","2020-05-01:2.400000,2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:4","a:4","a:33","a:1.400000","a:2.400000"]
+          - [3,"aa","a:4,b:3","a:4,b:3","a:33,b:32","a:1.400000,b:1.300000","a:2.400000,b:2.300000"]
+          - [4,"aa","a:4,b:3","a:4,b:3","a:33,b:32","a:1.400000,b:1.300000","a:2.400000,b:2.300000"]
+  -
+    id: 21
+    desc: min_cate-normal
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT id, {0}.c1,
+      min_cate({0}.c2,d[0]) OVER w1 as m2,
+      min_cate({0}.c3,d[0]) OVER w1 as m3,
+      min_cate({0}.c4,d[0]) OVER w1 as m4,
+      min_cate({0}.c5,d[0]) OVER w1 as m5,
+      min_cate({0}.c6,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1,2:3","1:1,2:3","1:30,2:32","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1,2:3","1:1,2:3","1:30,2:32","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [3,"aa","30:1,32:3","30:1,32:3","30:30,32:32","30:1.100000,32:1.300000","30:2.100000,32:2.300000"]
+          - [4,"aa","30:4,32:3","30:4,32:3","30:33,32:32","30:1.400000,32:1.300000","30:2.400000,32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:30:1,2020-05-29 15:56:32:3","2020-05-29 15:56:30:1,2020-05-29 15:56:32:3","2020-05-29 15:56:30:30,2020-05-29 15:56:32:32","2020-05-29 15:56:30:1.100000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.100000,2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:30:4,2020-05-29 15:56:32:3","2020-05-29 15:56:30:4,2020-05-29 15:56:32:3","2020-05-29 15:56:30:33,2020-05-29 15:56:32:32","2020-05-29 15:56:30:1.400000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.400000,2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-01:1,2020-05-02:3","2020-05-01:1,2020-05-02:3","2020-05-01:30,2020-05-02:32","2020-05-01:1.100000,2020-05-02:1.300000","2020-05-01:2.100000,2020-05-02:2.300000"]
+          - [4,"aa","2020-05-01:4,2020-05-02:3","2020-05-01:4,2020-05-02:3","2020-05-01:33,2020-05-02:32","2020-05-01:1.400000,2020-05-02:1.300000","2020-05-01:2.400000,2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [3,"aa","a:1,b:3","a:1,b:3","a:30,b:32","a:1.100000,b:1.300000","a:2.100000,b:2.300000"]
+          - [4,"aa","a:4,b:3","a:4,b:3","a:33,b:32","a:1.400000,b:1.300000","a:2.400000,b:2.300000"]
+  -
+    id: 22
+    desc: count_cate-normal
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT id, {0}.c1,
+      count_cate({0}.c2,d[0]) OVER w1 as m2,
+      count_cate({0}.c3,d[0]) OVER w1 as m3,
+      count_cate({0}.c4,d[0]) OVER w1 as m4,
+      count_cate({0}.c5,d[0]) OVER w1 as m5,
+      count_cate({0}.c6,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [2,"aa","1:2","1:2","1:2","1:2","1:2"]
+          - [3,"aa","1:2,2:1","1:2,2:1","1:2,2:1","1:2,2:1","1:2,2:1"]
+          - [4,"aa","1:1,2:1","1:1,2:1","1:1,2:1","1:1,2:1","1:1,2:1"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [2,"aa","1:2","1:2","1:2","1:2","1:2"]
+          - [3,"aa","1:2,2:1","1:2,2:1","1:2,2:1","1:2,2:1","1:2,2:1"]
+          - [4,"aa","1:1,2:1","1:1,2:1","1:1,2:1","1:1,2:1","1:1,2:1"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:1","30:1","30:1"]
+          - [2,"aa","30:2","30:2","30:2","30:2","30:2"]
+          - [3,"aa","30:2,32:1","30:2,32:1","30:2,32:1","30:2,32:1","30:2,32:1"]
+          - [4,"aa","30:1,32:1","30:1,32:1","30:1,32:1","30:1,32:1","30:1,32:1"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1"]
+          - [2,"aa","2020-05-29 15:56:30:2","2020-05-29 15:56:30:2","2020-05-29 15:56:30:2","2020-05-29 15:56:30:2","2020-05-29 15:56:30:2"]
+          - [3,"aa","2020-05-29 15:56:30:2,2020-05-29 15:56:32:1","2020-05-29 15:56:30:2,2020-05-29 15:56:32:1","2020-05-29 15:56:30:2,2020-05-29 15:56:32:1","2020-05-29 15:56:30:2,2020-05-29 15:56:32:1","2020-05-29 15:56:30:2,2020-05-29 15:56:32:1"]
+          - [4,"aa","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1"]
+          - [2,"aa","2020-05-01:2","2020-05-01:2","2020-05-01:2","2020-05-01:2","2020-05-01:2"]
+          - [3,"aa","2020-05-01:2,2020-05-02:1","2020-05-01:2,2020-05-02:1","2020-05-01:2,2020-05-02:1","2020-05-01:2,2020-05-02:1","2020-05-01:2,2020-05-02:1"]
+          - [4,"aa","2020-05-01:1,2020-05-02:1","2020-05-01:1,2020-05-02:1","2020-05-01:1,2020-05-02:1","2020-05-01:1,2020-05-02:1","2020-05-01:1,2020-05-02:1"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:1","a:1","a:1"]
+          - [2,"aa","a:2","a:2","a:2","a:2","a:2"]
+          - [3,"aa","a:2,b:1","a:2,b:1","a:2,b:1","a:2,b:1","a:2,b:1"]
+          - [4,"aa","a:1,b:1","a:1,b:1","a:1,b:1","a:1,b:1","a:1,b:1"]
+  -
+    id: 23
+    desc: sum_cate-normal
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT id, {0}.c1,
+      sum_cate({0}.c2,d[0]) OVER w1 as m2,
+      sum_cate({0}.c3,d[0]) OVER w1 as m3,
+      sum_cate({0}.c4,d[0]) OVER w1 as m4,
+      sum_cate({0}.c5,d[0]) OVER w1 as m5,
+      sum_cate({0}.c6,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:5","1:5","1:63","1:2.500000","1:4.500000"]
+          - [3,"aa","1:5,2:3","1:5,2:3","1:63,2:32","1:2.500000,2:1.300000","1:4.500000,2:2.300000"]
+          - [4,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:5","1:5","1:63","1:2.500000","1:4.500000"]
+          - [3,"aa","1:5,2:3","1:5,2:3","1:63,2:32","1:2.500000,2:1.300000","1:4.500000,2:2.300000"]
+          - [4,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:5","30:5","30:63","30:2.500000","30:4.500000"]
+          - [3,"aa","30:5,32:3","30:5,32:3","30:63,32:32","30:2.500000,32:1.300000","30:4.500000,32:2.300000"]
+          - [4,"aa","30:4,32:3","30:4,32:3","30:33,32:32","30:1.400000,32:1.300000","30:2.400000,32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:5","2020-05-29 15:56:30:5","2020-05-29 15:56:30:63","2020-05-29 15:56:30:2.500000","2020-05-29 15:56:30:4.500000"]
+          - [3,"aa","2020-05-29 15:56:30:5,2020-05-29 15:56:32:3","2020-05-29 15:56:30:5,2020-05-29 15:56:32:3","2020-05-29 15:56:30:63,2020-05-29 15:56:32:32","2020-05-29 15:56:30:2.500000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:4.500000,2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:30:4,2020-05-29 15:56:32:3","2020-05-29 15:56:30:4,2020-05-29 15:56:32:3","2020-05-29 15:56:30:33,2020-05-29 15:56:32:32","2020-05-29 15:56:30:1.400000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.400000,2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:5","2020-05-01:5","2020-05-01:63","2020-05-01:2.500000","2020-05-01:4.500000"]
+          - [3,"aa","2020-05-01:5,2020-05-02:3","2020-05-01:5,2020-05-02:3","2020-05-01:63,2020-05-02:32","2020-05-01:2.500000,2020-05-02:1.300000","2020-05-01:4.500000,2020-05-02:2.300000"]
+          - [4,"aa","2020-05-01:4,2020-05-02:3","2020-05-01:4,2020-05-02:3","2020-05-01:33,2020-05-02:32","2020-05-01:1.400000,2020-05-02:1.300000","2020-05-01:2.400000,2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:5","a:5","a:63","a:2.500000","a:4.500000"]
+          - [3,"aa","a:5,b:3","a:5,b:3","a:63,b:32","a:2.500000,b:1.300000","a:4.500000,b:2.300000"]
+          - [4,"aa","a:4,b:3","a:4,b:3","a:33,b:32","a:1.400000,b:1.300000","a:2.400000,b:2.300000"]
+  -
+    id: 24
+    desc: avg_cate-normal
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT id, {0}.c1,
+      avg_cate({0}.c2,d[0]) OVER w1 as m2,
+      avg_cate({0}.c3,d[0]) OVER w1 as m3,
+      avg_cate({0}.c4,d[0]) OVER w1 as m4,
+      avg_cate({0}.c5,d[0]) OVER w1 as m5,
+      avg_cate({0}.c6,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [2,"aa","1:2.500000","1:2.500000","1:31.500000","1:1.250000","1:2.250000"]
+          - [3,"aa","1:2.500000,2:3.000000","1:2.500000,2:3.000000","1:31.500000,2:32.000000","1:1.250000,2:1.300000","1:2.250000,2:2.300000"]
+          - [4,"aa","1:4.000000,2:3.000000","1:4.000000,2:3.000000","1:33.000000,2:32.000000","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [2,"aa","1:2.500000","1:2.500000","1:31.500000","1:1.250000","1:2.250000"]
+          - [3,"aa","1:2.500000,2:3.000000","1:2.500000,2:3.000000","1:31.500000,2:32.000000","1:1.250000,2:1.300000","1:2.250000,2:2.300000"]
+          - [4,"aa","1:4.000000,2:3.000000","1:4.000000,2:3.000000","1:33.000000,2:32.000000","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1.000000","30:1.000000","30:30.000000","30:1.100000","30:2.100000"]
+          - [2,"aa","30:2.500000","30:2.500000","30:31.500000","30:1.250000","30:2.250000"]
+          - [3,"aa","30:2.500000,32:3.000000","30:2.500000,32:3.000000","30:31.500000,32:32.000000","30:1.250000,32:1.300000","30:2.250000,32:2.300000"]
+          - [4,"aa","30:4.000000,32:3.000000","30:4.000000,32:3.000000","30:33.000000,32:32.000000","30:1.400000,32:1.300000","30:2.400000,32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:30.000000","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:2.500000","2020-05-29 15:56:30:2.500000","2020-05-29 15:56:30:31.500000","2020-05-29 15:56:30:1.250000","2020-05-29 15:56:30:2.250000"]
+          - [3,"aa","2020-05-29 15:56:30:2.500000,2020-05-29 15:56:32:3.000000","2020-05-29 15:56:30:2.500000,2020-05-29 15:56:32:3.000000","2020-05-29 15:56:30:31.500000,2020-05-29 15:56:32:32.000000","2020-05-29 15:56:30:1.250000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.250000,2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:30:4.000000,2020-05-29 15:56:32:3.000000","2020-05-29 15:56:30:4.000000,2020-05-29 15:56:32:3.000000","2020-05-29 15:56:30:33.000000,2020-05-29 15:56:32:32.000000","2020-05-29 15:56:30:1.400000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.400000,2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1.000000","2020-05-01:1.000000","2020-05-01:30.000000","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:2.500000","2020-05-01:2.500000","2020-05-01:31.500000","2020-05-01:1.250000","2020-05-01:2.250000"]
+          - [3,"aa","2020-05-01:2.500000,2020-05-02:3.000000","2020-05-01:2.500000,2020-05-02:3.000000","2020-05-01:31.500000,2020-05-02:32.000000","2020-05-01:1.250000,2020-05-02:1.300000","2020-05-01:2.250000,2020-05-02:2.300000"]
+          - [4,"aa","2020-05-01:4.000000,2020-05-02:3.000000","2020-05-01:4.000000,2020-05-02:3.000000","2020-05-01:33.000000,2020-05-02:32.000000","2020-05-01:1.400000,2020-05-02:1.300000","2020-05-01:2.400000,2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1.000000","a:1.000000","a:30.000000","a:1.100000","a:2.100000"]
+          - [2,"aa","a:2.500000","a:2.500000","a:31.500000","a:1.250000","a:2.250000"]
+          - [3,"aa","a:2.500000,b:3.000000","a:2.500000,b:3.000000","a:31.500000,b:32.000000","a:1.250000,b:1.300000","a:2.250000,b:2.300000"]
+          - [4,"aa","a:4.000000,b:3.000000","a:4.000000,b:3.000000","a:33.000000,b:32.000000","a:1.400000,b:1.300000","a:2.400000,b:2.300000"]
+  -
+    id: 25
+    desc: "*_cate-fail1"
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["avg_cate","sum_cate","max_cate","min_cate","count_cate"]
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6"]
+      - ["{1}.c5","{1}.c6","{1}.c10"]
+    sql: |
+      SELECT id, {0}.c1,
+      d[0](d[1],d[2]) OVER w1 as m2
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 26
+    desc: "*_cate-fail2"
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["avg_cate","sum_cate","max_cate","min_cate","count_cate"]
+      - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
+    sql: |
+      SELECT id, {0}.c1,
+      d[0](d[1],d[2]) OVER w1 as m2
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 27
+    desc: max_cate_where-normal
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT id, {0}.c1,
+      max_cate_where({0}.c2,c10,d[0]) OVER w1 as m2,
+      max_cate_where({0}.c3,c10,d[0]) OVER w1 as m3,
+      max_cate_where({0}.c4,c10,d[0]) OVER w1 as m4,
+      max_cate_where({0}.c5,c10,d[0]) OVER w1 as m5,
+      max_cate_where({0}.c6,c10,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1,2:3","1:1,2:3","1:30,2:32","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1,2:3","1:1,2:3","1:30,2:32","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [3,"aa","30:1,32:3","30:1,32:3","30:30,32:32","30:1.100000,32:1.300000","30:2.100000,32:2.300000"]
+          - [4,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:30:1,2020-05-29 15:56:32:3","2020-05-29 15:56:30:1,2020-05-29 15:56:32:3","2020-05-29 15:56:30:30,2020-05-29 15:56:32:32","2020-05-29 15:56:30:1.100000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.100000,2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-01:1,2020-05-02:3","2020-05-01:1,2020-05-02:3","2020-05-01:30,2020-05-02:32","2020-05-01:1.100000,2020-05-02:1.300000","2020-05-01:2.100000,2020-05-02:2.300000"]
+          - [4,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [3,"aa","a:1,b:3","a:1,b:3","a:30,b:32","a:1.100000,b:1.300000","a:2.100000,b:2.300000"]
+          - [4,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+  -
+    id: 28
+    desc: min_cate_where-normal
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT id, {0}.c1,
+      min_cate_where({0}.c2,c10,d[0]) OVER w1 as m2,
+      min_cate_where({0}.c3,c10,d[0]) OVER w1 as m3,
+      min_cate_where({0}.c4,c10,d[0]) OVER w1 as m4,
+      min_cate_where({0}.c5,c10,d[0]) OVER w1 as m5,
+      min_cate_where({0}.c6,c10,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1,2:3","1:1,2:3","1:30,2:32","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1,2:3","1:1,2:3","1:30,2:32","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [3,"aa","30:1,32:3","30:1,32:3","30:30,32:32","30:1.100000,32:1.300000","30:2.100000,32:2.300000"]
+          - [4,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:30:1,2020-05-29 15:56:32:3","2020-05-29 15:56:30:1,2020-05-29 15:56:32:3","2020-05-29 15:56:30:30,2020-05-29 15:56:32:32","2020-05-29 15:56:30:1.100000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.100000,2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-01:1,2020-05-02:3","2020-05-01:1,2020-05-02:3","2020-05-01:30,2020-05-02:32","2020-05-01:1.100000,2020-05-02:1.300000","2020-05-01:2.100000,2020-05-02:2.300000"]
+          - [4,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [3,"aa","a:1,b:3","a:1,b:3","a:30,b:32","a:1.100000,b:1.300000","a:2.100000,b:2.300000"]
+          - [4,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+  -
+    id: 29
+    desc: count_cate_where-normal
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT id, {0}.c1,
+      count_cate_where({0}.c2,c10,d[0]) OVER w1 as m2,
+      count_cate_where({0}.c3,c10,d[0]) OVER w1 as m3,
+      count_cate_where({0}.c4,c10,d[0]) OVER w1 as m4,
+      count_cate_where({0}.c5,c10,d[0]) OVER w1 as m5,
+      count_cate_where({0}.c6,c10,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [2,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [3,"aa","1:1,2:1","1:1,2:1","1:1,2:1","1:1,2:1","1:1,2:1"]
+          - [4,"aa","2:1","2:1","2:1","2:1","2:1"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [2,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [3,"aa","1:1,2:1","1:1,2:1","1:1,2:1","1:1,2:1","1:1,2:1"]
+          - [4,"aa","2:1","2:1","2:1","2:1","2:1"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:1","30:1","30:1"]
+          - [2,"aa","30:1","30:1","30:1","30:1","30:1"]
+          - [3,"aa","30:1,32:1","30:1,32:1","30:1,32:1","30:1,32:1","30:1,32:1"]
+          - [4,"aa","32:1","32:1","32:1","32:1","32:1"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1"]
+          - [3,"aa","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1"]
+          - [4,"aa","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1"]
+          - [3,"aa","2020-05-01:1,2020-05-02:1","2020-05-01:1,2020-05-02:1","2020-05-01:1,2020-05-02:1","2020-05-01:1,2020-05-02:1","2020-05-01:1,2020-05-02:1"]
+          - [4,"aa","2020-05-02:1","2020-05-02:1","2020-05-02:1","2020-05-02:1","2020-05-02:1"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:1","a:1","a:1"]
+          - [2,"aa","a:1","a:1","a:1","a:1","a:1"]
+          - [3,"aa","a:1,b:1","a:1,b:1","a:1,b:1","a:1,b:1","a:1,b:1"]
+          - [4,"aa","b:1","b:1","b:1","b:1","b:1"]
+  -
+    id: 30
+    desc: sum_cate_where-normal
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT id, {0}.c1,
+      sum_cate_where({0}.c2,c10,d[0]) OVER w1 as m2,
+      sum_cate_where({0}.c3,c10,d[0]) OVER w1 as m3,
+      sum_cate_where({0}.c4,c10,d[0]) OVER w1 as m4,
+      sum_cate_where({0}.c5,c10,d[0]) OVER w1 as m5,
+      sum_cate_where({0}.c6,c10,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1,2:3","1:1,2:3","1:30,2:32","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1,2:3","1:1,2:3","1:30,2:32","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [3,"aa","30:1,32:3","30:1,32:3","30:30,32:32","30:1.100000,32:1.300000","30:2.100000,32:2.300000"]
+          - [4,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:30:1,2020-05-29 15:56:32:3","2020-05-29 15:56:30:1,2020-05-29 15:56:32:3","2020-05-29 15:56:30:30,2020-05-29 15:56:32:32","2020-05-29 15:56:30:1.100000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.100000,2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-01:1,2020-05-02:3","2020-05-01:1,2020-05-02:3","2020-05-01:30,2020-05-02:32","2020-05-01:1.100000,2020-05-02:1.300000","2020-05-01:2.100000,2020-05-02:2.300000"]
+          - [4,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [3,"aa","a:1,b:3","a:1,b:3","a:30,b:32","a:1.100000,b:1.300000","a:2.100000,b:2.300000"]
+          - [4,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+  -
+    id: 31
+    desc: avg_cate_where-normal
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT id, {0}.c1,
+      avg_cate_where({0}.c2,c10,d[0]) OVER w1 as m2,
+      avg_cate_where({0}.c3,c10,d[0]) OVER w1 as m3,
+      avg_cate_where({0}.c4,c10,d[0]) OVER w1 as m4,
+      avg_cate_where({0}.c5,c10,d[0]) OVER w1 as m5,
+      avg_cate_where({0}.c6,c10,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1.000000,2:3.000000","1:1.000000,2:3.000000","1:30.000000,2:32.000000","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","2:3.000000","2:3.000000","2:32.000000","2:1.300000","2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1.000000,2:3.000000","1:1.000000,2:3.000000","1:30.000000,2:32.000000","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","2:3.000000","2:3.000000","2:32.000000","2:1.300000","2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1.000000","30:1.000000","30:30.000000","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1.000000","30:1.000000","30:30.000000","30:1.100000","30:2.100000"]
+          - [3,"aa","30:1.000000,32:3.000000","30:1.000000,32:3.000000","30:30.000000,32:32.000000","30:1.100000,32:1.300000","30:2.100000,32:2.300000"]
+          - [4,"aa","32:3.000000","32:3.000000","32:32.000000","32:1.300000","32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:30.000000","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:30.000000","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:30:1.000000,2020-05-29 15:56:32:3.000000","2020-05-29 15:56:30:1.000000,2020-05-29 15:56:32:3.000000","2020-05-29 15:56:30:30.000000,2020-05-29 15:56:32:32.000000","2020-05-29 15:56:30:1.100000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.100000,2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:32:3.000000","2020-05-29 15:56:32:3.000000","2020-05-29 15:56:32:32.000000","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1.000000","2020-05-01:1.000000","2020-05-01:30.000000","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1.000000","2020-05-01:1.000000","2020-05-01:30.000000","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-01:1.000000,2020-05-02:3.000000","2020-05-01:1.000000,2020-05-02:3.000000","2020-05-01:30.000000,2020-05-02:32.000000","2020-05-01:1.100000,2020-05-02:1.300000","2020-05-01:2.100000,2020-05-02:2.300000"]
+          - [4,"aa","2020-05-02:3.000000","2020-05-02:3.000000","2020-05-02:32.000000","2020-05-02:1.300000","2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1.000000","a:1.000000","a:30.000000","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1.000000","a:1.000000","a:30.000000","a:1.100000","a:2.100000"]
+          - [3,"aa","a:1.000000,b:3.000000","a:1.000000,b:3.000000","a:30.000000,b:32.000000","a:1.100000,b:1.300000","a:2.100000,b:2.300000"]
+          - [4,"aa","b:3.000000","b:3.000000","b:32.000000","b:1.300000","b:2.300000"]
+  -
+    id: 32
+    desc: "*_cate_where-fail1"
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["avg_cate_where","sum_cate_where","max_cate_where","min_cate_where","count_cate_where"]
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6"]
+      - ["{1}.c5","{1}.c6","{1}.c10"]
+    sql: |
+      SELECT id, {0}.c1,
+      d[0](d[1],c10,d[2]) OVER w1 as m2
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 33
+    desc: "*_cate_where-fail2"
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["avg_cate_where","sum_cate_where","max_cate_where","min_cate_where","count_cate_where"]
+      - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
+    sql: |
+      SELECT id, {0}.c1,
+      d[0](d[1],c10,d[2]) OVER w1 as m2
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 34
+    desc: top_n_key_max_cate_where-normal
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT id, {0}.c1,
+      top_n_key_max_cate_where({0}.c2,c10,d[0],1) OVER w1 as m2,
+      top_n_key_max_cate_where({0}.c3,c10,d[0],1) OVER w1 as m3,
+      top_n_key_max_cate_where({0}.c4,c10,d[0],1) OVER w1 as m4,
+      top_n_key_max_cate_where({0}.c5,c10,d[0],1) OVER w1 as m5,
+      top_n_key_max_cate_where({0}.c6,c10,d[0],1) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [3,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+          - [4,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+          - [4,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [3,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+          - [4,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+  -
+    id: 35
+    desc: top_n_key_min_cate_where-normal
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT id, {0}.c1,
+      top_n_key_min_cate_where({0}.c2,c10,d[0],1) OVER w1 as m2,
+      top_n_key_min_cate_where({0}.c3,c10,d[0],1) OVER w1 as m3,
+      top_n_key_min_cate_where({0}.c4,c10,d[0],1) OVER w1 as m4,
+      top_n_key_min_cate_where({0}.c5,c10,d[0],1) OVER w1 as m5,
+      top_n_key_min_cate_where({0}.c6,c10,d[0],1) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [3,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+          - [4,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+          - [4,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [3,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+          - [4,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+  -
+    id: 36
+    desc: top_n_key_sum_cate_where-normal
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT id, {0}.c1,
+      top_n_key_sum_cate_where({0}.c2,c10,d[0],1) OVER w1 as m2,
+      top_n_key_sum_cate_where({0}.c3,c10,d[0],1) OVER w1 as m3,
+      top_n_key_sum_cate_where({0}.c4,c10,d[0],1) OVER w1 as m4,
+      top_n_key_sum_cate_where({0}.c5,c10,d[0],1) OVER w1 as m5,
+      top_n_key_sum_cate_where({0}.c6,c10,d[0],1) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [3,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+          - [4,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+          - [4,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [3,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+          - [4,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+  -
+    id: 37
+    desc: top_n_key_avg_cate_where-normal
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT id, {0}.c1,
+      top_n_key_avg_cate_where({0}.c2,c10,d[0],1) OVER w1 as m2,
+      top_n_key_avg_cate_where({0}.c3,c10,d[0],1) OVER w1 as m3,
+      top_n_key_avg_cate_where({0}.c4,c10,d[0],1) OVER w1 as m4,
+      top_n_key_avg_cate_where({0}.c5,c10,d[0],1) OVER w1 as m5,
+      top_n_key_avg_cate_where({0}.c6,c10,d[0],1) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [3,"aa","2:3.000000","2:3.000000","2:32.000000","2:1.300000","2:2.300000"]
+          - [4,"aa","2:3.000000","2:3.000000","2:32.000000","2:1.300000","2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [3,"aa","2:3.000000","2:3.000000","2:32.000000","2:1.300000","2:2.300000"]
+          - [4,"aa","2:3.000000","2:3.000000","2:32.000000","2:1.300000","2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1.000000","30:1.000000","30:30.000000","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1.000000","30:1.000000","30:30.000000","30:1.100000","30:2.100000"]
+          - [3,"aa","32:3.000000","32:3.000000","32:32.000000","32:1.300000","32:2.300000"]
+          - [4,"aa","32:3.000000","32:3.000000","32:32.000000","32:1.300000","32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:30.000000","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:30.000000","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:32:3.000000","2020-05-29 15:56:32:3.000000","2020-05-29 15:56:32:32.000000","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:32:3.000000","2020-05-29 15:56:32:3.000000","2020-05-29 15:56:32:32.000000","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1.000000","2020-05-01:1.000000","2020-05-01:30.000000","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1.000000","2020-05-01:1.000000","2020-05-01:30.000000","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-02:3.000000","2020-05-02:3.000000","2020-05-02:32.000000","2020-05-02:1.300000","2020-05-02:2.300000"]
+          - [4,"aa","2020-05-02:3.000000","2020-05-02:3.000000","2020-05-02:32.000000","2020-05-02:1.300000","2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1.000000","a:1.000000","a:30.000000","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1.000000","a:1.000000","a:30.000000","a:1.100000","a:2.100000"]
+          - [3,"aa","b:3.000000","b:3.000000","b:32.000000","b:1.300000","b:2.300000"]
+          - [4,"aa","b:3.000000","b:3.000000","b:32.000000","b:1.300000","b:2.300000"]
+  -
+    id: 38
+    desc: top_n_key_count_cate_where-normal
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT id, {0}.c1,
+      top_n_key_count_cate_where({0}.c2,c10,d[0],1) OVER w1 as m2,
+      top_n_key_count_cate_where({0}.c3,c10,d[0],1) OVER w1 as m3,
+      top_n_key_count_cate_where({0}.c4,c10,d[0],1) OVER w1 as m4,
+      top_n_key_count_cate_where({0}.c5,c10,d[0],1) OVER w1 as m5,
+      top_n_key_count_cate_where({0}.c6,c10,d[0],1) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [2,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [3,"aa","2:1","2:1","2:1","2:1","2:1"]
+          - [4,"aa","2:1","2:1","2:1","2:1","2:1"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [2,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [3,"aa","2:1","2:1","2:1","2:1","2:1"]
+          - [4,"aa","2:1","2:1","2:1","2:1","2:1"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:1","30:1","30:1"]
+          - [2,"aa","30:1","30:1","30:1","30:1","30:1"]
+          - [3,"aa","32:1","32:1","32:1","32:1","32:1"]
+          - [4,"aa","32:1","32:1","32:1","32:1","32:1"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1"]
+          - [3,"aa","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1"]
+          - [4,"aa","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1"]
+          - [3,"aa","2020-05-02:1","2020-05-02:1","2020-05-02:1","2020-05-02:1","2020-05-02:1"]
+          - [4,"aa","2020-05-02:1","2020-05-02:1","2020-05-02:1","2020-05-02:1","2020-05-02:1"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:1","a:1","a:1"]
+          - [2,"aa","a:1","a:1","a:1","a:1","a:1"]
+          - [3,"aa","b:1","b:1","b:1","b:1","b:1"]
+          - [4,"aa","b:1","b:1","b:1","b:1","b:1"]
+  -
+    id: 39
+    desc: "top_n_key_*_cate_where-fail1"
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["top_n_key_count_cate_where","top_n_key_sum_cate_where","top_n_key_avg_cate_where","top_n_key_max_cate_where","top_n_key_min_cate_where"]
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6"]
+      - ["{1}.c5","{1}.c6","{1}.c10"]
+    sql: |
+      SELECT id, {0}.c1,
+      d[0](d[1],c10,d[2],1) OVER w1 as m2
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 40
+    desc: "top_n_key_*_cate_where-fail2"
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c1"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["top_n_key_count_cate_where","top_n_key_sum_cate_where","top_n_key_avg_cate_where","top_n_key_max_cate_where","top_n_key_min_cate_where"]
+      - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
+    sql: |
+      SELECT id, {0}.c1,
+      d[0](d[1],c10,d[2],1) OVER w1 as m2
+      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
   - id: 11
     desc: arithmetic_and_udf_before_udaf
     inputs:
@@ -384,7 +1699,7 @@ cases:
         - [4, 1.5, 4.3978952727983707]
         - [5, 2.0, 8.7957905455967413]
 
-  - id: 12
+  - id: 41
     desc: arithmetic_and_udf_after_udaf
     tags: ["目前只能f(udaf()) over w，否则无法进入window agg节点"]
     inputs:
@@ -412,7 +1727,7 @@ cases:
         - [4, 2, 1.7047480922384253]
         - [5, 4, 2.3978952727983707]
 
-  - id: 13
+  - id: 42
     desc: nested udaf
     inputs:
       - columns: ["id bigint", "c1 double", "c2 float", "c3 int"]
@@ -440,7 +1755,7 @@ cases:
         - [4, 6.0, 1.9459101490553132, 11.0]
         - [5, 9.0, 2.3513752571634776, 49.0]
 
-  - id: 14
+  - id: 43
     desc: cast after udaf
     inputs:
       - columns: ["id bigint", "c1 double", "c2 float", "c3 int"]
@@ -468,7 +1783,7 @@ cases:
         - [4, 2, "7", "7", "7"]
         - [5, 2, "13", "13", "13"]
 
-  - id: 15
+  - id: 44
     desc: aggregate where
     mode: request-unsupport
     inputs:
@@ -506,7 +1821,7 @@ cases:
         - [8, 0, nan, 0, nan]
         - [9, 0, nan, 1, 4.4000000953674316]
 
-  - id: 16
+  - id: 45
     desc: window at functions
     inputs:
       -
@@ -557,7 +1872,7 @@ cases:
         - [5, "d", "b", 5, 3, 35, 32, 1.5, 1.3, 2.5, 2.3,
            1590738994000, 1590738992000, "2020-05-04", "2020-05-02", false, true, NULL]
 
-  - id: 17
+  - id: 46
     desc: count where value equals first value
     inputs:
       - columns: ["id bigint", "pk bigint", "c1 string"]
