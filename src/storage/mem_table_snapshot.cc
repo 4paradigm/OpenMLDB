@@ -1459,10 +1459,17 @@ int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector
 }
 
 bool MemTableSnapshot::SnapshotIsCompressed() {
-    if (FLAGS_snapshot_compression == "pz" || FLAGS_snapshot_compression == "zlib"
-            || FLAGS_snapshot_compression == "snappy")  {
+#ifdef PZFPGA_ENABLE
+    if (FLAGS_snapshot_compression == "pz" || FLAGS_snapshot_compression == "zlib" ||
+            FLAGS_snapshot_compression == "snappy")  {
         return true;
     }
+#else
+    if (FLAGS_snapshot_compression == "zlib" ||
+            FLAGS_snapshot_compression == "snappy")  {
+        return true;
+    }
+#endif
     return false;
 }
 

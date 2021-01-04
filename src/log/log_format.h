@@ -25,6 +25,13 @@ enum RecordType {
     kEofType = 5
 };
 
+enum CompressType {
+    kNoCompress = 0,
+    kPz = 1,
+    kZlib = 2,
+    kSnappy = 3
+};
+
 static const int kMaxRecordType = kEofType;
 
 static const int kBlockSize = 4 * 1024;
@@ -35,8 +42,8 @@ static const int kCompressBlockSize = 4 * 1024 * 1024;
 // Header is checksum (4 bytes), length (2 bytes), type (1 byte).
 static const int kHeaderSize = 4 + 2 + 1;
 
-// CompressHeader + CompressData
-// kHeaderSizeOfCompressData should be multiple of 64
+// kHeaderSizeOfCompressData should be multiple of 64 bytes
+// compress_len(4 bytes), compress_type(1 byte)
 static const int kHeaderSizeOfCompressData = 64;
 
 }  // namespace log

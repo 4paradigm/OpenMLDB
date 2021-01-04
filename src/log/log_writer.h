@@ -50,6 +50,7 @@ class Writer {
     char* buffer_;
     char* compress_buf_;
     Status CompressRecord();
+    CompressType GetCompressType();
 
     Status EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);
 

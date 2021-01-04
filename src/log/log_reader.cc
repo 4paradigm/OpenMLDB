@@ -50,12 +50,7 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
       resyncing_(initial_offset > 0),
       compressed_(compressed),
       uncompress_buf_(nullptr) {
-#ifdef PZFPGA_ENABLE
-          if (compressed_ &&
-                  (FLAGS_snapshot_compression == "pz" || FLAGS_snapshot_compression == "snappy")) {
-#else
-          if (compressed_ &&  FLAGS_snapshot_compression == "snappy") {
-#endif
+          if (compressed_) {
               block_size_ = kCompressBlockSize;
               uncompress_buf_ = new char[block_size_];
           } else {
@@ -283,13 +278,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
         // Last read was a full read, so this is a trailer to skip
         buffer_.clear();
         Status status;
-#ifdef PZFPGA_ENABLE
-        if (!compressed_ ||
-                (FLAGS_snapshot_compression != "pz" &&
-                 FLAGS_snapshot_compression != "snappy")) {
-#else
-        if (!compressed_ || FLAGS_snapshot_compression != "snappy") {
-#endif
+        if (!compressed_) {
             status = file_->Read(block_size_, &buffer_, backing_store_);
         } else {
             // read header of compressed data
@@ -304,6 +293,14 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
             memcpy(static_cast<void*>(&compress_len), data, sizeof(int));
             memrev32ifbe(static_cast<void*>(&compress_len));
             PDLOG(INFO, "compress_len is: %d", compress_len);
+            CompressType compress_type = kNoCompress;
+            memcpy(static_cast<void*>(&compress_type), data + sizeof(int), 1);
+#ifndef PZFPGA_ENABLE
+            if (compress_type == kPz) {
+                PDLOG(WARNING, "FLAGS_snapshot_compression is pz, but PZFPGA_ENABLE is off");
+                return kBadRecord;
+            }
+#endif
             // read compressed data
             Slice block;
             status = file_->Read(compress_len, &block, backing_store_);
@@ -313,25 +310,34 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
             }
             const char* block_data = block.data();
             int uncompress_len = 0;
-#ifdef PZFPGA_ENABLE
-            if (FLAGS_snapshot_compression == "pz") {
-                FPGA_env* fpga_env = rtidb::base::Compress::GetFpgaEnv();
-                uncompress_len = gzipfpga_uncompress_nohuff(
-                    fpga_env, block_data, uncompress_buf_, compress_len, block_size_);
-                PDLOG(INFO, "uncompress_len is: %d", uncompress_len);
-            } else {
-#endif
-                size_t tmp_val = 0;
-                snappy::GetUncompressedLength(block_data, static_cast<size_t>(compress_len), &tmp_val);
-                uncompress_len = static_cast<int>(tmp_val);
-                PDLOG(INFO, "uncompress_len is: %d", uncompress_len);
-                if (!snappy::RawUncompress(block_data, static_cast<size_t>(compress_len), uncompress_buf_)) {
-                    PDLOG(WARNING, "bad record with uncompress block");
+            switch (compress_type) {
+                case kPz: {
+                    FPGA_env* fpga_env = rtidb::base::Compress::GetFpgaEnv();
+                    uncompress_len = gzipfpga_uncompress_nohuff(
+                            fpga_env, block_data, uncompress_buf_, compress_len, block_size_);
+                    PDLOG(INFO, "uncompress_len is: %d", uncompress_len);
+                    break;
+                }
+                case kSnappy: {
+                    size_t tmp_val = 0;
+                    snappy::GetUncompressedLength(block_data, static_cast<size_t>(compress_len), &tmp_val);
+                    uncompress_len = static_cast<int>(tmp_val);
+                    PDLOG(INFO, "uncompress_len is: %d", uncompress_len);
+                    if (!snappy::RawUncompress(block_data, static_cast<size_t>(compress_len), uncompress_buf_)) {
+                        PDLOG(WARNING, "bad record with uncompress block");
+                        return kBadRecord;
+                    }
+                    break;
+                }
+                case kZlib: {
+                    // TODO(wangbao)
+                    break;
+                }
+                default: {
+                    PDLOG(WARNING, "unexpected compress type: %d", compress_type);
                     return kBadRecord;
                 }
-#ifdef PZFPGA_ENABLE
             }
-#endif
             if (uncompress_len != block_size_) {
                 PDLOG(WARNING, "bad record with uncompress block, uncompress_len: %d, block_size_: %d",
                         uncompress_len, block_size_);

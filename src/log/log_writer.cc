@@ -29,12 +29,7 @@ static void InitTypeCrc(uint32_t* type_crc) {
 Writer::Writer(bool compressed, WritableFile* dest)
 : dest_(dest), block_offset_(0), compressed_(compressed), buffer_(nullptr), compress_buf_(nullptr) {
     InitTypeCrc(type_crc_);
-#ifdef PZFPGA_ENABLE
-    if (compressed_ &&
-            (FLAGS_snapshot_compression == "pz" || FLAGS_snapshot_compression == "snappy")) {
-#else
-    if (compressed_ &&  FLAGS_snapshot_compression == "snappy") {
-#endif
+    if (compressed_) {
         block_size_ = kCompressBlockSize;
         buffer_ = new char[block_size_];
         compress_buf_ = new char[block_size_];
@@ -46,12 +41,7 @@ Writer::Writer(bool compressed, WritableFile* dest)
 Writer::Writer(bool compressed, WritableFile* dest, uint64_t dest_length)
     : dest_(dest), compressed_(compressed), buffer_(nullptr), compress_buf_(nullptr) {
     InitTypeCrc(type_crc_);
-#ifdef PZFPGA_ENABLE
-    if (compressed_ &&
-            (FLAGS_snapshot_compression == "pz" || FLAGS_snapshot_compression == "snappy")) {
-#else
-    if (compressed_ &&  FLAGS_snapshot_compression == "snappy") {
-#endif
+    if (compressed_) {
         block_size_ = kCompressBlockSize;
         buffer_ = new char[block_size_];
         compress_buf_ = new char[block_size_];
@@ -85,13 +75,7 @@ Status Writer::EndLog() {
                 // 7)
                 assert(kHeaderSize == 7);
                 Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
-#ifdef PZFPGA_ENABLE
-                if (!compressed_ ||
-                        (FLAGS_snapshot_compression != "pz" &&
-                         FLAGS_snapshot_compression != "snappy")) {
-#else
-                if (!compressed_ || FLAGS_snapshot_compression != "snappy") {
-#endif
+                if (!compressed_) {
                     dest_->Append(fill_slice);
                 } else {
                     memcpy(buffer_ + block_offset_, fill_slice.data(), leftover);
@@ -132,13 +116,7 @@ Status Writer::AddRecord(const Slice& slice) {
                 // 7)
                 assert(kHeaderSize == 7);
                 Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
-#ifdef PZFPGA_ENABLE
-                if (!compressed_ ||
-                        (FLAGS_snapshot_compression != "pz" &&
-                         FLAGS_snapshot_compression != "snappy")) {
-#else
-                if (!compressed_ || FLAGS_snapshot_compression != "snappy") {
-#endif
+                if (!compressed_) {
                     dest_->Append(fill_slice);
                 } else {
                     memcpy(buffer_ + block_offset_, fill_slice.data(), leftover);
@@ -186,13 +164,7 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
     crc = Mask(crc);  // Adjust for storage
     EncodeFixed32(buf, crc);
 
-#ifdef PZFPGA_ENABLE
-    if (!compressed_ ||
-            (FLAGS_snapshot_compression != "pz" &&
-             FLAGS_snapshot_compression != "snappy")) {
-#else
-    if (!compressed_ || FLAGS_snapshot_compression != "snappy") {
-#endif
+    if (!compressed_) {
         // Write the header and the payload
         Status s = dest_->Append(Slice(buf, kHeaderSize));
         if (s.ok()) {
@@ -234,9 +206,17 @@ Status Writer::CompressRecord() {
                 fpga_env, buffer_, compress_buf_, block_size_, block_size_, 0);
     } else {
 #endif
-        size_t tmp_val = 0;
-        snappy::RawCompress(buffer_, block_size_, compress_buf_, &tmp_val);
-        compress_len = static_cast<int>(tmp_val);
+        if (FLAGS_snapshot_compression == "snappy") {
+            size_t tmp_val = 0;
+            snappy::RawCompress(buffer_, block_size_, compress_buf_, &tmp_val);
+            compress_len = static_cast<int>(tmp_val);
+        } else if (FLAGS_snapshot_compression == "zlib") {
+            // TODO(wangbao)
+        } else {
+            s = Status::InvalidRecord(Slice("unsupported compress type: " + FLAGS_snapshot_compression));
+            PDLOG(WARNING, "write error. %s", s.ToString().c_str());
+            return s;
+        }
 #ifdef PZFPGA_ENABLE
     }
 #endif
@@ -250,7 +230,9 @@ Status Writer::CompressRecord() {
     char head_of_compress[kHeaderSizeOfCompressData];
     memrev32ifbe(static_cast<void*>(&compress_len));
     memcpy(head_of_compress, static_cast<void*>(&compress_len), sizeof(int));
-    memset(head_of_compress + sizeof(int), 0, kHeaderSizeOfCompressData - sizeof(int));
+    CompressType compress_type = GetCompressType();
+    memcpy(head_of_compress + sizeof(int), static_cast<void*>(&compress_type), 1);
+    memset(head_of_compress + sizeof(int) + 1, 0, kHeaderSizeOfCompressData - sizeof(int) - 1);
     // write header and compressed data
     s = dest_->Append(Slice(head_of_compress, kHeaderSizeOfCompressData));
     if (s.ok()) {
@@ -263,6 +245,18 @@ Status Writer::CompressRecord() {
         PDLOG(WARNING, "write error. %s", s.ToString().c_str());
     }
     return s;
+}
+
+CompressType Writer::GetCompressType() {
+    if (FLAGS_snapshot_compression == "pz") {
+        return kPz;
+    } else if (FLAGS_snapshot_compression == "zlib") {
+        return kZlib;
+    } else if (FLAGS_snapshot_compression == "snappy") {
+        return kSnappy;
+    } else {
+        return kNoCompress;
+    }
 }
 
 }  // namespace log
