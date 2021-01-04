@@ -437,7 +437,7 @@ deploy-fedb:
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/deploy_package_fedb.sh
   dependencies:
-    - mac_build
+    # - mac_build
     - build
   only:
     variables:
