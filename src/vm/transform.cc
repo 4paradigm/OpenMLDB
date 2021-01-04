@@ -488,11 +488,9 @@ Status BatchModeTransformer::TransformWindowOp(
     PhysicalOpNode* depend, const node::WindowPlanNode* w_ptr,
     PhysicalOpNode** output) {
     // sanity check
-    CHECK_TRUE(depend != nullptr && w_ptr != nullptr && output != nullptr,
-               kPlanError, "Depend node or output node is null");
-    CHECK_STATUS(CheckHistoryWindowFrame(w_ptr));
-    CHECK_STATUS(CheckTimeOrIntegerOrderColumn(w_ptr->GetOrders(),
-                                               depend->schemas_ctx()));
+    CHECK_TRUE(depend != nullptr && output != nullptr, kPlanError,
+               "Depend node or output node is null");
+    CHECK_STATUS(CheckWindow(w_ptr, depend->schemas_ctx()));
     const node::OrderByNode* orders = w_ptr->GetOrders();
     const node::ExprListNode* groups = w_ptr->GetKeys();
 
@@ -1033,9 +1031,7 @@ Status BatchModeTransformer::TransformProjectOp(
                 kGroupAggregation, depend, project_list, append_input, output);
         case kSchemaTypeTable:
             if (project_list->is_window_agg_) {
-                CHECK_STATUS(CheckHistoryWindowFrame(project_list->w_ptr_));
-                CHECK_STATUS(CheckTimeOrIntegerOrderColumn(
-                    project_list->w_ptr_->GetOrders(), depend->schemas_ctx()));
+                CHECK_STATUS(CheckWindow(project_list->w_ptr_, depend->schemas_ctx()));
                 return CreatePhysicalProjectNode(kWindowAggregation, depend,
                                                  project_list, append_input,
                                                  output);
@@ -1526,6 +1522,20 @@ Status BatchModeTransformer::CheckTimeOrIntegerOrderColumn(
     return Status::OK();
 }
 
+Status BatchModeTransformer::CheckWindow(
+    const node::WindowPlanNode* w_ptr, const vm::SchemasContext* schemas_ctx) {
+    CHECK_TRUE(w_ptr != nullptr, common::kPlanError, "NULL Window");
+    CHECK_TRUE(!node::ExprListNullOrEmpty(w_ptr->GetKeys()), common::kPlanError,
+               "Invalid Window: Do not support window on non-partition");
+    CHECK_TRUE(nullptr != w_ptr->GetOrders() &&
+                   !node::ExprListNullOrEmpty(w_ptr->GetOrders()->order_by_),
+               common::kPlanError,
+               "Invalid Window: Do not support window on non-order");
+    CHECK_STATUS(CheckHistoryWindowFrame(w_ptr));
+    CHECK_STATUS(
+        CheckTimeOrIntegerOrderColumn(w_ptr->GetOrders(), schemas_ctx));
+    return Status::OK();
+}
 Status BatchModeTransformer::CheckHistoryWindowFrame(
     const node::WindowPlanNode* w_ptr) {
     CHECK_TRUE(w_ptr != nullptr, kPlanError,
@@ -1546,9 +1556,9 @@ Status BatchModeTransformer::CheckHistoryWindowFrame(
 bool GroupAndSortOptimized::KeysFilterOptimized(
     const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* group,
     Key* hash, PhysicalOpNode** new_in) {
-    if (nullptr == group || nullptr == hash) {
-        LOG(WARNING) << "Fail KeysFilterOptimized when window filter key or "
-                        "index key is empty";
+    if (nullptr == group || nullptr == hash || !hash->ValidKey()) {
+        LOG(INFO) << "Fail KeysFilterOptimized when window filter key or "
+                     "index key is empty";
         return false;
     }
     if (kPhysicalOpDataProvider == in->GetOpType()) {
@@ -1569,7 +1579,7 @@ bool GroupAndSortOptimized::KeysFilterOptimized(
             Status status = plan_ctx_->CreateOp<PhysicalPartitionProviderNode>(
                 &scan_index_op, scan_op, index_name);
             if (!status.isOK()) {
-                LOG(WARNING) << "Fail to create scan index op: " << status;
+                LOG(INFO) << "Fail to create scan index op: " << status;
                 return false;
             }
             auto new_groups = node_manager_->MakeExprList();
