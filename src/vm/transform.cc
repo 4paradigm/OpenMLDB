@@ -1031,7 +1031,8 @@ Status BatchModeTransformer::TransformProjectOp(
                 kGroupAggregation, depend, project_list, append_input, output);
         case kSchemaTypeTable:
             if (project_list->is_window_agg_) {
-                CHECK_STATUS(CheckWindow(project_list->w_ptr_, depend->schemas_ctx()));
+                CHECK_STATUS(
+                    CheckWindow(project_list->w_ptr_, depend->schemas_ctx()));
                 return CreatePhysicalProjectNode(kWindowAggregation, depend,
                                                  project_list, append_input,
                                                  output);
