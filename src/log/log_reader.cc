@@ -311,6 +311,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
             const char* block_data = block.data();
             int uncompress_len = 0;
             switch (compress_type) {
+#ifdef PZFPGA_ENABLE
                 case kPz: {
                     FPGA_env* fpga_env = rtidb::base::Compress::GetFpgaEnv();
                     uncompress_len = gzipfpga_uncompress_nohuff(
@@ -318,6 +319,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                     PDLOG(INFO, "uncompress_len is: %d", uncompress_len);
                     break;
                 }
+#endif
                 case kSnappy: {
                     size_t tmp_val = 0;
                     snappy::GetUncompressedLength(block_data, static_cast<size_t>(compress_len), &tmp_val);
