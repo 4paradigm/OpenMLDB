@@ -89,3 +89,39 @@ cases:
         - [7, NULL, true,  NULL, true, NULL, NULL]
         - [8, NULL, false,  false, NULL, NULL, NULL]
         - [9, NULL, NULL,  NULL, NULL, NULL, NULL]
+  - id: 3
+    desc: 逻辑表达式不使用布尔表达式
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp","c5 date"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000,"2020-05-01"]
+    sql: select c2=2 and (c2-1) as f1 from {0};
+    expect:
+      columns: ["f1 bool"]
+      rows:
+        - [true]
+  - id: 4
+    desc: 逻辑表达式不使用布尔表达式!
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp","c5 date"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000,"2020-05-01"]
+    sql: select !c2 as not_c2 from {0};
+    expect:
+      columns: ["not_c2 bool"]
+      rows:
+        - [false]
+  - id: 5
+    desc: 逻辑表达式不使用布尔表达式-常量
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp","c5 date"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000,"2020-05-01"]
+    sql: select c2==2 and false as flag1,!true as flag2 from {0};
+    expect:
+      columns: ["flag1 bool", "flag2 bool"]
+      rows:
+        - [false,false]

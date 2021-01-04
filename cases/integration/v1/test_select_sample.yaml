@@ -230,3 +230,18 @@ cases:
       columns: ["name string","t_c2 bigint","c3 bigint","c4 timestamp"]
       rows:
         - ["345",3,3,1590738989000]
+  - id: 18
+    desc: column name prefix with _
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["_c1 int", "_c2 string", "_c5 bigint"]
+        indexs: ["index1:_c1:_c5"]
+        rows:
+          - [1, "2020-05-22 10:43:40", 1]
+    sql: |
+      select _c1, bigint(_c2) DIV 1000 as _c2_sec from (select _c1, timestamp(_c2) as _c2 from {0});
+    expect:
+      columns: ["_c1 int", "_c2_sec bigint"]
+      rows:
+        - [1, 1590115420]
