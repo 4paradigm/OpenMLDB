@@ -468,11 +468,13 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
         }
         case fesql::node::kCmdShowCreateSp: {
             std::string db_name = cmd_node->GetArgs()[0];
-            if (db_name.empty() && db.empty()) {
-                std::cout << "please enter database first" << std::endl;
-                return;
-            } else if (db_name.empty()) {
-                db_name = db;
+            if (db_name.empty()) {
+                if (db.empty()) {
+                    std::cout << "please enter database first" << std::endl;
+                    return;
+                } else {
+                    db_name = db;
+                }
             }
             std::string sp_name = cmd_node->GetArgs()[1];
             std::string error;
