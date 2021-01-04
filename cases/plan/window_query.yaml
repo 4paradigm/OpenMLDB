@@ -178,3 +178,26 @@ cases:
     sql: |
       select bigint(sum(col2) over w1) as f1 from t1 window
       w1 as (partition by col1 order by col5 rows between 10 preceding and current row);
+  - id: 22
+    desc: window ROWS_RANGE with MAXSIZE
+    sql: |
+      SELECT
+      sum(col2) OVER w1 as w1_col2_sum,
+      FROM t1
+      WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW MAXSIZE 5) limit 10;
+  - id: 23
+    desc: window ROWS with MAXSIZE
+    sql: |
+      SELECT
+      sum(col2) OVER w1 as w1_col2_sum,
+      FROM t1
+      WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 PRECEDING AND CURRENT ROW MAXSIZE 5) limit 10;
+  - id: 24
+    desc: window ROWS and ROWS_RANGE with MAXSIZE
+    sql: |
+      SELECT
+      sum(col2) OVER w1 as w1_col2_sum,
+      sum(col2) OVER w2 as w1_col2_sum,
+      FROM t1
+      WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 PRECEDING AND CURRENT ROW MAXSIZE 5),
+      WINDOW w2 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW MAXSIZE 5) limit 10;

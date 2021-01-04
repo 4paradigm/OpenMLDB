@@ -232,9 +232,7 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
         FrameBound *end = end_compared >= 1 ? end1 : end2;
         frame_rows = dynamic_cast<FrameExtent *>(MakeFrameExtent(start, end));
     }
-    int64_t maxsize = frame1->frame_maxsize() > frame2->frame_maxsize()
-                          ? frame1->frame_maxsize()
-                          : frame2->frame_maxsize();
+    int64_t maxsize = frame1->frame_maxsize();
 
     return dynamic_cast<FrameNode *>(
         MakeFrameNode(frame_type, frame_range, frame_rows, maxsize));
@@ -300,11 +298,17 @@ SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
         LOG(WARNING) << "Fail Make Frame Node: 3nd arg isn't const expression";
         return nullptr;
     }
-    return MakeFrameNode(
-        frame_type, frame_extent,
-        nullptr == frame_size
-            ? 0L
-            : dynamic_cast<ConstNode *>(frame_size)->GetAsInt64());
+
+    int64_t max_size = 0;
+    if (nullptr != frame_size) {
+        max_size = dynamic_cast<ConstNode *>(frame_size)->GetAsInt64();
+        if (max_size <= 0) {
+            LOG(WARNING) << "Invalid Frame MaxSize: MAXSIZE <= 0";
+            return nullptr;
+        }
+    }
+
+    return MakeFrameNode(frame_type, frame_extent, max_size);
 }
 
 SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
