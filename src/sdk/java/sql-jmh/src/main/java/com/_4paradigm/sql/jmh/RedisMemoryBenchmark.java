@@ -60,7 +60,7 @@ public class RedisMemoryBenchmark {
                     "`ts` timestamp,\n" +
                     "scene string,\n" +
                     "index(key=scene, ts=`ts`)\n" +
-                    ")");
+                    ");");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -78,7 +78,7 @@ public class RedisMemoryBenchmark {
                 jedis.set(keySucc, succValue);
                 jedis.set(keyTps, tpsValue);
                 try {
-                    PreparedStatement ps = executor.getInsertPreparedStmt(db, "insert into tps_state values(?, ?, ?, ?)");
+                    PreparedStatement ps = executor.getInsertPreparedStmt(db, "insert into tps_state values(?, ?, ?, ?);");
                     ps.setInt(1, 10000);
                     ps.setInt(2, 10);
                     ps.setTimestamp(3, new Timestamp(time - j * 1000));
