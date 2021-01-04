@@ -242,6 +242,25 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
     return std::make_shared<SQLRequestRow>(schema, col_set);
 }
 
+std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRowByProcedure(const std::string& db,
+    const std::string& sp_name, ::fesql::sdk::Status* status) {
+    if (status == nullptr) {
+        status->code = -1;
+        status->msg = "null ptr";
+        LOG(WARNING) << status->msg;
+        return nullptr;
+    }
+    std::shared_ptr<fesql::sdk::ProcedureInfo> sp_info = cluster_sdk_->GetProcedureInfo(db, sp_name, &status->msg);
+    if (!sp_info) {
+        status->code = -1;
+        status->msg = "procedure not found, msg: " + status->msg;
+        LOG(WARNING) << status->msg;
+        return nullptr;
+    }
+    const std::string& sql = sp_info->GetSql();
+    return std::move(GetRequestRow(db, sql, status));
+}
+
 std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
     const std::string& db, const std::string& sql,
     ::fesql::sdk::Status* status) {
