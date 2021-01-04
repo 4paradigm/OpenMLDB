@@ -1557,7 +1557,7 @@ Status BatchModeTransformer::CheckHistoryWindowFrame(
 bool GroupAndSortOptimized::KeysFilterOptimized(
     const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* group,
     Key* hash, PhysicalOpNode** new_in) {
-    if (nullptr == group || nullptr == hash || !hash->ValidKey()) {
+    if (nullptr == group || nullptr == hash || !group->ValidKey()) {
         LOG(INFO) << "Fail KeysFilterOptimized when window filter key or "
                      "index key is empty";
         return false;
