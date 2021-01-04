@@ -150,6 +150,10 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(
         InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
 
+INSTANTIATE_TEST_CASE_P(
+    EngineTestErrorWindow, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/error/error_window.yaml")));
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
     EngineOptions options;
