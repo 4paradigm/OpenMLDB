@@ -27,14 +27,15 @@
 #include "sdk/sql_sdk_test.h"
 #include "test/base_test.h"
 #include "vm/catalog.h"
+
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
 
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> RtiDBSchema;
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> RtiDBIndex;
 // batch request rows size == 1
-void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case, // NOLINT
-                     ::rtidb::sdk::MiniCluster* mc) {  // NOLINT
+void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,  // NOLINT
+                     ::rtidb::sdk::MiniCluster* mc) {                             // NOLINT
     const bool is_procedure = fesql::sqlcase::SQLCase::IS_PROCEDURE();
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
@@ -89,7 +90,7 @@ void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,
         }
 
         fesql::codec::RowView row_view(request_table.columns());
-        if (1!= request_rows.size()) {
+        if (1 != request_rows.size()) {
             state.SkipWithError("benmark error: request rows size should be 1");
             return;
         }

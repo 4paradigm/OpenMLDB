@@ -25,10 +25,10 @@
 #include "sdk/mini_cluster.h"
 #include "sdk/mini_cluster_bm.h"
 #include "sdk/sql_router.h"
-#include "sdk/sql_sdk_test.h"
 #include "sdk/table_reader.h"
 #include "test/base_test.h"
 #include "vm/catalog.h"
+
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
 
