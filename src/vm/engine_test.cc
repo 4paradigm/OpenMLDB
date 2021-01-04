@@ -150,7 +150,6 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(
         InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
 
-// converted from spark offline test: https://wiki.4paradigm.com/pages/viewpage.action?pageId=84558764#id-#1spark-3.0.0-%E7%A6%BB%E7%BA%BF%E6%B5%8B%E8%AF%95%E7%BB%93%E6%9E%9C-FEQL%E8%84%9A%E6%9C%AC
 // 单表反欺诈场景
 INSTANTIATE_TEST_CASE_P(
     EngineTestSparkFQZ, EngineTest,
