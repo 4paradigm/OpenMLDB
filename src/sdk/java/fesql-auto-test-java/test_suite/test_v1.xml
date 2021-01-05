@@ -4,10 +4,12 @@
     <test name="fesql-v1-test">
         <parameter name="env" value="standalone"/>
         <classes>
-            <class name="com._4paradigm.fesql_auto_test.v1.CreateTest" />
-            <class name="com._4paradigm.fesql_auto_test.v1.InsertTest" />
-            <class name="com._4paradigm.fesql_auto_test.v1.SelectTest" />
-            <class name="com._4paradigm.fesql_auto_test.v1.BatchRequestTest" />
+            <!--<class name="com._4paradigm.fesql_auto_test.v1.CreateTest" />-->
+            <!--<class name="com._4paradigm.fesql_auto_test.v1.InsertTest" />-->
+            <!--<class name="com._4paradigm.fesql_auto_test.v1.SelectTest" />-->
+            <!--<class name="com._4paradigm.fesql_auto_test.v1.BatchRequestTest" />-->
+            <class name="com._4paradigm.fesql_auto_test.v1.FunctionTest" />
+            <class name="com._4paradigm.fesql_auto_test.v1.ExpressTest" />
         </classes>
         <!--<packages>-->
             <!--<package name="com._4paradigm.fesql_auto_test.v1"/>-->
