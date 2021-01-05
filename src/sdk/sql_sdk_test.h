@@ -821,6 +821,9 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     SQLSDKClusterCaseWindowRowRange, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestErrorWindow, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/error/error_window.yaml")));
 }  // namespace sdk
 }  // namespace rtidb
 #endif  // SRC_SDK_SQL_SDK_TEST_H_
