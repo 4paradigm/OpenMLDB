@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["case_date_其他类型_错误"]
+debugs: []
 cases:
   - id: 0
     desc: "case_各种类型_正确"

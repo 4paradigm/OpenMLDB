@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["strcmp-string-fail"]
+debugs: []
 cases:
   - id: 0
     desc: "concat_各种类型组合"

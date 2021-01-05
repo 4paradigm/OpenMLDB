@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["日期函数-normal"]
+debugs: []
 cases:
   - id: 0
     desc: date_format-normal
