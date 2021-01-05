@@ -18,8 +18,6 @@ whl_name=`ls | grep *.whl | grep sqlalchemy_fedb`
 echo "whl_name:${whl_name}"
 python3 -m pip install ${whl_name} -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-cd ${ROOT_DIR}
-python3 -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 cd -
 cd ${ROOT_DIR}/src/sdk/python/sqlalchemy-test && nosetests --with-xunit
 
