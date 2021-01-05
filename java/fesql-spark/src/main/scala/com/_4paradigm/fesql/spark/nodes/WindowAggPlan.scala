@@ -376,7 +376,7 @@ object WindowAggPlan {
         val tag = row.getInt(config.skewTagIdx)
         val position = row.getInt(config.skewPositionIdx)
         if (FesqlConfig.print) {
-          printSkewRow(tag, position, cnt, config, row, computer.getWindow.size())
+          printSkewRow(tag, position, cnt, config, row, computer)
           cnt += 1
         }
         if (tag == position) {
@@ -393,7 +393,7 @@ object WindowAggPlan {
         }
         lastRow = row
         if (FesqlConfig.print) {
-          printRow(cnt, config, row, computer.getWindow.size())
+          printRow(cnt, config, row, computer)
           cnt += 1
         }
         Some(computer.compute(row))
@@ -405,7 +405,7 @@ object WindowAggPlan {
   }
 
 
-  def printRow(cnt: Long, config: WindowAggConfig, row: Row, windowSize: Int): Unit = {
+  def printRow(cnt: Long, config: WindowAggConfig, row: Row, computer: WindowComputer): Unit = {
     if (FesqlConfig.print) {
       if (cnt % FesqlConfig.printSamplePartition == 0) {
         val str = new StringBuffer()
@@ -415,13 +415,13 @@ object WindowAggPlan {
           str.append(row.get(e))
           str.append(",")
         }
-        str.append(" window size = " + windowSize)
+        str.append(" window size = " + computer.getWindow.size())
         logger.info(s"threadId = ${Thread.currentThread().getId} cnt = ${cnt} rowInfo = ${str.toString}")
       }
     }
   }
 
-  def printSkewRow(tag: Int, position: Int, cnt: Long, config: WindowAggConfig, row: Row, windowSize: Int): Unit = {
+  def printSkewRow(tag: Int, position: Int, cnt: Long, config: WindowAggConfig, row: Row, computer: WindowComputer): Unit = {
     if (cnt % FesqlConfig.printSamplePartition == 0) {
       val str = new StringBuffer()
       str.append(row.get(config.orderIdx))
@@ -430,7 +430,7 @@ object WindowAggPlan {
         str.append(row.get(e))
         str.append(",")
       }
-      str.append(" window size = " + windowSize)
+      str.append(" window size = " + computer.getWindow.size())
       logger.info(s"tag : postion = ${tag} : ${position} threadId = ${Thread.currentThread().getId} cnt = ${cnt} rowInfo = ${str.toString}")
     }
   }
@@ -458,7 +458,7 @@ object WindowAggPlan {
           val tag = row.getInt(config.skewTagIdx)
           val position = row.getInt(config.skewPositionIdx)
           if (FesqlConfig.print) {
-            printSkewRow(tag, position, cnt, config, row, computer.getWindow.size())
+            printSkewRow(tag, position, cnt, config, row, computer)
           }
           if (tag == position) {
             Some(computer.compute(row))
@@ -468,7 +468,7 @@ object WindowAggPlan {
           }
         } else {
           if (FesqlConfig.print) {
-            printRow(cnt, config, row, computer.getWindow.size())
+            printRow(cnt, config, row, computer)
             cnt += 1
           }
           Some(computer.compute(row))
