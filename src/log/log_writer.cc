@@ -201,18 +201,22 @@ Status Writer::CompressRecord() {
     Status s;
     // compress
     int compress_len = -1;
+    switch (compress_type_) {
 #ifdef PZFPGA_ENABLE
-    if (compress_type_ == kPz) {
-        FPGA_env* fpga_env = rtidb::base::Compress::GetFpgaEnv();
-        compress_len = gzipfpga_compress_nohuff(
-                fpga_env, buffer_, compress_buf_, block_size_, block_size_, 0);
-    } else {
+        case kPz: {
+            FPGA_env* fpga_env = rtidb::base::Compress::GetFpgaEnv();
+            compress_len = gzipfpga_compress_nohuff(
+                    fpga_env, buffer_, compress_buf_, block_size_, block_size_, 0);
+            break;
+        }
 #endif
-        if (compress_type_ == kSnappy) {
+        case kSnappy: {
             size_t tmp_val = 0;
             snappy::RawCompress(buffer_, block_size_, compress_buf_, &tmp_val);
             compress_len = static_cast<int>(tmp_val);
-        } else if (compress_type_ == kZlib) {
+            break;
+        }
+        case kZlib: {
             unsigned long dest_len = compressBound(static_cast<unsigned long>(block_size_)); // NOLINT
             int res = compress((unsigned char*)compress_buf_, &dest_len,
                     (const unsigned char*)buffer_, block_size_);
@@ -222,20 +226,20 @@ Status Writer::CompressRecord() {
                 return s;
             }
             compress_len = static_cast<int>(dest_len);
-        } else {
+            break;
+        }
+        default: {
             s = Status::InvalidRecord(Slice("unsupported compress type: " + FLAGS_snapshot_compression));
             PDLOG(WARNING, "write error. %s", s.ToString().c_str());
             return s;
         }
-#ifdef PZFPGA_ENABLE
     }
-#endif
     if (compress_len < 0) {
         s = Status::InvalidRecord(Slice("compress failed"));
         PDLOG(WARNING, "write error. %s", s.ToString().c_str());
         return s;
     }
-    PDLOG(INFO, "compress_len: %d", compress_len);
+    PDLOG(INFO, "compress_len: %d, compress_type: %d", compress_len, compress_type_);
     // fill compressed data's header
     char head_of_compress[kHeaderSizeOfCompressData];
     memrev32ifbe(static_cast<void*>(&compress_len));

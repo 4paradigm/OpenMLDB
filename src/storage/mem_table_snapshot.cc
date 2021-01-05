@@ -393,12 +393,12 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
     std::string now_time = ::rtidb::base::GetNowTime();
     std::string snapshot_name =
         now_time.substr(0, now_time.length() - 2) + ".sdb";
+    if (FLAGS_snapshot_compression != "off") {
+        snapshot_name += COMPRESS_SUBFIX;
+    }
     std::string snapshot_name_tmp = snapshot_name + ".tmp";
     std::string full_path = snapshot_path_ + snapshot_name;
     std::string tmp_file_path = snapshot_path_ + snapshot_name_tmp;
-    if (FLAGS_snapshot_compression != "off") {
-        full_path += COMPRESS_SUBFIX;
-    }
     FILE* fd = fopen(tmp_file_path.c_str(), "ab+");
     if (fd == NULL) {
         PDLOG(WARNING, "fail to create file %s", tmp_file_path.c_str());
@@ -802,6 +802,9 @@ int MemTableSnapshot::ExtractIndexData(
     std::string now_time = ::rtidb::base::GetNowTime();
     std::string snapshot_name =
         now_time.substr(0, now_time.length() - 2) + ".sdb";
+    if (FLAGS_snapshot_compression != "off") {
+        snapshot_name += COMPRESS_SUBFIX;
+    }
     std::string snapshot_name_tmp = snapshot_name + ".tmp";
     std::string full_path = snapshot_path_ + snapshot_name;
     std::string tmp_file_path = snapshot_path_ + snapshot_name_tmp;
@@ -814,9 +817,6 @@ int MemTableSnapshot::ExtractIndexData(
     }
     uint64_t collected_offset = CollectDeletedKey(0);
     uint64_t start_time = ::baidu::common::timer::now_time();
-    if (FLAGS_snapshot_compression != "off") {
-        full_path += COMPRESS_SUBFIX;
-    }
     WriteHandle* wh = new WriteHandle(FLAGS_snapshot_compression, snapshot_name_tmp, fd);
     ::rtidb::api::Manifest manifest;
     bool has_error = false;

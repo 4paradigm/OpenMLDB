@@ -317,7 +317,6 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                     FPGA_env* fpga_env = rtidb::base::Compress::GetFpgaEnv();
                     uncompress_len = gzipfpga_uncompress_nohuff(
                             fpga_env, block_data, uncompress_buf_, compress_len, block_size_);
-                    PDLOG(INFO, "uncompress_len is: %d", uncompress_len);
                     break;
                 }
 #endif
@@ -325,7 +324,6 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                     size_t tmp_val = 0;
                     snappy::GetUncompressedLength(block_data, static_cast<size_t>(compress_len), &tmp_val);
                     uncompress_len = static_cast<int>(tmp_val);
-                    PDLOG(INFO, "uncompress_len is: %d", uncompress_len);
                     if (!snappy::RawUncompress(block_data, static_cast<size_t>(compress_len), uncompress_buf_)) {
                         PDLOG(WARNING, "bad record when uncompress block");
                         return kBadRecord;
@@ -354,6 +352,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                         uncompress_len, block_size_);
                 return kBadRecord;
             }
+            PDLOG(INFO, "uncompress_len is: %d", uncompress_len);
             buffer_ = Slice(uncompress_buf_, block_size_);
         }
         offset = end_of_buffer_offset_;
