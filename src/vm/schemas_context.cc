@@ -395,7 +395,7 @@ Status SchemasContext::ResolveExprDependentColumns(
         switch (col_expr->GetExprType()) {
             case node::kExprColumnRef: {
                 auto column_ref =
-                    dynamic_cast<const node::ColumnRefNode*>(expr);
+                    dynamic_cast<const node::ColumnRefNode*>(col_expr);
                 auto name = column_ref->GetExprString();
                 auto iter = column_name_set.find(name);
                 if (iter == column_name_set.end()) {
@@ -405,7 +405,8 @@ Status SchemasContext::ResolveExprDependentColumns(
                 break;
             }
             case node::kExprColumnId: {
-                auto column_id = dynamic_cast<const node::ColumnIdNode*>(expr);
+                auto column_id =
+                    dynamic_cast<const node::ColumnIdNode*>(col_expr);
                 auto iter = column_id_set.find(column_id->GetColumnID());
                 if (iter == column_id_set.end()) {
                     columns->push_back(column_id);

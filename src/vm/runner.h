@@ -120,6 +120,7 @@ class RangeGenerator {
  public:
     explicit RangeGenerator(const Range& range) : ts_gen_(range.fn_info()) {
         if (range.frame_ != nullptr) {
+            frame_type_ = range.frame_->frame_type();
             start_offset_ = range.frame_->GetHistoryRangeStart();
             end_offset_ = range.frame_->GetHistoryRangeEnd();
             start_row_ = (-1 * range.frame_->GetHistoryRowsStart());
@@ -127,8 +128,21 @@ class RangeGenerator {
         }
     }
     virtual ~RangeGenerator() {}
+    inline const bool OutOfRange(bool out_of_rows,
+                                 bool out_of_rows_range) const {
+        switch (frame_type_) {
+            case node::kFrameRows:
+                return out_of_rows;
+            case node::kFrameRowsRange:
+                return out_of_rows && out_of_rows_range;
+            default:
+                return true;
+        }
+        return true;
+    }
     const bool Valid() const { return ts_gen_.Valid(); }
     OrderGenerator ts_gen_;
+    fesql::node::FrameType frame_type_;
     int64_t start_offset_;
     int64_t end_offset_;
     uint64_t start_row_;
@@ -995,8 +1009,7 @@ class RouteInfo {
           table_handler_(table_handler) {}
     ~RouteInfo() {}
     const bool IsCompleted() const {
-        return table_handler_ && !index_.empty() &&
-               index_key_.ValidKey();
+        return table_handler_ && !index_.empty() && index_key_.ValidKey();
     }
     const bool IsCluster() const { return table_handler_ && !index_.empty(); }
     static const bool EqualWith(const RouteInfo& info1,
@@ -1274,10 +1287,9 @@ class RunnerBuilder {
     std::unordered_map<fesql::vm::Runner*, ::fesql::vm::Runner*>
         proxy_runner_map_;
     std::set<size_t> batch_common_node_set_;
-    ClusterTask BinaryInherit(const ClusterTask& left,
-                                         const ClusterTask& right,
-                                         Runner* runner, const Key& index_key,
-                                         const TaskBiasType bias = kNoBias);
+    ClusterTask BinaryInherit(const ClusterTask& left, const ClusterTask& right,
+                              Runner* runner, const Key& index_key,
+                              const TaskBiasType bias = kNoBias);
     ClusterTask BuildLocalTaskForBinaryRunner(const ClusterTask& left,
                                               const ClusterTask& right,
                                               Runner* runner);

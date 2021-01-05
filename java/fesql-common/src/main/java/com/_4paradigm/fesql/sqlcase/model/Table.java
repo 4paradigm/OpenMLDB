@@ -24,6 +24,7 @@ public class Table {
     List<List<Object>> rows;
     String create;
     String insert;
+    String repeat_tag = "";
     int repeat = 1;
     List<String> common_column_indices;
 

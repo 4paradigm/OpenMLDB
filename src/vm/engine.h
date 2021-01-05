@@ -70,10 +70,14 @@ class EngineOptions {
     }
 
     inline bool is_cluster_optimzied() const { return cluster_optimized_; }
-    inline void set_cluster_optimized(bool flag) { cluster_optimized_ = flag; }
+    inline EngineOptions* set_cluster_optimized(bool flag) {
+        cluster_optimized_ = flag;
+        return this;
+    }
     bool is_batch_request_optimized() const { return batch_request_optimized_; }
-    void set_batch_request_optimized(bool flag) {
+    EngineOptions* set_batch_request_optimized(bool flag) {
         batch_request_optimized_ = flag;
+        return this;
     }
     inline void set_max_sql_cache_size(uint32_t size) {
         max_sql_cache_size_ = size;
