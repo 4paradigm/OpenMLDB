@@ -1,5 +1,6 @@
 package com._4paradigm.sql.jmh;
 
+import com._4paradigm.sql.BenchmarkConfig;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.tools.Util;
 import com._4paradigm.sql.tools.Relation;
@@ -27,8 +28,8 @@ public class FESQLFZBenchmark {
     private SqlExecutor executor;
     private String db;
     private int pkNum = 1;
-    @Param({"500", "1000", "2000"})
-    private int windowNum = 2000;
+    @Param({"100", "500", "1000", "2000"})
+    private int windowNum = 100;
     private Map<String, TableInfo> tableMap;
     private String script;
     private String mainTable;
@@ -55,20 +56,11 @@ public class FESQLFZBenchmark {
         script = rawScript.trim().replace("\n", " ");
         Relation relation = new Relation(Util.getContent(BenchmarkConfig.relationUrl));
         mainTable = relation.getMainTable();
-        String ddl = Util.getContent(BenchmarkConfig.ddlUrl);
-        String[] arr = ddl.split(";");
-        for (String item : arr) {
-            item = item.trim().replace("\n", "");
-            if (item.isEmpty()) {
-                continue;
-            }
-            TableInfo table = new TableInfo(item, relation);
-            tableMap.put(table.getName(), table);
-            if (table.getName().equals(mainTable) && !BenchmarkConfig.commonCol.isEmpty()) {
-                String[] colArr = BenchmarkConfig.commonCol.trim().split(",");
-                for (String col : colArr) {
-                    commonColumnIndices.add(table.getSchemaPos().get(col));
-                }
+        tableMap = Util.parseDDL(BenchmarkConfig.ddlUrl, relation);
+        if (!BenchmarkConfig.commonCol.isEmpty()) {
+            String[] colArr = BenchmarkConfig.commonCol.trim().split(",");
+            for (String col : colArr) {
+                commonColumnIndices.add(tableMap.get(mainTable).getSchemaPos().get(col));
             }
         }
         System.out.println(db);
@@ -323,18 +315,18 @@ public class FESQLFZBenchmark {
     }
 
     public static void main(String[] args) throws RunnerException {
-     /* FESQLFZBenchmark ben = new FESQLFZBenchmark();
+      FESQLFZBenchmark ben = new FESQLFZBenchmark();
       try {
           ben.setup();
           ben.execSQL();
           ben.teardown();
       } catch (Exception e) {
           e.printStackTrace();
-      }*/
-        Options opt = new OptionsBuilder()
+      }
+        /*Options opt = new OptionsBuilder()
                 .include(FESQLFZBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
-        new Runner(opt).run();
+        new Runner(opt).run();*/
     }
 }

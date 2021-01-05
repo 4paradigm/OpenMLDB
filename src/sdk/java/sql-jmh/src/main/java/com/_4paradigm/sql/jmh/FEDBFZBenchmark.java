@@ -4,6 +4,7 @@ import com._4paradigm.featuredb.driver.impl.DBMSDriverClientImpl;
 import com._4paradigm.featuredb.proto.Base;
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.featuredb.rtengine.driver.dto.feql.ExecuteResult;
+import com._4paradigm.sql.BenchmarkConfig;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.tools.Util;
 import com._4paradigm.sql.tools.Relation;
@@ -13,10 +14,6 @@ import org.json.JSONArray;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.RunnerException;
 
-import org.openjdk.jmh.runner.Runner;
-import org.openjdk.jmh.runner.options.Options;
-import org.openjdk.jmh.runner.options.OptionsBuilder;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 

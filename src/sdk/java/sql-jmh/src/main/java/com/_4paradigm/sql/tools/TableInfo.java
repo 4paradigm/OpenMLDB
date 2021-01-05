@@ -1,7 +1,6 @@
 package com._4paradigm.sql.tools;
 
-import com._4paradigm.featuredb.proto.Base;
-import com._4paradigm.sql.jmh.BenchmarkConfig;
+import com._4paradigm.sql.BenchmarkConfig;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
