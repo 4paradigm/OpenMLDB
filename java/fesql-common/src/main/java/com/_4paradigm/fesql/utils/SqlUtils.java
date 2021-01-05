@@ -3,12 +3,14 @@ package com._4paradigm.fesql.utils;
 import com._4paradigm.fesql.element.SparkConfig;
 import com.google.gson.*;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class SqlUtils {
     private static Logger logger = LoggerFactory.getLogger(SqlUtils.class);
@@ -68,6 +70,19 @@ public class SqlUtils {
             config.setInstanceFormat(outputPath);
         }
         return config;
+    }
+
+    public static String checkTablesIsSameSql(String table1, String table2, List<String> schema) {
+        StringBuffer sb = new StringBuffer();
+        sb.append(String.format("select count(*) from %s inner join %s on\n", table1, table2));
+        List<String> conds = new ArrayList<>();
+        for (String e : schema) {
+            String con = String.format("`%s`.`%s` = `%s`.`%s`", table1, e, table2, e);
+            conds.add(con);
+        }
+        sb.append(StringUtils.join(conds, " and "));
+        sb.append(";");
+        return sb.toString();
     }
 
 }

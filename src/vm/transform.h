@@ -380,6 +380,8 @@ class BatchModeTransformer {
     bool IsSimpleProject(const ColumnProjects& project);
 
     Status CheckHistoryWindowFrame(const node::WindowPlanNode* w_ptr);
+    Status CheckWindow(const node::WindowPlanNode* w_ptr,
+                       const vm::SchemasContext* schemas_ctx);
 
     base::Status CheckTimeOrIntegerOrderColumn(
         const node::OrderByNode* orders, const SchemasContext* schemas_ctx);

@@ -79,7 +79,7 @@ class DataHandler : public ListV<Row> {
 class DataHandlerList {
  public:
     DataHandlerList() {}
-    ~DataHandlerList() {}
+    virtual ~DataHandlerList() {}
     virtual size_t GetSize() = 0;
     virtual std::shared_ptr<DataHandler> Get(size_t idx) = 0;
 };

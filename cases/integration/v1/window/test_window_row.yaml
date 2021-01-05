@@ -247,60 +247,7 @@ cases:
         - [4,"dd",33,3]
         - [5,"ee",34,1]
   -
-    id: 9
-    desc: float为order by - 未命中索引TS
-    mode: offline-unsupport
-    inputs:
-      -
-        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c8:c7"]
-        rows:
-          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-          - [2,"bb",20,31,1.2,2.1,1590738990000,"2020-05-01"]
-          - [3,"cc",20,32,1.3,2.1,1590738990000,"2020-05-01"]
-          - [4,"dd",20,33,1.4,2.1,1590738990000,"2020-05-01"]
-          - [5,"ee",21,34,1.5,2.2,1590738991000,"2020-05-02"]
-    sql: |
-      SELECT id, c1, c5, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c8 ORDER BY {0}.c5 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
-    expect:
-      success: false
-  -
-    id: 10
-    desc: double为order by-未命中索引
-    mode: offline-unsupport
-    inputs:
-      -
-        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
-        rows:
-          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-          - [2,"bb",20,31,1.2,2.2,1590738990000,"2020-05-01"]
-          - [3,"cc",20,32,1.3,2.3,1590738990000,"2020-05-01"]
-          - [4,"dd",20,33,1.4,2.4,1590738990000,"2020-05-01"]
-          - [5,"ee",21,34,1.5,2.5,1590738991000,"2020-05-02"]
-    sql: |
-      SELECT id, c1, c6, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c8 ORDER BY {0}.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
-    expect:
-      success: false
-  -
-    id: 11
-    desc: date为order by
-    inputs:
-      -
-        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
-        rows:
-          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-          - [2,"bb",20,31,1.2,2.2,1590738990000,"2020-05-02"]
-          - [3,"cc",20,32,1.3,2.3,1590738990000,"2020-05-03"]
-          - [4,"dd",20,33,1.4,2.4,1590738990000,"2020-05-04"]
-          - [5,"ee",21,34,1.5,2.5,1590738991000,"2020-05-05"]
-    sql: |
-      SELECT id, c1, c8, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c7 ORDER BY {0}.c8 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
-    expect:
-      success: false
-  -
-    id: 12
+    id: 8
     desc: 多个pk
     inputs:
       -
@@ -326,7 +273,7 @@ cases:
         - [5,"aa",24,34]
         - [6,"bb",24,35]
   -
-    id: 13
+    id: 9
     desc: 两个pk都使用了索引
     inputs:
       -
@@ -380,7 +327,7 @@ cases:
         - [5,"aa",24,34]
         - [6,"bb",24,35]
   -
-    id: 14
+    id: 10
     desc: 多个window指定相同的pk
     mode: rtidb-batch-unsupport
     inputs:
@@ -407,7 +354,7 @@ cases:
         - [4,"dd",20,96,3]
         - [5,"ee",21,34,1]
   -
-    id: 15
+    id: 11
     desc: 多个window指定相不同的pk
     mode: rtidb-batch-unsupport
     inputs:
@@ -434,7 +381,7 @@ cases:
         - [4,"cc",20,96,2]
         - [5,"ee",21,34,1]
   -
-    id: 15-2
+    id: 12
     desc: 多个windowpk是table.column模式
     mode: rtidb-batch-unsupport
     inputs:
@@ -461,7 +408,7 @@ cases:
         - [4,"cc",20,96,2]
         - [5,"ee",21,34,1]
   -
-    id: 16
+    id: 13
     desc: 多个window指定不同的ts
     mode: rtidb-unsupport
     tags: ["zhaowei:这个场景w2的order顺序不符合request模式,原来的预期结果不正确,已修改,麻烦赵伟确认"]
@@ -489,7 +436,7 @@ cases:
         - [4,"dd",20,93,3]
         - [5,"ee",21,34,1]
   -
-    id: 17
+    id: 14
     desc: 两个window其中两个pk为索引列
     mode: rtidb-batch-unsupport
     inputs:
@@ -516,7 +463,7 @@ cases:
         - [4,"cc",20,96,2]
         - [5,"ee",21,34,1]
   -
-    id: 18
+    id: 15
     desc: 两个window其中一个pk和两个pk
     mode: rtidb-batch-unsupport
     inputs:
@@ -543,7 +490,7 @@ cases:
         - [4,"cc",20,96,2]
         - [5,"cc",21,34,1]
   -
-    id: 19
+    id: 16
     desc: 全部window
     inputs:
       -
@@ -567,7 +514,7 @@ cases:
         - [4, 3,96]
         - [5, 1,34]
   -
-    id: 20
+    id: 17
     desc: 结合limit
     tags: ["TODO", "LIMIT批模式没有确定性输出"]
     inputs:
@@ -630,58 +577,7 @@ cases:
         - [4,"dd",20,96]
         - [5,"ee",21,34]
   -
-    id: 23
-    desc: window名不存在
-    inputs:
-      -
-        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
-        rows:
-          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
-          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
-          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
-          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
-    sql: |
-      SELECT id, c1, c3, sum(c4) OVER w2 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
-    expect:
-      success: false
-  -
-    id: 24
-    desc: window使用的表名不存在
-    inputs:
-      -
-        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
-        rows:
-          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
-          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
-          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
-          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
-    sql: |
-      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}1.c3 ORDER BY {0}1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
-    expect:
-      success: false
-  -
-    id: 25
-    desc: window使用的列名不存在
-    inputs:
-      -
-        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
-        rows:
-          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
-          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
-          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
-          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
-    sql: |
-      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c33 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
-    expect:
-      success: false
-  -
-    id: 26-1
+    id: 19
     desc: case when window expression then window expression else null end
     inputs:
       -
@@ -709,7 +605,7 @@ cases:
         - ["bb",33,NULL]
         - ["bb",34,NULL]
   -
-    id: 26-2
+    id: 20
     desc: case when window expr then window expr else window expr
     inputs:
       -
@@ -737,7 +633,7 @@ cases:
         - ["bb",33,33]
         - ["bb",34,33]
   -
-    id: 26-3
+    id: 21
     desc: case when simple expression then window expression else null end
     inputs:
       -
@@ -765,7 +661,7 @@ cases:
         - ["bb",33,NULL]
         - ["bb",34,NULL]
   -
-    id: 27
+    id: 22
     desc: window expression + window expression
     inputs:
       -
