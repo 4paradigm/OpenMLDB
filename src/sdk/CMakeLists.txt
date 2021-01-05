@@ -1,7 +1,7 @@
 add_library(rtidb_sdk STATIC
 	cluster_sdk.cc sql_cluster_router.cc sql_router.cc
     result_set_sql.cc batch_request_result_set_sql.cc
-    sql_request_row.cc sql_insert_row.cc)
+    sql_request_row.cc sql_insert_row.cc mini_cluster_bm.cc)
 set(FESQL_CASE_LIBS base_test fesql_core yaml-cpp boost_filesystem)
 
 add_executable(cluster_sdk_test cluster_sdk_test.cc)
@@ -20,8 +20,14 @@ add_executable(sql_request_row_test sql_request_row_test.cc)
 target_link_libraries(sql_request_row_test gtest ${BIN_LIBS})
 
 set(SDK_LIBS rtidb_sdk rtidb_catalog client zk_client rtidb_flags rtidb_codec rtidb_proto base fesql_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS})
-add_executable(mini_cluster_bm mini_cluster_microbenchmark.cc)
+add_executable(mini_cluster_bm mini_cluster_bm.cc mini_cluster_microbenchmark.cc)
 target_link_libraries(mini_cluster_bm benchmark_main benchmark gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+
+add_executable(mini_cluster_bm_request_batch mini_cluster_bm_request_batch.cc mini_cluster_bm.cc)
+target_link_libraries(mini_cluster_bm_request_batch benchmark_main benchmark gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+
+add_executable(mini_cluster_bm_request mini_cluster_bm_request.cc mini_cluster_bm.cc)
+target_link_libraries(mini_cluster_bm_request benchmark_main benchmark gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
 
 if(SQL_PYSDK_ENABLE)
 	find_package(Python3 COMPONENTS Interpreter Development)
