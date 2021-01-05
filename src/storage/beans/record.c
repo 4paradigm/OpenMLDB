@@ -502,7 +502,6 @@ void scanDataFile(HTree *tree, int bucket, const char *path, const char *hintpat
 
     while (p < end)
     {
-        int badksz = 0;
         DataRecord *r = scan_record(f->addr, end, &p, path, &num_broken_total, tree, bucket);
         if (r == NULL)
             break;
@@ -807,8 +806,11 @@ int optimizeDataFile(HTree *tree, Mgr *mgr, int bucket, const char *path, const 
     return 0;
 
 OPT_FAIL:
-    printf("optimize %s -> %d (%u B) failed,   %d/%d records released, %d deleted, %u/%u bytes released, %d bytes broken, use %fs/%fs, err = %d\n",
-            path, last_bucket, (last_bucket == bucket) ? old_srcdata_size : new_df_orig_size, released, nrecord, deleted, *deleted_bytes, old_srcdata_size, broken, update_secs, opt_secs, err);
+    printf(
+        "optimize %s -> %d (%u B) failed,   %d/%d records released, %d deleted, %u/%u bytes released, %d bytes broken, "
+        "use %fs/%fs, err = %d\n",
+        path, last_bucket, (last_bucket == bucket) ? old_srcdata_size : new_df_orig_size, released, nrecord,  // NOLINT
+        deleted, *deleted_bytes, old_srcdata_size, broken, update_secs, opt_secs, err);                       // NOLINT
     if (hintdata) free(hintdata);
     if (cur_tree)  ht_destroy(cur_tree);
     if (f) close_mfile(f);

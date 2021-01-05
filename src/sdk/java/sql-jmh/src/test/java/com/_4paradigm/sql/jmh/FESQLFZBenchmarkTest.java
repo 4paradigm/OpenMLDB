@@ -22,7 +22,7 @@ public class FESQLFZBenchmarkTest {
 
     @Test
     public void execSQLTest() throws SQLException {
-        FESQLFZBenchmark benchmark = new FESQLFZBenchmark(false);
+        FESQLFZBenchmark benchmark = new FESQLFZBenchmark(true);
         if (BenchmarkConfig.NeedProxy()) {
             Util.EnableProxy();
         }

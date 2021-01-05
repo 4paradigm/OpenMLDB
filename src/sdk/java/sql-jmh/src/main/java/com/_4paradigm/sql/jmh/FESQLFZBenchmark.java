@@ -288,7 +288,6 @@ public class FESQLFZBenchmark {
         try {
             PreparedStatement ps = getPreparedStatement(BenchmarkConfig.mode);
             ResultSet resultSet = ps.executeQuery();
-            resultSet.next();
             ResultSetMetaData metaData = resultSet.getMetaData();
             Map<String, String> val = new HashMap<>();
             List<Map<String, String>> vals = new ArrayList<>();
