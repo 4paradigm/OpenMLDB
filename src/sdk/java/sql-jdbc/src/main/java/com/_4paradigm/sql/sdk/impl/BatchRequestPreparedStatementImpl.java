@@ -1,11 +1,14 @@
 package com._4paradigm.sql.sdk.impl;
 
-import com._4paradigm.sql.*;
+import com._4paradigm.sql.ColumnIndicesSet;
+import com._4paradigm.sql.SQLRequestRowBatch;
+import com._4paradigm.sql.SQLRouter;
+import com._4paradigm.sql.Status;
 import com._4paradigm.sql.jdbc.SQLResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.*;
+import java.sql.SQLException;
 import java.util.List;
 
 
@@ -34,7 +37,7 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
         Status status = new Status();
         com._4paradigm.sql.ResultSet resultSet = router.ExecuteSQLBatchRequest(
                 db, currentSql, currentRowBatch, status);
-        if (resultSet == null) {
+        if (resultSet == null || status.getCode() != 0) {
             throw new SQLException("execute sql fail: " + status.getMsg());
         }
         SQLResultSet rs = new SQLResultSet(resultSet);
@@ -53,7 +56,7 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
         currentRowBatch.AddRow(this.currentRow);
         Status status = new Status();
         this.currentRow = router.GetRequestRow(db, currentSql, status);
-        if (status.getCode() != 0 || this.currentRow == null) {
+        if (this.currentRow == null || status.getCode() != 0) {
             logger.error("getRequestRow failed: {}", status.getMsg());
             throw new SQLException("getRequestRow failed!, msg: " + status.getMsg());
         }

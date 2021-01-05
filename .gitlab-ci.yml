@@ -75,24 +75,24 @@ build:
       - build/sql_pysdk/dist/*.whl
       - build/python/dist/*.whl
 
-mac_build:
-  variables:
-    CICD_RUNNER_TAG: "rtidb_mac"
-  tags:
-    - rtidb_mac
-  stage: build
-  script:
-    - bash steps/simple_compile_mac.sh
-    - mv build/bin/rtidb build/bin/rtidb_mac
-  artifacts:
-    expire_in: 4h
-    paths:
-      - build/bin/rtidb_mac
-      - build/src/sdk/libsql_jsdk.dylib
-      - build/sql_pysdk/dist/*.whl
-  only:
-    variables:
-      - $ENV_BUILD == "daily"
+# mac_build:
+#   variables:
+#     CICD_RUNNER_TAG: "rtidb_mac"
+#   tags:
+#     - rtidb_mac
+#   stage: build
+#   script:
+#     - bash steps/simple_compile_mac.sh
+#     - mv build/bin/rtidb build/bin/rtidb_mac
+#   artifacts:
+#     expire_in: 4h
+#     paths:
+#       - build/bin/rtidb_mac
+#       - build/src/sdk/libsql_jsdk.dylib
+#       - build/sql_pysdk/dist/*.whl
+#   only:
+#     variables:
+#       - $ENV_BUILD == "daily"
 
 fpga_c++_ut:
   image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
@@ -437,7 +437,7 @@ deploy-fedb:
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/deploy_package_fedb.sh
   dependencies:
-    - mac_build
+    # - mac_build
     - build
   only:
     variables:
@@ -516,7 +516,19 @@ fesql_auto_gen_case:
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_gen_test.sh
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_gen_test_by_rtidb.sh
+  after_script:
+    - tar czf $CI_COMMIT_SHA  src/sdk/java/fesql-auto-test-java/target/allure-results
+    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
+    - curl -s "http://auto.4paradigm.com/job/fesql-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&allure_path=src/sdk/java/feql-auto-test-java/target/allure-results&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+  artifacts:
+    reports:
+      junit:
+        - src/sdk/java/fesql-auto-test-java/target/surefire-reports/junitreports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/target/surefire-reports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/TEST-*.xml
   except:
     variables:
       - $ENV_BUILD == "daily"
