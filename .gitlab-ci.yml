@@ -75,24 +75,24 @@ build:
       - build/sql_pysdk/dist/*.whl
       - build/python/dist/*.whl
 
-mac_build:
-  variables:
-    CICD_RUNNER_TAG: "rtidb_mac"
-  tags:
-    - rtidb_mac
-  stage: build
-  script:
-    - bash steps/simple_compile_mac.sh
-    - mv build/bin/rtidb build/bin/rtidb_mac
-  artifacts:
-    expire_in: 4h
-    paths:
-      - build/bin/rtidb_mac
-      - build/src/sdk/libsql_jsdk.dylib
-      - build/sql_pysdk/dist/*.whl
-  only:
-    variables:
-      - $ENV_BUILD == "daily"
+# mac_build:
+#   variables:
+#     CICD_RUNNER_TAG: "rtidb_mac"
+#   tags:
+#     - rtidb_mac
+#   stage: build
+#   script:
+#     - bash steps/simple_compile_mac.sh
+#     - mv build/bin/rtidb build/bin/rtidb_mac
+#   artifacts:
+#     expire_in: 4h
+#     paths:
+#       - build/bin/rtidb_mac
+#       - build/src/sdk/libsql_jsdk.dylib
+#       - build/sql_pysdk/dist/*.whl
+#   only:
+#     variables:
+#       - $ENV_BUILD == "daily"
 
 fpga_c++_ut:
   image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
@@ -437,7 +437,7 @@ deploy-fedb:
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/deploy_package_fedb.sh
   dependencies:
-    - mac_build
+    # - mac_build
     - build
   only:
     variables:

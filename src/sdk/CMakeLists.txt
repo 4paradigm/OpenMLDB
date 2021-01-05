@@ -8,7 +8,6 @@ add_library(rtidb_sdk STATIC
 
 add_library(mini_cluster_bm_common STATIC 
 mini_cluster_bm.cc sql_sdk_test.cc)
-
 set(FESQL_CASE_LIBS base_test fesql_core yaml-cpp boost_filesystem)
 
 add_executable(cluster_sdk_test cluster_sdk_test.cc)

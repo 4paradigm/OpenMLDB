@@ -393,6 +393,10 @@ INSTANTIATE_TEST_SUITE_P(
     EngineTestFZFunction, TabletEngineTest,
     testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
 
+INSTANTIATE_TEST_SUITE_P(
+    EngineTestErrorWindow, TabletEngineTest,
+    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/error/error_window.yaml")));
+
 }  // namespace catalog
 }  // namespace rtidb
 int main(int argc, char **argv) {
