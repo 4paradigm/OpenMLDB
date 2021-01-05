@@ -244,6 +244,7 @@ cases:
           - [true,true,false,false,false,false,false,true]
   - id: 7
     desc: "IS_NULL_各种类型"
+    tags: ["TODO","目前不支持"]
     inputs:
       -
         columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -253,7 +254,7 @@ cases:
           - [2,2,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
     dataProvider:
       - ["c1","c2","c3","c4","c5","c6","c7","c8","c9"]
-    sql: select * from {0} where d[0] IS NULL;
+    sql: select * from {0} where d[0] is null;
     expect:
       columns: ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
       rows:
@@ -275,31 +276,6 @@ cases:
         - [false,false,false,false,false,false,false,false,false]
         - [true,true,true,true,true,true,true,true,true]
   - id: 9
-    desc: "STRCMP()-normal"
-    inputs:
-      -
-        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
-        indexs: ["index1:id:c7"]
-        rows:
-          - [1,"2",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
-          - [2,"1",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
-          - [3,"2",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
-      -
-        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
-        indexs: ["index1:id:c7"]
-        rows:
-          - [1,"2",10,20,30,11.1,12.1,1590738989001,"2020-05-02",false]
-          - [2,"2",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
-          - [3,"3",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
-    sql: select {0}.id,STRCMP({0}.c1,{1}.c1) as b1 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
-    expect:
-      order: id
-      columns: ["id bigint","b1 int"]
-      rows:
-        - [1,0]
-        - [2,-1]
-        - [3,1]
-  - id: 10
     desc: 直接和NULL比较返回NULL
     inputs:
       - columns: ["c1 int16","c2 int32","c3 bigint",
@@ -335,7 +311,7 @@ cases:
            NULL, NULL, NULL, NULL, NULL, NULL,
            NULL, NULL, NULL, NULL, NULL, NULL,
            NULL, NULL, NULL, NULL, NULL, NULL]
-  - id: 11
+  - id: 10
     desc: 直接和Const NULL比较返回NULL
     inputs:
       - columns: ["c1 int16","c2 int32","c3 bigint",
