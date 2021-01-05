@@ -1,5 +1,6 @@
 package com._4paradigm.sql.jmh;
 
+import com._4paradigm.sql.BenchmarkConfig;
 import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.ScanOption;
 import com._4paradigm.sql.TableReader;

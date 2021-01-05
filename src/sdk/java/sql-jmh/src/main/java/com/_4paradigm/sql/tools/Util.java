@@ -5,8 +5,11 @@ import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 
 import com._4paradigm.featuredb.proto.Base;
+import com._4paradigm.sql.BenchmarkConfig;
 
 public class Util {
     private static Boolean NEED_PROXY = false;
@@ -86,5 +89,20 @@ public class Util {
             default:
                 throw new Exception("type " + type + " is not supported");
         }
+    }
+
+    public static Map<String, TableInfo> parseDDL(String ddlUrl, Relation relation) {
+        String ddl = Util.getContent(ddlUrl);
+        String[] arr = ddl.split(";");
+        Map<String, TableInfo> tableMap = new HashMap<>();
+        for (String item : arr) {
+            item = item.trim().replace("\n", "");
+            if (item.isEmpty()) {
+                continue;
+            }
+            TableInfo table = new TableInfo(item, relation);
+            tableMap.put(table.getName(), table);
+        }
+        return tableMap;
     }
 }

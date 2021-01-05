@@ -1,5 +1,6 @@
 package com._4paradigm.sql.jmh;
 
+import com._4paradigm.sql.BenchmarkConfig;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
