@@ -78,6 +78,9 @@ class SQLInsertRow {
     bool AppendFloat(float val);
     bool AppendDouble(double val);
     bool AppendString(const std::string& val);
+    bool AppendDateAvoid(uint32_t year, uint32_t month, uint32_t day) { // avoid override because python does not support override
+        return AppendDate(year, month, day);
+    }
     bool AppendDate(uint32_t year, uint32_t month, uint32_t day);
     bool AppendDate(int32_t date);
     bool AppendNULL();

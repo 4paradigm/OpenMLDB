@@ -44,6 +44,9 @@ class SQLRequestRow {
     bool AppendInt16(int16_t val);
     bool AppendInt64(int64_t val);
     bool AppendTimestamp(int64_t val);
+    bool AppendDateAvoid(uint32_t year, uint32_t month, uint32_t day) { // avoid override because python does not support override
+        return AppendDate(year, month, day);
+    }
     bool AppendDate(int32_t val);
     bool AppendDate(int32_t year, int32_t month, int32_t day);
     bool AppendFloat(float val);
