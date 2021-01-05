@@ -122,7 +122,7 @@ cases:
 
     expect:
       schema: |
-        id:int32, std_ts:timestamp, mday:int32, month:int32, year:int32, wday:int32, yweek:int32
+        id:int32, std_ts:timestamp, mday:int32, month:int32, year:int32, wday:int32, yweek:int32,
         hour:int32, minute:int32, second:int32
       order: id
       data: |
