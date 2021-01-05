@@ -1668,7 +1668,7 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
 }
 
 TEST_F(SnapshotTest, Recover_large_snapshot) {
-    FLAGS_snapshot_compression = "pz";
+    FLAGS_snapshot_compression = "zlib";
     std::string snapshot_dir = FLAGS_db_root_path + "/100_0/snapshot/";
     std::string binlog_dir = FLAGS_db_root_path + "/100_0/binlog/";
     LogParts* log_part = new LogParts(12, 4, scmp);
