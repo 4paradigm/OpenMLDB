@@ -364,26 +364,26 @@ tablet_one_demension:
       - $ENV_BUILD == "daily"
   when: manual
 
-tablet_multi_demension:
-  stage: quick
-  before_script:
-    - mkdir /rambuild
-    - mount -t tmpfs -o size=3G tmpfs /rambuild
-  script:
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
-    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
-  artifacts:
-    reports:
-      junit:
-        - ./test-reports/*
-  dependencies:
-    - build
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
+#tablet_multi_demension:
+#  stage: quick
+#  before_script:
+#    - mkdir /rambuild
+#    - mount -t tmpfs -o size=3G tmpfs /rambuild
+#  script:
+#    - ln -sf /depends/thirdparty thirdparty
+#    - ln -sf /depends/thirdsrc thirdsrc
+#    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+#    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
+#    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
+#  artifacts:
+#    reports:
+#      junit:
+#        - ./test-reports/*
+#  dependencies:
+#    - build
+#  except:
+#    variables:
+#      - $ENV_BUILD == "daily"
 
 ns_one_demension:
   stage: manual
