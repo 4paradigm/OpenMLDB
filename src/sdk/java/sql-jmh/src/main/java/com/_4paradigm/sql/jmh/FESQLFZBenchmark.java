@@ -1,5 +1,6 @@
 package com._4paradigm.sql.jmh;
 
+import com._4paradigm.sql.BenchmarkConfig;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.tools.Util;
 import com._4paradigm.sql.tools.Relation;
@@ -27,12 +28,13 @@ public class FESQLFZBenchmark {
     private SqlExecutor executor;
     private String db;
     private int pkNum = 1;
-    @Param({"500", "1000", "2000"})
-    private int windowNum = 2000;
+    @Param({"100", "500", "1000", "2000"})
+    private int windowNum = 100;
     private Map<String, TableInfo> tableMap;
     private String script;
     private String mainTable;
     List<Map<String, String>> mainTableValue;
+    List<Integer> commonColumnIndices;
     int pkBase = 1000000;
     public FESQLFZBenchmark() {
         this(false);
@@ -42,6 +44,7 @@ public class FESQLFZBenchmark {
         db = "db" + System.nanoTime();
         tableMap = new HashMap<>();
         mainTableValue = new ArrayList<>();
+        commonColumnIndices = new ArrayList<>();
     }
 
     public void setWindowNum(int windowNum) {
@@ -53,15 +56,12 @@ public class FESQLFZBenchmark {
         script = rawScript.trim().replace("\n", " ");
         Relation relation = new Relation(Util.getContent(BenchmarkConfig.relationUrl));
         mainTable = relation.getMainTable();
-        String ddl = Util.getContent(BenchmarkConfig.ddlUrl);
-        String[] arr = ddl.split(";");
-        for (String item : arr) {
-            item = item.trim().replace("\n", "");
-            if (item.isEmpty()) {
-                continue;
+        tableMap = Util.parseDDL(BenchmarkConfig.ddlUrl, relation);
+        if (!BenchmarkConfig.commonCol.isEmpty()) {
+            String[] colArr = BenchmarkConfig.commonCol.trim().split(",");
+            for (String col : colArr) {
+                commonColumnIndices.add(tableMap.get(mainTable).getSchemaPos().get(col));
             }
-            TableInfo table = new TableInfo(item, relation);
-            tableMap.put(table.getName(), table);
         }
         System.out.println(db);
     }
@@ -168,40 +168,60 @@ public class FESQLFZBenchmark {
         }
     }
 
-    private PreparedStatement getPreparedStatement() throws SQLException {
-        PreparedStatement requestPs = executor.getRequestPreparedStmt(db, script);
-        ResultSetMetaData metaData = requestPs.getMetaData();
-        TableInfo table = tableMap.get(mainTable);
-        if (table.getSchema().size() != metaData.getColumnCount()) {
-            return null;
-        }
-        for (int i = 0; i < metaData.getColumnCount(); i++) {
-            int columnType = metaData.getColumnType(i + 1);
-            if (columnType == Types.VARCHAR) {
-                requestPs.setString(i + 1, "col" + String.valueOf(i));
-            } else if (columnType == Types.DOUBLE) {
-                requestPs.setDouble(i + 1, 1.4d);
-            } else if (columnType == Types.FLOAT) {
-                requestPs.setFloat(i + 1, 1.3f);
-            } else if (columnType == Types.INTEGER) {
-                if (table.getIndex().contains(i)) {
-                    requestPs.setInt(i + 1, pkBase + i);
-                } else {
-                    requestPs.setInt(i + 1, i);
+    private PreparedStatement getPreparedStatement(BenchmarkConfig.Mode mode) throws SQLException {
+        PreparedStatement requestPs = null;
+        if (mode == BenchmarkConfig.Mode.BATCH_REQUEST) {
+            requestPs = executor.getBatchRequestPreparedStmt(db, script, commonColumnIndices);
+            for (int i = 0; i < BenchmarkConfig.BATCH_SIZE; i++) {
+                if (setRequestData(requestPs)) {
+                    requestPs.addBatch();
                 }
-            } else if (columnType == Types.BIGINT) {
-                if (table.getIndex().contains(i)) {
-                    requestPs.setLong(i + 1, pkBase + i);
-                } else {
-                    requestPs.setLong(i + 1, i);
-                }
-            } else if (columnType == Types.TIMESTAMP) {
-                requestPs.setTimestamp(i + 1, new Timestamp(System.currentTimeMillis()));
-            } else if (columnType == Types.DATE) {
-                requestPs.setDate(i + 1, new Date(System.currentTimeMillis()));
             }
+        } else {
+            requestPs = executor.getRequestPreparedStmt(db, script);
+            setRequestData(requestPs);
         }
-        return  requestPs;
+        return requestPs;
+    }
+
+    private boolean setRequestData(PreparedStatement requestPs) {
+        try {
+            ResultSetMetaData metaData = requestPs.getMetaData();
+            TableInfo table = tableMap.get(mainTable);
+            if (table.getSchema().size() != metaData.getColumnCount()) {
+                return false;
+            }
+            for (int i = 0; i < metaData.getColumnCount(); i++) {
+                int columnType = metaData.getColumnType(i + 1);
+                if (columnType == Types.VARCHAR) {
+                    requestPs.setString(i + 1, "col" + String.valueOf(i));
+                } else if (columnType == Types.DOUBLE) {
+                    requestPs.setDouble(i + 1, 1.4d);
+                } else if (columnType == Types.FLOAT) {
+                    requestPs.setFloat(i + 1, 1.3f);
+                } else if (columnType == Types.INTEGER) {
+                    if (table.getIndex().contains(i)) {
+                        requestPs.setInt(i + 1, pkBase + i);
+                    } else {
+                        requestPs.setInt(i + 1, i);
+                    }
+                } else if (columnType == Types.BIGINT) {
+                    if (table.getIndex().contains(i)) {
+                        requestPs.setLong(i + 1, pkBase + i);
+                    } else {
+                        requestPs.setLong(i + 1, i);
+                    }
+                } else if (columnType == Types.TIMESTAMP) {
+                    requestPs.setTimestamp(i + 1, new Timestamp(System.currentTimeMillis()));
+                } else if (columnType == Types.DATE) {
+                    requestPs.setDate(i + 1, new Date(System.currentTimeMillis()));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
     }
 
     @Setup
@@ -221,16 +241,16 @@ public class FESQLFZBenchmark {
 
     @TearDown
     public void teardown() throws SQLException {
-        /*for (String name : tableMap.keySet()) {
+        for (String name : tableMap.keySet()) {
             executor.executeDDL(db, "drop table " + name + ";");
         }
-        executor.dropDB(db);*/
+        executor.dropDB(db);
     }
 
     @Benchmark
     public void execSQL() {
         try {
-            PreparedStatement ps = getPreparedStatement();
+            PreparedStatement ps = getPreparedStatement(BenchmarkConfig.mode);
             ResultSet resultSet = ps.executeQuery();
             /*resultSet.next();
             ResultSetMetaData metaData = resultSet.getMetaData();
@@ -257,8 +277,8 @@ public class FESQLFZBenchmark {
                     val.put(columnName, String.valueOf(resultSet.getDate(i+ 1)));
                 }
             }
-            System.out.println("string num" + stringNum);
-            ps.close();*/
+            System.out.println("string num" + stringNum);*/
+            ps.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -266,7 +286,7 @@ public class FESQLFZBenchmark {
 
     public Map<String, String> execSQLTest() {
         try {
-            PreparedStatement ps = getPreparedStatement();
+            PreparedStatement ps = getPreparedStatement(BenchmarkConfig.mode);
             ResultSet resultSet = ps.executeQuery();
             resultSet.next();
             ResultSetMetaData metaData = resultSet.getMetaData();
@@ -295,18 +315,18 @@ public class FESQLFZBenchmark {
     }
 
     public static void main(String[] args) throws RunnerException {
-      /*FESQLFZBenchmark ben = new FESQLFZBenchmark();
+      FESQLFZBenchmark ben = new FESQLFZBenchmark();
       try {
           ben.setup();
           ben.execSQL();
           ben.teardown();
       } catch (Exception e) {
           e.printStackTrace();
-      }*/
-        Options opt = new OptionsBuilder()
+      }
+        /*Options opt = new OptionsBuilder()
                 .include(FESQLFZBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
-        new Runner(opt).run();
+        new Runner(opt).run();*/
     }
 }
