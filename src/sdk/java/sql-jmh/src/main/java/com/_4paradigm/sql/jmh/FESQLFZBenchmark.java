@@ -284,30 +284,34 @@ public class FESQLFZBenchmark {
         }
     }
 
-    public Map<String, String> execSQLTest() {
+    public List<Map<String, String>> execSQLTest() {
         try {
             PreparedStatement ps = getPreparedStatement(BenchmarkConfig.mode);
             ResultSet resultSet = ps.executeQuery();
             resultSet.next();
             ResultSetMetaData metaData = resultSet.getMetaData();
             Map<String, String> val = new HashMap<>();
-            for (int i = 0; i < metaData.getColumnCount(); i++) {
-                String columnName = metaData.getColumnName(i + 1);
-                int columnType = metaData.getColumnType(i + 1);
-                if (columnType == Types.VARCHAR) {
-                    val.put(columnName, String.valueOf(resultSet.getString(i + 1)));
-                } else if (columnType == Types.DOUBLE) {
-                    val.put(columnName, String.valueOf(resultSet.getDouble(i + 1)));
-                } else if (columnType == Types.INTEGER) {
-                    val.put(columnName, String.valueOf(resultSet.getInt(i + 1)));
-                } else if (columnType == Types.BIGINT) {
-                    val.put(columnName, String.valueOf(resultSet.getLong(i + 1)));
-                } else if (columnType == Types.TIMESTAMP) {
-                    val.put(columnName, String.valueOf(resultSet.getTimestamp(i + 1)));
+            List<Map<String, String>> vals = new ArrayList<>();
+            while(resultSet.next()) {
+                for (int i = 0; i < metaData.getColumnCount(); i++) {
+                    String columnName = metaData.getColumnName(i + 1);
+                    int columnType = metaData.getColumnType(i + 1);
+                    if (columnType == Types.VARCHAR) {
+                        val.put(columnName, String.valueOf(resultSet.getString(i + 1)));
+                    } else if (columnType == Types.DOUBLE) {
+                        val.put(columnName, String.valueOf(resultSet.getDouble(i + 1)));
+                    } else if (columnType == Types.INTEGER) {
+                        val.put(columnName, String.valueOf(resultSet.getInt(i + 1)));
+                    } else if (columnType == Types.BIGINT) {
+                        val.put(columnName, String.valueOf(resultSet.getLong(i + 1)));
+                    } else if (columnType == Types.TIMESTAMP) {
+                        val.put(columnName, String.valueOf(resultSet.getTimestamp(i + 1)));
+                    }
                 }
+                vals.add(val);
             }
             ps.close();
-            return val;
+            return vals;
         } catch (Exception e) {
             e.printStackTrace();
         }
