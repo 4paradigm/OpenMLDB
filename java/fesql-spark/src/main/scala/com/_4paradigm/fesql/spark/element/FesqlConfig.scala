@@ -22,6 +22,15 @@ object FesqlConfig {
   // test mode 用于测试的时候验证相关问题
   // 控制读取表的数据条数，默认读全量数据
   final val configTinyData = "spark.fesql.test.tiny"
+  final val configIsPrint = "spark.fesql.test.print"
+
+  final val configPrintSamplePartition = "spark.fesql.test.print.sample.partition"
+  // ================================================
+  // stat mode 统计模式，用来统计sql脚本中窗口的情况
+
+
+
+
   // ================================================
 
   // enable spark2.3.0 service
@@ -30,14 +39,12 @@ object FesqlConfig {
 
 
 
-
-
-
   // 配置的默认值
   var paritions: Int = 0
   var timeZone = "Asia/Shanghai"
   // 默认normal模式
-  // 如果需要针对数据倾斜优化，就要给出 skew
+  // 如果需要针对数据倾斜优化，需要改成 skew
+  // 如果需要统计脚本的数据分布情况，比如每个窗口的key个数，需要改成 stat
   var mode = "normal"
   // ================================================
   // skew mode
@@ -56,8 +63,11 @@ object FesqlConfig {
   // test mode 用于测试的时候验证相关问题
   // 控制读取表的数据条数，-1表示读全量数据
   var tinyData: Long = -1
+  var printSamplePartition: Long = 100 * 100
+  var print: Boolean = false
   // ================================================
   // 常量区
   final val skew = "skew"
+  final val stat = "stat"
 
 }
