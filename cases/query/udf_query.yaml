@@ -141,7 +141,7 @@ cases:
           2, 1590115421001, 2020-05-21
           3, 1590115422001, 2020-05-22
 
-    output:
+    expect:
       schema: id:int32, std_ts:timestamp, std_date:date, mday:int32
       order: id
       data: |
@@ -163,7 +163,7 @@ cases:
           3, 3, 2020-05-24
           4, 4, 2020-05-25
 
-    output:
+    expect:
       schema: id:int32, std_date:date, yweek:int32
       order: id
       data: |
@@ -186,7 +186,7 @@ cases:
           3, 3, 2020-05-24
           4, 4, NULL
 
-    output:
+    expect:
       schema: id:int32, std_date:date, m:int32
       order: id
       data: |
