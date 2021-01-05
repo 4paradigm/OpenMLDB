@@ -215,7 +215,7 @@ cases:
           - ["aa",2,3,1590738989000]
     sql: select c1 as name,{0}.c2+1 as t_c2,c3,c4 from {0};
     expect:
-      columns: ["name string","t_c2 bigint","c3 bigint","c4 timestamp"]
+      columns: ["name string","t_c2 int","c3 bigint","c4 timestamp"]
       rows:
         - ["aa",3,3,1590738989000]
   - id: 17
@@ -227,7 +227,7 @@ cases:
           - ["123456789",2,3,1590738989000]
     sql: select substr({0}.c1, 3, 6) as name,{0}.c2+1 as t_c2,c3,c4 from {0};
     expect:
-      columns: ["name string","t_c2 bigint","c3 bigint","c4 timestamp"]
+      columns: ["name string","t_c2 int","c3 bigint","c4 timestamp"]
       rows:
         - ["345",3,3,1590738989000]
   - id: 18
