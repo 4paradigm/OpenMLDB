@@ -21,6 +21,7 @@ from datetime import date
 import random
 import string
 import time
+import sys
 
 import pyspark
 import pyspark.sql
@@ -35,14 +36,17 @@ db: test_db
 cases:
   - id: 1
     desc: yaml 测试用例模版
-    inputs:
-      - columns: []
-        indexs: []
-        rows: []
+    inputs: []
     sql: |
         select * from t1
     expect:
       success: true
+"""
+
+INPUT_TEMPLATE = """
+        columns: []
+        indexs: []
+        rows: []
 """
 
 
@@ -110,42 +114,67 @@ def random_row(schema):
 
 def to_string(value):
     if isinstance(value, date):
-        return value.strftime("%Y-%m-%d")
+        return DoubleQuotedScalarString(value.strftime("%Y-%m-%d"))
+    if isinstance(value, float):
+        return float("%.2f" % value)
     if isinstance(value, str):
         return DoubleQuotedScalarString(value)
     return value
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--sql", required=True, help="sql text path")
-    parser.add_argument("--data", required=True, help="path to hdfs content(in parquet format), used to detect table schema")
-    parser.add_argument("--output", required=True, help="path to output yaml file")
-    parser.add_argument("--name", default="template_name", help="test case name")
-    args = parser.parse_args()
 
-    name = args.name
-    sql = args.sql
-    data = args.data
-    output = args.output
-
-    yaml_test = yaml.load(YAML_TEST_TEMPLATE, Loader=RoundTripLoader, preserve_quotes=True)
-    yaml_test['db'] = name
-
-    with open(sql, 'r') as f:
-        yaml_test['cases'][0]['sql'] = LiteralScalarString(f.read().strip())
-
-    sess = pyspark.sql.SparkSession(pyspark.SparkContext())
-    dataframe = sess.read.parquet(data)
+sess = pyspark.sql.SparkSession(pyspark.SparkContext())
+def gen_inputs_column_and_rows(parquet_file):
+    dataframe = sess.read.parquet(parquet_file)
     hdfs_schema = dataframe.schema
     schema = [DoubleQuotedScalarString(to_column_str(f)) for f in hdfs_schema.fields]
-    yaml_test['cases'][0]['inputs'][0]['columns'] = schema
+
+    table = yaml.load(INPUT_TEMPLATE, Loader=RoundTripLoader)
+
+    table['columns'] = schema
 
     data_set = []
     row_cnt = random.randint(1, 10)
-    for i in range(row_cnt):
+    for _ in range(row_cnt):
         data_set.append(random_row(hdfs_schema))
 
-    yaml_test['cases'][0]['inputs'][0]['rows'] = [list(map(to_string, row)) for row in data_set]
+    table['rows'] = [list(map(to_string, row)) for row in data_set]
+    return table
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--sql", required=True, help="sql text path")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--schema-file", help="path to hdfs content(in parquet format), used to detect table schema")
+    group.add_argument("--schema-list-file", help="list file conataining a list of hdfs files, one file per line")
+    parser.add_argument("--output", required=True, help="path to output yaml file")
+    args = parser.parse_args()
+
+    sql = args.sql
+    schema_file = args.schema_file
+    schema_list_file = args.schema_list_file
+    output = args.output
+
+    yaml_test = yaml.load(YAML_TEST_TEMPLATE, Loader=RoundTripLoader, preserve_quotes=True)
+
+    if schema_file:
+        tb = gen_inputs_column_and_rows(schema_file)
+        yaml_test['cases'][0]['inputs'].append(tb)
+    elif schema_list_file:
+        with open(schema_list_file, 'r') as l:
+            for schema_file in l:
+                sf = schema_file.strip()
+                if not sf:
+                    continue
+                tb = gen_inputs_column_and_rows(sf)
+                yaml_test['cases'][0]['inputs'].append(tb)
+    else:
+        print("error")
+        sys.exit(1)
+
+
+    with open(sql, 'r') as f:
+        yaml_test['cases'][0]['sql'] = LiteralScalarString(f.read().strip())
 
     with open(output, 'w') as f:
         f.write(yaml.dump(yaml_test, Dumper=RoundTripDumper, allow_unicode=True))
