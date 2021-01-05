@@ -24,6 +24,7 @@ public class Table {
     List<List<Object>> rows;
     String create;
     String insert;
+    List<String> inserts;
     String repeat_tag = "";
     int repeat = 1;
     List<String> common_column_indices;
@@ -74,6 +75,9 @@ public class Table {
     public List<String> getInserts() {
         if (!StringUtils.isEmpty(insert)) {
             return Lists.newArrayList(insert);
+        }
+        if (!CollectionUtils.isEmpty(inserts)) {
+            return inserts;
         }
         List<String> inserts = Lists.newArrayList();
         for (List<Object> row : getRows()) {

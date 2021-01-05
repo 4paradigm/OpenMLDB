@@ -671,6 +671,11 @@ bool SQLCase::BuildInsertSQLListFromInput(
         sql_list->push_back(inputs_[input_idx].insert_);
         return true;
     }
+
+    if (!inputs_[input_idx].inserts_.empty()) {
+        *sql_list = inputs_[input_idx].inserts_;
+        return true;
+    }
     type::TableDef table;
     if (!ExtractInputTableDef(table, input_idx)) {
         LOG(WARNING) << "Fail to extract table schema";
@@ -839,6 +844,12 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
         boost::trim(table->insert_);
     }
 
+    if (schema_data["inserts"]) {
+        auto data = schema_data["inserts"];
+        if (!CreateStringListFromYamlNode(data, table->inserts_)) {
+            return false;
+        }
+    }
     if (schema_data["common_column_indices"]) {
         auto data = schema_data["common_column_indices"];
         std::vector<std::string> idxs;
