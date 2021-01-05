@@ -15,6 +15,7 @@
 #include <gflags/gflags.h>
 #include <stdio.h>
 #include <snappy.h>
+#include <zlib.h>
 #include "base/status.h"
 #include "base/strings.h"
 #include "log/coding.h"
@@ -326,13 +327,21 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                     uncompress_len = static_cast<int>(tmp_val);
                     PDLOG(INFO, "uncompress_len is: %d", uncompress_len);
                     if (!snappy::RawUncompress(block_data, static_cast<size_t>(compress_len), uncompress_buf_)) {
-                        PDLOG(WARNING, "bad record with uncompress block");
+                        PDLOG(WARNING, "bad record when uncompress block");
                         return kBadRecord;
                     }
                     break;
                 }
                 case kZlib: {
-                    // TODO(wangbao)
+                    unsigned long src_len = static_cast<unsigned long>(compress_len); // NOLINT
+                    unsigned long dest_len = static_cast<unsigned long>(block_size_); // NOLINT
+                    int res = uncompress((unsigned char*)uncompress_buf_, &dest_len,
+                            (const unsigned char*)block_data, src_len);
+                    if (res != Z_OK) {
+                        PDLOG(WARNING, "bad record when uncompress block");
+                        return kBadRecord;
+                    }
+                    uncompress_len = static_cast<int>(dest_len);
                     break;
                 }
                 default: {
@@ -341,7 +350,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                 }
             }
             if (uncompress_len != block_size_) {
-                PDLOG(WARNING, "bad record with uncompress block, uncompress_len: %d, block_size_: %d",
+                PDLOG(WARNING, "bad record when uncompress block, uncompress_len: %d, block_size_: %d",
                         uncompress_len, block_size_);
                 return kBadRecord;
             }

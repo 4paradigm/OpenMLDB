@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <snappy.h>
+#include <zlib.h>
 #include "log/coding.h"
 #include "log/crc32c.h"
 #include "base/glog_wapper.h" // NOLINT
@@ -201,18 +202,26 @@ Status Writer::CompressRecord() {
     // compress
     int compress_len = -1;
 #ifdef PZFPGA_ENABLE
-    if (FLAGS_snapshot_compression == "pz") {
+    if (compress_type_ == kPz) {
         FPGA_env* fpga_env = rtidb::base::Compress::GetFpgaEnv();
         compress_len = gzipfpga_compress_nohuff(
                 fpga_env, buffer_, compress_buf_, block_size_, block_size_, 0);
     } else {
 #endif
-        if (FLAGS_snapshot_compression == "snappy") {
+        if (compress_type_ == kSnappy) {
             size_t tmp_val = 0;
             snappy::RawCompress(buffer_, block_size_, compress_buf_, &tmp_val);
             compress_len = static_cast<int>(tmp_val);
-        } else if (FLAGS_snapshot_compression == "zlib") {
-            // TODO(wangbao)
+        } else if (compress_type_ == kZlib) {
+            unsigned long dest_len = compressBound(static_cast<unsigned long>(block_size_)); // NOLINT
+            int res = compress((unsigned char*)compress_buf_, &dest_len,
+                    (const unsigned char*)buffer_, block_size_);
+            if (res != Z_OK) {
+                s = Status::InvalidRecord(Slice("compress failed"));
+                PDLOG(WARNING, "write error. %s", s.ToString().c_str());
+                return s;
+            }
+            compress_len = static_cast<int>(dest_len);
         } else {
             s = Status::InvalidRecord(Slice("unsupported compress type: " + FLAGS_snapshot_compression));
             PDLOG(WARNING, "write error. %s", s.ToString().c_str());
