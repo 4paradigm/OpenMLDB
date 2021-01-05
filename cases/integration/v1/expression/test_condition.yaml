@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["IFNULL-兼容类型"]
+debugs: []
 cases:
   - id: 0
     desc: SIMPLE CASE WHEN 表达式

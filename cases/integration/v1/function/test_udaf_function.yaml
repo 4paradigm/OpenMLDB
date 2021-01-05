@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["top_n_key_count_cate_where-normal"]
+debugs: []
 cases:
   -
     id: 0

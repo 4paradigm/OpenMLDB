@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["各种类型_逻辑非_各种类型_正确"]
+debugs: []
 cases:
   - id: 0
     desc: "各种类型_逻辑运算_各种类型_正确"
