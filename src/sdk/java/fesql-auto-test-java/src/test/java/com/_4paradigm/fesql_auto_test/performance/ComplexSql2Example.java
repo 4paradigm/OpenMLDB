@@ -1,5 +1,6 @@
 package com._4paradigm.fesql_auto_test.performance;
 
+import com._4paradigm.sql.jdbc.CallablePreparedStatement;
 import com._4paradigm.sql.sdk.Schema;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlException;
@@ -99,7 +100,7 @@ public class ComplexSql2Example extends BaseExample {
 //        requestRow[4] = 2.5;
 //        requestRow[5] = new Timestamp(1590738994000l);
 //        requestRow[6] = Date.valueOf("2020-05-05");
-        CallablePreparedStatementImpl callablePreparedStmt = sqlExecutor.getCallablePreparedStmt(db, "sp");
+        CallablePreparedStatement callablePreparedStmt = sqlExecutor.getCallablePreparedStmt(db, "sp");
         ResultSetMetaData metaData = callablePreparedStmt.getMetaData();
         Random random = new Random();
         Object num = random.nextInt();
@@ -140,7 +141,7 @@ public class ComplexSql2Example extends BaseExample {
 //        Assert.assertEquals(sqlResultSet.getString(1), "bb");
 //        Assert.assertEquals(sqlResultSet.getInt(2), 24);
 //        Assert.assertEquals(sqlResultSet.getLong(3), 34);
-        BatchCallablePreparedStatementImpl batchCallablePreparedStatement = sqlExecutor.getCallablePreparedStmtBatch(db, "sp");
+        CallablePreparedStatement batchCallablePreparedStatement = sqlExecutor.getCallablePreparedStmtBatch(db, "sp");
         System.out.println("call ok");
         sqlResultSet.close();
         callablePreparedStmt.close();
