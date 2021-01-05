@@ -21,7 +21,7 @@ public class FESQLFZBenchmarkTest {
     public void execSQLTest() throws SQLException {
         FESQLFZBenchmark benchmark = new FESQLFZBenchmark(false);
         Util.EnableProxy();
-        benchmark.setWindowNum(10);
+//        benchmark.setWindowNum(10);
         benchmark.setup();
         int loops = 1;
         for (int i = 0; i < loops; i++) {
@@ -31,9 +31,6 @@ public class FESQLFZBenchmarkTest {
             }
             Assert.assertNotNull(result);
             Assert.assertTrue(result.size() > 0);
-            System.out.println("reqId_1: " + result.get("reqId_1"));
-            System.out.println("reqId_243: " + result.get("reqId_243"));
-            System.out.println("----------------------------");
         }
         benchmark.teardown();
     }
