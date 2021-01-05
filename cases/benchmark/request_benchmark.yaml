@@ -145,6 +145,7 @@ cases:
         columns: ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
         indexs: ["index1:c1:c7"]
         repeat: 100
+        repeat_tag: window_scale
         rows:
           - [1, "a", "aa", "aaa", "aaaa", 1.0, 1590738990000]
           - [2, "b", "bb", "bbb", "bbbb", 1.0, 1590738990000]
@@ -199,6 +200,7 @@ cases:
         columns: ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
         indexs: ["index1:c1:c7"]
         repeat: 100
+        repeat_tag: window_scale
         rows:
           - [1, "a", "aa", "aaa", "aaaa", 1.0, 1590738990000]
           - [2, "b", "bb", "bbb", "bbbb", 1.0, 1590738990000]
@@ -255,6 +257,7 @@ cases:
         columns: ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
         indexs: ["index1:c1:c7", "index2:c2:c7", "index3:c3:c7", "index4:c4:c7"]
         repeat: 100
+        repeat_tag: window_scale
         rows:
           - [1, "a", "aa", "aaa", "aaaa", 1.0, 1590738990000]
           - [2, "b", "bb", "bbb", "bbbb", 1.0, 1590738990000]
@@ -296,6 +299,7 @@ cases:
       -
         columns: ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
         indexs: ["index1:c1:c7", "index2:c2:c7", "index3:c3:c7", "index4:c4:c7"]
+        repeat_tag: window_scale
         repeat: 100
         rows:
           - [1, "a", "aa", "aaa", "aaaa", 1.0, 1590738990000]

@@ -733,6 +733,8 @@ ClusterTask RunnerBuilder::BuildProxyRunnerForClusterTask(
     } else {
         return UnaryInheritTask(*request_task_, proxy_runner);
     }
+    LOG(WARNING) << "Fail to build proxy runner for cluster job";
+    return ClusterTask();
 }
 ClusterTask RunnerBuilder::UnCompletedClusterTask(
     Runner* runner, const std::shared_ptr<TableHandler> table_handler,

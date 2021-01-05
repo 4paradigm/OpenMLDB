@@ -135,6 +135,8 @@ class RangeGenerator {
                 return out_of_rows;
             case node::kFrameRowsRange:
                 return out_of_rows && out_of_rows_range;
+            default:
+                return true;
         }
         return true;
     }
