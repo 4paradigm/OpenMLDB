@@ -1,5 +1,6 @@
 package com._4paradigm.sql.jmh;
 
+import com._4paradigm.sql.BenchmarkConfig;
 import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.SQLInsertRow;
 import com._4paradigm.sql.SQLInsertRows;
@@ -12,7 +13,6 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.Throughput)
