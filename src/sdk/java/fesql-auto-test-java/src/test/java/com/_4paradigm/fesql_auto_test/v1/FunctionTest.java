@@ -18,7 +18,7 @@ import java.io.FileNotFoundException;
 public class FunctionTest extends FesqlTest {
 
     @DataProvider
-    public Object[] testExpressCase() throws FileNotFoundException {
+    public Object[] testFunctionCase() throws FileNotFoundException {
         FesqlDataProviderList dp = FesqlDataProviderList.dataProviderGenerator(
                 new String[]{
                         "/integration/v1/function/"
@@ -26,20 +26,20 @@ public class FunctionTest extends FesqlTest {
         return dp.getCases().toArray();
     }
 
-    @Test(dataProvider = "testExpressCase")
-    public void testArithmetic(SQLCase testCase) throws Exception {
+    @Test(dataProvider = "testFunctionCase")
+    public void testFunction(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
     }
-    @Test(dataProvider = "testSelectCase")
-    public void testSelectRequestMode(SQLCase testCase) throws Exception {
+    @Test(dataProvider = "testFunctionCase")
+    public void testFunctionRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
     }
-    @Test(dataProvider = "testSelectCase")
-    public void testSelectRequestModeWithSp(SQLCase testCase) throws Exception {
+    @Test(dataProvider = "testFunctionCase")
+    public void testFunctionRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
     }
-    @Test(dataProvider = "testSelectCase")
-    public void testSelectRequestModeWithSpAysn(SQLCase testCase) throws Exception {
+    @Test(dataProvider = "testFunctionCase")
+    public void testFunctionRequestModeWithSpAysn(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
     }
 }

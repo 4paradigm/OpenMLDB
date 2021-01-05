@@ -27,19 +27,19 @@ public class ExpressTest extends FesqlTest {
     }
 
     @Test(dataProvider = "testExpressCase")
-    public void testArithmetic(SQLCase testCase) throws Exception {
+    public void testExpress(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
     }
-    @Test(dataProvider = "testSelectCase")
-    public void testSelectRequestMode(SQLCase testCase) throws Exception {
+    @Test(dataProvider = "testExpressCase")
+    public void testExpressRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
     }
-    @Test(dataProvider = "testSelectCase")
-    public void testSelectRequestModeWithSp(SQLCase testCase) throws Exception {
+    @Test(dataProvider = "testExpressCase")
+    public void testExpressRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
     }
-    @Test(dataProvider = "testSelectCase")
-    public void testSelectRequestModeWithSpAysn(SQLCase testCase) throws Exception {
+    @Test(dataProvider = "testExpressCase")
+    public void testExpressRequestModeWithSpAysn(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
     }
 }
