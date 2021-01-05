@@ -16,11 +16,6 @@ echo "ROOT_DIR:${ROOT_DIR}"
 #git checkout feat/fix-python-some-fail-case
 #git pull
 
-cd ${ROOT_DIR}/build/sql_pysdk/dist/
-whl_name=`ls | grep *.whl`
-echo "whl_name:${whl_name}"
-python3 -m pip install ${whl_name} -i https://pypi.tuna.tsinghua.edu.cn/simple
-
 cd ${ROOT_DIR}
 cd ${ROOT_DIR}/build/python/dist/
 whl_name=`ls | grep *.whl`

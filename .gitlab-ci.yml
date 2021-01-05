@@ -146,33 +146,33 @@ fpga_c++_ut:
 #        - java/target/failsafe-reports/junitreports/TEST-*.xml
 #        - java/target/failsafe-reports/TEST-*.xml
 
-java_ut:
-  stage: quick
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
-
-  before_script:
-    - mkdir /rambuild
-    - mount -t tmpfs -o size=3G tmpfs /rambuild
-  script:
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
-  after_script:
-    - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
-    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
-    - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
-    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
-  artifacts:
-    reports:
-      junit:
-        - java/target/surefire-reports/junitreports/TEST-*.xml
-        - java/target/surefire-reports/TEST-*.xml
-        - java/target/failsafe-reports/junitreports/TEST-*.xml
-        - java/target/failsafe-reports/TEST-*.xml
-  dependencies:
-    - build
+#java_ut:
+#  stage: quick
+#  except:
+#    variables:
+#      - $ENV_BUILD == "daily"
+#
+#  before_script:
+#    - mkdir /rambuild
+#    - mount -t tmpfs -o size=3G tmpfs /rambuild
+#  script:
+#    - ln -sf /depends/thirdparty thirdparty
+#    - ln -sf /depends/thirdsrc thirdsrc
+#    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
+#  after_script:
+#    - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
+#    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
+#    - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+#    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+#  artifacts:
+#    reports:
+#      junit:
+#        - java/target/surefire-reports/junitreports/TEST-*.xml
+#        - java/target/surefire-reports/TEST-*.xml
+#        - java/target/failsafe-reports/junitreports/TEST-*.xml
+#        - java/target/failsafe-reports/TEST-*.xml
+#  dependencies:
+#    - build
 
 fesql_auto_test:
   stage: manual
@@ -265,42 +265,42 @@ auto_test_add_index_column:
     - build
   when: manual
 
-c++_ut:
-  stage: quick
-  script:
-    - source /root/.bashrc && sh tools/install_fesql.sh
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && bash steps/compile.sh
-    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
-  artifacts:
-    reports:
-      junit:
-        - reports/*.xml
-  dependencies:
-    - build
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
-
-py3_ut:
-  stage: quick
-  before_script:
-    - mkdir /rambuild
-    - mount -t tmpfs -o size=3G tmpfs /rambuild
-  script:
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/run_py3_ut.sh
-  artifacts:
-    reports:
-      junit:
-        - ./python/test/*xml
-  dependencies:
-    - build
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
+#c++_ut:
+#  stage: quick
+#  script:
+#    - source /root/.bashrc && sh tools/install_fesql.sh
+#    - ln -sf /depends/thirdparty thirdparty
+#    - ln -sf /depends/thirdsrc thirdsrc
+#    - source /root/.bashrc && bash steps/compile.sh
+#    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
+#  artifacts:
+#    reports:
+#      junit:
+#        - reports/*.xml
+#  dependencies:
+#    - build
+#  except:
+#    variables:
+#      - $ENV_BUILD == "daily"
+#
+#py3_ut:
+#  stage: quick
+#  before_script:
+#    - mkdir /rambuild
+#    - mount -t tmpfs -o size=3G tmpfs /rambuild
+#  script:
+#    - ln -sf /depends/thirdparty thirdparty
+#    - ln -sf /depends/thirdsrc thirdsrc
+#    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/run_py3_ut.sh
+#  artifacts:
+#    reports:
+#      junit:
+#        - ./python/test/*xml
+#  dependencies:
+#    - build
+#  except:
+#    variables:
+#      - $ENV_BUILD == "daily"
 
 fesql_auto_test_python:
   stage: manual
@@ -407,26 +407,26 @@ ns_one_demension:
       - $ENV_BUILD == "daily"
   when: manual
 
-ns_multi_demension:
-  stage: quick
-  before_script:
-    - mkdir /rambuild
-    - mount -t tmpfs -o size=3G tmpfs /rambuild
-  script:
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
-    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
-  artifacts:
-    reports:
-      junit:
-        - ./test-reports/*
-  dependencies:
-    - build
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
+#ns_multi_demension:
+#  stage: quick
+#  before_script:
+#    - mkdir /rambuild
+#    - mount -t tmpfs -o size=3G tmpfs /rambuild
+#  script:
+#    - ln -sf /depends/thirdparty thirdparty
+#    - ln -sf /depends/thirdsrc thirdsrc
+#    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+#    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
+#    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
+#  artifacts:
+#    reports:
+#      junit:
+#        - ./test-reports/*
+#  dependencies:
+#    - build
+#  except:
+#    variables:
+#      - $ENV_BUILD == "daily"
 
 disk_table:
   stage: manual
