@@ -121,7 +121,6 @@ class MemTableSnapshot : public Snapshot {
 
     int DecodeData(std::shared_ptr<Table> table, const std::vector<::rtidb::codec::ColumnDesc>& columns,
                     const rtidb::api::LogEntry& entry, uint32_t maxIdx, std::vector<std::string>& row); // NOLINT
-    bool SnapshotIsCompressed();
 
  private:
     LogParts* log_part_;

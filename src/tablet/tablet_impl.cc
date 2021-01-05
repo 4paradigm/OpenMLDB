@@ -5680,7 +5680,7 @@ void TabletImpl::DumpIndexDataInternal(
             }
             return;
         }
-        ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(false, index_file_name, fd);
+        ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle("off", index_file_name, fd);
         whs.push_back(wh);
     }
     if (memtable_snapshot->DumpIndexData(table, column_key, idx, whs)) {

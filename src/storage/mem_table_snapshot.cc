@@ -396,8 +396,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
     std::string snapshot_name_tmp = snapshot_name + ".tmp";
     std::string full_path = snapshot_path_ + snapshot_name;
     std::string tmp_file_path = snapshot_path_ + snapshot_name_tmp;
-    bool compressed = SnapshotIsCompressed();
-    if (compressed) {
+    if (FLAGS_snapshot_compression != "off") {
         full_path += COMPRESS_SUBFIX;
     }
     FILE* fd = fopen(tmp_file_path.c_str(), "ab+");
@@ -408,7 +407,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
     }
     uint64_t collected_offset = CollectDeletedKey(end_offset);
     uint64_t start_time = ::baidu::common::timer::now_time();
-    WriteHandle* wh = new WriteHandle(compressed, snapshot_name_tmp, fd);
+    WriteHandle* wh = new WriteHandle(FLAGS_snapshot_compression, snapshot_name_tmp, fd);
     ::rtidb::api::Manifest manifest;
     bool has_error = false;
     uint64_t write_count = 0;
@@ -815,11 +814,10 @@ int MemTableSnapshot::ExtractIndexData(
     }
     uint64_t collected_offset = CollectDeletedKey(0);
     uint64_t start_time = ::baidu::common::timer::now_time();
-    bool compressed = SnapshotIsCompressed();
-    if (compressed) {
+    if (FLAGS_snapshot_compression != "off") {
         full_path += COMPRESS_SUBFIX;
     }
-    WriteHandle* wh = new WriteHandle(compressed, snapshot_name_tmp, fd);
+    WriteHandle* wh = new WriteHandle(FLAGS_snapshot_compression, snapshot_name_tmp, fd);
     ::rtidb::api::Manifest manifest;
     bool has_error = false;
     uint64_t write_count = 0;
@@ -1456,21 +1454,6 @@ int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector
         return 2;
     }
     return 0;
-}
-
-bool MemTableSnapshot::SnapshotIsCompressed() {
-#ifdef PZFPGA_ENABLE
-    if (FLAGS_snapshot_compression == "pz" || FLAGS_snapshot_compression == "zlib" ||
-            FLAGS_snapshot_compression == "snappy")  {
-        return true;
-    }
-#else
-    if (FLAGS_snapshot_compression == "zlib" ||
-            FLAGS_snapshot_compression == "snappy")  {
-        return true;
-    }
-#endif
-    return false;
 }
 
 }  // namespace storage

@@ -23,12 +23,12 @@ class Writer {
     // Create a writer that will append data to "*dest".
     // "*dest" must be initially empty.
     // "*dest" must remain live while this Writer is in use.
-    Writer(bool compressed, WritableFile* dest);
+    Writer(const std::string& compress_type, WritableFile* dest);
 
     // Create a writer that will append data to "*dest".
     // "*dest" must have initial length "dest_length".
     // "*dest" must remain live while this Writer is in use.
-    Writer(bool compressed, WritableFile* dest, uint64_t dest_length);
+    Writer(const std::string& compress_type, WritableFile* dest, uint64_t dest_length);
 
     ~Writer();
 
@@ -44,13 +44,13 @@ class Writer {
     // record type stored in the header.
     uint32_t type_crc_[kMaxRecordType + 1];
 
-    bool compressed_;
+    CompressType compress_type_;
     int block_size_;
     // buffer of kCompressBlockSize
     char* buffer_;
     char* compress_buf_;
     Status CompressRecord();
-    CompressType GetCompressType();
+    CompressType GetCompressType(const std::string& compress_type);
 
     Status EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);
 
@@ -63,10 +63,10 @@ struct WriteHandle {
     FILE* fd_;
     WritableFile* wf_;
     Writer* lw_;
-    WriteHandle(bool compressed, const std::string& fname, FILE* fd, uint64_t dest_length = 0)
+    WriteHandle(const std::string& compress_type, const std::string& fname, FILE* fd, uint64_t dest_length = 0)
         : fd_(fd), wf_(NULL), lw_(NULL) {
         wf_ = ::rtidb::log::NewWritableFile(fname, fd);
-        lw_ = new Writer(compressed, wf_, dest_length);
+        lw_ = new Writer(compress_type, wf_, dest_length);
     }
 
     ::rtidb::base::Status Write(const ::rtidb::base::Slice& slice) {

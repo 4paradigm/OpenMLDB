@@ -26,10 +26,11 @@ static void InitTypeCrc(uint32_t* type_crc) {
     }
 }
 
-Writer::Writer(bool compressed, WritableFile* dest)
-: dest_(dest), block_offset_(0), compressed_(compressed), buffer_(nullptr), compress_buf_(nullptr) {
+Writer::Writer(const std::string& compress_type, WritableFile* dest)
+    : dest_(dest), block_offset_(0), compress_type_(GetCompressType(compress_type)),
+    buffer_(nullptr), compress_buf_(nullptr) {
     InitTypeCrc(type_crc_);
-    if (compressed_) {
+    if (compress_type_ != kNoCompress) {
         block_size_ = kCompressBlockSize;
         buffer_ = new char[block_size_];
         compress_buf_ = new char[block_size_];
@@ -38,10 +39,10 @@ Writer::Writer(bool compressed, WritableFile* dest)
     }
 }
 
-Writer::Writer(bool compressed, WritableFile* dest, uint64_t dest_length)
-    : dest_(dest), compressed_(compressed), buffer_(nullptr), compress_buf_(nullptr) {
+Writer::Writer(const std::string& compress_type, WritableFile* dest, uint64_t dest_length)
+    : dest_(dest), compress_type_(GetCompressType(compress_type)), buffer_(nullptr), compress_buf_(nullptr) {
     InitTypeCrc(type_crc_);
-    if (compressed_) {
+    if (compress_type_ != kNoCompress) {
         block_size_ = kCompressBlockSize;
         buffer_ = new char[block_size_];
         compress_buf_ = new char[block_size_];
@@ -75,7 +76,7 @@ Status Writer::EndLog() {
                 // 7)
                 assert(kHeaderSize == 7);
                 Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
-                if (!compressed_) {
+                if (compress_type_ == kNoCompress) {
                     dest_->Append(fill_slice);
                 } else {
                     memcpy(buffer_ + block_offset_, fill_slice.data(), leftover);
@@ -116,7 +117,7 @@ Status Writer::AddRecord(const Slice& slice) {
                 // 7)
                 assert(kHeaderSize == 7);
                 Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
-                if (!compressed_) {
+                if (compress_type_ == kNoCompress) {
                     dest_->Append(fill_slice);
                 } else {
                     memcpy(buffer_ + block_offset_, fill_slice.data(), leftover);
@@ -164,7 +165,7 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
     crc = Mask(crc);  // Adjust for storage
     EncodeFixed32(buf, crc);
 
-    if (!compressed_) {
+    if (compress_type_ == kNoCompress) {
         // Write the header and the payload
         Status s = dest_->Append(Slice(buf, kHeaderSize));
         if (s.ok()) {
@@ -230,8 +231,7 @@ Status Writer::CompressRecord() {
     char head_of_compress[kHeaderSizeOfCompressData];
     memrev32ifbe(static_cast<void*>(&compress_len));
     memcpy(head_of_compress, static_cast<void*>(&compress_len), sizeof(int));
-    CompressType compress_type = GetCompressType();
-    memcpy(head_of_compress + sizeof(int), static_cast<void*>(&compress_type), 1);
+    memcpy(head_of_compress + sizeof(int), static_cast<void*>(&compress_type_), 1);
     memset(head_of_compress + sizeof(int) + 1, 0, kHeaderSizeOfCompressData - sizeof(int) - 1);
     // write header and compressed data
     s = dest_->Append(Slice(head_of_compress, kHeaderSizeOfCompressData));
@@ -247,12 +247,12 @@ Status Writer::CompressRecord() {
     return s;
 }
 
-CompressType Writer::GetCompressType() {
-    if (FLAGS_snapshot_compression == "pz") {
+CompressType Writer::GetCompressType(const std::string& compress_type) {
+    if (compress_type == "pz") {
         return kPz;
-    } else if (FLAGS_snapshot_compression == "zlib") {
+    } else if (compress_type == "zlib") {
         return kZlib;
-    } else if (FLAGS_snapshot_compression == "snappy") {
+    } else if (compress_type == "snappy") {
         return kSnappy;
     } else {
         return kNoCompress;

@@ -151,7 +151,7 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
                   pos);
             return false;
         }
-        ::rtidb::log::WriteHandle wh(false, full_path, fd, pos);
+        ::rtidb::log::WriteHandle wh("off", full_path, fd, pos);
         wh.EndLog();
         PDLOG(INFO, "append endlog record ok. file[%s]", full_path.c_str());
     }

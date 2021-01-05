@@ -571,7 +571,7 @@ bool LogReplicator::RollWLogFile() {
     binlog_index_.fetch_add(1, std::memory_order_relaxed);
     PDLOG(INFO, "roll write log for name %s and start offset %lld",
           name.c_str(), offset);
-    wh_ = new WriteHandle(false, name, fd);
+    wh_ = new WriteHandle("off", name, fd);
     return true;
 }
 
