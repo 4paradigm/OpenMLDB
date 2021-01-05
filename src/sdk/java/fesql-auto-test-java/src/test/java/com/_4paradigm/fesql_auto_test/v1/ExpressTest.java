@@ -21,7 +21,7 @@ public class ExpressTest extends FesqlTest {
     public Object[] testExpressCase() throws FileNotFoundException {
         FesqlDataProviderList dp = FesqlDataProviderList.dataProviderGenerator(
                 new String[]{
-                        "/integration/v1/function/test_udaf_function.yaml"
+                        "/integration/v1/expression/"
                 });
         return dp.getCases().toArray();
     }
@@ -30,16 +30,16 @@ public class ExpressTest extends FesqlTest {
     public void testArithmetic(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
     }
-//    @Test(dataProvider = "testSelectCase")
-//    public void testSelectRequestMode(SQLCase testCase) throws Exception {
-//        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
-//    }
-//    @Test(dataProvider = "testSelectCase")
-//    public void testSelectRequestModeWithSp(SQLCase testCase) throws Exception {
-//        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
-//    }
-//    @Test(dataProvider = "testSelectCase")
-//    public void testSelectRequestModeWithSpAysn(SQLCase testCase) throws Exception {
-//        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
-//    }
+    @Test(dataProvider = "testSelectCase")
+    public void testSelectRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
+    }
+    @Test(dataProvider = "testSelectCase")
+    public void testSelectRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
+    }
+    @Test(dataProvider = "testSelectCase")
+    public void testSelectRequestModeWithSpAysn(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
+    }
 }
