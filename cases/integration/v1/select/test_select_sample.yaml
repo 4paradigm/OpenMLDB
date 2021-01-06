@@ -229,7 +229,7 @@ cases:
     expect:
       columns: ["name string","t_c2 int","c3 bigint","c4 timestamp"]
       rows:
-        - ["345",3,3,1590738989000]
+        - ["345678",3,3,1590738989000]
   - id: 18
     desc: column name prefix with _
     mode: offline-unsupport

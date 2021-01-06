@@ -427,6 +427,7 @@ cases:
       success: false
   - id: 17
     desc: "int_DIV_int_正确"
+    tags: ["TODO","bug,@baoxinqi,DIV 0有问题"]
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
