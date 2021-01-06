@@ -147,7 +147,7 @@ class Cursor(object):
             driver.sql_router_sdk.kTypeFloat: requestRow.AppendFloat,
             driver.sql_router_sdk.kTypeDouble: requestRow.AppendDouble,
             driver.sql_router_sdk.kTypeString: requestRow.AppendString,
-            driver.sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and requestRow.AppendDateAvoid(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
+            driver.sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and requestRow.AppendDate(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
             driver.sql_router_sdk.kTypeTimestamp: requestRow.AppendTimestamp
         }
         strSize = 0
@@ -267,7 +267,7 @@ class Cursor(object):
                     driver.sql_router_sdk.kTypeFloat: builder.AppendFloat,
                     driver.sql_router_sdk.kTypeDouble: builder.AppendDouble,
                     driver.sql_router_sdk.kTypeString: builder.AppendString,
-                    driver.sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and builder.AppendDateAvoid(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
+                    driver.sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and builder.AppendDate(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
                     driver.sql_router_sdk.kTypeTimestamp: builder.AppendTimestamp
                     }
                 for i in range(len(holdIdxs)):
