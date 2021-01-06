@@ -1688,6 +1688,7 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
     ASSERT_EQ(46, (int64_t)manifest.count());
     ASSERT_EQ(7, (int64_t)manifest.term());
 }
+
 TEST_F(SnapshotTest, Recover_large_snapshot) {
     std::string snapshot_dir = FLAGS_db_root_path + "/100_0/snapshot/";
     std::string binlog_dir = FLAGS_db_root_path + "/100_0/binlog/";
@@ -1744,7 +1745,88 @@ TEST_F(SnapshotTest, Recover_large_snapshot) {
         it->Next();
     }
     ASSERT_EQ(0u, num);
-    RemoveData(FLAGS_db_root_path + "/100_0");
+    RemoveData(FLAGS_db_root_path);
+    delete it;
+}
+
+TEST_F(SnapshotTest, Recover_large_snapshot_and_binlog) {
+    std::string snapshot_dir = FLAGS_db_root_path + "/101_0/snapshot/";
+    std::string binlog_dir = FLAGS_db_root_path + "/101_0/binlog/";
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    uint64_t offset = 0;
+    uint32_t binlog_index = 0;
+    WriteHandle* wh = NULL;
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
+    int count = 0;
+    uint64_t start_time = ::baidu::common::timer::get_micros();
+    for (; count < 1000000; count++) {
+        offset++;
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key";
+        entry.set_pk(key);
+        entry.set_ts(count);
+        entry.set_value("value" + std::to_string(count));
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        ASSERT_TRUE(status.ok());
+    }
+    wh->Sync();
+    MemTableSnapshot snapshot(101, 0, log_part, FLAGS_db_root_path);
+    snapshot.Init();
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
+        "test", 100, 0, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    table->Init();
+    uint64_t offset_value = 0;
+    int ret = snapshot.MakeSnapshot(table, offset_value, 0);
+    ASSERT_EQ(0, ret);
+
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
+    for (; count < 2000000; count++) {
+        offset++;
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key";
+        entry.set_pk(key);
+        entry.set_ts(count);
+        entry.set_value("value" + std::to_string(count));
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        ASSERT_TRUE(status.ok());
+    }
+    wh->Sync();
+
+    uint64_t snapshot_offset = 0;
+    uint64_t latest_offset = 0;
+    ASSERT_TRUE(snapshot.Recover(table, snapshot_offset));
+    ASSERT_EQ(1000000u, snapshot_offset);
+    Binlog binlog(log_part, binlog_dir);
+    binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset);
+    ASSERT_EQ(2000000u, latest_offset);
+
+    uint64_t end_time = ::baidu::common::timer::get_micros();
+    std::cout << "use time in us: " << end_time - start_time << std::endl;
+
+    Ticket ticket;
+    TableIterator* it = table->NewIterator("key", ticket);
+    it->SeekToFirst();
+    ASSERT_TRUE(it->Valid());
+    uint64_t num = 2000000;
+    while (it->Valid()) {
+        num--;
+        ASSERT_EQ(num, it->GetKey());
+        std::string value_str(it->GetValue().data(), it->GetValue().size());
+        ASSERT_EQ("value" + std::to_string(num), value_str);
+        it->Next();
+    }
+    ASSERT_EQ(0u, num);
+    RemoveData(FLAGS_db_root_path);
     delete it;
 }
 
@@ -1762,6 +1844,7 @@ int main(int argc, char** argv) {
 #ifndef PZFPGA_ENABLE
         if (vec[i] == "pz") continue;
 #endif
+        std::cout << "compress type: " << vec[i] << std::endl;
         FLAGS_db_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
         FLAGS_hdd_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
         FLAGS_snapshot_compression = vec[i];

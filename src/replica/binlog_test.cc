@@ -126,6 +126,7 @@ int main(int argc, char** argv) {
 #ifndef PZFPGA_ENABLE
         if (vec[i] == "pz") continue;
 #endif
+        std::cout << "compress type: " << vec[i] << std::endl;
         FLAGS_db_root_path = "/tmp/" + GenRand();
         FLAGS_snapshot_compression = vec[i];
         ret += RUN_ALL_TESTS();

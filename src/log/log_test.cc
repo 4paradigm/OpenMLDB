@@ -21,9 +21,12 @@
 #include "log/log_reader.h"
 #include "log/log_writer.h"
 #include "proto/tablet.pb.h"
+#include "config.h" // NOLINT
 
 using ::rtidb::base::Slice;
 using ::rtidb::base::Status;
+
+DECLARE_string(snapshot_compression);
 
 namespace rtidb {
 namespace log {
@@ -317,5 +320,16 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::rtidb::base::SetLogLevel(DEBUG);
     ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+    int ret = 0;
+    std::vector<std::string> vec{"off", "zlib", "snappy", "pz"};
+    for (size_t i = 0; i < vec.size(); i++) {
+#ifndef PZFPGA_ENABLE
+        if (vec[i] == "pz") continue;
+#endif
+        std::cout << "compress type: " << vec[i] << std::endl;
+        FLAGS_snapshot_compression = vec[i];
+        ret += RUN_ALL_TESTS();
+    }
+    return ret;
+    // return RUN_ALL_TESTS();
 }
