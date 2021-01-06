@@ -344,7 +344,7 @@ public class FesqlUtil {
             logger.error("fail to execute sql in request mode: request rows is null or empty");
             return null;
         }
-        List<String> inserts = input.getInserts();
+        List<String> inserts = input.extractInserts();
         if (CollectionUtils.isEmpty(inserts)) {
             logger.error("fail to execute sql in request mode: fail to build insert sql for request rows");
             return null;
@@ -424,7 +424,7 @@ public class FesqlUtil {
             logger.error("fail to execute sql in batch request mode: request rows is null or empty");
             return null;
         }
-        List<String> inserts = input.getInserts();
+        List<String> inserts = input.extractInserts();
         if (CollectionUtils.isEmpty(inserts)) {
             logger.error("fail to execute sql in batch request mode: fail to build insert sql for request rows");
             return null;
@@ -488,7 +488,7 @@ public class FesqlUtil {
             logger.error("fail to execute sql in request mode: request rows is null or empty");
             return null;
         }
-        List<String> inserts = input.getInserts();
+        List<String> inserts = input.extractInserts();
         if (CollectionUtils.isEmpty(inserts)) {
             logger.error("fail to execute sql in request mode: fail to build insert sql for request rows");
             return null;
@@ -988,7 +988,7 @@ public class FesqlUtil {
             for (int i = 0; i < inputs.size(); i++) {
                 String tableName = inputs.get(i).getName();
                 //create table
-                String createSql = inputs.get(i).getCreate(replicaNum);
+                String createSql = inputs.get(i).extractCreate(replicaNum);
                 createSql = SQLCase.formatSql(createSql, i, inputs.get(i).getName());
                 if (!createSql.isEmpty()) {
                     FesqlResult res = FesqlUtil.ddl(executor, dbName, createSql);
@@ -1001,7 +1001,7 @@ public class FesqlUtil {
                 if (0 == i && useFirstInputAsRequests) {
                     continue;
                 }
-                List<String> inserts = inputs.get(i).getInserts();
+                List<String> inserts = inputs.get(i).extractInserts();
                 for (String insertSql : inserts) {
                     insertSql = SQLCase.formatSql(insertSql, i, input.getName());
                     if (!insertSql.isEmpty()) {

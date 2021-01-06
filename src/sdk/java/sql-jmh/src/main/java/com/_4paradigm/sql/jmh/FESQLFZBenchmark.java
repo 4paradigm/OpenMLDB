@@ -1,34 +1,29 @@
 package com._4paradigm.sql.jmh;
 
+import com._4paradigm.fesql.sqlcase.model.CaseFile;
 import com._4paradigm.fesql.sqlcase.model.ExpectDesc;
 import com._4paradigm.fesql.sqlcase.model.InputDesc;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
-import com._4paradigm.fesql.sqlcase.model.Table;
 import com._4paradigm.sql.BenchmarkConfig;
 import com._4paradigm.sql.sdk.SqlExecutor;
-import com._4paradigm.sql.tools.Util;
 import com._4paradigm.sql.tools.Relation;
 import com._4paradigm.sql.tools.TableInfo;
+import com._4paradigm.sql.tools.Util;
 import com.google.common.collect.Lists;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.RunnerException;
-import org.openjdk.jmh.runner.Runner;
-import org.openjdk.jmh.runner.options.Options;
-import org.openjdk.jmh.runner.options.OptionsBuilder;
-
-import java.io.*;
-import java.sql.*;
-import java.sql.Date;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.introspector.Property;
-import org.yaml.snakeyaml.nodes.Node;
 import org.yaml.snakeyaml.nodes.NodeTuple;
 import org.yaml.snakeyaml.nodes.Tag;
 import org.yaml.snakeyaml.representer.Representer;
+
+import java.io.*;
+import java.sql.Date;
+import java.sql.*;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -205,11 +200,13 @@ public class FESQLFZBenchmark {
         if (enableOutputYamlCase) {
             InputDesc inputDesc = new InputDesc();
             inputDesc.setName(table.getName());
-            inputDesc.setColumns(table.getColumns());
-            inputDesc.setIndexs(table.getIndexs());
+            inputDesc.setColumns(null);
+            inputDesc.setIndexs(null);
             inputDesc.setRows(rows);
             inputDesc.setCreate(table.getDDL());
-            inputDesc.setInserts(inserts);
+            inputDesc.setInserts(null);
+            inputDesc.setInsert(null);
+            inputDesc.setIndex(null);
             sqlCase.getInputs().add(inputDesc);
         }
     }
@@ -289,6 +286,8 @@ public class FESQLFZBenchmark {
                 }
                 rows.add(row);
                 batchRequest.setRows(rows);
+                batchRequest.setInserts(null);
+                batchRequest.setInsert(null);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -306,6 +305,8 @@ public class FESQLFZBenchmark {
         for (TableInfo table : tableMap.values()) {
             //System.out.println(table.getDDL());
             if (!executor.executeDDL(db, table.getDDL())) {
+                System.out.println("Fail to create table " + table.getName());
+                new SQLException();
                 return;
             }
         }
@@ -325,6 +326,10 @@ public class FESQLFZBenchmark {
         if (sqlCase == null) {
             return false;
         }
+        CaseFile caseFile = new CaseFile();
+        caseFile.setCases(Lists.<SQLCase>newArrayList(sqlCase));
+        caseFile.setDb("FZTest");
+        caseFile.setDebugs(Lists.<String>newArrayList());
         Writer writer = new OutputStreamWriter(new FileOutputStream(caseAbsPath), "UTF-8");
         Representer representer = new Representer() {
             @Override
@@ -337,15 +342,15 @@ public class FESQLFZBenchmark {
                     return null;
                 } else if (propertyValue.toString().equalsIgnoreCase("id001")) {
                     return null;
-                }else {
+                } else {
                     return super.representJavaBeanProperty(javaBean, property, propertyValue, customTag);
                 }
             }
 
         };
-        Yaml yaml = new Yaml(new Constructor(SQLCase.class), representer);
+        Yaml yaml = new Yaml(new Constructor(CaseFile.class), representer);
         yaml.represent(representer);
-        yaml.dump(sqlCase, writer);
+        yaml.dump(caseFile, writer);
         return true;
     }
 
@@ -401,7 +406,7 @@ public class FESQLFZBenchmark {
             ResultSetMetaData metaData = resultSet.getMetaData();
             Map<String, String> val = new HashMap<>();
             List<Map<String, String>> vals = new ArrayList<>();
-            while(resultSet.next()) {
+            while (resultSet.next()) {
                 for (int i = 0; i < metaData.getColumnCount(); i++) {
                     String columnName = metaData.getColumnName(i + 1);
                     int columnType = metaData.getColumnType(i + 1);
@@ -428,14 +433,14 @@ public class FESQLFZBenchmark {
     }
 
     public static void main(String[] args) throws RunnerException {
-      FESQLFZBenchmark ben = new FESQLFZBenchmark();
-      try {
-          ben.setup();
-          ben.execSQL();
-          ben.teardown();
-      } catch (Exception e) {
-          e.printStackTrace();
-      }
+        FESQLFZBenchmark ben = new FESQLFZBenchmark();
+        try {
+            ben.setup();
+            ben.execSQL();
+            ben.teardown();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         /*Options opt = new OptionsBuilder()
                 .include(FESQLFZBenchmark.class.getSimpleName())
                 .forks(1)

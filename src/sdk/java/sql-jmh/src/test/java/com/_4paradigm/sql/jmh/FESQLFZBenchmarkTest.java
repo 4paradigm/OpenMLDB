@@ -31,6 +31,7 @@ public class FESQLFZBenchmarkTest {
         int loops = 1;
         for (int i = 0; i < loops; i++) {
             List<Map<String, String>> results = benchmark.execSQLTest();
+            Assert.assertTrue(results.size() > 0);
             System.out.println("result sizes " + results.size());
             for (int idx = 0; idx < results.size(); idx++) {
                 Map<String, String> result = results.get(idx);
@@ -58,6 +59,7 @@ public class FESQLFZBenchmarkTest {
             for (int i = 0; i < loops; i++) {
                 List<Map<String, String>> results = benchmark.execSQLTest();
                 System.out.println("result sizes " + results.size());
+                Assert.assertTrue(results.size() > 0);
                 for (int idx = 0; idx < results.size(); idx++) {
                     Map<String, String> result = results.get(idx);
                     System.out.println("=========================================result row " + idx);
