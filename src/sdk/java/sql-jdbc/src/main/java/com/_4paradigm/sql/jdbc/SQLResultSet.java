@@ -170,7 +170,7 @@ public class SQLResultSet implements ResultSet {
             return null;
         }
         com._4paradigm.sql.Date date = this.resultSet.GetStructDateUnsafe(i - 1);
-        return new Date(date.getYear(), date.getMonth(), date.getDay());
+        return new Date(date.getYear() - 1900, date.getMonth() - 1, date.getDay());
     }
 
     @Override
