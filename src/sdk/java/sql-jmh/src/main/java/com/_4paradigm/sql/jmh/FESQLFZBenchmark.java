@@ -216,6 +216,11 @@ public class FESQLFZBenchmark {
         if (enableOutputYamlCase) {
             sqlCase.setBatch_request(new InputDesc());
             sqlCase.getBatch_request().setRows(new ArrayList<List<Object>>());
+            List<String> commonIndices = Lists.newArrayList();
+            for(Integer idx: commonColumnIndices) {
+                commonIndices.add(idx.toString());
+            }
+            sqlCase.getBatch_request().setCommon_column_indices(commonIndices);
         }
         if (mode == BenchmarkConfig.Mode.BATCH_REQUEST) {
             requestPs = executor.getBatchRequestPreparedStmt(db, script, commonColumnIndices);
@@ -313,6 +318,7 @@ public class FESQLFZBenchmark {
         if (enableOutputYamlCase) {
             sqlCase.setDesc("FZ benchmark case");
             sqlCase.setId("0");
+            sqlCase.setMode("batch-unsupport");
             sqlCase.setInputs(Lists.<InputDesc>newArrayList());
         }
         putData();
