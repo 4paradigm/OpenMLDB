@@ -14,6 +14,7 @@ public class BenchmarkConfig {
     public static String PARTITION_NUM = "4";
     public static int BATCH_SIZE = 1;
     public static Mode mode = Mode.REQUEST;
+    public static int TIME_DIFF = 0;
 
     public static String ddlUrl;
     public static String scriptUrl;
@@ -25,6 +26,7 @@ public class BenchmarkConfig {
     private static SdkOption option = null;
     private static boolean needProxy = false;
 
+    public static int PK_NUM = 1;
     public static int PUT_THREAD_NUM = 1;
     public static int QUERY_THREAD_NUM = 1;
     public static boolean NEED_CREATE = true;
@@ -43,6 +45,7 @@ public class BenchmarkConfig {
             relationUrl = prop.getProperty("relationUrl");
             jsonUrl = prop.getProperty("jsonUrl");
             BATCH_SIZE = Integer.valueOf((String)prop.get("BATCH_SIZE"));
+            TIME_DIFF = Integer.valueOf((String)prop.getProperty("TIME_DIFF", "0"));
             String mode_str = prop.getProperty("MODE");
             if (mode_str.equals("batch")) {
                 System.out.println("mode is batch");
@@ -55,6 +58,7 @@ public class BenchmarkConfig {
                 mode = Mode.REQUEST;
             }
             commonCol = prop.getProperty("commonCol", "");
+            PK_NUM = Integer.valueOf((String)prop.getProperty("PK_NUM", "100000"));
             PUT_THREAD_NUM = Integer.valueOf((String)prop.getProperty("PUT_THREAD_NUM", "1"));
             QUERY_THREAD_NUM = Integer.valueOf((String)prop.getProperty("QUERY_THREAD_NUM", "1"));
 

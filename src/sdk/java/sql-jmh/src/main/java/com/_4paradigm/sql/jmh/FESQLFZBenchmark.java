@@ -141,7 +141,7 @@ public class FESQLFZBenchmark {
                                 valueMap.put(fieldName, String.valueOf(pkBase + i));
                             }
                         } else if (tsIndex.contains(pos)) {
-                            builder.append(ts - tsCnt);
+                            builder.append(ts - (tsCnt + BenchmarkConfig.TIME_DIFF) * 1000);
                         } else {
                             if (type.equals("timestamp")) {
                                 builder.append(ts);
