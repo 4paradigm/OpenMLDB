@@ -126,7 +126,7 @@ std::string YamlTypeName(type::Type type) {
 // 打印符合yaml测试框架格式的预期结果
 void PrintYamlResult(const vm::Schema& schema, const std::vector<Row>& rows) {
     std::ostringstream oss;
-    oss << "print schema\n";
+    oss << "- schema: ";
     for (int i = 0; i < schema.size(); i++) {
         auto col = schema.Get(i);
         oss << col.name() << ":" << YamlTypeName(col.type());
@@ -134,10 +134,11 @@ void PrintYamlResult(const vm::Schema& schema, const std::vector<Row>& rows) {
             oss << ", ";
         }
     }
-    oss << "\nprint rows\n";
+    oss << "\n- rows:\n";
     RowView row_view(schema);
     for (auto row : rows) {
         row_view.Reset(row.buf());
+        oss << "- [";
         for (int idx = 0; idx < schema.size(); idx++) {
             std::string str = row_view.GetAsString(idx);
             oss << str;
@@ -145,6 +146,7 @@ void PrintYamlResult(const vm::Schema& schema, const std::vector<Row>& rows) {
                 oss << ", ";
             }
         }
+        oss << "]";
     }
     LOG(INFO) << "\n" << oss.str() << "\n";
 }
