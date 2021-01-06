@@ -418,7 +418,7 @@ class CreatePlanNode : public LeafPlanNode {
                 }
             }
         }
-        return false;
+        return true;
     }
 
     NodePointVector &GetColumnDescList() { return column_desc_list_; }

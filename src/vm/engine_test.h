@@ -472,6 +472,7 @@ void DoEngineCheckExpect(const SQLCase& sql_case,
         sql_case.expect().columns_.empty()) {
         LOG(INFO) << "Expect result columns empty, Real result:\n";
         PrintRows(schema, sorted_output);
+        PrintYamlResult(schema, sorted_output);
     } else {
         // Check Output Schema
         type::TableDef case_output_table;
@@ -581,6 +582,7 @@ class EngineTestRunner {
         : sql_case_(sql_case), options_(options) {
         catalog_ = BuildCommonCatalog();
         engine_ = std::make_shared<Engine>(catalog_, options_);
+        InitSQLCase();
         InitEngineCatalog(sql_case_, options_, name_table_map_,
                           idx_table_name_map_, engine_, catalog_);
     }
@@ -593,7 +595,7 @@ class EngineTestRunner {
     static Status ExtractTableInfoFromCreateString(
         const std::string& create, SQLCase::TableInfo* table_info);
     Status Compile();
-    virtual Status InitSQLCase();
+    virtual void InitSQLCase();
     virtual Status PrepareData() = 0;
     virtual Status Compute(std::vector<codec::Row>*) = 0;
 
@@ -667,22 +669,24 @@ Status EngineTestRunner::ExtractTableInfoFromCreateString(
     }
     oss << "]\n";
     LOG(INFO) << oss.str();
+    return Status::OK();
 }
-Status EngineTestRunner::InitSQLCase() {
+void EngineTestRunner::InitSQLCase() {
     for (size_t idx = 0; idx < sql_case_.inputs_.size(); idx++) {
         if (!sql_case_.inputs_[idx].create_.empty()) {
-            ExtractTableInfoFromCreateString(sql_case_.inputs_[idx].create_,
-                                             &sql_case_.inputs_[idx]);
+            auto status = ExtractTableInfoFromCreateString(
+                sql_case_.inputs_[idx].create_, &sql_case_.inputs_[idx]);
+            ASSERT_TRUE(status.isOK()) << status;
         }
     }
 
     if (!sql_case_.batch_request_.create_.empty()) {
-        ExtractTableInfoFromCreateString(sql_case_.batch_request_.create_,
-                                         &sql_case_.batch_request_);
+        auto status = ExtractTableInfoFromCreateString(
+            sql_case_.batch_request_.create_, &sql_case_.batch_request_);
+        ASSERT_TRUE(status.isOK()) << status;
     }
 }
 Status EngineTestRunner::Compile() {
-    InitSQLCase();
     std::string sql_str = sql_case_.sql_str();
     for (int j = 0; j < sql_case_.CountInputs(); ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
@@ -815,9 +819,6 @@ class BatchEngineTestRunner : public EngineTestRunner {
         for (int32_t i = 0; i < sql_case_.CountInputs(); i++) {
             auto input = sql_case_.inputs()[i];
             std::vector<Row> rows;
-            if (!input.create_.empty()) {
-                ExtractTableInfoFromCreateString(&input);
-            }
             sql_case_.ExtractInputData(rows, i);
             size_t repeat = sql_case_.inputs()[i].repeat_;
             if (repeat > 1) {

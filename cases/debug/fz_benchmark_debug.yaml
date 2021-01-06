@@ -1,4 +1,4 @@
-db: FZTest
+!!com._4paradigm.fesql.sqlcase.model.CaseFile
 cases:
   - batch_request:
       columns: ['`reqId` string', '`eventTime` timestamp', '`index` string', '`uUserId`
@@ -25,29 +25,32 @@ cases:
         double', '`uWatchSameCity` double', '`uPlayGame` string', '`uLive` double',
           '`uLmNum` double', '`uSBigGiftNum` double', '`uSSmallGiftNum` double', '`uRGiftUserNum`
         double', '`uWatchTopList` int', '`split_id` int']
+      common_column_indices: ['3', '18', '42', '4', '72', '50', '1', '65', '67']
       indexs: &id001 []
-      name: auto_xMMDcBfY
+      name: auto_ADAUBESv
       repeat: 1
       repeat_tag: ''
       rows:
-        - [col0, '1609891369110', col2, col3, col4, col5, '1.4', col7, '1.4', '1.4', '1.4',
-           '1609891369111', col12, col13, '1.4', '1.4', col16, col17, col18, '1.4', col20,
-           '1609891369111', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4',
+        - [col0, '1609894067286', col2, col3, col4, col5, '1.4', col7, '1.4', '1.4', '1.4',
+           '1609894067286', col12, col13, '1.4', '1.4', col16, col17, col18, '1.4', col20,
+           '1609894067286', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4',
            '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4',
-           col42, col43, '1.4', '1.4', col46, col47, col48, '1.4', col50, '1609891369111',
-           '1.4', '1609891369111', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4',
+           col42, col43, '1.4', '1.4', col46, col47, col48, '1.4', col50, '1609894067287',
+           '1.4', '1609894067287', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4',
            '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', '1.4', col72,
            '1.4', '1.4', '1.4', '1.4', '1.4', '78', '79']
     db: FZTest
     desc: FZ benchmark case
     expect:
+      schema: reqId_1:string, flattenRequest_reqId_original_0:string, flattenRequest_eventTime_original_1:timestamp, flattenRequest_uUserId_original_2:string, flattenRequest_zUserId_original_3:string, flattenRequest_nRoomUserNum_original_4:double, flattenRequest_nRoomInLm_original_5:double, flattenRequest_nRoomInGame_original_6:double, flattenRequest_nRequestTime_original_7:timestamp, flattenRequest_zSex_original_8:string, flattenRequest_zPhoneType_original_9:string, flattenRequest_zLongitude_original_10:double, flattenRequest_zLatitude_original_11:double, flattenRequest_zPosition_original_12:string, flattenRequest_zHome_original_13:string, flattenRequest_zChannel_original_14:string, flattenRequest_zAge_original_15:double, flattenRequest_zHasCreatedGroup_original_16:string, flattenRequest_zRegTime_original_17:timestamp, flattenRequest_zFaceScore_original_18:double, flattenRequest_zFansNum_original_19:double, flattenRequest_zFollowNum_original_20:double, flattenRequest_zGainNum_original_21:double, flattenRequest_zSGiftNum_original_22:double, flattenRequest_zSWihsperNum_original_23:double, flattenRequest_zSChatMsgNum_original_24:double, flattenRequest_zLiveAvgLength_original_25:double, flattenRequest_zLiveFrequency_original_26:double, flattenRequest_zLiveDawn_original_27:double, flattenRequest_zLiveMorning_original_28:double, flattenRequest_zLiveAfternoon_original_29:double, flattenRequest_zLiveEvening_original_30:double, flattenRequest_zMaxRGiftNumOneUser_original_31:double, flattenRequest_zRGiftUserNum_original_32:double, flattenRequest_zLiveMsgNum_original_33:double, flattenRequest_zLiveDisharmony_original_34:double, flattenRequest_zLiveShareNum_original_35:double, flattenRequest_zSmallGiftNum_original_36:double, flattenRequest_zBigGiftNum_original_37:double, flattenRequest_uSex_original_38:string, flattenRequest_uPhoneType_original_39:string, flattenRequest_uLongitude_original_40:double, flattenRequest_uLatitude_original_41:double, flattenRequest_uPosition_original_42:string, flattenRequest_uHome_original_43:string, flattenRequest_uChannel_original_44:string, flattenRequest_uAge_original_45:double, flattenRequest_uHasJoinedGroup_original_46:string, flattenRequest_uRegTime_original_47:timestamp, flattenRequest_uFirstChargeNum_original_48:double, flattenRequest_uRemainDiamondNum_original_49:double, flattenRequest_uFansNum_original_50:double, flattenRequest_uFollowNum_original_51:double, flattenRequest_uGainNum_original_52:double, flattenRequest_uSGiftNum_original_53:double, flattenRequest_uSWihsperNum_original_54:double, flattenRequest_uSChatMsgNum_original_55:double, flattenRequest_uLiveSMsgNum_original_56:double, flattenRequest_uHasBeenBanned_original_57:double, flattenRequest_uSMsgFiltered_original_58:double, flattenRequest_uWatchDawn_original_59:double, flattenRequest_uWatchMorning_original_60:double, flattenRequest_uWatchAfternoon_original_61:double, flattenRequest_uWatchEvening_original_62:double, flattenRequest_uWatchAvgLength_original_63:double, flattenRequest_uEnterRoomFrequency_original_64:double, flattenRequest_uTopThreeNum_original_65:double, flattenRequest_uWatchSameCity_original_66:double, flattenRequest_uPlayGame_original_67:string, flattenRequest_uLive_original_68:double, flattenRequest_uLmNum_original_69:double, flattenRequest_uSBigGiftNum_original_70:double, flattenRequest_uSSmallGiftNum_original_71:double, flattenRequest_uRGiftUserNum_original_72:double, flattenRequest_uWatchAvgLength_window_sum_76:double, flattenRequest_uUserId_combine_77:string, flattenRequest_uSex_combine_77:string, flattenRequest_uPhoneType_combine_77:string, flattenRequest_uWatchMorning_window_avg_78:double, flattenRequest_uWatchEvening_window_avg_79:double, flattenRequest_zSWihsperNum_window_sum_80:double, flattenRequest_uWatchAvgLength_window_avg_81:double, flattenRequest_zUserId_window_count_82:bigint, flattenRequest_zUserId_window_count_83:bigint, flattenRequest_zUserId_window_count_84:bigint, flattenRequest_zUserId_window_count_85:bigint, flattenRequest_uUserId_window_count_86:bigint, flattenRequest_uUserId_window_count_87:bigint, flattenRequest_uUserId_window_count_88:bigint, flattenRequest_uUserId_window_count_89:bigint, flattenRequest_uUserId_window_count_90:bigint, flattenRequest_uUserId_window_count_91:bigint, flattenRequest_uUserId_window_count_92:bigint, flattenRequest_uUserId_combine_93:string, flattenRequest_zUserId_combine_93:string, flattenRequest_uHome_combine_93:string, reqId_74:string, action_actionValue_multi_direct_73:double, reqId_75:string, bo_hislabel_fWatchedTimeLen_multi_max_74:double, bo_hislabel_fWatchedTimeLen_multi_avg_75:double
+      rows:
+        - [col0, col0, 1609894067286, col3, col4, 1.400000000, 1.400000000, 1.400000000, 1609894067286, col12, col13, 1.400000000, 1.400000000, col16, col17, col18, 1.400000000, col20, 1609894067286, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, col42, col43, 1.400000000, 1.400000000, col46, col47, col48, 1.400000000, col50, 1609894067287, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, col72, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, 1.400000000, col3, col42, col43, 1.400000000, 1.400000000, 8.400000000, 1.400000000, 6, 6, 1, 1, 6, 6, 6, 6, 6, 6, 6, col3, col4, col47, col0, 1.400000000, col0, 2.2250738585072014e-308, nan]
       columns: *id001
       count: -1
       indexs: *id001
-      name: auto_bqfHzXdL
+      name: auto_LXEeFtxg
       repeat: 1
       repeat_tag: ''
-      rows: *id001
       success: true
     id: '0'
     inputs:
@@ -58,35 +61,35 @@ cases:
         repeat: 1
         repeat_tag: ''
         rows:
-          - [col0, 1609891369020, col2, col3, col4, col5, 1.4, col7, 1.4, 1.4, 1.4, 1609891369020,
-             col12, col13, 1.4, 1.4, col16, col17, col18, 1.4, col20, 1609891369020, 1.4,
+          - [col0, 1609894067182, col2, col3, col4, col5, 1.4, col7, 1.4, 1.4, 1.4, 1609894067182,
+             col12, col13, 1.4, 1.4, col16, col17, col18, 1.4, col20, 1609894067182, 1.4,
              1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
-             1.4, 1.4, 1.4, col42, col43, 1.4, 1.4, col46, col47, col48, 1.4, col50, 1609891369020,
-             1.4, 1609891369020, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
+             1.4, 1.4, 1.4, col42, col43, 1.4, 1.4, col46, col47, col48, 1.4, col50, 1609894067182,
+             1.4, 1609894067182, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
              1.4, 1.4, 1.4, 1.4, 1.4, 1.4, col72, 1.4, 1.4, 1.4, 1.4, 1.4, 78, 79]
-          - [col0, 1609891369019, col2, col3, col4, col5, 1.4, col7, 1.4, 1.4, 1.4, 1609891369020,
-             col12, col13, 1.4, 1.4, col16, col17, col18, 1.4, col20, 1609891369020, 1.4,
+          - [col0, 1609894067181, col2, col3, col4, col5, 1.4, col7, 1.4, 1.4, 1.4, 1609894067182,
+             col12, col13, 1.4, 1.4, col16, col17, col18, 1.4, col20, 1609894067182, 1.4,
              1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
-             1.4, 1.4, 1.4, col42, col43, 1.4, 1.4, col46, col47, col48, 1.4, col50, 1609891369020,
-             1.4, 1609891369020, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
+             1.4, 1.4, 1.4, col42, col43, 1.4, 1.4, col46, col47, col48, 1.4, col50, 1609894067182,
+             1.4, 1609894067182, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
              1.4, 1.4, 1.4, 1.4, 1.4, 1.4, col72, 1.4, 1.4, 1.4, 1.4, 1.4, 78, 79]
-          - [col0, 1609891369018, col2, col3, col4, col5, 1.4, col7, 1.4, 1.4, 1.4, 1609891369020,
-             col12, col13, 1.4, 1.4, col16, col17, col18, 1.4, col20, 1609891369020, 1.4,
+          - [col0, 1609894067180, col2, col3, col4, col5, 1.4, col7, 1.4, 1.4, 1.4, 1609894067182,
+             col12, col13, 1.4, 1.4, col16, col17, col18, 1.4, col20, 1609894067182, 1.4,
              1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
-             1.4, 1.4, 1.4, col42, col43, 1.4, 1.4, col46, col47, col48, 1.4, col50, 1609891369020,
-             1.4, 1609891369020, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
+             1.4, 1.4, 1.4, col42, col43, 1.4, 1.4, col46, col47, col48, 1.4, col50, 1609894067182,
+             1.4, 1609894067182, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
              1.4, 1.4, 1.4, 1.4, 1.4, 1.4, col72, 1.4, 1.4, 1.4, 1.4, 1.4, 78, 79]
-          - [col0, 1609891369017, col2, col3, col4, col5, 1.4, col7, 1.4, 1.4, 1.4, 1609891369020,
-             col12, col13, 1.4, 1.4, col16, col17, col18, 1.4, col20, 1609891369020, 1.4,
+          - [col0, 1609894067179, col2, col3, col4, col5, 1.4, col7, 1.4, 1.4, 1.4, 1609894067182,
+             col12, col13, 1.4, 1.4, col16, col17, col18, 1.4, col20, 1609894067182, 1.4,
              1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
-             1.4, 1.4, 1.4, col42, col43, 1.4, 1.4, col46, col47, col48, 1.4, col50, 1609891369020,
-             1.4, 1609891369020, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
+             1.4, 1.4, 1.4, col42, col43, 1.4, 1.4, col46, col47, col48, 1.4, col50, 1609894067182,
+             1.4, 1609894067182, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
              1.4, 1.4, 1.4, 1.4, 1.4, 1.4, col72, 1.4, 1.4, 1.4, 1.4, 1.4, 78, 79]
-          - [col0, 1609891369016, col2, col3, col4, col5, 1.4, col7, 1.4, 1.4, 1.4, 1609891369020,
-             col12, col13, 1.4, 1.4, col16, col17, col18, 1.4, col20, 1609891369020, 1.4,
+          - [col0, 1609894067178, col2, col3, col4, col5, 1.4, col7, 1.4, 1.4, 1.4, 1609894067182,
+             col12, col13, 1.4, 1.4, col16, col17, col18, 1.4, col20, 1609894067182, 1.4,
              1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
-             1.4, 1.4, 1.4, col42, col43, 1.4, 1.4, col46, col47, col48, 1.4, col50, 1609891369020,
-             1.4, 1609891369020, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
+             1.4, 1.4, 1.4, col42, col43, 1.4, 1.4, col46, col47, col48, 1.4, col50, 1609894067182,
+             1.4, 1609894067182, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
              1.4, 1.4, 1.4, 1.4, 1.4, 1.4, col72, 1.4, 1.4, 1.4, 1.4, 1.4, 78, 79]
       - columns: *id001
         create: create table `action`(`reqId` string,`eventTime` timestamp,`ingestionTime` timestamp,`actionValue` double,index(key=(`reqId`), ttl=1, ttl_type=latest))partitionnum=4;
@@ -95,11 +98,11 @@ cases:
         repeat: 1
         repeat_tag: ''
         rows:
-          - [col0, 1609891369027, 1609891369027, 1.4]
-          - [col0, 1609891369027, 1609891369027, 1.4]
-          - [col0, 1609891369027, 1609891369027, 1.4]
-          - [col0, 1609891369027, 1609891369027, 1.4]
-          - [col0, 1609891369027, 1609891369027, 1.4]
+          - [col0, 1609894067191, 1609894067191, 1.4]
+          - [col0, 1609894067191, 1609894067191, 1.4]
+          - [col0, 1609894067191, 1609894067191, 1.4]
+          - [col0, 1609894067191, 1609894067191, 1.4]
+          - [col0, 1609894067191, 1609894067191, 1.4]
       - columns: *id001
         create: create table `bo_hislabel`(`ingestionTime` timestamp,`zUserId` string,`uUserId` string,`nRequestTime` timestamp,`fWatchedTimeLen` double,index(key=(`zUserId`,`uUserId`), ts=`ingestionTime`, ttl=2881m, ttl_type=absolute))partitionnum=4;
         indexs: *id001
@@ -107,12 +110,14 @@ cases:
         repeat: 1
         repeat_tag: ''
         rows:
-          - [1609891369028, col4, col3, 1609891369028, 1.4]
-          - [1609891369027, col4, col3, 1609891369028, 1.4]
-          - [1609891369026, col4, col3, 1609891369028, 1.4]
-          - [1609891369025, col4, col3, 1609891369028, 1.4]
-          - [1609891369024, col4, col3, 1609891369028, 1.4]
-    spName: auto_wxchlbYy
+          - [1609894067191, col4, col3, 1609894067191, 1.4]
+          - [1609894067190, col4, col3, 1609894067191, 1.4]
+          - [1609894067189, col4, col3, 1609894067191, 1.4]
+          - [1609894067188, col4, col3, 1609894067191, 1.4]
+          - [1609894067187, col4, col3, 1609894067191, 1.4]
+    mode: batch-unsupport
+    spName: auto_ZaveWdct
     sql: select * from  ( select     reqId as reqId_1,     `reqId` as flattenRequest_reqId_original_0,     `eventTime` as flattenRequest_eventTime_original_1,     `uUserId` as flattenRequest_uUserId_original_2,     `zUserId` as flattenRequest_zUserId_original_3,     `nRoomUserNum` as flattenRequest_nRoomUserNum_original_4,     `nRoomInLm` as flattenRequest_nRoomInLm_original_5,     `nRoomInGame` as flattenRequest_nRoomInGame_original_6,     `nRequestTime` as flattenRequest_nRequestTime_original_7,     `zSex` as flattenRequest_zSex_original_8,     `zPhoneType` as flattenRequest_zPhoneType_original_9,     `zLongitude` as flattenRequest_zLongitude_original_10,     `zLatitude` as flattenRequest_zLatitude_original_11,     `zPosition` as flattenRequest_zPosition_original_12,     `zHome` as flattenRequest_zHome_original_13,     `zChannel` as flattenRequest_zChannel_original_14,     `zAge` as flattenRequest_zAge_original_15,     `zHasCreatedGroup` as flattenRequest_zHasCreatedGroup_original_16,     `zRegTime` as flattenRequest_zRegTime_original_17,     `zFaceScore` as flattenRequest_zFaceScore_original_18,     `zFansNum` as flattenRequest_zFansNum_original_19,     `zFollowNum` as flattenRequest_zFollowNum_original_20,     `zGainNum` as flattenRequest_zGainNum_original_21,     `zSGiftNum` as flattenRequest_zSGiftNum_original_22,     `zSWihsperNum` as flattenRequest_zSWihsperNum_original_23,     `zSChatMsgNum` as flattenRequest_zSChatMsgNum_original_24,     `zLiveAvgLength` as flattenRequest_zLiveAvgLength_original_25,     `zLiveFrequency` as flattenRequest_zLiveFrequency_original_26,     `zLiveDawn` as flattenRequest_zLiveDawn_original_27,     `zLiveMorning` as flattenRequest_zLiveMorning_original_28,     `zLiveAfternoon` as flattenRequest_zLiveAfternoon_original_29,     `zLiveEvening` as flattenRequest_zLiveEvening_original_30,     `zMaxRGiftNumOneUser` as flattenRequest_zMaxRGiftNumOneUser_original_31,     `zRGiftUserNum` as flattenRequest_zRGiftUserNum_original_32,     `zLiveMsgNum` as flattenRequest_zLiveMsgNum_original_33,     `zLiveDisharmony` as flattenRequest_zLiveDisharmony_original_34,     `zLiveShareNum` as flattenRequest_zLiveShareNum_original_35,     `zSmallGiftNum` as flattenRequest_zSmallGiftNum_original_36,     `zBigGiftNum` as flattenRequest_zBigGiftNum_original_37,     `uSex` as flattenRequest_uSex_original_38,     `uPhoneType` as flattenRequest_uPhoneType_original_39,     `uLongitude` as flattenRequest_uLongitude_original_40,     `uLatitude` as flattenRequest_uLatitude_original_41,     `uPosition` as flattenRequest_uPosition_original_42,     `uHome` as flattenRequest_uHome_original_43,     `uChannel` as flattenRequest_uChannel_original_44,     `uAge` as flattenRequest_uAge_original_45,     `uHasJoinedGroup` as flattenRequest_uHasJoinedGroup_original_46,     `uRegTime` as flattenRequest_uRegTime_original_47,     `uFirstChargeNum` as flattenRequest_uFirstChargeNum_original_48,     `uRemainDiamondNum` as flattenRequest_uRemainDiamondNum_original_49,     `uFansNum` as flattenRequest_uFansNum_original_50,     `uFollowNum` as flattenRequest_uFollowNum_original_51,     `uGainNum` as flattenRequest_uGainNum_original_52,     `uSGiftNum` as flattenRequest_uSGiftNum_original_53,     `uSWihsperNum` as flattenRequest_uSWihsperNum_original_54,     `uSChatMsgNum` as flattenRequest_uSChatMsgNum_original_55,     `uLiveSMsgNum` as flattenRequest_uLiveSMsgNum_original_56,     `uHasBeenBanned` as flattenRequest_uHasBeenBanned_original_57,     `uSMsgFiltered` as flattenRequest_uSMsgFiltered_original_58,     `uWatchDawn` as flattenRequest_uWatchDawn_original_59,     `uWatchMorning` as flattenRequest_uWatchMorning_original_60,     `uWatchAfternoon` as flattenRequest_uWatchAfternoon_original_61,     `uWatchEvening` as flattenRequest_uWatchEvening_original_62,     `uWatchAvgLength` as flattenRequest_uWatchAvgLength_original_63,     `uEnterRoomFrequency` as flattenRequest_uEnterRoomFrequency_original_64,     `uTopThreeNum` as flattenRequest_uTopThreeNum_original_65,     `uWatchSameCity` as flattenRequest_uWatchSameCity_original_66,     `uPlayGame` as flattenRequest_uPlayGame_original_67,     `uLive` as flattenRequest_uLive_original_68,     `uLmNum` as flattenRequest_uLmNum_original_69,     `uSBigGiftNum` as flattenRequest_uSBigGiftNum_original_70,     `uSSmallGiftNum` as flattenRequest_uSSmallGiftNum_original_71,     `uRGiftUserNum` as flattenRequest_uRGiftUserNum_original_72,     sum(`uWatchAvgLength`) over flattenRequest_uUserId_eventTime_0_10 as flattenRequest_uWatchAvgLength_window_sum_76,     `uUserId` as flattenRequest_uUserId_combine_77,     `uSex` as flattenRequest_uSex_combine_77,     `uPhoneType` as flattenRequest_uPhoneType_combine_77,     avg(`uWatchMorning`) over flattenRequest_uUserId_eventTime_0_10 as flattenRequest_uWatchMorning_window_avg_78,     avg(`uWatchEvening`) over flattenRequest_uUserId_eventTime_0_10 as flattenRequest_uWatchEvening_window_avg_79,     sum(`zSWihsperNum`) over flattenRequest_zChannel_eventTime_0s_172801s as flattenRequest_zSWihsperNum_window_sum_80,     avg(`uWatchAvgLength`) over flattenRequest_uUserId_eventTime_0_10 as flattenRequest_uWatchAvgLength_window_avg_81,     case when !isnull(at(`zUserId`, 0)) over flattenRequest_uUserId_eventTime_0s_36001s then count(`zUserId`) over flattenRequest_uUserId_eventTime_0s_36001s else null end as flattenRequest_zUserId_window_count_82,     case when !isnull(at(`zUserId`, 0)) over flattenRequest_uUserId_eventTime_0s_172801s then count(`zUserId`) over flattenRequest_uUserId_eventTime_0s_172801s else null end as flattenRequest_zUserId_window_count_83,     case when !isnull(at(`zUserId`, 0)) over flattenRequest_uSex_eventTime_0_10 then count(`zUserId`) over flattenRequest_uSex_eventTime_0_10 else null end as flattenRequest_zUserId_window_count_84,     case when !isnull(at(`zUserId`, 0)) over flattenRequest_uUserId_eventTime_0_10 then count(`zUserId`) over flattenRequest_uUserId_eventTime_0_10 else null end as flattenRequest_zUserId_window_count_85,     case when !isnull(at(`uUserId`, 0)) over flattenRequest_zUserId_eventTime_0s_36001s then count(`uUserId`) over flattenRequest_zUserId_eventTime_0s_36001s else null end as flattenRequest_uUserId_window_count_86,     case when !isnull(at(`uUserId`, 0)) over flattenRequest_zUserId_eventTime_0s_172801s then count(`uUserId`) over flattenRequest_zUserId_eventTime_0s_172801s else null end as flattenRequest_uUserId_window_count_87,     case when !isnull(at(`uUserId`, 0)) over flattenRequest_uPlayGame_eventTime_0s_36001s then count(`uUserId`) over flattenRequest_uPlayGame_eventTime_0s_36001s else null end as flattenRequest_uUserId_window_count_88,     case when !isnull(at(`uUserId`, 0)) over flattenRequest_uHasJoinedGroup_eventTime_0s_36001s then count(`uUserId`) over flattenRequest_uHasJoinedGroup_eventTime_0s_36001s else null end as flattenRequest_uUserId_window_count_89,     case when !isnull(at(`uUserId`, 0)) over flattenRequest_uHasJoinedGroup_eventTime_0s_172801s then count(`uUserId`) over flattenRequest_uHasJoinedGroup_eventTime_0s_172801s else null end as flattenRequest_uUserId_window_count_90,     case when !isnull(at(`uUserId`, 0)) over flattenRequest_uSex_eventTime_0s_172801s then count(`uUserId`) over flattenRequest_uSex_eventTime_0s_172801s else null end as flattenRequest_uUserId_window_count_91,     case when !isnull(at(`uUserId`, 0)) over flattenRequest_uSex_eventTime_0s_36001s then count(`uUserId`) over flattenRequest_uSex_eventTime_0s_36001s else null end as flattenRequest_uUserId_window_count_92,     `uUserId` as flattenRequest_uUserId_combine_93,     `zUserId` as flattenRequest_zUserId_combine_93,     `uHome` as flattenRequest_uHome_combine_93 from     `flattenRequest`     window flattenRequest_uUserId_eventTime_0_10 as (partition by `uUserId` order by `eventTime` rows_range between 10 preceding and 0 preceding),     flattenRequest_zChannel_eventTime_0s_172801s as (partition by `zChannel` order by `eventTime` rows_range between 172801s preceding and 0s preceding),     flattenRequest_uUserId_eventTime_0s_36001s as (partition by `uUserId` order by `eventTime` rows_range between 36001s preceding and 0s preceding),     flattenRequest_uUserId_eventTime_0s_172801s as (partition by `uUserId` order by `eventTime` rows_range between 172801s preceding and 0s preceding),     flattenRequest_uSex_eventTime_0_10 as (partition by `uSex` order by `eventTime` rows_range between 10 preceding and 0 preceding),     flattenRequest_zUserId_eventTime_0s_36001s as (partition by `zUserId` order by `eventTime` rows_range between 36001s preceding and 0s preceding),     flattenRequest_zUserId_eventTime_0s_172801s as (partition by `zUserId` order by `eventTime` rows_range between 172801s preceding and 0s preceding),     flattenRequest_uPlayGame_eventTime_0s_36001s as (partition by `uPlayGame` order by `eventTime` rows_range between 36001s preceding and 0s preceding),     flattenRequest_uHasJoinedGroup_eventTime_0s_36001s as (partition by `uHasJoinedGroup` order by `eventTime` rows_range between 36001s preceding and 0s preceding),     flattenRequest_uHasJoinedGroup_eventTime_0s_172801s as (partition by `uHasJoinedGroup` order by `eventTime` rows_range between 172801s preceding and 0s preceding),     flattenRequest_uSex_eventTime_0s_172801s as (partition by `uSex` order by `eventTime` rows_range between 172801s preceding and 0s preceding),     flattenRequest_uSex_eventTime_0s_36001s as (partition by `uSex` order by `eventTime` rows_range between 36001s preceding and 0s preceding)) as out0 last join ( select     flattenRequest.reqId as reqId_74,     `action_reqId`.`actionValue` as action_actionValue_multi_direct_73 from     `flattenRequest`     last join `action` as `action_reqId` on `flattenRequest`.`reqId` = `action_reqId`.`reqId`) as out1 on out0.reqId_1 = out1.reqId_74 last join ( select     reqId as reqId_75,     max(`fWatchedTimeLen`) over bo_hislabel_zUserId_uUserId_ingestionTime_1s_172801s as bo_hislabel_fWatchedTimeLen_multi_max_74,     avg(`fWatchedTimeLen`) over bo_hislabel_zUserId_uUserId_ingestionTime_1s_172801s as bo_hislabel_fWatchedTimeLen_multi_avg_75 from     (select `eventTime` as `ingestionTime`, `zUserId` as `zUserId`, `uUserId` as `uUserId`, timestamp('2019-07-18 09:20:20') as `nRequestTime`, double(0) as `fWatchedTimeLen`, reqId from `flattenRequest`)     window bo_hislabel_zUserId_uUserId_ingestionTime_1s_172801s as ( UNION (select `ingestionTime`, `zUserId`, `uUserId`, `nRequestTime`, `fWatchedTimeLen`, '' as reqId from `bo_hislabel`) partition by `zUserId`,`uUserId` order by `ingestionTime` rows_range between 172801s preceding and 1s preceding INSTANCE_NOT_IN_WINDOW)) as out2 on out0.reqId_1 = out2.reqId_75 ;
     standard_sql: false
     standard_sql_compatible: false
+db: FZTest
