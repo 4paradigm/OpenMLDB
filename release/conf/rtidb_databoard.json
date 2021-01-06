@@ -1013,138 +1013,9 @@
       "datasource": "Prometheus-1",
       "fill": 1,
       "gridPos": {
-        "h": 12,
+        "h": 15,
         "w": 12,
         "x": 0,
-        "y": 47
-      },
-      "id": 50,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "max": true,
-        "min": true,
-        "rightSide": true,
-        "show": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "rtidb_get{latency=\"type\",type=\"qps\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "get-{{type}}-{{instance}}",
-          "refId": "A"
-        },
-        {
-          "expr": "rtidb_put{latency=\"type\",type=\"qps\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "put-{{type}}-{{instance}}",
-          "refId": "B"
-        },
-        {
-          "expr": "rtidb_scan{latency=\"type\",type=\"qps\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "scan-{{type}}-{{instance}}",
-          "refId": "C"
-        },
-        {
-          "expr": "rtidb_batchquery{latency=\"type\",type=\"qps\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "batchquery-{{type}}-{{instance}}",
-          "refId": "D"
-        },
-        {
-          "expr": "rtidb_query{latency=\"type\",type=\"qps\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "query-{{type}}-{{instance}}",
-          "refId": "E"
-        },
-        {
-          "expr": "rtidb_sqlbatchrequestquery{latency=\"type\",type=\"qps\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "sqlbatchrequestquery-{{type}}-{{instance}}",
-          "refId": "F"
-        },
-        {
-          "expr": "rtidb_subquery{latency=\"type\",type=\"qps\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "sub-query-{{type}}-{{instance}}",
-          "refId": "G"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "qps",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "none",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus-1",
-      "fill": 1,
-      "gridPos": {
-        "h": 12,
-        "w": 12,
-        "x": 12,
         "y": 47
       },
       "id": 36,
@@ -1275,17 +1146,16 @@
       "datasource": "Prometheus-1",
       "fill": 1,
       "gridPos": {
-        "h": 9,
+        "h": 15,
         "w": 12,
-        "x": 0,
-        "y": 59
+        "x": 12,
+        "y": 47
       },
-      "id": 16,
+      "id": 64,
       "legend": {
         "alignAsTable": true,
         "avg": false,
         "current": true,
-        "hideZero": false,
         "max": true,
         "min": true,
         "rightSide": true,
@@ -1307,19 +1177,63 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rtidb_memory",
+          "expr": "rtidb_subbatchrequestquery{latency=\"latency\",type=\"latency_50\"}",
           "format": "time_series",
+          "hide": false,
           "instant": false,
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "{{instance}}-{{type}}",
+          "legendFormat": "{{type}}-{{instance}}",
           "refId": "A"
+        },
+        {
+          "expr": "rtidb_subbatchrequestquery{latency=\"latency\",type=\"latency_90\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "{{type}}-{{instance}}",
+          "refId": "B"
+        },
+        {
+          "expr": "rtidb_subbatchrequestquery{latency=\"latency\",type=\"latency_99\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "{{type}}-{{instance}}",
+          "refId": "C"
+        },
+        {
+          "expr": "rtidb_subbatchrequestquery{latency=\"latency\",type=\"latency_999\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "{{type}}-{{instance}}",
+          "refId": "D"
+        },
+        {
+          "expr": "rtidb_subbatchrequestquery{latency=\"latency\",type=\"latency_9999\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "{{type}}-{{instance}}",
+          "refId": "E"
+        },
+        {
+          "expr": "rtidb_subbatchrequestquery{latency=\"latency\",type=\"max_latency\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "{{type}}-{{instance}}",
+          "refId": "F"
+        },
+        {
+          "expr": "rtidb_subbatchrequestquery{latency=\"latency\",type=\"latency\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "{{type}}-{{instance}}",
+          "refId": "G"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "rtidb memory",
+      "title": "subbatchrequestquery-latency",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1335,7 +1249,137 @@
       },
       "yaxes": [
         {
-          "format": "decbytes",
+          "format": "µs",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true
+        },
+        {
+          "decimals": null,
+          "format": "short",
+          "label": "",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus-1",
+      "fill": 1,
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 0,
+        "y": 62
+      },
+      "id": 50,
+      "legend": {
+        "alignAsTable": true,
+        "avg": false,
+        "current": true,
+        "max": true,
+        "min": true,
+        "rightSide": true,
+        "show": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "rtidb_get{latency=\"type\",type=\"qps\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "get-{{type}}-{{instance}}",
+          "refId": "A"
+        },
+        {
+          "expr": "rtidb_put{latency=\"type\",type=\"qps\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "put-{{type}}-{{instance}}",
+          "refId": "B"
+        },
+        {
+          "expr": "rtidb_scan{latency=\"type\",type=\"qps\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "scan-{{type}}-{{instance}}",
+          "refId": "C"
+        },
+        {
+          "expr": "rtidb_batchquery{latency=\"type\",type=\"qps\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "batchquery-{{type}}-{{instance}}",
+          "refId": "D"
+        },
+        {
+          "expr": "rtidb_query{latency=\"type\",type=\"qps\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "query-{{type}}-{{instance}}",
+          "refId": "E"
+        },
+        {
+          "expr": "rtidb_sqlbatchrequestquery{latency=\"type\",type=\"qps\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "sqlbatchrequestquery-{{type}}-{{instance}}",
+          "refId": "F"
+        },
+        {
+          "expr": "rtidb_subquery{latency=\"type\",type=\"qps\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "sub-query-{{type}}-{{instance}}",
+          "refId": "G"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "qps",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "none",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -1364,10 +1408,10 @@
       "datasource": "Prometheus-1",
       "fill": 1,
       "gridPos": {
-        "h": 12,
+        "h": 13,
         "w": 12,
         "x": 12,
-        "y": 59
+        "y": 62
       },
       "id": 63,
       "legend": {
@@ -1485,6 +1529,95 @@
         "align": false,
         "alignLevel": null
       }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus-1",
+      "fill": 1,
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 75
+      },
+      "id": 16,
+      "legend": {
+        "alignAsTable": true,
+        "avg": false,
+        "current": true,
+        "hideZero": false,
+        "max": true,
+        "min": true,
+        "rightSide": true,
+        "show": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "rtidb_memory",
+          "format": "time_series",
+          "instant": false,
+          "intervalFactor": 1,
+          "legendFormat": "{{instance}}-{{type}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "rtidb memory",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "decbytes",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     }
   ],
   "refresh": false,
@@ -1526,5 +1659,5 @@
   "timezone": "",
   "title": "rtidb databoard",
   "uid": "SXUXvsbMk",
-  "version": 28
+  "version": 30
 }
