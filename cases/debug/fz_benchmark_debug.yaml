@@ -121,6 +121,7 @@ cases:
           - [1609894067187, col4, col3, 1609894067191, 1.4]
     mode: batch-unsupport
     spName: auto_ZaveWdct
+    tags: ["TODO", "@baoxinqi"]
     sql: |
       select f0,f1, reqId_1 from  ( select
       count(reqId) over flattenRequest_zChannel_eventTime_0s_172801s as flattenRequest_zChannel_eventTime_0s_172801s_cnt,

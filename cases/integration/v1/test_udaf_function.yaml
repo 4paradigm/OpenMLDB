@@ -462,6 +462,7 @@ cases:
   -
     id: 18
     desc: 重复的聚合表达式
+    tags: ["TODO", "@baoxinqi: fix"]
     inputs:
       -
         columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

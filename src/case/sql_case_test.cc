@@ -848,11 +848,11 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
                   "index(name=index2, key=(c1), ts=c2)\n"
                   ");");
         ASSERT_EQ(sql_case.inputs()[0].inserts_,
-                  std::vector<std::string>({
-                      "insert into t1 values\n"
-                 "(\"hello\", 1, 2, 3.3f, 4.4, 5L, \"world\");\n",
-                      "insert into t1 values (\"happy\", 10, 20, 30.3f, 40.4, 50L, \"newyear\");"
-                  }));
+                  std::vector<std::string>(
+                      {"insert into t1 values\n"
+                       "(\"hello\", 1, 2, 3.3f, 4.4, 5L, \"world\");\n",
+                       "insert into t1 values (\"happy\", 10, 20, 30.3f, 40.4, "
+                       "50L, \"newyear\");"}));
         ASSERT_EQ(sql_case.expect().schema_,
                   "col0:string, col1:int32, col2:int16, col3:float, "
                   "col4:double, col5:int64, col6:string");

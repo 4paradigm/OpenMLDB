@@ -373,7 +373,7 @@ class CreatePlanNode : public LeafPlanNode {
         table_name_ = table_name;
     }
 
-    bool ExtractColumnsAndIndexs(std::vector<std::string> &columns,
+    bool ExtractColumnsAndIndexs(std::vector<std::string> &columns,   // NOLINT
                                  std::vector<std::string> &indexs) {  // NOLINT
         if (column_desc_list_.empty()) {
             return false;
