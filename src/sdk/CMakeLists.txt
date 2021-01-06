@@ -1,7 +1,7 @@
 add_library(rtidb_sdk STATIC
 	cluster_sdk.cc sql_cluster_router.cc sql_router.cc
     result_set_sql.cc batch_request_result_set_sql.cc
-    sql_request_row.cc sql_insert_row.cc mini_cluster_bm.cc)
+    sql_request_row.cc sql_insert_row.cc)
 set(FESQL_CASE_LIBS base_test fesql_core yaml-cpp boost_filesystem)
 
 add_executable(cluster_sdk_test cluster_sdk_test.cc)

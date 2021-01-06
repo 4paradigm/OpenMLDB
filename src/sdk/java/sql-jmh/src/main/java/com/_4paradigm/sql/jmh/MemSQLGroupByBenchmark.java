@@ -1,6 +1,6 @@
 package com._4paradigm.sql.jmh;
 
-import org.omg.Messaging.SYNC_WITH_TRANSPORT;
+import com._4paradigm.sql.BenchmarkConfig;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;

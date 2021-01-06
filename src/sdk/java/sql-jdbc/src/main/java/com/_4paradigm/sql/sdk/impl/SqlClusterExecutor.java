@@ -2,6 +2,7 @@ package com._4paradigm.sql.sdk.impl;
 
 import com._4paradigm.sql.*;
 import com._4paradigm.sql.common.LibraryLoader;
+import com._4paradigm.sql.jdbc.CallablePreparedStatement;
 import com._4paradigm.sql.sdk.ProcedureInfo;
 import com._4paradigm.sql.sdk.Schema;
 import com._4paradigm.sql.sdk.*;
@@ -123,13 +124,13 @@ public class SqlClusterExecutor implements SqlExecutor {
         return impl;
     }
 
-    public CallablePreparedStatementImpl getCallablePreparedStmt(String db, String spName) throws SQLException {
+    public CallablePreparedStatement getCallablePreparedStmt(String db, String spName) throws SQLException {
         CallablePreparedStatementImpl impl = new CallablePreparedStatementImpl(db, spName, this.sqlRouter);
         return impl;
     }
 
     @Override
-    public BatchCallablePreparedStatementImpl getCallablePreparedStmtBatch(String db, String spName) throws SQLException {
+    public CallablePreparedStatement getCallablePreparedStmtBatch(String db, String spName) throws SQLException {
         BatchCallablePreparedStatementImpl impl = new BatchCallablePreparedStatementImpl(db, spName, this.sqlRouter);
         return impl;
     }

@@ -18,7 +18,7 @@ cp steps/cjzoo.cfg thirdsrc/zookeeper-3.4.14/conf/zoo.cjg
 cd thirdsrc/zookeeper-3.4.14
 #netstat -atn | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs kill -9
 lsof -i:6181 |grep 6181| awk '{print $2}'| xargs kill -9
-ps -ef|grep "bin/rtidb"|awk '{print $2}'|xarg kill -9
+ps -ef|grep "bin/rtidb"|awk '{print $2}'|xargs kill -9
 
 ./bin/zkServer.sh start && cd $ROOT_DIR
 sleep 5

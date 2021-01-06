@@ -4,6 +4,7 @@ import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.SQLInsertRow;
 import com._4paradigm.sql.SQLInsertRows;
 import com._4paradigm.sql.SQLRequestRow;
+import com._4paradigm.sql.jdbc.CallablePreparedStatement;
 import com._4paradigm.sql.sdk.impl.BatchCallablePreparedStatementImpl;
 import com._4paradigm.sql.sdk.impl.CallablePreparedStatementImpl;
 
@@ -39,9 +40,9 @@ public interface SqlExecutor {
     PreparedStatement getBatchRequestPreparedStmt(String db, String sql,
                                                   List<Integer> commonColumnIndices) throws SQLException;
 
-    CallablePreparedStatementImpl getCallablePreparedStmt(String db, String spName) throws SQLException;
+    CallablePreparedStatement getCallablePreparedStmt(String db, String spName) throws SQLException;
 
-    BatchCallablePreparedStatementImpl getCallablePreparedStmtBatch(String db, String spName) throws SQLException;
+    CallablePreparedStatement getCallablePreparedStmtBatch(String db, String spName) throws SQLException;
 
     Schema getInputSchema(String dbName, String sql) throws SQLException;
 
