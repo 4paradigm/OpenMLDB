@@ -123,16 +123,17 @@ public class DDLEngine {
     public static void parseWindowOp(PhysicalOpNode node, Map<String, RtidbTable> rtidbTables) {
         logger.info("begin to pares window op");
         PhysicalRequestUnionNode castNode = PhysicalRequestUnionNode.CastFrom(node);
-        long start = -1;
-        long end = -1;
-        long cntStart = -1;
-        long cntEnd = -1;
+        long start = 0;
+        long end = 0;
+        long cntStart = 0;
+        long cntEnd = 0;
         if (castNode.window().range().frame().frame_range() != null) {
             start = Math.abs(Long.valueOf(castNode.window().range().frame().frame_range().start().GetExprString()));
             end = Math.abs(Long.valueOf(castNode.window().range().frame().frame_range().end().GetExprString()));
-        } else {
-            cntStart = Long.valueOf(castNode.window().range().frame().frame_rows().start().GetExprString());
-            cntEnd = Long.valueOf(castNode.window().range().frame().frame_rows().end().GetExprString());
+        }
+        if (castNode.window().range().frame().frame_rows() != null) {
+            cntStart = Math.abs(Long.valueOf(castNode.window().range().frame().frame_rows().start().GetExprString()));
+            cntEnd = Math.abs(Long.valueOf(castNode.window().range().frame().frame_rows().end().GetExprString()));
         }
         List<PhysicalOpNode> nodes = new ArrayList<>();
         for (int i = 0; i < castNode.GetProducerCnt(); i++) {
@@ -161,7 +162,7 @@ public class DDLEngine {
             String ts = CoreAPI.ResolveSourceColumnName(e, ColumnRefNode.CastFrom(castNode.window().sort().orders().order_by().GetChild(0)));
 
             index.setTs(ts);
-            if (start != -1) {
+            if (start != 0) {
                 if (start < 60 * 1000) {
                     // 60秒
                     index.setExpire(60 * 1000);
@@ -169,7 +170,7 @@ public class DDLEngine {
                     index.setExpire(start);
                 }
             }
-            if (cntStart != -1) {
+            if (cntStart != 0) {
                 index.setAtmost(cntStart);
             }
             if (index.getAtmost() > 0 && index.getExpire() == 0) {
@@ -478,7 +479,7 @@ class RtidbTable {
                     e.setExpire(index.getExpire());
                 }
                 if (index.getType() == TTLType.kAbsAndLat || index.getType() != e.getType()) {
-                    e.setType(TTLType.kAbsAndLat);
+                    index.setType(TTLType.kAbsAndLat);
                 }
                 break;
             }
@@ -501,7 +502,21 @@ class RtidbTable {
                     break;
                 }
             }
+        } else {
+            boolean isAnd = false;
+            for (RtidbIndex e : indexs) {
+                if (e.getType() == TTLType.kAbsAndLat) {
+                    isAnd = true;
+                }
+            }
+            if (isAnd) {
+                for (RtidbIndex e : indexs) {
+                    e.setType(TTLType.kAbsAndLat);
+                }
+            }
         }
+
+
     }
 
     public String toDDL() {
@@ -551,7 +566,7 @@ class RtidbIndex {
         String key = StringUtils.join(newKeys, ",");
         String ttlType = DDLEngine.getRtidbIndexType(type);
         String index = "";
-        if (ts.equals("")) {
+        if (type == TTLType.kLatest || ts.equals("")) {
             index = String.format("index(key=(%s), ttl=%s, ttl_type=%s)", key, getTTL(), ttlType);
         } else {
             index = String.format("index(key=(%s), ts=`%s`, ttl=%s, ttl_type=%s)", key, ts, getTTL(), ttlType);
