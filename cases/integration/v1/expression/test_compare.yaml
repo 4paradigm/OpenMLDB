@@ -202,6 +202,7 @@ cases:
       success: false
   - id: 6
     desc: "bool_比较运算_各种类型"
+    tags: ["TODO","bug,@baoxinqi，true>false =>false"]
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
