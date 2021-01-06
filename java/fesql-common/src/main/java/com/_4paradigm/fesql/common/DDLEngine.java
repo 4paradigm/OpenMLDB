@@ -566,7 +566,7 @@ class RtidbIndex {
         String key = StringUtils.join(newKeys, ",");
         String ttlType = DDLEngine.getRtidbIndexType(type);
         String index = "";
-        if (type == TTLType.kLatest || ts.equals("")) {
+        if (ts.equals("")) {
             index = String.format("index(key=(%s), ttl=%s, ttl_type=%s)", key, getTTL(), ttlType);
         } else {
             index = String.format("index(key=(%s), ts=`%s`, ttl=%s, ttl_type=%s)", key, ts, getTTL(), ttlType);
