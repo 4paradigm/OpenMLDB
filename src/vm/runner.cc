@@ -764,7 +764,7 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
             int32_t value = 0;
             if (0 == row_view->GetValue(buf, idx, type,
                                         reinterpret_cast<void*>(&value))) {
-                return !value == 0;
+                return !(value == 0);
             }
             break;
         }
@@ -772,7 +772,7 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
             int64_t value = 0;
             if (0 == row_view->GetValue(buf, idx, type,
                                         reinterpret_cast<void*>(&value))) {
-                return !value == 0;
+                return !(value == 0);
             }
             break;
         }
@@ -780,7 +780,7 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
             int16_t value;
             if (0 == row_view->GetValue(buf, idx, type,
                                         reinterpret_cast<void*>(&value))) {
-                return !value == 0;
+                return !(value == 0);
             }
             break;
         }
@@ -788,7 +788,7 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
             float value;
             if (0 == row_view->GetValue(buf, idx, type,
                                         reinterpret_cast<void*>(&value))) {
-                return !value == 0;
+                return !(value == 0);
             }
             break;
         }
@@ -796,7 +796,7 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
             double value;
             if (0 == row_view->GetValue(buf, idx, type,
                                         reinterpret_cast<void*>(&value))) {
-                return !value == 0;
+                return !(value == 0);
             }
             break;
         }

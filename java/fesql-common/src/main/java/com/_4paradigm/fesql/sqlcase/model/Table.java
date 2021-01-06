@@ -41,15 +41,18 @@ public class Table {
      *
      * @return
      */
-    public String getCreate(int replicaNum) {
+    public String extractCreate(int replicaNum) {
         if (!StringUtils.isEmpty(create)) {
             return create;
         }
         return buildCreateSQLFromColumnsIndexs(name, getColumns(), getIndexs(), replicaNum);
     }
 
+    public String extractCreate() {
+        return extractCreate(1);
+    }
     public String getCreate() {
-        return getCreate(1);
+        return create;
     }
 
     /**
@@ -59,6 +62,9 @@ public class Table {
      * @return
      */
     public String getInsert() {
+        return insert;
+    }
+    public String extractInsert() {
         if (!StringUtils.isEmpty(insert)) {
             return insert;
         }
@@ -73,6 +79,9 @@ public class Table {
      * @return
      */
     public List<String> getInserts() {
+        return inserts;
+    }
+    public List<String> extractInserts() {
         if (!StringUtils.isEmpty(insert)) {
             return Lists.newArrayList(insert);
         }

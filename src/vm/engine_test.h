@@ -590,7 +590,10 @@ class EngineTestRunner {
 
     std::shared_ptr<RunSession> GetSession() const { return session_; }
 
+    static Status ExtractTableInfoFromCreateString(
+        const std::string& create, SQLCase::TableInfo* table_info);
     Status Compile();
+    virtual Status InitSQLCase();
     virtual Status PrepareData() = 0;
     virtual Status Compute(std::vector<codec::Row>*) = 0;
 
@@ -615,8 +618,71 @@ class EngineTestRunner {
 
     int return_code_ = ENGINE_TEST_RET_INVALID_CASE;
 };
+Status EngineTestRunner::ExtractTableInfoFromCreateString(
+    const std::string& create, SQLCase::TableInfo* table_info) {
+    CHECK_TRUE(table_info != nullptr, common::kNullPointer,
+               "Fail extract with null table info");
+    CHECK_TRUE(!create.empty(), common::kSQLError,
+               "Fail extract with empty create string");
 
+    node::NodeManager manager;
+    parser::FeSQLParser parser;
+    fesql::plan::NodePointVector trees;
+    base::Status status;
+    int ret = parser.parse(create, trees, &manager, status);
+
+    if (0 != status.code) {
+        std::cout << status << std::endl;
+    }
+    CHECK_TRUE(0 == ret, common::kSQLError, "Fail to parser SQL");
+    //    ASSERT_EQ(1, trees.size());
+    //    std::cout << *(trees.front()) << std::endl;
+    plan::SimplePlanner planner_ptr(&manager);
+    node::PlanNodeList plan_trees;
+    CHECK_TRUE(0 == planner_ptr.CreatePlanTree(trees, plan_trees, status),
+               common::kPlanError, "Fail to resolve logical plan");
+    CHECK_TRUE(1u == plan_trees.size(), common::kPlanError,
+               "Fail to extract table info with multi logical plan tree");
+    CHECK_TRUE(
+        nullptr != plan_trees[0] &&
+            node::kPlanTypeCreate == plan_trees[0]->type_,
+        common::kPlanError,
+        "Fail to extract table info with invalid SQL, CREATE SQL is required");
+    node::CreatePlanNode* create_plan =
+        dynamic_cast<node::CreatePlanNode*>(plan_trees[0]);
+    table_info->name_ = create_plan->GetTableName();
+    CHECK_TRUE(create_plan->ExtractColumnsAndIndexs(table_info->columns_,
+                                                    table_info->indexs_),
+               common::kPlanError, "Invalid Create Plan Node");
+    std::ostringstream oss;
+    oss << "name: " << table_info->name_ << "\n";
+    oss << "columns: [";
+    for (auto column : table_info->columns_) {
+        oss << column << ",";
+    }
+    oss << "]\n";
+    oss << "indexs: [";
+    for (auto index : table_info->indexs_) {
+        oss << index << ",";
+    }
+    oss << "]\n";
+    LOG(INFO) << oss.str();
+}
+Status EngineTestRunner::InitSQLCase() {
+    for (size_t idx = 0; idx < sql_case_.inputs_.size(); idx++) {
+        if (!sql_case_.inputs_[idx].create_.empty()) {
+            ExtractTableInfoFromCreateString(sql_case_.inputs_[idx].create_,
+                                             &sql_case_.inputs_[idx]);
+        }
+    }
+
+    if (!sql_case_.batch_request_.create_.empty()) {
+        ExtractTableInfoFromCreateString(sql_case_.batch_request_.create_,
+                                         &sql_case_.batch_request_);
+    }
+}
 Status EngineTestRunner::Compile() {
+    InitSQLCase();
     std::string sql_str = sql_case_.sql_str();
     for (int j = 0; j < sql_case_.CountInputs(); ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
@@ -745,11 +811,13 @@ class BatchEngineTestRunner : public EngineTestRunner {
         : EngineTestRunner(sql_case, options) {
         session_ = std::make_shared<BatchRunSession>();
     }
-
     Status PrepareData() override {
         for (int32_t i = 0; i < sql_case_.CountInputs(); i++) {
             auto input = sql_case_.inputs()[i];
             std::vector<Row> rows;
+            if (!input.create_.empty()) {
+                ExtractTableInfoFromCreateString(&input);
+            }
             sql_case_.ExtractInputData(rows, i);
             size_t repeat = sql_case_.inputs()[i].repeat_;
             if (repeat > 1) {
