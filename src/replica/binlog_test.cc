@@ -25,7 +25,7 @@
 #include "tablet/tablet_impl.h"
 #include "thread_pool.h" // NOLINT
 #include "timer.h" // NOLINT
-
+#include "config.h" // NOLINT
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -39,6 +39,8 @@ DECLARE_string(db_root_path);
 DECLARE_int32(binlog_single_file_max_size);
 DECLARE_int32(binlog_delete_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
+DECLARE_string(snapshot_compression);
+
 namespace rtidb {
 namespace replica {
 
@@ -92,7 +94,7 @@ TEST_F(BinlogTest, DeleteBinlog) {
     std::string binlog_path = FLAGS_db_root_path + "/2_123/binlog";
     std::vector<std::string> vec;
     ASSERT_TRUE(ret);
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 50; i++) {
         vec.clear();
         ::rtidb::base::GetFileName(binlog_path, vec);
         if (vec.size() == 1) {
@@ -116,8 +118,18 @@ inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } /
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::rtidb::base::SetLogLevel(INFO);
+    ::rtidb::base::SetLogLevel(DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_db_root_path = "/tmp/" + ::GenRand();
-    return RUN_ALL_TESTS();
+    int ret = 0;
+    std::vector<std::string> vec{"off", "zlib", "snappy", "pz"};
+    for (size_t i = 0; i < vec.size(); i++) {
+#ifndef PZFPGA_ENABLE
+        if (vec[i] == "pz") continue;
+#endif
+        FLAGS_db_root_path = "/tmp/" + GenRand();
+        FLAGS_snapshot_compression = vec[i];
+        ret += RUN_ALL_TESTS();
+    }
+    return ret;
+    // return RUN_ALL_TESTS();
 }

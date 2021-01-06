@@ -49,7 +49,6 @@ namespace storage {
 const std::string SNAPSHOT_SUBFIX = ".sdb";  // NOLINT
 const uint32_t KEY_NUM_DISPLAY = 1000000;    // NOLINT
 const std::string MANIFEST = "MANIFEST";     // NOLINT
-const std::string COMPRESS_SUBFIX = ".compress";  // NOLINT
 
 MemTableSnapshot::MemTableSnapshot(uint32_t tid, uint32_t pid,
                                    LogParts* log_part,

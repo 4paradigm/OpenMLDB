@@ -26,6 +26,7 @@
 #include "storage/mem_table_snapshot.h"
 #include "storage/ticket.h"
 #include "timer.h" // NOLINT
+#include "config.h" // NOLINT
 
 DECLARE_string(db_root_path);
 DECLARE_string(hdd_root_path);
@@ -346,8 +347,11 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     std::string binlog_dir = FLAGS_db_root_path + "/3_2/binlog";
 
     ::rtidb::base::MkdirRecur(snapshot_dir);
+    std::string snapshot1 = "20170609.sdb";
     {
-        std::string snapshot1 = "20170609.sdb";
+        if (FLAGS_snapshot_compression != "off") {
+            snapshot1 += COMPRESS_SUBFIX;
+        }
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
@@ -394,12 +398,15 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     }
 
     {
-        std::string snapshot1 = "20170610.sdb.tmp";
-        std::string full_path = snapshot_dir + "/" + snapshot1;
+        std::string snapshot2 = "20170610.sdb.tmp";
+        if (FLAGS_snapshot_compression != "off") {
+            snapshot2 += COMPRESS_SUBFIX;
+        }
+        std::string full_path = snapshot_dir + "/" + snapshot2;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
         ::rtidb::log::WritableFile* wf =
-            ::rtidb::log::NewWritableFile(snapshot1, fd_w);
+            ::rtidb::log::NewWritableFile(snapshot2, fd_w);
         ::rtidb::log::Writer writer(FLAGS_snapshot_compression, wf);
         ::rtidb::api::LogEntry entry;
         entry.set_pk("test1");
@@ -431,7 +438,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(3, 2, log_part, FLAGS_db_root_path);
     ASSERT_TRUE(snapshot.Init());
-    int ret = snapshot.GenManifest("20170609.sdb", 3, 2, 5);
+    int ret = snapshot.GenManifest(snapshot1, 3, 2, 5);
     ASSERT_EQ(0, ret);
     uint64_t snapshot_offset = 0;
     uint64_t latest_offset = 0;
@@ -480,8 +487,11 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
     std::string binlog_dir = FLAGS_db_root_path + "/4_2/binlog";
 
     ::rtidb::base::MkdirRecur(snapshot_dir);
+    std::string snapshot1 = "20200309.sdb";
     {
-        std::string snapshot1 = "20200309.sdb";
+        if (FLAGS_snapshot_compression != "off") {
+            snapshot1 += COMPRESS_SUBFIX;
+        }
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
@@ -528,12 +538,15 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
     }
 
     {
-        std::string snapshot1 = "20200310.sdb.tmp";
-        std::string full_path = snapshot_dir + "/" + snapshot1;
+        std::string snapshot2 = "20200310.sdb.tmp";
+        if (FLAGS_snapshot_compression != "off") {
+            snapshot2 += COMPRESS_SUBFIX;
+        }
+        std::string full_path = snapshot_dir + "/" + snapshot2;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
         ::rtidb::log::WritableFile* wf =
-            ::rtidb::log::NewWritableFile(snapshot1, fd_w);
+            ::rtidb::log::NewWritableFile(snapshot2, fd_w);
         ::rtidb::log::Writer writer(FLAGS_snapshot_compression, wf);
         ::rtidb::api::LogEntry entry;
         entry.set_pk("test1");
@@ -575,7 +588,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(4, 2, log_part, FLAGS_db_root_path);
     ASSERT_TRUE(snapshot.Init());
-    int ret = snapshot.GenManifest("20200309.sdb", 4, 2, 5);
+    int ret = snapshot.GenManifest(snapshot1, 4, 2, 5);
     ASSERT_EQ(0, ret);
     uint64_t snapshot_offset = 0;
     uint64_t latest_offset = 0;
@@ -612,8 +625,11 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     std::string snapshot_dir = FLAGS_db_root_path + "/2_2/snapshot";
 
     ::rtidb::base::MkdirRecur(snapshot_dir);
+    std::string snapshot1 = "20170609.sdb";
     {
-        std::string snapshot1 = "20170609.sdb";
+        if (FLAGS_snapshot_compression != "off") {
+            snapshot1 += COMPRESS_SUBFIX;
+        }
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
@@ -644,12 +660,15 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     }
 
     {
-        std::string snapshot1 = "20170610.sdb.tmp";
-        std::string full_path = snapshot_dir + "/" + snapshot1;
+        std::string snapshot2 = "20170610.sdb.tmp";
+        if (FLAGS_snapshot_compression != "off") {
+            snapshot2 += COMPRESS_SUBFIX;
+        }
+        std::string full_path = snapshot_dir + "/" + snapshot2;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
         ::rtidb::log::WritableFile* wf =
-            ::rtidb::log::NewWritableFile(snapshot1, fd_w);
+            ::rtidb::log::NewWritableFile(snapshot2, fd_w);
         ::rtidb::log::Writer writer(FLAGS_snapshot_compression, wf);
         ::rtidb::api::LogEntry entry;
         entry.set_pk("test1");
@@ -681,7 +700,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(2, 2, log_part, FLAGS_db_root_path);
     ASSERT_TRUE(snapshot.Init());
-    int ret = snapshot.GenManifest("20170609.sdb", 2, 2, 5);
+    int ret = snapshot.GenManifest(snapshot1, 2, 2, 5);
     ASSERT_EQ(0, ret);
     uint64_t offset = 0;
     ASSERT_TRUE(snapshot.Recover(table, offset));
@@ -1344,8 +1363,11 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
 TEST_F(SnapshotTest, Recover_snapshot_ts) {
     std::string snapshot_dir = FLAGS_db_root_path + "/2_2/snapshot";
     ::rtidb::base::MkdirRecur(snapshot_dir);
+    std::string snapshot1 = "20190614.sdb";
     {
-        std::string snapshot1 = "20190614.sdb";
+        if (FLAGS_snapshot_compression != "off") {
+            snapshot1 += COMPRESS_SUBFIX;
+        }
         std::string full_path = snapshot_dir + "/" + snapshot1;
         printf("path:%s\n", full_path.c_str());
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
@@ -1415,7 +1437,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(2, 2, log_part, FLAGS_db_root_path);
     ASSERT_TRUE(snapshot.Init());
-    int ret = snapshot.GenManifest("20190614.sdb", 1, 1, 5);
+    int ret = snapshot.GenManifest(snapshot1, 1, 1, 5);
     ASSERT_EQ(0, ret);
     uint64_t offset = 0;
     ASSERT_TRUE(snapshot.Recover(table, offset));
@@ -1666,9 +1688,7 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
     ASSERT_EQ(46, (int64_t)manifest.count());
     ASSERT_EQ(7, (int64_t)manifest.term());
 }
-
 TEST_F(SnapshotTest, Recover_large_snapshot) {
-    FLAGS_snapshot_compression = "zlib";
     std::string snapshot_dir = FLAGS_db_root_path + "/100_0/snapshot/";
     std::string binlog_dir = FLAGS_db_root_path + "/100_0/binlog/";
     LogParts* log_part = new LogParts(12, 4, scmp);
@@ -1736,7 +1756,17 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::rtidb::base::SetLogLevel(DEBUG);
-    FLAGS_db_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
-    FLAGS_hdd_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
-    return RUN_ALL_TESTS();
+    int ret = 0;
+    std::vector<std::string> vec{"off", "zlib", "snappy", "pz"};
+    for (size_t i = 0; i < vec.size(); i++) {
+#ifndef PZFPGA_ENABLE
+        if (vec[i] == "pz") continue;
+#endif
+        FLAGS_db_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
+        FLAGS_hdd_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
+        FLAGS_snapshot_compression = vec[i];
+        ret += RUN_ALL_TESTS();
+    }
+    return ret;
+    // return RUN_ALL_TESTS();
 }

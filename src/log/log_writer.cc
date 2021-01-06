@@ -221,7 +221,7 @@ Status Writer::CompressRecord() {
             int res = compress((unsigned char*)compress_buf_, &dest_len,
                     (const unsigned char*)buffer_, block_size_);
             if (res != Z_OK) {
-                s = Status::InvalidRecord(Slice("compress failed"));
+                s = Status::InvalidRecord(Slice("compress failed, error code: " + res));
                 PDLOG(WARNING, "write error. %s", s.ToString().c_str());
                 return s;
             }
