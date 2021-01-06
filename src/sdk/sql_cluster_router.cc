@@ -245,9 +245,6 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
 std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRowByProcedure(const std::string& db,
     const std::string& sp_name, ::fesql::sdk::Status* status) {
     if (status == nullptr) {
-        status->code = -1;
-        status->msg = "null ptr";
-        LOG(WARNING) << status->msg;
         return nullptr;
     }
     std::shared_ptr<fesql::sdk::ProcedureInfo> sp_info = cluster_sdk_->GetProcedureInfo(db, sp_name, &status->msg);
@@ -258,7 +255,7 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRowByProcedure(const 
         return nullptr;
     }
     const std::string& sql = sp_info->GetSql();
-    return std::move(GetRequestRow(db, sql, status));
+    return GetRequestRow(db, sql, status);
 }
 
 std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
@@ -997,7 +994,6 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
                                      std::shared_ptr<SQLInsertRow> row,
                                      fesql::sdk::Status* status) {
     if (!row || !status) {
-        status->msg = "input is invalid";
         LOG(WARNING) << "input is invalid";
         return false;
     }
@@ -1075,8 +1071,6 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
     const std::string& db, const std::string& sp_name,
     std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) {
     if (!row || !status) {
-        status->code = -1;
-        status->msg = "input is invalid";
         LOG(WARNING) << status->msg;
         return nullptr;
     }
@@ -1123,8 +1117,6 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProc
         const std::string& db, const std::string& sp_name,
         std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) {
     if (!row_batch || !status) {
-        status->code = -1;
-        status->msg = "input is invalid";
         return nullptr;
     }
     auto tablet = GetTablet(db, sp_name, status);
@@ -1160,9 +1152,6 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProc
 std::shared_ptr<fesql::sdk::ProcedureInfo> SQLClusterRouter::ShowProcedure(
         const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) {
     if (status == nullptr) {
-        status->code = -1;
-        status->msg = "null ptr";
-        LOG(WARNING) << status->msg;
         return nullptr;
     }
     std::shared_ptr<fesql::sdk::ProcedureInfo> sp_info =
@@ -1348,8 +1337,6 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
     const std::string& db, const std::string& sp_name, int64_t timeout_ms,
     std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) {
     if (!row || !status) {
-        status->code = -1;
-        status->msg = "input is invalid";
         LOG(WARNING) << status->msg;
         return std::shared_ptr<rtidb::sdk::QueryFuture>();
     }
@@ -1387,8 +1374,6 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestPr
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
         std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) {
     if (!row_batch || !status) {
-        status->code = -1;
-        status->msg = "input is invalid";
         return nullptr;
     }
     auto tablet = GetTablet(db, sp_name, status);
