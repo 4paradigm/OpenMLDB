@@ -122,8 +122,11 @@ def to_string(value):
     return value
 
 
-sess = pyspark.sql.SparkSession(pyspark.SparkContext())
+sess = None
 def gen_inputs_column_and_rows(parquet_file):
+    global sess
+    if sess is None:
+        sess = pyspark.sql.SparkSession(pyspark.SparkContext())
     dataframe = sess.read.parquet(parquet_file)
     hdfs_schema = dataframe.schema
     schema = [DoubleQuotedScalarString(to_column_str(f)) for f in hdfs_schema.fields]
