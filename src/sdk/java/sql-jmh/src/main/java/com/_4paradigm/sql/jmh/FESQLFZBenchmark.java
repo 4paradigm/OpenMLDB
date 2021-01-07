@@ -103,7 +103,6 @@ public class FESQLFZBenchmark {
         Set<Integer> index = table.getIndex();
         Set<Integer> tsIndex = table.getTsIndex();
         Map<Integer, String> relation = table.getColRelation();
-        table.getIndex();
 
         List<List<Object>> rows = Lists.newArrayList();
         Map<String, String> valueMap;
@@ -186,7 +185,6 @@ public class FESQLFZBenchmark {
                 }
                 builder.append(");");
                 String exeSql = builder.toString();
-                //System.out.println(exeSql);
                 rows.add(row);
                 inserts.add(exeSql);
             }
@@ -217,7 +215,7 @@ public class FESQLFZBenchmark {
             sqlCase.setBatch_request(new InputDesc());
             sqlCase.getBatch_request().setRows(new ArrayList<List<Object>>());
             List<String> commonIndices = Lists.newArrayList();
-            for(Integer idx: commonColumnIndices) {
+            for (Integer idx : commonColumnIndices) {
                 commonIndices.add(idx.toString());
             }
             sqlCase.getBatch_request().setCommon_column_indices(commonIndices);
@@ -249,40 +247,59 @@ public class FESQLFZBenchmark {
                 int columnType = metaData.getColumnType(i + 1);
                 if (columnType == Types.VARCHAR) {
                     requestPs.setString(i + 1, "col" + String.valueOf(i));
-                    row.add("col" + String.valueOf(i));
+                    if (enableOutputYamlCase) {
+                        row.add("col" + String.valueOf(i));
+                    }
                 } else if (columnType == Types.DOUBLE) {
                     requestPs.setDouble(i + 1, 1.4d);
-                    row.add("1.4");
+                    if (enableOutputYamlCase) {
+                        row.add("1.4");
+                    }
                 } else if (columnType == Types.FLOAT) {
                     requestPs.setFloat(i + 1, 1.3f);
-                    row.add("1.3");
+                    if (enableOutputYamlCase) {
+                        row.add("1.3");
+                    }
                 } else if (columnType == Types.INTEGER) {
                     if (table.getIndex().contains(i)) {
                         requestPs.setInt(i + 1, pkBase + i);
-                        row.add(String.valueOf(pkBase + i));
+                        if (enableOutputYamlCase) {
+                            row.add(String.valueOf(pkBase + i));
+                        }
                     } else {
                         requestPs.setInt(i + 1, i);
-                        row.add(String.valueOf(i));
+                        if (enableOutputYamlCase) {
+                            row.add(String.valueOf(i));
+                        }
                     }
                 } else if (columnType == Types.BIGINT) {
                     if (table.getIndex().contains(i)) {
                         requestPs.setLong(i + 1, pkBase + i);
-                        row.add(String.valueOf(pkBase + i));
+                        if (enableOutputYamlCase) {
+                            row.add(String.valueOf(pkBase + i));
+                        }
                     } else {
                         requestPs.setLong(i + 1, i);
-                        row.add(String.valueOf(i));
+                        if (enableOutputYamlCase) {
+                            row.add(String.valueOf(i));
+                        }
                     }
                 } else if (columnType == Types.TIMESTAMP) {
                     long ts = System.currentTimeMillis();
                     requestPs.setTimestamp(i + 1, new Timestamp(ts));
-                    row.add(String.valueOf(ts));
+                    if (enableOutputYamlCase) {
+                        row.add(String.valueOf(ts));
+                    }
                 } else if (columnType == Types.DATE) {
                     long ts = System.currentTimeMillis();
                     requestPs.setDate(i + 1, new Date(ts));
-                    row.add(new Date(ts).toString());
+                    if (enableOutputYamlCase) {
+                        row.add(new Date(ts).toString());
+                    }
                 }
             }
             if (enableOutputYamlCase) {
+
                 InputDesc batchRequest = sqlCase.getBatch_request();
                 batchRequest.setColumns(table.getColumns());
                 List<List<Object>> rows = batchRequest.getRows();
@@ -311,7 +328,6 @@ public class FESQLFZBenchmark {
             //System.out.println(table.getDDL());
             if (!executor.executeDDL(db, table.getDDL())) {
                 System.out.println("Fail to create table " + table.getName());
-                new SQLException();
                 return;
             }
         }
@@ -320,12 +336,10 @@ public class FESQLFZBenchmark {
             sqlCase.setId("0");
             sqlCase.setMode("batch-unsupport");
             sqlCase.setInputs(Lists.<InputDesc>newArrayList());
-        }
-        putData();
-        if (enableOutputYamlCase) {
             sqlCase.setSql(script);
             sqlCase.setExpect(new ExpectDesc());
         }
+        putData();
     }
 
     public Boolean outputSQLCase(String caseAbsPath) throws FileNotFoundException, UnsupportedEncodingException {
