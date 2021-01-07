@@ -1444,7 +1444,7 @@ void TabletImpl::Scan(RpcController* controller,
     std::string* pairs = response->mutable_pairs();
     uint32_t count = 0;
     int32_t code = 0;
-    if (!request->use_attachment()) {
+    if (!request->has_use_attachment() || !request->use_attachment()) {
         std::string* pairs = response->mutable_pairs();
         code = ScanIndex(request, table_meta, vers_schema, &combine_it, pairs, &count);
         response->set_code(code);
