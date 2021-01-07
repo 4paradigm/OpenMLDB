@@ -1314,9 +1314,10 @@ void WindowAggRunner::RunWindowAggOnKey(
             ? -1
             : IteratorStatus::PickIteratorWithMininumKey(&union_segment_status);
     int32_t cnt = output_table->GetCount();
-    CurrentHistoryWindow window(instance_window_gen_.range_gen_.start_offset_);
+    CurrentHistoryWindow window(instance_window_gen_.range_gen_.frame_type_,
+                                instance_window_gen_.range_gen_.start_offset_,
+                                instance_window_gen_.range_gen_.start_row_);
     window.set_instance_not_in_window(instance_not_in_window_);
-    window.set_rows_preceding(instance_window_gen_.range_gen_.start_row_);
 
     while (instance_segment_iter->Valid()) {
         if (limit_cnt_ > 0 && cnt >= limit_cnt_) {
@@ -2848,12 +2849,10 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }

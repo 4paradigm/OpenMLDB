@@ -641,7 +641,7 @@ TEST_F(ListIRBuilderTest, list_double_inner_range_test) {
     BuildWindow(table, rows, &ptr);
 
     ListOfRow row_list;
-    vm::CurrentHistoryWindow window(-3600000);
+    vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -3600000, 0);
     codec::RowView row_view(table.columns());
     for (auto row : rows) {
         row_view.Reset(row.buf());
@@ -671,7 +671,7 @@ TEST_F(ListIRBuilderTest, list_double_inner_rows_test) {
     BuildWindow(table, rows, &ptr);
 
     ListOfRow row_list;
-    vm::CurrentHistoryWindow window(-3600000);
+    vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -3600000, 0);
     codec::RowView row_view(table.columns());
     for (auto row : rows) {
         row_view.Reset(row.buf());
