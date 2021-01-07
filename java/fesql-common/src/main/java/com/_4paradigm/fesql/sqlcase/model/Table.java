@@ -136,6 +136,17 @@ public class Table implements Serializable{
         return parserd_columns;
     }
 
+    public List<List<Object>> getRepeatRows(List<List<Object>> rows, int repeat) {
+        if (repeat <= 1) {
+            return rows;
+        }
+        List<List<Object>> repeatRows = Lists.newArrayList();
+        for (int i = 0; i < repeat; i++) {
+            repeatRows.addAll(rows);
+        }
+        return repeatRows;
+    }
+
     /**
      * 获取Rows
      * 如果 rows 非空，直接返回 rows, 否则需要从 data 解析出 rows
@@ -144,7 +155,7 @@ public class Table implements Serializable{
      */
     public List<List<Object>> getRows() {
         if (!CollectionUtils.isEmpty(rows)) {
-            return rows;
+            return getRepeatRows(rows, repeat);
         }
 
         if (StringUtils.isEmpty(data)) {
@@ -160,7 +171,8 @@ public class Table implements Serializable{
             }
             parserd_rows.add(each_row);
         }
-        return parserd_rows;
+
+        return getRepeatRows(parserd_rows, repeat);
     }
 
     /**
@@ -327,7 +339,7 @@ public class Table implements Serializable{
     }
 
     public static String buildCreateSQLFromColumnsIndexs(String name, List<String> columns, List<String> indexs,
-            int replicaNum) {
+                                                         int replicaNum) {
         if (CollectionUtils.isEmpty(indexs) || CollectionUtils.isEmpty(columns)) {
             return "";
         }
