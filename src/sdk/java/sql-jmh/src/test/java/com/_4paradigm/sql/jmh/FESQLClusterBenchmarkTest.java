@@ -36,7 +36,6 @@ public class FESQLClusterBenchmarkTest {
         }
         benchmark.teardown();
     }
-
     @Test
     @Ignore
     public void benchmark() throws RunnerException {
