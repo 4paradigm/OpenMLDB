@@ -30,6 +30,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
             throw new RuntimeException("fail to run SQLExecutor: prepare fail");
         }
         for (InputDesc inputDesc : fesqlCase.getInputs()) {
+            tables = fesqlCase.getInputs();
             tableNames.add(inputDesc.getName());
         }
     }

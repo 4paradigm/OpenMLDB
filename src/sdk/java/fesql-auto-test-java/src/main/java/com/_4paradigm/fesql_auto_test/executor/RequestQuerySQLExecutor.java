@@ -36,6 +36,7 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
             throw new RuntimeException("fail to run SQLExecutor: prepare fail");
         }
         for (InputDesc inputDesc : fesqlCase.getInputs()) {
+            tables = fesqlCase.getInputs();
             tableNames.add(inputDesc.getName());
         }
     }

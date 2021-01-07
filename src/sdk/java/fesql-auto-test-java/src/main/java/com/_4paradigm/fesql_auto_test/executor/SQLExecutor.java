@@ -21,7 +21,7 @@ public class SQLExecutor extends BaseExecutor {
 
     protected String dbName;
     protected List<String> tableNames = Lists.newArrayList();
-    private List<InputDesc> tables;
+    protected List<InputDesc> tables;
 
     public SQLExecutor(SqlExecutor executor, SQLCase fesqlCase) {
         super(executor, fesqlCase);
