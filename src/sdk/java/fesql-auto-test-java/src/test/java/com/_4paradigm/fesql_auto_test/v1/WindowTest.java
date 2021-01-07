@@ -24,7 +24,7 @@ public class WindowTest extends FesqlTest {
         FesqlDataProviderList dp = FesqlDataProviderList
                 .dataProviderGenerator(new String[]{
                         "/integration/error/error_window.yaml",
-                        "/integration/v1/window/"
+//                        "/integration/v1/window/"
                 });
         return dp.getCases().toArray();
     }
