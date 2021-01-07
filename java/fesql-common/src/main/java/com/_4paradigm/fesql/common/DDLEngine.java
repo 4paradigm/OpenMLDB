@@ -8,6 +8,8 @@ import com._4paradigm.fesql.node.ExprType;
 import com._4paradigm.fesql.tablet.Tablet;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.*;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import lombok.Data;
@@ -29,6 +31,8 @@ public class DDLEngine {
 
     private static final Logger logger = LoggerFactory.getLogger(DDLEngine.class);
 
+    public static String SQLTableName = "sql_table";
+
     public static int resolveColumnIndex(ExprNode expr, PhysicalOpNode planNode) throws FesqlException {
         if (expr.getExpr_type_() == ExprType.kExprColumnRef) {
             int index = CoreAPI.ResolveColumnIndex(planNode, ColumnRefNode.CastFrom(expr));
@@ -41,13 +45,47 @@ public class DDLEngine {
         throw new FesqlException("Expr {} not supported".format(expr.GetExprString()));
     }
 
+    public static String genDDL(String sql, String schema, int replicanum, int partitionnum) throws Exception {
+        String tempDB = "temp_" + System.currentTimeMillis();
+        String replicaAndPartition = String.format(" replicanum=%s, partitionnum=%s ", replicanum, partitionnum);
+        TypeOuterClass.Database.Builder db = TypeOuterClass.Database.newBuilder();
+        db.setName(tempDB);
+        List<TypeOuterClass.TableDef> tables = getTableDefs(schema);
+        Map<String, TypeOuterClass.TableDef> tableDefMap = new HashMap<>();
+        for (TypeOuterClass.TableDef e : tables) {
+            db.addTables(e);
+            tableDefMap.put(e.getName(), e);
+        }
+        try {
+            RequestEngine engine = new RequestEngine(sql, db.build());
+            PhysicalOpNode plan = engine.getPlan();
+            List<PhysicalOpNode> listNodes = new ArrayList<>();
+            dagToList(plan, listNodes);
+            Map<String, RtidbTable> rtidbTables = parseRtidbIndex(listNodes, tableDefMap);
+            StringBuilder sb = new StringBuilder();
+            for (Map.Entry<String, RtidbTable> e : rtidbTables.entrySet()) {
+                if (e.getKey().equals(e.getValue().getTableName())) {
+                    sb.append(e.getValue().toDDL());
+                    sb.append(replicaAndPartition);
+                    sb.append(";\n");
+                }
+            }
+            String res = sb.toString();
+            logger.info("gen ddl:{}", res);
+            return res;
+        } catch (UnsupportedFesqlException | FesqlException e) {
+            e.printStackTrace();
+        }
+        throw new Exception("failed to gen ddl for " + schema);
+    }
+
     /**
      *
      * @param sql
      * @param schema json format
-     * @return 
+     * @return
      */
-    public static String genDDL(String sql, String schema) {
+    public static String genDDL(String sql, String schema) throws Exception {
         String tempDB = "temp_" + System.currentTimeMillis();
         TypeOuterClass.Database.Builder db = TypeOuterClass.Database.newBuilder();
         db.setName(tempDB);
@@ -59,33 +97,32 @@ public class DDLEngine {
         }
         try {
             RequestEngine engine = new RequestEngine(sql, db.build());
-            // SQLEngine engine = new SQLEngine(sql, db.build());
             PhysicalOpNode plan = engine.getPlan();
-            List<PhysicalOpNode> listNodes = new ArrayList<PhysicalOpNode>();
+            List<PhysicalOpNode> listNodes = new ArrayList<>();
             dagToList(plan, listNodes);
-//            printDagListInfo(listNodes);
             Map<String, RtidbTable> rtidbTables = parseRtidbIndex(listNodes, tableDefMap);
             StringBuilder sb = new StringBuilder();
             for (Map.Entry<String, RtidbTable> e : rtidbTables.entrySet()) {
-                sb.append(e.getValue().toDDL());
-                sb.append(";\n");
+                if (e.getKey().equals(e.getValue().getTableName())) {
+                    sb.append(e.getValue().toDDL());
+                    sb.append(";\n");
+                }
             }
             String res = sb.toString();
-            logger.info("gen ddl:" +  res);
+            logger.info("gen ddl:{}", res);
             return res;
         } catch (UnsupportedFesqlException | FesqlException e) {
             e.printStackTrace();
         }
-        return "";
+        throw new Exception("failed to gen ddl");
     }
+
     /**
      * 只对window op做解析，因为fesql node类型太多了，暂时没办法做通用性解析
      */
     public static void parseWindowOp(PhysicalOpNode node, Map<String, RtidbTable> rtidbTables) {
         logger.info("begin to pares window op");
         PhysicalRequestUnionNode castNode = PhysicalRequestUnionNode.CastFrom(node);
-        
-        String ts = castNode.window().sort().orders().order_by().GetChild(0).GetExprString();
         long start = -1;
         long end = -1;
         long cntStart = -1;
@@ -105,7 +142,9 @@ public class DDLEngine {
             nodes.add(castNode.window_unions().GetKey(i));
         }
 
+//        int nodeIndex = -1;
         for (PhysicalOpNode e : nodes) {
+//            nodeIndex++;
             PhysicalDataProviderNode unionTable = findDataProviderNode(e);
             logger.info("union table = {}", unionTable.GetName());
 
@@ -119,6 +158,7 @@ public class DDLEngine {
                         ColumnRefNode.CastFrom(castNode.window().partition().keys().GetChild(keyIndex)));
                 keys.add(key);
             }
+            String ts = CoreAPI.ResolveSourceColumnName(e, ColumnRefNode.CastFrom(castNode.window().sort().orders().order_by().GetChild(0)));
 
             index.setTs(ts);
             if (start != -1) {
@@ -162,18 +202,16 @@ public class DDLEngine {
         } else {
             return;
         }
-        // RtidbTable leftTable = rtidbTables.get(leftName);
         RtidbTable rightTable = rtidbTables.get(rightName);
-        // RtidbIndex leftIndex = new RtidbIndex();
         RtidbIndex rightIndex = new RtidbIndex();
 
         Key conditionKey = join.join().right_key();
         Sort sort = join.join().right_sort();
         if (sort != null && sort.orders() != null) {
-            String ts = sort.orders().order_by().GetChild(0).GetExprString();
+            String ts = CoreAPI.ResolveSourceColumnName(join, ColumnRefNode.CastFrom(sort.orders().order_by().GetChild(0)));
             rightIndex.setTs(ts);
-            rightIndex.setAtmost(1);
         }
+        rightIndex.setAtmost(1);
         List<String> keys = rightIndex.getKeys();
         for (int i = 0; i < conditionKey.keys().GetChildNum(); i++) {
             String keyName = CoreAPI.ResolveSourceColumnName(node,
@@ -214,7 +252,7 @@ public class DDLEngine {
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpRename.swigValue()) {
                 PhysicalRenameNode castNode = PhysicalRenameNode.CastFrom(node);
-                logger.info("rename = " + castNode.getName_());
+                logger.info("rename = {}", castNode.getName_());
                 PhysicalDataProviderNode dataNode = findDataProviderNode(node.GetProducer(0));
                 if (dataNode != null) {
                     table2OrgTable.put(castNode.getName_(), dataNode.GetName());
@@ -225,7 +263,7 @@ public class DDLEngine {
         }
         return rtidbTables;
     }
-    
+
     public static PhysicalDataProviderNode findDataProviderNode(PhysicalOpNode node) {
         if (node.GetOpType() == PhysicalOpType.kPhysicalOpDataProvider) {
             return PhysicalDataProviderNode.CastFrom(node);
@@ -256,26 +294,11 @@ public class DDLEngine {
         list.add(node);
     }
 
-    /**
-     *
-     * @param list
-     */
-    public static void printDagListInfo(List<PhysicalOpNode> list) {
-        for (PhysicalOpNode node : list) {
-            System.out.println("dagToList node type = " + node.GetTypeName());
-            PhysicalOpType type = node.GetOpType();
-             if (type.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
-                 PhysicalDataProviderNode castNode = PhysicalDataProviderNode.CastFrom(node);
-                System.out.println("PhysicalDataProviderNode = " + castNode.GetName());
-             }
-        }
-    }
-
     public static TypeOuterClass.Type getFesqlType(String type) {
         if (type.equalsIgnoreCase("bigint") || type.equalsIgnoreCase("long")) {
             return TypeOuterClass.Type.kInt64;
         }
-        if (type.equalsIgnoreCase("smallint") || type.equalsIgnoreCase("small")) {
+        if (type.equalsIgnoreCase("smallint") || type.equalsIgnoreCase("small") || type.equalsIgnoreCase("short")) {
             return TypeOuterClass.Type.kInt16;
         }
         if (type.equalsIgnoreCase("int")) {
@@ -299,6 +322,7 @@ public class DDLEngine {
         if (type.equalsIgnoreCase("date")) {
             return TypeOuterClass.Type.kDate;
         }
+        logger.error("fesql can't get this type {}", type);
         return null;
     }
 
@@ -330,6 +354,7 @@ public class DDLEngine {
         if (TypeOuterClass.Type.kDate == type) {
             return "date";
         }
+        logger.error("fesql can't get this type {}", type);
         return null;
     }
 
@@ -378,20 +403,59 @@ public class DDLEngine {
         return newList;
     }
 
-
-    public static void main(String[] args) {
-    //    String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/homecredit.json";
-    //    String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/homecredit.txt";
-        String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/rong_e.json";
-        String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/rong_e.txt";
-        File file = new File(schemaPath);
-        File sql = new File(sqlPath);
+    public static String sql2Feconfig(String sql, String schema) {
+        String tempDB = "temp_" + System.currentTimeMillis();
+        TypeOuterClass.Database.Builder db = TypeOuterClass.Database.newBuilder();
+        db.setName(tempDB);
+        List<TypeOuterClass.TableDef> tables = getTableDefs(schema);
+        Map<String, TypeOuterClass.TableDef> tableDefMap = new HashMap<>();
+        for (TypeOuterClass.TableDef e : tables) {
+            db.addTables(e);
+            tableDefMap.put(e.getName(), e);
+        }
+        RequestEngine engine = null;
         try {
-            genDDL(FileUtils.readFileToString(sql, "UTF-8"), FileUtils.readFileToString(file, "UTF-8"));
-//            getTableDefs(FileUtils.readFileToString(file, "UTF-8"));
-        } catch (IOException e) {
+            engine = new RequestEngine(sql, db.build());
+        } catch (UnsupportedFesqlException e) {
             e.printStackTrace();
         }
+        PhysicalOpNode plan = engine.getPlan();
+        return parseOpSchema(plan);
+
+    }
+
+    public static String sql2Feconfig(String sql, TypeOuterClass.Database db) {
+        if (sql == null || sql.isEmpty()) {
+            logger.error("sql script is null or empty, so return null");
+            return null;
+        }
+        RequestEngine engine = null;
+        try {
+            engine = new RequestEngine(sql, db);
+        } catch (UnsupportedFesqlException e) {
+            e.printStackTrace();
+        }
+        PhysicalOpNode plan = engine.getPlan();
+        return parseOpSchema(plan);
+
+    }
+
+    public static String parseOpSchema(PhysicalOpNode plan) {
+        List<Pair<String, String>> schemaPair = new ArrayList<>();
+
+        for (TypeOuterClass.ColumnDef e : plan.GetOutputSchema()) {
+            Pair<String, String> field = new Pair<>(e.getName(), getDDLType(e.getType()));
+            schemaPair.add(field);
+        }
+
+        HashMap<String, List<Pair<String, String>>> feConfig = new HashMap<>();
+
+        feConfig.put(SQLTableName, schemaPair);
+
+        Gson gson = new Gson();
+        String jsonConfig = String.format("{\"tableInfo\": %s}", gson.toJson(feConfig));
+        return jsonConfig;
+
     }
 }
 
@@ -399,7 +463,7 @@ public class DDLEngine {
 class RtidbTable {
     String tableName;
     TypeOuterClass.TableDef schema;
-    Set<RtidbIndex> indexs = new HashSet<RtidbIndex>();
+    Set<RtidbIndex> indexs = new LinkedHashSet<>();
 
     // 需要考虑重复的index，并且找到范围最大ttl值
     public void addIndex(RtidbIndex index) {
@@ -424,7 +488,25 @@ class RtidbTable {
         }
     }
 
+    public void expandDDL() {
+        //
+        if (indexs.size() == 0) {
+            for (TypeOuterClass.ColumnDef e : schema.getColumnsList()) {
+                if (e.getType() == TypeOuterClass.Type.kVarchar || e.getType() == TypeOuterClass.Type.kInt32 || e.getType() == TypeOuterClass.Type.kInt64) {
+                    RtidbIndex index = new RtidbIndex();
+                    index.getKeys().add(e.getName());
+                    index.setAtmost(1);
+                    index.setType(TTLType.kLatest);
+                    indexs.add(index);
+                    break;
+                }
+            }
+        }
+    }
+
     public String toDDL() {
+        expandDDL();
+
         StringBuilder str = new StringBuilder();
         str.append("create table ");
         String newTableName = String.format("`%s`", tableName);
@@ -443,7 +525,6 @@ class RtidbTable {
         }
         str.append(StringUtils.join(indexsList, ",\n"));
         str.append("\n)");
-        // str.append(schema);
         return str.toString();
     }
 }
@@ -471,34 +552,58 @@ class RtidbIndex {
         String ttlType = DDLEngine.getRtidbIndexType(type);
         String index = "";
         if (ts.equals("")) {
-             index = String.format("index(key=(%s), ttl=(%s), ttl_type=%s)", key, getTTL(), ttlType);
+            index = String.format("index(key=(%s), ttl=%s, ttl_type=%s)", key, getTTL(), ttlType);
         } else {
-             index = String.format("index(key=(%s), ts=`%s`, ttl=(%s), ttl_type=%s)", key, ts, getTTL(), ttlType);
+            index = String.format("index(key=(%s), ts=`%s`, ttl=%s, ttl_type=%s)", key, ts, getTTL(), ttlType);
         }
         return index;
     }
 
     public String getTTL() {
         if (TTLType.kAbsAndLat == type) {
-            long expireStr = expire / (60 * 1000);
-            return expireStr + "m, " + atmost;
+            long expireStr = 1L;
+            if (expire % (60 * 1000) == 0) {
+                expireStr = expire / (60 * 1000);
+            } else {
+                expireStr += expire / (60 * 1000);
+            }
+            return "(" + expireStr + "m, " + atmost + ")";
         }
         if (TTLType.kAbsolute == type) {
-            long expireStr = expire / (60 * 1000);
-            return String.valueOf(expireStr);
+            long expireStr = 1L;
+            if (expire % (60 * 1000) == 0) {
+                expireStr = expire / (60 * 1000);
+            } else {
+                expireStr += expire / (60 * 1000);
+            }
+            return expireStr + "m";
         }
         if (TTLType.kLatest == type) {
             return String.valueOf(atmost);
         }
         if (TTLType.kAbsOrLat == type) {
-            long expireStr = expire / (60 * 1000);
-            return expireStr + "m, " + atmost;
+            long expireStr = 1L;
+            if (expire % (60 * 1000) == 0) {
+                expireStr = expire / (60 * 1000);
+            } else {
+                expireStr += expire / (60 * 1000);
+            }
+            return "(" + expireStr + "m, " + atmost + ")";
         }
         return null;
     }
-//    @Override
+    //    @Override
     public boolean equals(RtidbIndex e) {
         return  this.getType() == e.getType() && this.getKeys().equals(e.getKeys()) && this.ts.equals(e.getTs());
     }
 }
 
+@Data
+class Pair<K, V> {
+    private K name;
+    private V type;
+    public Pair(K k, V v) {
+        name = k;
+        type = v;
+    }
+}

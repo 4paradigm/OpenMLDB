@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory
 case class FesqlDataframe(fesqlSession: FesqlSession, sparkDf: DataFrame) {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
+  private var tableName: String = "table"
 
   /**
    * Register the dataframe with name which can be used for sql.
@@ -14,11 +15,18 @@ case class FesqlDataframe(fesqlSession: FesqlSession, sparkDf: DataFrame) {
    * @param name
    */
   def createOrReplaceTempView(name: String): Unit = {
+    tableName = name
     // Register for Spark SQL
     sparkDf.createOrReplaceTempView(name)
 
     // Register for FESQL
     fesqlSession.registerTable(name, sparkDf)
+  }
+
+  def tiny(number: Long): FesqlDataframe = {
+    sparkDf.createOrReplaceTempView(tableName)
+    val sqlCode = s"select * from ${tableName} limit ${number};"
+    new FesqlDataframe(fesqlSession, fesqlSession.sparksql(sqlCode).sparkDf)
   }
 
   /**

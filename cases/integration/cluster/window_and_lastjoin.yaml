@@ -366,7 +366,7 @@ cases:
         - [10, "b", 2.0, 10, "bb", 4.0, 10, "bbb", 6.0, 10, "bbbb", 8.0]
   -
     id: 6
-    desc: 窗口特征拼接多张副表
+    desc: 窗口特征拼接多张副表, last join 条件表达式1
     mode: rtidb-batch-unsupport
     inputs:
       -
@@ -465,6 +465,129 @@ cases:
                 DATA_PROVIDER(type=Partition, table=auto_t1, index=index3)
           REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=() ASC, condition=#14 - 4000 >= #35, left_keys=(), right_keys=(), index_keys=(#12))
             SIMPLE_PROJECT(sources=(#12 -> c4, #14 -> c7))
+              DATA_PROVIDER(request=auto_t0)
+            RENAME(name=t4)
+              DATA_PROVIDER(type=Partition, table=auto_t1, index=index4)
+    expect:
+      columns: ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp",
+                "cur_hour int32", "today int32", "w1_sum_c6 double", "w1_max_c6 double",
+                "w1_min_c6 double", "w1_avg_c6 double", "w1_cnt_c6 bigint",
+                "t1_rid int32", "t2_rid int32", "t3_rid int32", "t4_rid int32"]
+      order: id
+      rows:
+        - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000, 15, 29, 1.0, 1.0, 1.0, 1.0, 1, NULL, NULL, NULL, NULL]
+        - [ 2, "a", "aa", "aaa", "aaaa", "2.0", 1590738991000, 15, 29, 3.0, 2.0, 1.0, 1.5, 2, 1, NULL, NULL, NULL ]
+        - [ 3, "a", "aa", "aaa", "bbbb", "3.0", 1590738992000, 15, 29, 6.0, 3.0, 1.0, 2.0, 3, 2 , 1, NULL, NULL]
+        - [ 4, "a", "aa", "aaa", "bbbb", "4.0", 1590738993000, 15, 29, 10.0, 4.0, 1.0, 2.5, 4, 3 , 2, 1, NULL]
+        - [ 5, "a", "aa", "bbb", "bbbb", "5.0", 1590738994000, 15, 29, 15.0, 5.0, 1.0, 3.0, 5, 4 , 3, NULL, NULL]
+        - [ 6, "a", "aa", "bbb", "bbbb", "6.0", 1590738995000, 15, 29, 21.0, 6.0, 1.0, 3.5, 6, 5 , 4, NULL, NULL]
+        - [ 7, "a", "bb", "bbb", "bbbb", "7.0", 1590738996000, 15, 29, 28.0, 7.0, 1.0, 4.0, 7, 6 , NULL, NULL, 3]
+        - [ 8, "a", "bb", "bbb", "bbbb", "8.0", 1590738997000, 15, 29, 36.0, 8.0, 1.0, 4.5, 8, 7 , NULL, 5, 4]
+        - [ 9, "b", "bb", "bbb", "bbbb", "9.0", 1590738998000, 15, 29, 9.0, 9.0, 9.0, 9.0, 1, NULL , 7, 6, 5]
+        - [ 10, "b", "bb", "bbb", "bbbb", "10.0",1590738999000,15, 29, 19.0, 10.0, 9.0, 9.5, 2, 9, 8, 7, 6]
+
+
+  -
+    id: 7
+    desc: 窗口特征拼接多张副表, last join 条件表达式2
+    mode: rtidb-batch-unsupport
+    inputs:
+      -
+        columns : ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000]
+          - [ 2, "a", "aa", "aaa", "aaaa", "2.0", 1590738991000]
+          - [ 3, "a", "aa", "aaa", "bbbb", "3.0", 1590738992000]
+          - [ 4, "a", "aa", "aaa", "bbbb", "4.0", 1590738993000]
+          - [ 5, "a", "aa", "bbb", "bbbb", "5.0", 1590738994000]
+          - [ 6, "a", "aa", "bbb", "bbbb", "6.0", 1590738995000]
+          - [ 7, "a", "bb", "bbb", "bbbb", "7.0", 1590738996000 ]
+          - [ 8, "a", "bb", "bbb", "bbbb", "8.0", 1590738997000 ]
+          - [ 9, "b", "bb", "bbb", "bbbb", "9.0", 1590738998000 ]
+          - [10, "b", "bb", "bbb", "bbbb", "10.0", 1590738999000 ]
+      - columns: ["rid int", "x1 string", "x2 string", "x3 string", "x4 string", "x6 double", "x7 timestamp"]
+        indexs: ["index1:x1:x7", "index2:x2:x7", "index3:x3:x7", "index4:x4:x7", ]
+        rows:
+          - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000 ]
+          - [ 2, "a", "aa", "aaa", "aaaa", "1.0", 1590738991000 ]
+          - [ 3, "a", "aa", "aaa", "bbbb", "1.0", 1590738992000 ]
+          - [ 4, "a", "aa", "aaa", "bbbb", "1.0", 1590738993000 ]
+          - [ 5, "a", "aa", "bbb", "bbbb", "1.0", 1590738994000 ]
+          - [ 6, "a", "aa", "bbb", "bbbb", "1.0", 1590738995000 ]
+          - [ 7, "a", "bb", "bbb", "bbbb", "1.0", 1590738996000 ]
+          - [ 8, "a", "bb", "bbb", "bbbb", "1.0", 1590738997000 ]
+          - [ 9, "b", "bb", "bbb", "bbbb", "1.0", 1590738998000 ]
+          - [ 10, "b", "bb", "bbb", "bbbb", "1.0",1590738999000 ]
+    sql: |
+      select id, c1, c2, c3, c4, c6, c7, cur_hour, today
+      , w1_sum_c6, w1_max_c6, w1_min_c6, w1_avg_c6, w1_cnt_c6
+      , t1.rid as t1_rid, t2.rid as t2_rid, t3.rid as t3_rid, t4.rid as t4_rid
+      from
+      (
+        select id, c1, c2, c3, c4, c6, c7, hour(c7) as cur_hour, day(c7) as today
+        , sum(c6) over w1 as w1_sum_c6
+        , max(c6) over w1 as w1_max_c6
+        , min(c6) over w1 as w1_min_c6
+        , avg(c6) over w1 as w1_avg_c6
+        , count(c6) over w1 as w1_cnt_c6
+        from {0}
+        window w1 as (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as w_out last join {1} as t1 order by t1.x7 on c1 = t1.x1 and c7 - 1000 >= t1.x7
+        last join {1} as t2 order by t2.x7 on w_out.c2 = t2.x2 and c7 - 2000 >= t2.x7
+        last join {1} as t3 order by t3.x7 on w_out.c3 = t3.x3 and c7 - 3000 >= t3.x7
+        last join {1} as t4 order by t4.x7 on w_out.c4 = t4.x4 and c7 - 4000 >= t4.x7;
+    request_plan: |
+      SIMPLE_PROJECT(sources=(id, c1, c2, c3, c4, c6, c7, cur_hour, today, w1_sum_c6, w1_max_c6, w1_min_c6, w1_avg_c6, w1_cnt_c6, t1.rid -> t1_rid, t2.rid -> t2_rid, t3.rid -> t3_rid, t4.rid -> t4_rid))
+        REQUEST_JOIN(type=LastJoin, right_sort=() ASC, condition=c7 - 4000 >= t4.x7, left_keys=(), right_keys=(), index_keys=(w_out.c4))
+          REQUEST_JOIN(type=LastJoin, right_sort=() ASC, condition=c7 - 3000 >= t3.x7, left_keys=(), right_keys=(), index_keys=(w_out.c3))
+            REQUEST_JOIN(type=LastJoin, right_sort=() ASC, condition=c7 - 2000 >= t2.x7, left_keys=(), right_keys=(), index_keys=(w_out.c2))
+              REQUEST_JOIN(type=LastJoin, right_sort=() ASC, condition=c7 - 1000 >= t1.x7, left_keys=(), right_keys=(), index_keys=(c1))
+                RENAME(name=w_out)
+                  PROJECT(type=Aggregation)
+                    REQUEST_UNION(partition_keys=(), orders=() ASC, range=(auto_t0.c7, -864000000, 0), index_keys=(auto_t0.c1))
+                      DATA_PROVIDER(request=auto_t0)
+                      DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+                RENAME(name=t1)
+                  DATA_PROVIDER(type=Partition, table=auto_t1, index=index1)
+              RENAME(name=t2)
+                DATA_PROVIDER(type=Partition, table=auto_t1, index=index2)
+            RENAME(name=t3)
+              DATA_PROVIDER(type=Partition, table=auto_t1, index=index3)
+          RENAME(name=t4)
+            DATA_PROVIDER(type=Partition, table=auto_t1, index=index4)
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(id, c1, c2, c3, c4, c6, c7, cur_hour, today, w1_sum_c6, w1_max_c6, w1_min_c6, w1_avg_c6, w1_cnt_c6, t1.rid -> t1_rid, t2.rid -> t2_rid, t3.rid -> t3_rid, t4.rid -> t4_rid))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          REQUEST_JOIN(type=kJoinTypeConcat)
+            REQUEST_JOIN(type=kJoinTypeConcat)
+              REQUEST_JOIN(type=kJoinTypeConcat)
+                RENAME(name=w_out)
+                  SIMPLE_PROJECT(sources=(id, c1, c2, c3, c4, c6, c7, cur_hour, today, w1_sum_c6, w1_max_c6, w1_min_c6, w1_avg_c6, w1_cnt_c6))
+                    REQUEST_JOIN(type=kJoinTypeConcat)
+                      PROJECT(type=RowProject)
+                        DATA_PROVIDER(request=auto_t0)
+                      PROJECT(type=Aggregation)
+                        REQUEST_UNION(partition_keys=(), orders=() ASC, range=(auto_t0.c7, -864000000, 0), index_keys=(auto_t0.c1))
+                          DATA_PROVIDER(request=auto_t0)
+                          DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+                REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=() ASC, condition=#14 - 1000 >= #35, left_keys=(), right_keys=(), index_keys=(#9))
+                  SIMPLE_PROJECT(sources=(#9 -> c1, #14 -> c7))
+                    DATA_PROVIDER(request=auto_t0)
+                  RENAME(name=t1)
+                    DATA_PROVIDER(type=Partition, table=auto_t1, index=index1)
+              REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=() ASC, condition=#14 - 2000 >= #35, left_keys=(), right_keys=(), index_keys=(#10))
+                SIMPLE_PROJECT(sources=(#10 -> w_out.c2, #14 -> c7))
+                  DATA_PROVIDER(request=auto_t0)
+                RENAME(name=t2)
+                  DATA_PROVIDER(type=Partition, table=auto_t1, index=index2)
+            REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=() ASC, condition=#14 - 3000 >= #35, left_keys=(), right_keys=(), index_keys=(#11))
+              SIMPLE_PROJECT(sources=(#11 -> w_out.c3, #14 -> c7))
+                DATA_PROVIDER(request=auto_t0)
+              RENAME(name=t3)
+                DATA_PROVIDER(type=Partition, table=auto_t1, index=index3)
+          REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=() ASC, condition=#14 - 4000 >= #35, left_keys=(), right_keys=(), index_keys=(#12))
+            SIMPLE_PROJECT(sources=(#12 -> w_out.c4, #14 -> c7))
               DATA_PROVIDER(request=auto_t0)
             RENAME(name=t4)
               DATA_PROVIDER(type=Partition, table=auto_t1, index=index4)

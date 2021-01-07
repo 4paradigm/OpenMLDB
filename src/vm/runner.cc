@@ -21,6 +21,7 @@
 
 namespace fesql {
 namespace vm {
+#define MAX_DEBUG_BATCH_SiZE 5
 #define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_MAX 20
 
@@ -665,7 +666,7 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
         switch (bias) {
             case kNoBias:
             case kRightBias: {
-                new_right = BuildProxyRunnerForClusterTask(new_left);
+                new_left = BuildProxyRunnerForClusterTask(new_left);
                 runner->AddProducer(new_left.GetRoot());
                 runner->AddProducer(new_right.GetRoot());
                 return ClusterTask::TaskMergeToRight(runner, new_left,
@@ -720,7 +721,14 @@ ClusterTask RunnerBuilder::BuildProxyRunnerForClusterTask(
     } else {
         uint32_t remote_task_id = cluster_job_.AddTask(task);
         proxy_runner = nm_->RegisterNode(new ProxyRequestRunner(
-            id_++, remote_task_id, task.GetRoot()->output_schemas()));
+            id_++, remote_task_id, task.GetIndexKeyInput(),
+            task.GetRoot()->output_schemas()));
+        if (nullptr != task.GetIndexKeyInput()) {
+            task.GetIndexKeyInput()->EnableCache();
+        }
+        if (task.GetRoot()->need_batch_cache()) {
+            proxy_runner->EnableBatchCache();
+        }
         proxy_runner_map_.insert(std::make_pair(task.GetRoot(), proxy_runner));
     }
 
@@ -729,6 +737,8 @@ ClusterTask RunnerBuilder::BuildProxyRunnerForClusterTask(
     } else {
         return UnaryInheritTask(*request_task_, proxy_runner);
     }
+    LOG(WARNING) << "Fail to build proxy runner for cluster job";
+    return ClusterTask();
 }
 ClusterTask RunnerBuilder::UnCompletedClusterTask(
     Runner* runner, const std::shared_ptr<TableHandler> table_handler,
@@ -744,7 +754,6 @@ ClusterTask RunnerBuilder::BuildRequestTask(RequestRunner* runner) {
     request_task_ = std::make_shared<ClusterTask>(request_task);
     return request_task;
 }
-
 ClusterTask RunnerBuilder::UnaryInheritTask(const ClusterTask& input,
                                             Runner* runner) {
     ClusterTask task = input;
@@ -752,49 +761,58 @@ ClusterTask RunnerBuilder::UnaryInheritTask(const ClusterTask& input,
     task.SetRoot(runner);
     return task;
 }
-bool Runner::GetColumnBool(RowView* row_view, int idx, type::Type type) {
+
+bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
+                           type::Type type) {
     bool key = false;
     switch (type) {
         case fesql::type::kInt32: {
-            int32_t value;
-            if (0 == row_view->GetInt32(idx, &value)) {
-                return value == 0 ? false : true;
+            int32_t value = 0;
+            if (0 == row_view->GetValue(buf, idx, type,
+                                        reinterpret_cast<void*>(&value))) {
+                return !(value == 0);
             }
             break;
         }
         case fesql::type::kInt64: {
-            int64_t value;
-            if (0 == row_view->GetInt64(idx, &value)) {
-                return value == 0 ? false : true;
+            int64_t value = 0;
+            if (0 == row_view->GetValue(buf, idx, type,
+                                        reinterpret_cast<void*>(&value))) {
+                return !(value == 0);
             }
             break;
         }
         case fesql::type::kInt16: {
             int16_t value;
-            if (0 == row_view->GetInt16(idx, &value)) {
-                return value == 0 ? false : true;
+            if (0 == row_view->GetValue(buf, idx, type,
+                                        reinterpret_cast<void*>(&value))) {
+                return !(value == 0);
             }
             break;
         }
         case fesql::type::kFloat: {
             float value;
-            if (0 == row_view->GetFloat(idx, &value)) {
-                return value == 0 ? false : true;
+            if (0 == row_view->GetValue(buf, idx, type,
+                                        reinterpret_cast<void*>(&value))) {
+                return !(value == 0);
             }
             break;
         }
         case fesql::type::kDouble: {
             double value;
-            if (0 == row_view->GetDouble(idx, &value)) {
-                return value == 0 ? false : true;
+            if (0 == row_view->GetValue(buf, idx, type,
+                                        reinterpret_cast<void*>(&value))) {
+                return !(value == 0);
             }
             break;
         }
         case fesql::type::kBool: {
             bool value;
-            if (0 == row_view->GetBool(idx, &value)) {
+            if (0 == row_view->GetValue(buf, idx, type,
+                                        reinterpret_cast<void*>(&value))) {
                 return value;
             }
+            break;
         }
         default: {
             LOG(WARNING) << "fail to get bool for "
@@ -851,48 +869,38 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
     }
 }
 
-int64_t Runner::GetColumnInt64(RowView* row_view, int key_idx,
-                               type::Type key_type) {
+int64_t Runner::GetColumnInt64(const int8_t* buf, const RowView* row_view,
+                               int key_idx, type::Type key_type) {
     int64_t key = -1;
     switch (key_type) {
         case fesql::type::kInt32: {
-            int32_t value;
-            if (0 == row_view->GetInt32(key_idx, &value)) {
+            int32_t value = 0;
+            if (0 == row_view->GetValue(buf, key_idx, key_type,
+                                        reinterpret_cast<void*>(&value))) {
                 return static_cast<int64_t>(value);
             }
             break;
         }
         case fesql::type::kInt64: {
-            int64_t value;
-            if (0 == row_view->GetInt64(key_idx, &value)) {
+            int64_t value = 0;
+            if (0 == row_view->GetValue(buf, key_idx, key_type,
+                                        reinterpret_cast<void*>(&value))) {
                 return value;
             }
             break;
         }
         case fesql::type::kInt16: {
             int16_t value;
-            if (0 == row_view->GetInt16(key_idx, &value)) {
-                return static_cast<int64_t>(value);
-            }
-            break;
-        }
-        case fesql::type::kFloat: {
-            float value;
-            if (0 == row_view->GetFloat(key_idx, &value)) {
-                return static_cast<int64_t>(value);
-            }
-            break;
-        }
-        case fesql::type::kDouble: {
-            double value;
-            if (0 == row_view->GetDouble(key_idx, &value)) {
+            if (0 == row_view->GetValue(buf, key_idx, key_type,
+                                        reinterpret_cast<void*>(&value))) {
                 return static_cast<int64_t>(value);
             }
             break;
         }
         case fesql::type::kTimestamp: {
             int64_t value;
-            if (0 == row_view->GetTimestamp(key_idx, &value)) {
+            if (0 == row_view->GetValue(buf, key_idx, key_type,
+                                        reinterpret_cast<void*>(&value))) {
                 return static_cast<int64_t>(value);
             }
             break;
@@ -975,6 +983,10 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
         oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
             << "\n";
         for (size_t idx = 0; idx < outputs->GetSize(); idx++) {
+            if (idx >= MAX_DEBUG_BATCH_SiZE) {
+                oss << ">= MAX_DEBUG_BATCH_SiZE...\n";
+                break;
+            }
             Runner::PrintData(oss, output_schemas_, outputs->Get(idx));
         }
         LOG(INFO) << oss.str();
@@ -1065,6 +1077,10 @@ std::shared_ptr<DataHandlerList> RequestRunner::BatchRequestRun(
         oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
             << "\n";
         for (size_t idx = 0; idx < res->GetSize(); idx++) {
+            if (idx >= MAX_DEBUG_BATCH_SiZE) {
+                oss << ">= MAX_DEBUG_BATCH_SiZE...\n";
+                break;
+            }
             Runner::PrintData(oss, output_schemas_, res->Get(idx));
         }
         LOG(INFO) << oss.str();
@@ -2449,8 +2465,9 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(
                                       &union_segment_status);
     uint64_t cnt = 1;
     while (-1 != max_union_pos) {
-        if (cnt > rows_start_preceding &&
-            union_segment_status[max_union_pos].key_ < start) {
+        if (range_gen_.OutOfRange(
+                cnt > rows_start_preceding,
+                union_segment_status[max_union_pos].key_ < start)) {
             break;
         }
 
@@ -2486,24 +2503,21 @@ std::shared_ptr<DataHandler> PostRequestUnionRunner::Run(
     if (!left || !right) {
         return nullptr;
     }
-    if (kRowHandler != left->GetHanlderType()) {
+    auto request = std::dynamic_pointer_cast<RowHandler>(left);
+    if (!request) {
+        LOG(WARNING) << "Post request union left input is not valid";
         return nullptr;
     }
+    const Row request_row = request->GetValue();
+    int64_t request_key = request_ts_gen_.Gen(request_row);
 
-    auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
-    int64_t request_key = request_ts_gen_.Gen(request);
-
-    auto result_table =
-        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
-    result_table->AddRow(request_key, request);
-
-    auto window_table = std::dynamic_pointer_cast<MemTimeTableHandler>(right);
-    auto window_iter = window_table->GetIterator();
-    while (window_iter->Valid()) {
-        result_table->AddRow(window_iter->GetKey(), window_iter->GetValue());
-        window_iter->Next();
+    auto window_table = std::dynamic_pointer_cast<TableHandler>(right);
+    if (!window_table) {
+        LOG(WARNING) << "Post request union right input is not valid";
+        return nullptr;
     }
-    return result_table;
+    return std::make_shared<RequestUnionTableHandler>(request_key, request_row,
+                                                      window_table);
 }
 
 std::shared_ptr<DataHandler> AggRunner::Run(
@@ -2536,6 +2550,11 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
     }
     std::shared_ptr<DataHandlerList> proxy_batch_input =
         producers_[0]->BatchRequestRun(ctx);
+    std::shared_ptr<DataHandlerList> index_key_input =
+        std::shared_ptr<DataHandlerList>();
+    if (nullptr != index_input_) {
+        index_key_input = index_input_->BatchRequestRun(ctx);
+    }
     if (!proxy_batch_input || 0 == proxy_batch_input->GetSize()) {
         LOG(WARNING) << "proxy batch run input is empty";
         return std::shared_ptr<DataHandlerList>();
@@ -2543,19 +2562,30 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
     // if need batch cache_, we only need to compute the first line
     // and repeat the output
     if (need_batch_cache_) {
-        std::vector<std::shared_ptr<DataHandler>> inputs(
-            {proxy_batch_input->Get(0)});
-        auto res = Run(ctx, inputs);
+        std::shared_ptr<DataHandlerVector> proxy_one_row_batch_input =
+            std::make_shared<DataHandlerVector>();
+        proxy_one_row_batch_input->Add(proxy_batch_input->Get(0));
+
+        std::shared_ptr<DataHandlerVector> one_index_key_input =
+            std::shared_ptr<DataHandlerVector>();
+        if (index_key_input) {
+            std::shared_ptr<DataHandlerVector> one_index_key_input =
+                std::make_shared<DataHandlerVector>();
+            one_index_key_input->Add(index_key_input->Get(0));
+        }
+        auto res =
+            RunBatchInput(ctx, proxy_one_row_batch_input, one_index_key_input);
+
         if (ctx.is_debug()) {
             std::ostringstream oss;
             oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
                 << " HIT BATCH CACHE!"
                 << "\n";
-            Runner::PrintData(oss, output_schemas_, res);
+            Runner::PrintData(oss, output_schemas_, res->Get(0));
             LOG(INFO) << oss.str();
         }
         auto repeated_data = std::shared_ptr<DataHandlerList>(
-            new DataHandlerRepeater(res, proxy_batch_input->GetSize()));
+            new DataHandlerRepeater(res->Get(0), proxy_batch_input->GetSize()));
         if (need_cache_) {
             ctx.SetBatchCache(id_, repeated_data);
         }
@@ -2564,12 +2594,16 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
 
     // if not need batch cache
     // compute each line
-    auto outputs = RunBatchInput(ctx, proxy_batch_input);
+    auto outputs = RunBatchInput(ctx, proxy_batch_input, index_key_input);
     if (ctx.is_debug()) {
         std::ostringstream oss;
         oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
             << "\n";
         for (size_t idx = 0; idx < outputs->GetSize(); idx++) {
+            if (idx >= MAX_DEBUG_BATCH_SiZE) {
+                oss << ">= MAX_DEBUG_BATCH_SiZE...\n";
+                break;
+            }
             Runner::PrintData(oss, output_schemas_, outputs->Get(idx));
         }
         LOG(INFO) << oss.str();
@@ -2595,10 +2629,22 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
         LOG(WARNING) << "input is empty";
         return fail_ptr;
     }
+    std::shared_ptr<DataHandler> index_input = std::shared_ptr<DataHandler>();
+    if (nullptr != index_input_) {
+        index_input = index_input_->RunWithCache(ctx);
+    }
     switch (input->GetHanlderType()) {
         case kRowHandler: {
             auto row = std::dynamic_pointer_cast<RowHandler>(input)->GetValue();
-            return RunWithRowInput(ctx, row);
+            if (index_input) {
+                auto index_row =
+                    std::dynamic_pointer_cast<RowHandler>(index_input)
+                        ->GetValue();
+                return RunWithRowInput(ctx, row, index_row);
+
+            } else {
+                return RunWithRowInput(ctx, row, row);
+            }
         }
         case kTableHandler: {
             auto iter =
@@ -2615,8 +2661,18 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
                 rows.push_back(iter->GetValue());
                 iter->Next();
             }
-            return RunWithRowsInput(ctx, rows,
-                                    producers_[0]->need_batch_cache());
+            if (index_input) {
+                std::vector<Row> index_rows;
+                if (!ExtractRows(index_input, index_rows)) {
+                    LOG(WARNING) << "run proxy runner extract rows fail";
+                    return fail_ptr;
+                }
+                return RunWithRowsInput(ctx, rows, index_rows,
+                                        producers_[0]->need_batch_cache());
+            } else {
+                return RunWithRowsInput(ctx, rows, rows,
+                                        producers_[0]->need_batch_cache());
+            }
         }
         default: {
             LOG(WARNING)
@@ -2630,7 +2686,8 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
 // out_tables = Proxy(in_tables), remote batch request
 std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
     RunnerContext& ctx,  // NOLINT
-    std::shared_ptr<DataHandlerList> batch_input) {
+    std::shared_ptr<DataHandlerList> batch_input,
+    std::shared_ptr<DataHandlerList> batch_index_input) {
     auto fail_ptr = std::shared_ptr<DataHandlerList>();
     // proxy input, can be row or rows
     if (!batch_input || 0 == batch_input->GetSize()) {
@@ -2640,15 +2697,31 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
     switch (batch_input->Get(0)->GetHanlderType()) {
         case kRowHandler: {
             bool input_batch_is_common = producers_[0]->need_batch_cache();
-            if (input_batch_is_common) {
+            if (input_batch_is_common || 1 == batch_input->GetSize()) {
                 Row row;
                 if (!ExtractRow(batch_input->Get(0), &row)) {
                     LOG(WARNING) << "run proxy runner with rows fail, batch "
                                     "rows is empty";
                     return fail_ptr;
                 }
-                std::shared_ptr<TableHandler> table = RunWithRowsInput(
-                    ctx, std::vector<Row>({row}), input_batch_is_common);
+                std::vector<Row> rows({row});
+                std::shared_ptr<TableHandler> table =
+                    std::shared_ptr<TableHandler>();
+                Row index_row;
+                if (batch_index_input) {
+                    if (!ExtractRow(batch_index_input->Get(0), &index_row)) {
+                        LOG(WARNING)
+                            << "run proxy runner extract index rows fail";
+                        return fail_ptr;
+                    }
+                    table = RunWithRowsInput(ctx, rows,
+                                             std::vector<Row>({index_row}),
+                                             input_batch_is_common);
+                } else {
+                    index_row = row;
+                    table = RunWithRowsInput(ctx, rows, rows,
+                                             input_batch_is_common);
+                }
                 if (!table) {
                     LOG(WARNING) << "run proxy runner with rows fail, result "
                                     "table is null";
@@ -2662,13 +2735,27 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
                 return outputs;
             } else {
                 std::vector<Row> rows;
+
                 if (!ExtractRows(batch_input, rows)) {
                     LOG(WARNING) << "run proxy runner with rows fail, batch "
                                     "rows is empty";
                     return fail_ptr;
                 }
                 std::shared_ptr<TableHandler> table =
-                    RunWithRowsInput(ctx, rows, input_batch_is_common);
+                    std::shared_ptr<TableHandler>();
+                if (batch_index_input) {
+                    std::vector<Row> index_rows;
+                    if (!ExtractRows(batch_index_input, index_rows)) {
+                        LOG(WARNING) << "run proxy runner extract index rows";
+                        return fail_ptr;
+                    }
+                    table = RunWithRowsInput(ctx, rows, index_rows,
+                                             input_batch_is_common);
+                } else {
+                    table = RunWithRowsInput(ctx, rows, rows,
+                                             input_batch_is_common);
+                }
+
                 if (!table) {
                     LOG(WARNING) << "run proxy runner with rows fail, result "
                                     "table is null";
@@ -2693,7 +2780,18 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
                                     "rows is empty";
                     return fail_ptr;
                 }
-                outputs->Add(RunWithRowsInput(ctx, rows, false));
+                if (batch_index_input) {
+                    std::vector<Row> index_rows;
+                    if (!ExtractRows(batch_index_input->Get(idx), index_rows)) {
+                        LOG(WARNING)
+                            << "run proxy runner extract index rows fail";
+                        return fail_ptr;
+                    }
+                    outputs->Add(
+                        RunWithRowsInput(ctx, rows, index_rows, false));
+                } else {
+                    outputs->Add(RunWithRowsInput(ctx, rows, rows, false));
+                }
             }
             return outputs;
         }
@@ -2710,7 +2808,7 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
 // out_table = Proxy(in_table) , remote table left join
 std::shared_ptr<DataHandler> ProxyRequestRunner::RunWithRowInput(
     RunnerContext& ctx,  // NOLINT
-    const Row& row) {
+    const Row& row, const Row& index_row) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
     auto cluster_job = ctx.cluster_job();
     if (nullptr == cluster_job) {
@@ -2729,7 +2827,7 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::RunWithRowInput(
         return std::shared_ptr<DataHandler>();
     }
     KeyGenerator generator(task.GetIndexKey().fn_info());
-    pk = generator.Gen(row);
+    pk = generator.Gen(index_row);
     if (pk.empty()) {
         // local mode
         LOG(WARNING) << "can't pick tablet to subquery with empty pk";
@@ -2765,7 +2863,8 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::RunWithRowInput(
 // out_table = Proxy(in_table) , remote table left join
 std::shared_ptr<TableHandler> ProxyRequestRunner::RunWithRowsInput(
     RunnerContext& ctx,  // NOLINT
-    const std::vector<Row>& rows, const bool request_is_common) {
+    const std::vector<Row>& rows, const std::vector<Row>& index_rows,
+    const bool request_is_common) {
     // basic cluster task validate
     auto fail_ptr = std::shared_ptr<TableHandler>();
 
@@ -2790,12 +2889,12 @@ std::shared_ptr<TableHandler> ProxyRequestRunner::RunWithRowsInput(
     std::shared_ptr<Tablet> tablet = std::shared_ptr<Tablet>();
     KeyGenerator generator(task.GetIndexKey().fn_info());
     if (request_is_common) {
-        std::string pk = generator.Gen(rows[0]);
+        std::string pk = generator.Gen(index_rows[0]);
         tablet = table_handler->GetTablet(task.index(), pk);
     } else {
         std::vector<std::string> pks;
-        for (auto& row : rows) {
-            pks.push_back(generator.Gen(row));
+        for (auto& index_row : index_rows) {
+            pks.push_back(generator.Gen(index_row));
         }
         tablet = table_handler->GetTablet(task.index(), pks);
     }
@@ -2830,12 +2929,10 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -2847,40 +2944,89 @@ const std::string KeyGenerator::GenConst() {
     return keys;
 }
 const std::string KeyGenerator::Gen(const Row& row) {
-    Row key_row = CoreAPI::RowProject(fn_, row, true);
-    RowView row_view(row_view_);
-    if (!row_view.Reset(key_row.buf())) {
+    // TODO(wtz) 避免不必要的row project
+    if (row.size() == 0) {
         LOG(WARNING) << "fail to gen key: row view reset fail";
-        return "NA";
+        return "";
     }
+    Row key_row = CoreAPI::RowProject(fn_, row, true);
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
-        if (key == "") {
-            key = codec::EMPTY_STRING;
-        }
         if (!keys.empty()) {
             keys.append("|");
         }
-        keys.append(key);
+        if (row_view_.IsNULL(key_row.buf(), pos)) {
+            keys.append(codec::NONETOKEN);
+            continue;
+        }
+        ::fesql::type::Type type = fn_schema_.Get(pos).type();
+        switch (type) {
+            case ::fesql::type::kVarchar: {
+                const char* buf = nullptr;
+                uint32_t size = 0;
+                if (row_view_.GetValue(key_row.buf(), pos, &buf, &size) == 0) {
+                    if (size == 0) {
+                        keys.append(codec::EMPTY_STRING.c_str(),
+                                    codec::EMPTY_STRING.size());
+                    } else {
+                        keys.append(buf, size);
+                    }
+                }
+                break;
+            }
+            case fesql::type::kDate: {
+                int32_t buf = 0;
+                if (row_view_.GetValue(key_row.buf(), pos, type,
+                                       reinterpret_cast<void*>(&buf)) == 0) {
+                    keys.append(std::to_string(buf));
+                }
+                break;
+            }
+            case fesql::type::kBool: {
+                bool buf = false;
+                if (row_view_.GetValue(key_row.buf(), pos, type,
+                                       reinterpret_cast<void*>(&buf)) == 0) {
+                    keys.append(buf ? "true" : "false");
+                }
+                break;
+            }
+            case fesql::type::kInt16: {
+                int16_t buf = 0;
+                if (row_view_.GetValue(key_row.buf(), pos, type,
+                                       reinterpret_cast<void*>(&buf)) == 0)
+                    keys.append(std::to_string(buf));
+                break;
+            }
+            case fesql::type::kInt32: {
+                int32_t buf = 0;
+                if (row_view_.GetValue(key_row.buf(), pos, type,
+                                       reinterpret_cast<void*>(&buf)) == 0)
+                    keys.append(std::to_string(buf));
+                break;
+            }
+            case fesql::type::kInt64:
+            case fesql::type::kTimestamp: {
+                int64_t buf = 0;
+                if (row_view_.GetValue(key_row.buf(), pos, type,
+                                       reinterpret_cast<void*>(&buf)) == 0)
+                    keys.append(std::to_string(buf));
+                break;
+            }
+            default:
+                continue;
+        }
     }
     return keys;
 }
+
 const int64_t OrderGenerator::Gen(const Row& row) {
     Row order_row = CoreAPI::RowProject(fn_, row, true);
-    RowView row_view(row_view_);
-    row_view.Reset(order_row.buf());
-    return Runner::GetColumnInt64(&row_view, idxs_[0],
+    return Runner::GetColumnInt64(order_row.buf(), &row_view_, idxs_[0],
                                   fn_schema_.Get(idxs_[0]).type());
 }
+
 const bool ConditionGenerator::Gen(const Row& row) const {
-    RowView row_view(row_view_);
-    return CoreAPI::ComputeCondition(fn_, row, &row_view, idxs_[0]);
+    return CoreAPI::ComputeCondition(fn_, row, &row_view_, idxs_[0]);
 }
 const Row ProjectGenerator::Gen(const Row& row) {
     return CoreAPI::RowProject(fn_, row, false);

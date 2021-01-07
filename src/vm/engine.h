@@ -70,10 +70,14 @@ class EngineOptions {
     }
 
     inline bool is_cluster_optimzied() const { return cluster_optimized_; }
-    inline void set_cluster_optimized(bool flag) { cluster_optimized_ = flag; }
+    inline EngineOptions* set_cluster_optimized(bool flag) {
+        cluster_optimized_ = flag;
+        return this;
+    }
     bool is_batch_request_optimized() const { return batch_request_optimized_; }
-    void set_batch_request_optimized(bool flag) {
+    EngineOptions* set_batch_request_optimized(bool flag) {
         batch_request_optimized_ = flag;
+        return this;
     }
     inline void set_max_sql_cache_size(uint32_t size) {
         max_sql_cache_size_ = size;
@@ -256,9 +260,15 @@ class Engine {
                             EngineMode engine_mode,
                             std::set<std::string>* tables,
                             base::Status& status);  // NOLINT
+
     bool Explain(const std::string& sql, const std::string& db,
                  EngineMode engine_mode, ExplainOutput* explain_output,
                  base::Status* status);
+    bool Explain(const std::string& sql, const std::string& db,
+                 EngineMode engine_mode,
+                 const std::set<size_t>& common_column_indices,
+                 ExplainOutput* explain_output, base::Status* status);
+
     inline void UpdateCatalog(std::shared_ptr<Catalog> cl) {
         std::atomic_store_explicit(&cl_, cl, std::memory_order_release);
     }

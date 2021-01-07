@@ -1,5 +1,6 @@
 package com._4paradigm.fesql.spark
 
+import com._4paradigm.fesql.spark.element.FesqlConfig
 import org.apache.spark.sql.SparkSession
 import org.scalatest.{BeforeAndAfter, FunSuite}
 

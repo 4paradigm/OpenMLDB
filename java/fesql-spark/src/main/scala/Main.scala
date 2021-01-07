@@ -20,6 +20,7 @@ object Main {
   private var sparkMaster = "local"
   private var appName: String = _
   private var useSparkSQL = false
+  private var jsonPath: String = _
 
   def main(args: Array[String]): Unit = {
     ArgParser(args).parseArgs()
@@ -91,6 +92,7 @@ object Main {
         case "--master" => sparkMaster = parseValue()
         case "--name" => appName = parseValue()
         case "--spark-sql" => useSparkSQL = true
+        case "--json" => jsonPath = parseValue()
         case _ =>
           logger.warn(s"Unknown argument: $key")
       }

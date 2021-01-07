@@ -387,7 +387,8 @@ void WINDOW_CASE0_QUERY(benchmark::State *state_ptr, MODE mode,
         "FROM tbl\n"
         "window w1 as (PARTITION BY col_str64 \n"
         "                  ORDER BY col_i64\n"
-        "                  RANGE BETWEEN 86400000 PRECEDING AND CURRENT ROW) "
+        "                  ROWS_RANGE BETWEEN 86400000 PRECEDING AND CURRENT "
+        "ROW) "
         "limit " +
         std::to_string(record_size) + ";";
     if (BENCHMARK == mode) {
@@ -430,7 +431,8 @@ void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
         "FROM tbl\n"
         "window w1 as (PARTITION BY col_str64 \n"
         "                  ORDER BY col_i64\n"
-        "                  RANGE BETWEEN 86400000 PRECEDING AND CURRENT ROW) "
+        "                  ROWS_RANGE BETWEEN 86400000 PRECEDING AND CURRENT "
+        "ROW) "
         "limit " +
         std::to_string(record_size) + ";";
     if (BENCHMARK == mode) {
@@ -457,7 +459,8 @@ void WINDOW_CASE2_QUERY(benchmark::State *state_ptr, MODE mode,
         "FROM tbl\n"
         "window w1 as (PARTITION BY col_str64 \n"
         "                  ORDER BY col_i64\n"
-        "                  RANGE BETWEEN 86400000 PRECEDING AND CURRENT ROW) "
+        "                  ROWS_RANGE BETWEEN 86400000 PRECEDING AND CURRENT "
+        "ROW) "
         "limit " +
         std::to_string(record_size) + ";";
     if (BENCHMARK == mode) {
@@ -482,7 +485,8 @@ void WINDOW_CASE3_QUERY(benchmark::State *state_ptr, MODE mode,
         "FROM tbl\n"
         "window w1 as (PARTITION BY col_str64 \n"
         "                  ORDER BY col_i64\n"
-        "                  RANGE BETWEEN 86400000 PRECEDING AND CURRENT ROW) "
+        "                  ROWS_RANGE BETWEEN 86400000 PRECEDING AND CURRENT "
+        "ROW) "
         "limit " +
         std::to_string(record_size) + ";";
     if (BENCHMARK == mode) {

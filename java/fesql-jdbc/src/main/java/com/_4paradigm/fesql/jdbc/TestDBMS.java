@@ -17,8 +17,5 @@ public class TestDBMS {
         DBMSSdk sdk = fesql_interface.CreateDBMSSdk(endpoint);
         Status status = new Status();
         sdk.CreateDatabase("testxx", status);
-        System.out.println(status.getCode());
-        System.out.println(status.getMsg());
-
     }
 }
