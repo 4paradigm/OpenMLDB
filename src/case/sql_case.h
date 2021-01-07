@@ -33,6 +33,7 @@ class SQLCase {
         std::vector<std::vector<std::string>> rows_;
         std::string create_;
         std::string insert_;
+        std::vector<std::string> inserts_;
         std::set<size_t> common_column_indices_;
         std::string repeat_tag_;
         int64_t repeat_ = 1;
