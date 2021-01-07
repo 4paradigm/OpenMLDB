@@ -679,7 +679,6 @@ cases:
         9, A, 5, 1590115460000, 7
   - id: 20
     desc: lastjoin+window ROWS and ROWS_RANGE merge, 包含纯历史小窗口
-    mode: cluster-unsupport
     sql: |
       SELECT id, pk1, col1, std_ts,
       sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) as w1_col1_sum,

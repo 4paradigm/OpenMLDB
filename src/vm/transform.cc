@@ -2719,9 +2719,9 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
     return true;
 }
 
-bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalRequestJoinNode* join_op,
-                                             const Join& join,
-                                             PhysicalOpNode** output) {
+bool ClusterOptimized::SimplifyJoinLeftInput(
+    PhysicalOpNode* join_op, const Join& join,
+    const SchemasContext* joined_schema_ctx, PhysicalOpNode** output) {
     auto left = join_op->GetProducer(0);
     std::vector<const fesql::node::ExprNode*> columns;
     std::vector<std::string> column_names;
@@ -2750,7 +2750,7 @@ bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalRequestJoinNode* join_op,
             size_t column_id;
             auto column_ref =
                 dynamic_cast<const node::ColumnRefNode*>(column_expr);
-            Status status = join_op->joined_schemas_ctx()->ResolveColumnID(
+            Status status = joined_schema_ctx->ResolveColumnID(
                 column_ref->GetRelationName(), column_ref->GetColumnName(),
                 &column_id);
             if (!status.isOK()) {
@@ -2831,6 +2831,7 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     }
                     auto simplify_left = left;
                     if (!SimplifyJoinLeftInput(join_op, join_op->join(),
+                                               join_op->joined_schemas_ctx(),
                                                &simplify_left)) {
                         LOG(WARNING) << "Simplify join left input failed";
                     }
@@ -2861,9 +2862,56 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     *output = concat_op;
                     return true;
                 }
-                default:
+                default: {
                     break;
+                }
             }
+            break;
+        }
+        case kPhysicalOpJoin: {
+            auto join_op = dynamic_cast<PhysicalJoinNode*>(in);
+            switch (join_op->join().join_type()) {
+                case node::kJoinTypeLeft:
+                case node::kJoinTypeLast: {
+                    auto left = join_op->producers()[0];
+                    auto right = join_op->producers()[1];
+                    auto simplify_left = left;
+                    if (!SimplifyJoinLeftInput(join_op, join_op->join(),
+                                               join_op->joined_schemas_ctx(),
+                                               &simplify_left)) {
+                        LOG(WARNING) << "Simplify join left input failed";
+                    }
+                    Status status;
+                    PhysicalJoinNode* join_right_only = nullptr;
+                    status = plan_ctx_->CreateOp<PhysicalJoinNode>(
+                        &join_right_only, simplify_left, right, join_op->join(),
+                        true);
+                    if (!status.isOK()) {
+                        return false;
+                    }
+                    status = ReplaceComponentExpr(
+                        join_op->join(), join_op->joined_schemas_ctx(),
+                        join_right_only->joined_schemas_ctx(),
+                        plan_ctx_->node_manager(), &join_right_only->join_);
+                    if (!status.isOK()) {
+                        return false;
+                    }
+
+                    PhysicalJoinNode* concat_op = nullptr;
+                    status = plan_ctx_->CreateOp<PhysicalJoinNode>(
+                        &concat_op, left, join_right_only,
+                        fesql::node::kJoinTypeConcat);
+                    if (!status.isOK()) {
+                        return false;
+                    }
+                    *output = concat_op;
+                    return true;
+                }
+                default: {
+                    break;
+                }
+            }
+            break;
         }
         default: {
             return false;

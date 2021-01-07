@@ -315,6 +315,7 @@ enum RunnerType {
     kRunnerConcat,
     kRunnerRequestRunProxy,
     kRunnerRequestLastJoin,
+    kRunnerBatchRequestRunProxy,
     kRunnerLimit,
     kRunnerUnknow,
 };
@@ -360,6 +361,8 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "LIMIT";
         case kRunnerRequestRunProxy:
             return "REQUEST_RUN_PROXY";
+        case kRunnerBatchRequestRunProxy:
+            return "BATCH_REQUEST_RUN_PROXY";
         default:
             return "UNKNOW";
     }
@@ -397,6 +400,13 @@ class Runner : public node::NodeBase<Runner> {
           output_schemas_(output_schemas) {}
     virtual ~Runner() {}
     void AddProducer(Runner* runner) { producers_.push_back(runner); }
+    bool SetProducer(size_t idx, Runner* runner) {
+        if (idx >= producers_.size()) {
+            return false;
+        }
+        producers_[idx] = runner;
+        return true;
+    }
     const std::vector<Runner*>& GetProducers() const { return producers_; }
     virtual void PrintRunnerInfo(std::ostream& output,
                                  const std::string& tab) const {
@@ -426,6 +436,7 @@ class Runner : public node::NodeBase<Runner> {
         }
     }
     const bool need_cache() { return need_cache_; }
+    const bool need_batch_cache() { return need_batch_cache_; }
     void EnableCache() { need_cache_ = true; }
     void DisableCache() { need_cache_ = false; }
     void EnableBatchCache() { need_batch_cache_ = true; }
@@ -456,9 +467,19 @@ class Runner : public node::NodeBase<Runner> {
     static std::shared_ptr<TableHandler> TableReverse(
         std::shared_ptr<TableHandler> table);
 
-    static void PrintData(const vm::SchemasContext* schema_list,
+    static void PrintData(std::ostringstream& oss,
+                          const vm::SchemasContext* schema_list,
                           std::shared_ptr<DataHandler> data);
-
+    static const bool IsProxyRunner(const RunnerType& type) {
+        return kRunnerRequestRunProxy == type ||
+               kRunnerBatchRequestRunProxy == type;
+    }
+    static bool ExtractRows(std::shared_ptr<DataHandlerList> handlers,
+                            std::vector<Row>& out_rows);  // NOLINT
+    static bool ExtractRow(std::shared_ptr<DataHandler> handler,
+                           Row* out_row);  // NOLINT
+    static bool ExtractRows(std::shared_ptr<DataHandler> handler,
+                            std::vector<Row>& out_rows);  // NOLINT
     const vm::SchemasContext* output_schemas() const { return output_schemas_; }
 
     void set_output_schemas(const vm::SchemasContext* schemas) {
@@ -735,6 +756,13 @@ class SimpleProjectRunner : public Runner {
           project_gen_(fn_info) {
         is_lazy_ = true;
     }
+    SimpleProjectRunner(const int32_t id, const SchemasContext* schema,
+                        const int32_t limit_cnt,
+                        const ProjectGenerator& project_gen)
+        : Runner(id, kRunnerSimpleProject, schema, limit_cnt),
+          project_gen_(project_gen) {
+        is_lazy_ = true;
+    }
     ~SimpleProjectRunner() {}
     std::shared_ptr<DataHandler> Run(
         RunnerContext& ctx,  // NOLINT
@@ -922,6 +950,8 @@ class ProxyRequestRunner : public Runner {
     std::shared_ptr<DataHandler> Run(
         RunnerContext& ctx,  // NOLINT
         const std::vector<std::shared_ptr<DataHandler>>& inputs) override;
+    std::shared_ptr<DataHandlerList> BatchRequestRun(
+        RunnerContext& ctx) override;  // NOLINT
     virtual void PrintRunnerInfo(std::ostream& output,
                                  const std::string& tab) const {
         output << tab << "[" << id_ << "]" << RunnerTypeName(type_)
@@ -934,7 +964,62 @@ class ProxyRequestRunner : public Runner {
     const int32_t task_id() const { return task_id_; }
 
  private:
+    std::shared_ptr<DataHandlerList> RunBatchInput(
+        RunnerContext& ctx,  // NOLINT
+        std::shared_ptr<DataHandlerList> input);
+    std::shared_ptr<DataHandler> RunWithRowInput(RunnerContext& ctx,  // NOLINT
+                                                 const Row& row);
+    std::shared_ptr<TableHandler> RunWithRowsInput(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<Row>& rows, const bool request_is_common);
     uint32_t task_id_;
+};
+class ClusterTask;
+class RouteInfo {
+ public:
+    RouteInfo() : index_(), index_key_(), input_(), table_handler_() {}
+    RouteInfo(const std::string index,
+              std::shared_ptr<TableHandler> table_handler)
+        : index_(index),
+          index_key_(),
+          input_(),
+          table_handler_(table_handler) {}
+    RouteInfo(const std::string index, const Key& index_key,
+              std::shared_ptr<ClusterTask> input,
+              std::shared_ptr<TableHandler> table_handler)
+        : index_(index),
+          index_key_(index_key),
+          input_(input),
+          table_handler_(table_handler) {}
+    ~RouteInfo() {}
+    const bool IsCompleted() const {
+        return table_handler_ && !index_.empty() &&
+               index_key_.ValidKey();
+    }
+    const bool IsCluster() const { return table_handler_ && !index_.empty(); }
+    static const bool EqualWith(const RouteInfo& info1,
+                                const RouteInfo& info2) {
+        return info1.input_ == info2.input_ &&
+               info1.table_handler_ == info2.table_handler_ &&
+               info1.index_ == info2.index_ &&
+               node::ExprEquals(info1.index_key_.keys_, info2.index_key_.keys_);
+    }
+
+    const std::string ToString() const {
+        if (IsCompleted()) {
+            std::ostringstream oss;
+            oss << ", routing index = " << table_handler_->GetDatabase() << "."
+                << table_handler_->GetName() << "." << index_ << ", "
+                << index_key_.ToString();
+            return oss.str();
+        } else {
+            return "";
+        }
+    }
+    std::string index_;
+    Key index_key_;
+    std::shared_ptr<ClusterTask> input_;
+    std::shared_ptr<TableHandler> table_handler_;
 };
 
 // task info of cluster job
@@ -943,25 +1028,18 @@ class ProxyRequestRunner : public Runner {
 // request generator
 class ClusterTask {
  public:
-    ClusterTask()
-        : root_(nullptr), table_handler_(), index_(""), index_key_() {}
+    ClusterTask() : root_(nullptr), input_runners_(), route_info_() {}
     explicit ClusterTask(Runner* root)
-        : root_(root), table_handler_(), index_(""), index_key_() {}
+        : root_(root), input_runners_(), route_info_() {}
     ClusterTask(Runner* root, const std::shared_ptr<TableHandler> table_handler,
                 std::string index)
-        : root_(root),
-          table_handler_(table_handler),
-          index_(index),
-          index_key_() {}
+        : root_(root), input_runners_(), route_info_(index, table_handler) {}
+    ClusterTask(Runner* root, const std::vector<Runner*>& input_runners,
+                const RouteInfo& route_info)
+        : root_(root), input_runners_(input_runners), route_info_(route_info) {}
     ~ClusterTask() {}
     void Print(std::ostream& output, const std::string& tab) const {
-        if (IsClusterTask()) {
-            output << ", partition index = " << table_handler_->GetDatabase()
-                   << "." << table_handler_->GetName() << "." << index_ << ", "
-                   << index_key_.ToString() << "\n";
-        } else {
-            output << "\n";
-        }
+        output << route_info_.ToString() << "\n";
         if (nullptr == root_) {
             output << tab << "NULL RUNNER\n";
         } else {
@@ -969,27 +1047,102 @@ class ClusterTask {
             root_->Print(output, tab, &visited_ids);
         }
     }
+
+    void ResetInputs(std::shared_ptr<ClusterTask> input) {
+        for (auto input_runner : input_runners_) {
+            input_runner->SetProducer(0, route_info_.input_->GetRoot());
+        }
+        route_info_.input_ = input;
+    }
     Runner* GetRoot() const { return root_; }
     void SetRoot(Runner* root) { root_ = root; }
-    Key GetIndexKey() const { return index_key_; }
-    void SetIndexKey(const Key& key) { index_key_ = key; }
+    Runner* GetInputRunner(size_t idx) const {
+        return idx >= input_runners_.size() ? nullptr : input_runners_[idx];
+    }
+    std::shared_ptr<ClusterTask> GetInput() const { return route_info_.input_; }
+    Key GetIndexKey() const { return route_info_.index_key_; }
+    void SetIndexKey(const Key& key) { route_info_.index_key_ = key; }
+    void SetInput(std::shared_ptr<ClusterTask> input) {
+        route_info_.input_ = input;
+    }
 
     const bool IsValid() const { return nullptr != root_; }
-    const bool IsClusterTask() const { return !index_.empty(); }
-    const std::string& index() { return index_; }
-    std::shared_ptr<TableHandler> table_handler() { return table_handler_; }
 
- private:
+    const bool IsCompletedClusterTask() const {
+        return IsValid() && route_info_.IsCompleted();
+    }
+    const bool IsUnCompletedClusterTask() const {
+        return IsClusterTask() && !route_info_.IsCompleted();
+    }
+    const bool IsClusterTask() const { return route_info_.IsCluster(); }
+    const std::string& index() { return route_info_.index_; }
+    std::shared_ptr<TableHandler> table_handler() {
+        return route_info_.table_handler_;
+    }
+
+    // Cluster tasks with same input runners and index keys can be merged
+    static const bool TaskCanBeMerge(const ClusterTask& task1,
+                                     const ClusterTask& task2) {
+        return RouteInfo::EqualWith(task1.route_info_, task2.route_info_);
+    }
+    static const ClusterTask TaskMerge(Runner* root, const ClusterTask& task1,
+                                       const ClusterTask& task2) {
+        return TaskMergeToLeft(root, task1, task2);
+    }
+    static const ClusterTask TaskMergeToLeft(Runner* root,
+                                             const ClusterTask& task1,
+                                             const ClusterTask& task2) {
+        std::vector<Runner*> input_runners;
+        for (auto runner : task1.input_runners_) {
+            input_runners.push_back(runner);
+        }
+        for (auto runner : task2.input_runners_) {
+            input_runners.push_back(runner);
+        }
+        return ClusterTask(root, input_runners, task1.route_info_);
+    }
+    static const ClusterTask TaskMergeToRight(Runner* root,
+                                              const ClusterTask& task1,
+                                              const ClusterTask& task2) {
+        std::vector<Runner*> input_runners;
+        for (auto runner : task1.input_runners_) {
+            input_runners.push_back(runner);
+        }
+        for (auto runner : task2.input_runners_) {
+            input_runners.push_back(runner);
+        }
+        return ClusterTask(root, input_runners, task2.route_info_);
+    }
+
+    static const Runner* GetRequestInput(const ClusterTask& task) {
+        if (!task.IsValid()) {
+            return nullptr;
+        }
+        auto input_task = task.GetInput();
+        if (input_task) {
+            return input_task->GetRoot();
+        }
+        return nullptr;
+    }
+
+    const RouteInfo& GetRouteInfo() const { return route_info_; }
+
+ protected:
     Runner* root_;
-    std::shared_ptr<TableHandler> table_handler_;
-    std::string index_;
-    Key index_key_;
+    std::vector<Runner*> input_runners_;
+    RouteInfo route_info_;
 };
+
 class ClusterJob {
  public:
-    ClusterJob() : tasks_(), main_task_id_(-1), sql_("") {}
-    explicit ClusterJob(const std::string& sql)
-        : tasks_(), main_task_id_(-1), sql_(sql) {}
+    ClusterJob()
+        : tasks_(), main_task_id_(-1), sql_(""), common_column_indices_() {}
+    explicit ClusterJob(const std::string& sql,
+                        const std::set<size_t>& common_column_indices)
+        : tasks_(),
+          main_task_id_(-1),
+          sql_(sql),
+          common_column_indices_(common_column_indices) {}
     ClusterTask GetTask(int32_t id) {
         if (id < 0 || id >= static_cast<int32_t>(tasks_.size())) {
             LOG(WARNING) << "fail get task: task " << id << " not exist";
@@ -1007,7 +1160,6 @@ class ClusterJob {
         tasks_.push_back(task);
         return tasks_.size() - 1;
     }
-
     bool AddRunnerToTask(Runner* runner, const int32_t id) {
         if (id < 0 || id >= static_cast<int32_t>(tasks_.size())) {
             LOG(WARNING) << "fail update task: task " << id << " not exist";
@@ -1039,23 +1191,31 @@ class ClusterJob {
             output << "\n";
         }
     }
+    const std::set<size_t>& common_column_indices() const {
+        return common_column_indices_;
+    }
     void Print() const { this->Print(std::cout, "    "); }
 
  private:
     std::vector<ClusterTask> tasks_;
     int32_t main_task_id_;
     std::string sql_;
+    std::set<size_t> common_column_indices_;
 };
 class RunnerBuilder {
+    enum TaskBiasType { kLeftBias, kRightBias, kNoBias };
+
  public:
     explicit RunnerBuilder(node::NodeManager* nm, const std::string& sql,
                            bool support_cluster_optimized,
+                           const std::set<size_t>& common_column_indices,
                            const std::set<size_t>& batch_common_node_set)
         : nm_(nm),
           support_cluster_optimized_(support_cluster_optimized),
           id_(0),
-          cluster_job_(sql),
+          cluster_job_(sql, common_column_indices),
           task_map_(),
+          proxy_runner_map_(),
           batch_common_node_set_(batch_common_node_set) {}
     virtual ~RunnerBuilder() {}
     ClusterTask RegisterTask(PhysicalOpNode* node, ClusterTask task) {
@@ -1077,28 +1237,61 @@ class RunnerBuilder {
         if (!status.isOK()) {
             return cluster_job_;
         }
-        cluster_job_.AddMainTask(task);
+
+        if (task.IsCompletedClusterTask()) {
+            auto proxy_task = BuildProxyRunnerForClusterTask(task);
+            if (!proxy_task.IsValid()) {
+                status.code = common::kOpGenError;
+                status.msg = "Fail to build proxy cluster task";
+                LOG(WARNING) << status;
+                return cluster_job_;
+            }
+            cluster_job_.AddMainTask(proxy_task);
+        } else if (task.IsUnCompletedClusterTask()) {
+            status.code = common::kOpGenError;
+            status.msg =
+                "Fail to build main task, can't handler "
+                "uncompleted cluster task";
+            LOG(WARNING) << status;
+            return cluster_job_;
+        } else {
+            cluster_job_.AddMainTask(task);
+        }
         return cluster_job_;
     }
-
-    ClusterTask BuildRunnerWithProxy(Runner* runner,
-                                     const ClusterTask& left_task,
-                                     const ClusterTask& right_task,
-                                     const Key& index_key,
-                                     Status& status);  // NOLINT
 
  private:
     node::NodeManager* nm_;
     bool support_cluster_optimized_;
     int32_t id_;
     ClusterJob cluster_job_;
-    bool AddRunnerToRemoteTask(Runner* runner, int32_t task_id) {
-        return cluster_job_.AddRunnerToTask(runner, task_id);
-    }
+
     std::unordered_map<::fesql::vm::PhysicalOpNode*, ::fesql::vm::ClusterTask>
         task_map_;
-
+    std::shared_ptr<ClusterTask> request_task_;
+    std::unordered_map<fesql::vm::Runner*, ::fesql::vm::Runner*>
+        proxy_runner_map_;
     std::set<size_t> batch_common_node_set_;
+    ClusterTask BinaryInherit(const ClusterTask& left,
+                                         const ClusterTask& right,
+                                         Runner* runner, const Key& index_key,
+                                         const TaskBiasType bias = kNoBias);
+    ClusterTask BuildLocalTaskForBinaryRunner(const ClusterTask& left,
+                                              const ClusterTask& right,
+                                              Runner* runner);
+    ClusterTask BuildClusterTaskForBinaryRunner(const ClusterTask& left,
+                                                const ClusterTask& right,
+                                                Runner* runner,
+                                                const Key& index_key,
+                                                const TaskBiasType bias);
+    ClusterTask BuildProxyRunnerForClusterTask(const ClusterTask& task);
+    ClusterTask InvalidTask() { return ClusterTask(); }
+    ClusterTask CommonTask(Runner* runner) { return ClusterTask(runner); }
+    ClusterTask UnCompletedClusterTask(
+        Runner* runner, const std::shared_ptr<TableHandler> table_handler,
+        std::string index);
+    ClusterTask BuildRequestTask(RequestRunner* runner);
+    ClusterTask UnaryInheritTask(const ClusterTask& input, Runner* runner);
 };
 
 class RunnerContext {
@@ -1159,11 +1352,6 @@ class RunnerContext {
     // TODO(chenjing): optimize
     std::map<int64_t, std::shared_ptr<DataHandler>> cache_;
     std::map<int64_t, std::shared_ptr<DataHandlerList>> batch_cache_;
-};
-
-class LocalTabletAccesser : public Tablet {
- public:
-    LocalTabletAccesser() {}
 };
 }  // namespace vm
 }  // namespace fesql

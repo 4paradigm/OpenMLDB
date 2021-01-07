@@ -206,6 +206,77 @@ static bool LeftDependOnlyOnPart(const Component& comp, PhysicalOpNode* part,
     return true;
 }
 
+static Status UpdateProjectExpr(
+    PhysicalPlanContext* ctx, const node::ExprNode* expr,
+    const PhysicalOpNode* origin_input,
+    const std::unordered_map<size_t, size_t>& new_id_map,
+    node::ExprNode** output) {
+    auto schemas_ctx = origin_input->schemas_ctx();
+    std::vector<const node::ExprNode*> origin_columns;
+    CHECK_STATUS(
+        schemas_ctx->ResolveExprDependentColumns(expr, &origin_columns));
+
+    passes::ExprReplacer replacer;
+    for (auto column_expr : origin_columns) {
+        size_t schema_idx;
+        size_t col_idx;
+        if (column_expr->GetExprType() == node::kExprColumnId) {
+            auto column_id =
+                dynamic_cast<const node::ColumnIdNode*>(column_expr);
+            CHECK_STATUS(schemas_ctx->ResolveColumnIndexByID(
+                column_id->GetColumnID(), &schema_idx, &col_idx));
+        } else if (column_expr->GetExprType() == node::kExprColumnRef) {
+            auto column_ref =
+                dynamic_cast<const node::ColumnRefNode*>(column_expr);
+            CHECK_STATUS(schemas_ctx->ResolveColumnRefIndex(
+                column_ref, &schema_idx, &col_idx));
+        }
+        size_t total_idx = col_idx;
+        for (size_t i = 0; i < schema_idx; ++i) {
+            total_idx += schemas_ctx->GetSchemaSource(i)->size();
+        }
+        auto iter = new_id_map.find(total_idx);
+        CHECK_TRUE(iter != new_id_map.end(), kPlanError);
+        size_t new_column_id = iter->second;
+        auto new_column_expr =
+            ctx->node_manager()->MakeColumnIdNode(new_column_id);
+        replacer.AddReplacement(column_expr, new_column_expr);
+    }
+    return replacer.Replace(expr->DeepCopy(ctx->node_manager()), output);
+}
+
+static Status CreateSimplifiedProject(PhysicalPlanContext* ctx,
+                                      PhysicalOpNode* input,
+                                      const ColumnProjects& projects,
+                                      PhysicalOpNode** output) {
+    PhysicalOpNode* cur_input = input;
+    bool can_project = true;
+    while (can_project) {
+        can_project = false;
+        for (size_t i = 0; i < cur_input->producers().size(); ++i) {
+            auto cand_input = cur_input->GetProducer(i);
+            bool is_valid = true;
+            for (size_t j = 0; j < projects.size(); ++j) {
+                if (!ExprDependOnlyOnLeft(projects.GetExpr(j), cand_input,
+                                          nullptr)) {
+                    is_valid = false;
+                    break;
+                }
+            }
+            if (is_valid) {
+                can_project = true;
+                cur_input = cand_input;
+                break;
+            }
+        }
+    }
+    PhysicalSimpleProjectNode* project_op = nullptr;
+    CHECK_STATUS(ctx->CreateOp<PhysicalSimpleProjectNode>(&project_op,
+                                                          cur_input, projects));
+    *output = project_op;
+    return Status::OK();
+}
+
 Status CommonColumnOptimize::ProcessSimpleProject(
     PhysicalPlanContext* ctx, PhysicalSimpleProjectNode* project_op,
     BuildOpState* state) {
@@ -214,15 +285,37 @@ Status CommonColumnOptimize::ProcessSimpleProject(
     auto input_op = project_op->GetProducer(0);
     CHECK_STATUS(GetOpState(ctx, input_op, &input_state));
 
+    // maybe use concat input
+    PhysicalOpNode* new_input = nullptr;
+    CHECK_STATUS(GetConcatOp(ctx, input_op, &new_input));
+    std::unordered_map<size_t, size_t> new_id_map;
+    for (size_t i = 0; i < new_input->GetOutputSchemaSourceSize(); ++i) {
+        auto source = new_input->GetOutputSchemaSource(i);
+        for (size_t j = 0; j < source->size(); ++j) {
+            auto col_idx = new_id_map.size();
+            new_id_map[col_idx] = source->GetColumnID(j);
+        }
+    }
+
     // split project expressions
     ColumnProjects common_projects;
     ColumnProjects non_common_projects;
-    PhysicalOpNode* new_input = nullptr;
+    bool use_concat_input = false;
     const ColumnProjects& origin_projects = project_op->project();
     for (size_t i = 0; i < origin_projects.size(); ++i) {
         const std::string& name = origin_projects.GetName(i);
         const node::ExprNode* expr = origin_projects.GetExpr(i);
         const node::FrameNode* frame = origin_projects.GetFrame(i);
+
+        bool need_update = !ExprDependOnlyOnLeft(expr, new_input, nullptr);
+        if (need_update) {
+            node::ExprNode* new_expr = nullptr;
+            CHECK_STATUS(
+                UpdateProjectExpr(ctx, expr, input_op, new_id_map, &new_expr),
+                "Fail to resolve expr ", expr->GetExprString(),
+                " on project input:\n", new_input->SchemaToString());
+            expr = new_expr;
+        }
 
         if (ExprDependOnlyOnLeft(expr, input_state->common_op,
                                  input_state->non_common_op)) {
@@ -232,16 +325,11 @@ Status CommonColumnOptimize::ProcessSimpleProject(
                                         input_state->common_op)) {
             non_common_projects.Add(name, expr, frame);
         } else {
-            if (new_input == nullptr) {
-                CHECK_STATUS(GetConcatOp(ctx, input_op, &new_input));
-            }
-            CHECK_TRUE(ExprDependOnlyOnLeft(expr, new_input, nullptr),
-                       kPlanError, "Fail to resolve expr ",
-                       expr->GetExprString(), " on project input");
+            use_concat_input = true;
             non_common_projects.Add(name, expr, frame);
         }
     }
-    if (new_input == nullptr && non_common_projects.size() > 0) {
+    if (!use_concat_input && non_common_projects.size() > 0) {
         // expr depend on non-common part only
         new_input = input_state->non_common_op;
     }
@@ -251,10 +339,8 @@ Status CommonColumnOptimize::ProcessSimpleProject(
         input_op == input_state->common_op) {
         state->common_op = project_op;
     } else if (common_projects.size() > 0) {
-        PhysicalSimpleProjectNode* common_project_op = nullptr;
-        CHECK_STATUS(ctx->CreateOp<PhysicalSimpleProjectNode>(
-            &common_project_op, input_state->common_op, common_projects));
-        state->common_op = common_project_op;
+        CHECK_STATUS(CreateSimplifiedProject(
+            ctx, input_state->common_op, common_projects, &state->common_op))
     } else {
         state->common_op = nullptr;
     }
@@ -263,10 +349,8 @@ Status CommonColumnOptimize::ProcessSimpleProject(
         input_op == new_input) {
         state->non_common_op = project_op;
     } else if (non_common_projects.size() > 0) {
-        PhysicalSimpleProjectNode* non_common_project_op = nullptr;
-        CHECK_STATUS(ctx->CreateOp<PhysicalSimpleProjectNode>(
-            &non_common_project_op, new_input, non_common_projects));
-        state->non_common_op = non_common_project_op;
+        CHECK_STATUS(CreateSimplifiedProject(
+            ctx, new_input, non_common_projects, &state->non_common_op))
     } else {
         state->non_common_op = nullptr;
     }
@@ -320,15 +404,37 @@ Status CommonColumnOptimize::ProcessProject(PhysicalPlanContext* ctx,
     BuildOpState* input_state = nullptr;
     CHECK_STATUS(GetOpState(ctx, input_op, &input_state));
 
+    // maybe use concat input
+    PhysicalOpNode* new_input = nullptr;
+    CHECK_STATUS(GetConcatOp(ctx, input_op, &new_input));
+    std::unordered_map<size_t, size_t> new_id_map;
+    for (size_t i = 0; i < new_input->GetOutputSchemaSourceSize(); ++i) {
+        auto source = new_input->GetOutputSchemaSource(i);
+        for (size_t j = 0; j < source->size(); ++j) {
+            auto col_idx = new_id_map.size();
+            new_id_map[col_idx] = source->GetColumnID(j);
+        }
+    }
+
     // split project expressions
     ColumnProjects common_projects;
     ColumnProjects non_common_projects;
-    PhysicalOpNode* new_input = nullptr;
+    bool use_concat_input = false;
     const ColumnProjects& origin_projects = project_op->project();
     for (size_t i = 0; i < origin_projects.size(); ++i) {
         const std::string& name = origin_projects.GetName(i);
         const node::ExprNode* expr = origin_projects.GetExpr(i);
         const node::FrameNode* frame = origin_projects.GetFrame(i);
+
+        bool need_update = !ExprDependOnlyOnLeft(expr, new_input, nullptr);
+        if (need_update) {
+            node::ExprNode* new_expr = nullptr;
+            CHECK_STATUS(
+                UpdateProjectExpr(ctx, expr, input_op, new_id_map, &new_expr),
+                "Fail to resolve expr ", expr->GetExprString(),
+                " on project input:\n", new_input->SchemaToString());
+            expr = new_expr;
+        }
 
         if (ExprDependOnlyOnLeft(expr, input_state->common_op,
                                  input_state->non_common_op)) {
@@ -338,16 +444,11 @@ Status CommonColumnOptimize::ProcessProject(PhysicalPlanContext* ctx,
                                         input_state->common_op)) {
             non_common_projects.Add(name, expr, frame);
         } else {
-            if (new_input == nullptr) {
-                CHECK_STATUS(GetConcatOp(ctx, input_op, &new_input));
-            }
-            CHECK_TRUE(ExprDependOnlyOnLeft(expr, new_input, nullptr),
-                       kPlanError, "Fail to resolve expr ",
-                       expr->GetExprString(), " on project input");
+            use_concat_input = true;
             non_common_projects.Add(name, expr, frame);
         }
     }
-    if (new_input == nullptr && non_common_projects.size() > 0) {
+    if (!use_concat_input && non_common_projects.size() > 0) {
         // expr depend on non-common part only
         new_input = input_state->non_common_op;
     }
@@ -409,6 +510,56 @@ Status CommonColumnOptimize::ProcessTrivial(PhysicalPlanContext* ctx,
     return Status::OK();
 }
 
+static Status ReplaceRequestUnion(PhysicalPlanContext* ctx,
+                                  PhysicalOpNode* root,
+                                  PhysicalRequestUnionNode* target,
+                                  PhysicalOpNode* repl,
+                                  std::map<size_t, PhysicalOpNode*>* visited,
+                                  PhysicalOpNode** output) {
+    // check visisted
+    auto iter = visited->find(root->node_id());
+    if (iter != visited->end()) {
+        *output = iter->second;
+        return Status::OK();
+    }
+    if (root->GetOpType() == kPhysicalOpRequestUnion) {
+        auto request_union_op = dynamic_cast<PhysicalRequestUnionNode*>(root);
+        CHECK_TRUE(request_union_op == target, kPlanError,
+                   "Found another request union node under window agg");
+        *output = repl;
+        (*visited)[root->node_id()] = repl;
+        return Status::OK();
+    }
+    bool changed = false;
+    std::vector<PhysicalOpNode*> new_children(root->GetProducerCnt());
+    for (size_t i = 0; i < root->GetProducerCnt(); ++i) {
+        CHECK_STATUS(ReplaceRequestUnion(ctx, root->GetProducer(i), target,
+                                         repl, visited, &new_children[i]));
+        if (new_children[i] != root->GetProducer(i)) {
+            changed = true;
+        }
+    }
+    if (changed) {
+        PhysicalOpNode* new_root = nullptr;
+        CHECK_STATUS(ctx->WithNewChildren(root, new_children, &new_root));
+        if (new_root->GetOpType() == kPhysicalOpJoin && !new_children.empty() &&
+            new_children[0]->GetOutputType() == kSchemaTypeRow) {
+            auto join_op = dynamic_cast<PhysicalJoinNode*>(new_root);
+            PhysicalRequestJoinNode* request_join_op = nullptr;
+            CHECK_STATUS(ctx->CreateOp<PhysicalRequestJoinNode>(
+                &request_join_op, new_children[0], new_children[1],
+                join_op->join(), join_op->output_right_only()));
+            *output = request_join_op;
+        } else {
+            *output = new_root;
+        }
+    } else {
+        *output = root;
+    }
+    (*visited)[root->node_id()] = *output;
+    return Status::OK();
+}
+
 Status CommonColumnOptimize::ProcessRequestUnion(
     PhysicalPlanContext* ctx, PhysicalRequestUnionNode* request_union_op,
     const std::vector<PhysicalOpNode*>& path, PhysicalOpNode** out,
@@ -430,6 +581,7 @@ Status CommonColumnOptimize::ProcessRequestUnion(
         &new_request_union, request_state->common_op, new_right,
         request_union_op->window(), request_union_op->instance_not_in_window(),
         false));
+    SetAllCommon(new_request_union);
 
     for (auto& pair : request_union_op->window_unions().window_unions_) {
         PhysicalOpNode* new_right_union = nullptr;
@@ -445,42 +597,25 @@ Status CommonColumnOptimize::ProcessRequestUnion(
                                  ctx->node_manager(), window_ptr));
     }
 
-    // apply ops path
-    PhysicalOpNode* cur_window = new_request_union;
-    SetAllCommon(cur_window);
-    PhysicalOpNode* cur_request = origin_input_op;
-    for (int i = path.size() - 2; i >= 0; --i) {
-        size_t child_num = path[i]->producers().size();
-        std::vector<PhysicalOpNode*> new_children(child_num, nullptr);
-        for (size_t j = 1; j < child_num; ++j) {
-            CHECK_STATUS(
-                GetReorderedOp(ctx, path[i]->GetProducer(j), &new_children[j]));
-        }
+    // apply ops path to window part
+    std::map<size_t, PhysicalOpNode*> replace_cache;
+    PhysicalOpNode* window_root = nullptr;
+    CHECK_STATUS(ReplaceRequestUnion(ctx, path[0], request_union_op,
+                                     new_request_union, &replace_cache,
+                                     &window_root));
+    SetAllCommon(window_root);
+    PhysicalOpNode* optimized_window_root = nullptr;
+    CHECK_STATUS(GetReorderedOp(ctx, window_root, &optimized_window_root));
 
-        // apply on window
-        new_children[0] = cur_window;
-        CHECK_STATUS(ctx->WithNewChildren(path[i], new_children, &cur_window));
-        SetAllCommon(cur_window);
-
-        // apply on request
-        new_children[0] = cur_request;
-        PhysicalOpNode* to_apply = path[i];
-        if (to_apply->GetOpType() == kPhysicalOpJoin) {
-            PhysicalRequestJoinNode* request_join_op = nullptr;
-            CHECK_STATUS(ctx->CreateOp<PhysicalRequestJoinNode>(
-                &request_join_op, to_apply->GetProducer(0),
-                to_apply->GetProducer(1),
-                dynamic_cast<PhysicalJoinNode*>(to_apply)->join(), false));
-            to_apply = request_join_op;
-        }
-        CHECK_STATUS(
-            ctx->WithNewChildren(to_apply, new_children, &cur_request));
-        BuildOpState* new_request_state = nullptr;
-        CHECK_STATUS(GetOpState(ctx, cur_request, &new_request_state));
-    }
-    // final request row before union and agg
-    CHECK_STATUS(GetOpState(ctx, cur_request, agg_request_state));
-    CHECK_STATUS(GetReorderedOp(ctx, cur_request, &cur_request));
+    // apply ops path to request part
+    replace_cache.clear();
+    PhysicalOpNode* request_root = nullptr;
+    CHECK_STATUS(ReplaceRequestUnion(ctx, path[0], request_union_op,
+                                     origin_input_op, &replace_cache,
+                                     &request_root));
+    PhysicalOpNode* optimized_request_root = nullptr;
+    CHECK_STATUS(GetOpState(ctx, request_root, agg_request_state));
+    CHECK_STATUS(GetReorderedOp(ctx, request_root, &optimized_request_root));
 
     // final union
     Range request_ts;
@@ -490,7 +625,7 @@ Status CommonColumnOptimize::ProcessRequestUnion(
                                       ctx->node_manager(), &request_ts));
     PhysicalPostRequestUnionNode* union_op = nullptr;
     CHECK_STATUS(ctx->CreateOp<PhysicalPostRequestUnionNode>(
-        &union_op, cur_request, cur_window, request_ts));
+        &union_op, optimized_request_root, optimized_window_root, request_ts));
     *out = union_op;
     return Status::OK();
 }
@@ -856,7 +991,6 @@ Status CommonColumnOptimize::GetReorderedOp(PhysicalPlanContext* ctx,
     // get concat op
     PhysicalOpNode* concat_op = nullptr;
     CHECK_STATUS(GetConcatOp(ctx, input, &concat_op));
-
     // check whether reorder is required
     // reordered op should take same slice num and sizes with
     // original op and the column order is same

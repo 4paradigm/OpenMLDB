@@ -14,54 +14,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "vm/jit_wrapper.h"
+
 #include <string>
 #include <utility>
-
 #include "glog/logging.h"
+#include "llvm/ExecutionEngine/JITSymbol.h"
+#include "llvm/ExecutionEngine/Orc/CompileUtils.h"
+#include "llvm/ExecutionEngine/Orc/Core.h"
+#include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
+#include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
+#include "llvm/ExecutionEngine/Orc/IRTransformLayer.h"
+#include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
+#include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
+#include "llvm/ExecutionEngine/SectionMemoryManager.h"
+#include "llvm/IR/DataLayout.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/SourceMgr.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Scalar/GVN.h"
+#include "llvm/Transforms/Utils.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/jit.h"
-#include "vm/jit_wrapper.h"
-#include "vm/sql_compiler.h"
 
 namespace fesql {
 namespace vm {
-
-bool FeSQLJITWrapper::Init() {
-    DLOG(INFO) << "Start to initialize fesql jit";
-    auto jit =
-        ::llvm::Expected<std::unique_ptr<FeSQLJIT>>(FeSQLJITBuilder().create());
-    {
-        ::llvm::Error e = jit.takeError();
-        if (e) {
-            LOG(WARNING) << "fail to init jit let";
-            return false;
-        }
-    }
-    this->jit_ = std::move(jit.get());
-    jit_->Init();
-    return true;
-}
-
-bool FeSQLJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
-                                std::unique_ptr<llvm::LLVMContext> llvm_ctx) {
-    ::llvm::Error e = jit_->addIRModule(
-        ::llvm::orc::ThreadSafeModule(std::move(module), std::move(llvm_ctx)));
-    if (e) {
-        std::string err_str;
-        ::llvm::raw_string_ostream ss(err_str);
-        ss << e;
-        LOG(WARNING) << "fail to add ir module: " << err_str;
-        return false;
-    }
-    InitCodecSymbol(jit_.get());
-    udf::InitUDFSymbol(jit_.get());
-    udf::DefaultUDFLibrary* library = udf::DefaultUDFLibrary::get();
-    library->InitJITSymbols(jit_.get());
-    return true;
-}
 
 bool FeSQLJITWrapper::AddModuleFromBuffer(const base::RawBuffer& buf) {
     std::string buf_str(buf.addr, buf.size);
@@ -79,16 +60,148 @@ bool FeSQLJITWrapper::AddModuleFromBuffer(const base::RawBuffer& buf) {
     return this->AddModule(std::move(llvm_module), std::move(llvm_ctx));
 }
 
-RawPtrHandle FeSQLJITWrapper::FindFunction(const std::string& funcname) {
-    if (funcname == "") {
-        return 0;
+bool FeSQLJITWrapper::InitJITSymbols(FeSQLJITWrapper* jit) {
+    InitBuiltinJITSymbols(jit);
+    udf::DefaultUDFLibrary::get()->InitJITSymbols(jit);
+    return true;
+}
+
+FeSQLJITWrapper* FeSQLJITWrapper::Create() { return Create(JITOptions()); }
+
+FeSQLJITWrapper* FeSQLJITWrapper::Create(const JITOptions& jit_options) {
+    if (jit_options.is_enable_mcjit()) {
+#ifdef LLVM_EXT_ENABLE
+        LOG(INFO) << "Create MCJIT engine";
+        return new FeSQLMCJITWrapper(jit_options);
+#else
+        LOG(WARNING) << "MCJIT support is not enabled";
+        return new FeSQLLLJITWrapper();
+#endif
+    } else {
+        if (jit_options.is_enable_vtune() || jit_options.is_enable_perf() ||
+            jit_options.is_enable_gdb()) {
+            LOG(WARNING) << "LLJIT do not support jit events";
+        }
+        return new FeSQLLLJITWrapper();
     }
-    ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(jit_->lookup(funcname));
-    if (symbol.takeError()) {
-        LOG(WARNING) << "fail to resolve fn address of" << funcname;
-        return 0;
-    }
-    return reinterpret_cast<const int8_t*>(symbol->getAddress());
+}
+
+void InitBuiltinJITSymbols(FeSQLJITWrapper* jit) {
+    jit->AddExternalFunction("malloc", (reinterpret_cast<void*>(&malloc)));
+    jit->AddExternalFunction("memset", (reinterpret_cast<void*>(&memset)));
+    jit->AddExternalFunction("memcpy", (reinterpret_cast<void*>(&memcpy)));
+    jit->AddExternalFunction("__bzero", (reinterpret_cast<void*>(&bzero)));
+
+    jit->AddExternalFunction(
+        "fesql_storage_get_bool_field",
+        reinterpret_cast<void*>(
+            static_cast<int8_t (*)(const int8_t*, uint32_t, uint32_t, int8_t*)>(
+                &codec::v1::GetBoolField)));
+    jit->AddExternalFunction(
+        "fesql_storage_get_int16_field",
+        reinterpret_cast<void*>(
+            static_cast<int16_t (*)(const int8_t*, uint32_t, uint32_t,
+                                    int8_t*)>(&codec::v1::GetInt16Field)));
+    jit->AddExternalFunction(
+        "fesql_storage_get_int32_field",
+        reinterpret_cast<void*>(
+            static_cast<int32_t (*)(const int8_t*, uint32_t, uint32_t,
+                                    int8_t*)>(&codec::v1::GetInt32Field)));
+    jit->AddExternalFunction(
+        "fesql_storage_get_int64_field",
+        reinterpret_cast<void*>(
+            static_cast<int64_t (*)(const int8_t*, uint32_t, uint32_t,
+                                    int8_t*)>(&codec::v1::GetInt64Field)));
+    jit->AddExternalFunction(
+        "fesql_storage_get_float_field",
+        reinterpret_cast<void*>(
+            static_cast<float (*)(const int8_t*, uint32_t, uint32_t, int8_t*)>(
+                &codec::v1::GetFloatField)));
+    jit->AddExternalFunction(
+        "fesql_storage_get_double_field",
+        reinterpret_cast<void*>(
+            static_cast<double (*)(const int8_t*, uint32_t, uint32_t, int8_t*)>(
+                &codec::v1::GetDoubleField)));
+    jit->AddExternalFunction(
+        "fesql_storage_get_timestamp_field",
+        reinterpret_cast<void*>(&codec::v1::GetTimestampField));
+    jit->AddExternalFunction("fesql_storage_get_str_addr_space",
+                             reinterpret_cast<void*>(&codec::v1::GetAddrSpace));
+    jit->AddExternalFunction(
+        "fesql_storage_get_str_field",
+        reinterpret_cast<void*>(
+            static_cast<int32_t (*)(const int8_t*, uint32_t, uint32_t, uint32_t,
+                                    uint32_t, uint32_t, const char**, uint32_t*,
+                                    int8_t*)>(&codec::v1::GetStrField)));
+    jit->AddExternalFunction("fesql_storage_get_col",
+                             reinterpret_cast<void*>(&codec::v1::GetCol));
+    jit->AddExternalFunction("fesql_storage_get_str_col",
+                             reinterpret_cast<void*>(&codec::v1::GetStrCol));
+
+    jit->AddExternalFunction(
+        "fesql_storage_get_inner_range_list",
+        reinterpret_cast<void*>(&codec::v1::GetInnerRangeList));
+    jit->AddExternalFunction(
+        "fesql_storage_get_inner_rows_list",
+        reinterpret_cast<void*>(&codec::v1::GetInnerRowsList));
+
+    // encode
+    jit->AddExternalFunction("fesql_storage_encode_int16_field",
+                             reinterpret_cast<void*>(&codec::v1::AppendInt16));
+
+    jit->AddExternalFunction("fesql_storage_encode_int32_field",
+                             reinterpret_cast<void*>(&codec::v1::AppendInt32));
+
+    jit->AddExternalFunction("fesql_storage_encode_int64_field",
+                             reinterpret_cast<void*>(&codec::v1::AppendInt64));
+
+    jit->AddExternalFunction("fesql_storage_encode_float_field",
+                             reinterpret_cast<void*>(&codec::v1::AppendFloat));
+
+    jit->AddExternalFunction("fesql_storage_encode_double_field",
+                             reinterpret_cast<void*>(&codec::v1::AppendDouble));
+
+    jit->AddExternalFunction("fesql_storage_encode_string_field",
+                             reinterpret_cast<void*>(&codec::v1::AppendString));
+    jit->AddExternalFunction(
+        "fesql_storage_encode_calc_size",
+        reinterpret_cast<void*>(&codec::v1::CalcTotalLength));
+    jit->AddExternalFunction(
+        "fesql_storage_encode_nullbit",
+        reinterpret_cast<void*>(&codec::v1::AppendNullBit));
+
+    // row iteration
+    jit->AddExternalFunction("fesql_storage_get_row_iter",
+                             reinterpret_cast<void*>(&fesql::vm::GetRowIter));
+    jit->AddExternalFunction(
+        "fesql_storage_row_iter_has_next",
+        reinterpret_cast<void*>(&fesql::vm::RowIterHasNext));
+    jit->AddExternalFunction("fesql_storage_row_iter_next",
+                             reinterpret_cast<void*>(&fesql::vm::RowIterNext));
+    jit->AddExternalFunction(
+        "fesql_storage_row_iter_get_cur_slice",
+        reinterpret_cast<void*>(&fesql::vm::RowIterGetCurSlice));
+    jit->AddExternalFunction(
+        "fesql_storage_row_iter_get_cur_slice_size",
+        reinterpret_cast<void*>(&fesql::vm::RowIterGetCurSliceSize));
+
+    jit->AddExternalFunction(
+        "fesql_storage_row_iter_delete",
+        reinterpret_cast<void*>(&fesql::vm::RowIterDelete));
+    jit->AddExternalFunction("fesql_storage_get_row_slice",
+                             reinterpret_cast<void*>(&fesql::vm::RowGetSlice));
+    jit->AddExternalFunction(
+        "fesql_storage_get_row_slice_size",
+        reinterpret_cast<void*>(&fesql::vm::RowGetSliceSize));
+
+    jit->AddExternalFunction(
+        "fesql_memery_pool_alloc",
+        reinterpret_cast<void*>(&udf::v1::AllocManagedStringBuf));
+
+    jit->AddExternalFunction(
+        "fmod", reinterpret_cast<void*>(
+                    static_cast<double (*)(double, double)>(&fmod)));
+    jit->AddExternalFunction("fmodf", reinterpret_cast<void*>(&fmodf));
 }
 
 }  // namespace vm

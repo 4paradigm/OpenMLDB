@@ -348,13 +348,21 @@ TEST_F(RunnerTest, RunnerPrintDataTest) {
     // Print Empty Set
     std::shared_ptr<MemTableHandler> table_handler =
         std::shared_ptr<MemTableHandler>(new MemTableHandler());
-    Runner::PrintData(&schemas_ctx, table_handler);
+    {
+        std::ostringstream oss;
+        Runner::PrintData(oss, &schemas_ctx, table_handler);
+        LOG(INFO) << oss.str();
+    }
 
     // Print Table
     for (auto row : rows) {
         table_handler->AddRow(row);
     }
-    Runner::PrintData(&schemas_ctx, table_handler);
+    {
+        std::ostringstream oss;
+        Runner::PrintData(oss, &schemas_ctx, table_handler);
+        LOG(INFO) << oss.str();
+    }
 
     // Print Table
     int i = 0;
@@ -363,12 +371,83 @@ TEST_F(RunnerTest, RunnerPrintDataTest) {
             table_handler->AddRow(row);
         }
     }
-    Runner::PrintData(&schemas_ctx, table_handler);
+    {
+        std::ostringstream oss;
+        Runner::PrintData(oss, &schemas_ctx, table_handler);
+        LOG(INFO) << oss.str();
+    }
 
     // Print Row
     std::shared_ptr<MemRowHandler> row_handler =
         std::shared_ptr<MemRowHandler>(new MemRowHandler(rows[0]));
-    Runner::PrintData(&schemas_ctx, row_handler);
+    {
+        std::ostringstream oss;
+        Runner::PrintData(oss, &schemas_ctx, table_handler);
+        LOG(INFO) << oss.str();
+    }
+}
+TEST_F(RunnerTest, RunnerPrintDataMemTimeTableTest) {
+    fesql::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_name("t1");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index12");
+    index->add_first_keys("col3");
+    index->add_first_keys("col4");
+    index->set_second_key("col5");
+    auto catalog = BuildCommonCatalog(table_def, table);
+    std::vector<Row> rows;
+    fesql::type::TableDef temp_table;
+    BuildRows(temp_table, rows);
+
+    SchemasContext schemas_ctx;
+    auto source = schemas_ctx.AddSource();
+    source->SetSourceName("t1");
+    source->SetSchema(&table_def.columns());
+
+    // Print Empty Set
+    std::shared_ptr<MemTimeTableHandler> table_handler =
+        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
+    {
+        std::ostringstream oss;
+        Runner::PrintData(oss, &schemas_ctx, table_handler);
+        LOG(INFO) << oss.str();
+    }
+
+    // Print Table
+    uint64_t ts = 1000;
+    for (auto row : rows) {
+        table_handler->AddRow(ts++, row);
+    }
+    {
+        std::ostringstream oss;
+        Runner::PrintData(oss, &schemas_ctx, table_handler);
+        LOG(INFO) << oss.str();
+    }
+
+    // Print Table
+    int i = 0;
+    while (i++ < 10) {
+        for (auto row : rows) {
+            table_handler->AddRow(ts++, row);
+        }
+    }
+    {
+        std::ostringstream oss;
+        Runner::PrintData(oss, &schemas_ctx, table_handler);
+        LOG(INFO) << oss.str();
+    }
+
+    // Print Row
+    std::shared_ptr<MemRowHandler> row_handler =
+        std::shared_ptr<MemRowHandler>(new MemRowHandler(rows[0]));
+    {
+        std::ostringstream oss;
+        Runner::PrintData(oss, &schemas_ctx, table_handler);
+        LOG(INFO) << oss.str();
+    }
 }
 }  // namespace vm
 }  // namespace fesql

@@ -54,8 +54,8 @@ class ListV {
     ListV() {}
     virtual ~ListV() {}
     // TODO(chenjing): at 数组越界处理
-    virtual std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() const = 0;
-    virtual ConstIterator<uint64_t, V> *GetRawIterator() const = 0;
+    virtual std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() = 0;
+    virtual ConstIterator<uint64_t, V> *GetRawIterator() = 0;
     virtual const uint64_t GetCount() {
         auto iter = GetIterator();
         uint64_t cnt = 0;
@@ -67,6 +67,9 @@ class ListV {
     }
     virtual V At(uint64_t pos) {
         auto iter = GetIterator();
+        if (!iter) {
+            return V();
+        }
         while (pos-- > 0 && iter->Valid()) {
             iter->Next();
         }
@@ -122,12 +125,12 @@ class ColumnImpl : public WrapListImpl<V, Row> {
     }
 
     // TODO(xxx): iterator of nullable V
-    std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() const override {
+    std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() override {
         auto iter = std::unique_ptr<ConstIterator<uint64_t, V>>(
             new ColumnIterator<V>(root_, this));
         return std::move(iter);
     }
-    ConstIterator<uint64_t, V> *GetRawIterator() const override {
+    ConstIterator<uint64_t, V> *GetRawIterator() override {
         return new ColumnIterator<V>(root_, this);
     }
     const uint64_t GetCount() override { return root_->GetCount(); }
@@ -201,11 +204,11 @@ class ArrayListV : public ListV<V> {
     ~ArrayListV() {}
     // TODO(chenjing): at 数组越界处理
 
-    std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() const override {
+    std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() override {
         return std::unique_ptr<ArrayListIterator<V>>(
             new ArrayListIterator<V>(buffer_, start_, end_));
     }
-    ConstIterator<uint64_t, V> *GetRawIterator() const override {
+    ConstIterator<uint64_t, V> *GetRawIterator() override {
         return new ArrayListIterator<V>(buffer_, start_, end_);
     }
     virtual const uint64_t GetCount() { return end_ - start_; }
@@ -362,12 +365,11 @@ class BoolArrayListV : public ListV<bool> {
 
     ~BoolArrayListV() {}
 
-    std::unique_ptr<ConstIterator<uint64_t, bool>> GetIterator()
-        const override {
+    std::unique_ptr<ConstIterator<uint64_t, bool>> GetIterator() override {
         return std::unique_ptr<BoolArrayListIterator>(
             new BoolArrayListIterator(buffer_, start_, end_));
     }
-    ConstIterator<uint64_t, bool> *GetRawIterator() const override {
+    ConstIterator<uint64_t, bool> *GetRawIterator() override {
         return new BoolArrayListIterator(buffer_, start_, end_);
     }
     virtual const uint64_t GetCount() { return end_ - start_; }
@@ -459,11 +461,11 @@ class InnerRangeList : public ListV<V> {
         : ListV<V>(), root_(root), start_(start), end_(end) {}
     virtual ~InnerRangeList() {}
     // TODO(chenjing): at 数组越界处理
-    virtual std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() const {
+    virtual std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() {
         return std::unique_ptr<InnerRangeIterator<V>>(
             new InnerRangeIterator<V>(root_, start_, end_));
     }
-    virtual ConstIterator<uint64_t, V> *GetRawIterator() const {
+    virtual ConstIterator<uint64_t, V> *GetRawIterator() {
         return new InnerRangeIterator<V>(root_, start_, end_);
     }
 
@@ -479,11 +481,11 @@ class InnerRowsList : public ListV<V> {
         : ListV<V>(), root_(root), start_(start), end_(end) {}
     virtual ~InnerRowsList() {}
     // TODO(chenjing): at 数组越界处理
-    virtual std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() const {
+    virtual std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() {
         return std::unique_ptr<InnerRowsIterator<V>>(
             new InnerRowsIterator<V>(root_, start_, end_));
     }
-    virtual ConstIterator<uint64_t, V> *GetRawIterator() const {
+    virtual ConstIterator<uint64_t, V> *GetRawIterator() {
         return new InnerRowsIterator<V>(root_, start_, end_);
     }
 

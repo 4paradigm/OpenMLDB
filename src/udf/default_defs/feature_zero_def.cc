@@ -47,8 +47,8 @@ class MutableStringListV : public codec::ListV<StringRef> {
     ~MutableStringListV() {}
 
     std::unique_ptr<base::ConstIterator<uint64_t, StringRef>> GetIterator()
-        const override;
-    base::ConstIterator<uint64_t, StringRef>* GetRawIterator() const override;
+        override;
+    base::ConstIterator<uint64_t, StringRef>* GetRawIterator() override;
 
     const uint64_t GetCount() override { return buffer_.size(); }
 
@@ -116,12 +116,11 @@ class MutableStringListVIterator
 };
 
 std::unique_ptr<base::ConstIterator<uint64_t, StringRef>>
-MutableStringListV::GetIterator() const {
+MutableStringListV::GetIterator() {
     return std::unique_ptr<MutableStringListVIterator>(
         new MutableStringListVIterator(&buffer_));
 }
-base::ConstIterator<uint64_t, StringRef>* MutableStringListV::GetRawIterator()
-    const {
+base::ConstIterator<uint64_t, StringRef>* MutableStringListV::GetRawIterator() {
     return new MutableStringListVIterator(&buffer_);
 }
 

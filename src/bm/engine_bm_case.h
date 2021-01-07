@@ -88,9 +88,7 @@ void EngineRequestSimpleSelectDate(benchmark::State* state, MODE mode);
 
 void EngineBenchmarkOnCase(const std::string& yaml_path,
                            const std::string& case_id,
-                           vm::EngineMode engine_mode,
-                           const vm::EngineOptions& engine_options,
-                           benchmark::State* state);
+                           vm::EngineMode engine_mode, benchmark::State* state);
 
 }  // namespace bm
 }  // namespace fesql

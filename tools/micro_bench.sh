@@ -24,3 +24,6 @@ src/bm/engine_bm 2>/dev/null
 echo "fesql client batch run benchmark:"
 src/bm/fesql_client_batch_run_bm 2>/dev/null
 
+echo "fesql batch request benchmark:"
+src/bm/batch_request_bm 2>/dev/null
+
