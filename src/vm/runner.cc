@@ -2704,6 +2704,7 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
                                     "rows is empty";
                     return fail_ptr;
                 }
+                std::vector<Row> rows({row});
                 std::shared_ptr<TableHandler> table =
                     std::shared_ptr<TableHandler>();
                 Row index_row;
@@ -2713,13 +2714,12 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
                             << "run proxy runner extract index rows fail";
                         return fail_ptr;
                     }
-                    table = RunWithRowsInput(ctx, std::vector<Row>({row}),
+                    table = RunWithRowsInput(ctx, rows,
                                              std::vector<Row>({index_row}),
                                              input_batch_is_common);
                 } else {
                     index_row = row;
-                    table = RunWithRowsInput(ctx, std::vector<Row>({row}),
-                                             std::vector<Row>({row}),
+                    table = RunWithRowsInput(ctx, rows, rows,
                                              input_batch_is_common);
                 }
                 if (!table) {
