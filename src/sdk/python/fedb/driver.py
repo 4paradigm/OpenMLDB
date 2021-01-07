@@ -98,6 +98,18 @@ class Driver(object):
         if not row_builder:
             return False, status.msg
         return True, row_builder
+ 
+    def doQuery(self, db, sql, data):
+        if data is None:
+            return self.executeQuery(db, sql, None)
+        ok, requestRow = self.getRequestBuilder(db, sql)
+        if not ok:
+            return ok, requestRow
+        schema = requestRow.GetSchema()
+        ok, msg = self._append_request_row(requestRow, schema, data)
+        if not ok:
+            return ok, msg
+        return self.executeQuery(db, sql, requestRow)
 
     def executeQuery(self, db, sql, row_builder = None):
         if not self.sdk:
@@ -131,3 +143,90 @@ class Driver(object):
             return False, status.msg
         return True, rs
 
+    def doProc(self, db, sp, data):
+        ok, requestRow = self.getRowBySp(db, sp)
+        if not ok:
+            return ok, requestRow
+        schema = requestRow.GetSchema();
+        ok, msg = self._append_request_row(requestRow, schema, data)
+        if not ok:
+            return ok, msg
+        return self.callProc(db, sp, requestRow)
+    
+    def _append_request_row(self, requestRow, schema, data):
+        appendMap = {
+            driver.sql_router_sdk.kTypeBool: requestRow.AppendBool,
+            driver.sql_router_sdk.kTypeInt16: requestRow.AppendInt16,
+            driver.sql_router_sdk.kTypeInt32: requestRow.AppendInt32,
+            driver.sql_router_sdk.kTypeInt64: requestRow.AppendInt64,
+            driver.sql_router_sdk.kTypeFloat: requestRow.AppendFloat,
+            driver.sql_router_sdk.kTypeDouble: requestRow.AppendDouble,
+            driver.sql_router_sdk.kTypeString: requestRow.AppendString,
+            driver.sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and requestRow.AppendDate(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
+            driver.sql_router_sdk.kTypeTimestamp: requestRow.AppendTimestamp
+            }
+        count = schema.GetColumnCnt()
+        strSize = 0
+        for i in range(count):
+            name = schema.GetColumnName(i)
+            if name not in data:
+                return False, "col {} data not given".format(name)
+            val = data.get(name)
+            if val == None:
+                if schema.IsColumnNotNull(i):
+                    return False, "column seq {} not allow null".format(i)
+                continue
+            colType = schema.GetColumnType(i)
+            if colType != driver.sql_router_sdk.kTypeString:
+                continue
+            if isinstance(val, str):
+                strSize += len(val)
+            else:
+                return False, "value {} type is not str".format(parameters[i])
+        requestRow.Init(strSize)
+        for i in range(count):
+            name = schema.GetColumnName(i)
+            val = data.get(name)
+            if val is == None:
+                builder.AppendNULL()
+                continue
+            colType = schema.GetColumnType(i)
+            ok = appendMap[colType](parameters[i])
+            if not ok:
+                return False, "erred at append data seq {}".format(i)
+        ok = requestRow.Build()
+        if not ok:
+           return False, "erred at build request row data"
+
+    
+    def doBatchRowRequest(self, db, sql, commonCol, paramters):
+        ok, requestRow = self.getRequestBuilder(self.db, sql)
+        if not ok:
+            return ok, "get request builder fail"
+        schema = requestRow.GetSchema()
+        commonCols = self.sdk.ColumnIndicesSet(schema)
+        count = schema.GetColumnCnt()
+        commnColAddCount = 0
+        for i in range(count):
+            colName = schema.GetColumnName(i):
+            if colName in commonCol:
+                commonCols.AddCommonColumnIdx(i)
+                commonColAddCount+=1
+        if commnColAddCount != len(commonCol):
+            return False, "some common col is not in table schema"
+        requestRowBatch = self.sdk.SQLRequestRowBatch(schema, commonCols)
+        if requestRowBatch is None:
+            return False, "generate sql request row batch fail"
+        for d in parameters:
+            ok, msg = _append_request_row(requestRow, schema, d)
+            if not ok:
+                return ok, msg
+            requestRowBatch.AddRow(requestRow)
+            ok, requestRow = self.getRequestBuilder(self.db, sql)
+            if not ok:
+                return ok, "get request builder fail"
+        status = sql_router_sdk.Status()
+        rs = self.sdk.ExecuteSQLBatchRequest(db, sql, requestRowBatch, status)
+        if not rs:
+            return False, status.msg
+        return True, rs
