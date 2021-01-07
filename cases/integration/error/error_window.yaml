@@ -1,5 +1,5 @@
 db: test_zw
-debugs: []
+debugs: ["no order by"]
 cases:
   - id: 0
     desc: no order by
