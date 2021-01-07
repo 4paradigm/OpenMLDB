@@ -144,11 +144,14 @@ def parse_args():
                         help="Probability weight to sample a new column")
     parser.add_argument("--prob_sample_const_column", default=0.1, type=float,
                         help="Probability weight to sample a const column")
-
+    parser.add_argument("--table_ts_num", default="[1,3]",
+                        help="生成表时的ts列的个数")
+    parser.add_argument("--window_pk", default="[1,3]",
+                        help="生成窗口时的pk数，创建表时生成的索引数")
     parser.add_argument("--num_pk", default=5,
-                        help="Specify different pk to generate")
+                        help="根据pk列生成数据时，一个pk列生成pk的数量")
     parser.add_argument("--size_of_pk", default="[2, 20]",
-                        help="Specify row number under each different pk")
+                        help="生成数据时每个pk生成多少条数据")
 
     parser.add_argument("--udf_filter", default=None,
                         help="UDF list to generate select list from")
@@ -396,7 +399,7 @@ class ColumnInfo:
 class ColumnsPool:
     def __init__(self, args):
         self.args = args
-        self.index_column = None
+        self.id_column = None
         self.order_columns = []
         self.partition_columns = []
         self.normal_columns = []
@@ -407,8 +410,8 @@ class ColumnsPool:
         :return: ColumnInfo的list
         '''
         res = []
-        if self.index_column is not None:
-            res.append(self.index_column)
+        if self.id_column is not None:
+            res.append(self.id_column)
         res.extend(self.partition_columns)
         res.extend(self.order_columns)
         res.extend(self.normal_columns)
@@ -421,7 +424,7 @@ class ColumnsPool:
         :param dtype: "int64"
         :return: 无返回
         '''
-        self.index_column = ColumnInfo(name, dtype, nullable=False)
+        self.id_column = ColumnInfo(name, dtype, nullable=False)
 
     def add_order_column(self, name, dtype, nullable=False):
         '''
@@ -482,7 +485,10 @@ class ColumnsPool:
                          downward=True,
                          dtype=None,
                          nullable=None,
-                         allow_const=False):
+                         allow_const=False,
+                         prob_use_existing=None,
+                         prob_use_new=None,
+                         prob_use_constant=None):
         '''
         生成一个列样本
         :param prefix:
@@ -494,10 +500,12 @@ class ColumnsPool:
         :return:
         '''
         # probabilities for random generate leaf expression
-        prob_use_existing = self.args.prob_sample_exist_column
-        prob_use_new = self.args.prob_sample_new_column
-        prob_use_constant = self.args.prob_sample_const_column
-
+        if prob_use_existing is None:
+            prob_use_existing = self.args.prob_sample_exist_column
+        if prob_use_new is None:
+            prob_use_new = self.args.prob_sample_new_column
+        if prob_use_constant is None:
+            prob_use_constant = self.args.prob_sample_const_column
         probs = [prob_use_existing]
         if downward:
             probs.append(prob_use_new)
@@ -551,7 +559,10 @@ class ColumnsPool:
                                      downward=downward,
                                      allow_const=False,
                                      dtype=VALID_PARTITION_TYPES,
-                                     nullable=nullable)
+                                     nullable=nullable,
+                                     prob_use_existing=0,
+                                     prob_use_new=1,
+                                     prob_use_constant=0)
 
     def sample_order_column(self, downward=True, nullable=False):
         '''
@@ -1131,25 +1142,31 @@ def sample_window_project(input_name, input_columns,
     # sample expressions
     expr_num = sample_integer_config(args.expr_num)
     expr_depth = sample_integer_config(args.expr_depth)
+    window_pk_num = sample_integer_config(args.window_pk)
+    table_ts_num = sample_integer_config(args.table_ts_num)
 
     # output expressions
     expressions = []
     output_names = []
 
-    pk_column = input_columns.sample_partition_column(
-        downward=downward, nullable=args.index_nullable)
+    pk_columns = []
+    for i in range(window_pk_num):
+        pk_column = input_columns.sample_partition_column(
+            downward=downward, nullable=args.index_nullable)
+        pk_columns.append(pk_column)
     order_column = input_columns.sample_order_column(
         downward=downward, nullable=args.index_nullable)
     if keep_index:
         # unique idx
-        index_column = input_columns.index_column
+        index_column = input_columns.id_column
         if index_column is not None:
             expressions.append(TypedExpr(index_column.name, index_column.dtype))
             output_names.append(index_column.name)
 
         # partition
-        expressions.append(TypedExpr(pk_column.name, pk_column.dtype))
-        output_names.append(pk_column.name)
+        for pk_column in pk_columns:
+            expressions.append(TypedExpr(pk_column.name, pk_column.dtype))
+            output_names.append(pk_column.name)
 
         # order
         expressions.append(TypedExpr(order_column.name, order_column.dtype))
@@ -1181,7 +1198,8 @@ def sample_window_project(input_name, input_columns,
     sql_string = sql_string.replace("${WINDOW_EXPRS}", ", ".join([_.text for _ in expressions]))
     sql_string = sql_string.replace("${INPUT_NAME}", input_name)
     sql_string = sql_string.replace("${WINDOW_NAME}", window_def.name)
-    sql_string = sql_string.replace("${PK_NAME}", pk_column.name)
+    xx = ",".join(map(lambda x:x.name,pk_columns))
+    sql_string = sql_string.replace("${PK_NAME}", ",".join(map(lambda x:x.name,pk_columns)))
     sql_string = sql_string.replace("${ORDER_NAME}", order_column.name)
     sql_string = sql_string.replace("${FRAME_DEF}", window_def.get_frame_def_string())
 
@@ -1208,15 +1226,15 @@ def gen_single_window_test(test_name, udf_pool, args):
 
     all_columns = input_columns.get_all_columns()
     data = gen_simple_data(all_columns, args, window_def,
-                           index_column=input_columns.index_column,
+                           index_column=input_columns.id_column,
                            partition_columns=input_columns.partition_columns,
                            order_columns=input_columns.order_columns)
     # 组装 yml
     input_table = {
         "columns": ["%s %s" % (c.name, c.dtype) for c in all_columns],
         "indexs": ["index1:%s:%s" % (
-            input_columns.partition_columns[0].name,
-            input_columns.order_columns[0].name)],
+            pk.name,
+            input_columns.order_columns[0].name) for pk in input_columns.partition_columns],
         "rows": data
     }
     sql_case = {
