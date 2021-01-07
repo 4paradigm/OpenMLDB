@@ -29,8 +29,8 @@ WindowInterface::WindowInterface(bool instance_not_in_window,
     window_impl_->set_instance_not_in_window(instance_not_in_window);
 }
 
-void WindowInterface::BufferData(uint64_t key, const Row& row) {
-    window_impl_->BufferData(key, row);
+bool WindowInterface::BufferData(uint64_t key, const Row& row) {
+    return window_impl_->BufferData(key, row);
 }
 
 int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,

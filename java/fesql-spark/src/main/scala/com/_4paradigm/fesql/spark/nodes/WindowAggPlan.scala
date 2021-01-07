@@ -401,7 +401,7 @@ object WindowAggPlan {
             str.append(row.get(e))
             str.append(",")
           }
-          str.append(" window size = " + computer.getWindow.size())
+          str.append("window size = " + computer.getWindow.size())
           logger.info(s"tag : postion = ${tag} : ${position} threadId = ${Thread.currentThread().getId} cnt = ${cnt} rowInfo = ${str.toString}")
         }
         cnt += 1
@@ -536,7 +536,7 @@ object WindowAggPlan {
 
     // window state
     protected var window = new WindowInterface(
-      config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, if (config.startOffset == 0 && config.rowPreceding.intValue() > 0) config.rowPreceding.intValue() + 1 else 0)
+      config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, 0)
 
     def compute(row: Row): Row = {
       // call encode
@@ -562,7 +562,9 @@ object WindowAggPlan {
     def bufferRowOnly(row: Row): Unit = {
       val nativeInputRow = encoder.encode(row)
       val key = orderKeyExtractor.apply(row)
-      window.BufferData(key, nativeInputRow)
+      if (!window.BufferData(key, nativeInputRow)) {
+        logger.error("BufferData Fail: pls check order key")
+      }
     }
 
     def checkPartition(prev: Row, cur: Row): Unit = {
@@ -575,12 +577,14 @@ object WindowAggPlan {
     def resetWindow(): Unit = {
       // TODO: wrap iter to hook iter end; now last window is leak
       window.delete()
-      var max_size = 0
-      if (config.startOffset == 0 && config.rowPreceding > 0) {
-        max_size = config.rowPreceding.intValue() + 1
-      }
+//      var max_size = 0
+//      if (config.startOffset == 0 && config.rowPreceding > 0) {
+//        max_size = config.rowPreceding.intValue() + 1
+//      }
+//      window = new WindowInterface(
+//        config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, max_size)
       window = new WindowInterface(
-        config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, max_size)
+        config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, 0)
     }
 
     def delete(): Unit = {

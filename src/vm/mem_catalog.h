@@ -259,7 +259,7 @@ class Window : public MemTimeTableHandler {
     RowIterator* GetRawIterator() {
         return new vm::MemTimeTableIterator(&table_, schema_);
     }
-    virtual void BufferData(uint64_t key, const Row& row) = 0;
+    virtual bool BufferData(uint64_t key, const Row& row) = 0;
     virtual void PopBackData() { PopBackRow(); }
     virtual void PopFrontData() { PopFrontRow(); }
 
@@ -302,9 +302,15 @@ class CurrentHistoryWindow : public Window {
 
     ~CurrentHistoryWindow() {}
 
-    void BufferData(uint64_t key, const Row& row) {
+    bool BufferData(uint64_t key, const Row& row) {
+        if (!table_.empty()) {
+            auto latest = GetFrontRow();
+            if (latest.first > key) {
+                LOG(WARNING) << "Fail BufferData: buffer key less than latest key";
+                return false;
+            }
+        }
         AddFrontRow(key, row);
-
         auto cur_size = table_.size();
         auto max_size = max_size_ > 0 ? max_size_ : 0;
         while (max_size > 0 && cur_size > max_size) {
@@ -324,6 +330,7 @@ class CurrentHistoryWindow : public Window {
                 break;
             }
         }
+        return true;
     }
 
  private:

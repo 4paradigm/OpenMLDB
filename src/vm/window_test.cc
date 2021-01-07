@@ -316,6 +316,22 @@ TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
         window.BufferData(6000L, row);
         ASSERT_EQ(2u, window.GetCount());
     }
+
+    // history buffer error
+    {
+        CurrentHistoryWindow window(-1000L, 5);
+        ASSERT_TRUE(window.BufferData(1L, row));
+        ASSERT_EQ(1u, window.GetCount());
+        ASSERT_TRUE(window.BufferData(2L, row));
+        ASSERT_EQ(2u, window.GetCount());
+        ASSERT_TRUE(window.BufferData(3L, row));
+        ASSERT_EQ(3u, window.GetCount());
+        ASSERT_TRUE(window.BufferData(40L, row));
+        ASSERT_EQ(4u, window.GetCount());
+        ASSERT_TRUE(window.BufferData(500L, row));
+        ASSERT_EQ(2u, window.GetCount());
+        ASSERT_FALSE(window.BufferData(100L, row));
+    }
 }
 
 void Check_Next_N(RowIterator* iter, int n) {

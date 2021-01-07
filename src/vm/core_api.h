@@ -34,7 +34,7 @@ class WindowInterface {
                     int64_t end_offset, uint64_t row_preceding,
                     uint32_t max_size);
 
-    void BufferData(uint64_t key, const Row& row);
+    bool BufferData(uint64_t key, const Row& row);
 
     fesql::codec::Row Get(uint64_t idx) const { return window_impl_->At(idx); }
 

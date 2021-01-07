@@ -825,7 +825,10 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
     if (row.empty()) {
         return row;
     }
-    window->BufferData(key, row);
+    if (!window->BufferData(key, row)) {
+        LOG(WARNING) << "fail to buffer data";
+        return Row();
+    }
     if (!is_instance) {
         return Row();
     }
