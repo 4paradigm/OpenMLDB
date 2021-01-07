@@ -34,12 +34,12 @@ public class FunctionTest extends FesqlTest {
     public void testFunctionRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
     }
-//    @Test(dataProvider = "testFunctionCase")
-//    public void testFunctionRequestModeWithSp(SQLCase testCase) throws Exception {
-//        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
-//    }
-//    @Test(dataProvider = "testFunctionCase")
-//    public void testFunctionRequestModeWithSpAysn(SQLCase testCase) throws Exception {
-//        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
-//    }
+    @Test(dataProvider = "testFunctionCase")
+    public void testFunctionRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
+    }
+    @Test(dataProvider = "testFunctionCase")
+    public void testFunctionRequestModeWithSpAysn(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
+    }
 }
