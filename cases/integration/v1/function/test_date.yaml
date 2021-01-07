@@ -15,7 +15,7 @@ cases:
       order: id
       columns: ["id bigint", "e1 string","e2 string"]
       rows:
-        - [1, "2020-05-29 15:56:29","2020-05-29 00:00:00"]
+        - [1, "2020-05-29 15:56:29","2020-05-01 00:00:00"]
         - [2, NULL,NULL]
   - id: 1
     desc: date_format-fail

@@ -133,7 +133,6 @@ cases:
 
   - id: 6
     desc: 数值幂函数
-    tags: ["bool 类型不支持"]
     inputs:
       - columns: ["id int", "c0 smallint", "c1 int", "c2 bigint", "c3 float", "c4 double","c5 bool"]
         indexs: ["index1:c0:c2"]
@@ -145,14 +144,14 @@ cases:
         pow(c1, c2) as r1,
         power(c2, c3) as r2,
         sqrt(c4) as r3,
-        sqrt(c5) as r4
+        pow(c5,c1) as r4
         from {0};
     expect:
       order: id
       columns: ["id int", "r0 double", "r1 double", "r2 double", "r3 double","r4 double"]
       rows:
         - [1, 1, 1024.000000, 10.000000, 10.000000,1.0]
-        - [2, NULL, NULL, NULL, NULL,0.0]
+        - [2, NULL, NULL, NULL, NULL,NULL]
   - id: 7
     desc: "计算函数-单参数-fail"
     inputs:
@@ -168,6 +167,20 @@ cases:
     expect:
       success: false
   - id: 8
+    desc: "计算函数-单参数-bool-fail"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",30,-30,30,30.0,30.0,1590738989000,"2020-05-01",true]
+    sql: select d[0](d[1]) from {0};
+    dataProvider:
+      - ["cos","cot","sin","tan","acos","asin","atan","sqrt"]
+      - ["{0}.c9"]
+    expect:
+      success: false
+  - id: 9
     desc: "计算函数-两参数-fail"
     inputs:
       -
@@ -181,7 +194,7 @@ cases:
       - ["{0}.c1","{0}.c7","{0}.c8"]
     expect:
       success: false
-  - id: 9
+  - id: 10
     desc: "mod()_整型_正确"
     tags: ["TODO","暂时不支持mod()"]
     inputs:
