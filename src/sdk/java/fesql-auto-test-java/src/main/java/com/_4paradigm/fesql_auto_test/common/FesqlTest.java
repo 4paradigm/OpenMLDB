@@ -1,8 +1,10 @@
 package com._4paradigm.fesql_auto_test.common;
 
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.fesql_auto_test.entity.FesqlDataProvider;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
+import org.testng.Assert;
 import org.testng.ITest;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeTest;
@@ -24,9 +26,13 @@ public class FesqlTest implements ITest {
 
     @BeforeMethod
     public void BeforeMethod(Method method, Object[] testData) {
+        Assert.assertNotNull(
+                testData[0], "fail to run fesql test with null SQLCase: check yaml case");
         if (testData[0] instanceof SQLCase) {
             SQLCase sqlCase = (SQLCase) testData[0];
-            testName.set(String.format("[%d]%s_%s_%s_%s",testNum,
+            Assert.assertNotEquals(FesqlDataProvider.FAIL_SQL_CASE,
+                    sqlCase.getDesc(), "fail to run fesql test with FAIL DATA PROVIDER SQLCase: check yaml case");
+            testName.set(String.format("[%d]%s_%s_%s_%s", testNum,
                     method.getName(),
                     FesqlGlobalVar.env, sqlCase.getId(), sqlCase.getDesc()));
         } else {
