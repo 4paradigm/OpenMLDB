@@ -97,7 +97,7 @@ public class JITManager {
         // ensure worker side module
         if (!JITManager.hasModule(tag)) {
             JITManager.initModule(tag, moduleBuffer);
-            logger.info("Init jit module with tag:\n{}",  tag);
+            logger.info("Init jit module with tag:\n" + tag);
         }
     }
 }

@@ -24,6 +24,47 @@ import static com._4paradigm.fesql.common.DDLEngine.sql2Feconfig;
 public class DDLEngineTest {
     private static final Logger logger = LoggerFactory.getLogger(DDLEngineTest.class);
 
+    @DataProvider(name = "build_more_index")
+    public Object[][] getSqlScript() {
+        return new Object[][] {
+                new Object[] {
+                        "support small short smallint",
+                        "ddl/ut/type.json",
+                        "ddl/ut/type.txt",
+                        1,
+                        2,
+                        "create table `main`(\n" +
+                                "`col1` smallint,\n" +
+                                "`col2` int,\n" +
+                                "`col3` bigint,\n" +
+                                "`col4` float,\n" +
+                                "`col5` double,\n" +
+                                "`col6` bool,\n" +
+                                "`col7` string,\n" +
+                                "`col8` timestamp,\n" +
+                                "`col9` date,\n" +
+                                "index(key=(`col2`), ttl=1, ttl_type=latest)\n" +
+                                ") replicanum=1, partitionnum=2 ;\n"
+                },
+        };
+    }
+
+    @Test(dataProvider = "build_more_index")
+    public void testDDL(String desc, String schemaPath, String sqlPath, int replicaNumber, int partitionNumber, String expct) {
+        logger.info(desc);
+        File file = new File(DDLEngineTest.class.getClassLoader().getResource(schemaPath).getPath());
+        File sql = new File(DDLEngineTest.class.getClassLoader().getResource(sqlPath).getPath());
+        try {
+            String ddl = genDDL(FileUtils.readFileToString(sql, "UTF-8"), FileUtils.readFileToString(file, "UTF-8"), replicaNumber, partitionNumber);
+            Assert.assertEquals(ddl, expct);
+        } catch (IOException e) {
+            e.printStackTrace();
+            logger.error("{}", e);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     @Test
     public void testDDLAndConfig() throws Exception {
         String rootPath = "ddl";

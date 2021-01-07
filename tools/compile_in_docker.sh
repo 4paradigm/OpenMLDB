@@ -2,6 +2,10 @@
 #
 # compile_in_docker.sh
 
+rm thirdparty
+ln -sf /depends/thirdparty thirdparty
+source /opt/rh/devtoolset-7/enable
+
 PWD=`pwd`
 
 if $(uname -a | grep -q Darwin); then
