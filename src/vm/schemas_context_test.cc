@@ -24,7 +24,7 @@ class SchemasContextTest : public ::testing::Test {
  public:
     SchemasContextTest()
         : catalog(new vm::SimpleCatalog()),
-          plan_ctx(&nm, &lib, "db", catalog) {}
+          plan_ctx(&nm, &lib, "db", catalog, false) {}
     node::NodeManager nm;
     udf::UDFLibrary lib;
     std::shared_ptr<vm::SimpleCatalog> catalog;

@@ -189,6 +189,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     }
     if (llvm::verifyModule(*(m.get()), &llvm::errs(), nullptr)) {
         LOG(WARNING) << "fail to verify codegen module";
+        status.msg = "fail to verify codegen module";
+        status.code = common::kCodegenError;
         m->print(::llvm::errs(), NULL, true, true);
         return false;
     }
@@ -241,7 +243,8 @@ Status SQLCompiler::BuildBatchModePhysicalPlan(
     PhysicalOpNode** output) {
     vm::BatchModeTransformer transformer(&ctx->nm, ctx->db, cl_, llvm_module,
                                          library, ctx->is_performance_sensitive,
-                                         ctx->is_cluster_optimized);
+                                         ctx->is_cluster_optimized,
+                                         ctx->enable_expr_optimize);
     transformer.AddDefaultPasses();
     CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output),
                  "Fail to generate physical plan (batch mode)");
@@ -255,7 +258,8 @@ Status SQLCompiler::BuildRequestModePhysicalPlan(
     PhysicalOpNode** output) {
     vm::RequestModeTransformer transformer(
         &ctx->nm, ctx->db, cl_, llvm_module, library, {},
-        ctx->is_performance_sensitive, ctx->is_cluster_optimized, false);
+        ctx->is_performance_sensitive, ctx->is_cluster_optimized, false,
+        ctx->enable_expr_optimize);
     transformer.AddDefaultPasses();
     CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output),
                  "Fail to generate physical plan (request mode)");
@@ -276,7 +280,7 @@ Status SQLCompiler::BuildBatchRequestModePhysicalPlan(
         &ctx->nm, ctx->db, cl_, llvm_module, library,
         ctx->batch_request_info.common_column_indices,
         ctx->is_performance_sensitive, ctx->is_cluster_optimized,
-        ctx->is_batch_request_optimized);
+        ctx->is_batch_request_optimized, ctx->enable_expr_optimize);
     transformer.AddDefaultPasses();
     PhysicalOpNode* output_plan = nullptr;
     CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, &output_plan),

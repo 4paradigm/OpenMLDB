@@ -57,6 +57,8 @@ struct SQLContext {
     bool is_performance_sensitive = false;
     bool is_cluster_optimized = false;
     bool is_batch_request_optimized = false;
+    bool enable_expr_optimize = false;
+
     // the sql content
     std::string sql;
     // the database

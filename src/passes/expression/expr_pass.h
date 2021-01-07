@@ -6,6 +6,7 @@
 #ifndef SRC_PASSES_EXPRESSION_EXPR_PASS_H_
 #define SRC_PASSES_EXPRESSION_EXPR_PASS_H_
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -13,9 +14,37 @@
 
 #include "node/expr_node.h"
 #include "node/sql_node.h"
+#include "passes/pass_base.h"
 
 namespace fesql {
 namespace passes {
+
+class ExprPass
+    : public passes::PassBase<node::ExprNode, node::ExprAnalysisContext> {
+ public:
+    ExprPass() = default;
+    virtual ~ExprPass() {}
+
+    node::ExprIdNode* GetWindow() const;
+    void SetWindow(node::ExprIdNode*);
+
+    node::ExprIdNode* GetRow() const;
+    void SetRow(node::ExprIdNode*);
+
+ private:
+    node::ExprIdNode* window_;
+    node::ExprIdNode* row_;
+};
+
+class ExprPassGroup : public ExprPass {
+ public:
+    void AddPass(const std::shared_ptr<ExprPass>& pass);
+    base::Status Apply(node::ExprAnalysisContext* ctx, node::ExprNode* expr,
+                       node::ExprNode** out) override;
+
+ private:
+    std::vector<std::shared_ptr<ExprPass>> passes_;
+};
 
 /**
  * Utility class to replace child expr in root expression tree inplace.
