@@ -3,6 +3,7 @@ package com._4paradigm.sql;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 
 import java.util.Properties;
 
@@ -24,7 +25,7 @@ public class BenchmarkConfig {
 
     private static SqlExecutor executor = null;
     private static SdkOption option = null;
-    private static boolean needProxy = false;
+    private static boolean NEED_PROXY= false;
 
     public static int PK_NUM = 1;
     public static int PUT_THREAD_NUM = 1;
@@ -41,6 +42,7 @@ public class BenchmarkConfig {
             ZK_NS = prop.getProperty("ZK_NS");
             PARTITION_NUM = prop.getProperty("PARTITION_NUM");
             ddlUrl = prop.getProperty("ddlUrl");
+            NEED_PROXY = Boolean.valueOf(prop.getProperty("HTTP_PROXY"));
             scriptUrl = prop.getProperty("scriptUrl");
             relationUrl = prop.getProperty("relationUrl");
             jsonUrl = prop.getProperty("jsonUrl");
@@ -80,7 +82,7 @@ public class BenchmarkConfig {
     }
 
     public static boolean NeedProxy() {
-        return needProxy;
+        return NEED_PROXY;
     }
 
     public static SqlExecutor GetSqlExecutor(boolean enableDebug) {

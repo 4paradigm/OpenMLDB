@@ -422,7 +422,7 @@ static inline int dc_decode_key_with_fmt_new(Codec *dc, char *buf, int buf_size,
 int dc_encode(Codec *dc, char *buf, int buf_size, const char *src, int len)
 {
     char fmt[255];
-    int flen;
+    int flen = 0;
 
 #ifndef NEW_ENCODE
     int args[10];

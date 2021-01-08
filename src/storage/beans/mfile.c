@@ -33,7 +33,7 @@ MFile *open_mfile(const char *path)
     struct stat sb;
     if (fstat(fd, &sb) == -1)
     {
-        close(fd);
+        close(fd);  // NOLINT
         return  NULL;
     }
 #if _XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L
@@ -45,7 +45,7 @@ MFile *open_mfile(const char *path)
     while (curr_mmap_size + mb > MAX_MMAP_SIZE && mb > 100)
     {
         pthread_mutex_unlock(&mmap_lock);
-        sleep(5);
+        sleep(5);  // NOLINT
         pthread_mutex_lock(&mmap_lock);
     }
     curr_mmap_size += mb;
