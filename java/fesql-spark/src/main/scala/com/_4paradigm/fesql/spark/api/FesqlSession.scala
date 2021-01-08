@@ -53,6 +53,7 @@ class FesqlSession {
         case FesqlConfig.configTimeZone => FesqlConfig.timeZone = v.asInstanceOf[String]
         case FesqlConfig.configTinyData => FesqlConfig.tinyData = v.toLong
         case FesqlConfig.configPrintSamplePartition => FesqlConfig.printSamplePartition = v.toLong
+        case FesqlConfig.configSlowRunCacheDir => FesqlConfig.slowRunCacheDir = v.toString
         case _ => ""
       }
     }

@@ -58,8 +58,8 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
     config.getOrElse(key, default).asInstanceOf[T]
   }
 
-  def visitPhysicalNodes(root: PhysicalOpNode): SparkInstance = {
-    planner.visitPhysicalNodes(root, this)
+  def getSparkOutput(root: PhysicalOpNode): SparkInstance = {
+    planner.getSparkOutput(root, this)
   }
 
   /**

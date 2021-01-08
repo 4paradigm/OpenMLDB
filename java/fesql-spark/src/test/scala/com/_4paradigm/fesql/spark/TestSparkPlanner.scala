@@ -1,6 +1,7 @@
 package com._4paradigm.fesql.spark
 
 import com._4paradigm.fesql.spark.element.FesqlConfig
+import com._4paradigm.fesql.sqlcase.model.CaseFile
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 

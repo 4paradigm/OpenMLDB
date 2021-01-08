@@ -70,4 +70,8 @@ object FesqlConfig {
   final val skew = "skew"
   final val stat = "stat"
 
+  // 慢速执行模式
+  final val configSlowRunCacheDir = "spark.fesql.slowRunCacheDir"
+  var slowRunCacheDir: String = _
+
 }

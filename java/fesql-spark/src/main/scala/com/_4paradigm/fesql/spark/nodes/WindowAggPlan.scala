@@ -124,7 +124,7 @@ object WindowAggPlan {
 
     val subTables = (0 until unionNum).map(i => {
       val subNode = node.window_unions().GetUnionNode(i)
-      val df = ctx.visitPhysicalNodes(subNode).getDf(sess)
+      val df = ctx.getSparkOutput(subNode).getDf(sess)
       if (df.schema != source.schema) {
         throw new FesqlException("{$i}th Window union with inconsistent schema:\n" +
           s"Expect ${source.schema}\nGet ${df.schema}")

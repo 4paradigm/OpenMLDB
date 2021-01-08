@@ -1,8 +1,8 @@
 import java.io.File
 
-import com._4paradigm.fesql.spark.SparkPlanner
-import com._4paradigm.fesql.spark.api.{FesqlDataframe, FesqlSession}
-import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+import com._4paradigm.fesql.spark.api.FesqlSession
+import com._4paradigm.fesql.spark.element.FesqlConfig
+import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -21,6 +21,7 @@ object Main {
   private var appName: String = _
   private var useSparkSQL = false
   private var jsonPath: String = _
+  private var slowHdfsCacheDir: String = _
 
   def main(args: Array[String]): Unit = {
     ArgParser(args).parseArgs()
@@ -63,6 +64,7 @@ object Main {
     } else {
       sess.sql(sql)
     }
+
     var endTime = System.currentTimeMillis()
     logger.info(f"Compile SQL time cost: ${(endTime - startTime) / 1000.0}%.2f seconds")
 
@@ -93,6 +95,7 @@ object Main {
         case "--name" => appName = parseValue()
         case "--spark-sql" => useSparkSQL = true
         case "--json" => jsonPath = parseValue()
+        case "--slow-hdfs-cache" => FesqlConfig.slowRunCacheDir = parseValue()
         case _ =>
           logger.warn(s"Unknown argument: $key")
       }
