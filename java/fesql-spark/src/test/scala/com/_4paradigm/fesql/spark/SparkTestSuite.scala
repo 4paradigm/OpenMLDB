@@ -10,7 +10,7 @@ abstract class SparkTestSuite extends FunSuite with BeforeAndAfter {
   private val tlsSparkSession = new ThreadLocal[SparkSession]()
 
   before {
-    val sess = SparkSession.builder().master("local").config(FesqlConfig.configMode, "skew")getOrCreate()
+    val sess = SparkSession.builder().master("local").getOrCreate()
     tlsSparkSession.set(sess)
   }
 

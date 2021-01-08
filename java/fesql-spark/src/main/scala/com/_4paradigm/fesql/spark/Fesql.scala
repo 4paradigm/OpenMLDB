@@ -3,7 +3,6 @@ package com._4paradigm.fesql.spark
 import java.io.{File, FileReader}
 
 import com._4paradigm.fesql.common.DDLEngine._
-import com._4paradigm.fesql.common.RequestEngine
 import com._4paradigm.fesql.utils.SqlUtils._
 import com._4paradigm.fesql.spark.api.FesqlSession
 import com._4paradigm.fesql.spark.element.FesqlConfig
@@ -49,20 +48,25 @@ object Fesql {
     val inputTables = config.getTables
     for ((name, path) <- inputTables.asScala) {
       logger.info(s"Try load table $name from: $path")
+
       if (FesqlConfig.tinyData > 0) {
         sess.read(path).tiny(FesqlConfig.tinyData).createOrReplaceTempView(name)
       } else {
         sess.read(path).createOrReplaceTempView(name)
       }
     }
-
     val feconfig = sql2Feconfig(sqlScript, FesqlUtil.getDatabase(FesqlConfig.configDBName, sess.registeredTables.toMap))//parseOpSchema(rquestEngine.getPlan)
     val tableInfoRDD = sess.getSparkSession.sparkContext.parallelize(Seq(feconfig)).repartition(1)
-    HDFSUtil.deleteIfExist(config.getOutputPath + "/../config")
-    tableInfoRDD.saveAsTextFile((config.getOutputPath + "/../config"))
+    HDFSUtil.deleteIfExist(config.getOutputPath + "/config")
+    tableInfoRDD.saveAsTextFile((config.getOutputPath + "/config"))
 
-    val output = config.getOutputPath
+    val output = config.getOutputPath + "/data"
     val res = sess.fesql(sqlScript)
+
+    res.sparkDf.show(100)
+    logger.info("fesql compute is done")
+
+
     if (config.getInstanceFormat.equals("parquet")) {
       res.sparkDf.write.mode("overwrite").parquet(output)
     }

@@ -24,6 +24,8 @@ public class Table {
     List<List<Object>> rows;
     String create;
     String insert;
+    List<String> inserts;
+    String repeat_tag = "";
     int repeat = 1;
     List<String> common_column_indices;
 
@@ -39,15 +41,18 @@ public class Table {
      *
      * @return
      */
-    public String getCreate(int replicaNum) {
+    public String extractCreate(int replicaNum) {
         if (!StringUtils.isEmpty(create)) {
             return create;
         }
         return buildCreateSQLFromColumnsIndexs(name, getColumns(), getIndexs(), replicaNum);
     }
 
+    public String extractCreate() {
+        return extractCreate(1);
+    }
     public String getCreate() {
-        return getCreate(1);
+        return create;
     }
 
     /**
@@ -57,6 +62,9 @@ public class Table {
      * @return
      */
     public String getInsert() {
+        return insert;
+    }
+    public String extractInsert() {
         if (!StringUtils.isEmpty(insert)) {
             return insert;
         }
@@ -71,8 +79,14 @@ public class Table {
      * @return
      */
     public List<String> getInserts() {
+        return inserts;
+    }
+    public List<String> extractInserts() {
         if (!StringUtils.isEmpty(insert)) {
             return Lists.newArrayList(insert);
+        }
+        if (!CollectionUtils.isEmpty(inserts)) {
+            return inserts;
         }
         List<String> inserts = Lists.newArrayList();
         for (List<Object> row : getRows()) {
@@ -131,6 +145,17 @@ public class Table {
         return parserd_columns;
     }
 
+    public List<List<Object>> getRepeatRows(List<List<Object>> rows, int repeat) {
+        if (repeat <= 1) {
+            return rows;
+        }
+        List<List<Object>> repeatRows = Lists.newArrayList();
+        for (int i = 0; i < repeat; i++) {
+            repeatRows.addAll(rows);
+        }
+        return repeatRows;
+    }
+
     /**
      * 获取Rows
      * 如果 rows 非空，直接返回 rows, 否则需要从 data 解析出 rows
@@ -139,7 +164,7 @@ public class Table {
      */
     public List<List<Object>> getRows() {
         if (!CollectionUtils.isEmpty(rows)) {
-            return rows;
+            return getRepeatRows(rows, repeat);
         }
 
         if (StringUtils.isEmpty(data)) {
@@ -155,7 +180,8 @@ public class Table {
             }
             parserd_rows.add(each_row);
         }
-        return parserd_rows;
+
+        return getRepeatRows(parserd_rows, repeat);
     }
 
     /**
@@ -322,7 +348,7 @@ public class Table {
     }
 
     public static String buildCreateSQLFromColumnsIndexs(String name, List<String> columns, List<String> indexs,
-            int replicaNum) {
+                                                         int replicaNum) {
         if (CollectionUtils.isEmpty(indexs) || CollectionUtils.isEmpty(columns)) {
             return "";
         }

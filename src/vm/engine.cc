@@ -274,7 +274,8 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
         // fill common output column info
         auto& output_common_indices =
             ctx.batch_request_info.output_common_column_indices;
-        int schema_size = explain_output->output_schema.size();
+        size_t schema_size =
+            static_cast<size_t>(explain_output->output_schema.size());
         for (size_t idx : output_common_indices) {
             if (idx >= schema_size) {
                 LOG(WARNING)

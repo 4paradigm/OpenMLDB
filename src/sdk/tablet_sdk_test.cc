@@ -648,8 +648,8 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
             "sum(column3) OVER w1 as w1_col3_sum, "
             "sum(column4) OVER w1 as w1_col4_sum, "
             "sum(column5) OVER w1 as w1_col5_sum "
-            "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 RANGE "
-            "BETWEEN 3000"
+            "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 "
+            "ROWS_RANGE BETWEEN 3000"
             "PRECEDING AND CURRENT ROW) limit 10;";
         std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
@@ -865,7 +865,8 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
             "sum(column3) OVER w1 as w1_col3_sum, "
             "sum(column4) OVER w1 as w1_col4_sum, "
             "sum(column5) OVER w1 as w1_col5_sum "
-            "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 RANGE "
+            "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 "
+            "ROWS_RANGE "
             "BETWEEN 3000"
             "PRECEDING AND CURRENT ROW) limit 10;";
         std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
