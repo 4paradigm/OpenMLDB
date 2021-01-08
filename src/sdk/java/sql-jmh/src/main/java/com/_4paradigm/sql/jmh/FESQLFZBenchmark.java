@@ -162,9 +162,9 @@ public class FESQLFZBenchmark {
                                 valueMap.put(fieldName, String.valueOf(pkBase + i));
                             }
                         } else if (tsIndex.contains(pos)) {
-                            builder.append(ts - (tsCnt + BenchmarkConfig.TIME_DIFF) * 1000);
-                            row.add(ts - (tsCnt + BenchmarkConfig.TIME_DIFF) * 1000);
-
+                            long cur_ts = ts - (tsCnt + BenchmarkConfig.TIME_DIFF) * 1000;
+                            builder.append(cur_ts);
+                            row.add(cur_ts);
                         } else {
                             if (type.equals("timestamp")) {
                                 builder.append(ts);
