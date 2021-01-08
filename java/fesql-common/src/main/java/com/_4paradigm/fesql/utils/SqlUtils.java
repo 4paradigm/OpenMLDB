@@ -24,6 +24,7 @@ public class SqlUtils {
     }
 
     public static SparkConfig parseFeconfigJson(String json) {
+        logger.info("fesql config: {}", json);
         Gson gson = new Gson();
         JsonParser parser = new JsonParser();
         JsonObject jsonElement = parser.parse(json).getAsJsonObject();
