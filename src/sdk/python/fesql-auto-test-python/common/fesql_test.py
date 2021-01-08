@@ -32,7 +32,7 @@ def getCases(yamlPath: str) -> list:
         return testCases
     else:
         for case in cases:
-            if case.has_key('dataProvider'):
+            if 'dataProvider' in case:
                 continue
             if not isCaseInBlackList(case):
                 if case.get('executor') == None:
