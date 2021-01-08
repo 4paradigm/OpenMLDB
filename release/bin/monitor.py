@@ -19,7 +19,7 @@ if sys.version_info.major > 2:
 else:
     do_open = lambda filename, mode: open(filename, mode)
 
-method = ["put", "get", "scan", "query", "subquery", "batchquery", "sqlbatchrequestquery"]
+method = ["put", "get", "scan", "query", "subquery", "batchquery", "sqlbatchrequestquery", "subbatchrequestquery"]
 method_set = set(method)
 monitor_key = ["count", "error", "qps", "latency", "latency_50",
                "latency_90", "latency_99", "latency_999", "latency_9999", "max_latency"]
