@@ -829,7 +829,10 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
     if (row.empty()) {
         return row;
     }
-    window->BufferData(key, row);
+    if (!window->BufferData(key, row)) {
+        LOG(WARNING) << "fail to buffer data";
+        return Row();
+    }
     if (!is_instance) {
         return Row();
     }
@@ -1315,9 +1318,10 @@ void WindowAggRunner::RunWindowAggOnKey(
             ? -1
             : IteratorStatus::PickIteratorWithMininumKey(&union_segment_status);
     int32_t cnt = output_table->GetCount();
-    CurrentHistoryWindow window(instance_window_gen_.range_gen_.start_offset_);
+    CurrentHistoryWindow window(instance_window_gen_.range_gen_.frame_type_,
+                                instance_window_gen_.range_gen_.start_offset_,
+                                instance_window_gen_.range_gen_.start_row_);
     window.set_instance_not_in_window(instance_not_in_window_);
-    window.set_rows_preceding(instance_window_gen_.range_gen_.start_row_);
 
     while (instance_segment_iter->Valid()) {
         if (limit_cnt_ > 0 && cnt >= limit_cnt_) {

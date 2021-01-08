@@ -21,16 +21,16 @@ namespace fesql {
 namespace vm {
 
 WindowInterface::WindowInterface(bool instance_not_in_window,
+                                 Window::WindowFrameType frame_type,
                                  int64_t start_offset, int64_t end_offset,
                                  uint64_t row_preceding, uint32_t max_size)
-    : window_impl_(std::unique_ptr<Window>(
-          new CurrentHistoryWindow(start_offset, max_size))) {
-    window_impl_->set_rows_preceding(row_preceding);
+    : window_impl_(std::unique_ptr<Window>(new CurrentHistoryWindow(
+          frame_type, start_offset, row_preceding, max_size))) {
     window_impl_->set_instance_not_in_window(instance_not_in_window);
 }
 
-void WindowInterface::BufferData(uint64_t key, const Row& row) {
-    window_impl_->BufferData(key, row);
+bool WindowInterface::BufferData(uint64_t key, const Row& row) {
+    return window_impl_->BufferData(key, row);
 }
 
 int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,

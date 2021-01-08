@@ -234,18 +234,23 @@ class MemTimeTableHandler : public TableHandler {
 
 class Window : public MemTimeTableHandler {
  public:
-    Window(int64_t start_offset, int64_t end_offset)
+    enum WindowFrameType { kFrameRows, kFrameRowsRange };
+    Window(WindowFrameType frame_type, int64_t start_offset, int64_t end_offset,
+           uint64_t rows_preceding)
         : MemTimeTableHandler(),
+          frame_type_(frame_type),
           start_offset_(start_offset),
           end_offset_(end_offset),
-          rows_preceding_(0),
+          rows_preceding_(rows_preceding),
           max_size_(0),
           instance_not_in_window_(false) {}
-    Window(int64_t start_offset, int64_t end_offset, uint32_t max_size)
+    Window(WindowFrameType frame_type, int64_t start_offset, int64_t end_offset,
+           uint64_t rows_preceding, uint32_t max_size)
         : MemTimeTableHandler(),
+          frame_type_(frame_type),
           start_offset_(start_offset),
           end_offset_(end_offset),
-          rows_preceding_(0),
+          rows_preceding_(rows_preceding),
           max_size_(max_size),
           instance_not_in_window_(false) {}
     virtual ~Window() {}
@@ -259,7 +264,7 @@ class Window : public MemTimeTableHandler {
     RowIterator* GetRawIterator() {
         return new vm::MemTimeTableIterator(&table_, schema_);
     }
-    virtual void BufferData(uint64_t key, const Row& row) = 0;
+    virtual bool BufferData(uint64_t key, const Row& row) = 0;
     virtual void PopBackData() { PopBackRow(); }
     virtual void PopFrontData() { PopFrontRow(); }
 
@@ -286,6 +291,7 @@ class Window : public MemTimeTableHandler {
     const uint64_t rows_preceding() const { return this->rows_preceding_; }
 
  protected:
+    WindowFrameType frame_type_;
     int64_t start_offset_;
     int32_t end_offset_;
     uint64_t rows_preceding_;
@@ -295,16 +301,21 @@ class Window : public MemTimeTableHandler {
 
 class CurrentHistoryWindow : public Window {
  public:
-    explicit CurrentHistoryWindow(int64_t start_offset)
-        : Window(start_offset, 0) {}
-    CurrentHistoryWindow(int64_t start_offset, uint32_t max_size)
-        : Window(start_offset, 0, max_size) {}
+    explicit CurrentHistoryWindow(WindowFrameType frame_type,
+                                  int64_t start_offset, uint64_t rows_preceding)
+        : Window(frame_type, start_offset, 0, rows_preceding) {}
+    CurrentHistoryWindow(WindowFrameType frame_type, int64_t start_offset,
+                         uint64_t rows_preceding, uint32_t max_size)
+        : Window(frame_type, start_offset, 0, rows_preceding, max_size) {}
 
     ~CurrentHistoryWindow() {}
 
-    void BufferData(uint64_t key, const Row& row) {
+    bool BufferData(uint64_t key, const Row& row) {
+        if (!table_.empty() && GetFrontRow().first > key) {
+            DLOG(WARNING) << "Fail BufferData: buffer key less than latest key";
+            return false;
+        }
         AddFrontRow(key, row);
-
         auto cur_size = table_.size();
         auto max_size = max_size_ > 0 ? max_size_ : 0;
         while (max_size > 0 && cur_size > max_size) {
@@ -314,20 +325,34 @@ class CurrentHistoryWindow : public Window {
 
         int64_t sub = (key + start_offset_);
         uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
-        // Slice window when window size > rows_preceding
-        while (cur_size - 1 > rows_preceding_) {
+        // Slide window when window size >= rows_preceding
+        while (cur_size > rows_preceding_ + 1) {
             const auto& pair = GetBackRow();
-            if (pair.first < start_ts) {
+            if (frame_type_ == kFrameRows) {
+                PopBackRow();
+                --cur_size;
+            } else if (pair.first < start_ts) {
                 PopBackRow();
                 --cur_size;
             } else {
                 break;
             }
         }
+        return true;
     }
+};
 
- private:
-    bool memory_own_;
+class CurrentHistoryRowsRangeWindow : public CurrentHistoryWindow {
+ public:
+    explicit CurrentHistoryRowsRangeWindow(int64_t start_offset,
+                                           uint64_t rows_preceding)
+        : CurrentHistoryWindow(kFrameRowsRange, start_offset, rows_preceding) {}
+    CurrentHistoryRowsRangeWindow(int64_t start_offset, uint64_t rows_preceding,
+                                  uint32_t max_size)
+        : CurrentHistoryWindow(kFrameRowsRange, start_offset, rows_preceding,
+                               max_size) {}
+
+    ~CurrentHistoryRowsRangeWindow() {}
 };
 typedef std::map<std::string,
                  std::map<std::string, std::shared_ptr<MemTimeTableHandler>>>

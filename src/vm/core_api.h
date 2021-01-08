@@ -30,11 +30,12 @@ typedef const int8_t* RawPtrHandle;
 
 class WindowInterface {
  public:
-    WindowInterface(bool instance_not_in_window, int64_t start_offset,
+    WindowInterface(bool instance_not_in_window,
+                    Window::WindowFrameType frame_type, int64_t start_offset,
                     int64_t end_offset, uint64_t row_preceding,
                     uint32_t max_size);
 
-    void BufferData(uint64_t key, const Row& row);
+    bool BufferData(uint64_t key, const Row& row);
 
     fesql::codec::Row Get(uint64_t idx) const { return window_impl_->At(idx); }
 

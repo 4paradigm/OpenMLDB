@@ -3,11 +3,13 @@ package com._4paradigm.fesql.spark.nodes
 import java.util
 
 import com._4paradigm.fesql.common.{FesqlException, JITManager, SerializableByteBuffer}
+import com._4paradigm.fesql.node.FrameType
 import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.element.FesqlConfig
 import com._4paradigm.fesql.spark.nodes.window.WindowComputerWithSampleSupport
 import com._4paradigm.fesql.spark.utils.{AutoDestructibleIterator, FesqlUtil, SparkColumnUtil, SparkRowUtil}
 import com._4paradigm.fesql.utils.SkewUtils
+import com._4paradigm.fesql.vm.Window.WindowFrameType
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalWindowAggrerationNode, WindowInterface}
 import org.apache.hadoop.fs.FileSystem
 import org.apache.spark.broadcast.Broadcast
@@ -86,7 +88,7 @@ object WindowAggPlan {
     val flagColName = "__FESQL_WINDOW_UNION_FLAG__" + System.currentTimeMillis()
     val union = doUnionTables(ctx, node, input.getDf(sess), flagColName)
     val windowAggConfig = createWindowAggConfig(ctx, node)
-    val inputDf =  if (FesqlConfig.mode.equals(FesqlConfig.skew)) {
+    val inputDf = if (FesqlConfig.mode.equals(FesqlConfig.skew)) {
       improveSkew(ctx, node, union, windowAggConfig)
     } else {
       groupAndSort(ctx, node, union)
@@ -177,8 +179,14 @@ object WindowAggPlan {
     val sampleOutputPath = ctx.getConf("fesql.window.sampleOutputPath", "")
     val sampleMinSize = ctx.getConf("fesql.window.sampleMinSize", -1)
 
+    val frameType = if (node.window.range.frame.frame_type().swigValue() == FrameType.kFrameRows) {
+      WindowFrameType.kFrameRows
+    } else {
+      WindowFrameType.kFrameRowsRange
+    }
     WindowAggConfig(
       windowName = windowName,
+      frameType = frameType,
       startOffset = node.window.range.frame.GetHistoryRangeStart(),
       rowPreceding = -1 * node.window.range.frame.GetHistoryRowsStart(),
       orderIdx = orderIdx,
@@ -253,7 +261,7 @@ object WindowAggPlan {
     logger.info(s"skew analyze sql : ${analyzeSQL}")
     input.createOrReplaceTempView(table)
     val reportDf = ctx.sparksql(analyzeSQL)
-//    reportDf.show()
+    //    reportDf.show()
     reportDf.createOrReplaceTempView(reportTable)
     val keysMap = new util.HashMap[String, String]()
     var keyScala = keysName.asScala
@@ -268,9 +276,9 @@ object WindowAggPlan {
     config.skewPositionIdx = skewDf.schema.fieldNames.length - 1
 
     keyScala = keyScala :+ FesqlConfig.skewTag
-//    skewDf = skewDf.repartition(keyScala.map(skewDf(_)): _*)
-//    skewDf = expansionData(skewDf, config)
-//    skewDf.cache()
+    //    skewDf = skewDf.repartition(keyScala.map(skewDf(_)): _*)
+    //    skewDf = expansionData(skewDf, config)
+    //    skewDf.cache()
     val skewTable = "FESQL_TEMP_WINDOW_SKEW_" + System.currentTimeMillis()
     logger.info("skew explode table {}", skewTable)
     skewDf.createOrReplaceTempView(skewTable)
@@ -278,15 +286,15 @@ object WindowAggPlan {
     logger.info(s"skew explode sql : ${explodeSql}")
     skewDf = ctx.sparksql(explodeSql)
     skewDf.cache()
-//    skewDf.show(100)
+    //    skewDf.show(100)
     val partitions = FesqlConfig.paritions
     val partitionKeys = FesqlConfig.skewTag +: keyScala
 
     val groupedDf = if (partitions > 0) {
-//      skewDf.repartition(partitions, keyScala.map(skewDf(_)): _*)
+      //      skewDf.repartition(partitions, keyScala.map(skewDf(_)): _*)
       skewDf.repartition(partitions, partitionKeys.map(skewDf(_)): _*)
     } else {
-//      skewDf.repartition(keyScala.map(skewDf(_)): _*)
+      //      skewDf.repartition(keyScala.map(skewDf(_)): _*)
       skewDf.repartition(partitionKeys.map(skewDf(_)): _*)
     }
     keyScala = keyScala :+ ts
@@ -489,6 +497,7 @@ object WindowAggPlan {
    * Spark closure class for window compute information
    */
   case class WindowAggConfig(windowName: String,
+                             frameType: WindowFrameType,
                              startOffset: Long,
                              rowPreceding: Long,
                              orderIdx: Int,
@@ -538,7 +547,7 @@ object WindowAggPlan {
 
     // window state
     protected var window = new WindowInterface(
-      config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, if (config.startOffset == 0 && config.rowPreceding.intValue() > 0) config.rowPreceding.intValue() + 1 else 0)
+      config.instanceNotInWindow, config.frameType, config.startOffset, 0, config.rowPreceding, 0)
 
     def compute(row: Row): Row = {
       // call encode
@@ -564,7 +573,9 @@ object WindowAggPlan {
     def bufferRowOnly(row: Row): Unit = {
       val nativeInputRow = encoder.encode(row)
       val key = orderKeyExtractor.apply(row)
-      window.BufferData(key, nativeInputRow)
+      if (!window.BufferData(key, nativeInputRow)) {
+        logger.error("BufferData Fail: pls check order key")
+      }
     }
 
     def checkPartition(prev: Row, cur: Row): Unit = {
@@ -577,12 +588,8 @@ object WindowAggPlan {
     def resetWindow(): Unit = {
       // TODO: wrap iter to hook iter end; now last window is leak
       window.delete()
-      var max_size = 0
-      if (config.startOffset == 0 && config.rowPreceding > 0) {
-        max_size = config.rowPreceding.intValue() + 1
-      }
       window = new WindowInterface(
-        config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, max_size)
+        config.instanceNotInWindow, config.frameType, config.startOffset, 0, config.rowPreceding, 0)
     }
 
     def delete(): Unit = {
@@ -597,6 +604,7 @@ object WindowAggPlan {
     }
 
     def getWindow: WindowInterface = window
+
     def getFn: Long = fn
   }
 

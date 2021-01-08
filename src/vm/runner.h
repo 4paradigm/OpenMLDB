@@ -120,7 +120,18 @@ class RangeGenerator {
  public:
     explicit RangeGenerator(const Range& range) : ts_gen_(range.fn_info()) {
         if (range.frame_ != nullptr) {
-            frame_type_ = range.frame_->frame_type();
+            switch (range.frame()->frame_type()) {
+                case node::kFrameRows:
+                    frame_type_ = Window::WindowFrameType::kFrameRows;
+                    break;
+                case node::kFrameRowsRange:
+                    frame_type_ = Window::WindowFrameType::kFrameRowsRange;
+                    break;
+                default: {
+                    frame_type_ = Window::WindowFrameType::kFrameRowsRange;
+                    break;
+                }
+            }
             start_offset_ = range.frame_->GetHistoryRangeStart();
             end_offset_ = range.frame_->GetHistoryRangeEnd();
             start_row_ = (-1 * range.frame_->GetHistoryRowsStart());
@@ -131,9 +142,9 @@ class RangeGenerator {
     inline const bool OutOfRange(bool out_of_rows,
                                  bool out_of_rows_range) const {
         switch (frame_type_) {
-            case node::kFrameRows:
+            case Window::WindowFrameType::kFrameRows:
                 return out_of_rows;
-            case node::kFrameRowsRange:
+            case Window::WindowFrameType::kFrameRowsRange:
                 return out_of_rows && out_of_rows_range;
             default:
                 return true;
@@ -142,7 +153,7 @@ class RangeGenerator {
     }
     const bool Valid() const { return ts_gen_.Valid(); }
     OrderGenerator ts_gen_;
-    fesql::node::FrameType frame_type_;
+    Window::WindowFrameType frame_type_;
     int64_t start_offset_;
     int64_t end_offset_;
     uint64_t start_row_;
