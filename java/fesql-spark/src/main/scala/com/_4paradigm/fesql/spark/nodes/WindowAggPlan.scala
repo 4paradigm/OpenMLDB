@@ -61,8 +61,15 @@ object WindowAggPlan {
     val hadoopConf = new SerializableConfiguration(
       ctx.getSparkSession.sparkContext.hadoopConfiguration)
 
+    val isPrint = FesqlConfig.print
+    val samplePartition = FesqlConfig.printSamplePartition
+
     val resultRDD = inputDf.rdd.mapPartitionsWithIndex {
       case (partitionIndex, iter) =>
+        // spark在序列化代码的时候，可能保留默认值，即使被修改了，也无法感知到，需要在分区内部再赋值一次
+        FesqlConfig.print = isPrint
+        FesqlConfig.printSamplePartition = samplePartition
+
 
         if (FesqlConfig.print) {
           logger.info(s"partitionIndex ${partitionIndex}")
@@ -90,8 +97,15 @@ object WindowAggPlan {
     val hadoopConf = new SerializableConfiguration(
       ctx.getSparkSession.sparkContext.hadoopConfiguration)
 
+    val isPrint = FesqlConfig.print
+    val samplePartition = FesqlConfig.printSamplePartition
+
     val resultRDD = inputDf.rdd.mapPartitionsWithIndex {
       case (partitionIndex, iter) =>
+
+        FesqlConfig.print = isPrint
+        FesqlConfig.printSamplePartition = samplePartition
+
         // create computer
         val computer = createComputer(partitionIndex, hadoopConf, windowAggConfig)
 
@@ -190,38 +204,6 @@ object WindowAggPlan {
       sampleOutputPath = sampleOutputPath,
       sampleMinSize = sampleMinSize
     )
-  }
-
-  /**
-   *
-   * @param input
-   * @param config
-   * @return
-   */
-  def expansionData(input: DataFrame, config: WindowAggConfig): DataFrame = {
-    val tag_index = config.skewTagIdx
-    logger.info(config.windowName + ":" + config.orderIdx)
-    var cnt = 0
-
-    // partitions
-    val res = input.rdd.mapPartitionsWithIndex((index, iters) => {
-      iters.flatMap(row => {
-        cnt += 1
-        if (cnt % 10000 == 0) {
-          logger.info(index + row.toString())
-        }
-
-        var arrays = mutable.ListBuffer(row)
-        val value = row.getInt(tag_index)
-        for (i <- 1 until value.asInstanceOf[Int]) {
-          val temp_arr = row.toSeq.toArray
-          temp_arr(tag_index) = i
-          arrays += Row.fromSeq(temp_arr)
-        }
-        arrays
-      })
-    })
-    input.sqlContext.createDataFrame(res, input.schema)
   }
 
   /**
@@ -401,18 +383,10 @@ object WindowAggPlan {
 
         val tag = row.getInt(config.skewTagIdx)
         val position = row.getInt(config.skewPositionIdx)
-        if (cnt % FesqlConfig.printSamplePartition == 0) {
-          val str = new StringBuffer()
-          str.append(row.get(config.orderIdx))
-          str.append(",")
-          for (e <- config.groupIdxs) {
-            str.append(row.get(e))
-            str.append(",")
-          }
-          str.append("window size = " + computer.getWindow.size())
-          logger.info(s"tag : postion = ${tag} : ${position} threadId = ${Thread.currentThread().getId} cnt = ${cnt} rowInfo = ${str.toString}")
+        if (FesqlConfig.print) {
+          printSkewRow(tag, position, cnt, config, row, computer)
+          cnt += 1
         }
-        cnt += 1
         if (tag == position) {
           Some(computer.compute(row))
         } else {
@@ -427,17 +401,7 @@ object WindowAggPlan {
         }
         lastRow = row
         if (FesqlConfig.print) {
-          if (cnt % FesqlConfig.printSamplePartition == 0) {
-            val str = new StringBuffer()
-            str.append(row.get(config.orderIdx))
-            str.append(",")
-            for (e <- config.groupIdxs) {
-              str.append(row.get(e))
-              str.append(",")
-            }
-            str.append(" window size = " + computer.getWindow.size())
-            logger.info(s"threadId = ${Thread.currentThread().getId} cnt = ${cnt} rowInfo = ${str.toString}")
-          }
+          printRow(cnt, config, row, computer)
           cnt += 1
         }
         Some(computer.compute(row))
@@ -449,6 +413,36 @@ object WindowAggPlan {
   }
 
 
+  def printRow(cnt: Long, config: WindowAggConfig, row: Row, computer: WindowComputer): Unit = {
+    if (FesqlConfig.print) {
+      if (cnt % FesqlConfig.printSamplePartition == 0) {
+        val str = new StringBuffer()
+        str.append(row.get(config.orderIdx))
+        str.append(",")
+        for (e <- config.groupIdxs) {
+          str.append(row.get(e))
+          str.append(",")
+        }
+        str.append(" window size = " + computer.getWindow.size())
+        logger.info(s"threadId = ${Thread.currentThread().getId} cnt = ${cnt} rowInfo = ${str.toString}")
+      }
+    }
+  }
+
+  def printSkewRow(tag: Int, position: Int, cnt: Long, config: WindowAggConfig, row: Row, computer: WindowComputer): Unit = {
+    if (cnt % FesqlConfig.printSamplePartition == 0) {
+      val str = new StringBuffer()
+      str.append(row.get(config.orderIdx))
+      str.append(",")
+      for (e <- config.groupIdxs) {
+        str.append(row.get(e))
+        str.append(",")
+      }
+      str.append(" window size = " + computer.getWindow.size())
+      logger.info(s"tag : postion = ${tag} : ${position} threadId = ${Thread.currentThread().getId} cnt = ${cnt} rowInfo = ${str.toString}")
+    }
+  }
+
   def windowAggIterWithUnionFlag(computer: WindowComputer,
                                  inputIter: Iterator[Row],
                                  config: WindowAggConfig): Iterator[Row] = {
@@ -457,6 +451,7 @@ object WindowAggPlan {
     if (config.skewTagIdx != 0) {
       FesqlConfig.mode = "skew"
     }
+    var cnt: Long = 0L
 
     val resIter = inputIter.flatMap(row => {
       if (lastRow != null) {
@@ -468,8 +463,11 @@ object WindowAggPlan {
       if (unionFlag) {
         // primary
         if (FesqlConfig.mode.equals(FesqlConfig.skew)) {
-          val tag = row(config.skewTagIdx)
-          val position = row(config.skewPositionIdx)
+          val tag = row.getInt(config.skewTagIdx)
+          val position = row.getInt(config.skewPositionIdx)
+          if (FesqlConfig.print) {
+            printSkewRow(tag, position, cnt, config, row, computer)
+          }
           if (tag == position) {
             Some(computer.compute(row))
           } else {
@@ -477,6 +475,10 @@ object WindowAggPlan {
             None
           }
         } else {
+          if (FesqlConfig.print) {
+            printRow(cnt, config, row, computer)
+            cnt += 1
+          }
           Some(computer.compute(row))
         }
       } else {

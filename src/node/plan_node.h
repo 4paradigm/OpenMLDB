@@ -373,6 +373,54 @@ class CreatePlanNode : public LeafPlanNode {
         table_name_ = table_name;
     }
 
+    bool ExtractColumnsAndIndexs(std::vector<std::string> &columns,   // NOLINT
+                                 std::vector<std::string> &indexs) {  // NOLINT
+        if (column_desc_list_.empty()) {
+            return false;
+        }
+        size_t index_id = 1;
+        for (const auto item : column_desc_list_) {
+            switch (item->GetType()) {
+                case node::kColumnDesc: {
+                    node::ColumnDefNode *column_def =
+                        dynamic_cast<node::ColumnDefNode *>(item);
+                    columns.push_back(
+                        column_def->GetColumnName() + " " +
+                        node::DataTypeName(column_def->GetColumnType()));
+                    break;
+                }
+                case node::kColumnIndex: {
+                    node::ColumnIndexNode *column_index =
+                        dynamic_cast<node::ColumnIndexNode *>(item);
+                    auto &keys = column_index->GetKey();
+                    if (!keys.empty()) {
+                        std::string index = "index" +
+                                            std::to_string(index_id++) + ":" +
+                                            keys[0];
+                        for (size_t idx = 1; idx < keys.size(); idx++) {
+                            index.append("|").append(keys[idx]);
+                        }
+
+                        if (!column_index->GetTs().empty()) {
+                            index.append(":").append(column_index->GetTs());
+                        }
+                        indexs.push_back(index);
+                    } else {
+                        LOG(WARNING) << "Invalid column index node, empty keys";
+                        return false;
+                    }
+                    break;
+                }
+                default: {
+                    LOG(WARNING) << "Invalid column desc "
+                                 << node::NameOfSQLNodeType(item->GetType());
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     NodePointVector &GetColumnDescList() { return column_desc_list_; }
     void SetColumnDescList(const NodePointVector &column_desc_list) {
         column_desc_list_ = column_desc_list;
