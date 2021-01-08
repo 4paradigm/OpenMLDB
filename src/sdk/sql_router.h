@@ -94,6 +94,9 @@ class SQLRouter {
         const std::string& db, const std::string& sql,
         fesql::sdk::Status* status) = 0;
 
+    virtual std::shared_ptr<rtidb::sdk::SQLRequestRow> GetRequestRowByProcedure(const std::string& db,
+        const std::string& sp_name, ::fesql::sdk::Status* status) = 0;
+
     virtual std::shared_ptr<rtidb::sdk::SQLInsertRow> GetInsertRow(
         const std::string& db, const std::string& sql,
         ::fesql::sdk::Status* status) = 0;
