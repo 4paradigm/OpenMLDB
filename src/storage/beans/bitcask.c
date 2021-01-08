@@ -300,7 +300,7 @@ int check_buckets(Mgr *mgr, int64_t *sizes, int locations[][3])
                 if ((sb.st_mode & S_IFMT) == S_IFLNK)
                 {
                     long bucket_real = -1;
-                    int  type_real;
+                    int  type_real = 0;
                     if (mgr_readlink(path, real, MAX_PATH_LEN) <= 0
                             || (type_real = get_bucket_by_name(disks[i], simple_basename(real), &bucket_real)) < 0
                             || type_real != type || bucket_real != bucket)
@@ -413,7 +413,7 @@ Bitcask* bc_open(const char *path, int depth, int pos, time_t before)
     return bc;
 }
 
-static void print_buckets(int64_t *buckets)
+static void print_buckets(int64_t *buckets)  // NOLINT
 {
     int i;
     printf("\n");
