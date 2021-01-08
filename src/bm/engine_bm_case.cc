@@ -71,7 +71,7 @@ static const int64_t RunTableRequest(
 
 int32_t MapTopFn(int64_t limit) {
     std::string key = "key";
-    double d[5];
+    double d[5]; //NOLINT
     codec::StringRef rkey(key.size(), key.c_str());
     for (int j = 0; j < 5; j++) {
         std::map<codec::StringRef, int32_t> state;
