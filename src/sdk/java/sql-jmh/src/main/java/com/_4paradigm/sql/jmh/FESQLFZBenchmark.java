@@ -505,14 +505,14 @@ public class FESQLFZBenchmark {
     }
 
     public static void main(String[] args) throws RunnerException {
-        FESQLFZBenchmark ben = new FESQLFZBenchmark();
-        try {
-            ben.setup();
-            ben.execSQL();
-            ben.teardown();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+      FESQLFZBenchmark ben = new FESQLFZBenchmark();
+      try {
+          ben.setup();
+          ben.execSQL();
+          ben.teardown();
+      } catch (Exception e) {
+          e.printStackTrace();
+      }
         /*Options opt = new OptionsBuilder()
                 .include(FESQLFZBenchmark.class.getSimpleName())
                 .forks(1)
