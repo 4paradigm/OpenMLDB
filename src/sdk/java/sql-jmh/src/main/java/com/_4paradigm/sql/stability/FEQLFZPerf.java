@@ -83,13 +83,19 @@ public class FEQLFZPerf {
         logger.info("drop db " + db);
     }
 
+    // putTableData with random pkNum
     private void putTableData(TableInfo table) {
+        putTableData(table, null);
+    }
+
+    //putTableData with given pkNum if it's not null
+    private void putTableData(TableInfo table, Integer pkNum) {
         List<String> schema = table.getSchema();
         Set<Integer> index = table.getIndex();
         Set<Integer> tsIndex = table.getTsIndex();
 
         long ts = System.currentTimeMillis();
-        int curNum = random.nextInt(BenchmarkConfig.PK_NUM);
+        int curNum = null == pkNum ? random.nextInt(BenchmarkConfig.PK_NUM) : pkNum;
         StringBuilder builder = new StringBuilder();
         builder.append("insert into ");
         builder.append(table.getName());
@@ -113,7 +119,7 @@ public class FEQLFZPerf {
             } else if (type.equals("bigint") || type.equals("int")) {
                 if (tsIndex.contains(pos)) {
                     builder.append(ts);
-                }  else {
+                } else {
                     builder.append(curNum);
                 }
             } else if (type.equals("timestamp")) {
@@ -210,8 +216,17 @@ public class FEQLFZPerf {
         }
     }
 
+    public void prePutData() {
+        for (int pkNum = 0; pkNum < BenchmarkConfig.PK_NUM; pkNum++) {
+            for (TableInfo table : tableMap.values()) {
+                putTableData(table, pkNum);
+            }
+        }
+    }
+
     public void query() {
         Random curRandom = new Random();
+        int cnt = 0;
         while (running.get()) {
             BenchmarkConfig.Mode mode = BenchmarkConfig.Mode.REQUEST;
             if (curRandom.nextFloat() > BenchmarkConfig.REQUEST_RATIO) {
@@ -222,6 +237,10 @@ public class FEQLFZPerf {
                 isProcedure = true;
             }
             try {
+                if (cnt % 1000 == 0) {
+                    System.out.println("Process " + cnt + "......");
+                }
+                cnt++;
                 PreparedStatement ps = getPreparedStatement(mode, isProcedure);
                 ResultSet resultSet = ps.executeQuery();
                 resultSet.close();
@@ -272,8 +291,8 @@ public class FEQLFZPerf {
                 return;
             }
         }
-        //perf.putData();
-        //perf.query();
+        // pre put data into db
+        perf.prePutData();
         perf.runPut(BenchmarkConfig.PUT_THREAD_NUM);
         perf.runQuery(BenchmarkConfig.QUERY_THREAD_NUM);
         long startTime = System.currentTimeMillis();

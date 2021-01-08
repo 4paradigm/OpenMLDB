@@ -12,20 +12,11 @@ import com._4paradigm.featuredb.proto.Base;
 import com._4paradigm.sql.BenchmarkConfig;
 
 public class Util {
-    private static Boolean NEED_PROXY = false;
-
-    public static void EnableProxy() {
-        NEED_PROXY = true;
-    }
-    public static boolean NeedProxy() {
-        return NEED_PROXY;
-    }
-
     public static String getContent(String httpUrl) {
         try {
             URL url = new URL(httpUrl);
             HttpURLConnection con = null;
-            if (NEED_PROXY) {
+            if (BenchmarkConfig.NeedProxy()) {
                 con = (HttpURLConnection) url.openConnection(new Proxy(Proxy.Type.SOCKS,
                         new InetSocketAddress("127.0.0.1",1080)));
             } else {
