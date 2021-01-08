@@ -1440,8 +1440,6 @@ void TabletImpl::Scan(RpcController* controller,
     const ::rtidb::api::TableMeta& table_meta = query_its.begin()->table->GetTableMeta();
     const std::map<int32_t, std::shared_ptr<Schema>> vers_schema = query_its.begin()->table->GetAllVersionSchema();
     CombineIterator combine_it(std::move(query_its), request->st(), request->st_type(), expire_time, expire_cnt);
-
-    std::string* pairs = response->mutable_pairs();
     uint32_t count = 0;
     int32_t code = 0;
     if (!request->has_use_attachment() || !request->use_attachment()) {

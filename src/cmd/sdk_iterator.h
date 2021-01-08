@@ -19,7 +19,7 @@ class SDKIterator {
     explicit SDKIterator(
         std::vector<std::shared_ptr<::rtidb::base::KvIterator>> iter_vec,
         uint32_t limit)
-        : iter_vec_(iter_vec), cur_iter_(), limit_(limit) {
+        : iter_vec_(iter_vec), cur_iter_(), limit_(limit), cnt_(0) {
         Next();
     }
 
