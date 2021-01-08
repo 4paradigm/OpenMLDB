@@ -52,7 +52,9 @@ object Fesql {
       if (FesqlConfig.tinyData > 0) {
         sess.read(path).tiny(FesqlConfig.tinyData).createOrReplaceTempView(name)
       } else {
-        sess.read(path).createOrReplaceTempView(name)
+        val df = sess.read(path)
+        df.createOrReplaceTempView(name)
+        logger.info(s"schema=${df.sparkDf.schema.toDDL}")
       }
     }
     val feconfig = sql2Feconfig(sqlScript, FesqlUtil.getDatabase(FesqlConfig.configDBName, sess.registeredTables.toMap))//parseOpSchema(rquestEngine.getPlan)
@@ -62,6 +64,7 @@ object Fesql {
 
     val output = config.getOutputPath + "/data"
     val res = sess.fesql(sqlScript)
+    logger.info(s"output schema:${res.sparkDf.schema.toDDL}")
 
     res.sparkDf.show(100)
     logger.info("fesql compute is done")
