@@ -26,14 +26,14 @@ public class ExpressTest extends FesqlTest {
         return dp.getCases().toArray();
     }
 
-//    @Test(dataProvider = "testExpressCase")
-//    public void testExpress(SQLCase testCase) throws Exception {
-//        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
-//    }
-//    @Test(dataProvider = "testExpressCase")
-//    public void testExpressRequestMode(SQLCase testCase) throws Exception {
-//        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
-//    }
+    @Test(dataProvider = "testExpressCase")
+    public void testExpress(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
+    }
+    @Test(dataProvider = "testExpressCase")
+    public void testExpressRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
+    }
     @Test(dataProvider = "testExpressCase")
     public void testExpressRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
