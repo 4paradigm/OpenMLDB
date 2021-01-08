@@ -15,23 +15,23 @@ class TestSelect(unittest.TestCase):
         cls.engine = fesql_test.getEngine()
         cls.connection = cls.engine.connect()
 
-    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_select_sample.yaml')))
+    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/select/test_select_sample.yaml')))
     def testSampleSelect(self, *testCases):
         executor.fesql_executor.build(self.connection,testCases[0]).run()
 
-    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_expression.yaml')))
+    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/expression/test_arithmetic.yaml')))
     def testExpression(self, *testCases):
         executor.fesql_executor.build(self.connection,testCases[0]).run()
 
-    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_udaf_function.yaml')))
+    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/function/test_udaf_function.yaml')))
     def testUDAFFunction(self, *testCases):
         executor.fesql_executor.build(self.connection,testCases[0]).run()
 
-    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_udf_function.yaml')))
+    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/function/test_udf_function.yaml')))
     def testUDFFunction(self, *testCases):
         executor.fesql_executor.build(self.connection,testCases[0]).run()
 
-    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_sub_select.yaml')))
+    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/select/test_sub_select.yaml')))
     def testSubSelect(self, *testCases):
         executor.fesql_executor.build(self.connection,testCases[0]).run()
 

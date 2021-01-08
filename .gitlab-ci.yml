@@ -341,27 +341,27 @@ fesql_auto_test:
 #  except:
 #    variables:
 #      - $ENV_BUILD == "daily"
-#
-#fesql_auto_test_python:
-#  stage: manual
-#  before_script:
-#    - mkdir /rambuild
-#    - mount -t tmpfs -o size=3G tmpfs /rambuild
-#  script:
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test_python.sh
-#  artifacts:
-#    reports:
-#      junit:
-#        - src/sdk/python/fesql-auto-test-python/report/TEST-test_*.xml
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  dependencies:
-#    - build
-#  when: manual
-#
+
+fesql_auto_test_python:
+  stage: manual
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test_python.sh
+  artifacts:
+    reports:
+      junit:
+        - src/sdk/python/fesql-auto-test-python/report/TEST-test_*.xml
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies:
+    - build
+  when: manual
+
 #tablet_one_demension:
 #  stage: manual
 #  before_script:
