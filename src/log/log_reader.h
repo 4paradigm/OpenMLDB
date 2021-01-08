@@ -74,6 +74,14 @@ class Reader {
     void GoBackToLastBlock();
     void GoBackToStart();
 
+    inline bool GetCompressed() {
+        return compressed_;
+    }
+
+    inline int GetBlockSize() {
+        return block_size_;
+    }
+
  private:
     SequentialFile* const file_;
     Reporter* const reporter_;
@@ -99,6 +107,7 @@ class Reader {
 
     bool compressed_;
     int block_size_;
+    // buffer for uncompressed block
     char* uncompress_buf_;
 
     // Extend record types with the following special values

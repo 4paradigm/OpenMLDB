@@ -317,6 +317,10 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                     FPGA_env* fpga_env = rtidb::base::Compress::GetFpgaEnv();
                     uncompress_len = gzipfpga_uncompress_nohuff(
                             fpga_env, block_data, uncompress_buf_, compress_len, block_size_);
+                    if (uncompress_len < 0) {
+                        PDLOG(WARNING, "bad record when uncompress block, compress type: %d", compress_type);
+                        return kBadRecord;
+                    }
                     break;
                 }
 #endif
@@ -325,7 +329,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                     snappy::GetUncompressedLength(block_data, static_cast<size_t>(compress_len), &tmp_val);
                     uncompress_len = static_cast<int>(tmp_val);
                     if (!snappy::RawUncompress(block_data, static_cast<size_t>(compress_len), uncompress_buf_)) {
-                        PDLOG(WARNING, "bad record when uncompress block");
+                        PDLOG(WARNING, "bad record when uncompress block, compress type: %d", compress_type);
                         return kBadRecord;
                     }
                     break;
@@ -336,14 +340,15 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                     int res = uncompress((unsigned char*)uncompress_buf_, &dest_len,
                             (const unsigned char*)block_data, src_len);
                     if (res != Z_OK) {
-                        PDLOG(WARNING, "bad record when uncompress block");
+                        PDLOG(WARNING, "bad record when uncompress block, error code: %d, compress type: %d",
+                                res, compress_type);
                         return kBadRecord;
                     }
                     uncompress_len = static_cast<int>(dest_len);
                     break;
                 }
                 default: {
-                    PDLOG(WARNING, "unexpected compress type: %d", compress_type);
+                    PDLOG(WARNING, "unsupported compress type: %d", compress_type);
                     return kBadRecord;
                 }
             }

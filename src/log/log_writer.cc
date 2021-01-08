@@ -19,7 +19,6 @@ DECLARE_string(snapshot_compression);
 namespace rtidb {
 namespace log {
 
-
 static void InitTypeCrc(uint32_t* type_crc) {
     for (int i = 0; i <= kMaxRecordType; i++) {
         char t = static_cast<char>(i);
@@ -76,12 +75,9 @@ Status Writer::EndLog() {
                 // Fill the trailer (literal below relies on kHeaderSize being
                 // 7)
                 assert(kHeaderSize == 7);
-                Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
-                if (compress_type_ == kNoCompress) {
-                    dest_->Append(fill_slice);
-                } else {
-                    memcpy(buffer_ + block_offset_, fill_slice.data(), leftover);
-                    CompressRecord();
+                s = AppendInternal(dest_, leftover);
+                if (!s.ok()) {
+                    return s;
                 }
             }
             block_offset_ = 0;
@@ -117,12 +113,9 @@ Status Writer::AddRecord(const Slice& slice) {
                 // Fill the trailer (literal below relies on kHeaderSize being
                 // 7)
                 assert(kHeaderSize == 7);
-                Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
-                if (compress_type_ == kNoCompress) {
-                    dest_->Append(fill_slice);
-                } else {
-                    memcpy(buffer_ + block_offset_, fill_slice.data(), leftover);
-                    CompressRecord();
+                s = AppendInternal(dest_, leftover);
+                if (!s.ok()) {
+                    return s;
                 }
             }
             block_offset_ = 0;
@@ -199,7 +192,6 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
 
 Status Writer::CompressRecord() {
     Status s;
-    // compress
     int compress_len = -1;
     switch (compress_type_) {
 #ifdef PZFPGA_ENABLE
@@ -222,7 +214,7 @@ Status Writer::CompressRecord() {
                     (const unsigned char*)buffer_, block_size_);
             if (res != Z_OK) {
                 s = Status::InvalidRecord(Slice("compress failed, error code: " + res));
-                PDLOG(WARNING, "write error. %s", s.ToString().c_str());
+                PDLOG(WARNING, "write error, compress_type: %d, msg: %s", compress_type_, s.ToString().c_str());
                 return s;
             }
             compress_len = static_cast<int>(dest_len);
@@ -230,13 +222,13 @@ Status Writer::CompressRecord() {
         }
         default: {
             s = Status::InvalidRecord(Slice("unsupported compress type: " + FLAGS_snapshot_compression));
-            PDLOG(WARNING, "write error. %s", s.ToString().c_str());
+            PDLOG(WARNING, "write error, compress_type: %d, msg: %s", compress_type_, s.ToString().c_str());
             return s;
         }
     }
     if (compress_len < 0) {
         s = Status::InvalidRecord(Slice("compress failed"));
-        PDLOG(WARNING, "write error. %s", s.ToString().c_str());
+        PDLOG(WARNING, "write error, compress_type: %d, msg: %s", compress_type_, s.ToString().c_str());
         return s;
     }
     PDLOG(INFO, "compress_len: %d, compress_type: %d", compress_len, compress_type_);
@@ -269,6 +261,17 @@ CompressType Writer::GetCompressType(const std::string& compress_type) {
         return kSnappy;
     } else {
         return kNoCompress;
+    }
+}
+
+Status Writer::AppendInternal(WritableFile* wf, int leftover) {
+    Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
+    if (compress_type_ == kNoCompress) {
+        wf->Append(fill_slice);
+        return Status::OK();
+    } else {
+        memcpy(buffer_ + block_offset_, fill_slice.data(), leftover);
+        return CompressRecord();
     }
 }
 

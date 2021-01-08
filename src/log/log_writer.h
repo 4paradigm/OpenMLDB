@@ -48,9 +48,11 @@ class Writer {
     int block_size_;
     // buffer of kCompressBlockSize
     char* buffer_;
+    // buffer for compressed block
     char* compress_buf_;
     Status CompressRecord();
     CompressType GetCompressType(const std::string& compress_type);
+    Status AppendInternal(WritableFile* wf, int leftover);
 
     Status EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);
 
