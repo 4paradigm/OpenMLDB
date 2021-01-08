@@ -49,13 +49,13 @@ public class FESQLFZBenchmarkTest {
     @Test
     public void dumpSQLCaseTest() throws SQLException {
         try {
-            FESQLFZBenchmark benchmark = new FESQLFZBenchmark(true, true);
+            FESQLFZBenchmark benchmark = new FESQLFZBenchmark(false, true);
             if (BenchmarkConfig.NeedProxy()) {
                 Util.EnableProxy();
             }
             benchmark.setWindowNum(5);
             benchmark.setup();
-            int loops = 1;
+            int loops = 10;
             for (int i = 0; i < loops; i++) {
                 List<Map<String, String>> results = benchmark.execSQLTest();
                 System.out.println("result sizes " + results.size());
