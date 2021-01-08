@@ -713,10 +713,13 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         for (String key : sqlRowsMap.keySet()) {
             SQLInsertRows rows = sqlRowsMap.get(key);
             rows.delete();
+            rows = null;
         }
         sqlRowsMap.clear();
         currentSchema = null;
+        currentRow.delete();
         currentRow = null;
+        currentRows.delete();
         currentRows = null;
         Status status = new Status();
         currentRows = router.GetInsertRows(db, currentSql, status);
@@ -725,7 +728,8 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             logger.error("getInsertRows fail: {}", msg);
             throw new SQLException("get insertrows fail " + msg + " in construction preparedstatement");
         }
-
+        status.delete();
+        status = null;
     }
 
     @Override

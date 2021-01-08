@@ -107,7 +107,7 @@ public class Util {
     }
 
     public static String getCreateProcedureDDL(String pName, TableInfo mainTable, String script) {
-        String ddl = "create PROCEDURE " + pName + "(" + mainTable.getTyeString() + ") \n BEGIN \n" + script + "\n END;";
+        String ddl = "create PROCEDURE " + pName + "(" + mainTable.getTypeString() + ") \n BEGIN \n" + script + "\n END;";
         return ddl;
     }
 }

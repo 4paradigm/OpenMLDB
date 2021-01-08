@@ -72,6 +72,7 @@ public class SQLResultSet implements ResultSet {
 
     @Override
     public void close() throws SQLException {
+        this.resultSet.delete();
         this.resultSet = null;
         this.closed = true;
     }

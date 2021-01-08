@@ -17,7 +17,11 @@ public class TableInfo {
     private Map<Integer, String> colRelation;
 
     public TableInfo(String ddl, Relation relation) {
-        this.ddl = ddl + "partitionnum=" + BenchmarkConfig.PARTITION_NUM + ";";
+        if (ddl.contains("replicanum=")) {
+            this.ddl = ddl + ", partitionnum=" + BenchmarkConfig.PARTITION_NUM + ";";
+        } else {
+            this.ddl = ddl + "partitionnum=" + BenchmarkConfig.PARTITION_NUM + ";";
+        }
         String[] arr = ddl.split("index\\(")[0].split("\\(");
         name = arr[0].split(" ")[2].replaceAll("`", "");
         String[] filed = arr[1].split(",");
@@ -57,15 +61,16 @@ public class TableInfo {
         parseRelation(relation);
     }
 
-    public String getTyeString() {
+    public String getTypeString() {
         StringBuilder stringBuilder  = new StringBuilder();
         for (int i = 0; i < schema.size(); i++) {
             if (i > 0) {
                 stringBuilder.append(",");
             }
             String name = schemaPosName.get(i);
+            stringBuilder.append("`");
             stringBuilder.append(name);
-            stringBuilder.append(" ");
+            stringBuilder.append("` ");
             if (schema.get(i).equals("int")) {
                 stringBuilder.append("int32");
             } else {

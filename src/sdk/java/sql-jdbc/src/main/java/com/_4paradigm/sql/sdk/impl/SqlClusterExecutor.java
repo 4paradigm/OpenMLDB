@@ -84,6 +84,8 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (!ok) {
             logger.error("executeInsert fail: {}", status.getMsg());
         }
+        status.delete();
+        status = null;
         return ok;
     }
 
@@ -94,6 +96,8 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (status.getCode() != 0) {
             logger.error("executeSQL fail: {}", status.getMsg());
         }
+        status.delete();
+        status = null;
         return rs;
     }
 
@@ -104,6 +108,8 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (status.getCode() != 0) {
             logger.error("getInsertRow fail: {}", status.getMsg());
         }
+        status.delete();
+        status = null;
         return row;
     }
 
@@ -142,6 +148,8 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (status.getCode() != 0) {
             logger.error("getInsertRow fail: {}", status.getMsg());
         }
+        status.delete();
+        status = null;
         return rows;
     }
 
@@ -153,6 +161,8 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (status.getCode() != 0) {
             logger.error("getInsertRow fail: {}", status.getMsg());
         }
+        status.delete();
+        status = null;
         return rs;
     }
 
@@ -163,6 +173,8 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (status.getCode() != 0 || explain == null) {
             throw new SQLException("getInputSchema fail! msg: " + status.getMsg());
         }
+        status.delete();
+        status = null;
         List<Column> columnList = new ArrayList<>();
         com._4paradigm.sql.Schema schema = explain.GetInputSchema();
         for (int i = 0; i < schema.GetColumnCnt(); i++) {
@@ -183,6 +195,8 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (procedureInfo == null || status.getCode() != 0) {
             throw new SQLException("show procedure failed, msg: " + status.getMsg());
         }
+        status.delete();
+        status = null;
         ProcedureInfo spInfo = new ProcedureInfo();
         spInfo.setDbName(procedureInfo.GetDbName());
         spInfo.setProName(procedureInfo.GetSpName());
@@ -201,6 +215,8 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (status.getCode() != 0) {
             logger.error("create db fail: {}", status.getMsg());
         }
+        status.delete();
+        status = null;
         return ok;
     }
 
@@ -211,6 +227,8 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (status.getCode() != 0) {
             logger.error("drop db fail: {}", status.getMsg());
         }
+        status.delete();
+        status = null;
         return ok;
     }
 

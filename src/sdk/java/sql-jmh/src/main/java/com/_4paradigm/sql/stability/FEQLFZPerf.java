@@ -14,6 +14,7 @@ import java.util.*;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FEQLFZPerf {
     private static Logger logger = LoggerFactory.getLogger(FEQLFZPerf.class);
@@ -28,6 +29,7 @@ public class FEQLFZPerf {
     private ExecutorService putExecuteService;
     private ExecutorService queryExecuteService;
     private Random random = new Random();
+    private AtomicBoolean running = new AtomicBoolean(true);
 
     public FEQLFZPerf() {
         executor = BenchmarkConfig.GetSqlExecutor(false);
@@ -41,7 +43,7 @@ public class FEQLFZPerf {
         script = rawScript.trim().replace("\n", " ");
         Relation relation = new Relation(Util.getContent(BenchmarkConfig.relationUrl));
         mainTable = relation.getMainTable();
-        tableMap = Util.parseDDL(BenchmarkConfig.ddlUrl, relation);
+        tableMap = Util.parseDDL(BenchmarkConfig.ddlUrl + ".perf", relation);
         if (!BenchmarkConfig.commonCol.isEmpty()) {
             String[] colArr = BenchmarkConfig.commonCol.trim().split(",");
             for (String col : colArr) {
@@ -201,7 +203,7 @@ public class FEQLFZPerf {
     }
 
     public void putData() {
-        while (true) {
+        while (running.get()) {
             for (TableInfo table : tableMap.values()) {
                 putTableData(table);
             }
@@ -210,7 +212,7 @@ public class FEQLFZPerf {
 
     public void query() {
         Random curRandom = new Random();
-        while (true) {
+        while (running.get()) {
             BenchmarkConfig.Mode mode = BenchmarkConfig.Mode.REQUEST;
             if (curRandom.nextFloat() > BenchmarkConfig.REQUEST_RATIO) {
                 mode = BenchmarkConfig.Mode.BATCH_REQUEST;
@@ -222,6 +224,8 @@ public class FEQLFZPerf {
             try {
                 PreparedStatement ps = getPreparedStatement(mode, isProcedure);
                 ResultSet resultSet = ps.executeQuery();
+                resultSet.close();
+                ps.close();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -254,18 +258,32 @@ public class FEQLFZPerf {
         }
     }
 
-    public static void main() {
+    public void close() {
+        logger.info("stop run");
+        running.set(false);
+        queryExecuteService.shutdownNow();
+        putExecuteService.shutdownNow();
+    }
+
+    public static void main(String[] args) {
         FEQLFZPerf perf = new FEQLFZPerf();
         if (BenchmarkConfig.NEED_CREATE) {
             if (!perf.create()) {
                 return;
             }
         }
+        //perf.putData();
+        //perf.query();
         perf.runPut(BenchmarkConfig.PUT_THREAD_NUM);
         perf.runQuery(BenchmarkConfig.QUERY_THREAD_NUM);
+        long startTime = System.currentTimeMillis();
         while (true) {
             try {
                 Thread.sleep(10000);
+                /*if (System.currentTimeMillis() - startTime > 1000*600) {
+                    perf.close();
+                    break;
+                }*/
             } catch (Exception e) {
                 e.printStackTrace();
             }

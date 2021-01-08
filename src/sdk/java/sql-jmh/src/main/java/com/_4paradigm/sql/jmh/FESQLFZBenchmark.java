@@ -168,17 +168,17 @@ public class FESQLFZBenchmark {
         }
     }
 
-    private PreparedStatement getPreparedStatement(BenchmarkConfig.Mode mode) throws SQLException {
+    private PreparedStatement getPreparedStatement(BenchmarkConfig.Mode mode, String exeScript) throws SQLException {
         PreparedStatement requestPs = null;
         if (mode == BenchmarkConfig.Mode.BATCH_REQUEST) {
-            requestPs = executor.getBatchRequestPreparedStmt(db, script, commonColumnIndices);
+            requestPs = executor.getBatchRequestPreparedStmt(db, exeScript, commonColumnIndices);
             for (int i = 0; i < BenchmarkConfig.BATCH_SIZE; i++) {
                 if (setRequestData(requestPs)) {
                     requestPs.addBatch();
                 }
             }
         } else {
-            requestPs = executor.getRequestPreparedStmt(db, script);
+            requestPs = executor.getRequestPreparedStmt(db, exeScript);
             setRequestData(requestPs);
         }
         return requestPs;
@@ -224,6 +224,51 @@ public class FESQLFZBenchmark {
         return true;
     }
 
+    private boolean checkResult() {
+        String rawScript = Util.getContent(BenchmarkConfig.scriptUrl + ".check");
+        String checkScript = rawScript.trim().replace("\n", " ");
+        if (checkScript.isEmpty()) {
+            return true;
+        }
+        try {
+            PreparedStatement ps = getPreparedStatement(BenchmarkConfig.mode, checkScript);
+            ResultSet resultSet = ps.executeQuery();
+            resultSet.next();
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            Map<String, String> val = new HashMap<>();
+            for (int i = 0; i < metaData.getColumnCount(); i++) {
+                String columnName = metaData.getColumnName(i + 1);
+                System.out.println(columnName + ":" + String.valueOf(i));
+                int columnType = metaData.getColumnType(i + 1);
+                if (columnType == Types.VARCHAR) {
+                    val.put(columnName, String.valueOf(resultSet.getString(i + 1)));
+                } else if (columnType == Types.DOUBLE) {
+                    val.put(columnName, String.valueOf(resultSet.getDouble(i + 1)));
+                } else if (columnType == Types.INTEGER) {
+                    val.put(columnName, String.valueOf(resultSet.getInt(i + 1)));
+                } else if (columnType == Types.BIGINT) {
+                    val.put(columnName, String.valueOf(resultSet.getLong(i + 1)));
+                } else if (columnType == Types.TIMESTAMP) {
+                    val.put(columnName, String.valueOf(resultSet.getTimestamp(i + 1)));
+                } else if (columnType == Types.DATE) {
+                    val.put(columnName, String.valueOf(resultSet.getDate(i+ 1)));
+                }
+            }
+            ps.close();
+            for (Map.Entry<String, String> entry : val.entrySet()) {
+                if (entry.getKey().contains("xcount")) {
+                    if (!entry.getValue().equals(String.valueOf(windowNum))) {
+                        return false;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
     @Setup
     public void setup() throws SQLException {
         init();
@@ -237,6 +282,11 @@ public class FESQLFZBenchmark {
             }
         }
         putData();
+        if (checkResult()) {
+            System.out.println("result check success");
+        } else {
+            System.out.println("result check failed");
+        }
     }
 
     @TearDown
@@ -250,7 +300,7 @@ public class FESQLFZBenchmark {
     @Benchmark
     public void execSQL() {
         try {
-            PreparedStatement ps = getPreparedStatement(BenchmarkConfig.mode);
+            PreparedStatement ps = getPreparedStatement(BenchmarkConfig.mode, script);
             ResultSet resultSet = ps.executeQuery();
             /*resultSet.next();
             ResultSetMetaData metaData = resultSet.getMetaData();
@@ -286,7 +336,7 @@ public class FESQLFZBenchmark {
 
     public Map<String, String> execSQLTest() {
         try {
-            PreparedStatement ps = getPreparedStatement(BenchmarkConfig.mode);
+            PreparedStatement ps = getPreparedStatement(BenchmarkConfig.mode, script);
             ResultSet resultSet = ps.executeQuery();
             resultSet.next();
             ResultSetMetaData metaData = resultSet.getMetaData();
