@@ -16,6 +16,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<fesql.version>0.0.1-SNAPSHOT</fesql.version>
 	</properties>
 
 	<repositories>
@@ -91,6 +92,11 @@
 			<version>2.1.0.0-SNAPSHOT</version>
 		</dependency>
 		<dependency>
+			<groupId>com._4paradigm.fesql</groupId>
+			<artifactId>fesql-common</artifactId>
+			<version>${fesql.version}</version>
+		</dependency>
+		<dependency>
 			<groupId>mysql</groupId>
 			<artifactId>mysql-connector-java</artifactId>
 			<version>5.1.49</version>
@@ -106,7 +112,12 @@
 			<version>4.12</version>
 			<scope>test</scope>
 		</dependency>
-    </dependencies>
+		<dependency>
+			<groupId>org.yaml</groupId>
+			<artifactId>snakeyaml</artifactId>
+			<version>1.17</version>
+		</dependency>
+	</dependencies>
 
 	<build>
 		<resources>

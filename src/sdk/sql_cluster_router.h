@@ -117,6 +117,10 @@ class SQLClusterRouter : public SQLRouter {
                                                  const std::string& sql,
                                                  ::fesql::sdk::Status* status) override;
 
+    std::shared_ptr<SQLRequestRow> GetRequestRowByProcedure(const std::string& db, const std::string& sp_name,
+                                                 ::fesql::sdk::Status* status) override;
+
+
     std::shared_ptr<SQLInsertRow> GetInsertRow(const std::string& db,
                                                const std::string& sql,
                                                ::fesql::sdk::Status* status) override;
