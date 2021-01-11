@@ -1757,16 +1757,21 @@ TEST_F(SnapshotTest, Recover_large_snapshot_and_binlog) {
     uint32_t binlog_index = 0;
     WriteHandle* wh = NULL;
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
-    int count = 0;
+    uint32_t count = 0;
+    std::string base_str = std::string(5 * 1024 * 1024, 'a');
+    // if (FLAGS_snapshot_compression != "off") {
+    //     base_str = std::string(4 * 1024 * 1024, 'a');
+    // }
+    uint32_t total_num = 10;
     uint64_t start_time = ::baidu::common::timer::get_micros();
-    for (; count < 1000000; count++) {
+    for (; count < total_num; count++) {
         offset++;
         ::rtidb::api::LogEntry entry;
         entry.set_log_index(offset);
         std::string key = "key";
         entry.set_pk(key);
         entry.set_ts(count);
-        entry.set_value("value" + std::to_string(count));
+        entry.set_value(base_str + std::to_string(count));
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::rtidb::base::Slice slice(buffer);
@@ -1774,6 +1779,7 @@ TEST_F(SnapshotTest, Recover_large_snapshot_and_binlog) {
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
+    std::cout << "sync end" << std::endl;
     MemTableSnapshot snapshot(101, 0, log_part, FLAGS_db_root_path);
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
@@ -1786,14 +1792,14 @@ TEST_F(SnapshotTest, Recover_large_snapshot_and_binlog) {
     ASSERT_EQ(0, ret);
 
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
-    for (; count < 2000000; count++) {
+    for (; count < total_num * 2; count++) {
         offset++;
         ::rtidb::api::LogEntry entry;
         entry.set_log_index(offset);
         std::string key = "key";
         entry.set_pk(key);
         entry.set_ts(count);
-        entry.set_value("value" + std::to_string(count));
+        entry.set_value(base_str + std::to_string(count));
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::rtidb::base::Slice slice(buffer);
@@ -1805,10 +1811,10 @@ TEST_F(SnapshotTest, Recover_large_snapshot_and_binlog) {
     uint64_t snapshot_offset = 0;
     uint64_t latest_offset = 0;
     ASSERT_TRUE(snapshot.Recover(table, snapshot_offset));
-    ASSERT_EQ(1000000u, snapshot_offset);
+    ASSERT_EQ(total_num, snapshot_offset);
     Binlog binlog(log_part, binlog_dir);
     binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset);
-    ASSERT_EQ(2000000u, latest_offset);
+    ASSERT_EQ(total_num * 2, latest_offset);
 
     uint64_t end_time = ::baidu::common::timer::get_micros();
     std::cout << "use time in us: " << end_time - start_time << std::endl;
@@ -1817,12 +1823,12 @@ TEST_F(SnapshotTest, Recover_large_snapshot_and_binlog) {
     TableIterator* it = table->NewIterator("key", ticket);
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
-    uint64_t num = 2000000;
+    uint64_t num = total_num * 2;
     while (it->Valid()) {
         num--;
         ASSERT_EQ(num, it->GetKey());
         std::string value_str(it->GetValue().data(), it->GetValue().size());
-        ASSERT_EQ("value" + std::to_string(num), value_str);
+        ASSERT_EQ(base_str + std::to_string(num), value_str);
         it->Next();
     }
     ASSERT_EQ(0u, num);

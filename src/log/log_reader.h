@@ -107,6 +107,7 @@ class Reader {
 
     bool compressed_;
     int block_size_;
+    int header_size_;
     // buffer for uncompressed block
     char* uncompress_buf_;
 

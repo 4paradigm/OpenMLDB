@@ -46,6 +46,7 @@ class Writer {
 
     CompressType compress_type_;
     int block_size_;
+    int header_size_;
     // buffer of kCompressBlockSize
     char* buffer_;
     // buffer for compressed block

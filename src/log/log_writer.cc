@@ -34,8 +34,10 @@ Writer::Writer(const std::string& compress_type, WritableFile* dest)
         block_size_ = kCompressBlockSize;
         buffer_ = new char[block_size_];
         compress_buf_ = new char[block_size_];
+        header_size_ = kHeaderSizeForCompress;
     } else {
         block_size_ = kBlockSize;
+        header_size_ = kHeaderSize;
     }
 }
 
@@ -46,8 +48,10 @@ Writer::Writer(const std::string& compress_type, WritableFile* dest, uint64_t de
         block_size_ = kCompressBlockSize;
         buffer_ = new char[block_size_];
         compress_buf_ = new char[block_size_];
+        header_size_ = kHeaderSizeForCompress;
     } else {
         block_size_ = kBlockSize;
+        header_size_ = kHeaderSize;
     }
     block_offset_ = dest_length % block_size_;
 }
@@ -69,12 +73,16 @@ Status Writer::EndLog() {
     do {
         const int leftover = block_size_ - block_offset_;
         assert(leftover >= 0);
-        if (leftover < kHeaderSize) {
+        if (leftover < header_size_) {
             // Switch to a new block
             if (leftover > 0) {
-                // Fill the trailer (literal below relies on kHeaderSize being
-                // 7)
-                assert(kHeaderSize == 7);
+                // Fill the trailer (literal below relies on header_size_ being
+                // 7 or 9)
+                if (compress_type_ == kNoCompress) {
+                    assert(header_size_ == 7);
+                } else {
+                    assert(header_size_ == 9);
+                }
                 s = AppendInternal(dest_, leftover);
                 if (!s.ok()) {
                     return s;
@@ -82,9 +90,9 @@ Status Writer::EndLog() {
             }
             block_offset_ = 0;
         }
-        // Invariant: we never leave < kHeaderSize bytes in a block.
-        assert(block_size_ - block_offset_ - kHeaderSize >= 0);
-        const size_t avail = block_size_ - block_offset_ - kHeaderSize;
+        // Invariant: we never leave < header_size_ bytes in a block.
+        assert(block_size_ - block_offset_ - header_size_ >= 0);
+        const size_t avail = block_size_ - block_offset_ - header_size_;
         const size_t fragment_length = (left < avail) ? left : avail;
         RecordType type = kEofType;
         PDLOG(INFO, "end log");
@@ -107,12 +115,16 @@ Status Writer::AddRecord(const Slice& slice) {
     do {
         const int leftover = block_size_ - block_offset_;
         assert(leftover >= 0);
-        if (leftover < kHeaderSize) {
+        if (leftover < header_size_) {
             // Switch to a new block
             if (leftover > 0) {
-                // Fill the trailer (literal below relies on kHeaderSize being
-                // 7)
-                assert(kHeaderSize == 7);
+                // Fill the trailer (literal below relies on header_size_ being
+                // 7 or 9)
+                if (compress_type_ == kNoCompress) {
+                    assert(header_size_ == 7);
+                } else {
+                    assert(header_size_ == 9);
+                }
                 s = AppendInternal(dest_, leftover);
                 if (!s.ok()) {
                     return s;
@@ -120,10 +132,10 @@ Status Writer::AddRecord(const Slice& slice) {
             }
             block_offset_ = 0;
         }
-        // Invariant: we never leave < kHeaderSize bytes in a block.
-        assert(block_size_ - block_offset_ - kHeaderSize >= 0);
+        // Invariant: we never leave < header_size_ bytes in a block.
+        assert(block_size_ - block_offset_ - header_size_ >= 0);
 
-        const size_t avail = block_size_ - block_offset_ - kHeaderSize;
+        const size_t avail = block_size_ - block_offset_ - header_size_;
         const size_t fragment_length = (left < avail) ? left : avail;
 
         RecordType type;
@@ -146,14 +158,25 @@ Status Writer::AddRecord(const Slice& slice) {
 }
 
 Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
-    assert(n <= 0xffff);  // Must fit in two bytes
-    assert(static_cast<int>(block_offset_ + kHeaderSize + n) <= block_size_);
+    if (compress_type_ == kNoCompress) {
+        assert(n <= 0xffff);  // Must fit in two bytes
+    } else {
+        assert(n <= 0xffffffff);  // Must fit in four bytes
+    }
+    assert(block_offset_ + header_size_ + n <= static_cast<size_t>(block_size_));
     // Format the header
-    char buf[kHeaderSize];
-    buf[4] = static_cast<char>(n & 0xff);
-    buf[5] = static_cast<char>(n >> 8);
-    buf[6] = static_cast<char>(t);
-
+    char buf[header_size_]{0};
+    if (compress_type_ == kNoCompress) {
+        buf[4] = static_cast<char>(n & 0xff);
+        buf[5] = static_cast<char>(n >> 8);
+        buf[6] = static_cast<char>(t);
+    } else {
+        buf[4] = static_cast<char>(n & 0xff);
+        buf[5] = static_cast<char>((n >> 8) & 0xff);
+        buf[6] = static_cast<char>((n >> 16) & 0xff);
+        buf[7] = static_cast<char>((n >> 24));
+        buf[8] = static_cast<char>(t);
+    }
     // Compute the crc of the record type and the payload.
     uint32_t crc = Extend(type_crc_[t], ptr, n);
     crc = Mask(crc);  // Adjust for storage
@@ -161,7 +184,7 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
 
     if (compress_type_ == kNoCompress) {
         // Write the header and the payload
-        Status s = dest_->Append(Slice(buf, kHeaderSize));
+        Status s = dest_->Append(Slice(buf, header_size_));
         if (s.ok()) {
             s = dest_->Append(Slice(ptr, n));
             if (s.ok()) {
@@ -172,12 +195,12 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
             PDLOG(WARNING, "write error. %s", s.ToString().c_str());
         }
 
-        block_offset_ += kHeaderSize + n;
+        block_offset_ += header_size_ + n;
         return s;
     } else {
-        memcpy(buffer_ + block_offset_, &buf, kHeaderSize);
-        memcpy(buffer_ + block_offset_ + kHeaderSize, ptr, n);
-        block_offset_ += kHeaderSize + n;
+        memcpy(buffer_ + block_offset_, &buf, header_size_);
+        memcpy(buffer_ + block_offset_ + header_size_, ptr, n);
+        block_offset_ += header_size_ + n;
         // fill the trailer if kEofType
         if (t == kEofType) {
             memset(buffer_ + block_offset_, 0, block_size_ - block_offset_);
@@ -233,13 +256,13 @@ Status Writer::CompressRecord() {
     }
     PDLOG(INFO, "compress_len: %d, compress_type: %d", compress_len, compress_type_);
     // fill compressed data's header
-    char head_of_compress[kHeaderSizeOfCompressData];
+    char head_of_compress[kHeaderSizeOfCompressBlock];
     memrev32ifbe(static_cast<void*>(&compress_len));
     memcpy(head_of_compress, static_cast<void*>(&compress_len), sizeof(int));
     memcpy(head_of_compress + sizeof(int), static_cast<void*>(&compress_type_), 1);
-    memset(head_of_compress + sizeof(int) + 1, 0, kHeaderSizeOfCompressData - sizeof(int) - 1);
+    memset(head_of_compress + sizeof(int) + 1, 0, kHeaderSizeOfCompressBlock - sizeof(int) - 1);
     // write header and compressed data
-    s = dest_->Append(Slice(head_of_compress, kHeaderSizeOfCompressData));
+    s = dest_->Append(Slice(head_of_compress, kHeaderSizeOfCompressBlock));
     if (s.ok()) {
         s = dest_->Append(Slice(compress_buf_, compress_len));
         if (s.ok()) {

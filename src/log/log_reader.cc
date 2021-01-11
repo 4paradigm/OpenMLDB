@@ -54,8 +54,10 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
           if (compressed_) {
               block_size_ = kCompressBlockSize;
               uncompress_buf_ = new char[block_size_];
+              header_size_ = kHeaderSizeForCompress;
           } else {
               block_size_ = kBlockSize;
+              header_size_ = kHeaderSize;
           }
           backing_store_ = new char[block_size_];
       }
@@ -111,7 +113,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
         // its internal buffer. Calculate the offset of the next physical record
         // now that it has returned, properly accounting for its header size.
         uint64_t physical_record_offset = end_of_buffer_offset_ -
-                                          buffer_.size() - kHeaderSize -
+                                          buffer_.size() - header_size_ -
                                           fragment.size();
 
         if (resyncing_) {
@@ -275,7 +277,7 @@ void Reader::GoBackToStart() {
 }
 
 unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
-    if (buffer_.size() < kHeaderSize) {
+    if (buffer_.size() < static_cast<size_t>(header_size_)) {
         // Last read was a full read, so this is a trailer to skip
         buffer_.clear();
         Status status;
@@ -284,7 +286,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
         } else {
             // read header of compressed data
             Slice header_of_compress;
-            status = file_->Read(kHeaderSizeOfCompressData, &header_of_compress, backing_store_);
+            status = file_->Read(kHeaderSizeOfCompressBlock, &header_of_compress, backing_store_);
             if (!status.ok()) {
                 PDLOG(WARNING, "fail to read file %s when reading header", status.ToString().c_str());
                 return kWaitRecord;
@@ -369,28 +371,44 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
             PDLOG(WARNING, "fail to read file %s", status.ToString().c_str());
             return kWaitRecord;
         }
-        if (buffer_.size() < kHeaderSize) {
-            DEBUGLOG("read buffer size[%d] less than kHeaderSize[%d]",
-                  buffer_.size(), kHeaderSize);
+        if (buffer_.size() < static_cast<size_t>(header_size_)) {
+            DEBUGLOG("read buffer size[%d] less than header_size_[%d]",
+                  buffer_.size(), header_size_);
             return kWaitRecord;
         }
     }
 
     // Parse the header
     const char* header = buffer_.data();
-    const uint32_t a = static_cast<uint32_t>(header[4]) & 0xff;
-    const uint32_t b = static_cast<uint32_t>(header[5]) & 0xff;
-    const unsigned int type = header[6];
-    const uint32_t length = a | (b << 8);
-    if (kHeaderSize + length > buffer_.size()) {
+    unsigned int type = 0;
+    uint32_t length = 0;
+    if (!compressed_) {
+        const uint32_t a = static_cast<uint32_t>(header[4]) & 0xff;
+        const uint32_t b = static_cast<uint32_t>(header[5]) & 0xff;
+        type = header[6];
+        length = a | (b << 8);
+    } else {
+        const uint32_t a = static_cast<uint32_t>(header[4]) & 0xff;
+        const uint32_t b = static_cast<uint32_t>(header[5]) & 0xff;
+        const uint32_t c = static_cast<uint32_t>(header[6]) & 0xff;
+        const uint32_t d = static_cast<uint32_t>(header[7]) & 0xff;
+        type = header[8];
+        length = a | (b << 8) | (c << 16) | (d << 24);
+    }
+    if (static_cast<size_t>(header_size_ + length) > buffer_.size()) {
         DEBUGLOG("end of file %d, header size %d data length %d",
-              buffer_.size(), kHeaderSize, length);
+              buffer_.size(), header_size_, length);
         return kWaitRecord;
     }
     // Check crc
     if (checksum_) {
         uint32_t expected_crc = Unmask(DecodeFixed32(header));
-        uint32_t actual_crc = Value(header + 6, 1 + length);
+        uint32_t actual_crc = 0;
+        if (!compressed_) {
+            actual_crc = Value(header + 6, 1 + length);
+        } else {
+            actual_crc = Value(header + 8, 1 + length);
+        }
         if (actual_crc != expected_crc) {
             // Drop the rest of the buffer since "length" itself may have
             // been corrupted and if we trust it, we could find some
@@ -420,15 +438,15 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
         return kBadRecord;
     }
 
-    buffer_.remove_prefix(kHeaderSize + length);
+    buffer_.remove_prefix(header_size_ + length);
     // Skip physical record that started before initial_offset_
-    if (end_of_buffer_offset_ - buffer_.size() - kHeaderSize - length <
+    if (end_of_buffer_offset_ - buffer_.size() - header_size_ - length <
         initial_offset_) {
         result->clear();
         PDLOG(WARNING, "bad record with initial_offset");
         return kBadRecord;
     }
-    *result = Slice(header + kHeaderSize, length);
+    *result = Slice(header + header_size_, length);
     return type;
 }
 
