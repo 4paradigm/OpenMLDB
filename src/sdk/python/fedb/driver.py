@@ -34,7 +34,7 @@ class Driver(object):
             return False, "please init driver first"
         status = sql_router_sdk.Status()
         if self.sdk.CreateDB(db, status):
-            return True, "ok"
+            return True, ""
         else:
             return False, status.msg
 
@@ -62,7 +62,7 @@ class Driver(object):
             return False, "please init driver first"
         status = sql_router_sdk.Status()
         row_builder = self.sdk.GetInsertRow(db, sql, status)
-        if not row_builder:
+        if status.code != 0:
             return False, status.msg
         return True, row_builder
     
@@ -71,7 +71,7 @@ class Driver(object):
             return False, "please init driver first"
         status = sql_router_sdk.Status()
         rows_builder = self.sdk.GetInsertRows(db, sql, status)
-        if not rows_builder:
+        if status.code != 0:
             return False, status.msg
         return True, rows_builder
 
@@ -79,14 +79,14 @@ class Driver(object):
         if not self.sdk:
             return False, "please init driver first"
         status = sql_router_sdk.Status()
-        if row_builder:
+        if row_builder not None:
             if self.sdk.ExecuteInsert(db, sql, row_builder, status):
-                return True, "ok"
+                return True, ""
             else:
                 return False, status.msg
         else:
             if self.sdk.ExecuteInsert(db, sql, status):
-                return True, "ok"
+                return True, ""
             else:
                 return False, status.msg
 
@@ -95,7 +95,7 @@ class Driver(object):
             return False, "please init driver first"
         status = sql_router_sdk.Status()
         row_builder = self.sdk.GetRequestRow(db, sql, status)
-        if not row_builder:
+        if status.code != 0:
             return False, status.msg
         return True, row_builder
  
@@ -116,30 +116,26 @@ class Driver(object):
             return False, "please init driver first"
 
         status = sql_router_sdk.Status()
-        if row_builder:
+        if row_builder not None:
             rs = self.sdk.ExecuteSQL(db, sql, row_builder, status)
-            if not rs:
-                return False, status.msg
-            else:
-                return True, rs
         else:
             rs = self.sdk.ExecuteSQL(db, sql, status)
-            if not rs:
-                return False, status.msg
-            else:
-                return True, rs
+        if status.code != 0
+            return False, status.msg
+        else:
+            return True, rs
 
     def getRowBySp(self, db, sp):
         status = sql_router_sdk.Status()
         row_builder = self.sdk.GetRequestRowByProcedure(db, sp, status)
-        if not row_builder:
+        if status.code != 0:
             return False, status.msg
         return True, row_builder
    
     def callProc(self, db, sp, rq):
         status = sql_router_sdk.Status()
         rs = self.sdk.CallProcedure(db, sp, rq, status)
-        if not rs:
+        if status.code != 0:
             return False, status.msg
         return True, rs
 
@@ -200,12 +196,12 @@ class Driver(object):
         return ok, ""
 
     
-    def doBatchRowRequest(self, db, sql, commonCol, paramters):
-        ok, requestRow = self.getRequestBuilder(self.db, sql)
+    def doBatchRowRequest(self, db, sql, commonCol, parameters):
+        ok, requestRow = self.getRequestBuilder(db, sql)
         if not ok:
             return ok, "get request builder fail"
         schema = requestRow.GetSchema()
-        commonCols = self.sdk.ColumnIndicesSet(schema)
+        commonCols = sql_router_sdk.ColumnIndicesSet(schema)
         count = schema.GetColumnCnt()
         commnColAddCount = 0
         for i in range(count):
@@ -215,19 +211,25 @@ class Driver(object):
                 commonColAddCount+=1
         if commnColAddCount != len(commonCol):
             return False, "some common col is not in table schema"
-        requestRowBatch = self.sdk.SQLRequestRowBatch(schema, commonCols)
+        requestRowBatch = sql_router_sdk.SQLRequestRowBatch(schema, commonCols)
         if requestRowBatch is None:
             return False, "generate sql request row batch fail"
-        for d in parameters:
-            ok, msg = _append_request_row(requestRow, schema, d)
+        if isinstance(parameters, dict):
+            ok, msg = self._append_request_row(requestRow, schema, parameters)
             if not ok:
                 return ok, msg
             requestRowBatch.AddRow(requestRow)
-            ok, requestRow = self.getRequestBuilder(self.db, sql)
-            if not ok:
-                return ok, "get request builder fail"
+        else:
+            for d in parameters:
+                ok, msg = self._append_request_row(requestRow, schema, d)
+                if not ok:
+                    return ok, msg
+                requestRowBatch.AddRow(requestRow)
+                ok, requestRow = self.getRequestBuilder(db, sql)
+                if not ok:
+                    return ok, "get request builder fail"
         status = sql_router_sdk.Status()
         rs = self.sdk.ExecuteSQLBatchRequest(db, sql, requestRowBatch, status)
-        if not rs:
+        if status.code != 0:
             return False, status.msg
         return True, rs

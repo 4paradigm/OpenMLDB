@@ -338,9 +338,9 @@ class Cursor(object):
         pass
 
     def batch_row_request(self, sql, commonCol, parameters):
-        ok, rs = self.connection._sdk.doBatchRowRequest(self.db, command, commonCol, parameters)
+        ok, rs = self.connection._sdk.doBatchRowRequest(self.db, sql, commonCol, parameters)
         if not ok:
-            raise DatabaseError("execute select fail")
+            raise DatabaseError("execute select fail {}".format(rs))
         self._pre_process_result(rs)
         return self
 
