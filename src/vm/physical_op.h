@@ -210,11 +210,10 @@ class Range : public FnComponent {
     Range() : range_key_(nullptr), frame_(nullptr) {}
     Range(const node::OrderByNode *order, const node::FrameNode *frame)
         : range_key_(nullptr), frame_(frame) {
-        range_key_ = nullptr == order
+        range_key_ = nullptr == order ? nullptr
+                     : node::ExprListNullOrEmpty(order->order_by_)
                          ? nullptr
-                         : node::ExprListNullOrEmpty(order->order_by_)
-                               ? nullptr
-                               : order->order_by_->children_[0];
+                         : order->order_by_->children_[0];
     }
     virtual ~Range() {}
     const bool Valid() const { return nullptr != range_key_; }
@@ -224,7 +223,12 @@ class Range : public FnComponent {
             if (nullptr != frame_->frame_range()) {
                 oss << "range=(" << range_key_->GetExprString() << ", "
                     << frame_->frame_range()->start()->GetExprString() << ", "
-                    << frame_->frame_range()->end()->GetExprString() << ")";
+                    << frame_->frame_range()->end()->GetExprString();
+
+                if (0 != frame_->frame_maxsize()) {
+                    oss << ", maxsize=" << frame_->frame_maxsize();
+                }
+                oss << ")";
             }
 
             if (nullptr != frame_->frame_rows()) {

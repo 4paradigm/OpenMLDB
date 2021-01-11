@@ -136,6 +136,7 @@ class RangeGenerator {
             end_offset_ = range.frame_->GetHistoryRangeEnd();
             start_row_ = (-1 * range.frame_->GetHistoryRowsStart());
             end_row_ = (-1 * range.frame_->GetHistoryRowsEnd());
+            max_size_ = range.frame_->frame_maxsize();
         }
     }
     virtual ~RangeGenerator() {}
@@ -158,6 +159,7 @@ class RangeGenerator {
     int64_t end_offset_;
     uint64_t start_row_;
     uint64_t end_row_;
+    uint64_t max_size_;
 };
 class FilterKeyGenerator {
  public:

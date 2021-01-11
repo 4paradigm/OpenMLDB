@@ -232,7 +232,8 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
         FrameBound *end = end_compared >= 1 ? end1 : end2;
         frame_rows = dynamic_cast<FrameExtent *>(MakeFrameExtent(start, end));
     }
-    int64_t maxsize = frame1->frame_maxsize();
+    int64_t maxsize = frame1->frame_maxsize() == 0 ? frame2->frame_maxsize()
+                                                   : frame1->frame_maxsize();
 
     return dynamic_cast<FrameNode *>(
         MakeFrameNode(frame_type, frame_range, frame_rows, maxsize));

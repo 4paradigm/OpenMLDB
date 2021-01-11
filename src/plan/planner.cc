@@ -142,6 +142,9 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
                 status.code = common::kPlanError;
                 return false;
             }
+            if (!CheckWindowFrame(w, status)) {
+                return false;
+            }
             windows[w->GetName()] = w;
         }
     }
@@ -342,6 +345,14 @@ bool Planner::CheckWindowFrame(const node::WindowDefNode *w_ptr,
             extent->end()->is_time_offset()) {
             status.code = common::kPlanError;
             status.msg = "Fail Make Rows Frame Node: time offset un-support";
+            LOG(WARNING) << status;
+            return false;
+        }
+
+        if (w_ptr->GetFrame()->frame_maxsize() > 0) {
+            status.code = common::kPlanError;
+            status.msg =
+                "Fail Make Rows Window: MAXSIZE non-support for Rows Window";
             LOG(WARNING) << status;
             return false;
         }
