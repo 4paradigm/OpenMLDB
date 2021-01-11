@@ -808,6 +808,7 @@ cases:
   -
     id: 36
     desc: no order by
+    tags: ["TODO","bug待修复"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
