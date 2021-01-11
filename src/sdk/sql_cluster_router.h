@@ -33,6 +33,7 @@
 #include "sdk/cluster_sdk.h"
 #include "sdk/sql_router.h"
 #include "boost/compute/detail/lru_cache.hpp"
+#include "sdk/table_reader_impl.h"
 
 namespace rtidb {
 namespace sdk {
@@ -107,6 +108,7 @@ class SQLClusterRouter : public SQLRouter {
                        std::shared_ptr<SQLInsertRows> rows,
                        fesql::sdk::Status* status) override;
 
+    std::shared_ptr<TableReader> GetTableReader();
     std::shared_ptr<ExplainInfo> Explain(const std::string& db,
                                          const std::string& sql,
                                          ::fesql::sdk::Status* status) override;
@@ -114,6 +116,10 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<SQLRequestRow> GetRequestRow(const std::string& db,
                                                  const std::string& sql,
                                                  ::fesql::sdk::Status* status) override;
+
+    std::shared_ptr<SQLRequestRow> GetRequestRowByProcedure(const std::string& db, const std::string& sp_name,
+                                                 ::fesql::sdk::Status* status) override;
+
 
     std::shared_ptr<SQLInsertRow> GetInsertRow(const std::string& db,
                                                const std::string& sql,

@@ -89,7 +89,6 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
 
     inline uint32_t GetPartitionNum() const { return meta_.table_partition_size(); }
 
- private:
     inline int32_t GetColumnIndex(const std::string& column) {
         auto it = types_.find(column);
         if (it != types_.end()) {

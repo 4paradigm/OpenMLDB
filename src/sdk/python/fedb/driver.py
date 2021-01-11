@@ -3,15 +3,12 @@
 # vim:fenc=utf-8
 #
 #
-"""
-"""
-import sys,os
+
 import logging
-from fedb import sql_router_sdk
+from . import sql_router_sdk
 logger = logging.getLogger("fedb_driver")
 class DriverOptions(object):
-    def __init__(self, zk_cluster, zk_path,
-            session_timeout = 3000):
+    def __init__(self, zk_cluster, zk_path, session_timeout = 3000):
         self.zk_cluster = zk_cluster
         self.zk_path = zk_path
         self.session_timeout = session_timeout
@@ -119,4 +116,18 @@ class Driver(object):
                 return False, status.msg
             else:
                 return True, rs
+
+    def getRowBySp(self, db, sp):
+        status = sql_router_sdk.Status()
+        row_builder = self.sdk.GetRequestRowByProcedure(db, sp, status)
+        if not row_builder:
+            return False, status.msg
+        return True, row_builder
+   
+    def callProc(self, db, sp, rq):
+        status = sql_router_sdk.Status()
+        rs = self.sdk.CallProcedure(db, sp, rq, status)
+        if not rs:
+            return False, status.msg
+        return True, rs
 

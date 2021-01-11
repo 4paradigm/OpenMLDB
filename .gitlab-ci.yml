@@ -322,6 +322,26 @@ fesql_auto_test_python:
     - build
   when: manual
 
+fesql_test_python:
+  stage: manual
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_test_python.sh
+  artifacts:
+    reports:
+      junit:
+        - src/sdk/python/sqlalchemy-test/*xml
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies:
+    - build
+  when: manual
+
 tablet_one_demension:
   stage: manual
   before_script:
@@ -395,7 +415,6 @@ ns_multi_demension:
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
     - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
   artifacts:

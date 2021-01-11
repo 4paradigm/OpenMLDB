@@ -573,7 +573,7 @@ static void visit_node(HTree *tree, Node *node, fun_visitor visitor, void *param
             Item *p = data->head;
             Item *it = (Item*)tree->buf;
             int buf_size = TREE_BUF_SIZE - (sizeof(Item) - ITEM_PADDING);;
-            int decode_len;
+            int decode_len = 0;  // NOLINT
             for (i = 0; i < data->count; i++, p = (Item*)((char*)p + ITEM_LENGTH(p)))
             {
                 safe_memcpy(it, buf_size, p, sizeof(Item));

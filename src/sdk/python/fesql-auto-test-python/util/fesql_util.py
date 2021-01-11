@@ -1,6 +1,5 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-import fedb
 
 from entity.fesql_result import FesqlResult
 from nb_log import LogManager

@@ -205,6 +205,11 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
+    public TableReader getTableReader() {
+        return sqlRouter.GetTableReader();
+    }
+
+    @Override
     public boolean dropDB(String db) {
         Status status = new Status();
         boolean ok = sqlRouter.DropDB(db, status);

@@ -26,6 +26,7 @@
 #include "sdk/result_set.h"
 #include "sdk/sql_insert_row.h"
 #include "sdk/sql_request_row.h"
+#include "sdk/table_reader.h"
 
 namespace rtidb {
 namespace sdk {
@@ -86,6 +87,8 @@ class SQLRouter {
                                std::shared_ptr<rtidb::sdk::SQLInsertRows> row,
                                fesql::sdk::Status* status) = 0;
 
+    virtual std::shared_ptr<rtidb::sdk::TableReader> GetTableReader() = 0;
+
     virtual std::shared_ptr<ExplainInfo> Explain(
         const std::string& db, const std::string& sql,
         ::fesql::sdk::Status* status) = 0;
@@ -93,6 +96,9 @@ class SQLRouter {
     virtual std::shared_ptr<rtidb::sdk::SQLRequestRow> GetRequestRow(
         const std::string& db, const std::string& sql,
         fesql::sdk::Status* status) = 0;
+
+    virtual std::shared_ptr<rtidb::sdk::SQLRequestRow> GetRequestRowByProcedure(const std::string& db,
+        const std::string& sp_name, ::fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<rtidb::sdk::SQLInsertRow> GetInsertRow(
         const std::string& db, const std::string& sql,
