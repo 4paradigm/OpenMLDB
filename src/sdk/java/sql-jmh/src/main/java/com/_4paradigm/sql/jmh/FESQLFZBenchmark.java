@@ -221,22 +221,23 @@ public class FESQLFZBenchmark {
             }
             sqlCase.getBatch_request().setCommon_column_indices(commonIndices);
         }
+        long ts = System.currentTimeMillis();
         if (mode == BenchmarkConfig.Mode.BATCH_REQUEST) {
             requestPs = executor.getBatchRequestPreparedStmt(db, exeScript, commonColumnIndices);
             for (int i = 0; i < BenchmarkConfig.BATCH_SIZE; i++) {
-                if (setRequestData(requestPs)) {
+                if (setRequestData(requestPs, ts)) {
                     requestPs.addBatch();
                 }
             }
         } else {
             requestPs = executor.getRequestPreparedStmt(db, exeScript);
-            setRequestData(requestPs);
+            setRequestData(requestPs, ts);
         }
 
         return requestPs;
     }
 
-    private boolean setRequestData(PreparedStatement requestPs) {
+    private boolean setRequestData(PreparedStatement requestPs, long ts) {
         try {
             ResultSetMetaData metaData = requestPs.getMetaData();
             TableInfo table = tableMap.get(mainTable);
@@ -286,13 +287,11 @@ public class FESQLFZBenchmark {
                         }
                     }
                 } else if (columnType == Types.TIMESTAMP) {
-                    long ts = System.currentTimeMillis();
                     requestPs.setTimestamp(i + 1, new Timestamp(ts));
                     if (enableOutputYamlCase) {
                         row.add(String.valueOf(ts));
                     }
                 } else if (columnType == Types.DATE) {
-                    long ts = System.currentTimeMillis();
                     requestPs.setDate(i + 1, new Date(ts));
                     if (enableOutputYamlCase) {
                         row.add(new Date(ts).toString());
@@ -352,7 +351,8 @@ public class FESQLFZBenchmark {
             ps.close();
             for (Map.Entry<String, String> entry : val.entrySet()) {
                 if (entry.getKey().contains("xcount")) {
-                    if (!entry.getValue().equals(String.valueOf(windowNum))) {
+                    int countNum = Integer.getInteger(entry.getValue());
+                    if (countNum != windowNum + 1) {
                         return false;
                     }
                 }
