@@ -263,6 +263,7 @@ message ScanRequest {
     optional uint32 atleast = 14 [default = 0];
     repeated uint32 projection = 15;
     repeated uint32 pid_group = 16;
+    optional bool use_attachment = 17 [default = false];
 }
 
 message RpcMetric {
@@ -312,6 +313,7 @@ message ScanResponse {
     optional int32 code = 3;
     optional uint32 count = 4;
     optional RpcMetric metric = 6 [deprecated = true];
+    optional uint32 buf_size = 7;
 }
 
 message ReplicaRequest {

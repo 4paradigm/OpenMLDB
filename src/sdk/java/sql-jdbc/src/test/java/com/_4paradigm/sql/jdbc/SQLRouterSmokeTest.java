@@ -8,6 +8,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.sql.PreparedStatement;
+import java.sql.Types;
 import java.util.Random;
 
 public class SQLRouterSmokeTest {
@@ -106,6 +107,57 @@ public class SQLRouterSmokeTest {
             e.printStackTrace();
             Assert.fail();
         }
+    }
+
+    @Test
+    public void testInsertMeta() {
+        SdkOption option = new SdkOption();
+        option.setZkPath(TestConfig.ZK_PATH);
+        option.setZkCluster(TestConfig.ZK_CLUSTER);
+        option.setSessionTimeout(200000);
+        SqlExecutor router = null;
+        try {
+            router = new SqlClusterExecutor(option);
+        }catch (Exception e) {
+            Assert.fail();
+        }
+        String dbname = "db" + random.nextInt(100000);
+        // create db
+        router.dropDB(dbname);
+        boolean ok = router.createDB(dbname);
+        Assert.assertTrue(ok);
+        String ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1));";
+        // create table
+        ok = router.executeDDL(dbname, ddl);
+        Assert.assertTrue(ok);
+        java.sql.Date d1 = new java.sql.Date(2019, 1, 1);
+        java.sql.Date d2 = new java.sql.Date(2019, 2, 2);
+        java.sql.Date d3 = new java.sql.Date(2019, 3, 3);
+        java.sql.Date d4 = new java.sql.Date(2019, 4, 4);
+        java.sql.Date d5 = new java.sql.Date(2019, 5, 5);
+        String date1 = String.format("%s-%02d-%02d", d1.getYear() + 1900, d1.getMonth(), d1.getDate());
+        String fullInsert = String.format("insert into tsql1010 values(1000, '%s', 'guangdong', '广州', 1);", date1);
+        try {
+
+            PreparedStatement ps = router.getInsertPreparedStmt(dbname, fullInsert);
+            Assert.assertEquals(ps.getMetaData().getColumnCount(), 0);
+            ps.close();
+        } catch (Exception e) {
+            Assert.fail();
+        }
+
+        String insert1 = "insert into tsql1010 values(?, '2019-01-12', 'xx', 'xx', 1);";
+        try {
+            PreparedStatement ps = router.getInsertPreparedStmt(dbname, insert1);
+            Assert.assertEquals(ps.getMetaData().getColumnCount(), 1);
+            String col = ps.getMetaData().getColumnName(1);
+            Assert.assertEquals(col, "col1");
+            int type = ps.getMetaData().getColumnType(1);
+            Assert.assertEquals(Types.BIGINT, type);
+        } catch (Exception e) {
+            Assert.fail();
+        }
+
     }
 
     @Test
