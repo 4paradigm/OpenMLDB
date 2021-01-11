@@ -96,6 +96,27 @@ class TestRtidbClient(unittest.TestCase):
       for d in i:
         self.assertTrue(d == line[j])
         j+=1
+     # test batch request mode
+    mouse2 = raw_connection.cursor()
+    rs = mouse2.batch_row_request("select * from tsql1010;", (), ({"col1":1002, "col2":'2020-12-27', "col3":'fujian', "col4":'fuzhou', "col5":3}))
+    for i in range(rs.rowcount):
+      i = rs.fetchone()
+      if i == None: break
+      j = 0
+      line = data[i[0]]
+      for d in i:
+        self.assertTrue(d == line[j])
+        j+=1
+    mouse3 = raw_connection.cursor()
+    rs = mouse3.batch_row_request("select * from tsql1010;", (), ({"col1":1002, "col2":'2020-12-27', "col3":'fujian', "col4":'fuzhou', "col5":3}, {"col1":1003, "col2":"2020-12-28", "col3":"jiangxi", "col4":"nanchang", "col5":4}))
+    for i in range(rs.rowcount):
+      i = rs.fetchone()
+      if i == None: break
+      j = 0
+      line = data[i[0]]
+      for d in i:
+        self.assertTrue(d == line[j])
+        j+=1
 
 
 if __name__ == '__main__':
