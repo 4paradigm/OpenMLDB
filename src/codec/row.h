@@ -72,7 +72,7 @@ class Row {
     int32_t GetRowPtrCnt() const;
     int32_t *GetRowSizes() const;
 
-    fesql::base::RefCountedSlice GetSlice(uint32_t slice_index) {
+    fesql::base::RefCountedSlice GetSlice(uint32_t slice_index) const {
         if (slice_index >= slices_.size() + 1) {
             return RefCountedSlice();
         }
