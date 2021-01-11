@@ -403,13 +403,13 @@ void TabletCatalog::Refresh(const std::vector<::rtidb::nameserver::TableInfo>& t
     for (auto db_it = tables_.begin(); db_it != tables_.end();) {
         auto cur_db_it = table_map.find(db_it->first);
         if (cur_db_it == table_map.end()) {
-            LOG(WARNING) << "delete db from catalog. db: " << db_it->first;
+            LOG(INFO) << "delete db from catalog. db: " << db_it->first;
             db_it = tables_.erase(db_it);
             continue;
         }
         for (auto table_it = db_it->second.begin(); table_it != db_it->second.end();) {
             if (cur_db_it->second.find(table_it->first) == cur_db_it->second.end()) {
-                LOG(WARNING) << "delete table from catalog. db: " << db_it->first << ", table: " << table_it->first;
+                LOG(INFO) << "delete table from catalog. db: " << db_it->first << ", table: " << table_it->first;
                 table_it = db_it->second.erase(table_it);
                 continue;
             }
