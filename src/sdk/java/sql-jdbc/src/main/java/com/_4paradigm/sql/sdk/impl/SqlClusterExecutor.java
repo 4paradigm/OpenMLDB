@@ -171,6 +171,8 @@ public class SqlClusterExecutor implements SqlExecutor {
         Status status = new Status();
         ExplainInfo explain = sqlRouter.Explain(dbName, sql, status);
         if (status.getCode() != 0 || explain == null) {
+            status.delete();
+            status = null;
             throw new SQLException("getInputSchema fail! msg: " + status.getMsg());
         }
         status.delete();

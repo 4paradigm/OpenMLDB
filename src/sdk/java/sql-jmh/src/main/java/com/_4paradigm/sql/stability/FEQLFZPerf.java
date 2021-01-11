@@ -19,8 +19,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class FEQLFZPerf {
     private static Logger logger = LoggerFactory.getLogger(FEQLFZPerf.class);
     private SqlExecutor executor;
-    private String db = "perf";
-    private String pName = "pname" + System.currentTimeMillis();
+    private String db;
+    private String pName;
     private String script;
     private String mainTable;
     private Map<String, TableInfo> tableMap;
@@ -33,7 +33,6 @@ public class FEQLFZPerf {
 
     public FEQLFZPerf() {
         executor = BenchmarkConfig.GetSqlExecutor(false);
-        db = db + System.currentTimeMillis();
         commonColumnIndices = new ArrayList<>();
         init();
     }
@@ -50,10 +49,14 @@ public class FEQLFZPerf {
                 commonColumnIndices.add(tableMap.get(mainTable).getSchemaPos().get(col));
             }
         }
+        String[] tmp = BenchmarkConfig.scriptUrl.split("/");
+        String scenceName = tmp[tmp.length - 1].split("\\.")[0];
+        db = scenceName;
+        pName = scenceName;
     }
 
     public boolean create() {
-        if (!executor.createDB(db)) {
+        /*if (!executor.createDB(db)) {
             logger.warn("create db " + db + "failed");
             return false;
         }
@@ -64,7 +67,7 @@ public class FEQLFZPerf {
                 return false;
             }
             logger.info("create table " + table.getName());
-        }
+        }*/
         String procedureDDL = Util.getCreateProcedureDDL(pName, tableMap.get(mainTable), script);
         logger.info(procedureDDL);
         if (!executor.executeDDL(db, procedureDDL)) {
@@ -272,10 +275,16 @@ public class FEQLFZPerf {
                 return;
             }
         }
+        String[] methodArr = BenchmarkConfig.METHOD.split(",");
+        for (String method : methodArr) {
+            if (method.toLowerCase().equals("insert")) {
+                perf.runPut(BenchmarkConfig.PUT_THREAD_NUM);
+            } else if (method.toLowerCase().equals("query")) {
+                perf.runQuery(BenchmarkConfig.QUERY_THREAD_NUM);
+            }
+        }
         //perf.putData();
         //perf.query();
-        perf.runPut(BenchmarkConfig.PUT_THREAD_NUM);
-        perf.runQuery(BenchmarkConfig.QUERY_THREAD_NUM);
         long startTime = System.currentTimeMillis();
         while (true) {
             try {

@@ -204,7 +204,7 @@ public class FESQLFZBenchmark {
             inputDesc.setIndexs(null);
             inputDesc.setRows(rows);
             inputDesc.setCreate(table.getDDL());
-            inputDesc.setInserts(null);
+            //inputDesc.setInserts(null);
             inputDesc.setInsert(null);
             inputDesc.setIndex(null);
             sqlCase.getInputs().add(inputDesc);
@@ -310,7 +310,7 @@ public class FESQLFZBenchmark {
                 }
                 rows.add(row);
                 batchRequest.setRows(rows);
-                batchRequest.setInserts(null);
+                //batchRequest.setInserts(null);
                 batchRequest.setInsert(null);
             }
         } catch (Exception e) {

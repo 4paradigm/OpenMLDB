@@ -33,6 +33,7 @@ public class BenchmarkConfig {
     public static boolean NEED_CREATE = true;
     public static float REQUEST_RATIO = 1.0f;
     public static float PROCEDURE_RATIO = 1.0f;
+    public static String METHOD;
     static {
         try {
             Properties prop = new Properties();
@@ -64,11 +65,12 @@ public class BenchmarkConfig {
             PUT_THREAD_NUM = Integer.valueOf((String)prop.getProperty("PUT_THREAD_NUM", "1"));
             QUERY_THREAD_NUM = Integer.valueOf((String)prop.getProperty("QUERY_THREAD_NUM", "1"));
 
-            if (prop.getProperty("NEED_CREARE", "").toLowerCase().equals("false")) {
+            if (prop.getProperty("NEED_CREATE", "").toLowerCase().equals("false")) {
                 NEED_CREATE = false;
             }
             REQUEST_RATIO = Float.valueOf((String)prop.getProperty("REQUEST_RATIO", "1.0"));
             PROCEDURE_RATIO = Float.valueOf((String)prop.getProperty("PROCEDURE_RATIO", "1.0"));
+            METHOD = prop.getProperty("METHOD", "insert");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -94,6 +96,7 @@ public class BenchmarkConfig {
         sdkOption.setZkCluster(BenchmarkConfig.ZK_CLUSTER);
         sdkOption.setZkPath(BenchmarkConfig.ZK_PATH);
         sdkOption.setEnableDebug(enableDebug);
+        sdkOption.setRequestTimeout(10000000);
         option = sdkOption;
         try {
             executor = new SqlClusterExecutor(option);

@@ -726,6 +726,8 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         if (status.getCode() != 0) {
             String msg = status.getMsg();
             logger.error("getInsertRows fail: {}", msg);
+            status.delete();
+            status = null;
             throw new SQLException("get insertrows fail " + msg + " in construction preparedstatement");
         }
         status.delete();
