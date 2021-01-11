@@ -167,7 +167,7 @@ class Cursor(object):
         ok, rs = self.connection._sdk.doProc(self.db, procname, parameters)
         if not ok:
             raise DatabaseError("execute select fail")
-        _pre_process_result(rs)
+        self._pre_process_result(rs)
         return self
 
 
@@ -209,19 +209,22 @@ class Cursor(object):
                 holdIdxs = builder.GetHoleIdx()
                 strSize = 0
                 for i in range(len(holdIdxs)):
-                    if parameters[i] == None:
-                        if schema.get(idx).IsColumnNotNull:
+                    idx = holdIdxs[i]
+                    name = schema.GetColumnName(idx)
+                    if name not in parameters:
+                        return False, "col {} data not given".format(name)
+                    if parameters[name] is None:
+                        if schema.IsColumnNotNull(idx):
                             raise DatabaseError("column seq {} not allow null".format(idx))
                         else:
                             continue
-                    idx = holdIdxs[i];
                     colType = schema.GetColumnType(idx)
                     if colType != driver.sql_router_sdk.kTypeString:
                         continue
-                    if isinstance(parameters[i], str):
-                        strSize += len(parameters[i])
+                    if isinstance(parameters[name], str):
+                        strSize += len(parameters[name])
                     else:
-                        raise DatabaseError("value {} tpye is not str".format(parameters[i]))
+                        raise DatabaseError("{} value tpye is not str".format(name))
                 builder.Init(strSize)
                 appendMap = {
                     driver.sql_router_sdk.kTypeBool: builder.AppendBool,
@@ -235,12 +238,13 @@ class Cursor(object):
                     driver.sql_router_sdk.kTypeTimestamp: builder.AppendTimestamp
                     }
                 for i in range(len(holdIdxs)):
-                    if parameters[i] == None:
+                    idx = holdIdxs[i]
+                    name = schema.GetColumnName(idx)
+                    if parameters[name] is None:
                         builder.AppendNULL()
                         continue
-                    idx = holdIdxs[i]
                     colType = schema.GetColumnType(idx)
-                    ok = appendMap[colType](parameters[i])
+                    ok = appendMap[colType](parameters[name])
                     if not ok:
                         raise DatabaseError("erred at append data seq {}".format(i));
                 ok, error = self.connection._sdk.executeInsert(self.db, command, builder)
@@ -249,16 +253,13 @@ class Cursor(object):
             if not ok:
                 raise DatabaseError(error)
         elif selectRE.match(command):
-            if len(parameters) > 0:
-                if len(parameters) == 1:
-                    ok, rs = self.connection._sdk.doQuery(self.db, command, parameters[0])
-                else:
-                    ok, rs = self.connection._sdk.doBatchRowRequest(self.db, sql, commonCol, parameters)
+            if isinstance(parameters, dict): # single element in tuple, that tuple type is dict
+                ok, rs = self.connection._sdk.doQuery(self.db, command, parameters)
             else:
                 ok, rs = self.connection._sdk.doQuery(self.db, command, None)
             if not ok:
-                raise DatabaseError("execute select fail")
-            _pre_process_result(rs)
+                raise DatabaseError("execute select fail, msg: {}".format(rs))
+            self._pre_process_result(rs)
             return self
         elif createProduce.match(command):
             ok, error = self.connection._sdk.executeDDL(self.db, command)
@@ -335,6 +336,13 @@ class Cursor(object):
 
     def __iter__(self):
         pass
+
+    def batch_row_request(self, sql, commonCol, parameters):
+        ok, rs = self.connection._sdk.doBatchRowRequest(self.db, command, commonCol, parameters)
+        if not ok:
+            raise DatabaseError("execute select fail")
+        self._pre_process_result(rs)
+        return self
 
 
 class Connection(object):

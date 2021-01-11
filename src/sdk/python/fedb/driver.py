@@ -155,15 +155,15 @@ class Driver(object):
     
     def _append_request_row(self, requestRow, schema, data):
         appendMap = {
-            driver.sql_router_sdk.kTypeBool: requestRow.AppendBool,
-            driver.sql_router_sdk.kTypeInt16: requestRow.AppendInt16,
-            driver.sql_router_sdk.kTypeInt32: requestRow.AppendInt32,
-            driver.sql_router_sdk.kTypeInt64: requestRow.AppendInt64,
-            driver.sql_router_sdk.kTypeFloat: requestRow.AppendFloat,
-            driver.sql_router_sdk.kTypeDouble: requestRow.AppendDouble,
-            driver.sql_router_sdk.kTypeString: requestRow.AppendString,
-            driver.sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and requestRow.AppendDate(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
-            driver.sql_router_sdk.kTypeTimestamp: requestRow.AppendTimestamp
+            sql_router_sdk.kTypeBool: requestRow.AppendBool,
+            sql_router_sdk.kTypeInt16: requestRow.AppendInt16,
+            sql_router_sdk.kTypeInt32: requestRow.AppendInt32,
+            sql_router_sdk.kTypeInt64: requestRow.AppendInt64,
+            sql_router_sdk.kTypeFloat: requestRow.AppendFloat,
+            sql_router_sdk.kTypeDouble: requestRow.AppendDouble,
+            sql_router_sdk.kTypeString: requestRow.AppendString,
+            sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and requestRow.AppendDate(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
+            sql_router_sdk.kTypeTimestamp: requestRow.AppendTimestamp
             }
         count = schema.GetColumnCnt()
         strSize = 0
@@ -177,26 +177,27 @@ class Driver(object):
                     return False, "column seq {} not allow null".format(i)
                 continue
             colType = schema.GetColumnType(i)
-            if colType != driver.sql_router_sdk.kTypeString:
+            if colType != sql_router_sdk.kTypeString:
                 continue
             if isinstance(val, str):
                 strSize += len(val)
             else:
-                return False, "value {} type is not str".format(parameters[i])
+                return False, "{} value type is not str".format(name)
         requestRow.Init(strSize)
         for i in range(count):
             name = schema.GetColumnName(i)
             val = data.get(name)
-            if val is == None:
+            if val is None:
                 builder.AppendNULL()
                 continue
             colType = schema.GetColumnType(i)
-            ok = appendMap[colType](parameters[i])
+            ok = appendMap[colType](val)
             if not ok:
                 return False, "erred at append data seq {}".format(i)
         ok = requestRow.Build()
         if not ok:
            return False, "erred at build request row data"
+        return ok, ""
 
     
     def doBatchRowRequest(self, db, sql, commonCol, paramters):
@@ -208,7 +209,7 @@ class Driver(object):
         count = schema.GetColumnCnt()
         commnColAddCount = 0
         for i in range(count):
-            colName = schema.GetColumnName(i):
+            colName = schema.GetColumnName(i)
             if colName in commonCol:
                 commonCols.AddCommonColumnIdx(i)
                 commonColAddCount+=1
