@@ -25,6 +25,7 @@ public class Table implements Serializable{
     List<List<Object>> rows;
     String create;
     String insert;
+    List<String> inserts;
     String repeat_tag = "";
     int repeat = 1;
 
@@ -44,15 +45,18 @@ public class Table implements Serializable{
      *
      * @return
      */
-    public String getCreate(int replicaNum) {
+    public String extractCreate(int replicaNum) {
         if (!StringUtils.isEmpty(create)) {
             return create;
         }
         return buildCreateSQLFromColumnsIndexs(name, getColumns(), getIndexs(), replicaNum);
     }
 
+    public String extractCreate() {
+        return extractCreate(1);
+    }
     public String getCreate() {
-        return getCreate(1);
+        return create;
     }
 
     /**
@@ -62,6 +66,9 @@ public class Table implements Serializable{
      * @return
      */
     public String getInsert() {
+        return insert;
+    }
+    public String extractInsert() {
         if (!StringUtils.isEmpty(insert)) {
             return insert;
         }
@@ -76,8 +83,14 @@ public class Table implements Serializable{
      * @return
      */
     public List<String> getInserts() {
+        return inserts;
+    }
+    public List<String> extractInserts() {
         if (!StringUtils.isEmpty(insert)) {
             return Lists.newArrayList(insert);
+        }
+        if (!CollectionUtils.isEmpty(inserts)) {
+            return inserts;
         }
         List<String> inserts = Lists.newArrayList();
         for (List<Object> row : getRows()) {

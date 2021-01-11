@@ -124,9 +124,16 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 return fail;
             }
             auto op = dynamic_cast<const PhysicalSimpleProjectNode*>(node);
-            auto runner = new SimpleProjectRunner(id_++, node->schemas_ctx(),
-                                                  op->GetLimitCnt(),
-                                                  op->project().fn_info());
+            Runner* runner;
+            int select_slice = op->GetSelectSourceIndex();
+            if (select_slice >= 0) {
+                runner = new SelectSliceRunner(id_++, node->schemas_ctx(),
+                                               op->GetLimitCnt(), select_slice);
+            } else {
+                runner = new SimpleProjectRunner(id_++, node->schemas_ctx(),
+                                                 op->GetLimitCnt(),
+                                                 op->project().fn_info());
+            }
             return RegisterTask(
                 node,
                 UnaryInheritTask(cluster_task, nm_->RegisterNode(runner)));
@@ -661,6 +668,8 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
                     return ClusterTask();
                 }
             }
+            default:
+                return ClusterTask();
         }
     } else if (new_left.IsCompletedClusterTask()) {
         switch (bias) {
@@ -721,7 +730,11 @@ ClusterTask RunnerBuilder::BuildProxyRunnerForClusterTask(
     } else {
         uint32_t remote_task_id = cluster_job_.AddTask(task);
         proxy_runner = nm_->RegisterNode(new ProxyRequestRunner(
-            id_++, remote_task_id, task.GetRoot()->output_schemas()));
+            id_++, remote_task_id, task.GetIndexKeyInput(),
+            task.GetRoot()->output_schemas()));
+        if (nullptr != task.GetIndexKeyInput()) {
+            task.GetIndexKeyInput()->EnableCache();
+        }
         if (task.GetRoot()->need_batch_cache()) {
             proxy_runner->EnableBatchCache();
         }
@@ -766,7 +779,7 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
             int32_t value = 0;
             if (0 == row_view->GetValue(buf, idx, type,
                                         reinterpret_cast<void*>(&value))) {
-                return !value == 0;
+                return !(value == 0);
             }
             break;
         }
@@ -774,7 +787,7 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
             int64_t value = 0;
             if (0 == row_view->GetValue(buf, idx, type,
                                         reinterpret_cast<void*>(&value))) {
-                return !value == 0;
+                return !(value == 0);
             }
             break;
         }
@@ -782,7 +795,7 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
             int16_t value;
             if (0 == row_view->GetValue(buf, idx, type,
                                         reinterpret_cast<void*>(&value))) {
-                return !value == 0;
+                return !(value == 0);
             }
             break;
         }
@@ -790,7 +803,7 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
             float value;
             if (0 == row_view->GetValue(buf, idx, type,
                                         reinterpret_cast<void*>(&value))) {
-                return !value == 0;
+                return !(value == 0);
             }
             break;
         }
@@ -798,7 +811,7 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
             double value;
             if (0 == row_view->GetValue(buf, idx, type,
                                         reinterpret_cast<void*>(&value))) {
-                return !value == 0;
+                return !(value == 0);
             }
             break;
         }
@@ -1207,6 +1220,50 @@ std::shared_ptr<DataHandler> SimpleProjectRunner::Run(
 
     return std::shared_ptr<DataHandler>();
 }
+
+Row SelectSliceRunner::GetSliceFn::operator()(const Row& row) const {
+    if (slice_ < static_cast<size_t>(row.GetRowPtrCnt())) {
+        return Row(row.GetSlice(slice_));
+    } else {
+        return Row();
+    }
+}
+
+std::shared_ptr<DataHandler> SelectSliceRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "empty inputs";
+        return nullptr;
+    }
+    auto input = inputs[0];
+    if (!input) {
+        LOG(WARNING) << "select slice fail: input is null";
+        return nullptr;
+    }
+    switch (input->GetHanlderType()) {
+        case kTableHandler: {
+            return std::shared_ptr<TableHandler>(new TableProjectWrapper(
+                std::dynamic_pointer_cast<TableHandler>(input),
+                &get_slice_fn_));
+        }
+        case kPartitionHandler: {
+            return std::shared_ptr<TableHandler>(new PartitionProjectWrapper(
+                std::dynamic_pointer_cast<PartitionHandler>(input),
+                &get_slice_fn_));
+        }
+        case kRowHandler: {
+            return std::make_shared<RowProjectWrapper>(
+                std::dynamic_pointer_cast<RowHandler>(input), &get_slice_fn_);
+        }
+        default: {
+            LOG(WARNING) << "Fail run select slice, invalid handler type "
+                         << input->GetHandlerTypeName();
+        }
+    }
+    return nullptr;
+}
+
 std::shared_ptr<DataHandler> WindowAggRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
@@ -2546,6 +2603,11 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
     }
     std::shared_ptr<DataHandlerList> proxy_batch_input =
         producers_[0]->BatchRequestRun(ctx);
+    std::shared_ptr<DataHandlerList> index_key_input =
+        std::shared_ptr<DataHandlerList>();
+    if (nullptr != index_input_) {
+        index_key_input = index_input_->BatchRequestRun(ctx);
+    }
     if (!proxy_batch_input || 0 == proxy_batch_input->GetSize()) {
         LOG(WARNING) << "proxy batch run input is empty";
         return std::shared_ptr<DataHandlerList>();
@@ -2556,7 +2618,17 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
         std::shared_ptr<DataHandlerVector> proxy_one_row_batch_input =
             std::make_shared<DataHandlerVector>();
         proxy_one_row_batch_input->Add(proxy_batch_input->Get(0));
-        auto res = RunBatchInput(ctx, proxy_one_row_batch_input);
+
+        std::shared_ptr<DataHandlerVector> one_index_key_input =
+            std::shared_ptr<DataHandlerVector>();
+        if (index_key_input) {
+            std::shared_ptr<DataHandlerVector> one_index_key_input =
+                std::make_shared<DataHandlerVector>();
+            one_index_key_input->Add(index_key_input->Get(0));
+        }
+        auto res =
+            RunBatchInput(ctx, proxy_one_row_batch_input, one_index_key_input);
+
         if (ctx.is_debug()) {
             std::ostringstream oss;
             oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
@@ -2575,7 +2647,7 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
 
     // if not need batch cache
     // compute each line
-    auto outputs = RunBatchInput(ctx, proxy_batch_input);
+    auto outputs = RunBatchInput(ctx, proxy_batch_input, index_key_input);
     if (ctx.is_debug()) {
         std::ostringstream oss;
         oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
@@ -2610,10 +2682,22 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
         LOG(WARNING) << "input is empty";
         return fail_ptr;
     }
+    std::shared_ptr<DataHandler> index_input = std::shared_ptr<DataHandler>();
+    if (nullptr != index_input_) {
+        index_input = index_input_->RunWithCache(ctx);
+    }
     switch (input->GetHanlderType()) {
         case kRowHandler: {
             auto row = std::dynamic_pointer_cast<RowHandler>(input)->GetValue();
-            return RunWithRowInput(ctx, row);
+            if (index_input) {
+                auto index_row =
+                    std::dynamic_pointer_cast<RowHandler>(index_input)
+                        ->GetValue();
+                return RunWithRowInput(ctx, row, index_row);
+
+            } else {
+                return RunWithRowInput(ctx, row, row);
+            }
         }
         case kTableHandler: {
             auto iter =
@@ -2630,8 +2714,18 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
                 rows.push_back(iter->GetValue());
                 iter->Next();
             }
-            return RunWithRowsInput(ctx, rows,
-                                    producers_[0]->need_batch_cache());
+            if (index_input) {
+                std::vector<Row> index_rows;
+                if (!ExtractRows(index_input, index_rows)) {
+                    LOG(WARNING) << "run proxy runner extract rows fail";
+                    return fail_ptr;
+                }
+                return RunWithRowsInput(ctx, rows, index_rows,
+                                        producers_[0]->need_batch_cache());
+            } else {
+                return RunWithRowsInput(ctx, rows, rows,
+                                        producers_[0]->need_batch_cache());
+            }
         }
         default: {
             LOG(WARNING)
@@ -2645,7 +2739,8 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
 // out_tables = Proxy(in_tables), remote batch request
 std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
     RunnerContext& ctx,  // NOLINT
-    std::shared_ptr<DataHandlerList> batch_input) {
+    std::shared_ptr<DataHandlerList> batch_input,
+    std::shared_ptr<DataHandlerList> batch_index_input) {
     auto fail_ptr = std::shared_ptr<DataHandlerList>();
     // proxy input, can be row or rows
     if (!batch_input || 0 == batch_input->GetSize()) {
@@ -2662,8 +2757,24 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
                                     "rows is empty";
                     return fail_ptr;
                 }
-                std::shared_ptr<TableHandler> table = RunWithRowsInput(
-                    ctx, std::vector<Row>({row}), input_batch_is_common);
+                std::vector<Row> rows({row});
+                std::shared_ptr<TableHandler> table =
+                    std::shared_ptr<TableHandler>();
+                Row index_row;
+                if (batch_index_input) {
+                    if (!ExtractRow(batch_index_input->Get(0), &index_row)) {
+                        LOG(WARNING)
+                            << "run proxy runner extract index rows fail";
+                        return fail_ptr;
+                    }
+                    table = RunWithRowsInput(ctx, rows,
+                                             std::vector<Row>({index_row}),
+                                             input_batch_is_common);
+                } else {
+                    index_row = row;
+                    table = RunWithRowsInput(ctx, rows, rows,
+                                             input_batch_is_common);
+                }
                 if (!table) {
                     LOG(WARNING) << "run proxy runner with rows fail, result "
                                     "table is null";
@@ -2677,13 +2788,27 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
                 return outputs;
             } else {
                 std::vector<Row> rows;
+
                 if (!ExtractRows(batch_input, rows)) {
                     LOG(WARNING) << "run proxy runner with rows fail, batch "
                                     "rows is empty";
                     return fail_ptr;
                 }
                 std::shared_ptr<TableHandler> table =
-                    RunWithRowsInput(ctx, rows, input_batch_is_common);
+                    std::shared_ptr<TableHandler>();
+                if (batch_index_input) {
+                    std::vector<Row> index_rows;
+                    if (!ExtractRows(batch_index_input, index_rows)) {
+                        LOG(WARNING) << "run proxy runner extract index rows";
+                        return fail_ptr;
+                    }
+                    table = RunWithRowsInput(ctx, rows, index_rows,
+                                             input_batch_is_common);
+                } else {
+                    table = RunWithRowsInput(ctx, rows, rows,
+                                             input_batch_is_common);
+                }
+
                 if (!table) {
                     LOG(WARNING) << "run proxy runner with rows fail, result "
                                     "table is null";
@@ -2708,7 +2833,18 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
                                     "rows is empty";
                     return fail_ptr;
                 }
-                outputs->Add(RunWithRowsInput(ctx, rows, false));
+                if (batch_index_input) {
+                    std::vector<Row> index_rows;
+                    if (!ExtractRows(batch_index_input->Get(idx), index_rows)) {
+                        LOG(WARNING)
+                            << "run proxy runner extract index rows fail";
+                        return fail_ptr;
+                    }
+                    outputs->Add(
+                        RunWithRowsInput(ctx, rows, index_rows, false));
+                } else {
+                    outputs->Add(RunWithRowsInput(ctx, rows, rows, false));
+                }
             }
             return outputs;
         }
@@ -2725,7 +2861,7 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
 // out_table = Proxy(in_table) , remote table left join
 std::shared_ptr<DataHandler> ProxyRequestRunner::RunWithRowInput(
     RunnerContext& ctx,  // NOLINT
-    const Row& row) {
+    const Row& row, const Row& index_row) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
     auto cluster_job = ctx.cluster_job();
     if (nullptr == cluster_job) {
@@ -2744,7 +2880,7 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::RunWithRowInput(
         return std::shared_ptr<DataHandler>();
     }
     KeyGenerator generator(task.GetIndexKey().fn_info());
-    pk = generator.Gen(row);
+    pk = generator.Gen(index_row);
     if (pk.empty()) {
         // local mode
         LOG(WARNING) << "can't pick tablet to subquery with empty pk";
@@ -2780,7 +2916,8 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::RunWithRowInput(
 // out_table = Proxy(in_table) , remote table left join
 std::shared_ptr<TableHandler> ProxyRequestRunner::RunWithRowsInput(
     RunnerContext& ctx,  // NOLINT
-    const std::vector<Row>& rows, const bool request_is_common) {
+    const std::vector<Row>& rows, const std::vector<Row>& index_rows,
+    const bool request_is_common) {
     // basic cluster task validate
     auto fail_ptr = std::shared_ptr<TableHandler>();
 
@@ -2805,12 +2942,12 @@ std::shared_ptr<TableHandler> ProxyRequestRunner::RunWithRowsInput(
     std::shared_ptr<Tablet> tablet = std::shared_ptr<Tablet>();
     KeyGenerator generator(task.GetIndexKey().fn_info());
     if (request_is_common) {
-        std::string pk = generator.Gen(rows[0]);
+        std::string pk = generator.Gen(index_rows[0]);
         tablet = table_handler->GetTablet(task.index(), pk);
     } else {
         std::vector<std::string> pks;
-        for (auto& row : rows) {
-            pks.push_back(generator.Gen(row));
+        for (auto& index_row : index_rows) {
+            pks.push_back(generator.Gen(index_row));
         }
         tablet = table_handler->GetTablet(task.index(), pks);
     }

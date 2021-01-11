@@ -319,6 +319,7 @@ enum RunnerType {
     kRunnerTableProject,
     kRunnerRowProject,
     kRunnerSimpleProject,
+    kRunnerSelectSlice,
     kRunnerGroupAgg,
     kRunnerAgg,
     kRunnerWindowAgg,
@@ -353,6 +354,8 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "ROW_PROJECT";
         case kRunnerSimpleProject:
             return "SIMPLE_PROJECT";
+        case kRunnerSelectSlice:
+            return "SELECT_SLICE";
         case kRunnerGroupAgg:
             return "GROUP_AGG_PROJECT";
         case kRunnerAgg:
@@ -786,6 +789,30 @@ class SimpleProjectRunner : public Runner {
         override;  // NOLINT
     ProjectGenerator project_gen_;
 };
+
+class SelectSliceRunner : public Runner {
+ public:
+    SelectSliceRunner(const int32_t id, const SchemasContext* schema,
+                      const int32_t limit_cnt, size_t slice)
+        : Runner(id, kRunnerSelectSlice, schema, limit_cnt),
+          get_slice_fn_(slice) {
+        is_lazy_ = true;
+    }
+
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs) override;
+
+    size_t slice() const { return get_slice_fn_.slice_; }
+
+ private:
+    struct GetSliceFn : public ProjectFun {
+        explicit GetSliceFn(size_t slice) : slice_(slice) {}
+        Row operator()(const Row& row) const override;
+        size_t slice_;
+    } get_slice_fn_;
+};
+
 class GroupAggRunner : public Runner {
  public:
     GroupAggRunner(const int32_t id, const SchemasContext* schema,
@@ -959,7 +986,16 @@ class ProxyRequestRunner : public Runner {
  public:
     ProxyRequestRunner(int32_t id, uint32_t task_id,
                        const SchemasContext* schema_ctx)
-        : Runner(id, kRunnerRequestRunProxy, schema_ctx), task_id_(task_id) {
+        : Runner(id, kRunnerRequestRunProxy, schema_ctx),
+          task_id_(task_id),
+          index_input_(nullptr) {
+        is_lazy_ = true;
+    }
+    ProxyRequestRunner(int32_t id, uint32_t task_id, Runner* index_input,
+                       const SchemasContext* schema_ctx)
+        : Runner(id, kRunnerRequestRunProxy, schema_ctx),
+          task_id_(task_id),
+          index_input_(index_input) {
         is_lazy_ = true;
     }
     ~ProxyRequestRunner() {}
@@ -976,28 +1012,62 @@ class ProxyRequestRunner : public Runner {
             output << " lazy";
         }
     }
+    virtual void Print(std::ostream& output, const std::string& tab,
+                       std::set<int32_t>* visited_ids) const {  // NOLINT
+        PrintRunnerInfo(output, tab);
+        PrintCacheInfo(output);
+        if (nullptr != index_input_) {
+            output << "\n    " << tab << "proxy_index_input:\n";
+            index_input_->Print(output, "    " + tab + "+-", nullptr);
+        }
+        if (nullptr != visited_ids &&
+            visited_ids->find(id_) != visited_ids->cend()) {
+            output << "\n";
+            output << "  " << tab << "...";
+            return;
+        }
+        if (nullptr != visited_ids) {
+            visited_ids->insert(id_);
+        }
+        if (!producers_.empty()) {
+            for (auto producer : producers_) {
+                output << "\n";
+                producer->Print(output, "  " + tab, visited_ids);
+            }
+        }
+    }
 
     const int32_t task_id() const { return task_id_; }
 
  private:
     std::shared_ptr<DataHandlerList> RunBatchInput(
         RunnerContext& ctx,  // NOLINT
-        std::shared_ptr<DataHandlerList> input);
+        std::shared_ptr<DataHandlerList> input,
+        std::shared_ptr<DataHandlerList> index_input);
     std::shared_ptr<DataHandler> RunWithRowInput(RunnerContext& ctx,  // NOLINT
-                                                 const Row& row);
+                                                 const Row& row,
+                                                 const Row& index_row);
     std::shared_ptr<TableHandler> RunWithRowsInput(
         RunnerContext& ctx,  // NOLINT
-        const std::vector<Row>& rows, const bool request_is_common);
+        const std::vector<Row>& rows, const std::vector<Row>& index_rows,
+        const bool request_is_common);
     uint32_t task_id_;
+    Runner* index_input_;
 };
 class ClusterTask;
 class RouteInfo {
  public:
-    RouteInfo() : index_(), index_key_(), input_(), table_handler_() {}
+    RouteInfo()
+        : index_(),
+          index_key_(),
+          index_key_input_runner_(nullptr),
+          input_(),
+          table_handler_() {}
     RouteInfo(const std::string index,
               std::shared_ptr<TableHandler> table_handler)
         : index_(index),
           index_key_(),
+          index_key_input_runner_(nullptr),
           input_(),
           table_handler_(table_handler) {}
     RouteInfo(const std::string index, const Key& index_key,
@@ -1005,6 +1075,7 @@ class RouteInfo {
               std::shared_ptr<TableHandler> table_handler)
         : index_(index),
           index_key_(index_key),
+          index_key_input_runner_(nullptr),
           input_(input),
           table_handler_(table_handler) {}
     ~RouteInfo() {}
@@ -1033,6 +1104,7 @@ class RouteInfo {
     }
     std::string index_;
     Key index_key_;
+    Runner* index_key_input_runner_;
     std::shared_ptr<ClusterTask> input_;
     std::shared_ptr<TableHandler> table_handler_;
 };
@@ -1067,12 +1139,16 @@ class ClusterTask {
         for (auto input_runner : input_runners_) {
             input_runner->SetProducer(0, route_info_.input_->GetRoot());
         }
+        route_info_.index_key_input_runner_ = route_info_.input_->GetRoot();
         route_info_.input_ = input;
     }
     Runner* GetRoot() const { return root_; }
     void SetRoot(Runner* root) { root_ = root; }
     Runner* GetInputRunner(size_t idx) const {
         return idx >= input_runners_.size() ? nullptr : input_runners_[idx];
+    }
+    Runner* GetIndexKeyInput() const {
+        return route_info_.index_key_input_runner_;
     }
     std::shared_ptr<ClusterTask> GetInput() const { return route_info_.input_; }
     Key GetIndexKey() const { return route_info_.index_key_; }
