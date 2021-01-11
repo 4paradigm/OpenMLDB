@@ -319,6 +319,7 @@ enum RunnerType {
     kRunnerTableProject,
     kRunnerRowProject,
     kRunnerSimpleProject,
+    kRunnerSelectSlice,
     kRunnerGroupAgg,
     kRunnerAgg,
     kRunnerWindowAgg,
@@ -353,6 +354,8 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "ROW_PROJECT";
         case kRunnerSimpleProject:
             return "SIMPLE_PROJECT";
+        case kRunnerSelectSlice:
+            return "SELECT_SLICE";
         case kRunnerGroupAgg:
             return "GROUP_AGG_PROJECT";
         case kRunnerAgg:
@@ -786,6 +789,30 @@ class SimpleProjectRunner : public Runner {
         override;  // NOLINT
     ProjectGenerator project_gen_;
 };
+
+class SelectSliceRunner : public Runner {
+ public:
+    SelectSliceRunner(const int32_t id, const SchemasContext* schema,
+                      const int32_t limit_cnt, size_t slice)
+        : Runner(id, kRunnerSelectSlice, schema, limit_cnt),
+          get_slice_fn_(slice) {
+        is_lazy_ = true;
+    }
+
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs) override;
+
+    size_t slice() const { return get_slice_fn_.slice_; }
+
+ private:
+    struct GetSliceFn : public ProjectFun {
+        explicit GetSliceFn(size_t slice) : slice_(slice) {}
+        Row operator()(const Row& row) const override;
+        size_t slice_;
+    } get_slice_fn_;
+};
+
 class GroupAggRunner : public Runner {
  public:
     GroupAggRunner(const int32_t id, const SchemasContext* schema,

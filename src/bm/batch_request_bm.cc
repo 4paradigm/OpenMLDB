@@ -50,6 +50,9 @@ const char* DEFAULT_YAML_PATH = "/cases/benchmark/batch_request_benchmark.yaml";
 
 DEFINE_BATCH_REQUEST_CASE(TwoWindow, DEFAULT_YAML_PATH, "0");
 DEFINE_BATCH_REQUEST_CASE(CommonWindow, DEFAULT_YAML_PATH, "1");
+DEFINE_BATCH_REQUEST_CASE(SelectAll, DEFAULT_YAML_PATH, "2");
+DEFINE_BATCH_REQUEST_CASE(SimpleSelectFromNonCommonJoin, DEFAULT_YAML_PATH,
+                          "3");
 
 }  // namespace bm
 }  // namespace fesql
