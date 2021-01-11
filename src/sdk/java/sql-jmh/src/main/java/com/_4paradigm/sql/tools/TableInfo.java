@@ -11,6 +11,8 @@ public class TableInfo {
     private String ddl;
     private Map<String, Integer> schemaPos;
     private Map<Integer, String> schemaPosName;
+    private List<String> columns;
+    private List<String> indexs;
     private List<String> schema;
     private Set<Integer> tsIndex;
     private Set<Integer> index;
@@ -22,6 +24,7 @@ public class TableInfo {
         name = arr[0].split(" ")[2].replaceAll("`", "");
         String[] filed = arr[1].split(",");
         schema = new ArrayList<>();
+        columns = new ArrayList<>();
         schemaPos = new HashMap<>();
         schemaPosName = new HashMap<>();
         for (int i = 0; i < filed.length; i++) {
@@ -29,6 +32,7 @@ public class TableInfo {
             if (tmp.length < 2) {
                 continue;
             }
+            columns.add(tmp[0] + " " + tmp[1]);
             schema.add(tmp[1].trim());
             String fieldName = tmp[0].replaceAll("`", "");
             schemaPos.put(fieldName, i);
@@ -119,6 +123,9 @@ public class TableInfo {
     public String getName() { return name; }
     public Set<Integer> getIndex() { return index; }
     public List<String> getSchema() { return schema; }
+    public List<String> getColumns() { return columns; }
+    public List<String> getIndexs() { return indexs; }
+
     public Map<String, Integer> getSchemaPos() { return schemaPos; }
     public Map<Integer, String> getColRelation() { return colRelation; }
     public Map<Integer, String> getSchemaPosName() { return schemaPosName; }

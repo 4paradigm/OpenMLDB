@@ -32,7 +32,7 @@ public class FesqlDataProviderTest {
         Assert.assertEquals(2, sqlCase.getInputs().size());
 
         InputDesc input = sqlCase.getInputs().get(0);
-        Assert.assertEquals(input.getInsert(), "insert into " + input.getName() + " values\n" +
+        Assert.assertEquals(input.extractInsert(), "insert into " + input.getName() + " values\n" +
                 "('aa',2,3,1590738989000L),\n" +
                 "(null,null,null,1590738990000L);");
     }
@@ -46,7 +46,7 @@ public class FesqlDataProviderTest {
         Assert.assertEquals(2, sqlCase.getInputs().size());
 
         InputDesc input = sqlCase.getInputs().get(0);
-        Assert.assertEquals(input.getInserts(),
+        Assert.assertEquals(input.extractInserts(),
                 Lists.newArrayList("insert into " + input.getName() + " values\n" +
                                 "('aa',2,3,1590738989000L);",
                         "insert into " + input.getName() + " values\n" +
@@ -68,7 +68,7 @@ public class FesqlDataProviderTest {
                 "c2 int,\n" +
                 "c3 bigint,\n" +
                 "c4 timestamp,\n" +
-                "index(key=(c1),ts=c4));", input.getCreate());
+                "index(key=(c1),ts=c4));", input.extractCreate());
     }
 
 

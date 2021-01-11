@@ -238,7 +238,7 @@ void mgr_stat(Mgr *mgr, uint64_t *total, uint64_t *avail)
     *avail = 0;
     for (i = 0; i< mgr->ndisks; i++)
     {
-        uint64_t t;
+        uint64_t t = 0;
         *avail += get_disk_avail(mgr->disks[i], &t);
         *total += t;
     }

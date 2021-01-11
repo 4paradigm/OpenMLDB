@@ -3,12 +3,22 @@ package com._4paradigm.sql;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 
 import java.util.Properties;
 
 public class BenchmarkConfig {
-    public static String ZK_CLUSTER="172.27.128.32:12200";
-    public static String ZK_PATH="/standalone";
+
+//    public static String ZK_CLUSTER = "127.0.0.1:6181";
+    public static String ZK_CLUSTER="172.27.128.81:16181";
+    public static String ZK_PATH="/fedb_stable";
+    public static String REDIS_IP = "172.27.128.81";
+    public static int REDIS_PORT = 6379;
+//    public static String ZK_PATH="/cluster";
+
+//    public static String ZK_PATH="/onebox";
+//    public static String ZK_CLUSTER="172.27.128.81:16181";
+//    public static String ZK_PATH="/rtidb_fe";
     public static String ZK_NS = "featuredb";
     public static String MEMSQL_URL="jdbc:mysql://172.27.128.37:3306/benchmark?user=benchmark&password=benchmark";
     public static String PARTITION_NUM = "4";
@@ -23,7 +33,7 @@ public class BenchmarkConfig {
 
     private static SqlExecutor executor = null;
     private static SdkOption option = null;
-    private static boolean needProxy = false;
+    private static boolean NEED_PROXY= false;
 
     public static int PUT_THREAD_NUM = 1;
     public static int QUERY_THREAD_NUM = 1;
@@ -39,6 +49,7 @@ public class BenchmarkConfig {
             ZK_NS = prop.getProperty("ZK_NS");
             PARTITION_NUM = prop.getProperty("PARTITION_NUM");
             ddlUrl = prop.getProperty("ddlUrl");
+            NEED_PROXY = Boolean.valueOf(prop.getProperty("HTTP_PROXY"));
             scriptUrl = prop.getProperty("scriptUrl");
             relationUrl = prop.getProperty("relationUrl");
             jsonUrl = prop.getProperty("jsonUrl");
@@ -76,7 +87,7 @@ public class BenchmarkConfig {
     }
 
     public static boolean NeedProxy() {
-        return needProxy;
+        return NEED_PROXY;
     }
 
     public static SqlExecutor GetSqlExecutor(boolean enableDebug) {
@@ -96,6 +107,4 @@ public class BenchmarkConfig {
         }
         return executor;
     }
-
-
 }
