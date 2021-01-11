@@ -963,6 +963,11 @@ cmd_stmt:
 				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdUseDatabase, $2);
 				free($2);
 			}
+			|DROP DATABASE database_name
+			{
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropDatabase, $2);
+				free($2);
+			}
             |DROP TABLE table_name
             {
                 $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropTable, $3);
