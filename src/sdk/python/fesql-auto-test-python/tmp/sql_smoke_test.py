@@ -1,7 +1,8 @@
 import sys,os
 
 from nb_log import LogManager
-from fedb import driver
+dirver = ""
+#from fedb import driver
 import time
 
 log = LogManager('fesql-auto-test').get_logger_and_add_handlers()
@@ -80,6 +81,7 @@ def test_smoke():
     print("end")
 
 if __name__ == "__main__":
-    test_smoke()
+    #test_smoke()
+    pass
 
 

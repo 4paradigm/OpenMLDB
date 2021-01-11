@@ -164,7 +164,6 @@ public class FESQLFZBenchmark {
                         } else if (tsIndex.contains(pos)) {
                             long cur_ts = ts - (tsCnt + BenchmarkConfig.TIME_DIFF) * 1000;
                             builder.append(cur_ts);
-                            builder.append(cur_ts);
                             row.add(cur_ts);
                         } else {
                             if (type.equals("timestamp")) {

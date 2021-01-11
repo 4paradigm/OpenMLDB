@@ -1,6 +1,6 @@
 import sys,os
 
-from fedb import driver
+#from fedb import driver
 import time
 from nb_log import LogManager
 
@@ -22,6 +22,7 @@ def test_smoke():
     print("end")
 
 if __name__ == "__main__":
-    test_smoke()
+    #test_smoke()
+    pass
 
 
