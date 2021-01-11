@@ -8,8 +8,8 @@
             <class name="com._4paradigm.fesql_auto_test.v1.InsertTest" />
             <class name="com._4paradigm.fesql_auto_test.v1.SelectTest" />
             <class name="com._4paradigm.fesql_auto_test.v1.BatchRequestTest" />
-            <!--<class name="com._4paradigm.fesql_auto_test.v1.FunctionTest" />-->
-            <!--<class name="com._4paradigm.fesql_auto_test.v1.ExpressTest" />-->
+            <class name="com._4paradigm.fesql_auto_test.v1.FunctionTest" />
+            <class name="com._4paradigm.fesql_auto_test.v1.ExpressTest" />
             <class name="com._4paradigm.fesql_auto_test.v1.LastJoinTest" />
             <class name="com._4paradigm.fesql_auto_test.v1.WindowTest" />
         </classes>
