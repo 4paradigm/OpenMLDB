@@ -1006,6 +1006,114 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta,
     return 0;
 }
 
+int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request, const ::rtidb::api::TableMeta& meta,
+                              const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
+                              CombineIterator* combine_it, butil::IOBuf* io_buf, uint32_t* count) {
+    uint32_t limit = request->limit();
+    uint32_t atleast = request->atleast();
+    if (combine_it == NULL || io_buf == NULL || count == NULL || (atleast > limit && limit != 0)) {
+        PDLOG(WARNING, "invalid args");
+        return -1;
+    }
+    uint64_t st = request->st();
+    uint64_t et = request->et();
+    rtidb::api::GetType et_type = request->et_type();
+    rtidb::api::GetType real_et_type = et_type;
+    uint64_t expire_time = combine_it->GetExpireTime();
+    if (et < expire_time && et_type == ::rtidb::api::GetType::kSubKeyGt) {
+        real_et_type = ::rtidb::api::GetType::kSubKeyGe;
+    }
+    ::rtidb::api::TTLType ttl_type = combine_it->GetTTLType();
+    if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime || ttl_type == ::rtidb::api::TTLType::kAbsOrLat) {
+        et = std::max(et, expire_time);
+    }
+
+    if (st > 0 && st < et) {
+        PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
+        return -1;
+    }
+
+    bool enable_project = false;
+    ::rtidb::codec::RowProject row_project(vers_schema, request->projection());
+    if (request->projection().size() > 0 && meta.format_version() == 1) {
+        if (meta.compress_type() == api::kSnappy) {
+            LOG(WARNING) << "project on compress row data do not eing supported";
+            return -1;
+        }
+        bool ok = row_project.Init();
+        if (!ok) {
+            PDLOG(WARNING, "invalid project list");
+            return -1;
+        }
+        enable_project = true;
+    }
+    bool remove_duplicated_record =
+        request->has_enable_remove_duplicated_record() && request->enable_remove_duplicated_record();
+    uint64_t last_time = 0;
+    uint32_t total_block_size = 0;
+    uint32_t record_count = 0;
+    combine_it->SeekToFirst();
+    while (combine_it->Valid()) {
+        if (limit > 0 && record_count >= limit) {
+            break;
+        }
+        if (remove_duplicated_record && record_count > 0 && last_time == combine_it->GetTs()) {
+            combine_it->Next();
+            continue;
+        }
+        uint64_t ts = combine_it->GetTs();
+        if (atleast <= 0 || record_count >= atleast) {
+            bool jump_out = false;
+            switch (real_et_type) {
+                case ::rtidb::api::GetType::kSubKeyEq:
+                    if (ts != et) {
+                        jump_out = true;
+                    }
+                    break;
+                case ::rtidb::api::GetType::kSubKeyGt:
+                    if (ts <= et) {
+                        jump_out = true;
+                    }
+                    break;
+                case ::rtidb::api::GetType::kSubKeyGe:
+                    if (ts < et) {
+                        jump_out = true;
+                    }
+                    break;
+                default:
+                    PDLOG(WARNING, "invalid et type %s", ::rtidb::api::GetType_Name(et_type).c_str());
+                    return -2;
+            }
+            if (jump_out) break;
+        }
+        last_time = ts;
+        if (enable_project) {
+            int8_t* ptr = nullptr;
+            uint32_t size = 0;
+            rtidb::base::Slice data = combine_it->GetValue();
+            const int8_t* row_ptr = reinterpret_cast<const int8_t*>(data.data());
+            bool ok = row_project.Project(row_ptr, data.size(), &ptr, &size);
+            if (!ok) {
+                PDLOG(WARNING, "fail to make a projection");
+                return -4;
+            }
+            io_buf->append(reinterpret_cast<void*>(ptr), size);
+            total_block_size += size;
+        } else {
+            rtidb::base::Slice data = combine_it->GetValue();
+            io_buf->append(reinterpret_cast<const void*>(data.data()), data.size());
+            total_block_size += data.size();
+        }
+        record_count++;
+        if (total_block_size > FLAGS_scan_max_bytes_size) {
+            LOG(WARNING) << "reach the max byte size " << FLAGS_scan_max_bytes_size << " cur is " << total_block_size;
+            return -3;
+        }
+        combine_it->Next();
+    }
+    *count = record_count;
+    return 0;
+}
 int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
                               const ::rtidb::api::TableMeta& meta,
                               const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
@@ -1332,23 +1440,30 @@ void TabletImpl::Scan(RpcController* controller,
     const ::rtidb::api::TableMeta& table_meta = query_its.begin()->table->GetTableMeta();
     const std::map<int32_t, std::shared_ptr<Schema>> vers_schema = query_its.begin()->table->GetAllVersionSchema();
     CombineIterator combine_it(std::move(query_its), request->st(), request->st_type(), expire_time, expire_cnt);
-
-    std::string* pairs = response->mutable_pairs();
     uint32_t count = 0;
     int32_t code = 0;
-    code = ScanIndex(request, table_meta, vers_schema, &combine_it, pairs, &count);
-    response->set_code(code);
-    response->set_count(count);
+    if (!request->has_use_attachment() || !request->use_attachment()) {
+        std::string* pairs = response->mutable_pairs();
+        code = ScanIndex(request, table_meta, vers_schema, &combine_it, pairs, &count);
+        response->set_code(code);
+        response->set_count(count);
+    } else {
+        brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+        butil::IOBuf& buf = cntl->response_attachment();
+        code = ScanIndex(request, table_meta, vers_schema, &combine_it, &buf, &count);
+        response->set_code(code);
+        response->set_count(count);
+        response->set_buf_size(buf.size());
+        DLOG(INFO) << " scan " << request->pk() << " with buf size "  << buf.size();
+    }
     uint64_t end_time = ::baidu::common::timer::get_micros();
     if (start_time + FLAGS_query_slow_log_threshold < end_time) {
         std::string index_name;
         if (request->has_idx_name() && request->idx_name().size() > 0) {
             index_name = request->idx_name();
         }
-        PDLOG(INFO,
-              "slow log[scan]. key %s index_name %s time %lu. tid %u, pid %u",
-              request->pk().c_str(), index_name.c_str(), end_time - start_time,
-              request->tid(), request->pid());
+        PDLOG(INFO, "slow log[scan]. key %s index_name %s time %lu. tid %u, pid %u", request->pk().c_str(),
+              index_name.c_str(), end_time - start_time, request->tid(), request->pid());
     }
     switch (code) {
         case 0:

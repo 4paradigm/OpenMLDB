@@ -1688,6 +1688,28 @@ bool TabletClient::CreateProcedure(const rtidb::api::CreateProcedureRequest& sp_
     return true;
 }
 
+bool TabletClient::AsyncScan(const ::rtidb::api::ScanRequest& request,
+        rtidb::RpcCallback<rtidb::api::ScanResponse>* callback) {
+    if (callback == nullptr) {
+        return false;
+    }
+    return client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan,
+            callback->GetController().get(), &request,
+            callback->GetResponse().get(), callback);
+}
+
+bool TabletClient::Scan(const ::rtidb::api::ScanRequest& request,
+        brpc::Controller* cntl,
+        ::rtidb::api::ScanResponse* response) {
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan, cntl,
+                                  &request, response);
+    if (!ok || response->code() != 0) {
+        LOG(WARNING) << "fail to scan table with tid " << request.tid();
+        return false;
+    }
+    return true;
+}
+
 bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name,
                          const std::string& row, brpc::Controller* cntl,
                          rtidb::api::QueryResponse* response,

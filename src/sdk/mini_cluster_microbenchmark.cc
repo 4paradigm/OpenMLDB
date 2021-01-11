@@ -25,8 +25,10 @@
 #include "sdk/mini_cluster.h"
 #include "sdk/mini_cluster_bm.h"
 #include "sdk/sql_router.h"
+#include "sdk/table_reader.h"
 #include "test/base_test.h"
 #include "vm/catalog.h"
+
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
 
@@ -120,6 +122,143 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
             state.SkipWithError("benchmark case debug");
             break;
         }
+    }
+}
+
+static bool Async3Times(const std::string& db, const std::string& table, const std::string& key, int64_t st, int64_t et,
+                        std::shared_ptr<rtidb::sdk::TableReader> reader, fesql::sdk::Status* status) {
+    ::rtidb::sdk::ScanOption so;
+    std::vector<std::shared_ptr<::rtidb::sdk::ScanFuture>> tasks;
+    for (int i = 0; i < 3; i++) {
+        auto f = reader->AsyncScan(db, table, key, st, et, so, 100, status);
+        if (!f) {
+            LOG(WARNING) << "null future ";
+            return false;
+        }
+        tasks.push_back(f);
+    }
+    for (int i = 0; i < 3; i++) {
+        tasks.at(i)->GetResultSet(status);
+    }
+    return true;
+}
+static void BM_SimpleTableReaderAsyncMulti(benchmark::State& state) {  // NOLINT
+    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc->GetZkCluster();
+    sql_opt.zk_path = mc->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (router == nullptr) {
+        std::cout << "fail to init sql cluster router" << std::endl;
+        return;
+    }
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    router->CreateDB(db, &status);
+    std::string ddl =
+        "create table t1"
+        "("
+        "col1 string, col2 bigint,"
+        "index(key=col1, ts=col2));";
+    router->ExecuteDDL(db, ddl, &status);
+    router->RefreshCatalog();
+    int64_t st = 361;
+    int64_t et = 1;
+    int records = state.range(0);
+    std::string key = "k1";
+    for (int32_t i = 1; i < records + 361; i++) {
+        std::string row = "insert into t1 values('" + key + "', " + std::to_string(i) + "L);";
+        router->ExecuteInsert(db, row, &status);
+    }
+    auto reader = router->GetTableReader();
+
+    ::rtidb::sdk::ScanOption so;
+    auto rs = reader->Scan(db, "t1", key, st, et, so, &status);
+    if (!rs || rs->Size() < 300) {
+        LOG(WARNING) << "result count is mismatch";
+        return;
+    }
+    for (auto _ : state) {
+        benchmark::DoNotOptimize(Async3Times(db, "t1", key, st, et, reader, &status));
+    }
+}
+
+static void BM_SimpleTableReaderAsync(benchmark::State& state) {  // NOLINT
+    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc->GetZkCluster();
+    sql_opt.zk_path = mc->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (router == nullptr) {
+        std::cout << "fail to init sql cluster router" << std::endl;
+        return;
+    }
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    router->CreateDB(db, &status);
+    std::string ddl =
+        "create table t1"
+        "("
+        "col1 string, col2 bigint,"
+        "index(key=col1, ts=col2));";
+    router->ExecuteDDL(db, ddl, &status);
+    router->RefreshCatalog();
+    int64_t st = 361;
+    int64_t et = 1;
+    int records = state.range(0);
+    std::string key = "k1";
+    for (int32_t i = 1; i < records + 361; i++) {
+        std::string row = "insert into t1 values('" + key + "', " + std::to_string(i) + "L);";
+        router->ExecuteInsert(db, row, &status);
+    }
+    auto reader = router->GetTableReader();
+
+    ::rtidb::sdk::ScanOption so;
+    auto rs = reader->Scan(db, "t1", key, st, et, so, &status);
+    if (!rs || rs->Size() < 300) {
+        LOG(WARNING) << "result count is mismatch";
+        return;
+    }
+    for (auto _ : state) {
+        benchmark::DoNotOptimize(reader->AsyncScan(db, "t1", key, st, et, so, 10, &status)->GetResultSet(&status));
+    }
+}
+
+static void BM_SimpleTableReaderSync(benchmark::State& state) {  // NOLINT
+    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc->GetZkCluster();
+    sql_opt.zk_path = mc->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (router == nullptr) {
+        std::cout << "fail to init sql cluster router" << std::endl;
+        return;
+    }
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    router->CreateDB(db, &status);
+    std::string ddl =
+        "create table t1"
+        "("
+        "col1 string, col2 bigint,"
+        "index(key=col1, ts=col2));";
+    router->ExecuteDDL(db, ddl, &status);
+    router->RefreshCatalog();
+    int64_t st = 361;
+    int64_t et = 1;
+    int records = state.range(0);
+    std::string key = "k1";
+    for (int32_t i = 1; i < records + 361; i++) {
+        std::string row = "insert into t1 values('" + key + "', " + std::to_string(i) + "L);";
+        router->ExecuteInsert(db, row, &status);
+    }
+    auto reader = router->GetTableReader();
+
+    ::rtidb::sdk::ScanOption so;
+    auto rs = reader->Scan(db, "t1", key, st, et, so, &status);
+    if (!rs || rs->Size() < 300) {
+        LOG(WARNING) << "result count is mismatch";
+        return;
+    }
+    for (auto _ : state) {
+        benchmark::DoNotOptimize(reader->Scan(db, "t1", key, st, et, so, &status));
     }
 }
 
@@ -752,6 +891,16 @@ BENCHMARK(BM_SimpleInsertFunction)->Args({10})->Args({100})->Args({1000})->Args(
 BENCHMARK(BM_InsertPlaceHolderFunction)->Args({10})->Args({100})->Args({1000})->Args({10000});
 
 BENCHMARK(BM_InsertPlaceHolderBatchFunction)->Args({10})->Args({100})->Args({1000})->Args({10000});
+BENCHMARK(BM_SimpleTableReaderSync)->Args({10})->Args({100})->Args({1000})->Args({2000})->Args({4000})->Args({10000});
+BENCHMARK(BM_SimpleTableReaderAsync)->Args({10})->Args({100})->Args({1000})->Args({2000})->Args({4000})->Args({10000});
+BENCHMARK(BM_SimpleTableReaderAsyncMulti)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({2000})
+    ->Args({4000})
+    ->Args({10000});
+
 int main(int argc, char** argv) {
     ::fesql::vm::Engine::InitializeGlobalLLVM();
     FLAGS_enable_distsql = fesql::sqlcase::SQLCase::IS_CLUSTER();

@@ -27,6 +27,7 @@
 #include "sdk/sql_sdk_test.h"
 #include "test/base_test.h"
 #include "vm/catalog.h"
+
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
 
