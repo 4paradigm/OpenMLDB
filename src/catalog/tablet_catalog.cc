@@ -109,7 +109,7 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
 }
 
 std::unique_ptr<::fesql::codec::RowIterator> TabletTableHandler::GetIterator() {
-    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
+    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
     if (!tables->empty()) {
         return std::unique_ptr<catalog::FullTableIterator>(new catalog::FullTableIterator(tables));
     }
@@ -123,7 +123,7 @@ std::unique_ptr<::fesql::codec::WindowIterator> TabletTableHandler::GetWindowIte
         return std::unique_ptr<::fesql::codec::WindowIterator>();
     }
     DLOG(INFO) << "get window it with index " << idx_name;
-    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
+    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
     if (!tables->empty()) {
         return std::unique_ptr<::fesql::codec::WindowIterator>(
             new DistributeWindowIterator(tables, iter->second.index));
@@ -141,7 +141,7 @@ const ::fesql::codec::Row TabletTableHandler::Get(int32_t pos) {
 }
 
 ::fesql::codec::RowIterator* TabletTableHandler::GetRawIterator() {
-    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
+    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
     if (!tables->empty()) {
         return new catalog::FullTableIterator(tables);
     }
@@ -175,17 +175,23 @@ std::shared_ptr<::fesql::vm::PartitionHandler> TabletTableHandler::GetPartition(
 }
 
 void TabletTableHandler::AddTable(std::shared_ptr<::rtidb::storage::Table> table) {
-    auto old_tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
-    auto new_tables = std::make_shared<Tables>(*old_tables);
-    new_tables->emplace(table->GetPid(), table);
-    std::atomic_store_explicit(&tables_, new_tables, std::memory_order_relaxed);
+    std::shared_ptr<Tables> old_tables;
+    std::shared_ptr<Tables> new_tables;
+    do {
+        old_tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
+        new_tables = std::make_shared<Tables>(*old_tables);
+        new_tables->emplace(table->GetPid(), table);
+    } while (!atomic_compare_exchange_weak(&tables_, &old_tables, new_tables));
 }
 
 int TabletTableHandler::DeleteTable(uint32_t pid) {
-    auto old_tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
-    auto new_tables = std::make_shared<Tables>(*old_tables);
-    new_tables->erase(pid);
-    std::atomic_store_explicit(&tables_, new_tables, std::memory_order_relaxed);
+    std::shared_ptr<Tables> old_tables;
+    std::shared_ptr<Tables> new_tables;
+    do {
+        auto old_tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
+        auto new_tables = std::make_shared<Tables>(*old_tables);
+        new_tables->erase(pid);
+    } while (!atomic_compare_exchange_weak(&tables_, &old_tables, new_tables));
     return new_tables->size();
 }
 
