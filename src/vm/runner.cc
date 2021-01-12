@@ -3158,7 +3158,7 @@ WindowUnionGenerator::PartitionEach(
 }
 int32_t IteratorStatus::PickIteratorWithMininumKey(
     std::vector<IteratorStatus>* status_list_ptr) {
-    auto status_list = *status_list_ptr;
+    const auto& status_list = *status_list_ptr;
     int32_t min_union_pos = -1;
     uint64_t min_union_order = UINT64_MAX;
     for (size_t i = 0; i < status_list.size(); i++) {
@@ -3171,7 +3171,7 @@ int32_t IteratorStatus::PickIteratorWithMininumKey(
 }
 int32_t IteratorStatus::PickIteratorWithMaximizeKey(
     std::vector<IteratorStatus>* status_list_ptr) {
-    auto status_list = *status_list_ptr;
+    const auto& status_list = *status_list_ptr;
     int32_t min_union_pos = -1;
     uint64_t min_union_order = 0;
     for (size_t i = 0; i < status_list.size(); i++) {
