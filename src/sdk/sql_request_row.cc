@@ -458,7 +458,7 @@ bool SQLRequestRowBatch::AddRow(std::shared_ptr<SQLRequestRow> row) {
             return false;
         }
         common_slice_ = std::string(reinterpret_cast<char*>(common_buf), common_size);
-        delete common_buf;
+        free(common_buf);
     }
     int8_t* non_common_buf = nullptr;
     size_t non_common_size = 0;
@@ -469,7 +469,7 @@ bool SQLRequestRowBatch::AddRow(std::shared_ptr<SQLRequestRow> row) {
     }
     non_common_slices_.emplace_back(std::string(
         reinterpret_cast<char*>(non_common_buf), non_common_size));
-    delete non_common_buf;
+    free(non_common_buf);
     return true;
 }
 
