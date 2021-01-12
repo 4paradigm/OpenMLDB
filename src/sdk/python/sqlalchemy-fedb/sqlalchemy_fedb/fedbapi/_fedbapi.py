@@ -134,6 +134,9 @@ class Cursor(object):
         self._connected = False
 
     def _pre_process_result(self, rs):
+        if rs is None:
+            self.rowcount = 0
+            return
         self.rowcount = rs.Size()
         self._resultSet = rs
         self.__schema = rs.GetSchema()

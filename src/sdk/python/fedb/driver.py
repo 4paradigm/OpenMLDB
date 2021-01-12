@@ -79,7 +79,7 @@ class Driver(object):
         if not self.sdk:
             return False, "please init driver first"
         status = sql_router_sdk.Status()
-        if row_builder not None:
+        if row_builder is not None:
             if self.sdk.ExecuteInsert(db, sql, row_builder, status):
                 return True, ""
             else:
@@ -116,11 +116,11 @@ class Driver(object):
             return False, "please init driver first"
 
         status = sql_router_sdk.Status()
-        if row_builder not None:
+        if row_builder is not None:
             rs = self.sdk.ExecuteSQL(db, sql, row_builder, status)
         else:
             rs = self.sdk.ExecuteSQL(db, sql, status)
-        if status.code != 0
+        if status.code != 0:
             return False, status.msg
         else:
             return True, rs
