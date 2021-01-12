@@ -3,7 +3,6 @@ package com._4paradigm.fesql.spark
 import com._4paradigm.fesql.FeSqlLibrary
 import com._4paradigm.fesql.`type`.TypeOuterClass._
 import com._4paradigm.fesql.common.{SQLEngine, UnsupportedFesqlException}
-import com._4paradigm.fesql.spark.element.FesqlConfig
 import com._4paradigm.fesql.spark.nodes._
 import com._4paradigm.fesql.spark.utils.FesqlUtil
 import com._4paradigm.fesql.vm._
@@ -16,7 +15,7 @@ import org.slf4j.LoggerFactory
 import scala.collection.mutable
 
 
-class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
+class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -25,27 +24,8 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
   Engine.InitializeGlobalLLVM()
   var node: PhysicalOpNode = _
 
-
   def this(session: SparkSession) = {
-    this(session, session.conf.getAll)
-    for ((k, v) <- config.asInstanceOf[Map[String, String]]) {
-      logger.info(s"spark plan fesql config: ${k} = ${v}")
-      k match {
-        case FesqlConfig.configSkewRadio => FesqlConfig.skewRatio = v.toDouble
-        case FesqlConfig.configSkewLevel => FesqlConfig.skewLevel = v.toInt
-        case FesqlConfig.configSkewCnt => FesqlConfig.skewCnt = v.toInt
-        case FesqlConfig.configSkewCntName => FesqlConfig.skewCntName = v.asInstanceOf[String]
-        case FesqlConfig.configSkewTag => FesqlConfig.skewTag = v.asInstanceOf[String]
-        case FesqlConfig.configSkewPosition => FesqlConfig.skewPosition = v.asInstanceOf[String]
-        case FesqlConfig.configMode => FesqlConfig.mode = v.asInstanceOf[String]
-        case FesqlConfig.configPartitions => FesqlConfig.paritions = v.toInt
-        case FesqlConfig.configTimeZone => FesqlConfig.timeZone = v.asInstanceOf[String]
-        case FesqlConfig.configTinyData => FesqlConfig.tinyData = v.toLong
-        case FesqlConfig.configPrintSamplePartition => FesqlConfig.printSamplePartition = v.toLong
-        case FesqlConfig.configSlowRunCacheDir => FesqlConfig.slowRunCacheDir = v.toString
-        case _ => ""
-      }
-    }
+    this(session, FeSQLConfig.fromSparkSession(session))
   }
 
   def plan(sql: String, tableDict: Map[String, DataFrame]): SparkInstance = {
@@ -57,7 +37,7 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
       case (name, df) => planCtx.registerDataFrame(name, df)
     }
 
-    withSQLEngine(sql, FesqlUtil.getDatabase(FesqlConfig.configDBName, tableDict)) { engine =>
+    withSQLEngine(sql, FesqlUtil.getDatabase(config.configDBName, tableDict)) { engine =>
       val irBuffer = engine.getIRBuffer
       planCtx.setModuleBuffer(irBuffer)
 
@@ -66,8 +46,8 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
       logger.info("Get FeSQL physical plan: ")
       root.Print()
 
-      if (FesqlConfig.slowRunCacheDir != null) {
-        slowRunWithHDFSCache(root, planCtx, FesqlConfig.slowRunCacheDir, isRoot = true)
+      if (config.slowRunCacheDir != null) {
+        slowRunWithHDFSCache(root, planCtx, config.slowRunCacheDir, isRoot = true)
       } else {
         getSparkOutput(root, planCtx)
       }

@@ -3,19 +3,19 @@ package com._4paradigm.fesql.spark.nodes.window
 import java.io._
 
 import com._4paradigm.fesql.common.JITManager
-import com._4paradigm.fesql.spark.nodes.WindowAggPlan.{WindowAggConfig, WindowComputer}
-import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, WindowInterface}
+import com._4paradigm.fesql.spark.nodes.WindowAggPlan.WindowAggConfig
+import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper}
 import com._4paradigm.fesql.codec.{Row => NativeRow}
+import com._4paradigm.fesql.spark.FeSQLConfig
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.Row
 import org.slf4j.LoggerFactory
 
 
-class WindowComputerWithSampleSupport(fs: FileSystem,
-                                      config: WindowAggConfig,
-                                      jit: FeSQLJITWrapper
-                                     ) extends WindowComputer(config, jit) {
+class WindowSampleSupport(fs: FileSystem,
+                          config: WindowAggConfig,
+                          jit: FeSQLJITWrapper) extends WindowHook {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -24,15 +24,13 @@ class WindowComputerWithSampleSupport(fs: FileSystem,
 
   private var sampled = false
 
-  override def compute(row: Row): Row = {
-    val output = super.compute(row)
-    if (!sampled && window.size() >= minWindowSize) {
+  override def postCompute(computer: WindowComputer, row: Row): Unit = {
+    if (!sampled && computer.getWindow.size() >= minWindowSize) {
       sampled = true
       dumpModule()
       dumpConfig()
-      dumpWindow(window, s"$minWindowSize")
+      dumpWindow(computer, s"$minWindowSize")
     }
-    output
   }
 
   def dumpModule(): Unit = {
@@ -52,13 +50,14 @@ class WindowComputerWithSampleSupport(fs: FileSystem,
       stream => byteStream.writeTo(stream))
   }
 
-  def dumpWindow(window: WindowInterface, desc: String): Unit = {
+  def dumpWindow(computer: WindowComputer, desc: String): Unit = {
+    val window = computer.getWindow
     val size = window.size().toInt
     val rows = (0 until size).map(idx => {
       val row = window.Get(idx)
       val fields = config.inputSchema.size
       val arr = new Array[Any](fields)
-      encoder.decode(row, arr)
+      computer.getEncoder.decode(row, arr)
       arr
     }).toArray
 
@@ -93,9 +92,9 @@ class WindowComputerWithSampleSupport(fs: FileSystem,
 }
 
 
-object WindowComputerWithSampleSupport {
+object WindowSampleSupport {
 
-  class SampleExecutor(val config: WindowAggConfig) {
+  class SampleExecutor(sqlConfig: FeSQLConfig, val config: WindowAggConfig) {
 
     private val jit = {
       val buffer = config.moduleNoneBroadcast.getBuffer
@@ -103,7 +102,7 @@ object WindowComputerWithSampleSupport {
       JITManager.getJIT(config.moduleTag)
     }
 
-    private val computer = new WindowComputer(config, jit)
+    private val computer = new WindowComputer(sqlConfig, config, jit)
 
     private var curRow: Row = _
     private var curNativeRow: NativeRow = _
@@ -125,7 +124,7 @@ object WindowComputerWithSampleSupport {
     }
   }
 
-  def recover(path: String, windowName: String): SampleExecutor = {
+  def recover(sqlConfig: FeSQLConfig, path: String, windowName: String): SampleExecutor = {
     val fs = FileSystem.get(new Configuration())
     val configFile = fs.open(new Path(path + "/" + windowName + "/config.obj"))
     val configObjStream = new ObjectInputStream(configFile)
@@ -143,7 +142,7 @@ object WindowComputerWithSampleSupport {
       }
     })
 
-    val executor = new SampleExecutor(config)
+    val executor = new SampleExecutor(sqlConfig, config)
     executor.setWindow(windows(0))
     executor
   }

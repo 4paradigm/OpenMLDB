@@ -790,7 +790,8 @@ void EngineTestRunner::RunBenchmark(size_t iters) {
         LOG(WARNING) << "Run error: " << status;
         return;
     }
-    PrintRows(session_->GetSchema(), output_rows);
+    ASSERT_NO_FATAL_FAILURE(
+        DoEngineCheckExpect(sql_case_, session_, output_rows));
 
     struct timeval st;
     struct timeval et;

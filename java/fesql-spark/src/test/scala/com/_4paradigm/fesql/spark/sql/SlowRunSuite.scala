@@ -3,8 +3,8 @@ package com._4paradigm.fesql.spark.sql
 import java.io.{File, IOException}
 import java.nio.file.Files
 
+import com._4paradigm.fesql.spark.FeSQLConfig
 import org.apache.commons.io.FileUtils
-import com._4paradigm.fesql.spark.element.FesqlConfig
 
 class SlowRunSuite extends SQLBaseSuite {
 
@@ -13,7 +13,7 @@ class SlowRunSuite extends SQLBaseSuite {
   override def customizedBefore() {
     cacheDir = Files.createTempDirectory("slow_hdfs_cache").toAbsolutePath.toString
     val conf = getSparkSession.conf
-    conf.set(FesqlConfig.configSlowRunCacheDir, cacheDir)
+    conf.set("spark.fesql.slowRunCacheDir", cacheDir)
     conf.set("spark.default.parallelism", 1)
   }
 
