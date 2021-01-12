@@ -60,6 +60,8 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
               header_size_ = kHeaderSize;
           }
           backing_store_ = new char[block_size_];
+          DLOG(INFO) << "block_size_: " << block_size_ << ", " << "header_size_: " << header_size_ << ", "
+              << "compressed_: " << compressed_;
       }
 
 Reader::~Reader() {
@@ -295,9 +297,9 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
             int compress_len = 0;
             memcpy(static_cast<void*>(&compress_len), data, sizeof(int));
             memrev32ifbe(static_cast<void*>(&compress_len));
-            PDLOG(INFO, "compress_len is: %d", compress_len);
             CompressType compress_type = kNoCompress;
             memcpy(static_cast<void*>(&compress_type), data + sizeof(int), 1);
+            DLOG(INFO) << "compress_len: " << compress_len << ", " << "compress_type: " << compress_type;
 #ifndef PZFPGA_ENABLE
             if (compress_type == kPz) {
                 PDLOG(WARNING, "FLAGS_snapshot_compression is pz, but PZFPGA_ENABLE is off");
@@ -359,7 +361,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                         uncompress_len, block_size_);
                 return kBadRecord;
             }
-            PDLOG(INFO, "uncompress_len is: %d", uncompress_len);
+            DLOG(INFO) << "uncompress_len: " << uncompress_len;
             buffer_ = Slice(uncompress_buf_, block_size_);
         }
         offset = end_of_buffer_offset_;

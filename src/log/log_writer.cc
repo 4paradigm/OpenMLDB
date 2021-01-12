@@ -39,6 +39,8 @@ Writer::Writer(const std::string& compress_type, WritableFile* dest)
         block_size_ = kBlockSize;
         header_size_ = kHeaderSize;
     }
+    DLOG(INFO) << "block_size_: " << block_size_ << ", " << "header_size_: " << header_size_ << ", "
+        << "compress_type_: " << compress_type_;
 }
 
 Writer::Writer(const std::string& compress_type, WritableFile* dest, uint64_t dest_length)
@@ -54,6 +56,8 @@ Writer::Writer(const std::string& compress_type, WritableFile* dest, uint64_t de
         header_size_ = kHeaderSize;
     }
     block_offset_ = dest_length % block_size_;
+    DLOG(INFO) << "block_size_: " << block_size_ << ", " << "header_size_: " << header_size_ << ", "
+        << "compress_type_: " << compress_type_;
 }
 
 Writer::~Writer() {
@@ -254,7 +258,7 @@ Status Writer::CompressRecord() {
         PDLOG(WARNING, "write error, compress_type: %d, msg: %s", compress_type_, s.ToString().c_str());
         return s;
     }
-    PDLOG(INFO, "compress_len: %d, compress_type: %d", compress_len, compress_type_);
+    DLOG(INFO) << "compress_len: " << compress_len << ", " << "compress_type: " << compress_type_;
     // fill compressed data's header
     char head_of_compress[kHeaderSizeOfCompressBlock];
     memrev32ifbe(static_cast<void*>(&compress_len));

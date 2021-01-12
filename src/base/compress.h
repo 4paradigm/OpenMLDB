@@ -8,9 +8,15 @@
 
 #pragma once
 
+#include <gflags/gflags.h>
+#include <vector>
 #include "config.h" // NOLINT
+#include "base/random.h"
+
 #ifdef PZFPGA_ENABLE
 #include "pz.h" // NOLINT
+
+DECLARE_uint32(fpga_env_num);
 
 namespace rtidb {
 namespace base {
@@ -24,8 +30,18 @@ class Compress {
 
     // singleton
     static FPGA_env* GetFpgaEnv() {
-        static FPGA_env* fpga_env = gzipfpga_init_titanse();
-        return fpga_env;
+        static std::vector<FPGA_env*> fpga_envs = GetFpgaEnvInternal();
+        rtidb::base::Random rand(0xdeadbeef);
+        return fpga_envs[rand.Next() % FLAGS_fpga_env_num];
+    }
+
+ private:
+    static std::vector<FPGA_env*>& GetFpgaEnvInternal() {
+        static std::vector<FPGA_env*> fpga_envs;
+        for (uint32_t i = 0; i < FLAGS_fpga_env_num; i++) {
+            fpga_envs.push_back(gzipfpga_init_titanse());
+        }
+        return fpga_envs;
     }
 };
 
