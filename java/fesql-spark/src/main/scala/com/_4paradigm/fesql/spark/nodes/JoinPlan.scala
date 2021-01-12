@@ -11,11 +11,14 @@ import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalJoinNode}
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.types.{LongType, StructType}
 import org.apache.spark.sql.{Column, Row, functions}
+import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 
 
 object JoinPlan {
+
+  private val logger = LoggerFactory.getLogger(this.getClass)
 
   def gen(ctx: PlanContext, node: PhysicalJoinNode, left: SparkInstance, right: SparkInstance): SparkInstance = {
     val joinType = node.join().join_type()
@@ -25,6 +28,12 @@ object JoinPlan {
 
     val sess = ctx.getSparkSession
 
+    val rightDf = right.getDf(sess)
+
+    val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
+
+
+    // Add index column for original last join, not used in native last join
     val indexName = "__JOIN_INDEX__-" + System.currentTimeMillis()
     val leftDf = {
       if (joinType == JoinType.kJoinTypeLast) {
@@ -38,16 +47,6 @@ object JoinPlan {
         left.getDf(sess)
       }
     }
-
-    val indexColIdx = if (joinType == JoinType.kJoinTypeLast) {
-      leftDf.schema.size - 1
-    } else {
-      leftDf.schema.size
-    }
-
-    val rightDf = right.getDf(sess)
-
-    val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
 
     // build join condition
     val joinConditions = mutable.ArrayBuffer[Column]()
@@ -63,6 +62,12 @@ object JoinPlan {
         val rightColumn = SparkColumnUtil.resolveExprNodeToColumn(rightKeys.GetChild(i), node.GetProducer(1), rightDf)
         joinConditions += (leftColumn === rightColumn)
       }
+    }
+
+    val indexColIdx = if (joinType == JoinType.kJoinTypeLast) {
+      leftDf.schema.size - 1
+    } else {
+      leftDf.schema.size
     }
 
     val filter = node.join().condition()
@@ -155,17 +160,21 @@ object JoinPlan {
       } else { // Does not have order by column
         // TODO: Do not use native last join currently
         joined.dropDuplicates(indexName).drop(indexName)
-        /*
+
         try {
-          org.apache.spark.sql.catalyst.plans.JoinType("last") // If Spark distribution support native last join type
-          leftDf.join(rightDf, joinConditions.reduce(_ && _),  "last")
+          logger.info("Try to run with native last join")
+          // Check if Spark distribution support native last join type
+          org.apache.spark.sql.catalyst.plans.JoinType("last")
+          // TODO: Do not use leftDf which has the index column
+          leftDf.join(rightDf, joinConditions.reduce(_ && _),  "last").drop(indexName)
         } catch {
           case _: IllegalArgumentException => {
+            logger.info("Fallback to original last join without native last join support")
             // Randomly select the first row from joined table
             joined.dropDuplicates(indexName).drop(indexName)
           }
         }
-        */
+
       }
 
     } else { // Just left join, not last join
