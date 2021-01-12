@@ -1,6 +1,8 @@
 package com._4paradigm.sql.stability;
 
 import com._4paradigm.sql.BenchmarkConfig;
+import com._4paradigm.sql.sdk.QueryFuture;
+import com._4paradigm.sql.jdbc.CallablePreparedStatement;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.tools.Relation;
 import com._4paradigm.sql.tools.TableInfo;
@@ -14,6 +16,7 @@ import java.util.*;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FEQLFZPerf {
@@ -56,7 +59,7 @@ public class FEQLFZPerf {
     }
 
     public boolean create() {
-        /*if (!executor.createDB(db)) {
+        if (!executor.createDB(db)) {
             logger.warn("create db " + db + "failed");
             return false;
         }
@@ -67,7 +70,7 @@ public class FEQLFZPerf {
                 return false;
             }
             logger.info("create table " + table.getName());
-        }*/
+        }
         String procedureDDL = Util.getCreateProcedureDDL(pName, tableMap.get(mainTable), script);
         logger.info(procedureDDL);
         if (!executor.executeDDL(db, procedureDDL)) {
@@ -145,7 +148,7 @@ public class FEQLFZPerf {
         executor.executeInsert(db, exeSql);
     }
 
-    private boolean setRequestData(PreparedStatement requestPs) {
+    private boolean setRequestData(PreparedStatement requestPs, long ts) {
         try {
             ResultSetMetaData metaData = requestPs.getMetaData();
             TableInfo table = tableMap.get(mainTable);
@@ -153,7 +156,6 @@ public class FEQLFZPerf {
                 return false;
             }
             int curNum = random.nextInt(BenchmarkConfig.PK_NUM);
-            long ts = System.currentTimeMillis();
             for (int i = 0; i < metaData.getColumnCount(); i++) {
                 int columnType = metaData.getColumnType(i + 1);
                 if (columnType == Types.VARCHAR) {
@@ -177,7 +179,7 @@ public class FEQLFZPerf {
                         requestPs.setTimestamp(i + 1, new Timestamp(curNum));
                     }
                 } else if (columnType == Types.DATE) {
-                    requestPs.setDate(i + 1, new Date(System.currentTimeMillis()));
+                    requestPs.setDate(i + 1, new Date(ts));
                 }
             }
         } catch (Exception e) {
@@ -189,6 +191,7 @@ public class FEQLFZPerf {
 
     private PreparedStatement getPreparedStatement(BenchmarkConfig.Mode mode, boolean isProcedure) throws SQLException {
         PreparedStatement requestPs = null;
+        long ts = System.currentTimeMillis();
         if (mode == BenchmarkConfig.Mode.BATCH_REQUEST) {
             if (isProcedure) {
                 requestPs = executor.getCallablePreparedStmtBatch(db, pName);
@@ -196,7 +199,7 @@ public class FEQLFZPerf {
                 requestPs = executor.getBatchRequestPreparedStmt(db, script, commonColumnIndices);
             }
             for (int i = 0; i < BenchmarkConfig.BATCH_SIZE; i++) {
-                if (setRequestData(requestPs)) {
+                if (setRequestData(requestPs, ts)) {
                     requestPs.addBatch();
                 }
             }
@@ -206,7 +209,7 @@ public class FEQLFZPerf {
             } else {
                 requestPs = executor.getRequestPreparedStmt(db, script);
             }
-            setRequestData(requestPs);
+            setRequestData(requestPs, ts);
         }
         return requestPs;
     }
@@ -240,14 +243,25 @@ public class FEQLFZPerf {
                 isProcedure = true;
             }
             try {
-                if (cnt % 1000 == 0) {
-                    System.out.println("Process " + cnt + "......");
+                if (cnt % 10000 == 0) {
+                    logger.info("Process " + cnt + "......");
                 }
                 cnt++;
-                PreparedStatement ps = getPreparedStatement(mode, isProcedure);
-                ResultSet resultSet = ps.executeQuery();
-                resultSet.close();
-                ps.close();
+                {
+                    PreparedStatement ps = getPreparedStatement(mode, isProcedure);
+                    ResultSet resultSet = ps.executeQuery();
+                    resultSet.close();
+                    ps.close();
+                }
+                if (isProcedure) {
+                    PreparedStatement ps = getPreparedStatement(mode, isProcedure);
+                    if (ps instanceof CallablePreparedStatement) {
+                        QueryFuture future = ((CallablePreparedStatement) ps).executeQueryAsync(100, TimeUnit.MILLISECONDS);
+                        ResultSet resultSet = future.get();
+                        resultSet.close();
+                    }
+                    ps.close();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
