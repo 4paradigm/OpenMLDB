@@ -12,6 +12,9 @@ import com._4paradigm.sql.tools.Util;
 import com.google.common.collect.Lists;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.RunnerException;
+import org.openjdk.jmh.runner.options.Options;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
+import org.openjdk.jmh.runner.Runner;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.introspector.Property;
@@ -332,7 +335,6 @@ public class FESQLFZBenchmark {
             Map<String, String> val = new HashMap<>();
             for (int i = 0; i < metaData.getColumnCount(); i++) {
                 String columnName = metaData.getColumnName(i + 1);
-                System.out.println(columnName + ":" + String.valueOf(i));
                 int columnType = metaData.getColumnType(i + 1);
                 if (columnType == Types.VARCHAR) {
                     val.put(columnName, String.valueOf(resultSet.getString(i + 1)));
@@ -351,7 +353,7 @@ public class FESQLFZBenchmark {
             ps.close();
             for (Map.Entry<String, String> entry : val.entrySet()) {
                 if (entry.getKey().contains("xcount")) {
-                    int countNum = Integer.getInteger(entry.getValue());
+                    int countNum = Integer.parseInt(entry.getValue());
                     if (countNum != windowNum + 1) {
                         return false;
                     }
@@ -504,18 +506,18 @@ public class FESQLFZBenchmark {
     }
 
     public static void main(String[] args) throws RunnerException {
-      FESQLFZBenchmark ben = new FESQLFZBenchmark();
+      /*FESQLFZBenchmark ben = new FESQLFZBenchmark();
       try {
           ben.setup();
           ben.execSQL();
           ben.teardown();
       } catch (Exception e) {
           e.printStackTrace();
-      }
-        /*Options opt = new OptionsBuilder()
+      }*/
+        Options opt = new OptionsBuilder()
                 .include(FESQLFZBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
-        new Runner(opt).run();*/
+        new Runner(opt).run();
     }
 }
