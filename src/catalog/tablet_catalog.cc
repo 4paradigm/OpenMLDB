@@ -188,8 +188,8 @@ int TabletTableHandler::DeleteTable(uint32_t pid) {
     std::shared_ptr<Tables> old_tables;
     std::shared_ptr<Tables> new_tables;
     do {
-        auto old_tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
-        auto new_tables = std::make_shared<Tables>(*old_tables);
+        old_tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
+        new_tables = std::make_shared<Tables>(*old_tables);
         new_tables->erase(pid);
     } while (!atomic_compare_exchange_weak(&tables_, &old_tables, new_tables));
     return new_tables->size();
