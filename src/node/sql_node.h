@@ -252,6 +252,8 @@ inline const std::string FrameTypeName(const FrameType &type) {
             return "ROWS";
         case fesql::node::kFrameRowsRange:
             return "ROWS_RANGE";
+        case fesql::node::kFrameRowsMergeRowsRange:
+            return "ROWS_MERGE_ROWS_RANGE";
     }
     return "";
 }
@@ -1106,6 +1108,16 @@ class FrameNode : public SQLNode {
           frame_type_(frame_type),
           frame_range_(frame_range),
           frame_rows_(frame_rows),
+          effective_frame_range_(frame_range),
+          frame_maxsize_(frame_maxsize) {}
+    FrameNode(FrameType frame_type, FrameExtent *frame_range,
+              FrameExtent *effective_frame_range, FrameExtent *frame_rows,
+              int64_t frame_maxsize)
+        : SQLNode(kFrames, 0, 0),
+          frame_type_(frame_type),
+          frame_range_(frame_range),
+          frame_rows_(frame_rows),
+          effective_frame_range_(effective_frame_range),
           frame_maxsize_(frame_maxsize) {}
     ~FrameNode() {}
     FrameType frame_type() const { return frame_type_; }
@@ -1120,23 +1132,22 @@ class FrameNode : public SQLNode {
         if (nullptr == frame_rows_) {
             return nullptr == frame_range_ || nullptr == frame_range_->start()
                        ? INT64_MIN
-                       : frame_range_->start()->GetSignedOffset() > 0
-                             ? 0
-                             : frame_range_->start()->GetSignedOffset();
+                   : frame_range_->start()->GetSignedOffset() > 0
+                       ? 0
+                       : frame_range_->start()->GetSignedOffset();
         } else {
             return nullptr == frame_range_ || nullptr == frame_range_->start()
                        ? 0
-                       : frame_range_->start()->GetSignedOffset() > 0
-                             ? 0
-                             : frame_range_->start()->GetSignedOffset();
+                   : frame_range_->start()->GetSignedOffset() > 0
+                       ? 0
+                       : frame_range_->start()->GetSignedOffset();
         }
     }
     int64_t GetHistoryRangeEnd() const {
-        return nullptr == frame_range_ || nullptr == frame_range_->end()
+        return nullptr == frame_range_ || nullptr == frame_range_->end() ? 0
+               : frame_range_->end()->GetSignedOffset() > 0
                    ? 0
-                   : frame_range_->end()->GetSignedOffset() > 0
-                         ? 0
-                         : frame_range_->end()->GetSignedOffset();
+                   : frame_range_->end()->GetSignedOffset();
     }
 
     int64_t GetHistoryRowsStart() const {
@@ -1146,15 +1157,14 @@ class FrameNode : public SQLNode {
         if (nullptr == frame_range_) {
             return nullptr == frame_rows_ || nullptr == frame_rows_->start()
                        ? INT64_MIN
-                       : frame_rows_->start()->GetSignedOffset() > 0
-                             ? 0
-                             : frame_rows_->start()->GetSignedOffset();
-        } else {
-            return nullptr == frame_rows_ || nullptr == frame_rows_->start()
+                   : frame_rows_->start()->GetSignedOffset() > 0
                        ? 0
-                       : frame_rows_->start()->GetSignedOffset() > 0
-                             ? 0
-                             : frame_rows_->start()->GetSignedOffset();
+                       : frame_rows_->start()->GetSignedOffset();
+        } else {
+            return nullptr == frame_rows_ || nullptr == frame_rows_->start() ? 0
+                   : frame_rows_->start()->GetSignedOffset() > 0
+                       ? 0
+                       : frame_rows_->start()->GetSignedOffset();
         }
     }
     int64_t GetHistoryRowsEnd() const {
@@ -1166,11 +1176,10 @@ class FrameNode : public SQLNode {
                        ? INT64_MIN
                        : frame_rows_->end()->GetSignedOffset();
         } else {
-            return nullptr == frame_rows_ || nullptr == frame_rows_->start()
+            return nullptr == frame_rows_ || nullptr == frame_rows_->start() ? 0
+                   : frame_rows_->end()->GetSignedOffset() > 0
                        ? 0
-                       : frame_rows_->end()->GetSignedOffset() > 0
-                             ? 0
-                             : frame_rows_->end()->GetSignedOffset();
+                       : frame_rows_->end()->GetSignedOffset();
         }
     }
     inline const bool IsHistoryFrame() const {
@@ -1183,6 +1192,9 @@ class FrameNode : public SQLNode {
             case kFrameRowsRange: {
                 return GetHistoryRangeEnd() < 0;
             }
+            case kFrameRowsMergeRowsRange: {
+                return GetHistoryRangeEnd() < 0;
+            }
         }
         return false;
     }
@@ -1190,11 +1202,28 @@ class FrameNode : public SQLNode {
     virtual bool Equals(const SQLNode *node) const;
     const std::string GetExprString() const;
     bool CanMergeWith(const FrameNode *that) const;
+    bool IsPureHistoryFrame() const {
+        switch (frame_type_) {
+            case kFrameRows: {
+                return GetHistoryRowsEnd() < 0;
+            }
+            case kFrameRowsRange: {
+                return GetHistoryRangeEnd() < 0;
+            }
+            case kFrameRowsMergeRowsRange: {
+                return GetHistoryRangeEnd() < 0 && GetHistoryRowsEnd() < 0;
+            }
+            case kFrameRange: {
+                return false;
+            }
+        }
+    }
 
  private:
     FrameType frame_type_;
     FrameExtent *frame_range_;
     FrameExtent *frame_rows_;
+    FrameExtent *effective_frame_range_;
     int64_t frame_maxsize_;
 };
 class WindowDefNode : public SQLNode {

@@ -180,7 +180,12 @@ enum FnOperator {
     kFnOpNone
 };
 
-enum FrameType { kFrameRange, kFrameRows, kFrameRowsRange };
+enum FrameType {
+    kFrameRange,
+    kFrameRows,
+    kFrameRowsRange,
+    kFrameRowsMergeRowsRange
+};
 enum BoundType {
     kPrecedingUnbound = 0,
     kPreceding,

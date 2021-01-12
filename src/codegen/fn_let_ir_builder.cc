@@ -45,12 +45,14 @@ Status RowFnLetIRBuilder::Build(
 
     std::vector<std::string> args;
     std::vector<::llvm::Type*> args_llvm_type;
+    args_llvm_type.push_back(::llvm::Type::getInt64Ty(module->getContext()));
     args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module->getContext()));
     args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module->getContext()));
     args_llvm_type.push_back(
         ::llvm::Type::getInt8PtrTy(module->getContext())->getPointerTo());
 
     std::string output_ptr_name = "output_ptr_name";
+    args.push_back("@row_key");
     args.push_back("@row_ptr");
     args.push_back("@window");
     args.push_back(output_ptr_name);
@@ -77,7 +79,7 @@ Status RowFnLetIRBuilder::Build(
     ::llvm::BasicBlock* block = ctx_->GetCurrentBlock();
     VariableIRBuilder variable_ir_builder(block, sv);
 
-    if (primary_frame != nullptr) {
+    if (primary_frame != nullptr && !primary_frame->IsPureHistoryFrame()) {
         NativeValue window;
         variable_ir_builder.LoadWindow("", &window, status);
         variable_ir_builder.StoreWindow(primary_frame->GetExprString(),

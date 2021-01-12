@@ -161,23 +161,8 @@ FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(
                         MakeFrameBound(kCurrent), MakeFrameBound(kCurrent))),
                     0)));
         }
-        case kFrameRange: {
-            return MergeFrameNode(
-                frame1,
-                dynamic_cast<FrameNode *>(MakeFrameNode(
-                    kFrameRange,
-                    dynamic_cast<FrameExtent *>(MakeFrameExtent(
-                        MakeFrameBound(kCurrent), MakeFrameBound(kCurrent))),
-                    nullptr, 0)));
-        }
-        case kFrameRowsRange: {
-            return MergeFrameNode(
-                frame1,
-                dynamic_cast<FrameNode *>(MakeFrameNode(
-                    kFrameRowsRange,
-                    dynamic_cast<FrameExtent *>(MakeFrameExtent(
-                        MakeFrameBound(kCurrent), MakeFrameBound(kCurrent))),
-                    nullptr, 0)));
+        default: {
+            return frame1;
         }
     }
     return nullptr;
@@ -196,7 +181,7 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
 
     FrameType frame_type = frame1->frame_type() == frame2->frame_type()
                                ? frame1->frame_type()
-                               : kFrameRowsRange;
+                               : kFrameRowsMergeRowsRange;
     FrameExtent *frame_range = nullptr;
     if (nullptr == frame1->frame_range()) {
         frame_range = frame2->frame_range();
@@ -205,12 +190,13 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
     } else {
         FrameBound *start1 = frame1->frame_range()->start();
         FrameBound *start2 = frame2->frame_range()->start();
-        int start_compared = FrameBound::Compare(start1, start2);
-        FrameBound *start = start_compared < 1 ? start1 : start2;
 
         FrameBound *end1 = frame1->frame_range()->end();
         FrameBound *end2 = frame2->frame_range()->end();
+
+        int start_compared = FrameBound::Compare(start1, start2);
         int end_compared = FrameBound::Compare(end1, end2);
+        FrameBound *start = start_compared < 1 ? start1 : start2;
         FrameBound *end = end_compared >= 1 ? end1 : end2;
         frame_range = dynamic_cast<FrameExtent *>(MakeFrameExtent(start, end));
     }
@@ -327,7 +313,8 @@ SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
             return RegisterNode(node_ptr);
         }
         case kFrameRange:
-        case kFrameRowsRange: {
+        case kFrameRowsRange:
+        case kFrameRowsMergeRowsRange: {
             FrameNode *node_ptr = new FrameNode(
                 frame_type, dynamic_cast<FrameExtent *>(frame_extent), nullptr,
                 maxsize);
@@ -342,6 +329,14 @@ SQLNode *NodeManager::MakeFrameNode(FrameType frame_type,
                                     FrameExtent *frame_rows, int64_t maxsize) {
     FrameNode *node_ptr =
         new FrameNode(frame_type, frame_range, frame_rows, maxsize);
+    return RegisterNode(node_ptr);
+}
+SQLNode *NodeManager::MakeFrameNode(FrameType frame_type,
+                                    FrameExtent *frame_range,
+                                    FrameExtent *effective_frame_range,
+                                    FrameExtent *frame_rows, int64_t maxsize) {
+    FrameNode *node_ptr = new FrameNode(
+        frame_type, frame_range, effective_frame_range, frame_rows, maxsize);
     return RegisterNode(node_ptr);
 }
 OrderByNode *NodeManager::MakeOrderByNode(const ExprListNode *order,

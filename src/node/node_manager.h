@@ -120,6 +120,9 @@ class NodeManager {
                            int64_t maxsize);
     SQLNode *MakeFrameNode(FrameType frame_type, FrameExtent *frame_range,
                            FrameExtent *frame_rows, int64_t maxsize);
+    SQLNode *MakeFrameNode(FrameType frame_type, FrameExtent *frame_range,
+                           FrameExtent *effective_frame_range,
+                           FrameExtent *frame_rows, int64_t maxsize);
     FrameNode *MergeFrameNode(const FrameNode *frame1, const FrameNode *frame2);
     SQLNode *MakeLimitNode(int count);
 

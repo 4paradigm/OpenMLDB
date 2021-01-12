@@ -118,48 +118,39 @@ class ConditionGenerator : public FnGenerator {
 };
 class RangeGenerator {
  public:
-    explicit RangeGenerator(const Range& range) : ts_gen_(range.fn_info()) {
+    explicit RangeGenerator(const Range& range)
+        : ts_gen_(range.fn_info()), window_range_() {
         if (range.frame_ != nullptr) {
             switch (range.frame()->frame_type()) {
                 case node::kFrameRows:
-                    frame_type_ = Window::WindowFrameType::kFrameRows;
+                    window_range_.frame_type_ =
+                        Window::WindowFrameType::kFrameRows;
                     break;
                 case node::kFrameRowsRange:
-                    frame_type_ = Window::WindowFrameType::kFrameRowsRange;
+                    window_range_.frame_type_ =
+                        Window::WindowFrameType::kFrameRowsRange;
                     break;
+                case node::kFrameRowsMergeRowsRange:
+                    window_range_.frame_type_ =
+                        Window::WindowFrameType::kFrameRowsMergeRowsRange;
                 default: {
-                    frame_type_ = Window::WindowFrameType::kFrameRowsRange;
+                    window_range_.frame_type_ =
+                        Window::WindowFrameType::kFrameRowsMergeRowsRange;
                     break;
                 }
             }
-            start_offset_ = range.frame_->GetHistoryRangeStart();
-            end_offset_ = range.frame_->GetHistoryRangeEnd();
-            start_row_ = (-1 * range.frame_->GetHistoryRowsStart());
-            end_row_ = (-1 * range.frame_->GetHistoryRowsEnd());
-            max_size_ = range.frame_->frame_maxsize();
+            window_range_.start_offset_ = range.frame_->GetHistoryRangeStart();
+            window_range_.end_offset_ = range.frame_->GetHistoryRangeEnd();
+            window_range_.start_row_ =
+                (-1 * range.frame_->GetHistoryRowsStart());
+            window_range_.end_row_ = (-1 * range.frame_->GetHistoryRowsEnd());
+            window_range_.max_size_ = range.frame_->frame_maxsize();
         }
     }
     virtual ~RangeGenerator() {}
-    inline const bool OutOfRange(bool out_of_rows,
-                                 bool out_of_rows_range) const {
-        switch (frame_type_) {
-            case Window::WindowFrameType::kFrameRows:
-                return out_of_rows;
-            case Window::WindowFrameType::kFrameRowsRange:
-                return out_of_rows && out_of_rows_range;
-            default:
-                return true;
-        }
-        return true;
-    }
     const bool Valid() const { return ts_gen_.Valid(); }
     OrderGenerator ts_gen_;
-    Window::WindowFrameType frame_type_;
-    int64_t start_offset_;
-    int64_t end_offset_;
-    uint64_t start_row_;
-    uint64_t end_row_;
-    uint64_t max_size_;
+    WindowRange window_range_;
 };
 class FilterKeyGenerator {
  public:

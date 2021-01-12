@@ -547,7 +547,7 @@ cases:
         - [ 3,"cc",20,93 ]
         - [ 4,"dd",20,96 ]
         - [ 5,"ee",21,34 ]
-  - id: 23
+  - id: 23-1
     desc: ROWS_RANGE Window with MaxSize
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
@@ -571,8 +571,8 @@ cases:
       order: c3
       columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double" ]
       rows:
-        - [ "aa", 1, 1590738990000, 1.0]
-        - [ "aa", 2, 1590738991000, 2.0]
+        - [ "aa", 1, 1590738990000, 1.0 ]
+        - [ "aa", 2, 1590738991000, 2.0 ]
         - [ "aa", 3, 1590738992000, 2.0 ]
         - [ "aa", 4, 1590738993000, 2.0 ]
         - [ "aa", 5, 1590738994000, 2.0 ]
@@ -580,8 +580,8 @@ cases:
         - [ "aa", 7, 1590738999000, 1.0 ]
         - [ "aa", 8, 1590739001000, 2.0 ]
         - [ "aa", 9, 1590739002000, 2.0 ]
-  - id: 24
-    desc: ROWS_RANGE Window with MaxSize 2
+  - id: 23-2
+    desc: ROWS_RANGE Current History Window with MaxSize 2
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -604,8 +604,8 @@ cases:
       order: c3
       columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double" ]
       rows:
-        - [ "aa", 1, 1590738990000, 1.0]
-        - [ "aa", 2, 1590738991000, 2.0]
+        - [ "aa", 1, 1590738990000, 1.0 ]
+        - [ "aa", 2, 1590738991000, 2.0 ]
         - [ "aa", 3, 1590738992000, 3.0 ]
         - [ "aa", 4, 1590738993000, 4.0 ]
         - [ "aa", 5, 1590738994000, 4.0 ]
@@ -613,8 +613,74 @@ cases:
         - [ "aa", 7, 1590738999000, 1.0 ]
         - [ "aa", 8, 1590739001000, 2.0 ]
         - [ "aa", 9, 1590739002000, 3.0 ]
+  - id: 24-1
+    desc: ROWS_RANGE Pure History Window
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738991000 ]
+#          - [ "aa",3, 1.0, 1590738992000 ]
+#          - [ "aa",4, 1.0, 1590738993000 ]
+#          - [ "aa",5, 1.0, 1590738994000 ]
+#          - [ "aa",6, 1.0, 1590738995000 ]
+#          - [ "aa",7, 1.0, 1590738999000 ]
+#          - [ "aa",8, 1.0, 1590739001000 ]
+#          - [ "aa",9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND 1s PRECEDING);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp",  "w1_c4_sum double" ]
+      rows:
+        - [ "aa", 1, 1590738990000, 0.0 ]
+        - [ "aa", 2, 1590738991000, 1.0 ]
+#        - [ "aa", 3, 1590738992000, 2.0 ]
+#        - [ "aa", 4, 1590738993000, 3.0 ]
+#        - [ "aa", 5, 1590738994000, 3.0 ]
+#        - [ "aa", 6, 1590738995000, 3.0 ]
+#        - [ "aa", 7, 1590738999000, 0.0 ]
+#        - [ "aa", 8, 1590739001000, 1.0 ]
+#        - [ "aa", 9, 1590739002000, 2.0 ]
+  - id: 24-2
+    desc: ROWS_RANGE Pure History Window With MaxSize
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738991000 ]
+          - [ "aa",3, 1.0, 1590738992000 ]
+          - [ "aa",4, 1.0, 1590738993000 ]
+          - [ "aa",5, 1.0, 1590738994000 ]
+          - [ "aa",6, 1.0, 1590738995000 ]
+          - [ "aa",7, 1.0, 1590738999000 ]
+          - [ "aa",8, 1.0, 1590739001000 ]
+          - [ "aa",9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND 1s PRECEDING MAXSIZE 2);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp",  "w1_c4_sum double" ]
+      rows:
+        - [ "aa", 1, 1590738990000, 0.0 ]
+        - [ "aa", 2, 1590738991000, 1.0 ]
+        - [ "aa", 3, 1590738992000, 2.0 ]
+        - [ "aa", 4, 1590738993000, 2.0 ]
+        - [ "aa", 5, 1590738994000, 2.0 ]
+        - [ "aa", 6, 1590738995000, 2.0 ]
+        - [ "aa", 7, 1590738999000, 0.0 ]
+        - [ "aa", 8, 1590739001000, 1.0 ]
+        - [ "aa", 9, 1590739002000, 2.0 ]
   - id: 25
-    desc: ROWS_RANGE Window with MaxSize Merge
+    desc: ROWS_RANGE Current History Window with MaxSize Merge
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
