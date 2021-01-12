@@ -80,7 +80,7 @@ class CoreAPI {
                                            size_t append_slices,
                                            WindowInterface* window);
     static fesql::codec::Row WindowProject(const fesql::vm::RawPtrHandle fn,
-                                           const Row row,
+                                           const uint64_t key, const Row row,
                                            WindowInterface* window);
 
     static fesql::codec::Row GroupbyProject(

@@ -331,14 +331,7 @@ SQLNode *NodeManager::MakeFrameNode(FrameType frame_type,
         new FrameNode(frame_type, frame_range, frame_rows, maxsize);
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeFrameNode(FrameType frame_type,
-                                    FrameExtent *frame_range,
-                                    FrameExtent *effective_frame_range,
-                                    FrameExtent *frame_rows, int64_t maxsize) {
-    FrameNode *node_ptr = new FrameNode(
-        frame_type, frame_range, effective_frame_range, frame_rows, maxsize);
-    return RegisterNode(node_ptr);
-}
+
 OrderByNode *NodeManager::MakeOrderByNode(const ExprListNode *order,
                                           const bool is_asc) {
     OrderByNode *node_ptr = new OrderByNode(order, is_asc);

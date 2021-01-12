@@ -207,7 +207,7 @@ TEST_F(SqlNodeTest, NewFrameNodeTest) {
     ASSERT_EQ(kPreceding, end->bound_type());
 
     ASSERT_EQ(86400000, end->GetOffset());
-    ASSERT_EQ(100L, node_ptr->effective_frame_maxsize());
+    ASSERT_EQ(100L, node_ptr->frame_maxsize());
 }
 
 TEST_F(SqlNodeTest, MakeInsertNodeTest) {

@@ -439,8 +439,16 @@ Status ExprIRBuilder::BuildWindow(NativeValue* output) {  // NOLINT
     MemoryWindowDecodeIRBuilder window_ir_builder(ctx_->schemas_context(),
                                                   ctx_->GetCurrentBlock());
     if (frame_->frame_range() != nullptr) {
+        NativeValue row_key_value;
+        ok = variable_ir_builder.LoadRowKey(&row_key_value, status);
+        ::llvm::Value* row_key = nullptr;
+        if (!row_key_value.IsConstNull()) {
+            row_key = row_key_value.GetValue(&builder);
+        }
+        CHECK_TRUE(ok && nullptr != row_key, kCodegenError,
+                   "Fail to build inner range window: row key is null");
         ok = window_ir_builder.BuildInnerRangeList(
-            list_ptr, frame_->GetHistoryRangeEnd(),
+            list_ptr, row_key, frame_->GetHistoryRangeEnd(),
             frame_->GetHistoryRangeStart(), &window_ptr);
     } else if (frame_->frame_rows() != nullptr) {
         ok = window_ir_builder.BuildInnerRowsList(

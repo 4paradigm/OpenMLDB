@@ -1108,16 +1108,6 @@ class FrameNode : public SQLNode {
           frame_type_(frame_type),
           frame_range_(frame_range),
           frame_rows_(frame_rows),
-          effective_frame_range_(frame_range),
-          frame_maxsize_(frame_maxsize) {}
-    FrameNode(FrameType frame_type, FrameExtent *frame_range,
-              FrameExtent *effective_frame_range, FrameExtent *frame_rows,
-              int64_t frame_maxsize)
-        : SQLNode(kFrames, 0, 0),
-          frame_type_(frame_type),
-          frame_range_(frame_range),
-          frame_rows_(frame_rows),
-          effective_frame_range_(effective_frame_range),
           frame_maxsize_(frame_maxsize) {}
     ~FrameNode() {}
     FrameType frame_type() const { return frame_type_; }
@@ -1223,7 +1213,6 @@ class FrameNode : public SQLNode {
     FrameType frame_type_;
     FrameExtent *frame_range_;
     FrameExtent *frame_rows_;
-    FrameExtent *effective_frame_range_;
     int64_t frame_maxsize_;
 };
 class WindowDefNode : public SQLNode {

@@ -275,8 +275,8 @@ TEST_F(UDFTest, GetWindowColRangeTest) {
     const uint32_t inner_list_size = sizeof(codec::InnerRangeList<Row>);
     int8_t* inner_list_buf = reinterpret_cast<int8_t*>(alloca(inner_list_size));
     ASSERT_EQ(0, ::fesql::codec::v1::GetInnerRangeList(
-                     reinterpret_cast<int8_t*>(&table), -20000, -50000,
-                     inner_list_buf));
+                     reinterpret_cast<int8_t*>(&table), 1590115500000, -20000,
+                     -50000, inner_list_buf));
     int32_t offset = row_view.GetPrimaryFieldOffset(0);
     fesql::type::Type type = fesql::type::kInt32;
     const uint32_t size = sizeof(ColumnImpl<int32_t>);

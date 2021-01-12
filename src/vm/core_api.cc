@@ -23,7 +23,8 @@ namespace vm {
 WindowInterface::WindowInterface(bool instance_not_in_window,
                                  fesql::vm::Range* range) {
     RangeGenerator range_generator(*range);
-    window_impl_ = std::make_unique<HistoryWindow>(range_generator.window_range_);
+    window_impl_ =
+        std::make_unique<HistoryWindow>(range_generator.window_range_);
     window_impl_->set_instance_not_in_window(instance_not_in_window);
 }
 
@@ -120,13 +121,13 @@ fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
     // Init current run step runtime
     JITRuntime::get()->InitRunStep();
 
-    auto udf =
-        reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
-            const_cast<int8_t*>(fn));
+    auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
+                                            const int8_t*, int8_t**)>(
+        const_cast<int8_t*>(fn));
 
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
     int8_t* buf = nullptr;
-    uint32_t ret = udf(row_ptr, nullptr, &buf);
+    uint32_t ret = udf(0, row_ptr, nullptr, &buf);
 
     // Release current run step resources
     JITRuntime::get()->ReleaseRunStep();
@@ -139,7 +140,8 @@ fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
         buf, fesql::codec::RowView::GetSize(buf)));
 }
 
-fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn, const Row row,
+fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
+                                         const uint64_t row_key, const Row row,
                                          WindowInterface* window) {
     if (row.empty()) {
         return row;
@@ -147,9 +149,9 @@ fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn, const Row row,
     // Init current run step runtime
     JITRuntime::get()->InitRunStep();
 
-    auto udf =
-        reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
-            const_cast<int8_t*>(fn));
+    auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
+                                            const int8_t*, int8_t**)>(
+        const_cast<int8_t*>(fn));
     int8_t* out_buf = nullptr;
 
     codec::ListRef<Row> window_ref;
@@ -157,7 +159,8 @@ fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn, const Row row,
     auto window_ptr = reinterpret_cast<const int8_t*>(&window_ref);
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
 
-    uint32_t ret = udf(row_ptr, window_ptr, &out_buf);
+    uint32_t ret =
+        udf(static_cast<int64_t>(row_key), row_ptr, window_ptr, &out_buf);
 
     // Release current run step resources
     JITRuntime::get()->ReleaseRunStep();
