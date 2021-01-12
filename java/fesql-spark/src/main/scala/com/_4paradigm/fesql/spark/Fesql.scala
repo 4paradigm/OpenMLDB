@@ -3,6 +3,7 @@ package com._4paradigm.fesql.spark
 import java.io.{File, FileReader}
 
 import com._4paradigm.fesql.common.DDLEngine._
+import com._4paradigm.fesql.element.SparkConfig
 import com._4paradigm.fesql.utils.SqlUtils._
 import com._4paradigm.fesql.spark.api.FesqlSession
 import com._4paradigm.fesql.spark.element.FesqlConfig
@@ -22,9 +23,7 @@ object Fesql {
     run(args)
   }
 
-  def run(args: Array[String]): Unit = {
-    val path = args(0)
-    val config = parseFeconfigJsonPath(path)
+  def run(config: SparkConfig): Unit = {
     val sessionBuilder = SparkSession.builder()
     if (appName != null) {
       sessionBuilder.appName(appName)
@@ -76,8 +75,13 @@ object Fesql {
     if (config.getInstanceFormat.equals("csv")) {
       res.sparkDf.write.mode("overwrite").csv(output)
     }
-
     sess.stop()
+  }
+
+  def run(args: Array[String]): Unit = {
+    val path = args(0)
+    val config = parseFeconfigJsonPath(path)
+    run(config)
   }
 
 }

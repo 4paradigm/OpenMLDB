@@ -1,0 +1,16 @@
+{
+    "script": "file://src/test/resources/fz/fengdian/script.sql",
+    "inputs": [
+      {
+        "name":"action",
+        "inputPath": "/mnt/disk0/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-spark/src/test/resources/fz/fengdian/action"
+       },
+       {
+        "name":"flattenRequest",
+        "inputPath":"/mnt/disk0/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-spark/src/test/resources/fz/fengdian/flattenRequest"
+       }
+    ],
+    "outputPath": "/mnt/disk0/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-spark/src/test/resources/output/fesql/fengdian",
+    "instanceFormat": "parquet",
+    "sparkConfig": "spark.master=local spark.fesql.skew.watershed=10000 spark.fesql.test.tiny=1 spark.fesql.mode=normal spark.fesql.skew.level=2 spark.fesql.group.partitions=20 spark.sql.shuffle.partitions=8"
+  }
