@@ -3,11 +3,11 @@
     "inputs": [
       {
         "name":"action",
-        "inputPath": "/mnt/disk0/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-spark/src/test/resources/fz/fengdian/action"
+        "inputPath": "src/test/resources/fz/fengdian/action"
        },
        {
         "name":"flattenRequest",
-        "inputPath":"/mnt/disk0/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-spark/src/test/resources/fz/fengdian/flattenRequest"
+        "inputPath":"src/test/resources/fz/fengdian/flattenRequest"
        }
     ],
     "outputPath": "/mnt/disk0/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-spark/src/test/resources/output/fesql/fengdian",
