@@ -135,11 +135,6 @@ WindowDefNode *NodeManager::MergeWindow(const WindowDefNode *w1,
         LOG(WARNING) << "Fail to Merge Window: input windows are null";
         return nullptr;
     }
-
-    if (!w1->CanMergeWith(w2)) {
-        LOG(WARNING) << "Fail to Merge Window: can't merge windows";
-        return nullptr;
-    }
     return dynamic_cast<WindowDefNode *>(MakeWindowDefNode(
         w1->union_tables(), w1->GetPartitions(), w1->GetOrders(),
         MergeFrameNode(w1->GetFrame(), w2->GetFrame()),
@@ -173,12 +168,6 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
         LOG(WARNING) << "Fail to Merge Frame: input frames are null";
         return nullptr;
     }
-
-    if (!frame1->CanMergeWith(frame2)) {
-        LOG(WARNING) << "Fail to Merge Frame: can't merge frames";
-        return nullptr;
-    }
-
     FrameType frame_type = frame1->frame_type() == frame2->frame_type()
                                ? frame1->frame_type()
                                : kFrameRowsMergeRowsRange;
@@ -218,8 +207,9 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
         FrameBound *end = end_compared >= 1 ? end1 : end2;
         frame_rows = dynamic_cast<FrameExtent *>(MakeFrameExtent(start, end));
     }
-    int64_t maxsize = frame1->frame_maxsize() == 0 ? frame2->frame_maxsize()
-                                                   : frame1->frame_maxsize();
+    int64_t maxsize = frame1->frame_maxsize() == 0
+                                ? frame2->frame_maxsize()
+                                : frame1->frame_maxsize();
 
     return dynamic_cast<FrameNode *>(
         MakeFrameNode(frame_type, frame_range, frame_rows, maxsize));

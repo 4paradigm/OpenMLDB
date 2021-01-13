@@ -1193,7 +1193,15 @@ class FrameNode : public SQLNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *node) const;
     const std::string GetExprString() const;
-    bool CanMergeWith(const FrameNode *that) const;
+    bool CanMergeWith(const FrameNode *that,
+                      const bool enbale_merge_with_maxsize = true) const;
+    inline bool IsRowsRangeLikeFrame() const {
+        return kFrameRowsRange == frame_type_ ||
+               kFrameRowsMergeRowsRange == frame_type_;
+    }
+    inline bool IsRowsRangeLikeMaxSizeFrame() const {
+        return IsRowsRangeLikeFrame() && frame_maxsize_ > 0;
+    }
     bool IsPureHistoryFrame() const {
         switch (frame_type_) {
             case kFrameRows: {
@@ -1257,7 +1265,8 @@ class WindowDefNode : public SQLNode {
     }
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *that) const;
-    bool CanMergeWith(const WindowDefNode *that) const;
+    bool CanMergeWith(const WindowDefNode *that,
+                      const bool enable_window_maxsize_merged=true) const;
 
  private:
     bool instance_not_in_window_;

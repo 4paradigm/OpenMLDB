@@ -834,7 +834,8 @@ bool Planner::MergeWindows(
             if (nullptr == *iter_w) {
                 continue;
             }
-            if (iter->first->CanMergeWith(*iter_w)) {
+            if (iter->first->CanMergeWith(*iter_w,
+                                          enable_window_maxsize_merged_)) {
                 can_be_merged = true;
                 *iter_w = node_manager_->MergeWindow(iter->first, *iter_w);
                 has_window_merged = true;
