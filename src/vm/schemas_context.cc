@@ -125,6 +125,9 @@ void SchemasContext::Clear() {
     column_id_map_.clear();
     column_name_map_.clear();
     child_source_map_.clear();
+    for (auto ptr : schema_sources_) {
+        delete ptr;
+    }
     schema_sources_.clear();
     row_formats_.clear();
     owned_concat_output_schema_.Clear();
@@ -172,10 +175,7 @@ void SchemasContext::MergeWithNewID(size_t child_idx,
 }
 
 SchemasContext::~SchemasContext() {
-    for (auto ptr : schema_sources_) {
-        delete ptr;
-    }
-    schema_sources_.clear();
+    Clear();
 }
 
 Status SchemasContext::ResolveColumnIndexByName(

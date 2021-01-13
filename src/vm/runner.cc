@@ -124,9 +124,16 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 return fail;
             }
             auto op = dynamic_cast<const PhysicalSimpleProjectNode*>(node);
-            auto runner = new SimpleProjectRunner(id_++, node->schemas_ctx(),
-                                                  op->GetLimitCnt(),
-                                                  op->project().fn_info());
+            Runner* runner;
+            int select_slice = op->GetSelectSourceIndex();
+            if (select_slice >= 0) {
+                runner = new SelectSliceRunner(id_++, node->schemas_ctx(),
+                                               op->GetLimitCnt(), select_slice);
+            } else {
+                runner = new SimpleProjectRunner(id_++, node->schemas_ctx(),
+                                                 op->GetLimitCnt(),
+                                                 op->project().fn_info());
+            }
             return RegisterTask(
                 node,
                 UnaryInheritTask(cluster_task, nm_->RegisterNode(runner)));
@@ -661,6 +668,8 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
                     return ClusterTask();
                 }
             }
+            default:
+                return ClusterTask();
         }
     } else if (new_left.IsCompletedClusterTask()) {
         switch (bias) {
@@ -1211,6 +1220,50 @@ std::shared_ptr<DataHandler> SimpleProjectRunner::Run(
 
     return std::shared_ptr<DataHandler>();
 }
+
+Row SelectSliceRunner::GetSliceFn::operator()(const Row& row) const {
+    if (slice_ < static_cast<size_t>(row.GetRowPtrCnt())) {
+        return Row(row.GetSlice(slice_));
+    } else {
+        return Row();
+    }
+}
+
+std::shared_ptr<DataHandler> SelectSliceRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "empty inputs";
+        return nullptr;
+    }
+    auto input = inputs[0];
+    if (!input) {
+        LOG(WARNING) << "select slice fail: input is null";
+        return nullptr;
+    }
+    switch (input->GetHanlderType()) {
+        case kTableHandler: {
+            return std::shared_ptr<TableHandler>(new TableProjectWrapper(
+                std::dynamic_pointer_cast<TableHandler>(input),
+                &get_slice_fn_));
+        }
+        case kPartitionHandler: {
+            return std::shared_ptr<TableHandler>(new PartitionProjectWrapper(
+                std::dynamic_pointer_cast<PartitionHandler>(input),
+                &get_slice_fn_));
+        }
+        case kRowHandler: {
+            return std::make_shared<RowProjectWrapper>(
+                std::dynamic_pointer_cast<RowHandler>(input), &get_slice_fn_);
+        }
+        default: {
+            LOG(WARNING) << "Fail run select slice, invalid handler type "
+                         << input->GetHandlerTypeName();
+        }
+    }
+    return nullptr;
+}
+
 std::shared_ptr<DataHandler> WindowAggRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
@@ -2929,10 +2982,12 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
-                          : fn_schema_.Get(pos).type() == fesql::type::kDate
-                              ? std::to_string(row_view.GetDateUnsafe(pos))
-                              : row_view.GetAsString(pos);
+        std::string key =
+            row_view.IsNULL(pos)
+                ? codec::NONETOKEN
+                : fn_schema_.Get(pos).type() == fesql::type::kDate
+                      ? std::to_string(row_view.GetDateUnsafe(pos))
+                      : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -3103,7 +3158,7 @@ WindowUnionGenerator::PartitionEach(
 }
 int32_t IteratorStatus::PickIteratorWithMininumKey(
     std::vector<IteratorStatus>* status_list_ptr) {
-    auto status_list = *status_list_ptr;
+    const auto& status_list = *status_list_ptr;
     int32_t min_union_pos = -1;
     uint64_t min_union_order = UINT64_MAX;
     for (size_t i = 0; i < status_list.size(); i++) {
@@ -3116,7 +3171,7 @@ int32_t IteratorStatus::PickIteratorWithMininumKey(
 }
 int32_t IteratorStatus::PickIteratorWithMaximizeKey(
     std::vector<IteratorStatus>* status_list_ptr) {
-    auto status_list = *status_list_ptr;
+    const auto& status_list = *status_list_ptr;
     int32_t min_union_pos = -1;
     uint64_t min_union_order = 0;
     for (size_t i = 0; i < status_list.size(); i++) {
