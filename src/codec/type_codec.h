@@ -445,8 +445,9 @@ int32_t GetStrField(const int8_t* row, uint32_t idx, uint32_t str_field_offset,
 
 int32_t GetCol(int8_t* input, int32_t row_idx, uint32_t col_idx, int32_t offset,
                int32_t type_id, int8_t* data);
-int32_t GetInnerRangeList(int8_t* input, int64_t start_offset,
-                          int64_t end_offset, int8_t* data);
+int32_t GetInnerRangeList(int8_t* input, int64_t start_key,
+                          int64_t start_offset, int64_t end_offset,
+                          int8_t* data);
 int32_t GetInnerRowsList(int8_t* input, int64_t start_offset,
                          int64_t end_offset, int8_t* data);
 

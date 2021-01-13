@@ -531,9 +531,18 @@ bool FrameNode::CanMergeWith(const FrameNode *that) const {
     if (Equals(that)) {
         return true;
     }
+
     if (nullptr == that) {
         return false;
     }
+    if ((this->frame_type_ == kFrameRowsRange ||
+         this->frame_type() == kFrameRowsMergeRowsRange) &&
+        (that->frame_type_ == kFrameRowsRange ||
+         this->frame_type() == kFrameRowsMergeRowsRange) &&
+        this->frame_maxsize_ != that->frame_maxsize_) {
+        return false;
+    }
+
     if (this->frame_type_ == that->frame_type_) {
         return true;
     }

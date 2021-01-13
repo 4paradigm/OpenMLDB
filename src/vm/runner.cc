@@ -832,23 +832,25 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
     return key;
 }
 
-Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
-                          const bool is_instance, size_t append_slices,
-                          Window* window) {
+Row Runner::WindowProject(const int8_t* fn, const uint64_t row_key,
+                          const Row row, const bool is_instance,
+                          size_t append_slices, Window* window) {
     if (row.empty()) {
         return row;
     }
-    window->BufferData(key, row);
+    if (!window->BufferData(row_key, row)) {
+        LOG(WARNING) << "fail to buffer data";
+        return Row();
+    }
     if (!is_instance) {
         return Row();
     }
-
     // Init current run step runtime
     JITRuntime::get()->InitRunStep();
 
-    auto udf =
-        reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
-            const_cast<int8_t*>(fn));
+    auto udf = reinterpret_cast<int32_t (*)(const int64_t key, const int8_t*,
+                                            const int8_t*, int8_t**)>(
+        const_cast<int8_t*>(fn));
     int8_t* out_buf = nullptr;
 
     codec::ListRef<Row> window_ref;
@@ -856,7 +858,7 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
     auto window_ptr = reinterpret_cast<const int8_t*>(&window_ref);
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
 
-    uint32_t ret = udf(row_ptr, window_ptr, &out_buf);
+    uint32_t ret = udf(row_key, row_ptr, window_ptr, &out_buf);
 
     // Release current run step resources
     JITRuntime::get()->ReleaseRunStep();
@@ -1368,9 +1370,8 @@ void WindowAggRunner::RunWindowAggOnKey(
             ? -1
             : IteratorStatus::PickIteratorWithMininumKey(&union_segment_status);
     int32_t cnt = output_table->GetCount();
-    CurrentHistoryWindow window(instance_window_gen_.range_gen_.start_offset_);
+    HistoryWindow window(instance_window_gen_.range_gen_.window_range_);
     window.set_instance_not_in_window(instance_not_in_window_);
-    window.set_rows_preceding(instance_window_gen_.range_gen_.start_row_);
 
     while (instance_segment_iter->Valid()) {
         if (limit_cnt_ > 0 && cnt >= limit_cnt_) {
@@ -2471,19 +2472,20 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(
     uint64_t start = 0;
     uint64_t end = UINT64_MAX;
     uint64_t rows_start_preceding = 0;
+    uint64_t max_size = 0;
     int64_t request_key = range_gen_.ts_gen_.Gen(request);
     if (range_gen_.Valid()) {
-        start = (request_key + range_gen_.start_offset_) < 0
+        start = (request_key + range_gen_.window_range_.start_offset_) < 0
                     ? 0
-                    : (request_key + range_gen_.start_offset_);
-        end = (request_key + range_gen_.end_offset_) < 0
+                    : (request_key + range_gen_.window_range_.start_offset_);
+
+        end = (request_key + range_gen_.window_range_.end_offset_) < 0
                   ? 0
-                  : (request_key + range_gen_.end_offset_);
-        rows_start_preceding = range_gen_.start_row_;
+                  : (request_key + range_gen_.window_range_.end_offset_);
+        rows_start_preceding = range_gen_.window_range_.start_row_;
+        max_size = range_gen_.window_range_.max_size_;
     }
-    if (output_request_row_) {
-        window_table->AddRow(request_key, request);
-    }
+
     // Prepare Union Window
     auto union_inputs = windows_union_gen_.RunInputs(ctx);
     auto union_segments =
@@ -2516,17 +2518,34 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(
                                 ? -1
                                 : IteratorStatus::PickIteratorWithMaximizeKey(
                                       &union_segment_status);
-    uint64_t cnt = 1;
+    uint64_t cnt = 0;
+    auto range_status = range_gen_.window_range_.GetWindowPositionStatus(
+        cnt > rows_start_preceding, request_key > end, request_key < start);
+
+    if (output_request_row_) {
+        window_table->AddRow(request_key, request);
+    }
+    if (WindowRange::kInWindow == range_status) {
+        cnt++;
+    }
+
     while (-1 != max_union_pos) {
-        if (range_gen_.OutOfRange(
-                cnt > rows_start_preceding,
-                union_segment_status[max_union_pos].key_ < start)) {
+        if (max_size > 0 && cnt >= max_size) {
             break;
         }
-
-        window_table->AddRow(union_segment_status[max_union_pos].key_,
-                             union_segment_iters[max_union_pos]->GetValue());
-        cnt++;
+        auto range_status = range_gen_.window_range_.GetWindowPositionStatus(
+            cnt > rows_start_preceding,
+            union_segment_status[max_union_pos].key_ > end,
+            union_segment_status[max_union_pos].key_ < start);
+        if (WindowRange::kExceedWindow == range_status) {
+            break;
+        }
+        if (WindowRange::kInWindow == range_status) {
+            window_table->AddRow(
+                union_segment_status[max_union_pos].key_,
+                union_segment_iters[max_union_pos]->GetValue());
+            cnt++;
+        }
         // Update Iterator Status
         union_segment_iters[max_union_pos]->Next();
         if (!union_segment_iters[max_union_pos]->Valid()) {
@@ -2539,7 +2558,7 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(
         max_union_pos =
             IteratorStatus::PickIteratorWithMaximizeKey(&union_segment_status);
     }
-    DLOG(INFO) << "REQUEST UNION cnt = " << cnt;
+    DLOG(INFO) << "REQUEST UNION cnt = " << window_table->GetCount();
     return window_table;
 }
 
@@ -3106,9 +3125,10 @@ Row Runner::GroupbyProject(const int8_t* fn, TableHandler* table) {
         return Row();
     }
     auto& row = iter->GetValue();
-    auto udf =
-        reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
-            const_cast<int8_t*>(fn));
+    auto& row_key = iter->GetKey();
+    auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
+                                            const int8_t*, int8_t**)>(
+        const_cast<int8_t*>(fn));
     int8_t* buf = nullptr;
 
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
@@ -3117,7 +3137,7 @@ Row Runner::GroupbyProject(const int8_t* fn, TableHandler* table) {
     window_ref.list = reinterpret_cast<int8_t*>(table);
     auto window_ptr = reinterpret_cast<const int8_t*>(&window_ref);
 
-    uint32_t ret = udf(row_ptr, window_ptr, &buf);
+    uint32_t ret = udf(row_key, row_ptr, window_ptr, &buf);
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();

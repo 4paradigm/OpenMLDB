@@ -21,7 +21,7 @@ class QuerySuites extends SQLBaseSuite {
   testCases("cases/integration/v1/test_sub_select.yaml")
   testCases("cases/integration/v1/test_udaf_function.yaml")
   testCases("cases/integration/v1/test_udf_function.yaml")
-  // testCases("cases/integration/v1/test_where.yaml")
+  //   testCases("cases/integration/v1/test_where.yaml")
   testCases("cases/integration/v1/test_window_row.yaml")
   testCases("cases/integration/v1/test_window_row_range.yaml")
   testCases("cases/integration/v1/test_window_union.yaml")
