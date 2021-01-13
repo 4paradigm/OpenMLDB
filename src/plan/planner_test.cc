@@ -316,7 +316,7 @@ TEST_F(PlannerTest, SelectPlanWithMultiWindowProjectTest) {
     plan_ptr = project_plan_node;
     ASSERT_EQ(2u, project_plan_node->project_list_vec_.size());
 
-    // validate projection 1: window agg over w1
+    // validate projection 1: window agg over w1 [-1d, 1s]
     node::ProjectListNode *project_list = dynamic_cast<node::ProjectListNode *>(
         project_plan_node->project_list_vec_[0]);
 
@@ -326,17 +326,17 @@ TEST_F(PlannerTest, SelectPlanWithMultiWindowProjectTest) {
     ASSERT_TRUE(project_list->IsWindowAgg());
 
     ASSERT_EQ(-1 * 86400000, project_list->GetW()->GetStartOffset());
-    ASSERT_EQ(0, project_list->GetW()->GetEndOffset());
+    ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
     ASSERT_EQ("(col2)", node::ExprString(project_list->GetW()->GetKeys()));
     ASSERT_FALSE(project_list->GetW()->instance_not_in_window());
 
-    // validate projection 1: window agg over w2
+    // validate projection 1: window agg over w2 [-2d, 1s]
     project_list = dynamic_cast<node::ProjectListNode *>(
         project_plan_node->project_list_vec_[1]);
     ASSERT_EQ(1u, project_list->GetProjects().size());
     ASSERT_TRUE(nullptr != project_list->GetW());
     ASSERT_EQ(-2 * 86400000, project_list->GetW()->GetStartOffset());
-    ASSERT_EQ(0, project_list->GetW()->GetEndOffset());
+    ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
 
     ASSERT_EQ("(col3)", node::ExprString(project_list->GetW()->GetKeys()));
     ASSERT_TRUE(project_list->IsWindowAgg());
@@ -483,7 +483,7 @@ TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
     ASSERT_EQ(std::make_pair(1u, 3u), pos_mapping[7]);
     ASSERT_EQ(std::make_pair(1u, 4u), pos_mapping[8]);
 
-    // validate projection 0: window agg over w1
+    // validate projection 0: window agg over w1 [-1d, -1s]
     {
         node::ProjectListNode *project_list =
             dynamic_cast<node::ProjectListNode *>(
@@ -492,7 +492,7 @@ TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
         ASSERT_EQ(4u, project_list->GetProjects().size());
         ASSERT_FALSE(nullptr == project_list->GetW());
         ASSERT_EQ(-1 * 86400000, project_list->GetW()->GetStartOffset());
-        ASSERT_EQ(0, project_list->GetW()->GetEndOffset());
+        ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
 
         // validate w1_col1_sum pos 0
         {
@@ -530,7 +530,7 @@ TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
         ASSERT_EQ(5u, project_list->GetProjects().size());
         ASSERT_TRUE(nullptr != project_list->GetW());
         ASSERT_EQ(-2 * 86400000, project_list->GetW()->GetStartOffset());
-        ASSERT_EQ(0, project_list->GetW()->GetEndOffset());
+        ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
         ASSERT_EQ("(col3)", node::ExprString(project_list->GetW()->GetKeys()));
         ASSERT_TRUE(project_list->IsWindowAgg());
 
@@ -1616,7 +1616,7 @@ TEST_F(PlannerTest, WindowExpandTest) {
     auto w = project_list->GetW();
     ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
     ASSERT_EQ("(col5) ASC", node::ExprString(w->GetOrders()));
-    ASSERT_EQ("range[-172800000,0],rows[-1000,-100]",
+    ASSERT_EQ("range[-172800000,-21600000],rows[-1000,-100]",
               w->frame_node()->GetExprString());
 }
 

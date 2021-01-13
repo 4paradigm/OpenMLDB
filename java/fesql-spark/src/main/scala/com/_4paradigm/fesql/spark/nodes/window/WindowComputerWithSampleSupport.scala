@@ -17,7 +17,7 @@ class WindowComputerWithSampleSupport(fs: FileSystem,
                                       jit: FeSQLJITWrapper
                                      ) extends WindowComputer(config, jit) {
 
-  private val logger =  LoggerFactory.getLogger(this.getClass)
+  private val logger = LoggerFactory.getLogger(this.getClass)
 
   private val minWindowSize = config.sampleMinSize
   private val outputPath = config.sampleOutputPath + "/" + config.windowName
@@ -121,7 +121,7 @@ object WindowComputerWithSampleSupport {
     }
 
     def run(): NativeRow = {
-      CoreAPI.WindowProject(computer.getFn, curNativeRow, computer.getWindow)
+      CoreAPI.WindowProject(computer.getFn, computer.extractKey(curRow), curNativeRow, computer.getWindow)
     }
   }
 

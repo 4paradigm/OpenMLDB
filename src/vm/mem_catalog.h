@@ -270,7 +270,6 @@ class Window : public MemTimeTableHandler {
     void set_instance_not_in_window(const bool flag) {
         instance_not_in_window_ = flag;
     }
-    const bool virtual IsPureHistoryWindow() = 0;
 
  protected:
     bool instance_not_in_window_;
@@ -285,7 +284,7 @@ class WindowRange {
           end_row_(0),
           max_size_(0) {}
     WindowRange(Window::WindowFrameType frame_type, int64_t start_offset,
-                int end_offset, uint64_t rows_preceding, uint32_t max_size)
+                int end_offset, uint64_t rows_preceding, uint64_t max_size)
         : frame_type_(frame_type),
           start_offset_(start_offset),
           end_offset_(end_offset),
@@ -319,10 +318,7 @@ class WindowRange {
         }
         return kExceedWindow;
     }
-    const bool IsPureHistoryWindow() {
-        return frame_type_ == Window::WindowFrameType::kFrameRowsRange &&
-               end_offset_ < 0;
-    }
+
     Window::WindowFrameType frame_type_;
     int64_t start_offset_;
     int64_t end_offset_;
@@ -340,9 +336,6 @@ class HistoryWindow : public Window {
     explicit HistoryWindow(const WindowRange& window_range)
         : Window(), window_range_(window_range), current_history_buffer_() {}
     ~HistoryWindow() {}
-    const bool IsPureHistoryWindow() {
-        return window_range_.IsPureHistoryWindow();
-    }
     virtual void PopFrontData() {
         if (current_history_buffer_.empty()) {
             PopFrontRow();
@@ -357,14 +350,17 @@ class HistoryWindow : public Window {
         }
         auto cur_size = table_.size();
         if (cur_size < window_range_.start_row_) {
+            // current row InWindow
             int64_t sub = (key + window_range_.start_offset_);
             uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
             return BufferEffectiveWindow(key, row, start_ts);
         } else if (0 == window_range_.end_offset_) {
+            // current InWindow
             int64_t sub = (key + window_range_.start_offset_);
             uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
             return BufferEffectiveWindow(key, row, start_ts);
         } else {
+            // current row BeforeWindow
             int64_t sub = (key + window_range_.end_offset_);
             uint64_t end_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
             return BufferCurrentHistoryBuffer(key, row, end_ts);

@@ -21,15 +21,28 @@ namespace fesql {
 namespace vm {
 
 WindowInterface::WindowInterface(bool instance_not_in_window,
-                                 fesql::vm::Range* range) {
-    RangeGenerator range_generator(*range);
-    window_impl_ =
-        std::make_unique<HistoryWindow>(range_generator.window_range_);
+                                 const std::string& frame_type_str,
+                                 int64_t start_offset, int64_t end_offset,
+                                 uint64_t rows_preceding, uint64_t max_size)
+    : window_impl_(std::unique_ptr<Window>(new HistoryWindow(
+          WindowRange(ExtractFrameType(frame_type_str), start_offset,
+                      end_offset, rows_preceding, max_size)))) {
     window_impl_->set_instance_not_in_window(instance_not_in_window);
 }
 
 bool WindowInterface::BufferData(uint64_t key, const Row& row) {
     return window_impl_->BufferData(key, row);
+}
+
+Window::WindowFrameType WindowInterface::ExtractFrameType(
+    const std::string& frame_type_str) const {
+    if (frame_type_str == "kFrameRows") {
+        return Window::kFrameRows;
+    } else if (frame_type_str == "kFrameRowsRange") {
+        return Window::kFrameRowsRange;
+    } else if (frame_type_str == "kFrameRowsMergeRowsRange") {
+        return Window::kFrameRowsMergeRowsRange;
+    }
 }
 
 int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
@@ -95,11 +108,11 @@ fesql::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
     // Init current run step runtime
     JITRuntime::get()->InitRunStep();
 
-    auto udf =
-        reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
-            const_cast<int8_t*>(fn));
+    auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
+                                            const int8_t*, int8_t**)>(
+        const_cast<int8_t*>(fn));
     int8_t* buf = nullptr;
-    uint32_t ret = udf(nullptr, nullptr, &buf);
+    uint32_t ret = udf(0, nullptr, nullptr, &buf);
 
     // Release current run step resources
     JITRuntime::get()->ReleaseRunStep();

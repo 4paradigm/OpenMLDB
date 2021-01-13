@@ -30,7 +30,10 @@ typedef const int8_t* RawPtrHandle;
 
 class WindowInterface {
  public:
-    WindowInterface(bool instance_not_in_window, fesql::vm::Range* range);
+    WindowInterface(bool instance_not_in_window,
+                    const std::string& frame_type_str, int64_t start_offset,
+                    int64_t end_offset, uint64_t rows_preceding,
+                    uint64_t max_size);
 
     bool BufferData(uint64_t key, const Row& row);
 
@@ -42,6 +45,8 @@ class WindowInterface {
     friend CoreAPI;
 
     Window* GetWindow() { return window_impl_.get(); }
+    inline Window::WindowFrameType ExtractFrameType(
+        const std::string& frame_type_str) const;
     std::unique_ptr<Window> window_impl_;
 };
 

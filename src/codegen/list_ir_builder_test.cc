@@ -254,12 +254,18 @@ void RunInnerListIteratorCase(T expected, const type::TableDef& table,
                     cast<PointerType>(arg0->getType()->getScalarType())
                         ->getElementType(),
                     arg0, 0);
+                auto list = reinterpret_cast<vm::Window*>(window.list);
+
+                ::llvm::Value* row_key =
+                    list->GetCount() > 0
+                        ? builder.getInt64(list->GetFrontRow().first)
+                        : builder.getInt64(0);
                 ::llvm::Value* list_ptr = builder.CreateLoad(list_gep_0);
                 if (inner_range) {
-                    CHECK_TRUE(
-                        buf_builder.BuildInnerRangeList(
-                            list_ptr, start_offset, end_offset, &inner_list),
-                        kCodegenError);
+                    CHECK_TRUE(buf_builder.BuildInnerRangeList(
+                                   list_ptr, row_key, start_offset, end_offset,
+                                   &inner_list),
+                               kCodegenError);
                 } else {
                     CHECK_TRUE(
                         buf_builder.BuildInnerRowsList(list_ptr, start_offset,
