@@ -392,6 +392,7 @@ public class FESQLFZBenchmark {
             System.out.println("result check success");
         } else {
             System.out.println("result check failed");
+            throw new SQLException("check failed");
         }
     }
 
