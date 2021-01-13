@@ -958,11 +958,16 @@ cmd_stmt:
 				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdDescTable, $2);
 				free($2);
 			}
-			|USE database_name
-			{
-				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdUseDatabase, $2);
-				free($2);
-			}
+            |USE database_name
+            {
+                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdUseDatabase, $2);
+                free($2);
+            }
+            |DROP DATABASE database_name
+            {
+                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropDatabase, $3);
+                free($3);
+            }
             |DROP TABLE table_name
             {
                 $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropTable, $3);
