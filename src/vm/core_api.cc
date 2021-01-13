@@ -9,8 +9,10 @@
 #include "vm/core_api.h"
 #include "base/sig_trace.h"
 #include "codec/fe_row_codec.h"
+#include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/jit_runtime.h"
+#include "vm/jit_wrapper.h"
 #include "vm/mem_catalog.h"
 #include "vm/runner.h"
 #include "vm/schemas_context.h"
@@ -185,11 +187,10 @@ fesql::codec::Row CoreAPI::GroupbyProject(
 }
 
 bool CoreAPI::ComputeCondition(const fesql::vm::RawPtrHandle fn, const Row& row,
-                               fesql::codec::RowView* row_view,
+                               const fesql::codec::RowView* row_view,
                                size_t out_idx) {
     Row cond_row = CoreAPI::RowProject(fn, row, true);
-    row_view->Reset(cond_row.buf());
-    return Runner::GetColumnBool(row_view, out_idx,
+    return Runner::GetColumnBool(cond_row.buf(), row_view, out_idx,
                                  row_view->GetSchema()->Get(out_idx).type());
 }
 

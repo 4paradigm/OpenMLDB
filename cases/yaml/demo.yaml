@@ -110,3 +110,40 @@ cases:
       order: col1
       data: |
         hello, 1, 2, 3.3, 4.4, 5, world
+  - id: 5
+    desc: 简单INSERT with inserts
+    db: test
+    inputs:
+      -
+        create: |
+          create table t1 (
+          col0 string not null,
+          col1 int not null,
+          col2 smallint not null,
+          col3 float not null,
+          col4 double not null,
+          col5 bigint not null,
+          col6 string not null,
+          index(name=index1, key=(col2), ts=col5)
+          );
+        inserts:
+          - |
+            insert into t1 values
+            ("hello", 1, 2, 3.3f, 4.4, 5L, "world");
+          - insert into t1 values ("happy", 10, 20, 30.3f, 40.4, 50L, "newyear");
+      -
+        create: |
+          create table t2 (
+          c1 string not null,
+          c2 bigint not null,
+          index(name=index2, key=(c1), ts=c2)
+          );
+        inserts:
+        - insert into t2 values ("hello", 1);
+        - insert into t2 values ("world", 2);
+
+    output:
+      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      order: col1
+      data: |
+        hello, 1, 2, 3.3, 4.4, 5, world

@@ -48,7 +48,7 @@ struct DescComparor {
 };
 
 typedef std::deque<std::pair<uint64_t, Row>> MemTimeTable;
-typedef std::vector<std::pair<uint64_t, Row>> MemTable;
+typedef std::vector<Row> MemTable;
 typedef std::map<std::string, MemTimeTable, std::greater<std::string>>
     MemSegmentMap;
 
@@ -154,8 +154,8 @@ class MemTableHandler : public TableHandler {
     inline const IndexHint& GetIndex() { return index_hint_; }
     inline const std::string& GetDatabase() { return db_; }
 
-    std::unique_ptr<RowIterator> GetIterator() const;
-    RowIterator* GetRawIterator() const;
+    std::unique_ptr<RowIterator> GetIterator() override;
+    RowIterator* GetRawIterator() override;
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
 
@@ -163,7 +163,7 @@ class MemTableHandler : public TableHandler {
     void Reverse();
     virtual const uint64_t GetCount() { return table_.size(); }
     virtual Row At(uint64_t pos) {
-        return pos < table_.size() ? table_.at(pos).second : Row();
+        return pos < table_.size() ? table_.at(pos) : Row();
     }
 
     const OrderType GetOrderType() const { return order_type_; }
@@ -173,6 +173,8 @@ class MemTableHandler : public TableHandler {
     }
 
  protected:
+    void Resize(const size_t size);
+    bool SetRow(const size_t idx, const Row& row);
     const std::string table_name_;
     const std::string db_;
     const Schema* schema_;
@@ -193,8 +195,8 @@ class MemTimeTableHandler : public TableHandler {
     inline const Schema* GetSchema() { return schema_; }
     inline const std::string& GetName() { return table_name_; }
     inline const IndexHint& GetIndex() { return index_hint_; }
-    std::unique_ptr<RowIterator> GetIterator() const;
-    RowIterator* GetRawIterator() const;
+    std::unique_ptr<RowIterator> GetIterator();
+    RowIterator* GetRawIterator();
     inline const std::string& GetDatabase() { return db_; }
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
@@ -248,13 +250,13 @@ class Window : public MemTimeTableHandler {
           instance_not_in_window_(false) {}
     virtual ~Window() {}
 
-    std::unique_ptr<RowIterator> GetIterator() const override {
+    std::unique_ptr<RowIterator> GetIterator() override {
         std::unique_ptr<vm::MemTimeTableIterator> it(
             new vm::MemTimeTableIterator(&table_, schema_));
         return std::move(it);
     }
 
-    RowIterator* GetRawIterator() const {
+    RowIterator* GetRawIterator() {
         return new vm::MemTimeTableIterator(&table_, schema_);
     }
     virtual void BufferData(uint64_t key, const Row& row) = 0;
@@ -359,7 +361,7 @@ class MemSegmentHandler : public TableHandler {
     const OrderType GetOrderType() const {
         return partition_hander_->GetOrderType();
     }
-    std::unique_ptr<vm::RowIterator> GetIterator() const {
+    std::unique_ptr<vm::RowIterator> GetIterator() {
         auto iter = partition_hander_->GetWindowIterator();
         if (iter) {
             iter->Seek(key_);
@@ -368,7 +370,7 @@ class MemSegmentHandler : public TableHandler {
         }
         return std::unique_ptr<RowIterator>();
     }
-    RowIterator* GetRawIterator() const override {
+    RowIterator* GetRawIterator() override {
         auto iter = partition_hander_->GetWindowIterator();
         if (iter) {
             iter->Seek(key_);
@@ -454,6 +456,80 @@ class MemPartitionHandler
     IndexHint index_hint_;
     OrderType order_type_;
 };
+class ConcatTableHandler : public MemTimeTableHandler {
+ public:
+    ConcatTableHandler(std::shared_ptr<TableHandler> left, size_t left_slices,
+                       std::shared_ptr<TableHandler> right, size_t right_slices)
+        : MemTimeTableHandler(),
+          status_(base::Status::Running()),
+          left_(left),
+          left_slices_(left_slices),
+          right_(right),
+          right_slices_(right_slices) {}
+    ~ConcatTableHandler() {}
+    Row At(uint64_t pos) override {
+        if (!status_.isRunning()) {
+            return MemTimeTableHandler::At(pos);
+        }
+        status_ = SyncValue();
+        return MemTimeTableHandler::At(pos);
+    }
+    std::unique_ptr<RowIterator> GetIterator() {
+        if (status_.isRunning()) {
+            status_ = SyncValue();
+        }
+        return MemTimeTableHandler::GetIterator();
+    }
+    RowIterator* GetRawIterator() {
+        if (status_.isRunning()) {
+            status_ = SyncValue();
+        }
+        return MemTimeTableHandler::GetRawIterator();
+    }
+    virtual const uint64_t GetCount() {
+        if (status_.isRunning()) {
+            status_ = SyncValue();
+        }
+        return MemTimeTableHandler::GetCount();
+    }
+
+ private:
+    base::Status SyncValue() {
+        DLOG(INFO) << "Sync... concat left table and right table";
+        if (!left_) {
+            return base::Status::OK();
+        }
+        auto left_iter = left_->GetIterator();
+        if (!left_iter) {
+            return base::Status::OK();
+        }
+
+        auto right_iter = std::unique_ptr<RowIterator>();
+        if (right_) {
+            right_iter = right_->GetIterator();
+        }
+        left_iter->SeekToFirst();
+        while (left_iter->Valid()) {
+            if (!right_iter || !right_iter->Valid()) {
+                AddRow(left_iter->GetKey(),
+                       Row(left_slices_, left_iter->GetValue(), right_slices_,
+                           Row()));
+            } else {
+                AddRow(left_iter->GetKey(),
+                       Row(left_slices_, left_iter->GetValue(), right_slices_,
+                           right_iter->GetValue()));
+                right_iter->Next();
+            }
+            left_iter->Next();
+        }
+        return base::Status::OK();
+    }
+    base::Status status_;
+    std::shared_ptr<TableHandler> left_;
+    size_t left_slices_;
+    std::shared_ptr<TableHandler> right_;
+    size_t right_slices_;
+};
 
 class MemCatalog : public Catalog {
  public:
@@ -475,6 +551,39 @@ class MemCatalog : public Catalog {
  private:
     MemTables tables_;
     Databases dbs_;
+};
+
+/**
+ * Result table handler specified for request union:
+ * (1) The first row is fixed to be the request row
+ * (2) O(1) time construction
+ */
+class RequestUnionTableHandler : public TableHandler {
+ public:
+    RequestUnionTableHandler(uint64_t request_ts, const Row& request_row,
+                             const std::shared_ptr<TableHandler>& window)
+        : request_ts_(request_ts), request_row_(request_row), window_(window) {}
+    ~RequestUnionTableHandler() {}
+
+    std::unique_ptr<RowIterator> GetIterator() override {
+        return std::unique_ptr<RowIterator>(GetRawIterator());
+    }
+    RowIterator* GetRawIterator() override;
+
+    const Types& GetTypes() override { return window_->GetTypes(); }
+    const IndexHint& GetIndex() override { return window_->GetIndex(); }
+    std::unique_ptr<WindowIterator> GetWindowIterator(const std::string&) {
+        return nullptr;
+    }
+    const OrderType GetOrderType() const { return window_->GetOrderType(); }
+    const Schema* GetSchema() override { return window_->GetSchema(); }
+    const std::string& GetName() override { return window_->GetName(); }
+    const std::string& GetDatabase() override { return window_->GetDatabase(); }
+
+ private:
+    uint64_t request_ts_;
+    const Row request_row_;
+    std::shared_ptr<TableHandler> window_;
 };
 
 // row iter interfaces for llvm

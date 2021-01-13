@@ -20,6 +20,7 @@ enum StatusCode {
     kConnError = 20;
     kRpcError = 21;
     kTimeoutError = 22;
+    kResponseError = 23;
     kSQLError = 30;
     kPlanError = 31;
     kCallMethodError = 32;

@@ -30,6 +30,10 @@ static void BM_MemSumColDouble(benchmark::State& state) {  // NOLINT
     SumMemTableCol(&state, BENCHMARK, state.range(0), "col4");
 }
 
+static void BM_RequestUnionSumColDouble(benchmark::State& state) {  // NOLINT
+    SumRequestUnionTableCol(&state, BENCHMARK, state.range(0), "col4");
+}
+
 static void BM_ArraySumColInt(benchmark::State& state) {  // NOLINT
     SumArrayListCol(&state, BENCHMARK, state.range(0), "col1");
 }
@@ -57,6 +61,9 @@ static void BM_TabletWindowIterate(benchmark::State& state) {  // NOLINT
 }
 static void BM_MemTableIterate(benchmark::State& state) {  // NOLINT
     MemTableIterate(&state, BENCHMARK, state.range(0));
+}
+static void BM_RequestUnionTableIterate(benchmark::State& state) {  // NOLINT
+    RequestUnionTableIterate(&state, BENCHMARK, state.range(0));
 }
 
 static void BM_MemSegmentIterate(benchmark::State& state) {  // NOLINT
@@ -111,6 +118,12 @@ BENCHMARK(BM_MemTableIterate)
     ->Args({1000})
     ->Args({10000});
 
+BENCHMARK(BM_RequestUnionTableIterate)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
+
 BENCHMARK(BM_MemSegmentIterate)
     ->Args({10})
     ->Args({100})
@@ -140,6 +153,11 @@ BENCHMARK(BM_ArraySumColInt)
     ->Args({1000})
     ->Args({10000});
 BENCHMARK(BM_ArraySumColDouble)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
+BENCHMARK(BM_RequestUnionSumColDouble)
     ->Args({10})
     ->Args({100})
     ->Args({1000})

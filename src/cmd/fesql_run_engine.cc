@@ -22,8 +22,19 @@ DEFINE_string(runner_mode, "batch",
               "Specify runner mode, can be batch or request");
 DEFINE_string(cluster_mode, "standalone",
               "Specify cluster mode, can be standalone or cluster");
+DEFINE_bool(
+    enable_batch_request_opt, true,
+    "Specify whether perform batch request optimization in batch request mode");
+DEFINE_bool(performance_sensitive, true,
+            "Specify whether do performance sensitive check");
 DEFINE_int32(run_iters, 0, "Measure the approximate run time if specified");
 DEFINE_int32(case_id, -1, "Specify the case id to run and skip others");
+
+// jit options
+DEFINE_bool(enable_mcjit, false, "Use llvm legacy mcjit engine");
+DEFINE_bool(enable_vtune, false, "Enable llvm jit vtune events");
+DEFINE_bool(enable_gdb, false, "Enable llvm jit gdb events");
+DEFINE_bool(enable_perf, false, "Enable llvm jit perf events");
 
 namespace fesql {
 namespace vm {
@@ -55,6 +66,15 @@ int RunSingle(const std::string& yaml_path) {
     }
     EngineOptions options;
     options.set_cluster_optimized(FLAGS_cluster_mode == "cluster");
+    options.set_batch_request_optimized(FLAGS_enable_batch_request_opt);
+    options.set_performance_sensitive(FLAGS_performance_sensitive);
+
+    JITOptions& jit_options = options.jit_options();
+    jit_options.set_enable_mcjit(FLAGS_enable_mcjit);
+    jit_options.set_enable_vtune(FLAGS_enable_vtune);
+    jit_options.set_enable_gdb(FLAGS_enable_gdb);
+    jit_options.set_enable_perf(FLAGS_enable_perf);
+
     for (auto& sql_case : cases) {
         if (FLAGS_case_id >= 0 &&
             std::to_string(FLAGS_case_id) != sql_case.id()) {

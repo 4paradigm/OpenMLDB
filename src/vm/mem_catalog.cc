@@ -102,7 +102,7 @@ MemTimeTableHandler::MemTimeTableHandler(const std::string& table_name,
       order_type_(kNoneOrder) {}
 
 MemTimeTableHandler::~MemTimeTableHandler() {}
-std::unique_ptr<RowIterator> MemTimeTableHandler::GetIterator() const {
+std::unique_ptr<RowIterator> MemTimeTableHandler::GetIterator() {
     std::unique_ptr<MemTimeTableIterator> it(
         new MemTimeTableIterator(&table_, schema_));
     return std::move(it);
@@ -142,7 +142,7 @@ void MemTimeTableHandler::Reverse() {
                       ? kDescOrder
                       : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
 }
-RowIterator* MemTimeTableHandler::GetRawIterator() const {
+RowIterator* MemTimeTableHandler::GetRawIterator() {
     return new MemTimeTableIterator(&table_, schema_);
 }
 
@@ -226,12 +226,12 @@ std::unique_ptr<WindowIterator> MemTableHandler::GetWindowIterator(
     const std::string& idx_name) {
     return std::unique_ptr<WindowIterator>();
 }
-std::unique_ptr<RowIterator> MemTableHandler::GetIterator() const {
+std::unique_ptr<RowIterator> MemTableHandler::GetIterator() {
     std::unique_ptr<MemTableIterator> it(
         new MemTableIterator(&table_, schema_));
     return std::move(it);
 }
-RowIterator* MemTableHandler::GetRawIterator() const {
+RowIterator* MemTableHandler::GetRawIterator() {
     return new MemTableIterator(&table_, schema_);
 }
 
@@ -263,8 +263,14 @@ MemTableHandler::MemTableHandler(const std::string& table_name,
       index_hint_(),
       table_(),
       order_type_(kNoneOrder) {}
-void MemTableHandler::AddRow(const Row& row) {
-    table_.push_back(std::make_pair(table_.size(), row));
+void MemTableHandler::AddRow(const Row& row) { table_.push_back(row); }
+void MemTableHandler::Resize(const size_t size) { table_.resize(size); }
+bool MemTableHandler::SetRow(const size_t idx, const Row& row) {
+    if (idx >= table_.size()) {
+        return false;
+    }
+    table_[idx] = row;
+    return true;
 }
 void MemTableHandler::Reverse() {
     std::reverse(table_.begin(), table_.end());
@@ -291,17 +297,80 @@ MemTableIterator::MemTableIterator(const MemTable* table,
       iter_(start_iter_),
       key_(0) {}
 MemTableIterator::~MemTableIterator() {}
-void MemTableIterator::Seek(const uint64_t& ts) { iter_ = start_iter_ + ts; }
-void MemTableIterator::SeekToFirst() { iter_ = start_iter_; }
-const uint64_t& MemTableIterator::GetKey() const { return iter_->first; }
+void MemTableIterator::Seek(const uint64_t& ts) {
+    iter_ = start_iter_ + ts;
+    key_ = ts;
+}
+void MemTableIterator::SeekToFirst() {
+    iter_ = start_iter_;
+    key_ = 0;
+}
+const uint64_t& MemTableIterator::GetKey() const { return key_; }
 
 bool MemTableIterator::Valid() const { return end_iter_ > iter_; }
 void MemTableIterator::Next() {
     iter_++;
-    key_ = Valid() ? iter_ - start_iter_ : 0;
+    key_++;
 }
-const Row& MemTableIterator::GetValue() { return iter_->second; }
+const Row& MemTableIterator::GetValue() { return *iter_; }
 bool MemTableIterator::IsSeekable() const { return true; }
+
+/**
+ * Iterator implementation for request union table
+ */
+class RequestUnionIterator : public RowIterator {
+ public:
+    RequestUnionIterator(uint64_t request_ts, const Row* request_row,
+                         RowIterator* window_iter)
+        : request_ts_(request_ts),
+          request_row_(request_row),
+          window_iter_(window_iter) {}
+    ~RequestUnionIterator() { delete window_iter_; }
+    bool Valid() const override {
+        return window_iter_start_ ? window_iter_->Valid() : true;
+    }
+    void Next() override {
+        if (window_iter_start_) {
+            window_iter_->Next();
+        } else {
+            window_iter_start_ = true;
+        }
+    }
+    const uint64_t& GetKey() const override {
+        return window_iter_start_ ? window_iter_->GetKey() : request_ts_;
+    }
+    const Row& GetValue() override {
+        return window_iter_start_ ? window_iter_->GetValue() : *request_row_;
+    }
+    void Seek(const uint64_t& key) override {
+        if (request_ts_ <= key) {
+            SeekToFirst();
+        } else {
+            window_iter_start_ = true;
+            window_iter_->Seek(key);
+        }
+    }
+    void SeekToFirst() override {
+        window_iter_->SeekToFirst();
+        window_iter_start_ = false;
+    }
+    bool IsSeekable() const override { return window_iter_->IsSeekable(); }
+
+ private:
+    uint64_t request_ts_;
+    const Row* request_row_;
+    RowIterator* window_iter_;
+    bool window_iter_start_ = false;
+};
+
+RowIterator* RequestUnionTableHandler::GetRawIterator() {
+    auto window_iter = window_->GetRawIterator();
+    if (window_iter == nullptr) {
+        LOG(WARNING) << "Illegal window iterator";
+        return nullptr;
+    }
+    return new RequestUnionIterator(request_ts_, &request_row_, window_iter);
+}
 
 // row iter interfaces for llvm
 void GetRowIter(int8_t* input, int8_t* iter_addr) {

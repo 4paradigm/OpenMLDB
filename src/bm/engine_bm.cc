@@ -63,22 +63,19 @@ static void BM_EngineWindowSumFeature5Window5(
                                    state.range(1));
 }
 static void BM_EngineWindowDistinctCntFeature(
-        benchmark::State& state) { // NOLINT
+    benchmark::State& state) {  // NOLINT
     EngineWindowDistinctCntFeature(&state, BENCHMARK, state.range(0),
                                    state.range(1));
 }
 
 static void BM_EngineWindowTop1RatioFeature(
-        benchmark::State& state) { // NOLINT
+    benchmark::State& state) {  // NOLINT
     EngineWindowTop1RatioFeature(&state, BENCHMARK, state.range(0),
-                                   state.range(1));
+                                 state.range(1));
 }
 
-
-static void BM_MapTop(
-        benchmark::State& state) { // NOLINT
-    MapTop1(&state, BENCHMARK, state.range(0),
-                                   state.range(1));
+static void BM_MapTop(benchmark::State& state) {  // NOLINT
+    MapTop1(&state, BENCHMARK, state.range(0), state.range(1));
 }
 
 static void BM_EngineWindowMultiAggFeature5(

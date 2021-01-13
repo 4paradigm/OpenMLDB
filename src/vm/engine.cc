@@ -162,7 +162,13 @@ bool Engine::Get(const std::string& sql, const std::string& db,
         session.SetCompileInfo(info);
         return true;
     }
-
+    // TODO(baoxinqi): IsCompatibleCache fail, return false, or reset status.
+    if (!status.isOK()) {
+        LOG(WARNING) << status;
+        status = base::Status::OK();
+    }
+    DLOG(INFO) << "Compile FESQL ...";
+    status = base::Status::OK();
     info = std::shared_ptr<CompileInfo>(new CompileInfo());
     auto& sql_context = info->get_sql_context();
     sql_context.sql = sql;
@@ -170,6 +176,9 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     sql_context.engine_mode = session.engine_mode();
     sql_context.is_performance_sensitive = options_.is_performance_sensitive();
     sql_context.is_cluster_optimized = options_.is_cluster_optimzied();
+    sql_context.is_batch_request_optimized =
+        options_.is_batch_request_optimized();
+    sql_context.jit_options = options_.jit_options();
 
     auto batch_req_sess = dynamic_cast<BatchRequestRunSession*>(&session);
     if (batch_req_sess) {
@@ -208,10 +217,16 @@ bool Engine::Get(const std::string& sql, const std::string& db,
 }
 
 bool Engine::Explain(const std::string& sql, const std::string& db,
-                     EngineMode engine_mode, ExplainOutput* explain_output,
-                     base::Status* status) {
+                     EngineMode engine_mode,
+                     const std::set<size_t>& common_column_indices,
+                     ExplainOutput* explain_output, base::Status* status) {
     if (explain_output == NULL || status == NULL) {
         LOG(WARNING) << "input args is invalid";
+        return false;
+    }
+    if (!common_column_indices.empty() && engine_mode != kBatchRequestMode) {
+        LOG(WARNING)
+            << "common column config can only be valid in batch request mode";
         return false;
     }
     SQLContext ctx;
@@ -220,6 +235,8 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     ctx.db = db;
     ctx.is_performance_sensitive = options_.is_performance_sensitive();
     ctx.is_cluster_optimized = options_.is_cluster_optimzied();
+    ctx.is_batch_request_optimized = !common_column_indices.empty();
+    ctx.batch_request_info.common_column_indices = common_column_indices;
     SQLCompiler compiler(
         std::atomic_load_explicit(&cl_, std::memory_order_acquire), true, true,
         true);
@@ -253,7 +270,29 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
         explain_output->router.SetMainTable(ctx.request_name);
         explain_output->router.Parse(ctx.physical_plan);
     }
+    if (engine_mode == ::fesql::vm::kBatchRequestMode) {
+        // fill common output column info
+        auto& output_common_indices =
+            ctx.batch_request_info.output_common_column_indices;
+        size_t schema_size =
+            static_cast<size_t>(explain_output->output_schema.size());
+        for (size_t idx : output_common_indices) {
+            if (idx >= schema_size) {
+                LOG(WARNING)
+                    << "Output common column indice out of bound: " << idx;
+                return false;
+            }
+            auto* column = explain_output->output_schema.Mutable(idx);
+            column->set_is_constant(true);
+        }
+    }
     return true;
+}
+
+bool Engine::Explain(const std::string& sql, const std::string& db,
+                     EngineMode engine_mode, ExplainOutput* explain_output,
+                     base::Status* status) {
+    return Explain(sql, db, engine_mode, {}, explain_output, status);
 }
 
 void Engine::ClearCacheLocked(const std::string& db) {
@@ -322,78 +361,6 @@ bool RunSession::SetCompileInfo(
     return true;
 }
 
-static bool ExtractSingleRow(std::shared_ptr<DataHandler> handler,
-                             Row* out_row) {
-    switch (handler->GetHanlderType()) {
-        case kTableHandler: {
-            auto iter =
-                std::dynamic_pointer_cast<TableHandler>(handler)->GetIterator();
-            if (!iter) {
-                return false;
-            }
-            iter->SeekToFirst();
-            if (iter->Valid()) {
-                *out_row = iter->GetValue();
-                return true;
-            } else {
-                return false;
-            }
-        }
-        case kRowHandler: {
-            *out_row =
-                std::dynamic_pointer_cast<RowHandler>(handler)->GetValue();
-            return true;
-        }
-        case kPartitionHandler: {
-            LOG(WARNING) << "partition output is invalid";
-            return false;
-        }
-        default: {
-            return false;
-        }
-    }
-}
-static bool ExtractBatchRows(std::shared_ptr<DataHandlerList> handlers,
-                             std::vector<Row>& out_rows) {  // NOLINT
-    if (!handlers) {
-        LOG(WARNING) << "Extract batch rows error: data handler is null";
-        return false;
-    }
-    for (size_t i = 0; i < handlers->GetSize(); i++) {
-        auto handler = handlers->Get(i);
-        if (!handler) {
-            out_rows.push_back(Row());
-            continue;
-        }
-        switch (handler->GetHanlderType()) {
-            case kTableHandler: {
-                auto iter = std::dynamic_pointer_cast<TableHandler>(handler)
-                                ->GetIterator();
-                if (!iter) {
-                    LOG(WARNING) << "Extract batch rows error: iter is null";
-                    return false;
-                }
-                iter->SeekToFirst();
-                while (iter->Valid()) {
-                    out_rows.push_back(iter->GetValue());
-                    iter->Next();
-                }
-                break;
-            }
-            case kRowHandler: {
-                out_rows.push_back(
-                    std::dynamic_pointer_cast<RowHandler>(handler)->GetValue());
-                break;
-            }
-            default: {
-                LOG(WARNING) << "partition output is invalid";
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
 int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
     DLOG(INFO) << "Request Row Run with main task";
     return Run(compile_info_->get_sql_context().cluster_job.main_task_id(),
@@ -416,7 +383,7 @@ int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row,
         LOG(WARNING) << "run request plan output is null";
         return -1;
     }
-    bool ok = ExtractSingleRow(output, out_row);
+    bool ok = Runner::ExtractRow(output, out_row);
     if (ok) {
         return 0;
     }
@@ -445,26 +412,12 @@ int32_t BatchRequestRunSession::Run(const uint32_t id,
         LOG(WARNING) << "run request plan output is null";
         return -1;
     }
-    bool ok = ExtractBatchRows(handler, output);
+    bool ok = Runner::ExtractRows(handler, output);
     if (!ok) {
         return -1;
     }
     ctx.ClearCache();
     return 0;
-}
-
-int32_t BatchRequestRunSession::RunBatch(RunnerContext& ctx,  // NOLINT
-                                         const std::vector<Row>& requests,
-                                         std::vector<Row>& output) {  // NOLINT
-    return RunBatch(ctx,
-                    compile_info_->get_sql_context().cluster_job.main_task_id(),
-                    requests, output);
-}
-int32_t BatchRequestRunSession::RunBatch(RunnerContext& ctx,  // NOLINT
-                                         const uint32_t task_id,
-                                         const std::vector<Row>& requests,
-                                         std::vector<Row>& output) {  // NOLINT
-    return -1;
 }
 
 std::shared_ptr<TableHandler> BatchRunSession::Run() {

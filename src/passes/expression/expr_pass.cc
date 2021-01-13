@@ -28,6 +28,13 @@ void ExprReplacer::AddReplacement(const node::ExprNode* expr,
             AddReplacement(arg, repl);
             return;
         }
+    } else if (expr->GetExprType() == node::kExprColumnId) {
+        auto column_id = dynamic_cast<const node::ColumnIdNode*>(expr);
+        AddReplacement(column_id->GetColumnID(), repl);
+    } else if (expr->GetExprType() == node::kExprColumnRef) {
+        auto column_ref = dynamic_cast<const node::ColumnRefNode*>(expr);
+        AddReplacement(column_ref->GetRelationName(),
+                       column_ref->GetColumnName(), repl);
     }
     node_id_map_[expr->node_id()] = repl;
 }

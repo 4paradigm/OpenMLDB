@@ -18,8 +18,17 @@
 #ifndef SRC_VM_JIT_H_
 #define SRC_VM_JIT_H_
 
+#include <map>
+#include <memory>
 #include <string>
+#include "llvm/ExecutionEngine/GenericValue.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
+#include "vm/jit_wrapper.h"
+
+#ifdef LLVM_EXT_ENABLE
+#include "llvm/ExecutionEngine/ExecutionEngine.h"
+#include "llvm/ExecutionEngine/MCJIT.h"
+#endif
 
 namespace fesql {
 namespace vm {
@@ -68,8 +77,65 @@ class FeSQLJITBuilder
                                               ::llvm::orc::LLJITBuilderState> {
 };
 
-bool InitBasicSymbol(::llvm::orc::JITDylib& jd,            // NOLINT
-                     ::llvm::orc::MangleAndInterner& mi);  // NOLINT
+template <typename T>
+std::string LLVMToString(const T& value) {
+    std::string str;
+    ::llvm::raw_string_ostream ss(str);
+    ss << value;
+    ss.flush();
+    return str;
+}
+
+class FeSQLLLJITWrapper : public FeSQLJITWrapper {
+ public:
+    FeSQLLLJITWrapper() {}
+    ~FeSQLLLJITWrapper() {}
+
+    bool Init() override;
+
+    bool OptModule(::llvm::Module* module) override;
+
+    bool AddModule(std::unique_ptr<llvm::Module> module,
+                   std::unique_ptr<llvm::LLVMContext> llvm_ctx) override;
+
+    bool AddExternalFunction(const std::string& name, void* addr) override;
+
+    fesql::vm::RawPtrHandle FindFunction(const std::string& funcname) override;
+
+ private:
+    std::unique_ptr<FeSQLJIT> jit_;
+    std::unique_ptr<::llvm::orc::MangleAndInterner> mi_;
+};
+
+#ifdef LLVM_EXT_ENABLE
+class FeSQLMCJITWrapper : public FeSQLJITWrapper {
+ public:
+    explicit FeSQLMCJITWrapper(const JITOptions& jit_options)
+        : jit_options_(jit_options) {}
+    ~FeSQLMCJITWrapper() {}
+
+    bool Init() override;
+
+    bool OptModule(::llvm::Module* module) override;
+
+    bool AddModule(std::unique_ptr<llvm::Module> module,
+                   std::unique_ptr<llvm::LLVMContext> llvm_ctx) override;
+
+    bool AddExternalFunction(const std::string& name, void* addr) override;
+
+    fesql::vm::RawPtrHandle FindFunction(const std::string& funcname) override;
+
+ private:
+    bool CheckInitialized() const;
+    bool CheckError();
+
+    const JITOptions jit_options_;
+    std::string err_str_ = "";
+    std::map<std::string, void*> extern_functions_;
+    llvm::ExecutionEngine* execution_engine_ = nullptr;
+};
+#endif
+
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_JIT_H_

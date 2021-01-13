@@ -488,11 +488,9 @@ Status BatchModeTransformer::TransformWindowOp(
     PhysicalOpNode* depend, const node::WindowPlanNode* w_ptr,
     PhysicalOpNode** output) {
     // sanity check
-    CHECK_TRUE(depend != nullptr && w_ptr != nullptr && output != nullptr,
-               kPlanError, "Depend node or output node is null");
-    CHECK_STATUS(CheckHistoryWindowFrame(w_ptr));
-    CHECK_STATUS(CheckTimeOrIntegerOrderColumn(w_ptr->GetOrders(),
-                                               depend->schemas_ctx()));
+    CHECK_TRUE(depend != nullptr && output != nullptr, kPlanError,
+               "Depend node or output node is null");
+    CHECK_STATUS(CheckWindow(w_ptr, depend->schemas_ctx()));
     const node::OrderByNode* orders = w_ptr->GetOrders();
     const node::ExprListNode* groups = w_ptr->GetKeys();
 
@@ -652,8 +650,8 @@ Status BatchModeTransformer::TransformWindowOp(
             break;
         }
         default: {
-            return Status(kPlanError,
-                          "Do not support window on " + depend->GetTypeName());
+            return Status(kPlanError, "Do not support window on " +
+                                          depend->GetTreeString());
         }
     }
     return Status::OK();
@@ -1033,9 +1031,8 @@ Status BatchModeTransformer::TransformProjectOp(
                 kGroupAggregation, depend, project_list, append_input, output);
         case kSchemaTypeTable:
             if (project_list->is_window_agg_) {
-                CHECK_STATUS(CheckHistoryWindowFrame(project_list->w_ptr_));
-                CHECK_STATUS(CheckTimeOrIntegerOrderColumn(
-                    project_list->w_ptr_->GetOrders(), depend->schemas_ctx()));
+                CHECK_STATUS(
+                    CheckWindow(project_list->w_ptr_, depend->schemas_ctx()));
                 return CreatePhysicalProjectNode(kWindowAggregation, depend,
                                                  project_list, append_input,
                                                  output);
@@ -1526,11 +1523,28 @@ Status BatchModeTransformer::CheckTimeOrIntegerOrderColumn(
     return Status::OK();
 }
 
+Status BatchModeTransformer::CheckWindow(
+    const node::WindowPlanNode* w_ptr, const vm::SchemasContext* schemas_ctx) {
+    CHECK_TRUE(w_ptr != nullptr, common::kPlanError, "NULL Window");
+    CHECK_TRUE(!node::ExprListNullOrEmpty(w_ptr->GetKeys()), common::kPlanError,
+               "Invalid Window: Do not support window on non-partition");
+    CHECK_TRUE(nullptr != w_ptr->GetOrders() &&
+                   !node::ExprListNullOrEmpty(w_ptr->GetOrders()->order_by_),
+               common::kPlanError,
+               "Invalid Window: Do not support window on non-order");
+    CHECK_STATUS(CheckHistoryWindowFrame(w_ptr));
+    CHECK_STATUS(
+        CheckTimeOrIntegerOrderColumn(w_ptr->GetOrders(), schemas_ctx));
+    return Status::OK();
+}
 Status BatchModeTransformer::CheckHistoryWindowFrame(
     const node::WindowPlanNode* w_ptr) {
     CHECK_TRUE(w_ptr != nullptr, kPlanError,
                "Invalid Request Window: null window");
     const node::FrameNode* frame = w_ptr->frame_node();
+    CHECK_TRUE(frame->frame_type() != node::kFrameRange, kPlanError,
+               "Invalid Request Window: Non-support FrameType RANGE,"
+               "use ROWS or ROWS_RANGE");
     CHECK_TRUE(
         frame->GetHistoryRangeEnd() <= 0 || frame->GetHistoryRowsEnd() <= 0,
         kPlanError, "Invalid Request Window: end frame can't exceed CURRENT");
@@ -1543,9 +1557,9 @@ Status BatchModeTransformer::CheckHistoryWindowFrame(
 bool GroupAndSortOptimized::KeysFilterOptimized(
     const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* group,
     Key* hash, PhysicalOpNode** new_in) {
-    if (nullptr == group || nullptr == hash) {
-        LOG(WARNING) << "Fail KeysFilterOptimized when window filter key or "
-                        "index key is empty";
+    if (nullptr == group || nullptr == hash || !group->ValidKey()) {
+        LOG(INFO) << "Fail KeysFilterOptimized when window filter key or "
+                     "index key is empty";
         return false;
     }
     if (kPhysicalOpDataProvider == in->GetOpType()) {
@@ -1566,7 +1580,7 @@ bool GroupAndSortOptimized::KeysFilterOptimized(
             Status status = plan_ctx_->CreateOp<PhysicalPartitionProviderNode>(
                 &scan_index_op, scan_op, index_name);
             if (!status.isOK()) {
-                LOG(WARNING) << "Fail to create scan index op: " << status;
+                LOG(INFO) << "Fail to create scan index op: " << status;
                 return false;
             }
             auto new_groups = node_manager_->MakeExprList();
@@ -2719,9 +2733,9 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
     return true;
 }
 
-bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalRequestJoinNode* join_op,
-                                             const Join& join,
-                                             PhysicalOpNode** output) {
+bool ClusterOptimized::SimplifyJoinLeftInput(
+    PhysicalOpNode* join_op, const Join& join,
+    const SchemasContext* joined_schema_ctx, PhysicalOpNode** output) {
     auto left = join_op->GetProducer(0);
     std::vector<const fesql::node::ExprNode*> columns;
     std::vector<std::string> column_names;
@@ -2750,7 +2764,7 @@ bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalRequestJoinNode* join_op,
             size_t column_id;
             auto column_ref =
                 dynamic_cast<const node::ColumnRefNode*>(column_expr);
-            Status status = join_op->joined_schemas_ctx()->ResolveColumnID(
+            Status status = joined_schema_ctx->ResolveColumnID(
                 column_ref->GetRelationName(), column_ref->GetColumnName(),
                 &column_id);
             if (!status.isOK()) {
@@ -2831,6 +2845,7 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     }
                     auto simplify_left = left;
                     if (!SimplifyJoinLeftInput(join_op, join_op->join(),
+                                               join_op->joined_schemas_ctx(),
                                                &simplify_left)) {
                         LOG(WARNING) << "Simplify join left input failed";
                     }
@@ -2861,9 +2876,56 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     *output = concat_op;
                     return true;
                 }
-                default:
+                default: {
                     break;
+                }
             }
+            break;
+        }
+        case kPhysicalOpJoin: {
+            auto join_op = dynamic_cast<PhysicalJoinNode*>(in);
+            switch (join_op->join().join_type()) {
+                case node::kJoinTypeLeft:
+                case node::kJoinTypeLast: {
+                    auto left = join_op->producers()[0];
+                    auto right = join_op->producers()[1];
+                    auto simplify_left = left;
+                    if (!SimplifyJoinLeftInput(join_op, join_op->join(),
+                                               join_op->joined_schemas_ctx(),
+                                               &simplify_left)) {
+                        LOG(WARNING) << "Simplify join left input failed";
+                    }
+                    Status status;
+                    PhysicalJoinNode* join_right_only = nullptr;
+                    status = plan_ctx_->CreateOp<PhysicalJoinNode>(
+                        &join_right_only, simplify_left, right, join_op->join(),
+                        true);
+                    if (!status.isOK()) {
+                        return false;
+                    }
+                    status = ReplaceComponentExpr(
+                        join_op->join(), join_op->joined_schemas_ctx(),
+                        join_right_only->joined_schemas_ctx(),
+                        plan_ctx_->node_manager(), &join_right_only->join_);
+                    if (!status.isOK()) {
+                        return false;
+                    }
+
+                    PhysicalJoinNode* concat_op = nullptr;
+                    status = plan_ctx_->CreateOp<PhysicalJoinNode>(
+                        &concat_op, left, join_right_only,
+                        fesql::node::kJoinTypeConcat);
+                    if (!status.isOK()) {
+                        return false;
+                    }
+                    *output = concat_op;
+                    return true;
+                }
+                default: {
+                    break;
+                }
+            }
+            break;
         }
         default: {
             return false;
@@ -2876,9 +2938,11 @@ RequestModeTransformer::RequestModeTransformer(
     node::NodeManager* node_manager, const std::string& db,
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
     udf::UDFLibrary* library, const std::set<size_t>& common_column_indices,
-    const bool performance_sensitive, const bool cluster_optimized)
+    const bool performance_sensitive, const bool cluster_optimized,
+    const bool enable_batch_request_opt)
     : BatchModeTransformer(node_manager, db, catalog, module, library,
-                           performance_sensitive, cluster_optimized) {
+                           performance_sensitive, cluster_optimized),
+      enable_batch_request_opt_(enable_batch_request_opt) {
     batch_request_info_.common_column_indices = common_column_indices;
 }
 
@@ -3042,7 +3106,8 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
         LOG(WARNING) << "Final optimized result is null";
         return;
     }
-    if (batch_request_info_.common_column_indices.empty()) {
+    if (!enable_batch_request_opt_ ||
+        batch_request_info_.common_column_indices.empty()) {
         *output = optimized;
         return;
     }

@@ -49,6 +49,8 @@ inline const std::string CmdTypeName(const CmdType &type) {
             return "show tables";
         case kCmdUseDatabase:
             return "use database";
+        case kCmdDropDatabase:
+            return "drop database";
         case kCmdCreateDatabase:
             return "create database";
         case kCmdSource:

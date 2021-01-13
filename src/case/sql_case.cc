@@ -671,6 +671,11 @@ bool SQLCase::BuildInsertSQLListFromInput(
         sql_list->push_back(inputs_[input_idx].insert_);
         return true;
     }
+
+    if (!inputs_[input_idx].inserts_.empty()) {
+        *sql_list = inputs_[input_idx].inserts_;
+        return true;
+    }
     type::TableDef table;
     if (!ExtractInputTableDef(table, input_idx)) {
         LOG(WARNING) << "Fail to extract table schema";
@@ -810,6 +815,9 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
     if (schema_data["repeat"]) {
         table->repeat_ = schema_data["repeat"].as<int64_t>();
     }
+    if (schema_data["repeat_tag"]) {
+        table->repeat_tag_ = schema_data["repeat_tag"].as<std::string>();
+    }
     if (schema_data["rows"]) {
         table->rows_.clear();
         if (!CreateRowsFromYamlNode(schema_data["rows"], table->rows_)) {
@@ -836,6 +844,12 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
         boost::trim(table->insert_);
     }
 
+    if (schema_data["inserts"]) {
+        auto data = schema_data["inserts"];
+        if (!CreateStringListFromYamlNode(data, table->inserts_)) {
+            return false;
+        }
+    }
     if (schema_data["common_column_indices"]) {
         auto data = schema_data["common_column_indices"];
         std::vector<std::string> idxs;
@@ -933,7 +947,6 @@ bool SQLCase::CreateTableInfoFromYaml(const std::string& cases_dir,
     } else {
         resouces_path = yaml_path;
     }
-    DLOG(INFO) << "Resource path: " << resouces_path;
     if (!boost::filesystem::is_regular_file(resouces_path)) {
         LOG(WARNING) << resouces_path << ": No such file";
         return false;
@@ -978,7 +991,9 @@ bool SQLCase::CreateSQLCasesFromYaml(
     } else {
         sql_case_path = yaml_path;
     }
-    DLOG(INFO) << "SQL Cases Path: " << sql_case_path;
+    if (IS_DEBUG()) {
+        DLOG(INFO) << "SQL Cases Path: " << sql_case_path;
+    }
     if (!boost::filesystem::is_regular_file(sql_case_path)) {
         LOG(WARNING) << sql_case_path << ": No such file";
         return false;
@@ -1117,6 +1132,12 @@ bool SQLCase::CreateSQLCasesFromYaml(
         } else {
             sql_case.standard_sql_ = false;
         }
+        if (sql_case_node["batch_request_optimized"]) {
+            sql_case.batch_request_optimized_ =
+                sql_case_node["batch_request_optimized"].as<bool>();
+        } else {
+            sql_case.batch_request_optimized_ = true;
+        }
 
         if (sql_case_node["standard_sql_compatible"]) {
             sql_case.standard_sql_compatible_ =
@@ -1168,7 +1189,20 @@ bool SQLCase::CreateSQLCasesFromYaml(
     }
     return true;
 }
+fesql::sqlcase::SQLCase SQLCase::LoadSQLCaseWithID(const std::string& dir_path,
+                                                   const std::string& yaml_path,
+                                                   const std::string& case_id) {
+    std::vector<SQLCase> cases;
+    LOG(INFO) << "BENCHMARK LOAD SQL CASE";
+    SQLCase::CreateSQLCasesFromYaml(dir_path, yaml_path, cases);
 
+    for (const auto& sql_case : cases) {
+        if (sql_case.id() == case_id) {
+            return sql_case;
+        }
+    }
+    return SQLCase();
+}
 std::string FindFesqlDirPath() {
     boost::filesystem::path current_path(boost::filesystem::current_path());
     boost::filesystem::path fesql_path;
@@ -1197,8 +1231,6 @@ std::string FindFesqlDirPath() {
     }
 
     if (find_fesql_dir) {
-        DLOG(INFO) << "Fesql Dir Path is : " << fesql_path.string()
-                   << std::endl;
         return fesql_path.string();
     }
     return std::string();

@@ -213,6 +213,7 @@ enum CmdType {
     kCmdShowCreateSp,
     kCmdShowProcedures,
     kCmdDropSp,
+    kCmdDropDatabase,
     kCmdExit
 };
 enum ExplainType {

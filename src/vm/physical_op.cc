@@ -289,6 +289,50 @@ Status PhysicalConstProjectNode::InitSchema(PhysicalPlanContext* ctx) {
                                    project_source);
 }
 
+int PhysicalSimpleProjectNode::GetSelectSourceIndex() const {
+    int cur_schema_idx = -1;
+    auto input_schemas_ctx = GetProducer(0)->schemas_ctx();
+    for (size_t i = 0; i < project_.size(); ++i) {
+        Status status;
+        size_t schema_idx;
+        size_t col_idx;
+        auto expr = project_.GetExpr(i);
+        switch (expr->GetExprType()) {
+            case node::kExprColumnId: {
+                status = input_schemas_ctx->ResolveColumnIndexByID(
+                    dynamic_cast<const node::ColumnIdNode*>(expr)
+                        ->GetColumnID(),
+                    &schema_idx, &col_idx);
+                break;
+            }
+            case node::kExprColumnRef: {
+                status = input_schemas_ctx->ResolveColumnRefIndex(
+                    dynamic_cast<const node::ColumnRefNode*>(expr), &schema_idx,
+                    &col_idx);
+                break;
+            }
+            default:
+                return -1;
+        }
+        if (!status.isOK()) {
+            return -1;
+        }
+        if (project_.size() !=
+            input_schemas_ctx->GetSchemaSource(schema_idx)->size()) {
+            return -1;
+        }
+        if (i == 0) {
+            cur_schema_idx = schema_idx;
+        } else if (cur_schema_idx != static_cast<int>(schema_idx)) {
+            return -1;
+        }
+        if (col_idx != i) {
+            return -1;
+        }
+    }
+    return cur_schema_idx;
+}
+
 Status PhysicalSimpleProjectNode::InitSchema(PhysicalPlanContext* ctx) {
     auto input_schemas_ctx = GetProducer(0)->schemas_ctx();
     // init project fn
@@ -691,7 +735,15 @@ Status PhysicalWindowAggrerationNode::InitJoinList(
 void PhysicalJoinNode::Print(std::ostream& output,
                              const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(" << join_.ToString();
+    output << "(";
+    if (output_right_only_) {
+        output << "OUTPUT_RIGHT_ONLY, ";
+    }
+    if (join_.join_type() == node::kJoinTypeConcat) {
+        output << "type=kJoinTypeConcat";
+    } else {
+        output << join_.ToString();
+    }
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -707,8 +759,14 @@ Status PhysicalJoinNode::InitSchema(PhysicalPlanContext* ctx) {
                "InitSchema fail: producers size isn't 2 or left/right "
                "producer is null");
     schemas_ctx_.Clear();
-    schemas_ctx_.Merge(0, producers_[0]->schemas_ctx());
-    schemas_ctx_.MergeWithNewID(1, producers_[1]->schemas_ctx(), ctx);
+    if (!output_right_only_) {
+        schemas_ctx_.Merge(0, producers_[0]->schemas_ctx());
+    }
+    if (join_.join_type() == node::kJoinTypeConcat) {
+        schemas_ctx_.Merge(1, producers_[1]->schemas_ctx());
+    } else {
+        schemas_ctx_.MergeWithNewID(1, producers_[1]->schemas_ctx(), ctx);
+    }
 
     // join input schema context
     joined_schemas_ctx_.Clear();
@@ -725,7 +783,8 @@ Status PhysicalJoinNode::WithNewChildren(
     std::vector<const node::ExprNode*> depend_columns;
     join_.ResolvedRelatedColumns(&depend_columns);
 
-    auto new_join_op = new PhysicalJoinNode(children[0], children[1], join_);
+    auto new_join_op = new PhysicalJoinNode(children[0], children[1], join_,
+                                            output_right_only_);
 
     passes::ExprReplacer replacer;
     for (auto col_expr : depend_columns) {

@@ -747,6 +747,10 @@ class PhysicalSimpleProjectNode : public PhysicalUnaryNode {
 
     base::Status InitSchema(PhysicalPlanContext *) override;
 
+    // return schema source index if target projects is just select all columns
+    // from one input schema source with consistent order. return -1 otherwise.
+    int GetSelectSourceIndex() const;
+
  private:
     ColumnProjects project_;
 };
@@ -1140,7 +1144,8 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::JoinType join_type)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
           join_(join_type),
-          joined_schemas_ctx_(this) {
+          joined_schemas_ctx_(this),
+          output_right_only_(false) {
         output_type_ = left->GetOutputType();
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
@@ -1149,7 +1154,8 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprNode *condition)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
           join_(join_type, orders, condition),
-          joined_schemas_ctx_(this) {
+          joined_schemas_ctx_(this),
+          output_right_only_(false) {
         output_type_ = left->GetOutputType();
 
         RegisterFunctionInfo();
@@ -1161,7 +1167,8 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
           join_(join_type, condition, left_keys, right_keys),
-          joined_schemas_ctx_(this) {
+          joined_schemas_ctx_(this),
+          output_right_only_(false) {
         output_type_ = left->GetOutputType();
 
         RegisterFunctionInfo();
@@ -1174,7 +1181,8 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
           join_(join_type, orders, condition, left_keys, right_keys),
-          joined_schemas_ctx_(this) {
+          joined_schemas_ctx_(this),
+          output_right_only_(false) {
         output_type_ = left->GetOutputType();
 
         RegisterFunctionInfo();
@@ -1183,7 +1191,18 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const Join &join)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
           join_(join),
-          joined_schemas_ctx_(this) {
+          joined_schemas_ctx_(this),
+          output_right_only_(false) {
+        output_type_ = left->GetOutputType();
+
+        RegisterFunctionInfo();
+    }
+    PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                     const Join &join, const bool output_right_only)
+        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
+          join_(join),
+          joined_schemas_ctx_(this),
+          output_right_only_(output_right_only) {
         output_type_ = left->GetOutputType();
 
         RegisterFunctionInfo();
@@ -1204,6 +1223,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
     const SchemasContext *joined_schemas_ctx() const {
         return &joined_schemas_ctx_;
     }
+    const bool output_right_only() const { return output_right_only_; }
 
     base::Status WithNewChildren(node::NodeManager *nm,
                                  const std::vector<PhysicalOpNode *> &children,
@@ -1211,6 +1231,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
 
     Join join_;
     SchemasContext joined_schemas_ctx_;
+    const bool output_right_only_;
 };
 
 class PhysicalRequestJoinNode : public PhysicalBinaryNode {
