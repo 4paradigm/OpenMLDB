@@ -121,6 +121,7 @@ public class TestFesql {
         val res = sess.sqlContext().sql(script);
         res.show();
         Assert.assertEquals(0, res.count());
+        sess.close();
 
     }
 
