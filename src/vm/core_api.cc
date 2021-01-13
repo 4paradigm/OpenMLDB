@@ -92,6 +92,61 @@ std::string CoreAPI::ResolveSourceColumnName(fesql::vm::PhysicalOpNode* node,
         ->GetColumnName(col_idx);
 }
 
+ColumnSourceInfo CoreAPI::ResolveSourceColumn(fesql::vm::PhysicalOpNode* node,
+                                              const std::string& relation_name,
+                                              const std::string& column_name) {
+    ColumnSourceInfo result;
+    if (node == nullptr) {
+        return result;
+    }
+    auto& status = result.status_;
+    status = node->schemas_ctx()->ResolveColumnID(
+        relation_name, column_name, &result.column_id_, &result.child_path_idx_,
+        &result.child_column_id_, &result.source_column_id_,
+        &result.source_node_);
+    if (!status.isOK() || result.source_node_ == nullptr) {
+        return result;
+    }
+
+    size_t schema_idx;
+    size_t col_idx;
+    status = node->schemas_ctx()->ResolveColumnIndexByID(result.column_id_,
+                                                         &schema_idx, &col_idx);
+    if (!status.isOK()) {
+        return result;
+    }
+    result.schema_idx_ = static_cast<int>(schema_idx);
+    result.col_idx_ = static_cast<int>(col_idx);
+    result.total_col_idx_ = col_idx;
+    for (size_t i = 0; i < schema_idx; ++i) {
+        result.total_col_idx_ += node->GetOutputSchemaSource(i)->size();
+    }
+
+    size_t source_schema_idx;
+    size_t source_col_idx;
+    auto source_schemas_ctx = result.source_node_->schemas_ctx();
+    status = source_schemas_ctx->ResolveColumnIndexByID(
+        result.source_column_id_, &source_schema_idx, &source_col_idx);
+    if (!status.isOK()) {
+        return result;
+    }
+    result.source_schema_idx_ = static_cast<int>(source_schema_idx);
+    result.source_col_idx_ = static_cast<int>(source_col_idx);
+    result.source_total_col_idx_ = source_col_idx;
+    for (size_t i = 0; i < source_schema_idx; ++i) {
+        result.source_total_col_idx_ +=
+            source_schemas_ctx->GetSchemaSource(i)->size();
+    }
+    result.source_col_name_ =
+        source_schemas_ctx->GetSchemaSource(source_schema_idx)
+            ->GetColumnName(source_col_idx);
+    return result;
+}
+
+size_t CoreAPI::GetUniqueID(const fesql::vm::PhysicalOpNode* node) {
+    return node->node_id();
+}
+
 GroupbyInterface::GroupbyInterface(const fesql::codec::Schema& schema)
     : mem_table_handler_(new vm::MemTableHandler(&schema)) {}
 

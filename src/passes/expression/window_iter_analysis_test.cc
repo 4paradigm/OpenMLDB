@@ -8,67 +8,17 @@
  **/
 #include "passes/expression/window_iter_analysis.h"
 #include <tuple>
-#include "gtest/gtest.h"
-#include "parser/parser.h"
-#include "passes/lambdafy_projects.h"
-#include "passes/resolve_fn_and_attrs.h"
-#include "plan/planner.h"
-#include "udf/default_udf_library.h"
+#include "passes/expression/expr_pass_test.h"
 #include "udf/literal_traits.h"
 
 namespace fesql {
 namespace passes {
 
-class WindowIterAnalysisTest : public ::testing::Test {};
-
-void InitFunctionLet(const std::string& sql,
-                     const vm::SchemasContext* schemas_ctx,
-                     node::NodeManager* nm, node::LambdaNode** result) {
-    parser::FeSQLParser parser;
-    Status status;
-    plan::SimplePlanner planner(nm);
-    node::NodePointVector list1;
-    int ok = parser.parse(sql, list1, nm, status);
-    ASSERT_EQ(0, ok);
-
-    node::PlanNodeList trees;
-    planner.CreatePlanTree(list1, trees, status);
-    ASSERT_EQ(1u, trees.size());
-
-    auto query_plan = dynamic_cast<node::QueryPlanNode*>(trees[0]);
-    ASSERT_TRUE(query_plan != nullptr);
-
-    auto project_plan =
-        dynamic_cast<node::ProjectPlanNode*>(query_plan->GetChildren()[0]);
-    ASSERT_TRUE(project_plan != nullptr);
-
-    project_plan->Print(std::cerr, "");
-    auto project_list_node = dynamic_cast<node::ProjectListNode*>(
-        project_plan->project_list_vec_[0]);
-    ASSERT_TRUE(project_list_node != nullptr);
-    std::vector<const node::ExprNode*> exprs;
-    for (auto pp : project_list_node->GetProjects()) {
-        auto pp_node = dynamic_cast<node::ProjectNode*>(pp);
-        exprs.push_back(pp_node->GetExpression());
-    }
-
-    auto lib = udf::DefaultUDFLibrary::get();
-    LambdafyProjects transformer(nm, lib, schemas_ctx, false);
-
-    std::vector<int> is_agg_vec;
-    node::LambdaNode* lambda;
-    status = transformer.Transform(exprs, &lambda, &is_agg_vec);
-    LOG(WARNING) << status;
-    ASSERT_TRUE(status.isOK());
-    *result = lambda;
-}
+class WindowIterAnalysisTest : public ExprPassTestBase {};
 
 TEST_F(WindowIterAnalysisTest, Test) {
-    Status status;
-    node::NodeManager nm;
-    vm::SchemasContext schemas_ctx;
     auto schema = udf::MakeLiteralSchema<int32_t, float, double>();
-    schemas_ctx.BuildTrivial({&schema});
+    schemas_ctx_.BuildTrivial({&schema});
 
     std::vector<std::tuple<std::string, size_t>> cases = {
         {"0", 0},
@@ -92,24 +42,17 @@ TEST_F(WindowIterAnalysisTest, Test) {
     sql.append("from t1;");
 
     node::LambdaNode* function_let = nullptr;
-    InitFunctionLet(sql, &schemas_ctx, &nm, &function_let);
-    auto row_type = function_let->GetArgType(0);
-    auto window_type = function_let->GetArgType(1);
+    InitFunctionLet(sql, &function_let);
 
-    auto lib = udf::DefaultUDFLibrary::get();
+    passes::WindowIterAnalysis window_dep_analyzer(&ctx_);
 
-    node::LambdaNode* resolved_function_let = nullptr;
-    passes::ResolveFnAndAttrs resolver(&nm, lib, &schemas_ctx);
-    status = resolver.VisitLambda(function_let, {row_type, window_type},
-                                  &resolved_function_let);
+    auto row_arg = function_let->GetArg(0);
+    auto window_arg = function_let->GetArg(1);
+    Status status = window_dep_analyzer.VisitFunctionLet(row_arg, window_arg,
+                                                         function_let->body());
     ASSERT_TRUE(status.isOK()) << status.str();
 
-    node::ExprAnalysisContext ctx(&nm, lib, &schemas_ctx);
-    passes::WindowIterAnalysis window_dep_analyzer(&ctx);
-    status = window_dep_analyzer.VisitFunctionLet(function_let);
-    ASSERT_TRUE(status.isOK()) << status.str();
-
-    auto expr_list = resolved_function_let->body();
+    auto expr_list = function_let->body();
     for (size_t i = 0; i < expr_list->GetChildNum(); ++i) {
         auto expr = expr_list->GetChild(i);
         WindowIterRank rank;

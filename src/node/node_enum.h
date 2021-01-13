@@ -18,8 +18,8 @@ namespace node {
 
 const char SPACE_ST[] = "+-";
 const char SPACE_ED[] = "";
-const char OR_INDENT[] = "|\t";
-const char INDENT[] = " \t";
+const char OR_INDENT[] = "|  ";
+const char INDENT[] = "  ";
 
 enum SQLNodeType {
     // SQL

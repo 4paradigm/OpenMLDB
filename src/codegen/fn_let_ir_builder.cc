@@ -122,15 +122,15 @@ Status RowFnLetIRBuilder::Build(
                    "* should be resolved before codegen stage");
 
         // bind window frame
-        CHECK_STATUS(
-            BindProjectFrame(&expr_ir_builder, frame, compile_func, block, sv));
+        CHECK_STATUS(BindProjectFrame(&expr_ir_builder, frame, compile_func,
+                                      ctx_->GetCurrentBlock(), sv));
 
         CHECK_STATUS(BuildProject(&expr_ir_builder, i, expr, &outputs),
                      "Build expr failed at ", i, ":\n", expr->GetTreeString());
     }
 
-    CHECK_TRUE(EncodeBuf(&outputs, output_schema, variable_ir_builder, block,
-                         output_ptr_name),
+    CHECK_TRUE(EncodeBuf(&outputs, output_schema, variable_ir_builder,
+                         ctx_->GetCurrentBlock(), output_ptr_name),
                kCodegenError, "Gen encode into output buffer failed");
 
     if (!window_agg_builder.empty()) {
@@ -139,13 +139,14 @@ Status RowFnLetIRBuilder::Build(
             if (!iter->second.empty()) {
                 CHECK_TRUE(iter->second.BuildMulti(
                                name, &expr_ir_builder, &variable_ir_builder,
-                               block, output_ptr_name, output_schema),
+                               ctx_->GetCurrentBlock(), output_ptr_name,
+                               output_schema),
                            kCodegenError, "Multi column sum codegen failed");
             }
         }
     }
 
-    ::llvm::IRBuilder<> ir_builder(block);
+    ::llvm::IRBuilder<> ir_builder(ctx_->GetCurrentBlock());
     ::llvm::Value* ret = ir_builder.getInt32(0);
     ir_builder.CreateRet(ret);
 

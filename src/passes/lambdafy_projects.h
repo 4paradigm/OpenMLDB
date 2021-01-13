@@ -24,13 +24,8 @@ using base::Status;
 
 class LambdafyProjects {
  public:
-    LambdafyProjects(node::NodeManager* nm, const udf::UDFLibrary* library,
-                     const vm::SchemasContext* schemas_ctx, bool legacy_agg_opt)
-        : nm_(nm),
-          library_(library),
-          schemas_ctx_(schemas_ctx),
-          analysis_ctx_(nm_, library_, schemas_ctx_),
-          legacy_agg_opt_(legacy_agg_opt) {}
+    LambdafyProjects(node::ExprAnalysisContext* ctx, bool legacy_agg_opt)
+        : ctx_(ctx), legacy_agg_opt_(legacy_agg_opt) {}
     /**
      * Create a virtual lambda representation for all project
      * expressions to codegen, which take signature: {
@@ -72,11 +67,7 @@ class LambdafyProjects {
                         bool* is_window_agg);
 
  private:
-    node::NodeManager* nm_;
-    const udf::UDFLibrary* library_;
-
-    const vm::SchemasContext* schemas_ctx_;
-    node::ExprAnalysisContext analysis_ctx_;
+    node::ExprAnalysisContext* ctx_;
 
     // to make compatible with legacy agg builder
     bool FallBackToLegacyAgg(const node::ExprNode* expr);

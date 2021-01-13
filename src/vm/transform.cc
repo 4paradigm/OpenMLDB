@@ -77,13 +77,13 @@ BatchModeTransformer::BatchModeTransformer(
       performance_sensitive_mode_(false),
       cluster_optimized_mode_(false),
       library_(library),
-      plan_ctx_(node_manager, library, db, catalog) {}
+      plan_ctx_(node_manager, library, db, catalog, false) {}
 
 BatchModeTransformer::BatchModeTransformer(
     node::NodeManager* node_manager, const std::string& db,
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
     const udf::UDFLibrary* library, bool performance_sensitive,
-    bool cluster_optimized_mode)
+    bool cluster_optimized_mode, bool enable_expr_opt)
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
@@ -92,7 +92,7 @@ BatchModeTransformer::BatchModeTransformer(
       performance_sensitive_mode_(performance_sensitive),
       cluster_optimized_mode_(cluster_optimized_mode),
       library_(library),
-      plan_ctx_(node_manager, library, db, catalog) {}
+      plan_ctx_(node_manager, library, db, catalog, enable_expr_opt) {}
 
 BatchModeTransformer::~BatchModeTransformer() {}
 
@@ -2939,9 +2939,10 @@ RequestModeTransformer::RequestModeTransformer(
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
     udf::UDFLibrary* library, const std::set<size_t>& common_column_indices,
     const bool performance_sensitive, const bool cluster_optimized,
-    const bool enable_batch_request_opt)
+    const bool enable_batch_request_opt, bool enable_expr_opt)
     : BatchModeTransformer(node_manager, db, catalog, module, library,
-                           performance_sensitive, cluster_optimized),
+                           performance_sensitive, cluster_optimized,
+                           enable_expr_opt),
       enable_batch_request_opt_(enable_batch_request_opt) {
     batch_request_info_.common_column_indices = common_column_indices;
 }
