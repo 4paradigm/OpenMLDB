@@ -638,8 +638,6 @@ cases:
         - [1, 1590115420]
   - id: 20-1
     desc: cast as int
-    mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -663,8 +661,6 @@ cases:
         - [3, -1, -1, -1, -1, -1, NULL, 977520480, 0, NULL]
   - id: 20-2
     desc: cast as smallint
-    mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -689,8 +685,6 @@ cases:
         - [3, -1, -1, -1, -1, -1, NULL, -14496, 0, NULL]
   - id: 20-3
     desc: cast as bigint
-    mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -715,8 +709,6 @@ cases:
         - [3, -1, -1, -1, -1, -1, NULL, 1590115420000, 0, NULL]
   - id: 20-4
     desc: cast as float
-    mode: offline-unsupport, python-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -740,8 +732,6 @@ cases:
         - [3, -1.0, -1.0, -1.0, -1.0, -1.0, NULL, 1590115420000.0, 0.0, NULL]
   - id: 20-5
     desc: cast as double
-    mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -766,7 +756,7 @@ cases:
   - id: 20-6
     desc: cast as string
     mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    tags: ["@chendihao, @baoxinqi, bool to string，spark会返回true，fesql会返回1"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -792,7 +782,7 @@ cases:
   - id: 20-7
     desc: cast as date
     mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    tags: ["@chendihao, @baoxinqi, string to date, spark 3.0不能转2020-05-22 10:43:40到date，使用函数也不能同时支持2020-05-22 10:43:40和2020-05-22，fesql可以同时支持"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -815,7 +805,7 @@ cases:
   - id: 20-8
     desc: cast as timestamp 
     mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    tags: ["@chendihao, @baoxinqi, short/int/long/float/double to timestamp，spark支持负数转timestamp，fesql遇到负数转为null"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -839,8 +829,6 @@ cases:
         - [3, NULL, NULL, NULL, NULL, NULL, NULL, 1590076800000, 1590115420000, 0, NULL]
   - id: 20-9
     desc: cast as bool
-    mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -864,8 +852,6 @@ cases:
         - [3, true, true, true, true, true, NULL, true, false, false]
   - id: 20-10
     desc: cast string as bool
-    mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int64", "c2 int32", "c6 string"]
         indexs: ["index1:c2:id"]
@@ -902,9 +888,7 @@ cases:
         - [12, NULL]
   - id: 20-10
     desc: cast float as string
-    mode: offline-unsupport
-    tags: ["TODO", "@chenjing c++ and java cast rules",
-           "@chendihao, @baoxinqi, support simple project node with column cast"]
+    tags: ["TODO", "@chenjing c++ and java cast rules"]
     inputs:
       - columns: ["id int64", "c2 int32", "c6 float"]
         indexs: ["index1:c2:id"]
@@ -919,8 +903,6 @@ cases:
         - [1, "1.0"]
   - id: 21-1
     desc: column name prefix with _
-    mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["_c1 int", "_c2 string", "_c5 bigint"]
         indexs: ["index1:_c1:_c5"]
@@ -934,8 +916,6 @@ cases:
         - [1, 1590115420]
   - id: 22-1
     desc: cast int to date raise error
-    mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int64", "c2 int32", "c6 int32"]
         indexs: ["index1:c2:id"]
@@ -947,8 +927,6 @@ cases:
       success: false
   - id: 22-2
     desc: cast bigint to date raise error
-    mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int64", "c2 int32", "c6 int64"]
         indexs: ["index1:c2:id"]
@@ -960,8 +938,6 @@ cases:
       success: false
   - id: 22-3
     desc: cast smallint to date raise error
-    mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int64", "c2 int32", "c6 int16"]
         indexs: ["index1:c2:id"]
@@ -973,8 +949,6 @@ cases:
       success: false
   - id: 22-3
     desc: cast float to date raise error
-    mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int64", "c2 int32", "c6 float"]
         indexs: ["index1:c2:id"]
@@ -986,8 +960,6 @@ cases:
       success: false
   - id: 22-3
     desc: cast double to date raise error
-    mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int64", "c2 int32", "c6 double"]
         indexs: ["index1:c2:id"]
@@ -999,8 +971,6 @@ cases:
       success: false
   - id: 22-4
     desc: cast double to date raise error
-    mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int64", "c2 int32", "c6 bool"]
         indexs: ["index1:c2:id"]
@@ -1013,7 +983,7 @@ cases:
   - id: 22-4
     desc: cast date numbers
     mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    tags: ["@chendihao, @baoxinqi, @chenjing, batch mode无法编译"]
     inputs:
       - columns: ["id int64", "c2 int32", "c6 date"]
         indexs: ["index1:c2:id"]
