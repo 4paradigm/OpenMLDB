@@ -1680,7 +1680,7 @@ bool TabletClient::UpdateRealEndpointMap(
 bool TabletClient::CreateProcedure(const rtidb::api::CreateProcedureRequest& sp_request, std::string& msg) {
     rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateProcedure,
-            &sp_request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &sp_request, &response, sp_request.timeout_ms(), FLAGS_request_max_retry);
     msg = response.msg();
     if (!ok || response.code() != 0) {
         return false;
@@ -1713,7 +1713,7 @@ bool TabletClient::Scan(const ::rtidb::api::ScanRequest& request,
 bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name,
                          const std::string& row, brpc::Controller* cntl,
                          rtidb::api::QueryResponse* response,
-                         bool is_debug) {
+                         bool is_debug, uint64_t timeout_ms) {
     if (cntl == NULL || response == NULL) return false;
     ::rtidb::api::QueryRequest request;
     request.set_sp_name(sp_name);
@@ -1723,6 +1723,7 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
     request.set_is_procedure(true);
     request.set_row_size(row.size());
     request.set_row_slices(1);
+    cntl->set_timeout_ms(timeout_ms);
     auto& io_buf = cntl->request_attachment();
     if (!codec::EncodeRpcRow(reinterpret_cast<const int8_t*>(row.data()),
                              row.size(), &io_buf)) {
@@ -1761,7 +1762,7 @@ bool TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std
         std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
         brpc::Controller* cntl,
         rtidb::api::SQLBatchRequestQueryResponse* response,
-        bool is_debug) {
+        bool is_debug, uint64_t timeout_ms) {
     if (cntl == NULL || response == NULL) {
         return false;
     }
@@ -1770,6 +1771,7 @@ bool TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std
     request.set_is_procedure(true);
     request.set_db(db);
     request.set_is_debug(is_debug);
+    cntl->set_timeout_ms(timeout_ms);
 
     auto& io_buf = cntl->request_attachment();
     if (!EncodeRowBatch(row_batch, &request, &io_buf)) {
@@ -1800,7 +1802,7 @@ bool TabletClient::DropProcedure(const std::string& db_name, const std::string& 
 }
 
 bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name,
-        const std::string& row, int64_t timeout_ms, bool is_debug,
+        const std::string& row, uint64_t timeout_ms, bool is_debug,
         rtidb::RpcCallback<rtidb::api::QueryResponse>* callback) {
     if (callback == nullptr) {
         return false;
@@ -1827,7 +1829,7 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
 bool TabletClient::CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name,
         std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
-        bool is_debug, int64_t timeout_ms,
+        bool is_debug, uint64_t timeout_ms,
         rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback) {
     if (callback == nullptr) {
         return false;
