@@ -92,6 +92,7 @@ object ConstProjectPlan {
             inputCol.cast(ShortType)
           case FesqlDataType.kBool => inputCol.cast(ShortType)
           case FesqlDataType.kTimestamp => inputCol.cast(ShortType).multiply(1000).cast(ShortType)
+          case FesqlDataType.kDate => inputCol.cast(DateType)
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
         }
@@ -104,6 +105,7 @@ object ConstProjectPlan {
           case FesqlDataType.kBool => inputCol.cast(IntegerType)
           // Spark timestamp to long returns seconds, which need to multiply 1000 to be millis seconds
           case FesqlDataType.kTimestamp => inputCol.cast(IntegerType).multiply(1000)
+          case FesqlDataType.kDate => inputCol.cast(DateType)
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
         }
@@ -115,6 +117,7 @@ object ConstProjectPlan {
             inputCol.cast(LongType)
           case FesqlDataType.kBool => inputCol.cast(LongType)
           case FesqlDataType.kTimestamp => inputCol.cast(LongType).multiply(1000)
+          case FesqlDataType.kDate => inputCol.cast(DateType)
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
         }
@@ -126,6 +129,7 @@ object ConstProjectPlan {
             inputCol.cast(FloatType)
           case FesqlDataType.kBool => inputCol.cast(FloatType)
           case FesqlDataType.kTimestamp => inputCol.cast(FloatType).multiply(1000)
+          case FesqlDataType.kDate => inputCol.cast(DateType)
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
         }
@@ -137,6 +141,7 @@ object ConstProjectPlan {
             inputCol.cast(DoubleType)
           case FesqlDataType.kBool => inputCol.cast(DoubleType)
           case FesqlDataType.kTimestamp => inputCol.cast(DoubleType).multiply(1000)
+          case FesqlDataType.kDate => inputCol.cast(DateType)
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
         }
@@ -162,11 +167,9 @@ object ConstProjectPlan {
       case FesqlDataType.kDate =>
         fromType match {
           case FesqlDataType.kNull => inputCol.cast(DateType)
-          case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 =>
-            inputCol.cast(DateType)
-          case FesqlDataType.kFloat | FesqlDataType.kDouble =>
-            inputCol.cast(DateType)
-          case FesqlDataType.kBool => inputCol.cast(DateType)
+          case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 | FesqlDataType.kFloat | FesqlDataType.kDouble=>
+            inputCol.cast(TimestampType).cast(DateType)
+          case FesqlDataType.kBool => inputCol.cast(TimestampType).cast(DateType)
           case FesqlDataType.kTimestamp => inputCol.cast(DateType)
           case FesqlDataType.kVarchar =>
             to_date(inputCol, "yyyy-MM-dd")
@@ -183,10 +186,10 @@ object ConstProjectPlan {
           case FesqlDataType.kFloat | FesqlDataType.kDouble =>
             inputCol.divide(1000).cast(TimestampType)
           case FesqlDataType.kBool =>
-            inputCol.cast(LongType).cast(TimestampType)
+            inputCol.cast(LongType).divide(1000).cast(TimestampType)
+          case FesqlDataType.kDate => inputCol.cast(TimestampType)
           case FesqlDataType.kVarchar =>
             to_timestamp(inputCol)
-          case FesqlDataType.kDate => inputCol.cast(IntegerType).divide(1000).cast(TimestampType)
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
         }
