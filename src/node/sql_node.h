@@ -1266,7 +1266,7 @@ class WindowDefNode : public SQLNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *that) const;
     bool CanMergeWith(const WindowDefNode *that,
-                      const bool enable_window_maxsize_merged=true) const;
+                      const bool enable_window_maxsize_merged = true) const;
 
  private:
     bool instance_not_in_window_;
