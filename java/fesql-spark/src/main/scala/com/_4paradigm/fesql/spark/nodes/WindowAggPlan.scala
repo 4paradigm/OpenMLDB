@@ -88,7 +88,7 @@ object WindowAggPlan {
     val flagColName = "__FESQL_WINDOW_UNION_FLAG__" + System.currentTimeMillis()
     val union = doUnionTables(ctx, node, input.getDf(sess), flagColName)
     val windowAggConfig = createWindowAggConfig(ctx, node)
-    val inputDf = if (FesqlConfig.mode.equals(FesqlConfig.skew)) {
+    val inputDf =  if (FesqlConfig.mode.equals(FesqlConfig.skew)) {
       improveSkew(ctx, node, union, windowAggConfig)
     } else {
       groupAndSort(ctx, node, union)
@@ -180,9 +180,9 @@ object WindowAggPlan {
     val sampleMinSize = ctx.getConf("fesql.window.sampleMinSize", -1)
 
     val frameType = node.window.range.frame().frame_type();
-    val windowFrameType = if (frameType.swigValue() == FrameType.kFrameRows) {
+    val windowFrameType = if (frameType.swigValue() == FrameType.kFrameRows.swigValue()) {
       WindowFrameType.kFrameRows
-    } else if (frameType.swigValue() == FrameType.kFrameRowsMergeRowsRange) {
+    } else if (frameType.swigValue() == FrameType.kFrameRowsMergeRowsRange.swigValue()) {
       WindowFrameType.kFrameRowsMergeRowsRange
     } else {
       WindowFrameType.kFrameRowsRange
@@ -264,12 +264,10 @@ object WindowAggPlan {
     logger.info("skew main table report{}", reportTable)
     val quantile = math.pow(2, FesqlConfig.skewLevel.toDouble)
     val analyzeSQL = SkewUtils.genPercentileSql(table, quantile.intValue(), keysName, ts, FesqlConfig.skewCntName)
-    logger.info(s"skew analyze sql : ${
-      analyzeSQL
-    }")
+    logger.info(s"skew analyze sql : ${analyzeSQL}")
     input.createOrReplaceTempView(table)
     val reportDf = ctx.sparksql(analyzeSQL)
-    //    reportDf.show()
+//    reportDf.show()
     reportDf.createOrReplaceTempView(reportTable)
     val keysMap = new util.HashMap[String, String]()
     var keyScala = keysName.asScala
@@ -277,36 +275,32 @@ object WindowAggPlan {
     val schemas = scala.collection.JavaConverters.seqAsJavaList(input.schema.fieldNames)
 
     val tagSQL = SkewUtils.genPercentileTagSql(table, reportTable, quantile.intValue(), schemas, keysMap, ts, FesqlConfig.skewTag, FesqlConfig.skewPosition, FesqlConfig.skewCntName, FesqlConfig.skewCnt.longValue())
-    logger.info(s"skew tag sql : ${
-      tagSQL
-    }")
+    logger.info(s"skew tag sql : ${tagSQL}")
     var skewDf = ctx.sparksql(tagSQL)
 
     config.skewTagIdx = skewDf.schema.fieldNames.length - 2
     config.skewPositionIdx = skewDf.schema.fieldNames.length - 1
 
     keyScala = keyScala :+ FesqlConfig.skewTag
-    //    skewDf = skewDf.repartition(keyScala.map(skewDf(_)): _*)
-    //    skewDf = expansionData(skewDf, config)
-    //    skewDf.cache()
+//    skewDf = skewDf.repartition(keyScala.map(skewDf(_)): _*)
+//    skewDf = expansionData(skewDf, config)
+//    skewDf.cache()
     val skewTable = "FESQL_TEMP_WINDOW_SKEW_" + System.currentTimeMillis()
     logger.info("skew explode table {}", skewTable)
     skewDf.createOrReplaceTempView(skewTable)
     val explodeSql = SkewUtils.explodeDataSql(skewTable, quantile.intValue(), schemas, FesqlConfig.skewTag, FesqlConfig.skewPosition, FesqlConfig.skewCnt.longValue(), config.rowPreceding)
-    logger.info(s"skew explode sql : ${
-      explodeSql
-    }")
+    logger.info(s"skew explode sql : ${explodeSql}")
     skewDf = ctx.sparksql(explodeSql)
     skewDf.cache()
-    //    skewDf.show(100)
+//    skewDf.show(100)
     val partitions = FesqlConfig.paritions
     val partitionKeys = FesqlConfig.skewTag +: keyScala
 
     val groupedDf = if (partitions > 0) {
-      //      skewDf.repartition(partitions, keyScala.map(skewDf(_)): _*)
+//      skewDf.repartition(partitions, keyScala.map(skewDf(_)): _*)
       skewDf.repartition(partitions, partitionKeys.map(skewDf(_)): _*)
     } else {
-      //      skewDf.repartition(keyScala.map(skewDf(_)): _*)
+//      skewDf.repartition(keyScala.map(skewDf(_)): _*)
       skewDf.repartition(partitionKeys.map(skewDf(_)): _*)
     }
     keyScala = keyScala :+ ts
@@ -383,9 +377,7 @@ object WindowAggPlan {
       FesqlConfig.mode = "skew"
     }
     if (FesqlConfig.print) {
-      logger.info(s"windowAggIter mode: ${
-        FesqlConfig.mode
-      }")
+      logger.info(s"windowAggIter mode: ${FesqlConfig.mode}")
     }
 
     val resIter = if (FesqlConfig.mode.equals(FesqlConfig.skew)) {
@@ -438,13 +430,7 @@ object WindowAggPlan {
           str.append(",")
         }
         str.append(" window size = " + computer.getWindow.size())
-        logger.info(s"threadId = ${
-          Thread.currentThread().getId
-        } cnt = ${
-          cnt
-        } rowInfo = ${
-          str.toString
-        }")
+        logger.info(s"threadId = ${Thread.currentThread().getId} cnt = ${cnt} rowInfo = ${str.toString}")
       }
     }
   }
@@ -459,17 +445,7 @@ object WindowAggPlan {
         str.append(",")
       }
       str.append(" window size = " + computer.getWindow.size())
-      logger.info(s"tag : postion = ${
-        tag
-      } : ${
-        position
-      } threadId = ${
-        Thread.currentThread().getId
-      } cnt = ${
-        cnt
-      } rowInfo = ${
-        str.toString
-      }")
+      logger.info(s"tag : postion = ${tag} : ${position} threadId = ${Thread.currentThread().getId} cnt = ${cnt} rowInfo = ${str.toString}")
     }
   }
 
@@ -643,7 +619,6 @@ object WindowAggPlan {
     }
 
     def getWindow: WindowInterface = window
-
     def getFn: Long = fn
   }
 

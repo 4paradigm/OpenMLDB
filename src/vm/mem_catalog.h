@@ -284,7 +284,7 @@ class WindowRange {
           end_row_(0),
           max_size_(0) {}
     WindowRange(Window::WindowFrameType frame_type, int64_t start_offset,
-                int end_offset, uint64_t rows_preceding, uint64_t max_size)
+                int64_t end_offset, uint64_t rows_preceding, uint64_t max_size)
         : frame_type_(frame_type),
           start_offset_(start_offset),
           end_offset_(end_offset),

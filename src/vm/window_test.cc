@@ -644,6 +644,37 @@ TEST_F(WindowIteratorTest, PureHistoryWindowWithMaxSizeTest) {
     window.BufferData(1590739002000, row);
 }
 
+TEST_F(WindowIteratorTest, PureHistoryWindowRowsMergeRowsRangeWithMaxSizeTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    // Window
+    // RowsRange between 3s preceding and 1s preceding MAXSIZE 2
+    vm::HistoryWindow window(
+        WindowRange(vm::Window::kFrameRowsMergeRowsRange, -3000, -1000, 0, 2));
+    ASSERT_TRUE(window.BufferData(1590738990000, row));
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738991000, row);
+    ASSERT_EQ(1, window.GetCount());
+    window.BufferData(1590738992000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738993000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738994000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738995000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590739001000, row);
+    window.BufferData(1590115480000, row);
+    window.BufferData(1590115490000, row);
+    window.BufferData(1590739001000, row);
+    window.BufferData(1590739002000, row);
+}
+
 }  // namespace vm
 }  // namespace fesql
 int main(int argc, char** argv) {
