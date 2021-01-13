@@ -751,6 +751,10 @@ class PhysicalSimpleProjectNode : public PhysicalUnaryNode {
 
     base::Status InitSchema(PhysicalPlanContext *) override;
 
+    // return schema source index if target projects is just select all columns
+    // from one input schema source with consistent order. return -1 otherwise.
+    int GetSelectSourceIndex() const;
+
  private:
     ColumnProjects project_;
 };
