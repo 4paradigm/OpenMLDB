@@ -72,6 +72,7 @@ MemTable::~MemTable() {
         }
     }
     segments_.clear();
+    PDLOG(INFO, "drop memtable. tid %u pid %u", id_, pid_);
 }
 
 bool MemTable::Init() {
