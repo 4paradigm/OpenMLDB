@@ -89,6 +89,9 @@ class WindowComputer(sqlConfig: FeSQLConfig,
     }
     nativeInputRow.delete()
 
+    // release swig jni objects
+    nativeInputRow.delete()
+
     if (hooks.nonEmpty) {
       hooks.foreach(_.postBufferOnly(this, row))
     }
@@ -109,7 +112,12 @@ class WindowComputer(sqlConfig: FeSQLConfig,
       max_size = config.rowPreceding.intValue() + 1
     }
     window = new WindowInterface(
-      config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, max_size)
+      config.instanceNotInWindow, config.windowFrameTypeName,
+      config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
+  }
+
+  def extractKey(curRow: Row): Long = {
+    this.orderKeyExtractor.apply(curRow)
   }
 
   def delete(): Unit = {

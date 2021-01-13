@@ -9,7 +9,6 @@ import com._4paradigm.fesql.spark.nodes.window.{RowDebugger, WindowComputer, Win
 import com._4paradigm.fesql.spark.utils.{AutoDestructibleIterator, FesqlUtil, SparkColumnUtil}
 import com._4paradigm.fesql.utils.SkewUtils
 import com._4paradigm.fesql.vm.Window.WindowFrameType
-import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, WindowInterface}
 import com._4paradigm.fesql.vm.PhysicalWindowAggrerationNode
 import org.apache.hadoop.fs.FileSystem
 import org.apache.spark.rdd.RDD
@@ -340,17 +339,17 @@ object WindowAggPlan {
     val computer = new WindowComputer(sqlConfig, config, jit)
 
     // add statistic hooks
-    if (partitionIndex == 0 && config.sampleMinSize > 0) {
+    if (config.sampleMinSize > 0) {
       val fs = FileSystem.get(hadoopConf.value)
       logger.info("Enable window sample support: min_size=" + config.sampleMinSize +
         ", output_path=" + config.sampleOutputPath)
-      computer.addHook(new WindowSampleSupport(fs, config, jit))
+      computer.addHook(new WindowSampleSupport(fs, partitionIndex, config, jit))
     }
     if (sqlConfig.print) {
       val isSkew = sqlConfig.skewMode == FeSQLConfig.SKEW
       computer.addHook(new RowDebugger(sqlConfig, config, isSkew))
     }
-
+    System.currentTimeMillis()
     computer
   }
 

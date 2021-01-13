@@ -13,7 +13,7 @@ class TestWindowComputerWithSampleSupport extends SparkTestSuite {
     val config = new FeSQLConfig
     val samplePath = "src/test/resources/fesql_windows/"
     executeSpark(samplePath)
-    val sampleExecutor = WindowSampleSupport.recover(config, samplePath, "w")
+    val sampleExecutor = WindowSampleSupport.recover(config, samplePath + "/w/0")
 
     // run single compute
     val nativeOutput = sampleExecutor.run()

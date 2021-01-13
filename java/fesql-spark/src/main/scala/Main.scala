@@ -1,7 +1,7 @@
 import java.io.File
 
-import com._4paradigm.fesql.spark.FeSQLConfig
 import com._4paradigm.fesql.spark.api.FesqlSession
+import com._4paradigm.fesql.spark.utils.ArgumentParser
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
 
@@ -23,7 +23,19 @@ object Main {
   private var jsonPath: String = _
 
   def main(args: Array[String]): Unit = {
-    ArgParser(args).parseArgs()
+    val parser = new ArgumentParser(args)
+    parser.parseArgs {
+      case "-i" | "--input" => inputSpecs += parser.parsePair()
+      case "-s" | "--sql" => sql = parser.parseValue()
+      case "-o" | "--output" => outputPath = parser.parseValue()
+      case "-c" | "--conf" => configs += parser.parsePair()
+      case "--master" => sparkMaster = parser.parseValue()
+      case "--name" => appName = parser.parseValue()
+      case "--spark-sql" => useSparkSQL = true
+      case "--json" => jsonPath = parser.parseValue()
+      case other =>
+        logger.warn(s"Unknown argument: $other")
+    }
     run()
   }
 
@@ -77,54 +89,5 @@ object Main {
     }
     endTime = System.currentTimeMillis()
     logger.info(f"Execution time cost: ${(endTime - startTime) / 1000.0}%.2f seconds")
-  }
-
-
-  case class ArgParser(args: Array[String]) {
-    private var idx = 0
-    private var curKey: String = _
-
-    def parseKey(key: String): Unit = {
-      key match {
-        case "-i" | "--input" => inputSpecs += parsePair()
-        case "-s" | "--sql" => sql = parseValue()
-        case "-o" | "--output" => outputPath = parseValue()
-        case "-c" | "--conf" => configs += parsePair()
-        case "--master" => sparkMaster = parseValue()
-        case "--name" => appName = parseValue()
-        case "--spark-sql" => useSparkSQL = true
-        case "--json" => jsonPath = parseValue()
-        case _ =>
-          logger.warn(s"Unknown argument: $key")
-      }
-    }
-
-    def parseArgs(): Unit = {
-      while (idx < args.length) {
-        curKey = args(idx)
-        parseKey(curKey)
-        idx += 1
-      }
-    }
-
-    def parsePair(): (String, String) = {
-      val value = parseValue()
-      val splitPos = value.indexOf("=")
-      if (splitPos < 0) {
-        throw new IllegalArgumentException(
-          s"Illegal value for $curKey: $value")
-      }
-      val (k, v) = (value.substring(0, splitPos), value.substring(splitPos + 1))
-      k -> v
-    }
-
-    def parseValue(): String = {
-      idx += 1
-      if (idx >= args.length) {
-        throw new IllegalArgumentException(
-          s"Argument index out of bound for $curKey")
-      }
-      args(idx)
-    }
   }
 }

@@ -14,13 +14,14 @@ import org.slf4j.LoggerFactory
 
 
 class WindowSampleSupport(fs: FileSystem,
+                          partitionIndex: Int,
                           config: WindowAggConfig,
                           jit: FeSQLJITWrapper) extends WindowHook {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   private val minWindowSize = config.sampleMinSize
-  private val outputPath = config.sampleOutputPath + "/" + config.windowName
+  private val outputPath = config.sampleOutputPath + "/" + config.windowName + "/" + partitionIndex
 
   private var sampled = false
 
@@ -96,6 +97,8 @@ object WindowSampleSupport {
 
   class SampleExecutor(sqlConfig: FeSQLConfig, val config: WindowAggConfig) {
 
+    var javaData: Array[Array[Any]] = _
+
     private val jit = {
       val buffer = config.moduleNoneBroadcast.getBuffer
       JITManager.initJITModule(config.moduleTag, buffer)
@@ -108,7 +111,12 @@ object WindowSampleSupport {
     private var curNativeRow: NativeRow = _
 
     def setWindow(data: Array[Array[Any]]): Unit = {
+      javaData = data
       computer.resetWindow()
+      if (curNativeRow != null) {
+        curNativeRow.delete()
+        curNativeRow = null
+      }
       for (i <- data.indices.reverse) {
         val row = Row.fromSeq(data(i))
         computer.bufferRowOnly(row)
@@ -124,13 +132,13 @@ object WindowSampleSupport {
     }
   }
 
-  def recover(sqlConfig: FeSQLConfig, path: String, windowName: String): SampleExecutor = {
+  def recover(sqlConfig: FeSQLConfig, path: String): SampleExecutor = {
     val fs = FileSystem.get(new Configuration())
-    val configFile = fs.open(new Path(path + "/" + windowName + "/config.obj"))
+    val configFile = fs.open(new Path(path + "/config.obj"))
     val configObjStream = new ObjectInputStream(configFile)
     val config = configObjStream.readObject().asInstanceOf[WindowAggConfig]
 
-    val windows = fs.listStatus(new Path(path + "/" + windowName + "/")).flatMap(status => {
+    val windows = fs.listStatus(new Path(path + "/")).flatMap(status => {
       val path = status.getPath
       if (path.getName.startsWith("window")) {
         val dataFile = fs.open(path)

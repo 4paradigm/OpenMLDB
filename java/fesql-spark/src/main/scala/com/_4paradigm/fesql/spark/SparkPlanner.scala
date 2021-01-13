@@ -149,10 +149,16 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
   }
 
   private def withSQLEngine[T](sql: String, db: Database)(body: SQLEngine => T): T = {
-    val engine = new SQLEngine(sql, db)
-    val res = body(engine)
-    engine.close()
-    res
+    var engine: SQLEngine = null
+    try {
+      engine = new SQLEngine(sql, db)
+      val res = body(engine)
+      res
+    } finally {
+      if (engine != null) {
+        engine.close()
+      }
+    }
   }
 }
 
