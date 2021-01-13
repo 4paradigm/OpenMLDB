@@ -653,7 +653,7 @@ TEST_F(WindowIteratorTest, PureHistoryWindowRowsMergeRowsRangeWithMaxSizeTest) {
     // Window
     // RowsRange between 3s preceding and 1s preceding MAXSIZE 2
     vm::HistoryWindow window(
-        WindowRange(vm::Window::kFrameRowsMergeRowsRange, -3000, -1000, 0, 2));
+        WindowRange(vm::Window::kFrameRowsRange, -3000, -1000, 0, 2));
     ASSERT_TRUE(window.BufferData(1590738990000, row));
     ASSERT_EQ(0, window.GetCount());
     window.BufferData(1590738991000, row);
@@ -669,10 +669,9 @@ TEST_F(WindowIteratorTest, PureHistoryWindowRowsMergeRowsRangeWithMaxSizeTest) {
     window.BufferData(1590738999000, row);
     ASSERT_EQ(0, window.GetCount());
     window.BufferData(1590739001000, row);
-    window.BufferData(1590115480000, row);
-    window.BufferData(1590115490000, row);
-    window.BufferData(1590739001000, row);
+    ASSERT_EQ(1, window.GetCount());
     window.BufferData(1590739002000, row);
+    ASSERT_EQ(2, window.GetCount());
 }
 
 }  // namespace vm
