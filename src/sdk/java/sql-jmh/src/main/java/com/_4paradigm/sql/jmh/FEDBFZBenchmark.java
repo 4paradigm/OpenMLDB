@@ -187,7 +187,7 @@ public class FEDBFZBenchmark {
                         val.put(fieldName, 1.4d);
                     } else if (type.equals("bigint") || type.equals("timestamp") || type.equals("int") || type.equals("long")) {
                         if (type.equals("timestamp")) {
-                            val.put(fieldName, new DateTime(ts - tsCnt * 1000));
+                            val.put(fieldName, new DateTime(ts - (tsCnt + BenchmarkConfig.TIME_DIFF) * 1000));
                         } else if (type.equals("long") || type.equals("bigint")){
                             val.put(fieldName, (long)pos);
                         } else {
@@ -224,7 +224,7 @@ public class FEDBFZBenchmark {
                 }
                 try {
                     if (tsIndex.isEmpty()) {
-                        tableSyncClient.put(rtidbTableName, ts - tsCnt, val);
+                        tableSyncClient.put(rtidbTableName, ts - (tsCnt + BenchmarkConfig.TIME_DIFF) * 1000, val);
                     } else {
                         tableSyncClient.put(rtidbTableName, val);
                     }
