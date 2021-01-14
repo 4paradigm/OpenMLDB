@@ -332,8 +332,12 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         boolean ok = router.ExecuteInsert(db, currentSql, currentRows, status);
         if (!ok) {
             logger.error("getInsertRow fail: {}", status.getMsg());
+            status.delete();
+            status = null;
             return false;
         }
+        status.delete();
+        status = null;
         if (closeOnComplete) {
             closed = true;
         }
@@ -693,9 +697,13 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         SQLInsertRows rows = router.GetInsertRows(db, s, status);
         if (status.getCode() != 0) {
             String msg = status.getMsg();
+            status.delete();
+            status = null;
             logger.error("getInsertRows fail: {}", msg);
             throw new SQLException("get insertrows fail " + msg + " in construction preparedstatement");
         }
+        status.delete();
+        status = null;
         SQLInsertRow row = rows.NewRow();
         if (row.GetHoleIdx().size() > 0) {
             throw new SQLException("this sql need data");
@@ -752,6 +760,8 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             }
             i++;
         }
+        status.delete();
+        status = null;
         return result;
     }
 

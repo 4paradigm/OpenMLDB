@@ -29,8 +29,14 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         com._4paradigm.sql.ResultSet resultSet = router.ExecuteSQLBatchRequest(
                 db, currentSql, currentRowBatch, status);
         if (status.getCode() != 0 || resultSet == null) {
-            throw new SQLException("execute sql fail: " + status.getMsg());
+            String msg = status.getMsg();
+            status.delete();
+            if (resultSet != null) {
+                resultSet.delete();
+            }
+            throw new SQLException("execute sql fail: " + msg);
         }
+        status.delete();
         SQLResultSet rs = new SQLResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
@@ -59,7 +65,9 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         Status status = new Status();
         this.currentRow = router.GetRequestRow(db, currentSql, status);
         if (status.getCode() != 0 || this.currentRow == null) {
-            throw new SQLException("getRequestRow failed!, msg: " + status.getMsg());
+            String msg = status.getMsg();
+            status.delete();
+            throw new SQLException("getRequestRow failed!, msg: " + msg);
         }
         status.delete();
     }

@@ -262,6 +262,10 @@ public class FEQLFZPerf {
                     }
                     ps.close();
                 }
+                String strLimit = String.valueOf(curRandom.nextInt(10000) + 1);
+                String limitSql = "select * from " + mainTable + " limit " + strLimit  + ";";
+                ResultSet resultSet = executor.executeSQL(db, limitSql);
+                resultSet.close();
             } catch (Exception e) {
                 e.printStackTrace();
             }

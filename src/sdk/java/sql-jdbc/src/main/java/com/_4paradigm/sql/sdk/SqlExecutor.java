@@ -19,7 +19,7 @@ public interface SqlExecutor {
 
     boolean executeInsert(String db, String sql, SQLInsertRows rows);
     TableReader getTableReader();
-    ResultSet executeSQL(String db, String sql);
+    java.sql.ResultSet executeSQL(String db, String sql);
 
     SQLInsertRow getInsertRow(String db, String sql);
 
