@@ -19,6 +19,9 @@ public class TableInfo {
     private Map<Integer, String> colRelation;
 
     public TableInfo(String ddl, Relation relation) {
+        if (!ddl.trim().endsWith(")")) {
+            ddl += ",";
+        }
         this.ddl = ddl + "partitionnum=" + BenchmarkConfig.PARTITION_NUM + ";";
         String[] arr = ddl.split("index\\(")[0].split("\\(");
         name = arr[0].split(" ")[2].replaceAll("`", "");
