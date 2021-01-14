@@ -25,7 +25,9 @@ public class WindowTest extends FesqlTest {
                 .dataProviderGenerator(new String[]{
                         "/integration/v1/test_window_row_range.yaml",
                         "/integration/v1/test_window_row.yaml",
-                        "/integration/v1/test_window_union.yaml"
+                        "/integration/v1/test_window_union.yaml",
+                        "/integration/v1/test_index_optimized.yaml",
+
                 });
         return dp.getCases().toArray();
     }
