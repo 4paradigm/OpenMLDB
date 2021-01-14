@@ -3,11 +3,13 @@ package com._4paradigm.fesql.spark.nodes
 import java.util
 
 import com._4paradigm.fesql.common.{FesqlException, JITManager, SerializableByteBuffer}
+import com._4paradigm.fesql.node.FrameType
 import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.element.FesqlConfig
 import com._4paradigm.fesql.spark.nodes.window.WindowComputerWithSampleSupport
 import com._4paradigm.fesql.spark.utils.{AutoDestructibleIterator, FesqlUtil, SparkColumnUtil, SparkRowUtil}
 import com._4paradigm.fesql.utils.SkewUtils
+import com._4paradigm.fesql.vm.Window.WindowFrameType
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalWindowAggrerationNode, WindowInterface}
 import org.apache.hadoop.fs.FileSystem
 import org.apache.spark.broadcast.Broadcast
@@ -177,10 +179,22 @@ object WindowAggPlan {
     val sampleOutputPath = ctx.getConf("fesql.window.sampleOutputPath", "")
     val sampleMinSize = ctx.getConf("fesql.window.sampleMinSize", -1)
 
+    val frameType = node.window.range.frame().frame_type();
+    val windowFrameType = if (frameType.swigValue() == FrameType.kFrameRows.swigValue()) {
+      WindowFrameType.kFrameRows
+    } else if (frameType.swigValue() == FrameType.kFrameRowsMergeRowsRange.swigValue()) {
+      WindowFrameType.kFrameRowsMergeRowsRange
+    } else {
+      WindowFrameType.kFrameRowsRange
+    }
+
     WindowAggConfig(
       windowName = windowName,
-      startOffset = node.window.range.frame.GetHistoryRangeStart(),
+      windowFrameTypeName = windowFrameType.toString,
+      startOffset = node.window().range().frame().GetHistoryRangeStart(),
+      endOffset = node.window.range.frame.GetHistoryRangeEnd(),
       rowPreceding = -1 * node.window.range.frame.GetHistoryRowsStart(),
+      maxSize = node.window.range.frame.frame_maxsize(),
       orderIdx = orderIdx,
       groupIdxs = groupIdxs.toArray,
       functionName = node.project.fn_info().fn_name(),
@@ -489,8 +503,11 @@ object WindowAggPlan {
    * Spark closure class for window compute information
    */
   case class WindowAggConfig(windowName: String,
+                             windowFrameTypeName: String,
                              startOffset: Long,
+                             endOffset: Long,
                              rowPreceding: Long,
+                             maxSize: Long,
                              orderIdx: Int,
                              groupIdxs: Array[Int],
                              functionName: String,
@@ -538,7 +555,8 @@ object WindowAggPlan {
 
     // window state
     protected var window = new WindowInterface(
-      config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, if (config.startOffset == 0 && config.rowPreceding.intValue() > 0) config.rowPreceding.intValue() + 1 else 0)
+      config.instanceNotInWindow, config.windowFrameTypeName,
+      config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
 
     def compute(row: Row): Row = {
       // call encode
@@ -561,10 +579,17 @@ object WindowAggPlan {
       Row.fromSeq(outputArr) // can reuse backed array
     }
 
+    def extractKey(row: Row): Long = {
+      val key = orderKeyExtractor.apply(row)
+      key
+    }
+
     def bufferRowOnly(row: Row): Unit = {
       val nativeInputRow = encoder.encode(row)
       val key = orderKeyExtractor.apply(row)
-      window.BufferData(key, nativeInputRow)
+      if (!window.BufferData(key, nativeInputRow)) {
+        logger.error("BufferData Fail: pls check order key")
+      }
     }
 
     def checkPartition(prev: Row, cur: Row): Unit = {
@@ -577,12 +602,9 @@ object WindowAggPlan {
     def resetWindow(): Unit = {
       // TODO: wrap iter to hook iter end; now last window is leak
       window.delete()
-      var max_size = 0
-      if (config.startOffset == 0 && config.rowPreceding > 0) {
-        max_size = config.rowPreceding.intValue() + 1
-      }
       window = new WindowInterface(
-        config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, max_size)
+        config.instanceNotInWindow, config.windowFrameTypeName,
+        config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
     }
 
     def delete(): Unit = {

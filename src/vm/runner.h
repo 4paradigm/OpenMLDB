@@ -118,35 +118,39 @@ class ConditionGenerator : public FnGenerator {
 };
 class RangeGenerator {
  public:
-    explicit RangeGenerator(const Range& range) : ts_gen_(range.fn_info()) {
+    explicit RangeGenerator(const Range& range)
+        : ts_gen_(range.fn_info()), window_range_() {
         if (range.frame_ != nullptr) {
-            frame_type_ = range.frame_->frame_type();
-            start_offset_ = range.frame_->GetHistoryRangeStart();
-            end_offset_ = range.frame_->GetHistoryRangeEnd();
-            start_row_ = (-1 * range.frame_->GetHistoryRowsStart());
-            end_row_ = (-1 * range.frame_->GetHistoryRowsEnd());
+            switch (range.frame()->frame_type()) {
+                case node::kFrameRows:
+                    window_range_.frame_type_ =
+                        Window::WindowFrameType::kFrameRows;
+                    break;
+                case node::kFrameRowsRange:
+                    window_range_.frame_type_ =
+                        Window::WindowFrameType::kFrameRowsRange;
+                    break;
+                case node::kFrameRowsMergeRowsRange:
+                    window_range_.frame_type_ =
+                        Window::WindowFrameType::kFrameRowsMergeRowsRange;
+                default: {
+                    window_range_.frame_type_ =
+                        Window::WindowFrameType::kFrameRowsMergeRowsRange;
+                    break;
+                }
+            }
+            window_range_.start_offset_ = range.frame_->GetHistoryRangeStart();
+            window_range_.end_offset_ = range.frame_->GetHistoryRangeEnd();
+            window_range_.start_row_ =
+                (-1 * range.frame_->GetHistoryRowsStart());
+            window_range_.end_row_ = (-1 * range.frame_->GetHistoryRowsEnd());
+            window_range_.max_size_ = range.frame_->frame_maxsize();
         }
     }
     virtual ~RangeGenerator() {}
-    inline const bool OutOfRange(bool out_of_rows,
-                                 bool out_of_rows_range) const {
-        switch (frame_type_) {
-            case node::kFrameRows:
-                return out_of_rows;
-            case node::kFrameRowsRange:
-                return out_of_rows && out_of_rows_range;
-            default:
-                return true;
-        }
-        return true;
-    }
     const bool Valid() const { return ts_gen_.Valid(); }
     OrderGenerator ts_gen_;
-    fesql::node::FrameType frame_type_;
-    int64_t start_offset_;
-    int64_t end_offset_;
-    uint64_t start_row_;
-    uint64_t end_row_;
+    WindowRange window_range_;
 };
 class FilterKeyGenerator {
  public:

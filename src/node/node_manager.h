@@ -305,6 +305,7 @@ class NodeManager {
     UDFDefNode *MakeUDFDefNode(FnNodeFnDef *def);
 
     UDFByCodeGenDefNode *MakeUDFByCodeGenDefNode(
+        const std::string &name,
         const std::vector<const node::TypeNode *> &arg_types,
         const std::vector<int> &arg_nullable, const node::TypeNode *ret_type,
         bool ret_nullable);

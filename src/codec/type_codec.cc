@@ -264,22 +264,13 @@ int32_t GetCol(int8_t* input, int32_t row_idx, uint32_t col_idx, int32_t offset,
     return 0;
 }
 
-int32_t GetInnerRangeList(int8_t* input, int64_t start_offset,
+int32_t GetInnerRangeList(int8_t* input, int64_t start_key,
+                          int64_t start_offset,
                           int64_t end_offset, int8_t* data) {
     if (nullptr == input || nullptr == data) {
         return -2;
     }
     ListV<Row>* w = reinterpret_cast<ListV<Row>*>(input);
-
-    int64_t start_key = 0;
-
-    if (nullptr != w) {
-        auto iter = w->GetIterator();
-        if (iter) {
-            iter->SeekToFirst();
-            start_key = iter->Valid() ? iter->GetKey() : 0;
-        }
-    }
     uint64_t start =
         start_key + start_offset < 0 ? 0 : start_key + start_offset;
     uint64_t end = start_key + end_offset < 0 ? 0 : start_key + end_offset;

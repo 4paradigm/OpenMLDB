@@ -33,6 +33,12 @@ Status ResolveFnAndAttrs::CheckSignature(
     return Status::OK();
 }
 
+Status ResolveFnAndAttrs::Apply(node::ExprAnalysisContext* ctx,
+                                node::ExprNode* expr, node::ExprNode** output) {
+    this->ctx_ = ctx;
+    return VisitExpr(expr, output);
+}
+
 Status ResolveFnAndAttrs::VisitFnDef(
     node::FnDefNode* fn, const std::vector<const node::TypeNode*>& arg_types,
     node::FnDefNode** output) {
@@ -165,30 +171,16 @@ Status ResolveFnAndAttrs::VisitUDAFDef(
             "Resolve output function of ", udaf->GetName(), " failed");
     }
 
-    *output =
-        nm_->MakeUDAFDefNode(udaf->GetName(), arg_types, resolved_init,
-                             resolved_update, resolved_merge, resolved_output);
+    *output = ctx_->node_manager()->MakeUDAFDefNode(
+        udaf->GetName(), arg_types, resolved_init, resolved_update,
+        resolved_merge, resolved_output);
     CHECK_STATUS((*output)->Validate(arg_types), "Illegal resolved udaf: \n",
                  (*output)->GetTreeString());
     return Status::OK();
 }
 
-Status ResolveFnAndAttrs::VisitExpr(node::ExprNode* expr,
-                                    node::ExprNode** output) {
-    auto iter = cache_.find(expr);
-    if (iter != cache_.end()) {
-        *output = iter->second;
-        return Status::OK();
-    }
-    for (size_t i = 0; i < expr->GetChildNum(); ++i) {
-        node::ExprNode* old_child = expr->GetChild(i);
-        node::ExprNode* new_child = nullptr;
-        CHECK_STATUS(VisitExpr(old_child, &new_child), "Visit ", i,
-                     "th child failed of\n", old_child->GetTreeString());
-        if (new_child != nullptr && new_child != expr->GetChild(i)) {
-            expr->SetChild(i, new_child);
-        }
-    }
+Status ResolveFnAndAttrs::VisitOneStep(node::ExprNode* expr,
+                                       node::ExprNode** output) {
     *output = expr;  // default
     switch (expr->GetExprType()) {
         case node::kExprCall: {
@@ -219,8 +211,9 @@ Status ResolveFnAndAttrs::VisitExpr(node::ExprNode* expr,
                     arg_list.push_back(call->GetChild(i));
                 }
 
-                auto status = library_->Transform(external_fn->function_name(),
-                                                  arg_list, nm_, &result);
+                auto status = ctx_->library()->Transform(
+                    external_fn->function_name(), arg_list,
+                    ctx_->node_manager(), &result);
                 if (status.isOK() && result != nullptr) {
                     node::ExprNode* resolved_result = nullptr;
                     CHECK_STATUS(VisitExpr(result, &resolved_result));
@@ -237,12 +230,31 @@ Status ResolveFnAndAttrs::VisitExpr(node::ExprNode* expr,
         default:
             break;
     }
-
     // Infer attr for non-group expr
     if ((*output)->GetExprType() != node::kExprList) {
-        CHECK_STATUS((*output)->InferAttr(&analysis_context_), "Fail to infer ",
+        CHECK_STATUS((*output)->InferAttr(ctx_), "Fail to infer ",
                      (*output)->GetExprString());
     }
+    return Status::OK();
+}
+
+Status ResolveFnAndAttrs::VisitExpr(node::ExprNode* expr,
+                                    node::ExprNode** output) {
+    auto iter = cache_.find(expr);
+    if (iter != cache_.end()) {
+        *output = iter->second;
+        return Status::OK();
+    }
+    for (size_t i = 0; i < expr->GetChildNum(); ++i) {
+        node::ExprNode* old_child = expr->GetChild(i);
+        node::ExprNode* new_child = nullptr;
+        CHECK_STATUS(VisitExpr(old_child, &new_child), "Visit ", i,
+                     "th child failed of\n", old_child->GetTreeString());
+        if (new_child != nullptr && new_child != expr->GetChild(i)) {
+            expr->SetChild(i, new_child);
+        }
+    }
+    CHECK_STATUS(VisitOneStep(expr, output));
     cache_.insert(iter, std::make_pair(expr, *output));
     return Status::OK();
 }

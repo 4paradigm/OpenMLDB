@@ -85,7 +85,7 @@ Status LLVMUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
 
     auto udf_def = dynamic_cast<node::UDFByCodeGenDefNode*>(
         ctx->node_manager()->MakeUDFByCodeGenDefNode(
-            arg_types, arg_nullable, return_type, return_nullable));
+            name(), arg_types, arg_nullable, return_type, return_nullable));
     udf_def->SetGenImpl(gen_impl_func_);
     *result = udf_def;
     return Status::OK();

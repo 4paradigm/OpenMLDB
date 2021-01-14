@@ -368,12 +368,12 @@ class RowProjectWrapper : public RowHandler {
         : RowHandler(), row_handler_(row_handler), value_(), fun_(fun) {}
     virtual ~RowProjectWrapper() {}
     const Row& GetValue() override {
-        auto row = row_handler_->GetValue();
+        auto& row = row_handler_->GetValue();
         if (row.empty()) {
             value_ = row;
             return value_;
         }
-        value_ = fun_->operator()(row_handler_->GetValue());
+        value_ = fun_->operator()(row);
         return value_;
     }
     const Schema* GetSchema() override { return row_handler_->GetSchema(); }

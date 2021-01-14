@@ -396,14 +396,21 @@ bool ColumnRefNode::Equals(const ExprNode *node) const {
 
 void GetFieldExpr::Print(std::ostream &output,
                          const std::string &org_tab) const {
+    auto input = GetChild(0);
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, GetChild(0)->GetExprString(), "input", true);
+    PrintSQLNode(output, tab, input, "input", true);
     output << "\n";
-    PrintValue(output, tab, std::to_string(column_id_), "column_id", true);
-    output << "\n";
-    PrintValue(output, tab, column_name_, "column_name", true);
+    if (input->GetOutputType() != nullptr &&
+        input->GetOutputType()->base() == kTuple) {
+        PrintValue(output, tab, std::to_string(column_id_), "field_index",
+                   true);
+    } else {
+        PrintValue(output, tab, std::to_string(column_id_), "column_id", true);
+        output << "\n";
+        PrintValue(output, tab, column_name_, "column_name", true);
+    }
 }
 
 const std::string GetFieldExpr::GenerateExpressionName() const {
@@ -531,9 +538,18 @@ bool FrameNode::CanMergeWith(const FrameNode *that) const {
     if (Equals(that)) {
         return true;
     }
+
     if (nullptr == that) {
         return false;
     }
+    if ((this->frame_type_ == kFrameRowsRange ||
+         this->frame_type() == kFrameRowsMergeRowsRange) &&
+        (that->frame_type_ == kFrameRowsRange ||
+         this->frame_type() == kFrameRowsMergeRowsRange) &&
+        this->frame_maxsize_ != that->frame_maxsize_) {
+        return false;
+    }
+
     if (this->frame_type_ == that->frame_type_) {
         return true;
     }
@@ -1783,6 +1799,17 @@ void UDFDefNode::Print(std::ostream &output, const std::string &tab) const {
 bool UDFDefNode::Equals(const SQLNode *node) const {
     auto other = dynamic_cast<const UDFDefNode *>(node);
     return other != nullptr && def_->Equals(other->def_);
+}
+
+void UDFByCodeGenDefNode::Print(std::ostream &output,
+                                const std::string &tab) const {
+    output << tab << "[kCodeGenFnDef] " << name_;
+}
+
+bool UDFByCodeGenDefNode::Equals(const SQLNode *node) const {
+    auto other = dynamic_cast<const UDFByCodeGenDefNode *>(node);
+    return other != nullptr && name_ == other->name_ &&
+           gen_impl_ == other->gen_impl_;
 }
 
 void LambdaNode::Print(std::ostream &output, const std::string &tab) const {
