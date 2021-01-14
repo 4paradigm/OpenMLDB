@@ -200,7 +200,7 @@ object ConstProjectPlan {
           case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 | FesqlDataType.kFloat | FesqlDataType.kDouble =>
             inputCol.cast(StringType)
           case FesqlDataType.kBool => inputCol.cast(StringType)
-          case FesqlDataType.kTimestamp => inputCol.cast(IntegerType).multiply(1000).cast(StringType)
+          case FesqlDataType.kTimestamp => inputCol.cast(StringType)
           case FesqlDataType.kDate => inputCol.cast(StringType)
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
