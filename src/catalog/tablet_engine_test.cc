@@ -392,10 +392,14 @@ INSTANTIATE_TEST_SUITE_P(EngineTestWhere, TabletEngineTest,
 INSTANTIATE_TEST_SUITE_P(
     EngineTestFZFunction, TabletEngineTest,
     testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestIndexOptimized, TabletEngineTest,
+    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_index_optimized.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(
-    EngineTestErrorWindow, TabletEngineTest,
-    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/error/error_window.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineTestErrorWindow, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/error/error_window.yaml")));
+INSTANTIATE_TEST_CASE_P(EngineTestDebugIssues, TabletEngineTest,
+                        testing::ValuesIn(TabletEngineTest::InitCases("/cases/debug/issues_case.yaml")));
 
 }  // namespace catalog
 }  // namespace rtidb
