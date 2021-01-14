@@ -4,10 +4,11 @@ import com._4paradigm.fesql.common.UnsupportedFesqlException
 import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.utils.{FesqlUtil, SparkColumnUtil}
 import com._4paradigm.fesql.vm.PhysicalConstProjectNode
-import org.apache.spark.sql.functions.{lit, to_date, to_timestamp, typedLit}
+import org.apache.spark.sql.functions.{lit, to_date, to_timestamp, typedLit, when}
 import com._4paradigm.fesql.node.{ConstNode, ExprType, DataType => FesqlDataType}
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.types._
+
 import scala.collection.JavaConverters._
 
 
@@ -167,7 +168,7 @@ object ConstProjectPlan {
       case FesqlDataType.kDate =>
         fromType match {
           case FesqlDataType.kNull => inputCol.cast(DateType)
-          case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 | FesqlDataType.kFloat | FesqlDataType.kDouble=>
+          case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 | FesqlDataType.kFloat | FesqlDataType.kDouble =>
             inputCol.cast(TimestampType).cast(DateType)
           case FesqlDataType.kBool => inputCol.cast(TimestampType).cast(DateType)
           case FesqlDataType.kTimestamp => inputCol.cast(DateType)
@@ -181,10 +182,8 @@ object ConstProjectPlan {
         fromType match {
           case FesqlDataType.kNull =>
             inputCol.cast(TimestampType)
-          case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 =>
-            inputCol.divide(1000).cast(TimestampType)
-          case FesqlDataType.kFloat | FesqlDataType.kDouble =>
-            inputCol.divide(1000).cast(TimestampType)
+          case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 | FesqlDataType.kFloat | FesqlDataType.kDouble =>
+            when(inputCol >= 0, inputCol.divide(1000)).otherwise(null).cast(TimestampType)
           case FesqlDataType.kBool =>
             inputCol.cast(LongType).divide(1000).cast(TimestampType)
           case FesqlDataType.kDate => inputCol.cast(TimestampType)
