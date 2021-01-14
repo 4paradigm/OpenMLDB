@@ -98,7 +98,7 @@ class ColumnSourceInfo {
 
 class CoreAPI {
  public:
-    static fesql::codec::Row* NewRow(size_t bytes);
+    static fesql::codec::Row NewRow(size_t bytes);
     static RawPtrHandle GetRowBuf(fesql::codec::Row*, size_t idx);
     static RawPtrHandle AppendRow(fesql::codec::Row*, size_t bytes);
 

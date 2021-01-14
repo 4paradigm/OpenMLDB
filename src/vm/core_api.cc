@@ -263,13 +263,13 @@ bool CoreAPI::ComputeCondition(const fesql::vm::RawPtrHandle fn, const Row& row,
                                  row_view->GetSchema()->Get(out_idx).type());
 }
 
-fesql::codec::Row* CoreAPI::NewRow(size_t bytes) {
+fesql::codec::Row CoreAPI::NewRow(size_t bytes) {
     auto buf = reinterpret_cast<int8_t*>(malloc(bytes));
     if (buf == nullptr) {
-        return nullptr;
+        return fesql::codec::Row();
     }
     auto slice = base::RefCountedSlice::CreateManaged(buf, bytes);
-    return new fesql::codec::Row(slice);
+    return fesql::codec::Row(slice);
 }
 
 RawPtrHandle CoreAPI::GetRowBuf(fesql::codec::Row* row, size_t idx) {
