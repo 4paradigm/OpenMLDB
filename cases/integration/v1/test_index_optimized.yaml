@@ -70,7 +70,7 @@ cases:
     mode: rtidb-batch-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c6 timestamp","c7 timestamp" ]
-        indexs: [ "index0 c3:c7", "index1:c3:c6", "index2:c1:c7", "index3:c1:c6" ]
+        indexs: [ "index0:c3:c7", "index1:c3:c6", "index2:c1:c7", "index3:c1:c6" ]
         rows:
           - [ "aa",1, 1590738990000, 1590738990000 ]
           - [ "aa",2, 1590738991000, 1590738991000 ]

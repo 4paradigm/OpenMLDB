@@ -97,7 +97,6 @@ cases:
         w1 AS (UNION {1} PARTITION BY pk_0_int64 ORDER BY order_0_timestamp ROWS_RANGE BETWEEN 3m PRECEDING AND CURRENT ROW ),
         w2 AS (PARTITION BY pk_1_date ORDER BY order_1_timestamp ROWS_RANGE BETWEEN 3h PRECEDING AND CURRENT ROW);
     expect:
-      order: id
       success: true
   - desc: Ambiguous column resolved in schema context
     id: 1
@@ -194,5 +193,4 @@ cases:
         w1 AS (UNION {1} PARTITION BY pk_0_int64 ORDER BY order_0_timestamp ROWS_RANGE BETWEEN 3m PRECEDING AND CURRENT ROW ),
         w2 AS (PARTITION BY pk_1_date ORDER BY order_1_timestamp ROWS_RANGE BETWEEN 3h PRECEDING AND CURRENT ROW);
     expect:
-      order: id
       success: true
