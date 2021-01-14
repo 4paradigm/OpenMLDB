@@ -3534,9 +3534,9 @@ void NameServerImpl::DropTable(RpcController* controller, const DropTableRequest
             auto db_iter = db_table_sp_map_.find(request->db());
             if (db_iter != db_table_sp_map_.end()) {
                 auto& table_sp_map = db_iter->second;
-                auto sp_iter = table_sp_map.find(request->name());
-                if (sp_iter != table_sp_map.end()) {
-                    auto& sp_vec = sp_iter->second;
+                auto table_iter = table_sp_map.find(request->name());
+                if (table_iter != table_sp_map.end()) {
+                    const auto& sp_vec = table_iter->second;
                     if (!sp_vec.empty()) {
                         std::stringstream ss;
                         ss << "table has associated procedure: ";
@@ -10576,12 +10576,15 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
             response->set_msg("database not found");
             PDLOG(WARNING, "database[%s] not found", db_name);
             return;
-        }
-        if (zk_client_->IsExistNode(sp_data_path) == 0) {
-            response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);
-            response->set_msg("store procedure already exists");
-            PDLOG(WARNING, "store procedure[%s] already exists in db[%s]", sp_name.c_str(), db_name.c_str());
-            return;
+        } else {
+            const auto& sp_table_map = db_sp_table_map_[db_name];
+            auto sp_table_iter = sp_table_map.find(sp_name);
+            if (sp_table_iter != sp_table_map.end()) {
+                response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);
+                response->set_msg("store procedure already exists");
+                PDLOG(WARNING, "store procedure[%s] already exists in db[%s]", sp_name.c_str(), db_name.c_str());
+                return;
+            }
         }
     }
     do {
@@ -10607,8 +10610,10 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
                 sp_data_path.c_str(), sp_value.c_str(), compressed.length());
         {
             std::lock_guard<std::mutex> lock(mu_);
+            auto& sp_table_map = db_sp_table_map_[db_name];
             auto& table_sp_map = db_table_sp_map_[db_name];
-            for (auto& depend_table : sp_info->tables()) {
+            for (const auto& depend_table : sp_info->tables()) {
+                sp_table_map[sp_name].push_back(depend_table);
                 table_sp_map[depend_table].push_back(sp_name);
             }
             NotifyTableChanged();
@@ -10639,11 +10644,13 @@ bool NameServerImpl::CreateProcedureOnTablet(const ::rtidb::api::CreateProcedure
         std::string msg;
         if (!tb_client->CreateProcedure(sp_request, msg)) {
             char temp_msg[100];
-            sprintf(temp_msg, "create procedure on tablet failed." // NOLINT
-                    "db_name[%s], sp_name[%s], sql[%s], endpoint[%s], msg[%s]",
-                    sp_info.db_name().c_str(), sp_info.sp_name().c_str(), sp_info.sql().c_str(),
-                    tb_client->GetEndpoint().c_str(), msg.c_str());
+            snprintf(temp_msg, sizeof(temp_msg), "create procedure on tablet failed."
+                    "db_name[%s], sp_name[%s], endpoint[%s]. ",
+                    sp_info.db_name().c_str(), sp_info.sp_name().c_str(),
+                    tb_client->GetEndpoint().c_str());
             err_msg.append(temp_msg);
+            err_msg.append("msg: ");
+            err_msg.append(msg);
             DLOG(WARNING) << err_msg;
             return false;
         }
@@ -10691,6 +10698,25 @@ void NameServerImpl::DropProcedure(RpcController* controller,
     }
     const std::string db_name = request->db_name();
     const std::string sp_name = request->sp_name();
+    bool wrong = false;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto db_iter = db_sp_table_map_.find(db_name);
+        if (db_iter == db_sp_table_map_.end()) {
+            wrong = true;
+        } else {
+            const auto& sp_table_map = db_iter->second;
+            if (sp_table_map.find(sp_name) == sp_table_map.end()) {
+                wrong = true;
+            }
+        }
+        if (wrong) {
+            PDLOG(WARNING, "storage procedure not found! sp_name [%s]", sp_name.c_str());
+            response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
+            response->set_msg("storage procedure not found!");
+            return;
+        }
+    }
     DropProcedureOnTablet(db_name, sp_name);
     std::string sp_data_path = zk_db_sp_data_path_ + "/" + db_name + "." + sp_name;
     {
@@ -10701,6 +10727,17 @@ void NameServerImpl::DropProcedure(RpcController* controller,
             response->set_msg("delete storage procedure zk node failed");
             return;
         }
+        auto& sp_table_map = db_sp_table_map_[db_name];
+        auto& table_vec = sp_table_map[sp_name];
+        auto& table_sp_map = db_table_sp_map_[db_name];
+        for (const auto& table : table_vec) {
+            auto& sp_vec = table_sp_map[table];
+            sp_vec.erase(std::remove(sp_vec.begin(), sp_vec.end(), sp_name), sp_vec.end());
+            if (sp_vec.empty()) {
+                table_sp_map.erase(table);
+            }
+        }
+        sp_table_map.erase(sp_name);
         NotifyTableChanged();
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
@@ -10740,8 +10777,10 @@ bool NameServerImpl::RecoverProcedureInfo() {
         const std::string& sp_name = sp_info->sp_name();
         const std::string& sql = sp_info->sql();
         if (databases_.find(db_name) != databases_.end()) {
+            auto& sp_table_map = db_sp_table_map_[db_name];
             auto& table_sp_map = db_table_sp_map_[db_name];
-            for (auto& depend_table : sp_info->tables()) {
+            for (const auto& depend_table : sp_info->tables()) {
+                sp_table_map[sp_name].push_back(depend_table);
                 table_sp_map[depend_table].push_back(sp_name);
             }
             LOG(INFO) << "recover store procedure " << sp_name << " with sql " << sql << " in db " << db_name;
