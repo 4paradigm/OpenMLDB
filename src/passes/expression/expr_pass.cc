@@ -11,6 +11,30 @@ namespace passes {
 using fesql::base::Status;
 using fesql::common::kCodegenError;
 
+void ExprPassGroup::AddPass(const std::shared_ptr<ExprPass>& pass) {
+    if (pass == nullptr) {
+        LOG(WARNING) << "Pass is null";
+        return;
+    }
+    passes_.push_back(pass);
+}
+
+Status ExprPassGroup::Apply(node::ExprAnalysisContext* ctx,
+                            node::ExprNode* expr, node::ExprNode** out) {
+    node::ExprNode* cur = expr;
+    for (auto pass : passes_) {
+        node::ExprNode* new_expr = nullptr;
+        pass->SetRow(this->GetRow());
+        pass->SetWindow(this->GetWindow());
+        CHECK_STATUS(pass->Apply(ctx, cur, &new_expr));
+        if (new_expr != nullptr) {
+            cur = new_expr;
+        }
+    }
+    *out = cur;
+    return Status::OK();
+}
+
 void ExprReplacer::AddReplacement(const node::ExprIdNode* arg,
                                   node::ExprNode* repl) {
     if (arg->IsResolved()) {
@@ -107,6 +131,14 @@ Status ExprReplacer::DoReplace(node::ExprNode* root,
     *output = root;
     return Status::OK();
 }
+
+node::ExprIdNode* ExprPass::GetWindow() const { return window_; }
+
+void ExprPass::SetWindow(node::ExprIdNode* window) { window_ = window; }
+
+node::ExprIdNode* ExprPass::GetRow() const { return row_; }
+
+void ExprPass::SetRow(node::ExprIdNode* row) { row_ = row; }
 
 }  // namespace passes
 }  // namespace fesql

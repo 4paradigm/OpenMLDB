@@ -54,6 +54,7 @@ class EngineOptions {
           performance_sensitive_(true),
           cluster_optimized_(false),
           batch_request_optimized_(true),
+          enable_expr_optimize_(true),
           max_sql_cache_size_(50) {}
     inline void set_keep_ir(bool flag) { this->keep_ir_ = flag; }
     inline bool is_keep_ir() const { return this->keep_ir_; }
@@ -89,6 +90,12 @@ class EngineOptions {
         return options;
     }
 
+    bool is_enable_expr_optimize() const { return enable_expr_optimize_; }
+    EngineOptions* set_enable_expr_optimize(bool flag) {
+        enable_expr_optimize_ = flag;
+        return this;
+    }
+
     fesql::vm::JITOptions& jit_options() { return jit_options_; }
 
  private:
@@ -98,6 +105,7 @@ class EngineOptions {
     bool performance_sensitive_;
     bool cluster_optimized_;
     bool batch_request_optimized_;
+    bool enable_expr_optimize_;
     uint32_t max_sql_cache_size_;
     JITOptions jit_options_;
 };

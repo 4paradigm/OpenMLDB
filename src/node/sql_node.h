@@ -254,6 +254,8 @@ inline const std::string FrameTypeName(const FrameType &type) {
             return "ROWS";
         case fesql::node::kFrameRowsRange:
             return "ROWS_RANGE";
+        case fesql::node::kFrameRowsMergeRowsRange:
+            return "ROWS_MERGE_ROWS_RANGE";
     }
     return "";
 }
@@ -1122,23 +1124,22 @@ class FrameNode : public SQLNode {
         if (nullptr == frame_rows_) {
             return nullptr == frame_range_ || nullptr == frame_range_->start()
                        ? INT64_MIN
-                       : frame_range_->start()->GetSignedOffset() > 0
-                             ? 0
-                             : frame_range_->start()->GetSignedOffset();
+                   : frame_range_->start()->GetSignedOffset() > 0
+                       ? 0
+                       : frame_range_->start()->GetSignedOffset();
         } else {
             return nullptr == frame_range_ || nullptr == frame_range_->start()
                        ? 0
-                       : frame_range_->start()->GetSignedOffset() > 0
-                             ? 0
-                             : frame_range_->start()->GetSignedOffset();
+                   : frame_range_->start()->GetSignedOffset() > 0
+                       ? 0
+                       : frame_range_->start()->GetSignedOffset();
         }
     }
     int64_t GetHistoryRangeEnd() const {
-        return nullptr == frame_range_ || nullptr == frame_range_->end()
+        return nullptr == frame_range_ || nullptr == frame_range_->end() ? 0
+               : frame_range_->end()->GetSignedOffset() > 0
                    ? 0
-                   : frame_range_->end()->GetSignedOffset() > 0
-                         ? 0
-                         : frame_range_->end()->GetSignedOffset();
+                   : frame_range_->end()->GetSignedOffset();
     }
 
     int64_t GetHistoryRowsStart() const {
@@ -1148,15 +1149,14 @@ class FrameNode : public SQLNode {
         if (nullptr == frame_range_) {
             return nullptr == frame_rows_ || nullptr == frame_rows_->start()
                        ? INT64_MIN
-                       : frame_rows_->start()->GetSignedOffset() > 0
-                             ? 0
-                             : frame_rows_->start()->GetSignedOffset();
-        } else {
-            return nullptr == frame_rows_ || nullptr == frame_rows_->start()
+                   : frame_rows_->start()->GetSignedOffset() > 0
                        ? 0
-                       : frame_rows_->start()->GetSignedOffset() > 0
-                             ? 0
-                             : frame_rows_->start()->GetSignedOffset();
+                       : frame_rows_->start()->GetSignedOffset();
+        } else {
+            return nullptr == frame_rows_ || nullptr == frame_rows_->start() ? 0
+                   : frame_rows_->start()->GetSignedOffset() > 0
+                       ? 0
+                       : frame_rows_->start()->GetSignedOffset();
         }
     }
     int64_t GetHistoryRowsEnd() const {
@@ -1168,11 +1168,10 @@ class FrameNode : public SQLNode {
                        ? INT64_MIN
                        : frame_rows_->end()->GetSignedOffset();
         } else {
-            return nullptr == frame_rows_ || nullptr == frame_rows_->start()
+            return nullptr == frame_rows_ || nullptr == frame_rows_->start() ? 0
+                   : frame_rows_->end()->GetSignedOffset() > 0
                        ? 0
-                       : frame_rows_->end()->GetSignedOffset() > 0
-                             ? 0
-                             : frame_rows_->end()->GetSignedOffset();
+                       : frame_rows_->end()->GetSignedOffset();
         }
     }
     inline const bool IsHistoryFrame() const {
@@ -1185,6 +1184,9 @@ class FrameNode : public SQLNode {
             case kFrameRowsRange: {
                 return GetHistoryRangeEnd() < 0;
             }
+            case kFrameRowsMergeRowsRange: {
+                return GetHistoryRangeEnd() < 0;
+            }
         }
         return false;
     }
@@ -1192,6 +1194,22 @@ class FrameNode : public SQLNode {
     virtual bool Equals(const SQLNode *node) const;
     const std::string GetExprString() const;
     bool CanMergeWith(const FrameNode *that) const;
+    bool IsPureHistoryFrame() const {
+        switch (frame_type_) {
+            case kFrameRows: {
+                return GetHistoryRowsEnd() < 0;
+            }
+            case kFrameRowsRange: {
+                return GetHistoryRangeEnd() < 0;
+            }
+            case kFrameRowsMergeRowsRange: {
+                return GetHistoryRangeEnd() < 0 && GetHistoryRowsEnd() < 0;
+            }
+            case kFrameRange: {
+                return false;
+            }
+        }
+    }
 
  private:
     FrameType frame_type_;
@@ -2223,16 +2241,18 @@ class UDFDefNode : public FnDefNode {
 
 class UDFByCodeGenDefNode : public FnDefNode {
  public:
-    UDFByCodeGenDefNode(const std::vector<const node::TypeNode *> &arg_types,
+    UDFByCodeGenDefNode(const std::string &name,
+                        const std::vector<const node::TypeNode *> &arg_types,
                         const std::vector<int> &arg_nullable,
                         const node::TypeNode *ret_type, bool ret_nullable)
         : FnDefNode(kUDFByCodeGenDef),
+          name_(name),
           arg_types_(arg_types),
           arg_nullable_(arg_nullable),
           ret_type_(ret_type),
           ret_nullable_(ret_nullable) {}
 
-    const std::string GetName() const override { return "CODEGEN_UDF"; }
+    const std::string GetName() const override { return name_; }
 
     void SetGenImpl(std::shared_ptr<udf::LLVMUDFGenBase> gen_impl) {
         this->gen_impl_ = gen_impl;
@@ -2253,10 +2273,14 @@ class UDFByCodeGenDefNode : public FnDefNode {
         return Status::OK();
     }
 
+    void Print(std::ostream &output, const std::string &tab) const override;
+    bool Equals(const SQLNode *node) const override;
+
     UDFByCodeGenDefNode *ShadowCopy(NodeManager *) const override;
     UDFByCodeGenDefNode *DeepCopy(NodeManager *) const override;
 
  private:
+    const std::string name_;
     std::shared_ptr<udf::LLVMUDFGenBase> gen_impl_;
     std::vector<const node::TypeNode *> arg_types_;
     std::vector<int> arg_nullable_;
@@ -2365,6 +2389,9 @@ class UDAFDefNode : public FnDefNode {
     size_t GetArgSize() const override { return arg_types_.size(); }
 
     const TypeNode *GetArgType(size_t i) const { return arg_types_[i]; }
+    const std::vector<const TypeNode *> &GetArgTypeList() const {
+        return arg_types_;
+    }
 
     UDAFDefNode *ShadowCopy(NodeManager *) const override;
     UDAFDefNode *DeepCopy(NodeManager *) const override;

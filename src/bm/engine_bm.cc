@@ -136,7 +136,8 @@ BENCHMARK(BM_EngineRequestSimpleSelectDouble);
 BENCHMARK(BM_EngineRequestSimpleSelectInt32);
 BENCHMARK(BM_EngineRequestSimpleSelectTimestamp);
 BENCHMARK(BM_EngineRequestSimpleSelectDate);
-BENCHMARK(BM_EngineRequestSimpleUDF);
+// TODO(xxx): udf script fix
+// BENCHMARK(BM_EngineRequestSimpleUDF);
 
 // batch engine simple bm
 BENCHMARK(BM_EngineSimpleSelectVarchar);
@@ -144,7 +145,8 @@ BENCHMARK(BM_EngineSimpleSelectDouble);
 BENCHMARK(BM_EngineSimpleSelectInt32);
 BENCHMARK(BM_EngineSimpleSelectTimestamp);
 BENCHMARK(BM_EngineSimpleSelectDate);
-BENCHMARK(BM_EngineSimpleUDF);
+// TODO(xxx): udf script fix
+// BENCHMARK(BM_EngineSimpleUDF);
 
 // request engine window bm
 BENCHMARK(BM_EngineWindowSumFeature1)

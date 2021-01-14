@@ -272,7 +272,7 @@ class BatchModeTransformer {
                          const std::shared_ptr<Catalog>& catalog,
                          ::llvm::Module* module, const udf::UDFLibrary* library,
                          bool performance_sensitive,
-                         bool cluster_optimized_mode);
+                         bool cluster_optimized_mode, bool enable_expr_opt);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
     virtual Status TransformPhysicalPlan(
@@ -406,14 +406,12 @@ class BatchModeTransformer {
 
 class RequestModeTransformer : public BatchModeTransformer {
  public:
-    RequestModeTransformer(node::NodeManager* node_manager,
-                           const std::string& db,
-                           const std::shared_ptr<Catalog>& catalog,
-                           ::llvm::Module* module, udf::UDFLibrary* library,
-                           const std::set<size_t>& common_column_indices,
-                           const bool performance_sensitive,
-                           const bool cluster_optimized,
-                           const bool enable_batch_request_opt);
+    RequestModeTransformer(
+        node::NodeManager* node_manager, const std::string& db,
+        const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
+        udf::UDFLibrary* library, const std::set<size_t>& common_column_indices,
+        const bool performance_sensitive, const bool cluster_optimized,
+        const bool enable_batch_request_opt, bool enable_expr_opt);
     virtual ~RequestModeTransformer();
 
     const Schema& request_schema() const { return request_schema_; }

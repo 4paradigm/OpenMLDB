@@ -71,7 +71,7 @@ static const int64_t RunTableRequest(
 
 int32_t MapTopFn(int64_t limit) {
     std::string key = "key";
-    double d[5]; //NOLINT
+    double d[5];  // NOLINT
     codec::StringRef rkey(key.size(), key.c_str());
     for (int j = 0; j < 5; j++) {
         std::map<codec::StringRef, int32_t> state;
@@ -617,6 +617,7 @@ void EngineRequestModeSimpleQueryBM(const std::string& db,
     RequestRunSession session;
     base::Status query_status;
     engine.Get(sql, db, session, query_status);
+    LOG(INFO) << query_status;
     std::ostringstream runner_oss;
     session.GetClusterJob().Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
@@ -769,6 +770,11 @@ void EngineBenchmarkOnCase(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         engine_options.set_cluster_optimized(true);
     } else {
         engine_options.set_cluster_optimized(false);
+    }
+    if (fesql::sqlcase::SQLCase::IS_DISABLE_EXPR_OPT()) {
+        engine_options.set_enable_expr_optimize(false);
+    } else {
+        engine_options.set_enable_expr_optimize(true);
     }
     std::unique_ptr<vm::EngineTestRunner> engine_runner;
     if (engine_mode == vm::kBatchMode) {

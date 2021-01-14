@@ -39,7 +39,6 @@ cases:
         - [2, 41.0, 41.0, 41.0, 41.0, 41.0, 41.0]
         - [4, 41.0, 41.0, 41.0, 41.0, 41.0, 41.0]
         - [7, 41.0, 41.0, 41.0, 41.0, 41.0, 41.0]
-
   - id: 1
     desc: batch request with common window and common and non-common aggregations
     inputs:
