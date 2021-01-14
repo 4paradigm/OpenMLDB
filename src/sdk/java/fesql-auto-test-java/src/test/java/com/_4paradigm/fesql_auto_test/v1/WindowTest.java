@@ -29,7 +29,7 @@ public class WindowTest extends FesqlTest {
                         "/integration/cluster/test_window_row.yaml",
                         "/integration/cluster/test_window_row_range.yaml",
                         "/integration/cluster/window_and_lastjoin.yaml",
-                        "/integration/error/error_window.yaml"
+                        "/integration/error/error_window.yaml",
                         "/integration/v1/test_index_optimized.yaml",
 
                 });
