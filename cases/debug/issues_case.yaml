@@ -1,6 +1,7 @@
 db: test_db
 cases:
   - desc: single_window_test_8746446a-54d8-11eb-8418-186590d606f5
+    mode: rtidb-batch-unsupport, cluster-unsupport
     tags: ["@baoxinqi, 这部分输出为空是不是这些聚合特征本身构造有问题，是否需要修改auto case"]
     id: 0
     inputs:
