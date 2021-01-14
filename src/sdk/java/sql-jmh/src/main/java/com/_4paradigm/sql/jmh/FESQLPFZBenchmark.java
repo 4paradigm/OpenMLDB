@@ -143,7 +143,7 @@ public class FESQLPFZBenchmark {
                                 valueMap.put(fieldName, String.valueOf(pkBase + i));
                             }
                         } else if (tsIndex.contains(pos)) {
-                            builder.append(ts - tsCnt);
+                            builder.append(ts - (tsCnt + BenchmarkConfig.TIME_DIFF) * 1000);
                         } else {
                             if (type.equals("timestamp")) {
                                 builder.append(ts);
@@ -219,7 +219,7 @@ public class FESQLPFZBenchmark {
             }
         }
         TableInfo main = tableMap.get(mainTable);
-        String pro = "create PROCEDURE " + pname + "(" + main.getTyeString() + ") \n BEGIN \n" + script + "\n END;";
+        String pro = Util.getCreateProcedureDDL(pname, main, script);
         System.out.println(pro);
         if (!executor.executeDDL(db, pro)) {
             System.out.println("create PROCEDURE" + pro + "error");

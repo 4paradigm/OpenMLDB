@@ -22,13 +22,21 @@ public class CallablePreparedStatement extends RequestPreparedStatement {
         Status status = new Status();
         com._4paradigm.sql.ProcedureInfo procedureInfo = router.ShowProcedure(db, spName, status);
         if (procedureInfo == null || status.getCode() != 0) {
-            throw new SQLException("show procedure failed, msg: " + status.getMsg());
+            String msg = status.getMsg();
+            status.delete();
+            status = null;
+            throw new SQLException("show procedure failed, msg: " + msg);
         }
         this.currentSql = procedureInfo.GetSql();
         this.currentRow = router.GetRequestRow(db, procedureInfo.GetSql(), status);
         if (status.getCode() != 0 || this.currentRow == null) {
-            throw new SQLException("getRequestRow failed!, msg: " + status.getMsg());
+            String msg = status.getMsg();
+            status.delete();
+            status = null;
+            throw new SQLException("getRequestRow failed!, msg: " + msg);
         }
+        status.delete();
+        status = null;
         this.currentSchema = procedureInfo.GetInputSchema();
         if (this.currentSchema == null) {
             throw new SQLException("inputSchema is null");

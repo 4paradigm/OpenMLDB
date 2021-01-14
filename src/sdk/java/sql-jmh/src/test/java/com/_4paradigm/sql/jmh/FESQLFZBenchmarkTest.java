@@ -23,10 +23,6 @@ public class FESQLFZBenchmarkTest {
     @Test
     public void execSQLTest() throws SQLException {
         FESQLFZBenchmark benchmark = new FESQLFZBenchmark(true, false);
-        if (BenchmarkConfig.NeedProxy()) {
-            Util.EnableProxy();
-        }
-//        benchmark.setWindowNum(10);
         benchmark.setup();
         int loops = 1;
         for (int i = 0; i < loops; i++) {
@@ -49,13 +45,10 @@ public class FESQLFZBenchmarkTest {
     @Test
     public void dumpSQLCaseTest() throws SQLException {
         try {
-            FESQLFZBenchmark benchmark = new FESQLFZBenchmark(false, true);
-            if (BenchmarkConfig.NeedProxy()) {
-                Util.EnableProxy();
-            }
+            FESQLFZBenchmark benchmark = new FESQLFZBenchmark(true, true);
             benchmark.setWindowNum(5);
             benchmark.setup();
-            int loops = 10;
+            int loops = 1;
             for (int i = 0; i < loops; i++) {
                 List<Map<String, String>> results = benchmark.execSQLTest();
                 System.out.println("result sizes " + results.size());
