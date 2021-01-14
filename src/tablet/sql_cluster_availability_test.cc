@@ -126,7 +126,7 @@ void DropProcedure(::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& nam
 
 void ShowTable(::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_server_client, // NOLINT
 
-        const std::string& db, size_t size) {
+        const std::string& db, int32_t size) {
     ::rtidb::nameserver::ShowTableRequest request;
     ::rtidb::nameserver::ShowTableResponse response;
     request.set_db(db);

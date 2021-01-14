@@ -10746,6 +10746,7 @@ void NameServerImpl::DropProcedure(RpcController* controller,
 
 bool NameServerImpl::RecoverProcedureInfo() {
     db_table_sp_map_.clear();
+    db_sp_table_map_.clear();
     std::vector<std::string> db_sp_vec;
     if (!zk_client_->GetChildren(zk_db_sp_data_path_, db_sp_vec)) {
         if (zk_client_->IsExistNode(zk_db_sp_data_path_) != 0) {
