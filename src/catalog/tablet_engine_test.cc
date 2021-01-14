@@ -278,6 +278,9 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
         }
     }
 
+    if (sql_case.expect().data_.empty() && sql_case.expect().rows_.empty()) {
+        return;
+    }
     // Check Output Schema
     std::vector<fesql::codec::Row> case_output_data;
     fesql::type::TableDef case_output_table;
