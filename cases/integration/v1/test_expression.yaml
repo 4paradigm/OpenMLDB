@@ -756,7 +756,7 @@ cases:
   - id: 20-6
     desc: cast as string
     mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, bool to string，spark会返回true，fesql会返回1"]
+    tags: ["@chenjing, bool to string，spark会返回true，fesql会返回1，目前对float/double类型转string无法保证离线在线一致性"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -781,15 +781,14 @@ cases:
         - [3, "-1", "-1", "-1", "-1", "-1", NULL, "2020-05-22", "2020-05-22 10:43:40", "0", ""]
   - id: 20-7
     desc: cast as date
-    mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, string to date, spark 3.0不能转2020-05-22 10:43:40到date，使用函数也不能同时支持2020-05-22 10:43:40和2020-05-22，fesql可以同时支持"]
+    tags: ["Spark只能支持2020-05-22格式，FESQL在线可以同时支持2020-05-22 10:43:40和2020-05-22格式"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
         indexs: ["index1:c6:c8"]
         rows:
-          - [1, 1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
-          - [2, -1, -1, -1, -1.0, -1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, false, "-1"]
+          - [1, 1, 1, 1, 1.0, 1.0, "2020-05-22", "2020-05-22", 1590115420000, true, "1"]
+          - [2, -1, -1, -1, -1.0, -1.0, "2020-05-22", "2020-05-22", 1590115420000, false, "-1"]
           - [3, -1, -1, -1, -1.0, -1.0, NULL, "2020-05-22", 1590115420000, false, ""]
     sql: |
       select id,
@@ -804,8 +803,7 @@ cases:
         - [3, NULL, "2020-05-22", "2020-05-22", NULL]
   - id: 20-8
     desc: cast as timestamp 
-    mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, short/int/long/float/double to timestamp，spark支持负数转timestamp，fesql遇到负数转为null"]
+    tags: ["Spark默认支持负数转timestamp，目前FESQL离线和在线遇到负数转为null"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -982,8 +980,6 @@ cases:
       success: false
   - id: 22-4
     desc: cast date numbers
-    mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, @chenjing, batch mode无法编译"]
     inputs:
       - columns: ["id int64", "c2 int32", "c6 date"]
         indexs: ["index1:c2:id"]
