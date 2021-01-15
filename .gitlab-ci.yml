@@ -9,7 +9,6 @@ stages:
     #- daily
     # - quick
   - manual
-  - deploy
 
 style_check:
   stage: precheck
