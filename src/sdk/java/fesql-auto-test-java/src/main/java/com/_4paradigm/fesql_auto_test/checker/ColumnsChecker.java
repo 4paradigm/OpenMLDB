@@ -4,6 +4,7 @@ import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql.sqlcase.model.Table;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
+import com._4paradigm.fesql_auto_test.util.TestSchema;
 import com._4paradigm.sql.Schema;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
@@ -38,11 +39,11 @@ public class ColumnsChecker extends BaseChecker {
                         FesqlUtil.getColumnType(Table.getColumnType(expect.get(i))));
             }
         } else {
-            ResultSetMetaData metaData = fesqlResult.getMetaData();
-            Assert.assertEquals(expect.size(), metaData.getColumnCount(), "Illegal schema size");
+            TestSchema schemaMeta = fesqlResult.getMetaSchema();
+            Assert.assertEquals(expect.size(), schemaMeta.getColumnCount(), "Illegal schema size");
             for (int i = 0; i < expect.size(); i++) {
-                Assert.assertEquals(metaData.getColumnName(i + 1), Table.getColumnName(expect.get(i)));
-                Assert.assertEquals(metaData.getColumnType(i + 1),
+                Assert.assertEquals(schemaMeta.getColumnName(i + 1), Table.getColumnName(expect.get(i)));
+                Assert.assertEquals(schemaMeta.getColumnType(i + 1),
                         FesqlUtil.getSQLType(Table.getColumnType(expect.get(i))));
             }
         }

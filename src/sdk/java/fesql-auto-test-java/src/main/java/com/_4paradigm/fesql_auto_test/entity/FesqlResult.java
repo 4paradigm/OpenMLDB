@@ -1,6 +1,7 @@
 package com._4paradigm.fesql_auto_test.entity;
 
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
+import com._4paradigm.fesql_auto_test.util.TestSchema;
 import com.google.common.base.Joiner;
 import com._4paradigm.sql.Schema;
 import lombok.Data;
@@ -20,7 +21,7 @@ public class FesqlResult {
     private int count;
     private List<List<Object>> result;
     private Schema resultSchema;
-    private ResultSetMetaData metaData;
+    private TestSchema metaSchema;
 
     @Override
     public String toString() {
@@ -38,15 +39,11 @@ public class FesqlResult {
                     }
                 }
             } else {
-                try {
-                    int columnCount = metaData.getColumnCount();
-                    for (int i = 0; i < metaData.getColumnCount(); i++) {
-                        builder.append(metaData.getColumnName(i + 1))
-                                .append(" ")
-                                .append(FesqlUtil.getSQLTypeString(metaData.getColumnType(i + 1)));
-                    }
-                } catch (SQLException throwables) {
-                    throwables.printStackTrace();
+                int columnCount = metaSchema.getColumnCount();
+                for (int i = 0; i < metaSchema.getColumnCount(); i++) {
+                    builder.append(metaSchema.getColumnName(i + 1))
+                            .append(" ")
+                            .append(FesqlUtil.getSQLTypeString(metaSchema.getColumnType(i + 1)));
                 }
             }
             builder.append("\n");

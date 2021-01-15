@@ -51,7 +51,7 @@ public class ResultChecker extends BaseChecker {
             if (schema != null) {
                 index = FesqlUtil.getIndexByColumnName(schema, orderName);
             } else {
-                index = FesqlUtil.getIndexByColumnName(fesqlResult.getMetaData(), orderName);
+                index = FesqlUtil.getIndexByColumnName(fesqlResult.getMetaSchema(), orderName);
             }
             Collections.sort(expect, new RowsSort(index));
             Collections.sort(actual, new RowsSort(index));
