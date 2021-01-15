@@ -121,6 +121,7 @@ class ClusterInfo {
 // the container of tablet
 typedef std::map<std::string, std::shared_ptr<TabletInfo>> Tablets;
 typedef std::map<std::string, std::shared_ptr<BlobServerInfo>> BlobServers;
+typedef std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> TableInfos;
 
 typedef boost::function<void()> TaskFun;
 
@@ -541,6 +542,8 @@ class NameServerImpl : public NameServer {
         const std::string& endpoint, uint32_t pid, bool is_leader,
         bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
+    int UpdateEndpointTableAliveHandle(const std::string& endpoint, TableInfos& table_info, bool is_alive); //NOLINT
+
     int UpdateEndpointTableAlive(const std::string& endpoint, bool is_alive);
 
     std::shared_ptr<Task> CreateMakeSnapshotTask(const std::string& endpoint,
@@ -951,8 +954,8 @@ class NameServerImpl : public NameServer {
     std::mutex mu_;
     Tablets tablets_;
     BlobServers blob_servers_;
-    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
-    std::map< std::string, std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>> db_table_info_;
+    ::rtidb::nameserver::TableInfos table_info_;
+    std::map< std::string, ::rtidb::nameserver::TableInfos> db_table_info_;
     std::map< std::string, std::map<std::string, std::shared_ptr<::rtidb::nameserver::ProcedureInfo>>> db_sp_info_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
     ZoneInfo zone_info_;
