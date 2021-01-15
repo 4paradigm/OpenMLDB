@@ -8172,12 +8172,12 @@ int NameServerImpl::UpdateEndpointTableAlive(const std::string& endpoint, bool i
         return 0;
     }
     std::lock_guard<std::mutex> lock(mu_);
-    int ret = UpdateEndpointTableAliHandle(endpoint, table_info_, is_alive);
+    int ret = UpdateEndpointTableAliveHandle(endpoint, table_info_, is_alive);
     if (ret != 0) {
         return ret;
     }
     for (auto& kv : db_table_info_) {
-        ret = UpdateEndpointTableAliveHandle(kv.second);
+        ret = UpdateEndpointTableAliveHandle(endpoint, kv.second, is_alive);
         if (ret != 0) {
             return ret;
         }
