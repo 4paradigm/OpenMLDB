@@ -21,6 +21,7 @@
 		<spark.version>3.0.0</spark.version>
 		<scalaCompatVersion>${scala.binary.version}</scalaCompatVersion>
 		<scalatest.skip>false</scalatest.skip>
+		<spark.dependencyScope>provided</spark.dependencyScope>
 	</properties>
 
 	<dependencies>
@@ -45,13 +46,13 @@
 			<groupId>org.apache.spark</groupId>
 			<artifactId>spark-core_${scala.binary.version}</artifactId>
 			<version>${spark.version}</version>
-			<scope>provided</scope>
+			<scope>${spark.dependencyScope}</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.spark</groupId>
 			<artifactId>spark-sql_${scala.binary.version}</artifactId>
 			<version>${spark.version}</version>
-			<scope>provided</scope>
+			<scope>${spark.dependencyScope}</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.yaml</groupId>
@@ -64,6 +65,18 @@
 			<version>3.0.0</version>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.openjdk.jmh</groupId>
+			<artifactId>jmh-core</artifactId>
+			<version>1.19</version>
+			<scope>provided</scope>
+		</dependency>
+        <dependency>
+            <groupId>org.openjdk.jmh</groupId>
+            <artifactId>jmh-generator-annprocess</artifactId>
+            <version>1.19</version>
+            <scope>provided</scope>
+        </dependency>
 	</dependencies>
 
 	<build>
