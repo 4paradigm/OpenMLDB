@@ -1,8 +1,6 @@
 package com._4paradigm.fesql.spark.api
 
-import com._4paradigm.fesql.spark.SparkPlanner
-import com._4paradigm.fesql.spark.element.FesqlConfig
-import com._4paradigm.fesql.vm.PhysicalOpNode
+import com._4paradigm.fesql.spark.{FeSQLConfig, SparkPlanner}
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
@@ -24,8 +22,9 @@ class FesqlSession {
   private var sparkMaster: String = null
 
   val registeredTables = mutable.HashMap[String, DataFrame]()
-//  private var configs: mutable.HashMap[String, Any] = _
-  private var scalaConfig: Map[String, Any] = Map()
+
+  private var config: FeSQLConfig = _
+
   var planner: SparkPlanner = _
 
   /**
@@ -36,38 +35,9 @@ class FesqlSession {
   def this(sparkSession: SparkSession) = {
     this()
     this.sparkSession = sparkSession
-    this.sparkSession.conf.set(FesqlConfig.configTimeZone, FesqlConfig.timeZone)
-
-    for ((k, v) <- this.sparkSession.conf.getAll) {
-      logger.info(s"fesql config: ${k} = ${v}")
-      scalaConfig += (k -> v)
-      k match {
-        case FesqlConfig.configSkewRadio => FesqlConfig.skewRatio = v.toDouble
-        case FesqlConfig.configSkewLevel => FesqlConfig.skewLevel = v.toInt
-        case FesqlConfig.configSkewCnt => FesqlConfig.skewCnt = v.toInt
-        case FesqlConfig.configSkewCntName => FesqlConfig.skewCntName = v.asInstanceOf[String]
-        case FesqlConfig.configSkewTag => FesqlConfig.skewTag = v.asInstanceOf[String]
-        case FesqlConfig.configSkewPosition => FesqlConfig.skewPosition = v.asInstanceOf[String]
-        case FesqlConfig.configMode => FesqlConfig.mode = v.asInstanceOf[String]
-        case FesqlConfig.configPartitions => FesqlConfig.paritions = v.toInt
-        case FesqlConfig.configTimeZone => FesqlConfig.timeZone = v.asInstanceOf[String]
-        case FesqlConfig.configTinyData => FesqlConfig.tinyData = v.toLong
-        case FesqlConfig.configPrintSamplePartition => FesqlConfig.printSamplePartition = v.toLong
-        case FesqlConfig.configIsPrint => FesqlConfig.print = v.toBoolean
-        case _ => ""
-      }
-    }
+    this.config = FeSQLConfig.fromSparkSession(sparkSession)
+    this.sparkSession.conf.set("spark.sql.session.timeZone", config.timeZone)
   }
-
-  /**
-   * Construct with Spark master string.
-   *
-   *
-   */
-//  def this(sparkMaster: String) = {
-//    this()
-//    this.sparkMaster = sparkMaster
-//  }
 
   /**
    * Get or create the Spark session.
@@ -89,7 +59,7 @@ class FesqlSession {
 
         // TODO: Need to set for official Spark 2.3.0 jars
         logger.debug("Set spark.hadoop.yarn.timeline-service.enabled as false")
-        builder.config(FesqlConfig.configSparkEnable, value = false)
+        builder.config("spark.hadoop.yarn.timeline-service.enabled", value = false)
 
         this.sparkSession = builder.appName("FesqlApp")
           .master(sparkMaster)
@@ -146,7 +116,7 @@ class FesqlSession {
       sql = sql.trim + ";"
     }
 
-    val planner = new SparkPlanner(getSparkSession, scalaConfig)
+    val planner = new SparkPlanner(getSparkSession, config)
     this.planner = planner
     val df = planner.plan(sql, registeredTables.toMap).getDf(getSparkSession)
     new FesqlDataframe(this, df)

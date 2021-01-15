@@ -1,14 +1,11 @@
 package com._4paradigm.fesql.spark
 
-import java.io.{File, FileReader}
-
 import com._4paradigm.fesql.common.DDLEngine._
 import com._4paradigm.fesql.element.SparkConfig
 import com._4paradigm.fesql.utils.SqlUtils._
 import com._4paradigm.fesql.spark.api.FesqlSession
-import com._4paradigm.fesql.spark.element.FesqlConfig
 import com._4paradigm.fesql.spark.utils.{FesqlUtil, HDFSUtil}
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
 
 
@@ -40,6 +37,8 @@ object Fesql {
     }
     val sparkSession = sessionBuilder.getOrCreate()
 
+    val feSQLConfig = FeSQLConfig.fromSparkSession(sparkSession)
+
     val sess = new FesqlSession(sparkSession)
     sess.version()
 
@@ -48,18 +47,18 @@ object Fesql {
     for ((name, path) <- inputTables.asScala) {
       logger.info(s"Try load table $name from: $path")
 
-      if (FesqlConfig.tinyData > 0) {
-        sess.read(path).tiny(FesqlConfig.tinyData).createOrReplaceTempView(name)
+      if (feSQLConfig.tinyData > 0) {
+        sess.read(path).tiny(feSQLConfig.tinyData).createOrReplaceTempView(name)
       } else {
         val df = sess.read(path)
         df.createOrReplaceTempView(name)
         logger.info(s"schema=${df.sparkDf.schema.toDDL}")
       }
     }
-    val feconfig = sql2Feconfig(sqlScript, FesqlUtil.getDatabase(FesqlConfig.configDBName, sess.registeredTables.toMap))//parseOpSchema(rquestEngine.getPlan)
+    val feconfig = sql2Feconfig(sqlScript, FesqlUtil.getDatabase(feSQLConfig.configDBName, sess.registeredTables.toMap))//parseOpSchema(rquestEngine.getPlan)
     val tableInfoRDD = sess.getSparkSession.sparkContext.parallelize(Seq(feconfig)).repartition(1)
     HDFSUtil.deleteIfExist(config.getOutputPath + "/config")
-    tableInfoRDD.saveAsTextFile((config.getOutputPath + "/config"))
+    tableInfoRDD.saveAsTextFile(config.getOutputPath + "/config")
 
     val output = config.getOutputPath + "/data"
     val res = sess.fesql(sqlScript)

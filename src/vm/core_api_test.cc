@@ -29,14 +29,12 @@ TEST_F(CoreAPITest, test_create_new_row) {
     codec::RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(0);
 
-    fesql::codec::Row* rowPtr = CoreAPI::NewRow(size);
-    int8_t* buf = rowPtr->buf(0);
+    fesql::codec::Row rowPtr = CoreAPI::NewRow(size);
+    int8_t* buf = rowPtr.buf(0);
     builder.SetBuffer(buf, size);
 
     ASSERT_TRUE(builder.AppendNULL());
     ASSERT_TRUE(builder.AppendBool(false));
-
-    delete rowPtr;
 }
 
 }  // namespace vm

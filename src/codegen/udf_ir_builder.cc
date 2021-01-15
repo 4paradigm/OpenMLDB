@@ -498,9 +498,6 @@ Status UDFIRBuilder::BuildUDAFCall(
         elem_types[i] = udaf->GetElementType(i);
         elem_nullable[i] = udaf->IsElementNullable(i);
     }
-
-    // udaf output type
-    const node::TypeNode* output_type = udaf->GetReturnType();
     Status status;
 
     // infer state llvm types

@@ -1,8 +1,7 @@
 package com._4paradigm.fesql.spark.nodes
 
-import com._4paradigm.fesql.spark.element.FesqlConfig
 import com._4paradigm.fesql.spark.utils.SparkColumnUtil
-import com._4paradigm.fesql.spark.{PlanContext, SparkInstance}
+import com._4paradigm.fesql.spark.{FeSQLConfig, PlanContext, SparkInstance}
 import com._4paradigm.fesql.vm.PhysicalGroupNode
 import org.apache.spark.sql.Column
 
@@ -22,7 +21,7 @@ object GroupByPlan {
       groupByCols += SparkColumnUtil.getColumnFromIndex(inputDf, colIdx)
     }
 
-    val partitions = ctx.getConf(FesqlConfig.configPartitions, 0)
+    val partitions = ctx.getConf.groupPartitions
     val groupedDf = if (partitions > 0) {
       inputDf.repartition(partitions, groupByCols: _*)
     } else {
