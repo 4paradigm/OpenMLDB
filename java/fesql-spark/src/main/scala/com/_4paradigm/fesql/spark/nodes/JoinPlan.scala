@@ -35,7 +35,6 @@ object JoinPlan {
     val hasOrderby = (node.join.right_sort != null) && (node.join.right_sort.orders != null) && (node.join.right_sort.orders.order_by != null)
 
     // Check if we can use native last join
-    logger.info("not using native last join")
     val supportNativeLastJoin = if ((joinType != JoinType.kJoinTypeLast) || hasOrderby) {
       false
     } else {

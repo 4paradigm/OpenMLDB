@@ -237,11 +237,23 @@ void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr) {
     }
     if (0 == str->size_) {
         *out = false;
-        *is_null_ptr = false;
+        *is_null_ptr = true;
         return;
     }
-    *out = true;
-    *is_null_ptr = false;
+
+    auto temp = str->ToString();
+    if ("y" == temp || "yes" == temp || "1" == temp || "t" == temp
+        || "true" == temp) {
+        *out = true;
+        *is_null_ptr = false;
+    } else if ("n" == temp || "no" == temp || "0" == temp || "f" == temp
+               || "false" == temp) {
+        *out = false;
+        *is_null_ptr = false;
+    } else {
+        *out = false;
+        *is_null_ptr = true;
+    }
     return;
 }
 void string_to_int(codec::StringRef *str, int32_t *out, bool *is_null_ptr) {
