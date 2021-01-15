@@ -351,7 +351,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     std::string snapshot1 = "20170609.sdb";
     {
         if (FLAGS_snapshot_compression != "off") {
-            snapshot1 += COMPRESS_SUBFIX;
+            snapshot1 += COMPRESS_SUFFIX;
         }
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
@@ -401,7 +401,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     {
         std::string snapshot2 = "20170610.sdb.tmp";
         if (FLAGS_snapshot_compression != "off") {
-            snapshot2 += COMPRESS_SUBFIX;
+            snapshot2 += COMPRESS_SUFFIX;
         }
         std::string full_path = snapshot_dir + "/" + snapshot2;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
@@ -491,7 +491,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
     std::string snapshot1 = "20200309.sdb";
     {
         if (FLAGS_snapshot_compression != "off") {
-            snapshot1 += COMPRESS_SUBFIX;
+            snapshot1 += COMPRESS_SUFFIX;
         }
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
@@ -541,7 +541,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
     {
         std::string snapshot2 = "20200310.sdb.tmp";
         if (FLAGS_snapshot_compression != "off") {
-            snapshot2 += COMPRESS_SUBFIX;
+            snapshot2 += COMPRESS_SUFFIX;
         }
         std::string full_path = snapshot_dir + "/" + snapshot2;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
@@ -629,7 +629,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     std::string snapshot1 = "20170609.sdb";
     {
         if (FLAGS_snapshot_compression != "off") {
-            snapshot1 += COMPRESS_SUBFIX;
+            snapshot1 += COMPRESS_SUFFIX;
         }
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
@@ -663,7 +663,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     {
         std::string snapshot2 = "20170610.sdb.tmp";
         if (FLAGS_snapshot_compression != "off") {
-            snapshot2 += COMPRESS_SUBFIX;
+            snapshot2 += COMPRESS_SUFFIX;
         }
         std::string full_path = snapshot_dir + "/" + snapshot2;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
@@ -1367,7 +1367,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     std::string snapshot1 = "20190614.sdb";
     {
         if (FLAGS_snapshot_compression != "off") {
-            snapshot1 += COMPRESS_SUBFIX;
+            snapshot1 += COMPRESS_SUFFIX;
         }
         std::string full_path = snapshot_dir + "/" + snapshot1;
         printf("path:%s\n", full_path.c_str());

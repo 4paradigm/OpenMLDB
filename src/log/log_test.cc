@@ -27,7 +27,7 @@ using ::rtidb::base::Slice;
 using ::rtidb::base::Status;
 
 DECLARE_string(snapshot_compression);
-const std::string COMPRESS_SUBFIX = ".compress";  // NOLINT
+const std::string COMPRESS_SUFFIX = ".compress";  // NOLINT
 bool compressed_ = true;
 uint32_t block_size_ = 1024 * 4;
 uint32_t header_size_ = 7;
@@ -131,7 +131,7 @@ std::string GetWritePath(const std::string& path) {
     if (FLAGS_snapshot_compression == "off") {
         return path;
     } else {
-        return path + COMPRESS_SUBFIX;
+        return path + COMPRESS_SUFFIX;
     }
 }
 

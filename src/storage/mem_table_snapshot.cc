@@ -125,7 +125,7 @@ void MemTableSnapshot::RecoverSingleSnapshot(
             break;
         }
         bool compressed = false;
-        if (path.find(COMPRESS_SUBFIX) != std::string::npos) {
+        if (path.find(COMPRESS_SUFFIX) != std::string::npos) {
             compressed = true;
         }
         ::rtidb::log::SequentialFile* seq_file =
@@ -221,7 +221,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
         return -1;
     }
     bool compressed = false;
-    if (full_path.find(COMPRESS_SUBFIX) != std::string::npos) {
+    if (full_path.find(COMPRESS_SUFFIX) != std::string::npos) {
         compressed = true;
     }
     ::rtidb::log::SequentialFile* seq_file =
@@ -393,7 +393,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
     std::string snapshot_name =
         now_time.substr(0, now_time.length() - 2) + ".sdb";
     if (FLAGS_snapshot_compression != "off") {
-        snapshot_name += COMPRESS_SUBFIX;
+        snapshot_name += COMPRESS_SUFFIX;
     }
     std::string snapshot_name_tmp = snapshot_name + ".tmp";
     std::string full_path = snapshot_path_ + snapshot_name;
@@ -630,7 +630,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
     ::rtidb::log::SequentialFile* seq_file =
         ::rtidb::log::NewSeqFile(manifest.name(), fd);
     bool compressed = false;
-    if (full_path.find(COMPRESS_SUBFIX) != std::string::npos) {
+    if (full_path.find(COMPRESS_SUFFIX) != std::string::npos) {
         compressed = true;
     }
     ::rtidb::log::Reader reader(seq_file, NULL, false, 0, compressed);
@@ -802,7 +802,7 @@ int MemTableSnapshot::ExtractIndexData(
     std::string snapshot_name =
         now_time.substr(0, now_time.length() - 2) + ".sdb";
     if (FLAGS_snapshot_compression != "off") {
-        snapshot_name += COMPRESS_SUBFIX;
+        snapshot_name += COMPRESS_SUFFIX;
     }
     std::string snapshot_name_tmp = snapshot_name + ".tmp";
     std::string full_path = snapshot_path_ + snapshot_name;
@@ -1179,7 +1179,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
     }
     ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(path, fd);
     bool compressed = false;
-    if (path.find(COMPRESS_SUBFIX) != std::string::npos) {
+    if (path.find(COMPRESS_SUFFIX) != std::string::npos) {
         compressed = true;
     }
     ::rtidb::log::Reader reader(seq_file, NULL, false, 0, compressed);
