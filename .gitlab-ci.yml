@@ -1,4 +1,4 @@
-image: develop-registry.4pd.io/centos6_gcc7_fesql_llvm_no_assert:0.0.12
+image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.12
 services:
   - docker:dind
 variables:
@@ -6,8 +6,8 @@ variables:
 stages:
   - precheck
   - build
-  - daily
-  - quick
+    #- daily
+    # - quick
   - manual
   - deploy
 
