@@ -10606,8 +10606,6 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
             response->set_msg("create zk node failed");
             break;
         }
-        PDLOG(INFO, "create db store procedure node[%s] success! value[%s] value size[%lu]",
-                sp_data_path.c_str(), sp_value.c_str(), compressed.length());
         {
             std::lock_guard<std::mutex> lock(mu_);
             auto& sp_table_map = db_sp_table_map_[db_name];
@@ -10618,6 +10616,8 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
             }
             NotifyTableChanged();
         }
+        PDLOG(INFO, "create db store procedure success! db_name [%s] sp_name [%s] sql [%s]",
+                db_name.c_str(), sp_name.c_str(), sp_info->sql().c_str());
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         return;
@@ -10632,7 +10632,7 @@ bool NameServerImpl::CreateProcedureOnTablet(const ::rtidb::api::CreateProcedure
         std::lock_guard<std::mutex> lock(mu_);
         for (auto &kv : tablets_) {
             if (!kv.second->Health()) {
-                DLOG(WARNING) << "endpoint [" << kv.first << "] is offline";
+                LOG(WARNING) << "endpoint [" << kv.first << "] is offline";
                 continue;
             }
             tb_client_vec.push_back(kv.second->client_);
@@ -10651,7 +10651,7 @@ bool NameServerImpl::CreateProcedureOnTablet(const ::rtidb::api::CreateProcedure
             err_msg.append(temp_msg);
             err_msg.append("msg: ");
             err_msg.append(msg);
-            DLOG(WARNING) << err_msg;
+            LOG(WARNING) << err_msg;
             return false;
         }
         DLOG(INFO) << "create procedure on tablet success. db_name: " << sp_info.db_name() << ", "
