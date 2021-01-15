@@ -46,13 +46,17 @@ public class FesqlUtil {
         return -1;
     }
 
-    public static int getIndexByColumnName(TestSchema metaData, String columnName) {
+    public static int getIndexByColumnName(ResultSetMetaData metaData, String columnName) {
         int count = 0;
-        count = metaData.getColumnCount();
-        for (int i = 0; i < count; i++) {
-            if (metaData.getColumnName(i + 1).equals(columnName)) {
-                return i;
+        try {
+            count = metaData.getColumnCount();
+            for (int i = 0; i < count; i++) {
+                if (metaData.getColumnName(i + 1).equals(columnName)) {
+                    return i;
+                }
             }
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
         }
         return -1;
     }
@@ -386,7 +390,7 @@ public class FesqlUtil {
             }
             if (i == 0) {
                 try {
-                    fesqlResult.setMetaSchema(new TestSchema(resultSet.getMetaData()));
+                    fesqlResult.setMetaData(resultSet.getMetaData());
                 } catch (SQLException throwables) {
                     fesqlResult.setOk(false);
                     return fesqlResult;
@@ -394,7 +398,7 @@ public class FesqlUtil {
             }
             try {
                 rps.close();
-                resultSet.close();
+                //resultSet.close();
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
             }
@@ -447,7 +451,7 @@ public class FesqlUtil {
             List<List<Object>> result = Lists.newArrayList();
             result.addAll(convertRestultSetToList(sqlResultSet));
             fesqlResult.setResult(result);
-            fesqlResult.setMetaSchema(new TestSchema(sqlResultSet.getMetaData()));
+            fesqlResult.setMetaData(sqlResultSet.getMetaData());
             fesqlResult.setCount(result.size());
             fesqlResult.setResultSchema(sqlResultSet.GetInternalSchema());
 
@@ -460,7 +464,7 @@ public class FesqlUtil {
                     rps.close();
                 }
                 if (sqlResultSet != null) {
-                    sqlResultSet.close();
+                    //sqlResultSet.close();
                 }
             } catch (SQLException closeException) {
                 closeException.printStackTrace();
@@ -532,7 +536,7 @@ public class FesqlUtil {
                 }
                 if (i == 0) {
                     try {
-                        fesqlResult.setMetaSchema(new TestSchema(resultSet.getMetaData()));
+                        fesqlResult.setMetaData(resultSet.getMetaData());
                     } catch (SQLException throwables) {
                         fesqlResult.setOk(false);
                         return fesqlResult;
@@ -544,7 +548,7 @@ public class FesqlUtil {
             } finally {
                 try {
                     if (rps != null) rps.close();
-                    if (resultSet != null) resultSet.close();
+                    //if (resultSet != null) resultSet.close();
                 } catch (SQLException throwables) {
                     throwables.printStackTrace();
                 }
@@ -612,7 +616,7 @@ public class FesqlUtil {
             List<List<Object>> result = Lists.newArrayList();
             result.addAll(convertRestultSetToList((SQLResultSet) sqlResultSet));
             fesqlResult.setResult(result);
-            fesqlResult.setMetaSchema(new TestSchema(sqlResultSet.getMetaData()));
+            fesqlResult.setMetaData(sqlResultSet.getMetaData());
             fesqlResult.setCount(result.size());
 
         } catch (SQLException e) {
@@ -625,7 +629,7 @@ public class FesqlUtil {
                     rps.close();
                 }
                 if (sqlResultSet != null) {
-                    sqlResultSet.close();
+                    //sqlResultSet.close();
                 }
             } catch (SQLException closeException) {
                 closeException.printStackTrace();
