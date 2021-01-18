@@ -8125,8 +8125,8 @@ void NameServerImpl::UpdateTableAliveStatus(RpcController* controller, const Upd
 }
 
 int NameServerImpl::UpdateEndpointTableAliveHandle(const std::string& endpoint,
-                                                   TableInfos& table_info, bool is_alive) { //NOLINT
-    for (const auto& kv : table_info_) {
+                                                   TableInfos& table_infos, bool is_alive) { //NOLINT
+    for (const auto& kv : table_infos) {
         ::google::protobuf::RepeatedPtrField<TablePartition>* table_parts = kv.second->mutable_table_partition();
         bool has_update = false;
         for (int idx = 0; idx < table_parts->size(); idx++) {

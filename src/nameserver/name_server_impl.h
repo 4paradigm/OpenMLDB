@@ -542,7 +542,7 @@ class NameServerImpl : public NameServer {
         const std::string& endpoint, uint32_t pid, bool is_leader,
         bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
-    int UpdateEndpointTableAliveHandle(const std::string& endpoint, TableInfos& table_info, bool is_alive); //NOLINT
+    int UpdateEndpointTableAliveHandle(const std::string& endpoint, TableInfos& table_infos, bool is_alive); //NOLINT
 
     int UpdateEndpointTableAlive(const std::string& endpoint, bool is_alive);
 
