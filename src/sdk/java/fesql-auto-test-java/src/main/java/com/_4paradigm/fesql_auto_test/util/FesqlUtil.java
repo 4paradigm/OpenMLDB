@@ -874,10 +874,12 @@ public class FesqlUtil {
         }
         log.info("select sql:{}", selectSql);
         FesqlResult fesqlResult = new FesqlResult();
-        ResultSet rs = executor.executeSQL(dbName, selectSql);
-        if (rs == null) {
+        java.sql.ResultSet rawRs = executor.executeSQL(dbName, selectSql);
+
+        if (rawRs == null) {
             fesqlResult.setOk(false);
-        } else {
+        } else if  (rawRs instanceof ResultSet){
+            ResultSet rs = (ResultSet)rawRs;
             fesqlResult.setOk(true);
             fesqlResult.setCount(rs.Size());
             Schema schema = rs.GetSchema();
