@@ -541,3 +541,39 @@ cases:
         - [12, B, 3, 1590115440000, 3, 0, 0, 6.0, 0.0, 0.0]
         - [13, B, 4, 1590115450000, 3, 1, 0, 9.0, 1.0, 0.0]
         - [14, B, 5, 1590115460000, 3, 2, 0, 12.0, 3.0, 0.0]
+
+  - id: 20
+    desc: 同窗口下多类聚合函数
+    sql: |
+      SELECT id, pk, col1, std_ts,
+      sum(col1 + count(col1)) OVER w as a1,
+      distinct_count(col1) OVER w as a2,
+      sum_where(col1, std_ts > timestamp(1590115440000)) OVER w as a3,
+      count_where(col1, std_ts > timestamp(1590115440000)) OVER w as a4,
+      avg_where(col1, std_ts > timestamp(1590115440000)) OVER w as a5,
+      sum(col1) OVER w as a6,
+      count(col1) OVER w as a7,
+      fz_topn_frequency(id, 3) OVER w as a8 
+      FROM {0} WINDOW
+        w AS (PARTITION BY pk ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    inputs:
+      - 
+        columns: ["id:int", "pk:string", "col1:int32", "std_ts:timestamp"]
+        indexs: ["index1:pk:std_ts"]
+        rows: 
+          - [1, A, 1, 1590115420000]
+          - [2, A, 2, 1590115430000]
+          - [3, A, 3, 1590115440000]
+          - [4, A, 4, 1590115450000]
+          - [5, A, 5, 1590115460000]
+    expect:
+      columns: ["id:int32", "pk:string", "col1:int32", "std_ts:timestamp",
+                "a1:bigint", "a2:bigint", "a3:int32", "a4 bigint",
+                "a5:double" ,"a6:int32", "a7:bigint", "a8 string"]
+      order: id
+      rows:
+        - [1, A, 1, 1590115420000, 2, 1, 0, 0, nan, 1, 1, "1,NULL,NULL"]
+        - [2, A, 2, 1590115430000, 7, 2, 0, 0, nan, 3, 2, "1,2,NULL"]
+        - [3, A, 3, 1590115440000, 15, 3, 0, 0, nan, 6, 3, "1,2,3"]
+        - [4, A, 4, 1590115450000, 18, 3, 4, 1, 4.0, 9, 3, "2,3,4"]
+        - [5, A, 5, 1590115460000, 21, 3, 9, 2, 4.5, 12, 3, "3,4,5"]

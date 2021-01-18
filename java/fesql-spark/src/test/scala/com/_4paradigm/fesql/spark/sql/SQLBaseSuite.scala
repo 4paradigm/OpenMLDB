@@ -38,6 +38,12 @@ class SQLBaseSuite extends SparkTestSuite {
     caseFile.getCases.asScala.filter(c => keepCase(c)).foreach(c => testCase(c))
   }
 
+  def testCase(yamlPath: String, id: String): Unit = {
+    val caseFile = loadYaml[CaseFile](yamlPath)
+    val sqlCase = caseFile.getCases.asScala.find(_.getId == id).orNull
+    testCase(sqlCase)
+  }
+
   def keepCase(sqlCase: SQLCase): Boolean = {
     if (sqlCase.getMode != null) {
       !sqlCase.getMode.contains("offline-unsupport")

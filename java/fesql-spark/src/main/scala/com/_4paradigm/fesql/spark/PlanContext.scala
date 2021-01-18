@@ -14,7 +14,7 @@ import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 
 import scala.collection.mutable
 
-class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, config: Map[String, Any]) {
+class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, config: FeSQLConfig) {
 
   private var moduleBuffer: SerializableByteBuffer = _
   // private var moduleBroadCast: Broadcast[SerializableByteBuffer] = _
@@ -36,6 +36,8 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
 
   def getSerializableModuleBuffer: SerializableByteBuffer = moduleBuffer
 
+  def getConf: FeSQLConfig = config
+
   // def getModuleBufferBroadcast: Broadcast[SerializableByteBuffer] = moduleBroadCast
 
   def getPlanResult(node: PhysicalOpNode): Option[SparkInstance] = {
@@ -54,12 +56,8 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
     namedSparkDataFrames.get(name)
   }
 
-  def getConf[T](key: String, default: T): T = {
-    config.getOrElse(key, default).asInstanceOf[T]
-  }
-
-  def visitPhysicalNodes(root: PhysicalOpNode): SparkInstance = {
-    planner.visitPhysicalNodes(root, this)
+  def getSparkOutput(root: PhysicalOpNode): SparkInstance = {
+    planner.getSparkOutput(root, this)
   }
 
   /**

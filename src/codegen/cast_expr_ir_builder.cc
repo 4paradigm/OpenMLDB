@@ -127,6 +127,9 @@ Status CastExprIRBuilder::UnSafeCast(const NativeValue& value,
         CHECK_STATUS(
             string_ir_builder.CastToNumber(block_, value, type, output));
         return Status::OK();
+    } else if (TypeIRBuilder::IsNumber(type) &&
+               TypeIRBuilder::IsDatePtr(value.GetType())) {
+        *output = NativeValue::CreateNull(type);
     } else {
         Status status;
         ::llvm::Value* output_value = nullptr;
