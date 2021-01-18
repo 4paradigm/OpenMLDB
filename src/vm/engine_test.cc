@@ -92,42 +92,75 @@ INSTANTIATE_TEST_CASE_P(
 
 INSTANTIATE_TEST_CASE_P(
     EngineTestWindowRowQuery, EngineTest,
-    testing::ValuesIn(InitCases("/cases/integration/v1/test_window_row.yaml")));
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/window/test_window_row.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineTestWindowRowsRangeQuery, EngineTest,
     testing::ValuesIn(
-        InitCases("/cases/integration/v1/test_window_row_range.yaml")));
+        InitCases("/cases/integration/v1/window/test_window_row_range.yaml")));
 
-INSTANTIATE_TEST_CASE_P(EngineTestWindowUnion, EngineTest,
-                        testing::ValuesIn(InitCases(
-                            "/cases/integration/v1/test_window_union.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestWindowUnion, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/window/test_window_union.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineTestLastJoin, EngineTest,
     testing::ValuesIn(InitCases("/cases/integration/v1/test_last_join.yaml")));
 INSTANTIATE_TEST_CASE_P(
-    EngineTestExpression, EngineTest,
-    testing::ValuesIn(InitCases("/cases/integration/v1/test_expression.yaml")));
-
-INSTANTIATE_TEST_CASE_P(EngineTestSelectSample, EngineTest,
-                        testing::ValuesIn(InitCases(
-                            "/cases/integration/v1/test_select_sample.yaml")));
+    EngineTestArithmetic, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/expression/test_arithmetic.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestCompare, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/expression/test_compare.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestCondition, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/expression/test_condition.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestLogic, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/expression/test_logic.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestType, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/expression/test_type.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineTestSubSelect, EngineTest,
-    testing::ValuesIn(InitCases("/cases/integration/v1/test_sub_select.yaml")));
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/select/test_sub_select.yaml")));
 
-INSTANTIATE_TEST_CASE_P(EngineTestUdfFunction, EngineTest,
-                        testing::ValuesIn(InitCases(
-                            "/cases/integration/v1/test_udf_function.yaml")));
-
-INSTANTIATE_TEST_CASE_P(EngineTestUdafFunction, EngineTest,
-                        testing::ValuesIn(InitCases(
-                            "/cases/integration/v1/test_udaf_function.yaml")));
 INSTANTIATE_TEST_CASE_P(
-    EngineTestWhere, EngineTest,
-    testing::ValuesIn(InitCases("/cases/integration/v1/test_where.yaml")));
+    EngineTestUdfFunction, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/function/test_udf_function.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestUdafFunction, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/function/test_udaf_function.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestCalculateFunction, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/function/test_calculate.yaml")));
+INSTANTIATE_TEST_CASE_P(EngineTestDateFunction, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/function/test_date.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestStringFunction, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/function/test_string.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSelectSample, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/select/test_select_sample.yaml")));
+INSTANTIATE_TEST_CASE_P(EngineTestWhere, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/select/test_where.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineTestFzFunction, EngineTest,

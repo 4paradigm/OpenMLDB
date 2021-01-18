@@ -2,6 +2,7 @@ db: test_zw
 debugs: []
 cases:
   - id: 0
+    mode: "offline-unsupport"
     desc: "cast_各种类型_正确"
     inputs:
       -
@@ -32,7 +33,7 @@ cases:
           - [true,30,30,30,30.0,30.0,30,30]
       5:
         rows:
-          - [false,0,0,0,0.0,0.0,0,0]
+          - [false,0,0,0,0.0,0.0,0,false]
   - id: 1
     desc: "cast_timestamp/string_正确"
     tags: ["TODO","本地成功，CICD失败，原因待定位"]
@@ -103,6 +104,7 @@ cases:
       success: false
   - id: 5
     desc: "cast_date_其他类型_错误"
+    tags: ["TODO", "bug"]
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -387,9 +389,9 @@ cases:
       columns: ["id int32", "string_c1 string", "string_c2 string", "string_c3 string", "string_c4 string", "string_c5 string",
                 "string_c6 string", "string_c7 string", "string_c8 string", "string_c9 string", "string_c10 string"]
       rows:
-        - [1, "1", "1", "1", "1", "1", "2020-05-22 10:43:40", "2020-05-22", "2020-05-22 10:43:40", "1", "1"]
-        - [2, "-1", "-1", "-1", "-1", "-1", "2020-05-22 10:43:40", "2020-05-22", "2020-05-22 10:43:40", "0", "-1"]
-        - [3, "-1", "-1", "-1", "-1", "-1", NULL, "2020-05-22", "2020-05-22 10:43:40", "0", ""]
+        - [1, "1", "1", "1", "1", "1", "2020-05-22 10:43:40", "2020-05-22", "2020-05-22 10:43:40", "true", "1"]
+        - [2, "-1", "-1", "-1", "-1", "-1", "2020-05-22 10:43:40", "2020-05-22", "2020-05-22 10:43:40", "false", "-1"]
+        - [3, "-1", "-1", "-1", "-1", "-1", NULL, "2020-05-22", "2020-05-22 10:43:40", "false", ""]
   - id: 20
     desc: cast as date
     mode: offline-unsupport
@@ -441,7 +443,7 @@ cases:
   - id: 22
     desc: cast as bool
     mode: offline-unsupport
-    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    tags: ["TODO", "@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]

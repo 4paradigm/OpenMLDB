@@ -140,8 +140,7 @@ bool VariableIRBuilder::LoadRetStruct(NativeValue* output,
                                       base::Status& status) {
     return LoadValue("@ret_struct", output, status);
 }
-bool VariableIRBuilder::LoadRowKey(NativeValue* output,
-                                      base::Status& status) {
+bool VariableIRBuilder::LoadRowKey(NativeValue* output, base::Status& status) {
     return LoadValue("@row_key", output, status);
 }
 base::Status VariableIRBuilder::LoadMemoryPool(NativeValue* output) {

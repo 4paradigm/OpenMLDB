@@ -519,7 +519,7 @@ cases:
     expect:
       success: true
  
-   -
+  -
     id: 53
     desc: insert min int and max int
     inputs:

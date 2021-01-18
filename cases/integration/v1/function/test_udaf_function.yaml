@@ -349,10 +349,10 @@ cases:
       order: id
       columns: ["id int","c1 string","m2 double","m3 double","m4 double","m5 double","m6 double"]
       rows:
-        - [1,"aa",1,1,30,1.1,2.1]
-        - [2,"aa",1,1,30,1.1,2.1]
-        - [3,"aa",2,2,31,1.2,2.2]
-        - [4,"aa",3,3,32,1.3,2.3]
+        - [1,"aa",1,1,30,1.1000000238418579,2.1]
+        - [2,"aa",1,1,30,1.1000000238418579,2.1]
+        - [3,"aa",2,2,31,1.199999988079071,2.2]
+        - [4,"aa",3,3,32,1.2999999523162842,2.3]
   -
     id: 17
     desc: COUNT_WHERE-normal
@@ -429,8 +429,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -445,7 +445,7 @@ cases:
       max_cate({0}.c4,d[0]) OVER w1 as m4,
       max_cate({0}.c5,d[0]) OVER w1 as m5,
       max_cate({0}.c6,d[0]) OVER w1 as m6
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -505,8 +505,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -521,7 +521,7 @@ cases:
       min_cate({0}.c4,d[0]) OVER w1 as m4,
       min_cate({0}.c5,d[0]) OVER w1 as m5,
       min_cate({0}.c6,d[0]) OVER w1 as m6
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -576,8 +576,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -592,7 +592,7 @@ cases:
       count_cate({0}.c4,d[0]) OVER w1 as m4,
       count_cate({0}.c5,d[0]) OVER w1 as m5,
       count_cate({0}.c6,d[0]) OVER w1 as m6
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -647,8 +647,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -663,7 +663,7 @@ cases:
       sum_cate({0}.c4,d[0]) OVER w1 as m4,
       sum_cate({0}.c5,d[0]) OVER w1 as m5,
       sum_cate({0}.c6,d[0]) OVER w1 as m6
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -718,8 +718,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -734,7 +734,7 @@ cases:
       avg_cate({0}.c4,d[0]) OVER w1 as m4,
       avg_cate({0}.c5,d[0]) OVER w1 as m5,
       avg_cate({0}.c6,d[0]) OVER w1 as m6
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -789,8 +789,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -803,7 +803,7 @@ cases:
     sql: |
       SELECT id, {0}.c1,
       d[0](d[1],d[2]) OVER w1 as m2
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       success: false
@@ -820,8 +820,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -834,7 +834,7 @@ cases:
     sql: |
       SELECT id, {0}.c1,
       d[0](d[1],d[2]) OVER w1 as m2
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       success: false
@@ -851,8 +851,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -867,7 +867,7 @@ cases:
       max_cate_where({0}.c4,c10,d[0]) OVER w1 as m4,
       max_cate_where({0}.c5,c10,d[0]) OVER w1 as m5,
       max_cate_where({0}.c6,c10,d[0]) OVER w1 as m6
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -922,8 +922,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -938,7 +938,7 @@ cases:
       min_cate_where({0}.c4,c10,d[0]) OVER w1 as m4,
       min_cate_where({0}.c5,c10,d[0]) OVER w1 as m5,
       min_cate_where({0}.c6,c10,d[0]) OVER w1 as m6
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -993,8 +993,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -1009,7 +1009,7 @@ cases:
       count_cate_where({0}.c4,c10,d[0]) OVER w1 as m4,
       count_cate_where({0}.c5,c10,d[0]) OVER w1 as m5,
       count_cate_where({0}.c6,c10,d[0]) OVER w1 as m6
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -1064,8 +1064,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -1080,7 +1080,7 @@ cases:
       sum_cate_where({0}.c4,c10,d[0]) OVER w1 as m4,
       sum_cate_where({0}.c5,c10,d[0]) OVER w1 as m5,
       sum_cate_where({0}.c6,c10,d[0]) OVER w1 as m6
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -1135,8 +1135,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -1151,7 +1151,7 @@ cases:
       avg_cate_where({0}.c4,c10,d[0]) OVER w1 as m4,
       avg_cate_where({0}.c5,c10,d[0]) OVER w1 as m5,
       avg_cate_where({0}.c6,c10,d[0]) OVER w1 as m6
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -1206,8 +1206,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -1220,7 +1220,7 @@ cases:
     sql: |
       SELECT id, {0}.c1,
       d[0](d[1],c10,d[2]) OVER w1 as m2
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       success: false
@@ -1237,8 +1237,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -1251,7 +1251,7 @@ cases:
     sql: |
       SELECT id, {0}.c1,
       d[0](d[1],c10,d[2]) OVER w1 as m2
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       success: false
@@ -1268,8 +1268,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -1284,7 +1284,7 @@ cases:
       top_n_key_max_cate_where({0}.c4,c10,d[0],1) OVER w1 as m4,
       top_n_key_max_cate_where({0}.c5,c10,d[0],1) OVER w1 as m5,
       top_n_key_max_cate_where({0}.c6,c10,d[0],1) OVER w1 as m6
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -1339,8 +1339,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -1355,7 +1355,7 @@ cases:
       top_n_key_min_cate_where({0}.c4,c10,d[0],1) OVER w1 as m4,
       top_n_key_min_cate_where({0}.c5,c10,d[0],1) OVER w1 as m5,
       top_n_key_min_cate_where({0}.c6,c10,d[0],1) OVER w1 as m6
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -1410,8 +1410,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -1426,7 +1426,7 @@ cases:
       top_n_key_sum_cate_where({0}.c4,c10,d[0],1) OVER w1 as m4,
       top_n_key_sum_cate_where({0}.c5,c10,d[0],1) OVER w1 as m5,
       top_n_key_sum_cate_where({0}.c6,c10,d[0],1) OVER w1 as m6
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -1481,8 +1481,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -1497,7 +1497,7 @@ cases:
       top_n_key_avg_cate_where({0}.c4,c10,d[0],1) OVER w1 as m4,
       top_n_key_avg_cate_where({0}.c5,c10,d[0],1) OVER w1 as m5,
       top_n_key_avg_cate_where({0}.c6,c10,d[0],1) OVER w1 as m6
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -1552,8 +1552,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -1568,7 +1568,7 @@ cases:
       top_n_key_count_cate_where({0}.c4,c10,d[0],1) OVER w1 as m4,
       top_n_key_count_cate_where({0}.c5,c10,d[0],1) OVER w1 as m5,
       top_n_key_count_cate_where({0}.c6,c10,d[0],1) OVER w1 as m6
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -1623,8 +1623,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -1637,7 +1637,7 @@ cases:
     sql: |
       SELECT id, {0}.c1,
       d[0](d[1],c10,d[2],1) OVER w1 as m2
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       success: false
@@ -1654,8 +1654,8 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
       -
-        columns : ["id int","c1 bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:id:c1"]
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
         rows:
           - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
           - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
@@ -1668,7 +1668,7 @@ cases:
     sql: |
       SELECT id, {0}.c1,
       d[0](d[1],c10,d[2],1) OVER w1 as m2
-      FROM {0} last join {1} ORDER BY {1}.c1 on {0}.id={1}.id
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       success: false

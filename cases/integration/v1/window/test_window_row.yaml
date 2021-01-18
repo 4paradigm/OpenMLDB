@@ -687,6 +687,7 @@ cases:
   -
     id: 31
     desc: bool为partition by
+    tags: ["TODO", "bug"]
     inputs:
       -
         columns : ["id int","c1 string","c2 bool","c3 smallint","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -711,6 +712,7 @@ cases:
   -
     id: 33
     desc: int为order by
+    tags: ["TODO"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -728,6 +730,7 @@ cases:
   -
     id: 34
     desc: smallint为order by
+    tags: ["TODO"]
     inputs:
       -
         columns : ["id int","c1 string","c3 smallint","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

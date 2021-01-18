@@ -210,10 +210,11 @@ class Range : public FnComponent {
     Range() : range_key_(nullptr), frame_(nullptr) {}
     Range(const node::OrderByNode *order, const node::FrameNode *frame)
         : range_key_(nullptr), frame_(frame) {
-        range_key_ = nullptr == order ? nullptr
-                     : node::ExprListNullOrEmpty(order->order_by_)
+        range_key_ = nullptr == order
                          ? nullptr
-                         : order->order_by_->children_[0];
+                         : node::ExprListNullOrEmpty(order->order_by_)
+                               ? nullptr
+                               : order->order_by_->children_[0];
     }
     virtual ~Range() {}
     const bool Valid() const { return nullptr != range_key_; }

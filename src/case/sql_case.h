@@ -144,6 +144,7 @@ class SQLCase {
     static bool CreateTableInfoFromYamlNode(const YAML::Node& node,
                                             SQLCase::TableInfo* output);
     static bool CreateExpectFromYamlNode(const YAML::Node& schema_data,
+                                         const YAML::Node& expect_provider,
                                          SQLCase::ExpectInfo* table);
     static bool LoadSchemaAndRowsFromYaml(
         const std::string& cases_dir, const std::string& resource_path,

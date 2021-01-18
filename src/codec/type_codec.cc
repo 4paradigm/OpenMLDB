@@ -265,8 +265,8 @@ int32_t GetCol(int8_t* input, int32_t row_idx, uint32_t col_idx, int32_t offset,
 }
 
 int32_t GetInnerRangeList(int8_t* input, int64_t start_key,
-                          int64_t start_offset,
-                          int64_t end_offset, int8_t* data) {
+                          int64_t start_offset, int64_t end_offset,
+                          int8_t* data) {
     if (nullptr == input || nullptr == data) {
         return -2;
     }

@@ -174,9 +174,7 @@ void SchemasContext::MergeWithNewID(size_t child_idx,
     }
 }
 
-SchemasContext::~SchemasContext() {
-    Clear();
-}
+SchemasContext::~SchemasContext() { Clear(); }
 
 Status SchemasContext::ResolveColumnIndexByName(
     const std::string& relation_name, const std::string& column_name,
