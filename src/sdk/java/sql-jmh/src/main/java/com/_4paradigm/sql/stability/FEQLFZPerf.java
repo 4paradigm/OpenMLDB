@@ -242,35 +242,68 @@ public class FEQLFZPerf {
             if (curRandom.nextFloat() > BenchmarkConfig.PROCEDURE_RATIO) {
                 isProcedure = true;
             }
+            PreparedStatement ps = null;
+            ResultSet resultSet = null;
             try {
                 if (cnt % 10000 == 0) {
                     logger.info("Process " + cnt + "......");
                 }
                 cnt++;
-                {
-                    PreparedStatement ps = getPreparedStatement(mode, isProcedure);
-                    ResultSet resultSet = ps.executeQuery();
-                    resultSet.close();
-                    ps.close();
-                }
-                if (isProcedure) {
-                    PreparedStatement ps = getPreparedStatement(mode, isProcedure);
-                    if (ps instanceof CallablePreparedStatement) {
-                        QueryFuture future = ((CallablePreparedStatement) ps).executeQueryAsync(100, TimeUnit.MILLISECONDS);
-                        ResultSet resultSet = future.get();
-                        resultSet.close();
-                    }
-                    ps.close();
-                }
-                String strLimit = String.valueOf(curRandom.nextInt(10000) + 1);
-                String limitSql = "select * from " + mainTable + " limit " + strLimit  + ";";
-                ResultSet resultSet = executor.executeSQL(db, limitSql);
-                resultSet.close();
+                ps = getPreparedStatement(mode, isProcedure);
+                resultSet = ps.executeQuery();
             } catch (Exception e) {
                 e.printStackTrace();
+            } finally {
+                close(ps, resultSet);
+            }
+            if (isProcedure) {
+                try {
+                    ps = null;
+                    resultSet = null;
+                    ps = getPreparedStatement(mode, isProcedure);
+                    if (ps instanceof CallablePreparedStatement) {
+                        QueryFuture future = ((CallablePreparedStatement) ps).executeQueryAsync(100, TimeUnit.MILLISECONDS);
+                        resultSet = future.get();
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    close(ps, resultSet);
+                }
+            }
+            try {
+                String strLimit = String.valueOf(curRandom.nextInt(10000) + 1);
+                String limitSql = "select * from " + mainTable + " limit " + strLimit  + ";";
+                resultSet = executor.executeSQL(db, limitSql);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    resultSet.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
+
+    private void close(PreparedStatement ps, ResultSet rs) {
+        try {
+            if (ps != null) {
+                ps.close();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        try {
+            if (rs != null) {
+                rs.close();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     public void runPut(int threadNum) {
         putExecuteService = Executors.newFixedThreadPool(threadNum);
