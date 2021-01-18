@@ -504,7 +504,7 @@ cases:
         w3 AS (PARTITION BY pk ORDER BY std_ts ROWS BETWEEN 6 PRECEDING AND 5 PRECEDING);
     inputs:
       - 
-        columns: ["id:int", "pk:string", "col1:int32", "std_ts:timestamp"]
+        columns: ["id int", "pk string", "col1 int32", "std_ts timestamp"]
         indexs: ["index1:pk:std_ts"]
         rows: 
           - [1, A, 1, 1590115420000]
@@ -522,9 +522,9 @@ cases:
           - [13, B, 4, 1590115450000]
           - [14, B, 5, 1590115460000]
     expect:
-      columns: ["id:int32", "pk:string", "col1:int32", "std_ts:timestamp",
-                "a1:bigint", "a2:bigint", "a3:bigint",
-                "b1:double" ,"b2:double", "b3:double"]
+      columns: ["id int32", "pk string", "col1 int32", "std_ts timestamp",
+                "a1 bigint", "a2 bigint", "a3 bigint",
+                "b1 double" ,"b2 double", "b3 double"]
       order: id
       rows:
         - [1, A, 1, 1590115420000, 1, 0, 0, 1.0, 0.0, 0.0]
