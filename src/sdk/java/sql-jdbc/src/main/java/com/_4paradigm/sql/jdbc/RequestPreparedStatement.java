@@ -539,11 +539,12 @@ public class RequestPreparedStatement implements PreparedStatement {
         this.db = null;
         this.currentSql = null;
         this.router = null;
-        this.currentRow = null;
         this.currentSchema = null;
         this.currentDatas = null;
         this.hasSet = null;
         this.stringsLen = null;
+        this.currentRow.delete();
+        this.currentRow = null;
         this.closed = true;
     }
 

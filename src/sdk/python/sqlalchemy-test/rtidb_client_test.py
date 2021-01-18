@@ -34,10 +34,10 @@ class TestRtidbClient(unittest.TestCase):
     insert5 = "insert into tsql1010 values(1004, ?, 'hubei', 'wuhan', 5);" # 2020-11-29
     connection.execute(insert1);
 
-    connection.execute(insert2, ("anhui", 2));
-    connection.execute(insert3, ("fujian", "fuzhou"));
-    connection.execute(insert4, (1003, "2020-12-28", "jiangxi", "nanchang", 4));
-    connection.execute(insert5, ("2020-12-29"));
+    connection.execute(insert2, ({"col4":"anhui", "col5":2}));
+    connection.execute(insert3, ({"col3":"fujian", "col4":"fuzhou"}));
+    connection.execute(insert4, ({"col1":1003, "col2":"2020-12-28", "col3":"jiangxi", "col4":"nanchang", "col5":4}));
+    connection.execute(insert5, ({"col2":"2020-12-29"}));
     data = {1000 : [1000, '2020-12-25', 'guangdon', '广州', 1],
         1001 : [1001, '2020-12-26', 'hefei', 'anhui', 2],
         1002 : [1002, '2020-12-27', 'fujian', 'fuzhou', 3],
@@ -70,7 +70,7 @@ class TestRtidbClient(unittest.TestCase):
         self.assertTrue(d == line[j])
         j+=1
     # test request mode
-    rs = connection.execute("select * from tsql1010;", (1002, '2020-12-27', 'fujian', 'fuzhou', 3))
+    rs = connection.execute("select * from tsql1010;", ({"col1":1002, "col2":'2020-12-27', "col3":'fujian', "col4":'fuzhou', "col5":3}))
     for i in rs:
       j = 0
       line = data[i[0]]
@@ -86,8 +86,29 @@ class TestRtidbClient(unittest.TestCase):
     connection.execute("create procedure sp (col1 bigint, col2 date, col3 string, col4 string, col5 int) begin select * from tsql1010; end;")
     raw_connection = engine.raw_connection()
     mouse = raw_connection.cursor()
-    rs = mouse.callproc("sp", (1002, '2020-12-27', 'fujian', 'fuzhou', 3))
+    rs = mouse.callproc("sp", ({"col1":1002, "col2":'2020-12-27', "col3":'fujian', "col4":'fuzhou', "col5":3}))
     self.assertTrue(rs.rowcount == 1)
+    for i in range(rs.rowcount):
+      i = rs.fetchone()
+      if i == None: break
+      j = 0
+      line = data[i[0]]
+      for d in i:
+        self.assertTrue(d == line[j])
+        j+=1
+     # test batch request mode
+    mouse2 = raw_connection.cursor()
+    rs = mouse2.batch_row_request("select * from tsql1010;", (), ({"col1":1002, "col2":'2020-12-27', "col3":'fujian', "col4":'fuzhou', "col5":3}))
+    for i in range(rs.rowcount):
+      i = rs.fetchone()
+      if i == None: break
+      j = 0
+      line = data[i[0]]
+      for d in i:
+        self.assertTrue(d == line[j])
+        j+=1
+    mouse3 = raw_connection.cursor()
+    rs = mouse3.batch_row_request("select * from tsql1010;", (), ({"col1":1002, "col2":'2020-12-27', "col3":'fujian', "col4":'fuzhou', "col5":3}, {"col1":1003, "col2":"2020-12-28", "col3":"jiangxi", "col4":"nanchang", "col5":4}))
     for i in range(rs.rowcount):
       i = rs.fetchone()
       if i == None: break

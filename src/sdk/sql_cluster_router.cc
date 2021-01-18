@@ -863,8 +863,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchRequest(
         status->msg = response->msg();
         return nullptr;
     }
-    std::shared_ptr<::rtidb::sdk::SQLBatchRequestResultSet> rs(
-        new rtidb::sdk::SQLBatchRequestResultSet(response, cntl));
+    auto rs = std::make_shared<rtidb::sdk::SQLBatchRequestResultSet>(response, cntl);
     if (!rs->Init()) {
         status->code = -1;
         status->msg = "batch request result set init fail";
