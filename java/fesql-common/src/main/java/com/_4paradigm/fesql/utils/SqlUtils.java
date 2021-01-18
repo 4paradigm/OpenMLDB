@@ -35,7 +35,7 @@ public class SqlUtils {
             if (script.startsWith("file://")) {
                 try {
                     script = ConfigReader.readConf(script.replaceFirst("file://", ""));
-                }catch (Exception e) {
+                } catch (Exception e) {
                     logger.error("fail to read {} {}", script, e);
                 }
             }
