@@ -80,8 +80,13 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
         val projectNode = PhysicalProjectNode.CastFrom(root)
         projectNode.getProject_type_ match {
           case ProjectType.kTableProject =>
-            RowProjectPlan.gen(ctx, PhysicalTableProjectNode.CastFrom(projectNode), children)
-
+            if (System.getenv("ENABLE_UNSAFEROW_OPTIMIZE") != null && System.getenv("ENABLE_UNSAFEROW_OPTIMIZE").toLowerCase.equals("true")) {
+              logger.info("Use unsafe row optimize without encode/decode")
+              UnsafeRowProjectPlan.gen(ctx, PhysicalTableProjectNode.CastFrom(projectNode), children)
+            } else {
+              logger.info("Use normal row project with encode/decode")
+              RowProjectPlan.gen(ctx, PhysicalTableProjectNode.CastFrom(projectNode), children)
+            }
           case ProjectType.kWindowAggregation =>
             WindowAggPlan.gen(ctx, PhysicalWindowAggrerationNode.CastFrom(projectNode), children.head)
 
