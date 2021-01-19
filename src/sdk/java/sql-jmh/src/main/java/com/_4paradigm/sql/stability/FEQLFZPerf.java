@@ -214,6 +214,37 @@ public class FEQLFZPerf {
         return requestPs;
     }
 
+    private void getData(ResultSet resultSet) {
+        if (resultSet == null) {
+            return;
+        }
+        try {
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            while (resultSet.next()) {
+                Map<String, String> val = new HashMap<>();
+                for (int i = 0; i < metaData.getColumnCount(); i++) {
+                    String columnName = metaData.getColumnName(i + 1);
+                    int columnType = metaData.getColumnType(i + 1);
+                    if (columnType == Types.VARCHAR) {
+                        val.put(columnName, String.valueOf(resultSet.getString(i + 1)));
+                    } else if (columnType == Types.DOUBLE) {
+                        val.put(columnName, String.valueOf(resultSet.getDouble(i + 1)));
+                    } else if (columnType == Types.INTEGER) {
+                        val.put(columnName, String.valueOf(resultSet.getInt(i + 1)));
+                    } else if (columnType == Types.BIGINT) {
+                        val.put(columnName, String.valueOf(resultSet.getLong(i + 1)));
+                    } else if (columnType == Types.TIMESTAMP) {
+                        val.put(columnName, String.valueOf(resultSet.getTimestamp(i + 1)));
+                    } else if (columnType == Types.DATE) {
+                        val.put(columnName, String.valueOf(resultSet.getDate(i + 1)));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public void putData() {
         while (running.get()) {
             for (TableInfo table : tableMap.values()) {
@@ -251,6 +282,7 @@ public class FEQLFZPerf {
                 cnt++;
                 ps = getPreparedStatement(mode, isProcedure);
                 resultSet = ps.executeQuery();
+                getData(resultSet);
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
@@ -264,6 +296,7 @@ public class FEQLFZPerf {
                     if (ps instanceof CallablePreparedStatement) {
                         QueryFuture future = ((CallablePreparedStatement) ps).executeQueryAsync(100, TimeUnit.MILLISECONDS);
                         resultSet = future.get();
+                        getData(resultSet);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -275,6 +308,7 @@ public class FEQLFZPerf {
                 String strLimit = String.valueOf(curRandom.nextInt(10000) + 1);
                 String limitSql = "select * from " + mainTable + " limit " + strLimit  + ";";
                 resultSet = executor.executeSQL(db, limitSql);
+                getData(resultSet);
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {

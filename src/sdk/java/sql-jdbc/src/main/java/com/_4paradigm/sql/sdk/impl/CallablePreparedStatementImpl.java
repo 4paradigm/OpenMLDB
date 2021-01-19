@@ -26,9 +26,8 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
             status.delete();
             if (resultSet != null) {
                 resultSet.delete();
-                resultSet = null;
             }
-            throw new SQLException("call procedure fail, msg: " + status.getMsg());
+            throw new SQLException("call procedure fail, msg: " + msg);
         }
         status.delete();
         SQLResultSet rs = new SQLResultSet(resultSet);
