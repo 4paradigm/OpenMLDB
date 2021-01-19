@@ -30,7 +30,9 @@
 namespace fesql {
 namespace codec {
 
-#define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
+//#define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
+// TODO: Change to align 8 byte for UnsafeRow
+#define BitMapSize(size) 8
 
 typedef ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef> Schema;
 
@@ -41,6 +43,7 @@ static constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
 const std::string NONETOKEN = "!N@U#L$L%";  // NOLINT
 const std::string EMPTY_STRING = "!@#$%";   // NOLINT
 
+/*
 static const std::unordered_map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
     {::fesql::type::kBool, sizeof(bool)},
     {::fesql::type::kInt16, sizeof(int16_t)},
@@ -50,7 +53,19 @@ static const std::unordered_map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
     {::fesql::type::kTimestamp, sizeof(int64_t)},
     {::fesql::type::kDate, sizeof(int32_t)},
     {::fesql::type::kDouble, sizeof(double)}};
+*/
+// TODO: Change column size for UnsafeRow
+static const std::unordered_map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
+    {::fesql::type::kBool, 8},
+    {::fesql::type::kInt16, 8},
+    {::fesql::type::kInt32, 8},
+    {::fesql::type::kFloat, 8},
+    {::fesql::type::kInt64, 8},
+    {::fesql::type::kTimestamp, 8},
+    {::fesql::type::kDate, 8},
+    {::fesql::type::kDouble, 8}};
 
+// TODO: May change to align UnsafeRow string encoder
 inline uint8_t GetAddrLength(uint32_t size) {
     if (size <= UINT8_MAX) {
         return 1;
