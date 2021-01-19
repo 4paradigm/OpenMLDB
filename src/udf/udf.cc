@@ -226,7 +226,6 @@ void bool_to_string(bool v, fesql::codec::StringRef *output) {
         memcpy(buffer, "false", output->size_);
         output->data_ = buffer;
     }
-
 }
 
 void timestamp_to_date(codec::Timestamp *timestamp, fesql::codec::Date *output,
@@ -258,12 +257,12 @@ void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr) {
     }
 
     auto temp = str->ToString();
-    if ("y" == temp || "yes" == temp || "1" == temp || "t" == temp
-        || "true" == temp) {
+    if ("y" == temp || "yes" == temp || "1" == temp || "t" == temp ||
+        "true" == temp) {
         *out = true;
         *is_null_ptr = false;
-    } else if ("n" == temp || "no" == temp || "0" == temp || "f" == temp
-               || "false" == temp) {
+    } else if ("n" == temp || "no" == temp || "0" == temp || "f" == temp ||
+               "false" == temp) {
         *out = false;
         *is_null_ptr = false;
     } else {
