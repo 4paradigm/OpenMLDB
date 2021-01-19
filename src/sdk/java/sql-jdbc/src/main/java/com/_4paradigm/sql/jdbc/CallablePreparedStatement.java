@@ -24,7 +24,9 @@ public class CallablePreparedStatement extends RequestPreparedStatement {
         if (procedureInfo == null || status.getCode() != 0) {
             String msg = status.getMsg();
             status.delete();
-            status = null;
+            if (procedureInfo != null) {
+                procedureInfo.delete();
+            }
             throw new SQLException("show procedure failed, msg: " + msg);
         }
         this.currentSql = procedureInfo.GetSql();
@@ -33,15 +35,18 @@ public class CallablePreparedStatement extends RequestPreparedStatement {
             String msg = status.getMsg();
             status.delete();
             status = null;
+            procedureInfo.delete();
             throw new SQLException("getRequestRow failed!, msg: " + msg);
         }
         status.delete();
         status = null;
         this.currentSchema = procedureInfo.GetInputSchema();
         if (this.currentSchema == null) {
+            procedureInfo.delete();
             throw new SQLException("inputSchema is null");
         }
         int cnt = this.currentSchema.GetColumnCnt();
+        procedureInfo.delete();
         this.currentDatas = new ArrayList<>(cnt);
         this.hasSet = new ArrayList<>(cnt);
         for (int i = 0; i < cnt; i++) {

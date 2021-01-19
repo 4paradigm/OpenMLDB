@@ -336,6 +336,7 @@ public class FEQLFZPerf {
         running.set(false);
         queryExecuteService.shutdownNow();
         putExecuteService.shutdownNow();
+        executor.close();
     }
 
     public static void main(String[] args) {
@@ -358,11 +359,11 @@ public class FEQLFZPerf {
         long startTime = System.currentTimeMillis();
         while (true) {
             try {
-                Thread.sleep(10000);
-                /*if (System.currentTimeMillis() - startTime > 1000*600) {
+                Thread.sleep(1000);
+                if (System.currentTimeMillis() - startTime > BenchmarkConfig.RUNTIME) {
                     perf.close();
                     break;
-                }*/
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }

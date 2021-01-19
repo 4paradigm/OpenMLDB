@@ -40,6 +40,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         sqlOpt.setEnable_debug(option.getEnableDebug());
         sqlOpt.setRequest_timeout(option.getRequestTimeout());
         this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
+        sqlOpt.delete();
         if (sqlRouter == null) {
             SqlException e = new SqlException("fail to create sql executer");
             throw e;
@@ -198,6 +199,7 @@ public class SqlClusterExecutor implements SqlExecutor {
             column.setConstant(schema.IsConstant(i));
             columnList.add(column);
         }
+        schema.delete();
         explain.delete();
         return new Schema(columnList);
     }
@@ -256,6 +258,14 @@ public class SqlClusterExecutor implements SqlExecutor {
         status.delete();
         status = null;
         return ok;
+    }
+
+    @Override
+    public void close() {
+        if (sqlRouter != null) {
+            sqlRouter.delete();
+            sqlRouter = null;
+        }
     }
 
 }

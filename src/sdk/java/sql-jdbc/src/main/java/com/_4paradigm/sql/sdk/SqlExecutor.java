@@ -41,4 +41,6 @@ public interface SqlExecutor {
     Schema getInputSchema(String dbName, String sql) throws SQLException;
 
     ProcedureInfo showProcedure(String dbName, String proName) throws SQLException;
+
+    void close();
 }

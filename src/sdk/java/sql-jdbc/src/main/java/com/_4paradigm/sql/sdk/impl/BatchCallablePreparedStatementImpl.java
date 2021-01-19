@@ -50,8 +50,14 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         Status status = new Status();
         QueryFuture queryFuture = router.CallSQLBatchRequestProcedure(db, spName, unit.toMillis(timeOut), currentRowBatch, status);
         if (status.getCode() != 0 || queryFuture == null) {
-            throw new SQLException("call procedure fail, msg: " + status.getMsg());
+            String msg = status.getMsg();
+            status.delete();
+            if (queryFuture != null) {
+                queryFuture.delete();
+            }
+            throw new SQLException("call procedure fail, msg: " + msg);
         }
+        status.delete();
         return new com._4paradigm.sql.sdk.QueryFuture(queryFuture);
     }
 
@@ -85,7 +91,13 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
     @Override
     public void close() throws SQLException {
         super.close();
-        this.commonColumnIndices = null;
-        this.currentRowBatch = null;
+        if (commonColumnIndices != null) {
+            commonColumnIndices.delete();
+            commonColumnIndices = null;
+        }
+        if (currentRowBatch != null) {
+            currentRowBatch.delete();
+            currentRowBatch = null;
+        }
     }
 }
