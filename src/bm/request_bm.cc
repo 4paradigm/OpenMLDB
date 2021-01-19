@@ -52,6 +52,9 @@ DEFINE_REQUEST_WINDOW_CASE(BM_SimpleWindowOutputLastJoinTable4,
 DEFINE_REQUEST_WINDOW_CASE(BM_LastJoin4WindowOutput, DEFAULT_YAML_PATH, "4");
 DEFINE_REQUEST_WINDOW_CASE(BM_LastJoin8WindowOutput, DEFAULT_YAML_PATH, "5");
 
+DEFINE_REQUEST_WINDOW_CASE(BM_MultipleUDAF,
+                           "/cases/benchmark/udaf_benchmark.yaml", "0");
+
 }  // namespace bm
 }  // namespace fesql
 

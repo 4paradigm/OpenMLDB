@@ -32,6 +32,7 @@ namespace udf {
 
 using fesql::base::Status;
 using fesql::codec::StringRef;
+using fesql::node::ExprAttrNode;
 using fesql::node::ExprListNode;
 using fesql::node::ExprNode;
 using fesql::node::SQLNode;
@@ -500,25 +501,6 @@ class ExprUDFTemplateRegistryHelper {
     };
 
     ExprUDFRegistryHelper helper_;
-};
-
-/**
- * Summarize runtime attribute of expression
- */
-class ExprAttrNode {
- public:
-    ExprAttrNode(const node::TypeNode* dtype, bool nullable)
-        : type_(dtype), nullable_(nullable) {}
-
-    const node::TypeNode* type() const { return type_; }
-    bool nullable() const { return nullable_; }
-
-    void SetType(const node::TypeNode* dtype) { type_ = dtype; }
-    void SetNullable(bool flag) { nullable_ = flag; }
-
- private:
-    const node::TypeNode* type_;
-    bool nullable_;
 };
 
 class LLVMUDFGenBase {

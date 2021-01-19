@@ -151,13 +151,19 @@ INSTANTIATE_TEST_CASE_P(
         InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    EngineTestErrorWindow, EngineTest,
+    EngineTestIndexOptimized, EngineTest,
     testing::ValuesIn(
-        InitCases("/cases/integration/error/error_window.yaml")));
+        InitCases("/cases/integration/v1/test_index_optimized.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestErrorWindow, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/error/error_window.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineTestDebugFzBenchmark, EngineTest,
-    testing::ValuesIn(
-        InitCases("/cases/debug/fz_benchmark_debug.yaml")));
+    testing::ValuesIn(InitCases("/cases/debug/fz_benchmark_debug.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestDebugIssues, EngineTest,
+    testing::ValuesIn(InitCases("/cases/debug/issues_case.yaml")));
+
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
     EngineOptions options;

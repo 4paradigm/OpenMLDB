@@ -396,14 +396,21 @@ bool ColumnRefNode::Equals(const ExprNode *node) const {
 
 void GetFieldExpr::Print(std::ostream &output,
                          const std::string &org_tab) const {
+    auto input = GetChild(0);
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, GetChild(0)->GetExprString(), "input", true);
+    PrintSQLNode(output, tab, input, "input", true);
     output << "\n";
-    PrintValue(output, tab, std::to_string(column_id_), "column_id", true);
-    output << "\n";
-    PrintValue(output, tab, column_name_, "column_name", true);
+    if (input->GetOutputType() != nullptr &&
+        input->GetOutputType()->base() == kTuple) {
+        PrintValue(output, tab, std::to_string(column_id_), "field_index",
+                   true);
+    } else {
+        PrintValue(output, tab, std::to_string(column_id_), "column_id", true);
+        output << "\n";
+        PrintValue(output, tab, column_name_, "column_name", true);
+    }
 }
 
 const std::string GetFieldExpr::GenerateExpressionName() const {
@@ -551,11 +558,17 @@ bool FrameNode::CanMergeWith(const FrameNode *that,
         }
     }
 
+    // RowsRange-like pure history frames Can't be Merged with Rows Frame
     if (this->IsRowsRangeLikeFrame() && this->IsPureHistoryFrame() &&
         kFrameRows == that->frame_type_) {
         return false;
     }
+    if (that->IsRowsRangeLikeFrame() && that->IsPureHistoryFrame() &&
+        kFrameRows == this->frame_type_) {
+        return false;
+    }
 
+    // Handle RowsRange-like frame with MAXSIZE  and RowsFrame
     if (this->IsRowsRangeLikeMaxSizeFrame() &&
         kFrameRows == that->frame_type_) {
         // Pure History RowRangeLike Frame with maxsize can't be merged with
@@ -566,7 +579,7 @@ bool FrameNode::CanMergeWith(const FrameNode *that,
 
         // RowRangeLike Frame with maxsize can't be merged with
         // Rows frame when maxsize <= row_preceding
-        if (this->frame_maxsize() > that->GetHistoryRowsStart()) {
+        if (this->frame_maxsize() < that->GetHistoryRowsStartPreceding()) {
             return false;
         }
     }
@@ -580,7 +593,7 @@ bool FrameNode::CanMergeWith(const FrameNode *that,
 
         // RowRangeLike Frame with maxsize can't be merged with
         // Rows frame when maxsize <= row_preceding
-        if (that->frame_maxsize() > this->GetHistoryRowsStart()) {
+        if (that->frame_maxsize() < this->GetHistoryRowsStartPreceding()) {
             return false;
         }
     }
@@ -763,11 +776,11 @@ void WindowDefNode::Print(std::ostream &output,
 
 bool WindowDefNode::CanMergeWith(
     const WindowDefNode *that, const bool enable_window_maxsize_merged) const {
-    if (Equals(that)) {
-        return true;
-    }
     if (nullptr == that) {
         return false;
+    }
+    if (Equals(that)) {
+        return true;
     }
     return SQLListEquals(this->union_tables_, that->union_tables_) &&
            this->instance_not_in_window_ == that->instance_not_in_window_ &&
@@ -1832,6 +1845,17 @@ void UDFDefNode::Print(std::ostream &output, const std::string &tab) const {
 bool UDFDefNode::Equals(const SQLNode *node) const {
     auto other = dynamic_cast<const UDFDefNode *>(node);
     return other != nullptr && def_->Equals(other->def_);
+}
+
+void UDFByCodeGenDefNode::Print(std::ostream &output,
+                                const std::string &tab) const {
+    output << tab << "[kCodeGenFnDef] " << name_;
+}
+
+bool UDFByCodeGenDefNode::Equals(const SQLNode *node) const {
+    auto other = dynamic_cast<const UDFByCodeGenDefNode *>(node);
+    return other != nullptr && name_ == other->name_ &&
+           gen_impl_ == other->gen_impl_;
 }
 
 void LambdaNode::Print(std::ostream &output, const std::string &tab) const {

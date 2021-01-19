@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "codegen/ir_base_builder.h"
+#include "passes/expression/default_passes.h"
 #include "passes/lambdafy_projects.h"
 #include "passes/resolve_fn_and_attrs.h"
 
@@ -20,6 +21,60 @@ namespace vm {
 
 using fesql::base::Status;
 using fesql::common::kPlanError;
+
+Status OptimizeFunctionLet(const ColumnProjects& projects,
+                           node::ExprAnalysisContext* ctx,
+                           node::LambdaNode* func) {
+    CHECK_TRUE(func->GetArgSize() == 2, kPlanError);
+    CHECK_TRUE(projects.size() == func->body()->GetChildNum(), kPlanError);
+
+    // group idx -> (idx in group -> output idx)
+    std::vector<std::vector<size_t>> pos_mappings;
+
+    // frame name -> group idx
+    std::map<std::string, size_t> frame_mappings;
+
+    // expr groups
+    std::vector<node::ExprListNode*> groups;
+
+    // split expressions by frame
+    for (size_t i = 0; i < projects.size(); ++i) {
+        auto expr = func->body()->GetChild(i);
+        auto frame = projects.GetFrame(i);
+        std::string key = frame ? frame->GetExprString() : "";
+        auto iter = frame_mappings.find(key);
+        size_t group_idx;
+        if (iter == frame_mappings.end()) {
+            group_idx = groups.size();
+            frame_mappings.insert(iter, std::make_pair(key, group_idx));
+            pos_mappings.push_back(std::vector<size_t>());
+            groups.push_back(ctx->node_manager()->MakeExprList());
+        } else {
+            group_idx = iter->second;
+        }
+        pos_mappings[group_idx].push_back(i);
+        groups[group_idx]->AddChild(expr);
+    }
+
+    for (size_t i = 0; i < groups.size(); ++i) {
+        passes::ExprPassGroup pass_group;
+        pass_group.SetRow(func->GetArg(0));
+        pass_group.SetWindow(func->GetArg(1));
+        AddDefaultExprOptPasses(ctx, &pass_group);
+
+        node::ExprNode* optimized = nullptr;
+        CHECK_STATUS(pass_group.Apply(ctx, groups[i], &optimized));
+
+        CHECK_TRUE(optimized != nullptr &&
+                       optimized->GetChildNum() == pos_mappings[i].size(),
+                   kPlanError);
+        for (size_t j = 0; j < optimized->GetChildNum(); ++j) {
+            size_t output_idx = pos_mappings[i][j];
+            func->body()->SetChild(output_idx, optimized->GetChild(j));
+        }
+    }
+    return base::Status::OK();
+}
 
 Status PhysicalPlanContext::InitFnDef(const node::ExprListNode* exprs,
                                       const SchemasContext* schemas_ctx,
@@ -43,9 +98,12 @@ Status PhysicalPlanContext::InitFnDef(const ColumnProjects& projects,
     for (size_t i = 0; i < projects.size(); ++i) {
         exprs.push_back(projects.GetExpr(i));
     }
+
+    node::ExprAnalysisContext expr_pass_ctx(node_manager(), library(),
+                                            schemas_ctx);
     const bool enable_legacy_agg_opt = true;
-    passes::LambdafyProjects lambdafy_pass(node_manager(), library(),
-                                           schemas_ctx, enable_legacy_agg_opt);
+    passes::LambdafyProjects lambdafy_pass(&expr_pass_ctx,
+                                           enable_legacy_agg_opt);
     node::LambdaNode* lambdafy_func = nullptr;
     std::vector<int> require_agg;
     CHECK_STATUS(lambdafy_pass.Transform(exprs, &lambdafy_func, &require_agg));
@@ -66,10 +124,15 @@ Status PhysicalPlanContext::InitFnDef(const ColumnProjects& projects,
     std::vector<const node::TypeNode*> global_arg_types = {
         lambdafy_func->GetArgType(0), lambdafy_func->GetArgType(1)};
     node::LambdaNode* resolved_func = nullptr;
-    passes::ResolveFnAndAttrs resolve_pass(node_manager(), library(),
-                                           schemas_ctx);
+    passes::ResolveFnAndAttrs resolve_pass(&expr_pass_ctx);
     CHECK_STATUS(resolve_pass.VisitLambda(lambdafy_func, global_arg_types,
                                           &resolved_func));
+
+    // expression optimization
+    if (enable_expr_opt_) {
+        CHECK_STATUS(
+            OptimizeFunctionLet(projects, &expr_pass_ctx, resolved_func));
+    }
 
     FnInfo* output_fn = fn_component->mutable_fn_info();
     output_fn->Clear();

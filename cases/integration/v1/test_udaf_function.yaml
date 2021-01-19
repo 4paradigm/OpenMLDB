@@ -459,6 +459,7 @@ cases:
         - [10, 3]
         - [11, 6]
         - [12, 3]
+
   -
     id: 18
     desc: 重复的聚合表达式
@@ -486,3 +487,93 @@ cases:
         - ["aa",22,93, 93]
         - ["aa",23,96, 96]
         - ["bb",24,34, 34]
+
+  - id: 19
+    desc: 多个可合并窗口上的多个聚合函数计算
+    sql: |
+      SELECT id, pk, col1, std_ts,
+      distinct_count(col1) OVER w1 as a1,
+      distinct_count(col1) OVER w2 as a2,
+      distinct_count(col1) OVER w3 as a3,
+      sum(col1 * 1.0) OVER w1 as b1,
+      sum(col1 * 1.0) OVER w2 as b2,
+      sum(col1 * 1.0) OVER w3 as b3 
+      FROM {0} WINDOW
+        w1 AS (PARTITION BY pk ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),
+        w2 AS (PARTITION BY pk ORDER BY std_ts ROWS BETWEEN 4 PRECEDING AND 3 PRECEDING),
+        w3 AS (PARTITION BY pk ORDER BY std_ts ROWS BETWEEN 6 PRECEDING AND 5 PRECEDING);
+    inputs:
+      - 
+        columns: ["id int", "pk string", "col1 int32", "std_ts timestamp"]
+        indexs: ["index1:pk:std_ts"]
+        rows: 
+          - [1, A, 1, 1590115420000]
+          - [2, A, 1, 1590115430000]
+          - [3, A, 2, 1590115440000]
+          - [4, A, 2, 1590115450000]
+          - [5, A, 2, 1590115460000]
+          - [6, A, 3, 1590115470000]
+          - [7, A, 3, 1590115480000]
+          - [8, A, 3, 1590115490000]
+          - [9, A, 3, 1590115500000]
+          - [10, B, 1, 1590115420000]
+          - [11, B, 2, 1590115430000]
+          - [12, B, 3, 1590115440000]
+          - [13, B, 4, 1590115450000]
+          - [14, B, 5, 1590115460000]
+    expect:
+      columns: ["id int32", "pk string", "col1 int32", "std_ts timestamp",
+                "a1 bigint", "a2 bigint", "a3 bigint",
+                "b1 double" ,"b2 double", "b3 double"]
+      order: id
+      rows:
+        - [1, A, 1, 1590115420000, 1, 0, 0, 1.0, 0.0, 0.0]
+        - [2, A, 1, 1590115430000, 1, 0, 0, 2.0, 0.0, 0.0]
+        - [3, A, 2, 1590115440000, 2, 0, 0, 4.0, 0.0, 0.0]
+        - [4, A, 2, 1590115450000, 2, 1, 0, 5.0, 1.0, 0.0]
+        - [5, A, 2, 1590115460000, 1, 1, 0, 6.0, 2.0, 0.0]
+        - [6, A, 3, 1590115470000, 2, 2, 1, 7.0, 3.0, 1.0]
+        - [7, A, 3, 1590115480000, 2, 1, 1, 8.0, 4.0, 2.0]
+        - [8, A, 3, 1590115490000, 1, 1, 2, 9.0, 4.0, 3.0]
+        - [9, A, 3, 1590115500000, 1, 2, 1, 9.0, 5.0, 4.0]
+        - [10, B, 1, 1590115420000, 1, 0, 0, 1.0, 0.0, 0.0]
+        - [11, B, 2, 1590115430000, 2, 0, 0, 3.0, 0.0, 0.0]
+        - [12, B, 3, 1590115440000, 3, 0, 0, 6.0, 0.0, 0.0]
+        - [13, B, 4, 1590115450000, 3, 1, 0, 9.0, 1.0, 0.0]
+        - [14, B, 5, 1590115460000, 3, 2, 0, 12.0, 3.0, 0.0]
+
+  - id: 20
+    desc: 同窗口下多类聚合函数
+    sql: |
+      SELECT id, pk, col1, std_ts,
+      sum(col1 + count(col1)) OVER w as a1,
+      distinct_count(col1) OVER w as a2,
+      sum_where(col1, std_ts > timestamp(1590115440000)) OVER w as a3,
+      count_where(col1, std_ts > timestamp(1590115440000)) OVER w as a4,
+      avg_where(col1, std_ts > timestamp(1590115440000)) OVER w as a5,
+      sum(col1) OVER w as a6,
+      count(col1) OVER w as a7,
+      fz_topn_frequency(id, 3) OVER w as a8 
+      FROM {0} WINDOW
+        w AS (PARTITION BY pk ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    inputs:
+      - 
+        columns: ["id:int", "pk:string", "col1:int32", "std_ts:timestamp"]
+        indexs: ["index1:pk:std_ts"]
+        rows: 
+          - [1, A, 1, 1590115420000]
+          - [2, A, 2, 1590115430000]
+          - [3, A, 3, 1590115440000]
+          - [4, A, 4, 1590115450000]
+          - [5, A, 5, 1590115460000]
+    expect:
+      columns: ["id:int32", "pk:string", "col1:int32", "std_ts:timestamp",
+                "a1:bigint", "a2:bigint", "a3:int32", "a4 bigint",
+                "a5:double" ,"a6:int32", "a7:bigint", "a8 string"]
+      order: id
+      rows:
+        - [1, A, 1, 1590115420000, 2, 1, 0, 0, nan, 1, 1, "1,NULL,NULL"]
+        - [2, A, 2, 1590115430000, 7, 2, 0, 0, nan, 3, 2, "1,2,NULL"]
+        - [3, A, 3, 1590115440000, 15, 3, 0, 0, nan, 6, 3, "1,2,3"]
+        - [4, A, 4, 1590115450000, 18, 3, 4, 1, 4.0, 9, 3, "2,3,4"]
+        - [5, A, 5, 1590115460000, 21, 3, 9, 2, 4.5, 12, 3, "3,4,5"]

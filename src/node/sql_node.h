@@ -1142,6 +1142,9 @@ class FrameNode : public SQLNode {
                    : frame_range_->end()->GetSignedOffset();
     }
 
+    int64_t GetHistoryRowsStartPreceding() const {
+        return -1 * GetHistoryRowsStart();
+    }
     int64_t GetHistoryRowsStart() const {
         if (nullptr == frame_rows_ && nullptr == frame_range_) {
             return INT64_MIN;
@@ -2250,16 +2253,18 @@ class UDFDefNode : public FnDefNode {
 
 class UDFByCodeGenDefNode : public FnDefNode {
  public:
-    UDFByCodeGenDefNode(const std::vector<const node::TypeNode *> &arg_types,
+    UDFByCodeGenDefNode(const std::string &name,
+                        const std::vector<const node::TypeNode *> &arg_types,
                         const std::vector<int> &arg_nullable,
                         const node::TypeNode *ret_type, bool ret_nullable)
         : FnDefNode(kUDFByCodeGenDef),
+          name_(name),
           arg_types_(arg_types),
           arg_nullable_(arg_nullable),
           ret_type_(ret_type),
           ret_nullable_(ret_nullable) {}
 
-    const std::string GetName() const override { return "CODEGEN_UDF"; }
+    const std::string GetName() const override { return name_; }
 
     void SetGenImpl(std::shared_ptr<udf::LLVMUDFGenBase> gen_impl) {
         this->gen_impl_ = gen_impl;
@@ -2280,10 +2285,14 @@ class UDFByCodeGenDefNode : public FnDefNode {
         return Status::OK();
     }
 
+    void Print(std::ostream &output, const std::string &tab) const override;
+    bool Equals(const SQLNode *node) const override;
+
     UDFByCodeGenDefNode *ShadowCopy(NodeManager *) const override;
     UDFByCodeGenDefNode *DeepCopy(NodeManager *) const override;
 
  private:
+    const std::string name_;
     std::shared_ptr<udf::LLVMUDFGenBase> gen_impl_;
     std::vector<const node::TypeNode *> arg_types_;
     std::vector<int> arg_nullable_;
@@ -2392,6 +2401,9 @@ class UDAFDefNode : public FnDefNode {
     size_t GetArgSize() const override { return arg_types_.size(); }
 
     const TypeNode *GetArgType(size_t i) const { return arg_types_[i]; }
+    const std::vector<const TypeNode *> &GetArgTypeList() const {
+        return arg_types_;
+    }
 
     UDAFDefNode *ShadowCopy(NodeManager *) const override;
     UDAFDefNode *DeepCopy(NodeManager *) const override;

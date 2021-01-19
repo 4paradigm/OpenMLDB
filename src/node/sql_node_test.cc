@@ -353,8 +353,8 @@ TEST_F(SqlNodeTest, WindowAndFrameNodeMergeTest) {
                 node_manager_->MakeFrameBound(kCurrent)),
             nullptr));
 
-    // Range and Range can be merge
-    ASSERT_TRUE(range_frame1->CanMergeWith(range_frame2));
+    // Range and Range can't be merge
+    ASSERT_FALSE(range_frame1->CanMergeWith(range_frame2));
 
     // RowsRange between preceding 1d and current
     FrameNode *rowsrange_frame1 =

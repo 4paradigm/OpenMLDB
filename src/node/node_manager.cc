@@ -1152,11 +1152,12 @@ node::UDFDefNode *NodeManager::MakeUDFDefNode(FnNodeFnDef *def) {
 }
 
 node::UDFByCodeGenDefNode *NodeManager::MakeUDFByCodeGenDefNode(
+    const std::string &name,
     const std::vector<const node::TypeNode *> &arg_types,
     const std::vector<int> &arg_nullable, const node::TypeNode *ret_type,
     bool ret_nullable) {
-    return RegisterNode(new node::UDFByCodeGenDefNode(arg_types, arg_nullable,
-                                                      ret_type, ret_nullable));
+    return RegisterNode(new node::UDFByCodeGenDefNode(
+        name, arg_types, arg_nullable, ret_type, ret_nullable));
 }
 
 node::UDAFDefNode *NodeManager::MakeUDAFDefNode(

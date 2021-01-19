@@ -6,6 +6,8 @@ cases:
     inputs:
       - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c8:c4" ]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
     sql: |
       SELECT id, c1, c4, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c8 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -15,6 +17,8 @@ cases:
     inputs:
       - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c8:c4" ]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
     sql: |
       SELECT id, c1, c4, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:

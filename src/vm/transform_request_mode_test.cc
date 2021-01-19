@@ -104,7 +104,7 @@ void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::fesql::udf::DefaultUDFLibrary::get();
     RequestModeTransformer transform(&manager, "db", catalog, m.get(), lib, {},
-                                     false, false, false);
+                                     false, false, false, false);
 
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
@@ -251,7 +251,7 @@ void CheckTransformPhysicalPlan(const SQLCase& sql_case,
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::fesql::udf::DefaultUDFLibrary::get();
     RequestModeTransformer transform(nm, "db", catalog, m.get(), lib, {}, false,
-                                     false, false);
+                                     false, false, false);
     PhysicalOpNode* physical_plan = nullptr;
     ASSERT_TRUE(
         transform.TransformPhysicalPlan(plan_trees, &physical_plan).isOK());

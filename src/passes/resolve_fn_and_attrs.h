@@ -13,6 +13,7 @@
 #include "node/expr_node.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
+#include "passes/expression/expr_pass.h"
 #include "udf/udf_library.h"
 #include "vm/schemas_context.h"
 
@@ -21,14 +22,12 @@ namespace passes {
 
 using base::Status;
 
-class ResolveFnAndAttrs {
+class ResolveFnAndAttrs : public ExprPass {
  public:
-    ResolveFnAndAttrs(node::NodeManager* nm, const udf::UDFLibrary* library,
-                      const vm::SchemasContext* schemas_context)
-        : nm_(nm),
-          library_(library),
-          schemas_context_(schemas_context),
-          analysis_context_(nm, library, schemas_context_) {}
+    explicit ResolveFnAndAttrs(node::ExprAnalysisContext* ctx) : ctx_(ctx) {}
+
+    Status Apply(node::ExprAnalysisContext* ctx, node::ExprNode* expr,
+                 node::ExprNode** output) override;
 
     Status VisitFnDef(node::FnDefNode* fn,
                       const std::vector<const node::TypeNode*>& arg_types,
@@ -46,17 +45,14 @@ class ResolveFnAndAttrs {
                         const std::vector<const node::TypeNode*>& arg_types,
                         node::UDAFDefNode** output);
 
+    Status VisitOneStep(node::ExprNode* expr, node::ExprNode** output);
     Status VisitExpr(node::ExprNode* expr, node::ExprNode** output);
 
  private:
     Status CheckSignature(node::FnDefNode* fn,
                           const std::vector<const node::TypeNode*>& arg_types);
 
-    node::NodeManager* nm_;
-    const udf::UDFLibrary* library_;
-
-    const vm::SchemasContext* schemas_context_;
-    node::ExprAnalysisContext analysis_context_;
+    node::ExprAnalysisContext* ctx_;
 
     std::unordered_map<node::ExprNode*, node::ExprNode*> cache_;
 };

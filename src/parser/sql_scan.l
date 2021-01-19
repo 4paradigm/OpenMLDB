@@ -422,7 +422,7 @@ STATUS { return STATUS; }
  /* numbers */
 [0-9]+	        {
                         long value = atol(yytext);
-                        if (value <= INT32_MAX && value >= INT32_MIN) {
+                        if (value <= INT_MAX && value >= INT_MIN) {
                             yylval->intval = static_cast<int>(value);
                             return INTNUM;
                         } else {

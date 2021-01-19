@@ -31,8 +31,13 @@ class PhysicalPlanContext {
  public:
     PhysicalPlanContext(node::NodeManager* nm, const udf::UDFLibrary* library,
                         const std::string& db,
-                        const std::shared_ptr<Catalog>& catalog)
-        : nm_(nm), library_(library), db_(db), catalog_(catalog) {}
+                        const std::shared_ptr<Catalog>& catalog,
+                        bool enable_expr_opt)
+        : nm_(nm),
+          library_(library),
+          db_(db),
+          catalog_(catalog),
+          enable_expr_opt_(enable_expr_opt) {}
     ~PhysicalPlanContext() {}
 
     /**
@@ -136,6 +141,8 @@ class PhysicalPlanContext {
 
     // unique id counter for codegen function name id
     size_t codegen_func_id_counter_ = 0;
+
+    bool enable_expr_opt_ = false;
 };
 
 class PhysicalPass
