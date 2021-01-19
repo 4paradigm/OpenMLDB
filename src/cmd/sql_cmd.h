@@ -133,6 +133,12 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
                     t.add(ss.str());
                     break;
                 }
+                case fesql::sdk::kTypeBool: {
+                    bool value = false;
+                    result_set->GetBool(i, &value);
+                    t.add(value ? "true" : "false");
+                    break;
+                }
                 default: {
                     t.add("NA");
                 }
