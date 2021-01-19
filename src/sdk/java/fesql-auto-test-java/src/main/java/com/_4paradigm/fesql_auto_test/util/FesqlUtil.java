@@ -878,14 +878,17 @@ public class FesqlUtil {
 
         if (rawRs == null) {
             fesqlResult.setOk(false);
-        } else if  (rawRs instanceof ResultSet){
-            ResultSet rs = (ResultSet)rawRs;
+        } else if  (rawRs instanceof SQLResultSet){
+            SQLResultSet rs = (SQLResultSet)rawRs;
             fesqlResult.setOk(true);
-            fesqlResult.setCount(rs.Size());
-            Schema schema = rs.GetSchema();
-            fesqlResult.setResultSchema(schema);
-            List<List<Object>> result = convertRestultSetToList(rs, schema);
-            fesqlResult.setResult(result);
+            try {
+                fesqlResult.setMetaData(rs.getMetaData());
+                List<List<Object>> result = convertRestultSetToList(rs);
+                fesqlResult.setCount(result.size());
+                fesqlResult.setResult(result);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         log.info("select result:{} \nschema={}", fesqlResult, fesqlResult.getResultSchema());
         return fesqlResult;
