@@ -232,11 +232,27 @@ std::string EngineModeName(EngineMode mode) {
             return "kRequestMode";
         case kBatchRequestMode:
             return "kBatchRequestMode";
+        case kSparkBatchMode:
+            return "kSparkBatchMode";
         default:
             return "unknown";
     }
 }
-
+Status SQLCompiler::BuildSparkBatchModePhysicalPlan(
+    SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+    ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+    PhysicalOpNode** output) {
+    vm::BatchModeTransformer transformer(&ctx->nm, ctx->db, cl_, llvm_module,
+                                         library, ctx->is_performance_sensitive,
+                                         ctx->is_cluster_optimized,
+                                         ctx->enable_expr_optimize,
+                                         ctx->enable_window_parallelization);
+    transformer.AddDefaultPasses();
+    CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output),
+                 "Fail to generate physical plan (batch mode)");
+    ctx->schema = *(*output)->GetOutputSchema();
+    return Status::OK();
+}
 Status SQLCompiler::BuildBatchModePhysicalPlan(
     SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
     ::llvm::Module* llvm_module, udf::UDFLibrary* library,
@@ -346,6 +362,10 @@ Status SQLCompiler::BuildPhysicalPlan(
         case kBatchMode: {
             return BuildBatchModePhysicalPlan(ctx, plan_list, llvm_module,
                                               library, output);
+        }
+        case kSparkBatchMode: {
+            return BuildSparkBatchModePhysicalPlan(ctx, plan_list, llvm_module,
+                                                   library, output);
         }
         case kRequestMode: {
             return BuildRequestModePhysicalPlan(ctx, plan_list, llvm_module,

@@ -83,7 +83,8 @@ BatchModeTransformer::BatchModeTransformer(
     node::NodeManager* node_manager, const std::string& db,
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
     const udf::UDFLibrary* library, bool performance_sensitive,
-    bool cluster_optimized_mode, bool enable_expr_opt)
+    bool cluster_optimized_mode, bool enable_expr_opt,
+    bool enable_window_parallelization)
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
@@ -91,6 +92,7 @@ BatchModeTransformer::BatchModeTransformer(
       id_(0),
       performance_sensitive_mode_(performance_sensitive),
       cluster_optimized_mode_(cluster_optimized_mode),
+      enable_window_parallelization_(enable_window_parallelization),
       library_(library),
       plan_ctx_(node_manager, library, db, catalog, enable_expr_opt) {}
 
@@ -349,6 +351,87 @@ Status BatchModeTransformer::TransformProjectPlanOp(
                                   depend, false, output);
     }
 
+    if (enable_window_parallelization_) {
+        return TransformProjectPlanOpWithWindowParallel(node, output);
+    } else {
+        return TransformProjectPlanOpWindowSerial(node, output);
+    }
+}
+Status BatchModeTransformer::TransformProjectPlanOpWithWindowParallel(
+    const node::ProjectPlanNode* node, PhysicalOpNode** output) {
+    // sanity check
+    CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
+               "Input node or output node is null");
+
+    PhysicalOpNode* depend = nullptr;
+    CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &depend));
+
+    std::vector<PhysicalOpNode*> ops;
+    for (auto iter = node->project_list_vec_.cbegin();
+         iter != node->project_list_vec_.cend(); iter++) {
+        fesql::node::ProjectListNode* project_list =
+            dynamic_cast<fesql::node::ProjectListNode*>(*iter);
+
+        PhysicalOpNode* project_op = nullptr;
+        CHECK_STATUS(
+            TransformProjectOp(project_list, depend, false, &project_op));
+        ops.push_back(project_op);
+    }
+
+    CHECK_TRUE(!ops.empty(), kPlanError,
+               "Fail transform project op: empty projects");
+
+    if (ops.size() == 1) {
+        *output = ops[0];
+        return Status::OK();
+    }
+
+    PhysicalJoinNode* join = nullptr;
+    CHECK_STATUS(CreateOp<PhysicalJoinNode>(
+        &join, ops[0], ops[1], ::fesql::node::kJoinTypeConcat));
+
+    for (size_t i = 2; i < ops.size(); ++i) {
+        PhysicalJoinNode* new_join = nullptr;
+        CHECK_STATUS(CreateOp<PhysicalJoinNode>(
+            &new_join, join, ops[i], ::fesql::node::kJoinTypeConcat));
+        join = new_join;
+    }
+
+    auto project_list = node_manager_->MakeProjectListPlanNode(nullptr, false);
+    uint32_t pos = 0;
+    for (auto iter = node->pos_mapping_.cbegin();
+         iter != node->pos_mapping_.cend(); iter++) {
+        auto sub_project_list = dynamic_cast<node::ProjectListNode*>(
+            node->project_list_vec_[iter->first]);
+
+        auto project_node = dynamic_cast<node::ProjectNode*>(
+            sub_project_list->GetProjects().at(iter->second));
+        if (node::kExprAll == project_node->GetExpression()->expr_type_) {
+            auto all_expr =
+                dynamic_cast<node::AllNode*>(project_node->GetExpression());
+            if (all_expr->children_.empty()) {
+                // expand all expression if needed
+                for (auto column : *depend->GetOutputSchema()) {
+                    all_expr->children_.push_back(
+                        node_manager_->MakeColumnRefNode(
+                            column.name(), all_expr->GetRelationName()));
+                }
+            }
+            project_list->AddProject(
+                node_manager_->MakeRowProjectNode(pos, "*", all_expr));
+        } else {
+            project_list->AddProject(node_manager_->MakeRowProjectNode(
+                pos, project_node->GetName(),
+                node_manager_->MakeColumnRefNode(project_node->GetName(), "")));
+        }
+        pos++;
+    }
+    return CreatePhysicalProjectNode(kTableProject, join, project_list, false,
+                                     output);
+}
+Status BatchModeTransformer::TransformProjectPlanOpWindowSerial(
+    const node::ProjectPlanNode* node, PhysicalOpNode** output) {
+    PhysicalOpNode* depend = nullptr;
     // 处理project_list_vec_[1...N-1], 串联执行windowAggWithAppendInput
     std::vector<PhysicalOpNode*> ops;
     int32_t project_cnt = 0;
@@ -3021,7 +3104,7 @@ RequestModeTransformer::RequestModeTransformer(
     const bool enable_batch_request_opt, bool enable_expr_opt)
     : BatchModeTransformer(node_manager, db, catalog, module, library,
                            performance_sensitive, cluster_optimized,
-                           enable_expr_opt),
+                           enable_expr_opt, true),
       enable_batch_request_opt_(enable_batch_request_opt) {
     batch_request_info_.common_column_indices = common_column_indices;
 }

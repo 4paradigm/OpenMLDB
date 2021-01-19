@@ -287,7 +287,8 @@ class BatchModeTransformer {
                          const std::shared_ptr<Catalog>& catalog,
                          ::llvm::Module* module, const udf::UDFLibrary* library,
                          bool performance_sensitive,
-                         bool cluster_optimized_mode, bool enable_expr_opt);
+                         bool cluster_optimized_mode, bool enable_expr_opt,
+                         bool enable_window_parallelization);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
     virtual Status TransformPhysicalPlan(
@@ -406,6 +407,10 @@ class BatchModeTransformer {
     const std::shared_ptr<Catalog> catalog_;
 
  private:
+    virtual Status TransformProjectPlanOpWithWindowParallel(const node::ProjectPlanNode* node,
+                                          PhysicalOpNode** output);
+    virtual Status TransformProjectPlanOpWindowSerial(const node::ProjectPlanNode* node,
+                                                          PhysicalOpNode** output);
     ::llvm::Module* module_;
     uint32_t id_;
     // window partition and order should be optimized under
@@ -413,6 +418,7 @@ class BatchModeTransformer {
     // `index_opt_strict_mode_`
     bool performance_sensitive_mode_;
     bool cluster_optimized_mode_;
+    bool enable_window_parallelization_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
     const udf::UDFLibrary* library_;
