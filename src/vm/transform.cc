@@ -76,6 +76,7 @@ BatchModeTransformer::BatchModeTransformer(
       id_(0),
       performance_sensitive_mode_(false),
       cluster_optimized_mode_(false),
+      enable_window_parallelization_(false),
       library_(library),
       plan_ctx_(node_manager, library, db, catalog, false) {}
 
@@ -339,18 +340,6 @@ Status BatchModeTransformer::TransformProjectPlanOp(
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
                "Input node or output node is null");
 
-    PhysicalOpNode* depend = nullptr;
-    if (!node->GetChildren().empty() && nullptr != node->GetChildren()[0]) {
-        CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &depend));
-    }
-    CHECK_TRUE(!node->project_list_vec_.empty(), kPlanError,
-               "Fail transform project op: empty projects");
-    if (1 == node->project_list_vec_.size()) {
-        return TransformProjectOp(dynamic_cast<fesql::node::ProjectListNode*>(
-                                      node->project_list_vec_[0]),
-                                  depend, false, output);
-    }
-
     if (enable_window_parallelization_) {
         return TransformProjectPlanOpWithWindowParallel(node, output);
     } else {
@@ -364,7 +353,16 @@ Status BatchModeTransformer::TransformProjectPlanOpWithWindowParallel(
                "Input node or output node is null");
 
     PhysicalOpNode* depend = nullptr;
-    CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &depend));
+    if (!node->GetChildren().empty() && nullptr != node->GetChildren()[0]) {
+        CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &depend));
+    }
+    CHECK_TRUE(!node->project_list_vec_.empty(), kPlanError,
+               "Fail transform project op: empty projects");
+    if (1 == node->project_list_vec_.size()) {
+        return TransformProjectOp(dynamic_cast<fesql::node::ProjectListNode*>(
+                                      node->project_list_vec_[0]),
+                                  depend, false, output);
+    }
 
     std::vector<PhysicalOpNode*> ops;
     for (auto iter = node->project_list_vec_.cbegin();
@@ -432,6 +430,16 @@ Status BatchModeTransformer::TransformProjectPlanOpWithWindowParallel(
 Status BatchModeTransformer::TransformProjectPlanOpWindowSerial(
     const node::ProjectPlanNode* node, PhysicalOpNode** output) {
     PhysicalOpNode* depend = nullptr;
+    if (!node->GetChildren().empty() && nullptr != node->GetChildren()[0]) {
+        CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &depend));
+    }
+    CHECK_TRUE(!node->project_list_vec_.empty(), kPlanError,
+               "Fail transform project op: empty projects");
+    if (1 == node->project_list_vec_.size()) {
+        return TransformProjectOp(dynamic_cast<fesql::node::ProjectListNode*>(
+                                      node->project_list_vec_[0]),
+                                  depend, false, output);
+    }
     // 处理project_list_vec_[1...N-1], 串联执行windowAggWithAppendInput
     std::vector<PhysicalOpNode*> ops;
     int32_t project_cnt = 0;

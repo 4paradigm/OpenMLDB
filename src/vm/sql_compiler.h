@@ -36,7 +36,7 @@ namespace vm {
 
 using fesql::base::Status;
 
-enum EngineMode { kBatchMode, kSparkBatchMode, kRequestMode, kBatchRequestMode };
+enum EngineMode { kBatchMode, kRequestMode, kBatchRequestMode };
 
 std::string EngineModeName(EngineMode mode);
 
@@ -58,7 +58,7 @@ struct SQLContext {
     bool is_cluster_optimized = false;
     bool is_batch_request_optimized = false;
     bool enable_expr_optimize = false;
-    bool enable_window_parallelization = false;
+    bool enable_batch_window_parallelization = false;
 
     // the sql content
     std::string sql;
@@ -123,10 +123,6 @@ class SQLCompiler {
                              ::llvm::Module* llvm_module,
                              PhysicalOpNode** output);
     Status BuildBatchModePhysicalPlan(
-        SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
-        ::llvm::Module* llvm_module, udf::UDFLibrary* library,
-        PhysicalOpNode** output);
-    Status BuildSparkBatchModePhysicalPlan(
         SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
         ::llvm::Module* llvm_module, udf::UDFLibrary* library,
         PhysicalOpNode** output);
