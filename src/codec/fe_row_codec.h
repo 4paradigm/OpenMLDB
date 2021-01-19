@@ -30,8 +30,8 @@
 namespace fesql {
 namespace codec {
 
-//#define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
-// TODO: Change to align 8 byte for UnsafeRow
+// #define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
+// TODO(chendihao): Change to align 8 byte for UnsafeRow
 #define BitMapSize(size) 8
 
 typedef ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef> Schema;
@@ -54,7 +54,7 @@ static const std::unordered_map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
     {::fesql::type::kDate, sizeof(int32_t)},
     {::fesql::type::kDouble, sizeof(double)}};
 */
-// TODO: Change column size for UnsafeRow
+// TODO(chendihao): Change column size for UnsafeRow
 static const std::unordered_map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
     {::fesql::type::kBool, 8},
     {::fesql::type::kInt16, 8},
@@ -65,7 +65,7 @@ static const std::unordered_map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
     {::fesql::type::kDate, 8},
     {::fesql::type::kDouble, 8}};
 
-// TODO: May change to align UnsafeRow string encoder
+// TODO(chendihao): May change to align UnsafeRow string encoder
 inline uint8_t GetAddrLength(uint32_t size) {
     if (size <= UINT8_MAX) {
         return 1;

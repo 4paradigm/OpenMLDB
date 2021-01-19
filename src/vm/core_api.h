@@ -123,9 +123,9 @@ class CoreAPI {
 
     // Row project API with Spark UnsafeRow optimization
     static fesql::codec::Row UnsafeRowProject(const fesql::vm::RawPtrHandle fn,
-                                              fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
-                                              const int inputRowSizeInBytes,
-                                              const bool need_free = false);
+        fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
+        const int inputRowSizeInBytes,
+        const bool need_free = false);
 
     static void CopyRowToUnsafeRowBytes(const fesql::codec::Row inputRow,
                                         fesql::vm::ByteArrayPtr outputBytes,

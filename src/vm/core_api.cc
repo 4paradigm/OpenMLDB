@@ -212,11 +212,12 @@ fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
 }
 
 fesql::codec::Row CoreAPI::UnsafeRowProject(const fesql::vm::RawPtrHandle fn,
-                                            fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
-                                            const int inputRowSizeInBytes,
-                                            const bool need_free) {
+    fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
+    const int inputRowSizeInBytes,
+    const bool need_free) {
     // Create Row from input UnsafeRow bytes
-    auto inputRow = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes, inputRowSizeInBytes));
+    auto inputRow = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes,
+                                                      inputRowSizeInBytes));
     auto row_ptr = reinterpret_cast<const int8_t*>(&inputRow);
 
     // Init current run step runtime
