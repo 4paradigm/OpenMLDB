@@ -423,6 +423,7 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     DropTable(name_server_client, db, "trans1", true);
     ShowTable(name_server_client, db, 0);
 
+
     delete tablet2;
     delete tb_server2;
 }
