@@ -85,16 +85,17 @@ INSTANTIATE_TEST_CASE_P(
     SqlJoinPlan, SQLCompilerTest,
     testing::ValuesIn(InitCases("cases/plan/join_query.yaml")));
 
-
 void CompilerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
-                   EngineMode engine_mode, const bool enable_batch_window_paralled) {
+                   EngineMode engine_mode,
+                   const bool enable_batch_window_paralled) {
     SQLCompiler sql_compiler(catalog, false, true, false);
     SQLContext sql_context;
     sql_context.sql = sql;
     sql_context.db = "db";
     sql_context.engine_mode = engine_mode;
     sql_context.is_performance_sensitive = false;
-    sql_context.enable_batch_window_parallelization = enable_batch_window_paralled;
+    sql_context.enable_batch_window_parallelization =
+        enable_batch_window_paralled;
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);

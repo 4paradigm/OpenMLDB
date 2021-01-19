@@ -407,10 +407,10 @@ class BatchModeTransformer {
     const std::shared_ptr<Catalog> catalog_;
 
  private:
-    virtual Status TransformProjectPlanOpWithWindowParallel(const node::ProjectPlanNode* node,
-                                          PhysicalOpNode** output);
-    virtual Status TransformProjectPlanOpWindowSerial(const node::ProjectPlanNode* node,
-                                                          PhysicalOpNode** output);
+    virtual Status TransformProjectPlanOpWithWindowParallel(
+        const node::ProjectPlanNode* node, PhysicalOpNode** output);
+    virtual Status TransformProjectPlanOpWindowSerial(
+        const node::ProjectPlanNode* node, PhysicalOpNode** output);
     ::llvm::Module* module_;
     uint32_t id_;
     // window partition and order should be optimized under

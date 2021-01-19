@@ -241,11 +241,10 @@ Status SQLCompiler::BuildBatchModePhysicalPlan(
     SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
     ::llvm::Module* llvm_module, udf::UDFLibrary* library,
     PhysicalOpNode** output) {
-    vm::BatchModeTransformer transformer(&ctx->nm, ctx->db, cl_, llvm_module,
-                                         library, ctx->is_performance_sensitive,
-                                         ctx->is_cluster_optimized,
-                                         ctx->enable_expr_optimize,
-                                         ctx->enable_batch_window_parallelization);
+    vm::BatchModeTransformer transformer(
+        &ctx->nm, ctx->db, cl_, llvm_module, library,
+        ctx->is_performance_sensitive, ctx->is_cluster_optimized,
+        ctx->enable_expr_optimize, ctx->enable_batch_window_parallelization);
     transformer.AddDefaultPasses();
     CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output),
                  "Fail to generate physical plan (batch mode)");
