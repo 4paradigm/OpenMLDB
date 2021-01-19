@@ -398,7 +398,7 @@ public class FesqlUtil {
             }
             try {
                 rps.close();
-                resultSet.close();
+                //resultSet.close();
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
             }
@@ -464,7 +464,7 @@ public class FesqlUtil {
                     rps.close();
                 }
                 if (sqlResultSet != null) {
-                    sqlResultSet.close();
+                    //sqlResultSet.close();
                 }
             } catch (SQLException closeException) {
                 closeException.printStackTrace();
@@ -548,7 +548,7 @@ public class FesqlUtil {
             } finally {
                 try {
                     if (rps != null) rps.close();
-                    if (resultSet != null) resultSet.close();
+                    //if (resultSet != null) resultSet.close();
                 } catch (SQLException throwables) {
                     throwables.printStackTrace();
                 }
@@ -629,7 +629,7 @@ public class FesqlUtil {
                     rps.close();
                 }
                 if (sqlResultSet != null) {
-                    sqlResultSet.close();
+                    //sqlResultSet.close();
                 }
             } catch (SQLException closeException) {
                 closeException.printStackTrace();
