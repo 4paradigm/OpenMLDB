@@ -608,6 +608,8 @@ TEST_F(UDFIRBuilderTest, concat_ws_anytype_udf_test) {
 }
 
 TEST_F(UDFIRBuilderTest, to_string_test) {
+    CheckUDF<StringRef, bool>("string", StringRef("true"), true);
+    CheckUDF<StringRef, bool>("string", StringRef("false"), false);
     CheckUDF<StringRef, int32_t>("string", StringRef("67890"), 67890);
     CheckUDF<StringRef, int16_t>("string", StringRef("128"),
                                  static_cast<int16_t>(128));
@@ -618,7 +620,7 @@ TEST_F(UDFIRBuilderTest, to_string_test) {
                                  1234567890L);
 
     CheckUDF<StringRef, int64_t>("string", StringRef("1234567890"),
-                                 1234567890L);
+                                 1234567890L);./
     CheckUDF<StringRef, Timestamp>("string", StringRef("2020-05-22 10:43:40"),
                                    Timestamp(1590115420000L));
 

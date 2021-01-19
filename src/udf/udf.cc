@@ -213,6 +213,22 @@ void date_format(codec::Date *date, const std::string &format,
 void timestamp_to_string(codec::Timestamp *v, fesql::codec::StringRef *output) {
     date_format(v, "%Y-%m-%d %H:%M:%S", output);
 }
+void bool_to_string(bool v, fesql::codec::StringRef *output) {
+    std::ostringstream ss;
+    if (v) {
+        char *buffer = AllocManagedStringBuf(4);
+        output->size_ = 4;
+        memcpy(buffer, "true", output->size_);
+        output->data_ = buffer;
+    } else {
+        char *buffer = AllocManagedStringBuf(5);
+        output->size_ = 5;
+        memcpy(buffer, "false", output->size_);
+        output->data_ = buffer;
+    }
+
+}
+
 void timestamp_to_date(codec::Timestamp *timestamp, fesql::codec::Date *output,
                        bool *is_null) {
     time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
