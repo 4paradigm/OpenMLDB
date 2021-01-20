@@ -35,6 +35,8 @@ class QuerySuites extends SQLBaseSuite {
   testCases("cases/integration/spark/test_fqz_studio.yaml")
   testCases("cases/integration/spark/test_ads.yaml")
   testCases("cases/integration/spark/test_news.yaml")
+  testCases("cases/integration/spark/test_jd.yaml")
+  testCases("cases/integration/spark/test_credit.yaml")
 
   // TODO: fix if java cases support not inputs
   // testCases("cases/query/const_query.yaml")

@@ -179,6 +179,18 @@ INSTANTIATE_TEST_CASE_P(
     EngineTestSparkNews, EngineTest,
     testing::ValuesIn(
         InitCases("/cases/integration/spark/test_news.yaml")));
+// 多表-京东数据场景
+// TODO: won't pass in performance sensitive mode
+// INSTANTIATE_TEST_CASE_P(
+//     EngineTestSparkJD, EngineTest,
+//     testing::ValuesIn(
+//         InitCases("/cases/integration/spark/test_jd.yaml")));
+// 多表-信用卡用户转借记卡预测场景
+// TODO: won't pass in performance sensitive mode
+// INSTANTIATE_TEST_CASE_P(
+//     EngineTestSparkCredit, EngineTest,
+//     testing::ValuesIn(
+//         InitCases("/cases/integration/spark/test_credit.yaml")));
 
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();

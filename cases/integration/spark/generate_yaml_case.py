@@ -123,7 +123,7 @@ def to_string(value):
 
 
 sess = None
-def gen_inputs_column_and_rows(parquet_file):
+def gen_inputs_column_and_rows(parquet_file, table_name=''):
     global sess
     if sess is None:
         sess = pyspark.sql.SparkSession(pyspark.SparkContext())
@@ -132,6 +132,9 @@ def gen_inputs_column_and_rows(parquet_file):
     schema = [DoubleQuotedScalarString(to_column_str(f)) for f in hdfs_schema.fields]
 
     table = yaml.load(INPUT_TEMPLATE, Loader=RoundTripLoader)
+
+    if table_name:
+        table['name'] = table_name
 
     table['columns'] = schema
 
@@ -149,7 +152,7 @@ if __name__ == '__main__':
     parser.add_argument("--sql", required=True, help="sql text path")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--schema-file", help="path to hdfs content(in parquet format), used to detect table schema")
-    group.add_argument("--schema-list-file", help="list file conataining a list of hdfs files, one file per line")
+    group.add_argument("--schema-list-file", help="list file conataining a list of hdfs files, \"table_name: file path\" per line")
     parser.add_argument("--output", required=True, help="path to output yaml file")
     args = parser.parse_args()
 
@@ -169,8 +172,12 @@ if __name__ == '__main__':
                 sf = schema_file.strip()
                 if not sf:
                     continue
-                tb = gen_inputs_column_and_rows(sf)
-                yaml_test['cases'][0]['inputs'].append(tb)
+                table_name, parquet_file, *_ = sf.split(':')
+
+                parquet_file = parquet_file.strip()
+                if parquet_file:
+                    tb = gen_inputs_column_and_rows(parquet_file, table_name)
+                    yaml_test['cases'][0]['inputs'].append(tb)
     else:
         print("error")
         sys.exit(1)
