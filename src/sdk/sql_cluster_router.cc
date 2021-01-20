@@ -1088,10 +1088,9 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
     }
 
     auto cntl = std::make_shared<::brpc::Controller>();
-    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
     auto response = std::make_shared<::rtidb::api::QueryResponse>();
     bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(),
-                             options_.enable_debug);
+                             options_.enable_debug, options_.request_timeout);
     if (!ok) {
         status->code = -1;
         status->msg = "request server error" + response->msg();
@@ -1120,11 +1119,10 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProc
     }
 
     auto cntl = std::make_shared<::brpc::Controller>();
-    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
     auto response = std::make_shared<::rtidb::api::SQLBatchRequestQueryResponse>();
     bool ok = tablet->CallSQLBatchRequestProcedure(
             db, sp_name, row_batch, cntl.get(), response.get(),
-            options_.enable_debug);
+            options_.enable_debug, options_.request_timeout);
     if (!ok) {
         status->code = -1;
         status->msg = "request server error, msg: " + response->msg();

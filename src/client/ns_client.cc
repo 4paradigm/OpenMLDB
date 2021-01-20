@@ -405,12 +405,13 @@ bool NsClient::HandleSQLCreateTable(
 }
 
 bool NsClient::CreateProcedure(const ::rtidb::api::ProcedureInfo& sp_info,
-        uint32_t request_timeout, std::string* msg) {
+        uint64_t request_timeout, std::string* msg) {
     if (msg == nullptr) return false;
     ::rtidb::api::CreateProcedureRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     ::rtidb::api::ProcedureInfo* sp_info_ptr = request.mutable_sp_info();
     sp_info_ptr->CopyFrom(sp_info);
+    request.set_timeout_ms(request_timeout);
     bool ok = client_.SendRequest(
             &::rtidb::nameserver::NameServer_Stub::CreateProcedure, &request,
             &response, request_timeout, 1);
