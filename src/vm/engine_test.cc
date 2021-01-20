@@ -164,6 +164,8 @@ INSTANTIATE_TEST_CASE_P(
     EngineTestDebugIssues, EngineTest,
     testing::ValuesIn(InitCases("/cases/debug/issues_case.yaml")));
 
+// TODO(qiliguo) #229 sql 语句加一个大 select, 选取其中几列，添加到 expect 中的做验证
+// imported from spark offline test
 // 单表反欺诈场景
 INSTANTIATE_TEST_CASE_P(
     EngineTestSparkFQZ, EngineTest,
@@ -180,13 +182,13 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(
         InitCases("/cases/integration/spark/test_news.yaml")));
 // 多表-京东数据场景
-// TODO(qiliguo): won't pass in performance sensitive mode
+// TODO(qiliguo): #222 won't pass in performance sensitive mode
 // INSTANTIATE_TEST_CASE_P(
 //     EngineTestSparkJD, EngineTest,
 //     testing::ValuesIn(
 //         InitCases("/cases/integration/spark/test_jd.yaml")));
 // 多表-信用卡用户转借记卡预测场景
-// TODO(qiliguo): won't pass in performance sensitive mode
+// TODO(qiliguo): #222 won't pass in performance sensitive mode
 // INSTANTIATE_TEST_CASE_P(
 //     EngineTestSparkCredit, EngineTest,
 //     testing::ValuesIn(
