@@ -805,7 +805,8 @@ INSTANTIATE_TEST_SUITE_P(
 
 INSTANTIATE_TEST_SUITE_P(
     CastExprTestString, CastExprTest,
-    testing::Values(std::make_tuple("string", "1", "bool", "true"),
+    testing::Values(std::make_tuple("string", "true", "bool", "true"),
+                    std::make_tuple("string", "false", "bool", "false"),
                     std::make_tuple("string", "1", "int16", "1"),
                     std::make_tuple("string", "1", "int32", "1"),
                     std::make_tuple("string", "1", "int64", "1"),

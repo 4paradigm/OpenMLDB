@@ -608,6 +608,8 @@ TEST_F(UDFIRBuilderTest, concat_ws_anytype_udf_test) {
 }
 
 TEST_F(UDFIRBuilderTest, to_string_test) {
+    CheckUDF<StringRef, bool>("string", StringRef("true"), true);
+    CheckUDF<StringRef, bool>("string", StringRef("false"), false);
     CheckUDF<StringRef, int32_t>("string", StringRef("67890"), 67890);
     CheckUDF<StringRef, int16_t>("string", StringRef("128"),
                                  static_cast<int16_t>(128));
