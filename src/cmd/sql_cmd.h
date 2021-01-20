@@ -133,6 +133,12 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
                     t.add(ss.str());
                     break;
                 }
+                case fesql::sdk::kTypeBool: {
+                    bool value = false;
+                    result_set->GetBool(i, &value);
+                    t.add(value ? "true" : "false");
+                    break;
+                }
                 default: {
                     t.add("NA");
                 }
@@ -504,10 +510,6 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             std::string error;
             std::vector<std::shared_ptr<fesql::sdk::ProcedureInfo>> sp_infos =
                 cs->GetProcedureInfo(&error);
-            if (sp_infos.empty()) {
-                std::cout << "Fail to show procdure. error msg: " << error << std::endl;
-                return;
-            }
             std::vector<std::pair<std::string, std::string>> pairs;
             for (uint32_t i = 0; i < sp_infos.size(); i++) {
                 auto& sp_info = sp_infos.at(i);
