@@ -214,7 +214,6 @@ void timestamp_to_string(codec::Timestamp *v, fesql::codec::StringRef *output) {
     date_format(v, "%Y-%m-%d %H:%M:%S", output);
 }
 void bool_to_string(bool v, fesql::codec::StringRef *output) {
-    std::ostringstream ss;
     if (v) {
         char *buffer = AllocManagedStringBuf(4);
         output->size_ = 4;

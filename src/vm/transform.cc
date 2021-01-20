@@ -2013,9 +2013,6 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 auto& window_unions = window_agg_op->window_unions();
                 window_agg_op->InitJoinList(plan_ctx_);
                 auto& joined_op_list_ = window_agg_op->joined_op_list_;
-                PhysicalOpNode* final_joined =
-                    joined_op_list_.empty() ? input : joined_op_list_.back();
-
                 if (!window_joins.Empty()) {
                     size_t join_idx = 0;
                     for (auto& window_join : window_joins.window_joins()) {

@@ -2473,7 +2473,8 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(
     uint64_t end = UINT64_MAX;
     uint64_t rows_start_preceding = 0;
     uint64_t max_size = 0;
-    int64_t request_key = range_gen_.ts_gen_.Gen(request);
+    int64_t ts_gen = range_gen_.ts_gen_.Gen(request);
+    uint64_t request_key = ts_gen > 0 ? static_cast<uint64_t>(ts_gen) : 0;
     if (range_gen_.Valid()) {
         start = (request_key + range_gen_.window_range_.start_offset_) < 0
                     ? 0
