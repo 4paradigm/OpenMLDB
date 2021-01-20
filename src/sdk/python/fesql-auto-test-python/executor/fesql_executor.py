@@ -17,7 +17,7 @@ class BaseExecutor(metaclass=ABCMeta):
     def process(self):
         if (self.fesqlCase == None):
             return
-        log.info(self.fesqlCase['desc'] + " Begin!")
+        log.info(str(self.fesqlCase['case_prefix']) + ': ' + self.fesqlCase['desc'] + " Begin!")
         self.prepare()
         fesqlResult = self.execute()
         self.check(fesqlResult)
