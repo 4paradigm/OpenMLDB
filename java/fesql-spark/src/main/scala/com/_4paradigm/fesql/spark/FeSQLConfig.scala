@@ -65,6 +65,9 @@ class FeSQLConfig extends Serializable {
   @ConfigOption(name="fesql.window.sampleOutputPath", doc="Window sample output path")
   var windowSampleOutputPath: String = _
 
+  @ConfigOption(name="fesql.window.parallelization", doc="Enable window compute parallelization optimization")
+  var enableWindowParallelization: Boolean = false
+
 }
 
 

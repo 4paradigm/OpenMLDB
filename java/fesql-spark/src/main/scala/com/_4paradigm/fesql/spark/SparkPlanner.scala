@@ -37,7 +37,7 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
       case (name, df) => planCtx.registerDataFrame(name, df)
     }
 
-    withSQLEngine(sql, FesqlUtil.getDatabase(config.configDBName, tableDict)) { engine =>
+    withSQLEngine(sql, FesqlUtil.getDatabase(config.configDBName, tableDict), config) { engine =>
       val irBuffer = engine.getIRBuffer
       planCtx.setModuleBuffer(irBuffer)
 
@@ -148,10 +148,20 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
     SparkInstance.fromDataFrame(sess.read.parquet(cacheDataPath))
   }
 
-  private def withSQLEngine[T](sql: String, db: Database)(body: SQLEngine => T): T = {
+  private def withSQLEngine[T](sql: String, db: Database, config: FeSQLConfig)(body: SQLEngine => T): T = {
     var engine: SQLEngine = null
+
+    val engineOptions = SQLEngine.createDefaultEngineOptions()
+
+    if (config.enableWindowParallelization) {
+      logger.info("Enable window parallelization optimization")
+      engineOptions.set_enable_batch_window_parallelization(true)
+    } else {
+      logger.info("Disable window parallelization optimization, enable by setting fesql.window.parallelization")
+    }
+
     try {
-      engine = new SQLEngine(sql, db)
+      engine = new SQLEngine(sql, db, engineOptions)
       val res = body(engine)
       res
     } finally {
