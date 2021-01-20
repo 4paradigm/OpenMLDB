@@ -2474,19 +2474,18 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(
     uint64_t rows_start_preceding = 0;
     uint64_t max_size = 0;
     int64_t ts_gen = range_gen_.ts_gen_.Gen(request);
-    uint64_t request_key = ts_gen > 0 ? static_cast<uint64_t>(ts_gen) : 0;
     if (range_gen_.Valid()) {
-        start = (request_key + range_gen_.window_range_.start_offset_) < 0
+        start = (ts_gen + range_gen_.window_range_.start_offset_) < 0
                     ? 0
-                    : (request_key + range_gen_.window_range_.start_offset_);
+                    : (ts_gen + range_gen_.window_range_.start_offset_);
 
-        end = (request_key + range_gen_.window_range_.end_offset_) < 0
+        end = (ts_gen + range_gen_.window_range_.end_offset_) < 0
                   ? 0
-                  : (request_key + range_gen_.window_range_.end_offset_);
+                  : (ts_gen + range_gen_.window_range_.end_offset_);
         rows_start_preceding = range_gen_.window_range_.start_row_;
         max_size = range_gen_.window_range_.max_size_;
     }
-
+    uint64_t request_key = ts_gen > 0 ? static_cast<uint64_t>(ts_gen) : 0;
     // Prepare Union Window
     auto union_inputs = windows_union_gen_.RunInputs(ctx);
     auto union_segments =
@@ -3002,12 +3001,10 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
