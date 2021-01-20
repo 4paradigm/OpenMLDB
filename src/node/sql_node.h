@@ -1220,6 +1220,7 @@ class FrameNode : public SQLNode {
                 return false;
             }
         }
+        return false;
     }
 
  private:
