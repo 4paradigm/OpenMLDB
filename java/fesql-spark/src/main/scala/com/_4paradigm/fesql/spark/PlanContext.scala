@@ -7,12 +7,14 @@ import com._4paradigm.fesql.common.SerializableByteBuffer
 import com._4paradigm.fesql.spark.nodes._
 import com._4paradigm.fesql.vm._
 import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.sql.catalyst.QueryPlanningTracker
+import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 
 import scala.collection.mutable
 
-class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, config: Map[String, Any]) {
+class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, config: FeSQLConfig) {
 
   private var moduleBuffer: SerializableByteBuffer = _
   // private var moduleBroadCast: Broadcast[SerializableByteBuffer] = _
@@ -34,6 +36,8 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
 
   def getSerializableModuleBuffer: SerializableByteBuffer = moduleBuffer
 
+  def getConf: FeSQLConfig = config
+
   // def getModuleBufferBroadcast: Broadcast[SerializableByteBuffer] = moduleBroadCast
 
   def getPlanResult(node: PhysicalOpNode): Option[SparkInstance] = {
@@ -52,12 +56,29 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
     namedSparkDataFrames.get(name)
   }
 
-  def getConf[T](key: String, default: T): T = {
-    config.getOrElse(key, default).asInstanceOf[T]
+  def getSparkOutput(root: PhysicalOpNode): SparkInstance = {
+    planner.getSparkOutput(root, this)
   }
 
-  def visitPhysicalNodes(root: PhysicalOpNode): SparkInstance = {
-    planner.visitPhysicalNodes(root, this)
+  /**
+   * Run sql with Spark SQL API.
+   *
+   * @param sqlText
+   * @return
+   */
+  def sparksql(sqlText: String): DataFrame = {
+    // Use Spark internal implementation because we may override sql function in 4PD Spark distribution
+    val tracker = new QueryPlanningTracker
+    val plan = tracker.measurePhase(QueryPlanningTracker.PARSING) {
+      session.sessionState.sqlParser.parsePlan(sqlText)
+    }
+
+    // Call private method Dataset.ofRows()
+    val datasetClass = Class.forName("org.apache.spark.sql.Dataset")
+    val datasetOfRowsMethod = datasetClass
+      .getDeclaredMethod(s"ofRows", classOf[SparkSession], classOf[LogicalPlan], classOf[QueryPlanningTracker])
+    val outputDataset =  datasetOfRowsMethod.invoke(null, session, plan, tracker).asInstanceOf[Dataset[Row]]
+    outputDataset
   }
 }
 

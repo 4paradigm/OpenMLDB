@@ -64,7 +64,8 @@ TEST_F(LambdafyProjectsTest, Test) {
     }
 
     auto lib = udf::DefaultUDFLibrary::get();
-    LambdafyProjects transformer(&nm, lib, &schemas_ctx, false);
+    node::ExprAnalysisContext ctx(&nm, lib, &schemas_ctx);
+    LambdafyProjects transformer(&ctx, false);
 
     std::vector<int> is_agg_vec;
     std::vector<std::string> names;

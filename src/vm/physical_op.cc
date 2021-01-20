@@ -289,6 +289,50 @@ Status PhysicalConstProjectNode::InitSchema(PhysicalPlanContext* ctx) {
                                    project_source);
 }
 
+int PhysicalSimpleProjectNode::GetSelectSourceIndex() const {
+    int cur_schema_idx = -1;
+    auto input_schemas_ctx = GetProducer(0)->schemas_ctx();
+    for (size_t i = 0; i < project_.size(); ++i) {
+        Status status;
+        size_t schema_idx;
+        size_t col_idx;
+        auto expr = project_.GetExpr(i);
+        switch (expr->GetExprType()) {
+            case node::kExprColumnId: {
+                status = input_schemas_ctx->ResolveColumnIndexByID(
+                    dynamic_cast<const node::ColumnIdNode*>(expr)
+                        ->GetColumnID(),
+                    &schema_idx, &col_idx);
+                break;
+            }
+            case node::kExprColumnRef: {
+                status = input_schemas_ctx->ResolveColumnRefIndex(
+                    dynamic_cast<const node::ColumnRefNode*>(expr), &schema_idx,
+                    &col_idx);
+                break;
+            }
+            default:
+                return -1;
+        }
+        if (!status.isOK()) {
+            return -1;
+        }
+        if (project_.size() !=
+            input_schemas_ctx->GetSchemaSource(schema_idx)->size()) {
+            return -1;
+        }
+        if (i == 0) {
+            cur_schema_idx = schema_idx;
+        } else if (cur_schema_idx != static_cast<int>(schema_idx)) {
+            return -1;
+        }
+        if (col_idx != i) {
+            return -1;
+        }
+    }
+    return cur_schema_idx;
+}
+
 Status PhysicalSimpleProjectNode::InitSchema(PhysicalPlanContext* ctx) {
     auto input_schemas_ctx = GetProducer(0)->schemas_ctx();
     // init project fn

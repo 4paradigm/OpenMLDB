@@ -1,3 +1,5 @@
+db: test_zw
+debugs:
 cases:
   - id: 0
     desc: 逻辑运算AND
@@ -13,7 +15,7 @@ cases:
           2, 3
           3, 4
           4, 5
-    output:
+    expect:
       schema: col1:int32, col2:int64, flag:bool
       order: col1
       data: |
@@ -35,7 +37,7 @@ cases:
           2, 3
           3, 4
           4, 5
-    output:
+    expect:
       schema: col1:int32, col2:int64, flag:bool
       order: col1
       data: |
@@ -57,7 +59,7 @@ cases:
           2, 3
           3, 4
           4, 5
-    output:
+    expect:
       schema: col1:int32, col2:int64, flag:bool
       order: col1
       data: |
@@ -79,7 +81,7 @@ cases:
           2, 3
           3, 4
           4, 5
-    output:
+    expect:
       schema: col1:int32, col2:int64, flag:bool
       order: col1
       data: |
@@ -101,7 +103,7 @@ cases:
           2, 3
           3, 4
           4, 5
-    output:
+    expect:
       schema: col1:int32, col2:int64, flag:bool
       order: col1
       data: |
@@ -123,7 +125,7 @@ cases:
           2, 3
           3, 4
           4, 5
-    output:
+    expect:
       schema: col1:int32, col2:int64, flag:bool
       order: col1
       data: |
@@ -145,7 +147,7 @@ cases:
           2, 3
           3, 4
           4, 5
-    output:
+    expect:
       schema: col1:int32, col2:int64, flag:bool
       order: col1
       data: |
@@ -168,7 +170,7 @@ cases:
           2, 3
           3, 4
           4, 5
-    output:
+    expect:
       schema: col1:int32, col2:int64, flag:bool
       order: col1
       data: |
@@ -191,7 +193,7 @@ cases:
           2, 3
           3, 7
           4, 13
-    output:
+    expect:
       schema: col1:int32, col2:int64, div21:int64
       order: col1
       data: |
@@ -213,7 +215,7 @@ cases:
           2, 3
           3, 7
           4, 14
-    output:
+    expect:
       schema: col1:int32, col2:int64, mod21:int64
       order: col1
       data: |

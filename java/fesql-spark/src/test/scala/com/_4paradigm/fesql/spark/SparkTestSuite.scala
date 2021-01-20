@@ -8,12 +8,21 @@ abstract class SparkTestSuite extends FunSuite with BeforeAndAfter {
 
   private val tlsSparkSession = new ThreadLocal[SparkSession]()
 
+  def customizedBefore(): Unit = {}
+  def customizedAfter(): Unit = {}
+
   before {
     val sess = SparkSession.builder().master("local").getOrCreate()
     tlsSparkSession.set(sess)
+    customizedBefore()
   }
 
   after {
+    try {
+      customizedAfter()
+    } catch {
+      case e: Exception => e.printStackTrace()
+    }
     val sess = tlsSparkSession.get()
     if (sess != null) {
       try {

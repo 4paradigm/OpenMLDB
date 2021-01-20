@@ -82,9 +82,8 @@ class TestSparkPlanner extends SparkTestSuite {
        |    ROWS BETWEEN 3 PRECEDING AND 0 FOLLOWING);"
      """.stripMargin
 
-    val config =  Map(
-      "fesql.group.partitions" -> 1
-    )
+    val config = new FeSQLConfig
+    config.groupPartitions = 1
 
     val planner = new SparkPlanner(sess, config)
     val res = planner.plan(sql, Map("t" -> table))

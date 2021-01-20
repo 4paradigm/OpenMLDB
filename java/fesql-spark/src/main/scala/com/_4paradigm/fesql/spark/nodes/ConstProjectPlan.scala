@@ -4,10 +4,11 @@ import com._4paradigm.fesql.common.UnsupportedFesqlException
 import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.utils.{FesqlUtil, SparkColumnUtil}
 import com._4paradigm.fesql.vm.PhysicalConstProjectNode
-import org.apache.spark.sql.functions.{lit, to_date, to_timestamp, typedLit}
+import org.apache.spark.sql.functions.{lit, to_date, to_timestamp, typedLit, when}
 import com._4paradigm.fesql.node.{ConstNode, ExprType, DataType => FesqlDataType}
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.types._
+
 import scala.collection.JavaConverters._
 
 
@@ -87,105 +88,119 @@ object ConstProjectPlan {
     targetType match {
       case FesqlDataType.kInt16 =>
         fromType match {
+          case FesqlDataType.kNull => inputCol.cast(ShortType)
           case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 | FesqlDataType.kFloat | FesqlDataType.kDouble | FesqlDataType.kVarchar =>
             inputCol.cast(ShortType)
-          case FesqlDataType.kNull => inputCol.cast(ShortType)
-          case FesqlDataType.kTimestamp => inputCol.cast(ShortType).multiply(1000)
+          case FesqlDataType.kBool => inputCol.cast(ShortType)
+          case FesqlDataType.kTimestamp => inputCol.cast(ShortType).multiply(1000).cast(ShortType)
+          case FesqlDataType.kDate => inputCol.cast(ShortType)
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
         }
 
       case FesqlDataType.kInt32 =>
         fromType match {
+          case FesqlDataType.kNull => inputCol.cast(IntegerType)
           case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 | FesqlDataType.kFloat | FesqlDataType.kDouble | FesqlDataType.kVarchar =>
             inputCol.cast(IntegerType)
-          case FesqlDataType.kNull => inputCol.cast(IntegerType)
+          case FesqlDataType.kBool => inputCol.cast(IntegerType)
           // Spark timestamp to long returns seconds, which need to multiply 1000 to be millis seconds
           case FesqlDataType.kTimestamp => inputCol.cast(IntegerType).multiply(1000)
+          case FesqlDataType.kDate => inputCol.cast(IntegerType)
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
         }
 
       case FesqlDataType.kInt64 =>
         fromType match {
+          case FesqlDataType.kNull => inputCol.cast(LongType)
           case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 | FesqlDataType.kFloat | FesqlDataType.kDouble | FesqlDataType.kVarchar =>
             inputCol.cast(LongType)
-          case FesqlDataType.kNull => inputCol.cast(LongType)
+          case FesqlDataType.kBool => inputCol.cast(LongType)
           case FesqlDataType.kTimestamp => inputCol.cast(LongType).multiply(1000)
+          case FesqlDataType.kDate => inputCol.cast(LongType)
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
         }
 
       case FesqlDataType.kFloat =>
         fromType match {
+          case FesqlDataType.kNull => inputCol.cast(FloatType)
           case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 | FesqlDataType.kFloat | FesqlDataType.kDouble | FesqlDataType.kVarchar =>
             inputCol.cast(FloatType)
-          case FesqlDataType.kNull => inputCol.cast(FloatType)
+          case FesqlDataType.kBool => inputCol.cast(FloatType)
           case FesqlDataType.kTimestamp => inputCol.cast(FloatType).multiply(1000)
+          case FesqlDataType.kDate => inputCol.cast(FloatType)
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
         }
 
       case FesqlDataType.kDouble =>
         fromType match {
+          case FesqlDataType.kNull => inputCol.cast(DoubleType)
           case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 | FesqlDataType.kFloat | FesqlDataType.kDouble | FesqlDataType.kVarchar =>
             inputCol.cast(DoubleType)
-          case FesqlDataType.kNull => inputCol.cast(DoubleType)
+          case FesqlDataType.kBool => inputCol.cast(DoubleType)
           case FesqlDataType.kTimestamp => inputCol.cast(DoubleType).multiply(1000)
+          case FesqlDataType.kDate => inputCol.cast(DoubleType)
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
         }
 
       case FesqlDataType.kBool =>
         fromType match {
+          case FesqlDataType.kNull =>
+            inputCol.cast(BooleanType)
           case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 =>
             inputCol.cast(BooleanType)
           case FesqlDataType.kFloat | FesqlDataType.kDouble =>
             inputCol.cast(BooleanType)
+          case FesqlDataType.kTimestamp => inputCol.cast(BooleanType)
+          case FesqlDataType.kDate => inputCol.cast(BooleanType)
           // TODO: may catch exception if it fails to convert to string
           case FesqlDataType.kVarchar =>
             inputCol.cast(BooleanType)
-          case FesqlDataType.kNull =>
-            inputCol.cast(BooleanType)
+
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
         }
 
       case FesqlDataType.kDate =>
         fromType match {
-          case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 =>
-            inputCol.cast(DateType)
-          case FesqlDataType.kFloat | FesqlDataType.kDouble =>
-            inputCol.cast(DateType)
+          case FesqlDataType.kNull => inputCol.cast(DateType)
+          case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 | FesqlDataType.kFloat | FesqlDataType.kDouble =>
+            inputCol.cast(TimestampType).cast(DateType)
+          case FesqlDataType.kBool => inputCol.cast(TimestampType).cast(DateType)
+          case FesqlDataType.kTimestamp => inputCol.cast(DateType)
           case FesqlDataType.kVarchar =>
             to_date(inputCol, "yyyy-MM-dd")
-          case FesqlDataType.kNull =>
-            inputCol.cast(DateType)
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
         }
 
       case FesqlDataType.kTimestamp =>  // TODO: May set timezone if it is different from database
         fromType match {
-          case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 =>
-            inputCol.divide(1000).cast(TimestampType)
-          case FesqlDataType.kFloat | FesqlDataType.kDouble =>
-            inputCol.divide(1000).cast(TimestampType)
-          case FesqlDataType.kVarchar =>
-            to_timestamp(inputCol)
           case FesqlDataType.kNull =>
             inputCol.cast(TimestampType)
+          case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 | FesqlDataType.kFloat | FesqlDataType.kDouble =>
+            when(inputCol >= 0, inputCol.divide(1000)).otherwise(null).cast(TimestampType)
           case FesqlDataType.kBool =>
-            inputCol.cast(LongType).cast(TimestampType)
+            inputCol.cast(LongType).divide(1000).cast(TimestampType)
+          case FesqlDataType.kDate => inputCol.cast(TimestampType)
+          case FesqlDataType.kVarchar =>
+            to_timestamp(inputCol)
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
         }
 
       case FesqlDataType.kVarchar =>
         fromType match {
-          case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 | FesqlDataType.kFloat | FesqlDataType.kDouble | FesqlDataType.kVarchar =>
-            inputCol.cast(StringType)
           case FesqlDataType.kNull => inputCol.cast(StringType)
+          case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 | FesqlDataType.kFloat | FesqlDataType.kDouble =>
+            inputCol.cast(StringType)
+          case FesqlDataType.kBool => inputCol.cast(StringType)
+          case FesqlDataType.kTimestamp => inputCol.cast(StringType)
+          case FesqlDataType.kDate => inputCol.cast(StringType)
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
         }

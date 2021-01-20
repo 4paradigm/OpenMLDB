@@ -150,6 +150,20 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(
         InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
 
+INSTANTIATE_TEST_CASE_P(
+    EngineTestIndexOptimized, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/test_index_optimized.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestErrorWindow, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/error/error_window.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestDebugFzBenchmark, EngineTest,
+    testing::ValuesIn(InitCases("/cases/debug/fz_benchmark_debug.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestDebugIssues, EngineTest,
+    testing::ValuesIn(InitCases("/cases/debug/issues_case.yaml")));
+
 // 单表反欺诈场景
 INSTANTIATE_TEST_CASE_P(
     EngineTestSparkFQZ, EngineTest,

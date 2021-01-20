@@ -21,16 +21,31 @@ namespace fesql {
 namespace vm {
 
 WindowInterface::WindowInterface(bool instance_not_in_window,
+                                 const std::string& frame_type_str,
                                  int64_t start_offset, int64_t end_offset,
-                                 uint64_t row_preceding, uint32_t max_size)
-    : window_impl_(std::unique_ptr<Window>(
-          new CurrentHistoryWindow(start_offset, max_size))) {
-    window_impl_->set_rows_preceding(row_preceding);
+                                 uint64_t rows_preceding, uint64_t max_size)
+    : window_impl_(std::unique_ptr<Window>(new HistoryWindow(
+          WindowRange(ExtractFrameType(frame_type_str), start_offset,
+                      end_offset, rows_preceding, max_size)))) {
     window_impl_->set_instance_not_in_window(instance_not_in_window);
 }
 
-void WindowInterface::BufferData(uint64_t key, const Row& row) {
-    window_impl_->BufferData(key, row);
+bool WindowInterface::BufferData(uint64_t key, const Row& row) {
+    return window_impl_->BufferData(key, row);
+}
+
+Window::WindowFrameType WindowInterface::ExtractFrameType(
+    const std::string& frame_type_str) const {
+    if (frame_type_str == "kFrameRows") {
+        return Window::kFrameRows;
+    } else if (frame_type_str == "kFrameRowsRange") {
+        return Window::kFrameRowsRange;
+    } else if (frame_type_str == "kFrameRowsMergeRowsRange") {
+        return Window::kFrameRowsMergeRowsRange;
+    } else {
+        LOG(WARNING) << "Illegal frame type: " << frame_type_str;
+        return Window::kFrameRows;;
+    }
 }
 
 int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
@@ -80,6 +95,61 @@ std::string CoreAPI::ResolveSourceColumnName(fesql::vm::PhysicalOpNode* node,
         ->GetColumnName(col_idx);
 }
 
+ColumnSourceInfo CoreAPI::ResolveSourceColumn(fesql::vm::PhysicalOpNode* node,
+                                              const std::string& relation_name,
+                                              const std::string& column_name) {
+    ColumnSourceInfo result;
+    if (node == nullptr) {
+        return result;
+    }
+    auto& status = result.status_;
+    status = node->schemas_ctx()->ResolveColumnID(
+        relation_name, column_name, &result.column_id_, &result.child_path_idx_,
+        &result.child_column_id_, &result.source_column_id_,
+        &result.source_node_);
+    if (!status.isOK() || result.source_node_ == nullptr) {
+        return result;
+    }
+
+    size_t schema_idx;
+    size_t col_idx;
+    status = node->schemas_ctx()->ResolveColumnIndexByID(result.column_id_,
+                                                         &schema_idx, &col_idx);
+    if (!status.isOK()) {
+        return result;
+    }
+    result.schema_idx_ = static_cast<int>(schema_idx);
+    result.col_idx_ = static_cast<int>(col_idx);
+    result.total_col_idx_ = col_idx;
+    for (size_t i = 0; i < schema_idx; ++i) {
+        result.total_col_idx_ += node->GetOutputSchemaSource(i)->size();
+    }
+
+    size_t source_schema_idx;
+    size_t source_col_idx;
+    auto source_schemas_ctx = result.source_node_->schemas_ctx();
+    status = source_schemas_ctx->ResolveColumnIndexByID(
+        result.source_column_id_, &source_schema_idx, &source_col_idx);
+    if (!status.isOK()) {
+        return result;
+    }
+    result.source_schema_idx_ = static_cast<int>(source_schema_idx);
+    result.source_col_idx_ = static_cast<int>(source_col_idx);
+    result.source_total_col_idx_ = source_col_idx;
+    for (size_t i = 0; i < source_schema_idx; ++i) {
+        result.source_total_col_idx_ +=
+            source_schemas_ctx->GetSchemaSource(i)->size();
+    }
+    result.source_col_name_ =
+        source_schemas_ctx->GetSchemaSource(source_schema_idx)
+            ->GetColumnName(source_col_idx);
+    return result;
+}
+
+size_t CoreAPI::GetUniqueID(const fesql::vm::PhysicalOpNode* node) {
+    return node->node_id();
+}
+
 GroupbyInterface::GroupbyInterface(const fesql::codec::Schema& schema)
     : mem_table_handler_(new vm::MemTableHandler(&schema)) {}
 
@@ -96,11 +166,11 @@ fesql::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
     // Init current run step runtime
     JITRuntime::get()->InitRunStep();
 
-    auto udf =
-        reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
-            const_cast<int8_t*>(fn));
+    auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
+                                            const int8_t*, int8_t**)>(
+        const_cast<int8_t*>(fn));
     int8_t* buf = nullptr;
-    uint32_t ret = udf(nullptr, nullptr, &buf);
+    uint32_t ret = udf(0, nullptr, nullptr, &buf);
 
     // Release current run step resources
     JITRuntime::get()->ReleaseRunStep();
@@ -122,13 +192,13 @@ fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
     // Init current run step runtime
     JITRuntime::get()->InitRunStep();
 
-    auto udf =
-        reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
-            const_cast<int8_t*>(fn));
+    auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
+                                            const int8_t*, int8_t**)>(
+        const_cast<int8_t*>(fn));
 
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
     int8_t* buf = nullptr;
-    uint32_t ret = udf(row_ptr, nullptr, &buf);
+    uint32_t ret = udf(0, row_ptr, nullptr, &buf);
 
     // Release current run step resources
     JITRuntime::get()->ReleaseRunStep();
@@ -141,7 +211,8 @@ fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
         buf, fesql::codec::RowView::GetSize(buf)));
 }
 
-fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn, const Row row,
+fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
+                                         const uint64_t row_key, const Row row,
                                          WindowInterface* window) {
     if (row.empty()) {
         return row;
@@ -149,9 +220,9 @@ fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn, const Row row,
     // Init current run step runtime
     JITRuntime::get()->InitRunStep();
 
-    auto udf =
-        reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
-            const_cast<int8_t*>(fn));
+    auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
+                                            const int8_t*, int8_t**)>(
+        const_cast<int8_t*>(fn));
     int8_t* out_buf = nullptr;
 
     codec::ListRef<Row> window_ref;
@@ -159,7 +230,8 @@ fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn, const Row row,
     auto window_ptr = reinterpret_cast<const int8_t*>(&window_ref);
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
 
-    uint32_t ret = udf(row_ptr, window_ptr, &out_buf);
+    uint32_t ret =
+        udf(static_cast<int64_t>(row_key), row_ptr, window_ptr, &out_buf);
 
     // Release current run step resources
     JITRuntime::get()->ReleaseRunStep();
@@ -187,21 +259,20 @@ fesql::codec::Row CoreAPI::GroupbyProject(
 }
 
 bool CoreAPI::ComputeCondition(const fesql::vm::RawPtrHandle fn, const Row& row,
-                               fesql::codec::RowView* row_view,
+                               const fesql::codec::RowView* row_view,
                                size_t out_idx) {
     Row cond_row = CoreAPI::RowProject(fn, row, true);
-    row_view->Reset(cond_row.buf());
-    return Runner::GetColumnBool(row_view, out_idx,
+    return Runner::GetColumnBool(cond_row.buf(), row_view, out_idx,
                                  row_view->GetSchema()->Get(out_idx).type());
 }
 
-fesql::codec::Row* CoreAPI::NewRow(size_t bytes) {
+fesql::codec::Row CoreAPI::NewRow(size_t bytes) {
     auto buf = reinterpret_cast<int8_t*>(malloc(bytes));
     if (buf == nullptr) {
-        return nullptr;
+        return fesql::codec::Row();
     }
     auto slice = base::RefCountedSlice::CreateManaged(buf, bytes);
-    return new fesql::codec::Row(slice);
+    return fesql::codec::Row(slice);
 }
 
 RawPtrHandle CoreAPI::GetRowBuf(fesql::codec::Row* row, size_t idx) {

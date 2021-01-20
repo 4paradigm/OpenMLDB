@@ -35,10 +35,12 @@ class WindowIterAnalysis {
     explicit WindowIterAnalysis(node::ExprAnalysisContext* ctx)
         : ctx_(ctx), scope_cache_list_(1) {}
 
-    Status VisitFunctionLet(node::LambdaNode* lambda);
+    Status VisitFunctionLet(const node::ExprIdNode* row_arg,
+                            const node::ExprIdNode* window_arg,
+                            const node::ExprNode* body);
 
     // result query interface
-    bool GetRank(node::ExprNode* expr, WindowIterRank* rank) const;
+    bool GetRank(const node::ExprNode* expr, WindowIterRank* rank) const;
 
  private:
     // cache
@@ -64,12 +66,12 @@ class WindowIterAnalysis {
     // state management
     void EnterLambdaScope();
     void ExitLambdaScope();
-    void SetRank(node::ExprNode* expr, const WindowIterRank& rank);
+    void SetRank(const node::ExprNode* expr, const WindowIterRank& rank);
 
     std::vector<ScopeCache> scope_cache_list_;
 
-    node::ExprIdNode* row_arg_ = nullptr;
-    node::ExprIdNode* window_arg_ = nullptr;
+    const node::ExprNode* row_arg_ = nullptr;
+    const node::ExprNode* window_arg_ = nullptr;
 };
 
 }  // namespace passes

@@ -118,21 +118,39 @@ class ConditionGenerator : public FnGenerator {
 };
 class RangeGenerator {
  public:
-    explicit RangeGenerator(const Range& range) : ts_gen_(range.fn_info()) {
+    explicit RangeGenerator(const Range& range)
+        : ts_gen_(range.fn_info()), window_range_() {
         if (range.frame_ != nullptr) {
-            start_offset_ = range.frame_->GetHistoryRangeStart();
-            end_offset_ = range.frame_->GetHistoryRangeEnd();
-            start_row_ = (-1 * range.frame_->GetHistoryRowsStart());
-            end_row_ = (-1 * range.frame_->GetHistoryRowsEnd());
+            switch (range.frame()->frame_type()) {
+                case node::kFrameRows:
+                    window_range_.frame_type_ =
+                        Window::WindowFrameType::kFrameRows;
+                    break;
+                case node::kFrameRowsRange:
+                    window_range_.frame_type_ =
+                        Window::WindowFrameType::kFrameRowsRange;
+                    break;
+                case node::kFrameRowsMergeRowsRange:
+                    window_range_.frame_type_ =
+                        Window::WindowFrameType::kFrameRowsMergeRowsRange;
+                default: {
+                    window_range_.frame_type_ =
+                        Window::WindowFrameType::kFrameRowsMergeRowsRange;
+                    break;
+                }
+            }
+            window_range_.start_offset_ = range.frame_->GetHistoryRangeStart();
+            window_range_.end_offset_ = range.frame_->GetHistoryRangeEnd();
+            window_range_.start_row_ =
+                (-1 * range.frame_->GetHistoryRowsStart());
+            window_range_.end_row_ = (-1 * range.frame_->GetHistoryRowsEnd());
+            window_range_.max_size_ = range.frame_->frame_maxsize();
         }
     }
     virtual ~RangeGenerator() {}
     const bool Valid() const { return ts_gen_.Valid(); }
     OrderGenerator ts_gen_;
-    int64_t start_offset_;
-    int64_t end_offset_;
-    uint64_t start_row_;
-    uint64_t end_row_;
+    WindowRange window_range_;
 };
 class FilterKeyGenerator {
  public:
@@ -305,6 +323,7 @@ enum RunnerType {
     kRunnerTableProject,
     kRunnerRowProject,
     kRunnerSimpleProject,
+    kRunnerSelectSlice,
     kRunnerGroupAgg,
     kRunnerAgg,
     kRunnerWindowAgg,
@@ -339,6 +358,8 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "ROW_PROJECT";
         case kRunnerSimpleProject:
             return "SIMPLE_PROJECT";
+        case kRunnerSelectSlice:
+            return "SELECT_SLICE";
         case kRunnerGroupAgg:
             return "GROUP_AGG_PROJECT";
         case kRunnerAgg:
@@ -453,8 +474,10 @@ class Runner : public node::NodeBase<Runner> {
     virtual std::shared_ptr<DataHandler> RunWithCache(
         RunnerContext& ctx);  // NOLINT
 
-    static int64_t GetColumnInt64(RowView* view, int pos, type::Type type);
-    static bool GetColumnBool(RowView* view, int idx, type::Type type);
+    static int64_t GetColumnInt64(const int8_t* buf, const RowView* view,
+                                  int pos, type::Type type);
+    static bool GetColumnBool(const int8_t* buf, const RowView* view, int idx,
+                              type::Type type);
     static Row WindowProject(const int8_t* fn, const uint64_t key,
                              const Row row, const bool is_instance,
                              size_t append_slices, Window* window);
@@ -770,6 +793,30 @@ class SimpleProjectRunner : public Runner {
         override;  // NOLINT
     ProjectGenerator project_gen_;
 };
+
+class SelectSliceRunner : public Runner {
+ public:
+    SelectSliceRunner(const int32_t id, const SchemasContext* schema,
+                      const int32_t limit_cnt, size_t slice)
+        : Runner(id, kRunnerSelectSlice, schema, limit_cnt),
+          get_slice_fn_(slice) {
+        is_lazy_ = true;
+    }
+
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs) override;
+
+    size_t slice() const { return get_slice_fn_.slice_; }
+
+ private:
+    struct GetSliceFn : public ProjectFun {
+        explicit GetSliceFn(size_t slice) : slice_(slice) {}
+        Row operator()(const Row& row) const override;
+        size_t slice_;
+    } get_slice_fn_;
+};
+
 class GroupAggRunner : public Runner {
  public:
     GroupAggRunner(const int32_t id, const SchemasContext* schema,
@@ -943,7 +990,16 @@ class ProxyRequestRunner : public Runner {
  public:
     ProxyRequestRunner(int32_t id, uint32_t task_id,
                        const SchemasContext* schema_ctx)
-        : Runner(id, kRunnerRequestRunProxy, schema_ctx), task_id_(task_id) {
+        : Runner(id, kRunnerRequestRunProxy, schema_ctx),
+          task_id_(task_id),
+          index_input_(nullptr) {
+        is_lazy_ = true;
+    }
+    ProxyRequestRunner(int32_t id, uint32_t task_id, Runner* index_input,
+                       const SchemasContext* schema_ctx)
+        : Runner(id, kRunnerRequestRunProxy, schema_ctx),
+          task_id_(task_id),
+          index_input_(index_input) {
         is_lazy_ = true;
     }
     ~ProxyRequestRunner() {}
@@ -960,28 +1016,62 @@ class ProxyRequestRunner : public Runner {
             output << " lazy";
         }
     }
+    virtual void Print(std::ostream& output, const std::string& tab,
+                       std::set<int32_t>* visited_ids) const {  // NOLINT
+        PrintRunnerInfo(output, tab);
+        PrintCacheInfo(output);
+        if (nullptr != index_input_) {
+            output << "\n    " << tab << "proxy_index_input:\n";
+            index_input_->Print(output, "    " + tab + "+-", nullptr);
+        }
+        if (nullptr != visited_ids &&
+            visited_ids->find(id_) != visited_ids->cend()) {
+            output << "\n";
+            output << "  " << tab << "...";
+            return;
+        }
+        if (nullptr != visited_ids) {
+            visited_ids->insert(id_);
+        }
+        if (!producers_.empty()) {
+            for (auto producer : producers_) {
+                output << "\n";
+                producer->Print(output, "  " + tab, visited_ids);
+            }
+        }
+    }
 
     const int32_t task_id() const { return task_id_; }
 
  private:
     std::shared_ptr<DataHandlerList> RunBatchInput(
         RunnerContext& ctx,  // NOLINT
-        std::shared_ptr<DataHandlerList> input);
+        std::shared_ptr<DataHandlerList> input,
+        std::shared_ptr<DataHandlerList> index_input);
     std::shared_ptr<DataHandler> RunWithRowInput(RunnerContext& ctx,  // NOLINT
-                                                 const Row& row);
+                                                 const Row& row,
+                                                 const Row& index_row);
     std::shared_ptr<TableHandler> RunWithRowsInput(
         RunnerContext& ctx,  // NOLINT
-        const std::vector<Row>& rows, const bool request_is_common);
+        const std::vector<Row>& rows, const std::vector<Row>& index_rows,
+        const bool request_is_common);
     uint32_t task_id_;
+    Runner* index_input_;
 };
 class ClusterTask;
 class RouteInfo {
  public:
-    RouteInfo() : index_(), index_key_(), input_(), table_handler_() {}
+    RouteInfo()
+        : index_(),
+          index_key_(),
+          index_key_input_runner_(nullptr),
+          input_(),
+          table_handler_() {}
     RouteInfo(const std::string index,
               std::shared_ptr<TableHandler> table_handler)
         : index_(index),
           index_key_(),
+          index_key_input_runner_(nullptr),
           input_(),
           table_handler_(table_handler) {}
     RouteInfo(const std::string index, const Key& index_key,
@@ -989,12 +1079,12 @@ class RouteInfo {
               std::shared_ptr<TableHandler> table_handler)
         : index_(index),
           index_key_(index_key),
+          index_key_input_runner_(nullptr),
           input_(input),
           table_handler_(table_handler) {}
     ~RouteInfo() {}
     const bool IsCompleted() const {
-        return table_handler_ && !index_.empty() &&
-               index_key_.ValidKey();
+        return table_handler_ && !index_.empty() && index_key_.ValidKey();
     }
     const bool IsCluster() const { return table_handler_ && !index_.empty(); }
     static const bool EqualWith(const RouteInfo& info1,
@@ -1018,6 +1108,7 @@ class RouteInfo {
     }
     std::string index_;
     Key index_key_;
+    Runner* index_key_input_runner_;
     std::shared_ptr<ClusterTask> input_;
     std::shared_ptr<TableHandler> table_handler_;
 };
@@ -1052,12 +1143,16 @@ class ClusterTask {
         for (auto input_runner : input_runners_) {
             input_runner->SetProducer(0, route_info_.input_->GetRoot());
         }
+        route_info_.index_key_input_runner_ = route_info_.input_->GetRoot();
         route_info_.input_ = input;
     }
     Runner* GetRoot() const { return root_; }
     void SetRoot(Runner* root) { root_ = root; }
     Runner* GetInputRunner(size_t idx) const {
         return idx >= input_runners_.size() ? nullptr : input_runners_[idx];
+    }
+    Runner* GetIndexKeyInput() const {
+        return route_info_.index_key_input_runner_;
     }
     std::shared_ptr<ClusterTask> GetInput() const { return route_info_.input_; }
     Key GetIndexKey() const { return route_info_.index_key_; }
@@ -1272,10 +1367,9 @@ class RunnerBuilder {
     std::unordered_map<fesql::vm::Runner*, ::fesql::vm::Runner*>
         proxy_runner_map_;
     std::set<size_t> batch_common_node_set_;
-    ClusterTask BinaryInherit(const ClusterTask& left,
-                                         const ClusterTask& right,
-                                         Runner* runner, const Key& index_key,
-                                         const TaskBiasType bias = kNoBias);
+    ClusterTask BinaryInherit(const ClusterTask& left, const ClusterTask& right,
+                              Runner* runner, const Key& index_key,
+                              const TaskBiasType bias = kNoBias);
     ClusterTask BuildLocalTaskForBinaryRunner(const ClusterTask& left,
                                               const ClusterTask& right,
                                               Runner* runner);

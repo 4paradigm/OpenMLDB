@@ -88,6 +88,13 @@ Status ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
                             NativeValue* output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kCodegenError,
                "Node or output is null");
+    std::string cache_key = "@expr(#" + std::to_string(node->node_id()) + ")";
+    if (frame_ != nullptr) {
+        cache_key.append("over " + frame_->GetExprString());
+    }
+    if (ctx_->GetCurrentScope()->sv()->FindVar(cache_key, output)) {
+        return Status::OK();
+    }
     if (node->GetOutputType() == nullptr) {
         LOG(WARNING) << node->GetExprString() << " not fully resolved";
     }
@@ -95,17 +102,20 @@ Status ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
         case ::fesql::node::kExprColumnRef: {
             const ::fesql::node::ColumnRefNode* n =
                 (const ::fesql::node::ColumnRefNode*)node;
-            return BuildColumnRef(n, output);
+            CHECK_STATUS(BuildColumnRef(n, output));
+            break;
         }
         case ::fesql::node::kExprCall: {
             const ::fesql::node::CallExprNode* fn =
                 (const ::fesql::node::CallExprNode*)node;
-            return BuildCallFn(fn, output);
+            CHECK_STATUS(BuildCallFn(fn, output));
+            break;
         }
         case ::fesql::node::kExprPrimary: {
             auto const_node =
                 dynamic_cast<const ::fesql::node::ConstNode*>(node);
-            return BuildConstExpr(const_node, output);
+            CHECK_STATUS(BuildConstExpr(const_node, output));
+            break;
         }
         case ::fesql::node::kExprId: {
             ::fesql::node::ExprIdNode* id_node =
@@ -122,33 +132,44 @@ Status ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
                        kCodegenError, "Fail to find var ",
                        id_node->GetExprString());
             *output = val;
-            return Status::OK();
+            break;
         }
         case ::fesql::node::kExprCast: {
-            return BuildCastExpr((::fesql::node::CastExprNode*)node, output);
+            CHECK_STATUS(
+                BuildCastExpr((::fesql::node::CastExprNode*)node, output));
+            break;
         }
         case ::fesql::node::kExprBinary: {
-            return BuildBinaryExpr((::fesql::node::BinaryExpr*)node, output);
+            CHECK_STATUS(
+                BuildBinaryExpr((::fesql::node::BinaryExpr*)node, output));
+            break;
         }
         case ::fesql::node::kExprUnary: {
-            return BuildUnaryExpr(
-                dynamic_cast<const ::fesql::node::UnaryExpr*>(node), output);
+            CHECK_STATUS(BuildUnaryExpr(
+                dynamic_cast<const ::fesql::node::UnaryExpr*>(node), output));
+            break;
         }
         case ::fesql::node::kExprStruct: {
-            return BuildStructExpr((fesql::node::StructExpr*)node, output);
+            CHECK_STATUS(
+                BuildStructExpr((fesql::node::StructExpr*)node, output));
+            break;
         }
         case ::fesql::node::kExprGetField: {
-            return BuildGetFieldExpr(
-                dynamic_cast<const ::fesql::node::GetFieldExpr*>(node), output);
+            CHECK_STATUS(BuildGetFieldExpr(
+                dynamic_cast<const ::fesql::node::GetFieldExpr*>(node),
+                output));
+            break;
         }
         case ::fesql::node::kExprCond: {
-            return BuildCondExpr(
-                dynamic_cast<const ::fesql::node::CondExpr*>(node), output);
+            CHECK_STATUS(BuildCondExpr(
+                dynamic_cast<const ::fesql::node::CondExpr*>(node), output));
+            break;
         }
         case ::fesql::node::kExprCase: {
-            return BuildCaseExpr(
+            CHECK_STATUS(BuildCaseExpr(
                 dynamic_cast<const ::fesql::node::CaseWhenExprNode*>(node),
-                output);
+                output));
+            break;
         }
         default: {
             return Status(kCodegenError,
@@ -157,6 +178,8 @@ Status ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
                               " not supported");
         }
     }
+    ctx_->GetCurrentScope()->sv()->AddVar(cache_key, *output);
+    return Status::OK();
 }
 
 Status ExprIRBuilder::BuildConstExpr(const ::fesql::node::ConstNode* const_node,
@@ -439,8 +462,16 @@ Status ExprIRBuilder::BuildWindow(NativeValue* output) {  // NOLINT
     MemoryWindowDecodeIRBuilder window_ir_builder(ctx_->schemas_context(),
                                                   ctx_->GetCurrentBlock());
     if (frame_->frame_range() != nullptr) {
+        NativeValue row_key_value;
+        ok = variable_ir_builder.LoadRowKey(&row_key_value, status);
+        ::llvm::Value* row_key = nullptr;
+        if (!row_key_value.IsConstNull()) {
+            row_key = row_key_value.GetValue(&builder);
+        }
+        CHECK_TRUE(ok && nullptr != row_key, kCodegenError,
+                   "Fail to build inner range window: row key is null");
         ok = window_ir_builder.BuildInnerRangeList(
-            list_ptr, frame_->GetHistoryRangeEnd(),
+            list_ptr, row_key, frame_->GetHistoryRangeEnd(),
             frame_->GetHistoryRangeStart(), &window_ptr);
     } else if (frame_->frame_rows() != nullptr) {
         ok = window_ir_builder.BuildInnerRowsList(
@@ -730,8 +761,9 @@ Status ExprIRBuilder::BuildAsUDF(const node::ExprNode* expr,
                                     &transformed));
 
     node::ExprNode* target_expr = nullptr;
-    passes::ResolveFnAndAttrs resolver(ctx_->node_manager(), library,
-                                       ctx_->schemas_context());
+    node::ExprAnalysisContext analysis_ctx(ctx_->node_manager(), library,
+                                           ctx_->schemas_context());
+    passes::ResolveFnAndAttrs resolver(&analysis_ctx);
     CHECK_STATUS(resolver.VisitExpr(transformed, &target_expr));
 
     // Insert a transient binding scope between current scope and parent
@@ -838,8 +870,6 @@ Status ExprIRBuilder::BuildCaseExpr(const ::fesql::node::CaseWhenExprNode* node,
 Status ExprIRBuilder::BuildCondExpr(const ::fesql::node::CondExpr* node,
                                     NativeValue* output) {
     // build condition
-    ::llvm::BasicBlock* block = ctx_->GetCurrentBlock();
-    ::llvm::IRBuilder<> builder(block);
     Status status;
     NativeValue cond_value;
     CHECK_STATUS(this->Build(node->GetCondition(), &cond_value));
@@ -853,8 +883,8 @@ Status ExprIRBuilder::BuildCondExpr(const ::fesql::node::CondExpr* node,
     CHECK_STATUS(this->Build(node->GetRight(), &right_value));
 
     CondSelectIRBuilder cond_select_builder;
-    return cond_select_builder.Select(block, cond_value, left_value,
-                                      right_value, output);
+    return cond_select_builder.Select(ctx_->GetCurrentBlock(), cond_value,
+                                      left_value, right_value, output);
 }
 
 }  // namespace codegen

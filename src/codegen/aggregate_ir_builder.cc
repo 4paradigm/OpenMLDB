@@ -140,11 +140,11 @@ class StatisticalAggGenerator {
         : col_type_(col_type),
           col_num_(col_keys.size()),
           col_keys_(col_keys),
-          sum_idxs_(col_num_, -1),
-          avg_idxs_(col_num_, -1),
-          count_idxs_(col_num_, -1),
-          min_idxs_(col_num_, -1),
-          max_idxs_(col_num_, -1),
+          sum_idxs_(col_num_),
+          avg_idxs_(col_num_),
+          count_idxs_(col_num_),
+          min_idxs_(col_num_),
+          max_idxs_(col_num_),
           sum_states_(col_num_, nullptr),
           avg_states_(col_num_, nullptr),
           min_states_(col_num_, nullptr),
@@ -236,10 +236,10 @@ class StatisticalAggGenerator {
 
     void GenInitState(::llvm::IRBuilder<>* builder) {
         for (size_t i = 0; i < col_num_; ++i) {
-            if (sum_idxs_[i] >= 0) {
+            if (!sum_idxs_[i].empty()) {
                 sum_states_[i] = GenSumInitState(builder);
             }
-            if (avg_idxs_[i] >= 0) {
+            if (!avg_idxs_[i].empty()) {
                 if (col_type_ == ::fesql::node::kDouble) {
                     sum_states_[i] = GenSumInitState(builder);
                 } else {
@@ -249,15 +249,15 @@ class StatisticalAggGenerator {
                     count_state_ = GenCountInitState(builder);
                 }
             }
-            if (count_idxs_[i] >= 0) {
+            if (!count_idxs_[i].empty()) {
                 if (count_state_ == nullptr) {
                     count_state_ = GenCountInitState(builder);
                 }
             }
-            if (min_idxs_[i] >= 0) {
+            if (!min_idxs_[i].empty()) {
                 min_states_[i] = GenMinInitState(builder);
             }
-            if (max_idxs_[i] >= 0) {
+            if (!max_idxs_[i].empty()) {
                 max_states_[i] = GenMaxInitState(builder);
             }
         }
@@ -335,21 +335,22 @@ class StatisticalAggGenerator {
                    const std::vector<::llvm::Value*>& is_null) {
         bool count_updated = false;
         for (size_t i = 0; i < col_num_; ++i) {
-            if (sum_idxs_[i] >= 0 ||
-                (avg_idxs_[i] >= 0 && avg_states_[i] == nullptr)) {
+            if (!sum_idxs_[i].empty() ||
+                (!avg_idxs_[i].empty() && avg_states_[i] == nullptr)) {
                 GenSumUpdate(i, inputs[i], is_null[i], builder);
             }
-            if (avg_idxs_[i] >= 0 && avg_states_[i] != nullptr) {
+            if (!avg_idxs_[i].empty() && avg_states_[i] != nullptr) {
                 GenAvgUpdate(i, inputs[i], is_null[i], builder);
             }
-            if ((avg_idxs_[i] >= 0 || count_idxs_[i] >= 0) && !count_updated) {
+            if ((!avg_idxs_[i].empty() || !count_idxs_[i].empty()) &&
+                !count_updated) {
                 GenCountUpdate(builder, is_null[i]);
                 count_updated = true;
             }
-            if (min_idxs_[i] >= 0) {
+            if (!min_idxs_[i].empty()) {
                 GenMinUpdate(i, inputs[i], is_null[i], builder);
             }
-            if (max_idxs_[i] >= 0) {
+            if (!max_idxs_[i].empty()) {
                 GenMaxUpdate(i, inputs[i], is_null[i], builder);
             }
         }
@@ -358,11 +359,13 @@ class StatisticalAggGenerator {
     void GenOutputs(::llvm::IRBuilder<>* builder,
                     std::vector<std::pair<size_t, llvm::Value*>>* outputs) {
         for (size_t i = 0; i < col_num_; ++i) {
-            if (sum_idxs_[i] >= 0) {
+            if (!sum_idxs_[i].empty()) {
                 ::llvm::Value* accum = builder->CreateLoad(sum_states_[i]);
-                outputs->emplace_back(std::make_pair(sum_idxs_[i], accum));
+                for (int idx : sum_idxs_[i]) {
+                    outputs->emplace_back(std::make_pair(idx, accum));
+                }
             }
-            if (avg_idxs_[i] >= 0) {
+            if (!avg_idxs_[i].empty()) {
                 ::llvm::Type* avg_ty = AggregateIRBuilder::GetOutputLLVMType(
                     builder->getContext(), "avg", col_type_);
                 ::llvm::Value* sum;
@@ -374,34 +377,50 @@ class StatisticalAggGenerator {
                 ::llvm::Value* cnt = builder->CreateLoad(count_state_);
                 cnt = builder->CreateSIToFP(cnt, avg_ty);
                 ::llvm::Value* avg = builder->CreateFDiv(sum, cnt);
-                outputs->emplace_back(std::make_pair(avg_idxs_[i], avg));
+                for (int idx : avg_idxs_[i]) {
+                    outputs->emplace_back(std::make_pair(idx, avg));
+                }
             }
-            if (count_idxs_[i] >= 0) {
+            if (!count_idxs_[i].empty()) {
                 ::llvm::Value* cnt = builder->CreateLoad(count_state_);
-                outputs->emplace_back(std::make_pair(count_idxs_[i], cnt));
+                for (int idx : count_idxs_[i]) {
+                    outputs->emplace_back(std::make_pair(idx, cnt));
+                }
             }
-            if (min_idxs_[i] >= 0) {
+            if (!min_idxs_[i].empty()) {
                 ::llvm::Value* accum = builder->CreateLoad(min_states_[i]);
-                outputs->emplace_back(std::make_pair(min_idxs_[i], accum));
+                for (int idx : min_idxs_[i]) {
+                    outputs->emplace_back(std::make_pair(idx, accum));
+                }
             }
-            if (max_idxs_[i] >= 0) {
+            if (!max_idxs_[i].empty()) {
                 ::llvm::Value* accum = builder->CreateLoad(max_states_[i]);
-                outputs->emplace_back(std::make_pair(max_idxs_[i], accum));
+                for (int idx : max_idxs_[i]) {
+                    outputs->emplace_back(std::make_pair(idx, accum));
+                }
             }
         }
     }
 
-    void RegisterSum(size_t pos, size_t out_idx) { sum_idxs_[pos] = out_idx; }
-
-    void RegisterAvg(size_t pos, size_t out_idx) { avg_idxs_[pos] = out_idx; }
-
-    void RegisterCount(size_t pos, size_t out_idx) {
-        count_idxs_[pos] = out_idx;
+    void RegisterSum(size_t pos, size_t out_idx) {
+        sum_idxs_[pos].push_back(out_idx);
     }
 
-    void RegisterMin(size_t pos, size_t out_idx) { min_idxs_[pos] = out_idx; }
+    void RegisterAvg(size_t pos, size_t out_idx) {
+        avg_idxs_[pos].push_back(out_idx);
+    }
 
-    void RegisterMax(size_t pos, size_t out_idx) { max_idxs_[pos] = out_idx; }
+    void RegisterCount(size_t pos, size_t out_idx) {
+        count_idxs_[pos].push_back(out_idx);
+    }
+
+    void RegisterMin(size_t pos, size_t out_idx) {
+        min_idxs_[pos].push_back(out_idx);
+    }
+
+    void RegisterMax(size_t pos, size_t out_idx) {
+        max_idxs_[pos].push_back(out_idx);
+    }
 
     const std::vector<std::string>& GetColKeys() const { return col_keys_; }
 
@@ -410,11 +429,11 @@ class StatisticalAggGenerator {
     size_t col_num_;
     std::vector<std::string> col_keys_;
 
-    std::vector<int> sum_idxs_;
-    std::vector<int> avg_idxs_;
-    std::vector<int> count_idxs_;
-    std::vector<int> min_idxs_;
-    std::vector<int> max_idxs_;
+    std::vector<std::vector<int>> sum_idxs_;
+    std::vector<std::vector<int>> avg_idxs_;
+    std::vector<std::vector<int>> count_idxs_;
+    std::vector<std::vector<int>> min_idxs_;
+    std::vector<std::vector<int>> max_idxs_;
 
     // accumulation states
     std::vector<::llvm::Value*> sum_states_;

@@ -1,12 +1,13 @@
 package com._4paradigm.fesql.spark.api
 
-import com._4paradigm.fesql.spark.SparkPlanner
+import com._4paradigm.fesql.spark.{FeSQLConfig, SparkPlanner}
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.QueryPlanningTracker
+
 import scala.collection.mutable
 
 
@@ -20,8 +21,11 @@ class FesqlSession {
   private var sparkSession: SparkSession = null
   private var sparkMaster: String = null
 
-  private val registeredTables = mutable.HashMap[String, DataFrame]()
-  private val fesqlTimeZone = "Asia/Shanghai";
+  val registeredTables = mutable.HashMap[String, DataFrame]()
+
+  private var config: FeSQLConfig = _
+
+  var planner: SparkPlanner = _
 
   /**
    * Construct with Spark session.
@@ -31,17 +35,8 @@ class FesqlSession {
   def this(sparkSession: SparkSession) = {
     this()
     this.sparkSession = sparkSession
-    this.sparkSession.conf.set("spark.sql.session.timeZone", fesqlTimeZone)
-  }
-
-  /**
-   * Construct with Spark master string.
-   *
-   * @param sparkMaster
-   */
-  def this(sparkMaster: String) = {
-    this()
-    this.sparkMaster = sparkMaster
+    this.config = FeSQLConfig.fromSparkSession(sparkSession)
+    this.sparkSession.conf.set("spark.sql.session.timeZone", config.timeZone)
   }
 
   /**
@@ -57,7 +52,7 @@ class FesqlSession {
           this.sparkMaster = "local"
         }
 
-        logger.debug(s"Create new SparkSession with master=${this.sparkMaster}")
+        logger.debug("Create new SparkSession with master={}", this.sparkMaster)
         val sparkConf = new SparkConf()
         val sparkMaster = sparkConf.get("spark.master", this.sparkMaster)
         val builder = SparkSession.builder()
@@ -97,8 +92,12 @@ class FesqlSession {
     new FesqlDataframe(this, sparkDf)
   }
 
+
+
   /**
    * Read the Spark dataframe to Fesql dataframe.
+   *
+   * @param sparkDf
    * @return
    */
   def readSparkDataframe(sparkDf: DataFrame): FesqlDataframe = {
@@ -117,7 +116,8 @@ class FesqlSession {
       sql = sql.trim + ";"
     }
 
-    val planner = new SparkPlanner(getSparkSession)
+    val planner = new SparkPlanner(getSparkSession, config)
+    this.planner = planner
     val df = planner.plan(sql, registeredTables.toMap).getDf(getSparkSession)
     new FesqlDataframe(this, df)
   }

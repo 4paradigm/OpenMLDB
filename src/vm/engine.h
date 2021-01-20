@@ -54,6 +54,8 @@ class EngineOptions {
           performance_sensitive_(true),
           cluster_optimized_(false),
           batch_request_optimized_(true),
+          enable_expr_optimize_(true),
+          enable_batch_window_parallelization_(false),
           max_sql_cache_size_(50) {}
     inline void set_keep_ir(bool flag) { this->keep_ir_ = flag; }
     inline bool is_keep_ir() const { return this->keep_ir_; }
@@ -69,11 +71,16 @@ class EngineOptions {
         performance_sensitive_ = flag;
     }
 
+
     inline bool is_cluster_optimzied() const { return cluster_optimized_; }
-    inline void set_cluster_optimized(bool flag) { cluster_optimized_ = flag; }
+    inline EngineOptions* set_cluster_optimized(bool flag) {
+        cluster_optimized_ = flag;
+        return this;
+    }
     bool is_batch_request_optimized() const { return batch_request_optimized_; }
-    void set_batch_request_optimized(bool flag) {
+    EngineOptions* set_batch_request_optimized(bool flag) {
         batch_request_optimized_ = flag;
+        return this;
     }
     inline void set_max_sql_cache_size(uint32_t size) {
         max_sql_cache_size_ = size;
@@ -85,6 +92,20 @@ class EngineOptions {
         return options;
     }
 
+    bool is_enable_expr_optimize() const { return enable_expr_optimize_; }
+    inline EngineOptions* set_enable_expr_optimize(bool flag) {
+        enable_expr_optimize_ = flag;
+        return this;
+    }
+
+    inline EngineOptions* set_enable_batch_window_parallelization(bool flag) {
+        enable_batch_window_parallelization_ = flag;
+        return this;
+    }
+    inline bool is_enable_batch_window_parallelization() const {
+        return enable_batch_window_parallelization_;
+    }
+
     fesql::vm::JITOptions& jit_options() { return jit_options_; }
 
  private:
@@ -94,6 +115,8 @@ class EngineOptions {
     bool performance_sensitive_;
     bool cluster_optimized_;
     bool batch_request_optimized_;
+    bool enable_expr_optimize_;
+    bool enable_batch_window_parallelization_;
     uint32_t max_sql_cache_size_;
     JITOptions jit_options_;
 };

@@ -142,8 +142,8 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     ASSERT_TRUE(status.isOK()) << status.str();
 
     bool is_agg = window_ptr != nullptr;
-    vm::PhysicalPlanContext plan_ctx(manager, lib, "db",
-                                     std::make_shared<vm::SimpleCatalog>());
+    vm::PhysicalPlanContext plan_ctx(
+        manager, lib, "db", std::make_shared<vm::SimpleCatalog>(), false);
     status = plan_ctx.InitFnDef(column_projects, schemas_ctx, !is_agg,
                                 &column_projects);
     ASSERT_TRUE(status.isOK()) << status.str();
@@ -169,9 +169,9 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto address = jit->FindFunction("test_at_fn");
 
-    int32_t (*decode)(int8_t*, int8_t*, int8_t**) =
-        (int32_t(*)(int8_t*, int8_t*, int8_t**))address;
-    int32_t ret2 = decode(row_ptr, window_ptr, output);
+    int32_t (*decode)(int64_t, int8_t*, int8_t*, int8_t**) =
+        (int32_t(*)(int64_t, int8_t*, int8_t*, int8_t**))address;
+    int32_t ret2 = decode(0, row_ptr, window_ptr, output);
     ASSERT_EQ(0, ret2);
 }
 

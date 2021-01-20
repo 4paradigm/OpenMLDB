@@ -71,7 +71,7 @@ static const int64_t RunTableRequest(
 
 int32_t MapTopFn(int64_t limit) {
     std::string key = "key";
-    double d[5];
+    double d[5];  // NOLINT
     codec::StringRef rkey(key.size(), key.c_str());
     for (int j = 0; j < 5; j++) {
         std::map<codec::StringRef, int32_t> state;
@@ -190,7 +190,8 @@ void EngineWindowSumFeature1(benchmark::State* state, MODE mode,
     const std::string sql =
         "SELECT "
         "sum(col4) OVER w1 as w1_col4_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN "
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
@@ -202,7 +203,8 @@ void EngineWindowRowsSumFeature1(benchmark::State* state, MODE mode,
     const std::string sql =
         "SELECT "
         "sum(col4) OVER w1 as w1_col4_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN "
         "40000 PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
     EngineRequestMode(sql, mode, limit_cnt, size, state);
@@ -215,7 +217,8 @@ void EngineRunBatchWindowSumFeature1(benchmark::State* state, MODE mode,
     const std::string sql =
         "SELECT "
         "sum(col4) OVER w1 as w1_col4_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN "
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
@@ -232,7 +235,8 @@ void EngineRunBatchWindowSumFeature5(benchmark::State* state, MODE mode,
         "sum(col4) OVER w1 as w1_col4_sum, "
         "sum(col2) OVER w1 as w1_col2_sum, "
         "sum(col5) OVER w1 as w1_col5_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN "
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
@@ -245,15 +249,19 @@ void EngineRunBatchWindowSumFeature5Window5(benchmark::State* state, MODE mode,
     const std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum, "
-        "sum(col3) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 30d "
+        "sum(col3) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "30d "
         "PRECEDING AND CURRENT ROW) as w2_col3_sum, "
-        "sum(col4) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 20d "
+        "sum(col4) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "20d "
         "PRECEDING AND CURRENT ROW) as w3_col4_sum, "
-        "sum(col2) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "sum(col2) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w4_col2_sum, "
-        "sum(col5) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 5d "
+        "sum(col5) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN 5d "
         "PRECEDING AND CURRENT ROW) as w5_col5_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN "
         "30d PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
     EngineBatchMode(sql, mode, limit_cnt, size, state);
@@ -265,59 +273,75 @@ void EngineRunBatchWindowMultiAggWindow25Feature25(benchmark::State* state,
     const std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum, "
-        "sum(col3) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "sum(col3) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "        30d PRECEDING AND CURRENT ROW)  as w1_col3_sum, "
-        "sum(col4) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "sum(col4) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "        30d PRECEDING AND CURRENT ROW)  as w1_col4_sum, "
-        "sum(col2) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "sum(col2) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "        30d PRECEDING AND CURRENT ROW)  as w1_col2_sum, "
-        "sum(col5) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "sum(col5) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "        30d PRECEDING AND CURRENT ROW)  as w1_col5_sum, "
 
-        "count(col1) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "count(col1) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "        20d PRECEDING AND CURRENT ROW)  as w1_col1_cnt, "
-        "count(col3) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "count(col3) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "        20d PRECEDING AND CURRENT ROW) as w1_col3_cnt, "
-        "count(col4) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "count(col4) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "       20d PRECEDING AND CURRENT ROW) as w1_col4_cnt, "
-        "count(col2) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "count(col2) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "        20d PRECEDING AND CURRENT ROW) as w1_col2_cnt, "
-        "count(col5) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "count(col5) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "        20d PRECEDING AND CURRENT ROW) as w1_col5_cnt, "
 
-        "avg(col1) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 15d "
+        "avg(col1) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "15d "
         "PRECEDING AND CURRENT ROW) as w1_col1_avg, "
-        "avg(col3) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 15d "
+        "avg(col3) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "15d "
         "PRECEDING AND CURRENT ROW) as w1_col3_avg, "
-        "avg(col4) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 15d "
+        "avg(col4) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "15d "
         "PRECEDING AND CURRENT ROW) as w1_col4_avg, "
-        "avg(col2) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 15d "
+        "avg(col2) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "15d "
         "PRECEDING AND CURRENT ROW) as w1_col2_avg, "
-        "avg(col5) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 15d "
+        "avg(col5) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "15d "
         "PRECEDING AND CURRENT ROW) as w1_col5_avg, "
 
-        "min(col1) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "min(col1) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col1_min, "
-        "min(col3) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "min(col3) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col3_min, "
-        "min(col4) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "min(col4) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col4_min, "
-        "min(col2) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "min(col2) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col2_min, "
-        "min(col5) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "min(col5) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col5_min, "
 
-        "max(col1) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "max(col1) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col1_max, "
-        "max(col3) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "max(col3) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col3_max, "
-        "max(col4) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "max(col4) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col4_max, "
-        "max(col2) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "max(col2) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col2_max, "
-        "max(col5) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "max(col5) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col5_max "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN "
         "30d PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
     EngineBatchMode(sql, mode, limit_cnt, size, state);
@@ -333,7 +357,8 @@ void EngineWindowSumFeature5(benchmark::State* state, MODE mode,
         "sum(col4) OVER w1 as w1_col4_sum, "
         "sum(col2) OVER w1 as w1_col2_sum, "
         "sum(col5) OVER w1 as w1_col5_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN "
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
@@ -350,7 +375,8 @@ void EngineWindowDistinctCntFeature(benchmark::State* state, MODE mode,
         "distinct_count(col6) OVER  w1  as top3, "
         "distinct_count(col6) OVER  w1  as top4, "
         "distinct_count(col6) OVER  w1  as top5 "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN "
         "30d PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
     EngineRequestMode(sql, mode, limit_cnt, size, state);
@@ -366,7 +392,8 @@ void EngineWindowTop1RatioFeature(benchmark::State* state, MODE mode,
         "fz_top1_ratio(col6) OVER  w1  as top3, "
         "fz_top1_ratio(col6) OVER  w1  as top4, "
         "fz_top1_ratio(col6) OVER  w1  as top5 "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN "
         "30d PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
     EngineRequestMode(sql, mode, limit_cnt, size, state);
@@ -378,15 +405,19 @@ void EngineWindowSumFeature5Window5(benchmark::State* state, MODE mode,
     const std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum, "
-        "sum(col3) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 30d "
+        "sum(col3) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "30d "
         "PRECEDING AND CURRENT ROW) as w2_col3_sum, "
-        "sum(col4) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 20d "
+        "sum(col4) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "20d "
         "PRECEDING AND CURRENT ROW) as w3_col4_sum, "
-        "sum(col2) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "sum(col2) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w4_col2_sum, "
-        "sum(col5) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 5d "
+        "sum(col5) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN 5d "
         "PRECEDING AND CURRENT ROW) as w5_col5_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN "
         "30d PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
     EngineRequestMode(sql, mode, limit_cnt, size, state);
@@ -426,7 +457,8 @@ void EngineWindowMultiAggFeature5(benchmark::State* state, MODE mode,
         "max(col4) OVER w1 as w1_col4_max, "
         "max(col2) OVER w1 as w1_col2_max, "
         "max(col5) OVER w1 as w1_col5_max "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN "
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
@@ -440,59 +472,75 @@ void EngineWindowMultiAggWindow25Feature25(benchmark::State* state, MODE mode,
     const std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum, "
-        "sum(col3) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "sum(col3) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "        30d PRECEDING AND CURRENT ROW)  as w1_col3_sum, "
-        "sum(col4) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "sum(col4) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "        30d PRECEDING AND CURRENT ROW)  as w1_col4_sum, "
-        "sum(col2) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "sum(col2) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "        30d PRECEDING AND CURRENT ROW)  as w1_col2_sum, "
-        "sum(col5) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "sum(col5) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "        30d PRECEDING AND CURRENT ROW)  as w1_col5_sum, "
 
-        "count(col1) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "count(col1) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "        20d PRECEDING AND CURRENT ROW)  as w1_col1_cnt, "
-        "count(col3) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "count(col3) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "        20d PRECEDING AND CURRENT ROW) as w1_col3_cnt, "
-        "count(col4) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "count(col4) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "       20d PRECEDING AND CURRENT ROW) as w1_col4_cnt, "
-        "count(col2) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "count(col2) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "        20d PRECEDING AND CURRENT ROW) as w1_col2_cnt, "
-        "count(col5) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "count(col5) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
         "        20d PRECEDING AND CURRENT ROW) as w1_col5_cnt, "
 
-        "avg(col1) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 15d "
+        "avg(col1) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "15d "
         "PRECEDING AND CURRENT ROW) as w1_col1_avg, "
-        "avg(col3) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 15d "
+        "avg(col3) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "15d "
         "PRECEDING AND CURRENT ROW) as w1_col3_avg, "
-        "avg(col4) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 15d "
+        "avg(col4) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "15d "
         "PRECEDING AND CURRENT ROW) as w1_col4_avg, "
-        "avg(col2) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 15d "
+        "avg(col2) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "15d "
         "PRECEDING AND CURRENT ROW) as w1_col2_avg, "
-        "avg(col5) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 15d "
+        "avg(col5) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "15d "
         "PRECEDING AND CURRENT ROW) as w1_col5_avg, "
 
-        "min(col1) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "min(col1) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col1_min, "
-        "min(col3) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "min(col3) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col3_min, "
-        "min(col4) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "min(col4) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col4_min, "
-        "min(col2) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "min(col2) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col2_min, "
-        "min(col5) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "min(col5) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col5_min, "
 
-        "max(col1) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "max(col1) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col1_max, "
-        "max(col3) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "max(col3) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col3_max, "
-        "max(col4) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "max(col4) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col4_max, "
-        "max(col2) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "max(col2) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col2_max, "
-        "max(col5) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d "
+        "max(col5) OVER (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN "
+        "10d "
         "PRECEDING AND CURRENT ROW) as w1_col5_max "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN "
         "30d PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
     EngineRequestMode(sql, mode, limit_cnt, size, state);
@@ -569,6 +617,7 @@ void EngineRequestModeSimpleQueryBM(const std::string& db,
     RequestRunSession session;
     base::Status query_status;
     engine.Get(sql, db, session, query_status);
+    LOG(INFO) << query_status;
     std::ostringstream runner_oss;
     session.GetClusterJob().Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
@@ -686,48 +735,72 @@ void EngineRequestSimpleSelectDate(benchmark::State* state,
         "cases/resource/benchmark_t1_with_time_one_row.yaml";
     EngineRequestModeSimpleQueryBM("db", "t1", sql, 1, resource, state, mode);
 }
-
+fesql::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml,
+                                          const std::string& case_id) {
+    return fesql::sqlcase::SQLCase::LoadSQLCaseWithID(
+        fesql::sqlcase::FindFesqlDirPath(), yaml, case_id);
+}
 void EngineBenchmarkOnCase(const std::string& yaml_path,
                            const std::string& case_id,
                            vm::EngineMode engine_mode,
                            benchmark::State* state) {
-    vm::EngineOptions engine_options;
-    if (engine_mode == vm::kBatchRequestMode) {
-        size_t enable_batch_opt_flag = state->range(0);
-        if (enable_batch_opt_flag == 1) {
-            engine_options.set_batch_request_optimized(true);
-        } else {
-            engine_options.set_batch_request_optimized(false);
-        }
+    SQLCase target_case = fesql::sqlcase::SQLCase::LoadSQLCaseWithID(
+        fesql::sqlcase::FindFesqlDirPath(), yaml_path, case_id);
+    if (target_case.id() != case_id) {
+        LOG(WARNING) << "Fail to find case #" << case_id << " in " << yaml_path;
+        state->SkipWithError("BENCHMARK CASE LOAD FAIL: fail to find case");
+        return;
     }
+    EngineBenchmarkOnCase(target_case, engine_mode, state);
+}
+void EngineBenchmarkOnCase(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
+                           vm::EngineMode engine_mode,
+                           benchmark::State* state) {
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    std::vector<SQLCase> cases;
-    SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
-                                    yaml_path, cases);
-    const SQLCase* target_case = nullptr;
-    for (const auto& sql_case : cases) {
-        if (sql_case.id() == case_id) {
-            target_case = &sql_case;
-            break;
-        }
+
+    LOG(INFO) << "BENCHMARK INIT Engine Runner";
+
+    vm::EngineOptions engine_options;
+    if (engine_mode == vm::kBatchRequestMode) {
+        engine_options.set_batch_request_optimized(
+            sql_case.batch_request_optimized_);
     }
-    if (target_case == nullptr) {
-        LOG(WARNING) << "Fail to find case #" << case_id << " in " << yaml_path;
-        return;
+    if (fesql::sqlcase::SQLCase::IS_CLUSTER()) {
+        engine_options.set_cluster_optimized(true);
+    } else {
+        engine_options.set_cluster_optimized(false);
+    }
+    if (fesql::sqlcase::SQLCase::IS_DISABLE_EXPR_OPT()) {
+        engine_options.set_enable_expr_optimize(false);
+    } else {
+        engine_options.set_enable_expr_optimize(true);
     }
     std::unique_ptr<vm::EngineTestRunner> engine_runner;
     if (engine_mode == vm::kBatchMode) {
         engine_runner = std::unique_ptr<vm::BatchEngineTestRunner>(
-            new vm::BatchEngineTestRunner(*target_case, engine_options));
+            new vm::BatchEngineTestRunner(sql_case, engine_options));
     } else if (engine_mode == vm::kRequestMode) {
-        LOG(WARNING) << "Request mode case can not benchmark now";
-        return;
+        engine_runner = std::unique_ptr<vm::RequestEngineTestRunner>(
+            new vm::RequestEngineTestRunner(sql_case, engine_options));
     } else {
         engine_runner = std::unique_ptr<vm::BatchRequestEngineTestRunner>(
             new vm::BatchRequestEngineTestRunner(
-                *target_case, engine_options,
-                target_case->batch_request().common_column_indices_));
+                sql_case, engine_options,
+                sql_case.batch_request().common_column_indices_));
+    }
+    if (SQLCase::IS_DEBUG()) {
+        LOG(INFO) << "BENCHMARK CASE TEST: BEGIN";
+        for (auto _ : *state) {
+            engine_runner->RunCheck();
+            if (engine_runner->return_code() == ENGINE_TEST_RET_SUCCESS) {
+                state->SkipWithError("BENCHMARK CASE TEST: OK");
+            } else {
+                state->SkipWithError("BENCHMARK CASE TEST: FAIL");
+            }
+            break;
+        }
+        return;
     }
     base::Status status = engine_runner->Compile();
     if (!status.isOK()) {

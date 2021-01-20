@@ -18,8 +18,8 @@ namespace node {
 
 const char SPACE_ST[] = "+-";
 const char SPACE_ED[] = "";
-const char OR_INDENT[] = "|\t";
-const char INDENT[] = " \t";
+const char OR_INDENT[] = "|  ";
+const char INDENT[] = "  ";
 
 enum SQLNodeType {
     // SQL
@@ -180,7 +180,12 @@ enum FnOperator {
     kFnOpNone
 };
 
-enum FrameType { kFrameRange, kFrameRows, kFrameRowsRange };
+enum FrameType {
+    kFrameRange,
+    kFrameRows,
+    kFrameRowsRange,
+    kFrameRowsMergeRowsRange
+};
 enum BoundType {
     kPrecedingUnbound = 0,
     kPreceding,
@@ -213,6 +218,7 @@ enum CmdType {
     kCmdShowCreateSp,
     kCmdShowProcedures,
     kCmdDropSp,
+    kCmdDropDatabase,
     kCmdExit
 };
 enum ExplainType {

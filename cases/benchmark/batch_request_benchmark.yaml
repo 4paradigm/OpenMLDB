@@ -3,13 +3,13 @@ debugs: []
 cases:
   - id: 0
     desc: batch request with one common window and one non-common window
-    mode: cluster-unsupport
     inputs:
       -
         columns: ["id int","k1 bigint","k2 bigint","k3 timestamp", "k4 timestamp",
                   "c1 double","c2 double","c3 double","c4 double","c5 double","c6 double"]
         indexs: ["index1:k1:k3", "index2:k2:k4"]
-        repeat: 100
+        repeat: 10
+        repeat_tag: window_scale
         rows:
           - [1,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
           - [3,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
@@ -17,23 +17,30 @@ cases:
           - [6,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
     batch_request:
       common_column_indices: [1,3,5,6,7]
-      repeat: 100
+      repeat: 1
+      repeat_tag: batch_scale
       columns : ["id int","k1 bigint","k2 bigint","k3 timestamp", "k4 timestamp",
                  "c1 double","c2 double","c3 double","c4 double","c5 double","c6 double"]
       rows:
-        - [2,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
-        - [4,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
-        - [7,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+        - [2,1,2,1590738991000,1590738991000,1.0,1.0,1.0,1.0,1.0,1.0]
+        - [4,1,2,1590738991000,1590738991000,1.0,1.0,1.0,1.0,1.0,1.0]
+        - [7,1,2,1590738991000,1590738991000,1.0,1.0,1.0,1.0,1.0,1.0]
     sql: |
       SELECT {0}.id, sum(c1) over w1 as m1, sum(c2) over w1 as m2, sum(c3) over w1 as m3, 
              sum(c4) over w2 as m4, sum(c5) over w2 as m5, sum(c6) over w2 as m6 
       FROM {0}
-      WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k3 ROWS BETWEEN 20 PRECEDING AND CURRENT ROW), 
-             w2 AS (PARTITION BY {0}.k2 ORDER BY {0}.k4 ROWS BETWEEN 20 PRECEDING AND CURRENT ROW);
-
+      WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k3 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW),
+             w2 AS (PARTITION BY {0}.k2 ORDER BY {0}.k4 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);
+    expect:
+      columns: ["id int", "m1 double", "m2 double", "m3 double", "m4 double", "m5 double", "m6 double"]
+      repeat_tag: batch_scale
+      repeat: 1
+      rows:
+        - [2, 41.0, 41.0, 41.0, 41.0, 41.0, 41.0]
+        - [4, 41.0, 41.0, 41.0, 41.0, 41.0, 41.0]
+        - [7, 41.0, 41.0, 41.0, 41.0, 41.0, 41.0]
   - id: 1
-    desc: batch request with common window and common and non-common aggregations, window is small
-    mode: cluster-unsupport
+    desc: batch request with common window and common and non-common aggregations
     inputs:
       -
         columns: ["id int","k1 bigint","k2 timestamp",
@@ -41,45 +48,108 @@ cases:
                   "c4 double","c5 double","c6 double"]
         indexs: ["index1:k1:k2",]
         repeat: 10
+        repeat_tag: window_scale
         rows:
           - [1,1,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
     batch_request:
       common_column_indices: [1,2,3,5,7]
-      repeat: 100
+      repeat_tag: batch_scale
+      repeat: 1
       columns : ["id int","k1 bigint","k2 timestamp",
                  "c1 double","c2 double","c3 double",
                  "c4 double","c5 double","c6 double"]
       rows:
-        - [2,1,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+        - [2,1,1590738991000,1.0,1.0,1.0,1.0,1.0,1.0]
     sql: |
       SELECT {0}.id, sum(c1) over w1 as m1, sum(c2) over w1 as m2, sum(c3) over w1 as m3, 
              sum(c4) over w1 as m4, sum(c5) over w1 as m5, sum(c6) over w1 as m6 
       FROM {0}
-      WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k2 ROWS BETWEEN 20 PRECEDING AND CURRENT ROW);
+      WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k2 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);
+    expect:
+      columns: ["id int", "m1 double", "m2 double", "m3 double", "m4 double", "m5 double", "m6 double"]
+      repeat_tag: batch_scale
+      repeat: 1
+      rows:
+        - [2, 11.0, 11.0, 11.0, 11.0, 11.0, 11.0]
 
   - id: 2
-    desc: batch request with common window and common and non-common aggregations, window is large
-    mode: cluster-unsupport
+    desc: select * 
+    inputs:
+      - 
+        columns: ["k1 bigint", "k2 timestamp", "c1 string", "c2 string", "c3 string", "c4 string"]
+        indexs: ["index1:k1:k2"]
+    batch_request:
+      common_column_indices: [1, 3, 5]
+      repeat_tag: batch_scale
+      repeat: 1
+      columns: ["k1 bigint", "k2 timestamp", "c1 string", "c2 string", "c3 string", "c4 string"]
+      rows:
+        - [1, 1590738990000, "11111111111", "2222222222", "33333333333", "4444444444"]
+    sql: |
+      SELECT * FROM {0};
+    expect:
+      columns: ["k1 bigint", "k2 timestamp", "c1 string", "c2 string", "c3 string", "c4 string"]
+      repeat_tag: batch_scale
+      repeat: 1
+      rows:
+        - [1, 1590738990000, "11111111111", "2222222222", "33333333333", "4444444444"]
+
+  - id: 3
+    desc: select columns with non-common join
     inputs:
       -
-        columns: ["id int","k1 bigint","k2 timestamp",
-                  "c1 double","c2 double","c3 double",
-                  "c4 double","c5 double","c6 double"]
-        indexs: ["index1:k1:k2",]
-        repeat: 1000
+        columns: ["k1 bigint","k2 timestamp", "c1 string", "c2 string", "c3 string"]
+        indexs: ["index1:k1:k2"]
         rows:
-          - [1,1,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+      - 
+        columns: ["k1 bigint", "k2 timestamp", "c4 string", "c5 string", "c6 string"]
+        indexs: ["index1:k1:k2"]
+        rows:
+          - [1, 1590738990000, "hello world", "1111111", "aaa"]
+          - [2, 1590738991000, "thank you", "2222222", "ssssssssssssss"]
+          - [3, 1590738992000, "hello", "3333333", "bbb"]
+          - [4, 1590738993000, "world", "4444444", "tttttttttttttt"]
+          - [5, 1590738994000, "thank", "5555555", "ccc"]
+          - [6, 1590738995000, "you", "6666666", "vvvvvvvvvvvvvv"]
+          - [7, 1590738996000, "tom cat", "7777777", "ddd"]
+          - [8, 1590738997000, "America", "8888888", "xxxxxxxxxxxxxx"]
+          - [9, 1590738998000, "return", "9999999", "eee"]
+          - [10, 159073899000, "how are you", "0000000", "zzzzzzzzzzzzzz"]
     batch_request:
-      common_column_indices: [1,2,3,5,7]
-      repeat: 100
-      columns : ["id int","k1 bigint","k2 timestamp",
-                 "c1 double","c2 double","c3 double",
-                 "c4 double","c5 double","c6 double"]
+      common_column_indices: [2]
+      repeat_tag: batch_scale
+      repeat: 1
+      columns: ["k1 bigint","k2 timestamp", "c1 string", "c2 string", "c3 string"]
       rows:
-        - [2,1,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+        - [1, 1590738990000, "same str", "last dance", "aaa"]
+        - [2, 1590738991000, "same str", "keven", "ssssssssssssss"]
+        - [3, 1590738992000, "same str", "shark", "bbb"]
+        - [4, 1590738993000, "same str", "qqq", "tttttttttttttt"]
+        - [5, 1590738994000, "same str", "qqwrwwv", "ccc"]
+        - [6, 1590738995000, "same str", "happy new year", "vvvvvvvvvvvvvv"]
+        - [7, 1590738996000, "same str", "", "ddd"]
+        - [8, 1590738997000, "same str", "detect", "xxxxxxxxxxxxxx"]
+        - [9, 1590738998000, "same str", "1990", "eee"]
+        - [10, 159073899000, "same str", "zzzzzzzzz", "zzzzzzzzzzzzzz"]
     sql: |
-      SELECT {0}.id, sum(c1) over w1 as m1, sum(c2) over w1 as m2, sum(c3) over w1 as m3, 
-             sum(c4) over w1 as m4, sum(c5) over w1 as m5, sum(c6) over w1 as m6 
-      FROM {0}
-      WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k2 ROWS BETWEEN 20 PRECEDING AND CURRENT ROW);
+      SELECT {0}.k1 as id, c1, c2, c3, c4, c5, c6
+      FROM {0} last join {1} order by {1}.k2 on {0}.k1 = {1}.k1 and not isnull({0}.c3);
+    expect:
+      columns: ["id bigint", "c1 string", "c2 string", "c3 string",
+                "c4 string", "c5 string", "c6 string"]
+      repeat_tag: batch_scale
+      repeat: 1
+      rows:
+        - [1, "same str", "last dance", "aaa", "hello world", "1111111", "aaa"]
+        - [2, "same str", "keven", "ssssssssssssss", "thank you", "2222222", "ssssssssssssss"]
+        - [3, "same str", "shark", "bbb", "hello", "3333333", "bbb"]
+        - [4, "same str", "qqq", "tttttttttttttt", "world", "4444444", "tttttttttttttt"]
+        - [5, "same str", "qqwrwwv", "ccc", "thank", "5555555", "ccc"]
+        - [6, "same str", "happy new year", "vvvvvvvvvvvvvv", "you", "6666666", "vvvvvvvvvvvvvv"]
+        - [7, "same str", "", "ddd", "tom cat", "7777777", "ddd"]
+        - [8, "same str", "detect", "xxxxxxxxxxxxxx", "America", "8888888", "xxxxxxxxxxxxxx"]
+        - [9, "same str", "1990", "eee", "return", "9999999", "eee"]
+        - [10, "same str", "zzzzzzzzz", "zzzzzzzzzzzzzz", "how are you", "0000000", "zzzzzzzzzzzzzz"]
+
+
 

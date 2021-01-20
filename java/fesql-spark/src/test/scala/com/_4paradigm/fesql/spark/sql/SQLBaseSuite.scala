@@ -7,6 +7,7 @@ import java.text.SimpleDateFormat
 import com._4paradigm.fesql.spark.api.{FesqlDataframe, FesqlSession}
 import com._4paradigm.fesql.spark.SparkTestSuite
 import com._4paradigm.fesql.sqlcase.model._
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.types._
 import org.slf4j.LoggerFactory
@@ -35,6 +36,12 @@ class SQLBaseSuite extends SparkTestSuite {
   def testCases(yamlPath: String) {
     val caseFile = loadYaml[CaseFile](yamlPath)
     caseFile.getCases.asScala.filter(c => keepCase(c)).foreach(c => testCase(c))
+  }
+
+  def testCase(yamlPath: String, id: String): Unit = {
+    val caseFile = loadYaml[CaseFile](yamlPath)
+    val sqlCase = caseFile.getCases.asScala.find(_.getId == id).orNull
+    testCase(sqlCase)
   }
 
   def keepCase(sqlCase: SQLCase): Boolean = {
@@ -101,6 +108,11 @@ class SQLBaseSuite extends SparkTestSuite {
   }
 
   def checkOutput(data: DataFrame, expect: ExpectDesc): Unit = {
+    if (CollectionUtils.isEmpty(expect.getColumns) && CollectionUtils.isEmpty(expect.getRows)) {
+      logger.info("pass: no columns and rows in expect block");
+      return;
+    }
+
     val expectSchema = parseSchema(expect.getColumns())
     assert(data.schema == expectSchema)
 

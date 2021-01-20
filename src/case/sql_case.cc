@@ -184,29 +184,34 @@ bool SQLCase::ExtractSchema(const std::vector<std::string>& columns,
         LOG(WARNING) << "Invalid Schema Format";
         return false;
     }
-    for (auto col : columns) {
-        boost::trim(col);
-        boost::replace_last(col, " ", ":");
-        std::vector<std::string> name_type_vec;
-        boost::split(name_type_vec, col, boost::is_any_of(":"),
-                     boost::token_compress_on);
-        if (2 != name_type_vec.size()) {
-            LOG(WARNING) << "Invalid Schema Format:"
-                         << " Invalid Column " << col;
-            return false;
-        }
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        boost::trim(name_type_vec[0]);
-        boost::trim(name_type_vec[1]);
+    try {
+        for (auto col : columns) {
+            boost::trim(col);
+            boost::replace_last(col, " ", ":");
+            std::vector<std::string> name_type_vec;
+            boost::split(name_type_vec, col, boost::is_any_of(":"),
+                         boost::token_compress_on);
+            if (2 != name_type_vec.size()) {
+                LOG(WARNING) << "Invalid Schema Format:"
+                             << " Invalid Column " << col;
+                return false;
+            }
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            boost::trim(name_type_vec[0]);
+            boost::trim(name_type_vec[1]);
 
-        column->set_name(name_type_vec[0]);
-        fesql::type::Type type;
-        if (!TypeParse(name_type_vec[1], &type)) {
-            LOG(WARNING) << "Invalid Column Type";
-            return false;
+            column->set_name(name_type_vec[0]);
+            fesql::type::Type type;
+            if (!TypeParse(name_type_vec[1], &type)) {
+                LOG(WARNING) << "Invalid Column Type";
+                return false;
+            }
+            column->set_type(type);
+            column->set_is_not_null(false);
         }
-        column->set_type(type);
-        column->set_is_not_null(false);
+    } catch (const std::exception& ex) {
+        LOG(WARNING) << "Fail to ExtractSchema: " << ex.what();
+        return false;
     }
     return true;
 }
@@ -297,25 +302,30 @@ bool SQLCase::ExtractInputData(std::vector<Row>& rows,
 }
 bool SQLCase::ExtractInputData(const TableInfo& input,
                                std::vector<Row>& rows) const {
-    if (input.data_.empty() && input.rows_.empty()) {
-        LOG(WARNING) << "Empty Data String";
-        return false;
-    }
-    type::TableDef table;
-    if (!ExtractInputTableDef(input, table)) {
-        LOG(WARNING) << "Invalid Schema";
-        return false;
-    }
+    try {
+        if (input.data_.empty() && input.rows_.empty()) {
+            LOG(WARNING) << "Empty Data String";
+            return false;
+        }
+        type::TableDef table;
+        if (!ExtractInputTableDef(input, table)) {
+            LOG(WARNING) << "Invalid Schema";
+            return false;
+        }
 
-    if (!input.data_.empty()) {
-        if (!ExtractRows(table.columns(), input.data_, rows)) {
+        if (!input.data_.empty()) {
+            if (!ExtractRows(table.columns(), input.data_, rows)) {
+                return false;
+            }
+        } else if (!input.columns_.empty()) {
+            if (!ExtractRows(table.columns(), input.rows_, rows)) {
+                return false;
+            }
+        } else {
             return false;
         }
-    } else if (!input.columns_.empty()) {
-        if (!ExtractRows(table.columns(), input.rows_, rows)) {
-            return false;
-        }
-    } else {
+    } catch (const std::exception& ex) {
+        LOG(WARNING) << "Fail to ExtractInput Data: " << ex.what();
         return false;
     }
     return true;
@@ -479,102 +489,108 @@ bool SQLCase::ExtractRow(const vm::Schema& schema,
     auto it = schema.begin();
     uint32_t index = 0;
 
-    for (; it != schema.end(); ++it) {
-        if (index >= item_vec.size()) {
-            LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
-            return false;
-        }
-        if (item_vec[index] == "NULL" || item_vec[index] == "null") {
-            index++;
-            rb.AppendNULL();
-            continue;
-        }
-        switch (it->type()) {
-            case type::kInt16: {
-                if (!rb.AppendInt16(
-                        boost::lexical_cast<int16_t>(item_vec[index]))) {
-                    LOG(WARNING) << "Fail Append Column " << index;
-                    return false;
-                }
-                break;
-            }
-            case type::kInt32: {
-                if (!rb.AppendInt32(
-                        boost::lexical_cast<int32_t>(item_vec[index]))) {
-                    LOG(WARNING) << "Fail Append Column " << index;
-                    return false;
-                }
-                break;
-            }
-            case type::kInt64: {
-                if (!rb.AppendInt64(
-                        boost::lexical_cast<int64_t>(item_vec[index]))) {
-                    LOG(WARNING) << "Fail Append Column " << index;
-                    return false;
-                }
-                break;
-            }
-            case type::kFloat: {
-                if (!rb.AppendFloat(
-                        boost::lexical_cast<float>(item_vec[index]))) {
-                    LOG(WARNING) << "Fail Append Column " << index;
-                    return false;
-                }
-                break;
-            }
-            case type::kDouble: {
-                double d = boost::lexical_cast<double>(item_vec[index]);
-                if (!rb.AppendDouble(d)) {
-                    LOG(WARNING) << "Fail Append Column " << index;
-                    return false;
-                }
-                break;
-            }
-            case type::kBool: {
-                bool b;
-                std::istringstream ss(item_vec[index]);
-                ss >> std::boolalpha >> b;
-                if (!rb.AppendBool(b)) {
-                    LOG(WARNING) << "Fail Append Column " << index;
-                    return false;
-                }
-                break;
-            }
-            case type::kVarchar: {
-                std::string str =
-                    boost::lexical_cast<std::string>(item_vec[index]);
-                if (!rb.AppendString(str.c_str(), strlen(str.c_str()))) {
-                    LOG(WARNING) << "Fail Append Column " << index;
-                    return false;
-                }
-                break;
-            }
-            case type::kTimestamp: {
-                if (!rb.AppendTimestamp(
-                        boost::lexical_cast<int64_t>(item_vec[index]))) {
-                    return false;
-                }
-                break;
-            }
-            case type::kDate: {
-                std::vector<std::string> date_strs;
-                boost::split(date_strs, item_vec[index], boost::is_any_of("-"),
-                             boost::token_compress_on);
-
-                if (!rb.AppendDate(
-                        boost::lexical_cast<int32_t>(date_strs[0]),
-                        boost::lexical_cast<int32_t>(date_strs[1]),
-                        boost::lexical_cast<int32_t>(date_strs[2]))) {
-                    return false;
-                }
-                break;
-            }
-            default: {
-                LOG(WARNING) << "Invalid Column Type";
+    try {
+        for (; it != schema.end(); ++it) {
+            if (index >= item_vec.size()) {
+                LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
                 return false;
             }
+            if (item_vec[index] == "NULL" || item_vec[index] == "null") {
+                index++;
+                rb.AppendNULL();
+                continue;
+            }
+            switch (it->type()) {
+                case type::kInt16: {
+                    if (!rb.AppendInt16(
+                            boost::lexical_cast<int16_t>(item_vec[index]))) {
+                        LOG(WARNING) << "Fail Append Column " << index;
+                        return false;
+                    }
+                    break;
+                }
+                case type::kInt32: {
+                    if (!rb.AppendInt32(
+                            boost::lexical_cast<int32_t>(item_vec[index]))) {
+                        LOG(WARNING) << "Fail Append Column " << index;
+                        return false;
+                    }
+                    break;
+                }
+                case type::kInt64: {
+                    if (!rb.AppendInt64(
+                            boost::lexical_cast<int64_t>(item_vec[index]))) {
+                        LOG(WARNING) << "Fail Append Column " << index;
+                        return false;
+                    }
+                    break;
+                }
+                case type::kFloat: {
+                    if (!rb.AppendFloat(
+                            boost::lexical_cast<float>(item_vec[index]))) {
+                        LOG(WARNING) << "Fail Append Column " << index;
+                        return false;
+                    }
+                    break;
+                }
+                case type::kDouble: {
+                    double d = boost::lexical_cast<double>(item_vec[index]);
+                    if (!rb.AppendDouble(d)) {
+                        LOG(WARNING) << "Fail Append Column " << index;
+                        return false;
+                    }
+                    break;
+                }
+                case type::kBool: {
+                    bool b;
+                    std::istringstream ss(item_vec[index]);
+                    ss >> std::boolalpha >> b;
+                    if (!rb.AppendBool(b)) {
+                        LOG(WARNING) << "Fail Append Column " << index;
+                        return false;
+                    }
+                    break;
+                }
+                case type::kVarchar: {
+                    std::string str =
+                        boost::lexical_cast<std::string>(item_vec[index]);
+                    if (!rb.AppendString(str.c_str(), strlen(str.c_str()))) {
+                        LOG(WARNING) << "Fail Append Column " << index;
+                        return false;
+                    }
+                    break;
+                }
+                case type::kTimestamp: {
+                    if (!rb.AppendTimestamp(
+                            boost::lexical_cast<int64_t>(item_vec[index]))) {
+                        return false;
+                    }
+                    break;
+                }
+                case type::kDate: {
+                    std::vector<std::string> date_strs;
+                    boost::split(date_strs, item_vec[index],
+                                 boost::is_any_of("-"),
+                                 boost::token_compress_on);
+
+                    if (!rb.AppendDate(
+                            boost::lexical_cast<int32_t>(date_strs[0]),
+                            boost::lexical_cast<int32_t>(date_strs[1]),
+                            boost::lexical_cast<int32_t>(date_strs[2]))) {
+                        return false;
+                    }
+                    break;
+                }
+                default: {
+                    LOG(WARNING) << "Invalid Column Type";
+                    return false;
+                }
+            }
+            index++;
         }
-        index++;
+    } catch (const std::exception& ex) {
+        LOG(WARNING) << "Fail to ExtractSchema: " << ex.what();
+        return false;
     }
     *out_ptr = ptr;
     *out_size = row_size;
@@ -669,6 +685,11 @@ bool SQLCase::BuildInsertSQLListFromInput(
     int32_t input_idx, std::vector<std::string>* sql_list) const {
     if (!inputs_[input_idx].insert_.empty()) {
         sql_list->push_back(inputs_[input_idx].insert_);
+        return true;
+    }
+
+    if (!inputs_[input_idx].inserts_.empty()) {
+        *sql_list = inputs_[input_idx].inserts_;
         return true;
     }
     type::TableDef table;
@@ -810,6 +831,9 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
     if (schema_data["repeat"]) {
         table->repeat_ = schema_data["repeat"].as<int64_t>();
     }
+    if (schema_data["repeat_tag"]) {
+        table->repeat_tag_ = schema_data["repeat_tag"].as<std::string>();
+    }
     if (schema_data["rows"]) {
         table->rows_.clear();
         if (!CreateRowsFromYamlNode(schema_data["rows"], table->rows_)) {
@@ -836,6 +860,12 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
         boost::trim(table->insert_);
     }
 
+    if (schema_data["inserts"]) {
+        auto data = schema_data["inserts"];
+        if (!CreateStringListFromYamlNode(data, table->inserts_)) {
+            return false;
+        }
+    }
     if (schema_data["common_column_indices"]) {
         auto data = schema_data["common_column_indices"];
         std::vector<std::string> idxs;
@@ -1118,6 +1148,12 @@ bool SQLCase::CreateSQLCasesFromYaml(
         } else {
             sql_case.standard_sql_ = false;
         }
+        if (sql_case_node["batch_request_optimized"]) {
+            sql_case.batch_request_optimized_ =
+                sql_case_node["batch_request_optimized"].as<bool>();
+        } else {
+            sql_case.batch_request_optimized_ = true;
+        }
 
         if (sql_case_node["standard_sql_compatible"]) {
             sql_case.standard_sql_compatible_ =
@@ -1169,7 +1205,20 @@ bool SQLCase::CreateSQLCasesFromYaml(
     }
     return true;
 }
+fesql::sqlcase::SQLCase SQLCase::LoadSQLCaseWithID(const std::string& dir_path,
+                                                   const std::string& yaml_path,
+                                                   const std::string& case_id) {
+    std::vector<SQLCase> cases;
+    LOG(INFO) << "BENCHMARK LOAD SQL CASE";
+    SQLCase::CreateSQLCasesFromYaml(dir_path, yaml_path, cases);
 
+    for (const auto& sql_case : cases) {
+        if (sql_case.id() == case_id) {
+            return sql_case;
+        }
+    }
+    return SQLCase();
+}
 std::string FindFesqlDirPath() {
     boost::filesystem::path current_path(boost::filesystem::current_path());
     boost::filesystem::path fesql_path;

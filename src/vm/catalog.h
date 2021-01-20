@@ -19,8 +19,8 @@
 #define SRC_VM_CATALOG_H_
 #include <node/sql_node.h>
 #include <map>
-#include <set>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -79,7 +79,7 @@ class DataHandler : public ListV<Row> {
 class DataHandlerList {
  public:
     DataHandlerList() {}
-    ~DataHandlerList() {}
+    virtual ~DataHandlerList() {}
     virtual size_t GetSize() = 0;
     virtual std::shared_ptr<DataHandler> Get(size_t idx) = 0;
 };
@@ -321,10 +321,8 @@ class Tablet {
     virtual std::shared_ptr<TableHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
         const std::set<size_t>& common_column_indices,
-        const std::vector<Row>& in_rows,
-        const bool request_is_common,
-        const bool is_procedure,
-        const bool is_debug) = 0;
+        const std::vector<Row>& in_rows, const bool request_is_common,
+        const bool is_procedure, const bool is_debug) = 0;
 };
 
 // database/table/schema/type management

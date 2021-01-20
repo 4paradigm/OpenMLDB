@@ -235,6 +235,7 @@ void sub_string(fesql::codec::StringRef *str, int32_t pos,
 void sub_string(fesql::codec::StringRef *str, int32_t pos, int32_t len,
                 fesql::codec::StringRef *output);
 int32_t strcmp(fesql::codec::StringRef *s1, fesql::codec::StringRef *s2);
+void bool_to_string(bool v, fesql::codec::StringRef *output);
 void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr);
 void string_to_int(codec::StringRef *str, int32_t *v, bool *is_null_ptr);
 void string_to_smallint(codec::StringRef *str, int16_t *v, bool *is_null_ptr);

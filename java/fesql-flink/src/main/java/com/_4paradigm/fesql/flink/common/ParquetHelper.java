@@ -60,7 +60,7 @@ public class ParquetHelper {
 				}
 			}
 		} catch (Exception e) {
-			System.out.println(e.toString());
+			e.printStackTrace();
 		}
 		return files;
 	}

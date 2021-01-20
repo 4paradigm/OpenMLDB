@@ -218,8 +218,8 @@ static Status UpdateProjectExpr(
 
     passes::ExprReplacer replacer;
     for (auto column_expr : origin_columns) {
-        size_t schema_idx;
-        size_t col_idx;
+        size_t schema_idx = 0;
+        size_t col_idx = 0;
         if (column_expr->GetExprType() == node::kExprColumnId) {
             auto column_id =
                 dynamic_cast<const node::ColumnIdNode*>(column_expr);
@@ -230,6 +230,8 @@ static Status UpdateProjectExpr(
                 dynamic_cast<const node::ColumnRefNode*>(column_expr);
             CHECK_STATUS(schemas_ctx->ResolveColumnRefIndex(
                 column_ref, &schema_idx, &col_idx));
+        } else {
+            return Status(kPlanError, "Illegal column expression");
         }
         size_t total_idx = col_idx;
         for (size_t i = 0; i < schema_idx; ++i) {
@@ -667,11 +669,24 @@ Status CommonColumnOptimize::ProcessWindow(PhysicalPlanContext* ctx,
                                          request_union_path, &new_union,
                                          &agg_request_state));
     } else {
-        agg_request_state = request_state;  // missing join right parts possible
+        CHECK_STATUS(GetOpState(ctx, input, &agg_request_state));
         CHECK_STATUS(GetReorderedOp(ctx, input, &new_union));
     }
     bool is_trival_common =
         !union_is_non_trivial_common && request_state->non_common_op == nullptr;
+
+    // collect new agg request input column ids
+    PhysicalOpNode* agg_request_concat = agg_request_state->concat_op;
+    CHECK_TRUE(agg_request_concat != nullptr, kPlanError);
+    std::unordered_map<size_t, size_t> new_id_map;
+    for (size_t i = 0; i < agg_request_concat->GetOutputSchemaSourceSize();
+         ++i) {
+        auto source = agg_request_concat->GetOutputSchemaSource(i);
+        for (size_t j = 0; j < source->size(); ++j) {
+            auto col_idx = new_id_map.size();
+            new_id_map[col_idx] = source->GetColumnID(j);
+        }
+    }
 
     // split project expressions
     ColumnProjects common_projects;
@@ -682,6 +697,16 @@ Status CommonColumnOptimize::ProcessWindow(PhysicalPlanContext* ctx,
         const node::ExprNode* expr = origin_projects.GetExpr(i);
         const node::FrameNode* frame = origin_projects.GetFrame(i);
 
+        bool need_update =
+            !ExprDependOnlyOnLeft(expr, agg_request_concat, nullptr);
+        if (need_update) {
+            node::ExprNode* new_expr = nullptr;
+            CHECK_STATUS(
+                UpdateProjectExpr(ctx, expr, input, new_id_map, &new_expr),
+                "Fail to resolve expr ", expr->GetExprString(),
+                " on project input:\n", new_union->SchemaToString());
+            expr = new_expr;
+        }
         bool expr_is_common =
             is_trival_common || agg_request_state->non_common_op == nullptr ||
             (union_is_non_trivial_common &&
@@ -841,6 +866,10 @@ Status CommonColumnOptimize::ProcessJoin(PhysicalPlanContext* ctx,
             CHECK_STATUS(ctx->CreateOp<PhysicalRequestJoinNode>(
                 &new_join, left_state->common_op, right, join_op->join(),
                 join_op->output_right_only()));
+            CHECK_STATUS(ReplaceComponentExpr(
+                join_op->join(), join_op->joined_schemas_ctx(),
+                new_join->joined_schemas_ctx(), ctx->node_manager(),
+                &new_join->join_));
             state->common_op = new_join;
             state->non_common_op = join_op->output_right_only()
                                        ? nullptr
@@ -857,6 +886,10 @@ Status CommonColumnOptimize::ProcessJoin(PhysicalPlanContext* ctx,
             CHECK_STATUS(ctx->CreateOp<PhysicalRequestJoinNode>(
                 &new_join, left_state->non_common_op, right, join_op->join(),
                 join_op->output_right_only()));
+            CHECK_STATUS(ReplaceComponentExpr(
+                join_op->join(), join_op->joined_schemas_ctx(),
+                new_join->joined_schemas_ctx(), ctx->node_manager(),
+                &new_join->join_));
             state->common_op =
                 join_op->output_right_only() ? nullptr : left_state->common_op;
             state->non_common_op = new_join;
@@ -874,6 +907,10 @@ Status CommonColumnOptimize::ProcessJoin(PhysicalPlanContext* ctx,
         PhysicalRequestJoinNode* new_join = nullptr;
         CHECK_STATUS(ctx->CreateOp<PhysicalRequestJoinNode>(
             &new_join, concat_left, right, join_op->join(), true));
+        CHECK_STATUS(
+            ReplaceComponentExpr(join_op->join(), join_op->joined_schemas_ctx(),
+                                 new_join->joined_schemas_ctx(),
+                                 ctx->node_manager(), &new_join->join_));
 
         if (join_op->output_right_only()) {
             state->common_op = nullptr;
