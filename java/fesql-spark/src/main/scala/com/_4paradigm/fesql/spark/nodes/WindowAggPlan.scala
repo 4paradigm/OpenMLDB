@@ -187,7 +187,8 @@ object WindowAggPlan {
       outputSchemaSlices = outputSchemaSlices,
       unionFlagIdx = flagIdx,
       instanceNotInWindow = node.instance_not_in_window(),
-      needAppendInput = node.need_append_input(),
+      // TODO: Should set by node object in FESQL core
+      needAppendInput = if (ctx.getConf.enableWindowParallelization) false else node.need_append_input(),
       limitCnt = node.GetLimitCnt(),
       sampleOutputPath = sampleOutputPath,
       sampleMinSize = sampleMinSize
