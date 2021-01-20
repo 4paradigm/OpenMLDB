@@ -178,6 +178,8 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     sql_context.is_cluster_optimized = options_.is_cluster_optimzied();
     sql_context.is_batch_request_optimized =
         options_.is_batch_request_optimized();
+    sql_context.enable_batch_window_parallelization =
+        options_.is_enable_batch_window_parallelization();
     sql_context.enable_expr_optimize = options_.is_enable_expr_optimize();
     sql_context.jit_options = options_.jit_options();
 

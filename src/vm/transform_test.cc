@@ -220,6 +220,118 @@ TEST_P(TransformTest, transform_physical_plan) {
     //    m->print(::llvm::errs(), NULL);
 }
 
+TEST_P(TransformTest, transform_physical_plan_enable_window_paralled) {
+    std::string sqlstr = GetParam().sql_str();
+    std::cout << sqlstr << std::endl;
+
+    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
+    boost::to_lower(sqlstr);
+    std::cout << sqlstr << std::endl;
+
+    fesql::type::TableDef table_def;
+    fesql::type::TableDef table_def2;
+    fesql::type::TableDef table_def3;
+    fesql::type::TableDef table_def4;
+    fesql::type::TableDef table_def5;
+    fesql::type::TableDef table_def6;
+    BuildTableDef(table_def);
+    BuildTableDef(table_def2);
+    BuildTableDef(table_def3);
+    BuildTableDef(table_def4);
+    BuildTableDef(table_def5);
+    BuildTableDef(table_def6);
+
+    table_def.set_name("t1");
+    table_def2.set_name("t2");
+    table_def3.set_name("t3");
+    table_def4.set_name("t4");
+    table_def5.set_name("t5");
+    table_def6.set_name("t6");
+
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    std::shared_ptr<::fesql::storage::Table> table2(
+        new ::fesql::storage::Table(1, 1, table_def2));
+    std::shared_ptr<::fesql::storage::Table> table3(
+        new ::fesql::storage::Table(1, 1, table_def3));
+    std::shared_ptr<::fesql::storage::Table> table4(
+        new ::fesql::storage::Table(1, 1, table_def4));
+    std::shared_ptr<::fesql::storage::Table> table5(
+        new ::fesql::storage::Table(1, 1, table_def5));
+    std::shared_ptr<::fesql::storage::Table> table6(
+        new ::fesql::storage::Table(1, 1, table_def6));
+
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index12");
+    index->add_first_keys("col1");
+    index->add_first_keys("col2");
+    index->set_second_key("col5");
+    auto catalog = BuildCommonCatalog(table_def, table);
+    AddTable(catalog, table_def2, table2);
+    AddTable(catalog, table_def3, table3);
+    AddTable(catalog, table_def4, table4);
+    AddTable(catalog, table_def5, table5);
+    AddTable(catalog, table_def6, table6);
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("ta");
+        std::shared_ptr<::fesql::storage::Table> table(
+            new fesql::storage::Table(1, 1, table_def));
+        AddTable(catalog, table_def, table);
+    }
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tb");
+        std::shared_ptr<::fesql::storage::Table> table(
+            new fesql::storage::Table(1, 1, table_def));
+        AddTable(catalog, table_def, table);
+    }
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tc");
+        std::shared_ptr<::fesql::storage::Table> table(
+            new fesql::storage::Table(1, 1, table_def));
+        AddTable(catalog, table_def, table);
+    }
+    ::fesql::node::PlanNodeList plan_trees;
+    ::fesql::base::Status base_status;
+    {
+        ::fesql::plan::SimplePlanner planner(&manager);
+        ::fesql::parser::FeSQLParser parser;
+        ::fesql::node::NodePointVector parser_trees;
+        parser.parse(sqlstr, parser_trees, &manager, base_status);
+        LOG(INFO) << *(parser_trees[0]) << std::endl;
+        ASSERT_EQ(0, base_status.code);
+        if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) ==
+            0) {
+            LOG(INFO) << *(plan_trees[0]) << std::endl;
+        } else {
+            LOG(INFO) << base_status.str();
+        }
+
+        ASSERT_EQ(0, base_status.code);
+    }
+
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_op_generator", *ctx);
+    auto lib = ::fesql::udf::DefaultUDFLibrary::get();
+    BatchModeTransformer transform(&manager, "db", catalog, m.get(), lib, false,
+                                   false, false, true);
+
+    transform.AddDefaultPasses();
+    PhysicalOpNode* physical_plan = nullptr;
+    ASSERT_TRUE(
+        transform.TransformPhysicalPlan(plan_trees, &physical_plan).isOK());
+    std::ostringstream oss;
+
+    physical_plan->Print(oss, "");
+    LOG(INFO) << "physical plan:\n" << oss.str() << "\n";
+    //    m->print(::llvm::errs(), NULL);
+}
+
 void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
                        std::string exp) {
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
