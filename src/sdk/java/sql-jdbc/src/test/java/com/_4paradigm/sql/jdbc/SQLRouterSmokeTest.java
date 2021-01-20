@@ -62,16 +62,37 @@ public class SQLRouterSmokeTest {
             Assert.assertTrue(ok);
             // select
             String select1 = "select * from tsql1010;";
-            java.sql.ResultSet rs1 = router.executeSQL(dbname, select1);
-            rs1.next();
+            ResultSet rs1 = (ResultSet) router.executeSQL(dbname, select1);
+            Assert.assertEquals(4, rs1.Size());
+            Assert.assertEquals(2, rs1.GetSchema().GetColumnCnt());
+            Assert.assertEquals("kTypeInt64", rs1.GetSchema().GetColumnType(0).toString());
+            Assert.assertEquals("kTypeString", rs1.GetSchema().GetColumnType(1).toString());
+            Assert.assertTrue(rs1.Next());
+            Assert.assertEquals("hello", rs1.GetStringUnsafe(1));
+            Assert.assertEquals(1000, rs1.GetInt64Unsafe(0));
+            Assert.assertTrue(rs1.Next());
+            Assert.assertEquals("world", rs1.GetStringUnsafe(1));
+            Assert.assertEquals(1001, rs1.GetInt64Unsafe(0));
 
             String select2 = "select col1 from tsql1010;";
-            java.sql.ResultSet rs2 = router.executeSQL(dbname, select2);
-            rs2.next();
+            ResultSet rs2 = (ResultSet) router.executeSQL(dbname, select2);
+            Assert.assertEquals(4, rs2.Size());
+            Assert.assertEquals(1, rs2.GetSchema().GetColumnCnt());
+            Assert.assertEquals("kTypeInt64", rs2.GetSchema().GetColumnType(0).toString());
+            Assert.assertTrue(rs2.Next());
+            Assert.assertEquals(1000, rs2.GetInt64Unsafe(0));
+            Assert.assertTrue(rs2.Next());
+            Assert.assertEquals(1001, rs2.GetInt64Unsafe(0));
 
             String select3 = "select col2 from tsql1010;";
-            java.sql.ResultSet rs3 = router.executeSQL(dbname, select3);
-            rs3.next();
+            ResultSet rs3 = (ResultSet) router.executeSQL(dbname, select3);
+            Assert.assertEquals(4, rs3.Size());
+            Assert.assertEquals(1, rs3.GetSchema().GetColumnCnt());
+            Assert.assertEquals("kTypeString", rs3.GetSchema().GetColumnType(0).toString());
+            Assert.assertTrue(rs3.Next());
+            Assert.assertEquals("hello", rs3.GetStringUnsafe(0));
+            Assert.assertTrue(rs3.Next());
+            Assert.assertEquals("world", rs3.GetStringUnsafe(0));
             // drop table
             String drop = "drop table tsql1010;";
             ok = router.executeDDL(dbname, drop);
@@ -233,11 +254,35 @@ public class SQLRouterSmokeTest {
             Assert.assertTrue(ok);
             // select
             String select1 = "select * from tsql1010;";
-            java.sql.ResultSet rs1 = router.executeSQL(dbname, select1);
-            rs1.next();
+            ResultSet rs1 = (ResultSet) router.executeSQL(dbname, select1);
+            Assert.assertEquals(5, rs1.Size());
+            Assert.assertEquals(5, rs1.GetSchema().GetColumnCnt());
+            Assert.assertEquals("kTypeInt64", rs1.GetSchema().GetColumnType(0).toString());
+            Assert.assertEquals("kTypeDate", rs1.GetSchema().GetColumnType(1).toString());
+            Assert.assertEquals("kTypeString", rs1.GetSchema().GetColumnType(2).toString());
+            Assert.assertEquals("kTypeString", rs1.GetSchema().GetColumnType(3).toString());
+            Assert.assertEquals("kTypeInt32", rs1.GetSchema().GetColumnType(4).toString());
+            for (int i = 0; i < rs1.Size(); i++) {
+                Assert.assertTrue(rs1.Next());
+                int idx = rs1.GetInt32Unsafe(4);
+                int suffix = idx - 1;
+                Assert.assertTrue(suffix < datas.length);
+                Assert.assertEquals(datas[suffix][0], rs1.GetInt64Unsafe(0));
+                Assert.assertEquals(datas[suffix][4], idx);
+                Assert.assertEquals(datas[suffix][2], rs1.GetStringUnsafe(2));
+                Assert.assertEquals(datas[suffix][3], rs1.GetStringUnsafe(3));
+                java.sql.Date tmpDate = (java.sql.Date)datas[suffix][1];
+                Date getData = rs1.GetStructDateUnsafe(1);
+                Assert.assertEquals(tmpDate.getYear() + 1900, getData.getYear());
+                Assert.assertEquals(tmpDate.getDate(), getData.getDay());
+                Assert.assertEquals(tmpDate.getMonth(), getData.getMonth());
+            }
 
             String select2 = "select col1 from tsql1010;";
-            java.sql.ResultSet rs2 = router.executeSQL(dbname, select2);
+            ResultSet rs2 = (ResultSet) router.executeSQL(dbname, select2);
+            Assert.assertEquals(5, rs2.Size());
+            Assert.assertEquals(1, rs2.GetSchema().GetColumnCnt());
+            Assert.assertEquals("kTypeInt64", rs2.GetSchema().GetColumnType(0).toString());
 
             // drop table
             String drop = "drop table tsql1010;";
@@ -322,7 +367,9 @@ public class SQLRouterSmokeTest {
             impl.executeBatch();
             Assert.assertTrue(ok);
             String select1 = "select * from tsql1010;";
-            java.sql.ResultSet rs1 = router.executeSQL(dbname, select1);
+            ResultSet rs1 = (ResultSet) router.executeSQL(dbname, select1);
+            Assert.assertEquals(datas1.length, rs1.Size());
+            Assert.assertEquals(6, rs1.GetSchema().GetColumnCnt());
 
             i++;
             PreparedStatement impl2 = router.getInsertPreparedStmt(dbname, (String) batchData[i][0]);
@@ -364,7 +411,9 @@ public class SQLRouterSmokeTest {
             impl.executeBatch();
             Assert.assertTrue(ok);
             String select2 = "select * from tsql1010;";
-            java.sql.ResultSet rs2 = router.executeSQL(dbname, select1);
+            ResultSet rs2 = (ResultSet) router.executeSQL(dbname, select1);
+            Assert.assertEquals(datas1.length + datas2.length, rs2.Size());
+            Assert.assertEquals(6, rs1.GetSchema().GetColumnCnt());
 
             // drop table
             String drop = "drop table tsql1010;";
