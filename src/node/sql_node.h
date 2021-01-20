@@ -1232,6 +1232,7 @@ class WindowDefNode : public SQLNode {
  public:
     WindowDefNode()
         : SQLNode(kWindowDef, 0, 0),
+          open_interval_window_(false),
           instance_not_in_window_(false),
           window_name_(""),
           frame_ptr_(NULL),
@@ -1266,12 +1267,19 @@ class WindowDefNode : public SQLNode {
     void set_instance_not_in_window(bool instance_not_in_window) {
         instance_not_in_window_ = instance_not_in_window;
     }
+    const bool open_interval_window() const {
+        return open_interval_window_;
+    }
+    void set_open_interval_window(bool open_interval_window) {
+        open_interval_window_ = open_interval_window;
+    }
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *that) const;
     bool CanMergeWith(const WindowDefNode *that,
                       const bool enable_window_maxsize_merged = true) const;
 
  private:
+    bool open_interval_window_;
     bool instance_not_in_window_;
     std::string window_name_;   /* window's own name */
     FrameNode *frame_ptr_;      /* expression for starting bound, if any */

@@ -973,6 +973,7 @@ bool Planner::ExpandCurrentHistoryWindow(
                 node_manager_->MakeWindowDefNode(
                     w_ptr->union_tables(), w_ptr->GetPartitions(),
                     w_ptr->GetOrders(), current_frame,
+                    w_ptr->open_interval_window(),
                     w_ptr->instance_not_in_window()));
             has_window_expand = true;
         }

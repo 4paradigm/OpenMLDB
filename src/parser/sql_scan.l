@@ -244,6 +244,7 @@ PLACEHOLDER { return PLACEHOLDER; }
 NUMBER	{ return NUMBER; }
 ON	{ return ON; }
 ON[ \t\n]+DUPLICATE { return ONDUPLICATE; } /* hack due to limited lookahead */
+OPEN_INTERVAL_WINDOW   { return OPEN_INTERVAL_WINDOW; }
 OPTIMIZE	{ return OPTIMIZE; }
 OPTION	{ return OPTION; }
 OPTIONALLY	{ return OPTIONALLY; }

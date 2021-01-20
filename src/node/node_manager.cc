@@ -99,11 +99,18 @@ SQLNode *NodeManager::MakeLimitNode(int count) {
 }
 SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
                                         ExprNode *orders, SQLNode *frame) {
-    return MakeWindowDefNode(nullptr, partitions, orders, frame, false);
+    return MakeWindowDefNode(nullptr, partitions, orders, frame, false, false);
+}
+SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
+                                        ExprNode *orders, SQLNode *frame,
+                                        bool open_interval_window) {
+    return MakeWindowDefNode(nullptr, partitions, orders, frame,
+                             open_interval_window, false);
 }
 SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
                                         ExprListNode *partitions,
                                         ExprNode *orders, SQLNode *frame,
+                                        bool open_interval_window,
                                         bool instance_not_in_window) {
     WindowDefNode *node_ptr = new WindowDefNode();
     if (nullptr != orders) {
@@ -116,6 +123,7 @@ SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
         }
         node_ptr->SetOrders(dynamic_cast<OrderByNode *>(orders));
     }
+    node_ptr->set_open_interval_window(open_interval_window);
     node_ptr->set_instance_not_in_window(instance_not_in_window);
     node_ptr->set_union_tables(union_tables);
     node_ptr->SetPartitions(partitions);
@@ -138,7 +146,7 @@ WindowDefNode *NodeManager::MergeWindow(const WindowDefNode *w1,
     return dynamic_cast<WindowDefNode *>(MakeWindowDefNode(
         w1->union_tables(), w1->GetPartitions(), w1->GetOrders(),
         MergeFrameNode(w1->GetFrame(), w2->GetFrame()),
-        w1->instance_not_in_window()));
+        w1->open_interval_window(), w1->instance_not_in_window()));
 }
 FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(
     FrameNode *frame1) {
@@ -207,9 +215,8 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
         FrameBound *end = end_compared >= 1 ? end1 : end2;
         frame_rows = dynamic_cast<FrameExtent *>(MakeFrameExtent(start, end));
     }
-    int64_t maxsize = frame1->frame_maxsize() == 0
-                                ? frame2->frame_maxsize()
-                                : frame1->frame_maxsize();
+    int64_t maxsize = frame1->frame_maxsize() == 0 ? frame2->frame_maxsize()
+                                                   : frame1->frame_maxsize();
 
     return dynamic_cast<FrameNode *>(
         MakeFrameNode(frame_type, frame_range, frame_rows, maxsize));
