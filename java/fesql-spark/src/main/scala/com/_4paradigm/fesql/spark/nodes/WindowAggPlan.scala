@@ -261,9 +261,7 @@ object WindowAggPlan {
     config.skewPositionIdx = skewDf.schema.fieldNames.length - 1
 
     keyScala = keyScala :+ sqlConfig.skewTag
-//    skewDf = skewDf.repartition(keyScala.map(skewDf(_)): _*)
-//    skewDf = expansionData(skewDf, config)
-//    skewDf.cache()
+
     val skewTable = "FESQL_TEMP_WINDOW_SKEW_" + System.currentTimeMillis()
     logger.info("skew explode table {}", skewTable)
     skewDf.createOrReplaceTempView(skewTable)
@@ -391,6 +389,8 @@ object WindowAggPlan {
           computer.checkPartition(row, lastRow)
         }
         lastRow = row
+        val cols = Array("reqId", "description", "eventTime", "summary")
+        computer.printWindowCols("flattenRequest_description_eventTime_0_10_", cols)
         Some(computer.compute(row))
       })
     }
