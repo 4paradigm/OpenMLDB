@@ -221,24 +221,24 @@ public class FEQLFZPerf {
         try {
             ResultSetMetaData metaData = resultSet.getMetaData();
             while (resultSet.next()) {
-                Map<String, String> val = new HashMap<>();
                 for (int i = 0; i < metaData.getColumnCount(); i++) {
-                    String columnName = metaData.getColumnName(i + 1);
+                    // String columnName = metaData.getColumnName(i + 1);
                     int columnType = metaData.getColumnType(i + 1);
                     if (columnType == Types.VARCHAR) {
-                        val.put(columnName, String.valueOf(resultSet.getString(i + 1)));
+                        resultSet.getString(i + 1);
                     } else if (columnType == Types.DOUBLE) {
-                        val.put(columnName, String.valueOf(resultSet.getDouble(i + 1)));
+                        resultSet.getDouble(i + 1);
                     } else if (columnType == Types.INTEGER) {
-                        val.put(columnName, String.valueOf(resultSet.getInt(i + 1)));
+                        resultSet.getInt(i + 1);
                     } else if (columnType == Types.BIGINT) {
-                        val.put(columnName, String.valueOf(resultSet.getLong(i + 1)));
+                        resultSet.getLong(i + 1);
                     } else if (columnType == Types.TIMESTAMP) {
-                        val.put(columnName, String.valueOf(resultSet.getTimestamp(i + 1)));
+                        resultSet.getTimestamp(i + 1);
                     } else if (columnType == Types.DATE) {
-                        val.put(columnName, String.valueOf(resultSet.getDate(i + 1)));
+                        resultSet.getDate(i + 1);
                     }
                 }
+                break;
             }
         } catch (Exception e) {
             e.printStackTrace();
