@@ -381,6 +381,8 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                     node.GetAsInt32());
             } else if (node_type == fesql::node::kInt32) {
                 return std::make_shared<fesql::node::ConstNode>(node);
+            } else if (node_type == fesql::node::kInt64) {
+                return std::make_shared<fesql::node::ConstNode>(node.GetAsInt32());
             }
             break;
         case rtidb::type::kBigInt:
@@ -1086,10 +1088,9 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
     }
 
     auto cntl = std::make_shared<::brpc::Controller>();
-    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
     auto response = std::make_shared<::rtidb::api::QueryResponse>();
     bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(),
-                             options_.enable_debug);
+                             options_.enable_debug, options_.request_timeout);
     if (!ok) {
         status->code = -1;
         status->msg = "request server error" + response->msg();
@@ -1118,11 +1119,10 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProc
     }
 
     auto cntl = std::make_shared<::brpc::Controller>();
-    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
     auto response = std::make_shared<::rtidb::api::SQLBatchRequestQueryResponse>();
     bool ok = tablet->CallSQLBatchRequestProcedure(
             db, sp_name, row_batch, cntl.get(), response.get(),
-            options_.enable_debug);
+            options_.enable_debug, options_.request_timeout);
     if (!ok) {
         status->code = -1;
         status->msg = "request server error, msg: " + response->msg();

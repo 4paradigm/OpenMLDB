@@ -430,7 +430,7 @@ class NameServerImpl : public NameServer {
 
     bool RegisterName();
 
-    bool CreateProcedureOnTablet(const ::rtidb::api::CreateProcedureRequest& sp_request);
+    bool CreateProcedureOnTablet(const ::rtidb::api::CreateProcedureRequest& sp_request, std::string& err_msg); // NOLINT
 
     void DropProcedure(RpcController* controller, const DropProcedureRequest* request,
             GeneralResponse* response, Closure* done);
@@ -450,6 +450,8 @@ class NameServerImpl : public NameServer {
     bool RecoverOPTask();
 
     bool UpdateSdkEpMap();
+
+    bool RecoverProcedureInfo();
 
     int SetPartitionInfo(TableInfo& table_info);  // NOLINT
 
@@ -955,8 +957,7 @@ class NameServerImpl : public NameServer {
     Tablets tablets_;
     BlobServers blob_servers_;
     ::rtidb::nameserver::TableInfos table_info_;
-    std::map< std::string, ::rtidb::nameserver::TableInfos> db_table_info_;
-    std::map< std::string, std::map<std::string, std::shared_ptr<::rtidb::nameserver::ProcedureInfo>>> db_sp_info_;
+    std::map<std::string, ::rtidb::nameserver::TableInfos> db_table_info_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
     ZoneInfo zone_info_;
     ZkClient* zk_client_;
@@ -997,6 +998,8 @@ class NameServerImpl : public NameServer {
     std::map<std::string, std::string> real_ep_map_;
     std::map<std::string, std::string> remote_real_ep_map_;
     std::map<std::string, std::string> sdk_endpoint_map_;
+    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> db_sp_table_map_;
+    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> db_table_sp_map_;
 };
 
 }  // namespace nameserver
