@@ -37,6 +37,10 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         SQLInsertRows rows = router.GetInsertRows(db, sql, status);
         if (status.getCode() != 0) {
             String msg = status.getMsg();
+            status.delete();
+            if (rows != null) {
+                rows.delete();
+            }
             logger.error("getInsertRows fail: {}", msg);
             throw new SQLException("get insertrows fail " + msg + " in construction preparedstatement");
         }
@@ -339,7 +343,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         status.delete();
         status = null;
         if (closeOnComplete) {
-            closed = true;
+            close();
         }
         return true;
     }
@@ -556,6 +560,24 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         if (closed) {
             return;
         }
+        for (String key : sqlRowsMap.keySet()) {
+            SQLInsertRows rows = sqlRowsMap.get(key);
+            rows.delete();
+            rows = null;
+        }
+        sqlRowsMap.clear();
+        if (currentRow != null) {
+            currentRow.delete();
+            currentRow = null;
+        }
+        if (currentRows != null) {
+            currentRows.delete();
+            currentRows = null;
+        }
+        if (currentSchema != null) {
+            currentSchema.delete();
+            currentSchema = null;
+        }
         closed = true;
     }
 
@@ -698,7 +720,9 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         if (status.getCode() != 0) {
             String msg = status.getMsg();
             status.delete();
-            status = null;
+            if (rows != null) {
+                rows.delete();
+            }
             logger.error("getInsertRows fail: {}", msg);
             throw new SQLException("get insertrows fail " + msg + " in construction preparedstatement");
         }
@@ -706,35 +730,18 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         status = null;
         SQLInsertRow row = rows.NewRow();
         if (row.GetHoleIdx().size() > 0) {
+            row.delete();
+            rows.delete();
             throw new SQLException("this sql need data");
         }
+        row.delete();
         sqlRowsMap.put(s, rows);
     }
 
     @Override
+    @Deprecated
     public void clearBatch() throws SQLException {
-        for (String key : sqlRowsMap.keySet()) {
-            SQLInsertRows rows = sqlRowsMap.get(key);
-            rows.delete();
-            rows = null;
-        }
-        sqlRowsMap.clear();
-        currentSchema = null;
-        currentRow.delete();
-        currentRow = null;
-        currentRows.delete();
-        currentRows = null;
-        Status status = new Status();
-        currentRows = router.GetInsertRows(db, currentSql, status);
-        if (status.getCode() != 0) {
-            String msg = status.getMsg();
-            logger.error("getInsertRows fail: {}", msg);
-            status.delete();
-            status = null;
-            throw new SQLException("get insertrows fail " + msg + " in construction preparedstatement");
-        }
-        status.delete();
-        status = null;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
