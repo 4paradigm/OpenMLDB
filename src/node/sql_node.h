@@ -264,10 +264,14 @@ inline const std::string BoundTypeName(const BoundType &type) {
     switch (type) {
         case fesql::node::kPrecedingUnbound:
             return "PRECEDING UNBOUND";
+        case fesql::node::kOpenPreceding:
+            return "OPEN PRECEDING";
         case fesql::node::kPreceding:
             return "PRECEDING";
         case fesql::node::kCurrent:
             return "CURRENT";
+        case fesql::node::kOpenFollowing:
+            return "OPEN FOLLOWING";
         case fesql::node::kFollowing:
             return "FOLLOWING";
         case fesql::node::kFollowingUnbound:
@@ -1029,6 +1033,8 @@ class FrameBound : public SQLNode {
         switch (bound_type_) {
             case node::kCurrent:
                 return "0";
+            case node::kOpenFollowing:
+            case node::kOpenPreceding:
             case node::kFollowing:
             case node::kPreceding:
                 return std::to_string(GetSignedOffset());
@@ -1048,8 +1054,12 @@ class FrameBound : public SQLNode {
                 return 0;
             case node::kFollowing:
                 return offset_;
+            case node::kOpenFollowing:
+                return offset_-1;
             case node::kPreceding:
                 return -1 * offset_;
+            case node::kOpenPreceding:
+                return -1 * (offset_-1);
             case node::kPrecedingUnbound:
                 return INT64_MIN;
             case node::kFollowingUnbound:

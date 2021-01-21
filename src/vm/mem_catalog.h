@@ -239,7 +239,10 @@ class Window : public MemTimeTableHandler {
         kFrameRowsRange,
         kFrameRowsMergeRowsRange
     };
-    Window() : MemTimeTableHandler(), instance_not_in_window_(false) {}
+    Window()
+        : MemTimeTableHandler(),
+          exclude_current_time_(false),
+          instance_not_in_window_(false) {}
     virtual ~Window() {}
 
     std::unique_ptr<RowIterator> GetIterator() override {
@@ -271,7 +274,13 @@ class Window : public MemTimeTableHandler {
         instance_not_in_window_ = flag;
     }
 
+    const bool exclude_current_time() const { return exclude_current_time_; }
+    void set_exclude_current_time(const bool flag) {
+        exclude_current_time_ = flag;
+    }
+
  protected:
+    bool exclude_current_time_;
     bool instance_not_in_window_;
 };
 class WindowRange {
@@ -353,12 +362,16 @@ class HistoryWindow : public Window {
             // current row InWindow
             int64_t sub = (key + window_range_.start_offset_);
             uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
-            return BufferEffectiveWindow(key, row, start_ts);
+            if (0 == window_range_.end_offset_) {
+                return BufferCurrentTimeBuffer(key, row, start_ts);
+            } else {
+                return BufferEffectiveWindow(key, row, start_ts);
+            }
         } else if (0 == window_range_.end_offset_) {
             // current InWindow
             int64_t sub = (key + window_range_.start_offset_);
             uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
-            return BufferEffectiveWindow(key, row, start_ts);
+            return BufferCurrentTimeBuffer(key, row, start_ts);
         } else {
             // current row BeforeWindow
             int64_t sub = (key + window_range_.end_offset_);
@@ -412,6 +425,18 @@ class HistoryWindow : public Window {
         }
         return true;
     }
+    bool BufferCurrentTimeBuffer(uint64_t key, const Row& row,
+                                             uint64_t start_ts) {
+        if (!exclude_current_time_) {
+            return BufferEffectiveWindow(key, row, start_ts);
+        } else {
+            if (!table_.empty()) {
+                PopFrontData();
+            }
+            BufferCurrentHistoryBuffer(key, row, key-1);
+            return BufferEffectiveWindow(key, row, start_ts);
+        }
+    }
     WindowRange window_range_;
     MemTimeTable current_history_buffer_;
 };
@@ -445,9 +470,15 @@ class CurrentHistoryWindow : public HistoryWindow {
         }
         int64_t sub = (key + window_range_.start_offset_);
         uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
-        return BufferEffectiveWindow(key, row, start_ts);
+
+        if (exclude_current_time_) {
+            return BufferCurrentTimeBuffer(key, row, start_ts);
+        } else {
+            return BufferEffectiveWindow(key, row, start_ts);
+        }
     }
 };
+
 typedef std::map<std::string,
                  std::map<std::string, std::shared_ptr<MemTimeTableHandler>>>
     MemTables;

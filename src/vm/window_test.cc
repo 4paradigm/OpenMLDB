@@ -607,6 +607,14 @@ TEST_F(WindowIteratorTest, PureHistoryWindowTest) {
     ASSERT_EQ(3, window.GetCount());
     window.BufferData(1590738999000, row);
     ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590739000000, row);
+    ASSERT_EQ(3, window.GetCount());
+    window.BufferData(1590739001000, row);
+    ASSERT_EQ(4, window.GetCount());
     window.BufferData(1590739001000, row);
     window.BufferData(1590115480000, row);
     window.BufferData(1590115490000, row);
@@ -674,6 +682,331 @@ TEST_F(WindowIteratorTest, PureHistoryWindowRowsMergeRowsRangeWithMaxSizeTest) {
     ASSERT_EQ(2, window.GetCount());
 }
 
+TEST_F(WindowIteratorTest, CurrentHistoryWindowExcludeCurrentTimeTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+
+    // history current_ts -1000 ~ current_ts
+    {
+        vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -1000L, 0);
+        window.set_exclude_current_time(true);
+
+        // [1], buffer: 1
+        window.BufferData(1L, row);
+        ASSERT_EQ(1u, window.GetCount());
+
+        // [1, 2], buffer: 2
+        window.BufferData(2L, row);
+        ASSERT_EQ(2u, window.GetCount());
+
+        // [1, 2, 3], buffer: 3
+        window.BufferData(3L, row);
+        ASSERT_EQ(3u, window.GetCount());
+
+        // [1, 2, 3] buffer: 3, 3
+        window.BufferData(3L, row);
+        ASSERT_EQ(3u, window.GetCount());
+
+        // [1, 2, 3] buffer: 3, 3, 3
+        window.BufferData(3L, row);
+        ASSERT_EQ(3u, window.GetCount());
+
+        // [1, 2, 3] buffer: 3, 3, 3, 3
+        window.BufferData(3L, row);
+        ASSERT_EQ(3u, window.GetCount());
+
+        // [1, 2, 3, 3, 3, 3, 4] buffer: 4
+        window.BufferData(4L, row);
+        ASSERT_EQ(7u, window.GetCount());
+
+        // [1, 2, 3, 3, 3, 3, 4, 40] buffer: 40
+        window.BufferData(40L, row);
+        ASSERT_EQ(8u, window.GetCount());
+
+        // [1, 2, 3, 3, 3, 3, 4, 40, 500] buffer: 500
+        window.BufferData(500L, row);
+        ASSERT_EQ(9u, window.GetCount());
+
+        // [1, 2, 3, 3, 3, 3, 4, 40, 500, 1000] buffer: 1000
+        window.BufferData(1000L, row);
+        ASSERT_EQ(10u, window.GetCount());
+
+        // [1, 2, 3, 3, 3, 3, 4, 40, 500, 1000, 1001] buffer: 1001
+        window.BufferData(1001L, row);
+        ASSERT_EQ(11u, window.GetCount());
+
+        // [3, 3, 3, 3, 4, 40, 500, 1000, 1001, 1003] buffer: 1003
+        window.BufferData(1003L, row);
+        ASSERT_EQ(10u, window.GetCount());
+
+        // [4, 40, 500, 1000, 1001, 1003, 1004] buffer: 1004
+        window.BufferData(1004L, row);
+        ASSERT_EQ(7u, window.GetCount());
+    }
+
+    // history current_ts -1000 ~ current_ts
+    {
+        vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -1000L, 5);
+        window.set_exclude_current_time(true);
+
+        // [1], buffer: 1
+        window.BufferData(1L, row);
+        ASSERT_EQ(1u, window.GetCount());
+
+        // [1, 2], buffer: 2
+        window.BufferData(2L, row);
+        ASSERT_EQ(2u, window.GetCount());
+
+        // [1, 2, 3], buffer: 3
+        window.BufferData(3L, row);
+        ASSERT_EQ(3u, window.GetCount());
+
+        // [1, 2, 3] buffer: 3, 3
+        window.BufferData(3L, row);
+        ASSERT_EQ(3u, window.GetCount());
+
+        // [1, 2, 3] buffer: 3, 3, 3
+        window.BufferData(3L, row);
+        ASSERT_EQ(3u, window.GetCount());
+
+        // [1, 2, 3] buffer: 3, 3, 3, 3
+        window.BufferData(3L, row);
+        ASSERT_EQ(3u, window.GetCount());
+
+        // [3, 3, 3, 3, 4] buffer: 4
+        window.BufferData(4L, row);
+        ASSERT_EQ(5u, window.GetCount());
+
+        // [3, 3, 3, 4, 40] buffer: 40
+        window.BufferData(40L, row);
+        ASSERT_EQ(5u, window.GetCount());
+
+        // [3, 3, 4, 40, 500] buffer: 500
+        window.BufferData(500L, row);
+        ASSERT_EQ(5u, window.GetCount());
+
+        // [3, 4, 40, 500, 1000] buffer: 1000
+        window.BufferData(1000L, row);
+        ASSERT_EQ(5u, window.GetCount());
+
+        // [4, 40, 500, 1000, 1001] buffer: 1001
+        window.BufferData(1001L, row);
+        ASSERT_EQ(5u, window.GetCount());
+
+        // [40, 500, 1000, 1001, 1003] buffer: 1003
+        window.BufferData(1003L, row);
+        ASSERT_EQ(5u, window.GetCount());
+
+        // [500, 1000, 1001, 1003, 1004] buffer: 1004
+        window.BufferData(1004L, row);
+        ASSERT_EQ(5u, window.GetCount());
+    }
+    // history buffer error
+    {
+        vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -400L, 0,
+                                        5);
+        window.set_exclude_current_time(true);
+        ASSERT_TRUE(window.BufferData(1L, row));
+        ASSERT_EQ(1u, window.GetCount());
+        ASSERT_TRUE(window.BufferData(2L, row));
+        ASSERT_EQ(2u, window.GetCount());
+        ASSERT_TRUE(window.BufferData(3L, row));
+        ASSERT_EQ(3u, window.GetCount());
+        ASSERT_TRUE(window.BufferData(400L, row));
+        ASSERT_EQ(4u, window.GetCount());
+        ASSERT_TRUE(window.BufferData(500L, row));
+        ASSERT_EQ(2u, window.GetCount());
+        ASSERT_FALSE(window.BufferData(100L, row));
+    }
+}
+
+TEST_F(WindowIteratorTest, PureHistoryWindowExcludeCurrentTimeTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    // Window
+    // RowsRange between 3s preceding and 1s preceding MAXSIZE 2
+    vm::HistoryWindow window(
+        WindowRange(vm::Window::kFrameRowsRange, -3000, -1000, 0, 0));
+    window.set_exclude_current_time(true);
+    ASSERT_TRUE(window.BufferData(1590738990000, row));
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738991000, row);
+    ASSERT_EQ(1, window.GetCount());
+    window.BufferData(1590738992000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738993000, row);
+    ASSERT_EQ(3, window.GetCount());
+    window.BufferData(1590738994000, row);
+    ASSERT_EQ(3, window.GetCount());
+    window.BufferData(1590738995000, row);
+    ASSERT_EQ(3, window.GetCount());
+
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590739000000, row);
+    ASSERT_EQ(3, window.GetCount());
+    window.BufferData(1590739001000, row);
+    ASSERT_EQ(4, window.GetCount());
+    window.BufferData(1590115480000, row);
+    window.BufferData(1590115490000, row);
+    window.BufferData(1590739001000, row);
+    window.BufferData(1590739002000, row);
+}
+TEST_F(WindowIteratorTest, PureHistoryWindowWithMaxSizeExcludeCurrentTimeTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    // Window
+    // RowsRange between 3s preceding and 1s preceding MAXSIZE 2
+    vm::HistoryWindow window(
+        WindowRange(vm::Window::kFrameRowsRange, -3000, -1000, 0, 2));
+    window.set_exclude_current_time(true);
+    ASSERT_TRUE(window.BufferData(1590738990000, row));
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738991000, row);
+    ASSERT_EQ(1, window.GetCount());
+    window.BufferData(1590738992000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738993000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738994000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738995000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590739001000, row);
+    window.BufferData(1590115480000, row);
+    window.BufferData(1590115490000, row);
+    window.BufferData(1590739001000, row);
+    window.BufferData(1590739002000, row);
+}
+
+TEST_F(WindowIteratorTest,
+       PureHistoryWindowRowsMergeRowsRangeWithMaxSizeExcludeCurrentTimeTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    // Window
+    // RowsRange between 3s preceding and 1s preceding MAXSIZE 2
+    vm::HistoryWindow window(
+        WindowRange(vm::Window::kFrameRowsRange, -3000, -1000, 0, 2));
+    window.set_exclude_current_time(true);
+    ASSERT_TRUE(window.BufferData(1590738990000, row));
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738991000, row);
+    ASSERT_EQ(1, window.GetCount());
+    window.BufferData(1590738992000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738993000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738994000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738995000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590739001000, row);
+    ASSERT_EQ(1, window.GetCount());
+    window.BufferData(1590739002000, row);
+    ASSERT_EQ(2, window.GetCount());
+}
+TEST_F(WindowIteratorTest,
+       CurrentHistoryRowsAndRowRangeWindowExcludeCurrentTimeTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    {
+        vm::CurrentHistoryWindow window(vm::Window::kFrameRowsMergeRowsRange,
+                                        -20000, 9, 0);
+        window.set_exclude_current_time(false);
+        window.BufferData(1590115400000, row);
+        ASSERT_EQ(1L, window.GetCount());
+
+        window.BufferData(1590115410000, row);
+        ASSERT_EQ(2L, window.GetCount());
+        window.BufferData(1590115410000, row);
+        ASSERT_EQ(3L, window.GetCount());
+        window.BufferData(1590115410000, row);
+        ASSERT_EQ(4L, window.GetCount());
+
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(5L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(6L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(7L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(8L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(9L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(10L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(10L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(10L, window.GetCount());
+    }
+
+    {
+        vm::CurrentHistoryWindow window(vm::Window::kFrameRowsMergeRowsRange,
+                                        -20000, 9, 0);
+        window.set_exclude_current_time(true);
+        window.BufferData(1590115400000, row);
+        ASSERT_EQ(1L, window.GetCount());
+        window.BufferData(1590115410000, row);
+        ASSERT_EQ(2L, window.GetCount());
+        window.BufferData(1590115410000, row);
+        ASSERT_EQ(2L, window.GetCount());
+        window.BufferData(1590115410000, row);
+        ASSERT_EQ(2L, window.GetCount());
+
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(5L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(5L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(5L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(5L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(5L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(5L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(5L, window.GetCount());
+
+        window.BufferData(1590115460000, row);
+        ASSERT_EQ(10L, window.GetCount());
+        window.BufferData(1590115470000, row);
+        ASSERT_EQ(10L, window.GetCount());
+        window.BufferData(1590115470000, row);
+        ASSERT_EQ(10L, window.GetCount());
+        window.BufferData(1590115470000, row);
+        ASSERT_EQ(10L, window.GetCount());
+        window.BufferData(1590115470000, row);
+        ASSERT_EQ(10L, window.GetCount());
+
+        window.BufferData(1590115480000, row);
+        ASSERT_EQ(10L, window.GetCount());
+    }
+}
 }  // namespace vm
 }  // namespace fesql
 int main(int argc, char** argv) {

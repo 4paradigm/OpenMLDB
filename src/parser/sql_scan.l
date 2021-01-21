@@ -173,6 +173,7 @@ ESCAPED	{ return ESCAPED; }
 EXISTS	{ return EXISTS; }
 EXIT	{ return EXIT; }
 EXPLAIN	{ return EXPLAIN; }
+EXCLUDE { return EXCLUDE; }
 FETCH	{ return FETCH; }
 FLOAT32|FLOAT?	{ return FLOAT; }
 FOLLOWING   {return FOLLOWING;  }
@@ -244,7 +245,6 @@ PLACEHOLDER { return PLACEHOLDER; }
 NUMBER	{ return NUMBER; }
 ON	{ return ON; }
 ON[ \t\n]+DUPLICATE { return ONDUPLICATE; } /* hack due to limited lookahead */
-OPEN_INTERVAL_WINDOW   { return OPEN_INTERVAL_WINDOW; }
 OPTIMIZE	{ return OPTIMIZE; }
 OPTION	{ return OPTION; }
 OPTIONALLY	{ return OPTIONALLY; }
@@ -254,6 +254,7 @@ OUT	{ return OUT; }
 OUTER	{ return OUTER; }
 OUTFILE	{ return OUTFILE; }
 OVER    { return OVER; }
+OPEN    { return OPEN; }
 RANGE   {return RANGE;  }
 ROW   {return ROW;  }
 ROWS   {return ROWS;  }
