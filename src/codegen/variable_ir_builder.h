@@ -28,7 +28,7 @@ class VariableIRBuilder {
     bool LoadRetStruct(NativeValue* output,
                        base::Status& status);  // NOLINT
     bool LoadRowKey(NativeValue* output,
-                           base::Status& status);      // NOLINT
+                    base::Status& status);             // NOLINT
     base::Status LoadMemoryPool(NativeValue* output);  // NOLINT
     bool LoadWindow(const std::string& frame_str, NativeValue* output,
                     base::Status& status);  // NOLINT
@@ -38,11 +38,6 @@ class VariableIRBuilder {
                        base::Status& status);  // NOLINT (runtime/references)
     bool LoadColumnItem(const std::string& relation_name,
                         const std::string& name, NativeValue* output,
-                        base::Status& status);  // NOLINT (runtime/references)
-
-    bool LoadAddrSpace(const size_t schema_idx, NativeValue* output,
-                       base::Status& status);  // NOLINT
-    bool StoreAddrSpace(const size_t schema_idx, ::llvm::Value* value,
                         base::Status& status);  // NOLINT (runtime/references)
     bool StoreWindow(const std::string& frame_str, ::llvm::Value* value,
                      base::Status& status);  // NOLINT
