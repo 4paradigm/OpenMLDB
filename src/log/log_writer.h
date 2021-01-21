@@ -35,6 +35,20 @@ class Writer {
     Status AddRecord(const Slice& slice);
     Status EndLog();
 
+    inline CompressType GetCompressType() {
+        return compress_type_;
+    }
+
+    inline uint32_t GetBlockSize() {
+        return block_size_;
+    }
+
+    inline uint32_t GetHeaderSize() {
+        return header_size_;
+    }
+
+    CompressType GetCompressType(const std::string& compress_type);
+
  private:
     WritableFile* dest_;
     uint32_t block_offset_;  // Current offset in block
@@ -52,7 +66,6 @@ class Writer {
     // buffer for compressed block
     char* compress_buf_;
     Status CompressRecord();
-    CompressType GetCompressType(const std::string& compress_type);
     Status AppendInternal(WritableFile* wf, int leftover);
 
     Status EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);

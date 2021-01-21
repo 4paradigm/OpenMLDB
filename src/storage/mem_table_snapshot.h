@@ -33,7 +33,9 @@ typedef ::rtidb::base::Skiplist<uint32_t, uint64_t,
                                 ::rtidb::base::DefaultComparator>
     LogParts;
 
-const std::string COMPRESS_SUFFIX = ".compress";  // NOLINT
+const std::string PZ_COMPRESS_SUFFIX = ".pz";  // NOLINT
+const std::string ZLIB_COMPRESS_SUFFIX = ".zlib";  // NOLINT
+const std::string SNAPPY_COMPRESS_SUFFIX = ".snappy";  // NOLINT
 
 // table snapshot
 class MemTableSnapshot : public Snapshot {
@@ -123,6 +125,8 @@ class MemTableSnapshot : public Snapshot {
 
     int DecodeData(std::shared_ptr<Table> table, const std::vector<::rtidb::codec::ColumnDesc>& columns,
                     const rtidb::api::LogEntry& entry, uint32_t maxIdx, std::vector<std::string>& row); // NOLINT
+
+    inline bool IsCompressed(const std::string& path);
 
  private:
     LogParts* log_part_;

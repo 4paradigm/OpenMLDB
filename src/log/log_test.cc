@@ -27,7 +27,9 @@ using ::rtidb::base::Slice;
 using ::rtidb::base::Status;
 
 DECLARE_string(snapshot_compression);
-const std::string COMPRESS_SUFFIX = ".compress";  // NOLINT
+const std::string PZ_COMPRESS_SUFFIX = ".pz";  // NOLINT
+const std::string ZLIB_COMPRESS_SUFFIX = ".zlib";  // NOLINT
+const std::string SNAPPY_COMPRESS_SUFFIX = ".snappy";  // NOLINT
 bool compressed_ = true;
 uint32_t block_size_ = 1024 * 4;
 uint32_t header_size_ = 7;
@@ -90,9 +92,9 @@ int AddRecord(const Slice& slice, std::vector<std::string>& vec) {  // NOLINT
     Status s;
     bool begin = true;
     do {
-        const int leftover = kBlockSize - block_offset_;
+        const int32_t leftover = kBlockSize - block_offset_;
         assert(leftover >= 0);
-        if (leftover < kHeaderSize) {
+        if (leftover < static_cast<int32_t>(kHeaderSize)) {
             // Switch to a new block
             if (leftover > 0) {
                 // Fill the trailer (literal below relies on kHeaderSize being
@@ -128,10 +130,14 @@ int AddRecord(const Slice& slice, std::vector<std::string>& vec) {  // NOLINT
 }
 
 std::string GetWritePath(const std::string& path) {
-    if (FLAGS_snapshot_compression == "off") {
-        return path;
+    if (FLAGS_snapshot_compression == "pz") {
+        return path + PZ_COMPRESS_SUFFIX;
+    } else if (FLAGS_snapshot_compression == "zlib") {
+        return path + ZLIB_COMPRESS_SUFFIX;
+    } else if (FLAGS_snapshot_compression == "snappy") {
+        return path + SNAPPY_COMPRESS_SUFFIX;
     } else {
-        return path + COMPRESS_SUFFIX;
+        return path;
     }
 }
 
@@ -368,6 +374,28 @@ TEST_F(LogWRTest, TestGoBack) {
     ASSERT_EQ("hello", value3.ToString());
 }
 
+TEST_F(LogWRTest, TestInit) {
+    std::string log_dir = "/tmp/" + GenRand() + "/";
+    ::rtidb::base::MkdirRecur(log_dir);
+    std::string fname = "test.log";
+    std::string full_path = log_dir + "/" + fname;
+    FILE* fd_w = fopen(full_path.c_str(), "ab+");
+    ASSERT_TRUE(fd_w != NULL);
+    WritableFile* wf = NewWritableFile(fname, fd_w);
+    Writer writer(FLAGS_snapshot_compression, wf);
+    ASSERT_EQ(block_size_, writer.GetBlockSize());
+    ASSERT_EQ(header_size_, writer.GetHeaderSize());
+    ASSERT_EQ(writer.GetCompressType(FLAGS_snapshot_compression), writer.GetCompressType());
+
+    FILE* fd_r = fopen(full_path.c_str(), "rb");
+    ASSERT_TRUE(fd_r != NULL);
+    SequentialFile* rf = NewSeqFile(fname, fd_r);
+    Reader reader(rf, NULL, true, 0, compressed_);
+    ASSERT_EQ(block_size_, reader.GetBlockSize());
+    ASSERT_EQ(header_size_, reader.GetHeaderSize());
+    ASSERT_EQ(compressed_, reader.GetCompressed());
+}
+
 }  // namespace log
 }  // namespace rtidb
 
@@ -385,11 +413,11 @@ int main(int argc, char** argv) {
         FLAGS_snapshot_compression = vec[i];
         if (FLAGS_snapshot_compression == "off") {
             compressed_ = false;
-            block_size_ = 4 * 1024;
-            header_size_ = 7;
+            block_size_ = rtidb::log::kBlockSize;
+            header_size_ = rtidb::log::kHeaderSize;
         } else {
-            block_size_ = 4 * 1024 * 1024;
-            header_size_ = 9;
+            block_size_ = rtidb::log::kCompressBlockSize;
+            header_size_ = rtidb::log::kHeaderSizeForCompress;
             compressed_ = true;
         }
         ret += RUN_ALL_TESTS();

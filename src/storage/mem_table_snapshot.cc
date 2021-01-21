@@ -124,10 +124,7 @@ void MemTableSnapshot::RecoverSingleSnapshot(
                   strerror(errno));
             break;
         }
-        bool compressed = false;
-        if (path.find(COMPRESS_SUFFIX) != std::string::npos) {
-            compressed = true;
-        }
+        bool compressed = IsCompressed(path);
         ::rtidb::log::SequentialFile* seq_file =
             ::rtidb::log::NewSeqFile(path, fd);
         ::rtidb::log::Reader reader(seq_file, NULL, false, 0, compressed);
@@ -220,10 +217,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
               strerror(errno));
         return -1;
     }
-    bool compressed = false;
-    if (full_path.find(COMPRESS_SUFFIX) != std::string::npos) {
-        compressed = true;
-    }
+    bool compressed = IsCompressed(full_path);
     ::rtidb::log::SequentialFile* seq_file =
         ::rtidb::log::NewSeqFile(manifest.name(), fd);
     ::rtidb::log::Reader reader(seq_file, NULL, false, 0, compressed);
@@ -393,7 +387,8 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
     std::string snapshot_name =
         now_time.substr(0, now_time.length() - 2) + ".sdb";
     if (FLAGS_snapshot_compression != "off") {
-        snapshot_name += COMPRESS_SUFFIX;
+        snapshot_name.append(".");
+        snapshot_name.append(FLAGS_snapshot_compression);
     }
     std::string snapshot_name_tmp = snapshot_name + ".tmp";
     std::string full_path = snapshot_path_ + snapshot_name;
@@ -629,10 +624,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
     }
     ::rtidb::log::SequentialFile* seq_file =
         ::rtidb::log::NewSeqFile(manifest.name(), fd);
-    bool compressed = false;
-    if (full_path.find(COMPRESS_SUFFIX) != std::string::npos) {
-        compressed = true;
-    }
+    bool compressed = IsCompressed(full_path);
     ::rtidb::log::Reader reader(seq_file, NULL, false, 0, compressed);
     std::string buffer;
     ::rtidb::api::LogEntry entry;
@@ -802,7 +794,8 @@ int MemTableSnapshot::ExtractIndexData(
     std::string snapshot_name =
         now_time.substr(0, now_time.length() - 2) + ".sdb";
     if (FLAGS_snapshot_compression != "off") {
-        snapshot_name += COMPRESS_SUFFIX;
+        snapshot_name.append(".");
+        snapshot_name.append(FLAGS_snapshot_compression);
     }
     std::string snapshot_name_tmp = snapshot_name + ".tmp";
     std::string full_path = snapshot_path_ + snapshot_name;
@@ -1178,10 +1171,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
         return false;
     }
     ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(path, fd);
-    bool compressed = false;
-    if (path.find(COMPRESS_SUFFIX) != std::string::npos) {
-        compressed = true;
-    }
+    bool compressed = IsCompressed(path);
     ::rtidb::log::Reader reader(seq_file, NULL, false, 0, compressed);
     ::rtidb::api::LogEntry entry;
     std::string buffer;
@@ -1453,6 +1443,15 @@ int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector
         return 2;
     }
     return 0;
+}
+
+bool MemTableSnapshot::IsCompressed(const std::string& path) {
+    if (path.find(PZ_COMPRESS_SUFFIX) != std::string::npos
+            || path.find(ZLIB_COMPRESS_SUFFIX) != std::string::npos
+            || path.find(SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
+        return true;
+    }
+    return false;
 }
 
 }  // namespace storage
