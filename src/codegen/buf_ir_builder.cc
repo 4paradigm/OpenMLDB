@@ -191,37 +191,16 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t col_idx, uint32_t offset,
     }
 
     ::llvm::IRBuilder<> builder(block_);
-    NativeValue str_addr_space_val;
-    bool ok = variable_ir_builder_.LoadAddrSpace(schema_idx_,
-                                                 &str_addr_space_val, status);
-    ::llvm::Value* str_addr_space = nullptr;
-    if (!str_addr_space_val.IsConstNull()) {
-        str_addr_space = str_addr_space_val.GetValue(&builder);
-    }
-
     ::llvm::Type* i32_ty = builder.getInt32Ty();
     ::llvm::Type* i8_ty = builder.getInt8Ty();
-    if (!ok || str_addr_space == NULL) {
-        ::llvm::FunctionCallee callee =
-            block_->getModule()->getOrInsertFunction(
-                "fesql_storage_get_str_addr_space", i8_ty, i32_ty);
-        str_addr_space =
-            builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{size});
-        str_addr_space = builder.CreateIntCast(str_addr_space, i32_ty, true,
-                                               "cast_i8_to_i32");
-        ok = variable_ir_builder_.StoreAddrSpace(schema_idx_, str_addr_space,
-                                                 status);
-        if (!ok) {
-            LOG(WARNING) << "fail to add str add space var";
-            return false;
-        }
-    }
-
+    ::llvm::FunctionCallee addr_space_callee =
+        block_->getModule()->getOrInsertFunction(
+            "fesql_storage_get_str_addr_space", i8_ty, i32_ty);
+    ::llvm::Value* str_addr_space =
+        builder.CreateCall(addr_space_callee, {size});
+    str_addr_space =
+        builder.CreateIntCast(str_addr_space, i32_ty, true, "cast_i8_to_i32");
     codegen::StringIRBuilder string_ir_builder(block_->getModule());
-    if (!ok) {
-        LOG(WARNING) << "fail to get string type";
-        return false;
-    }
 
     // alloca memory on stack
     ::llvm::Value* string_ref;

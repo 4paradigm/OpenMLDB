@@ -10,6 +10,8 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 import org.slf4j.LoggerFactory
 
+import scala.collection.mutable
+
 
 class SparkRowCodec(sliceSchemas: Array[StructType]) {
 
@@ -31,17 +33,35 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
 
   def encode(row: Row): NativeRow = {
     var result: NativeRow = null
-    val sliceSizes = getNativeRowSliceSizes(row)
+    
+    // collect slice size and string raw bytes
+    val sliceSizes = Array.fill(sliceNum)(0)
+    val sliceStrings = Array.fill(sliceNum)(mutable.ArrayBuffer[Array[Byte]]())
+    for (i <- 0 until sliceNum) {
+      var strTotalLength = 0
+      val buffer = sliceStrings(i)
+      stringFields(i).foreach(idx => {
+        if (!row.isNullAt(idx)) {
+          val str = row.getString(idx)
+          val bytes = str.getBytes("utf-8")
+          strTotalLength += bytes.length
+          buffer += bytes
+        } else {
+          buffer += null
+        }
+      })
+      sliceSizes(i) = rowBuilders(i).CalTotalLength(strTotalLength)
+    }
 
     for (i <- 0 until sliceNum) {
       val sliceSize = sliceSizes(i)
       if (i == 0) {
         result = CoreAPI.NewRow(sliceSize)
         val buf = CoreAPI.GetRowBuf(result, 0)
-        encodeSingle(row, buf, sliceSize, i)
+        encodeSingle(row, buf, sliceSize, sliceStrings(i), i)
       } else {
         val buf = CoreAPI.AppendRow(result, sliceSize)
-        encodeSingle(row, buf, sliceSize, i)
+        encodeSingle(row, buf, sliceSize, sliceStrings(i), i)
       }
     }
     result
@@ -55,18 +75,23 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
   }
 
 
-  def encodeSingle(row: Row, outBuf: Long, outSize: Int, sliceIndex: Int): Unit = {
+  def encodeSingle(row: Row, outBuf: Long, outSize: Int,
+                   sliceStrings: Seq[Array[Byte]], sliceIndex: Int): Unit = {
     val rowBuilder = rowBuilders(sliceIndex)
     val schema = sliceSchemas(sliceIndex)
     rowBuilder.SetBuffer(outBuf, outSize)
 
     val fieldNum = schema.size
     var fieldOffset = sliceFieldOffsets(sliceIndex)
+    var curStringCnt = 0
 
     for (i <- 0 until fieldNum) {
       val field = schema(i)
       if (row.isNullAt(fieldOffset)) {
         rowBuilder.AppendNULL()
+        if (field.dataType == StringType) {
+          curStringCnt += 1
+        }
       } else {
         field.dataType match {
           case ShortType =>
@@ -83,7 +108,9 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
             rowBuilder.AppendBool(row.getBoolean(fieldOffset))
           case StringType =>
             val str = row.getString(fieldOffset)
-            rowBuilder.AppendString(str, str.length)
+            val strBytes = sliceStrings(curStringCnt)
+            rowBuilder.AppendString(str, strBytes.length)
+            curStringCnt += 1
           case TimestampType =>
             rowBuilder.AppendTimestamp(row.getTimestamp(fieldOffset).getTime)
           case DateType =>
@@ -141,24 +168,7 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
       fieldOffset += 1
     }
   }
-
-
-  def getNativeRowSliceSizes(row: Row): Array[Int] = {
-    stringFields.zipWithIndex.map { case (fields, idx) =>
-      var length = 0
-      fields.foreach(idx => {
-        if (!row.isNullAt(idx)) {
-          val str = row.getString(idx)
-          if (str != null) {
-            length += str.getBytes("utf-8").length
-          }
-        }
-      })
-      rowBuilders(idx).CalTotalLength(length)
-    }
-  }
-
-
+  
   private def inferStringFields(): Array[Array[Int]] = {
     var fieldOffset = 0
     sliceSchemas.map(schema => {
@@ -181,3 +191,4 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
     rowBuilders = null
   }
 }
+
