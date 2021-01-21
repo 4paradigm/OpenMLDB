@@ -20,28 +20,24 @@ object ConcatJoinPlan {
       throw new FesqlException(s"Concat join type $joinType not supported")
     }
 
-    // tobe
-    //val nodeId = node.GetNodeId();
+    // TODO: Get index column name from child node instead of current node's index info
+    val indexName = ctx.getIndexInfo(node.GetProducer(0).GetNodeId()).indexColumnName
 
-    val spark = ctx.getSparkSession
-
-    // Add the index column for left and right dataframe
-    val indexName = "__JOIN_INDEX__-" + System.currentTimeMillis()
-    logger.info("Add the index column %s for left and right dataframe".format(indexName))
     // Note that this is exception to use "getDfWithIndex" instead of "getSparkDfConsideringIndex" because ConcatJoin has not index flag but request input dataframe with index
-    val leftDf: DataFrame = SparkUtil.addIndexColumn(spark, left.getDfWithIndex, indexName)
-    val rightDf: DataFrame = SparkUtil.addIndexColumn(spark, right.getDfWithIndex, indexName)
+    val leftDf: DataFrame = left.getDfWithIndex
+    val rightDf: DataFrame = right.getDfWithIndex
 
-    // Use left join or native last join
     // Check if we can use native last join
     val supportNativeLastJoin = SparkUtil.supportNativeLastJoin(joinType, false)
+
+    // Use left join or native last join
     val resultDf = if (supportNativeLastJoin) {
       leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "last")
     } else {
       leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "left")
     }
 
-    // Drop the index column
+    // Drop the index column, this will drop two columns with the same index name
     logger.info("Drop the index column %s for output dataframe".format(indexName))
     val outputDf = resultDf.drop(indexName)
 

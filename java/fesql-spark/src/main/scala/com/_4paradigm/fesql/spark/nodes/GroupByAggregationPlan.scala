@@ -6,15 +6,35 @@ import com._4paradigm.fesql.spark.{PlanContext, SparkInstance, SparkRowCodec}
 import com._4paradigm.fesql.vm.{CoreAPI, GroupbyInterface, PhysicalGroupAggrerationNode}
 import com._4paradigm.fesql.codec.{Row => NativeRow}
 import com._4paradigm.fesql.common.JITManager
+import org.apache.spark.sql.types.LongType
 import org.apache.spark.sql.{Column, Row}
+import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 
 
 object GroupByAggregationPlan {
 
+  val logger = LoggerFactory.getLogger(this.getClass)
+
   def gen(ctx: PlanContext, node: PhysicalGroupAggrerationNode, input: SparkInstance): SparkInstance = {
     val inputDf = input.getSparkDfConsideringIndex(ctx, node.GetNodeId())
+
+    // Check if we should keep the index column
+    val keepIndexColumn = if (ctx.hasIndexInfo(node.GetNodeId())) {
+      if (ctx.getIndexInfo(node.GetNodeId()).shouldAddIndexColumn) {
+        // We will add the index column after window compute so do not keep the index column here
+        false
+      } else {
+        // This node should keep the index column after window computing
+        true
+      }
+    } else {
+      // This node is not within ConcatJoin so do not keep the index column
+      false
+    }
+
+    logger.info("Group by agg node should keep index column or not: %b".format(keepIndexColumn))
 
     // Get parition keys
     val groupByExprs = node.getGroup_.keys()
@@ -34,7 +54,12 @@ object GroupByAggregationPlan {
     val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node.GetProducer(0))
     val inputSchema = FesqlUtil.getSparkSchema(node.GetProducer(0).GetOutputSchema())
     val outputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
-    val outputSchema = FesqlUtil.getSparkSchema(node.GetOutputSchema())
+
+    val outputSchema = if (keepIndexColumn) {
+      FesqlUtil.getSparkSchema(node.GetOutputSchema()).add(ctx.getIndexInfo(node.GetNodeId()).indexColumnName, LongType)
+    } else {
+      FesqlUtil.getSparkSchema(node.GetOutputSchema())
+    }
 
     // Wrap spark closure
     val limitCnt = node.GetLimitCnt
@@ -43,6 +68,7 @@ object GroupByAggregationPlan {
       moduleTag = ctx.getTag,
       moduleNoneBroadcast = ctx.getSerializableModuleBuffer,
       inputSchemaSlices = inputSchemaSlices,
+      keepIndexColumn = keepIndexColumn,
       outputSchemaSlices = outputSchemaSlices,
       inputSchema = inputSchema
     )
@@ -66,7 +92,8 @@ object GroupByAggregationPlan {
         val decoder = new SparkRowCodec(projectConfig.outputSchemaSlices)
 
         val inputFesqlSchema = FesqlUtil.getFeSQLSchema(projectConfig.inputSchema)
-        val outputFields = projectConfig.outputSchemaSlices.map(_.size).sum
+
+        val outputFields = if (projectConfig.keepIndexColumn) projectConfig.outputSchemaSlices.map(_.size).sum + 1 else projectConfig.outputSchemaSlices.map(_.size).sum
 
         // Init first groupby interface
         var groupbyInterface = new GroupbyInterface(inputFesqlSchema)
@@ -90,6 +117,12 @@ object GroupByAggregationPlan {
                 groupbyInterface = new GroupbyInterface(inputFesqlSchema)
                 grouopNativeRows.map(nativeRow => nativeRow.delete())
                 grouopNativeRows.clear()
+
+                // Append the index column if needed
+                if (keepIndexColumn) {
+                  outputArr(outputArr.size-1) = row.get(row.size-1)
+                }
+
               }
             }
 

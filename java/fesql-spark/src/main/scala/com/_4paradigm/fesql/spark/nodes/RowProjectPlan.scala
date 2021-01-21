@@ -5,7 +5,7 @@ import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.utils.{AutoDestructibleIterator, FesqlUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalTableProjectNode}
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{LongType, StructType}
 import org.slf4j.LoggerFactory
 
 object RowProjectPlan {
@@ -24,7 +24,29 @@ object RowProjectPlan {
 
     val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node.GetProducer(0))
     val outputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
-    val outputSchema = FesqlUtil.getSparkSchema(node.GetOutputSchema())
+
+
+    // Check if we should keep the index column
+    val keepIndexColumn = if (ctx.hasIndexInfo(node.GetNodeId())) {
+      if (ctx.getIndexInfo(node.GetNodeId()).shouldAddIndexColumn) {
+        // We will add the index column after window compute so do not keep the index column here
+        false
+      } else {
+        // This node should keep the index column after window computing
+        true
+      }
+    } else {
+      // This node is not within ConcatJoin so do not keep the index column
+      false
+    }
+
+    logger.info("Row project node should keep index column or not: %b".format(keepIndexColumn))
+
+    val outputSchema = if (keepIndexColumn) {
+      FesqlUtil.getSparkSchema(node.GetOutputSchema()).add(ctx.getIndexInfo(node.GetNodeId()).indexColumnName, LongType)
+    } else {
+      FesqlUtil.getSparkSchema(node.GetOutputSchema())
+    }
 
     // spark closure
     val limitCnt = node.GetLimitCnt
@@ -32,6 +54,7 @@ object RowProjectPlan {
       functionName = node.project().fn_info().fn_name(),
       moduleTag = ctx.getTag,
       moduleNoneBroadcast = ctx.getSerializableModuleBuffer,
+      keepIndexColumn = keepIndexColumn,
       inputSchemaSlices = inputSchemaSlices,
       outputSchemaSlices = outputSchemaSlices
     )
@@ -60,7 +83,7 @@ object RowProjectPlan {
 
   def projectIter(inputIter: Iterator[Row], jit: FeSQLJITWrapper, config: ProjectConfig): Iterator[Row] = {
     // reusable output row inst
-    val outputFields = config.outputSchemaSlices.map(_.size).sum
+    val outputFields = if (config.keepIndexColumn) config.outputSchemaSlices.map(_.size).sum + 1 else config.outputSchemaSlices.map(_.size).sum
     val outputArr = Array.fill[Any](outputFields)(null)
 
     val fn = jit.FindFunction(config.functionName)
@@ -69,7 +92,7 @@ object RowProjectPlan {
     val decoder = new SparkRowCodec(config.outputSchemaSlices)
 
     val resultIter = inputIter.map(row =>
-      projectRow(row, fn, encoder, decoder, outputArr)
+      projectRow(row, fn, encoder, decoder, outputArr, config.keepIndexColumn)
     )
 
     AutoDestructibleIterator(resultIter) {
@@ -82,7 +105,8 @@ object RowProjectPlan {
   def projectRow(row: Row, fn: Long,
                  encoder: SparkRowCodec,
                  decoder: SparkRowCodec,
-                 outputArr: Array[Any]): Row = {
+                 outputArr: Array[Any],
+                 keepIndexColumn: Boolean): Row = {
     // call encode
     val nativeInputRow = encoder.encode(row)
 
@@ -96,6 +120,11 @@ object RowProjectPlan {
     nativeInputRow.delete()
     outputNativeRow.delete()
 
+    // Append the index column if needed
+    if (keepIndexColumn) {
+      outputArr(outputArr.size-1) = row.get(row.size-1)
+    }
+
     Row.fromSeq(outputArr)  // can reuse backed array
   }
 
@@ -106,6 +135,7 @@ object RowProjectPlan {
                            // moduleBroadcast: Broadcast[SerializableByteBuffer],
                            inputSchemaSlices: Array[StructType],
                            outputSchemaSlices: Array[StructType],
+                           keepIndexColumn: Boolean,
                            inputSchema: StructType = null,
                            moduleNoneBroadcast: SerializableByteBuffer = null)
 
