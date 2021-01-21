@@ -5,6 +5,7 @@ import java.nio.ByteBuffer
 import com._4paradigm.fesql.`type`.TypeOuterClass.Type
 import com._4paradigm.fesql.common.SerializableByteBuffer
 import com._4paradigm.fesql.spark.nodes._
+import com._4paradigm.fesql.spark.utils.NodeIndexInfo
 import com._4paradigm.fesql.vm._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.catalyst.QueryPlanningTracker
@@ -22,6 +23,9 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
   private val planResults = mutable.HashMap[Long, SparkInstance]()
 
   private val namedSparkDataFrames = mutable.HashMap[String, DataFrame]()
+
+  // Record the index info for all the physical node, key is physical node id, value is index info
+  private val nodeIndexInfoMap = mutable.HashMap[Long, NodeIndexInfo]()
 
   def getTag: String = tag
 
@@ -58,6 +62,18 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
 
   def getSparkOutput(root: PhysicalOpNode): SparkInstance = {
     planner.getSparkOutput(root, this)
+  }
+
+  def getNodeIndexInfoMap(): mutable.HashMap[Long, NodeIndexInfo] = {
+    nodeIndexInfoMap
+  }
+
+  def hasIndexInfo(nodeId: Long): Boolean = {
+    !nodeIndexInfoMap.get(nodeId).isEmpty
+  }
+
+  def getIndexInfo(nodeId: Long): NodeIndexInfo = {
+    nodeIndexInfoMap.get(nodeId).get
   }
 
   /**
