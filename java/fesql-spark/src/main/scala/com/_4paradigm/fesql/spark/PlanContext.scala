@@ -12,10 +12,13 @@ import org.apache.spark.sql.catalyst.QueryPlanningTracker
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
+import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 
 class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, config: FeSQLConfig) {
+
+  private val logger = LoggerFactory.getLogger(this.getClass)
 
   private var moduleBuffer: SerializableByteBuffer = _
   // private var moduleBroadCast: Broadcast[SerializableByteBuffer] = _
@@ -74,6 +77,12 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
 
   def getIndexInfo(nodeId: Long): NodeIndexInfo = {
     nodeIndexInfoMap.get(nodeId).get
+  }
+
+  def putNodeIndexInfo(nodeId: Long, nodeIndexInfo: NodeIndexInfo): Unit = {
+    // tobe, change to debug
+    logger.info("Bind the nodeId(%d) with indexColumnName(%s) and shouldAddIndexColumn(%b)".format(nodeId, nodeIndexInfo.indexColumnName, nodeIndexInfo.shouldAddIndexColumn))
+    nodeIndexInfoMap.put(nodeId, nodeIndexInfo)
   }
 
   /**

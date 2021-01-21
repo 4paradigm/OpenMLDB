@@ -3,13 +3,12 @@ package com._4paradigm.fesql.spark
 import com._4paradigm.fesql.FeSqlLibrary
 import com._4paradigm.fesql.`type`.TypeOuterClass._
 import com._4paradigm.fesql.common.{SQLEngine, UnsupportedFesqlException}
+import com._4paradigm.fesql.node.JoinType
 import com._4paradigm.fesql.spark.nodes._
-import com._4paradigm.fesql.spark.utils.FesqlUtil
+import com._4paradigm.fesql.spark.utils.{FesqlUtil, NodeIndexInfo}
 import com._4paradigm.fesql.vm._
 import org.apache.spark.sql.{DataFrame, SparkSession}
-
 import org.apache.hadoop.fs.{FileSystem, Path}
-
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -46,12 +45,52 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
       logger.info("Get FeSQL physical plan: ")
       root.Print()
 
+      logger.info("Visit physical plan to find ConcatJoin node")
+      val concatJoinNodes = mutable.ArrayBuffer[PhysicalJoinNode]()
+      findConcatJoinNode(root, concatJoinNodes)
+
+      logger.info("Visit physical plan to add node index info")
+      concatJoinNodes.map(joinNode => bindNodeIndexInfo(joinNode, planCtx))
+
+
+
       if (config.slowRunCacheDir != null) {
         slowRunWithHDFSCache(root, planCtx, config.slowRunCacheDir, isRoot = true)
       } else {
         getSparkOutput(root, planCtx)
       }
     }
+  }
+
+  // Visit the physical plan to get all ConcatJoinNode
+  def findConcatJoinNode(node: PhysicalOpNode, concatJoinNodes: mutable.ArrayBuffer[PhysicalJoinNode]): Unit = {
+    if (node.GetOpType() == PhysicalOpType.kPhysicalOpJoin) {
+      val joinNode = PhysicalJoinNode.CastFrom(node)
+      if (joinNode.join().join_type() == JoinType.kJoinTypeConcat) {
+        concatJoinNodes.append(joinNode)
+      }
+    }
+    for (i <- 0 until node.GetProducerCnt().toInt) {
+      findConcatJoinNode(node.GetProducer(i), concatJoinNodes)
+    }
+  }
+
+  // Bind the node index info for the nodes which use ConcatJoin for computing window concurrently
+  def bindNodeIndexInfo(concatJoinNode: PhysicalJoinNode, ctx: PlanContext): Unit = {
+    val nodeId = concatJoinNode.GetNodeId()
+    val indexColumnName = "__JOIN_INDEX__" + nodeId + "__"+ System.currentTimeMillis()
+
+    // Bind the ConcatJoin node
+    ctx.putNodeIndexInfo(nodeId, NodeIndexInfo(indexColumnName, false))
+
+    // Bind the child nodes
+    for (i <- 0 until concatJoinNode.GetProducerCnt().toInt) {
+      ctx.putNodeIndexInfo(concatJoinNode.GetProducer(i).GetNodeId(), NodeIndexInfo(indexColumnName, false))
+    }
+
+    // TODO: Need heuristic method to find the LCA node
+    // Bind the source node, need to set shouldAddIndexColumn as true
+    ctx.putNodeIndexInfo(concatJoinNode.GetProducer(0).GetProducer(0).GetNodeId(), NodeIndexInfo(indexColumnName, true))
   }
 
   def getSparkOutput(root: PhysicalOpNode, ctx: PlanContext): SparkInstance = {
