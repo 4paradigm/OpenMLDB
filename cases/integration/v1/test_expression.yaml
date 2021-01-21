@@ -727,9 +727,9 @@ cases:
       columns: ["id int32", "float_c1 float", "float_c2 float", "float_c3 float", "float_c4 float", "float_c5 float", 
                 "float_c6 float", "float_c8 float", "float_c9 float", "float_c10 float"]
       rows:
-        - [1, 1.0, 1.0, 1.0, 1.0, 1.0, NULL, 1590115420000.0, 1.0, 1.0]
-        - [2, -1.0, -1.0, -1.0, -1.0, -1.0, NULL, 1590115420000.0, 0.0, -1.0]
-        - [3, -1.0, -1.0, -1.0, -1.0, -1.0, NULL, 1590115420000.0, 0.0, NULL]
+        - [1, 1.0, 1.0, 1.0, 1.0, 1.0, NULL, 1590115434496.0, 1.0, 1.0]
+        - [2, -1.0, -1.0, -1.0, -1.0, -1.0, NULL, 1590115434496.0, 0.0, -1.0]
+        - [3, -1.0, -1.0, -1.0, -1.0, -1.0, NULL, 1590115434496.0, 0.0, NULL]
   - id: 20-5
     desc: cast as double
     inputs:
