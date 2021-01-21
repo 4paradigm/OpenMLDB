@@ -11,6 +11,7 @@
 #include "gtest/gtest.h"
 #include "proto/fe_type.pb.h"
 #include "vm/mem_catalog.h"
+#include "vm/runner.h"
 namespace fesql {
 namespace vm {
 using codec::ArrayListIterator;
@@ -1005,6 +1006,538 @@ TEST_F(WindowIteratorTest,
 
         window.BufferData(1590115480000, row);
         ASSERT_EQ(10L, window.GetCount());
+    }
+}
+class RequestUnionWindowTest : public ::testing::Test {
+ public:
+    RequestUnionWindowTest() {}
+    ~RequestUnionWindowTest() {}
+};
+
+void CHECK_TABLE_KEY(std::shared_ptr<TableHandler> table,
+                     std::vector<uint64_t> keys) {
+    if (!table) {
+        ASSERT_TRUE(keys.empty());
+        return;
+    }
+    auto iter = table->GetIterator();
+    if (!iter) {
+        ASSERT_TRUE(keys.empty());
+        return;
+    }
+
+    iter->SeekToFirst();
+    std::vector<uint64_t> real_keys;
+    while (iter->Valid()) {
+        real_keys.push_back(iter->GetKey());
+        iter->Next();
+    }
+    ASSERT_EQ(keys, real_keys);
+}
+void CHECK_REQUEST_UNION_WINDOW(const WindowRange& window_range,
+                                const std::vector<uint64_t>& buffered_keys,
+                                uint64_t current_key,
+                                const std::vector<uint64_t>& exp_keys,
+                                const bool exclude_current_time = false) {
+    Row row;
+    auto table = std::make_shared<MemTimeTableHandler>();
+    for (uint64_t key : buffered_keys) {
+        table->AddRow(key, row);
+    }
+    std::shared_ptr<HistoryWindow> history_window =
+        std::make_shared<HistoryWindow>(window_range);
+    auto union_table = RequestUnionRunner::RequestUnionWindow(
+        row, std::vector<std::shared_ptr<TableHandler>>({table}), current_key,
+        window_range, true, exclude_current_time);
+    CHECK_TABLE_KEY(union_table, exp_keys);
+}
+void CHECK_BUFFER_WINDOW(const WindowRange& window_range,
+                         const std::vector<uint64_t>& keys_for_buffer,
+                         uint64_t current_key,
+                         const std::vector<uint64_t>& exp_keys,
+                         const bool exclude_current_time = false) {
+    std::shared_ptr<HistoryWindow> history_window =
+        std::make_shared<HistoryWindow>(window_range);
+    history_window->set_exclude_current_time(exclude_current_time);
+
+    for (auto iter = keys_for_buffer.rbegin(); iter != keys_for_buffer.rend();
+         iter++) {
+        // Skip buffering future key-row
+        if (*iter > current_key) {
+            break;
+        }
+        history_window->BufferData(*iter, Row());
+    }
+    ASSERT_TRUE(history_window->BufferData(current_key, Row()));
+    CHECK_TABLE_KEY(history_window, exp_keys);
+}
+TEST_F(RequestUnionWindowTest, RequestRowsWindowTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+
+    auto table = std::make_shared<MemTimeTableHandler>();
+    std::vector<uint64_t> keys({10L, 9L, 8L, 7L, 6L, 5L, 4L, 3L, 2L});
+    for (uint64_t key : keys) {
+        table->AddRow(key, row);
+    }
+
+    {
+        // current row: 11
+        WindowRange window_range = WindowRange::CreateRowsWindow(5);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L, 8L, 7L, 6L});
+
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+
+    {
+        // current row: 8L
+        WindowRange window_range = WindowRange::CreateRowsWindow(5);
+        uint64_t current_key = 8L;
+        std::vector<uint64_t> exp_keys({8L, 8L, 7L, 6L, 5L, 4L});
+
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+
+    {
+        // current row: 3L
+        WindowRange window_range = WindowRange::CreateRowsWindow(5);
+        uint64_t current_key = 3L;
+        std::vector<uint64_t> exp_keys({3L, 3L, 2L});
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+
+    {
+        // current row: 1L
+        WindowRange window_range = WindowRange::CreateRowsWindow(5);
+        uint64_t current_key = 1L;
+        std::vector<uint64_t> exp_keys({1L});
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+}
+TEST_F(RequestUnionWindowTest, RequestRowsRangeWindowTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+
+    auto table = std::make_shared<MemTimeTableHandler>();
+    std::vector<uint64_t> keys({10L, 9L, 8L, 7L, 6L, 5L, 4L, 3L, 2L});
+    for (uint64_t key : keys) {
+        table->AddRow(key, row);
+    }
+
+    {
+        // current row: 11
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L, 8L, 7L, 6L});
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+    {
+        // current row: 11 exclude current time
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L, 8L, 7L, 6L});
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+
+    {
+        // current row: 11 maxsize 3
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0, 3);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L});
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+    {
+        // current row: 11 maxsize 3 exclude current time
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0, 3);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L});
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+
+    {
+        // current row: 8L
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0);
+        uint64_t current_key = 8L;
+        std::vector<uint64_t> exp_keys({8L, 8L, 7L, 6L, 5L, 4L, 3L});
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+    {
+        // current row: 8L maxsize 3
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0, 3);
+        uint64_t current_key = 8L;
+        std::vector<uint64_t> exp_keys({8L, 8L, 7L});
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+
+    {
+        // current row: 8L exclude current time
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0);
+        uint64_t current_key = 8L;
+        std::vector<uint64_t> exp_keys({8L, 7L, 6L, 5L, 4L, 3L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 1L
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0);
+        uint64_t current_key = 1L;
+        std::vector<uint64_t> exp_keys({1L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 1L exclude current time
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0);
+        uint64_t current_key = 1L;
+        std::vector<uint64_t> exp_keys({1L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 13L
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 13L maxsize
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0, 3);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 13L exclude current time
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 13L maxsize
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0, 3);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+}
+
+TEST_F(RequestUnionWindowTest, RequestRowsMergeRowsRangeWindowTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+
+    auto table = std::make_shared<MemTimeTableHandler>();
+    std::vector<uint64_t> keys({10L, 9L, 8L, 7L, 6L, 5L, 4L, 3L, 2L});
+    for (uint64_t key : keys) {
+        table->AddRow(key, row);
+    }
+
+    {
+        // current row: 11
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L, 8L, 7L, 6L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 11 exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L, 8L, 7L, 6L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 11 maxsize 3
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2, 3);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 11 maxsize 3 exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2, 3);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 8L
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2);
+        uint64_t current_key = 8L;
+        std::vector<uint64_t> exp_keys({8L, 8L, 7L, 6L, 5L, 4L, 3L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 8L maxsize 3
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2, 3);
+        uint64_t current_key = 8L;
+        std::vector<uint64_t> exp_keys({8L, 8L, 7L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 8L exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2);
+        uint64_t current_key = 8L;
+        std::vector<uint64_t> exp_keys({8L, 7L, 6L, 5L, 4L, 3L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 8L maxsize 3 exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2, 3);
+        uint64_t current_key = 8L;
+        std::vector<uint64_t> exp_keys({8L, 7L, 6L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 1L
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2);
+        uint64_t current_key = 1L;
+        std::vector<uint64_t> exp_keys({1L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 1L exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2);
+        uint64_t current_key = 1L;
+        std::vector<uint64_t> exp_keys({1L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 13L
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 5);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L, 7L, 6L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 13L maxsize
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 5, 7);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L, 7L, 6L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 13L exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 5);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L, 7L, 6L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 13L maxsize
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 5, 7);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L, 7L, 6L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 13L maxsize exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 5, 7);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L, 7L, 6L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 13L exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-10, 5);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L, 7L, 6L, 5L, 4L, 3L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 13L exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-10, 5, 7);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L, 7L, 6L, 5L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 10L exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-7, 5);
+        uint64_t current_key = 10L;
+        std::vector<uint64_t> exp_keys({10L, 9L, 8L, 7L, 6L, 5L, 4L, 3L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 10L exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-7, 5, 7);
+        uint64_t current_key = 10L;
+        std::vector<uint64_t> exp_keys({10L, 9L, 8L, 7L, 6L, 5L, 4L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
     }
 }
 }  // namespace vm

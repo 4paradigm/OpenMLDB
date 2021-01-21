@@ -2466,36 +2466,41 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(
     }
 
     auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
-    int64_t ts_gen = range_gen_.ts_gen_.Gen(request);
+
+    int64_t ts_gen = range_gen_.Valid() ? range_gen_.ts_gen_.Gen(request) : -1;
 
     // Prepare Union Window
     auto union_inputs = windows_union_gen_.RunInputs(ctx);
     auto union_segments =
         windows_union_gen_.GetRequestWindows(request, union_inputs);
     // build window with start and end offset
-    return RequestUnionWindow(request, union_segments, ts_gen);
+    return RequestUnionWindow(request, union_segments, ts_gen,
+                              range_gen_.window_range_, output_request_row_);
 }
-std::shared_ptr<DataHandler> RequestUnionRunner::RequestUnionWindow(
+std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
     const Row& request,
-    std::vector<std::shared_ptr<TableHandler>> union_segments,
-    int64_t ts_gen) {
-    uint64_t request_key =
-        ts_gen > 0 ? static_cast<uint64_t>(ts_gen) : 0;
+    std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
+    const WindowRange& window_range, const bool output_request_row,
+    const bool exclude_current_time) {
     uint64_t start = 0;
     uint64_t end = UINT64_MAX;
     uint64_t rows_start_preceding = 0;
     uint64_t max_size = 0;
-    if (range_gen_.Valid()) {
-        start = (ts_gen + range_gen_.window_range_.start_offset_) < 0
+    if (ts_gen >= 0) {
+        start = (ts_gen + window_range.start_offset_) < 0
                     ? 0
-                    : (ts_gen + range_gen_.window_range_.start_offset_);
-
-        end = (ts_gen + range_gen_.window_range_.end_offset_) < 0
-                  ? 0
-                  : (ts_gen + range_gen_.window_range_.end_offset_);
-        rows_start_preceding = range_gen_.window_range_.start_row_;
-        max_size = range_gen_.window_range_.max_size_;
+                    : (ts_gen + window_range.start_offset_);
+        if (exclude_current_time && 0 == window_range.end_offset_) {
+            end = (ts_gen - 1) < 0 ? 0 : (ts_gen - 1);
+        } else {
+            end = (ts_gen + window_range.end_offset_) < 0
+                      ? 0
+                      : (ts_gen + window_range.end_offset_);
+        }
+        rows_start_preceding = window_range.start_row_;
+        max_size = window_range.max_size_;
     }
+    uint64_t request_key = ts_gen > 0 ? static_cast<uint64_t>(ts_gen) : 0;
 
     auto window_table =
         std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
@@ -2528,9 +2533,10 @@ std::shared_ptr<DataHandler> RequestUnionRunner::RequestUnionWindow(
                                 : IteratorStatus::PickIteratorWithMaximizeKey(
                                       &union_segment_status);
     uint64_t cnt = 0;
-    auto range_status = range_gen_.window_range_.GetWindowPositionStatus(
-        cnt > rows_start_preceding, request_key > end, request_key < start);
-    if (output_request_row_) {
+    auto range_status = window_range.GetWindowPositionStatus(
+        cnt > rows_start_preceding, window_range.end_offset_ < 0,
+        request_key < start);
+    if (output_request_row) {
         window_table->AddRow(request_key, request);
     }
     if (WindowRange::kInWindow == range_status) {
@@ -2541,7 +2547,7 @@ std::shared_ptr<DataHandler> RequestUnionRunner::RequestUnionWindow(
         if (max_size > 0 && cnt >= max_size) {
             break;
         }
-        auto range_status = range_gen_.window_range_.GetWindowPositionStatus(
+        auto range_status = window_range.GetWindowPositionStatus(
             cnt > rows_start_preceding,
             union_segment_status[max_union_pos].key_ > end,
             union_segment_status[max_union_pos].key_ < start);

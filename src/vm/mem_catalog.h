@@ -302,6 +302,21 @@ class WindowRange {
           max_size_(max_size) {}
 
     virtual ~WindowRange() {}
+    static WindowRange CreateRowsWindow(uint64_t rows_preceding) {
+        return WindowRange(Window::kFrameRows, 0, 0, rows_preceding, 0);
+    }
+    static WindowRange CreateRowsRangeWindow(int64_t start_offset,
+                                             int64_t end_offset,
+                                             uint64_t max_size = 0) {
+        return WindowRange(Window::kFrameRowsRange, start_offset, end_offset, 0,
+                           max_size);
+    }
+    static WindowRange CreateRowsMergeRowsRangeWindow(int64_t start_offset,
+                                                      uint64_t rows_preceding,
+                                                      uint64_t max_size = 0) {
+        return WindowRange(Window::kFrameRowsMergeRowsRange, start_offset, 0,
+                           rows_preceding, max_size);
+    }
     enum WindowPositionStatus {
         kInWindow,
         kExceedWindow,
@@ -350,6 +365,11 @@ class HistoryWindow : public Window {
             PopFrontRow();
         } else {
             current_history_buffer_.pop_front();
+        }
+    }
+    virtual void PopEffectiveData() {
+        if (!table_.empty()) {
+            PopFrontRow();
         }
     }
     bool BufferData(uint64_t key, const Row& row) {
@@ -426,14 +446,12 @@ class HistoryWindow : public Window {
         return true;
     }
     bool BufferCurrentTimeBuffer(uint64_t key, const Row& row,
-                                             uint64_t start_ts) {
+                                 uint64_t start_ts) {
         if (!exclude_current_time_) {
             return BufferEffectiveWindow(key, row, start_ts);
         } else {
-            if (!table_.empty()) {
-                PopFrontData();
-            }
-            BufferCurrentHistoryBuffer(key, row, key-1);
+            PopEffectiveData();
+            BufferCurrentHistoryBuffer(key, row, key - 1);
             return BufferEffectiveWindow(key, row, start_ts);
         }
     }
