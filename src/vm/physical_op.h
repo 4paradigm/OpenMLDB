@@ -459,7 +459,10 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
 
     bool is_block() const { return is_block_; }
 
-    // Add the duplicated function for swig-java which can not access template functions
+    /*
+     * Add the duplicated function for swig-java which can not access 
+     * functions in template.
+     */
     size_t GetNodeId() const { return node_id(); }
 
  protected:
