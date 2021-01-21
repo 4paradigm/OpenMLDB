@@ -108,8 +108,8 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
     return true;
 }
 
-std::unique_ptr<::fesql::codec::RowIterator> TabletTableHandler::GetIterator() const {
-    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
+std::unique_ptr<::fesql::codec::RowIterator> TabletTableHandler::GetIterator() {
+    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
     if (!tables->empty()) {
         return std::unique_ptr<catalog::FullTableIterator>(new catalog::FullTableIterator(tables));
     }
@@ -123,7 +123,7 @@ std::unique_ptr<::fesql::codec::WindowIterator> TabletTableHandler::GetWindowIte
         return std::unique_ptr<::fesql::codec::WindowIterator>();
     }
     DLOG(INFO) << "get window it with index " << idx_name;
-    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
+    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
     if (!tables->empty()) {
         return std::unique_ptr<::fesql::codec::WindowIterator>(
             new DistributeWindowIterator(tables, iter->second.index));
@@ -140,8 +140,8 @@ const ::fesql::codec::Row TabletTableHandler::Get(int32_t pos) {
     return iter->Valid() ? iter->GetValue() : ::fesql::codec::Row();
 }
 
-::fesql::codec::RowIterator* TabletTableHandler::GetRawIterator() const {
-    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
+::fesql::codec::RowIterator* TabletTableHandler::GetRawIterator() {
+    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
     if (!tables->empty()) {
         return new catalog::FullTableIterator(tables);
     }
@@ -175,17 +175,23 @@ std::shared_ptr<::fesql::vm::PartitionHandler> TabletTableHandler::GetPartition(
 }
 
 void TabletTableHandler::AddTable(std::shared_ptr<::rtidb::storage::Table> table) {
-    auto old_tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
-    auto new_tables = std::make_shared<Tables>(*old_tables);
-    new_tables->emplace(table->GetPid(), table);
-    std::atomic_store_explicit(&tables_, new_tables, std::memory_order_relaxed);
+    std::shared_ptr<Tables> old_tables;
+    std::shared_ptr<Tables> new_tables;
+    do {
+        old_tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
+        new_tables = std::make_shared<Tables>(*old_tables);
+        new_tables->emplace(table->GetPid(), table);
+    } while (!atomic_compare_exchange_weak(&tables_, &old_tables, new_tables));
 }
 
 int TabletTableHandler::DeleteTable(uint32_t pid) {
-    auto old_tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
-    auto new_tables = std::make_shared<Tables>(*old_tables);
-    new_tables->erase(pid);
-    std::atomic_store_explicit(&tables_, new_tables, std::memory_order_relaxed);
+    std::shared_ptr<Tables> old_tables;
+    std::shared_ptr<Tables> new_tables;
+    do {
+        old_tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
+        new_tables = std::make_shared<Tables>(*old_tables);
+        new_tables->erase(pid);
+    } while (!atomic_compare_exchange_weak(&tables_, &old_tables, new_tables));
     return new_tables->size();
 }
 
@@ -223,6 +229,21 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
                    << client_tablet->GetName();
     }
     return client_tablet;
+}
+
+std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::string& index_name,
+                                                                   const std::vector<std::string>& pks) {
+    std::shared_ptr<TabletsAccessor> tablets_accessor = std::shared_ptr<TabletsAccessor>(new TabletsAccessor());
+    for (const auto &pk : pks) {
+        auto tablet_accessor = GetTablet(index_name, pk);
+        if (tablet_accessor) {
+            tablets_accessor->AddTabletAccessor(tablet_accessor);
+        } else {
+            LOG(WARNING) << "fail to get tablet: pk " << pk << " not exist";
+            return std::shared_ptr<TabletsAccessor>();
+        }
+    }
+    return tablets_accessor;
 }
 
 TabletCatalog::TabletCatalog()
@@ -388,13 +409,13 @@ void TabletCatalog::Refresh(const std::vector<::rtidb::nameserver::TableInfo>& t
     for (auto db_it = tables_.begin(); db_it != tables_.end();) {
         auto cur_db_it = table_map.find(db_it->first);
         if (cur_db_it == table_map.end()) {
-            LOG(WARNING) << "delete db from catalog. db: " << db_it->first;
+            LOG(INFO) << "delete db from catalog. db: " << db_it->first;
             db_it = tables_.erase(db_it);
             continue;
         }
         for (auto table_it = db_it->second.begin(); table_it != db_it->second.end();) {
             if (cur_db_it->second.find(table_it->first) == cur_db_it->second.end()) {
-                LOG(WARNING) << "delete table from catalog. db: " << db_it->first << ", table: " << table_it->first;
+                LOG(INFO) << "delete table from catalog. db: " << db_it->first << ", table: " << table_it->first;
                 table_it = db_it->second.erase(table_it);
                 continue;
             }

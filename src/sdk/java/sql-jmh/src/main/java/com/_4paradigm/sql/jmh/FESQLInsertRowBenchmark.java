@@ -1,5 +1,6 @@
 package com._4paradigm.sql.jmh;
 
+import com._4paradigm.sql.BenchmarkConfig;
 import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.SQLInsertRow;
 import com._4paradigm.sql.SQLInsertRows;
@@ -12,6 +13,7 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
@@ -92,10 +94,14 @@ public class FESQLInsertRowBenchmark {
             row.AppendString(s1);
             row.AppendInt64(System.currentTimeMillis());
         }
+        try {
+            executor.executeInsert(db, format, rows);
+            //counter ++;
+            counter += 10;
+        } catch (Exception e) {
 
-        executor.executeInsert(db, format, rows);
-        //counter ++;
-        counter += 10;
+        }
+
     }
 
     @Benchmark

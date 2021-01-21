@@ -18,6 +18,7 @@
 #ifndef SRC_SDK_SQL_REQUEST_ROW_H_
 #define SRC_SDK_SQL_REQUEST_ROW_H_
 
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -34,7 +35,8 @@ namespace sdk {
 class SQLRequestRow {
  public:
     SQLRequestRow() {}
-    explicit SQLRequestRow(std::shared_ptr<fesql::sdk::Schema> schema);
+    SQLRequestRow(std::shared_ptr<fesql::sdk::Schema> schema,
+            const std::set<std::string>& record_cols);
     ~SQLRequestRow() {}
     bool Init(int32_t str_length);
     bool AppendBool(bool val);
@@ -47,6 +49,7 @@ class SQLRequestRow {
     bool AppendFloat(float val);
     bool AppendDouble(double val);
     bool AppendString(const std::string& val);
+    bool AppendString(const char *string_buffer_var_name, uint32_t length);
     bool AppendNULL();
     bool Build();
     inline bool OK() {
@@ -56,6 +59,7 @@ class SQLRequestRow {
     inline const std::shared_ptr<fesql::sdk::Schema> GetSchema() {
         return schema_;
     }
+    bool GetRecordVal(const std::string& col, std::string* val);
 
  private:
     bool Check(fesql::sdk::DataType type);
@@ -75,6 +79,8 @@ class SQLRequestRow {
     uint32_t str_length_current_;
     bool has_error_;
     bool is_ok_;
+    std::set<uint32_t> record_cols_;
+    std::map<std::string, std::string> record_value_;
 };
 
 

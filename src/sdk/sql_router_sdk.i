@@ -5,6 +5,10 @@
 %include stl.i
 %include stdint.i
 %include std_vector.i
+#ifdef SWIGJAVA
+%include various.i
+%apply char *BYTE { char *string_buffer_var_name };
+#endif
 
 %shared_ptr(fesql::sdk::ResultSet);
 %shared_ptr(fesql::sdk::Schema);
@@ -17,6 +21,7 @@
 %shared_ptr(rtidb::sdk::ExplainInfo);
 %shared_ptr(fesql::sdk::ProcedureInfo);
 %shared_ptr(rtidb::sdk::QueryFuture);
+%shared_ptr(rtidb::sdk::TableReader);
 %template(VectorUint32) std::vector<uint32_t>;
 %template(VectorString) std::vector<std::string>;
 
@@ -26,6 +31,7 @@
 #include "sdk/base.h"
 #include "sdk/sql_request_row.h"
 #include "sdk/sql_insert_row.h"
+#include "sdk/table_reader.h"
 
 using fesql::sdk::Schema;
 using fesql::sdk::ResultSet;
@@ -39,6 +45,7 @@ using rtidb::sdk::SQLInsertRows;
 using rtidb::sdk::ExplainInfo;
 using fesql::sdk::ProcedureInfo;
 using rtidb::sdk::QueryFuture;
+using rtidb::sdk::TableReader;
 %}
 
 %include "sdk/sql_router.h"
@@ -46,4 +53,4 @@ using rtidb::sdk::QueryFuture;
 %include "sdk/result_set.h"
 %include "sdk/sql_request_row.h"
 %include "sdk/sql_insert_row.h"
-
+%include "sdk/table_reader.h"

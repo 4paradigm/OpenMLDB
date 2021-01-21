@@ -372,7 +372,10 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                               const rtidb::api::SQLBatchRequestQueryRequest* request,
                               rtidb::api::SQLBatchRequestQueryResponse* response,
                               Closure* done);
-
+    void SubBatchRequestQuery(RpcController* controller,
+                              const rtidb::api::SQLBatchRequestQueryRequest* request,
+                              rtidb::api::SQLBatchRequestQueryResponse* response,
+                              Closure* done);
     void CancelOP(RpcController* controller,
                   const rtidb::api::CancelOPRequest* request,
                   rtidb::api::GeneralResponse* response, Closure* done);
@@ -395,6 +398,12 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                       const ::rtidb::api::TableMeta& meta,
                       const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
                       CombineIterator* combine_it, std::string* pairs,
+                      uint32_t* count);
+
+    int32_t ScanIndex(const ::rtidb::api::ScanRequest* request,
+                      const ::rtidb::api::TableMeta& meta,
+                      const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
+                      CombineIterator* combine_it, butil::IOBuf* buf,
                       uint32_t* count);
 
     int32_t CountIndex(uint64_t expire_time, uint64_t expire_cnt,
@@ -580,12 +589,18 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     bool GetRealEp(uint64_t tid, uint64_t pid,
             std::map<std::string, std::string>* real_ep_map);
 
-    void ProcessQuery(const rtidb::api::QueryRequest* request,
-            ::rtidb::api::QueryResponse* response,
-            butil::IOBuf* buf);
+    void ProcessQuery(RpcController* controller,
+                      const rtidb::api::QueryRequest* request,
+                      ::rtidb::api::QueryResponse* response,
+                      butil::IOBuf* buf);
+    void ProcessBatchRequestQuery(RpcController* controller,
+        const rtidb::api::SQLBatchRequestQueryRequest* request,
+                                  rtidb::api::SQLBatchRequestQueryResponse* response,
+                                  butil::IOBuf& buf);  // NOLINT
 
  private:
-    void RunRequestQuery(const rtidb::api::QueryRequest& request,
+    void RunRequestQuery(RpcController* controller,
+        const rtidb::api::QueryRequest& request,
         ::fesql::vm::RequestRunSession& session, // NOLINT 
         rtidb::api::QueryResponse& response, butil::IOBuf& buf); // NOLINT
 

@@ -5,14 +5,11 @@ import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.Assert;
+import org.testng.collections.Lists;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * @author zhaowei
@@ -21,33 +18,22 @@ import java.util.List;
 @Data
 public class FesqlDataProvider extends CaseFile {
     private static Logger logger = LoggerFactory.getLogger(FesqlDataProvider.class);
-    private static File rtidbDir() {
-        File directory = new File(".");
-        directory = directory.getAbsoluteFile();
-        while (null != directory) {
-            if (directory.isDirectory() && "rtidb".equals(directory.getName())) {
-                break;
-            }
-            logger.debug("current directory name {}", directory.getName());
-            directory = directory.getParentFile();
-        }
+    public static final String FAIL_SQL_CASE= "FailSQLCase";
 
-        if ("rtidb".equals(directory.getName())) {
-            return directory;
-        } else {
-            return null;
-        }
-    }
     public static FesqlDataProvider dataProviderGenerator(String caseFile) throws FileNotFoundException {
-        Yaml yaml = new Yaml();
-        String rtidbDir = rtidbDir().getAbsolutePath();
-        Assert.assertNotNull(rtidbDir);
-        FesqlDataProvider finalDataProvider;
-        String caseAbsPath = rtidbDir + "/fesql/cases/" + caseFile;
-        logger.debug("fesql case absolute path: {}", caseAbsPath);
-        FileInputStream testDataStream = new FileInputStream(caseAbsPath);
-        FesqlDataProvider testDateProvider = yaml.loadAs(testDataStream, FesqlDataProvider.class);
-        return testDateProvider;
+        try {
+            Yaml yaml = new Yaml();
+            FileInputStream testDataStream = new FileInputStream(caseFile);
+            FesqlDataProvider testDateProvider = yaml.loadAs(testDataStream, FesqlDataProvider.class);
+            return testDateProvider;
+        } catch (Exception e) {
+            logger.error("fail to load yaml: ", e);
+            FesqlDataProvider nullDataProvider = new FesqlDataProvider();
+            SQLCase failCase = new SQLCase();
+            failCase.setDesc(FAIL_SQL_CASE);
+            nullDataProvider.setCases(Lists.newArrayList(failCase));
+            return nullDataProvider;
+        }
     }
 
 

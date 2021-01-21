@@ -1,0 +1,355 @@
+/*
+ * mini_cluster_microbenchmark.cc
+ * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "sdk/mini_cluster_bm.h"
+
+#include <gflags/gflags.h>
+#include <stdio.h>
+
+#include "boost/algorithm/string.hpp"
+#include "catalog/schema_adapter.h"
+#include "codec/fe_row_codec.h"
+#include "sdk/base.h"
+#include "sdk/sql_router.h"
+#include "sdk/sql_sdk_test.h"
+#include "test/base_test.h"
+#include "vm/catalog.h"
+
+DECLARE_bool(enable_distsql);
+DECLARE_bool(enable_localtablet);
+
+typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> RtiDBIndex;
+// batch request rows size == 1
+void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,  // NOLINT
+                     ::rtidb::sdk::MiniCluster* mc) {                             // NOLINT
+    const bool is_procedure = fesql::sqlcase::SQLCase::IS_PROCEDURE();
+    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc->GetZkCluster();
+    sql_opt.zk_path = mc->GetZkPath();
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        sql_opt.enable_debug = true;
+    } else {
+        sql_opt.enable_debug = false;
+    }
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (router == nullptr) {
+        std::cout << "fail to init sql cluster router" << std::endl;
+        return;
+    }
+    fesql::sdk::Status status;
+    rtidb::sdk::SQLSDKTest::CreateDB(sql_case, router);
+    rtidb::sdk::SQLSDKTest::CreateTables(sql_case, router, 8);
+    rtidb::sdk::SQLSDKTest::InsertTables(sql_case, router, rtidb::sdk::kInsertAllInputs);
+    if (is_procedure) {
+        rtidb::sdk::SQLSDKTest::CreateProcedure(sql_case, router);
+    }
+    {
+        // execute SQL
+        std::string sql = sql_case.sql_str();
+        for (size_t i = 0; i < sql_case.inputs().size(); i++) {
+            std::string placeholder = "{" + std::to_string(i) + "}";
+            boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+        }
+        boost::to_lower(sql);
+        LOG(INFO) << sql;
+        auto request_row = router->GetRequestRow(sql_case.db(), sql, &status);
+        if (status.code != 0) {
+            state.SkipWithError("benchmark error: fesql case compile fail");
+            return;
+        }
+        // success check
+
+        fesql::type::TableDef request_table;
+        if (!sql_case.ExtractInputTableDef(sql_case.batch_request_, request_table)) {
+            state.SkipWithError("benchmark error: fesql case input schema invalid");
+            return;
+        }
+
+        std::vector<fesql::codec::Row> request_rows;
+        if (!sql_case.ExtractInputData(sql_case.batch_request_, request_rows)) {
+            state.SkipWithError("benchmark error: fesql case input data invalid");
+            return;
+        }
+
+        if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+            rtidb::sdk::SQLSDKTest::CheckSchema(request_table.columns(), *(request_row->GetSchema().get()));
+        }
+
+        fesql::codec::RowView row_view(request_table.columns());
+        if (1 != request_rows.size()) {
+            state.SkipWithError("benmark error: request rows size should be 1");
+            return;
+        }
+        row_view.Reset(request_rows[0].buf());
+        rtidb::sdk::SQLSDKTest::CovertFesqlRowToRequestRow(&row_view, request_row);
+
+        if (!fesql::sqlcase::SQLCase::IS_DEBUG()) {
+            for (int i = 0; i < 10; i++) {
+                if (is_procedure) {
+                    LOG(INFO) << "--------syn procedure----------";
+                    auto rs = router->CallProcedure(sql_case.db(), sql_case.sp_name_, request_row, &status);
+                    rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                } else {
+                    auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
+                    rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                }
+            }
+            LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
+        }
+        if (fesql::sqlcase::SQLCase::IS_DEBUG() || fesql::sqlcase::SQLCase::IS_PERF()) {
+            for (auto _ : state) {
+                if (is_procedure) {
+                    LOG(INFO) << "--------syn procedure----------";
+                    auto rs = router->CallProcedure(sql_case.db(), sql_case.sp_name_, request_row, &status);
+                    if (!rs) FAIL() << "sql case expect success == true";
+                    rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    fesql::type::TableDef output_table;
+                    std::vector<fesql::codec::Row> rows;
+                    if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
+                        ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
+                        rtidb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
+                    }
+
+                    if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
+                        ASSERT_TRUE(sql_case.ExtractOutputData(rows));
+                        rtidb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
+                    }
+                    state.SkipWithError("BENCHMARK DEBUG");
+                } else {
+                    auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
+                    if (!rs) FAIL() << "sql case expect success == true";
+                    rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    fesql::type::TableDef output_table;
+                    std::vector<fesql::codec::Row> rows;
+                    if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
+                        ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
+                        rtidb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
+                    }
+
+                    if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
+                        ASSERT_TRUE(sql_case.ExtractOutputData(rows));
+                        rtidb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
+                    }
+                    state.SkipWithError("BENCHMARK DEBUG");
+                }
+                break;
+            }
+        } else {
+            if (is_procedure) {
+                for (auto _ : state) {
+                    benchmark::DoNotOptimize(
+                        router->CallProcedure(sql_case.db(), sql_case.sp_name_, request_row, &status));
+                }
+            } else {
+                for (auto _ : state) {
+                    benchmark::DoNotOptimize(router->ExecuteSQL(sql_case.db(), sql, request_row, &status));
+                }
+            }
+        }
+    }
+    rtidb::sdk::SQLSDKTest::DropProcedure(sql_case, router);
+    rtidb::sdk::SQLSDKTest::DropTables(sql_case, router);
+}
+
+fesql::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml, const std::string& case_id) {
+    return fesql::sqlcase::SQLCase::LoadSQLCaseWithID(rtidb::test::SQLCaseTest::FindRtidbDirPath("rtidb") + "/fesql/",
+                                                      yaml, case_id);
+}
+void MiniBenchmarkOnCase(const std::string& yaml_path, const std::string& case_id, BmRunMode engine_mode,
+                         ::rtidb::sdk::MiniCluster* mc, benchmark::State* state) {
+    auto target_case = LoadSQLCaseWithID(yaml_path, case_id);
+    if (target_case.id() != case_id) {
+        LOG(WARNING) << "Fail to find case #" << case_id << " in " << yaml_path;
+        state->SkipWithError("BENCHMARK CASE LOAD FAIL: fail to find case");
+        return;
+    }
+    MiniBenchmarkOnCase(target_case, engine_mode, mc, state);
+}
+void MiniBenchmarkOnCase(fesql::sqlcase::SQLCase& sql_case, BmRunMode engine_mode,  // NOLINT
+                         ::rtidb::sdk::MiniCluster* mc, benchmark::State* state) {
+    switch (engine_mode) {
+        case kRequestMode: {
+            BM_RequestQuery(*state, sql_case, mc);
+            break;
+        }
+        case kBatchRequestMode: {
+            BM_BatchRequestQuery(*state, sql_case, mc);
+            break;
+        }
+        default: {
+            FAIL() << "Unsupport Engine Mode " << engine_mode;
+        }
+    }
+}
+// batch request rows size >= 1
+void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,  // NOLINT
+                          ::rtidb::sdk::MiniCluster* mc) {
+    if (sql_case.batch_request_.columns_.empty()) {
+        FAIL() << "sql case should contain batch request columns: ";
+        return;
+    }
+    const bool enable_request_batch_optimized = state.range(0) == 1;
+    const bool is_procedure = fesql::sqlcase::SQLCase::IS_PROCEDURE();
+    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc->GetZkCluster();
+    sql_opt.zk_path = mc->GetZkPath();
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        sql_opt.enable_debug = true;
+    } else {
+        sql_opt.enable_debug = false;
+    }
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (router == nullptr) {
+        std::cout << "fail to init sql cluster router" << std::endl;
+        return;
+    }
+    fesql::sdk::Status status;
+    rtidb::sdk::SQLSDKTest::CreateDB(sql_case, router);
+    rtidb::sdk::SQLSDKTest::CreateTables(sql_case, router, 8);
+    rtidb::sdk::SQLSDKTest::InsertTables(sql_case, router, rtidb::sdk::kInsertAllInputs);
+    {
+        // execute SQL
+        std::string sql = sql_case.sql_str();
+        for (size_t i = 0; i < sql_case.inputs().size(); i++) {
+            std::string placeholder = "{" + std::to_string(i) + "}";
+            boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+        }
+        boost::to_lower(sql);
+        LOG(INFO) << sql;
+        auto request_row = router->GetRequestRow(sql_case.db(), sql, &status);
+        if (status.code != 0) {
+            state.SkipWithError("benchmark error: fesql case compile fail");
+            return;
+        }
+        // success check
+
+        fesql::type::TableDef request_table;
+        if (!sql_case.ExtractInputTableDef(sql_case.batch_request_, request_table)) {
+            state.SkipWithError("benchmark error: fesql case input schema invalid");
+            return;
+        }
+
+        std::vector<fesql::codec::Row> request_rows;
+        if (!sql_case.ExtractInputData(sql_case.batch_request_, request_rows)) {
+            state.SkipWithError("benchmark error: fesql case input data invalid");
+            return;
+        }
+
+        if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+            rtidb::sdk::SQLSDKTest::CheckSchema(request_table.columns(), *(request_row->GetSchema().get()));
+        }
+
+        auto common_column_indices = std::make_shared<rtidb::sdk::ColumnIndicesSet>(request_row->GetSchema());
+        if (enable_request_batch_optimized) {
+            for (size_t idx : sql_case.batch_request_.common_column_indices_) {
+                common_column_indices->AddCommonColumnIdx(idx);
+            }
+        } else {
+            // clear common column indices when disable batch_request_optimized
+            sql_case.batch_request_.common_column_indices_.clear();
+        }
+        if (is_procedure) {
+            rtidb::sdk::SQLSDKTest::CreateProcedure(sql_case, router);
+        }
+
+        fesql::codec::RowView row_view(request_table.columns());
+
+        auto row_batch =
+            std::make_shared<rtidb::sdk::SQLRequestRowBatch>(request_row->GetSchema(), common_column_indices);
+
+        LOG(INFO) << "Batch Request execute sql start!";
+        for (size_t i = 0; i < request_rows.size(); i++) {
+            row_view.Reset(request_rows[i].buf());
+            rtidb::sdk::SQLSDKTest::CovertFesqlRowToRequestRow(&row_view, request_row);
+            ASSERT_TRUE(row_batch->AddRow(request_row));
+            if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+                continue;
+            }
+            // don't repeat request in debug mode
+            for (size_t repeat_idx = 1; repeat_idx < sql_case.batch_request_.repeat_; repeat_idx++) {
+                ASSERT_TRUE(row_batch->AddRow(request_row));
+            }
+        }
+
+        if (!fesql::sqlcase::SQLCase::IS_DEBUG()) {
+            for (int i = 0; i < 10; i++) {
+                if (is_procedure) {
+                    LOG(INFO) << "--------syn procedure----------";
+                    auto rs = router->CallSQLBatchRequestProcedure(sql_case.db(), sql_case.inputs()[0].name_, row_batch,
+                                                                   &status);
+                    rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                } else {
+                    auto rs = router->ExecuteSQLBatchRequest(sql_case.db(), sql, row_batch, &status);
+                    rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                }
+            }
+            LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
+        }
+        if (fesql::sqlcase::SQLCase::IS_DEBUG() || fesql::sqlcase::SQLCase::IS_PERF()) {
+            for (auto _ : state) {
+                state.SkipWithError("benchmark case debug");
+                if (is_procedure) {
+                    LOG(INFO) << "--------syn procedure----------";
+                    auto rs = router->CallSQLBatchRequestProcedure(sql_case.db(), sql_case.inputs()[0].name_, row_batch,
+                                                                   &status);
+                    rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    if (!rs) FAIL() << "sql case expect success == true";
+                    fesql::type::TableDef output_table;
+                    std::vector<fesql::codec::Row> rows;
+                    if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
+                        ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
+                        rtidb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
+                    }
+
+                    if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
+                        ASSERT_TRUE(sql_case.ExtractOutputData(rows));
+                        rtidb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
+                    }
+                } else {
+                    auto rs = router->ExecuteSQLBatchRequest(sql_case.db(), sql, row_batch, &status);
+                    if (!rs) FAIL() << "sql case expect success == true";
+                    rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    fesql::type::TableDef output_table;
+                    std::vector<fesql::codec::Row> rows;
+                    if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
+                        ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
+                        rtidb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
+                    }
+
+                    if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
+                        ASSERT_TRUE(sql_case.ExtractOutputData(rows));
+                        rtidb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
+                    }
+                }
+                break;
+            }
+        } else {
+            if (is_procedure) {
+                for (auto _ : state) {
+                    benchmark::DoNotOptimize(router->CallSQLBatchRequestProcedure(
+                        sql_case.db(), sql_case.inputs()[0].name_, row_batch, &status));
+                }
+            } else {
+                for (auto _ : state) {
+                    benchmark::DoNotOptimize(router->ExecuteSQLBatchRequest(sql_case.db(), sql, row_batch, &status));
+                }
+            }
+        }
+    }
+    rtidb::sdk::SQLSDKTest::DropProcedure(sql_case, router);
+    rtidb::sdk::SQLSDKTest::DropTables(sql_case, router);
+}

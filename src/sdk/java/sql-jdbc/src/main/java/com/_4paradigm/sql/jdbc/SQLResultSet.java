@@ -1,6 +1,7 @@
 package com._4paradigm.sql.jdbc;
 
 import com._4paradigm.sql.DataType;
+import com._4paradigm.sql.QueryFuture;
 import com._4paradigm.sql.Schema;
 
 import java.io.InputStream;
@@ -15,9 +16,15 @@ public class SQLResultSet implements ResultSet {
     private com._4paradigm.sql.ResultSet resultSet;
     private boolean closed = false;
     private int rowNum = 0;
+    private QueryFuture queryFuture = null;
 
     public SQLResultSet(com._4paradigm.sql.ResultSet resultSet) {
         this.resultSet = resultSet;
+    }
+
+    public SQLResultSet(com._4paradigm.sql.ResultSet resultSet, QueryFuture future) {
+        this.resultSet = resultSet;
+        this.queryFuture = future;
     }
 
     private void check(int i, DataType type) throws SQLException {
@@ -72,7 +79,12 @@ public class SQLResultSet implements ResultSet {
 
     @Override
     public void close() throws SQLException {
+        this.resultSet.delete();
         this.resultSet = null;
+        if (queryFuture != null) {
+            queryFuture.delete();
+            queryFuture = null;
+        }
         this.closed = true;
     }
 
@@ -170,7 +182,7 @@ public class SQLResultSet implements ResultSet {
             return null;
         }
         com._4paradigm.sql.Date date = this.resultSet.GetStructDateUnsafe(i - 1);
-        return new Date(date.getYear(), date.getMonth(), date.getDay());
+        return new Date(date.getYear() - 1900, date.getMonth() - 1, date.getDay());
     }
 
     @Override

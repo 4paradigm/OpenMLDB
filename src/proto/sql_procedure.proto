@@ -17,6 +17,7 @@ message ProcedureInfo {
 
 message CreateProcedureRequest {
     optional ProcedureInfo sp_info = 1;
+    optional uint64 timeout_ms = 2;
 }
 
 message DropProcedureRequest {

@@ -29,6 +29,25 @@ set(RTIDB_VERSION_MAJOR 1)
 set(RTIDB_VERSION_MEDIUM 6)
 set(RTIDB_VERSION_MINOR 2)
 set(RTIDB_VERSION_BUG 0)
+set(RTIDB_COMMIT_ID 0)
+set(FESQL_COMMIT_ID 0)
+
+function(get_commitid CODE_DIR COMMIT_ID)
+    find_package(Git REQUIRED)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} log -1 --pretty=format:%h
+        OUTPUT_VARIABLE COMMIT_ID_TMP
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+        WORKING_DIRECTORY
+        ${CODE_DIR}
+    )
+    set("${COMMIT_ID}" ${COMMIT_ID_TMP} PARENT_SCOPE)
+endfunction()
+
+get_commitid(${PROJECT_SOURCE_DIR} RTIDB_COMMIT_ID)
+get_commitid(${PROJECT_SOURCE_DIR}/fesql FESQL_COMMIT_ID)
+message(STATUS "COMMIT_ID : ${RTIDB_COMMIT_ID}.${FESQL_COMMIT_ID}")
 configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"
   "${PROJECT_SOURCE_DIR}/src/version.h"
@@ -48,6 +67,8 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     add_definitions(-Wno-c++17-extensions)
     add_definitions(-Wno-defaulted-function-deleted)
     add_definitions(-Wno-pessimizing-move)
+    add_definitions(-Wno-unused-value)
+    add_definitions(-Wno-\#pragma-messages)
 endif ()
 add_definitions(-DHAVE_STDBOOL_H=1)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")

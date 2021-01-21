@@ -1,6 +1,6 @@
 package com._4paradigm.sql.jmh;
 
-import org.omg.Messaging.SYNC_WITH_TRANSPORT;
+import com._4paradigm.sql.BenchmarkConfig;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
@@ -12,11 +12,11 @@ import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
-@BenchmarkMode(Mode.All)
+@BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
-@Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
-@Warmup(iterations = 2)
+@Fork(value = 1, jvmArgs = {"-Xms16G", "-Xmx16G"})
+@Warmup(iterations = 1)
 public class MemSQLGroupByBenchmark {
 
     static {
@@ -49,19 +49,22 @@ public class MemSQLGroupByBenchmark {
             System.out.println(header);
             try {
                 st.execute("drop table perf");
+                st.close();
             } catch (Exception e) { }
             try {
-                cnn.createStatement().execute(header);
+                st = cnn.createStatement();
+                st.execute(header);
+                st.close();
             } catch (Exception e) {
                 e.printStackTrace();
                 return;
             }
-            query = "select ";
+            query = "select count (*), ";
             for (int i = 0; i < 50; i++) {
                 if (i == 49) {
-                    query += "sum(col_agg" + i + ")";
+                    query += "avg(col_agg" + i + ")";
                 }else {
-                    query += "sum(col_agg" + i + "),";
+                    query += "avg(col_agg" + i + "),";
                 }
             }
             for (int i = 0; i < 50; i++) {
@@ -72,15 +75,18 @@ public class MemSQLGroupByBenchmark {
                 }
             }
             format+=");";
-            query += " from perf where col1 = ? group by col1";
+            query += " from perf group by col1 having col1=?";
+            System.out.println(query);
             for (int i = 0; i < 20000; i++) {
                 String pk = "pkxxx" + i;
-                for (int j = 0; j < 100; j++) {
+                for (int j = 0; j < 1000; j++) {
                     st = cnn.createStatement();
                     String sql =String.format(format, "perf", pk, System.currentTimeMillis()) ;
                     st.execute(sql);
+                    st.close();
+                    System.out.println(sql);
                 }
-                if (i % 1000 == 0) System.out.println(i * 100);
+                if (i % 1000 == 0) System.out.println(i * 1000);
                 querySet.add(pk);
             }
         } catch (Exception e) {
@@ -95,16 +101,17 @@ public class MemSQLGroupByBenchmark {
         try {
             if (index < 0) index = index * -1;
             String key = querySet.get((int) index);
+            System.out.println(key);
             PreparedStatement ps = cnn.prepareStatement(query);
             ps.setString(1, key);
             ps.executeQuery();
+            ps.close();
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
             counter++;
         }
     }
-
     public static void main(String[] args) throws RunnerException {
         Options opt = new OptionsBuilder()
                 .include(MemSQLGroupByBenchmark.class.getSimpleName())

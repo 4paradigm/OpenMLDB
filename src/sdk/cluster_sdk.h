@@ -31,6 +31,7 @@
 #include "thread_pool.h"  // NOLINT
 #include "vm/catalog.h"
 #include "zk/zk_client.h"
+#include "vm/engine.h"
 
 namespace rtidb {
 namespace sdk {
@@ -81,15 +82,22 @@ class ClusterSDK {
     bool GetTablet(const std::string& db, const  std::string& name,
             std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>>* tablets);
     std::shared_ptr<::rtidb::catalog::TabletAccessor> GetTablet(const std::string& db,
-                                                                   const  std::string& name);
+                                                                   const std::string& name);
     std::shared_ptr<::rtidb::catalog::TabletAccessor> GetTablet(const std::string& db,
-                                                                   const  std::string& name,
+                                                                   const std::string& name,
                                                                    uint32_t pid);
+    std::shared_ptr<::rtidb::catalog::TabletAccessor> GetTablet(const std::string& db,
+                                                                   const std::string& name,
+                                                                   const std::string& pk);
 
     std::shared_ptr<fesql::sdk::ProcedureInfo> GetProcedureInfo(
             const std::string& db, const std::string& sp_name, std::string* msg);
 
     std::vector<std::shared_ptr<fesql::sdk::ProcedureInfo>> GetProcedureInfo(std::string* msg);
+
+    inline ::fesql::vm::Engine* GetEngine() {
+        return engine_;
+    }
 
  private:
     bool InitCatalog();
@@ -119,6 +127,7 @@ class ClusterSDK {
     uint64_t session_id_;
     ::rtidb::base::Random rand_;
     std::string sp_root_path_;
+    ::fesql::vm::Engine* engine_;
 };
 
 }  // namespace sdk

@@ -1,6 +1,6 @@
 package com._4paradigm.sql.jmh;
 
-import com._4paradigm.sql.ResultSet;
+import com._4paradigm.sql.BenchmarkConfig;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
@@ -10,7 +10,10 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.All)
@@ -27,8 +30,10 @@ public class FESQLGroupByBenchmark {
     private String ddl = "";
     private String query = "";
     private boolean setupOk = false;
-    private int recordSize = 1000;
+    private int recordSize = 20000;
+    private ArrayList<String> querySet = new ArrayList<>();
     private String format = "insert into %s values('%s', %d,";
+    private Random random = new Random(System.currentTimeMillis());
     private long counter = 0;
     public FESQLGroupByBenchmark() {
         SdkOption sdkOption = new SdkOption();
@@ -53,12 +58,12 @@ public class FESQLGroupByBenchmark {
         query = "select ";
         for (int i = 0; i < 50; i++) {
             if (i == 49) {
-                query += "sum(col_agg" + i + ")";
+                query += "avg(col_agg" + i + ")";
             }else {
-                query += "sum(col_agg" + i + "),";
+                query += "avg(col_agg" + i + "),";
             }
         }
-        query += " from perf group by col1;";
+        query += " from perf where col1='pkxxx0'";
         for (int i = 0; i < 50; i++) {
             if (i == 49) {
                 format += "2.0";
@@ -76,14 +81,32 @@ public class FESQLGroupByBenchmark {
             return;
         }
         for (int i = 0; i < recordSize; i++) {
-            String sql = String.format(format, "perf","pkxxx", System.currentTimeMillis());
-            System.out.println(executor.executeInsert(db, sql));
+            String pk = "pkxxx" + i;
+            for (int j = 0; j < 1000; j++) {
+                String sql = String.format(format, "perf", pk, System.currentTimeMillis());
+                executor.executeInsert(db, sql);
+            }
+            System.out.println(i * 1000);
+            querySet.add(pk);
         }
     }
 
     @Benchmark
     public void groupByBm() {
-        executor.executeSQL(db, query);
+        long index = random.nextInt(querySet.size());
+        PreparedStatement pst = null;
+        try {
+            pst = executor.getRequestPreparedStmt(db, query);
+            if (index < 0) index = index * -1;
+            String key = querySet.get((int) index);
+            pst.setString(1, key);
+            pst.setLong(2, System.currentTimeMillis());
+            for (int i = 3; i < 50-3; i++) {
+
+            }
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
     }
     public static void main(String[] args) throws RunnerException {
        Options opt = new OptionsBuilder()

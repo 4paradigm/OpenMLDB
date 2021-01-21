@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from fedb.sql_router_sdk import DataTypeName
 from abc import ABCMeta,abstractmethod
 from nb_log import LogManager
 import re

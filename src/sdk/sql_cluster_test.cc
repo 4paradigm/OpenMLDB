@@ -30,6 +30,7 @@
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_router.h"
+#include "sdk/sql_cluster_router.h"
 #include "sdk/sql_sdk_test.h"
 #include "timer.h"  // NOLINT
 #include "vm/catalog.h"
@@ -102,6 +103,52 @@ TEST_F(SQLClusterTest, cluster_insert) {
     ASSERT_TRUE(ok);
 }
 
+TEST_F(SQLSDKQueryTest, GetTabletClient) {
+    std::string ddl =
+        "create table t1(col0 string,\n"
+        "                col1 bigint,\n"
+        "                col2 string,\n"
+        "                col3 bigint,\n"
+        "                index(key=col2, ts=col3)) partitionnum=2;";
+    SQLRouterOptions sql_opt;
+    sql_opt.session_timeout = 30000;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) {
+        FAIL() << "Fail new cluster sql router";
+    }
+    std::string db = "gettabletclient;";
+    fesql::sdk::Status status;
+    ASSERT_TRUE(router->CreateDB(db, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
+    ASSERT_TRUE(router->RefreshCatalog());
+    std::string sql = "select col2, sum(col1) over w1 from t1 \n"
+                      "window w1 as (partition by col2 \n"
+                      "order by col3 rows between 3 preceding and current row);";
+    auto ns_client = mc_->GetNsClient();
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::string msg;
+    ASSERT_TRUE(ns_client->ShowTable("t1", db, false, tables, msg));
+    for (int i = 0; i < 10; i++) {
+        std::string pk = "pk" + std::to_string(i);
+        auto request_row = router->GetRequestRow(db, sql, &status);
+        request_row->Init(4 + pk.size());
+        request_row->AppendString("col0");
+        request_row->AppendInt64(1);
+        request_row->AppendString(pk);
+        request_row->AppendInt64(3);
+        ASSERT_TRUE(request_row->Build());
+        auto sql_cluster_router = std::dynamic_pointer_cast<SQLClusterRouter>(router);
+        auto client = sql_cluster_router->GetTabletClient(db, sql, request_row);
+        int pid = ::rtidb::base::hash64(pk) % 2;
+        ASSERT_EQ(client->GetEndpoint(), tables[0].table_partition(pid).partition_meta(0).endpoint());
+    }
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table t1;", &status));
+    ASSERT_TRUE(router->DropDB(db, &status));
+}
+
 
 static std::shared_ptr<SQLRouter> GetNewSQLRouter(const fesql::sqlcase::SQLCase& sql_case) {
     SQLRouterOptions sql_opt;
@@ -111,6 +158,25 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter(const fesql::sqlcase::SQLCase&
     return NewClusterSQLRouter(sql_opt);
 }
 
+TEST_P(SQLSDKQueryTest, sql_sdk_distribute_batch_request_test) {
+    auto sql_case = GetParam();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport") ||
+        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    if (sql_case.batch_request().columns_.empty()) {
+        LOG(WARNING) << "No batch request specified";
+        return;
+    }
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
+    DistributeRunBatchRequestModeSDK(sql_case, router);
+    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+}
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_test) {
     auto sql_case = GetParam();
     if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
@@ -146,7 +212,26 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_test) {
     DistributeRunRequestModeSDK(sql_case, router);
     LOG(INFO) << "Finish sql_sdk_distribute_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
-
+TEST_P(SQLSDKQueryTest, sql_sdk_distribute_batch_request_single_partition_test) {
+    auto sql_case = GetParam();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport") ||
+        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    if (sql_case.batch_request().columns_.empty()) {
+        LOG(WARNING) << "No batch request specified";
+        return;
+    }
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
+    DistributeRunBatchRequestModeSDK(sql_case, router, 1);
+    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_single_partition_test: ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc();
+}
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_single_partition_test) {
     auto sql_case = GetParam();
     if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
@@ -164,7 +249,8 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_single_part
     auto router = GetNewSQLRouter(sql_case);
     ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
     DistributeRunBatchRequestModeSDK(sql_case, router, 1);
-    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_single_partition_test: ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc();
 }
 
 TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_single_partition_test) {
@@ -180,7 +266,8 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_single_partition_test) {
     auto router = GetNewSQLRouter(sql_case);
     ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router with multi partitions";
     DistributeRunRequestModeSDK(sql_case, router, 1);
-    LOG(INFO) << "Finish sql_sdk_distribute_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    LOG(INFO) << "Finish sql_sdk_distribute_request_single_partition_test: ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc();
 }
 
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_test) {
@@ -305,6 +392,7 @@ TEST_F(SQLClusterTest, create_table) {
 }  // namespace rtidb
 
 int main(int argc, char** argv) {
+    ::fesql::vm::Engine::InitializeGlobalLLVM();
     FLAGS_zk_session_timeout = 100000;
     ::rtidb::sdk::MiniCluster mc(6181);
     ::rtidb::sdk::mc_ = &mc;

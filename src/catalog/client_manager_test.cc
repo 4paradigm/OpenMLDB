@@ -46,7 +46,7 @@ TEST_F(ClientManagerTest, client_manager_test) {
     ::rtidb::storage::TableSt table_st(table_info);
     ASSERT_EQ(8, table_st.GetPartitionNum());
     ASSERT_EQ("name0", table_st.GetPartition(1).GetLeader());
-    ASSERT_EQ(2, table_st.GetPartition(1).GetFollower().size());
+    ASSERT_EQ(2u, table_st.GetPartition(1).GetFollower().size());
 
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>> tablet_clients;
     auto client0 = std::make_shared<::rtidb::client::TabletClient>("name0", "endpoint0");

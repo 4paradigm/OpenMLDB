@@ -35,9 +35,11 @@
 #include "sdk/sql_cluster_router.h"
 #include "version.h"  // NOLINT
 
+DEFINE_string(database, "", "Set database");
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_bool(interactive);
+DECLARE_string(cmd);
 
 using ::rtidb::catalog::TTL_TYPE_MAP;
 
@@ -53,11 +55,11 @@ const std::string LOGO =  // NOLINT
     " | | |  __ / |__| | |_) |\n"
     " |_|  \\___||_____/|____/\n";
 
-const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) +  // NOLINT
-                            "." +                                  // NOLINT
+const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) + "." +  // NOLINT
                             std::to_string(RTIDB_VERSION_MEDIUM) + "." +
                             std::to_string(RTIDB_VERSION_MINOR) + "." +
-                            std::to_string(RTIDB_VERSION_BUG);
+                            std::to_string(RTIDB_VERSION_BUG) + "." +
+                            RTIDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
 
 std::string db = "";  // NOLINT
 ::rtidb::sdk::ClusterSDK *cs = NULL;
@@ -129,6 +131,12 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
                     result_set->GetDate(i, &year, &month, &day);
                     ss << year << "-" << month << "-" << day;
                     t.add(ss.str());
+                    break;
+                }
+                case fesql::sdk::kTypeBool: {
+                    bool value = false;
+                    result_set->GetBool(i, &value);
+                    t.add(value ? "true" : "false");
                     break;
                 }
                 default: {
@@ -414,6 +422,17 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             }
             break;
         }
+        case fesql::node::kCmdDropDatabase: {
+            std::string name = cmd_node->GetArgs()[0];
+            std::string error;
+            auto ns = cs->GetNsClient();
+            if (!ns->DropDatabase(name, error)) {
+                std::cout << error << std::endl;
+            } else {
+                std::cout << "drop ok" << std::endl;
+            }
+            break;
+        }
         case fesql::node::kCmdDropTable: {
             if (db.empty()) {
                 std::cout << "please enter database first" << std::endl;
@@ -468,6 +487,14 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
         }
         case fesql::node::kCmdShowCreateSp: {
             std::string db_name = cmd_node->GetArgs()[0];
+            if (db_name.empty()) {
+                if (db.empty()) {
+                    std::cout << "please enter database first" << std::endl;
+                    return;
+                } else {
+                    db_name = db;
+                }
+            }
             std::string sp_name = cmd_node->GetArgs()[1];
             std::string error;
             std::shared_ptr<fesql::sdk::ProcedureInfo> sp_info =
@@ -483,10 +510,6 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             std::string error;
             std::vector<std::shared_ptr<fesql::sdk::ProcedureInfo>> sp_infos =
                 cs->GetProcedureInfo(&error);
-            if (sp_infos.empty()) {
-                std::cout << "Fail to show procdure. error msg: " << error << std::endl;
-                return;
-            }
             std::vector<std::pair<std::string, std::string>> pairs;
             for (uint32_t i = 0; i < sp_infos.size(); i++) {
                 auto& sp_info = sp_infos.at(i);
@@ -639,8 +662,10 @@ void HandleSQL(const std::string &sql) {
 }
 
 void HandleCli() {
-    std::cout << LOGO << std::endl;
-    std::cout << "v" << VERSION << std::endl;
+    if (FLAGS_interactive) {
+        std::cout << LOGO << std::endl;
+        std::cout << "v" << VERSION << std::endl;
+    }
     ::rtidb::sdk::ClusterOptions copt;
     copt.zk_cluster = FLAGS_zk_cluster;
     copt.zk_path = FLAGS_zk_root_path;
@@ -663,20 +688,25 @@ void HandleCli() {
     bool multi_line = false;
     while (true) {
         std::string buffer;
-        char *line = ::rtidb::base::linenoise(
-            multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
-        if (line == NULL) {
-            return;
-        }
-        if (line[0] != '\0' && line[0] != '/') {
-            buffer.assign(line);
-            if (!buffer.empty()) {
-                ::rtidb::base::linenoiseHistoryAdd(line);
+        if (!FLAGS_interactive) {
+            buffer = FLAGS_cmd;
+            db = FLAGS_database;
+        } else {
+            char *line = ::rtidb::base::linenoise(
+                multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
+            if (line == NULL) {
+                return;
             }
-        }
-        ::rtidb::base::linenoiseFree(line);
-        if (buffer.empty()) {
-            continue;
+            if (line[0] != '\0' && line[0] != '/') {
+                buffer.assign(line);
+                if (!buffer.empty()) {
+                    ::rtidb::base::linenoiseHistoryAdd(line);
+                }
+            }
+            ::rtidb::base::linenoiseFree(line);
+            if (buffer.empty()) {
+                continue;
+            }
         }
         sql.append(buffer);
         if (sql.back() == ';') {
@@ -689,7 +719,9 @@ void HandleCli() {
         } else {
             sql.append("\n");
             multi_line = true;
-            continue;
+        }
+        if (!FLAGS_interactive) {
+            return;
         }
     }
 }

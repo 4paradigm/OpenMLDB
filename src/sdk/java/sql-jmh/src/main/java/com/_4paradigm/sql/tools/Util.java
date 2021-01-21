@@ -2,15 +2,26 @@ package com._4paradigm.sql.tools;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 
 import com._4paradigm.featuredb.proto.Base;
+import com._4paradigm.sql.BenchmarkConfig;
 
 public class Util {
     public static String getContent(String httpUrl) {
         try {
             URL url = new URL(httpUrl);
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            HttpURLConnection con = null;
+            if (BenchmarkConfig.NeedProxy()) {
+                con = (HttpURLConnection) url.openConnection(new Proxy(Proxy.Type.SOCKS,
+                        new InetSocketAddress("127.0.0.1",1080)));
+            } else {
+                con = (HttpURLConnection) url.openConnection();
+            }
             con.setRequestMethod("GET");
             con.connect();
             if (con.getResponseCode() == 200) {
@@ -69,5 +80,25 @@ public class Util {
             default:
                 throw new Exception("type " + type + " is not supported");
         }
+    }
+
+    public static Map<String, TableInfo> parseDDL(String ddlUrl, Relation relation) {
+        String ddl = Util.getContent(ddlUrl);
+        String[] arr = ddl.split(";");
+        Map<String, TableInfo> tableMap = new HashMap<>();
+        for (String item : arr) {
+            item = item.trim().replace("\n", "");
+            if (item.isEmpty()) {
+                continue;
+            }
+            TableInfo table = new TableInfo(item, relation);
+            tableMap.put(table.getName(), table);
+        }
+        return tableMap;
+    }
+
+    public static String getCreateProcedureDDL(String pName, TableInfo mainTable, String script) {
+        String ddl = "create PROCEDURE " + pName + "(" + mainTable.getTypeString() + ") \n BEGIN \n" + script + "\n END;";
+        return ddl;
     }
 }

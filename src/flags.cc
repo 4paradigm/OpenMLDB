@@ -141,6 +141,7 @@ DEFINE_uint32(snapshot_ttl_check_interval, 60,
               "config relational table snapshot TTL check in minutes");
 DEFINE_string(snapshot_compression, "off", "Type of snapshot compression, can be off, pz, snappy, zlib");
 DEFINE_uint32(fpga_env_num, 4, "config fpga_env num of initing for snapshot compression");
+DEFINE_int32(snapshot_pool_size, 1, "the size of tablet thread pool for making snapshot");
 
 DEFINE_uint32(load_index_max_wait_time, 120 * 60 * 1000,
               "config the max wait time of load index");

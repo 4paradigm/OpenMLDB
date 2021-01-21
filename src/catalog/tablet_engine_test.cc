@@ -154,7 +154,9 @@ void TabletEngineTest::BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // N
     fesql::base::Status get_status;
     fesql::vm::Engine engine(catalog);
     fesql::vm::BatchRunSession session;
-    //    session.EnableDebug();
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        session.EnableDebug();
+    }
     bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_EQ(sql_case.expect().success_, ok);
     if (!sql_case.expect().success_) {
@@ -238,7 +240,9 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
     std::cout << sql_str << std::endl;
     fesql::base::Status get_status;
     fesql::vm::RequestRunSession session;
-    //    session.EnableDebug();
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        session.EnableDebug();
+    }
     bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_EQ(sql_case.expect().success_, ok);
     if (!sql_case.expect().success_) {
@@ -274,6 +278,9 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
         }
     }
 
+    if (sql_case.expect().data_.empty() && sql_case.expect().rows_.empty()) {
+        return;
+    }
     // Check Output Schema
     std::vector<fesql::codec::Row> case_output_data;
     fesql::type::TableDef case_output_table;
@@ -348,9 +355,6 @@ INSTANTIATE_TEST_SUITE_P(EngineLastJoinQuery, TabletEngineTest,
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinWindowQuery, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/last_join_window_query.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(EngineRequestLastJoinWindowQuery, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/last_join_window_query.yaml")));
-
 INSTANTIATE_TEST_SUITE_P(EngineWindowQuery, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/window_query.yaml")));
 
@@ -391,6 +395,14 @@ INSTANTIATE_TEST_SUITE_P(EngineTestWhere, TabletEngineTest,
 INSTANTIATE_TEST_SUITE_P(
     EngineTestFZFunction, TabletEngineTest,
     testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestIndexOptimized, TabletEngineTest,
+    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_index_optimized.yaml")));
+
+INSTANTIATE_TEST_SUITE_P(EngineTestErrorWindow, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/error/error_window.yaml")));
+INSTANTIATE_TEST_CASE_P(EngineTestDebugIssues, TabletEngineTest,
+                        testing::ValuesIn(TabletEngineTest::InitCases("/cases/debug/issues_case.yaml")));
 
 }  // namespace catalog
 }  // namespace rtidb

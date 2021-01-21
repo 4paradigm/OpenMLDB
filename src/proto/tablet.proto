@@ -263,6 +263,7 @@ message ScanRequest {
     optional uint32 atleast = 14 [default = 0];
     repeated uint32 projection = 15;
     repeated uint32 pid_group = 16;
+    optional bool use_attachment = 17 [default = false];
 }
 
 message RpcMetric {
@@ -312,6 +313,7 @@ message ScanResponse {
     optional int32 code = 3;
     optional uint32 count = 4;
     optional RpcMetric metric = 6 [deprecated = true];
+    optional uint32 buf_size = 7;
 }
 
 message ReplicaRequest {
@@ -764,11 +766,12 @@ message QueryRequest {
     optional string sql = 1;
     optional string db = 2;
     optional bool is_batch = 3;
-    optional bytes input_row = 4;
-    optional bool is_debug = 5 [default = false];
-    optional string sp_name = 6;
-    optional bool is_procedure = 7 [default = false];
-    optional uint64 task_id = 8;
+    optional bool is_debug = 4 [default = false];
+    optional string sp_name = 5;
+    optional bool is_procedure = 6 [default = false];
+    optional uint64 task_id = 7;
+    optional uint32 row_size = 8;
+    optional uint32 row_slices = 9;
 }
 
 message QueryResponse {
@@ -777,33 +780,41 @@ message QueryResponse {
     optional uint32 count = 3;
     optional uint32 byte_size = 4;
     optional bytes schema = 5;
+    optional uint32 row_slices = 6;
 }
 
 /**
-  * Batch request input encoding:
-  *   - common columns are encoded in shared `common_row` field
-  *   - other non-common columns are encoded in `non_common_rows` for each row
-  *   - column in common/non-common part preserve ordering of original schema 
+  * Batch request rows encoding:
+  *   (1) Multiple rows are stored in attachment consecutively and use `row_sizes`
+  *      to find each row's start offset in attachment buffer. Multiple slices in
+  *      row are stored consecutively also, with slice size encoded just in slice data.
+  *
+  *   (2) If non-trival common columns exist
+  *   - `row_sizes` store N+1 integers, the first is the total size of common row part,
+        the next N is total size of each non-common row part from batch.
+  *   - `common_slices` represent common row's slices num.
+  *   - `non_common_slices` represent non-common row's slices num.
+  *   - the actual ith row is concat of common row part and ith non-common row part.
+  *
+  *   (3) else
+  *   - `row_sizes` store N integers, each record total size (sum of slice sizes) of
+        one row from batch.
+  *   - `common_slices` = 0
+  *   - `non_common_slices` represent slices num of each row.
   */
 message SQLBatchRequestQueryRequest {
     optional string sql = 1;
     optional string db = 2;
     repeated uint32 common_column_indices = 3;
-    optional bytes common_row = 4;
-    repeated bytes non_common_rows = 5;
-    optional bool is_debug = 6 [default = false];
-    optional string sp_name = 7;
-    optional bool is_procedure = 8 [default = false];
+    optional bool is_debug = 4 [default = false];
+    optional string sp_name = 5;
+    optional bool is_procedure = 6 [default = false];
+    repeated uint32 row_sizes = 7;
+    optional uint32 common_slices = 8;
+    optional uint32 non_common_slices = 9;
+    optional uint64 task_id = 10;
 }
 
-/**
-  * Batch request output decoding:
-  *   - All data are stored in payload buffer
-  *   - Data are concatenation of 1+N row buffer for batch size N,
-  *     with sizes specified by `row_sizes` field
-  *   - The first is shared common output columns, the others are
-  *     non-common column part for each input request 
-  */
 message SQLBatchRequestQueryResponse {
     optional int32 code = 1;
     optional string msg = 2;
@@ -811,6 +822,8 @@ message SQLBatchRequestQueryResponse {
     optional bytes schema = 4;
     repeated uint32 common_column_indices = 5;
     repeated uint32 row_sizes = 6;
+    optional uint32 common_slices = 7;
+    optional uint32 non_common_slices = 8;
 }
 
 message ExplainRequest {
@@ -850,6 +863,7 @@ service TabletServer {
     rpc Query(QueryRequest) returns(QueryResponse);
     rpc SubQuery(QueryRequest) returns(QueryResponse);
     rpc SQLBatchRequestQuery(SQLBatchRequestQueryRequest) returns(SQLBatchRequestQueryResponse);
+    rpc SubBatchRequestQuery(SQLBatchRequestQueryRequest) returns(SQLBatchRequestQueryResponse);
 
     // table api for master
     rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);

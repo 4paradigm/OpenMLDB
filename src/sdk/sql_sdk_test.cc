@@ -76,20 +76,15 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
     RunRequestModeSDK(sql_case, router);
     LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
-
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_test) {
+TEST_P(SQLSDKQueryTest, sql_sdk_batch_request_test) {
     auto sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
         boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
         boost::contains(sql_case.mode(), "request-unsupport")) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
-    if (sql_case.batch_request().columns_.empty()) {
-        LOG(WARNING) << "No batch request specified";
-        return;
-    }
-    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     auto router = GetNewSQLRouter(sql_case);
     ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
     RunBatchRequestModeSDK(sql_case, router);
@@ -141,7 +136,24 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_asyn_test) {
     LOG(INFO) << "Finish sql_sdk_request_procedure_asyn_test: ID: "
         << sql_case.id() << ", DESC: " << sql_case.desc();
 }
-
+TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_test) {
+    auto sql_case = GetParam();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    if (sql_case.batch_request().columns_.empty()) {
+        LOG(WARNING) << "No batch request specified";
+        return;
+    }
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
+    RunBatchRequestModeSDK(sql_case, router);
+    LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+}
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_test) {
     auto sql_case = GetParam();
     if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
@@ -407,7 +419,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
         " (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     std::string sp_ddl =
         "create procedure " + sp_name +
-        " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
+        " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, const c7 timestamp, c8 date" + ")" +
         " begin " + sql + " end;";
     if (!router->ExecuteDDL(db, sp_ddl, &status)) {
         FAIL() << "fail to create procedure";
@@ -459,6 +471,9 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     ASSERT_EQ(input_schema.GetColumnType(4), fesql::sdk::kTypeDouble);
     ASSERT_EQ(input_schema.GetColumnType(5), fesql::sdk::kTypeTimestamp);
     ASSERT_EQ(input_schema.GetColumnType(6), fesql::sdk::kTypeDate);
+    ASSERT_TRUE(input_schema.IsConstant(0));
+    ASSERT_TRUE(input_schema.IsConstant(1));
+    ASSERT_TRUE(!input_schema.IsConstant(2));
 
     auto& output_schema = sp_info->GetOutputSchema();
     ASSERT_EQ(output_schema.GetColumnCnt(), 3u);
@@ -468,10 +483,81 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     ASSERT_EQ(output_schema.GetColumnType(0), fesql::sdk::kTypeString);
     ASSERT_EQ(output_schema.GetColumnType(1), fesql::sdk::kTypeInt32);
     ASSERT_EQ(output_schema.GetColumnType(2), fesql::sdk::kTypeInt64);
+    ASSERT_TRUE(output_schema.IsConstant(0));
+    ASSERT_TRUE(output_schema.IsConstant(1));
+    ASSERT_TRUE(!output_schema.IsConstant(2));
+
     // drop procedure
+    std::string drop_sp_sql = "drop procedure " + sp_name + ";";
+    ASSERT_TRUE(router->ExecuteDDL(db, drop_sp_sql, &status));
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table trans;", &status));
 }
 
+TEST_F(SQLSDKTest, table_reader_scan) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    std::string db = GenRand("db");
+    ::fesql::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    for (int i = 0; i < 2; i++) {
+        std::string name = "test" + std::to_string(i);
+        std::string ddl = "create table " + name +
+                          "("
+                          "col1 string, col2 bigint,"
+                          "index(key=col1, ts=col2));";
+        ok = router->ExecuteDDL(db, ddl, &status);
+        ASSERT_TRUE(ok);
+    }
+    ASSERT_TRUE(router->RefreshCatalog());
+    std::string insert = "insert into test0 values('key1', 1609212669000L);";
+    ASSERT_TRUE(router->ExecuteInsert(db, insert, &status));
+    auto table_reader = router->GetTableReader();
+    ScanOption so;
+    auto rs = table_reader->Scan(db, "test0", "key1", 1609212679000l, 0, so, &status);
+    ASSERT_TRUE(rs);
+    ASSERT_EQ(1, rs->Size());
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ(1609212669000l, rs->GetInt64Unsafe(1));
+    ASSERT_FALSE(rs->Next());
+}
+
+TEST_F(SQLSDKTest, table_reader_async_scan) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    std::string db = GenRand("db");
+    ::fesql::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    for (int i = 0; i < 2; i++) {
+        std::string name = "test" + std::to_string(i);
+        std::string ddl = "create table " + name +
+                          "("
+                          "col1 string, col2 bigint,"
+                          "index(key=col1, ts=col2));";
+        ok = router->ExecuteDDL(db, ddl, &status);
+        ASSERT_TRUE(ok);
+    }
+    ASSERT_TRUE(router->RefreshCatalog());
+    std::string insert = "insert into test0 values('key1', 1609212669000L);";
+    ASSERT_TRUE(router->ExecuteInsert(db, insert, &status));
+    auto table_reader = router->GetTableReader();
+    ScanOption so;
+    auto future = table_reader->AsyncScan(db, "test0", "key1", 1609212679000l, 0, so, 10, &status);
+    ASSERT_TRUE(future);
+    auto rs = future->GetResultSet(&status);
+    ASSERT_TRUE(rs);
+    ASSERT_EQ(1, rs->Size());
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ(1609212669000l, rs->GetInt64Unsafe(1));
+    ASSERT_FALSE(rs->Next());
+}
 TEST_F(SQLSDKTest, create_table) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
@@ -518,6 +604,7 @@ TEST_F(SQLSDKTest, create_table) {
 }  // namespace rtidb
 
 int main(int argc, char** argv) {
+    ::fesql::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
     FLAGS_zk_session_timeout = 100000;

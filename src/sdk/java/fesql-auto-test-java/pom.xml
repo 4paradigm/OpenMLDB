@@ -5,15 +5,15 @@
     <parent>
         <artifactId>sql-sdk</artifactId>
         <groupId>com._4paradigm.sql</groupId>
-        <version>2.0.0.0-SNAPSHOT</version>
+        <version>2.1.0.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>fesql-auto-test-java</artifactId>
 
     <properties>
-        <sql.version>2.0.0.0-SNAPSHOT</sql.version>
-        <fesql.version>0.0.1-SNAPSHOT</fesql.version>
+        <sql.version>2.1.0.0-SNAPSHOT</sql.version>
+        <fesql.version>0.0.2-RELEASE</fesql.version>
         <suiteXmlFile>test_suite/test_v1.xml</suiteXmlFile>
         <aspectj.version>1.8.9</aspectj.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

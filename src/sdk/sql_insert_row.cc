@@ -248,16 +248,16 @@ bool SQLInsertRow::AppendString(const std::string& val) {
     return false;
 }
 
-bool SQLInsertRow::AppendString(const char* val, uint32_t length) {
+bool SQLInsertRow::AppendString(const char* string_buffer_var_name, uint32_t length) {
     if (IsDimension()) {
         if (0 == length) {
             PackDimension(fesql::codec::EMPTY_STRING);
         } else {
-            PackDimension(std::string(val, length));
+            PackDimension(std::string(string_buffer_var_name, length));
         }
     }
     str_size_ -= length;
-    if (rb_.AppendString(val, length)) {
+    if (rb_.AppendString(string_buffer_var_name, length)) {
         return MakeDefault();
     }
     return false;

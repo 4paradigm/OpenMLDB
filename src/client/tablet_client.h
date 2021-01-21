@@ -181,6 +181,13 @@ class TabletClient {
                                     std::string& msg,     // NOLINT
                                     bool showm = false);  // NOLINT
 
+    bool Scan(const ::rtidb::api::ScanRequest& request,
+             brpc::Controller* cntl,
+             ::rtidb::api::ScanResponse* response);
+
+    bool AsyncScan(const ::rtidb::api::ScanRequest& request,
+                   rtidb::RpcCallback<rtidb::api::ScanResponse>* callback);
+
     bool GetTableSchema(uint32_t tid, uint32_t pid,
                         ::rtidb::api::TableMeta& table_meta);  // NOLINT
 
@@ -342,27 +349,29 @@ class TabletClient {
     bool CallProcedure(const std::string& db, const std::string& sp_name,
             const std::string& row, brpc::Controller* cntl,
             rtidb::api::QueryResponse* response,
-            bool is_debug);
+            bool is_debug, uint64_t timeout_ms);
 
     bool CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
             std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch>,
             brpc::Controller* cntl,
             rtidb::api::SQLBatchRequestQueryResponse* response,
-            bool is_debug);
+            bool is_debug, uint64_t timeout_ms);
 
     bool DropProcedure(const std::string& db_name, const std::string& sp_name);
 
     bool SubQuery(const ::rtidb::api::QueryRequest& request,
             rtidb::RpcCallback<rtidb::api::QueryResponse>* callback);
 
+    bool SubBatchRequestQuery(const ::rtidb::api::SQLBatchRequestQueryRequest& request,
+                              rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback);
     bool CallProcedure(const std::string& db, const std::string& sp_name,
-            const std::string& row, int64_t timeout_ms, bool is_debug,
+            const std::string& row, uint64_t timeout_ms, bool is_debug,
             rtidb::RpcCallback<rtidb::api::QueryResponse>* callback);
 
     bool CallSQLBatchRequestProcedure(
             const std::string& db, const std::string& sp_name,
             std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
-            bool is_debug, int64_t timeout_ms,
+            bool is_debug, uint64_t timeout_ms,
             rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback);
 
  private:

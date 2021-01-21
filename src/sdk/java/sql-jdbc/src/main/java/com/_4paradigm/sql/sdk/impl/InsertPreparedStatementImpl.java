@@ -1,6 +1,7 @@
 package com._4paradigm.sql.sdk.impl;
 
 import com._4paradigm.sql.*;
+import com._4paradigm.sql.jdbc.SQLInsertMetaData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +32,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     private Map<String, SQLInsertRows> sqlRowsMap = new HashMap<>();
     private List<Integer> scehmaIdxs = null;
     private Map<Integer, Integer> stringsLen = new HashMap<>();
-
     public InsertPreparedStatementImpl(String db, String sql, SQLRouter router) throws SQLException {
         Status status = new Status();
         SQLInsertRows rows = router.GetInsertRows(db, sql, status);
@@ -80,7 +80,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         if (i <= 0) {
             throw new SQLException("error sqe number");
         }
-        if (i > currentDatasType.size()) {
+        if (i > scehmaIdxs.size()) {
             throw new SQLException("out of data range");
         }
     }
@@ -168,7 +168,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     private boolean checkNotAllowNull(int i) {
-        int idx = this.scehmaIdxs.get(i - 1);
+        long idx = this.scehmaIdxs.get(i - 1);
         return this.currentSchema.IsColumnNotNull(idx);
     }
 
@@ -183,7 +183,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         byte bytes[] = s.getBytes(CHARSET);
         stringsLen.put(i, bytes.length);
         hasSet.set(i - 1, true);
-        currentDatas.set(i - 1, s);
+        currentDatas.set(i - 1, bytes);
     }
 
     @Override
@@ -258,25 +258,23 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     private void dataBuild() throws SQLException {
-        for (int i = 0; i < hasSet.size(); i++) {
-            if (!hasSet.get(i)) {
-                throw new SQLException("data not enough");
-            }
-        }
         if (currentRows == null) {
             throw new SQLException("null rows");
         }
         if (currentRow == null) {
             currentRow = currentRows.NewRow();
         }
+
         int strLen = 0;
         for (Map.Entry<Integer, Integer> entry : stringsLen.entrySet()) {
             strLen += entry.getValue();
         }
+
         boolean ok = currentRow.Init(strLen);
         if (!ok) {
             throw new SQLException("build data row failed");
         }
+
         for (int i = 0; i < currentDatasType.size(); i++) {
             Object data = currentDatas.get(i);
             if (data == null) {
@@ -299,15 +297,13 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
                 } else if (DataType.kTypeInt64.equals(curType)) {
                     ok = currentRow.AppendInt64((long) data);
                 } else if (DataType.kTypeString.equals(curType)) {
-                    ok = currentRow.AppendString((String) data);
+                    byte[] bdata = (byte[])data;
+                    ok = currentRow.AppendString(bdata, bdata.length);
                 } else if (DataType.kTypeTimestamp.equals(curType)) {
                     ok = currentRow.AppendTimestamp((long) data);
                 } else {
                     throw new SQLException("unkown data type");
                 }
-            }
-            if (!ok) {
-                throw new SQLException("put data faile idx is " + i);
             }
         }
         if (!currentRow.Build()) {
@@ -385,7 +381,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     @Override
     @Deprecated
     public ResultSetMetaData getMetaData() throws SQLException {
-        throw new SQLException("current do not support this method");
+        return new SQLInsertMetaData(this.currentDatasType, this.currentSchema, this.scehmaIdxs);
     }
 
     @Override
@@ -712,19 +708,25 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         for (String key : sqlRowsMap.keySet()) {
             SQLInsertRows rows = sqlRowsMap.get(key);
             rows.delete();
+            rows = null;
         }
         sqlRowsMap.clear();
         currentSchema = null;
+        currentRow.delete();
         currentRow = null;
+        currentRows.delete();
         currentRows = null;
         Status status = new Status();
         currentRows = router.GetInsertRows(db, currentSql, status);
         if (status.getCode() != 0) {
             String msg = status.getMsg();
             logger.error("getInsertRows fail: {}", msg);
+            status.delete();
+            status = null;
             throw new SQLException("get insertrows fail " + msg + " in construction preparedstatement");
         }
-
+        status.delete();
+        status = null;
     }
 
     @Override

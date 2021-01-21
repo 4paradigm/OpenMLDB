@@ -51,11 +51,11 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
 
     const ::fesql::vm::IndexHint& GetIndex() override { return index_hint_; }
 
-    std::unique_ptr<::fesql::codec::RowIterator> GetIterator() const override {
+    std::unique_ptr<::fesql::codec::RowIterator> GetIterator() override {
         return std::move(std::unique_ptr<::fesql::codec::RowIterator>());
     }
 
-    ::fesql::codec::RowIterator* GetRawIterator() const override {
+    ::fesql::codec::RowIterator* GetRawIterator() override {
         return nullptr;
     }
 
@@ -89,7 +89,6 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
 
     inline uint32_t GetPartitionNum() const { return meta_.table_partition_size(); }
 
- private:
     inline int32_t GetColumnIndex(const std::string& column) {
         auto it = types_.find(column);
         if (it != types_.end()) {

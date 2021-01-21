@@ -257,3 +257,4 @@ class RpcCallback : public google::protobuf::Closure {
 }  // namespace rtidb
 
 #endif  // SRC_RPC_RPC_CLIENT_H_
+
