@@ -4,6 +4,7 @@ import com._4paradigm.fesql.common.FesqlException
 import com._4paradigm.fesql.spark.{PlanContext, SparkInstance}
 import com._4paradigm.fesql.vm.PhysicalDataProviderNode
 
+
 object DataProviderPlan {
 
   def gen(ctx: PlanContext, node: PhysicalDataProviderNode, inputs: Seq[SparkInstance]): SparkInstance = {
@@ -15,6 +16,7 @@ object DataProviderPlan {
     // If limit has been set
     val outputDf = if (node.GetLimitCnt() > 0) df.limit(node.GetLimitCnt()) else df
 
-    SparkInstance.fromDataFrame(outputDf)
+    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), outputDf)
   }
+
 }

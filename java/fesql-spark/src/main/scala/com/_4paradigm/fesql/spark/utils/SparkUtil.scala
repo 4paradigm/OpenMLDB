@@ -34,6 +34,7 @@ object SparkUtil {
 
   // Add the index column for Spark DataFrame
   def addIndexColumn(spark: SparkSession, df: DataFrame, indexColName: String = null): DataFrame = {
+    logger.debug("Add the indexColName(%s) to Spark DataFrame(%s)".format(indexColName, df.toString()))
     val indexedRDD = df.rdd.zipWithIndex().map {
       case (row, id) => Row.fromSeq(row.toSeq :+ id)
     }

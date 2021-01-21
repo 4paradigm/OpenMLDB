@@ -17,7 +17,9 @@ object SimpleProjectPlan {
 
   def gen(ctx: PlanContext, node: PhysicalSimpleProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
     val inputInstance = inputs.head
-    val inputDf = inputInstance.getDf(ctx.getSparkSession)
+
+    val inputDf = inputInstance.getDf()
+
     val outputSchema = node.GetOutputSchema()
 
     // Get the output column names from output schema
@@ -40,7 +42,8 @@ object SimpleProjectPlan {
     // Use Spark DataFrame to select columns
     val result = SparkColumnUtil.setDataframeNullable(
       inputDf.select(selectColList: _*), nullable=true)
-    SparkInstance.fromDataFrame(result)
+
+    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), result)
   }
 
   /**

@@ -20,13 +20,16 @@ object ConcatJoinPlan {
       throw new FesqlException(s"Concat join type $joinType not supported")
     }
 
+    // tobe
+    //val nodeId = node.GetNodeId();
+
     val spark = ctx.getSparkSession
 
     // Add the index column for left and right dataframe
     val indexName = "__JOIN_INDEX__-" + System.currentTimeMillis()
     logger.info("Add the index column %s for left and right dataframe".format(indexName))
-    val leftDf: DataFrame = SparkUtil.addIndexColumn(spark, left.getDf(spark), indexName)
-    val rightDf: DataFrame = SparkUtil.addIndexColumn(spark, right.getDf(spark), indexName)
+    val leftDf: DataFrame = SparkUtil.addIndexColumn(spark, left.getDf(), indexName)
+    val rightDf: DataFrame = SparkUtil.addIndexColumn(spark, right.getDf(), indexName)
 
     // Use left join or native last join
     // Check if we can use native last join
@@ -39,7 +42,9 @@ object ConcatJoinPlan {
 
     // Drop the index column
     logger.info("Drop the index column %s for output dataframe".format(indexName))
-    SparkInstance.fromDataFrame(resultDf.drop(indexName))
+    val outputDf = resultDf.drop(indexName)
+
+    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), outputDf)
   }
 
 }

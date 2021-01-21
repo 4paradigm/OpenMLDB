@@ -58,7 +58,7 @@ class TestWindowComputerWithSampleSupport extends SparkTestSuite {
 
     val planner = new SparkPlanner(sess, config)
     val res = planner.plan(sql, Map("t" -> table))
-    val output = res.getDf(sess)
+    val output = res.getDf()
     output.show()
   }
 }

@@ -48,7 +48,8 @@ object ConstProjectPlan {
     // Use Spark DataFrame to select columns
     val emptyDf = ctx.getSparkSession.emptyDataFrame
     val result = SparkColumnUtil.setDataframeNullable(emptyDf.select(selectColList:_*), nullable=true)
-    SparkInstance.fromDataFrame(result)
+
+    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), result)
   }
 
   // Generate Spark column from const value

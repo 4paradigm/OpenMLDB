@@ -118,7 +118,7 @@ class FesqlSession {
 
     val planner = new SparkPlanner(getSparkSession, config)
     this.planner = planner
-    val df = planner.plan(sql, registeredTables.toMap).getDf(getSparkSession)
+    val df = planner.plan(sql, registeredTables.toMap).getDf()
     new FesqlDataframe(this, df)
   }
 

@@ -14,7 +14,7 @@ import scala.collection.mutable
 object GroupByAggregationPlan {
 
   def gen(ctx: PlanContext, node: PhysicalGroupAggrerationNode, input: SparkInstance): SparkInstance = {
-    val inputDf = input.getDf(ctx.getSparkSession)
+    val inputDf = input.getDf()
 
     // Get parition keys
     val groupByExprs = node.getGroup_.keys()
@@ -117,7 +117,9 @@ object GroupByAggregationPlan {
       resultRowList.toIterator
     })
 
-    SparkInstance.fromRDD(outputSchema, resultRDD)
+    val outputDf = ctx.getSparkSession.createDataFrame(resultRDD, outputSchema)
+
+    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), outputDf)
   }
 
 }

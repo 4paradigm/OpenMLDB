@@ -33,7 +33,7 @@ object JoinPlan {
 
     val spark = ctx.getSparkSession
 
-    val rightDf = right.getDf(spark)
+    val rightDf = right.getDf()
 
     val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
 
@@ -46,13 +46,13 @@ object JoinPlan {
 
     val leftDf: DataFrame = {
       if (joinType == JoinType.kJoinTypeLeft) {
-        left.getDf(spark)
+        left.getDf()
       } else {
         if (supportNativeLastJoin) {
-          left.getDf(spark)
+          left.getDf()
         } else {
           // Add index column for original last join, not used in native last join
-          SparkUtil.addIndexColumn(spark, left.getDf(spark), indexName)
+          SparkUtil.addIndexColumn(spark, left.getDf(), indexName)
         }
       }
     }
@@ -171,7 +171,7 @@ object JoinPlan {
       null
     }
 
-    SparkInstance.fromDataFrame(result)
+    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), result)
   }
 
 

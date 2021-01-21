@@ -36,7 +36,9 @@ object WindowAggPlan {
     }
 
     val outputSchema = FesqlUtil.getSparkSchema(node.GetOutputSchema())
-    SparkInstance.fromRDD(outputSchema, outputRDD)
+    val outputDf = ctx.getSparkSession.createDataFrame(outputRDD, outputSchema)
+
+    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), outputDf)
   }
 
 
@@ -50,9 +52,9 @@ object WindowAggPlan {
     }
 
     val inputDf = if (config.skewMode == FeSQLConfig.SKEW) {
-      improveSkew(ctx, node, input.getDf(ctx.getSparkSession), config, windowAggConfig)
+      improveSkew(ctx, node, input.getDf(), config, windowAggConfig)
     } else {
-      groupAndSort(ctx, node, input.getDf(ctx.getSparkSession))
+      groupAndSort(ctx, node, input.getDf())
     }
 
     val hadoopConf = new SerializableConfiguration(
@@ -76,7 +78,7 @@ object WindowAggPlan {
     val sess = ctx.getSparkSession
     val config = ctx.getConf
     val flagColName = "__FESQL_WINDOW_UNION_FLAG__" + System.currentTimeMillis()
-    val union = doUnionTables(ctx, node, input.getDf(sess), flagColName)
+    val union = doUnionTables(ctx, node, input.getDf(), flagColName)
     val windowAggConfig = createWindowAggConfig(ctx, node)
     val inputDf =  if (config.skewMode == FeSQLConfig.SKEW) {
       improveSkew(ctx, node, union, config, windowAggConfig)
@@ -107,7 +109,7 @@ object WindowAggPlan {
 
     val subTables = (0 until unionNum).map(i => {
       val subNode = node.window_unions().GetUnionNode(i)
-      val df = ctx.getSparkOutput(subNode).getDf(sess)
+      val df = ctx.getSparkOutput(subNode).getDf()
       if (df.schema != source.schema) {
         throw new FesqlException("{$i}th Window union with inconsistent schema:\n" +
           s"Expect ${source.schema}\nGet ${df.schema}")

@@ -52,8 +52,6 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
       logger.info("Visit physical plan to add node index info")
       concatJoinNodes.map(joinNode => bindNodeIndexInfo(joinNode, planCtx))
 
-
-
       if (config.slowRunCacheDir != null) {
         slowRunWithHDFSCache(root, planCtx, config.slowRunCacheDir, isRoot = true)
       } else {
@@ -80,10 +78,7 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
     val nodeId = concatJoinNode.GetNodeId()
     val indexColumnName = "__JOIN_INDEX__" + nodeId + "__"+ System.currentTimeMillis()
 
-    // Bind the ConcatJoin node
-    ctx.putNodeIndexInfo(nodeId, NodeIndexInfo(indexColumnName, false))
-
-    // Bind the child nodes
+    // Bind the ConcatJoin child nodes but not ConcatJoin, the node with this flag will output Spark DataFrame with index column
     for (i <- 0 until concatJoinNode.GetProducerCnt().toInt) {
       ctx.putNodeIndexInfo(concatJoinNode.GetProducer(i).GetNodeId(), NodeIndexInfo(indexColumnName, false))
     }
@@ -181,7 +176,7 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
     }
     val cacheDataPath = cacheDir + "/" + rootKey + "/data"
     logger.info(s"Store $rootKey: $cacheDataPath")
-    rootResult.getDf(sess).write.parquet(cacheDataPath)
+    rootResult.getDf().write.parquet(cacheDataPath)
 
     logger.info(s"Reload $rootKey: $cacheDataPath")
     SparkInstance.fromDataFrame(sess.read.parquet(cacheDataPath))
