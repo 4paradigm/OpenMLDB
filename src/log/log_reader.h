@@ -78,8 +78,12 @@ class Reader {
         return compressed_;
     }
 
-    inline int GetBlockSize() {
+    inline uint32_t GetBlockSize() {
         return block_size_;
+    }
+
+    inline uint32_t GetHeaderSize() {
+        return header_size_;
     }
 
  private:
@@ -106,8 +110,8 @@ class Reader {
     bool resyncing_;
 
     bool compressed_;
-    int block_size_;
-    int header_size_;
+    uint32_t block_size_;
+    uint32_t header_size_;
     // buffer for uncompressed block
     char* uncompress_buf_;
 

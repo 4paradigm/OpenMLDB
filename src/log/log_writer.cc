@@ -10,11 +10,8 @@
 #include "log/coding.h"
 #include "log/crc32c.h"
 #include "base/glog_wapper.h" // NOLINT
-#include "gflags/gflags.h"
 #include "base/endianconv.h"
 #include "base/compress.h"
-
-DECLARE_string(snapshot_compression);
 
 namespace rtidb {
 namespace log {
@@ -75,9 +72,9 @@ Status Writer::EndLog() {
     size_t left = 0;
     Status s;
     do {
-        const int leftover = block_size_ - block_offset_;
+        const int32_t leftover = block_size_ - block_offset_;
         assert(leftover >= 0);
-        if (leftover < header_size_) {
+        if (leftover < static_cast<int32_t>(header_size_)) {
             // Switch to a new block
             if (leftover > 0) {
                 // Fill the trailer (literal below relies on header_size_ being
@@ -117,9 +114,9 @@ Status Writer::AddRecord(const Slice& slice) {
     Status s;
     bool begin = true;
     do {
-        const int leftover = block_size_ - block_offset_;
+        const int32_t leftover = block_size_ - block_offset_;
         assert(leftover >= 0);
-        if (leftover < header_size_) {
+        if (leftover < static_cast<int32_t>(header_size_)) {
             // Switch to a new block
             if (leftover > 0) {
                 // Fill the trailer (literal below relies on header_size_ being
@@ -219,7 +216,7 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
 
 Status Writer::CompressRecord() {
     Status s;
-    int compress_len = -1;
+    int32_t compress_len = -1;
     switch (compress_type_) {
 #ifdef PZFPGA_ENABLE
         case kPz: {
@@ -230,25 +227,23 @@ Status Writer::CompressRecord() {
         }
 #endif
         case kSnappy: {
-            size_t tmp_val = 0;
-            snappy::RawCompress(buffer_, block_size_, compress_buf_, &tmp_val);
-            compress_len = static_cast<int>(tmp_val);
+            snappy::RawCompress(buffer_, block_size_, compress_buf_, reinterpret_cast<size_t*>(&compress_len));
             break;
         }
         case kZlib: {
-            unsigned long dest_len = compressBound(static_cast<unsigned long>(block_size_)); // NOLINT
-            int res = compress((unsigned char*)compress_buf_, &dest_len,
+            uint32_t dest_len = compressBound(block_size_);
+            int res = compress((unsigned char*)compress_buf_, reinterpret_cast<uint64_t*>(&dest_len),
                     (const unsigned char*)buffer_, block_size_);
             if (res != Z_OK) {
                 s = Status::InvalidRecord(Slice("compress failed, error code: " + res));
                 PDLOG(WARNING, "write error, compress_type: %d, msg: %s", compress_type_, s.ToString().c_str());
                 return s;
             }
-            compress_len = static_cast<int>(dest_len);
+            compress_len = static_cast<int32_t>(dest_len);
             break;
         }
         default: {
-            s = Status::InvalidRecord(Slice("unsupported compress type: " + FLAGS_snapshot_compression));
+            s = Status::InvalidRecord(Slice("unsupported compress type: " + compress_type_));
             PDLOG(WARNING, "write error, compress_type: %d, msg: %s", compress_type_, s.ToString().c_str());
             return s;
         }
@@ -262,9 +257,9 @@ Status Writer::CompressRecord() {
     // fill compressed data's header
     char head_of_compress[kHeaderSizeOfCompressBlock];
     memrev32ifbe(static_cast<void*>(&compress_len));
-    memcpy(head_of_compress, static_cast<void*>(&compress_len), sizeof(int));
-    memcpy(head_of_compress + sizeof(int), static_cast<void*>(&compress_type_), 1);
-    memset(head_of_compress + sizeof(int) + 1, 0, kHeaderSizeOfCompressBlock - sizeof(int) - 1);
+    memcpy(head_of_compress, static_cast<void*>(&compress_len), sizeof(int32_t));
+    memcpy(head_of_compress + sizeof(int32_t), static_cast<void*>(&compress_type_), 1);
+    memset(head_of_compress + sizeof(int32_t) + 1, 0, kHeaderSizeOfCompressBlock - sizeof(int32_t) - 1);
     // write header and compressed data
     s = dest_->Append(Slice(head_of_compress, kHeaderSizeOfCompressBlock));
     if (s.ok()) {
@@ -291,7 +286,7 @@ CompressType Writer::GetCompressType(const std::string& compress_type) {
     }
 }
 
-Status Writer::AppendInternal(WritableFile* wf, int leftover) {
+Status Writer::AppendInternal(WritableFile* wf, int32_t leftover) {
     Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
     if (compress_type_ == kNoCompress) {
         wf->Append(fill_slice);

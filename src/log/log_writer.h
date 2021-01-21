@@ -37,7 +37,7 @@ class Writer {
 
  private:
     WritableFile* dest_;
-    int block_offset_;  // Current offset in block
+    uint32_t block_offset_;  // Current offset in block
 
     // crc32c values for all supported record types.  These are
     // pre-computed to reduce the overhead of computing the crc of the
@@ -45,8 +45,8 @@ class Writer {
     uint32_t type_crc_[kMaxRecordType + 1];
 
     CompressType compress_type_;
-    int block_size_;
-    int header_size_;
+    uint32_t block_size_;
+    uint32_t header_size_;
     // buffer of kCompressBlockSize
     char* buffer_;
     // buffer for compressed block

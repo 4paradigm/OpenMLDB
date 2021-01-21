@@ -8,12 +8,12 @@
 
 #pragma once
 
-#include <gflags/gflags.h>
-#include <vector>
 #include "config.h" // NOLINT
-#include "base/random.h"
 
 #ifdef PZFPGA_ENABLE
+#include <gflags/gflags.h>
+#include <vector>
+#include "base/random.h"
 #include "pz.h" // NOLINT
 
 DECLARE_uint32(fpga_env_num);

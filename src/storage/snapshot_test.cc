@@ -1759,7 +1759,7 @@ TEST_F(SnapshotTest, Recover_large_snapshot_and_binlog) {
     WriteHandle* wh = NULL;
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
     uint32_t count = 0;
-    std::string base_str = std::string(5 * 1024 * 1024, 'a');
+    std::string base_str = std::string(50 * 1024 * 1024, 'a');
     // if (FLAGS_snapshot_compression != "off") {
     //     base_str = std::string(4 * 1024 * 1024, 'a');
     // }

@@ -34,20 +34,20 @@ enum CompressType {
 
 static const int kMaxRecordType = kEofType;
 
-static const int kBlockSize = 4 * 1024;
+static const uint32_t kBlockSize = 4 * 1024;
 
 // for compressed snapshot
-static const int kCompressBlockSize = 4 * 1024 * 1024;
+static const uint32_t kCompressBlockSize = 1 * 1024 * 1024;
 
 // Header is checksum (4 bytes), length (2 bytes), type (1 byte).
-static const int kHeaderSize = 4 + 2 + 1;
+static const uint32_t kHeaderSize = 4 + 2 + 1;
 
 // Header is checksum (4 bytes), length (4 bytes), type (1 byte).
-static const int kHeaderSizeForCompress = 4 + 4 + 1;
+static const uint32_t kHeaderSizeForCompress = 4 + 4 + 1;
 
 // kHeaderSizeOfCompressBlock should be multiple of 64 bytes
 // compress_len(4 bytes), compress_type(1 byte)
-static const int kHeaderSizeOfCompressBlock = 64;
+static const uint32_t kHeaderSizeOfCompressBlock = 64;
 
 }  // namespace log
 }  // namespace rtidb

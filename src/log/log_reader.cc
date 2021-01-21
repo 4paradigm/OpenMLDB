@@ -294,11 +294,11 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                 return kWaitRecord;
             }
             const char* data = header_of_compress.data();
-            int compress_len = 0;
-            memcpy(static_cast<void*>(&compress_len), data, sizeof(int));
+            uint32_t compress_len = 0;
+            memcpy(static_cast<void*>(&compress_len), data, sizeof(uint32_t));
             memrev32ifbe(static_cast<void*>(&compress_len));
             CompressType compress_type = kNoCompress;
-            memcpy(static_cast<void*>(&compress_type), data + sizeof(int), 1);
+            memcpy(static_cast<void*>(&compress_type), data + sizeof(uint32_t), 1);
             DLOG(INFO) << "compress_len: " << compress_len << ", " << "compress_type: " << compress_type;
 #ifndef PZFPGA_ENABLE
             if (compress_type == kPz) {
@@ -314,7 +314,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                 return kWaitRecord;
             }
             const char* block_data = block.data();
-            int uncompress_len = 0;
+            int32_t uncompress_len = 0;
             switch (compress_type) {
 #ifdef PZFPGA_ENABLE
                 case kPz: {
@@ -329,9 +329,8 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                 }
 #endif
                 case kSnappy: {
-                    size_t tmp_val = 0;
-                    snappy::GetUncompressedLength(block_data, static_cast<size_t>(compress_len), &tmp_val);
-                    uncompress_len = static_cast<int>(tmp_val);
+                    snappy::GetUncompressedLength(block_data, static_cast<size_t>(compress_len),
+                        reinterpret_cast<size_t*>(&uncompress_len));
                     if (!snappy::RawUncompress(block_data, static_cast<size_t>(compress_len), uncompress_buf_)) {
                         PDLOG(WARNING, "bad record when uncompress block, compress type: %d", compress_type);
                         return kBadRecord;
@@ -339,16 +338,14 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                     break;
                 }
                 case kZlib: {
-                    unsigned long src_len = static_cast<unsigned long>(compress_len); // NOLINT
-                    unsigned long dest_len = static_cast<unsigned long>(block_size_); // NOLINT
-                    int res = uncompress((unsigned char*)uncompress_buf_, &dest_len,
-                            (const unsigned char*)block_data, src_len);
+                    uncompress_len = block_size_;
+                    int res = uncompress((unsigned char*)uncompress_buf_, reinterpret_cast<uint64_t*>(&uncompress_len),
+                                (const unsigned char*)block_data, compress_len);
                     if (res != Z_OK) {
                         PDLOG(WARNING, "bad record when uncompress block, error code: %d, compress type: %d",
                                 res, compress_type);
                         return kBadRecord;
                     }
-                    uncompress_len = static_cast<int>(dest_len);
                     break;
                 }
                 default: {
@@ -356,7 +353,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                     return kBadRecord;
                 }
             }
-            if (uncompress_len != block_size_) {
+            if (uncompress_len != static_cast<int32_t>(block_size_)) {
                 PDLOG(WARNING, "bad record when uncompress block, uncompress_len: %d, block_size_: %d",
                         uncompress_len, block_size_);
                 return kBadRecord;
