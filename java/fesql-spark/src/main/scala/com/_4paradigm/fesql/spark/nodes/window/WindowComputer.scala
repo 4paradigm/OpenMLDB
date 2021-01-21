@@ -134,27 +134,40 @@ class WindowComputer(sqlConfig: FeSQLConfig,
 
   def printWindowCols(windowName: String, cols: Array[String]): Unit = {
     val windowData = new java.util.ArrayList[String]()
-    if (!config.windowName.equals(windowName)) {
+    if (!config.windowName.equals(windowName) || window.size() <= 0) {
       return
     }
     windowData.add("window "+ config.windowName  + " data, window size = " + window.size())
+    windowData.add(config.inputSchema.toDDL + "\n")
     val indexs = new java.util.ArrayList[Int]()
     for (col <- cols) {
       indexs.add(config.inputSchema.fieldIndex(col))
     }
     val id = config.inputSchema.fieldIndex("reqId")
+    val firstArr = new Array[Any](config.inputSchema.size)
+    encoder.decode(window.Get(0), firstArr)
 
     for (index <- 0 until window.size().toInt) {
       val arr = new Array[Any](config.inputSchema.size)
       encoder.decode(window.Get(index), arr)
-      if (arr(id) == "349119_2012-11-21 05:44:09") {
-        val filterArr = new Array[Any](indexs.size())
-        for (i <- 0 until indexs.size()) {
-          filterArr(i) = arr(indexs.get(i))
-        }
-        windowData.add(filterArr.mkString(","))
+      val filterArr = new Array[Any](indexs.size())
+      for (i <- 0 until indexs.size()) {
+        filterArr(i) = arr(indexs.get(i))
       }
+      windowData.add(filterArr.mkString(","))
     }
+//    if (firstArr(id) == "349119_2012-11-21 05:44:09") {
+//      for (index <- 0 until window.size().toInt) {
+//        val arr = new Array[Any](config.inputSchema.size)
+//        encoder.decode(window.Get(index), arr)
+//        val filterArr = new Array[Any](indexs.size())
+//        for (i <- 0 until indexs.size()) {
+//          filterArr(i) = arr(indexs.get(i))
+//        }
+//        windowData.add(filterArr.mkString(","))
+//      }
+//    }
+
 
 //    logger.info(config.inputSchema.toDDL)
     if (windowData.size() > 0) {

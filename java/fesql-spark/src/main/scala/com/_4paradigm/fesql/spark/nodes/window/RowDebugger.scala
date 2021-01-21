@@ -38,7 +38,7 @@ class RowDebugger(sqlConfig: FeSQLConfig, config: WindowAggConfig, isSkew: Boole
           s"threadId = ${Thread.currentThread().getId} " +
           s"cnt = $cnt rowInfo = ${str.toString}")
       } else {
-        logger.info(s"threadId = ${Thread.currentThread().getId}" +
+        logger.info(s"threadId = ${Thread.currentThread().getId} " +
           s"cnt = $cnt rowInfo = ${str.toString}")
       }
     }
