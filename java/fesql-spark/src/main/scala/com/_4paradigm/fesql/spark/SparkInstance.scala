@@ -9,6 +9,9 @@ class SparkInstance {
 
   private var df: DataFrame = _
 
+  // The dataframe with index column, which may has one more column than the original dataframe
+  private var dfWithIndex: DataFrame = _
+
   private var rdd: RDD[Row] = _
 
   private var schema: StructType = _
@@ -17,6 +20,15 @@ class SparkInstance {
     this()
     this.df = df
     this.schema = df.schema
+  }
+
+  def this(df: DataFrame, hasIndex: Boolean) {
+    this()
+    if (hasIndex) {
+      this.dfWithIndex = df
+    } else {
+      this.df = df
+    }
   }
 
   def this(schema: StructType, rdd: RDD[Row]) = {
@@ -44,6 +56,11 @@ class SparkInstance {
   def getSchema: StructType = {
     schema
   }
+
+  def getDfWithIndex: DataFrame = {
+    dfWithIndex
+  }
+
 }
 
 
@@ -55,4 +72,9 @@ object SparkInstance {
   def fromRDD(schema: StructType, rdd: RDD[Row]): SparkInstance = {
     new SparkInstance(schema, rdd)
   }
+
+  def fromDfWithIndex(dfWithIndex: DataFrame): SparkInstance = {
+    new SparkInstance(dfWithIndex, true)
+  }
+
 }
