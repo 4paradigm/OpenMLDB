@@ -18,7 +18,7 @@ object SimpleProjectPlan {
   def gen(ctx: PlanContext, node: PhysicalSimpleProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
     val inputInstance = inputs.head
 
-    val inputDf = inputInstance.getDf()
+    val inputDf = inputInstance.getSparkDfConsideringIndex(ctx, node.GetNodeId())
 
     val outputSchema = node.GetOutputSchema()
 

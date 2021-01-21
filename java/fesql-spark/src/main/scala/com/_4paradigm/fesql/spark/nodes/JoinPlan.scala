@@ -33,6 +33,7 @@ object JoinPlan {
 
     val spark = ctx.getSparkSession
 
+    // TODO: Do not handle dataframe with index because ConcatJoin will not include LastJoin or LeftJoin node
     val rightDf = right.getDf()
 
     val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)

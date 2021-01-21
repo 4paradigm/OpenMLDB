@@ -20,7 +20,7 @@ object RowProjectPlan {
    */
   def gen(ctx: PlanContext, node: PhysicalTableProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
     val inputInstance = inputs.head
-    val inputRDD = inputInstance.getDf().rdd
+    val inputRDD = inputInstance.getSparkDfConsideringIndex(ctx, node.GetNodeId()).rdd
 
     val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node.GetProducer(0))
     val outputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)

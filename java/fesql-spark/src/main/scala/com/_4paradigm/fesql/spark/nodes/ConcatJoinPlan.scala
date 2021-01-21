@@ -28,8 +28,9 @@ object ConcatJoinPlan {
     // Add the index column for left and right dataframe
     val indexName = "__JOIN_INDEX__-" + System.currentTimeMillis()
     logger.info("Add the index column %s for left and right dataframe".format(indexName))
-    val leftDf: DataFrame = SparkUtil.addIndexColumn(spark, left.getDf(), indexName)
-    val rightDf: DataFrame = SparkUtil.addIndexColumn(spark, right.getDf(), indexName)
+    // Note that this is exception to use "getDfWithIndex" instead of "getSparkDfConsideringIndex" because ConcatJoin has not index flag but request input dataframe with index
+    val leftDf: DataFrame = SparkUtil.addIndexColumn(spark, left.getDfWithIndex, indexName)
+    val rightDf: DataFrame = SparkUtil.addIndexColumn(spark, right.getDfWithIndex, indexName)
 
     // Use left join or native last join
     // Check if we can use native last join

@@ -65,14 +65,14 @@ class SparkInstance {
     if (ctx.hasIndexInfo(parentNodeId)) {
       if (ctx.getIndexInfo(parentNodeId).shouldAddIndexColumn) {
         // If parent node is ConcatJoin's lowest common input node, read the normal df
-        df
+        getDf
       } else {
         // If parent node has index flag, normally return the one with index
-        dfWithIndex
+        getDfWithIndex
       }
     } else {
       // If parent node do not have index flag, return the normal df
-      df
+      getDf
     }
   }
 

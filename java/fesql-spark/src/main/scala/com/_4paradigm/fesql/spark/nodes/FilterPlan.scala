@@ -14,7 +14,7 @@ import scala.collection.mutable
 object FilterPlan {
 
   def gen(ctx: PlanContext, node: PhysicalFilterNode, input: SparkInstance): SparkInstance = {
-    val inputDf = input.getDf()
+    val inputDf = input.getSparkDfConsideringIndex(ctx, node.GetNodeId())
 
     var outputDf = inputDf
 
