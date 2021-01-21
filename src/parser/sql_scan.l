@@ -363,7 +363,7 @@ I64_MAX { return I64_MAX; }
 I16_MAX { return I16_MAX; }
 FLOAT_MAX { return FLOAT_MAX; }
 DOUBLE_MAX { return DOUBLE_MAX; }
-I32_MAX { return I32_MIN; }
+I32_MIN { return I32_MIN; }
 I64_MIN { return I64_MIN; }
 I16_MIN { return I16_MIN; }
 FLOAT_MIN { return FLOAT_MIN; }

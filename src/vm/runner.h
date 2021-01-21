@@ -898,6 +898,10 @@ class RequestUnionRunner : public Runner {
         RunnerContext& ctx,  // NOLINT
         const std::vector<std::shared_ptr<DataHandler>>& inputs)
         override;  // NOLINT
+    std::shared_ptr<DataHandler> RequestUnionWindow(
+        const Row& request,
+        std::vector<std::shared_ptr<TableHandler>> union_segments,
+        int64_t request_ts);
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
