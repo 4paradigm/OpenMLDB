@@ -760,9 +760,9 @@ void WindowDefNode::Print(std::ostream &output,
         PrintSQLVector(output, tab, union_tables_->GetList(), "union_tables",
                        false);
     }
-    if (open_interval_window_) {
+    if (exclude_current_time_) {
         output << "\n";
-        PrintValue(output, tab, "TRUE", "open_interval_window", false);
+        PrintValue(output, tab, "TRUE", "exclude_current_time", false);
     }
     if (instance_not_in_window_) {
         output << "\n";
@@ -787,7 +787,7 @@ bool WindowDefNode::CanMergeWith(
         return true;
     }
     return SQLListEquals(this->union_tables_, that->union_tables_) &&
-           this->open_interval_window_ == that->open_interval_window_ &&
+           this->exclude_current_time_ == that->exclude_current_time_ &&
            this->instance_not_in_window_ == that->instance_not_in_window_ &&
            ExprEquals(this->orders_, that->orders_) &&
            ExprEquals(this->partitions_, that->partitions_) &&
@@ -801,7 +801,7 @@ bool WindowDefNode::Equals(const SQLNode *node) const {
     }
     const WindowDefNode *that = dynamic_cast<const WindowDefNode *>(node);
     return this->window_name_ == that->window_name_ &&
-           this->open_interval_window_ == that->open_interval_window_ &&
+           this->exclude_current_time_ == that->exclude_current_time_ &&
            this->instance_not_in_window_ == that->instance_not_in_window_ &&
            SQLListEquals(this->union_tables_, that->union_tables_) &&
            ExprEquals(this->orders_, that->orders_) &&

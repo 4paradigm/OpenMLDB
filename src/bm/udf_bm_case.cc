@@ -188,7 +188,6 @@ void RequestUnionTableIterate(benchmark::State* state, MODE mode,
         }
     }
 }
-
 void MemSegmentIterate(benchmark::State* state, MODE mode, int64_t data_size) {
     vm::MemTimeTableHandler table_hanlder;
     type::TableDef table_def;
@@ -741,6 +740,103 @@ void DateToString(benchmark::State* state, MODE mode) {
             udf::v1::date_to_string(&date, &str);
             ASSERT_EQ(codec::StringRef("2020-05-22"), str);
             break;
+        }
+    }
+}
+int64_t RunHistoryWindowBuffer(const vm::WindowRange& window_range,
+                               uint64_t data_size,
+                               const bool exclude_current_time) {  // NOLINT
+    auto window = std::make_shared<vm::HistoryWindow>(window_range);
+    window->set_exclude_current_time(exclude_current_time);
+    Row row;
+    uint64_t ts = 1L;
+    while (ts < data_size) {
+        window->BufferData(ts, row);
+        ts++;
+    }
+    return window->GetCount();
+}
+void HistoryWindowBuffer(benchmark::State* state, MODE mode,
+                         int64_t data_size) {
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(RunHistoryWindowBuffer(
+                    vm::WindowRange(vm::Window::kFrameRowsRange, -100, 0, 0, 0),
+                    data_size, false));
+            }
+            break;
+        }
+        case TEST: {
+        }
+    }
+}
+void HistoryWindowBufferExcludeCurrentTime(benchmark::State* state, MODE mode,
+                                           int64_t data_size) {
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(RunHistoryWindowBuffer(
+                    vm::WindowRange(vm::Window::kFrameRowsRange, -100, 0, 0, 0),
+                    data_size, true));
+            }
+            break;
+        }
+        case TEST: {
+        }
+    }
+}
+
+void RequestUnionWindow(benchmark::State* state, MODE mode, int64_t data_size) {
+    Row request;
+    Row row;
+    auto table = std::make_shared<MemTimeTableHandler>();
+    for (uint64_t key = 0; key < data_size; key++) {
+        table->AddRow(key, row);
+    }
+    uint64_t current_key = data_size + 1;
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(
+                    vm::RequestUnionRunner::RequestUnionWindow(
+                        request,
+                        std::vector<std::shared_ptr<vm::TableHandler>>({table}),
+                        current_key,
+                        vm::WindowRange(vm::Window::kFrameRowsRange, -100, 0, 0,
+                                        0),
+                        true, false));
+            }
+            break;
+        }
+        case TEST: {
+        }
+    }
+}
+void RequestUnionWindowExcludeCurrentTime(benchmark::State* state, MODE mode,
+                                          int64_t data_size) {
+    Row request;
+    Row row;
+    auto table = std::make_shared<MemTimeTableHandler>();
+    for (uint64_t key = 0; key < data_size; key++) {
+        table->AddRow(key, row);
+    }
+    uint64_t current_key = data_size + 1;
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(
+                    vm::RequestUnionRunner::RequestUnionWindow(
+                        request,
+                        std::vector<std::shared_ptr<vm::TableHandler>>({table}),
+                        current_key,
+                        vm::WindowRange(vm::Window::kFrameRowsRange, -100, 0, 0,
+                                        0),
+                        true, true));
+            }
+            break;
+        }
+        case TEST: {
         }
     }
 }

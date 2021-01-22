@@ -110,7 +110,7 @@ SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
 SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
                                         ExprListNode *partitions,
                                         ExprNode *orders, SQLNode *frame,
-                                        bool open_interval_window,
+                                        bool exclude_current_time,
                                         bool instance_not_in_window) {
     WindowDefNode *node_ptr = new WindowDefNode();
     if (nullptr != orders) {
@@ -123,7 +123,7 @@ SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
         }
         node_ptr->SetOrders(dynamic_cast<OrderByNode *>(orders));
     }
-    node_ptr->set_open_interval_window(open_interval_window);
+    node_ptr->set_exclude_current_time(exclude_current_time);
     node_ptr->set_instance_not_in_window(instance_not_in_window);
     node_ptr->set_union_tables(union_tables);
     node_ptr->SetPartitions(partitions);
@@ -146,7 +146,7 @@ WindowDefNode *NodeManager::MergeWindow(const WindowDefNode *w1,
     return dynamic_cast<WindowDefNode *>(MakeWindowDefNode(
         w1->union_tables(), w1->GetPartitions(), w1->GetOrders(),
         MergeFrameNode(w1->GetFrame(), w2->GetFrame()),
-        w1->open_interval_window(), w1->instance_not_in_window()));
+        w1->exclude_current_time(), w1->instance_not_in_window()));
 }
 FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(
     FrameNode *frame1) {

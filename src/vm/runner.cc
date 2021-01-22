@@ -213,7 +213,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     auto runner = new WindowAggRunner(
                         id_++, node->schemas_ctx(), op->GetLimitCnt(),
                         op->window_, op->project().fn_info(),
-                        op->instance_not_in_window(), op->need_append_input());
+                        op->instance_not_in_window(),
+                        op->exclude_current_time(), op->need_append_input());
                     size_t input_slices =
                         input->output_schemas()->GetSchemaSourceSize();
                     if (!op->window_unions_.Empty()) {
@@ -282,7 +283,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto op = dynamic_cast<const PhysicalRequestUnionNode*>(node);
             auto runner = new RequestUnionRunner(
                 id_++, node->schemas_ctx(), op->GetLimitCnt(),
-                op->window().range_, op->output_request_row());
+                op->window().range_, op->exclude_current_time(),
+                op->output_request_row());
             Key index_key;
             if (!op->instance_not_in_window()) {
                 runner->AddWindowUnion(op->window_, right);
@@ -1372,6 +1374,7 @@ void WindowAggRunner::RunWindowAggOnKey(
     int32_t cnt = output_table->GetCount();
     HistoryWindow window(instance_window_gen_.range_gen_.window_range_);
     window.set_instance_not_in_window(instance_not_in_window_);
+    window.set_exclude_current_time(exclude_current_time_);
 
     while (instance_segment_iter->Valid()) {
         if (limit_cnt_ > 0 && cnt >= limit_cnt_) {
@@ -2475,7 +2478,8 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(
         windows_union_gen_.GetRequestWindows(request, union_inputs);
     // build window with start and end offset
     return RequestUnionWindow(request, union_segments, ts_gen,
-                              range_gen_.window_range_, output_request_row_);
+                              range_gen_.window_range_, output_request_row_,
+                              exclude_current_time_);
 }
 std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
     const Row& request,

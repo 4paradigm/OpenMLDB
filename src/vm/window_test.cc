@@ -1044,8 +1044,6 @@ void CHECK_REQUEST_UNION_WINDOW(const WindowRange& window_range,
     for (uint64_t key : buffered_keys) {
         table->AddRow(key, row);
     }
-    std::shared_ptr<HistoryWindow> history_window =
-        std::make_shared<HistoryWindow>(window_range);
     auto union_table = RequestUnionRunner::RequestUnionWindow(
         row, std::vector<std::shared_ptr<TableHandler>>({table}), current_key,
         window_range, true, exclude_current_time);
