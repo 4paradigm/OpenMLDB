@@ -1,7 +1,7 @@
 package com._4paradigm.fesql.spark.nodes.window
 
 import com._4paradigm.fesql.spark.{FeSQLConfig, SparkRowCodec}
-import com._4paradigm.fesql.spark.nodes.WindowAggPlan.{WindowAggConfig, logger}
+import com._4paradigm.fesql.spark.nodes.WindowAggPlan.WindowAggConfig
 import com._4paradigm.fesql.spark.utils.{FesqlUtil, SparkRowUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, WindowInterface}
 import org.apache.spark.sql.Row
@@ -50,7 +50,11 @@ class WindowComputer(sqlConfig: FeSQLConfig,
 
   def compute(row: Row): Row = {
     if (hooks.nonEmpty) {
-      hooks.foreach(_.preCompute(this, row))
+      hooks.foreach(hook => try {
+        hook.preCompute(this, row)
+      } catch {
+        case e: Exception => e.printStackTrace()
+      })
     }
 
     // call encode
@@ -67,7 +71,11 @@ class WindowComputer(sqlConfig: FeSQLConfig,
     decoder.decode(outputNativeRow, outputArr)
 
     if (hooks.nonEmpty) {
-      hooks.foreach(_.postCompute(this, row))
+      hooks.foreach(hook => try {
+        hook.postCompute(this, row)
+      } catch {
+        case e: Exception => e.printStackTrace()
+      })
     }
 
     // release swig jni objects
@@ -79,7 +87,11 @@ class WindowComputer(sqlConfig: FeSQLConfig,
 
   def bufferRowOnly(row: Row): Unit = {
     if (hooks.nonEmpty) {
-      hooks.foreach(_.preBufferOnly(this, row))
+      hooks.foreach(hook => try {
+        hook.preBufferOnly(this, row)
+      } catch {
+        case e: Exception => e.printStackTrace()
+      })
     }
 
     val nativeInputRow = encoder.encode(row)
@@ -93,7 +105,11 @@ class WindowComputer(sqlConfig: FeSQLConfig,
     nativeInputRow.delete()
 
     if (hooks.nonEmpty) {
-      hooks.foreach(_.postBufferOnly(this, row))
+      hooks.foreach(hook => try {
+        hook.postBufferOnly(this, row)
+      } catch {
+        case e: Exception => e.printStackTrace()
+      })
     }
   }
 
