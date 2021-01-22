@@ -153,42 +153,53 @@ TEST_F(LogWRTest, TestWriteSize) {
 }
 
 TEST_F(LogWRTest, TestWriteAndRead) {
-    std::string log_dir = "/tmp/" + GenRand() + "/";
-    ::rtidb::base::MkdirRecur(log_dir);
-    std::string fname = "test.log";
-    std::string full_path = log_dir + "/" + fname;
-    full_path = GetWritePath(full_path);
-    FILE* fd_w = fopen(full_path.c_str(), "ab+");
-    ASSERT_TRUE(fd_w != NULL);
-    WritableFile* wf = NewWritableFile(fname, fd_w);
-    Writer writer(FLAGS_snapshot_compression, wf);
-    FILE* fd_r = fopen(full_path.c_str(), "rb");
-    ASSERT_TRUE(fd_r != NULL);
-    SequentialFile* rf = NewSeqFile(fname, fd_r);
-    Reader reader(rf, NULL, true, 0, compressed_);
-    Status status = writer.AddRecord("hello");
-    ASSERT_TRUE(status.ok());
-    if (FLAGS_snapshot_compression != "off") {
-        writer.EndLog();
+    std::vector<std::string> val_vec1{
+        "hello", std::string(block_size_ - header_size_, 'a')};
+    std::vector<std::string> val_vec2{
+        "hello1", std::string(block_size_ - header_size_, 'b')};
+    for (int i = 0; i < 1; i++) {
+        std::string log_dir = "/tmp/" + GenRand() + "/";
+        ::rtidb::base::MkdirRecur(log_dir);
+        std::string fname = "test.log";
+        std::string full_path = log_dir + "/" + fname;
+        full_path = GetWritePath(full_path);
+        FILE* fd_w = fopen(full_path.c_str(), "ab+");
+        ASSERT_TRUE(fd_w != NULL);
+        WritableFile* wf = NewWritableFile(fname, fd_w);
+        Writer writer(FLAGS_snapshot_compression, wf);
+        FILE* fd_r = fopen(full_path.c_str(), "rb");
+        ASSERT_TRUE(fd_r != NULL);
+        SequentialFile* rf = NewSeqFile(fname, fd_r);
+        Reader reader(rf, NULL, true, 0, compressed_);
+        Status status = writer.AddRecord(val_vec1[i]);
+        ASSERT_TRUE(status.ok());
+        if (FLAGS_snapshot_compression != "off" && i == 0) {
+            writer.EndLog();
+        }
+        std::string scratch;
+        Slice value;
+        status = reader.ReadRecord(&value, &scratch);
+        ASSERT_TRUE(status.ok());
+        ASSERT_EQ(val_vec1[i], value.ToString());
+        uint64_t last_record_offset = reader.LastRecordOffset();
+        std::cout << "last record offset " << last_record_offset << std::endl;
+        if (FLAGS_snapshot_compression != "off" && i == 0) {
+            status = reader.ReadRecord(&value, &scratch);
+            ASSERT_TRUE(status.IsEof());
+        }
+        status = writer.AddRecord(val_vec2[i]);
+        ASSERT_TRUE(status.ok());
+        if (FLAGS_snapshot_compression != "off" && i == 0) {
+            writer.EndLog();
+        }
+        Reader reader2(rf, NULL, true, last_record_offset, compressed_);
+        std::string scratch2;
+        Slice value2;
+        status = reader2.ReadRecord(&value2, &scratch2);
+        std::cout << "status: "  << status.ToString() << std::endl;
+        ASSERT_TRUE(status.ok());
+        ASSERT_EQ(val_vec2[i], value2.ToString());
     }
-    std::string scratch;
-    Slice value;
-    status = reader.ReadRecord(&value, &scratch);
-    ASSERT_TRUE(status.ok());
-    ASSERT_EQ("hello", value.ToString());
-    uint64_t last_record_offset = reader.LastRecordOffset();
-    std::cout << "last record offset " << last_record_offset << std::endl;
-    status = writer.AddRecord("hello1");
-    ASSERT_TRUE(status.ok());
-    if (FLAGS_snapshot_compression != "off") {
-        writer.EndLog();
-    }
-    Reader reader2(rf, NULL, true, last_record_offset, compressed_);
-    std::string scratch2;
-    Slice value2;
-    status = reader2.ReadRecord(&value2, &scratch2);
-    ASSERT_TRUE(status.ok());
-    ASSERT_EQ("hello1", value2.ToString());
 }
 
 TEST_F(LogWRTest, TestLogEntry) {
