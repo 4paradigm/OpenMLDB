@@ -27,9 +27,6 @@ using ::rtidb::base::Slice;
 using ::rtidb::base::Status;
 
 DECLARE_string(snapshot_compression);
-const std::string PZ_COMPRESS_SUFFIX = ".pz";  // NOLINT
-const std::string ZLIB_COMPRESS_SUFFIX = ".zlib";  // NOLINT
-const std::string SNAPPY_COMPRESS_SUFFIX = ".snappy";  // NOLINT
 bool compressed_ = true;
 uint32_t block_size_ = 1024 * 4;
 uint32_t header_size_ = 7;
@@ -131,11 +128,11 @@ int AddRecord(const Slice& slice, std::vector<std::string>& vec) {  // NOLINT
 
 std::string GetWritePath(const std::string& path) {
     if (FLAGS_snapshot_compression == "pz") {
-        return path + PZ_COMPRESS_SUFFIX;
+        return path + rtidb::log::PZ_COMPRESS_SUFFIX;
     } else if (FLAGS_snapshot_compression == "zlib") {
-        return path + ZLIB_COMPRESS_SUFFIX;
+        return path + rtidb::log::ZLIB_COMPRESS_SUFFIX;
     } else if (FLAGS_snapshot_compression == "snappy") {
-        return path + SNAPPY_COMPRESS_SUFFIX;
+        return path + rtidb::log::SNAPPY_COMPRESS_SUFFIX;
     } else {
         return path;
     }

@@ -27,7 +27,7 @@ using ::rtidb::base::ParseFileNameFromPath;
 namespace rtidb {
 namespace tools {
 
-void ReadLog(const std::string& full_path, const std::string& flag) {
+void ReadLog(const std::string& full_path) {
     std::string fname = ParseFileNameFromPath(full_path);
     std::ofstream my_cout(fname + "_result.txt");
     FILE* fd_r = fopen(full_path.c_str(), "rb");
@@ -38,7 +38,9 @@ void ReadLog(const std::string& full_path, const std::string& flag) {
     SequentialFile* rf = NewSeqFile(full_path, fd_r);
     std::string scratch;
     bool for_snapshot = false;
-    if (flag == "true") {
+    if (full_path.find(rtidb::log::PZ_COMPRESS_SUFFIX) != std::string::npos
+            || full_path.find(rtidb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos
+            || full_path.find(rtidb::log::SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
         for_snapshot = true;
     }
     Reader reader(rf, NULL, true, 0, for_snapshot);
@@ -81,7 +83,7 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     printf("--------start readlog--------\n");
     printf("--------full_path: %s\n", argv[1]);
-    rtidb::tools::ReadLog(argv[1], argv[2]);
+    rtidb::tools::ReadLog(argv[1]);
     printf("--------end readlog--------\n");
     return 0;
 }

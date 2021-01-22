@@ -33,10 +33,6 @@ typedef ::rtidb::base::Skiplist<uint32_t, uint64_t,
                                 ::rtidb::base::DefaultComparator>
     LogParts;
 
-const std::string PZ_COMPRESS_SUFFIX = ".pz";  // NOLINT
-const std::string ZLIB_COMPRESS_SUFFIX = ".zlib";  // NOLINT
-const std::string SNAPPY_COMPRESS_SUFFIX = ".snappy";  // NOLINT
-
 // table snapshot
 class MemTableSnapshot : public Snapshot {
  public:

@@ -1446,9 +1446,9 @@ int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector
 }
 
 bool MemTableSnapshot::IsCompressed(const std::string& path) {
-    if (path.find(PZ_COMPRESS_SUFFIX) != std::string::npos
-            || path.find(ZLIB_COMPRESS_SUFFIX) != std::string::npos
-            || path.find(SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
+    if (path.find(rtidb::log::PZ_COMPRESS_SUFFIX) != std::string::npos
+            || path.find(rtidb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos
+            || path.find(rtidb::log::SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
         return true;
     }
     return false;
