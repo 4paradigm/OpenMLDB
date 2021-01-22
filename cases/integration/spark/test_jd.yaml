@@ -92,9 +92,9 @@ cases:
     - "a1 int32"
     - "a2 int32"
     - "a3 int32"
-    - "cate int64" # this column is 'int32' in origin schema, changed to int64 for indexing
+    - "cate int32"
     - "brand int32"
-    indexs: ["index_pdt:sku_id:cate"]
+    indexs: ["index_pdt:sku_id"]
     rows:
     - - 200135598
       - 620202989

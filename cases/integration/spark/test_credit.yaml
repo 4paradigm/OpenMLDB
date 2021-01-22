@@ -687,8 +687,7 @@ cases:
     - "open_cust_org_id string"
     - "open_cust_chnl_typ_cd string"
     - "cust_belg_bank_cd string"
-    - "extra_time timestamp" # this column is not existed in original schema, added for index
-    indexs: ["indext2:cust_id_an:extra_time"]
+    indexs: ["indext2:cust_id_an"]
     rows:
     - - -164930359
       - "cert_typ_cd_cGpwz0DGMQ"
@@ -704,7 +703,6 @@ cases:
       - "open_cust_org_id_TgCKG40Joz"
       - "open_cust_chnl_typ_cd_cBUBu2Wm6D"
       - "cust_belg_bank_cd_UBZAxmSLUW"
-      - 1611144216000
     - - -43274786
       - "cert_typ_cd_QetmS9wxcU"
       - "cert_area_cd_rrltclnYQU"
@@ -719,7 +717,6 @@ cases:
       - "open_cust_org_id_7rnyNbu4Yu"
       - "open_cust_chnl_typ_cd_mu1leQa1Gx"
       - "cust_belg_bank_cd_XLIXJnEtRf"
-      - 1611144216000
     name: t2
   - columns:
     - "cust_id_an int32"
