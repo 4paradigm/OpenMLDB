@@ -1,13 +1,12 @@
 package com._4paradigm.fesql.spark.utils
 
 import com._4paradigm.fesql.common.{FesqlException, UnsupportedFesqlException}
-import com._4paradigm.fesql.node.{ColumnRefNode, ConstNode, ExprNode, ExprType}
+import com._4paradigm.fesql.node.{ColumnRefNode, ConstNode, ExprNode, ExprType, DataType => FesqlDataType}
 import com._4paradigm.fesql.spark.PlanContext
 import com._4paradigm.fesql.vm.{CoreAPI, PhysicalJoinNode, PhysicalOpNode}
+import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.{Column, DataFrame}
-import com._4paradigm.fesql.node.{DataType => FesqlDataType}
-import org.apache.spark.sql.functions.lit
 
 import scala.collection.mutable
 

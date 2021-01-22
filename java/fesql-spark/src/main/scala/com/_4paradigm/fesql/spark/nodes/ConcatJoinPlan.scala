@@ -3,7 +3,7 @@ package com._4paradigm.fesql.spark.nodes
 import com._4paradigm.fesql.common.FesqlException
 import com._4paradigm.fesql.node.JoinType
 import com._4paradigm.fesql.spark._
-import com._4paradigm.fesql.spark.utils.SparkUtil
+import com._4paradigm.fesql.spark.utils.{SparkColumnUtil, SparkUtil}
 import com._4paradigm.fesql.vm.PhysicalJoinNode
 import org.apache.spark.sql.DataFrame
 import org.slf4j.LoggerFactory
@@ -30,18 +30,19 @@ object ConcatJoinPlan {
     // Check if we can use native last join
     val supportNativeLastJoin = SparkUtil.supportNativeLastJoin(joinType, false)
 
+    // Use the last column to join which are always index column in concat join node
     // Use left join or native last join
     val resultDf = if (supportNativeLastJoin) {
-      leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "last")
+      leftDf.join(rightDf, SparkColumnUtil.getColumnFromIndex(leftDf, -1) === SparkColumnUtil.getColumnFromIndex(rightDf, -1), "last")
     } else {
-      leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "left")
+      leftDf.join(rightDf, SparkColumnUtil.getColumnFromIndex(leftDf, leftDf.schema.size-1) === SparkColumnUtil.getColumnFromIndex(rightDf, rightDf.schema.size-1), "left")
     }
 
     // Drop the index column, this will drop two columns with the same index name
     logger.info("Drop the index column %s for output dataframe".format(indexName))
     val outputDf = resultDf.drop(indexName)
 
-    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), outputDf)
+    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
   }
 
 }

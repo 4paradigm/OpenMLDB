@@ -1,13 +1,16 @@
 package com._4paradigm.fesql.spark
 
+import com._4paradigm.fesql.common.FesqlException
 import com._4paradigm.fesql.spark.utils.SparkUtil
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.DataFrame
-
+import com._4paradigm.fesql.spark.utils.{FesqlUtil, NodeIndexInfo, NodeIndexType}
 
 class SparkInstance {
 
   private var df: DataFrame = _
+
+  // TODO: Keep the rdd optimization
 
   // The dataframe with index column, which may has one more column than the original dataframe
   private var dfWithIndex: DataFrame = _
@@ -61,18 +64,19 @@ class SparkInstance {
   }
 
   // Consider node index info to get Spark DataFrame
-  def getSparkDfConsideringIndex(ctx: PlanContext, parentNodeId: Long): DataFrame = {
+  def getDfConsideringIndex(ctx: PlanContext, parentNodeId: Long): DataFrame = {
     if (ctx.hasIndexInfo(parentNodeId)) {
-      if (ctx.getIndexInfo(parentNodeId).shouldAddIndexColumn) {
-        // If parent node is ConcatJoin's lowest common input node, read the normal df
-        getDf
-      } else {
-        // If parent node has index flag, normally return the one with index
-        getDfWithIndex
+      val nodeIndexType = ctx.getIndexInfo(parentNodeId).nodeIndexType
+
+      nodeIndexType match {
+        case NodeIndexType.SourceConcatJoinNode => getDfWithIndex
+        case NodeIndexType.InternalConcatJoinNode => getDfWithIndex
+        case NodeIndexType.InternalComputeNode => getDfWithIndex
+        case NodeIndexType.DestNode => getDf()
+        case _ => throw new FesqlException("Handle unsupported node index type: %s".format(nodeIndexType))
       }
     } else {
-      // If parent node do not have index flag, return the normal df
-      getDf
+      getDf()
     }
   }
 
@@ -93,20 +97,39 @@ object SparkInstance {
   }
 
   // Consider node index info to create SparkInstance
-  def createWithNodeIndexInfo(ctx: PlanContext, nodeId: Long, sparkDf: DataFrame): SparkInstance = {
+  def createConsideringIndex(ctx: PlanContext, nodeId: Long, sparkDf: DataFrame): SparkInstance = {
     if (ctx.hasIndexInfo(nodeId)) {
-      val nodeIndexInfo = ctx.getIndexInfo(nodeId)
-      if (nodeIndexInfo.shouldAddIndexColumn) {
-        // Add the new index column
-        val outputDfWithIndex = SparkUtil.addIndexColumn(ctx.getSparkSession, sparkDf, nodeIndexInfo.indexColumnName)
-        SparkInstance.fromDfAndIndexedDf(sparkDf, outputDfWithIndex)
-      } else {
-        // Do not add new column and return the dataframe as dfWithIndex
-        SparkInstance.fromDfWithIndex(sparkDf)
+      val nodeIndexType = ctx.getIndexInfo(nodeId).nodeIndexType
+      nodeIndexType match {
+        case NodeIndexType.SourceConcatJoinNode => SparkInstance.fromDataFrame(sparkDf)
+        case NodeIndexType.InternalConcatJoinNode => SparkInstance.fromDfWithIndex(sparkDf)
+        case NodeIndexType.InternalComputeNode => SparkInstance.fromDfWithIndex(sparkDf)
+        case NodeIndexType.DestNode => {
+          val outputDfWithIndex = SparkUtil.addIndexColumn(ctx.getSparkSession, sparkDf, ctx.getIndexInfo(nodeId).indexColumnName)
+          SparkInstance.fromDfAndIndexedDf(sparkDf, outputDfWithIndex)
+        }
+        case _ => throw new FesqlException("Handle unsupported node index type: %s".format(nodeIndexType))
       }
     } else {
-      // Return the normal dataframe
       SparkInstance.fromDataFrame(sparkDf)
+    }
+  }
+
+  // Check if we have accepted the data with index column and should output the df with index column
+  def keepIndexColumn(ctx: PlanContext, nodeId: Long): Boolean = {
+    if (ctx.hasIndexInfo(nodeId)) {
+      val nodeIndexType = ctx.getIndexInfo(nodeId).nodeIndexType
+
+      nodeIndexType match {
+        case NodeIndexType.SourceConcatJoinNode => false
+        case NodeIndexType.InternalConcatJoinNode => true
+        case NodeIndexType.InternalComputeNode => true
+        // Notice that the dest node will not accept df with index and only append index column after computing
+        case NodeIndexType.DestNode => false
+        case _ => throw new FesqlException("Handle unsupported node index type: %s".format(nodeIndexType))
+      }
+    } else {
+      false
     }
   }
 

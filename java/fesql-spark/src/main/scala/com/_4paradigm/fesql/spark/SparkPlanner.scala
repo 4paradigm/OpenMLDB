@@ -2,10 +2,10 @@ package com._4paradigm.fesql.spark
 
 import com._4paradigm.fesql.FeSqlLibrary
 import com._4paradigm.fesql.`type`.TypeOuterClass._
-import com._4paradigm.fesql.common.{SQLEngine, UnsupportedFesqlException}
+import com._4paradigm.fesql.common.{FesqlException, SQLEngine, UnsupportedFesqlException}
 import com._4paradigm.fesql.node.JoinType
 import com._4paradigm.fesql.spark.nodes._
-import com._4paradigm.fesql.spark.utils.{FesqlUtil, NodeIndexInfo}
+import com._4paradigm.fesql.spark.utils.{FesqlUtil, NodeIndexInfo, NodeIndexType}
 import com._4paradigm.fesql.vm._
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.hadoop.fs.{FileSystem, Path}
@@ -49,8 +49,9 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
       val concatJoinNodes = mutable.ArrayBuffer[PhysicalJoinNode]()
       findConcatJoinNode(root, concatJoinNodes)
 
-      logger.info("Visit physical plan to add node index info")
-      concatJoinNodes.map(joinNode => bindNodeIndexInfo(joinNode, planCtx))
+      logger.info("Visit concat join node to add node index info")
+      val processedConcatJoinNodeIds = mutable.HashSet[Long]()
+      concatJoinNodes.map(joinNode => bindNodeIndexInfo(joinNode, planCtx, processedConcatJoinNodeIds))
 
       if (config.slowRunCacheDir != null) {
         slowRunWithHDFSCache(root, planCtx, config.slowRunCacheDir, isRoot = true)
@@ -74,18 +75,76 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
   }
 
   // Bind the node index info for the nodes which use ConcatJoin for computing window concurrently
-  def bindNodeIndexInfo(concatJoinNode: PhysicalJoinNode, ctx: PlanContext): Unit = {
-    val nodeId = concatJoinNode.GetNodeId()
-    val indexColumnName = "__JOIN_INDEX__" + nodeId + "__"+ System.currentTimeMillis()
+  def bindNodeIndexInfo(concatJoinNode: PhysicalJoinNode, ctx: PlanContext, processedConcatJoinNodeIds: mutable.HashSet[Long]): Unit = {
 
-    // Bind the ConcatJoin child nodes but not ConcatJoin, the node with this flag will output Spark DataFrame with index column
-    for (i <- 0 until concatJoinNode.GetProducerCnt().toInt) {
-      ctx.putNodeIndexInfo(concatJoinNode.GetProducer(i).GetNodeId(), NodeIndexInfo(indexColumnName, false))
+    val concatJoinNodeId = concatJoinNode.GetNodeId()
+    if (ctx.hasIndexInfo(concatJoinNodeId)) {
+      // The node has been processed, do not handle again
+      return
     }
 
-    // TODO: Need heuristic method to find the LCA node
-    // Bind the source node, need to set shouldAddIndexColumn as true
-    ctx.putNodeIndexInfo(concatJoinNode.GetProducer(0).GetProducer(0).GetNodeId(), NodeIndexInfo(indexColumnName, true))
+    logger.info("Visit physical plan to find the dest node which should add the index column")
+    val visitedNodeSet = mutable.HashSet[Long]()
+    val destNodeId = findLowestCommonAncestorNode(concatJoinNode, visitedNodeSet)
+
+    logger.info("Bind the node index info for all suitable nodes")
+    if (processedConcatJoinNodeIds.contains(concatJoinNodeId)) {
+      // Ignore the concat join node which has been process
+      return
+    }
+
+    val indexColumnName = "__JOIN_INDEX__" + concatJoinNodeId + "__" + System.currentTimeMillis()
+    visitAndBindNodeIndexInfo(ctx, concatJoinNode, destNodeId, indexColumnName, processedConcatJoinNodeIds)
+    // Reset the fist concat join node to source concat join node
+    ctx.getIndexInfo(concatJoinNodeId).nodeIndexType = NodeIndexType.SourceConcatJoinNode
+  }
+
+  def findLowestCommonAncestorNode(root: PhysicalOpNode, visitedNodeSet: mutable.HashSet[Long]): Long = {
+    // If node has been visited again, return the node as common ancestor
+    if (visitedNodeSet.contains(root.GetNodeId())) {
+      return root.GetNodeId()
+    }
+
+    // Add current node to visited set
+    visitedNodeSet.add(root.GetNodeId())
+
+    for (i <- 0 until root.GetProducerCnt().toInt) {
+      // Find the common node in child nodes, return if found
+      val result = findLowestCommonAncestorNode(root.GetProducer(i), visitedNodeSet)
+      if (result != 0) {
+        return result
+      }
+    }
+
+    // Return 0 if the node without input is not match
+    return 0
+  }
+
+  def visitAndBindNodeIndexInfo(ctx: PlanContext, node: PhysicalOpNode, destNodeId: Long, indexColumnName: String, processedConcatJoinNodeIds: mutable.HashSet[Long]): Unit = {
+    if (ctx.hasIndexInfo(node.GetNodeId())) {
+      // No need to set the node with index info again
+      return
+    }
+
+    if (node.GetNodeId() == destNodeId) {
+      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.DestNode))
+      // Return if handle the dest node
+      return
+    }
+
+    // Check if it is concat join node
+    if (node.GetOpType() == PhysicalOpType.kPhysicalOpJoin && PhysicalJoinNode.CastFrom(node).join().join_type() == JoinType.kJoinTypeConcat) {
+      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.InternalConcatJoinNode))
+      processedConcatJoinNodeIds.add(node.GetNodeId())
+    } else {
+      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.InternalComputeNode))
+      processedConcatJoinNodeIds.add(node.GetNodeId())
+    }
+
+    // Visit and bind the child node, notice that the final child node should always be the destNodeId
+    for (i <- 0 until node.GetProducerCnt().toInt) {
+      visitAndBindNodeIndexInfo(ctx, node.GetProducer(i), destNodeId, indexColumnName, processedConcatJoinNodeIds)
+    }
   }
 
   def getSparkOutput(root: PhysicalOpNode, ctx: PlanContext): SparkInstance = {

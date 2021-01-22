@@ -30,20 +30,7 @@ object WindowAggPlan {
     val unionNum = node.window_unions().GetSize().toInt
 
     // Check if we should keep the index column
-    val keepIndexColumn = if (ctx.hasIndexInfo(node.GetNodeId())) {
-      if (ctx.getIndexInfo(node.GetNodeId()).shouldAddIndexColumn) {
-        // We will add the index column after window compute so do not keep the index column here
-        false
-      } else {
-        // This node should keep the index column after window computing
-        true
-      }
-    } else {
-      // This node is not within ConcatJoin so do not keep the index column
-      false
-    }
-
-    logger.info("Window agg node should keep index column or not: %b".format(keepIndexColumn))
+    val keepIndexColumn = SparkInstance.keepIndexColumn(ctx, node.GetNodeId())
 
     val outputRDD = if (unionNum > 0) {
       genWithUnion(ctx, node, input, keepIndexColumn)
@@ -59,7 +46,7 @@ object WindowAggPlan {
 
     val outputDf = ctx.getSparkSession.createDataFrame(outputRDD, outputSchema)
 
-    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), outputDf)
+    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
   }
 
 
@@ -73,9 +60,9 @@ object WindowAggPlan {
     }
 
     val inputDf = if (config.skewMode == FeSQLConfig.SKEW) {
-      improveSkew(ctx, node, input.getSparkDfConsideringIndex(ctx, node.GetNodeId()), config, windowAggConfig)
+      improveSkew(ctx, node, input.getDfConsideringIndex(ctx, node.GetNodeId()), config, windowAggConfig)
     } else {
-      groupAndSort(ctx, node, input.getSparkDfConsideringIndex(ctx, node.GetNodeId()))
+      groupAndSort(ctx, node, input.getDfConsideringIndex(ctx, node.GetNodeId()))
     }
 
     val hadoopConf = new SerializableConfiguration(
@@ -99,7 +86,7 @@ object WindowAggPlan {
     val sess = ctx.getSparkSession
     val config = ctx.getConf
     val flagColName = "__FESQL_WINDOW_UNION_FLAG__" + System.currentTimeMillis()
-    val union = doUnionTables(ctx, node, input.getSparkDfConsideringIndex(ctx, node.GetNodeId()), flagColName)
+    val union = doUnionTables(ctx, node, input.getDfConsideringIndex(ctx, node.GetNodeId()), flagColName)
     val windowAggConfig = createWindowAggConfig(ctx, node, keepIndexColumn)
     val inputDf =  if (config.skewMode == FeSQLConfig.SKEW) {
       improveSkew(ctx, node, union, config, windowAggConfig)
@@ -131,7 +118,7 @@ object WindowAggPlan {
     val subTables = (0 until unionNum).map(i => {
       val subNode = node.window_unions().GetUnionNode(i)
       // TODO: Please check if this works to use lower API within ConcatJoin
-      val df = ctx.getSparkOutput(subNode).getSparkDfConsideringIndex(ctx, subNode.GetNodeId())
+      val df = ctx.getSparkOutput(subNode).getDfConsideringIndex(ctx, subNode.GetNodeId())
       if (df.schema != source.schema) {
         throw new FesqlException("{$i}th Window union with inconsistent schema:\n" +
           s"Expect ${source.schema}\nGet ${df.schema}")

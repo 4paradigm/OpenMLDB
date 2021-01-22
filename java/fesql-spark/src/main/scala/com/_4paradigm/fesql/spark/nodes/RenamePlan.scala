@@ -7,9 +7,9 @@ object RenamePlan {
 
   def gen(ctx: PlanContext, node: PhysicalRenameNode, input: SparkInstance): SparkInstance = {
     // Return the same dataframe for child node
-    val outputDf = input.getSparkDfConsideringIndex(ctx, node.GetNodeId())
+    val outputDf = input.getDfConsideringIndex(ctx, node.GetNodeId())
 
-    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), outputDf)
+    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
   }
 
 }

@@ -6,9 +6,9 @@ import com._4paradigm.fesql.vm.PhysicalLimitNode
 object LimitPlan {
 
   def gen(ctx: PlanContext, node: PhysicalLimitNode, input: SparkInstance): SparkInstance = {
-    val outputDf = input.getSparkDfConsideringIndex(ctx, node.GetNodeId()).limit(node.GetLimitCnt())
+    val outputDf = input.getDfConsideringIndex(ctx, node.GetNodeId()).limit(node.GetLimitCnt())
 
-    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), outputDf)
+    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
   }
 
 }

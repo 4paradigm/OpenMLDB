@@ -16,7 +16,7 @@ object DataProviderPlan {
     // If limit has been set
     val outputDf = if (node.GetLimitCnt() > 0) df.limit(node.GetLimitCnt()) else df
 
-    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), outputDf)
+    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
   }
 
 }

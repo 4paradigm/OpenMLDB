@@ -18,23 +18,10 @@ object GroupByAggregationPlan {
   val logger = LoggerFactory.getLogger(this.getClass)
 
   def gen(ctx: PlanContext, node: PhysicalGroupAggrerationNode, input: SparkInstance): SparkInstance = {
-    val inputDf = input.getSparkDfConsideringIndex(ctx, node.GetNodeId())
+    val inputDf = input.getDfConsideringIndex(ctx, node.GetNodeId())
 
     // Check if we should keep the index column
-    val keepIndexColumn = if (ctx.hasIndexInfo(node.GetNodeId())) {
-      if (ctx.getIndexInfo(node.GetNodeId()).shouldAddIndexColumn) {
-        // We will add the index column after window compute so do not keep the index column here
-        false
-      } else {
-        // This node should keep the index column after window computing
-        true
-      }
-    } else {
-      // This node is not within ConcatJoin so do not keep the index column
-      false
-    }
-
-    logger.info("Group by agg node should keep index column or not: %b".format(keepIndexColumn))
+    val keepIndexColumn = SparkInstance.keepIndexColumn(ctx, node.GetNodeId())
 
     // Get parition keys
     val groupByExprs = node.getGroup_.keys()
@@ -152,7 +139,7 @@ object GroupByAggregationPlan {
 
     val outputDf = ctx.getSparkSession.createDataFrame(resultRDD, outputSchema)
 
-    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), outputDf)
+    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
   }
 
 }

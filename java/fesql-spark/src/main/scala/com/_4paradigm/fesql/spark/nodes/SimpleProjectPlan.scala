@@ -18,7 +18,7 @@ object SimpleProjectPlan {
   def gen(ctx: PlanContext, node: PhysicalSimpleProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
     val inputInstance = inputs.head
 
-    val inputDf = inputInstance.getSparkDfConsideringIndex(ctx, node.GetNodeId())
+    val inputDf = inputInstance.getDfConsideringIndex(ctx, node.GetNodeId())
 
     val outputSchema = node.GetOutputSchema()
 
@@ -43,7 +43,7 @@ object SimpleProjectPlan {
     val result = SparkColumnUtil.setDataframeNullable(
       inputDf.select(selectColList: _*), nullable=true)
 
-    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), result)
+    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), result)
   }
 
   /**

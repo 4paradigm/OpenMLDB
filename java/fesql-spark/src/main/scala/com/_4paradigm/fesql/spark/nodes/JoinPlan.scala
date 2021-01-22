@@ -172,7 +172,7 @@ object JoinPlan {
       null
     }
 
-    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), result)
+    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), result)
   }
 
 

@@ -20,27 +20,14 @@ object RowProjectPlan {
    */
   def gen(ctx: PlanContext, node: PhysicalTableProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
     val inputInstance = inputs.head
-    val inputRDD = inputInstance.getSparkDfConsideringIndex(ctx, node.GetNodeId()).rdd
+    val inputRDD = inputInstance.getDfConsideringIndex(ctx, node.GetNodeId()).rdd
 
     val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node.GetProducer(0))
     val outputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
 
 
     // Check if we should keep the index column
-    val keepIndexColumn = if (ctx.hasIndexInfo(node.GetNodeId())) {
-      if (ctx.getIndexInfo(node.GetNodeId()).shouldAddIndexColumn) {
-        // We will add the index column after window compute so do not keep the index column here
-        false
-      } else {
-        // This node should keep the index column after window computing
-        true
-      }
-    } else {
-      // This node is not within ConcatJoin so do not keep the index column
-      false
-    }
-
-    logger.info("Row project node should keep index column or not: %b".format(keepIndexColumn))
+    val keepIndexColumn = SparkInstance.keepIndexColumn(ctx, node.GetNodeId())
 
     val outputSchema = if (keepIndexColumn) {
       FesqlUtil.getSparkSchema(node.GetOutputSchema()).add(ctx.getIndexInfo(node.GetNodeId()).indexColumnName, LongType)
@@ -77,7 +64,7 @@ object RowProjectPlan {
 
     val outputDf = ctx.getSparkSession.createDataFrame(projectRDD, outputSchema)
 
-    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), outputDf)
+    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
   }
 
 

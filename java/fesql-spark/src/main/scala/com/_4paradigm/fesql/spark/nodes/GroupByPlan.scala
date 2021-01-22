@@ -10,7 +10,7 @@ import scala.collection.mutable
 object GroupByPlan {
 
   def gen(ctx: PlanContext, node: PhysicalGroupNode, input: SparkInstance): SparkInstance = {
-    val inputDf = input.getSparkDfConsideringIndex(ctx, node.GetNodeId())
+    val inputDf = input.getDfConsideringIndex(ctx, node.GetNodeId())
 
     val groupByExprs = node.group().keys()
     val groupByCols = mutable.ArrayBuffer[Column]()
@@ -28,7 +28,7 @@ object GroupByPlan {
       inputDf.repartition(groupByCols: _*)
     }
 
-    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), groupedDf)
+    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), groupedDf)
   }
 
 }

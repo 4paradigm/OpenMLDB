@@ -80,7 +80,7 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
   }
 
   def putNodeIndexInfo(nodeId: Long, nodeIndexInfo: NodeIndexInfo): Unit = {
-    logger.debug("Bind the nodeId(%d) with indexColumnName(%s) and shouldAddIndexColumn(%b)".format(nodeId, nodeIndexInfo.indexColumnName, nodeIndexInfo.shouldAddIndexColumn))
+    logger.debug("Bind the nodeId(%d) with nodeIndexType(%s)".format(nodeId, nodeIndexInfo.indexColumnName, nodeIndexInfo.nodeIndexType))
     nodeIndexInfoMap.put(nodeId, nodeIndexInfo)
   }
 

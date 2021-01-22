@@ -49,7 +49,7 @@ object ConstProjectPlan {
     val emptyDf = ctx.getSparkSession.emptyDataFrame
     val result = SparkColumnUtil.setDataframeNullable(emptyDf.select(selectColList:_*), nullable=true)
 
-    SparkInstance.createWithNodeIndexInfo(ctx, node.GetNodeId(), result)
+    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), result)
   }
 
   // Generate Spark column from const value
