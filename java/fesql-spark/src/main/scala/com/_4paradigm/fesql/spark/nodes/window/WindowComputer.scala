@@ -50,7 +50,7 @@ class WindowComputer(sqlConfig: FeSQLConfig,
     config.instanceNotInWindow, config.windowFrameTypeName,
     config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
 
-  def compute(row: Row, keepIndexColumn: Boolean): Row = {
+  def compute(row: Row, keepIndexColumn: Boolean, unionFlagIdx: Int): Row = {
     if (hooks.nonEmpty) {
       hooks.foreach(_.preCompute(this, row))
     }
@@ -78,7 +78,13 @@ class WindowComputer(sqlConfig: FeSQLConfig,
 
     // Append the index column if needed
     if (keepIndexColumn) {
-      outputArr(outputArr.size-1) = row.get(row.size-1)
+      if (unionFlagIdx == -1) {
+        // No union column, use the last one
+        outputArr(outputArr.size-1) = row.get(row.size-1)
+      } else {
+        // Has union column, use the last but one
+        outputArr(outputArr.size-1) = row.get(row.size-2)
+      }
     }
 
     Row.fromSeq(outputArr) // can reuse backed array

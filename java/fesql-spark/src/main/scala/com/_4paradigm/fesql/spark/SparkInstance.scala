@@ -1,10 +1,9 @@
 package com._4paradigm.fesql.spark
 
 import com._4paradigm.fesql.common.FesqlException
-import com._4paradigm.fesql.spark.utils.SparkUtil
+import com._4paradigm.fesql.spark.utils.{FesqlUtil, NodeIndexInfo, NodeIndexType, SparkColumnUtil, SparkUtil}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.DataFrame
-import com._4paradigm.fesql.spark.utils.{FesqlUtil, NodeIndexInfo, NodeIndexType}
 
 class SparkInstance {
 
@@ -45,6 +44,10 @@ class SparkInstance {
   }
 
   def getDf(): DataFrame = {
+    if (df == null && dfWithIndex != null) {
+      // Only has dfWithIndex and remove the index column to return "original" df
+      dfWithIndex.drop(SparkColumnUtil.getColumnFromIndex(dfWithIndex, dfWithIndex.schema.size-1))
+    }
     df
   }
 
