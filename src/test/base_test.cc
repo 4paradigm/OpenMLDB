@@ -41,7 +41,13 @@ std::string SQLCaseTest::FindRtidbDirPath(const std::string &dirname) {
 std::vector<fesql::sqlcase::SQLCase> SQLCaseTest::InitCases(const std::string &yaml_path) {
     std::vector<fesql::sqlcase::SQLCase> cases;
     InitCases(FindRtidbDirPath("rtidb") + "/fesql/", yaml_path, cases);
-    return cases;
+    std::vector<fesql::sqlcase::SQLCase> level0_cases;
+    for (const auto& sql_case : cases) {
+        if (sql_case.level() == 0) {
+            level0_cases.push_back(sql_case);
+        }
+    }
+    return level0_cases;
 }
 void SQLCaseTest::InitCases(const std::string &dir_path, const std::string &yaml_path,
                             std::vector<fesql::sqlcase::SQLCase> &cases) {  // NOLINT
