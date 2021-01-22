@@ -13,8 +13,7 @@
 #include "storage/record.h"
 #include "timer.h"  // NOLINT
 
-
-
+DECLARE_int32(gc_safe_offset);
 DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(gc_deleted_pk_version_delta);
 
@@ -29,7 +28,8 @@ Segment::Segment()
       idx_byte_size_(0),
       pk_cnt_(0),
       ts_cnt_(1),
-      gc_version_(0) {
+      gc_version_(0),
+      ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     key_entry_max_height_ = (uint8_t)FLAGS_skiplist_max_height;
     entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
@@ -43,7 +43,8 @@ Segment::Segment(uint8_t height)
       pk_cnt_(0),
       key_entry_max_height_(height),
       ts_cnt_(1),
-      gc_version_(0) {
+      gc_version_(0),
+      ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
 }
@@ -56,7 +57,8 @@ Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec)
       pk_cnt_(0),
       key_entry_max_height_(height),
       ts_cnt_(ts_idx_vec.size()),
-      gc_version_(0) {
+      gc_version_(0),
+      ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
     for (uint32_t i = 0; i < ts_idx_vec.size(); i++) {
@@ -394,6 +396,57 @@ void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
     GcEntryFreeList(free_list_version, gc_idx_cnt, gc_record_cnt,
                     gc_record_byte_size);
 }
+
+void Segment::ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    switch (ttl_st.ttl_type) {
+        case TTLType::kAbsoluteTime:
+            if (ttl_st.abs_ttl == 0) {
+                return;
+            }
+            uint64_t expire_time = cur_time - ttl_offset_ - ttl_st.abs_ttl;
+            Gc4TTL(expire_time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            break;
+        case TTLType::kLatestTime:
+            if (ttl_st.lat_ttl == 0) {
+                return;
+            }
+            Gc4Head(ttl_st.lat_ttl, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            break;
+        case TTLType::kAbsAndLat:
+            if (ttl_st.abs_ttl == 0 || ttl_st.lat_ttl == 0) {
+                return;
+            }
+            uint64_t expire_time = cur_time - ttl_offset_ - ttl_st.abs_ttl;
+            Gc4TTLAndHead(expire_time, ttl_st.lat_ttl, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            break;
+        case TTLType::kAbsOrLat:
+            if (ttl_st.abs_ttl == 0 && ttl_st.lat_ttl == 0) {
+                return;
+            }
+            uint64_t expire_time = cur_time - ttl_offset_ - ttl_st.abs_ttl;
+            Gc4TTLOrHead(expire_time, ttl_st.lat_ttl, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            break;
+        default:
+            PDLOG(WARNING, "ttl type %d is unsupported", ttl_st.ttl_type);
+    }
+}
+
+void Segment::ExecuteGc(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& gc_idx_cnt,
+        uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
+    bool need_gc = false;
+    for (const auto& kv : ttl_st_map) {
+        if (kv.second.NeedGc()) {
+            need_gc = true;
+            break;
+        }
+    }
+    if (!need_gc) {
+        return;
+    }
+
+}
+
 
 void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt,
                       uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {

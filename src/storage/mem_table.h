@@ -32,17 +32,14 @@ typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 class MemTableWindowIterator : public ::fesql::vm::RowIterator {
  public:
     MemTableWindowIterator(TimeEntries::Iterator* it,
-                           ::rtidb::api::TTLType ttl_type, uint64_t expire_time,
+                           TTLType ttl_type, uint64_t expire_time,
                            uint64_t expire_cnt)
-        : it_(it),
-          ttl_type_(ttl_type),
-          record_idx_(0),
-          expire_value_(TTLDesc(expire_time, expire_cnt)) {}
+        : it_(it), record_idx_(0), expire_value_(expire_time, expire_cnt, ttl_type), row_() {}
 
     ~MemTableWindowIterator() { delete it_; }
 
     inline bool Valid() const {
-        if (!it_->Valid() || IsExpired()) {
+        if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
             return false;
         }
         return true;
@@ -66,31 +63,9 @@ class MemTableWindowIterator : public ::fesql::vm::RowIterator {
     inline bool IsSeekable() const { return true; }
 
  private:
-    inline bool IsExpired() const {
-        if (!expire_value_.HasExpire(ttl_type_)) {
-            return false;
-        }
-        switch (ttl_type_) {
-            case ::rtidb::api::TTLType::kAbsoluteTime:
-                return it_->GetKey() <= expire_value_.abs_ttl;
-            case ::rtidb::api::TTLType::kLatestTime:
-                return record_idx_ > expire_value_.lat_ttl;
-            case ::rtidb::api::TTLType::kAbsAndLat:
-                return it_->GetKey() <= expire_value_.abs_ttl &&
-                       record_idx_ > expire_value_.lat_ttl;
-            default:
-                return ((it_->GetKey() <= expire_value_.abs_ttl) &&
-                        (expire_value_.abs_ttl != 0)) ||
-                       ((record_idx_ > expire_value_.lat_ttl) &&
-                        (expire_value_.lat_ttl != 0));
-        }
-    }
-
- private:
     TimeEntries::Iterator* it_;
-    ::rtidb::api::TTLType ttl_type_;
     uint32_t record_idx_;
-    TTLDesc expire_value_;
+    TTLSt expire_value_;
     ::fesql::codec::Row row_;
 };
 
@@ -135,9 +110,9 @@ class MemTableKeyIterator : public ::fesql::vm::WindowIterator {
 class MemTableTraverseIterator : public TableIterator {
  public:
     MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt,
-                             ::rtidb::api::TTLType ttl_type,
-                             const uint64_t& expire_time,
-                             const uint64_t& expire_cnt, uint32_t ts_index);
+                             TTLType ttl_type,
+                             uint64_t expire_time,
+                             uint64_t expire_cnt, uint32_t ts_index);
     virtual ~MemTableTraverseIterator();
     inline bool Valid() override;
     void Next() override;
@@ -150,7 +125,6 @@ class MemTableTraverseIterator : public TableIterator {
 
  private:
     void NextPK();
-    bool IsExpired();
 
  private:
     Segment** segments_;
@@ -158,11 +132,10 @@ class MemTableTraverseIterator : public TableIterator {
     uint32_t seg_idx_;
     KeyEntries::Iterator* pk_it_;
     TimeEntries::Iterator* it_;
-    ::rtidb::api::TTLType ttl_type_;
     uint32_t record_idx_;
     uint32_t ts_idx_;
     // uint64_t expire_value_;
-    TTLDesc expire_value_;
+    TTLSt expire_value_;
     Ticket ticket_;
     uint64_t traverse_cnt_;
 };
@@ -255,9 +228,7 @@ class MemTable : public Table {
     }
 
     inline void SetTimeOffset(int64_t offset) {
-        time_offset_.store(
-            offset * 1000,
-            std::memory_order_relaxed);  // convert to millisecond
+        time_offset_.store(offset * 1000, std::memory_order_relaxed);
     }
 
     inline int64_t GetTimeOffset() {
@@ -279,13 +250,9 @@ class MemTable : public Table {
     bool AddIndex(const ::rtidb::common::ColumnKey& column_key);
 
  private:
-    inline bool CheckAbsolute(
-        const LogEntry& entry,
-        const std::map<uint32_t, uint64_t>& ts_dimemsions_map);
+    bool CheckAbsolute(const TTLSt& ttl, uint64_t ts);
 
-    inline bool CheckLatest(
-        const LogEntry& entry,
-        const std::map<uint32_t, uint64_t>& ts_dimemsions_map);
+    bool CheckLatest(uint32_t index_id, int32_t ts_idx, const Slice& key, uint64_t ts);
 
  private:
     uint32_t seg_cnt_;
@@ -296,7 +263,6 @@ class MemTable : public Table {
     std::atomic<int64_t> time_offset_;
     bool segment_released_;
     std::atomic<uint64_t> record_byte_size_;
-    uint32_t key_entry_max_height_;
 };
 
 }  // namespace storage

@@ -23,43 +23,92 @@ namespace storage {
 
 static constexpr uint32_t MAX_INDEX_NUM = 200;
 
-struct TTLDesc {
-    TTLDesc() = default;
+enum class TTLType {
+    kAbsoluteTime = 1;
+    kRelativeTime = 2;
+    kLatestTime = 3;
+    kAbsAndLat = 4;
+    kAbsOrLat = 5;
+};
 
-    TTLDesc(uint64_t abs, uint64_t lat) : abs_ttl(abs), lat_ttl(lat) {}
+struct TTLSt {
+    TTLSt() : abs_ttl(0), lat_ttl(0), ttl_type(kAbsoluteTime) {}
+    TTLSt(uint64_t abs, uint64_t lat, TTLType type) : abs_ttl(abs), lat_ttl(lat), ttl_type(type) {}
+    TTLSt(uint64_t abs, uint64_t lat, ::rtidb::api::TTLType type) : abs_ttl(abs), lat_ttl(lat) {
+        ttl_type = ConvertTTLType(type);
+    }
 
-    inline bool HasExpire(::rtidb::api::TTLType ttl_type) const {
-        switch (ttl_type) {
-            case ::rtidb::api::TTLType::kAbsoluteTime:
-                return abs_ttl != 0;
-            case ::rtidb::api::TTLType::kLatestTime:
-                return lat_ttl != 0;
-            case ::rtidb::api::TTLType::kAbsAndLat:
-                return abs_ttl != 0 && lat_ttl != 0;
-            case ::rtidb::api::TTLType::kAbsOrLat:
-                return abs_ttl != 0 || lat_ttl != 0;
+    TTLSt(uint64_t abs, uint64_t lat, ::rtidb::type::TTLType type) : abs_ttl(abs), lat_ttl(lat) {
+        ttl_type = ConvertTTLType(type);
+    }
+
+    TTLType ConvertTTLType(::rtidb::api::TTLType type) {
+        switch (type) {
+            case ::rtidb::api::TTLDesc::kAbsoluteTime:
+                return kAbsoluteTime;
+            case ::rtidb::api::TTLDesc::kLatestTime:
+                return kLatestTime;
+            case ::rtidb::api::TTLDesc::kAbsAndLat:
+                return kAbsAndLat;
+            case ::rtidb::api::TTLDesc::kAbsOrLat:
+                return kAbsOrLat;
             default:
-                return false;
+                return kAbsoluteTime;
         }
     }
 
-    inline std::string ToString(::rtidb::api::TTLType ttl_type) const {
-        switch (ttl_type) {
-            case ::rtidb::api::TTLType::kAbsoluteTime:
-                return std::to_string(abs_ttl) + "min";
-            case ::rtidb::api::TTLType::kLatestTime:
-                return std::to_string(lat_ttl);
-            case ::rtidb::api::TTLType::kAbsAndLat:
-                return std::to_string(abs_ttl) + "min&&" + std::to_string(lat_ttl);
-            case ::rtidb::api::TTLType::kAbsOrLat:
-                return std::to_string(abs_ttl) + "min||" + std::to_string(lat_ttl);
+    TTLType ConvertTTLType(::rtidb::type::TTLType type) {
+        switch (type) {
+            case ::rtidb::type::TTLDesc::kAbsoluteTime:
+                return kAbsoluteTime;
+            case ::rtidb::type::TTLDesc::kLatestTime:
+                return kLatestTime;
+            case ::rtidb::type::TTLDesc::kAbsAndLat:
+                return kAbsAndLat;
+            case ::rtidb::type::TTLDesc::kAbsOrLat:
+                return kAbsOrLat;
             default:
-                return "";
+                return kAbsoluteTime;
+        }
+    }
+
+    bool NeedGc() {
+        switch (ttl_type) {
+            case kAbsoluteTime:
+                return abs_ttl != 0 ? true : false;
+            case kLatestTime:
+                return lat_ttl != 0 ? true : false;
+            case kAbsAndLat:
+                return abs_ttl != 0 || lat_ttl != 0 ? true : false;
+            case kAbsOrLat:
+                return abs_ttl != 0 && lat_ttl != 0 ? true : false;
+            default:
+                return true;
+        }
+    }
+
+    bool IsExpired(uint64_t abs, uint32_t record_cnt) {
+        switch (ttl_type) {
+            case kAbsoluteTime:
+                if (abs_ttl == 0) return false;
+                return abs <= abs_ttl;
+            case kLatestTime:
+                if (abs_ttl == 0) return false;
+                return record_idx > lat_ttl;
+            case kAbsAndLat:
+                if (abs_ttl != 0 || lat_ttl != 0) return false;
+                return abs <= abs_ttl && record_idx > lat_ttl;
+            case kAbsOrLat:
+                if (abs_ttl != 0 && lat_ttl != 0) return false;
+                return abs <= abs_ttl || record_idx > lat_ttl;
+            default:
+                return true;
         }
     }
 
     uint64_t abs_ttl;
     uint64_t lat_ttl;
+    TTLType ttl_type;
 };
 
 enum class IndexStatus { kReady = 0, kWaiting, kDeleting, kDeleted };
@@ -67,16 +116,27 @@ enum class IndexStatus { kReady = 0, kWaiting, kDeleting, kDeleted };
 class ColumnDef {
  public:
     ColumnDef(const std::string& name, uint32_t id, ::rtidb::type::DataType type, bool not_null);
+    ColumnDef(const std::string& name, uint32_t id, ::rtidb::type::DataType type, bool not_null, int ts_idx);
     inline uint32_t GetId() const { return id_; }
-    const std::string& GetName() const { return name_; }
+    inline const std::string& GetName() const { return name_; }
     inline ::rtidb::type::DataType GetType() const { return type_; }
-    bool NotNull() { return not_null_; }
+    inline bool NotNull() const { return not_null_; }
+    void SetTsIdx(int32_t ts_idx) { ts_idx_ = ts_idx; }
+    inline int32_t GetTsIdx() const { return ts_idx_; }
+
+    static bool CheckTsType(::rtidb::type::DataType type) {
+        if (type == ::rtidb::type::kBigInt || type == ::rtidb::type::kTimestamp) {
+            return true;
+        }
+        return false;
+    }
 
  private:
     std::string name_;
     uint32_t id_;
     ::rtidb::type::DataType type_;
     bool not_null_;
+    int32_t ts_idx_;
 };
 
 class TableColumn {
@@ -102,22 +162,50 @@ class IndexDef {
     IndexDef(const std::string& name, uint32_t id, const IndexStatus& stauts, ::rtidb::type::IndexType type,
              const std::vector<ColumnDef>& column_idx_map);
     const std::string& GetName() { return name_; }
-    const std::vector<uint32_t>& GetTsColumn() { return ts_column_; }
-    void SetTsColumn(const std::vector<uint32_t>& ts_vec) { ts_column_ = ts_vec; }
+    inline const std::shared_ptr<ColumnDef>& GetTsColumn { return ts_column_; }
+    void SetTsColumn(const std::shared_ptr<ColumnDef>& ts_column) { ts_column_ = ts_column; }
     inline bool IsReady() { return status_.load(std::memory_order_acquire) == IndexStatus::kReady; }
     inline uint32_t GetId() { return index_id_; }
     void SetStatus(IndexStatus status) { status_.store(status, std::memory_order_release); }
     IndexStatus GetStatus() { return status_.load(std::memory_order_acquire); }
     inline ::rtidb::type::IndexType GetType() { return type_; }
     inline const std::vector<ColumnDef>& GetColumns() { return columns_; }
+    void SetTTL(const TTLSt& ttl);
+    TTLType GetTTLType() const;
+    std::shared_ptr<TTLSt> GetTTL() const;
+    inline void SetInnerPos(int32_t inner_pos) { inner_pos_ = inner_pos; }
+    inline uint32_t GetInnerPos() const { return inner_pos_; }
 
  private:
     std::string name_;
     uint32_t index_id_;
+    uint32_t inner_pos_;
     std::atomic<IndexStatus> status_;
     ::rtidb::type::IndexType type_;
     std::vector<ColumnDef> columns_;
-    std::vector<uint32_t> ts_column_;
+    std::shared_ptr<TTLSt> ttl_st_;
+    std::shared_ptr<ColumnDef> ts_column_;
+};
+
+class InnerIndexSt {
+ public:
+     InnerIndex(uint32_t id, const std::vector<std::shared_ptr<IndexDef>>& index) :
+         id_(id), column_key_pos_(0), index_(index), ts_() {
+        for (const auto& cur_index : index) {
+            auto ts_col = cur_index->GetTsColumn();
+            if (ts_col && ts_col->GetTsIdx() >= 0) {
+                ts_.push_back(ts_col->GetTsIdx());
+            }
+        }
+     }
+     inline uint32_t GetId() const { return id_; }
+     inline const std::vector<uint32_t>& GetTsIdx() const { return ts_; }
+     inline const std::vector<std::shared_ptr<IndexDef>>& GetIndex() const { return index_; }
+     uint32_t GetKeyEntryMaxHeight(uint32_t abs_max_height, uint32_t lat_max_height) const;
+ private:
+     const uint32_t id_;
+     const std::vector<std::shared_ptr<IndexDef>> index_;
+     std::vector<uint32_t> ts_;
 };
 
 bool ColumnDefSortFunc(const ColumnDef& cd_a, const ColumnDef& cd_b);
@@ -128,17 +216,25 @@ class TableIndex {
     void ReSet();
     std::shared_ptr<IndexDef> GetIndex(uint32_t idx);
     std::shared_ptr<IndexDef> GetIndex(const std::string& name);
+    std::shared_ptr<IndexDef> GetIndex(uint32_t idx, uint32_t ts_idx);
+    int32_t GetIndexCnt(uint32_t idx) const;
     int AddIndex(std::shared_ptr<IndexDef> index_def);
     std::vector<std::shared_ptr<IndexDef>> GetAllIndex();
+    std::shared_ptr<std::vector<std::shared_ptr<InnerIndexSt>>> GetAllInnerIndex() const;
+    std::shared_ptr<InnerIndexSt> GetInnerIndex(uint32_t idx) const;
     inline uint32_t Size() const { return std::atomic_load_explicit(&indexs_, std::memory_order_relaxed)->size(); }
     bool HasAutoGen();
     std::shared_ptr<IndexDef> GetPkIndex();
     const std::shared_ptr<IndexDef> GetIndexByCombineStr(const std::string& combine_str);
     bool IsColName(const std::string& name);
     bool IsUniqueColName(const std::string& name);
+    int32_t GetInnerIndexPos(uint32_t column_key_pos) const;
 
  private:
     std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
+    std::shared_ptr<std::vector<std::vector<std::shared_ptr<IndexDef>>> multi_ts_indexs_;
+    std::shared_ptr<std::vector<std::shared_ptr<InnerIndexSt>> inner_indexs_;
+    std::vector<std::atomic<int32_t>> column_key_2_inner_index_;
     std::shared_ptr<IndexDef> pk_index_;
     std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<IndexDef>>> combine_col_name_map_;
     std::shared_ptr<std::vector<std::string>> col_name_vec_;

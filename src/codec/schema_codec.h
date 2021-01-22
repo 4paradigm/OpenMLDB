@@ -199,6 +199,14 @@ class SchemaCodec {
         return type;
     }
 
+    static fesql::type::Type ConvertStrType(const std::string& type) {
+        auto it = DATA_TYPE_MAP.find(type);
+        if (it != DATA_TYPE_MAP.end()) {
+            return it->second;
+        }
+        return rtidb::type::kString;
+    }
+
     static fesql::type::Type ConvertType(rtidb::type::DataType type) {
         switch (type) {
             case rtidb::type::kBool: return fesql::type::kBool;

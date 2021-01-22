@@ -158,7 +158,11 @@ class Segment {
     bool Delete(const Slice& key);
 
     uint64_t Release();
-    // gc with specify time, delete the data before time
+
+    void ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
+    void ExecuteGc(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& gc_idx_cnt
+            uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
+
     void Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt,  // NOLINT
                 uint64_t& gc_record_cnt,                    // NOLINT
                 uint64_t& gc_record_byte_size);             // NOLINT
@@ -266,6 +270,7 @@ class Segment {
     std::atomic<uint64_t> gc_version_;
     std::map<uint32_t, uint32_t> ts_idx_map_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> idx_cnt_vec_;
+    uint64_t ttl_offset_;
 };
 
 }  // namespace storage

@@ -24,13 +24,19 @@ message ColumnDesc {
     required string name = 1;
     optional string type = 2;
     optional bool add_ts_idx = 3 [default=false]; 
-    optional bool is_ts_col = 4 [default=false];
+    optional bool is_ts_col = 4 [default=false, deprecated = true];
     optional uint64 ttl = 5 [default = 0, deprecated = true];
-    optional uint64 abs_ttl = 6 [default = 0];
-    optional uint64 lat_ttl = 7 [default = 0];
+    optional uint64 abs_ttl = 6 [default = 0, deprecated = true];
+    optional uint64 lat_ttl = 7 [default = 0, deprecated = true];
     optional rtidb.type.DataType data_type = 8;
     optional bool not_null = 9 [default = false];
     optional bool is_constant = 10 [default = false];
+}
+
+message TTLSt {
+    optional rtidb.type.TTLType ttl_type = 1 [default = rtidb.type.TTLType.kAbsoluteTime];
+    optional uint64 abs_ttl = 2 [default = 0];
+    optional uint64 lat_ttl = 3 [default = 0];
 }
 
 message ColumnKey {
@@ -38,7 +44,8 @@ message ColumnKey {
     repeated string col_name = 2;
     repeated string ts_name = 3;
     optional rtidb.type.IndexType index_type = 4;
-    optional uint32 flag = 5 [default=0]; // 0 mean index exist, 1 mean index has been deleted
+    optional uint32 flag = 5 [default = 0]; // 0 mean index exist, 1 mean index has been deleted
+    optional TTLSt ttl = 6;
 }
 
 enum StorageMode {
