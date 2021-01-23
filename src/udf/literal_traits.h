@@ -153,7 +153,7 @@ struct DataTypeTrait<int16_t> {
         return nm->MakeConstNode(v);
     }
     static const int16_t minimum_value() {
-        return std::numeric_limits<int16_t>::min();
+        return std::numeric_limits<int16_t>::lowest();
     }
     static const int16_t maximum_value() {
         return std::numeric_limits<int16_t>::max();
@@ -174,7 +174,7 @@ struct DataTypeTrait<int32_t> {
         return nm->MakeConstNode(v);
     }
     static const int32_t minimum_value() {
-        return std::numeric_limits<int32_t>::min();
+        return std::numeric_limits<int32_t>::lowest();
     }
     static const int32_t maximum_value() {
         return std::numeric_limits<int32_t>::max();
@@ -195,7 +195,7 @@ struct DataTypeTrait<int64_t> {
         return nm->MakeConstNode(v);
     }
     static const int64_t minimum_value() {
-        return std::numeric_limits<int64_t>::min();
+        return std::numeric_limits<int64_t>::lowest();
     }
     static const int64_t maximum_value() {
         return std::numeric_limits<int64_t>::max();
@@ -216,7 +216,7 @@ struct DataTypeTrait<float> {
         return nm->MakeConstNode(v);
     }
     static const float minimum_value() {
-        return std::numeric_limits<float>::min();
+        return std::numeric_limits<float>::lowest();
     }
     static const float maximum_value() {
         return std::numeric_limits<float>::max();
@@ -237,7 +237,7 @@ struct DataTypeTrait<double> {
         return nm->MakeConstNode(v);
     }
     static const double minimum_value() {
-        return std::numeric_limits<double>::min();
+        return std::numeric_limits<double>::lowest();
     }
     static const double maximum_value() {
         return std::numeric_limits<double>::max();
