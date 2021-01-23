@@ -612,7 +612,8 @@ cases:
         - [ "aa", 8, 1590739001000, 2.0, 2.0, 2.0, 2.0, 7.0, 7.0, 2.0, 2.0, 2.0, 2.0, 7.0, 7.0 ]
         - [ "aa", 9, 1590739002000, 3.0, 3.0, 2.0, 2.0, 7.0, 7.0, 3.0, 3.0, 2.0, 2.0, 7.0, 7.0 ]
   - id: 17
-    desc: offline-unsupport, ROWS Window with same timestamp
+    desc: ROWS Window with same timestamp
+    mode: offline-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]

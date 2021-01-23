@@ -47,7 +47,6 @@ Window::WindowFrameType WindowInterface::ExtractFrameType(
     } else {
         LOG(WARNING) << "Illegal frame type: " << frame_type_str;
         return Window::kFrameRows;
-        ;
     }
 }
 
