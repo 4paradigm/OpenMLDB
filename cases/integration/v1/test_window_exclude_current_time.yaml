@@ -1,8 +1,5 @@
 db: test_zw
-debugs: [ ]
 cases:
-
-
   - id: 0
     desc: ROWS_RANGE Window OPEN PRECEDING EXCLUDE CURRENT_TIME
     inputs:
@@ -172,7 +169,7 @@ cases:
         - [ "aa", 9, 1590739002000, 3.0, 7.0 ]
 
   - id: 5
-    mode: rtidb-batch-unsupport
+    mode: offline-unsupport, rtidb-batch-unsupport
     desc: ROWS_RANGE Window and EXCLUDE CURRENT_TIME Window
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
@@ -209,7 +206,7 @@ cases:
         - [ "aa", 9, 1590739002000, 3.0, 3.0 ]
   - id: 6
     desc: ROWS_RANGE Window with MaxSize 2 and EXCLUDE CURRENT_TIME Window
-    mode: rtidb-batch-unsupport
+    mode: offline-unsupport, rtidb-batch-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -245,7 +242,7 @@ cases:
         - [ "aa", 9, 1590739002000, 2.0, 2.0 ]
   - id: 7
     desc: ROWS_RANGE Window with MaxSize 10 and EXCLUDE CURRENT_TIME Window
-    mode: rtidb-batch-unsupport
+    mode: offline-unsupport, rtidb-batch-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -281,7 +278,7 @@ cases:
         - [ "aa", 9, 1590739002000, 3.0, 3.0 ]
   - id: 8
     desc: ROWS Window and EXCLUDE CURRENT_TIME Window
-    mode: rtidb-batch-unsupport
+    mode: offline-unsupport, rtidb-batch-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -317,7 +314,7 @@ cases:
         - [ "aa", 9, 1590739002000, 7.0, 7.0 ]
   - id: 9
     desc: ROWS and ROWS Window and EXCLUDE CURRENT_TIME Window
-    mode: rtidb-batch-unsupport
+    mode: offline-unsupport, rtidb-batch-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -364,7 +361,7 @@ cases:
 
   - id: 10
     desc: ROWS_RANGE Window OPEN PRECEDING and EXCLUDE CURRENT_TIME Window
-    mode: rtidb-batch-unsupport
+    mode: offline-unsupport, rtidb-batch-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -400,7 +397,7 @@ cases:
         - [ "aa", 9, 1590739002000, 3.0, 3.0 ]
   - id: 11
     desc: ROWS_RANGE Window with MaxSize 2 OPEN PRECEDING amd EXCLUDE CURRENT_TIME Window
-    mode: rtidb-batch-unsupport
+    mode: offline-unsupport, rtidb-batch-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -436,7 +433,7 @@ cases:
         - [ "aa", 9, 1590739002000, 2.0, 2.0 ]
   - id: 12
     desc: ROWS_RANGE Window with MaxSize 10 OPEN PRECEDING and EXCLUDE CURRENT_TIME Window
-    mode: rtidb-batch-unsupport
+    mode: offline-unsupport, rtidb-batch-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -472,7 +469,7 @@ cases:
         - [ "aa", 9, 1590739002000, 3.0, 3.0 ]
   - id: 13
     desc: ROWS Window OPEN PRECEDING and EXCLUDE CURRENT_TIME Window
-    mode: rtidb-batch-unsupport
+    mode: offline-unsupport, rtidb-batch-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -508,7 +505,7 @@ cases:
         - [ "aa", 9, 1590739002000, 7.0, 7.0 ]
   - id: 14
     desc: ROWS and ROWS Window OPEN PRECEDING and EXCLUDE CURRENT_TIME Window
-    mode: rtidb-batch-unsupport
+    mode: offline-unsupport, rtidb-batch-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -554,7 +551,7 @@ cases:
         - [ "aa", 9, 1590739002000, 3.0, 3.0, 2.0, 2.0, 7.0, 7.0 ]
   - id: 16
     desc: ROWS and ROWS Window 各类窗口混合
-    mode: rtidb-batch-unsupport
+    mode: offline-unsupport, rtidb-batch-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -615,7 +612,7 @@ cases:
         - [ "aa", 8, 1590739001000, 2.0, 2.0, 2.0, 2.0, 7.0, 7.0, 2.0, 2.0, 2.0, 2.0, 7.0, 7.0 ]
         - [ "aa", 9, 1590739002000, 3.0, 3.0, 2.0, 2.0, 7.0, 7.0, 3.0, 3.0, 2.0, 2.0, 7.0, 7.0 ]
   - id: 17
-    desc: ROWS Window with same timestamp
+    desc: offline-unsupport, ROWS Window with same timestamp
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -648,8 +645,42 @@ cases:
         - [ "aa", 8, 1590738992000, 4.0]
         - [ "aa", 9, 1590738993000, 4.0]
   - id: 18
+    desc: ROWS Window with same timestamp Exclude CurretTime
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738990000 ]
+          - [ "aa",4, 1.0, 1590738990000 ]
+          - [ "aa",5, 1.0, 1590738990000 ]
+          - [ "aa",6, 1.0, 1590738990000 ]
+          - [ "aa",7, 1.0, 1590738991000 ]
+          - [ "aa",8, 1.0, 1590738992000 ]
+          - [ "aa",9, 1.0, 1590738993000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double"]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0]
+        - [ "aa", 2, 1590738990000, 1.0]
+        - [ "aa", 3, 1590738990000, 1.0]
+        - [ "aa", 4, 1590738990000, 1.0]
+        - [ "aa", 5, 1590738990000, 1.0]
+        - [ "aa", 6, 1590738990000, 1.0]
+        - [ "aa", 7, 1590738991000, 4.0]
+        - [ "aa", 8, 1590738992000, 4.0]
+        - [ "aa", 9, 1590738993000, 4.0]
+  - id: 19
     desc: ROWS, ROWS_RANGE  Window, Normal Window, OPEN Window,  EXCLUDE CURRENT TIME Window
-    mode: rtidb-batch-unsupport
+    mode: offline-unsupport, rtidb-batch-unsupport
+    tags: ["@chendihao, @baoxinqi, 测试的时候spark需要保证输入数据滑入顺序"]
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
