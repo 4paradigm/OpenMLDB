@@ -256,6 +256,7 @@ class WindowPlanNode : public LeafPlanNode {
     explicit WindowPlanNode(int id)
         : LeafPlanNode(kPlanTypeWindow),
           id(id),
+          exclude_current_time_(false),
           instance_not_in_window_(false),
           name(""),
           keys_(nullptr),
@@ -283,10 +284,15 @@ class WindowPlanNode : public LeafPlanNode {
     void set_instance_not_in_window(bool instance_not_in_window) {
         instance_not_in_window_ = instance_not_in_window;
     }
+    const bool exclude_current_time() const { return exclude_current_time_; }
+    void set_exclude_current_time(bool exclude_current_time) {
+        exclude_current_time_ = exclude_current_time;
+    }
     virtual bool Equals(const PlanNode *node) const;
 
  private:
     int id;
+    bool exclude_current_time_;
     bool instance_not_in_window_;
     std::string name;
     FrameNode *frame_node_;

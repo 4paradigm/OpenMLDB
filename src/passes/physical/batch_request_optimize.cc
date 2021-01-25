@@ -582,6 +582,7 @@ Status CommonColumnOptimize::ProcessRequestUnion(
     CHECK_STATUS(ctx->CreateOp<PhysicalRequestUnionNode>(
         &new_request_union, request_state->common_op, new_right,
         request_union_op->window(), request_union_op->instance_not_in_window(),
+        request_union_op->exclude_current_time(),
         false));
     SetAllCommon(new_request_union);
 

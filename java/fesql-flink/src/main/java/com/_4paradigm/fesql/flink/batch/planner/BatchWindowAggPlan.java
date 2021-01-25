@@ -74,6 +74,7 @@ public class BatchWindowAggPlan {
         long rowPreceding = -1 * node.window().range().frame().GetHistoryRowsStart();
         long maxSize = node.window().range().frame().frame_maxsize();
         boolean instanceNotInWindow = node.instance_not_in_window();
+        boolean excludeCurrentTime = node.exclude_current_time();
 
         FrameType frameType = node.window().range().frame().frame_type();
         Window.WindowFrameType windowFrameType;
@@ -117,7 +118,7 @@ public class BatchWindowAggPlan {
                 functionPointer = jit.FindFunction(functionName);
                 inputCodec = new FesqlFlinkCodec(inputSchemaLists);
                 outputCodec = new FesqlFlinkCodec(outputSchemaLists);
-                windowInterface = new WindowInterface(instanceNotInWindow, windowFrameType.toString(), startOffset, endOffset, rowPreceding, maxSize);
+                windowInterface = new WindowInterface(instanceNotInWindow, excludeCurrentTime, windowFrameType.toString(), startOffset, endOffset, rowPreceding, maxSize);
             }
 
             @Override

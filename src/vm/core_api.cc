@@ -21,6 +21,7 @@ namespace fesql {
 namespace vm {
 
 WindowInterface::WindowInterface(bool instance_not_in_window,
+                                 bool exclude_current_time,
                                  const std::string& frame_type_str,
                                  int64_t start_offset, int64_t end_offset,
                                  uint64_t rows_preceding, uint64_t max_size)
@@ -28,6 +29,7 @@ WindowInterface::WindowInterface(bool instance_not_in_window,
           WindowRange(ExtractFrameType(frame_type_str), start_offset,
                       end_offset, rows_preceding, max_size)))) {
     window_impl_->set_instance_not_in_window(instance_not_in_window);
+    window_impl_->set_exclude_current_time(exclude_current_time);
 }
 
 bool WindowInterface::BufferData(uint64_t key, const Row& row) {
@@ -44,7 +46,7 @@ Window::WindowFrameType WindowInterface::ExtractFrameType(
         return Window::kFrameRowsMergeRowsRange;
     } else {
         LOG(WARNING) << "Illegal frame type: " << frame_type_str;
-        return Window::kFrameRows;;
+        return Window::kFrameRows;
     }
 }
 

@@ -173,6 +173,7 @@ ESCAPED	{ return ESCAPED; }
 EXISTS	{ return EXISTS; }
 EXIT	{ return EXIT; }
 EXPLAIN	{ return EXPLAIN; }
+EXCLUDE { return EXCLUDE; }
 FETCH	{ return FETCH; }
 FLOAT32|FLOAT?	{ return FLOAT; }
 FOLLOWING   {return FOLLOWING;  }
@@ -253,6 +254,7 @@ OUT	{ return OUT; }
 OUTER	{ return OUTER; }
 OUTFILE	{ return OUTFILE; }
 OVER    { return OVER; }
+OPEN    { return OPEN; }
 RANGE   {return RANGE;  }
 ROW   {return ROW;  }
 ROWS   {return ROWS;  }
@@ -361,7 +363,7 @@ I64_MAX { return I64_MAX; }
 I16_MAX { return I16_MAX; }
 FLOAT_MAX { return FLOAT_MAX; }
 DOUBLE_MAX { return DOUBLE_MAX; }
-I32_MAX { return I32_MIN; }
+I32_MIN { return I32_MIN; }
 I64_MIN { return I64_MIN; }
 I16_MIN { return I16_MIN; }
 FLOAT_MIN { return FLOAT_MIN; }
