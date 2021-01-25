@@ -278,6 +278,7 @@ cases:
           - [1590738989000,1590738988980,1590738988970,1590738988999]
   - id: 9
     desc: "整型_[%MOD*-/]_各种类型_错误"
+    level: 5
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -298,6 +299,7 @@ cases:
       success: false
   - id: 10
     desc: "整型_+_各种类型_错误"
+    level: 5
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -318,6 +320,7 @@ cases:
       success: false
   - id: 11
     desc: "各种类型_[%MOD*/]_各种类型_错误"
+    level: 5
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -338,6 +341,7 @@ cases:
       success: false
   - id: 12
     desc: "timetamp_-_各种类型_错误"
+    level: 5
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -358,6 +362,7 @@ cases:
       success: false
   - id: 13
     desc: "timetamp_+_各种类型_错误"
+    level: 5
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -378,6 +383,7 @@ cases:
       success: false
   - id: 14
     desc: "date/string_[+-]_各种类型_错误"
+    level: 5
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -413,6 +419,7 @@ cases:
         - [-30,30,-30,-30,-30,false]
   - id: 16
     desc: "-_其他类型_错误"
+    level: 5
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -461,6 +468,7 @@ cases:
           - [Infinity,1,1,Infinity]
   - id: 18
     desc: "int_DIV_各种类型_错误"
+    level: 5
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -481,6 +489,7 @@ cases:
       success: false
   - id: 19
     desc: "各种类型_DIV_各种类型_错误"
+    level: 5
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]

@@ -91,6 +91,7 @@ cases:
           - [true,1588262400000,"2020-05-01","2020-05-01"]
   - id: 4
     desc: "cast_其他类型_date_错误"
+    level: 5
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -104,6 +105,7 @@ cases:
       success: false
   - id: 5
     desc: "cast_date_其他类型_错误"
+    level: 5
     tags: ["TODO", "bug"]
     inputs:
       -

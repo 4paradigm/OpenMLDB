@@ -187,6 +187,7 @@ cases:
         - [6, null,null,null]
   - id: 5
     desc: "strcmp-fail"
+    level: 5
     inputs:
       -
         columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -201,6 +202,7 @@ cases:
       success: false
   - id: 6
     desc: "strcmp-string-fail"
+    level: 5
     inputs:
       -
         columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -246,6 +248,7 @@ cases:
 
   - id: 8
     desc: "substr-fail"
+    level: 5
     inputs:
       -
         columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]

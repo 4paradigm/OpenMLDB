@@ -10,6 +10,7 @@ import java.util.Map;
 
 @Data
 public class SQLCase implements Serializable{
+    int level = 0;
     String id;
     String desc;
     String mode;

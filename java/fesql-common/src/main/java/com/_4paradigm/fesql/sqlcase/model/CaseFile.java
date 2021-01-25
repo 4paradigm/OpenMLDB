@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -20,6 +21,14 @@ public class CaseFile {
     String db;
     List<String> debugs;
     List<SQLCase> cases;
+
+    public List<SQLCase> getCases(List<Integer> levels) {
+        if(!CollectionUtils.isEmpty(debugs)){
+            return getCases();
+        }
+        List<SQLCase> cases = getCases().stream().filter(sc -> levels.contains(sc.getLevel())).collect(Collectors.toList());
+        return cases;
+    }
 
     public List<SQLCase> getCases() {
         if (CollectionUtils.isEmpty(cases)) {
