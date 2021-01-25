@@ -4,6 +4,7 @@ import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.entity.FesqlDataProvider;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.testng.Assert;
 import org.testng.ITest;
 import org.testng.annotations.BeforeMethod;
@@ -53,6 +54,10 @@ public class FesqlTest implements ITest {
     @Parameters({"env"})
     public void beforeTest(@Optional("cluster") String env) throws Exception {
         FesqlGlobalVar.env = env;
+        String caseEnv = System.getProperty("caseEnv");
+        if (!StringUtils.isEmpty(caseEnv)) {
+            FesqlGlobalVar.env = caseEnv;
+        }
         log.info("fesql global var env: {}", env);
         FesqlClient fesqlClient = new FesqlClient(FesqlConfig.ZK_CLUSTER, FesqlConfig.ZK_ROOT_PATH);
         executor = fesqlClient.getExecutor();
