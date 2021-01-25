@@ -1,6 +1,7 @@
 package com._4paradigm.fesql_auto_test.entity;
 
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.fesql_auto_test.util.Tool;
 import org.testng.Assert;
 
@@ -16,7 +17,7 @@ public class FesqlDataProviderList {
     public List<SQLCase> getCases() {
         List<SQLCase> cases = new ArrayList<SQLCase>();
         for (FesqlDataProvider dataProvider : dataProviderList) {
-            cases.addAll(dataProvider.getCases());
+            cases.addAll(dataProvider.getCases(FesqlConfig.levels));
         }
         return cases;
     }
