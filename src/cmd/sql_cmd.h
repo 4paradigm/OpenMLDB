@@ -343,6 +343,10 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
                 return;
             }
             auto table = cs->GetTableInfo(db, cmd_node->GetArgs()[0]);
+            if (table == nullptr) {
+                std::cerr << "table " << cmd_node->GetArgs()[0] << " does not exist" << std::endl;
+                return;
+            }
             ::fesql::vm::Schema output_schema;
             ::rtidb::catalog::SchemaAdapter::ConvertSchema(
                 table->column_desc_v1(), &output_schema);
