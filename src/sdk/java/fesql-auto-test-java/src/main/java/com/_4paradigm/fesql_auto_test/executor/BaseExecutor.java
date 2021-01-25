@@ -36,10 +36,11 @@ public abstract class BaseExecutor {
             prepare();
             FesqlResult fesqlResult = execute();
             check(fesqlResult);
-            tearDown();
         } catch (Exception e) {
             e.printStackTrace();
             Assert.fail("executor run with exception");
+        }finally {
+            tearDown();
         }
     }
 
