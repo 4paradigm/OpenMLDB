@@ -5,7 +5,7 @@ import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.utils.{FesqlUtil, SparkColumnUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, PhysicalSimpleProjectNode}
 import org.slf4j.LoggerFactory
-import com._4paradigm.fesql.node.{CastExprNode, ColumnRefNode, ConstNode, ExprNode, ExprType, DataType => FesqlDataType}
+import com._4paradigm.fesql.node.{CastExprNode, ConstNode, ExprNode, ExprType, DataType => FesqlDataType}
 import org.apache.spark.sql.{Column, DataFrame}
 
 import scala.collection.JavaConverters._
@@ -53,15 +53,14 @@ object SimpleProjectPlan {
                         node: PhysicalSimpleProjectNode,
                         expr: ExprNode): (Column, FesqlDataType) = {
     expr.GetExprType() match {
-      case ExprType.kExprColumnRef =>
-        val column = ColumnRefNode.CastFrom(expr)
+      case ExprType.kExprColumnRef | ExprType.kExprColumnId =>
         val inputNode = node.GetProducer(0)
-        val colIndex = CoreAPI.ResolveColumnIndex(inputNode, column)
+        val colIndex = CoreAPI.ResolveColumnIndex(inputNode, expr)
         if (colIndex < 0 || colIndex >= inputNode.GetOutputSchemaSize()) {
           inputNode.Print()
           inputNode.PrintSchema()
           throw new IndexOutOfBoundsException(
-            s"${column.GetExprString()} resolved index out of bound: $colIndex")
+            s"${expr.GetExprString()} resolved index out of bound: $colIndex")
         }
         val sparkCol = SparkColumnUtil.getColumnFromIndex(inputDf, colIndex)
         val sparkType = inputDf.schema(colIndex).dataType

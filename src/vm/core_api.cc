@@ -51,16 +51,30 @@ Window::WindowFrameType WindowInterface::ExtractFrameType(
 }
 
 int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
-                                fesql::node::ColumnRefNode* expr) {
+                                fesql::node::ExprNode* expr) {
     const SchemasContext* schemas_ctx = node->schemas_ctx();
-    auto column_expr = dynamic_cast<const node::ColumnRefNode*>(expr);
     size_t schema_idx;
     size_t col_idx;
-    auto status =
-        schemas_ctx->ResolveColumnRefIndex(column_expr, &schema_idx, &col_idx);
+    Status status;
+    switch (expr->GetExprType()) {
+        case node::kExprColumnRef: {
+            auto column_ref = dynamic_cast<const node::ColumnRefNode*>(expr);
+            status = schemas_ctx->ResolveColumnRefIndex(column_ref, &schema_idx,
+                                                        &col_idx);
+            break;
+        }
+        case node::kExprColumnId: {
+            auto column_id = dynamic_cast<const node::ColumnIdNode*>(expr);
+            status = schemas_ctx->ResolveColumnIndexByID(
+                column_id->GetColumnID(), &schema_idx, &col_idx);
+            break;
+        }
+        default:
+            return -1;
+    }
+
     if (!status.isOK()) {
-        LOG(WARNING) << "Fail to resolve column "
-                     << column_expr->GetExprString();
+        LOG(WARNING) << "Fail to resolve column " << expr->GetExprString();
         return -1;
     }
     size_t total_offset = col_idx;
