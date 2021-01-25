@@ -3,6 +3,7 @@ debugs: []
 cases:
   - id: 0
     desc: "smallint_[%/MOD/*]_整型_正确"
+    level: 0
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
