@@ -30,7 +30,7 @@ typedef const int8_t* RawPtrHandle;
 
 class WindowInterface {
  public:
-    WindowInterface(bool instance_not_in_window,
+    WindowInterface(bool instance_not_in_window, bool exclude_current_time,
                     const std::string& frame_type_str, int64_t start_offset,
                     int64_t end_offset, uint64_t rows_preceding,
                     uint64_t max_size);

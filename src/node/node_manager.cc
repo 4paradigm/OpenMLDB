@@ -99,11 +99,18 @@ SQLNode *NodeManager::MakeLimitNode(int count) {
 }
 SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
                                         ExprNode *orders, SQLNode *frame) {
-    return MakeWindowDefNode(nullptr, partitions, orders, frame, false);
+    return MakeWindowDefNode(nullptr, partitions, orders, frame, false, false);
+}
+SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
+                                        ExprNode *orders, SQLNode *frame,
+                                        bool open_interval_window) {
+    return MakeWindowDefNode(nullptr, partitions, orders, frame,
+                             open_interval_window, false);
 }
 SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
                                         ExprListNode *partitions,
                                         ExprNode *orders, SQLNode *frame,
+                                        bool exclude_current_time,
                                         bool instance_not_in_window) {
     WindowDefNode *node_ptr = new WindowDefNode();
     if (nullptr != orders) {
@@ -116,6 +123,7 @@ SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
         }
         node_ptr->SetOrders(dynamic_cast<OrderByNode *>(orders));
     }
+    node_ptr->set_exclude_current_time(exclude_current_time);
     node_ptr->set_instance_not_in_window(instance_not_in_window);
     node_ptr->set_union_tables(union_tables);
     node_ptr->SetPartitions(partitions);
@@ -135,15 +143,10 @@ WindowDefNode *NodeManager::MergeWindow(const WindowDefNode *w1,
         LOG(WARNING) << "Fail to Merge Window: input windows are null";
         return nullptr;
     }
-
-    if (!w1->CanMergeWith(w2)) {
-        LOG(WARNING) << "Fail to Merge Window: can't merge windows";
-        return nullptr;
-    }
     return dynamic_cast<WindowDefNode *>(MakeWindowDefNode(
         w1->union_tables(), w1->GetPartitions(), w1->GetOrders(),
         MergeFrameNode(w1->GetFrame(), w2->GetFrame()),
-        w1->instance_not_in_window()));
+        w1->exclude_current_time(), w1->instance_not_in_window()));
 }
 FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(
     FrameNode *frame1) {
@@ -173,12 +176,6 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
         LOG(WARNING) << "Fail to Merge Frame: input frames are null";
         return nullptr;
     }
-
-    if (!frame1->CanMergeWith(frame2)) {
-        LOG(WARNING) << "Fail to Merge Frame: can't merge frames";
-        return nullptr;
-    }
-
     FrameType frame_type = frame1->frame_type() == frame2->frame_type()
                                ? frame1->frame_type()
                                : kFrameRowsMergeRowsRange;

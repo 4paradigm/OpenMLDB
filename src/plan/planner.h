@@ -35,6 +35,7 @@ class Planner {
             const bool is_cluster_optimized)
         : is_batch_mode_(is_batch_mode),
           is_cluster_optimized_(is_cluster_optimized),
+          enable_window_maxsize_merged_(true),
           node_manager_(manager) {}
     virtual ~Planner() {}
     virtual int CreatePlanTree(
@@ -48,6 +49,7 @@ class Planner {
         std::vector<const node::WindowDefNode *> *windows);
     const bool is_batch_mode_;
     const bool is_cluster_optimized_;
+    const bool enable_window_maxsize_merged_;
 
  protected:
     bool IsTable(node::PlanNode *node);

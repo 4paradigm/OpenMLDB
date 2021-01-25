@@ -45,7 +45,9 @@ class WindowComputer(sqlConfig: FeSQLConfig,
 
   // window state
   protected var window = new WindowInterface(
-    config.instanceNotInWindow, config.windowFrameTypeName,
+    config.instanceNotInWindow,
+    config.excludeCurrentTime,
+    config.windowFrameTypeName,
     config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
 
   def compute(row: Row): Row = {
@@ -112,7 +114,8 @@ class WindowComputer(sqlConfig: FeSQLConfig,
       max_size = config.rowPreceding.intValue() + 1
     }
     window = new WindowInterface(
-      config.instanceNotInWindow, config.windowFrameTypeName,
+      config.instanceNotInWindow, config.excludeCurrentTime,
+      config.windowFrameTypeName,
       config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
   }
 
