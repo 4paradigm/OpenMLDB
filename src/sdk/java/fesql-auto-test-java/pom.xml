@@ -182,6 +182,30 @@
                     </dependency>
                 </dependencies>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemProperties>
+                        <property>
+                            <name>caseEnv</name>
+                            <value>${caseEnv}</value>
+                        </property>
+                        <property>
+                            <name>casePath</name>
+                            <value>${casePath}</value>
+                        </property>
+                        <property>
+                            <name>caseId</name>
+                            <value>${caseId}</value>
+                        </property>
+                        <property>
+                            <name>caseDesc</name>
+                            <value>${caseDesc}</value>
+                        </property>
+                    </systemProperties>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
