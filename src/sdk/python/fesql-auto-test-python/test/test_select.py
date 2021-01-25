@@ -15,23 +15,26 @@ class TestSelect(unittest.TestCase):
         cls.engine = fesql_test.getEngine()
         cls.connection = cls.engine.connect()
 
-    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_select_sample.yaml')))
+    def testEmpty(self):
+        print('testEmpty')
+
+    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_select_sample.yaml'), 'testSampleSelect'))
     def testSampleSelect(self, *testCases):
         executor.fesql_executor.build(self.connection,testCases[0]).run()
 
-    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_expression.yaml')))
+    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_expression.yaml'), 'testExpression'))
     def testExpression(self, *testCases):
         executor.fesql_executor.build(self.connection,testCases[0]).run()
 
-    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_udaf_function.yaml')))
+    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_udaf_function.yaml'), 'testUDAFFunction'))
     def testUDAFFunction(self, *testCases):
         executor.fesql_executor.build(self.connection,testCases[0]).run()
 
-    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_udf_function.yaml')))
+    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_udf_function.yaml'), 'testUDFFunction'))
     def testUDFFunction(self, *testCases):
         executor.fesql_executor.build(self.connection,testCases[0]).run()
 
-    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_sub_select.yaml')))
+    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_sub_select.yaml'), 'testSubSelect'))
     def testSubSelect(self, *testCases):
         executor.fesql_executor.build(self.connection,testCases[0]).run()
 
