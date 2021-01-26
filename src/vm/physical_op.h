@@ -210,10 +210,11 @@ class Range : public FnComponent {
     Range() : range_key_(nullptr), frame_(nullptr) {}
     Range(const node::OrderByNode *order, const node::FrameNode *frame)
         : range_key_(nullptr), frame_(frame) {
-        range_key_ = nullptr == order ? nullptr
-                     : node::ExprListNullOrEmpty(order->order_by_)
+        range_key_ = nullptr == order
                          ? nullptr
-                         : order->order_by_->children_[0];
+                         : node::ExprListNullOrEmpty(order->order_by_)
+                               ? nullptr
+                               : order->order_by_->children_[0];
     }
     virtual ~Range() {}
     const bool Valid() const { return nullptr != range_key_; }
@@ -1064,19 +1065,22 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
  public:
     PhysicalWindowAggrerationNode(PhysicalOpNode *node,
                                   const ColumnProjects &project,
-                                  const node::WindowPlanNode *w_ptr,
-                                  bool need_append_input)
+                                  const WindowOp &window_op,
+                                  bool instance_not_in_window,
+                                  bool need_append_input,
+                                  bool exclude_current_time)
         : PhysicalProjectNode(node, kWindowAggregation, project, true),
           need_append_input_(need_append_input),
-          exclude_current_time_(w_ptr->exclude_current_time()),
-          instance_not_in_window_(w_ptr->instance_not_in_window()),
-          window_(w_ptr),
+          exclude_current_time_(exclude_current_time),
+          instance_not_in_window_(instance_not_in_window),
+          window_(window_op),
           window_unions_() {
         output_type_ = kSchemaTypeTable;
         fn_infos_.push_back(&window_.partition_.fn_info());
         fn_infos_.push_back(&window_.sort_.fn_info());
         fn_infos_.push_back(&window_.range_.fn_info());
     }
+
     virtual ~PhysicalWindowAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     static PhysicalWindowAggrerationNode *CastFrom(PhysicalOpNode *node);

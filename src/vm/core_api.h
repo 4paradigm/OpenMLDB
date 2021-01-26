@@ -103,7 +103,7 @@ class CoreAPI {
     static RawPtrHandle AppendRow(fesql::codec::Row*, size_t bytes);
 
     static int ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
-                                  fesql::node::ColumnRefNode* expr);
+                                  fesql::node::ExprNode* expr);
 
     static std::string ResolveSourceColumnName(
         fesql::vm::PhysicalOpNode* node, fesql::node::ColumnRefNode* expr);
