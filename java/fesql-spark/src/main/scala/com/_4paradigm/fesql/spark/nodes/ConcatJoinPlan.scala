@@ -21,11 +21,11 @@ object ConcatJoinPlan {
     }
 
     val indexName = ctx.getIndexInfo(node.GetNodeId()).indexColumnName
-    val newRightTableIndexName = "New_" + indexName
+    val newLeftTableIndexName = "NewLeftIndex_" + indexName
 
     // Note that this is exception to use "getDfWithIndex" instead of "getSparkDfConsideringIndex" because ConcatJoin has not index flag but request input dataframe with index
-    val leftDf: DataFrame = left.getDfWithIndex
-    val rightDf: DataFrame = right.getDfWithIndex.withColumnRenamed(indexName, newRightTableIndexName)
+    val leftDf: DataFrame = left.getDfWithIndex.withColumnRenamed(indexName, newLeftTableIndexName)
+    val rightDf: DataFrame = right.getDfWithIndex
 
     val nodeIndexType = ctx.getIndexInfo(node.GetNodeId()).nodeIndexType
 
@@ -34,20 +34,20 @@ object ConcatJoinPlan {
 
     // Use left join or native last join
     val resultDf = if (supportNativeLastJoin) {
-      leftDf.join(rightDf, leftDf(indexName) === rightDf(newRightTableIndexName), "last")
+      leftDf.join(rightDf, leftDf(newLeftTableIndexName) === rightDf(indexName), "last")
     } else {
-      leftDf.join(rightDf, leftDf(indexName) === rightDf(newRightTableIndexName), "left")
+      leftDf.join(rightDf, leftDf(newLeftTableIndexName) === rightDf(indexName), "left")
     }
 
     // Drop the index column, this will drop two columns with the same index name
     val outputDf = nodeIndexType match {
       case NodeIndexType.SourceConcatJoinNode => {
-        logger.info("Drop the index column %s and %s for output dataframe".format(indexName, newRightTableIndexName))
-        resultDf.drop(indexName).drop(newRightTableIndexName)
+        logger.info("Drop the index column %s and %s for output dataframe".format(indexName, newLeftTableIndexName))
+        resultDf.drop(indexName).drop(newLeftTableIndexName)
       }
       case NodeIndexType.InternalConcatJoinNode => {
         logger.info("Drop the index column %s for output dataframe".format(indexName))
-        resultDf.drop(newRightTableIndexName)
+        resultDf.drop(newLeftTableIndexName)
       }
       case _ => throw new FesqlException("Handle unsupported concat join node index type: %s".format(nodeIndexType))
     }
