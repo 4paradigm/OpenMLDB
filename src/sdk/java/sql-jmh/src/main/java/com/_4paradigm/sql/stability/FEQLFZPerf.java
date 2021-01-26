@@ -27,6 +27,7 @@ public class FEQLFZPerf {
     private String script;
     private String mainTable;
     private Map<String, TableInfo> tableMap;
+    private Map<String, String> tableInsertSqlMap = new HashMap<>();
     private List<Integer> commonColumnIndices;
 
     private ExecutorService putExecuteService;
@@ -56,6 +57,22 @@ public class FEQLFZPerf {
         String scenceName = tmp[tmp.length - 1].split("\\.")[0];
         db = scenceName;
         pName = scenceName;
+        for (TableInfo table : tableMap.values()) {
+            String tableName = table.getName();
+            StringBuilder builder= new StringBuilder();
+            builder.append("insert into ");
+            builder.append(tableName);
+            builder.append(" values(");
+            List<String> schema = table.getSchema();
+            for (int i = 0; i < schema.size(); i++) {
+                builder.append("?");
+                if (i != schema.size() - 1) {
+                    builder.append(", ");
+                }
+            }
+            builder.append(");");
+            tableInsertSqlMap.put(tableName, builder.toString());
+        }
     }
 
     public boolean create() {
@@ -89,69 +106,78 @@ public class FEQLFZPerf {
         logger.info("drop db " + db);
     }
 
-    // putTableData with random pkNum
-    private void putTableData(TableInfo table) {
-        putTableData(table, null);
+//    // putTableData with random pkNum
+//    private void putTableData(TableInfo table) {
+//        putTableData(table, null);
+//    }
+
+//    //putTableData with given pkNum if it's not null
+//    private void putTableData(TableInfo table, Integer pkNum) {
+//        List<String> schema = table.getSchema();
+//        Set<Integer> index = table.getIndex();
+//        Set<Integer> tsIndex = table.getTsIndex();
+//
+//        long ts = System.currentTimeMillis();
+//        int curNum = null == pkNum ? random.nextInt(BenchmarkConfig.PK_NUM) : pkNum;
+//        StringBuilder builder = new StringBuilder();
+//        builder.append("insert into ");
+//        builder.append(table.getName());
+//        builder.append(" values(");
+//        for (int pos = 0; pos < schema.size(); pos++) {
+//            if (pos > 0) {
+//                builder.append(", ");
+//            }
+//            String type = schema.get(pos);
+//            if (type.equals("string")) {
+//                builder.append("'");
+//                builder.append("col");
+//                builder.append(pos);
+//                builder.append("-");
+//                builder.append(curNum);
+//                builder.append("'");
+//            } else if (type.equals("float")) {
+//                builder.append(1.3f);
+//            } else if (type.equals("double")) {
+//                builder.append(1.4d);
+//            } else if (type.equals("bigint") || type.equals("int")) {
+//                if (tsIndex.contains(pos)) {
+//                    builder.append(ts);
+//                } else {
+//                    builder.append(curNum);
+//                }
+//            } else if (type.equals("timestamp")) {
+//                if (tsIndex.contains(pos)) {
+//                    builder.append(ts);
+//                } else {
+//                    builder.append(curNum);
+//                }
+//
+//            } else if (type.equals("bool")) {
+//                builder.append(true);
+//            } else if (type.equals("date")) {
+//                builder.append("'2020-11-27'");
+//            } else {
+//                logger.warn("invalid type");
+//            }
+//        }
+//        builder.append(");");
+//        String exeSql = builder.toString();
+//        executor.executeInsert(db, exeSql);
+//    }
+
+    private boolean setInsertData(PreparedStatement requestPs, long ts, String tableName) {
+        return setRequestData(requestPs, ts, tableName);
     }
 
-    //putTableData with given pkNum if it's not null
-    private void putTableData(TableInfo table, Integer pkNum) {
-        List<String> schema = table.getSchema();
-        Set<Integer> index = table.getIndex();
-        Set<Integer> tsIndex = table.getTsIndex();
-
-        long ts = System.currentTimeMillis();
-        int curNum = null == pkNum ? random.nextInt(BenchmarkConfig.PK_NUM) : pkNum;
-        StringBuilder builder = new StringBuilder();
-        builder.append("insert into ");
-        builder.append(table.getName());
-        builder.append(" values(");
-        for (int pos = 0; pos < schema.size(); pos++) {
-            if (pos > 0) {
-                builder.append(", ");
-            }
-            String type = schema.get(pos);
-            if (type.equals("string")) {
-                builder.append("'");
-                builder.append("col");
-                builder.append(pos);
-                builder.append("-");
-                builder.append(curNum);
-                builder.append("'");
-            } else if (type.equals("float")) {
-                builder.append(1.3f);
-            } else if (type.equals("double")) {
-                builder.append(1.4d);
-            } else if (type.equals("bigint") || type.equals("int")) {
-                if (tsIndex.contains(pos)) {
-                    builder.append(ts);
-                } else {
-                    builder.append(curNum);
-                }
-            } else if (type.equals("timestamp")) {
-                if (tsIndex.contains(pos)) {
-                    builder.append(ts);
-                } else {
-                    builder.append(curNum);
-                }
-
-            } else if (type.equals("bool")) {
-                builder.append(true);
-            } else if (type.equals("date")) {
-                builder.append("'2020-11-27'");
-            } else {
-                logger.warn("invalid type");
-            }
-        }
-        builder.append(");");
-        String exeSql = builder.toString();
-        executor.executeInsert(db, exeSql);
-    }
-
-    private boolean setRequestData(PreparedStatement requestPs, long ts) {
+    private boolean setRequestData(PreparedStatement requestPs, long ts, String tableName) {
         try {
             ResultSetMetaData metaData = requestPs.getMetaData();
-            TableInfo table = tableMap.get(mainTable);
+            TableInfo table = null;
+            if (tableName == null) {
+                table = tableMap.get(mainTable);
+            } else {
+                table = tableMap.get(tableName);
+            }
             if (table.getSchema().size() != metaData.getColumnCount()) {
                 return false;
             }
@@ -199,7 +225,7 @@ public class FEQLFZPerf {
                 requestPs = executor.getBatchRequestPreparedStmt(db, script, commonColumnIndices);
             }
             for (int i = 0; i < BenchmarkConfig.BATCH_SIZE; i++) {
-                if (setRequestData(requestPs, ts)) {
+                if (setRequestData(requestPs, ts, null)) {
                     requestPs.addBatch();
                 }
             }
@@ -209,25 +235,72 @@ public class FEQLFZPerf {
             } else {
                 requestPs = executor.getRequestPreparedStmt(db, script);
             }
-            setRequestData(requestPs, ts);
+            setRequestData(requestPs, ts, null);
         }
         return requestPs;
     }
 
-    public void putData() {
+//    public void putData() {
+//        while (running.get()) {
+//            for (TableInfo table : tableMap.values()) {
+//                putTableData(table);
+//            }
+//        }
+//    }
+
+//    public void prePutData() {
+//        for (int pkNum = 0; pkNum < BenchmarkConfig.PK_NUM; pkNum++) {
+//            for (TableInfo table : tableMap.values()) {
+//                putTableData(table, pkNum);
+//            }
+//        }
+//    }
+
+    private void insert() {
         while (running.get()) {
             for (TableInfo table : tableMap.values()) {
-                putTableData(table);
+                insertTableData(table);
             }
         }
     }
 
-    public void prePutData() {
+    private void preInsert() {
         for (int pkNum = 0; pkNum < BenchmarkConfig.PK_NUM; pkNum++) {
             for (TableInfo table : tableMap.values()) {
-                putTableData(table, pkNum);
+                insertTableData(table, pkNum);
             }
         }
+    }
+
+    // putTableData with random pkNum
+    private void insertTableData(TableInfo table) {
+        insertTableData(table, null);
+    }
+
+    //putTableData with given pkNum if it's not null
+    private void insertTableData(TableInfo table, Integer pkNum) {
+        PreparedStatement ps = null;
+        try {
+            ps = getInsertPstmt(table, pkNum, tableInsertSqlMap.get(table.getName()));
+            ps.execute();
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        } finally {
+            if (ps != null) {
+                try {
+                    ps.close();
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private PreparedStatement getInsertPstmt(TableInfo table, Integer pkNum, String insertSql) throws SQLException{
+        long ts = System.currentTimeMillis();
+        PreparedStatement ps = executor.getInsertPreparedStmt(db, insertSql);
+        setInsertData(ps, ts, table.getName());
+        return ps;
     }
 
     public void query() {
@@ -256,7 +329,7 @@ public class FEQLFZPerf {
                 if (isProcedure) {
                     PreparedStatement ps = getPreparedStatement(mode, isProcedure);
                     if (ps instanceof CallablePreparedStatement) {
-                        QueryFuture future = ((CallablePreparedStatement) ps).executeQueryAsync(100, TimeUnit.MILLISECONDS);
+                        QueryFuture future = ((CallablePreparedStatement) ps).executeQueryAsync(1000, TimeUnit.MILLISECONDS);
                         ResultSet resultSet = future.get();
                         resultSet.close();
                     }
@@ -275,7 +348,7 @@ public class FEQLFZPerf {
             putExecuteService.submit(new Runnable() {
                 @Override
                 public void run() {
-                    putData();
+                    insert();
                 }
             });
         }
