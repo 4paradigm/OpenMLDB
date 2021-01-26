@@ -55,6 +55,7 @@ class SQLCase {
     const std::string& desc() const { return desc_; }
     const std::string case_name() const;
     const std::string& mode() const { return mode_; }
+    int level() const { return level_; }
     const std::string& cluster_request_plan() const {
         return cluster_request_plan_;
     }
@@ -283,6 +284,7 @@ class SQLCase {
     ExpectInfo expect_;
     YAML::Node raw_node_;
     std::string sp_name_;
+    int level_ = 0;
 };
 std::string FindFesqlDirPath();
 

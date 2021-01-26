@@ -1037,7 +1037,9 @@ static bool ParseSQLCaseNode(const YAML::Node& sql_case_node,
     } else {
         sql_case.mode_ = "batch";
     }
-
+    if (sql_case_node["level"]) {
+        sql_case.level_ = sql_case_node["level"].as<int>();
+    }
     if (sql_case_node["debug"]) {
         sql_case.debug_ = sql_case_node["debug"].as<bool>();
     } else {
