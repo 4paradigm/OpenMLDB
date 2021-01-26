@@ -300,7 +300,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
               FLAGS_absolute_ttl_max, FLAGS_latest_ttl_max);
         return;
     }
-    ::rtidb::storage::TTLSt ttl_st(abs_ttl, lat_ttl, ::rtidb::storage::TTLSt::ConvertTTLType(ttl_type));
+    ::rtidb::storage::TTLSt ttl_st(abs_ttl * 60 * 1000, lat_ttl, ::rtidb::storage::TTLSt::ConvertTTLType(ttl_type));
     if (request->has_ts_name() && request->ts_name().size() > 0) {
         auto iter = table->GetTSMapping().find(request->ts_name());
         if (iter == table->GetTSMapping().end()) {

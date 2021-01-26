@@ -77,7 +77,7 @@ uint32_t InnerIndexSt::GetKeyEntryMaxHeight(uint32_t abs_max_height, uint32_t la
     uint32_t max_height = lat_max_height;
     for (const auto& cur_index : index_) {
         ::rtidb::storage::TTLType ttl_type = cur_index->GetTTLType();
-        if (ttl_type == ::rtidb::storage::TTLType::kAbsoluteTime || 
+        if (ttl_type == ::rtidb::storage::TTLType::kAbsoluteTime ||
                 ttl_type == ::rtidb::storage::TTLType::kAbsAndLat) {
             max_height = abs_max_height;
             break;

@@ -397,7 +397,8 @@ void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
                     gc_record_byte_size);
 }
 
-void Segment::ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
+void Segment::ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt,
+                        uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     switch (ttl_st.ttl_type) {
         case ::rtidb::storage::TTLType::kAbsoluteTime: {
@@ -438,17 +439,26 @@ void Segment::ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt, uint64_t& gc_
 
 void Segment::ExecuteGc(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& gc_idx_cnt,
         uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
+    if (ttl_st_map.empty()) {
+        return;
+    }
+    if (ts_cnt_ <= 1) {
+        ExecuteGc(ttl_st_map.begin()->second, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        return;
+    }
     bool need_gc = false;
     for (const auto& kv : ttl_st_map) {
+        if (ts_idx_map_.find(kv.first) == ts_idx_map_.end()) {
+            return;
+        }
         if (kv.second.NeedGc()) {
             need_gc = true;
-            break;
         }
     }
     if (!need_gc) {
         return;
     }
-
+    GcAllType(ttl_st_map, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
 }
 
 
@@ -484,68 +494,121 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt,
     delete it;
 }
 
-void Segment::Gc4Head(const std::map<uint32_t, TTLSt>& ttl_desc,
+void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map,
                       uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
                       uint64_t& gc_record_byte_size) {
-    if (!ttl_desc.empty()) {
-        bool all_ts_is_zero = true;
-        for (const auto& kv : ttl_desc) {
-            // only judge ts of current segment
-            auto pos = ts_idx_map_.find(kv.first);
-            if (pos == ts_idx_map_.end() || pos->second >= ts_cnt_ ||
-                kv.second.lat_ttl == 0) {
-                continue;
-            }
-            all_ts_is_zero = false;
-            break;
-        }
-        if (all_ts_is_zero) {
-            return;
-        }
-    } else {
-        return;
-    }
-    if (ts_cnt_ <= 1) {
-        if (!ttl_desc.empty()) {
-            return Gc4Head(ttl_desc.begin()->second.lat_ttl, gc_idx_cnt,
-                           gc_record_cnt, gc_record_byte_size);
-        }
-        return;
-    }
     uint64_t old = gc_idx_cnt;
     uint64_t consumed = ::baidu::common::timer::get_micros();
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
         KeyEntry** entry_arr = (KeyEntry**)it->GetValue();  // NOLINT
+        Slice key = it->GetKey();
         it->Next();
-        for (const auto& kv : ttl_desc) {
+        uint32_t empty_cnt = 0;
+        for (const auto& kv : ttl_st_map) {
+            if (!kv.second.NeedGc()) {
+                continue;
+            }
             auto pos = ts_idx_map_.find(kv.first);
-            if (pos == ts_idx_map_.end() || pos->second >= ts_cnt_ ||
-                kv.second.lat_ttl == 0) {
+            if (pos == ts_idx_map_.end() || pos->second >= ts_cnt_) {
                 continue;
             }
             KeyEntry* entry = entry_arr[pos->second];
             ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
-            {
-                std::lock_guard<std::mutex> lock(mu_);
-                if (entry->refs_.load(std::memory_order_acquire) <= 0) {
-                    node = entry->entries.SplitByPos(kv.second.lat_ttl);
+            bool continue_flag = false;
+            switch (kv.second.ttl_type) {
+                case ::rtidb::storage::TTLType::kAbsoluteTime: {
+                    node = entry->entries.GetLast();
+                    if (node == NULL || node->GetKey() > kv.second.abs_ttl) {
+                        continue_flag = true;
+                    } else {
+                        node = NULL;
+                        std::lock_guard<std::mutex> lock(mu_);
+                        SplitList(entry, kv.second.abs_ttl, &node);
+                        if (entry->entries.IsEmpty()) {
+                            empty_cnt++;
+                        }
+                    }
+                    break;
                 }
+                case ::rtidb::storage::TTLType::kLatestTime: {
+                    std::lock_guard<std::mutex> lock(mu_);
+                    if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                        node = entry->entries.SplitByPos(kv.second.lat_ttl);
+                    }
+                    break;
+                }
+                case ::rtidb::storage::TTLType::kAbsAndLat: {
+                    node = entry->entries.GetLast();
+                    if (node == NULL || node->GetKey() > kv.second.abs_ttl) {
+                        continue_flag = true;
+                    } else {
+                        node = NULL;
+                        std::lock_guard<std::mutex> lock(mu_);
+                        if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                            node = entry->entries.SplitByKeyAndPos(kv.second.abs_ttl, kv.second.lat_ttl);
+                        }
+                    }
+                    break;
+                }
+                case ::rtidb::storage::TTLType::kAbsOrLat: {
+                    node = entry->entries.GetLast();
+                    if (node == NULL) {
+                        continue_flag = true;
+                    } else {
+                        node = NULL;
+                        std::lock_guard<std::mutex> lock(mu_);
+                        if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                            if (kv.second.abs_ttl == 0) {
+                                node = entry->entries.SplitByPos(kv.second.lat_ttl);
+                            } else if (kv.second.lat_ttl == 0) {
+                                node = entry->entries.Split(kv.second.abs_ttl);
+                            } else {
+                                node = entry->entries.SplitByKeyOrPos(kv.second.abs_ttl, kv.second.lat_ttl);
+                            }
+                        }
+                        if (entry->entries.IsEmpty()) {
+                            empty_cnt++;
+                        }
+                    }
+                    break;
+                }
+                default:
+                    return;
+            }
+            if (continue_flag) {
+                continue;
             }
             uint64_t entry_gc_idx_cnt = 0;
-            FreeList(node, entry_gc_idx_cnt, gc_record_cnt,
-                     gc_record_byte_size);
-            entry->count_.fetch_sub(entry_gc_idx_cnt,
-                                    std::memory_order_relaxed);
-            idx_cnt_vec_[pos->second]->fetch_sub(entry_gc_idx_cnt,
-                                                 std::memory_order_relaxed);
+            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+            idx_cnt_vec_[pos->second]->fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
             gc_idx_cnt += entry_gc_idx_cnt;
         }
+        if (empty_cnt == ts_cnt_) {
+            bool is_empty = true;
+            ::rtidb::base::Node<Slice, void*>* entry_node = NULL;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                for (uint32_t i = 0; i < ts_cnt_; i++) {
+                    if (!entry_arr[i]->entries.IsEmpty()) {
+                        is_empty = false;
+                        break;
+                    }
+                }
+                if (is_empty) {
+                    entry_node = entries_->Remove(key);
+                }
+            }
+            if (entry_node != NULL) {
+                std::lock_guard<std::mutex> lock(gc_mu_);
+                entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
+            }
+        }
     }
-    DEBUGLOG("[Gc4Head] segment gc consumed %lu, count %lu",
-          (::baidu::common::timer::get_micros() - consumed) / 1000,
-          gc_idx_cnt - old);
+    DEBUGLOG("[GcAll] segment gc consumed %lu, count %lu",
+          (::baidu::common::timer::get_micros() - consumed) / 1000, gc_idx_cnt - old);
     delete it;
 }
 
@@ -605,101 +668,6 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt,
     delete it;
 }
 
-void Segment::Gc4TTL(const std::map<uint32_t, TTLSt>& ttl_desc,
-                     uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
-                     uint64_t& gc_record_byte_size) {
-    if (!ttl_desc.empty()) {
-        bool all_ts_is_zero = true;
-        for (const auto& kv : ttl_desc) {
-            // only judge ts of current segment
-            auto pos = ts_idx_map_.find(kv.first);
-            if (pos == ts_idx_map_.end() || pos->second >= ts_cnt_ ||
-                kv.second.abs_ttl == 0) {
-                continue;
-            }
-            all_ts_is_zero = false;
-            break;
-        }
-        if (all_ts_is_zero) {
-            return;
-        }
-    } else {
-        return;
-    }
-    if (ts_cnt_ <= 1) {
-        if (!ttl_desc.empty()) {
-            return Gc4TTL(ttl_desc.begin()->second.abs_ttl, gc_idx_cnt,
-                          gc_record_cnt, gc_record_byte_size);
-        }
-        return;
-    }
-    KeyEntries::Iterator* it = entries_->NewIterator();
-    it->SeekToFirst();
-    while (it->Valid()) {
-        KeyEntry** entry_arr = (KeyEntry**)it->GetValue();  // NOLINT
-        Slice key = it->GetKey();
-        it->Next();
-        uint32_t empty_cnt = 0;
-        for (const auto& kv : ttl_desc) {
-            auto pos = ts_idx_map_.find(kv.first);
-            if (pos == ts_idx_map_.end() || pos->second >= ts_cnt_ ||
-                kv.second.abs_ttl == 0) {
-                continue;
-            }
-            KeyEntry* entry = entry_arr[pos->second];
-            ::rtidb::base::Node<uint64_t, DataBlock*>* node =
-                entry->entries.GetLast();
-            if (node == NULL) {
-                continue;
-            } else if (node->GetKey() > kv.second.abs_ttl) {
-                DEBUGLOG(
-                      "[Gc4TTL] segment gc with key %lu ts_idx %lu need not "
-                      "ttl, node key %lu",
-                      kv.second.abs_ttl, pos->second, node->GetKey());
-                continue;
-            }
-            node = NULL;
-            {
-                std::lock_guard<std::mutex> lock(mu_);
-                SplitList(entry, kv.second.abs_ttl, &node);
-                if (entry->entries.IsEmpty()) {
-                    empty_cnt++;
-                }
-            }
-            uint64_t entry_gc_idx_cnt = 0;
-            FreeList(node, entry_gc_idx_cnt, gc_record_cnt,
-                     gc_record_byte_size);
-            entry->count_.fetch_sub(entry_gc_idx_cnt,
-                                    std::memory_order_relaxed);
-            idx_cnt_vec_[pos->second]->fetch_sub(entry_gc_idx_cnt,
-                                                 std::memory_order_relaxed);
-            gc_idx_cnt += entry_gc_idx_cnt;
-        }
-        if (empty_cnt == ts_cnt_) {
-            bool is_empty = true;
-            ::rtidb::base::Node<Slice, void*>* entry_node = NULL;
-            {
-                std::lock_guard<std::mutex> lock(mu_);
-                for (uint32_t i = 0; i < ts_cnt_; i++) {
-                    if (!entry_arr[i]->entries.IsEmpty()) {
-                        is_empty = false;
-                        break;
-                    }
-                }
-                if (is_empty) {
-                    entry_node = entries_->Remove(key);
-                }
-            }
-            if (entry_node != NULL) {
-                std::lock_guard<std::mutex> lock(gc_mu_);
-                entry_free_list_->Insert(
-                    gc_version_.load(std::memory_order_relaxed), entry_node);
-            }
-        }
-    }
-    delete it;
-}
-
 void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt,
                             uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
                             uint64_t& gc_record_byte_size) {
@@ -744,84 +712,6 @@ void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt,
           (::baidu::common::timer::get_micros() - consumed) / 1000,
           gc_idx_cnt - old);
     idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
-    delete it;
-}
-
-void Segment::Gc4TTLAndHead(const std::map<uint32_t, TTLSt>& ttl_desc,
-                            uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
-                            uint64_t& gc_record_byte_size) {
-    if (!ttl_desc.empty()) {
-        bool all_ts_is_zero = true;
-        for (const auto& kv : ttl_desc) {
-            // only judge ts of current segment
-            auto pos = ts_idx_map_.find(kv.first);
-            if (pos == ts_idx_map_.end() || pos->second >= ts_cnt_ ||
-                kv.second.lat_ttl == 0 || kv.second.abs_ttl == 0) {
-                continue;
-            }
-            all_ts_is_zero = false;
-            break;
-        }
-        if (all_ts_is_zero) {
-            return;
-        }
-    } else {
-        return;
-    }
-    if (ts_cnt_ <= 1) {
-        if (!ttl_desc.empty()) {
-            return Gc4TTLAndHead(ttl_desc.begin()->second.abs_ttl,
-                                 ttl_desc.begin()->second.lat_ttl, gc_idx_cnt,
-                                 gc_record_cnt, gc_record_byte_size);
-        }
-        return;
-    }
-    uint64_t old = gc_idx_cnt;
-    uint64_t consumed = ::baidu::common::timer::get_micros();
-    KeyEntries::Iterator* it = entries_->NewIterator();
-    it->SeekToFirst();
-    while (it->Valid()) {
-        KeyEntry** entry_arr = (KeyEntry**)it->GetValue();  // NOLINT
-        it->Next();
-        for (const auto& kv : ttl_desc) {
-            auto pos = ts_idx_map_.find(kv.first);
-            if (pos == ts_idx_map_.end() || pos->second >= ts_cnt_ ||
-                kv.second.lat_ttl == 0 || kv.second.abs_ttl == 0) {
-                continue;
-            }
-            KeyEntry* entry = entry_arr[pos->second];
-            ::rtidb::base::Node<uint64_t, DataBlock*>* node =
-                entry->entries.GetLast();
-            if (node == NULL) {
-                continue;
-            } else if (node->GetKey() > kv.second.abs_ttl) {
-                DEBUGLOG(
-                      "[Gc4TTLAndHead] segment gc with key %lu ts_idx %lu need "
-                      "not ttl, node key %lu",
-                      kv.second.abs_ttl, pos->second, node->GetKey());
-                continue;
-            }
-            node = NULL;
-            {
-                std::lock_guard<std::mutex> lock(mu_);
-                if (entry->refs_.load(std::memory_order_acquire) <= 0) {
-                    node = entry->entries.SplitByKeyAndPos(kv.second.abs_ttl,
-                                                           kv.second.lat_ttl);
-                }
-            }
-            uint64_t entry_gc_idx_cnt = 0;
-            FreeList(node, entry_gc_idx_cnt, gc_record_cnt,
-                     gc_record_byte_size);
-            entry->count_.fetch_sub(entry_gc_idx_cnt,
-                                    std::memory_order_relaxed);
-            idx_cnt_vec_[pos->second]->fetch_sub(entry_gc_idx_cnt,
-                                                 std::memory_order_relaxed);
-            gc_idx_cnt += entry_gc_idx_cnt;
-        }
-    }
-    DEBUGLOG("[Gc4TTLAndHead] segment gc consumed %lu, count %lu",
-          (::baidu::common::timer::get_micros() - consumed) / 1000,
-          gc_idx_cnt - old);
     delete it;
 }
 
@@ -879,110 +769,6 @@ void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt,
           (::baidu::common::timer::get_micros() - consumed) / 1000,
           gc_idx_cnt - old);
     idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
-    delete it;
-}
-
-void Segment::Gc4TTLOrHead(const std::map<uint32_t, TTLSt>& ttl_desc,
-                           uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
-                           uint64_t& gc_record_byte_size) {
-    if (!ttl_desc.empty()) {
-        bool all_ts_is_zero = true;
-        for (const auto& kv : ttl_desc) {
-            // only judge ts of current segment
-            auto pos = ts_idx_map_.find(kv.first);
-            if (pos == ts_idx_map_.end() || pos->second >= ts_cnt_ ||
-                (kv.second.lat_ttl == 0 && kv.second.abs_ttl == 0)) {
-                continue;
-            }
-            all_ts_is_zero = false;
-            break;
-        }
-        if (all_ts_is_zero) {
-            return;
-        }
-    } else {
-        return;
-    }
-    if (ts_cnt_ <= 1) {
-        if (!ttl_desc.empty()) {
-            return Gc4TTLOrHead(ttl_desc.begin()->second.abs_ttl,
-                                ttl_desc.begin()->second.lat_ttl, gc_idx_cnt,
-                                gc_record_cnt, gc_record_byte_size);
-        }
-        return;
-    }
-    uint64_t old = gc_idx_cnt;
-    uint64_t consumed = ::baidu::common::timer::get_micros();
-    KeyEntries::Iterator* it = entries_->NewIterator();
-    it->SeekToFirst();
-    while (it->Valid()) {
-        KeyEntry** entry_arr = (KeyEntry**)it->GetValue();  // NOLINT
-        Slice key = it->GetKey();
-        it->Next();
-        uint32_t empty_cnt = 0;
-        for (const auto& kv : ttl_desc) {
-            auto pos = ts_idx_map_.find(kv.first);
-            if (pos == ts_idx_map_.end() || pos->second >= ts_cnt_ ||
-                (kv.second.lat_ttl == 0 && kv.second.abs_ttl == 0)) {
-                continue;
-            }
-            KeyEntry* entry = entry_arr[pos->second];
-            ::rtidb::base::Node<uint64_t, DataBlock*>* node =
-                entry->entries.GetLast();
-            if (node == NULL) {
-                continue;
-            }
-            node = NULL;
-            {
-                std::lock_guard<std::mutex> lock(mu_);
-                if (entry->refs_.load(std::memory_order_acquire) <= 0) {
-                    if (kv.second.abs_ttl == 0) {
-                        node = entry->entries.SplitByPos(kv.second.lat_ttl);
-                    } else if (kv.second.lat_ttl == 0) {
-                        node = entry->entries.Split(kv.second.abs_ttl);
-                    } else {
-                        node = entry->entries.SplitByKeyOrPos(
-                            kv.second.abs_ttl, kv.second.lat_ttl);
-                    }
-                }
-                if (entry->entries.IsEmpty()) {
-                    empty_cnt++;
-                }
-            }
-            uint64_t entry_gc_idx_cnt = 0;
-            FreeList(node, entry_gc_idx_cnt, gc_record_cnt,
-                     gc_record_byte_size);
-            entry->count_.fetch_sub(entry_gc_idx_cnt,
-                                    std::memory_order_relaxed);
-            idx_cnt_vec_[pos->second]->fetch_sub(entry_gc_idx_cnt,
-                                                 std::memory_order_relaxed);
-            gc_idx_cnt += entry_gc_idx_cnt;
-        }
-        if (empty_cnt == ts_cnt_) {
-            bool is_empty = true;
-            ::rtidb::base::Node<Slice, void*>* entry_node = NULL;
-            {
-                std::lock_guard<std::mutex> lock(mu_);
-                for (uint32_t i = 0; i < ts_cnt_; i++) {
-                    if (!entry_arr[i]->entries.IsEmpty()) {
-                        is_empty = false;
-                        break;
-                    }
-                }
-                if (is_empty) {
-                    entry_node = entries_->Remove(key);
-                }
-            }
-            if (entry_node != NULL) {
-                std::lock_guard<std::mutex> lock(gc_mu_);
-                entry_free_list_->Insert(
-                    gc_version_.load(std::memory_order_relaxed), entry_node);
-            }
-        }
-    }
-    DEBUGLOG("[Gc4TTLOrHead] segment gc consumed %lu, count %lu",
-          (::baidu::common::timer::get_micros() - consumed) / 1000,
-          gc_idx_cnt - old);
     delete it;
 }
 

@@ -91,7 +91,7 @@ bool MemTable::Init() {
         if (global_key_entry_max_height > 0) {
             cur_key_entry_max_height = global_key_entry_max_height;
         } else {
-            cur_key_entry_max_height = inner_indexs->at(i)->GetKeyEntryMaxHeight(FLAGS_absolute_default_skiplist_height, 
+            cur_key_entry_max_height = inner_indexs->at(i)->GetKeyEntryMaxHeight(FLAGS_absolute_default_skiplist_height,
                     FLAGS_latest_default_skiplist_height);
         }
         Segment** seg_arr = new Segment*[seg_cnt_];
@@ -163,15 +163,20 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
     DataBlock* block = new DataBlock(real_ref_cnt, value.c_str(), value.length());
     for (const auto& kv : inner_index_key_map) {
         auto inner_index = table_index_.GetInnerIndex(kv.first);
+        bool need_put = false;
         for (const auto& index_def : inner_index->GetIndex()) {
             if (index_def->IsReady()) {
-                uint32_t seg_idx = 0;
-                if (seg_cnt_ > 1) {
-                    seg_idx = ::rtidb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
-                }
-                Segment* segment = segments_[kv.first][seg_idx];
-                segment->Put(::rtidb::base::Slice(kv.second), time, block);
+                need_put = true;
+                break;
             }
+        }
+        if (need_put) {
+            uint32_t seg_idx = 0;
+            if (seg_cnt_ > 1) {
+                seg_idx = ::rtidb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
+            }
+            Segment* segment = segments_[kv.first][seg_idx];
+            segment->Put(::rtidb::base::Slice(kv.second), time, block);
         }
     }
     record_cnt_.fetch_add(1, std::memory_order_relaxed);
@@ -205,7 +210,7 @@ bool MemTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsio
             if (ts_col) {
                 bool has_found_ts = false;
                 for (auto it = ts_dimemsions.begin(); it != ts_dimemsions.end(); it++) {
-                    if (it->idx() == ts_col->GetTsIdx()) {
+                    if (static_cast<int>(it->idx()) == ts_col->GetTsIdx()) {
                         has_found_ts = true;
                         break;
                     }
@@ -223,16 +228,20 @@ bool MemTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsio
     DataBlock* block = new DataBlock(real_ref_cnt, value.c_str(), value.length());
     for (const auto& kv : inner_index_key_map) {
         auto inner_index = table_index_.GetInnerIndex(kv.first);
+        bool need_put = false;
         for (const auto& index_def : inner_index->GetIndex()) {
             if (index_def->IsReady()) {
-                uint32_t seg_idx = 0;
-                if (seg_cnt_ > 1) {
-                    seg_idx = ::rtidb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
-                }
-                // TODO: denglong
-                Segment* segment = segments_[kv.first][seg_idx];
-                segment->Put(::rtidb::base::Slice(kv.second), ts_dimemsions, block);
+                need_put = true;
+                break;
             }
+        }
+        if (need_put) {
+            uint32_t seg_idx = 0;
+            if (seg_cnt_ > 1) {
+                seg_idx = ::rtidb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
+            }
+            Segment* segment = segments_[kv.first][seg_idx];
+            segment->Put(::rtidb::base::Slice(kv.second), ts_dimemsions, block);
         }
     }
     record_cnt_.fetch_add(1, std::memory_order_relaxed);
@@ -301,8 +310,8 @@ void MemTable::SchedGc() {
         const std::vector<std::shared_ptr<IndexDef>>& real_index = inner_indexs->at(i)->GetIndex();
         std::map<uint32_t, TTLSt> ttl_st_map;
         bool need_gc = true;
-        int deleted_num = 0;
-        for (int pos = 0; pos < real_index.size(); pos++) {
+        size_t deleted_num = 0;
+        for (size_t pos = 0; pos < real_index.size(); pos++) {
             auto cur_index = real_index[pos];
             auto ts_col = cur_index->GetTsColumn();
             if (ts_col) {
@@ -365,7 +374,7 @@ void MemTable::SchedGc() {
 
 // tll as ms
 uint64_t MemTable::GetExpireTime(const TTLSt& ttl_st) {
-    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_st.abs_ttl == 0 || 
+    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_st.abs_ttl == 0 ||
             ttl_st.ttl_type == ::rtidb::storage::TTLType::kLatestTime) {
         return 0;
     }
@@ -540,7 +549,7 @@ TableIterator* MemTable::NewIterator(uint32_t index, int32_t ts_idx, const std::
 uint64_t MemTable::GetRecordIdxByteSize() {
     uint64_t record_idx_byte_size = 0;
     auto inner_indexs = table_index_.GetAllInnerIndex();
-    for (int i = 0; i < inner_indexs->size(); i++) {
+    for (size_t i = 0; i < inner_indexs->size(); i++) {
         bool is_valid = false;
         for (const auto& index_def : inner_indexs->at(i)->GetIndex()) {
             if (index_def && index_def->IsReady()) {
@@ -560,7 +569,7 @@ uint64_t MemTable::GetRecordIdxByteSize() {
 uint64_t MemTable::GetRecordIdxCnt() {
     uint64_t record_idx_cnt = 0;
     auto inner_indexs = table_index_.GetAllInnerIndex();
-    for (int i = 0; i < inner_indexs->size(); i++) {
+    for (size_t i = 0; i < inner_indexs->size(); i++) {
         bool is_valid = false;
         for (const auto& index_def : inner_indexs->at(i)->GetIndex()) {
             if (index_def && index_def->IsReady()) {
@@ -580,7 +589,7 @@ uint64_t MemTable::GetRecordIdxCnt() {
 uint64_t MemTable::GetRecordPkCnt() {
     uint64_t record_pk_cnt = 0;
     auto inner_indexs = table_index_.GetAllInnerIndex();
-    for (int i = 0; i < inner_indexs->size(); i++) {
+    for (size_t i = 0; i < inner_indexs->size(); i++) {
         bool is_valid = false;
         for (const auto& index_def : inner_indexs->at(i)->GetIndex()) {
             if (index_def && index_def->IsReady()) {
@@ -885,7 +894,7 @@ void MemTableKeyIterator::NextPK() {
     } while (true);
 }
 
-MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, 
+MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt,
                                                    ::rtidb::storage::TTLType ttl_type,
                                                    uint64_t expire_time, uint64_t expire_cnt,
                                                    uint32_t ts_index)
@@ -911,7 +920,7 @@ MemTableTraverseIterator::~MemTableTraverseIterator() {
 }
 
 bool MemTableTraverseIterator::Valid() {
-    return pk_it_ != NULL && pk_it_->Valid() && it_ != NULL 
+    return pk_it_ != NULL && pk_it_->Valid() && it_ != NULL
         && it_->Valid() && !expire_value_.IsExpired(it_->GetKey(), record_idx_);
 }
 

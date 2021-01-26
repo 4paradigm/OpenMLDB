@@ -176,7 +176,7 @@ class Table {
         return ts_mapping_;
     }
 
-    TTLSt GetTTL() { 
+    TTLSt GetTTL() {
         return TTLSt(table_meta_.ttl_desc());
     }
 

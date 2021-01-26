@@ -173,22 +173,10 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
         const auto& indexs = inner_index->GetIndex();
         auto index_def = indexs.front();
-        // TODO: denglong
-        /*if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime ||
-            ttl_type == ::rtidb::api::TTLType::kAbsOrLat) {
-            const std::vector<uint32_t> ts_vec = index_def->GetTsColumn();
-            if (ts_vec.empty()) {
-                cfo.compaction_filter_factory =
-                    std::make_shared<AbsoluteTTLFilterFactory>(&abs_ttl_);
-            } else if (ts_vec.size() == 1) {
-                cfo.compaction_filter_factory =
-                    std::make_shared<AbsoluteTTLFilterFactory>(
-                        abs_ttl_vec_[ts_vec.front()].get());
-            } else {
-                cfo.compaction_filter_factory =
-                    std::make_shared<AbsoluteTTLFilterFactory>(&abs_ttl_vec_);
-            }
-        }*/
+        if (index_def->GetTTLType() == ::rtidb::storage::TTLType::kAbsoluteTime ||
+            index_def->GetTTLType() == ::rtidb::storage::TTLType::kAbsOrLat) {
+            cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(inner_index);
+        }
         cf_ds_.push_back(
             rocksdb::ColumnFamilyDescriptor(index_def->GetName(), cfo));
         DEBUGLOG("add cf_name %s. tid %u pid %u",
@@ -304,7 +292,7 @@ bool DiskTable::Put(const Dimensions& dimensions,
             uint64_t ts = 0;
             bool has_found_ts = false;
             for (auto it = ts_dimemsions.begin(); it != ts_dimemsions.end(); it++) {
-                if (it->idx() == ts_col->GetTsIdx()) {
+                if (static_cast<int>(it->idx()) == ts_col->GetTsIdx()) {
                     has_found_ts = true;
                     ts = it->ts();
                     break;
@@ -674,7 +662,7 @@ TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk,
         PDLOG(WARNING, "index %u not found in table, tid %u pid %u", idx, id_, pid_);
         return NULL;
     }
-    uint32_t inner_pos= index_def->GetInnerPos();
+    uint32_t inner_pos = index_def->GetInnerPos();
     auto inner_index = table_index_.GetInnerIndex(inner_pos);
     if (inner_index && inner_index->GetIndex().size() > 1) {
         auto ts_col = index_def->GetTsColumn();
@@ -705,7 +693,7 @@ TableIterator* DiskTable::NewIterator(uint32_t idx, int32_t ts_idx,
     ro.snapshot = snapshot;
     ro.prefix_same_as_start = true;
     ro.pin_data = true;
-    uint32_t inner_pos= index_def->GetInnerPos();
+    uint32_t inner_pos = index_def->GetInnerPos();
     auto inner_index = table_index_.GetInnerIndex(inner_pos);
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[inner_pos + 1]);
     if (inner_index && inner_index->GetIndex().size() > 1) {
@@ -719,7 +707,7 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t index) {
     if (!index_def) {
         return NULL;
     }
-    uint32_t inner_pos= index_def->GetInnerPos();
+    uint32_t inner_pos = index_def->GetInnerPos();
     auto inner_index = table_index_.GetInnerIndex(inner_pos);
     if (inner_index && inner_index->GetIndex().size() > 1) {
         auto ts_col = index_def->GetTsColumn();
@@ -746,13 +734,13 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t index,
     if (ts_index < 0) {
         return NULL;
     }
-    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index);
+    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index, ts_index);
     if (!index_def) {
         PDLOG(WARNING, "index %u not found in table tid %u pid %u", index, id_,
               pid_);
         return NULL;
     }
-    uint32_t inner_pos= index_def->GetInnerPos();
+    uint32_t inner_pos = index_def->GetInnerPos();
     auto ttl = index_def->GetTTL();
     uint64_t expire_time = GetExpireTime(*ttl);
     uint64_t expire_cnt = ttl->lat_ttl;

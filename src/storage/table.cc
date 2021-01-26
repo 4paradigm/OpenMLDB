@@ -5,6 +5,7 @@
 
 #include "storage/table.h"
 #include <algorithm>
+#include <set>
 #include <utility>
 #include "base/glog_wapper.h"  // NOLINT
 #include "codec/schema_codec.h"
@@ -40,11 +41,11 @@ Table::Table(::rtidb::common::StorageMode storage_mode, const std::string &name,
         ttl_desc->set_lat_ttl(ttl / (60 * 1000));
     }
     last_make_snapshot_time_ = 0;
-    ::rtidb::storage::TTLSt ttl_st(ttl_desc->abs_ttl(), ttl_desc->lat_ttl(), 
+    ::rtidb::storage::TTLSt ttl_st(ttl_desc->abs_ttl(), ttl_desc->lat_ttl(),
             ::rtidb::storage::TTLSt::ConvertTTLType(ttl_desc->ttl_type()));
     for (const auto &kv : mapping) {
         std::vector<ColumnDef> col = { ColumnDef(kv.first, kv.second, ::rtidb::type::DataType::kString, true) };
-        auto index = std::make_shared<IndexDef>(kv.first, kv.second, IndexStatus::kReady, 
+        auto index = std::make_shared<IndexDef>(kv.first, kv.second, IndexStatus::kReady,
                 ::rtidb::type::kTimeSerise, col);
         index->SetTTL(ttl_st);
         table_index_.AddIndex(index);
@@ -116,7 +117,7 @@ int Table::InitColumnDesc() {
             col_map.emplace(name, col);
             if (column_desc.add_ts_idx()) {
                 std::vector<ColumnDef> col_vec = { *col };
-                auto index = std::make_shared<IndexDef>(name, key_idx, IndexStatus::kReady, 
+                auto index = std::make_shared<IndexDef>(name, key_idx, IndexStatus::kReady,
                         ::rtidb::type::IndexType::kTimeSerise, col_vec);
                 index->SetTTL(table_ttl);
                 if (table_index_.AddIndex(index) < 0) {
@@ -183,7 +184,7 @@ int Table::InitColumnDesc() {
                 }
                 int ts_name_pos = -1;
                 do {
-                    auto index = std::make_shared<IndexDef>(column_key.index_name(), key_idx, status, 
+                    auto index = std::make_shared<IndexDef>(column_key.index_name(), key_idx, status,
                             ::rtidb::type::IndexType::kTimeSerise, col_vec);
                     index->SetTTL(table_ttl);
                     if (column_key.ts_name_size() > 0) {

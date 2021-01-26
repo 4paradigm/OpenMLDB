@@ -149,11 +149,7 @@ class KeyTsPrefixTransform : public rocksdb::SliceTransform {
 
 class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
  public:
-    explicit AbsoluteTTLCompactionFilter(uint64_t ttl)
-        : ttl_(ttl), ttl_vec_ptr_(NULL) {}
-    AbsoluteTTLCompactionFilter(
-        std::vector<std::shared_ptr<std::atomic<uint64_t>>>* ttl_vec_ptr)
-        : ttl_(0), ttl_vec_ptr_(ttl_vec_ptr) {}
+    explicit AbsoluteTTLCompactionFilter(std::shared_ptr<InnerIndexSt> inner_index) : inner_index_(inner_index) {}
     virtual ~AbsoluteTTLCompactionFilter() {}
 
     const char* Name() const override { return "AbsoluteTTLCompactionFilter"; }
@@ -165,18 +161,32 @@ class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
         if (key.size() < TS_LEN) {
             return false;
         }
-        uint64_t real_ttl = ttl_;
-        if (ttl_vec_ptr_ != NULL) {
+        uint64_t real_ttl = 0;
+        const auto& indexs = inner_index_->GetIndex();
+        if (indexs.size() > 1) {
             if (key.size() < TS_LEN + TS_POS_LEN) {
                 return false;
             }
             uint8_t ts_idx =
                 *((uint8_t*)(key.data() + key.size() - TS_LEN -  // NOLINT
                              TS_POS_LEN));
-            if (ts_idx >= ttl_vec_ptr_->size()) {
+            bool has_found = false;
+            for (const auto index : indexs) {
+                auto ts_col = index->GetTsColumn();
+                if (!ts_col) {
+                    return false;
+                }
+                if (ts_col->GetTsIdx() == static_cast<int>(ts_idx)) {
+                    real_ttl = index->GetTTL()->abs_ttl;
+                    has_found = true;
+                    break;
+                }
+            }
+            if (!has_found) {
                 return false;
             }
-            real_ttl = (*ttl_vec_ptr_)[ts_idx]->load(std::memory_order_relaxed);
+        } else {
+            real_ttl = indexs.front()->GetTTL()->abs_ttl;
         }
         if (real_ttl < 1) {
             return false;
@@ -193,33 +203,20 @@ class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
     }
 
  private:
-    uint64_t ttl_;
-    std::vector<std::shared_ptr<std::atomic<uint64_t>>>* ttl_vec_ptr_;
+    std::shared_ptr<InnerIndexSt> inner_index_;
 };
 
 class AbsoluteTTLFilterFactory : public rocksdb::CompactionFilterFactory {
  public:
-    explicit AbsoluteTTLFilterFactory(std::atomic<uint64_t>* ttl_ptr)
-        : ttl_ptr_(ttl_ptr), ttl_vec_ptr_(NULL) {}
-    AbsoluteTTLFilterFactory(
-        std::vector<std::shared_ptr<std::atomic<uint64_t>>>* ttl_vec_ptr)
-        : ttl_ptr_(NULL), ttl_vec_ptr_(ttl_vec_ptr) {}
+    explicit AbsoluteTTLFilterFactory(const std::shared_ptr<InnerIndexSt>& inner_index) : inner_index_(inner_index) {}
     std::unique_ptr<rocksdb::CompactionFilter> CreateCompactionFilter(
         const rocksdb::CompactionFilter::Context& context) override {
-        if (ttl_vec_ptr_ != NULL) {
-            return std::unique_ptr<rocksdb::CompactionFilter>(
-                new AbsoluteTTLCompactionFilter(ttl_vec_ptr_));
-        } else {
-            return std::unique_ptr<rocksdb::CompactionFilter>(
-                new AbsoluteTTLCompactionFilter(
-                    ttl_ptr_->load(std::memory_order_relaxed)));
-        }
+        return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLCompactionFilter(inner_index_));
     }
     const char* Name() const override { return "AbsoluteTTLFilterFactory"; }
 
  private:
-    std::atomic<uint64_t>* ttl_ptr_;
-    std::vector<std::shared_ptr<std::atomic<uint64_t>>>* ttl_vec_ptr_;
+    std::shared_ptr<InnerIndexSt> inner_index_;
 };
 
 class DiskTableIterator : public TableIterator {

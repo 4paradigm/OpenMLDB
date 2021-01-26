@@ -39,7 +39,7 @@ struct TTLSt {
         ttl_type = ConvertTTLType(ttl_desc.ttl_type());
     }
 
-    TTLSt(const ::rtidb::common::TTLSt& ttl) : abs_ttl(ttl.abs_ttl() * 60 * 1000), lat_ttl(ttl.lat_ttl()) {
+    explicit TTLSt(const ::rtidb::common::TTLSt& ttl) : abs_ttl(ttl.abs_ttl() * 60 * 1000), lat_ttl(ttl.lat_ttl()) {
         ttl_type = ConvertTTLType(ttl.ttl_type());
     }
 
@@ -143,7 +143,7 @@ struct TTLSt {
 };
 
 struct UpdateTTLMeta {
-    UpdateTTLMeta(const TTLSt& new_ttl) : ttl(new_ttl), ts_idx(-1), index_name() {}
+    explicit UpdateTTLMeta(const TTLSt& new_ttl) : ttl(new_ttl), ts_idx(-1), index_name() {}
     UpdateTTLMeta(const TTLSt& new_ttl, int32_t idx) : ttl(new_ttl), ts_idx(idx), index_name() {}
     UpdateTTLMeta(const TTLSt& new_ttl, const std::string& name) : ttl(new_ttl),
         ts_idx(-1), index_name(name) {}
@@ -212,7 +212,7 @@ class IndexDef {
     inline ::rtidb::type::IndexType GetType() { return type_; }
     inline const std::vector<ColumnDef>& GetColumns() { return columns_; }
     void SetTTL(const TTLSt& ttl);
-    TTLType GetTTLType() const; 
+    TTLType GetTTLType() const;
     std::shared_ptr<TTLSt> GetTTL() const;
     inline void SetInnerPos(int32_t inner_pos) { inner_pos_ = inner_pos; }
     inline uint32_t GetInnerPos() const { return inner_pos_; }

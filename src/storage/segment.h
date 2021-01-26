@@ -159,34 +159,26 @@ class Segment {
 
     uint64_t Release();
 
-    void ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
-    void ExecuteGc(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& gc_idx_cnt,
-            uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
+    void ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt, // NOLINT
+                   uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size); // NOLINT
+    void ExecuteGc(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& gc_idx_cnt, // NOLINT
+            uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size); // NOLINT
 
     void Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt,  // NOLINT
                 uint64_t& gc_record_cnt,                    // NOLINT
                 uint64_t& gc_record_byte_size);             // NOLINT
-    void Gc4TTL(const std::map<uint32_t, TTLSt>& ttl_desc,
-                uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,  // NOLINT
-                uint64_t& gc_record_byte_size);                 // NOLINT
     void Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt,       // NOLINT
                  uint64_t& gc_record_cnt,                       // NOLINT
                  uint64_t& gc_record_byte_size);                // NOLINT
-    void Gc4Head(const std::map<uint32_t, TTLSt>& ttl_desc,
-                 uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,  // NOLINT
-                 uint64_t& gc_record_byte_size);                 // NOLINT
     void Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt,
-                       uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,  // NOLINT
-                       uint64_t& gc_record_byte_size);                 // NOLINT
-    void Gc4TTLAndHead(const std::map<uint32_t, TTLSt>& ttl_desc,
                        uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,  // NOLINT
                        uint64_t& gc_record_byte_size);                 // NOLINT
     void Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt,
                       uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,  // NOLINT
                       uint64_t& gc_record_byte_size);                 // NOLINT
-    void Gc4TTLOrHead(const std::map<uint32_t, TTLSt>& ttl_desc,
-                      uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,  // NOLINT
-                      uint64_t& gc_record_byte_size);                 // NOLINT
+    void GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map,
+                   uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,  // NOLINT
+                   uint64_t& gc_record_byte_size);                 // NOLINT
     MemTableIterator* NewIterator(const Slice& key, Ticket& ticket);  // NOLINT
     MemTableIterator* NewIterator(const Slice& key, uint32_t idx,
                                   Ticket& ticket);  // NOLINT
