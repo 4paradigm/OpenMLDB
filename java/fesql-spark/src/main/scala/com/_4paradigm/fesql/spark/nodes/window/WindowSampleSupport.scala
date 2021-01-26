@@ -10,69 +10,155 @@ import com._4paradigm.fesql.spark.FeSQLConfig
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.types._
 import org.slf4j.LoggerFactory
 
 
 class WindowSampleSupport(fs: FileSystem,
                           partitionIndex: Int,
                           config: WindowAggConfig,
+                          sqlConfig: FeSQLConfig,
                           jit: FeSQLJITWrapper) extends WindowHook {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  private val minWindowSize = config.sampleMinSize
-  private val outputPath = config.sampleOutputPath + "/" + config.windowName + "/" + partitionIndex
+  private val minWindowSize = sqlConfig.windowSampleMinSize
+  private val outputPath = sqlConfig.windowSampleOutputPath + "/" + config.windowName + "/" + partitionIndex
+  private val dumpBeforeCompute = sqlConfig.windowSampleBeforeCompute
+  private val sampleLimit = sqlConfig.windowSampleLimit
+  private val conditions = parseFilterCondition(sqlConfig.windowSampleFilter)
 
-  private var sampled = false
+  private var sampledCnt = 0
 
-  override def postCompute(computer: WindowComputer, row: Row): Unit = {
-    if (!sampled && computer.getWindow.size() >= minWindowSize) {
-      sampled = true
-      dumpModule()
-      dumpConfig()
-      dumpWindow(computer, s"$minWindowSize")
+  override def preCompute(computer: WindowComputer, row: Row): Unit = {
+    if (dumpBeforeCompute && shouldSample(computer, row)) {
+      doDump(computer, row)
     }
   }
 
-  def dumpModule(): Unit = {
+  override def postCompute(computer: WindowComputer, row: Row): Unit = {
+    if (!dumpBeforeCompute && shouldSample(computer, row)) {
+      doDump(computer, null)
+    }
+  }
+
+  private def doDump(computer: WindowComputer, row: Row): Unit = {
+    if (sampledCnt == 0) {
+      dumpModule()
+      dumpConfig()
+    }
+    dumpWindow(row, computer, sampledCnt.toString)
+    sampledCnt += 1
+  }
+
+  private def shouldSample(computer: WindowComputer, row: Row): Boolean = {
+    sampledCnt < sampleLimit &&
+      computer.getWindow.size() >= minWindowSize &&
+      matchFilterCondition(row)
+  }
+
+  private def parseFilterCondition(desc: String): Array[(Int, String)] = {
+    if (desc == null || desc.isEmpty) {
+      return Array.empty
+    }
+    val parts = desc.split(",").map(_.trim)
+    parts.flatMap(t => {
+      val idx = t.indexOf("=")
+      if (idx < 0) {
+        None
+      } else {
+        val colName = t.substring(0, idx)
+        var value = t.substring(idx + 1)
+        if (value.isEmpty) {
+          value = null
+        } else if (value.startsWith("\"") && value.endsWith("\"")) {
+          value = value.substring(1, value.length - 1)
+        }
+        val colIdx = config.inputSchema.indexWhere(_.name == colName)
+        if (colIdx < 0) {
+          None
+        } else {
+          Some((colIdx, value))
+        }
+      }
+    })
+  }
+
+  private def matchFilterCondition(row: Row): Boolean = {
+    conditions.forall { case (idx, str) =>
+      str == formatFieldString(row, idx, config.inputSchema(idx).dataType)
+    }
+  }
+
+  private def formatFieldString(row: Row, idx: Int, dtype: DataType): String = {
+    if (idx >= row.size || row.isNullAt(idx)) {
+      return null
+    }
+    dtype match {
+      case BooleanType => row.getBoolean(idx).toString
+      case ShortType => row.getShort(idx).toString
+      case IntegerType => row.getInt(idx).toString
+      case LongType => row.getLong(idx).toString
+      case FloatType => row.getFloat(idx).toString
+      case DoubleType => row.getDouble(idx).toString
+      case TimestampType => row.getTimestamp(idx).getTime.toString
+      case DateType => row.getDate(idx).toString
+      case StringType => row.getString(idx)
+      case _ =>
+        logger.warn(s"Do not know how to format $dtype")
+        row.get(idx).toString
+    }
+  }
+
+  private def dumpModule(): Unit = {
     val buffer = config.moduleNoneBroadcast.getBuffer
     val bytes = new Array[Byte](buffer.capacity())
     buffer.get(bytes)
     dumpToFile(outputPath + "/module.ll", stream => stream.write(bytes))
   }
 
-  def dumpConfig(): Unit = {
-    val byteStream = new ByteArrayOutputStream()
-    val ostream = new ObjectOutputStream(byteStream)
-    ostream.writeObject(config)
-    ostream.flush()
-    ostream.close()
-    dumpToFile(outputPath + "/config.obj",
-      stream => byteStream.writeTo(stream))
+  private def dumpConfig(): Unit = {
+    dumpToFile(outputPath + "/config.obj", stream => {
+      val ostream = new ObjectOutputStream(stream)
+      ostream.writeObject(config)
+      ostream.flush()
+    })
   }
 
-  def dumpWindow(computer: WindowComputer, desc: String): Unit = {
+  private def dumpWindow(curRow: Row, computer: WindowComputer, desc: String): Unit = {
     val window = computer.getWindow
-    val size = window.size().toInt
-    val rows = (0 until size).map(idx => {
-      val row = window.Get(idx)
-      val fields = config.inputSchema.size
-      val arr = new Array[Any](fields)
+    val fieldNum = config.inputSchema.size
+    val rowNum = if (curRow != null) window.size() + 1 else window.size()
+    val rows = new Array[Array[Any]](rowNum.toInt)
+
+    var i = 0
+    if (curRow != null) {
+      rows(i) = curRow.toSeq.toArray
+      i += 1
+    }
+    while (i < rowNum) {
+      val row = window.Get(i)
+      val arr = new Array[Any](fieldNum)
       computer.getEncoder.decode(row, arr)
-      arr
-    }).toArray
+      rows(i) = arr
+      i += 1
+    }
 
-    val byteStream = new ByteArrayOutputStream()
-    val ostream = new ObjectOutputStream(byteStream)
-    ostream.writeObject(rows)
-    ostream.flush()
-    ostream.close()
+    dumpToFile(outputPath + "/window_" + desc + ".obj", stream => {
+      val ostream = new ObjectOutputStream(stream)
+      ostream.writeObject(rows)
+      ostream.flush()
+    })
 
-    dumpToFile(outputPath + "/window_" + desc + ".obj",
-      stream => byteStream.writeTo(stream))
+    dumpToFile(outputPath + "/window_" + desc + ".txt", stream => {
+      val ps = new PrintStream(stream)
+      ps.println(config.inputSchema.map(f => s"${f.name}:${f.dataType.simpleString}").mkString(","))
+      rows.foreach(row => ps.println(row.mkString(",")))
+      ps.flush()
+    })
   }
 
-  def dumpToFile(path: String, write: OutputStream => Unit): Unit = {
+  private def dumpToFile(path: String, write: OutputStream => Unit): Unit = {
     try {
       val file = fs.create(new Path(path), true)
       try {
@@ -132,26 +218,18 @@ object WindowSampleSupport {
     }
   }
 
-  def recover(sqlConfig: FeSQLConfig, path: String): SampleExecutor = {
+  def recover(sqlConfig: FeSQLConfig, path: String, windowIdx: Int): SampleExecutor = {
     val fs = FileSystem.get(new Configuration())
     val configFile = fs.open(new Path(path + "/config.obj"))
     val configObjStream = new ObjectInputStream(configFile)
     val config = configObjStream.readObject().asInstanceOf[WindowAggConfig]
 
-    val windows = fs.listStatus(new Path(path + "/")).flatMap(status => {
-      val path = status.getPath
-      if (path.getName.startsWith("window")) {
-        val dataFile = fs.open(path)
-        val objStream = new ObjectInputStream(dataFile)
-        val data = objStream.readObject().asInstanceOf[Array[Array[Any]]]
-        Some(data)
-      } else {
-        None
-      }
-    })
+    val dataFile = fs.open(new Path(path + "/window_" + windowIdx + ".obj"))
+    val objStream = new ObjectInputStream(dataFile)
+    val data = objStream.readObject().asInstanceOf[Array[Array[Any]]]
 
     val executor = new SampleExecutor(sqlConfig, config)
-    executor.setWindow(windows(0))
+    executor.setWindow(data)
     executor
   }
 }

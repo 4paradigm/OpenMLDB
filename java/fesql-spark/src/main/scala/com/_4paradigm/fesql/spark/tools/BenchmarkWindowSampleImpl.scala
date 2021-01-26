@@ -16,7 +16,8 @@ class BenchmarkWindowSampleImpl {
   var loopMode = false
   var runOnce = false
   var resetWindow = false
-  var samplePath = "file:///Users/wrongtest/Downloads/1610512051444"
+  var samplePath = ""
+  var sampleIdx = 0
   var executor: SampleExecutor = _
 
   def run(clazz: Class[_], args: Array[String]): Unit = {
@@ -48,6 +49,7 @@ class BenchmarkWindowSampleImpl {
       case "--loop" => loopMode = true
       case "--once" => runOnce = true
       case "--samplePath" => samplePath = parser.parseValue()
+      case "--sampleIdx" => sampleIdx = parser.parseInt()
       case "--resetWindow" => resetWindow = true
     }
     if (samplePath.isEmpty) {
@@ -67,7 +69,7 @@ class BenchmarkWindowSampleImpl {
 
   // @Setup
   def initExecutor(): Unit = {
-    executor = WindowSampleSupport.recover(new FeSQLConfig, samplePath)
+    executor = WindowSampleSupport.recover(new FeSQLConfig, samplePath, sampleIdx)
   }
 
   // @Benchmark
