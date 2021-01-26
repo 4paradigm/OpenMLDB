@@ -7,6 +7,7 @@ import com._4paradigm.fesql.flink.common.*;
 import com._4paradigm.fesql.flink.common.planner.GeneralPlanContext;
 import com._4paradigm.fesql.node.ExprListNode;
 import com._4paradigm.fesql.node.ExprNode;
+import com._4paradigm.fesql.node.FrameType;
 import com._4paradigm.fesql.node.OrderByNode;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.*;
@@ -29,6 +30,7 @@ import org.apache.flink.types.Row;
 import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.nio.ByteBuffer;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -59,7 +61,7 @@ public class StreamWindowAggPlan {
         // Get group-by info
         ExprListNode groupbyKeyExprs = windowOp.partition().keys();
         List<Integer> groupbyKeyIndexes = new ArrayList<Integer>();
-        for (int i=0; i < groupbyKeyExprs.GetChildNum(); ++i) {
+        for (int i = 0; i < groupbyKeyExprs.GetChildNum(); ++i) {
             ExprNode exprNode = groupbyKeyExprs.GetChild(i);
             int index = FesqlUtil.resolveColumnIndex(exprNode, node.GetProducer(0));
             groupbyKeyIndexes.add(index);
@@ -78,9 +80,22 @@ public class StreamWindowAggPlan {
             throw new FesqlException("Do not support desceding for over window");
         }
 
+        FrameType frameType = node.window().range().frame().frame_type();
+        Window.WindowFrameType windowFrameType;
+        if (frameType == FrameType.kFrameRows) {
+            windowFrameType = Window.WindowFrameType.kFrameRows;
+        } else if (frameType == FrameType.kFrameRowsMergeRowsRange) {
+            windowFrameType = Window.WindowFrameType.kFrameRowsMergeRowsRange;
+        } else {
+            windowFrameType = Window.WindowFrameType.kFrameRowsRange;
+        }
+
         long startOffset = node.window().range().frame().GetHistoryRangeStart();
+        long endOffset = node.window().range().frame().GetHistoryRangeEnd();
         long rowPreceding = -1 * node.window().range().frame().GetHistoryRowsStart();
+        long maxSize = node.window().range().frame().frame_maxsize();
         boolean instanceNotInWindow = node.instance_not_in_window();
+        boolean excludeCurrentTime = node.exclude_current_time();
         boolean needAppendInput = node.need_append_input();
         int appendSlices;
         if (needAppendInput) {
@@ -99,9 +114,9 @@ public class StreamWindowAggPlan {
         DataStream<Row> outputDatastream = null;
 
         // Check if event time or process time
-        TimeCharacteristic timeCharacteristic = ((StreamTableEnvironmentImpl)planContext.getStreamTableEnvironment()).execEnv().getStreamTimeCharacteristic();
+        TimeCharacteristic timeCharacteristic = ((StreamTableEnvironmentImpl) planContext.getStreamTableEnvironment()).execEnv().getStreamTimeCharacteristic();
 
-        if(timeCharacteristic.equals(TimeCharacteristic.EventTime)) {
+        if (timeCharacteristic.equals(TimeCharacteristic.EventTime)) {
 
             outputDatastream = inputDatastream.keyBy(groupbyKeyIndexArray).process(new KeyedProcessFunction<Tuple, Row, Row>() {
 
@@ -124,7 +139,8 @@ public class StreamWindowAggPlan {
                     functionPointer = jit.FindFunction(functionName);
                     inputCodec = new FesqlFlinkCodec(inputSchemaLists);
                     outputCodec = new FesqlFlinkCodec(outputSchemaLists);
-                    windowInterface = new WindowInterface(instanceNotInWindow, startOffset, 0, rowPreceding, 0);
+                    windowInterface = new WindowInterface(instanceNotInWindow, excludeCurrentTime, windowFrameType.toString(), startOffset, endOffset, rowPreceding, maxSize);
+
 
                     // Init state
                     ValueStateDescriptor<Long> lastTriggeringTsDescriptor = new ValueStateDescriptor<>("lastTriggeringTsState", Long.class);
@@ -140,7 +156,7 @@ public class StreamWindowAggPlan {
                 public void processElement(Row row, Context context, Collector<Row> collector) throws Exception {
 
                     // TODO: Check type or orderby column
-                    LocalDateTime orderbyValue = (LocalDateTime)row.getField(orderbyKeyIndex);
+                    LocalDateTime orderbyValue = (LocalDateTime) row.getField(orderbyKeyIndex);
                     long orderbyLongValue = orderbyValue.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
 
                     Long lastTriggeringTs = this.lastTriggeringTsState.value();
@@ -165,7 +181,7 @@ public class StreamWindowAggPlan {
                     List<Row> inputs = this.timeRowsState.get(timestamp);
 
                     if (inputs != null) {
-                        for (Row inputRow: inputs) {
+                        for (Row inputRow : inputs) {
                             com._4paradigm.fesql.codec.Row inputFesqlRow = inputCodec.encodeFlinkRow(inputRow);
                             com._4paradigm.fesql.codec.Row outputFesqlRow = CoreAPI.WindowProject(functionPointer, timestamp, inputFesqlRow, true, appendSlices, windowInterface);
                             Row outputFlinkRow = outputCodec.decodeFesqlRow(outputFesqlRow);
@@ -206,7 +222,7 @@ public class StreamWindowAggPlan {
                     functionPointer = jit.FindFunction(functionName);
                     inputCodec = new FesqlFlinkCodec(inputSchemaLists);
                     outputCodec = new FesqlFlinkCodec(outputSchemaLists);
-                    windowInterface = new WindowInterface(instanceNotInWindow, startOffset, 0, rowPreceding, 0);
+                    windowInterface = new WindowInterface(instanceNotInWindow, excludeCurrentTime, windowFrameType.toString(), startOffset, endOffset, rowPreceding, maxSize);
 
                     // Init state
                     TypeInformation<Long> keyTypeInformation = BasicTypeInfo.LONG_TYPE_INFO;
@@ -218,7 +234,7 @@ public class StreamWindowAggPlan {
                 public void processElement(Row row, Context context, Collector<Row> collector) throws Exception {
 
                     // TODO: Check type or orderby column
-                    LocalDateTime orderbyValue = (LocalDateTime)row.getField(orderbyKeyIndex);
+                    LocalDateTime orderbyValue = (LocalDateTime) row.getField(orderbyKeyIndex);
                     long orderbyLongValue = orderbyValue.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
 
                     com._4paradigm.fesql.codec.Row inputFesqlRow = inputCodec.encodeFlinkRow(row);

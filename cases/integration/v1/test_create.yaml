@@ -574,3 +574,20 @@ cases:
       index(key=(c4)));
     expect:
       success: true
+  -
+    id: 53
+    desc: insert min int and max int
+    inputs:
+      -
+        create: |
+          create table {0} (
+            id int64,
+            order_0_timestamp timestamp,
+            c_2_int32 int32,
+            index(key=(id),ts=order_0_timestamp));
+        insert: |
+          insert into {0} values
+          (0,1538443518561,-2147483648);
+    sql: select * from {0};
+    expect:
+      success: true

@@ -57,6 +57,18 @@ static void BM_EngineWindowSumFeature5(benchmark::State& state) {  // NOLINT
     EngineWindowSumFeature5(&state, BENCHMARK, state.range(0), state.range(1));
 }
 
+static void BM_EngineWindowSumFeature1ExcludeCurrentTime(
+    benchmark::State& state) {  // NOLINT
+    EngineWindowSumFeature1ExcludeCurrentTime(&state, BENCHMARK, state.range(0),
+                                              state.range(1));
+}
+
+static void BM_EngineWindowSumFeature5ExcludeCurrentTime(
+    benchmark::State& state) {  // NOLINT
+    EngineWindowSumFeature5ExcludeCurrentTime(&state, BENCHMARK, state.range(0),
+                                              state.range(1));
+}
+
 static void BM_EngineWindowSumFeature5Window5(
     benchmark::State& state) {  // NOLINT
     EngineWindowSumFeature5Window5(&state, BENCHMARK, state.range(0),
@@ -123,7 +135,16 @@ static void BM_EngineRunBatchWindowSumFeature5(
     EngineRunBatchWindowSumFeature5(&state, BENCHMARK, state.range(0),
                                     state.range(1));
 }
-
+static void BM_EngineRunBatchWindowSumFeature1ExcludeCurrentTime(
+    benchmark::State& state) {  // NOLINT
+    EngineRunBatchWindowSumFeature1ExcludeCurrentTime(
+        &state, BENCHMARK, state.range(0), state.range(1));
+}
+static void BM_EngineRunBatchWindowSumFeature5ExcludeCurrentTime(
+    benchmark::State& state) {  // NOLINT
+    EngineRunBatchWindowSumFeature5ExcludeCurrentTime(
+        &state, BENCHMARK, state.range(0), state.range(1));
+}
 static void BM_EngineRunBatchWindowSumFeature5Window5(
     benchmark::State& state) {  // NOLINT
     EngineRunBatchWindowSumFeature5Window5(&state, BENCHMARK, state.range(0),
@@ -136,7 +157,8 @@ BENCHMARK(BM_EngineRequestSimpleSelectDouble);
 BENCHMARK(BM_EngineRequestSimpleSelectInt32);
 BENCHMARK(BM_EngineRequestSimpleSelectTimestamp);
 BENCHMARK(BM_EngineRequestSimpleSelectDate);
-BENCHMARK(BM_EngineRequestSimpleUDF);
+// TODO(xxx): udf script fix
+// BENCHMARK(BM_EngineRequestSimpleUDF);
 
 // batch engine simple bm
 BENCHMARK(BM_EngineSimpleSelectVarchar);
@@ -144,7 +166,8 @@ BENCHMARK(BM_EngineSimpleSelectDouble);
 BENCHMARK(BM_EngineSimpleSelectInt32);
 BENCHMARK(BM_EngineSimpleSelectTimestamp);
 BENCHMARK(BM_EngineSimpleSelectDate);
-BENCHMARK(BM_EngineSimpleUDF);
+// TODO(xxx): udf script fix
+// BENCHMARK(BM_EngineSimpleUDF);
 
 // request engine window bm
 BENCHMARK(BM_EngineWindowSumFeature1)
@@ -219,7 +242,6 @@ BENCHMARK(BM_EngineWindowMultiAggWindow25Feature25)
 // batch engine window bm
 BENCHMARK(BM_EngineRunBatchWindowSumFeature1)
     ->Args({1, 2})
-    ->Args({1, 2})
     ->Args({1, 10})
     ->Args({1, 100})
     ->Args({1, 1000})
@@ -228,7 +250,6 @@ BENCHMARK(BM_EngineRunBatchWindowSumFeature1)
     ->Args({1000, 1000})
     ->Args({10000, 10000});
 BENCHMARK(BM_EngineRunBatchWindowSumFeature5)
-    ->Args({1, 2})
     ->Args({1, 2})
     ->Args({1, 10})
     ->Args({1, 100})
@@ -239,7 +260,6 @@ BENCHMARK(BM_EngineRunBatchWindowSumFeature5)
     ->Args({10000, 10000});
 BENCHMARK(BM_EngineRunBatchWindowSumFeature5Window5)
     ->Args({1, 2})
-    ->Args({1, 2})
     ->Args({1, 10})
     ->Args({1, 100})
     ->Args({1, 1000})
@@ -248,6 +268,45 @@ BENCHMARK(BM_EngineRunBatchWindowSumFeature5Window5)
     ->Args({1000, 1000})
     ->Args({10000, 10000});
 BENCHMARK(BM_EngineRunBatchWindowMultiAggWindow25Feature25)
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
+
+// batch engine window bm exclude current time
+BENCHMARK(BM_EngineRunBatchWindowSumFeature1ExcludeCurrentTime)
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
+BENCHMARK(BM_EngineRunBatchWindowSumFeature5ExcludeCurrentTime)
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
+// request engine window bm exclude current time
+BENCHMARK(BM_EngineWindowSumFeature1ExcludeCurrentTime)
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
+BENCHMARK(BM_EngineWindowSumFeature5ExcludeCurrentTime)
     ->Args({1, 2})
     ->Args({1, 10})
     ->Args({1, 100})

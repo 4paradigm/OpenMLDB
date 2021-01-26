@@ -118,35 +118,39 @@ class ConditionGenerator : public FnGenerator {
 };
 class RangeGenerator {
  public:
-    explicit RangeGenerator(const Range& range) : ts_gen_(range.fn_info()) {
+    explicit RangeGenerator(const Range& range)
+        : ts_gen_(range.fn_info()), window_range_() {
         if (range.frame_ != nullptr) {
-            frame_type_ = range.frame_->frame_type();
-            start_offset_ = range.frame_->GetHistoryRangeStart();
-            end_offset_ = range.frame_->GetHistoryRangeEnd();
-            start_row_ = (-1 * range.frame_->GetHistoryRowsStart());
-            end_row_ = (-1 * range.frame_->GetHistoryRowsEnd());
+            switch (range.frame()->frame_type()) {
+                case node::kFrameRows:
+                    window_range_.frame_type_ =
+                        Window::WindowFrameType::kFrameRows;
+                    break;
+                case node::kFrameRowsRange:
+                    window_range_.frame_type_ =
+                        Window::WindowFrameType::kFrameRowsRange;
+                    break;
+                case node::kFrameRowsMergeRowsRange:
+                    window_range_.frame_type_ =
+                        Window::WindowFrameType::kFrameRowsMergeRowsRange;
+                default: {
+                    window_range_.frame_type_ =
+                        Window::WindowFrameType::kFrameRowsMergeRowsRange;
+                    break;
+                }
+            }
+            window_range_.start_offset_ = range.frame_->GetHistoryRangeStart();
+            window_range_.end_offset_ = range.frame_->GetHistoryRangeEnd();
+            window_range_.start_row_ =
+                (-1 * range.frame_->GetHistoryRowsStart());
+            window_range_.end_row_ = (-1 * range.frame_->GetHistoryRowsEnd());
+            window_range_.max_size_ = range.frame_->frame_maxsize();
         }
     }
     virtual ~RangeGenerator() {}
-    inline const bool OutOfRange(bool out_of_rows,
-                                 bool out_of_rows_range) const {
-        switch (frame_type_) {
-            case node::kFrameRows:
-                return out_of_rows;
-            case node::kFrameRowsRange:
-                return out_of_rows && out_of_rows_range;
-            default:
-                return true;
-        }
-        return true;
-    }
     const bool Valid() const { return ts_gen_.Valid(); }
     OrderGenerator ts_gen_;
-    fesql::node::FrameType frame_type_;
-    int64_t start_offset_;
-    int64_t end_offset_;
-    uint64_t start_row_;
-    uint64_t end_row_;
+    WindowRange window_range_;
 };
 class FilterKeyGenerator {
  public:
@@ -846,9 +850,11 @@ class WindowAggRunner : public Runner {
     WindowAggRunner(const int32_t id, const SchemasContext* schema,
                     const int32_t limit_cnt, const WindowOp& window_op,
                     const FnInfo& fn_info, const bool instance_not_in_window,
+                    const bool exclude_current_time,
                     const bool need_append_input)
         : Runner(id, kRunnerWindowAgg, schema, limit_cnt),
           instance_not_in_window_(instance_not_in_window),
+          exclude_current_time_(exclude_current_time),
           need_append_input_(need_append_input),
           append_slices_(need_append_input ? schema->GetSchemaSourceSize() : 0),
           instance_window_gen_(window_op),
@@ -873,6 +879,7 @@ class WindowAggRunner : public Runner {
         std::shared_ptr<MemTableHandler> output_table);
 
     const bool instance_not_in_window_;
+    const bool exclude_current_time_;
     const bool need_append_input_;
     const size_t append_slices_;
     WindowGenerator instance_window_gen_;
@@ -885,20 +892,28 @@ class RequestUnionRunner : public Runner {
  public:
     RequestUnionRunner(const int32_t id, const SchemasContext* schema,
                        const int32_t limit_cnt, const Range& range,
+                       bool exclude_current_time,
                        bool output_request_row)
         : Runner(id, kRunnerRequestUnion, schema, limit_cnt),
           range_gen_(range),
+          exclude_current_time_(exclude_current_time),
           output_request_row_(output_request_row) {}
 
     std::shared_ptr<DataHandler> Run(
         RunnerContext& ctx,  // NOLINT
         const std::vector<std::shared_ptr<DataHandler>>& inputs)
         override;  // NOLINT
+    static std::shared_ptr<TableHandler> RequestUnionWindow(
+        const Row& request,
+        std::vector<std::shared_ptr<TableHandler>> union_segments,
+        int64_t request_ts, const WindowRange& window_range,
+        const bool output_request_row, const bool exclude_current_time);
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
     RequestWindowUnionGenerator windows_union_gen_;
     RangeGenerator range_gen_;
+    bool exclude_current_time_;
     bool output_request_row_;
 };
 

@@ -13,22 +13,17 @@ namespace passes {
 
 using ::fesql::common::kCodegenError;
 
-Status WindowIterAnalysis::VisitFunctionLet(node::LambdaNode* lambda) {
-    CHECK_TRUE(lambda->GetArgSize() == 2, kCodegenError,
-               "Function let lambda expect 2 arguments");
-    auto expr_list = dynamic_cast<node::ExprListNode*>(lambda->body());
-    CHECK_TRUE(expr_list != nullptr, kCodegenError,
-               "Function let lambda expect expr list as body");
-    this->row_arg_ = lambda->GetArg(0);
-    this->window_arg_ = lambda->GetArg(1);
-
+Status WindowIterAnalysis::VisitFunctionLet(const node::ExprIdNode* row_arg,
+                                            const node::ExprIdNode* window_arg,
+                                            const node::ExprNode* body) {
+    this->row_arg_ = row_arg;
+    this->window_arg_ = window_arg;
     if (this->window_arg_ != nullptr) {
         SetRank(this->window_arg_, {1, true});
     }
-
-    for (size_t i = 0; i < expr_list->GetChildNum(); ++i) {
+    for (size_t i = 0; i < body->GetChildNum(); ++i) {
         WindowIterRank rank;
-        CHECK_STATUS(VisitExpr(expr_list->GetChild(i), &rank));
+        CHECK_STATUS(VisitExpr(body->GetChild(i), &rank));
     }
     return Status::OK();
 }
@@ -152,12 +147,12 @@ void WindowIterAnalysis::EnterLambdaScope() {
 
 void WindowIterAnalysis::ExitLambdaScope() { scope_cache_list_.pop_back(); }
 
-bool WindowIterAnalysis::GetRank(node::ExprNode* expr,
+bool WindowIterAnalysis::GetRank(const node::ExprNode* expr,
                                  WindowIterRank* rank) const {
     if (expr == nullptr) {
         return false;
     }
-    auto expr_id = dynamic_cast<node::ExprIdNode*>(expr);
+    auto expr_id = dynamic_cast<const node::ExprIdNode*>(expr);
     if (expr_id != nullptr && expr_id->GetId() < 0) {
         return false;
     }
@@ -181,11 +176,11 @@ bool WindowIterAnalysis::GetRank(node::ExprNode* expr,
     return false;
 }
 
-void WindowIterAnalysis::SetRank(node::ExprNode* expr,
+void WindowIterAnalysis::SetRank(const node::ExprNode* expr,
                                  const WindowIterRank& rank) {
     auto& cache = scope_cache_list_.back();
     if (expr->GetExprType() == node::kExprId) {
-        auto expr_id = dynamic_cast<node::ExprIdNode*>(expr);
+        auto expr_id = dynamic_cast<const node::ExprIdNode*>(expr);
         cache.arg_dict[expr_id->GetId()] = rank;
     } else {
         cache.expr_dict[expr->node_id()] = rank;

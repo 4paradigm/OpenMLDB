@@ -208,6 +208,16 @@ class SQLCase {
         }
         return false;
     }
+
+    static bool IS_DISABLE_EXPR_OPT() {
+        const char* env_name = "FESQL_DISABLE_EXPR_OPT";
+        char* value = getenv(env_name);
+        if (value != nullptr && strcmp(value, "true") == 0) {
+            return true;
+        }
+        return false;
+    }
+
     static bool IS_BATCH_REQUEST_OPT() {
         const char* env_name = "FESQL_BATCH_REQUEST_OPT";
         char* value = getenv(env_name);
@@ -225,6 +235,7 @@ class SQLCase {
         }
         return false;
     }
+
     static bool IS_PROCEDURE() {
         const char* env_name = "FESQL_PROCEDURE";
         char* value = getenv(env_name);

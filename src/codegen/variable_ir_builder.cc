@@ -140,6 +140,9 @@ bool VariableIRBuilder::LoadRetStruct(NativeValue* output,
                                       base::Status& status) {
     return LoadValue("@ret_struct", output, status);
 }
+bool VariableIRBuilder::LoadRowKey(NativeValue* output, base::Status& status) {
+    return LoadValue("@row_key", output, status);
+}
 base::Status VariableIRBuilder::LoadMemoryPool(NativeValue* output) {
     base::Status status;
     CHECK_TRUE(LoadValue("@mem_pool", output, status), kCodegenError,
@@ -169,19 +172,6 @@ bool fesql::codegen::VariableIRBuilder::LoadColumnItem(
     const std::string& relation_name, const std::string& name,
     NativeValue* output, fesql::base::Status& status) {
     return LoadValue("@item." + relation_name + "." + name, output, status);
-}
-bool fesql::codegen::VariableIRBuilder::LoadAddrSpace(const size_t schema_idx,
-                                                      NativeValue* output,
-                                                      base::Status& status) {
-    bool ok = LoadValue("@addrspace[" + std::to_string(schema_idx) + "]",
-                        output, status);
-    return ok;
-}
-bool fesql::codegen::VariableIRBuilder::StoreAddrSpace(const size_t schema_idx,
-                                                       ::llvm::Value* value,
-                                                       base::Status& status) {
-    return StoreValue("@addrspace[" + std::to_string(schema_idx) + "]",
-                      NativeValue::Create(value), status);
 }
 bool fesql::codegen::VariableIRBuilder::StoreWindow(
     const std::string& frame_str, ::llvm::Value* value,

@@ -248,7 +248,7 @@ TEST_F(UDFTest, GetColTest) {
 
 TEST_F(UDFTest, GetWindowColRangeTest) {
     // w[0:20s]
-    vm::CurrentHistoryWindow table(-36000000);
+    vm::CurrentHistoryWindow table(vm::Window::kFrameRowsRange, -36000000, 0);
     std::string schema = "col1:int,col2:timestamp";
     std::string data =
         "0, 1590115410000\n"
@@ -275,8 +275,8 @@ TEST_F(UDFTest, GetWindowColRangeTest) {
     const uint32_t inner_list_size = sizeof(codec::InnerRangeList<Row>);
     int8_t* inner_list_buf = reinterpret_cast<int8_t*>(alloca(inner_list_size));
     ASSERT_EQ(0, ::fesql::codec::v1::GetInnerRangeList(
-                     reinterpret_cast<int8_t*>(&table), -20000, -50000,
-                     inner_list_buf));
+                     reinterpret_cast<int8_t*>(&table), 1590115500000, -20000,
+                     -50000, inner_list_buf));
     int32_t offset = row_view.GetPrimaryFieldOffset(0);
     fesql::type::Type type = fesql::type::kInt32;
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
@@ -308,7 +308,7 @@ TEST_F(UDFTest, GetWindowColRangeTest) {
 
 TEST_F(UDFTest, GetWindowColRowsTest) {
     // w[0:20s]
-    vm::CurrentHistoryWindow table(-36000000);
+    vm::CurrentHistoryWindow table(vm::Window::kFrameRowsRange, -36000000, 0);
     std::string schema = "col1:int,col2:timestamp";
     std::string data =
         "0, 1590115410000\n"
@@ -370,7 +370,7 @@ TEST_F(UDFTest, GetWindowColRowsTest) {
 }
 
 TEST_F(UDFTest, GetWindowColTest) {
-    vm::CurrentHistoryWindow table(-2);
+    vm::CurrentHistoryWindow table(vm::Window::kFrameRowsRange, -2, 0);
     uint64_t ts = 1000;
     for (auto row : rows) {
         table.BufferData(ts++, row);

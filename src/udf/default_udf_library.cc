@@ -398,9 +398,14 @@ struct TopKDef {
 
 void DefaultUDFLibrary::InitStringUDF() {
     RegisterExternalTemplate<v1::ToString>("string")
-        .args_in<bool, int16_t, int32_t, int64_t, float, double>()
+        .args_in<int16_t, int32_t, int64_t, float, double>()
         .return_by_arg(true);
 
+    RegisterExternal("string")
+        .args<bool>(
+            static_cast<void (*)(bool, codec::StringRef*)>(
+                udf::v1::bool_to_string))
+        .return_by_arg(true);
     RegisterExternal("string")
         .args<Timestamp>(
             static_cast<void (*)(codec::Timestamp*, codec::StringRef*)>(

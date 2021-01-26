@@ -5,10 +5,11 @@ import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.utils.{FesqlUtil, SparkColumnUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, PhysicalSimpleProjectNode}
 import org.slf4j.LoggerFactory
-import com._4paradigm.fesql.node.{CastExprNode, ColumnRefNode, ConstNode, ExprNode, ExprType, DataType => FesqlDataType}
+import com._4paradigm.fesql.node.{CastExprNode, ConstNode, ExprNode, ExprType, DataType => FesqlDataType}
 import org.apache.spark.sql.{Column, DataFrame}
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 
 object SimpleProjectPlan {
@@ -17,7 +18,12 @@ object SimpleProjectPlan {
 
   def gen(ctx: PlanContext, node: PhysicalSimpleProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
     val inputInstance = inputs.head
-    val inputDf = inputInstance.getDf(ctx.getSparkSession)
+
+    val inputDf = inputInstance.getDfConsideringIndex(ctx, node.GetNodeId())
+
+    // Check if we should keep the index column
+    val keepIndexColumn = SparkInstance.keepIndexColumn(ctx, node.GetNodeId())
+
     val outputSchema = node.GetOutputSchema()
 
     // Get the output column names from output schema
@@ -29,18 +35,27 @@ object SimpleProjectPlan {
       FesqlUtil.getInnerTypeFromSchemaType(col.getType)
     ).toList
 
-    val selectColList = (0 until node.project().size.toInt).map(i => {
+    val selectColList = mutable.ArrayBuffer[Column]()
+
+    for (i <- 0 until node.project().size.toInt) {
       val expr = node.project().GetExpr(i)
       val (col, innerType) = createSparkColumn(inputDf, node, expr)
       val castOutputCol = ConstProjectPlan.castSparkOutputCol(
         col, outputColTypeList(i), innerType)
       castOutputCol.alias(outputColNameList(i))
-    }).toList
+
+      selectColList.append(castOutputCol.alias(outputColNameList(i)))
+    }
+
+    if (keepIndexColumn) {
+      selectColList.append(inputDf(ctx.getIndexInfo(node.GetNodeId()).indexColumnName))
+    }
 
     // Use Spark DataFrame to select columns
     val result = SparkColumnUtil.setDataframeNullable(
       inputDf.select(selectColList: _*), nullable=true)
-    SparkInstance.fromDataFrame(result)
+
+    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), result)
   }
 
   /**
@@ -53,15 +68,14 @@ object SimpleProjectPlan {
                         node: PhysicalSimpleProjectNode,
                         expr: ExprNode): (Column, FesqlDataType) = {
     expr.GetExprType() match {
-      case ExprType.kExprColumnRef =>
-        val column = ColumnRefNode.CastFrom(expr)
+      case ExprType.kExprColumnRef | ExprType.kExprColumnId =>
         val inputNode = node.GetProducer(0)
-        val colIndex = CoreAPI.ResolveColumnIndex(inputNode, column)
+        val colIndex = CoreAPI.ResolveColumnIndex(inputNode, expr)
         if (colIndex < 0 || colIndex >= inputNode.GetOutputSchemaSize()) {
           inputNode.Print()
           inputNode.PrintSchema()
           throw new IndexOutOfBoundsException(
-            s"${column.GetExprString()} resolved index out of bound: $colIndex")
+            s"${expr.GetExprString()} resolved index out of bound: $colIndex")
         }
         val sparkCol = SparkColumnUtil.getColumnFromIndex(inputDf, colIndex)
         val sparkType = inputDf.schema(colIndex).dataType

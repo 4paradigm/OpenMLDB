@@ -1,7 +1,6 @@
 package com._4paradigm.fesql.spark.nodes.window
 
-import com._4paradigm.fesql.spark.element.FesqlConfig
-import com._4paradigm.fesql.spark.{SparkPlanner, SparkRowCodec, SparkTestSuite}
+import com._4paradigm.fesql.spark.{FeSQLConfig, SparkPlanner, SparkRowCodec, SparkTestSuite}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 
@@ -11,9 +10,10 @@ import scala.collection.JavaConverters._
 class TestWindowComputerWithSampleSupport extends SparkTestSuite {
 
   test("Test sample window data") {
+    val config = new FeSQLConfig
     val samplePath = "src/test/resources/fesql_windows/"
     executeSpark(samplePath)
-    val sampleExecutor = WindowComputerWithSampleSupport.recover(samplePath, "w")
+    val sampleExecutor = WindowSampleSupport.recover(config, samplePath + "/w/0", 0)
 
     // run single compute
     val nativeOutput = sampleExecutor.run()
@@ -50,16 +50,20 @@ class TestWindowComputerWithSampleSupport extends SparkTestSuite {
                |    ORDER BY `time`
                |    ROWS BETWEEN 3 PRECEDING AND 0 FOLLOWING);"
              """.stripMargin
-    val config =  Map(
-      "spark.fesql.group.partitions" -> 1,
-      "fesql.window.sampleMinSize" -> 3,
-      "fesql.window.sampleOutputPath" -> samplePath
-    )
-    sess.conf.set("spark.fesql.group.partitions", "1")
+
+    val config = new FeSQLConfig
+    config.groupPartitions = 1
+    config.windowSampleMinSize = 3
+    config.windowSampleOutputPath = samplePath
+    config.windowSampleFilter = "id=0, time=3"
+    config.windowSampleBeforeCompute = false
+    config.print = true
+    config.printRowContent = true
+    config.printSampleInterval = 1
+
     val planner = new SparkPlanner(sess, config)
-    FesqlConfig.paritions = 1
     val res = planner.plan(sql, Map("t" -> table))
-    val output = res.getDf(sess)
+    val output = res.getDf()
     output.show()
   }
 }

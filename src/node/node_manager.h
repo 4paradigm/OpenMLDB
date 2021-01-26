@@ -102,9 +102,13 @@ class NodeManager {
     SQLNode *MakeWindowDefNode(const std::string &name);
     SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
                                SQLNode *frame);
+    SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
+                               SQLNode *frame, bool opt_open_interval_window);
     SQLNode *MakeWindowDefNode(SQLNodeList *union_tables,
                                ExprListNode *partitions, ExprNode *orders,
-                               SQLNode *frame, bool instance_not_in_window);
+                               SQLNode *frame,
+                               bool opt_open_interval_window,
+                               bool instance_not_in_window);
     WindowDefNode *MergeWindow(const WindowDefNode *w1,
                                const WindowDefNode *w2);
     OrderByNode *MakeOrderByNode(const ExprListNode *node_ptr,
@@ -305,6 +309,7 @@ class NodeManager {
     UDFDefNode *MakeUDFDefNode(FnNodeFnDef *def);
 
     UDFByCodeGenDefNode *MakeUDFByCodeGenDefNode(
+        const std::string &name,
         const std::vector<const node::TypeNode *> &arg_types,
         const std::vector<int> &arg_nullable, const node::TypeNode *ret_type,
         bool ret_nullable);

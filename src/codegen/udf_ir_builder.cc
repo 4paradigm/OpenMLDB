@@ -129,7 +129,7 @@ Status UDFIRBuilder::BuildLambdaCall(
 
     for (size_t i = 0; i < fn->GetArgSize(); ++i) {
         auto expr_id = fn->GetArg(i);
-        sv->AddVar(expr_id->GetExprString(), args[i]);
+        inline_scope.AddVar(expr_id->GetExprString(), args[i]);
     }
 
     base::Status status;
@@ -482,15 +482,6 @@ Status UDFIRBuilder::BuildUDAFCall(
     const node::UDAFDefNode* udaf,
     const std::vector<const node::TypeNode*>& arg_types,
     const std::vector<NativeValue>& args, NativeValue* output) {
-    // Compute udaf in sub-function
-    // "void f_udaf_call_impl_(Inputs, Output*)"
-    size_t sub_function_id = ctx_->GetModule()->getFunctionList().size();
-    std::stringstream ss;
-    ss << ctx_->GetCurrentFunction()->getName().str() << "_udaf_call_impl_"
-       << udaf->GetName() << "." << arg_types[0]->GetName() << "_"
-       << sub_function_id;
-    std::string sub_function_name = ss.str();
-
     // udaf state type
     const node::TypeNode* state_type = udaf->GetStateType();
     CHECK_TRUE(state_type != nullptr, kCodegenError, "Missing state type");
@@ -507,74 +498,7 @@ Status UDFIRBuilder::BuildUDAFCall(
         elem_types[i] = udaf->GetElementType(i);
         elem_nullable[i] = udaf->IsElementNullable(i);
     }
-
-    // udaf output type
-    const node::TypeNode* output_type = udaf->GetReturnType();
-    size_t output_num = 1;
-    if (output_type->base() == node::kTuple) {
-        output_num = output_type->GetGenericSize();
-    }
-
-    node::NodeManager* nm = ctx_->node_manager();
-    auto subfunc_ret_type = nm->MakeTypeNode(node::kTuple);
-    subfunc_ret_type->AddGeneric(output_type, false);
-    subfunc_ret_type->AddGeneric(nm->MakeTypeNode(node::kBool), false);
-
-    // add global frame into sub-function closure
-    std::vector<NativeValue> sub_args = args;
-    std::vector<const node::TypeNode*> sub_arg_types = arg_types;
-    std::vector<int> sub_arg_nullable(arg_types.size(), false);
-    ScopeVar* sv = ctx_->GetCurrentScope()->sv();
-    size_t closure_num = 0;
-    if (frame_arg_ != nullptr) {
-        closure_num = 1;
-        NativeValue frame_value;
-        if (sv->FindVar(frame_arg_->GetExprString(), &frame_value)) {
-            sub_args.push_back(frame_value);
-            sub_arg_types.push_back(frame_arg_->GetOutputType());
-            sub_arg_nullable.push_back(false);
-        }
-    }
-
-    NativeValue tuple;
-    auto sub_def =
-        nm->MakeExternalFnDefNode(sub_function_name, 0, subfunc_ret_type, false,
-                                  sub_arg_types, sub_arg_nullable, -1, true);
-    CHECK_STATUS(this->BuildExternCall(sub_def, arg_types, sub_args, &tuple));
-    CHECK_TRUE(tuple.IsTuple(), kCodegenError);
-
-    // extract null flag and values
-    ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
-    ::llvm::Value* is_null = tuple.GetField(1).GetValue(&builder);
-    *output = NativeValue::CreateWithFlag(tuple.GetField(0).GetValue(&builder),
-                                          is_null);
-
-    // build sub-function
-    ::llvm::Function* sub_fn =
-        ctx_->GetModule()->getFunction(sub_function_name);
-    CHECK_TRUE(sub_fn != nullptr, kCodegenError, sub_function_name,
-               " not generated");
-    FunctionScopeGuard sub_fn_guard(sub_fn, ctx_);
-
-    // function scope
-    ScopeVar* sub_sv = ctx_->GetCurrentScope()->sv();
-    if (frame_arg_ != nullptr) {
-        ::llvm::Value* frame_raw_value = sub_fn->arg_begin() + input_num;
-        sub_sv->AddVar(frame_arg_->GetExprString(),
-                       NativeValue::Create(frame_raw_value));
-        sub_sv->AddVar("@window", NativeValue::Create(frame_raw_value));
-    }
-
-    std::vector<::llvm::Value*> output_addrs;
-    for (size_t i = 0; i < output_num; ++i) {
-        output_addrs.push_back(sub_fn->arg_begin() + input_num + closure_num +
-                               i);
-    }
-    ::llvm::Value* output_is_null_ptr =
-        sub_fn->arg_begin() + input_num + closure_num + output_num;
-
     Status status;
-    ::llvm::LLVMContext& llvm_ctx = ctx_->GetModule()->getContext();
 
     // infer state llvm types
     std::vector<llvm::Type*> state_llvm_tys;
@@ -597,7 +521,7 @@ Status UDFIRBuilder::BuildUDAFCall(
 
     std::vector<::llvm::Value*> list_ptrs;
     for (size_t i = 0; i < input_num; ++i) {
-        list_ptrs.push_back(sub_fn->arg_begin() + i);
+        list_ptrs.push_back(args[i].GetValue(ctx_));
     }
 
     // iter head
@@ -621,7 +545,7 @@ Status UDFIRBuilder::BuildUDAFCall(
                  " failed: ", status.str());
 
     // local states storage
-    builder.SetInsertPoint(ctx_->GetCurrentBlock());
+    ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
     std::vector<::llvm::Value*> states_storage(state_num);
     if (state_num > 1) {
         CHECK_TRUE(
@@ -756,35 +680,13 @@ Status UDFIRBuilder::BuildUDAFCall(
                                        {single_final_state}, &local_output),
         "Build output function call failed");
 
-    builder.SetInsertPoint(ctx_->GetCurrentBlock());
-    if (output_num > 1) {
-        CHECK_TRUE(
-            local_output.IsTuple() && local_output.GetFieldNum() == output_num,
-            kCodegenError);
-        for (size_t i = 0; i < output_num; ++i) {
-            ::llvm::Value* raw_output = local_output.GetField(i).GetValue(ctx_);
-            if (!TypeIRBuilder::IsStructPtr(raw_output->getType())) {
-                raw_output = builder.CreateLoad(raw_output);
-            }
-            builder.CreateStore(raw_output, output_addrs[i]);
-        }
-    } else {
-        ::llvm::Value* raw_output = local_output.GetValue(ctx_);
-        if (TypeIRBuilder::IsStructPtr(raw_output->getType())) {
-            raw_output = builder.CreateLoad(raw_output);
-        }
-        builder.CreateStore(raw_output, output_addrs[0]);
-    }
-
     ListIRBuilder iter_delete_builder(ctx_->GetCurrentBlock(), nullptr);
     for (size_t i = 0; i < input_num; ++i) {
         ::llvm::Value* delete_iter_res;
         CHECK_STATUS(iter_delete_builder.BuildIteratorDelete(
             iterators[i], elem_types[i], &delete_iter_res));
     }
-    builder.CreateStore(::llvm::ConstantInt::getFalse(llvm_ctx),
-                        output_is_null_ptr);
-    builder.CreateRetVoid();
+    *output = local_output;
     return Status::OK();
 }
 

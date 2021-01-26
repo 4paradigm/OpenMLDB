@@ -151,13 +151,53 @@ INSTANTIATE_TEST_CASE_P(
         InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    EngineTestErrorWindow, EngineTest,
+    EngineTestWindowExcludeCurrentTime, EngineTest,
+    testing::ValuesIn(InitCases(
+        "/cases/integration/v1/test_window_exclude_current_time.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestIndexOptimized, EngineTest,
     testing::ValuesIn(
-        InitCases("/cases/integration/error/error_window.yaml")));
+        InitCases("/cases/integration/v1/test_index_optimized.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestErrorWindow, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/error/error_window.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineTestDebugFzBenchmark, EngineTest,
+    testing::ValuesIn(InitCases("/cases/debug/fz_benchmark_debug.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestDebugIssues, EngineTest,
+    testing::ValuesIn(InitCases("/cases/debug/issues_case.yaml")));
+
+// TODO(qiliguo) #229 sql 语句加一个大 select, 选取其中几列，
+//   添加到 expect 中的做验证
+// imported from spark offline test
+// 单表反欺诈场景
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSparkFQZ, EngineTest,
     testing::ValuesIn(
-        InitCases("/cases/debug/fz_benchmark_debug.yaml")));
+        InitCases("/cases/integration/spark/test_fqz_studio.yaml")));
+// 单表-广告场景
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSparkAds, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/spark/test_ads.yaml")));
+// 单表-新闻场景
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSparkNews, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/spark/test_news.yaml")));
+// 多表-京东数据场景
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSparkJD, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/spark/test_jd.yaml")));
+// 多表-信用卡用户转借记卡预测场景
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSparkCredit, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/spark/test_credit.yaml")));
+
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
     EngineOptions options;

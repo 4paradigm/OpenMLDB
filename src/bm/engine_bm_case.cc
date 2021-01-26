@@ -71,7 +71,7 @@ static const int64_t RunTableRequest(
 
 int32_t MapTopFn(int64_t limit) {
     std::string key = "key";
-    double d[5]; //NOLINT
+    double d[5];  // NOLINT
     codec::StringRef rkey(key.size(), key.c_str());
     for (int j = 0; j < 5; j++) {
         std::map<codec::StringRef, int32_t> state;
@@ -183,7 +183,20 @@ static void EngineBatchMode(const std::string sql, MODE mode, int64_t limit_cnt,
         }
     }
 }
-
+void EngineWindowSumFeature1ExcludeCurrentTime(benchmark::State* state,
+                                               MODE mode, int64_t limit_cnt,
+                                               int64_t size) {  // NOLINT
+    // prepare data into table
+    const std::string sql =
+        "SELECT "
+        "sum(col4) OVER w1 as w1_col4_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN "
+        "30d "
+        "PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME) limit " +
+        std::to_string(limit_cnt) + ";";
+    EngineRequestMode(sql, mode, limit_cnt, size, state);
+}
 void EngineWindowSumFeature1(benchmark::State* state, MODE mode,
                              int64_t limit_cnt, int64_t size) {  // NOLINT
     // prepare data into table
@@ -243,6 +256,38 @@ void EngineRunBatchWindowSumFeature5(benchmark::State* state, MODE mode,
     EngineBatchMode(sql, mode, limit_cnt, size, state);
 }
 
+void EngineRunBatchWindowSumFeature1ExcludeCurrentTime(
+    benchmark::State* state, MODE mode, int64_t limit_cnt,
+    int64_t size) {  // NOLINT
+    // prepare data into table
+    const std::string sql =
+        "SELECT "
+        "sum(col4) OVER w1 as w1_col4_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN "
+        "30d "
+        "PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME) limit " +
+        std::to_string(limit_cnt) + ";";
+
+    EngineBatchMode(sql, mode, limit_cnt, size, state);
+}
+void EngineRunBatchWindowSumFeature5ExcludeCurrentTime(
+    benchmark::State* state, MODE mode, int64_t limit_cnt,
+    int64_t size) {  // NOLINT
+    const std::string sql =
+        "SELECT "
+        "sum(col1) OVER w1 as w1_col1_sum, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "sum(col4) OVER w1 as w1_col4_sum, "
+        "sum(col2) OVER w1 as w1_col2_sum, "
+        "sum(col5) OVER w1 as w1_col5_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN "
+        "30d "
+        "PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME) limit " +
+        std::to_string(limit_cnt) + ";";
+    EngineBatchMode(sql, mode, limit_cnt, size, state);
+}
 void EngineRunBatchWindowSumFeature5Window5(benchmark::State* state, MODE mode,
                                             int64_t limit_cnt,
                                             int64_t size) {  // NOLINT
@@ -346,6 +391,26 @@ void EngineRunBatchWindowMultiAggWindow25Feature25(benchmark::State* state,
         std::to_string(limit_cnt) + ";";
     EngineBatchMode(sql, mode, limit_cnt, size, state);
 }
+
+void EngineWindowSumFeature5ExcludeCurrentTime(benchmark::State* state,
+                                               MODE mode, int64_t limit_cnt,
+                                               int64_t size) {  // NOLINT
+    // prepare data into table
+    const std::string sql =
+        "SELECT "
+        "sum(col1) OVER w1 as w1_col1_sum, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "sum(col4) OVER w1 as w1_col4_sum, "
+        "sum(col2) OVER w1 as w1_col2_sum, "
+        "sum(col5) OVER w1 as w1_col5_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN "
+        "30d "
+        "PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME) limit " +
+        std::to_string(limit_cnt) + ";";
+    EngineRequestMode(sql, mode, limit_cnt, size, state);
+}
+
 void EngineWindowSumFeature5(benchmark::State* state, MODE mode,
                              int64_t limit_cnt,
                              int64_t size) {  // NOLINT
@@ -617,6 +682,7 @@ void EngineRequestModeSimpleQueryBM(const std::string& db,
     RequestRunSession session;
     base::Status query_status;
     engine.Get(sql, db, session, query_status);
+    LOG(INFO) << query_status;
     std::ostringstream runner_oss;
     session.GetClusterJob().Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
@@ -769,6 +835,11 @@ void EngineBenchmarkOnCase(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         engine_options.set_cluster_optimized(true);
     } else {
         engine_options.set_cluster_optimized(false);
+    }
+    if (fesql::sqlcase::SQLCase::IS_DISABLE_EXPR_OPT()) {
+        engine_options.set_enable_expr_optimize(false);
+    } else {
+        engine_options.set_enable_expr_optimize(true);
     }
     std::unique_ptr<vm::EngineTestRunner> engine_runner;
     if (engine_mode == vm::kBatchMode) {

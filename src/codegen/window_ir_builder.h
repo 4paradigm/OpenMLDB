@@ -38,7 +38,8 @@ class WindowDecodeIRBuilder {
 
     virtual ~WindowDecodeIRBuilder() {}
 
-    virtual bool BuildInnerRangeList(::llvm::Value* window_ptr, int64_t start,
+    virtual bool BuildInnerRangeList(::llvm::Value* window_ptr,
+                                     ::llvm::Value* row_key, int64_t start,
                                      int64_t end, ::llvm::Value** output) = 0;
     virtual bool BuildInnerRowsList(::llvm::Value* window_ptr, int64_t start,
                                     int64_t end, ::llvm::Value** output) = 0;
@@ -53,7 +54,8 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
                                 ::llvm::BasicBlock* block);
 
     ~MemoryWindowDecodeIRBuilder();
-    virtual bool BuildInnerRangeList(::llvm::Value* window_ptr, int64_t start,
+    virtual bool BuildInnerRangeList(::llvm::Value* window_ptr,
+                                     ::llvm::Value* row_key, int64_t start,
                                      int64_t end, ::llvm::Value** output);
     virtual bool BuildInnerRowsList(::llvm::Value* window_ptr, int64_t start,
                                     int64_t end, ::llvm::Value** output);

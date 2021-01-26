@@ -651,6 +651,9 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
                                           const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_);
+    if (exclude_current_time_) {
+        output << ", EXCLUDE_CURRENT_TIME";
+    }
     if (instance_not_in_window_) {
         output << ", INSTANCE_NOT_IN_WINDOW";
     }
@@ -1158,6 +1161,7 @@ Status PhysicalRequestUnionNode::WithNewChildren(
     CHECK_TRUE(children.size() == 2, common::kPlanError);
     auto new_union_op = new PhysicalRequestUnionNode(
         children[0], children[1], window_, instance_not_in_window_,
+        exclude_current_time_,
         output_request_row_);
 
     std::vector<const node::ExprNode*> depend_columns;
@@ -1188,6 +1192,9 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
     output << "(";
     if (!output_request_row_) {
         output << "EXCLUDE_REQUEST_ROW, ";
+    }
+    if (exclude_current_time_) {
+        output << "EXCLUDE_CURRENT_TIME, ";
     }
     output << window_.ToString() << ")";
     if (!window_unions_.Empty()) {

@@ -624,7 +624,7 @@ Status ExprAnalysisContext::InferAsUDF(node::ExprNode* expr,
                  "\" failed");
 
     node::ExprNode* target_expr = nullptr;
-    passes::ResolveFnAndAttrs resolver(nm, library(), schemas_context());
+    passes::ResolveFnAndAttrs resolver(this);
     CHECK_STATUS(resolver.VisitExpr(transformed, &target_expr), "Infer ",
                  expr->GetExprString(), " as \"", name, "\" failed");
 
@@ -801,8 +801,8 @@ UDFByCodeGenDefNode* UDFByCodeGenDefNode::ShadowCopy(NodeManager* nm) const {
 }
 
 UDFByCodeGenDefNode* UDFByCodeGenDefNode::DeepCopy(NodeManager* nm) const {
-    auto def_node = nm->MakeUDFByCodeGenDefNode(arg_types_, arg_nullable_,
-                                                ret_type_, ret_nullable_);
+    auto def_node = nm->MakeUDFByCodeGenDefNode(
+        name_, arg_types_, arg_nullable_, ret_type_, ret_nullable_);
     def_node->SetGenImpl(this->GetGenImpl());
     return def_node;
 }

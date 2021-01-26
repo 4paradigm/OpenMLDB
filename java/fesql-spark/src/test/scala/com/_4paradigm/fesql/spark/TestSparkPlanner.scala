@@ -1,6 +1,5 @@
 package com._4paradigm.fesql.spark
 
-import com._4paradigm.fesql.spark.element.FesqlConfig
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 
@@ -20,7 +19,7 @@ class TestSparkPlanner extends SparkTestSuite {
     val planner = new SparkPlanner(sess)
     val res = planner.plan("select *, _1 + 1, inc(_1) from t;", Map("t" -> table))
 
-    val output = res.getDf(sess)
+    val output = res.getDf()
     output.show()
   }
 
@@ -43,7 +42,7 @@ class TestSparkPlanner extends SparkTestSuite {
     val planner = new SparkPlanner(sess)
     val res = planner.plan("select id as new_id, 0.0 as col2 from t1;", Map("t1" -> t1))
 
-    val output = res.getDf(sess)
+    val output = res.getDf()
     output.show()
   }
 
@@ -83,13 +82,12 @@ class TestSparkPlanner extends SparkTestSuite {
        |    ROWS BETWEEN 3 PRECEDING AND 0 FOLLOWING);"
      """.stripMargin
 
-    val config =  Map(
-      FesqlConfig.configPartitions -> 1
-    )
+    val config = new FeSQLConfig
+    config.groupPartitions = 1
 
     val planner = new SparkPlanner(sess, config)
     val res = planner.plan(sql, Map("t" -> table))
-    val output = res.getDf(sess)
+    val output = res.getDf()
     output.show()
   }
 
@@ -125,7 +123,7 @@ class TestSparkPlanner extends SparkTestSuite {
 
     val planner = new SparkPlanner(sess)
     val res = planner.plan(sql, Map("t1" -> left, "t2" -> right))
-    val output = res.getDf(sess)
+    val output = res.getDf()
     output.show()
   }
 }
