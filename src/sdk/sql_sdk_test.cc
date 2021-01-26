@@ -488,6 +488,8 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     ASSERT_TRUE(!output_schema.IsConstant(2));
 
     // drop procedure
+    std::string drop_sp_sql = "drop procedure " + sp_name + ";";
+    ASSERT_TRUE(router->ExecuteDDL(db, drop_sp_sql, &status));
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table trans;", &status));
 }
 

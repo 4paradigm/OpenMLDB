@@ -2,6 +2,7 @@ package com._4paradigm.fesql_auto_test.entity;
 
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.util.Tool;
+import org.apache.commons.lang3.StringUtils;
 import org.testng.Assert;
 
 import java.io.File;
@@ -15,25 +16,39 @@ public class FesqlDataProviderList {
 
     public List<SQLCase> getCases() {
         List<SQLCase> cases = new ArrayList<SQLCase>();
+        String caseId = System.getProperty("caseId");
+        String caseDesc= System.getProperty("caseDesc");
         for (FesqlDataProvider dataProvider : dataProviderList) {
-            cases.addAll(dataProvider.getCases());
+            for (SQLCase sqlCase : dataProvider.getCases()) {
+                if (!StringUtils.isEmpty(caseId) && !caseId.equals(sqlCase.getId())) {
+                    continue;
+                }
+                if (!StringUtils.isEmpty(caseDesc) && !caseDesc.equals(sqlCase.getDesc())) {
+                    continue;
+                }
+                cases.add(sqlCase);
+            }
         }
         return cases;
     }
 
     public static FesqlDataProviderList dataProviderGenerator(String[] caseFiles) throws FileNotFoundException {
+        String yamlPath = System.getProperty("casePath");
         FesqlDataProviderList fesqlDataProviderList = new FesqlDataProviderList();
         for (String caseFile : caseFiles) {
-            String casePath = Tool.getCasePath(caseFile);
-            File file = new File(casePath);
-            if(!file.exists()){
+            if (!StringUtils.isEmpty(yamlPath) && !yamlPath.equals(caseFile)) {
                 continue;
             }
-            if(file.isFile()) {
+            String casePath = Tool.getCasePath(caseFile);
+            File file = new File(casePath);
+            if (!file.exists()) {
+                continue;
+            }
+            if (file.isFile()) {
                 fesqlDataProviderList.dataProviderList.add(FesqlDataProvider.dataProviderGenerator(casePath));
-            }else{
-                File[] files = file.listFiles(f->f.getName().endsWith(".yaml"));
-                for(File f:files){
+            } else {
+                File[] files = file.listFiles(f -> f.getName().endsWith(".yaml"));
+                for (File f : files) {
                     fesqlDataProviderList.dataProviderList.add(FesqlDataProvider.dataProviderGenerator(f.getAbsolutePath()));
                 }
             }

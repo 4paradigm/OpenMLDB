@@ -23,7 +23,11 @@ public class WindowTest extends FesqlTest {
     public Object[] testWindowData() throws FileNotFoundException {
         FesqlDataProviderList dp = FesqlDataProviderList
                 .dataProviderGenerator(new String[]{
-                        "/integration/v1/window/test_window_row_range.yaml"
+                        "/integration/v1/window/test_window_row_range.yaml",
+                        "/integration/cluster/test_window_row.yaml",
+                        "/integration/cluster/test_window_row_range.yaml",
+                        "/integration/cluster/window_and_lastjoin.yaml",
+                        "/integration/v1/test_index_optimized.yaml",
                 });
         return dp.getCases().toArray();
     }

@@ -349,13 +349,13 @@ class TabletClient {
     bool CallProcedure(const std::string& db, const std::string& sp_name,
             const std::string& row, brpc::Controller* cntl,
             rtidb::api::QueryResponse* response,
-            bool is_debug);
+            bool is_debug, uint64_t timeout_ms);
 
     bool CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
             std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch>,
             brpc::Controller* cntl,
             rtidb::api::SQLBatchRequestQueryResponse* response,
-            bool is_debug);
+            bool is_debug, uint64_t timeout_ms);
 
     bool DropProcedure(const std::string& db_name, const std::string& sp_name);
 
@@ -365,13 +365,13 @@ class TabletClient {
     bool SubBatchRequestQuery(const ::rtidb::api::SQLBatchRequestQueryRequest& request,
                               rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback);
     bool CallProcedure(const std::string& db, const std::string& sp_name,
-            const std::string& row, int64_t timeout_ms, bool is_debug,
+            const std::string& row, uint64_t timeout_ms, bool is_debug,
             rtidb::RpcCallback<rtidb::api::QueryResponse>* callback);
 
     bool CallSQLBatchRequestProcedure(
             const std::string& db, const std::string& sp_name,
             std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
-            bool is_debug, int64_t timeout_ms,
+            bool is_debug, uint64_t timeout_ms,
             rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback);
 
  private:

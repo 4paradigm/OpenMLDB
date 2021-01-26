@@ -795,6 +795,10 @@ bool NameServerImpl::Recover() {
             PDLOG(WARNING, "recover table info failed!");
             return false;
         }
+        if (!RecoverProcedureInfo()) {
+            PDLOG(WARNING, "recover store procedure info failed!");
+            return false;
+        }
         UpdateSdkEpMap();
     }
     UpdateTableStatus();
@@ -3521,6 +3525,35 @@ void NameServerImpl::DropTable(RpcController* controller, const DropTableRequest
                   zone_info_.zone_name().c_str(), zone_info_.zone_term(), request->zone_info().zone_name().c_str(),
                   request->zone_info().zone_term());
             return;
+        }
+    }
+    {
+        // if table is associated with procedure, drop it fail
+        if (!request->db().empty()) {
+            std::lock_guard<std::mutex> lock(mu_);
+            auto db_iter = db_table_sp_map_.find(request->db());
+            if (db_iter != db_table_sp_map_.end()) {
+                auto& table_sp_map = db_iter->second;
+                auto table_iter = table_sp_map.find(request->name());
+                if (table_iter != table_sp_map.end()) {
+                    const auto& sp_vec = table_iter->second;
+                    if (!sp_vec.empty()) {
+                        std::stringstream ss;
+                        ss << "table has associated procedure: ";
+                        for (uint32_t i = 0; i < sp_vec.size(); i++) {
+                            ss << sp_vec[i];
+                            if (i != sp_vec.size() - 1) {
+                                ss << ", ";
+                            }
+                        }
+                        std::string err_msg = ss.str();
+                        response->set_code(::rtidb::base::ReturnCode::kDropTableError);
+                        response->set_msg(err_msg);
+                        LOG(WARNING) << err_msg;
+                        return;
+                    }
+                }
+            }
         }
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
@@ -8124,35 +8157,29 @@ void NameServerImpl::UpdateTableAliveStatus(RpcController* controller, const Upd
     }
 }
 
-int NameServerImpl::UpdateEndpointTableAlive(const std::string& endpoint, bool is_alive) {
-    if (!running_.load(std::memory_order_acquire)) {
-        PDLOG(WARNING, "cur nameserver is not leader");
-        return 0;
-    }
-    std::lock_guard<std::mutex> lock(mu_);
-    for (const auto& kv : table_info_) {
-        ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::TablePartition>* table_partition =
-            kv.second->mutable_table_partition();
+int NameServerImpl::UpdateEndpointTableAliveHandle(const std::string& endpoint,
+                                                   TableInfos& table_infos, bool is_alive) { //NOLINT
+    for (const auto& kv : table_infos) {
+        ::google::protobuf::RepeatedPtrField<TablePartition>* table_parts = kv.second->mutable_table_partition();
         bool has_update = false;
-        for (int idx = 0; idx < table_partition->size(); idx++) {
-            ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::PartitionMeta>* partition_meta =
-                table_partition->Mutable(idx)->mutable_partition_meta();
+        for (int idx = 0; idx < table_parts->size(); idx++) {
+            ::google::protobuf::RepeatedPtrField<PartitionMeta>* partition_meta =
+                table_parts->Mutable(idx)->mutable_partition_meta();
             uint32_t alive_cnt = 0;
             for (int meta_idx = 0; meta_idx < partition_meta->size(); meta_idx++) {
-                ::rtidb::nameserver::PartitionMeta* cur_partition_meta = partition_meta->Mutable(meta_idx);
+                PartitionMeta* cur_partition_meta = partition_meta->Mutable(meta_idx);
                 if (cur_partition_meta->is_alive()) {
                     alive_cnt++;
                 }
             }
             if (alive_cnt == 1 && !is_alive) {
-                PDLOG(INFO,
-                      "alive_cnt is one, should not set alive to false. "
-                      "name[%s] pid[%u] endpoint[%s] is_alive[%d]",
-                      kv.first.c_str(), table_partition->Get(idx).pid(), endpoint.c_str(), is_alive);
+                LOG(INFO) << "alive_cnt is one, should not set alive to false. name[" << kv.first
+                          << "] pid [" << table_parts->Get(idx).pid()  << "] endpoint["
+                          << endpoint  << "] is_alive[" << is_alive << "]";
                 continue;
             }
             for (int meta_idx = 0; meta_idx < partition_meta->size(); meta_idx++) {
-                ::rtidb::nameserver::PartitionMeta* cur_partition_meta = partition_meta->Mutable(meta_idx);
+                PartitionMeta* cur_partition_meta = partition_meta->Mutable(meta_idx);
                 if (cur_partition_meta->endpoint() == endpoint) {
                     cur_partition_meta->set_is_alive(is_alive);
                     has_update = true;
@@ -8161,10 +8188,31 @@ int NameServerImpl::UpdateEndpointTableAlive(const std::string& endpoint, bool i
         }
         if (has_update) {
             if (!UpdateZkTableNodeWithoutNotify(kv.second.get())) {
+                LOG(INFO) << "update fail. table[" << kv.first << "] endpoint[" << endpoint
+                          << "] is_alive[" << is_alive << "]";
                 return -1;
             }
-            PDLOG(INFO, "update success. table[%s] endpoint[%s] is_alive[%d]", kv.first.c_str(), endpoint.c_str(),
-                  is_alive);
+            LOG(INFO) << "update success. table[" << kv.first << "] endpoint[" << endpoint
+                      << "] is_alive[" << is_alive << "]";
+        }
+    }
+    return 0;
+}
+
+int NameServerImpl::UpdateEndpointTableAlive(const std::string& endpoint, bool is_alive) {
+    if (!running_.load(std::memory_order_acquire)) {
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return 0;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    int ret = UpdateEndpointTableAliveHandle(endpoint, table_info_, is_alive);
+    if (ret != 0) {
+        return ret;
+    }
+    for (auto& kv : db_table_info_) {
+        ret = UpdateEndpointTableAliveHandle(endpoint, kv.second, is_alive);
+        if (ret != 0) {
+            return ret;
         }
     }
     NotifyTableChanged();
@@ -10535,20 +10583,30 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
     sp_info->CopyFrom(request->sp_info());
     const std::string& db_name = sp_info->db_name();
     const std::string& sp_name = sp_info->sp_name();
-    std::string sp_data_path = zk_db_sp_data_path_ + "/" + db_name + "." + sp_name;
+    const std::string sp_data_path = zk_db_sp_data_path_ + "/" + db_name + "." + sp_name;
     {
         std::lock_guard<std::mutex> lock(mu_);
-        if (zk_client_->IsExistNode(sp_data_path) == 0) {
-            response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);
-            response->set_msg("store procedure already exists");
-            PDLOG(WARNING, "store procedure[%s] already exists in db[%s]", sp_name.c_str(), db_name.c_str());
+        if (databases_.find(db_name) == databases_.end()) {
+            response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
+            response->set_msg("database not found");
+            PDLOG(WARNING, "database[%s] not found", db_name);
             return;
+        } else {
+            const auto& sp_table_map = db_sp_table_map_[db_name];
+            auto sp_table_iter = sp_table_map.find(sp_name);
+            if (sp_table_iter != sp_table_map.end()) {
+                response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);
+                response->set_msg("store procedure already exists");
+                PDLOG(WARNING, "store procedure[%s] already exists in db[%s]", sp_name.c_str(), db_name.c_str());
+                return;
+            }
         }
     }
     do {
-        if (!CreateProcedureOnTablet(*request)) {
+        std::string err_msg;
+        if (!CreateProcedureOnTablet(*request, err_msg)) {
             response->set_code(::rtidb::base::ReturnCode::kCreateProcedureFailedOnTablet);
-            response->set_msg("create procedure failed on tablet");
+            response->set_msg(err_msg);
             break;
         }
 
@@ -10563,12 +10621,18 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
             response->set_msg("create zk node failed");
             break;
         }
-        PDLOG(INFO, "create db store procedure node[%s] success! value[%s] value size[%lu]",
-                sp_data_path.c_str(), sp_value.c_str(), compressed.length());
         {
             std::lock_guard<std::mutex> lock(mu_);
+            auto& sp_table_map = db_sp_table_map_[db_name];
+            auto& table_sp_map = db_table_sp_map_[db_name];
+            for (const auto& depend_table : sp_info->tables()) {
+                sp_table_map[sp_name].push_back(depend_table);
+                table_sp_map[depend_table].push_back(sp_name);
+            }
             NotifyTableChanged();
         }
+        PDLOG(INFO, "create db store procedure success! db_name [%s] sp_name [%s] sql [%s]",
+                db_name.c_str(), sp_name.c_str(), sp_info->sql().c_str());
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         return;
@@ -10576,31 +10640,38 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
     DropProcedureOnTablet(db_name, sp_name);
 }
 
-bool NameServerImpl::CreateProcedureOnTablet(const ::rtidb::api::CreateProcedureRequest& sp_request) {
+bool NameServerImpl::CreateProcedureOnTablet(const ::rtidb::api::CreateProcedureRequest& sp_request,
+        std::string& err_msg) {
     std::vector<std::shared_ptr<TabletClient>> tb_client_vec;
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (auto &kv : tablets_) {
             if (!kv.second->Health()) {
-                PDLOG(WARNING, "endpoint [%s] is offline", kv.first.c_str());
+                LOG(WARNING) << "endpoint [" << kv.first << "] is offline";
                 continue;
             }
             tb_client_vec.push_back(kv.second->client_);
         }
     }
+    DLOG(INFO) << "request timeout in ms: " << sp_request.timeout_ms();
     const auto& sp_info = sp_request.sp_info();
     for (auto tb_client : tb_client_vec) {
         std::string msg;
         if (!tb_client->CreateProcedure(sp_request, msg)) {
-            PDLOG(WARNING,
-                    "create procedure on tablet failed. db_name[%s], sp_name[%s], sql[%s], endpoint[%s], msg[%s]",
-                    sp_info.db_name().c_str(), sp_info.sp_name().c_str(), sp_info.sql().c_str(),
-                    tb_client->GetEndpoint().c_str(), msg.c_str());
+            char temp_msg[100];
+            snprintf(temp_msg, sizeof(temp_msg), "create procedure on tablet failed."
+                    "db_name[%s], sp_name[%s], endpoint[%s]. ",
+                    sp_info.db_name().c_str(), sp_info.sp_name().c_str(),
+                    tb_client->GetEndpoint().c_str());
+            err_msg.append(temp_msg);
+            err_msg.append("msg: ");
+            err_msg.append(msg);
+            LOG(WARNING) << err_msg;
             return false;
         }
-        PDLOG(INFO, "create procedure on tablet success. db_name[%s], sp_name[%s], sql[%s], endpoint[%s]",
-                sp_info.db_name().c_str(), sp_info.sp_name().c_str(), sp_info.sql().c_str(),
-                tb_client->GetEndpoint().c_str());
+        DLOG(INFO) << "create procedure on tablet success. db_name: " << sp_info.db_name() << ", "
+            << "sp_name: " << sp_info.sp_name() << ", " << "sql: " << sp_info.sql()
+            << "endpoint: " << tb_client->GetEndpoint();
     }
     return true;
 }
@@ -10642,6 +10713,25 @@ void NameServerImpl::DropProcedure(RpcController* controller,
     }
     const std::string db_name = request->db_name();
     const std::string sp_name = request->sp_name();
+    bool wrong = false;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto db_iter = db_sp_table_map_.find(db_name);
+        if (db_iter == db_sp_table_map_.end()) {
+            wrong = true;
+        } else {
+            const auto& sp_table_map = db_iter->second;
+            if (sp_table_map.find(sp_name) == sp_table_map.end()) {
+                wrong = true;
+            }
+        }
+        if (wrong) {
+            PDLOG(WARNING, "storage procedure not found! sp_name [%s]", sp_name.c_str());
+            response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
+            response->set_msg("storage procedure not found!");
+            return;
+        }
+    }
     DropProcedureOnTablet(db_name, sp_name);
     std::string sp_data_path = zk_db_sp_data_path_ + "/" + db_name + "." + sp_name;
     {
@@ -10652,10 +10742,69 @@ void NameServerImpl::DropProcedure(RpcController* controller,
             response->set_msg("delete storage procedure zk node failed");
             return;
         }
+        auto& sp_table_map = db_sp_table_map_[db_name];
+        auto& table_vec = sp_table_map[sp_name];
+        auto& table_sp_map = db_table_sp_map_[db_name];
+        for (const auto& table : table_vec) {
+            auto& sp_vec = table_sp_map[table];
+            sp_vec.erase(std::remove(sp_vec.begin(), sp_vec.end(), sp_name), sp_vec.end());
+            if (sp_vec.empty()) {
+                table_sp_map.erase(table);
+            }
+        }
+        sp_table_map.erase(sp_name);
         NotifyTableChanged();
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
+}
+
+bool NameServerImpl::RecoverProcedureInfo() {
+    db_table_sp_map_.clear();
+    db_sp_table_map_.clear();
+    std::vector<std::string> db_sp_vec;
+    if (!zk_client_->GetChildren(zk_db_sp_data_path_, db_sp_vec)) {
+        if (zk_client_->IsExistNode(zk_db_sp_data_path_) != 0) {
+            LOG(WARNING) << "zk_db_sp_data_path node [" << zk_db_sp_data_path_ << "] is not exist";
+            return true;
+        } else {
+            LOG(WARNING) << "get zk_db_sp_data_path [" << zk_db_sp_data_path_ << "] children node failed!";
+            return false;
+        }
+    }
+    LOG(INFO) << "need to recover db store procedure num: " << db_sp_vec.size();
+    for (const auto& node : db_sp_vec) {
+        std::string sp_node = zk_db_sp_data_path_ + "/" + node;
+        std::string value;
+        if (!zk_client_->GetNodeValue(sp_node, value)) {
+            LOG(WARNING) << "get db store procedure info failed! sp node: " << sp_node;
+            continue;
+        }
+        std::string uncompressed;
+        ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
+
+        std::shared_ptr<::rtidb::nameserver::ProcedureInfo> sp_info =
+            std::make_shared<::rtidb::nameserver::ProcedureInfo>();
+        if (!sp_info->ParseFromString(uncompressed)) {
+            LOG(WARNING) << "parse store procedure info failed! sp node: " << sp_node;
+            continue;
+        }
+        const std::string& db_name = sp_info->db_name();
+        const std::string& sp_name = sp_info->sp_name();
+        const std::string& sql = sp_info->sql();
+        if (databases_.find(db_name) != databases_.end()) {
+            auto& sp_table_map = db_sp_table_map_[db_name];
+            auto& table_sp_map = db_table_sp_map_[db_name];
+            for (const auto& depend_table : sp_info->tables()) {
+                sp_table_map[sp_name].push_back(depend_table);
+                table_sp_map[depend_table].push_back(sp_name);
+            }
+            LOG(INFO) << "recover store procedure " << sp_name << " with sql " << sql << " in db " << db_name;
+        } else {
+            LOG(WARNING) << "db " << db_name << " not exist for sp " << sp_name;
+        }
+    }
+    return true;
 }
 
 }  // namespace nameserver
