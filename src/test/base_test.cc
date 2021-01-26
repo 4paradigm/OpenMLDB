@@ -489,7 +489,7 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::vector<f
                     if (IsNaN(exp)) {
                         ASSERT_TRUE(IsNaN(act)) << " At " << i;
                     } else {
-                        ASSERT_DOUBLE_EQ(act, exp) << " At " << i;
+                        ASSERT_FLOAT_EQ(act, exp) << " At " << i;
                     }
                     break;
                 }
