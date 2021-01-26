@@ -54,7 +54,7 @@ object SparkColumnUtil {
       case ExprType.kExprColumnRef | ExprType.kExprColumnId =>
         val index = CoreAPI.ResolveColumnIndex(planNode, expr)
         if (index < 0) {
-          throw new FesqlException(s"Fail to resolve ${expr.GetExprString()}")
+          throw new FesqlException(s"Fail to resolve ${expr.GetExprString()}, get index: ${index}")
         } else if (index >= planNode.GetOutputSchema().size()) {
           throw new FesqlException(s"Column index out of bounds: $index")
         }
