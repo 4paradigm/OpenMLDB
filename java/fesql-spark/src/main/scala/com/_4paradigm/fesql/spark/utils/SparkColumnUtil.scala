@@ -18,8 +18,8 @@ object SparkColumnUtil {
                         left: DataFrame,
                         ctx: PlanContext): Column = {
     expr.getExpr_type_ match {
-      case ExprType.kExprColumnRef =>
-        val index = CoreAPI.ResolveColumnIndex(planNode, ColumnRefNode.CastFrom(expr))
+      case ExprType.kExprColumnRef | ExprType.kExprColumnId =>
+        val index = CoreAPI.ResolveColumnIndex(planNode, expr)
         if (index < 0) {
           throw new FesqlException(s"Can not resolve column of left table: ${expr.GetExprString()}")
         }
@@ -35,9 +35,9 @@ object SparkColumnUtil {
                          right: DataFrame,
                          ctx: PlanContext): Column = {
     expr.getExpr_type_ match {
-      case ExprType.kExprColumnRef =>
+      case ExprType.kExprColumnRef | ExprType.kExprColumnId =>
         val leftSize = planNode.GetProducer(0).GetOutputSchema().size()
-        val index = CoreAPI.ResolveColumnIndex(planNode, ColumnRefNode.CastFrom(expr))
+        val index = CoreAPI.ResolveColumnIndex(planNode, expr)
         if (index < leftSize) {
           throw new FesqlException("Can not resolve column of left table")
         }
@@ -51,8 +51,8 @@ object SparkColumnUtil {
   // Resolve FESQL column reference expression to get column index
   def resolveColumnIndex(expr: ExprNode, planNode: PhysicalOpNode): Int = {
     expr.getExpr_type_ match {
-      case ExprType.kExprColumnRef =>
-        val index = CoreAPI.ResolveColumnIndex(planNode, ColumnRefNode.CastFrom(expr))
+      case ExprType.kExprColumnRef | ExprType.kExprColumnId =>
+        val index = CoreAPI.ResolveColumnIndex(planNode, expr)
         if (index < 0) {
           throw new FesqlException(s"Fail to resolve ${expr.GetExprString()}")
         } else if (index >= planNode.GetOutputSchema().size()) {
@@ -68,8 +68,8 @@ object SparkColumnUtil {
   // Resolve FESQL expr node to get Spark column
   def resolveExprNodeToColumn(expr: ExprNode, planNode: PhysicalOpNode, inputDf: DataFrame): Column = {
     expr.getExpr_type_ match {
-      case ExprType.kExprColumnRef =>
-        val index = CoreAPI.ResolveColumnIndex(planNode, ColumnRefNode.CastFrom(expr))
+      case ExprType.kExprColumnRef | ExprType.kExprColumnId=>
+        val index = CoreAPI.ResolveColumnIndex(planNode, expr)
         if (index < 0) {
           throw new FesqlException(s"Fail to resolve ${expr.GetExprString()}")
         } else if (index >= planNode.GetOutputSchema().size()) {
@@ -87,7 +87,7 @@ object SparkColumnUtil {
         }
 
       case _ => throw new UnsupportedFesqlException(
-        s"Fail to resolve expr node ${expr.GetExprString()}")
+        s"Fail to resolve expr type: ${expr.getExpr_type_}, expr node: ${expr.GetExprString()}")
     }
 
   }
