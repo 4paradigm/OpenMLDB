@@ -47,8 +47,6 @@ class Table {
 
     int InitColumnDesc();
 
-    bool CheckTsValid(uint32_t index, int32_t ts_idx);
-
     virtual bool Put(const std::string& pk, uint64_t time, const char* data,
                      uint32_t size) = 0;
 
@@ -97,7 +95,7 @@ class Table {
 
     virtual bool IsExpire(const ::rtidb::api::LogEntry& entry) = 0;
 
-    virtual uint64_t GetExpireTime(uint64_t ttl) = 0;
+    virtual uint64_t GetExpireTime(const TTLSt& ttl_st) = 0;
 
     inline ::rtidb::common::StorageMode GetStorageMode() const {
         return storage_mode_;
@@ -166,6 +164,10 @@ class Table {
         return table_index_.GetIndex(name);
     }
 
+    std::shared_ptr<IndexDef> GetIndex(const std::string& name, uint32_t ts_idx) {
+        return table_index_.GetIndex(name, ts_idx);
+    }
+
     std::shared_ptr<IndexDef> GetIndex(uint32_t idx) {
         return table_index_.GetIndex(idx);
     }
@@ -174,53 +176,17 @@ class Table {
         return ts_mapping_;
     }
 
-    inline void SetTTLType(const ::rtidb::api::TTLType& type) {
-        ttl_type_ = type;
-    }
-
-    inline ::rtidb::api::TTLType GetTTLType() { return ttl_type_; }
-
-    TTLDesc GetTTL() { return GetTTL(0); }
-
-    TTLDesc GetTTL(uint32_t index) {
-        auto index_def = GetIndex(index);
-        if (index_def && index_def->IsReady()) {
-            auto ts_vec = index_def->GetTsColumn();
-            if (!ts_vec.empty() && ts_vec.front() < abs_ttl_vec_.size()) {
-                return TTLDesc(abs_ttl_vec_[ts_vec.front()]->load(
-                                   std::memory_order_relaxed) /
-                                   (60 * 1000),
-                               lat_ttl_vec_[ts_vec.front()]->load(
-                                   std::memory_order_relaxed));
-            }
-        }
-        return TTLDesc(abs_ttl_.load(std::memory_order_relaxed) / (60 * 1000),
-                       lat_ttl_.load(std::memory_order_relaxed));
-    }
-
-    TTLDesc GetTTL(uint32_t index, uint32_t ts_index) {
-        if (ts_index < abs_ttl_vec_.size()) {
-            return TTLDesc(
-                abs_ttl_vec_[ts_index]->load(std::memory_order_relaxed) /
-                    (60 * 1000),
-                lat_ttl_vec_[ts_index]->load(std::memory_order_relaxed));
-        }
-        return TTLDesc(abs_ttl_.load(std::memory_order_relaxed) / (60 * 1000),
-                       lat_ttl_.load(std::memory_order_relaxed));
+    TTLSt GetTTL() { 
+        return TTLSt(table_meta_.ttl_desc());
     }
 
     inline void SetTTL(const uint64_t abs_ttl, const uint64_t lat_ttl) {
-        new_abs_ttl_.store(abs_ttl * 60 * 1000, std::memory_order_relaxed);
-        new_lat_ttl_.store(lat_ttl, std::memory_order_relaxed);
+        // TODO
     }
 
     inline void SetTTL(const uint32_t ts_idx, const uint64_t abs_ttl,
                        const uint64_t lat_ttl) {
-        if (ts_idx < new_abs_ttl_vec_.size()) {
-            new_abs_ttl_vec_[ts_idx]->store(abs_ttl * 60 * 1000,
-                                            std::memory_order_relaxed);
-            new_lat_ttl_vec_[ts_idx]->store(lat_ttl, std::memory_order_relaxed);
-        }
+        // TODO
     }
 
     inline void SetMakeSnapshotTime(int64_t time) {

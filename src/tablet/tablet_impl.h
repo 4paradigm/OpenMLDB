@@ -407,7 +407,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                       uint32_t* count);
 
     int32_t CountIndex(uint64_t expire_time, uint64_t expire_cnt,
-                       ::rtidb::api::TTLType ttl_type,
+                       ::rtidb::storage::TTLType ttl_type,
                        ::rtidb::storage::TableIterator* it,
                        const ::rtidb::api::CountRequest* request,
                        uint32_t* count);

@@ -233,8 +233,7 @@ __attribute__((unused)) static void PrintSchema(const std::string& schema) {
 }
 
 __attribute__((unused)) static void PrintColumnKey(
-    const ::rtidb::api::TTLType& ttl_type,
-    const ::rtidb::storage::TTLDesc& ttl_desc,
+    const ::rtidb::storage::TTLSt& ttl_st,
     const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
         column_desc_field,
     const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>&
@@ -247,26 +246,22 @@ __attribute__((unused)) static void PrintColumnKey(
     row.push_back("ttl");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
-    std::map<std::string, ::rtidb::storage::TTLDesc> ttl_map;
+    std::map<std::string, ::rtidb::storage::TTLSt> ttl_map;
     for (const auto& column_desc : column_desc_field) {
         if (column_desc.is_ts_col()) {
             if (column_desc.has_abs_ttl() || column_desc.has_lat_ttl()) {
-                ttl_map.insert(std::make_pair(
-                    column_desc.name(),
-                    ::rtidb::storage::TTLDesc(column_desc.abs_ttl(),
-                                              column_desc.lat_ttl())));
+                ttl_map.emplace(column_desc.name(),
+                    ::rtidb::storage::TTLSt(column_desc.abs_ttl(), column_desc.lat_ttl(), ttl_st.ttl_type));
             } else if (column_desc.has_ttl()) {
-                if (ttl_type == ::rtidb::api::kAbsoluteTime) {
-                    ttl_map.insert(std::make_pair(
-                        column_desc.name(),
-                        ::rtidb::storage::TTLDesc(column_desc.ttl(), 0)));
+                if (ttl_st.ttl_type == ::rtidb::storage::kAbsoluteTime) {
+                    ttl_map.emplace(column_desc.name(),
+                            ::rtidb::storage::TTLSt(column_desc.ttl(), 0, ttl_st.ttl_type));
                 } else {
-                    ttl_map.insert(std::make_pair(
-                        column_desc.name(),
-                        ::rtidb::storage::TTLDesc(0, column_desc.ttl())));
+                    ttl_map.emplace(column_desc.name(),
+                        ::rtidb::storage::TTLSt(0, column_desc.ttl(), ttl_st.ttl_type));
                 }
             } else {
-                ttl_map.insert(std::make_pair(column_desc.name(), ttl_desc));
+                ttl_map.emplace(column_desc.name(), ttl_st);
             }
         }
     }
@@ -297,16 +292,16 @@ __attribute__((unused)) static void PrintColumnKey(
                     row_copy[0] = std::to_string(idx);
                     row_copy.push_back(ts_name);
                     if (ttl_map.find(ts_name) != ttl_map.end()) {
-                        row_copy.push_back(ttl_map[ts_name].ToString(ttl_type));
+                        row_copy.push_back(ttl_map[ts_name].ToString());
                     } else {
-                        row_copy.push_back(ttl_desc.ToString(ttl_type));
+                        row_copy.push_back(ttl_st.ToString());
                     }
                     tp.AddRow(row_copy);
                     idx++;
                 }
             } else {
                 row.push_back("-");
-                row.push_back(ttl_desc.ToString(ttl_type));
+                row.push_back(ttl_st.ToString());
                 tp.AddRow(row);
                 idx++;
             }
@@ -320,11 +315,11 @@ __attribute__((unused)) static void PrintColumnKey(
                 row.push_back(column_desc.name());
                 if (ttl_map.empty()) {
                     row.push_back("-");
-                    row.push_back(ttl_desc.ToString(ttl_type));
+                    row.push_back(ttl_st.ToString());
                 } else {
                     auto iter = ttl_map.begin();
                     row.push_back(iter->first);
-                    row.push_back(iter->second.ToString(ttl_type));
+                    row.push_back(iter->second.ToString());
                 }
                 tp.AddRow(row);
                 idx++;
@@ -669,7 +664,7 @@ __attribute__((unused)) static void PrintTableInformation(
         abs_ttl = 0;
         lat_ttl = table.ttl();
     }
-    ::rtidb::storage::TTLDesc ttl_desc(abs_ttl, lat_ttl);
+    ::rtidb::storage::TTLSt ttl_st(abs_ttl, lat_ttl, ::rtidb::storage::TTLSt::ConvertTTLType(ttl_type));
     std::string name = table.name();
     std::string replica_num = std::to_string(table.replica_num());
     std::string partition_num = std::to_string(table.partition_num());
@@ -701,7 +696,7 @@ __attribute__((unused)) static void PrintTableInformation(
     tp.AddRow(row);
     row.clear();
     row.push_back("ttl");
-    row.push_back(ttl_desc.ToString(ttl_type));
+    row.push_back(ttl_st.ToString());
     tp.AddRow(row);
     row.clear();
     row.push_back("ttl_type");

@@ -32,7 +32,7 @@ typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 class MemTableWindowIterator : public ::fesql::vm::RowIterator {
  public:
     MemTableWindowIterator(TimeEntries::Iterator* it,
-                           TTLType ttl_type, uint64_t expire_time,
+                           ::rtidb::storage::TTLType ttl_type, uint64_t expire_time,
                            uint64_t expire_cnt)
         : it_(it), record_idx_(0), expire_value_(expire_time, expire_cnt, ttl_type), row_() {}
 
@@ -72,7 +72,7 @@ class MemTableWindowIterator : public ::fesql::vm::RowIterator {
 class MemTableKeyIterator : public ::fesql::vm::WindowIterator {
  public:
     MemTableKeyIterator(Segment** segments, uint32_t seg_cnt,
-                        ::rtidb::api::TTLType ttl_type, uint64_t expire_time,
+                        ::rtidb::storage::TTLType ttl_type, uint64_t expire_time,
                         uint64_t expire_cnt, uint32_t ts_index);
 
     ~MemTableKeyIterator();
@@ -99,7 +99,7 @@ class MemTableKeyIterator : public ::fesql::vm::WindowIterator {
     uint32_t seg_idx_;
     KeyEntries::Iterator* pk_it_;
     TimeEntries::Iterator* it_;
-    ::rtidb::api::TTLType ttl_type_;
+    ::rtidb::storage::TTLType ttl_type_;
     uint64_t expire_time_;
     uint64_t expire_cnt_;
     uint32_t ts_index_;
@@ -110,7 +110,7 @@ class MemTableKeyIterator : public ::fesql::vm::WindowIterator {
 class MemTableTraverseIterator : public TableIterator {
  public:
     MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt,
-                             TTLType ttl_type,
+                             ::rtidb::storage::TTLType ttl_type,
                              uint64_t expire_time,
                              uint64_t expire_cnt, uint32_t ts_index);
     virtual ~MemTableTraverseIterator();
@@ -219,7 +219,7 @@ class MemTable : public Table {
         enable_gc_.store(is_expire, std::memory_order_relaxed);
     }
 
-    uint64_t GetExpireTime(uint64_t ttl) override;
+    uint64_t GetExpireTime(const TTLSt& ttl_st) override;
 
     bool IsExpire(const ::rtidb::api::LogEntry& entry) override;
 
@@ -243,8 +243,6 @@ class MemTable : public Table {
         record_cnt_.fetch_add(cnt, std::memory_order_relaxed);
     }
 
-    inline uint32_t GetKeyEntryHeight() { return key_entry_max_height_; }
-
     bool DeleteIndex(std::string idx_name);
 
     bool AddIndex(const ::rtidb::common::ColumnKey& column_key);
@@ -252,7 +250,7 @@ class MemTable : public Table {
  private:
     bool CheckAbsolute(const TTLSt& ttl, uint64_t ts);
 
-    bool CheckLatest(uint32_t index_id, int32_t ts_idx, const Slice& key, uint64_t ts);
+    bool CheckLatest(uint32_t index_id, int32_t ts_idx, const std::string& key, uint64_t ts);
 
  private:
     uint32_t seg_cnt_;

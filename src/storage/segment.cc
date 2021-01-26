@@ -400,33 +400,37 @@ void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
 void Segment::ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     switch (ttl_st.ttl_type) {
-        case TTLType::kAbsoluteTime:
+        case ::rtidb::storage::TTLType::kAbsoluteTime: {
             if (ttl_st.abs_ttl == 0) {
                 return;
             }
             uint64_t expire_time = cur_time - ttl_offset_ - ttl_st.abs_ttl;
             Gc4TTL(expire_time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             break;
-        case TTLType::kLatestTime:
+        }
+        case ::rtidb::storage::TTLType::kLatestTime: {
             if (ttl_st.lat_ttl == 0) {
                 return;
             }
             Gc4Head(ttl_st.lat_ttl, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             break;
-        case TTLType::kAbsAndLat:
+        }
+        case ::rtidb::storage::TTLType::kAbsAndLat: {
             if (ttl_st.abs_ttl == 0 || ttl_st.lat_ttl == 0) {
                 return;
             }
             uint64_t expire_time = cur_time - ttl_offset_ - ttl_st.abs_ttl;
             Gc4TTLAndHead(expire_time, ttl_st.lat_ttl, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             break;
-        case TTLType::kAbsOrLat:
+        }
+        case ::rtidb::storage::TTLType::kAbsOrLat: {
             if (ttl_st.abs_ttl == 0 && ttl_st.lat_ttl == 0) {
                 return;
             }
             uint64_t expire_time = cur_time - ttl_offset_ - ttl_st.abs_ttl;
             Gc4TTLOrHead(expire_time, ttl_st.lat_ttl, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             break;
+        }
         default:
             PDLOG(WARNING, "ttl type %d is unsupported", ttl_st.ttl_type);
     }
@@ -480,7 +484,7 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt,
     delete it;
 }
 
-void Segment::Gc4Head(const std::map<uint32_t, TTLDesc>& ttl_desc,
+void Segment::Gc4Head(const std::map<uint32_t, TTLSt>& ttl_desc,
                       uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
                       uint64_t& gc_record_byte_size) {
     if (!ttl_desc.empty()) {
@@ -601,7 +605,7 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt,
     delete it;
 }
 
-void Segment::Gc4TTL(const std::map<uint32_t, TTLDesc>& ttl_desc,
+void Segment::Gc4TTL(const std::map<uint32_t, TTLSt>& ttl_desc,
                      uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
                      uint64_t& gc_record_byte_size) {
     if (!ttl_desc.empty()) {
@@ -743,7 +747,7 @@ void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt,
     delete it;
 }
 
-void Segment::Gc4TTLAndHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
+void Segment::Gc4TTLAndHead(const std::map<uint32_t, TTLSt>& ttl_desc,
                             uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
                             uint64_t& gc_record_byte_size) {
     if (!ttl_desc.empty()) {
@@ -878,7 +882,7 @@ void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt,
     delete it;
 }
 
-void Segment::Gc4TTLOrHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
+void Segment::Gc4TTLOrHead(const std::map<uint32_t, TTLSt>& ttl_desc,
                            uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
                            uint64_t& gc_record_byte_size) {
     if (!ttl_desc.empty()) {

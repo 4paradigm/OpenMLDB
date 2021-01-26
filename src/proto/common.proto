@@ -34,7 +34,7 @@ message ColumnDesc {
 }
 
 message TTLSt {
-    optional rtidb.type.TTLType ttl_type = 1 [default = rtidb.type.TTLType.kAbsoluteTime];
+    optional rtidb.type.TTLType ttl_type = 1 [default = kAbsoluteTime];
     optional uint64 abs_ttl = 2 [default = 0];
     optional uint64 lat_ttl = 3 [default = 0];
 }

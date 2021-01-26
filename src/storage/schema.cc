@@ -76,8 +76,9 @@ TTLType IndexDef::GetTTLType() const {
 uint32_t InnerIndexSt::GetKeyEntryMaxHeight(uint32_t abs_max_height, uint32_t lat_max_height) const {
     uint32_t max_height = lat_max_height;
     for (const auto& cur_index : index_) {
-        TTLType ttl_type = cur_index->GetTTLType();
-        if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime || ttl_type == ::rtidb::api::TTLType::kAbsAndLat) {
+        ::rtidb::storage::TTLType ttl_type = cur_index->GetTTLType();
+        if (ttl_type == ::rtidb::storage::TTLType::kAbsoluteTime || 
+                ttl_type == ::rtidb::storage::TTLType::kAbsAndLat) {
             max_height = abs_max_height;
             break;
         }
@@ -115,10 +116,10 @@ std::shared_ptr<std::vector<std::shared_ptr<InnerIndexSt>>> TableIndex::GetAllIn
     return std::atomic_load_explicit(&inner_indexs_, std::memory_order_relaxed);
 }
 
-std::shared_ptr<InnerIndexSt> GetInnerIndex(uint32_t idx) const {
+std::shared_ptr<InnerIndexSt> TableIndex::GetInnerIndex(uint32_t idx) const {
     auto indexs = std::atomic_load_explicit(&inner_indexs_, std::memory_order_relaxed);
-    if (idx < indexs.size()) {
-        return indexs.at(idx);
+    if (idx < indexs->size()) {
+        return indexs->at(idx);
     }
     return std::shared_ptr<InnerIndexSt>();
 }
@@ -131,17 +132,17 @@ int32_t TableIndex::GetInnerIndexPos(uint32_t column_key_pos) const {
 }
 
 std::shared_ptr<IndexDef> TableIndex::GetIndex(uint32_t idx) {
-    auto indexs = std::atomic_load_explicit(&multi_ts_indexs_, std::memory_order_relaxed);
-    if (!indexs->empty()) {
-        if (idx < indexs->size()) {
-            const auto& index_vec = indexs->at(idx);
+    auto multi_indexs = std::atomic_load_explicit(&multi_ts_indexs_, std::memory_order_relaxed);
+    if (!multi_indexs->empty()) {
+        if (idx < multi_indexs->size()) {
+            const auto& index_vec = multi_indexs->at(idx);
             if (!index_vec.empty()) {
                 return index_vec.front();
             }
         }
         return std::shared_ptr<IndexDef>();
     }
-    indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
+    auto indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
     if (idx < indexs->size()) {
         return indexs->at(idx);
     }
@@ -149,10 +150,10 @@ std::shared_ptr<IndexDef> TableIndex::GetIndex(uint32_t idx) {
 }
 
 std::shared_ptr<IndexDef> TableIndex::GetIndex(uint32_t idx, uint32_t ts_idx) {
-    auto indexs = std::atomic_load_explicit(&multi_ts_indexs_, std::memory_order_relaxed);
-    if (!indexs->empty()) {
-        if (idx < indexs->size()) {
-            for (const auto& index : indexs->at(idx)) {
+    auto multi_indexs = std::atomic_load_explicit(&multi_ts_indexs_, std::memory_order_relaxed);
+    if (!multi_indexs->empty()) {
+        if (idx < multi_indexs->size()) {
+            for (const auto& index : multi_indexs->at(idx)) {
                 auto ts_col = index->GetTsColumn();
                 if (ts_col && ts_col->GetTsIdx() == ts_idx) {
                     return index;
@@ -161,7 +162,7 @@ std::shared_ptr<IndexDef> TableIndex::GetIndex(uint32_t idx, uint32_t ts_idx) {
         }
         return std::shared_ptr<IndexDef>();
     }
-    indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
+    auto indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
     if (idx < indexs->size()) {
         auto index =  indexs->at(idx);
         auto ts_col = index->GetTsColumn();
@@ -173,9 +174,9 @@ std::shared_ptr<IndexDef> TableIndex::GetIndex(uint32_t idx, uint32_t ts_idx) {
 }
 
 std::shared_ptr<IndexDef> TableIndex::GetIndex(const std::string& name) {
-    auto indexs = std::atomic_load_explicit(&multi_ts_indexs_, std::memory_order_relaxed);
-    if (!indexs->empty()) {
-        for (const auto& index_vec : *indexs) {
+    auto multi_indexs = std::atomic_load_explicit(&multi_ts_indexs_, std::memory_order_relaxed);
+    if (!multi_indexs->empty()) {
+        for (const auto& index_vec : *multi_indexs) {
             if (index_vec.empty()) {
                 continue;
             }
@@ -186,10 +187,42 @@ std::shared_ptr<IndexDef> TableIndex::GetIndex(const std::string& name) {
         }
         return std::shared_ptr<IndexDef>();
     }
-    indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
+    auto indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
     for (const auto& index : *indexs) {
         if (index->GetName() == name) {
             return index;
+        }
+    }
+    return std::shared_ptr<IndexDef>();
+}
+
+std::shared_ptr<IndexDef> TableIndex::GetIndex(const std::string& name, uint32_t ts_idx) {
+    auto multi_indexs = std::atomic_load_explicit(&multi_ts_indexs_, std::memory_order_relaxed);
+    if (!multi_indexs->empty()) {
+        for (const auto& index_vec : *multi_indexs) {
+            if (index_vec.empty()) {
+                continue;
+            }
+            for (const auto& index : index_vec) {
+                if (index->GetName() != name) {
+                    break;
+                }
+                auto ts_col = index->GetTsColumn();
+                if (ts_col && ts_col->GetTsIdx() == ts_idx) {
+                    return index;
+                }
+            }
+        }
+        return std::shared_ptr<IndexDef>();
+    }
+    auto indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
+    for (const auto& index : *indexs) {
+        if (index->GetName() == name) {
+            auto ts_col = index->GetTsColumn();
+            if (ts_col && ts_col->GetTsIdx() == ts_idx) {
+                return index;
+            }
+            break;
         }
     }
     return std::shared_ptr<IndexDef>();

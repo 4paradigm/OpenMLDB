@@ -39,11 +39,13 @@ Table::Table(::rtidb::common::StorageMode storage_mode, const std::string &name,
         ttl_desc->set_lat_ttl(ttl / (60 * 1000));
     }
     last_make_snapshot_time_ = 0;
-    TTLSt ttl(table_meta_.ttl_desc.abs_ttl() * 60 * 1000, table_meta_.ttl_desc.lat_ttl(), table_meta_.ttl_desc.ttl_type());
+    ::rtidb::storage::TTLSt ttl_st(ttl_desc->abs_ttl(), ttl_desc->lat_ttl(), 
+            ::rtidb::storage::TTLSt::ConvertTTLType(ttl_desc->ttl_type()));
     for (const auto &kv : mapping) {
         std::vector<ColumnDef> col = { ColumnDef(kv.first, kv.second, ::rtidb::type::DataType::kString, true) };
-        auto index = std::make_shared<IndexDef>(kv.first, kv.second, IndexStatus::kReady, col);
-        index->SetTTL(ttl);
+        auto index = std::make_shared<IndexDef>(kv.first, kv.second, IndexStatus::kReady, 
+                ::rtidb::type::kTimeSerise, col);
+        index->SetTTL(ttl_st);
         table_index_.AddIndex(index);
     }
 }
@@ -76,20 +78,6 @@ void Table::SetTableMeta(::rtidb::api::TableMeta& table_meta) { // NOLINT
     AddVersionSchema();
 }
 
-bool Table::CheckTsValid(uint32_t index, int32_t ts_idx) {
-    std::shared_ptr<IndexDef> index_def = GetIndex(index);
-    if (!index_def || !index_def->IsReady()) {
-        return false;
-    }
-    auto ts_vec = index_def->GetTsColumn();
-    if (std::find(ts_vec.begin(), ts_vec.end(), ts_idx) == ts_vec.end()) {
-        PDLOG(WARNING, "ts index %u is not member of index %u, tid %u pid %u",
-              ts_idx, index, id_, pid_);
-        return false;
-    }
-    return true;
-}
-
 int Table::InitColumnDesc() {
     uint64_t abs_ttl = 0;
     uint64_t lat_ttl = 0;
@@ -98,7 +86,7 @@ int Table::InitColumnDesc() {
     } else {
         lat_ttl = table_meta_.ttl();
     }
-    TTLSt table_ttl(abs_ttl, lat_ttl, table_meta_.ttl_type());
+    TTLSt table_ttl(abs_ttl, lat_ttl, TTLSt::ConvertTTLType(table_meta_.ttl_type()));
     if (table_meta_.column_desc_size() > 0) {
         std::set<std::string> ts_col_set;
         int set_ts_cnt = 0;
@@ -124,10 +112,11 @@ int Table::InitColumnDesc() {
             ::rtidb::type::DataType type = ::rtidb::codec::SchemaCodec::ConvertStrType(column_desc.type());
             const std::string& name = column_desc.name();
             col = std::make_shared<ColumnDef>(name, key_idx, type, true);
-            col_map.emplace(name, col):
+            col_map.emplace(name, col);
             if (column_desc.add_ts_idx()) {
                 std::vector<ColumnDef> col_vec = { *col };
-                auto index = std::make_shared<IndexDef>(name, key_idx, IndexStatus::kReady, col_vec);
+                auto index = std::make_shared<IndexDef>(name, key_idx, IndexStatus::kReady, 
+                        ::rtidb::type::IndexType::kTimeSerise, col_vec);
                 index->SetTTL(table_ttl);
                 if (table_index_.AddIndex(index) < 0) {
                     return -1;
@@ -157,7 +146,8 @@ int Table::InitColumnDesc() {
                         lat_ttl = column_desc.ttl();
                     }
                 }
-                ts_ttl.emplace(column_desc.name(), TTLSt(abs_ttl, lat_ttl, table_meta_.ttl_type()));
+                ts_ttl.emplace(column_desc.name(),
+                        TTLSt(abs_ttl, lat_ttl, TTLSt::ConvertTTLType(table_meta_.ttl_type())));
             } else if (ts_col_set.find(name) != ts_col_set.end()) {
                 if (!ColumnDef::CheckTsType(type)) {
                     PDLOG(WARNING, "type mismatch, col %s is can not set ts col, tid %u", name.c_str(), id_);
@@ -188,13 +178,14 @@ int Table::InitColumnDesc() {
                 }
                 std::vector<ColumnDef> col_vec;
                 for (const auto& cur_col_name : column_key.col_name()) {
-                    col_vec.push_back(*(cols[cur_col_name]));
+                    col_vec.push_back(*(col_map[cur_col_name]));
                 }
                 int ts_name_pos = -1;
                 do {
-                    auto index = std::make_shared<IndexDef>(column_key.index_name(), key_idx, status, col_vec);
+                    auto index = std::make_shared<IndexDef>(column_key.index_name(), key_idx, status, 
+                            ::rtidb::type::IndexType::kTimeSerise, col_vec);
                     index->SetTTL(table_ttl);
-                    if (column_key.ts_name.size() > 0) {
+                    if (column_key.ts_name_size() > 0) {
                         ts_name_pos++;
                         const std::string& ts_name = column_key.ts_name(ts_name_pos);
                         index->SetTsColumn(col_map[ts_name]);
@@ -204,20 +195,20 @@ int Table::InitColumnDesc() {
                     }
                     if (column_key.has_ttl()) {
                         const auto& proto_ttl = column_key.ttl();
-                        index->SetTTL(TTLSt(proto_ttl.abs_ttl(), proto_ttl.lat_ttl(), proto_ttl.ttl_type()));
+                        index->SetTTL(::rtidb::storage::TTLSt(proto_ttl));
                     }
                     if (table_index_.AddIndex(index) < 0) {
                         return -1;
                     }
                     key_idx++;
-                } while (ts_name_pos > 0 && ts_name_pos < column_key.ts_name.size());
+                } while (ts_name_pos > 0 && ts_name_pos < column_key.ts_name_size());
             }
         } else {
             if (!ts_mapping_.empty()) {
                 auto indexs = table_index_.GetAllIndex();
-                auto ts_col = col_map[ts_mapping_.begin()->second];
+                auto ts_col = col_map[ts_mapping_.begin()->first];
                 for (auto &index_def : indexs) {
-                    index_def->SetTsColumn(ts_col;
+                    index_def->SetTsColumn(ts_col);
                 }
             }
         }
@@ -252,7 +243,7 @@ int Table::InitColumnDesc() {
                 column_key->add_col_name(column_desc.name());
                 column_key->set_index_name(column_desc.name());
                 if (!ts_mapping_.empty()) {
-                    column_key->add_ts_name(ts_mapping_.begin()->second);
+                    column_key->add_ts_name(ts_mapping_.begin()->first);
                 }
             }
         }

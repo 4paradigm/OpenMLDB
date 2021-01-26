@@ -252,12 +252,12 @@ class DiskTableTraverseIterator : public TableIterator {
  public:
     DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it,
                               const rocksdb::Snapshot* snapshot,
-                              ::rtidb::api::TTLType ttl_type,
+                              ::rtidb::storage::TTLType ttl_type,
                               const uint64_t& expire_time,
                               const uint64_t& expire_cnt);
     DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it,
                               const rocksdb::Snapshot* snapshot,
-                              ::rtidb::api::TTLType ttl_type,
+                              ::rtidb::storage::TTLType ttl_type,
                               const uint64_t& expire_time,
                               const uint64_t& expire_cnt, int32_t ts_idx);
     virtual ~DiskTableTraverseIterator();
@@ -278,9 +278,8 @@ class DiskTableTraverseIterator : public TableIterator {
     rocksdb::DB* db_;
     rocksdb::Iterator* it_;
     const rocksdb::Snapshot* snapshot_;
-    ::rtidb::api::TTLType ttl_type_;
     uint32_t record_idx_;
-    TTLDesc expire_value_;
+    ::rtidb::storage::TTLSt expire_value_;
     std::string pk_;
     uint64_t ts_;
     bool has_ts_idx_;
@@ -330,9 +329,7 @@ class DiskTable : public Table {
 
     bool Delete(const std::string& pk, uint32_t idx) override;
 
-    uint64_t GetExpireTime(uint64_t ttl) override;
-
-    uint64_t GetExpireTime();
+    uint64_t GetExpireTime(const TTLSt& ttl_st) override;
 
     uint64_t GetRecordCnt() const override {
         uint64_t count = 0;
@@ -374,7 +371,7 @@ class DiskTable : public Table {
     void SchedGc() override;
 
     void GcHead();
-    void GcTTL();
+    // void GcTTL();
     void GcTTLAndHead();
     void GcTTLOrHead();
 
@@ -398,6 +395,7 @@ class DiskTable : public Table {
     KeyTSComparator cmp_;
     std::atomic<uint64_t> offset_;
     std::string db_root_path_;
+    ::rtidb::storage::TTLType ttl_type_;
 };
 
 }  // namespace storage
