@@ -191,6 +191,9 @@ object WindowAggPlan {
 
     }
 
+    val sampleOutputPath = ctx.getConf.windowSampleOutputPath
+    val sampleMinSize = ctx.getConf.windowSampleMinSize
+
     val frameType = node.window.range.frame().frame_type()
     val windowFrameType = if (frameType.swigValue() == FrameType.kFrameRows.swigValue()) {
       WindowFrameType.kFrameRows
