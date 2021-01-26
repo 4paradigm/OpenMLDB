@@ -9,6 +9,7 @@ import com._4paradigm.fesql.node.{CastExprNode, ConstNode, ExprNode, ExprType, D
 import org.apache.spark.sql.{Column, DataFrame}
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 
 object SimpleProjectPlan {
@@ -19,6 +20,9 @@ object SimpleProjectPlan {
     val inputInstance = inputs.head
 
     val inputDf = inputInstance.getDfConsideringIndex(ctx, node.GetNodeId())
+
+    // Check if we should keep the index column
+    val keepIndexColumn = SparkInstance.keepIndexColumn(ctx, node.GetNodeId())
 
     val outputSchema = node.GetOutputSchema()
 
@@ -31,13 +35,21 @@ object SimpleProjectPlan {
       FesqlUtil.getInnerTypeFromSchemaType(col.getType)
     ).toList
 
-    val selectColList = (0 until node.project().size.toInt).map(i => {
+    val selectColList = mutable.ArrayBuffer[Column]()
+
+    for (i <- 0 until node.project().size.toInt) {
       val expr = node.project().GetExpr(i)
       val (col, innerType) = createSparkColumn(inputDf, node, expr)
       val castOutputCol = ConstProjectPlan.castSparkOutputCol(
         col, outputColTypeList(i), innerType)
       castOutputCol.alias(outputColNameList(i))
-    }).toList
+
+      selectColList.append(castOutputCol)
+    }
+
+    if (keepIndexColumn) {
+      selectColList.append(inputDf(ctx.getIndexInfo(node.GetNodeId()).indexColumnName))
+    }
 
     // Use Spark DataFrame to select columns
     val result = SparkColumnUtil.setDataframeNullable(
