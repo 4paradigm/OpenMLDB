@@ -998,8 +998,15 @@ class NameServerImpl : public NameServer {
     std::map<std::string, std::string> real_ep_map_;
     std::map<std::string, std::string> remote_real_ep_map_;
     std::map<std::string, std::string> sdk_endpoint_map_;
+<<<<<<< Updated upstream
     std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> db_sp_table_map_;
     std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> db_table_sp_map_;
+=======
+    std::unordered_map<std::string,
+        std::unordered_map<std::string, std::vector<std::string>>> db_sp_table_map_;
+    std::unordered_map<std::string,
+        std::unordered_map<std::string, std::vector<std::string>>> db_table_sp_map_;
+>>>>>>> Stashed changes
 };
 
 }  // namespace nameserver
