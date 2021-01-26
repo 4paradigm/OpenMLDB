@@ -114,7 +114,6 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
 
     @Override
     protected void tearDown() {
-        super.tearDown();
         if (CollectionUtils.isEmpty(spNames)) {
             return;
         }
@@ -122,5 +121,6 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
             String drop = "drop procedure " + spName + ";";
             FesqlUtil.ddl(executor, dbName, drop);
         }
+        super.tearDown();
     }
 }

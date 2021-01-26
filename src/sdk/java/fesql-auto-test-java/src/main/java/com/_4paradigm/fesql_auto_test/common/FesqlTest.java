@@ -51,7 +51,7 @@ public class FesqlTest implements ITest {
 
     @BeforeTest()
     @Parameters({"env"})
-    public void beforeTest(@Optional("qa") String env) throws Exception {
+    public void beforeTest(@Optional("cluster") String env) throws Exception {
         FesqlGlobalVar.env = env;
         log.info("fesql global var env: {}", env);
         FesqlClient fesqlClient = new FesqlClient(FesqlConfig.ZK_CLUSTER, FesqlConfig.ZK_ROOT_PATH);
