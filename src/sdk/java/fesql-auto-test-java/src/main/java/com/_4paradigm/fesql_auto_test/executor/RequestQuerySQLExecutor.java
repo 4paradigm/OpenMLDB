@@ -75,12 +75,10 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
         }
         String sql = fesqlCase.getSql();
         if (sql != null && sql.length() > 0) {
-            if (fesqlCase.getInputs().isEmpty() || CollectionUtils.isEmpty(fesqlCase.getInputs().get(0).getRows())) {
-                log.error("fail to execute in request query sql executor: sql case inputs is empty");
-                return null;
-            }
             log.info("sql:{}", sql);
             sql = FesqlUtil.formatSql(sql, tableNames);
+
+            InputDesc request = null;
             if (isBatchRequest) {
                 InputDesc batchRequest = fesqlCase.getBatch_request();
                 if (batchRequest == null) {
@@ -99,8 +97,16 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
                 fesqlResult = FesqlUtil.sqlBatchRequestMode(
                         executor, dbName, sql, batchRequest, commonColumnIndices);
             } else {
-                InputDesc input = fesqlCase.getInputs().get(0);
-                fesqlResult = FesqlUtil.sqlRequestMode(executor, dbName, sql, input);
+                if (null != fesqlCase.getBatch_request()) {
+                    request = fesqlCase.getBatch_request();
+                } else if (!fesqlCase.getInputs().isEmpty()){
+                    request = fesqlCase.getInputs().get(0);
+                }
+                if (null == request || CollectionUtils.isEmpty(request.getColumns())) {
+                    log.error("fail to execute in request query sql executor: sql case request columns is empty");
+                    return null;
+                }
+                fesqlResult = FesqlUtil.sqlRequestMode(executor, dbName, sql, request);
             }
         }
         return fesqlResult;

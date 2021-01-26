@@ -824,6 +824,12 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestErrorWindow, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/error/error_window.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestIndexOptimized, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_index_optimized.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    SQLSDKTestDebugIssues, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/debug/issues_case.yaml")));
 }  // namespace sdk
 }  // namespace rtidb
 #endif  // SRC_SDK_SQL_SDK_TEST_H_

@@ -13,7 +13,7 @@
 
     <properties>
         <sql.version>2.1.0.0-SNAPSHOT</sql.version>
-        <fesql.version>0.0.1-SNAPSHOT</fesql.version>
+        <fesql.version>0.0.2-RELEASE</fesql.version>
         <suiteXmlFile>test_suite/test_v1.xml</suiteXmlFile>
         <aspectj.version>1.8.9</aspectj.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -181,6 +181,30 @@
                         <version>${aspectj.version}</version>
                     </dependency>
                 </dependencies>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemProperties>
+                        <property>
+                            <name>caseEnv</name>
+                            <value>${caseEnv}</value>
+                        </property>
+                        <property>
+                            <name>casePath</name>
+                            <value>${casePath}</value>
+                        </property>
+                        <property>
+                            <name>caseId</name>
+                            <value>${caseId}</value>
+                        </property>
+                        <property>
+                            <name>caseDesc</name>
+                            <value>${caseDesc}</value>
+                        </property>
+                    </systemProperties>
+                </configuration>
             </plugin>
         </plugins>
     </build>

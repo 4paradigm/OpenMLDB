@@ -13,7 +13,7 @@ def isCaseInBlackList(case):
         return True
     return False
 
-def getCases(yamlPath: str) -> list:
+def getCases(yamlPath: str, casePrefix='') -> list:
     with open(yamlPath) as f:
         dataMap = yaml.safe_load(f)
     db = dataMap.get('db')
@@ -21,6 +21,7 @@ def getCases(yamlPath: str) -> list:
     executor = dataMap.get('executor')
     cases = dataMap.get('cases')
     testCases = []
+    index = 0
     if debugs != None and len(debugs) > 0:
         for case in cases:
             if case['desc'] in debugs:
@@ -29,6 +30,8 @@ def getCases(yamlPath: str) -> list:
                 if case.get('db') == None:
                     case['db'] = db
                 testCases.append(case)
+                index_str = "{0:0{1}}".format(index + 1, 5)
+                case['case_prefix'] = str(casePrefix) + '_' + index_str
         return testCases
     else:
         for case in cases:
@@ -37,7 +40,11 @@ def getCases(yamlPath: str) -> list:
                     case['executor'] = executor
                 if case.get('db') == None:
                     case['db'] = db
+                index_str = "{0:0{1}}".format(index + 1, 5)
+                case['case_prefix'] = str(casePrefix) + '_' + str(index_str)
+                index+=1
                 testCases.append(case)
+
         return testCases
 
 def getEngine():
