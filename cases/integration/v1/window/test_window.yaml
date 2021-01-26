@@ -280,6 +280,7 @@ cases:
   -
     id: 11
     desc: ts列乱序
+    mode: request-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -305,6 +306,33 @@ cases:
         - [5,"aa",99]
   -
     id: 12
+    desc: ts列乱序
+    mode: batch-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [4,"aa",23,33,1.4,2.4,1590738990003,"2020-05-04"]
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [3,"aa",22,32,1.3,2.3,1590738990002,"2020-05-03"]
+          - [2,"aa",21,31,1.2,2.2,1590738990001,"2020-05-02"]
+          - [5,"aa",24,34,1.5,2.5,1590738990004,"2020-05-05"]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",30]
+        - [2,"aa",61]
+        - [3,"aa",62]
+        - [4,"aa",33]
+        - [5,"aa",99]
+  -
+    id: 13
     desc: ts列相同
     inputs:
       -
@@ -339,7 +367,7 @@ cases:
           - [4,"aa",1]
           - [5,"aa",2]
   -
-    id: 13
+    id: 14
     desc: 每次上一条都划出
     inputs:
       -
@@ -374,7 +402,7 @@ cases:
           - [4,"aa",1]
           - [5,"aa",1]
   -
-    id: 14
+    id: 15
     desc: pk包含null
     inputs:
       -
@@ -409,7 +437,7 @@ cases:
           - [4,null,65]
           - [5,"aa",34]
   -
-    id: 15
+    id: 16
     desc: pk包含空串
     inputs:
       -
@@ -444,7 +472,7 @@ cases:
           - [4,"",65]
           - [5,"aa",34]
   -
-    id: 16
+    id: 17
     desc: pk包含空串和null
     inputs:
       -
@@ -479,7 +507,7 @@ cases:
           - [4,"",65]
           - [5,null,34]
   -
-    id: 17
+    id: 18
     desc: 两个窗口相同的pk,相同的ts,相同的聚合函数
     inputs:
       -
@@ -507,7 +535,7 @@ cases:
         - [4,"aa",96,96]
         - [5,"aa",99,99]
   -
-    id: 18
+    id: 19
     desc: 两个窗口相同的pk,相同的ts,不同的列
     inputs:
       -
@@ -535,7 +563,7 @@ cases:
         - [4,"aa",96,66]
         - [5,"aa",99,69]
   -
-    id: 19
+    id: 20
     desc: 两个窗口相同的pk,相同的ts,不同的函数
     inputs:
       -
@@ -563,7 +591,7 @@ cases:
         - [4,"aa",96,3]
         - [5,"aa",99,3]
   -
-    id: 20
+    id: 21
     desc: sum超过int的范围
     inputs:
       -
@@ -589,7 +617,7 @@ cases:
         - [4,"aa",66]
         - [5,"aa",-2147483604]
   -
-    id: 21
+    id: 22
     desc: 两个窗口相同的pk,不同的ts,相同的聚合函数
     mode: rtidb-batch-unsupport
     inputs:
@@ -618,7 +646,7 @@ cases:
         - [4,"aa",96,65]
         - [5,"aa",99,67]
   -
-    id: 22
+    id: 23
     desc: 两个窗口不同的pk,相同的ts,相同的聚合函数
     mode: rtidb-batch-unsupport
     inputs:
@@ -647,7 +675,7 @@ cases:
         - [4,"aa",96,96]
         - [5,"aa",99,99]
   -
-    id: 23
+    id: 24
     desc: 两个窗口不同的pk,相同的ts,相同的聚合函数,一个窗口两个pk
     mode: rtidb-batch-unsupport
     inputs:
@@ -676,7 +704,7 @@ cases:
         - [4,"aa",96,96]
         - [5,"aa",99,34]
   -
-    id: 24
+    id: 25
     desc: 两个窗口不同的pk,不同的ts,相同的聚合函数
     mode: rtidb-batch-unsupport
     inputs:
@@ -705,7 +733,7 @@ cases:
         - [4,"aa",96,96]
         - [5,"aa",99,34]
   -
-    id: 25
+    id: 26
     desc: 两个窗口不同的ts,一个都在窗口内，一个都不进入窗口
     mode: rtidb-batch-unsupport
     inputs:
@@ -734,7 +762,7 @@ cases:
         - [4,"aa",126,0]
         - [5,"aa",160,0]
   -
-    id: 26
+    id: 27
     desc: 两个窗口,一个union，一个不union
     mode: rtidb-batch-unsupport
     inputs:
@@ -772,7 +800,7 @@ cases:
           - [2,"aa",61,61]
           - [5,"aa",34,99]
   -
-    id: 27
+    id: 28
     desc: 两个窗口,一个union一个表，一个union两个表
     mode: rtidb-batch-unsupport
     inputs:
@@ -814,7 +842,7 @@ cases:
           - [2,"aa",61,61]
           - [5,"aa",66,99]
   -
-    id: 28
+    id: 29
     desc: 两个窗口,一个union，一个INSTANCE_NOT_IN_WINDOW
     mode: rtidb-batch-unsupport
     inputs:
@@ -846,7 +874,7 @@ cases:
         - [4,"aa",96,65]
         - [5,"aa",99,66]
   -
-    id: 29
+    id: 30
     desc: 两个窗口,一个union一个表，一个union使用子查询
     mode: rtidb-batch-unsupport
     inputs:
@@ -877,7 +905,7 @@ cases:
         - [2,"aa",61,61]
         - [5,"aa",99,99]
   -
-    id: 30
+    id: 31
     desc: 多个窗口-rows
     mode: rtidb-batch-unsupport
     inputs:
@@ -913,7 +941,7 @@ cases:
         - [1,"aa",30,0]
         - [5,"aa",160,93]
   -
-    id: 31
+    id: 32
     desc: 多个窗口包含不同的单位
     inputs:
       -
