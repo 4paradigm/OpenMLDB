@@ -174,8 +174,10 @@ void SchemasContext::MergeWithNewID(size_t child_idx,
     }
 }
 
-SchemasContext::~SchemasContext() {
-    Clear();
+SchemasContext::~SchemasContext() { Clear(); }
+
+size_t SchemasContext::GetColumnNum() const {
+    return GetOutputSchema()->size();
 }
 
 Status SchemasContext::ResolveColumnIndexByName(

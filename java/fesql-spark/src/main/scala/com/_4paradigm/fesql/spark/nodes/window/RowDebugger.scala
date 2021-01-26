@@ -34,12 +34,15 @@ class RowDebugger(sqlConfig: FeSQLConfig, config: WindowAggConfig, isSkew: Boole
       if (isSkew) {
         val tag = row.getInt(config.skewTagIdx)
         val position = row.getInt(config.skewPositionIdx)
-        logger.info(s"tag : postion = $tag : $position " +
-          s"threadId = ${Thread.currentThread().getId} " +
-          s"cnt = $cnt rowInfo = ${str.toString}")
+        logger.info(s"tag : position = $tag : $position, " +
+          s"threadId = ${Thread.currentThread().getId}, " +
+          s" cnt = $cnt, rowInfo = ${str.toString}")
       } else {
-        logger.info(s"threadId = ${Thread.currentThread().getId}" +
-          s"cnt = $cnt rowInfo = ${str.toString}")
+        logger.info(s"threadId = ${Thread.currentThread().getId}," +
+          s" cnt = $cnt, rowInfo = ${str.toString}")
+      }
+      if (sqlConfig.printRowContent) {
+        logger.info(row.toString())
       }
     }
     cnt += 1
