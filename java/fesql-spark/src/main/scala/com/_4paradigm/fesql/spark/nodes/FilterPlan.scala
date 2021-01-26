@@ -14,7 +14,7 @@ import scala.collection.mutable
 object FilterPlan {
 
   def gen(ctx: PlanContext, node: PhysicalFilterNode, input: SparkInstance): SparkInstance = {
-    val inputDf = input.getDf(ctx.getSparkSession)
+    val inputDf = input.getDfConsideringIndex(ctx, node.GetNodeId())
 
     var outputDf = inputDf
 
@@ -54,9 +54,7 @@ object FilterPlan {
       outputDf = outputDf.where(condictionCol)
     }
 
-
-    SparkInstance.fromDataFrame(outputDf)
-
+    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
   }
 
 }

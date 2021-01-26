@@ -14,12 +14,14 @@ import scala.collection.mutable
   */
 class WindowComputer(sqlConfig: FeSQLConfig,
                      config: WindowAggConfig,
-                     jit: FeSQLJITWrapper) {
+                     jit: FeSQLJITWrapper,
+                     keepIndexColumn: Boolean) {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
+  // Add the index column at the end of generated row if this node need to output dataframe with index column
   // reuse spark output row backed array
-  private val outputFieldNum = config.outputSchemaSlices.map(_.size).sum
+  private val outputFieldNum = if (keepIndexColumn) config.outputSchemaSlices.map(_.size).sum + 1 else config.outputSchemaSlices.map(_.size).sum
   private val outputArr = Array.fill[Any](outputFieldNum)(null)
 
   // native row codecs
@@ -50,7 +52,7 @@ class WindowComputer(sqlConfig: FeSQLConfig,
     config.windowFrameTypeName,
     config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
 
-  def compute(row: Row): Row = {
+  def compute(row: Row, keepIndexColumn: Boolean, unionFlagIdx: Int): Row = {
     if (hooks.nonEmpty) {
       hooks.foreach(hook => try {
         hook.preCompute(this, row)
@@ -83,6 +85,17 @@ class WindowComputer(sqlConfig: FeSQLConfig,
     // release swig jni objects
     nativeInputRow.delete()
     outputNativeRow.delete()
+
+    // Append the index column if needed
+    if (keepIndexColumn) {
+      if (unionFlagIdx == -1) {
+        // No union column, use the last one
+        outputArr(outputArr.size-1) = row.get(row.size-1)
+      } else {
+        // Has union column, use the last but one
+        outputArr(outputArr.size-1) = row.get(row.size-2)
+      }
+    }
 
     Row.fromSeq(outputArr) // can reuse backed array
   }

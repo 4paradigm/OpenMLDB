@@ -68,6 +68,9 @@ class FeSQLConfig extends Serializable {
   @ConfigOption(name="fesql.window.sampleOutputPath", doc="Window sample output path")
   var windowSampleOutputPath: String = _
 
+  @ConfigOption(name="fesql.window.parallelization", doc="Enable window compute parallelization optimization")
+  var enableWindowParallelization: Boolean = false
+
   @ConfigOption(name="fesql.window.sampleFilter", doc="""
       | Filter condition for window sample, currently only support simple equalities
       | like "col1=123, col2=456" etc.
@@ -79,6 +82,7 @@ class FeSQLConfig extends Serializable {
 
   @ConfigOption(name="fesql.window.sampleLimit", doc="Maximum sample to dump for each partition")
   var windowSampleLimit = 10
+
 }
 
 
