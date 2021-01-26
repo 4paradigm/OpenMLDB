@@ -44,7 +44,7 @@ object SimpleProjectPlan {
         col, outputColTypeList(i), innerType)
       castOutputCol.alias(outputColNameList(i))
 
-      selectColList.append(castOutputCol)
+      selectColList.append(castOutputCol.alias(outputColNameList(i)))
     }
 
     if (keepIndexColumn) {
