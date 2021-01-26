@@ -151,6 +151,11 @@ INSTANTIATE_TEST_CASE_P(
         InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
+    EngineTestWindowExcludeCurrentTime, EngineTest,
+    testing::ValuesIn(InitCases(
+        "/cases/integration/v1/test_window_exclude_current_time.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
     EngineTestIndexOptimized, EngineTest,
     testing::ValuesIn(
         InitCases("/cases/integration/v1/test_index_optimized.yaml")));

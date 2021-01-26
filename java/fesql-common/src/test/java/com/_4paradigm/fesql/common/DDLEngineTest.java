@@ -9,11 +9,13 @@ import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.testng.collections.Lists;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,8 +28,8 @@ public class DDLEngineTest {
 
     @DataProvider(name = "build_more_index")
     public Object[][] getSqlScript() {
-        return new Object[][] {
-                new Object[] {
+        return new Object[][]{
+                new Object[]{
                         "support small short smallint",
                         "ddl/ut/type.json",
                         "ddl/ut/type.txt",
@@ -65,36 +67,49 @@ public class DDLEngineTest {
         }
     }
 
-    @Test
-    public void testDDLAndConfig() throws Exception {
+    @DataProvider(name = "ddlAndConfig")
+    public Object[][] getDDLAndConfig() {
         String rootPath = "ddl";
         File root = new File(DDLEngineTest.class.getClassLoader().getResource(rootPath).getPath());
-        rootPath = DDLEngineTest.class.getClassLoader().getResource(rootPath).getPath();
+        List<File> fileList = (List<File>) FileUtils.listFiles(root, null, false);
+
         Map<String, File> sqlMap = new HashMap<>();
         Map<String, File> jsonMap = new HashMap<>();
-        List<File> fileList = (List<File>)FileUtils.listFiles(root, null, false);
-        for (File e : fileList) {
-            String name = e.getName();
+
+        for (File file : fileList) {
+            String name = file.getName();
             if (name.endsWith(".txt")) {
-                sqlMap.put(name.split("\\.")[0], e);
+                sqlMap.put(name.split("\\.")[0], file);
             }
             if (name.endsWith(".json")) {
-                jsonMap.put(name.split("\\.")[0], e);
+                jsonMap.put(name.split("\\.")[0], file);
             }
         }
-        for (String e : sqlMap.keySet()) {
-            logger.info("case: {}", e);
-            String ddl = genDDL(FileUtils.readFileToString(sqlMap.get(e), "UTF-8"), FileUtils.readFileToString(jsonMap.get(e), "UTF-8"), 1, 1);
-            String config = sql2Feconfig(FileUtils.readFileToString(sqlMap.get(e), "UTF-8"), FileUtils.readFileToString(jsonMap.get(e), "UTF-8"));
 
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
-            JsonParser parser = new JsonParser();
-            config = gson.toJson(parser.parse(config));
-            String ddlPath = rootPath + "/ddl_result/" + e + ".txt";
-            String configPath = rootPath + "/sql2feconfig_result/" + e + ".json";
-            Assert.assertEquals(ddl, FileUtils.readFileToString(new File(ddlPath), "UTF-8"));
-            Assert.assertEquals(config, FileUtils.readFileToString(new File(configPath), "UTF-8"));
+        Object[][] params = new Object[sqlMap.size()][];
+        int i = 0;
+        for (String e : sqlMap.keySet()) {
+            params[i++] = new Object[]{
+                    e, sqlMap.get(e), jsonMap.get(e),
+            };
         }
+        return params;
+    }
+
+    @Test(dataProvider = "ddlAndConfig")
+    public void testDDLAndConfig(String name, File ddlFile, File configFile) throws Exception {
+        String rootPath = DDLEngineTest.class.getClassLoader().getResource("ddl").getPath();
+        logger.info("case: {}", name);
+        String ddl = genDDL(FileUtils.readFileToString(ddlFile, "UTF-8"), FileUtils.readFileToString(configFile, "UTF-8"), 1, 1);
+        String config = sql2Feconfig(FileUtils.readFileToString(ddlFile, "UTF-8"), FileUtils.readFileToString(configFile, "UTF-8"));
+
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        JsonParser parser = new JsonParser();
+        config = gson.toJson(parser.parse(config));
+        String ddlPath = rootPath + "/ddl_result/" + name + ".txt";
+        String configPath = rootPath + "/sql2feconfig_result/" + name + ".json";
+        Assert.assertEquals(ddl, FileUtils.readFileToString(new File(ddlPath), "UTF-8"));
+        Assert.assertEquals(config, FileUtils.readFileToString(new File(configPath), "UTF-8"));
     }
 
 }
