@@ -278,14 +278,14 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
             lat_ttl = request->value();
         }
     }
-    // TODO denglong
-    /*if (ttl_type != table->GetTTLType()) {
+    const auto& table_meta = table->GetTableMeta();
+    if (ttl_type != table_meta.ttl_type()) {
         response->set_code(::rtidb::base::ReturnCode::kTtlTypeMismatch);
         response->set_msg("ttl type mismatch");
         PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", request->tid(),
               request->pid());
         return;
-    }*/
+    }
     if (abs_ttl > FLAGS_absolute_ttl_max || lat_ttl > FLAGS_latest_ttl_max) {
         response->set_code(
             ::rtidb::base::ReturnCode::kTtlIsGreaterThanConfValue);
@@ -300,6 +300,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
               FLAGS_absolute_ttl_max, FLAGS_latest_ttl_max);
         return;
     }
+    ::rtidb::storage::TTLSt ttl_st(abs_ttl, lat_ttl, ::rtidb::storage::TTLSt::ConvertTTLType(ttl_type));
     if (request->has_ts_name() && request->ts_name().size() > 0) {
         auto iter = table->GetTSMapping().find(request->ts_name());
         if (iter == table->GetTSMapping().end()) {
@@ -309,14 +310,14 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
             response->set_msg("ts name not found");
             return;
         }
-        table->SetTTL(iter->second, abs_ttl, lat_ttl);
+        table->SetTTL(::rtidb::storage::UpdateTTLMeta(ttl_st, iter->second));
         PDLOG(INFO,
               "update table #tid %d #pid %d ttl to abs_ttl %lu lat_ttl %lu, "
               "ts_name %s",
               request->tid(), request->pid(), abs_ttl, lat_ttl,
               request->ts_name().c_str());
     } else if (!table->GetTSMapping().size()) {
-        table->SetTTL(abs_ttl, lat_ttl);
+        table->SetTTL(::rtidb::storage::UpdateTTLMeta(ttl_st));
         PDLOG(INFO,
               "update table #tid %d #pid %d ttl to abs_ttl %lu lat_ttl %lu",
               request->tid(), request->pid(), abs_ttl, lat_ttl);
@@ -2774,7 +2775,6 @@ void TabletImpl::GetTableStatus(
                 ::rtidb::common::StorageMode::kMemory) {
                 if (MemTable* mem_table =
                         dynamic_cast<MemTable*>(table.get())) {
-                    status->set_time_offset(mem_table->GetTimeOffset());
                     status->set_is_expire(mem_table->GetExpireStatus());
                     status->set_record_byte_size(
                         mem_table->GetRecordByteSize());
@@ -2848,36 +2848,6 @@ void TabletImpl::SetExpire(RpcController* controller,
             mem_table->SetExpire(request->is_expire());
             PDLOG(INFO, "set table expire[%d]. tid[%u] pid[%u]",
                   request->is_expire(), request->tid(), request->pid());
-        }
-    }
-    response->set_code(::rtidb::base::ReturnCode::kOk);
-    response->set_msg("ok");
-}
-
-void TabletImpl::SetTTLClock(RpcController* controller,
-                             const ::rtidb::api::SetTTLClockRequest* request,
-                             ::rtidb::api::GeneralResponse* response,
-                             Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-    if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
-              request->pid());
-        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
-        return;
-    }
-    if (table->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
-        MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
-        if (mem_table != NULL) {
-            int64_t cur_time = ::baidu::common::timer::get_micros() / 1000000;
-            int64_t offset = (int64_t)request->timestamp() - cur_time;
-            mem_table->SetTimeOffset(offset);
-            PDLOG(INFO,
-                  "set table virtual timestamp[%lu] cur timestamp[%lu] "
-                  "offset[%ld]. tid[%u] pid[%u]",
-                  request->timestamp(), cur_time, offset, request->tid(),
-                  request->pid());
         }
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);

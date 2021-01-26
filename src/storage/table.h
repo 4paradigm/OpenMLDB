@@ -180,14 +180,7 @@ class Table {
         return TTLSt(table_meta_.ttl_desc());
     }
 
-    inline void SetTTL(const uint64_t abs_ttl, const uint64_t lat_ttl) {
-        // TODO
-    }
-
-    inline void SetTTL(const uint32_t ts_idx, const uint64_t abs_ttl,
-                       const uint64_t lat_ttl) {
-        // TODO
-    }
+    void SetTTL(const ::rtidb::storage::UpdateTTLMeta& ttl_meta);
 
     inline void SetMakeSnapshotTime(int64_t time) {
         last_make_snapshot_time_ = time;
@@ -216,6 +209,7 @@ class Table {
     ::rtidb::api::TableMeta table_meta_;
     int64_t last_make_snapshot_time_;
     std::shared_ptr<std::map<int32_t, std::shared_ptr<Schema>>> version_schema_;
+    std::shared_ptr<std::vector<::rtidb::storage::UpdateTTLMeta>> update_ttl_;
 };
 
 }  // namespace storage

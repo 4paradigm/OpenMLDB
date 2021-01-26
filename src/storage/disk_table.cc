@@ -159,7 +159,6 @@ bool DiskTable::InitColumnFamilyDescriptor() {
     cf_ds_.clear();
     cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(
         rocksdb::kDefaultColumnFamilyName, rocksdb::ColumnFamilyOptions()));
-    const std::vector<std::shared_ptr<IndexDef>> indexs = GetAllIndex();
     auto inner_indexs = table_index_.GetAllInnerIndex();
     for (const auto& inner_index : *inner_indexs) {
         rocksdb::ColumnFamilyOptions cfo;

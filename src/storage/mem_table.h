@@ -227,14 +227,6 @@ class MemTable : public Table {
         return enable_gc_.load(std::memory_order_relaxed);
     }
 
-    inline void SetTimeOffset(int64_t offset) {
-        time_offset_.store(offset * 1000, std::memory_order_relaxed);
-    }
-
-    inline int64_t GetTimeOffset() {
-        return time_offset_.load(std::memory_order_relaxed) / 1000;
-    }
-
     inline void RecordCntIncr() {
         record_cnt_.fetch_add(1, std::memory_order_relaxed);
     }
@@ -258,7 +250,6 @@ class MemTable : public Table {
     std::atomic<bool> enable_gc_;
     uint64_t ttl_offset_;
     std::atomic<uint64_t> record_cnt_;
-    std::atomic<int64_t> time_offset_;
     bool segment_released_;
     std::atomic<uint64_t> record_byte_size_;
 };

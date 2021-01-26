@@ -271,10 +271,6 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                    const ::rtidb::api::SetExpireRequest* request,
                    ::rtidb::api::GeneralResponse* response, Closure* done);
 
-    void SetTTLClock(RpcController* controller,
-                     const ::rtidb::api::SetTTLClockRequest* request,
-                     ::rtidb::api::GeneralResponse* response, Closure* done);
-
     void UpdateTTL(RpcController* controller,
                    const ::rtidb::api::UpdateTTLRequest* request,
                    ::rtidb::api::UpdateTTLResponse* response, Closure* done);

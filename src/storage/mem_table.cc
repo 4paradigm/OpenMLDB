@@ -38,7 +38,6 @@ MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t 
       segments_(MAX_INDEX_NUM, NULL),
       enable_gc_(false),
       record_cnt_(0),
-      time_offset_(0),
       segment_released_(false),
       record_byte_size_(0) {}
 
@@ -50,7 +49,6 @@ MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta)
     seg_cnt_ = 8;
     enable_gc_ = false;
     record_cnt_ = 0;
-    time_offset_ = 0;
     segment_released_ = false;
     record_byte_size_ = 0;
     diskused_ = 0;

@@ -142,6 +142,16 @@ struct TTLSt {
     TTLType ttl_type;
 };
 
+struct UpdateTTLMeta {
+    UpdateTTLMeta(const TTLSt& new_ttl) : ttl(new_ttl), ts_idx(-1), index_name() {}
+    UpdateTTLMeta(const TTLSt& new_ttl, int32_t idx) : ttl(new_ttl), ts_idx(idx), index_name() {}
+    UpdateTTLMeta(const TTLSt& new_ttl, const std::string& name) : ttl(new_ttl),
+        ts_idx(-1), index_name(name) {}
+    TTLSt ttl;
+    int32_t ts_idx;
+    std::string index_name;
+};
+
 enum class IndexStatus { kReady = 0, kWaiting, kDeleting, kDeleted };
 
 class ColumnDef {

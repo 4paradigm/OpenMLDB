@@ -28,7 +28,8 @@ Table::Table(::rtidb::common::StorageMode storage_mode, const std::string &name,
       ttl_offset_(ttl_offset),
       is_leader_(is_leader),
       compress_type_(compress_type),
-      version_schema_() {
+      version_schema_(),
+      update_ttl_(std::make_shared<std::vector<::rtidb::storage::UpdateTTLMeta>>()) {
     ::rtidb::api::TTLDesc *ttl_desc = table_meta_.mutable_ttl_desc();
     ttl_desc->set_ttl_type(ttl_type);
     if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime) {
@@ -251,8 +252,47 @@ int Table::InitColumnDesc() {
     AddVersionSchema();
     return 0;
 }
+void Table::SetTTL(const ::rtidb::storage::UpdateTTLMeta& ttl_meta) {
+    std::shared_ptr<std::vector<::rtidb::storage::UpdateTTLMeta>> old_ttl;
+    std::shared_ptr<std::vector<::rtidb::storage::UpdateTTLMeta>> new_ttl;
+    std::vector<::rtidb::storage::UpdateTTLMeta> set_ttl_vec;
+    do {
+        old_ttl = std::atomic_load_explicit(&update_ttl_, std::memory_order_acquire);
+        new_ttl = std::make_shared<std::vector<::rtidb::storage::UpdateTTLMeta>>(*old_ttl);
+        new_ttl->push_back(ttl_meta);
+    } while (!atomic_compare_exchange_weak(&update_ttl_, &old_ttl, new_ttl));
+}
 
 void Table::UpdateTTL() {
+    std::shared_ptr<std::vector<::rtidb::storage::UpdateTTLMeta>> old_ttl;
+    std::shared_ptr<std::vector<::rtidb::storage::UpdateTTLMeta>> new_ttl;
+    std::vector<::rtidb::storage::UpdateTTLMeta> set_ttl_vec;
+    do {
+        old_ttl = std::atomic_load_explicit(&update_ttl_, std::memory_order_acquire);
+        if (old_ttl->empty()) {
+            return;
+        }
+        new_ttl = std::make_shared<std::vector<::rtidb::storage::UpdateTTLMeta>>(*old_ttl);
+        set_ttl_vec.clear();
+        set_ttl_vec.swap(*new_ttl);
+    } while (!atomic_compare_exchange_weak(&update_ttl_, &old_ttl, new_ttl));
+    auto indexs = table_index_.GetAllIndex();
+    for (const auto& ttl_meta : set_ttl_vec) {
+        for (auto& index : indexs) {
+            if (!ttl_meta.index_name.empty()) {
+                if (index->GetName() == ttl_meta.index_name) {
+                    index->SetTTL(ttl_meta.ttl);
+                }
+            } else if (ttl_meta.ts_idx >= 0) {
+                auto ts_col = index->GetTsColumn();
+                if (ts_col && ts_col->GetTsIdx() == ttl_meta.ts_idx) {
+                    index->SetTTL(ttl_meta.ttl);
+                }
+            } else {
+                index->SetTTL(ttl_meta.ttl);
+            }
+        }
+    }
 }
 
 bool Table::InitFromMeta() {

@@ -342,46 +342,6 @@ TEST_F(TableTest, SchedGc) {
     delete table;
 }
 
-TEST_F(TableTest, OffSet) {
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1,
-                                   ::rtidb::api::TTLType::kAbsoluteTime);
-    table->Init();
-    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
-    table->SetTimeOffset(-60 * 4);
-    table->Put("test", now - 10 * 60 * 1000, "test", 4);
-    table->Put("test", now - 3 * 60 * 1000, "test", 4);
-    table->Put("test", now, "tes2", 4);
-    table->Put("test", now + 3 * 60 * 1000, "tes2", 4);
-    table->SchedGc();
-
-    table->SetTimeOffset(0);
-    table->SetExpire(false);
-    table->SchedGc();
-    table->SetExpire(true);
-    table->SchedGc();
-    {
-        Ticket ticket;
-        TableIterator* it = table->NewIterator("test", ticket);
-        it->Seek(now);
-        ASSERT_TRUE(it->Valid());
-        std::string value_str(it->GetValue().data(), it->GetValue().size());
-        ASSERT_EQ("tes2", value_str);
-        it->Next();
-        ASSERT_FALSE(it->Valid());
-        delete it;
-    }
-
-    ASSERT_EQ((int64_t)table->GetRecordCnt(), 2);
-    ASSERT_EQ((int64_t)table->GetRecordIdxCnt(), 2);
-    table->SetTimeOffset(120);
-    table->SchedGc();
-    ASSERT_EQ((int64_t)table->GetRecordCnt(), 1);
-    ASSERT_EQ((int64_t)table->GetRecordIdxCnt(), 1);
-    delete table;
-}
-
 TEST_F(TableTest, TableDataCnt) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));

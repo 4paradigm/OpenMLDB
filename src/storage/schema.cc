@@ -229,7 +229,21 @@ std::shared_ptr<IndexDef> TableIndex::GetIndex(const std::string& name, uint32_t
 }
 
 std::vector<std::shared_ptr<IndexDef>> TableIndex::GetAllIndex() {
-    return *std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
+    std::vector<std::shared_ptr<IndexDef>> all_index;
+    auto multi_indexs = std::atomic_load_explicit(&multi_ts_indexs_, std::memory_order_relaxed);
+    if (!multi_indexs->empty()) {
+        for (const auto& index_vec : *multi_indexs) {
+            if (index_vec.empty()) {
+                continue;
+            }
+            for (const auto& index : index_vec) {
+                all_index.push_back(index);
+            }
+        }
+    }
+    auto indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
+    all_index.insert(all_index.end(), indexs->begin(), indexs->end());
+    return all_index;
 }
 
 int TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {

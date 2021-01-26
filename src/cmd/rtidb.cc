@@ -4930,35 +4930,6 @@ void HandleClientHelp(const std::vector<std::string> parts,
     }
 }
 
-void HandleClientSetTTLClock(const std::vector<std::string> parts,
-                             ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 4) {
-        std::cout << "Bad format" << std::endl;
-        return;
-    }
-    struct tm tm;
-    time_t timestamp;
-    if (parts[3].length() == 14 && ::rtidb::base::IsNumber(parts[3]) &&
-        strptime(parts[3].c_str(), "%Y%m%d%H%M%S", &tm) != NULL) {
-        timestamp = mktime(&tm);
-    } else {
-        printf("time format error (e.g 20171108204001)");
-        return;
-    }
-    try {
-        bool ok = client->SetTTLClock(boost::lexical_cast<uint32_t>(parts[1]),
-                                      boost::lexical_cast<uint32_t>(parts[2]),
-                                      timestamp);
-        if (ok) {
-            std::cout << "setttlclock ok" << std::endl;
-        } else {
-            std::cout << "Fail to setttlclock" << std::endl;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad format" << std::endl;
-    }
-}
-
 void HandleClientGetTableStatus(const std::vector<std::string> parts,
                                 ::rtidb::client::TabletClient* client) {
     std::vector<::rtidb::api::TableStatus> status_vec;
@@ -6303,8 +6274,6 @@ void StartClient() {
             HandleClientGetTableStatus(parts, &client);
         } else if (parts[0] == "setexpire") {
             HandleClientSetExpire(parts, &client);
-        } else if (parts[0] == "setttlclock") {
-            HandleClientSetTTLClock(parts, &client);
         } else if (parts[0] == "connectzk") {
             HandleClientConnectZK(parts, &client);
         } else if (parts[0] == "disconnectzk") {
