@@ -123,7 +123,8 @@ object JoinPlan {
       if (hasOrderby) {
         val orderbyExprListNode = node.join.right_sort.orders.order_by
         val planLeftSize = node.GetProducer(0).GetOutputSchema().size()
-        val timeColIdx = SparkColumnUtil.resolveColumnIndex(orderbyExprListNode.GetChild(0), node) - planLeftSize
+        // Get the time column index from right table
+        val timeColIdx = SparkColumnUtil.resolveColumnIndex(orderbyExprListNode.GetChild(0), node.GetProducer(1))
         assert(timeColIdx >= 0)
 
         val timeIdxInJoined = timeColIdx + leftDf.schema.size
