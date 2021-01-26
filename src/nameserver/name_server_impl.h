@@ -121,6 +121,7 @@ class ClusterInfo {
 // the container of tablet
 typedef std::map<std::string, std::shared_ptr<TabletInfo>> Tablets;
 typedef std::map<std::string, std::shared_ptr<BlobServerInfo>> BlobServers;
+typedef std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> TableInfos;
 
 typedef boost::function<void()> TaskFun;
 
@@ -543,6 +544,8 @@ class NameServerImpl : public NameServer {
         const std::string& endpoint, uint32_t pid, bool is_leader,
         bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
+    int UpdateEndpointTableAliveHandle(const std::string& endpoint, TableInfos& table_infos, bool is_alive); //NOLINT
+
     int UpdateEndpointTableAlive(const std::string& endpoint, bool is_alive);
 
     std::shared_ptr<Task> CreateMakeSnapshotTask(const std::string& endpoint,
@@ -953,8 +956,8 @@ class NameServerImpl : public NameServer {
     std::mutex mu_;
     Tablets tablets_;
     BlobServers blob_servers_;
-    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
-    std::map< std::string, std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>> db_table_info_;
+    ::rtidb::nameserver::TableInfos table_info_;
+    std::map<std::string, ::rtidb::nameserver::TableInfos> db_table_info_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
     ZoneInfo zone_info_;
     ZkClient* zk_client_;
@@ -995,10 +998,8 @@ class NameServerImpl : public NameServer {
     std::map<std::string, std::string> real_ep_map_;
     std::map<std::string, std::string> remote_real_ep_map_;
     std::map<std::string, std::string> sdk_endpoint_map_;
-    std::unordered_map<std::string,
-        std::unordered_map<std::string, std::vector<std::string>>> db_sp_table_map_;
-    std::unordered_map<std::string,
-        std::unordered_map<std::string, std::vector<std::string>>> db_table_sp_map_;
+    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> db_sp_table_map_;
+    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> db_table_sp_map_;
 };
 
 }  // namespace nameserver
