@@ -31,7 +31,8 @@ object ConcatJoinPlan {
       logger.info("Enable concat join with last join and support native last join")
       leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "last")
     } else {
-      leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "left")
+      // Should use inner join instead of left join so that Spark weill merge all join into single stage
+      leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "inner")
     }
 
     val nodeIndexType = ctx.getIndexInfo(node.GetNodeId()).nodeIndexType
@@ -43,10 +44,7 @@ object ConcatJoinPlan {
         resultDf.drop(indexName)
       }
       case NodeIndexType.InternalConcatJoinNode => {
-        val dropColumnIndex = leftDf.schema.size - 1
-        logger.info("Drop the index column with index %s from left dataframe".format(dropColumnIndex))
-        // Notice that we should drop the column with index instead of renaming it since Spark may optimization to merge multiple left join into one stage dependeing on the same column reference
-        //resultDf.drop(SparkColumnUtil.getColumnFromIndex(resultDf, dropColumnIndex))
+        logger.info("Drop the index column %s for internal concat join node from left dataframe".format(indexName))
         resultDf.drop(leftDf(indexName))
       }
       case _ => throw new FesqlException("Handle unsupported concat join node index type: %s".format(nodeIndexType))
