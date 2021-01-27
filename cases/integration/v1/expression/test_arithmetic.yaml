@@ -229,11 +229,11 @@ cases:
       0:
         columns: ["b2 float","b3 float","b4 float","b5 float","b6 double","b9 float"]
         rows:
-          - [30,50,60,41.1,42.1,31]
+          - [30,50,60,41.100000381469727,42.1,31]
       1:
         columns: ["b2 double","b3 double","b4 double","b5 double","b6 double","b9 double"]
         rows:
-          - [30,50,60,41.1,42.1,31]
+          - [30,50,60,41.100000381469727,42.1,31]
   - id: 7
     desc: "timestamp+_正确"
     inputs:

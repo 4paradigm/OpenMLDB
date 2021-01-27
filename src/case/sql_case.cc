@@ -1146,6 +1146,17 @@ static bool ParseSQLCaseNode(const YAML::Node& sql_case_node,
         expect_node = sql_case_node["expect"];
     }
 
+    if (expect_node) {
+        if (!SQLCase::CreateExpectFromYamlNode(expect_node, expect_provider,
+                                               &sql_case.expect_)) {
+            return false;
+        }
+    } else if (expect_provider) {
+        if (!SQLCase::CreateExpectFromYamlNode(expect_provider, YAML::Node(),
+                                               &sql_case.expect_)) {
+            return false;
+        }
+    }
     // parse expect info for "output","expect", "expectProvider"
     if (expect_node.IsDefined() || expect_provider.IsDefined()) {
         if (!SQLCase::CreateExpectFromYamlNode(expect_node, expect_provider,
