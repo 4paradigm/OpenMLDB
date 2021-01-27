@@ -33,7 +33,8 @@ object ConcatJoinPlan {
     val supportNativeLastJoin = SparkUtil.supportNativeLastJoin(joinType, false)
 
     // Use left join or native last join
-    val resultDf = if (supportNativeLastJoin) {
+    val resultDf = if (supportNativeLastJoin && ctx.getConf.enableConcatJoinWithLastJoin) {
+      logger.info("Enable concat join with last join and support native last join")
       leftDf.join(rightDf, leftDf(newLeftTableIndexName) === rightDf(indexName), "last")
     } else {
       leftDf.join(rightDf, leftDf(newLeftTableIndexName) === rightDf(indexName), "left")
@@ -51,8 +52,7 @@ object ConcatJoinPlan {
       }
       case _ => throw new FesqlException("Handle unsupported concat join node index type: %s".format(nodeIndexType))
     }
-
-
+    
     SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
   }
 

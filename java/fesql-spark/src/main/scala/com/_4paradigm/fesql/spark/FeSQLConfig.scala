@@ -86,6 +86,9 @@ class FeSQLConfig extends Serializable {
   @ConfigOption(name="fesql.addIndexColumn.method", doc="The method to add index column(zipWithUniqueId, zipWithIndex, monotonicallyIncreasingId")
   var addIndexColumnMethod = "zipWithUniqueId"
 
+  @ConfigOption(name="fesql.concatjoin.lastjoin", doc="Enable concat join with last join, default is false")
+  var enableConcatJoinWithLastJoin = false
+
 }
 
 
