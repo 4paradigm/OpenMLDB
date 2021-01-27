@@ -173,19 +173,6 @@ bool fesql::codegen::VariableIRBuilder::LoadColumnItem(
     NativeValue* output, fesql::base::Status& status) {
     return LoadValue("@item." + relation_name + "." + name, output, status);
 }
-bool fesql::codegen::VariableIRBuilder::LoadAddrSpace(const size_t schema_idx,
-                                                      NativeValue* output,
-                                                      base::Status& status) {
-    bool ok = LoadValue("@addrspace[" + std::to_string(schema_idx) + "]",
-                        output, status);
-    return ok;
-}
-bool fesql::codegen::VariableIRBuilder::StoreAddrSpace(const size_t schema_idx,
-                                                       ::llvm::Value* value,
-                                                       base::Status& status) {
-    return StoreValue("@addrspace[" + std::to_string(schema_idx) + "]",
-                      NativeValue::Create(value), status);
-}
 bool fesql::codegen::VariableIRBuilder::StoreWindow(
     const std::string& frame_str, ::llvm::Value* value,
     fesql::base::Status& status) {

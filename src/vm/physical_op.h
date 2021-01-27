@@ -460,6 +460,12 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
 
     bool is_block() const { return is_block_; }
 
+    /*
+     * Add the duplicated function for swig-java which can not access 
+     * functions in template.
+     */
+    size_t GetNodeId() const { return node_id(); }
+
  protected:
     const PhysicalOpType type_;
     const bool is_block_;
@@ -1065,18 +1071,22 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
  public:
     PhysicalWindowAggrerationNode(PhysicalOpNode *node,
                                   const ColumnProjects &project,
-                                  const node::WindowPlanNode *w_ptr,
-                                  bool need_append_input)
+                                  const WindowOp &window_op,
+                                  bool instance_not_in_window,
+                                  bool need_append_input,
+                                  bool exclude_current_time)
         : PhysicalProjectNode(node, kWindowAggregation, project, true),
           need_append_input_(need_append_input),
-          instance_not_in_window_(w_ptr->instance_not_in_window()),
-          window_(w_ptr),
+          exclude_current_time_(exclude_current_time),
+          instance_not_in_window_(instance_not_in_window),
+          window_(window_op),
           window_unions_() {
         output_type_ = kSchemaTypeTable;
         fn_infos_.push_back(&window_.partition_.fn_info());
         fn_infos_.push_back(&window_.sort_.fn_info());
         fn_infos_.push_back(&window_.range_.fn_info());
     }
+
     virtual ~PhysicalWindowAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     static PhysicalWindowAggrerationNode *CastFrom(PhysicalOpNode *node);
@@ -1118,6 +1128,9 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
         return instance_not_in_window_;
     }
 
+    const bool exclude_current_time() const {
+        return exclude_current_time_;
+    }
     bool need_append_input() const { return need_append_input_; }
 
     WindowOp &window() { return window_; }
@@ -1131,6 +1144,7 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
                                  PhysicalOpNode **out) override;
 
     const bool need_append_input_;
+    const bool exclude_current_time_;
     const bool instance_not_in_window_;
     WindowOp window_;
     WindowUnionList window_unions_;
@@ -1379,6 +1393,7 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnion, true),
           window_(partition),
           instance_not_in_window_(false),
+          exclude_current_time_(false),
           output_request_row_(true) {
         output_type_ = kSchemaTypeTable;
 
@@ -1390,6 +1405,7 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnion, true),
           window_(w_ptr),
           instance_not_in_window_(w_ptr->instance_not_in_window()),
+          exclude_current_time_(w_ptr->exclude_current_time()),
           output_request_row_(true) {
         output_type_ = kSchemaTypeTable;
 
@@ -1401,10 +1417,12 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
     PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
                              const RequestWindowOp &window,
                              bool instance_not_in_window,
+                             bool exclude_current_time,
                              bool output_request_row)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnion, true),
           window_(window),
           instance_not_in_window_(instance_not_in_window),
+          exclude_current_time_(exclude_current_time),
           output_request_row_(output_request_row) {
         output_type_ = kSchemaTypeTable;
 
@@ -1447,6 +1465,7 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
     const bool instance_not_in_window() const {
         return instance_not_in_window_;
     }
+    const bool exclude_current_time() const { return exclude_current_time_; }
     const bool output_request_row() const { return output_request_row_; }
     const RequestWindowOp &window() const { return window_; }
     const RequestWindowUnionList &window_unions() const {
@@ -1459,6 +1478,7 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
 
     RequestWindowOp window_;
     const bool instance_not_in_window_;
+    const bool exclude_current_time_;
     const bool output_request_row_;
     RequestWindowUnionList window_unions_;
 };

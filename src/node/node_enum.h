@@ -189,9 +189,15 @@ enum FrameType {
 enum BoundType {
     kPrecedingUnbound = 0,
     kPreceding,
+    kOpenPreceding,
     kCurrent,
+    kOpenFollowing,
     kFollowing,
     kFollowingUnbound,
+};
+enum ExcludeType {
+    kNonExclude,
+    kExcludeCurrentTime,
 };
 enum JoinType {
     kJoinTypeFull,

@@ -20,6 +20,7 @@
 #include "passes/expression/expr_pass.h"
 #include "passes/lambdafy_projects.h"
 #include "passes/physical/batch_request_optimize.h"
+#include "passes/physical/window_column_pruning.h"
 #include "passes/resolve_fn_and_attrs.h"
 
 using ::fesql::base::Status;
@@ -385,8 +386,8 @@ Status BatchModeTransformer::TransformProjectPlanOpWithWindowParallel(
     }
 
     PhysicalJoinNode* join = nullptr;
-    CHECK_STATUS(CreateOp<PhysicalJoinNode>(
-        &join, ops[0], ops[1], ::fesql::node::kJoinTypeConcat));
+    CHECK_STATUS(CreateOp<PhysicalJoinNode>(&join, ops[0], ops[1],
+                                            ::fesql::node::kJoinTypeConcat));
 
     for (size_t i = 2; i < ops.size(); ++i) {
         PhysicalJoinNode* new_join = nullptr;
@@ -1085,8 +1086,10 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
         case kWindowAggregation: {
             PhysicalWindowAggrerationNode* window_agg_op = nullptr;
             CHECK_STATUS(CreateOp<PhysicalWindowAggrerationNode>(
-                &window_agg_op, depend, column_projects, project_list->w_ptr_,
-                append_input));
+                &window_agg_op, depend, column_projects,
+                WindowOp(project_list->w_ptr_),
+                project_list->w_ptr_->instance_not_in_window(), append_input,
+                project_list->w_ptr_->exclude_current_time()));
             if (!project_list->w_ptr_->union_tables().empty()) {
                 for (auto iter = project_list->w_ptr_->union_tables().cbegin();
                      iter != project_list->w_ptr_->union_tables().cend();
@@ -1192,6 +1195,18 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
         *output = cur_op;
     } else {
         LOG(WARNING) << "Final transformed result is null";
+    }
+
+    if (enable_window_parallelization_) {
+        LOG(INFO) << "Apply column pruning for window aggregation";
+        WindowColumnPruning pass;
+        PhysicalOpNode* pruned_op = nullptr;
+        Status status = pass.Apply(&plan_ctx_, *output, &pruned_op);
+        if (!status.isOK()) {
+            LOG(WARNING) << status;
+            return;
+        }
+        *output = pruned_op;
     }
 }
 

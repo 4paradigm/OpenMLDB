@@ -22,6 +22,9 @@ class FeSQLConfig extends Serializable {
   @ConfigOption(name="fesql.test.print.sampleInterval", doc="每隔N行打印一次数据信息")
   var printSampleInterval: Long = 100 * 100
 
+  @ConfigOption(name="fesql.test.print.printContent", doc="打印完整行内容")
+  var printRowContent = false
+
   @ConfigOption(name="fesql.test.print", doc="执行过程中允许打印数据")
   var print: Boolean = false
 
@@ -64,6 +67,21 @@ class FeSQLConfig extends Serializable {
 
   @ConfigOption(name="fesql.window.sampleOutputPath", doc="Window sample output path")
   var windowSampleOutputPath: String = _
+
+  @ConfigOption(name="fesql.window.parallelization", doc="Enable window compute parallelization optimization")
+  var enableWindowParallelization: Boolean = false
+
+  @ConfigOption(name="fesql.window.sampleFilter", doc="""
+      | Filter condition for window sample, currently only support simple equalities
+      | like "col1=123, col2=456" etc.
+    """)
+  var windowSampleFilter: String = _
+
+  @ConfigOption(name="fesql.window.sampleBeforeCompute", doc="Dump sample before window computation")
+  var windowSampleBeforeCompute: Boolean = false
+
+  @ConfigOption(name="fesql.window.sampleLimit", doc="Maximum sample to dump for each partition")
+  var windowSampleLimit = 10
 
 }
 

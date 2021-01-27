@@ -129,6 +129,13 @@ class SQLBaseSuite extends SparkTestSuite {
       s"Output size mismatch, get ${actualData.length} but expect ${expectData.length}")
 
     val size = expectData.length
+//    for (i <- 0 until size) {
+//      val expectId = expectData(i)._2
+//      val expectArr = expectData(i)._1
+//      val outputArr = actualData(i)._1
+//      print(s"Expect: ${expectArr.mkString(", ")} -- " +
+//        s"Output: ${outputArr.mkString(", ")}\n")
+//    }
     for (i <- 0 until size) {
       val expectId = expectData(i)._2
       val expectArr = expectData(i)._1

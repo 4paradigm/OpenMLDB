@@ -1438,7 +1438,7 @@ TEST_F(PlannerTest, MergeWindowsWithMaxSizeTest) {
 
         map.insert(std::make_pair(
             dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(
-                partitions, orders, frame_1day_masize_100)),
+                partitions, orders, frame_1day_masize_1000)),
             manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1),
                                               false)));
 
@@ -1460,7 +1460,7 @@ TEST_F(PlannerTest, MergeWindowsWithMaxSizeTest) {
         ASSERT_EQ(-86400000, windows[0]->GetFrame()->GetHistoryRangeStart());
         ASSERT_EQ(0, windows[0]->GetFrame()->GetHistoryRangeEnd());
         ASSERT_EQ(-1000, windows[0]->GetFrame()->GetHistoryRowsStart());
-        ASSERT_EQ(100, windows[0]->GetFrame()->frame_maxsize());
+        ASSERT_EQ(1000, windows[0]->GetFrame()->frame_maxsize());
     }
 
     // null window merge
@@ -1581,7 +1581,7 @@ TEST_F(PlannerTest, WindowMergeOptTest) {
     ASSERT_EQ("range[-172800000,0],rows[-1000,0]",
               w->frame_node()->GetExprString());
 }
-TEST_F(PlannerTest, WindowExpandTest) {
+TEST_F(PlannerTest, RowsWindowExpandTest) {
     const std::string sql =
         "      SELECT\n"
         "      sum(col1) OVER (PARTITION BY col1 ORDER BY col5 ROWS_RANGE "
@@ -1609,15 +1609,28 @@ TEST_F(PlannerTest, WindowExpandTest) {
     auto project_plan_node = dynamic_cast<node::ProjectPlanNode *>(
         plan_ptr->GetChildren()[0]->GetChildren()[0]);
     ASSERT_EQ(node::kPlanTypeProject, project_plan_node->type_);
-    ASSERT_EQ(1u, project_plan_node->project_list_vec_.size());
+    ASSERT_EQ(2u, project_plan_node->project_list_vec_.size());
 
-    auto project_list = dynamic_cast<node::ProjectListNode *>(
-        project_plan_node->project_list_vec_[0]);
-    auto w = project_list->GetW();
-    ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
-    ASSERT_EQ("(col5) ASC", node::ExprString(w->GetOrders()));
-    ASSERT_EQ("range[-172800000,-21600000],rows[-1000,-100]",
-              w->frame_node()->GetExprString());
+    {
+        auto project_list = dynamic_cast<node::ProjectListNode *>(
+            project_plan_node->project_list_vec_[0]);
+        auto w = project_list->GetW();
+        ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
+        ASSERT_EQ("(col5) ASC", node::ExprString(w->GetOrders()));
+        ASSERT_EQ("rows[-1000,0]",
+                  w->frame_node()->GetExprString());
+    }
+
+    // Pure RowsRange Frame won't expand
+    {
+        auto project_list = dynamic_cast<node::ProjectListNode *>(
+            project_plan_node->project_list_vec_[1]);
+        auto w = project_list->GetW();
+        ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
+        ASSERT_EQ("(col5) ASC", node::ExprString(w->GetOrders()));
+        ASSERT_EQ("range[-172800000,-21600000]",
+                  w->frame_node()->GetExprString());
+    }
 }
 
 TEST_F(PlannerTest, CreatePlanLeakTest) {

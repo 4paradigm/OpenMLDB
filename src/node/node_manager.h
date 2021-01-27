@@ -102,9 +102,13 @@ class NodeManager {
     SQLNode *MakeWindowDefNode(const std::string &name);
     SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
                                SQLNode *frame);
+    SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
+                               SQLNode *frame, bool opt_open_interval_window);
     SQLNode *MakeWindowDefNode(SQLNodeList *union_tables,
                                ExprListNode *partitions, ExprNode *orders,
-                               SQLNode *frame, bool instance_not_in_window);
+                               SQLNode *frame,
+                               bool opt_open_interval_window,
+                               bool instance_not_in_window);
     WindowDefNode *MergeWindow(const WindowDefNode *w1,
                                const WindowDefNode *w2);
     OrderByNode *MakeOrderByNode(const ExprListNode *node_ptr,

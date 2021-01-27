@@ -176,6 +176,10 @@ void SchemasContext::MergeWithNewID(size_t child_idx,
 
 SchemasContext::~SchemasContext() { Clear(); }
 
+size_t SchemasContext::GetColumnNum() const {
+    return GetOutputSchema()->size();
+}
+
 Status SchemasContext::ResolveColumnIndexByName(
     const std::string& relation_name, const std::string& column_name,
     size_t* schema_idx, size_t* col_idx) const {

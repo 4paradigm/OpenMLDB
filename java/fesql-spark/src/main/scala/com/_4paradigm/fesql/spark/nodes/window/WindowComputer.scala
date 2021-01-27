@@ -1,7 +1,7 @@
 package com._4paradigm.fesql.spark.nodes.window
 
 import com._4paradigm.fesql.spark.{FeSQLConfig, SparkRowCodec}
-import com._4paradigm.fesql.spark.nodes.WindowAggPlan.{WindowAggConfig, logger}
+import com._4paradigm.fesql.spark.nodes.WindowAggPlan.WindowAggConfig
 import com._4paradigm.fesql.spark.utils.{FesqlUtil, SparkRowUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, WindowInterface}
 import org.apache.spark.sql.Row
@@ -14,12 +14,14 @@ import scala.collection.mutable
   */
 class WindowComputer(sqlConfig: FeSQLConfig,
                      config: WindowAggConfig,
-                     jit: FeSQLJITWrapper) {
+                     jit: FeSQLJITWrapper,
+                     keepIndexColumn: Boolean) {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
+  // Add the index column at the end of generated row if this node need to output dataframe with index column
   // reuse spark output row backed array
-  private val outputFieldNum = config.outputSchemaSlices.map(_.size).sum
+  private val outputFieldNum = if (keepIndexColumn) config.outputSchemaSlices.map(_.size).sum + 1 else config.outputSchemaSlices.map(_.size).sum
   private val outputArr = Array.fill[Any](outputFieldNum)(null)
 
   // native row codecs
@@ -45,12 +47,18 @@ class WindowComputer(sqlConfig: FeSQLConfig,
 
   // window state
   protected var window = new WindowInterface(
-    config.instanceNotInWindow, config.windowFrameTypeName,
+    config.instanceNotInWindow,
+    config.excludeCurrentTime,
+    config.windowFrameTypeName,
     config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
 
-  def compute(row: Row): Row = {
+  def compute(row: Row, keepIndexColumn: Boolean, unionFlagIdx: Int): Row = {
     if (hooks.nonEmpty) {
-      hooks.foreach(_.preCompute(this, row))
+      hooks.foreach(hook => try {
+        hook.preCompute(this, row)
+      } catch {
+        case e: Exception => e.printStackTrace()
+      })
     }
 
     // call encode
@@ -67,19 +75,38 @@ class WindowComputer(sqlConfig: FeSQLConfig,
     decoder.decode(outputNativeRow, outputArr)
 
     if (hooks.nonEmpty) {
-      hooks.foreach(_.postCompute(this, row))
+      hooks.foreach(hook => try {
+        hook.postCompute(this, row)
+      } catch {
+        case e: Exception => e.printStackTrace()
+      })
     }
 
     // release swig jni objects
     nativeInputRow.delete()
     outputNativeRow.delete()
 
+    // Append the index column if needed
+    if (keepIndexColumn) {
+      if (unionFlagIdx == -1) {
+        // No union column, use the last one
+        outputArr(outputArr.size-1) = row.get(row.size-1)
+      } else {
+        // Has union column, use the last but one
+        outputArr(outputArr.size-1) = row.get(row.size-2)
+      }
+    }
+
     Row.fromSeq(outputArr) // can reuse backed array
   }
 
   def bufferRowOnly(row: Row): Unit = {
     if (hooks.nonEmpty) {
-      hooks.foreach(_.preBufferOnly(this, row))
+      hooks.foreach(hook => try {
+        hook.preBufferOnly(this, row)
+      } catch {
+        case e: Exception => e.printStackTrace()
+      })
     }
 
     val nativeInputRow = encoder.encode(row)
@@ -93,7 +120,11 @@ class WindowComputer(sqlConfig: FeSQLConfig,
     nativeInputRow.delete()
 
     if (hooks.nonEmpty) {
-      hooks.foreach(_.postBufferOnly(this, row))
+      hooks.foreach(hook => try {
+        hook.postBufferOnly(this, row)
+      } catch {
+        case e: Exception => e.printStackTrace()
+      })
     }
   }
 
@@ -112,7 +143,8 @@ class WindowComputer(sqlConfig: FeSQLConfig,
       max_size = config.rowPreceding.intValue() + 1
     }
     window = new WindowInterface(
-      config.instanceNotInWindow, config.windowFrameTypeName,
+      config.instanceNotInWindow, config.excludeCurrentTime,
+      config.windowFrameTypeName,
       config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
   }
 

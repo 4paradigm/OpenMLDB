@@ -126,8 +126,12 @@ int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t field_offset,
     } else {
         if (next_str_offset < str_offset) {
             LOG(WARNING) << "fail to get str field, next_str_offset < "
-                            "str_offset, pls check row encode. next_str_offset "
-                         << next_str_offset << "str_offset " << str_offset;
+                            "str_offset, pls check row encode. next_str_offset="
+                         << next_str_offset << ", str_offset=" << str_offset
+                         << ", field_offset=" << field_offset
+                         << ", next_str_field_offset=" << next_str_field_offset
+                         << ", addr_space=" << addr_space
+                         << ", buf=" << (uint64_t)row;
             *size = 0;
             return -3;
         }

@@ -534,24 +534,68 @@ const std::string FrameNode::GetExprString() const {
     }
     return str;
 }
-bool FrameNode::CanMergeWith(const FrameNode *that) const {
+bool FrameNode::CanMergeWith(const FrameNode *that,
+                             const bool enbale_merge_with_maxsize) const {
     if (Equals(that)) {
         return true;
     }
 
+    // Frame can't merge with null frame
     if (nullptr == that) {
         return false;
     }
-    if ((this->frame_type_ == kFrameRowsRange ||
-         this->frame_type() == kFrameRowsMergeRowsRange) &&
-        (that->frame_type_ == kFrameRowsRange ||
-         this->frame_type() == kFrameRowsMergeRowsRange) &&
-        this->frame_maxsize_ != that->frame_maxsize_) {
+
+    // RowsRange-like frames with frame_maxsize can't be merged when
+    if (this->IsRowsRangeLikeFrame() && that->IsRowsRangeLikeFrame()) {
+        // frame_maxsize_ > 0 and enbale_merge_with_maxsize=false
+        if (!enbale_merge_with_maxsize &&
+            (this->frame_maxsize() > 0 || that->frame_maxsize_ > 0)) {
+            return false;
+        }
+        // with different frame_maxsize can't be merged
+        if (this->frame_maxsize_ != that->frame_maxsize_) {
+            return false;
+        }
+    }
+
+    // RowsRange-like pure history frames Can't be Merged with Rows Frame
+    if (this->IsRowsRangeLikeFrame() && this->IsPureHistoryFrame() &&
+        kFrameRows == that->frame_type_) {
+        return false;
+    }
+    if (that->IsRowsRangeLikeFrame() && that->IsPureHistoryFrame() &&
+        kFrameRows == this->frame_type_) {
         return false;
     }
 
-    if (this->frame_type_ == that->frame_type_) {
-        return true;
+    // Handle RowsRange-like frame with MAXSIZE  and RowsFrame
+    if (this->IsRowsRangeLikeMaxSizeFrame() &&
+        kFrameRows == that->frame_type_) {
+        // Pure History RowRangeLike Frame with maxsize can't be merged with
+        // Rows frame
+        if (this->IsPureHistoryFrame()) {
+            return false;
+        }
+
+        // RowRangeLike Frame with maxsize can't be merged with
+        // Rows frame when maxsize <= row_preceding
+        if (this->frame_maxsize() < that->GetHistoryRowsStartPreceding()) {
+            return false;
+        }
+    }
+    if (that->IsRowsRangeLikeMaxSizeFrame() &&
+        kFrameRows == this->frame_type_) {
+        // Pure History RowRangeLike Frame with maxsize can't be merged with
+        // Rows frame
+        if (that->IsPureHistoryFrame()) {
+            return false;
+        }
+
+        // RowRangeLike Frame with maxsize can't be merged with
+        // Rows frame when maxsize <= row_preceding
+        if (that->frame_maxsize() < this->GetHistoryRowsStartPreceding()) {
+            return false;
+        }
     }
 
     if (this->frame_type_ == kFrameRange || that->frame_type_ == kFrameRange) {
@@ -716,6 +760,10 @@ void WindowDefNode::Print(std::ostream &output,
         PrintSQLVector(output, tab, union_tables_->GetList(), "union_tables",
                        false);
     }
+    if (exclude_current_time_) {
+        output << "\n";
+        PrintValue(output, tab, "TRUE", "exclude_current_time", false);
+    }
     if (instance_not_in_window_) {
         output << "\n";
         PrintValue(output, tab, "TRUE", "instance_not_in_window", false);
@@ -730,19 +778,22 @@ void WindowDefNode::Print(std::ostream &output,
     PrintSQLNode(output, tab, frame_ptr_, "frame", true);
 }
 
-bool WindowDefNode::CanMergeWith(const WindowDefNode *that) const {
-    if (Equals(that)) {
-        return true;
-    }
+bool WindowDefNode::CanMergeWith(
+    const WindowDefNode *that, const bool enable_window_maxsize_merged) const {
     if (nullptr == that) {
         return false;
     }
+    if (Equals(that)) {
+        return true;
+    }
     return SQLListEquals(this->union_tables_, that->union_tables_) &&
+           this->exclude_current_time_ == that->exclude_current_time_ &&
            this->instance_not_in_window_ == that->instance_not_in_window_ &&
            ExprEquals(this->orders_, that->orders_) &&
            ExprEquals(this->partitions_, that->partitions_) &&
            nullptr != frame_ptr_ &&
-           this->frame_ptr_->CanMergeWith(that->frame_ptr_);
+           this->frame_ptr_->CanMergeWith(that->frame_ptr_,
+                                          enable_window_maxsize_merged);
 }
 bool WindowDefNode::Equals(const SQLNode *node) const {
     if (!SQLNode::Equals(node)) {
@@ -750,6 +801,7 @@ bool WindowDefNode::Equals(const SQLNode *node) const {
     }
     const WindowDefNode *that = dynamic_cast<const WindowDefNode *>(node);
     return this->window_name_ == that->window_name_ &&
+           this->exclude_current_time_ == that->exclude_current_time_ &&
            this->instance_not_in_window_ == that->instance_not_in_window_ &&
            SQLListEquals(this->union_tables_, that->union_tables_) &&
            ExprEquals(this->orders_, that->orders_) &&

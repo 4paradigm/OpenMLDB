@@ -100,6 +100,20 @@ static void BM_AllocFromByteMemPool1000(benchmark::State& state) {  // NOLINT
 static void BM_AllocFromNewFree1000(benchmark::State& state) {  // NOLINT
     NewFree1000(&state, BENCHMARK, state.range(0));
 }
+static void BM_HistoryWindowBuffer(benchmark::State& state) {  // NOLINT
+    HistoryWindowBuffer(&state, BENCHMARK, state.range(0));
+}
+static void BM_HistoryWindowBufferExcludeCurrentTime(
+    benchmark::State& state) {  // NOLINT
+    HistoryWindowBufferExcludeCurrentTime(&state, BENCHMARK, state.range(0));
+}
+static void BM_RequestUnionWindow(benchmark::State& state) {  // NOLINT
+    RequestUnionWindow(&state, BENCHMARK, state.range(0));
+}
+static void BM_RequestUnionWindowExcludeCurrentTime(
+    benchmark::State& state) {  // NOLINT
+    RequestUnionWindowExcludeCurrentTime(&state, BENCHMARK, state.range(0));
+}
 BENCHMARK(BM_TabletFullIterate)
     ->Args({10})
     ->Args({100})
@@ -195,6 +209,36 @@ BENCHMARK(BM_TimestampFormat);
 BENCHMARK(BM_TimestampToString);
 BENCHMARK(BM_DateFormat);
 BENCHMARK(BM_DateToString);
+
+BENCHMARK(BM_HistoryWindowBuffer)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000})
+    ->Args({100000})
+    ->Args({1000000})
+    ->Args({100000000});
+
+BENCHMARK(BM_HistoryWindowBufferExcludeCurrentTime)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000})
+    ->Args({100000})
+    ->Args({1000000})
+    ->Args({10000000});
+
+BENCHMARK(BM_RequestUnionWindow)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
+
+BENCHMARK(BM_RequestUnionWindowExcludeCurrentTime)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
 }  // namespace bm
 }  // namespace fesql
 

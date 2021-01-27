@@ -13,7 +13,7 @@ class TestWindowComputerWithSampleSupport extends SparkTestSuite {
     val config = new FeSQLConfig
     val samplePath = "src/test/resources/fesql_windows/"
     executeSpark(samplePath)
-    val sampleExecutor = WindowSampleSupport.recover(config, samplePath + "/w/0")
+    val sampleExecutor = WindowSampleSupport.recover(config, samplePath + "/w/0", 0)
 
     // run single compute
     val nativeOutput = sampleExecutor.run()
@@ -55,10 +55,15 @@ class TestWindowComputerWithSampleSupport extends SparkTestSuite {
     config.groupPartitions = 1
     config.windowSampleMinSize = 3
     config.windowSampleOutputPath = samplePath
+    config.windowSampleFilter = "id=0, time=3"
+    config.windowSampleBeforeCompute = false
+    config.print = true
+    config.printRowContent = true
+    config.printSampleInterval = 1
 
     val planner = new SparkPlanner(sess, config)
     val res = planner.plan(sql, Map("t" -> table))
-    val output = res.getDf(sess)
+    val output = res.getDf()
     output.show()
   }
 }

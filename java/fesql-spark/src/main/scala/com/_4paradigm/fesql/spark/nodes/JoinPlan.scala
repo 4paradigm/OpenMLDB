@@ -6,10 +6,10 @@ import com._4paradigm.fesql.common.{FesqlException, JITManager, SerializableByte
 import com._4paradigm.fesql.node.{ExprListNode, JoinType}
 import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.utils.SparkColumnUtil.getColumnFromIndex
-import com._4paradigm.fesql.spark.utils.{FesqlUtil, SparkColumnUtil, SparkRowUtil}
+import com._4paradigm.fesql.spark.utils.{FesqlUtil, SparkColumnUtil, SparkRowUtil, SparkUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalJoinNode}
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
-import org.apache.spark.sql.types.{LongType, StructType}
+import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Column, DataFrame, Row, functions}
 import org.slf4j.LoggerFactory
 
@@ -22,47 +22,38 @@ object JoinPlan {
 
   def gen(ctx: PlanContext, node: PhysicalJoinNode, left: SparkInstance, right: SparkInstance): SparkInstance = {
     val joinType = node.join().join_type()
-    if (joinType != JoinType.kJoinTypeLeft && joinType != JoinType.kJoinTypeLast) {
+    if (joinType != JoinType.kJoinTypeLeft && joinType != JoinType.kJoinTypeLast && joinType != JoinType.kJoinTypeConcat) {
       throw new FesqlException(s"Join type $joinType not supported")
     }
 
-    val sess = ctx.getSparkSession
+    // Handle concat join
+    if (joinType == JoinType.kJoinTypeConcat) {
+      return ConcatJoinPlan.gen(ctx, node, left, right)
+    }
 
-    val rightDf = right.getDf(sess)
+    val spark = ctx.getSparkSession
+
+    // TODO: Do not handle dataframe with index because ConcatJoin will not include LastJoin or LeftJoin node
+    val rightDf = right.getDf()
 
     val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
 
     val hasOrderby = (node.join.right_sort != null) && (node.join.right_sort.orders != null) && (node.join.right_sort.orders.order_by != null)
 
     // Check if we can use native last join
-    val supportNativeLastJoin = if ((joinType != JoinType.kJoinTypeLast) || hasOrderby) {
-      false
-    } else {
-      try {
-        org.apache.spark.sql.catalyst.plans.JoinType("last")
-        logger.info("Support native last join")
-        true
-      } catch {
-        case _: IllegalArgumentException => {
-          logger.info("Do not support native last join, use original last join")
-          false
-        }
-      }
-    }
+    val supportNativeLastJoin = SparkUtil.supportNativeLastJoin(joinType, hasOrderby)
 
     val indexName = "__JOIN_INDEX__-" + System.currentTimeMillis()
+
     val leftDf: DataFrame = {
       if (joinType == JoinType.kJoinTypeLeft) {
-        left.getDf(sess)
+        left.getDf()
       } else {
         if (supportNativeLastJoin) {
-          left.getDf(sess)
+          left.getDf()
         } else {
           // Add index column for original last join, not used in native last join
-          val indexedRDD = left.getRDD.zipWithIndex().map {
-            case (row, id) => Row.fromSeq(row.toSeq :+ id)
-          }
-          sess.createDataFrame(indexedRDD, left.getSchema.add(indexName, LongType))
+          SparkUtil.addIndexColumn(spark, left.getDf(), indexName)
         }
       }
     }
@@ -102,7 +93,7 @@ object JoinPlan {
         moduleTag = ctx.getTag,
         moduleBroadcast = ctx.getSerializableModuleBuffer
       )
-      sess.udf.register(regName, conditionUDF)
+      spark.udf.register(regName, conditionUDF)
 
       // Handle the duplicated column names to get Spark Column by index
       val allColumns = new mutable.ArrayBuffer[Column]()
@@ -132,7 +123,8 @@ object JoinPlan {
       if (hasOrderby) {
         val orderbyExprListNode = node.join.right_sort.orders.order_by
         val planLeftSize = node.GetProducer(0).GetOutputSchema().size()
-        val timeColIdx = SparkColumnUtil.resolveColumnIndex(orderbyExprListNode.GetChild(0), node) - planLeftSize
+        // Get the time column index from right table
+        val timeColIdx = SparkColumnUtil.resolveColumnIndex(orderbyExprListNode.GetChild(0), node.GetProducer(1))
         assert(timeColIdx >= 0)
 
         val timeIdxInJoined = timeColIdx + leftDf.schema.size
@@ -140,7 +132,7 @@ object JoinPlan {
 
         val isAsc = node.join.right_sort.is_asc
 
-        import sess.implicits._
+        import spark.implicits._
 
         val distinct = joined
           .groupByKey {
@@ -181,7 +173,7 @@ object JoinPlan {
       null
     }
 
-    SparkInstance.fromDataFrame(result)
+    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), result)
   }
 
 
