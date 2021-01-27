@@ -108,7 +108,7 @@ object SparkInstance {
         case NodeIndexType.InternalConcatJoinNode => SparkInstance.fromDfWithIndex(sparkDf)
         case NodeIndexType.InternalComputeNode => SparkInstance.fromDfWithIndex(sparkDf)
         case NodeIndexType.DestNode => {
-          val outputDfWithIndex = SparkUtil.addIndexColumn(ctx.getSparkSession, sparkDf, ctx.getIndexInfo(nodeId).indexColumnName)
+          val outputDfWithIndex = SparkUtil.addIndexColumn(ctx.getSparkSession, sparkDf, ctx.getIndexInfo(nodeId).indexColumnName, ctx.getConf.addIndexColumnMethod)
           SparkInstance.fromDfAndIndexedDf(sparkDf, outputDfWithIndex)
         }
         case _ => throw new FesqlException("Handle unsupported node index type: %s".format(nodeIndexType))

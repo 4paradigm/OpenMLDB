@@ -83,6 +83,9 @@ class FeSQLConfig extends Serializable {
   @ConfigOption(name="fesql.window.sampleLimit", doc="Maximum sample to dump for each partition")
   var windowSampleLimit = 10
 
+  @ConfigOption(name="fesql.addIndexColumn.method", doc="The method to add index column(zipWithUniqueId, zipWithIndex, monotonicallyIncreasingId")
+  var addIndexColumnMethod = "zipWithUniqueId"
+
 }
 
 
