@@ -41,13 +41,14 @@ std::string SQLCaseTest::FindRtidbDirPath(const std::string &dirname) {
 std::vector<fesql::sqlcase::SQLCase> SQLCaseTest::InitCases(const std::string &yaml_path) {
     std::vector<fesql::sqlcase::SQLCase> cases;
     InitCases(FindRtidbDirPath("rtidb") + "/fesql/", yaml_path, cases);
-    std::vector<fesql::sqlcase::SQLCase> level0_cases;
+    std::vector<fesql::sqlcase::SQLCase> level_cases;
+
     for (const auto& sql_case : cases) {
-        if (sql_case.level() == 0) {
-            level0_cases.push_back(sql_case);
+        if (sql_case.level() <= fesql::sqlcase::SQLCase::FESQL_LEVEL()) {
+            level_cases.push_back(sql_case);
         }
     }
-    return level0_cases;
+    return level_cases;
 }
 void SQLCaseTest::InitCases(const std::string &dir_path, const std::string &yaml_path,
                             std::vector<fesql::sqlcase::SQLCase> &cases) {  // NOLINT
@@ -368,7 +369,7 @@ void SQLCaseTest::CheckRow(fesql::codec::RowView &row_view,  // NOLINT
                 if (IsNaN(exp)) {
                     ASSERT_TRUE(IsNaN(act)) << " At " << i;
                 } else {
-                    ASSERT_FLOAT_EQ(act, exp) << " At " << i;
+                    ASSERT_DOUBLE_EQ(act, exp) << " At " << i;
                 }
 
                 break;
@@ -489,7 +490,7 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::vector<f
                     if (IsNaN(exp)) {
                         ASSERT_TRUE(IsNaN(act)) << " At " << i;
                     } else {
-                        ASSERT_FLOAT_EQ(act, exp) << " At " << i;
+                        ASSERT_DOUBLE_EQ(act, exp) << " At " << i;
                     }
                     break;
                 }

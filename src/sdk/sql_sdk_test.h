@@ -601,7 +601,6 @@ void SQLSDKQueryTest::BatchRequestExecuteSQLWithCommonColumnIndices(fesql::sqlca
         ASSERT_TRUE(sql_case.ExtractRows(batch_request_table.columns(), batch_request.rows_, request_rows));
 
     } else {
-        auto& batch_request = sql_case.batch_request();
         ASSERT_TRUE(sql_case.ExtractInputTableDef(sql_case.inputs_[0], batch_request_table));
         std::vector<fesql::codec::Row> rows;
         ASSERT_TRUE(sql_case.ExtractInputData(sql_case.inputs_[0], rows));
@@ -717,7 +716,6 @@ void SQLSDKQueryTest::RunRequestProcedureModeSDK(fesql::sqlcase::SQLCase& sql_ca
     fesql::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router);
-    bool has_batch_request = !sql_case.batch_request().columns_.empty();
     InsertTables(sql_case, router, kNotInsertFirstInput);
     CreateProcedure(sql_case, router);
     RequestExecuteSQL(sql_case, router, true, is_asyn);
