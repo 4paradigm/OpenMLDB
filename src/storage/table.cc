@@ -5,11 +5,9 @@
 
 #include "storage/table.h"
 #include <algorithm>
-#include <set>
 #include <utility>
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "codec/schema_codec.h"
-
 
 namespace rtidb {
 namespace storage {
@@ -43,12 +41,16 @@ Table::Table(::rtidb::common::StorageMode storage_mode, const std::string &name,
     last_make_snapshot_time_ = 0;
     ::rtidb::storage::TTLSt ttl_st(ttl_desc->abs_ttl(), ttl_desc->lat_ttl(),
             ::rtidb::storage::TTLSt::ConvertTTLType(ttl_desc->ttl_type()));
+    std::map<uint32_t, std::string> idx_map;
     for (const auto &kv : mapping) {
-        std::vector<ColumnDef> col = { ColumnDef(kv.first, kv.second, ::rtidb::type::DataType::kString, true) };
-        auto index = std::make_shared<IndexDef>(kv.first, kv.second, IndexStatus::kReady,
-                ::rtidb::type::kTimeSerise, col);
-        index->SetTTL(ttl_st);
-        table_index_.AddIndex(index);
+        idx_map.emplace(kv.second, kv.first);
+    }
+    for (const auto& kv : idx_map) {
+        ::rtidb::common::ColumnDesc* column_desc = table_meta_.add_column_desc();
+        column_desc->set_name(kv.second);
+        column_desc->set_type("string");
+        column_desc->set_type("string");
+        column_desc->set_add_ts_idx(true);
     }
 }
 
@@ -81,161 +83,9 @@ void Table::SetTableMeta(::rtidb::api::TableMeta& table_meta) { // NOLINT
 }
 
 int Table::InitColumnDesc() {
-    uint64_t abs_ttl = 0;
-    uint64_t lat_ttl = 0;
-    if (table_meta_.ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime) {
-        abs_ttl = table_meta_.ttl() * 60 * 1000;
-    } else {
-        lat_ttl = table_meta_.ttl();
-    }
-    TTLSt table_ttl(abs_ttl, lat_ttl, TTLSt::ConvertTTLType(table_meta_.ttl_type()));
-    if (table_meta_.column_desc_size() > 0) {
-        std::set<std::string> ts_col_set;
-        int set_ts_cnt = 0;
-        for (const auto &column_key : table_meta_.column_key()) {
-            if (column_key.ts_name_size() > 0) {
-                set_ts_cnt++;
-            }
-            for (int pos = 0; pos < column_key.ts_name_size(); pos ++) {
-                ts_col_set.insert(column_key.ts_name(pos));
-            }
-        }
-        if (set_ts_cnt > 0 && set_ts_cnt != table_meta_.column_key_size()) {
-            PDLOG(WARNING, "must set ts col in all column key, tid %u", id_);
-            return -1;
-        }
-        uint32_t key_idx = 0;
-        uint32_t ts_idx = 0;
-        std::map<std::string, std::shared_ptr<ColumnDef>> col_map;
-        std::map<std::string, TTLSt> ts_ttl;
-        for (int idx = 0; idx < table_meta_.column_desc_size(); idx++) {
-            const auto& column_desc = table_meta_.column_desc(idx);
-            std::shared_ptr<ColumnDef> col;
-            ::rtidb::type::DataType type = ::rtidb::codec::SchemaCodec::ConvertStrType(column_desc.type());
-            const std::string& name = column_desc.name();
-            col = std::make_shared<ColumnDef>(name, key_idx, type, true);
-            col_map.emplace(name, col);
-            if (column_desc.add_ts_idx()) {
-                std::vector<ColumnDef> col_vec = { *col };
-                auto index = std::make_shared<IndexDef>(name, key_idx, IndexStatus::kReady,
-                        ::rtidb::type::IndexType::kTimeSerise, col_vec);
-                index->SetTTL(table_ttl);
-                if (table_index_.AddIndex(index) < 0) {
-                    return -1;
-                }
-                key_idx++;
-            } else if (column_desc.is_ts_col()) {
-                if (ts_col_set.find(name) == ts_col_set.end()) {
-                    PDLOG(WARNING, "ts col %s has not set in columnkey, tid %u", name.c_str(), id_);
-                    return -1;
-                }
-                if (!ColumnDef::CheckTsType(type)) {
-                    PDLOG(WARNING, "type mismatch, col %s is can not set ts col, tid %u", name.c_str(), id_);
-                    return -1;
-                }
-                col->SetTsIdx(ts_idx);
-                ts_mapping_.insert(std::make_pair(name, ts_idx));
-                ts_idx++;
-                if (column_desc.has_abs_ttl() || column_desc.has_lat_ttl()) {
-                    abs_ttl = column_desc.abs_ttl() * 60 * 1000;
-                    lat_ttl = column_desc.lat_ttl();
-                } else if (column_desc.has_ttl()) {
-                    if (table_meta_.ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime) {
-                        abs_ttl = column_desc.ttl() * 60 * 1000;
-                        lat_ttl = 0;
-                    } else {
-                        abs_ttl = 0;
-                        lat_ttl = column_desc.ttl();
-                    }
-                }
-                ts_ttl.emplace(column_desc.name(),
-                        TTLSt(abs_ttl, lat_ttl, TTLSt::ConvertTTLType(table_meta_.ttl_type())));
-            } else if (ts_col_set.find(name) != ts_col_set.end()) {
-                if (!ColumnDef::CheckTsType(type)) {
-                    PDLOG(WARNING, "type mismatch, col %s is can not set ts col, tid %u", name.c_str(), id_);
-                    return -1;
-                }
-                col->SetTsIdx(ts_idx);
-                ts_mapping_.insert(std::make_pair(column_desc.name(), ts_idx));
-                ts_idx++;
-            }
-        }
-        if (ts_idx > UINT8_MAX) {
-            PDLOG(WARNING, "failed create table because ts column more than %d, tid %u pid %u",
-                            UINT8_MAX + 1, id_, pid_);
-        }
-        if (ts_mapping_.size() > 1) {
-            table_index_.ReSet();
-        }
-        if (table_meta_.column_key_size() > 0) {
-            table_index_.ReSet();
-            key_idx = 0;
-            for (const auto &column_key : table_meta_.column_key()) {
-                std::string name = column_key.index_name();
-                ::rtidb::storage::IndexStatus status;
-                if (column_key.flag()) {
-                    status = ::rtidb::storage::IndexStatus::kDeleted;
-                } else {
-                    status = ::rtidb::storage::IndexStatus::kReady;
-                }
-                std::vector<ColumnDef> col_vec;
-                for (const auto& cur_col_name : column_key.col_name()) {
-                    col_vec.push_back(*(col_map[cur_col_name]));
-                }
-                int ts_name_pos = -1;
-                do {
-                    auto index = std::make_shared<IndexDef>(column_key.index_name(), key_idx, status,
-                            ::rtidb::type::IndexType::kTimeSerise, col_vec);
-                    index->SetTTL(table_ttl);
-                    if (column_key.ts_name_size() > 0) {
-                        ts_name_pos++;
-                        const std::string& ts_name = column_key.ts_name(ts_name_pos);
-                        index->SetTsColumn(col_map[ts_name]);
-                        if (ts_ttl.find(ts_name) != ts_ttl.end()) {
-                            index->SetTTL(ts_ttl[ts_name]);
-                        }
-                    }
-                    if (column_key.has_ttl()) {
-                        const auto& proto_ttl = column_key.ttl();
-                        index->SetTTL(::rtidb::storage::TTLSt(proto_ttl));
-                    }
-                    if (table_index_.AddIndex(index) < 0) {
-                        return -1;
-                    }
-                    key_idx++;
-                } while (ts_name_pos > 0 && ts_name_pos < column_key.ts_name_size());
-            }
-        } else {
-            if (!ts_mapping_.empty()) {
-                auto indexs = table_index_.GetAllIndex();
-                auto ts_col = col_map[ts_mapping_.begin()->first];
-                for (auto &index_def : indexs) {
-                    index_def->SetTsColumn(ts_col);
-                }
-            }
-        }
-
-    } else {
-        for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
-            auto index = std::make_shared<IndexDef>(table_meta_.dimensions(i), (uint32_t)i);
-            index->SetTTL(table_ttl);
-            if (table_index_.AddIndex(index) < 0) {
-                return -1;
-            }
-            PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u",
-                  table_meta_.dimensions(i).c_str(), i,
-                  table_meta_.name().c_str(), id_, pid_);
-        }
-    }
-    // add default dimension
-    auto indexs = table_index_.GetAllIndex();
-    if (indexs.empty()) {
-        auto index = std::make_shared<IndexDef>("idx0", 0);
-        index->SetTTL(table_ttl);
-        if (table_index_.AddIndex(index) < 0) {
-            return -1;
-        }
-        PDLOG(INFO, "no index specified with default. tid %u, pid %u", id_, pid_);
+    ts_mapping_.clear();
+    if (table_index_.ParseFromMeta(table_meta_, &ts_mapping_) < 0) {
+        return -1;
     }
     if (table_meta_.column_key_size() == 0) {
         for (const auto &column_desc : table_meta_.column_desc()) {

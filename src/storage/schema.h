@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -254,29 +255,34 @@ bool ColumnDefSortFunc(const ColumnDef& cd_a, const ColumnDef& cd_b);
 class TableIndex {
  public:
     TableIndex();
+    int ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::map<std::string, uint8_t>* ts_mapping);
     void ReSet();
     std::shared_ptr<IndexDef> GetIndex(uint32_t idx);
     std::shared_ptr<IndexDef> GetIndex(const std::string& name);
     std::shared_ptr<IndexDef> GetIndex(const std::string& name, uint32_t ts_idx);
     std::shared_ptr<IndexDef> GetIndex(uint32_t idx, uint32_t ts_idx);
-    int32_t GetIndexCnt(uint32_t idx) const;
     int AddIndex(std::shared_ptr<IndexDef> index_def);
     std::vector<std::shared_ptr<IndexDef>> GetAllIndex();
     std::shared_ptr<std::vector<std::shared_ptr<InnerIndexSt>>> GetAllInnerIndex() const;
     std::shared_ptr<InnerIndexSt> GetInnerIndex(uint32_t idx) const;
-    inline uint32_t Size() const { return std::atomic_load_explicit(&indexs_, std::memory_order_relaxed)->size(); }
+    uint32_t Size() const;
     bool HasAutoGen();
     std::shared_ptr<IndexDef> GetPkIndex();
     const std::shared_ptr<IndexDef> GetIndexByCombineStr(const std::string& combine_str);
     bool IsColName(const std::string& name);
     bool IsUniqueColName(const std::string& name);
     int32_t GetInnerIndexPos(uint32_t column_key_pos) const;
+    void AddInnerIndex(const std::shared_ptr<InnerIndexSt>& inner_index);
+
+ private:
+    int AddMultiTsIndex(uint32_t pos, const std::shared_ptr<IndexDef>& index);
+    void FillIndexVal(const ::rtidb::api::TableMeta& table_meta, uint32_t ts_num);
 
  private:
     std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
     std::shared_ptr<std::vector<std::vector<std::shared_ptr<IndexDef>>>> multi_ts_indexs_;
     std::shared_ptr<std::vector<std::shared_ptr<InnerIndexSt>>> inner_indexs_;
-    std::vector<std::atomic<int32_t>> column_key_2_inner_index_;
+    std::vector<std::shared_ptr<std::atomic<int32_t>>> column_key_2_inner_index_;
     std::shared_ptr<IndexDef> pk_index_;
     std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<IndexDef>>> combine_col_name_map_;
     std::shared_ptr<std::vector<std::string>> col_name_vec_;
