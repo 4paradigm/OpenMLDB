@@ -190,6 +190,20 @@ class SQLCase {
         }
         return false;
     }
+    static int FESQL_LEVEL() {
+        const char* env_name = "FESQL_LEVEL";
+        char* value = getenv(env_name);
+        if (value != nullptr) {
+            try {
+                return boost::lexical_cast<int32_t>(value);
+            } catch (const std::exception& ex) {
+                LOG(WARNING) << "Fail to parser fesql level: " << ex.what();
+                return 5;
+            }
+        } else {
+            return 5;
+        }
+    }
     static bool IS_DEBUG() {
         const char* env_name = "FESQL_DEV";
         char* value = getenv(env_name);
