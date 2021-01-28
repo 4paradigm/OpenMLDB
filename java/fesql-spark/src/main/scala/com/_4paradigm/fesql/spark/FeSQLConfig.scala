@@ -69,7 +69,7 @@ class FeSQLConfig extends Serializable {
   var windowSampleOutputPath: String = _
 
   @ConfigOption(name="fesql.window.parallelization", doc="Enable window compute parallelization optimization")
-  var enableWindowParallelization: Boolean = false
+  var enableWindowParallelization: Boolean = true
 
   @ConfigOption(name="fesql.window.sampleFilter", doc="""
       | Filter condition for window sample, currently only support simple equalities
