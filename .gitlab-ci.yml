@@ -208,7 +208,7 @@ fesql_sdk_c++_level_0:
     - source /root/.bashrc && sh tools/install_fesql.sh
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && bash steps/compile.sh
+    - source /root/.bashrc && bash steps/fesql_c_test_compile.sh
     - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_c_ut.sh 0
   artifacts:
     reports:
@@ -256,7 +256,7 @@ fesql_sdk_c++_level_1+:
     - source /root/.bashrc && sh tools/install_fesql.sh
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && bash steps/compile.sh
+    - source /root/.bashrc && bash steps/fesql_c_test_compile.sh
     - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_c_ut.sh "1,2,3,4,5"
   artifacts:
     reports:
