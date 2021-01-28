@@ -45,7 +45,7 @@ std::vector<fesql::sqlcase::SQLCase> SQLCaseTest::InitCases(const std::string &y
 
     int skip_case_cnt = 0;
     for (const auto& sql_case : cases) {
-        if (sql_case.level() <= fesql::sqlcase::SQLCase::FESQL_LEVEL()) {
+        if (sql_case.level() == 0) {
             level_cases.push_back(sql_case);
         } else {
             skip_case_cnt++;
