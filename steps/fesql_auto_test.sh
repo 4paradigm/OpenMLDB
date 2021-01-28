@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# compile.sh
+
+$CASE_LEVEL=$1
+if [[ "${$CASE_LEVEL}" == "" ]]; then
+        $CASE_LEVEL="0"
+fi
+echo "fesql auto test : case_level ${CASE_LEVEL}"
 ROOT_DIR=`pwd`
 ulimit -c unlimited
 
@@ -27,4 +34,4 @@ case_xml=test_v1.xml
 cd ${ROOT_DIR}/src/sdk/java/
 mvn install -Dmaven.test.skip=true
 cd ${ROOT_DIR}/src/sdk/java/fesql-auto-test-java
-mvn test -DsuiteXmlFile=test_suite/${case_xml}
+mvn test -DsuiteXmlFile=test_suite/${case_xml} -DcaseLevel=$CASE_LEVEL

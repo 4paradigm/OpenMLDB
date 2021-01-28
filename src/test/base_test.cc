@@ -43,11 +43,15 @@ std::vector<fesql::sqlcase::SQLCase> SQLCaseTest::InitCases(const std::string &y
     InitCases(FindRtidbDirPath("rtidb") + "/fesql/", yaml_path, cases);
     std::vector<fesql::sqlcase::SQLCase> level_cases;
 
+    int skip_case_cnt = 0;
     for (const auto& sql_case : cases) {
         if (sql_case.level() <= fesql::sqlcase::SQLCase::FESQL_LEVEL()) {
             level_cases.push_back(sql_case);
+        } else {
+            skip_case_cnt++;
         }
     }
+    LOG(WARNING) << "InitCases done: FESQL_LEVEL skip cases cnt: " << skip_case_cnt;
     return level_cases;
 }
 void SQLCaseTest::InitCases(const std::string &dir_path, const std::string &yaml_path,
