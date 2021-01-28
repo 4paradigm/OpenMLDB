@@ -27,12 +27,20 @@ object ConcatJoinPlan {
     val rightDf: DataFrame = right.getDfWithIndex
 
     // Use left join or native last join and check if we can use native last join or not
-    val resultDf = if (ctx.getConf.enableConcatJoinWithLastJoin && SparkUtil.supportNativeLastJoin(joinType, false)) {
-      logger.info("Enable concat join with last join and support native last join")
-      leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "last")
-    } else {
-      // Should use inner join instead of left join so that Spark weill merge all join into single stage
-      leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "inner")
+    val concatJoinJoinType = ctx.getConf.concatJoinJoinType
+    logger.info("Concat join may use join type: " + concatJoinJoinType)
+    val resultDf = concatJoinJoinType match {
+      case "inner"  => leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "inner")
+      case "left" | "left_outer" => leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "left")
+      case "last" => {
+        if (SparkUtil.supportNativeLastJoin(JoinType.kJoinTypeConcat, false)) {
+          leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "last")
+        } else {
+          logger.info("Unsupported native last join, fallback to left join")
+          leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "left")
+        }
+      }
+      case _ => throw new FesqlException("Unsupported concat join join type: " + joinType)
     }
 
     val nodeIndexType = ctx.getIndexInfo(node.GetNodeId()).nodeIndexType
