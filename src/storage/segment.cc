@@ -428,7 +428,7 @@ void Segment::ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt,
             if (ttl_st.abs_ttl == 0 && ttl_st.lat_ttl == 0) {
                 return;
             }
-            uint64_t expire_time = cur_time - ttl_offset_ - ttl_st.abs_ttl;
+            uint64_t expire_time = ttl_st.abs_ttl == 0 ? 0 : cur_time - ttl_offset_ - ttl_st.abs_ttl;
             Gc4TTLOrHead(expire_time, ttl_st.lat_ttl, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             break;
         }

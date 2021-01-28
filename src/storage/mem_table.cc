@@ -36,7 +36,7 @@ MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t 
             ::rtidb::api::CompressType::kNoCompress),
       seg_cnt_(seg_cnt),
       segments_(MAX_INDEX_NUM, NULL),
-      enable_gc_(false),
+      enable_gc_(true),
       record_cnt_(0),
       segment_released_(false),
       record_byte_size_(0) {}
@@ -47,7 +47,7 @@ MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta)
             ::rtidb::api::CompressType::kNoCompress),
       segments_(MAX_INDEX_NUM, NULL) {
     seg_cnt_ = 8;
-    enable_gc_ = false;
+    enable_gc_ = true;
     record_cnt_ = 0;
     segment_released_ = false;
     record_byte_size_ = 0;
@@ -335,6 +335,7 @@ void MemTable::SchedGc() {
                     }
                     delete[] segments_[i];
                     segments_[i] = NULL;
+                    deleted_num++;
                 }
                 cur_index->SetStatus(IndexStatus::kDeleted);
             } else if (cur_index->GetStatus() == IndexStatus::kDeleted) {
@@ -417,12 +418,18 @@ bool MemTable::IsExpire(const LogEntry& entry) {
         ts_dimemsions_map.insert(std::make_pair(iter->idx(), iter->ts()));
     }
     std::map<int32_t, std::string> inner_index_key_map;
-    for (auto iter = entry.dimensions().begin(); iter != entry.dimensions().end(); iter++) {
-        int32_t inner_pos = table_index_.GetInnerIndexPos(iter->idx());
-        if (inner_pos < 0) {
-            continue;
+    if (entry.dimensions_size() > 0) {
+        for (auto iter = entry.dimensions().begin(); iter != entry.dimensions().end(); iter++) {
+            int32_t inner_pos = table_index_.GetInnerIndexPos(iter->idx());
+            if (inner_pos >= 0) {
+                inner_index_key_map.emplace(inner_pos, iter->key());
+            }
         }
-        inner_index_key_map.emplace(inner_pos, iter->key());
+    } else {
+        int32_t inner_pos = table_index_.GetInnerIndexPos(0);
+        if (inner_pos >= 0) {
+            inner_index_key_map.emplace(inner_pos, entry.pk());
+        }
     }
     for (const auto& kv : inner_index_key_map) {
         auto inner_index = table_index_.GetInnerIndex(kv.first);
@@ -447,8 +454,8 @@ bool MemTable::IsExpire(const LogEntry& entry) {
                 }
                 ts = iter->second;
             }
-            uint32_t index_id = index_def->GetId();
             bool is_expire = false;
+            uint32_t index_id = index_def->GetId();
             switch (ttl_type) {
                 case ::rtidb::storage::TTLType::kLatestTime:
                     is_expire = CheckLatest(index_id, ts_idx, kv.second, ts);

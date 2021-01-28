@@ -203,14 +203,12 @@ int TableIndex::ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::ma
                 ts_idx++;
                 TTLSt cur_ttl = table_ttl;
                 if (column_desc.has_abs_ttl() || column_desc.has_lat_ttl()) {
-                    cur_ttl = TTLSt(column_desc.abs_ttl() * 60 * 1000, column_desc.lat_ttl(),
-                            TTLSt::ConvertTTLType(table_meta.ttl_type()));
+                    cur_ttl = TTLSt(column_desc.abs_ttl() * 60 * 1000, column_desc.lat_ttl(), table_ttl.ttl_type);
                 } else if (column_desc.has_ttl()) {
                     if (table_meta.ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime) {
-                        cur_ttl = TTLSt(column_desc.ttl() * 60 * 1000, 0,
-                                TTLSt::ConvertTTLType(table_meta.ttl_type()));
+                        cur_ttl = TTLSt(column_desc.ttl() * 60 * 1000, 0, table_ttl.ttl_type);
                     } else {
-                        cur_ttl = TTLSt(0, column_desc.ttl(), TTLSt::ConvertTTLType(table_meta.ttl_type()));
+                        cur_ttl = TTLSt(0, column_desc.ttl(), table_ttl.ttl_type);
                     }
                 }
                 ts_ttl.emplace(column_desc.name(), cur_ttl);
@@ -244,34 +242,34 @@ int TableIndex::ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::ma
                 for (const auto& cur_col_name : column_key.col_name()) {
                     col_vec.push_back(*(col_map[cur_col_name]));
                 }
-                int ts_name_pos = -1;
+                int ts_name_pos = 0;
                 do {
                     auto index = std::make_shared<IndexDef>(column_key.index_name(), key_idx, status,
                             ::rtidb::type::IndexType::kTimeSerise, col_vec);
                     index->SetTTL(table_ttl);
                     if (column_key.ts_name_size() > 0) {
-                        ts_name_pos++;
                         const std::string& ts_name = column_key.ts_name(ts_name_pos);
                         index->SetTsColumn(col_map[ts_name]);
                         if (ts_ttl.find(ts_name) != ts_ttl.end()) {
                             index->SetTTL(ts_ttl[ts_name]);
                         }
+                        ts_name_pos++;
                     }
                     if (column_key.has_ttl()) {
                         const auto& proto_ttl = column_key.ttl();
                         index->SetTTL(::rtidb::storage::TTLSt(proto_ttl));
                     }
                     if (has_multi_ts) {
-                        if (AddIndex(index) < 0) {
-                            return -1;
-                        }
-                    } else {
                         if (AddMultiTsIndex(pos, index) < 0) {
                             return -1;
                         }
+                    } else {
+                        if (AddIndex(index) < 0) {
+                            return -1;
+                        }
                     }
-                    key_idx++;
                 } while (ts_name_pos > 0 && ts_name_pos < column_key.ts_name_size());
+                key_idx++;
             }
         } else {
             if (!ts_mapping->empty()) {
@@ -325,7 +323,9 @@ void TableIndex::FillIndexVal(const ::rtidb::api::TableMeta& table_meta, uint32_
                 column_key_2_inner_index_[idx]->store(inner_cnt, std::memory_order_relaxed);
                 const auto& column_key =  table_meta.column_key(idx);
                 std::string combine_col_name;
-                if (column_key.col_name_size() < 2) {
+                if (column_key.col_name_size() == 0) {
+                    combine_col_name = column_key.index_name();
+                } else if (column_key.col_name_size() < 2) {
                     combine_col_name = column_key.col_name(0);
                 } else {
                     std::set<std::string> col_set;
@@ -359,9 +359,7 @@ void TableIndex::FillIndexVal(const ::rtidb::api::TableMeta& table_meta, uint32_
             index->SetInnerPos(idx);
             std::vector<std::shared_ptr<IndexDef>> vec = { index };
             inner_indexs_->push_back(std::make_shared<InnerIndexSt>(idx, vec));
-            if (table_meta.column_key_size() > 0) {
-                column_key_2_inner_index_[idx]->store(idx, std::memory_order_relaxed);
-            }
+            column_key_2_inner_index_[idx]->store(idx, std::memory_order_relaxed);
         }
     }
 }

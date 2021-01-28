@@ -172,11 +172,19 @@ class Table {
         return table_index_.GetIndex(idx);
     }
 
+    std::shared_ptr<IndexDef> GetIndex(uint32_t idx, uint32_t ts_idx) {
+        return table_index_.GetIndex(idx, ts_idx);
+    }
+
     inline std::map<std::string, uint8_t>& GetTSMapping() {
         return ts_mapping_;
     }
 
     TTLSt GetTTL() {
+        auto index = GetIndex(0);
+        if (index) {
+            return *(index->GetTTL());
+        }
         return TTLSt(table_meta_.ttl_desc());
     }
 

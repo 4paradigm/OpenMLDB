@@ -49,7 +49,6 @@ Table::Table(::rtidb::common::StorageMode storage_mode, const std::string &name,
         ::rtidb::common::ColumnDesc* column_desc = table_meta_.add_column_desc();
         column_desc->set_name(kv.second);
         column_desc->set_type("string");
-        column_desc->set_type("string");
         column_desc->set_add_ts_idx(true);
     }
 }

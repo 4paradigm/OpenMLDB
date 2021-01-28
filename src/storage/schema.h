@@ -110,7 +110,7 @@ struct TTLSt {
                 if (abs_ttl == 0) return false;
                 return abs <= abs_ttl;
             case TTLType::kLatestTime:
-                if (abs_ttl == 0) return false;
+                if (lat_ttl == 0) return false;
                 return record_idx > lat_ttl;
             case TTLType::kAbsAndLat:
                 if (abs_ttl != 0 || lat_ttl != 0) return false;
