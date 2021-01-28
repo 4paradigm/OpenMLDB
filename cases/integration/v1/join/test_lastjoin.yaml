@@ -1,5 +1,5 @@
 db: test_zw
-debugs: []
+debugs: ["t1 join (t2 join t3)"]
 cases:
   - id: 0
     desc: lastjoin+窗口
@@ -501,7 +501,6 @@ cases:
         - [5,"ee",24,24,null]
   - id: 11
     desc: (t1 join t2) join t3
-    tags: ["sql执行失败"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -532,7 +531,7 @@ cases:
           - [5,"ee",21,34,1.5,2.2,1606766401000,"2020-05-02"]
     sql: |
       select
-      id,t1.c1,t1.c3,t2.c4
+      id,t1.c1,t1.c3,{2}.c4
       from (
       select id,{0}.c1,{1}.c3
       from {0}
@@ -549,6 +548,91 @@ cases:
         - [4,"dd",21,34]
         - [5,"ee",24,null]
   - id: 12
+    desc: t1 join (t2 join t3)
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"bb",21,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",22,32,1.3,2.3,1590738992000,"2020-05-03"]
+          - [4,"dd",23,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",24,34,1.5,2.5,1590738994000,"2020-05-05"]
+      -
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7","index1:c3:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1606755660000,"2020-05-01"]
+          - [2,"aa",21,31,1.1,2.1,1606755720000,"2020-05-01"]
+          - [3,"cc",21,32,1.1,2.1,1606755780000,"2020-05-01"]
+          - [4,"dd",21,33,1.1,2.1,1606755840000,"2020-05-01"]
+          - [5,"ee",24,34,1.2,2.2,1606755660000,"2020-05-02"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7","index1:c3:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1606755600000,"2020-05-01"]
+          - [2,"bb",20,31,1.2,2.1,1606759200000,"2020-05-01"]
+          - [3,"bb",null,32,1.3,2.1,1606762800000,"2020-05-01"]
+          - [4,"bb",21,33,1.4,2.1,1606766400000,"2020-05-01"]
+          - [5,"ee",21,34,1.5,2.2,1606766401000,"2020-05-02"]
+    sql: |
+      select
+      id,{0}.c1,t1.c3,t1.c4
+      from
+      {0} last join
+      (select {1}.c1,{1}.c3,{1}.c7,{2}.c4 from {1} last join {2} order by {2}.c7 on {1}.c3={2}.c3) as t1
+      order by t1.c7 on {0}.c1=t1.c1;
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","c4 bigint"]
+      rows:
+        - [1,"aa",21,34]
+        - [2,"bb",null,null]
+        - [3,"cc",21,34]
+        - [4,"dd",21,34]
+        - [5,"ee",24,null]
+  - id: 13
+    desc: t1 join (t2 join t3)-key和ts不是来自同一个主表
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"bb",21,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",22,32,1.3,2.3,1590738992000,"2020-05-03"]
+          - [4,"dd",23,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",24,34,1.5,2.5,1590738994000,"2020-05-05"]
+      -
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7","index1:c3:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1606755660000,"2020-05-01"]
+          - [2,"aa",21,31,1.1,2.1,1606755720000,"2020-05-01"]
+          - [3,"cc",21,32,1.1,2.1,1606755780000,"2020-05-01"]
+          - [4,"dd",21,33,1.1,2.1,1606755840000,"2020-05-01"]
+          - [5,"ee",24,34,1.2,2.2,1606755660000,"2020-05-02"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7","index1:c3:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1606755600000,"2020-05-01"]
+          - [2,"bb",20,31,1.2,2.1,1606759200000,"2020-05-01"]
+          - [3,"bb",null,32,1.3,2.1,1606762800000,"2020-05-01"]
+          - [4,"bb",21,33,1.4,2.1,1606766400000,"2020-05-01"]
+          - [5,"ee",21,34,1.5,2.2,1606766401000,"2020-05-02"]
+    sql: |
+      select
+      id,{0}.c1,t1.c3,t1.c4
+      from
+      {0} last join
+      (select {1}.c1,{1}.c3,{2}.c7,{2}.c4 from {1} last join {2} order by {2}.c7 on {1}.c3={2}.c3) as t1
+      order by t1.c7 on {0}.c1=t1.c1;
+    expect:
+      success: false
+  - id: 14
     desc: lastjoin-重名
     inputs:
       -
@@ -583,7 +667,7 @@ cases:
         - [3,"aa",22,22,31]
         - [4,"bb",23,23,34]
         - [5,"bb",24,24,34]
-  - id: 13
+  - id: 15
     desc: lastjoin-重名,指定不同的表名
     inputs:
       -
@@ -618,7 +702,7 @@ cases:
         - [3,"aa",22,20,31]
         - [4,"bb",23,21,34]
         - [5,"bb",24,21,34]
-  - id: 14
+  - id: 16
     desc: 两个子查询lastjoin，拼接条件不是主表的索引
     inputs:
       -
@@ -641,7 +725,7 @@ cases:
       ;
     expect:
       success: false
-  - id: 15
+  - id: 17
     desc: 两个子查询lastjoin，order不是主表的ts
     inputs:
       -
@@ -664,7 +748,7 @@ cases:
       ;
     expect:
       success: false
-  - id: 16
+  - id: 18
     desc: 两个子查询lastjoin，拼接条件不是主表的索引-不带orderby
     inputs:
       -
@@ -687,7 +771,7 @@ cases:
       ;
     expect:
       success: false
-  - id: 17
+  - id: 19
     desc: 两个子查询lastjoin-子查询带窗口特征-没有使用索引-不带orderby
     inputs:
       -
@@ -723,7 +807,7 @@ cases:
         - [3,"aa",22,32,64,84]
         - [4,"bb",23,34,34,23]
         - [5,"bb",24,34,68,70]
-  - id: 18
+  - id: 20
     desc: 两个子查询lastjoin-子查询带窗口特征-没有使用索引-带orderby
     inputs:
       -
@@ -744,7 +828,7 @@ cases:
       ;
     expect:
       success: false
-  - id: 19
+  - id: 21
     desc: lastjoin列名重复-窗口没有指定表名
     inputs:
       -
