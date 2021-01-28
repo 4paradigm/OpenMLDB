@@ -52,7 +52,7 @@ std::vector<fesql::sqlcase::SQLCase> SQLCaseTest::InitCases(const std::string &y
             skip_case_cnt++;
         }
     }
-    LOG(WARNING) << "InitCases done: FESQL_LEVEL skip cases cnt: " << skip_case_cnt;
+    LOG(INFO) << "InitCases done: FESQL_LEVEL skip cases cnt: " << skip_case_cnt;
     return level_cases;
 }
 void SQLCaseTest::InitCases(const std::string &dir_path, const std::string &yaml_path,
