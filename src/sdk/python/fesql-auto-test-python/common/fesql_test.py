@@ -35,6 +35,8 @@ def getCases(yamlPath: str, casePrefix='') -> list:
         return testCases
     else:
         for case in cases:
+            if 'dataProvider' in case:
+                continue
             if not isCaseInBlackList(case):
                 if case.get('executor') == None:
                     case['executor'] = executor

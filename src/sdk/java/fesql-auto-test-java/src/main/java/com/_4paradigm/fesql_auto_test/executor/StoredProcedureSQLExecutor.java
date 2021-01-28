@@ -10,11 +10,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
 @Slf4j
 public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
+
+    private List<String> spNames;
 
     public StoredProcedureSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest, boolean isAsyn) {
         super(executor, fesqlCase, isBatchRequest, isAsyn);
@@ -30,8 +33,10 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
             throw new RuntimeException("fail to run SQLExecutor: prepare fail");
         }
         for (InputDesc inputDesc : fesqlCase.getInputs()) {
+            tables = fesqlCase.getInputs();
             tableNames.add(inputDesc.getName());
         }
+        spNames = new ArrayList<>();
     }
 
     @Override
@@ -46,11 +51,14 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
         if (sql == null || sql.length() == 0) {
             return null;
         }
+        FesqlResult fesqlResult;
         if (fesqlCase.getBatch_request() != null) {
-            return executeBatch(sql, this.isAsyn);
+            fesqlResult = executeBatch(sql, this.isAsyn);
         } else {
-            return executeSingle(sql, this.isAsyn);
+            fesqlResult =  executeSingle(sql, this.isAsyn);
         }
+        spNames.add(fesqlCase.getSpName());
+        return fesqlResult;
     }
 
     private FesqlResult executeSingle(String sql, boolean isAsyn) throws SQLException {
@@ -102,5 +110,17 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
         builder.append("END;");
         sql = builder.toString();
         return sql;
+    }
+
+    @Override
+    protected void tearDown() {
+        if (CollectionUtils.isEmpty(spNames)) {
+            return;
+        }
+        for (String spName : spNames) {
+            String drop = "drop procedure " + spName + ";";
+            FesqlUtil.ddl(executor, dbName, drop);
+        }
+        super.tearDown();
     }
 }
