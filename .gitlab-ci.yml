@@ -203,7 +203,7 @@ fesql_auto_test_level0:
     - build
 
 fesql_sdk_c++_level_0:
-  stage: manual
+  stage: quick
   script:
     - source /root/.bashrc && sh tools/install_fesql.sh
     - ln -sf /depends/thirdparty thirdparty
