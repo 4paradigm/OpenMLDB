@@ -106,64 +106,64 @@ public class FEQLFZPerf {
         logger.info("drop db " + db);
     }
 
-//    // putTableData with random pkNum
-//    private void putTableData(TableInfo table) {
-//        putTableData(table, null);
-//    }
+    // putTableData with random pkNum
+    private void putTableData(TableInfo table) {
+        putTableData(table, null);
+    }
 
-//    //putTableData with given pkNum if it's not null
-//    private void putTableData(TableInfo table, Integer pkNum) {
-//        List<String> schema = table.getSchema();
-//        Set<Integer> index = table.getIndex();
-//        Set<Integer> tsIndex = table.getTsIndex();
-//
-//        long ts = System.currentTimeMillis();
-//        int curNum = null == pkNum ? random.nextInt(BenchmarkConfig.PK_NUM) : pkNum;
-//        StringBuilder builder = new StringBuilder();
-//        builder.append("insert into ");
-//        builder.append(table.getName());
-//        builder.append(" values(");
-//        for (int pos = 0; pos < schema.size(); pos++) {
-//            if (pos > 0) {
-//                builder.append(", ");
-//            }
-//            String type = schema.get(pos);
-//            if (type.equals("string")) {
-//                builder.append("'");
-//                builder.append("col");
-//                builder.append(pos);
-//                builder.append("-");
-//                builder.append(curNum);
-//                builder.append("'");
-//            } else if (type.equals("float")) {
-//                builder.append(1.3f);
-//            } else if (type.equals("double")) {
-//                builder.append(1.4d);
-//            } else if (type.equals("bigint") || type.equals("int")) {
-//                if (tsIndex.contains(pos)) {
-//                    builder.append(ts);
-//                } else {
-//                    builder.append(curNum);
-//                }
-//            } else if (type.equals("timestamp")) {
-//                if (tsIndex.contains(pos)) {
-//                    builder.append(ts);
-//                } else {
-//                    builder.append(curNum);
-//                }
-//
-//            } else if (type.equals("bool")) {
-//                builder.append(true);
-//            } else if (type.equals("date")) {
-//                builder.append("'2020-11-27'");
-//            } else {
-//                logger.warn("invalid type");
-//            }
-//        }
-//        builder.append(");");
-//        String exeSql = builder.toString();
-//        executor.executeInsert(db, exeSql);
-//    }
+    //putTableData with given pkNum if it's not null
+    private void putTableData(TableInfo table, Integer pkNum) {
+        List<String> schema = table.getSchema();
+        Set<Integer> index = table.getIndex();
+        Set<Integer> tsIndex = table.getTsIndex();
+
+        long ts = System.currentTimeMillis();
+        int curNum = null == pkNum ? random.nextInt(BenchmarkConfig.PK_NUM) : pkNum;
+        StringBuilder builder = new StringBuilder();
+        builder.append("insert into ");
+        builder.append(table.getName());
+        builder.append(" values(");
+        for (int pos = 0; pos < schema.size(); pos++) {
+            if (pos > 0) {
+                builder.append(", ");
+            }
+            String type = schema.get(pos);
+            if (type.equals("string")) {
+                builder.append("'");
+                builder.append("col");
+                builder.append(pos);
+                builder.append("-");
+                builder.append(curNum);
+                builder.append("'");
+            } else if (type.equals("float")) {
+                builder.append(1.3f);
+            } else if (type.equals("double")) {
+                builder.append(1.4d);
+            } else if (type.equals("bigint") || type.equals("int")) {
+                if (tsIndex.contains(pos)) {
+                    builder.append(ts);
+                } else {
+                    builder.append(curNum);
+                }
+            } else if (type.equals("timestamp")) {
+                if (tsIndex.contains(pos)) {
+                    builder.append(ts);
+                } else {
+                    builder.append(curNum);
+                }
+
+            } else if (type.equals("bool")) {
+                builder.append(true);
+            } else if (type.equals("date")) {
+                builder.append("'2020-11-27'");
+            } else {
+                logger.warn("invalid type");
+            }
+        }
+        builder.append(");");
+        String exeSql = builder.toString();
+        executor.executeInsert(db, exeSql);
+    }
 
     private boolean setInsertData(PreparedStatement requestPs, long ts, String tableName) {
         return setRequestData(requestPs, ts, tableName);
@@ -247,7 +247,7 @@ public class FEQLFZPerf {
 //            }
 //        }
 //    }
-
+//
 //    public void prePutData() {
 //        for (int pkNum = 0; pkNum < BenchmarkConfig.PK_NUM; pkNum++) {
 //            for (TableInfo table : tableMap.values()) {
@@ -258,8 +258,14 @@ public class FEQLFZPerf {
 
     private void insert() {
         while (running.get()) {
-            for (TableInfo table : tableMap.values()) {
-                insertTableData(table);
+            if (random.nextFloat() < BenchmarkConfig.INSERT_RATIO) {
+                for (TableInfo table : tableMap.values()) {
+                    insertTableData(table);
+                }
+            } else {
+                for (TableInfo table : tableMap.values()) {
+                    putTableData(table);
+                }
             }
         }
     }
@@ -329,7 +335,7 @@ public class FEQLFZPerf {
                 if (isProcedure) {
                     PreparedStatement ps = getPreparedStatement(mode, isProcedure);
                     if (ps instanceof CallablePreparedStatement) {
-                        QueryFuture future = ((CallablePreparedStatement) ps).executeQueryAsync(1000, TimeUnit.MILLISECONDS);
+                        QueryFuture future = ((CallablePreparedStatement) ps).executeQueryAsync(10000, TimeUnit.MILLISECONDS);
                         ResultSet resultSet = future.get();
                         resultSet.close();
                     }
