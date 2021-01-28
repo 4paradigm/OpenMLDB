@@ -6,15 +6,15 @@ cases:
     desc: 创建所有类型的表
     inputs:
       -
-        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
         indexs: ["index1:c1:c7"]
         rows:
-          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
     sql: select * from {0};
     expect:
-      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
       rows:
-         - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+         - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
   -
     id: 2
     desc: 创建两个相同时间列的索引的表
@@ -244,6 +244,12 @@ cases:
     expect:
       success: false
   -
+    id: 23-7
+    desc: ts边界-指定的ts为bool
+    sql: create table {auto}(c1 string NOT NULL,c2 bool,c3 timestamp,c4 timestamp,index(key=(c1),ts=c2,ttl=0m));
+    expect:
+      success: false
+  -
     id: 24
     desc: 表名使用特殊字符
     sql: create table auto$#kJKytImk(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
@@ -288,14 +294,8 @@ cases:
     expect:
       success: false
   -
-    id: 29
-    desc: 指定的ts为int
-    sql: create table {auto} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c2,ttl=0m));
-    expect:
-      success: false
-  -
     id: 30
-    desc: bigint为索引列
+    desc: key边界-bigint为索引列
     inputs:
       -
         columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -309,7 +309,7 @@ cases:
          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
   -
     id: 31
-    desc: int为索引列
+    desc: key边界-int为索引列
     inputs:
       -
         columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -323,7 +323,7 @@ cases:
          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
   -
     id: 32
-    desc: timestamp为索引列
+    desc: key边界-timestamp为索引列
     inputs:
       -
         columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -337,7 +337,7 @@ cases:
          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
   -
     id: 33
-    desc: date为索引列
+    desc: key边界-date为索引列
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
@@ -518,6 +518,7 @@ cases:
       index(key=(c4)));
     expect:
       success: true
+ 
   -
     id: 53
     desc: insert min int and max int
@@ -533,5 +534,91 @@ cases:
           insert into {0} values
           (0,1538443518561,-2147483648);
     sql: select * from {0};
+    expect:
+      success: true
+
+  -
+    id: 54
+    desc: no index
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date);
+    expect:
+      success: false
+
+  -
+    id: 55
+    desc: key边界-smallint为索引列
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c2:c7"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+ 
+  -
+    id: 56
+    desc: key边界-bool类型为索引列
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c9:c7"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+
+  -
+    id: 56
+    desc: bool-insert-1
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",1]
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+
+  -
+    id: 57
+    desc: create with two no ts index
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3), ttl=(10m,10), ttl_type=absorlat),
+      index(key=(c4), ttl=(10m,10), ttl_type=absorlat));
+    expect:
+      success: true
+  -
+    id: 58
+    desc: one has ts and another has not
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3), ttl=(10m,10), ttl_type=absorlat),
+      index(key=(c4), ts=c4, ttl=(10m,10), ttl_type=absorlat));
+    expect:
+      success: false
+
+  -
+    id: 59
+    desc: create with only key
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3)),
+      index(key=(c4)));
     expect:
       success: true

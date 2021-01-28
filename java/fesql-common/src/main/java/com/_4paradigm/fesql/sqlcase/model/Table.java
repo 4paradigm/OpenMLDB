@@ -9,12 +9,13 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 @Data
-public class Table {
+public class Table implements Serializable{
     String name = genAutoName();
     String index;
     String schema;
@@ -27,7 +28,10 @@ public class Table {
     List<String> inserts;
     String repeat_tag = "";
     int repeat = 1;
+
     List<String> common_column_indices;
+
+    private boolean drop = true;
 
     private static final Logger logger = LoggerFactory.getLogger(Table.class);
 

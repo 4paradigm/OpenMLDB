@@ -54,6 +54,7 @@ class FeSQLJITWrapper {
 
     static FeSQLJITWrapper* Create(const JITOptions& jit_options);
     static FeSQLJITWrapper* Create();
+    static void DeleteJIT(FeSQLJITWrapper* jit);
 
     static bool InitJITSymbols(FeSQLJITWrapper* jit);
 };
