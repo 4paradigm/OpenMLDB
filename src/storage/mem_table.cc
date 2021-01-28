@@ -625,7 +625,8 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
 }
 
 bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
-    /*std::shared_ptr<IndexDef> index_def = GetIndex(column_key.index_name());
+    // TODO(denglong): support ttl type and merge index
+    std::shared_ptr<IndexDef> index_def = GetIndex(column_key.index_name());
     if (index_def) {
         if (index_def->GetStatus() != IndexStatus::kDeleted) {
             PDLOG(WARNING, "index %s is exist. tid %u pid %u", column_key.index_name().c_str(), id_, pid_);
@@ -649,34 +650,78 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
         }
         ts_vec.push_back(ts_iter->second);
     }
-    uint32_t index_id = (index_def == NULL) ? table_index_.Size() : index_def->GetId();
+    uint32_t inner_id = 0;
+    if (!index_def) {
+        inner_id = index_def->GetInnerPos();
+    } else {
+        inner_id = table_index_.GetAllInnerIndex()->size();
+    }
+
     Segment** seg_arr = new Segment*[seg_cnt_];
     if (!ts_vec.empty()) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
-            seg_arr[j] = new Segment(key_entry_max_height_, ts_vec);
-            PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", index_id, j,
-                  key_entry_max_height_, ts_vec.size(), id_, pid_);
+            seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height, ts_vec);
+            PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u",
+                    inner_id, j, FLAGS_absolute_default_skiplist_height, ts_vec.size(), id_, pid_);
         }
     } else {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
-            seg_arr[j] = new Segment(key_entry_max_height_);
-            PDLOG(INFO, "init %u, %u segment. height %u tid %u pid %u", index_id, j, key_entry_max_height_, id_, pid_);
+            seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height);
+            PDLOG(INFO, "init %u, %u segment. height %u tid %u pid %u",
+                    inner_id, j, FLAGS_absolute_default_skiplist_height, id_, pid_);
         }
     }
-    if (segments_[index_id] != NULL) {
-        LOG(INFO) << "delete old index " << index_id << " data";
-        delete[] segments_[index_id];
+    if (segments_[inner_id] != NULL) {
+        LOG(INFO) << "delete old index " << inner_id << " data";
+        delete[] segments_[inner_id];
     }
-    segments_[index_id] = seg_arr;
+    segments_[inner_id] = seg_arr;
     if (!index_def) {
         index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.Size());
         if (table_index_.AddIndex(index_def) < 0) {
             PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
             return false;
         }
+        if (column_key.ts_name_size() > 0) {
+            auto ts_col = std::make_shared<ColumnDef>(column_key.ts_name(0), 0,
+                    ::rtidb::type::kTimestamp, true, ts_mapping_[column_key.ts_name(0)]);
+            index_def->SetTsColumn(ts_col);
+            auto index_vec = table_index_.GetAllIndex();
+            bool has_set_ttl = false;
+            for (const auto& index : index_vec) {
+                auto ts_col = index->GetTsColumn();
+                if (ts_col && ts_col->GetName() == column_key.ts_name(0)) {
+                    index_def->SetTTL(*(index->GetTTL()));
+                    has_set_ttl = true;
+                    break;
+                }
+            }
+            if (!has_set_ttl) {
+                PDLOG(WARNING, "has not set ttl. tid %u pid %u", id_, pid_);
+                return false;
+            }
+        } else {
+            const auto& table_meta = GetTableMeta();
+            if (table_meta.has_ttl_desc()) {
+                index_def->SetTTL(::rtidb::storage::TTLSt(table_meta.ttl_desc()));
+            } else {
+                uint64_t abs_ttl = 0;
+                uint64_t lat_ttl = 0;
+                if (table_meta.ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime) {
+                    abs_ttl = table_meta.ttl() * 60 * 1000;
+                } else {
+                    lat_ttl = table_meta.ttl();
+                }
+                index_def->SetTTL(::rtidb::storage::TTLSt(abs_ttl, lat_ttl,
+                            TTLSt::ConvertTTLType(table_meta.ttl_type())));
+            }
+        }
+        index_def->SetInnerPos(inner_id);
+        std::vector<std::shared_ptr<IndexDef>> index_vec = { index_def };
+        auto inner_index_st = std::make_shared<InnerIndexSt>(inner_id, index_vec);
+        table_index_.AddInnerIndex(inner_index_st);
     }
-    index_def->SetTsColumn(ts_vec);
-    index_def->SetStatus(IndexStatus::kReady);*/
+    index_def->SetStatus(IndexStatus::kReady);
     return true;
 }
 
