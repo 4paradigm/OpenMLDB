@@ -2,9 +2,9 @@
 
 ROOT_DIR=`pwd`
 ulimit -c unlimited
-$CASE_LEVEL=$1
-if [[ "${$CASE_LEVEL}" == "" ]]; then
-        $CASE_LEVEL="0"
+CASE_LEVEL=$1
+if [[ "${CASE_LEVEL}" == "" ]]; then
+        CASE_LEVEL="0"
 fi
 echo "fesql auto test cluster: case_level ${CASE_LEVEL}"
 echo "ROOT_DIR:${ROOT_DIR}"

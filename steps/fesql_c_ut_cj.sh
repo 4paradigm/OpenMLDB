@@ -16,7 +16,7 @@ ulimit -c unlimited
 test -d reports && rm -rf reports
 mkdir -p reports
 cd ${ROOT_DIR}
-cp ${ROOT_DIR}/steps/zoo.cfg ${ROOT_DIR}/thirdsrc/zookeeper-3.4.14/conf/zoo.cfg
+cp ${ROOT_DIR}/steps/cjzoo.cfg ${ROOT_DIR}/thirdsrc/zookeeper-3.4.14/conf/zoo.cfg
 cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh start && cd ${ROOT_DIR}
 sleep 5
 TMPFILE="code.tmp"

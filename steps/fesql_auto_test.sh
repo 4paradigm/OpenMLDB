@@ -2,9 +2,9 @@
 
 # compile.sh
 
-$CASE_LEVEL=$1
-if [[ "${$CASE_LEVEL}" == "" ]]; then
-        $CASE_LEVEL="0"
+CASE_LEVEL=$1
+if [[ "${CASE_LEVEL}" == "" ]]; then
+        CASE_LEVEL="0"
 fi
 echo "fesql auto test : case_level ${CASE_LEVEL}"
 ROOT_DIR=`pwd`
