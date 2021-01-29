@@ -53,7 +53,7 @@ object JoinPlan {
           left.getDf()
         } else {
           // Add index column for original last join, not used in native last join
-          SparkUtil.addIndexColumn(spark, left.getDf(), indexName)
+          SparkUtil.addIndexColumn(spark, left.getDf(), indexName, ctx.getConf.addIndexColumnMethod)
         }
       }
     }
