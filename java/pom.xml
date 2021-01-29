@@ -5,7 +5,7 @@
 
     <groupId>com._4paradigm.fesql</groupId>
     <artifactId>fesql-sdk</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.3-RELEASE</version>
     <modules>
            <module>fesql-common</module>
            <module>fesql-jdbc</module>

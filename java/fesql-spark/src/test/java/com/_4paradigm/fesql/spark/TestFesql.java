@@ -38,7 +38,7 @@ public class TestFesql {
                         new String[]{"reqId", "flattenRequest_col_131_window_avg_829", "flattenRequest_col_161_window_avg_830", "flattenRequest_col_74_window_avg_831"},
                         "output/fengdian/skew",
                         "output/fengdian/no-skew",
-                        "spark.master=local spark.fesql.skew.watershed=1 spark.fesql.test.print=false spark.fesql.mode=skew spark.fesql.skew.level=2 spark.fesql.group.partitions=20 spark.sql.shuffle.partitions=8",
+                        "spark.master=local spark.fesql.skew.watershed=1 spark.fesql.test.print=false spark.fesql.test.print.sampleInterval=1 spark.fesql.test.print.printContent=false spark.fesql.mode=skew spark.fesql.skew.level=2 spark.fesql.group.partitions=20 spark.sql.shuffle.partitions=8",
                         "spark.fesql.mode=normal spark.master=local"
                 },
                 new Object[] {

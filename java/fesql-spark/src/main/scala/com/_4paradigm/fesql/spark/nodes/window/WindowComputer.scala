@@ -4,6 +4,7 @@ import com._4paradigm.fesql.spark.{FeSQLConfig, SparkRowCodec}
 import com._4paradigm.fesql.spark.nodes.WindowAggPlan.WindowAggConfig
 import com._4paradigm.fesql.spark.utils.{FesqlUtil, SparkRowUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, WindowInterface}
+import org.apache.commons.lang3.StringUtils
 import org.apache.spark.sql.Row
 import org.slf4j.LoggerFactory
 
@@ -36,7 +37,7 @@ class WindowComputer(sqlConfig: FeSQLConfig,
   // append slices cnt = needAppendInput ? inputSchemaSlices.size : 0
   private val appendSlices = if (config.needAppendInput) config.inputSchemaSlices.length else 0
   // group key comparation
-  private val groupKeyComparator = FesqlUtil.createGroupKeyComparator(
+  private var groupKeyComparator = FesqlUtil.createGroupKeyComparator(
     config.groupIdxs, config.inputSchema)
 
   // native function handle
@@ -162,6 +163,41 @@ class WindowComputer(sqlConfig: FeSQLConfig,
     window.delete()
     window = null
   }
+
+  def printWindowCols(windowName: String, cols: Array[String]): Unit = {
+    val windowData = new java.util.ArrayList[String]()
+    if (!config.windowName.equals(windowName) || window.size() <= 0) {
+      return
+    }
+    windowData.add("window "+ config.windowName  + " data, window size = " + window.size())
+    windowData.add(config.inputSchema.toDDL + "\n")
+    val indexs = new java.util.ArrayList[Int]()
+    for (col <- cols) {
+      indexs.add(config.inputSchema.fieldIndex(col))
+    }
+    val id = config.inputSchema.fieldIndex("reqId")
+    val firstArr = new Array[Any](config.inputSchema.size)
+    encoder.decode(window.Get(0), firstArr)
+
+    for (index <- 0 until window.size().toInt) {
+      val arr = new Array[Any](config.inputSchema.size)
+      encoder.decode(window.Get(index), arr)
+      val filterArr = new Array[Any](indexs.size())
+      for (i <- 0 until indexs.size()) {
+        filterArr(i) = arr(indexs.get(i))
+      }
+      windowData.add(filterArr.mkString(","))
+    }
+    if (windowData.size() > 0) {
+      logger.info(StringUtils.join(windowData, "\n"))
+    }
+  }
+
+  import org.apache.spark.sql.types._
+  def resetGroupKeyComparator(keyIdxs: Array[Int], schema: StructType): Unit = {
+    groupKeyComparator = FesqlUtil.createGroupKeyComparator(keyIdxs, schema)
+  }
+
 
   def getWindow: WindowInterface = window
   def getFn: Long = fn

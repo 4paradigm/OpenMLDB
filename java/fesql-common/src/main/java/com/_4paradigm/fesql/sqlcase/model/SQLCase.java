@@ -55,6 +55,7 @@ public class SQLCase implements Serializable{
         return sql;
     }
 
+
     public static String genAutoName() {
         return "auto_" + RandomStringUtils.randomAlphabetic(8);
     }
