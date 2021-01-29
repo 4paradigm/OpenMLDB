@@ -301,6 +301,14 @@ int TableIndex::ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::ma
         LOG(INFO) << "no index specified with default. tid " << tid << ", pid " << pid;
     }
     FillIndexVal(table_meta, ts_mapping->size());
+    if (!multi_ts_indexs_->empty()) {
+        pk_index_ = multi_ts_indexs_->at(0).front();
+    } else if (!indexs_->empty()) {
+        pk_index_ = indexs_->front();
+    } else {
+        LOG(WARNING) << "no pk index. tid " << tid << ", pid " << pid;
+        return -1;
+    }
     return 0;
 }
 

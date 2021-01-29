@@ -235,6 +235,8 @@ class MemTable : public Table {
         record_cnt_.fetch_add(cnt, std::memory_order_relaxed);
     }
 
+    inline uint32_t GetKeyEntryHeight() { return key_entry_max_height_; }
+
     bool DeleteIndex(std::string idx_name);
 
     bool AddIndex(const ::rtidb::common::ColumnKey& column_key);
@@ -252,6 +254,7 @@ class MemTable : public Table {
     std::atomic<uint64_t> record_cnt_;
     bool segment_released_;
     std::atomic<uint64_t> record_byte_size_;
+    uint32_t key_entry_max_height_;
 };
 
 }  // namespace storage

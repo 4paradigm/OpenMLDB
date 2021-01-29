@@ -73,6 +73,7 @@ MemTable::~MemTable() {
 }
 
 bool MemTable::Init() {
+    key_entry_max_height_ = FLAGS_key_entry_max_height;
     if (!InitFromMeta()) {
         return false;
     }
@@ -108,6 +109,7 @@ bool MemTable::Init() {
             }
         }
         segments_[i] = seg_arr;
+        key_entry_max_height_ = cur_key_entry_max_height;
     }
     PDLOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d", name_.c_str(), id_, pid_, seg_cnt_);
     return true;
@@ -442,6 +444,9 @@ bool MemTable::IsExpire(const LogEntry& entry) {
                 continue;
             }
             auto ttl = index_def->GetTTL();
+            if (!ttl->NeedGc()) {
+                return false;
+            }
             TTLType ttl_type = index_def->GetTTLType();
             uint64_t ts = entry.ts();
             auto ts_col = index_def->GetTsColumn();
@@ -768,7 +773,8 @@ bool MemTable::DeleteIndex(std::string idx_name) {
         expire_time = GetExpireTime(*ttl);
         expire_cnt = ttl->lat_ttl;
     }
-    return new MemTableKeyIterator(segments_[index], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
+    uint32_t real_idx = index_def->GetInnerPos();
+    return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
 }
 
 ::fesql::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index, uint32_t ts_index) {
@@ -787,16 +793,19 @@ bool MemTable::DeleteIndex(std::string idx_name) {
         expire_time = GetExpireTime(*ttl);
         expire_cnt = ttl->lat_ttl;
     }
-    return new MemTableKeyIterator(segments_[index], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, ts_index);
+    uint32_t real_idx = index_def->GetInnerPos();
+    return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, ts_index);
 }
 
 TableIterator* MemTable::NewTraverseIterator(uint32_t index) {
     std::shared_ptr<IndexDef> index_def = GetIndex(index);
-    if (index_def && index_def->IsReady()) {
-        auto ts_col = index_def->GetTsColumn();
-        if (ts_col) {
-            return NewTraverseIterator(index, ts_col->GetTsIdx());
-        }
+    if (!index_def || !index_def->IsReady()) {
+        PDLOG(WARNING, "index %u not found. tid %u pid %u", index, id_, pid_);
+        return NULL;
+    }
+    auto ts_col = index_def->GetTsColumn();
+    if (ts_col) {
+        return NewTraverseIterator(index, ts_col->GetTsIdx());
     }
     uint64_t expire_time = 0;
     uint64_t expire_cnt = 0;
@@ -805,16 +814,17 @@ TableIterator* MemTable::NewTraverseIterator(uint32_t index) {
         expire_time = GetExpireTime(*ttl);
         expire_cnt = ttl->lat_ttl;
     }
-    return new MemTableTraverseIterator(segments_[index], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
+    uint32_t real_idx = index_def->GetInnerPos();
+    return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
 }
 
 TableIterator* MemTable::NewTraverseIterator(uint32_t index, uint32_t ts_index) {
     if (ts_index < 0) {
         return NULL;
     }
-    std::shared_ptr<IndexDef> index_def = GetIndex(index);
+    std::shared_ptr<IndexDef> index_def = GetIndex(index, ts_index);
     if (!index_def || !index_def->IsReady()) {
-        PDLOG(WARNING, "index %u not found. tid %u pid %u", index, id_, pid_);
+        PDLOG(WARNING, "index %u ts_index %u not found. tid %u pid %u", index, ts_index, id_, pid_);
         return NULL;
     }
     uint64_t expire_time = 0;
@@ -824,7 +834,9 @@ TableIterator* MemTable::NewTraverseIterator(uint32_t index, uint32_t ts_index) 
         expire_time = GetExpireTime(*ttl);
         expire_cnt = ttl->lat_ttl;
     }
-    return new MemTableTraverseIterator(segments_[index], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, ts_index);
+    uint32_t real_idx = index_def->GetInnerPos();
+    return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type,
+                expire_time, expire_cnt, ts_index);
 }
 
 MemTableKeyIterator::MemTableKeyIterator(Segment** segments, uint32_t seg_cnt, ::rtidb::storage::TTLType ttl_type,

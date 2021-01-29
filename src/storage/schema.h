@@ -113,11 +113,20 @@ struct TTLSt {
                 if (lat_ttl == 0) return false;
                 return record_idx > lat_ttl;
             case TTLType::kAbsAndLat:
-                if (abs_ttl != 0 || lat_ttl != 0) return false;
+                if (abs_ttl == 0 || lat_ttl == 0) return false;
                 return abs <= abs_ttl && record_idx > lat_ttl;
-            case TTLType::kAbsOrLat:
-                if (abs_ttl != 0 && lat_ttl != 0) return false;
-                return abs <= abs_ttl || record_idx > lat_ttl;
+            case TTLType::kAbsOrLat: {
+                if (abs_ttl == 0) {
+                    if (lat_ttl == 0) {
+                        return false;
+                    }
+                    return record_idx > lat_ttl;
+                } else if (lat_ttl == 0) {
+                    return abs <= abs_ttl;
+                } else {
+                    return abs <= abs_ttl || record_idx > lat_ttl;
+                }
+            }
             default:
                 return true;
         }

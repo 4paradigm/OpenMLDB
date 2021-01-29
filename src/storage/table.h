@@ -176,6 +176,10 @@ class Table {
         return table_index_.GetIndex(idx, ts_idx);
     }
 
+    std::shared_ptr<IndexDef> GetPkIndex() {
+        return table_index_.GetPkIndex();
+    }
+
     inline std::map<std::string, uint8_t>& GetTSMapping() {
         return ts_mapping_;
     }
