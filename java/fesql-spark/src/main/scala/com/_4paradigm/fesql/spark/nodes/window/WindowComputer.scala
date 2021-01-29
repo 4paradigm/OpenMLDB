@@ -36,7 +36,7 @@ class WindowComputer(sqlConfig: FeSQLConfig,
   // append slices cnt = needAppendInput ? inputSchemaSlices.size : 0
   private val appendSlices = if (config.needAppendInput) config.inputSchemaSlices.length else 0
   // group key comparation
-  private val groupKeyComparator = FesqlUtil.createGroupKeyComparator(
+  private var groupKeyComparator = FesqlUtil.createGroupKeyComparator(
     config.groupIdxs, config.inputSchema)
 
   // native function handle
@@ -161,6 +161,10 @@ class WindowComputer(sqlConfig: FeSQLConfig,
 
     window.delete()
     window = null
+  }
+  import org.apache.spark.sql.types._
+  def resetGroupKeyComparator(keyIdxs: Array[Int], schema: StructType): Unit = {
+    groupKeyComparator = FesqlUtil.createGroupKeyComparator(keyIdxs, schema)
   }
 
   def getWindow: WindowInterface = window
