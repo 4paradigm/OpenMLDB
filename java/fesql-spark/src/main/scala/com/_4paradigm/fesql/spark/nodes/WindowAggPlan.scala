@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import org.apache.spark.sql.types._
 
 
 object WindowAggPlan {
@@ -303,6 +302,7 @@ object WindowAggPlan {
     logger.info(s"skew explode sql : $explodeSql")
     skewDf = ctx.sparksql(explodeSql)
     skewDf.cache()
+//    skewDf.show(100)
     val partitions = sqlConfig.groupPartitions
     val partitionKeys = sqlConfig.skewTag +: keyScala
 
@@ -400,8 +400,6 @@ object WindowAggPlan {
     }
 
     val resIter = if (sqlConfig.skewMode == FeSQLConfig.SKEW) {
-      val skewGroups = config.groupIdxs :+ config.skewPositionIdx
-      computer.resetGroupKeyComparator(skewGroups, config.inputSchema)
       limitInputIter.flatMap(row => {
         if (lastRow != null) {
           computer.checkPartition(row, lastRow)
@@ -438,9 +436,7 @@ object WindowAggPlan {
     val flagIdx = config.unionFlagIdx
     var lastRow: Row = null
     if (config.skewTagIdx != 0) {
-      sqlConfig.skewMode = FeSQLConfig.SKEW
-      val skewGroups = config.groupIdxs :+ config.skewPositionIdx
-      computer.resetGroupKeyComparator(skewGroups, config.inputSchema)
+      sqlConfig.skewMode = "skew"
     }
 
     val resIter = inputIter.flatMap(row => {
