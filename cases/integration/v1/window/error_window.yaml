@@ -3,7 +3,6 @@ debugs: []
 cases:
   - id: 0
     desc: no order by
-    tags: ["TODO","bug-待修复"]
     inputs:
       - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c8:c4" ]
@@ -15,7 +14,6 @@ cases:
       success: false
   - id: 1
     desc: no partition by
-    tags: ["TODO","bug-待修复"]
     inputs:
       - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c8:c4" ]
