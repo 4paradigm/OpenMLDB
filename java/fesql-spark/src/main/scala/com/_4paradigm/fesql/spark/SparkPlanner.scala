@@ -21,7 +21,6 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
   // Ensure native initialized
   FeSqlLibrary.initCore()
   Engine.InitializeGlobalLLVM()
-  var node: PhysicalOpNode = _
 
   def this(session: SparkSession) = {
     this(session, FeSQLConfig.fromSparkSession(session))
@@ -41,7 +40,6 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
       planCtx.setModuleBuffer(irBuffer)
 
       val root = engine.getPlan
-      node = root
       logger.info("Get FeSQL physical plan: ")
       root.Print()
 
@@ -51,7 +49,8 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
 
       logger.info("Visit concat join node to add node index info")
       val processedConcatJoinNodeIds = mutable.HashSet[Long]()
-      concatJoinNodes.map(joinNode => bindNodeIndexInfo(joinNode, planCtx, processedConcatJoinNodeIds))
+      val indexColumnName = "__CONCATJOIN_INDEX__"+ System.currentTimeMillis()
+      concatJoinNodes.map(joinNode => bindNodeIndexInfo(joinNode, planCtx, processedConcatJoinNodeIds, indexColumnName))
 
       if (config.slowRunCacheDir != null) {
         slowRunWithHDFSCache(root, planCtx, config.slowRunCacheDir, isRoot = true)
@@ -75,7 +74,7 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
   }
 
   // Bind the node index info for the nodes which use ConcatJoin for computing window concurrently
-  def bindNodeIndexInfo(concatJoinNode: PhysicalJoinNode, ctx: PlanContext, processedConcatJoinNodeIds: mutable.HashSet[Long]): Unit = {
+  def bindNodeIndexInfo(concatJoinNode: PhysicalJoinNode, ctx: PlanContext, processedConcatJoinNodeIds: mutable.HashSet[Long], indexColumnName: String): Unit = {
 
     val concatJoinNodeId = concatJoinNode.GetNodeId()
     if (ctx.hasIndexInfo(concatJoinNodeId)) {
@@ -93,7 +92,6 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
       return
     }
 
-    val indexColumnName = "__JOIN_INDEX__" + concatJoinNodeId + "__" + System.currentTimeMillis()
     visitAndBindNodeIndexInfo(ctx, concatJoinNode, destNodeId, indexColumnName, processedConcatJoinNodeIds)
     // Reset the fist concat join node to source concat join node
     ctx.getIndexInfo(concatJoinNodeId).nodeIndexType = NodeIndexType.SourceConcatJoinNode
@@ -148,7 +146,7 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
   }
 
   def getSparkOutput(root: PhysicalOpNode, ctx: PlanContext): SparkInstance = {
-    val optCache = ctx.getPlanResult(root)
+    val optCache = ctx.getPlanResult(root.GetNodeId())
     if (optCache.isDefined) {
       return optCache.get
     }
@@ -162,7 +160,7 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
 
   def visitNode(root: PhysicalOpNode, ctx: PlanContext, children: Array[SparkInstance]): SparkInstance = {
     val opType = root.GetOpType()
-    opType match {
+    val outputSpatkInstance = opType match {
       case PhysicalOpType.kPhysicalOpDataProvider =>
         DataProviderPlan.gen(ctx, PhysicalDataProviderNode.CastFrom(root), children)
       case PhysicalOpType.kPhysicalOpSimpleProject =>
@@ -197,6 +195,11 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
       case _ =>
         throw new UnsupportedFesqlException(s"Plan type $opType not supported")
     }
+
+    // Set the output to context cache
+    ctx.putPlanResult(root.GetNodeId(), outputSpatkInstance)
+
+    outputSpatkInstance
   }
 
 
@@ -245,7 +248,7 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
     var engine: SQLEngine = null
 
     val engineOptions = SQLEngine.createDefaultEngineOptions()
-
+    
     if (config.enableWindowParallelization) {
       logger.info("Enable window parallelization optimization")
       engineOptions.set_enable_batch_window_parallelization(true)

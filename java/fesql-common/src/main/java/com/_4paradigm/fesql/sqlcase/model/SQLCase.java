@@ -36,6 +36,10 @@ public class SQLCase implements Serializable{
         return sql.replaceAll("\\{" + idx + "\\}", name);
     }
 
+    public int getLevel() {
+        return this.level;
+    }
+
     public static String formatSql(String sql, String name) {
         return sql.replaceAll("\\{auto\\}", name);
     }

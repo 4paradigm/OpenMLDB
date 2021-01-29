@@ -21,37 +21,42 @@ object ConcatJoinPlan {
     }
 
     val indexName = ctx.getIndexInfo(node.GetNodeId()).indexColumnName
-    val newLeftTableIndexName = "NewLeftIndex_" + indexName
 
     // Note that this is exception to use "getDfWithIndex" instead of "getSparkDfConsideringIndex" because ConcatJoin has not index flag but request input dataframe with index
-    val leftDf: DataFrame = left.getDfWithIndex.withColumnRenamed(indexName, newLeftTableIndexName)
+    val leftDf: DataFrame = left.getDfWithIndex
     val rightDf: DataFrame = right.getDfWithIndex
 
-    val nodeIndexType = ctx.getIndexInfo(node.GetNodeId()).nodeIndexType
-
-    // Check if we can use native last join
-    val supportNativeLastJoin = SparkUtil.supportNativeLastJoin(joinType, false)
-
-    // Use left join or native last join
-    val resultDf = if (supportNativeLastJoin) {
-      leftDf.join(rightDf, leftDf(newLeftTableIndexName) === rightDf(indexName), "last")
-    } else {
-      leftDf.join(rightDf, leftDf(newLeftTableIndexName) === rightDf(indexName), "left")
+    // Use left join or native last join and check if we can use native last join or not
+    val concatJoinJoinType = ctx.getConf.concatJoinJoinType
+    logger.info("Concat join may use join type: " + concatJoinJoinType)
+    val resultDf = concatJoinJoinType match {
+      case "inner"  => leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "inner")
+      case "left" | "left_outer" => leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "left")
+      case "last" => {
+        if (SparkUtil.supportNativeLastJoin(JoinType.kJoinTypeConcat, false)) {
+          leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "last")
+        } else {
+          logger.info("Unsupported native last join, fallback to left join")
+          leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "left")
+        }
+      }
+      case _ => throw new FesqlException("Unsupported concat join join type: " + joinType)
     }
+
+    val nodeIndexType = ctx.getIndexInfo(node.GetNodeId()).nodeIndexType
 
     // Drop the index column, this will drop two columns with the same index name
     val outputDf = nodeIndexType match {
       case NodeIndexType.SourceConcatJoinNode => {
-        logger.info("Drop the index column %s and %s for output dataframe".format(indexName, newLeftTableIndexName))
-        resultDf.drop(indexName).drop(newLeftTableIndexName)
+        logger.info("Drop all the index column %s for source concat join node".format(indexName))
+        resultDf.drop(indexName)
       }
       case NodeIndexType.InternalConcatJoinNode => {
-        logger.info("Drop the index column %s for output dataframe".format(indexName))
-        resultDf.drop(newLeftTableIndexName)
+        logger.info("Drop the index column %s for internal concat join node from left dataframe".format(indexName))
+        resultDf.drop(leftDf(indexName))
       }
       case _ => throw new FesqlException("Handle unsupported concat join node index type: %s".format(nodeIndexType))
     }
-
 
     SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
   }

@@ -32,10 +32,13 @@ using node::SQLNode;
 class Planner {
  public:
     Planner(node::NodeManager *manager, const bool is_batch_mode,
-            const bool is_cluster_optimized)
+            const bool is_cluster_optimized,
+            const bool enable_batch_window_parallelization)
         : is_batch_mode_(is_batch_mode),
           is_cluster_optimized_(is_cluster_optimized),
           enable_window_maxsize_merged_(true),
+          enable_batch_window_parallelization_(
+              enable_batch_window_parallelization),
           node_manager_(manager) {}
     virtual ~Planner() {}
     virtual int CreatePlanTree(
@@ -50,6 +53,7 @@ class Planner {
     const bool is_batch_mode_;
     const bool is_cluster_optimized_;
     const bool enable_window_maxsize_merged_;
+    const bool enable_batch_window_parallelization_;
 
  protected:
     bool IsTable(node::PlanNode *node);
@@ -100,12 +104,14 @@ class Planner {
 class SimplePlanner : public Planner {
  public:
     explicit SimplePlanner(node::NodeManager *manager)
-        : Planner(manager, true, false) {}
+        : Planner(manager, true, false, false) {}
     SimplePlanner(node::NodeManager *manager, bool is_batch_mode,
-                  bool is_cluster_optimized = false)
-        : Planner(manager, is_batch_mode, is_cluster_optimized) {}
+                  bool is_cluster_optimized = false,
+                  bool enable_batch_window_parallelization = false)
+        : Planner(manager, is_batch_mode, is_cluster_optimized,
+                  enable_batch_window_parallelization) {}
     int CreatePlanTree(const NodePointVector &parser_trees,
-                       PlanNodeList &plan_trees,
+                       PlanNodeList &plan_trees,  // NOLINT
                        Status &status);  // NOLINT (runtime/references)
 };
 
