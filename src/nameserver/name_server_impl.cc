@@ -8188,7 +8188,7 @@ int NameServerImpl::UpdateEndpointTableAliveHandle(const std::string& endpoint,
         }
         if (has_update) {
             if (!UpdateZkTableNodeWithoutNotify(kv.second.get())) {
-                LOG(INFO) << "update fail. table[" << kv.first << "] endpoint[" << endpoint
+                LOG(WARNING) << "update fail. table[" << kv.first << "] endpoint[" << endpoint
                           << "] is_alive[" << is_alive << "]";
                 return -1;
             }
