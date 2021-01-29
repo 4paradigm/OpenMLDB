@@ -193,7 +193,6 @@ void SQLSDKTest::CreateProcedure(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
     boost::replace_all(sql, "{auto}", fesql::sqlcase::SQLCase::GenRand("auto_t"));
-    boost::to_lower(sql);
     boost::trim(sql);
     LOG(INFO) << sql;
     sql_case.sp_name_ = fesql::sqlcase::SQLCase::GenRand("auto_sp");
@@ -228,8 +227,7 @@ void SQLSDKTest::CreateProcedure(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         }
         for (size_t i = 0; i < sp_info->GetInputSchema().GetColumnCnt(); ++i) {
             auto is_const = input_common_indices.find(i) != input_common_indices.end();
-            ASSERT_EQ(is_const, sp_info->GetInputSchema().IsConstant(i))
-                << "At input column " << i;
+            ASSERT_EQ(is_const, sp_info->GetInputSchema().IsConstant(i)) << "At input column " << i;
         }
         if (!sql_case.expect().common_column_indices_.empty()) {
             std::set<size_t> output_common_indices;
@@ -238,8 +236,7 @@ void SQLSDKTest::CreateProcedure(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
             }
             for (size_t i = 0; i < sp_info->GetOutputSchema().GetColumnCnt(); ++i) {
                 auto is_const = output_common_indices.find(i) != output_common_indices.end();
-                ASSERT_EQ(is_const, sp_info->GetOutputSchema().IsConstant(i))
-                    << "At output column " << i;
+                ASSERT_EQ(is_const, sp_info->GetOutputSchema().IsConstant(i)) << "At output column " << i;
             }
         }
     }
@@ -274,7 +271,7 @@ void SQLSDKTest::InsertTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         std::vector<std::string> inserts;
         ASSERT_TRUE(sql_case.BuildInsertSQLListFromInput(i, &inserts));
         for (size_t row_idx = 0; row_idx < inserts.size(); row_idx++) {
-            if (0 == i  && row_idx == inserts.size() - 1 && kNotInsertLastRowOfFirstInput == insert_rule) {
+            if (0 == i && row_idx == inserts.size() - 1 && kNotInsertLastRowOfFirstInput == insert_rule) {
                 continue;
             }
             auto insert = inserts[row_idx];
@@ -367,8 +364,9 @@ void SQLSDKTest::BatchExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
     }
     DLOG(INFO) << "format sql done";
     LOG(INFO) << sql;
-    boost::to_lower(sql);
-    if (boost::algorithm::starts_with(sql, "select")) {
+    std::string lower_sql = sql;
+    boost::to_lower(lower_sql);
+    if (boost::algorithm::starts_with(lower_sql, "select")) {
         auto rs = router->ExecuteSQL(sql_case.db(), sql, &status);
         if (!sql_case.expect().success_) {
             if ((rs)) {
@@ -393,11 +391,11 @@ void SQLSDKTest::BatchExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         if (sql_case.expect().count_ > 0) {
             ASSERT_EQ(sql_case.expect().count_, static_cast<int64_t>(rs->Size()));
         }
-    } else if (boost::algorithm::starts_with(sql, "create")) {
+    } else if (boost::algorithm::starts_with(lower_sql, "create")) {
         bool ok = router->ExecuteDDL(sql_case.db(), sql, &status);
         router->RefreshCatalog();
         ASSERT_EQ(sql_case.expect().success_, ok);
-    } else if (boost::algorithm::starts_with(sql, "insert")) {
+    } else if (boost::algorithm::starts_with(lower_sql, "insert")) {
         bool ok = router->ExecuteInsert(sql_case.db(), sql, &status);
         ASSERT_EQ(sql_case.expect().success_, ok);
     } else {
@@ -427,9 +425,10 @@ void SQLSDKQueryTest::RequestExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // N
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
     boost::replace_all(sql, "{auto}", fesql::sqlcase::SQLCase::GenRand("auto_t"));
-    boost::to_lower(sql);
     LOG(INFO) << sql;
-    if (boost::algorithm::starts_with(sql, "select")) {
+    std::string lower_sql = sql;
+    boost::to_lower(lower_sql);
+    if (boost::algorithm::starts_with(lower_sql, "select")) {
         LOG(INFO) << "GetRequestRow start";
         auto request_row = router->GetRequestRow(sql_case.db(), sql, &status);
         LOG(INFO) << "GetRequestRow done";
@@ -503,9 +502,9 @@ void SQLSDKQueryTest::RequestExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // N
         if (sql_case.expect().count_ > 0) {
             ASSERT_EQ(sql_case.expect().count_, static_cast<int64_t>(results.size()));
         }
-    } else if (boost::algorithm::starts_with(sql, "create")) {
+    } else if (boost::algorithm::starts_with(lower_sql, "create")) {
         FAIL() << "create sql not support in request mode";
-    } else if (boost::algorithm::starts_with(sql, "insert")) {
+    } else if (boost::algorithm::starts_with(lower_sql, "insert")) {
         FAIL() << "insert sql not support in request mode";
     } else {
         FAIL() << "sql not support in request mode";
@@ -572,9 +571,10 @@ void SQLSDKQueryTest::BatchRequestExecuteSQLWithCommonColumnIndices(fesql::sqlca
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
     boost::replace_all(sql, "{auto}", fesql::sqlcase::SQLCase::GenRand("auto_t"));
-    boost::to_lower(sql);
     LOG(INFO) << sql;
-    if (!boost::algorithm::starts_with(sql, "select")) {
+    std::string lower_sql = sql;
+    boost::to_lower(lower_sql);
+    if (!boost::algorithm::starts_with(lower_sql, "select")) {
         FAIL() << "sql not support in request mode";
     }
 
@@ -601,7 +601,6 @@ void SQLSDKQueryTest::BatchRequestExecuteSQLWithCommonColumnIndices(fesql::sqlca
         ASSERT_TRUE(sql_case.ExtractRows(batch_request_table.columns(), batch_request.rows_, request_rows));
 
     } else {
-        auto& batch_request = sql_case.batch_request();
         ASSERT_TRUE(sql_case.ExtractInputTableDef(sql_case.inputs_[0], batch_request_table));
         std::vector<fesql::codec::Row> rows;
         ASSERT_TRUE(sql_case.ExtractInputData(sql_case.inputs_[0], rows));
@@ -699,8 +698,7 @@ void SQLSDKQueryTest::RunBatchRequestModeSDK(fesql::sqlcase::SQLCase& sql_case, 
 }
 
 void SQLSDKQueryTest::DistributeRunBatchRequestModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                                                                   std::shared_ptr<SQLRouter> router,
-                                                                   int32_t partition_num) {
+                                                       std::shared_ptr<SQLRouter> router, int32_t partition_num) {
     fesql::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router, partition_num);
@@ -718,7 +716,6 @@ void SQLSDKQueryTest::RunRequestProcedureModeSDK(fesql::sqlcase::SQLCase& sql_ca
     fesql::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router);
-    bool has_batch_request = !sql_case.batch_request().columns_.empty();
     InsertTables(sql_case, router, kNotInsertFirstInput);
     CreateProcedure(sql_case, router);
     RequestExecuteSQL(sql_case, router, true, is_asyn);
@@ -728,7 +725,7 @@ void SQLSDKQueryTest::RunRequestProcedureModeSDK(fesql::sqlcase::SQLCase& sql_ca
 }
 
 void SQLSDKBatchRequestQueryTest::RunBatchRequestProcedureModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                                                      std::shared_ptr<SQLRouter> router, bool is_asyn) {
+                                                                  std::shared_ptr<SQLRouter> router, bool is_asyn) {
     fesql::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router);
@@ -778,33 +775,60 @@ INSTANTIATE_TEST_SUITE_P(SQLSDKLastJoinWindowQuery, SQLSDKQueryTest,
 
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestSelectSample, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_select_sample.yaml")));
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/select/test_select_sample.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestExpression, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_expression.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestArithmetic, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/expression/test_arithmetic.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestCompare, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/expression/test_compare.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestCondition, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/expression/test_condition.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestLogic, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/expression/test_logic.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestType, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/expression/test_type.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestWindowRow, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_window_row.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestWindowRow, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/window/test_window_row.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestWindowRowRange, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_window_row_range.yaml")));
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/window/test_window_row_range.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestWindowUnion, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_window_union.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestWindowUnion, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/window/test_window_union.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestLastJoin, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_last_join.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestSubSelect, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_sub_select.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestSubSelect, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/select/test_sub_select.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestUDAFFunction, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_udaf_function.yaml")));
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestUDFFunction, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_udf_function.yaml")));
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/function/test_udaf_function.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestUDFFunction, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/function/test_udf_function.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestStringFunction, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/function/test_string.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestDateFunction, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/function/test_date.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestCalulateFunction, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/function/test_calculate.yaml")));
+
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestWhere, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_where.yaml")));
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/select/test_where.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestFZFunction, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
@@ -821,15 +845,13 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     SQLSDKClusterCaseWindowRowRange, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKTestErrorWindow, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/error/error_window.yaml")));
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestErrorWindow, SQLSDKQueryTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/error/error_window.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestIndexOptimized, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_index_optimized.yaml")));
-INSTANTIATE_TEST_CASE_P(
-    SQLSDKTestDebugIssues, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/debug/issues_case.yaml")));
+INSTANTIATE_TEST_CASE_P(SQLSDKTestDebugIssues, SQLSDKQueryTest,
+                        testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/debug/issues_case.yaml")));
 }  // namespace sdk
 }  // namespace rtidb
 #endif  // SRC_SDK_SQL_SDK_TEST_H_
