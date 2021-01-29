@@ -394,14 +394,14 @@ object WindowAggPlan {
 
     if (config.skewTagIdx != 0) {
       sqlConfig.skewMode = FeSQLConfig.SKEW
+      val skewGroups = config.groupIdxs :+ config.skewTagIdx
+      computer.resetGroupKeyComparator(skewGroups, config.inputSchema)
     }
     if (sqlConfig.print) {
       logger.info(s"windowAggIter mode: ${sqlConfig.skewMode}")
     }
 
     val resIter = if (sqlConfig.skewMode == FeSQLConfig.SKEW) {
-      val skewGroups = config.groupIdxs :+ config.skewPositionIdx
-      computer.resetGroupKeyComparator(skewGroups, config.inputSchema)
       limitInputIter.flatMap(row => {
         if (lastRow != null) {
           computer.checkPartition(row, lastRow)
@@ -439,7 +439,7 @@ object WindowAggPlan {
     var lastRow: Row = null
     if (config.skewTagIdx != 0) {
       sqlConfig.skewMode = FeSQLConfig.SKEW
-      val skewGroups = config.groupIdxs :+ config.skewPositionIdx
+      val skewGroups = config.groupIdxs :+ config.skewTagIdx
       computer.resetGroupKeyComparator(skewGroups, config.inputSchema)
     }
 

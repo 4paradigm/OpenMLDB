@@ -192,20 +192,6 @@ class WindowComputer(sqlConfig: FeSQLConfig,
       }
       windowData.add(filterArr.mkString(","))
     }
-//    if (firstArr(id) == "349119_2012-11-21 05:44:09") {
-//      for (index <- 0 until window.size().toInt) {
-//        val arr = new Array[Any](config.inputSchema.size)
-//        encoder.decode(window.Get(index), arr)
-//        val filterArr = new Array[Any](indexs.size())
-//        for (i <- 0 until indexs.size()) {
-//          filterArr(i) = arr(indexs.get(i))
-//        }
-//        windowData.add(filterArr.mkString(","))
-//      }
-//    }
-
-
-//    logger.info(config.inputSchema.toDDL)
     if (windowData.size() > 0) {
       logger.info(StringUtils.join(windowData, "\n"))
     }
