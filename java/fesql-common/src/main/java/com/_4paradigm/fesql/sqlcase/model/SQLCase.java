@@ -4,15 +4,19 @@ import lombok.Data;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 
+import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 @Data
-public class SQLCase {
+public class SQLCase implements Serializable{
+    int level = 0;
     String id;
     String desc;
     String mode;
     String db;
     String sql;
+    List<List<String>> dataProvider;
     List<String> sqls;
     boolean standard_sql;
     boolean standard_sql_compatible;
@@ -25,6 +29,8 @@ public class SQLCase {
     InputDesc batch_request;
     ExpectDesc expect;
     String spName = genAutoName();
+
+    private Map<Integer,ExpectDesc> expectProvider;
 
     public static String formatSql(String sql, int idx, String name) {
         return sql.replaceAll("\\{" + idx + "\\}", name);

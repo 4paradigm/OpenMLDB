@@ -12,7 +12,7 @@ abstract class SparkTestSuite extends FunSuite with BeforeAndAfter {
   def customizedAfter(): Unit = {}
 
   before {
-    val sess = SparkSession.builder().master("local").getOrCreate()
+    val sess = SparkSession.builder().master("local[4]").getOrCreate()
     tlsSparkSession.set(sess)
     customizedBefore()
   }

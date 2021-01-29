@@ -328,15 +328,16 @@ class WindowRange {
             case Window::WindowFrameType::kFrameRows:
                 return out_of_rows ? kExceedWindow : kInWindow;
             case Window::WindowFrameType::kFrameRowsMergeRowsRange: {
-                return out_of_rows ? (before_window   ? kBeforeWindow
-                                      : exceed_window ? kExceedWindow
-                                                      : kInWindow)
-                                   : kInWindow;
+                return out_of_rows
+                           ? (before_window
+                                  ? kBeforeWindow
+                                  : exceed_window ? kExceedWindow : kInWindow)
+                           : kInWindow;
             }
             case Window::WindowFrameType::kFrameRowsRange:
-                return exceed_window   ? kExceedWindow
-                       : before_window ? kBeforeWindow
-                                       : kInWindow;
+                return exceed_window
+                           ? kExceedWindow
+                           : before_window ? kBeforeWindow : kInWindow;
             default:
                 return kExceedWindow;
         }

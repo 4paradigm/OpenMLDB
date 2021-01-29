@@ -232,7 +232,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         node::ProjectListNode *merged_project =
             node_manager_->MakeProjectListPlanNode(first_window_project->GetW(),
                                                    true);
-        if (!is_cluster_optimized_ &&
+        if (!is_cluster_optimized_ && !enable_batch_window_parallelization_ &&
             node::ProjectListNode::MergeProjectList(
                 simple_project, first_window_project, merged_project)) {
             project_list_vec[0] = nullptr;
@@ -934,9 +934,10 @@ bool Planner::MergeProjectMap(
             if (node::SQLEquals(map_iter->first, iter->first) ||
                 (nullptr != map_iter->first &&
                  map_iter->first->CanMergeWith(iter->first))) {
+                auto frame = iter->second->GetW();
                 node::ProjectListNode *merged_project =
-                    node_manager_->MakeProjectListPlanNode(iter->second->GetW(),
-                                                           true);
+                    node_manager_->MakeProjectListPlanNode(frame,
+                                                           frame != nullptr);
                 node::ProjectListNode::MergeProjectList(
                     iter->second, map_iter->second, merged_project);
                 iter->second = merged_project;
