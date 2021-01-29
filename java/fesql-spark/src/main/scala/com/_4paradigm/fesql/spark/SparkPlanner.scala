@@ -249,9 +249,14 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
 
     val engineOptions = SQLEngine.createDefaultEngineOptions()
 
+
     if (config.enableWindowParallelization) {
-      logger.info("Enable window parallelization optimization")
-      engineOptions.set_enable_batch_window_parallelization(true)
+      if (config.skewMode == FeSQLConfig.SKEW) {
+        logger.warn("Using skew mode will not enable window parallelization")
+      } else {
+        logger.info("Enable window parallelization optimization")
+        engineOptions.set_enable_batch_window_parallelization(true)
+      }
     } else {
       logger.info("Disable window parallelization optimization, enable by setting fesql.window.parallelization")
     }
