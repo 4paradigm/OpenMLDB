@@ -162,7 +162,7 @@ class WindowComputer(sqlConfig: FeSQLConfig,
     window.delete()
     window = null
   }
-
+  import org.apache.spark.sql.types._
   def resetGroupKeyComparator(keyIdxs: Array[Int], schema: StructType): Unit = {
     groupKeyComparator = FesqlUtil.createGroupKeyComparator(keyIdxs, schema)
   }
