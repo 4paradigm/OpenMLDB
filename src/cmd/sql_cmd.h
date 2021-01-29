@@ -79,6 +79,10 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     t.endOfRow();
     while (result_set->Next()) {
         for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
+            if (result_set->IsNULL(i)) {
+                t.add("NULL");
+                continue;
+            }
             auto data_type = schema->GetColumnType(i);
             switch (data_type) {
                 case fesql::sdk::kTypeInt16: {
