@@ -79,6 +79,10 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     t.endOfRow();
     while (result_set->Next()) {
         for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
+            if (result_set->IsNULL(i)) {
+                t.add("NULL");
+                continue;
+            }
             auto data_type = schema->GetColumnType(i);
             switch (data_type) {
                 case fesql::sdk::kTypeInt16: {
@@ -343,6 +347,10 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
                 return;
             }
             auto table = cs->GetTableInfo(db, cmd_node->GetArgs()[0]);
+            if (table == nullptr) {
+                std::cerr << "table " << cmd_node->GetArgs()[0] << " does not exist" << std::endl;
+                return;
+            }
             ::fesql::vm::Schema output_schema;
             ::rtidb::catalog::SchemaAdapter::ConvertSchema(
                 table->column_desc_v1(), &output_schema);
