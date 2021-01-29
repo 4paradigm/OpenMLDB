@@ -390,8 +390,9 @@ bool SQLCompiler::Parse(SQLContext& ctx,
     ::fesql::parser::FeSQLParser parser;
 
     bool is_batch_mode = ctx.engine_mode == kBatchMode;
-    ::fesql::plan::SimplePlanner planer(&ctx.nm, is_batch_mode,
-                                        ctx.is_cluster_optimized);
+    ::fesql::plan::SimplePlanner planer(
+        &ctx.nm, is_batch_mode, ctx.is_cluster_optimized,
+        ctx.enable_batch_window_parallelization);
 
     int ret = parser.parse(ctx.sql, parser_trees, &ctx.nm, status);
     if (ret != 0) {
