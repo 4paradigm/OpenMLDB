@@ -4,10 +4,11 @@ import java.io.{File, FileInputStream}
 import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
 
+import com._4paradigm.fesql.common.JITManager
 import com._4paradigm.fesql.spark.api.{FesqlDataframe, FesqlSession}
 import com._4paradigm.fesql.spark.SparkTestSuite
 import com._4paradigm.fesql.sqlcase.model._
-import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.CollectionUtils
 import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.types._
 import org.slf4j.LoggerFactory
@@ -100,6 +101,8 @@ class SQLBaseSuite extends SparkTestSuite {
           checkTwoDataframe(df, spark.sparksql(sqlText).sparkDf)
         }
       }
+
+      JITManager.removeModule(sqlCase.getSql)
     }
   }
 
@@ -109,11 +112,11 @@ class SQLBaseSuite extends SparkTestSuite {
 
   def checkOutput(data: DataFrame, expect: ExpectDesc): Unit = {
     if (CollectionUtils.isEmpty(expect.getColumns) && CollectionUtils.isEmpty(expect.getRows)) {
-      logger.info("pass: no columns and rows in expect block");
-      return;
+      logger.info("pass: no columns and rows in expect block")
+      return
     }
 
-    val expectSchema = parseSchema(expect.getColumns())
+    val expectSchema = parseSchema(expect.getColumns)
     assert(data.schema == expectSchema)
 
     val expectData = parseData(expect.getRows, expectSchema)
@@ -160,14 +163,22 @@ class SQLBaseSuite extends SparkTestSuite {
     }
     dtype match {
       case FloatType =>
-        if (toFloat(left).isNaN) {
-          toFloat(right).isNaN
+        val leftFloat = toFloat(left)
+        val rightFloat = toFloat(right)
+        if (leftFloat.isNaN) {
+          rightFloat.isNaN
+        } else if (leftFloat.isInfinity) {
+          rightFloat.isInfinity
         } else {
           math.abs(toFloat(left) - toFloat(right)) < 1e-5
         }
       case DoubleType =>
-        if (toDouble(left).isNaN) {
-          toDouble(right).isNaN
+        val leftDouble = toDouble(left)
+        val rightDouble = toDouble(right)
+        if (leftDouble.isNaN) {
+          rightDouble.isNaN
+        } else if (leftDouble.isInfinity) {
+          rightDouble.isInfinity
         } else {
           math.abs(toDouble(left) - toDouble(right)) < 1e-5
         }
@@ -226,7 +237,7 @@ class SQLBaseSuite extends SparkTestSuite {
   def parseSchema(columns: java.util.List[String]): StructType = {
 
     val parts = columns.toArray.map(_.toString()).map(_.trim).filter(_ != "").map(_.reverse.replaceFirst(" ", ":").reverse.split(":"))
-    parseSchema(parts);
+    parseSchema(parts)
   }
 
 
@@ -261,7 +272,7 @@ class SQLBaseSuite extends SparkTestSuite {
 
   def parseData(rows: java.util.List[java.util.List[Object]], schema: StructType): Array[Array[Any]] = {
 
-    val data = rows.asScala.map(_.asInstanceOf[java.util.List[Object]].asScala.map(x => if (null == x) "null" else x.toString()).toArray).toArray
+    val data = rows.asScala.map(_.asScala.map(x => if (null == x) "null" else x.toString).toArray).toArray
     parseData(data, schema)
   }
 

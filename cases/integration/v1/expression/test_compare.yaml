@@ -22,15 +22,18 @@ cases:
       rows:
         - [false,false,false,false,false,false,false,false,true]
     expectProvider:
+      0:
+        rows:
+          - [false,false,false,false,false,false,false,false,false]
       1:
         rows:
-          - [false,true,false,false,false,false,false,false,true]
+          - [false,true,false,false,false,false,false,false,false]
       2:
         rows:
-          - [true,false,true,true,true,true,true,true,false]
+          - [true,false,true,true,true,true,true,true,true]
       3:
         rows:
-          - [true,true,true,true,true,true,true,true,false]
+          - [true,true,true,true,true,true,true,true,true]
       4:
         rows:
           - [true,false,true,true,true,true,true,true,true]
@@ -89,6 +92,7 @@ cases:
           - [false,true,false,false,false,false,false]
   - id: 2
     desc: "整型_比较运算_各种类型_错误"
+    level: 5
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -162,6 +166,7 @@ cases:
           - [true,true,false,true]
   - id: 4
     desc: "timestamp_比较运算_各种类型_错误"
+    level: 5
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -182,6 +187,7 @@ cases:
       success: false
   - id: 5
     desc: "date_比较运算_各种类型_错误"
+    level: 5
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -222,6 +228,9 @@ cases:
       rows:
         - [false,false,false,false,false,false,true,false]
     expectProvider:
+      0:
+        rows:
+          - [true,true,false,false,false,false,true,true]
       1:
         rows:
           - [true,true,false,false,false,false,true,true]

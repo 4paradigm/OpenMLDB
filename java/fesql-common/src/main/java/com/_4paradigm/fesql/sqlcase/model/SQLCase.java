@@ -10,6 +10,7 @@ import java.util.Map;
 
 @Data
 public class SQLCase implements Serializable{
+    int level = 0;
     String id;
     String desc;
     String mode;
@@ -28,6 +29,7 @@ public class SQLCase implements Serializable{
     InputDesc batch_request;
     ExpectDesc expect;
     String spName = genAutoName();
+
     private Map<Integer,ExpectDesc> expectProvider;
 
     public static String formatSql(String sql, int idx, String name) {
@@ -76,5 +78,4 @@ public class SQLCase implements Serializable{
         sql = builder.toString();
         return sql;
     }
-
 }

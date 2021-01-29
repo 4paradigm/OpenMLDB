@@ -980,15 +980,13 @@ void CastErrorExprCheck(std::string cast_type_str, std::string src_type_str) {
     }
 }
 // TODO(chenjing): support timestamp -> date
-INSTANTIATE_TEST_SUITE_P(CastExprErrorTestDate, CastErrorExprTest,
-                         testing::Values(
-                             // cast_type, src_type
-                             std::make_tuple("date", "bool"),
-                             std::make_tuple("date", "int16"),
-                             std::make_tuple("date", "int32"),
-                             std::make_tuple("date", "int64"),
-                             std::make_tuple("date", "float"),
-                             std::make_tuple("date", "double")));
+INSTANTIATE_TEST_SUITE_P(
+    CastExprErrorTestDate, CastErrorExprTest,
+    testing::Values(
+        // cast_type, src_type
+        std::make_tuple("date", "bool"), std::make_tuple("date", "int16"),
+        std::make_tuple("date", "int32"), std::make_tuple("date", "int64"),
+        std::make_tuple("date", "float"), std::make_tuple("date", "double")));
 
 TEST_P(CastErrorExprTest, cast_error_check) {
     auto [cast_type_str, src_type_str] = GetParam();  // NOLINT

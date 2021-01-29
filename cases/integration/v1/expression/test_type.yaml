@@ -2,6 +2,7 @@ db: test_zw
 debugs: []
 cases:
   - id: 0
+    mode: "offline-unsupport"
     desc: "cast_各种类型_正确"
     inputs:
       -
@@ -32,7 +33,7 @@ cases:
           - [true,30,30,30,30.0,30.0,30,30]
       5:
         rows:
-          - [false,0,0,0,0.0,0.0,0,0]
+          - [false,0,0,0,0.0,0.0,0,false]
   - id: 1
     desc: "cast_timestamp/string_正确"
     tags: ["TODO","本地成功，CICD失败，原因待定位"]
@@ -90,6 +91,7 @@ cases:
           - [true,1588262400000,"2020-05-01","2020-05-01"]
   - id: 4
     desc: "cast_其他类型_date_错误"
+    level: 5
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -103,6 +105,8 @@ cases:
       success: false
   - id: 5
     desc: "cast_date_其他类型_错误"
+    level: 5
+    tags: ["TODO", "bug"]
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -239,6 +243,8 @@ cases:
         - [1, 1590115420]
   - id: 14
     desc: cast as int
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -262,6 +268,8 @@ cases:
         - [3, -1, -1, -1, -1, -1, NULL, 977520480, 0, NULL]
   - id: 15
     desc: cast as smallint
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -286,6 +294,8 @@ cases:
         - [3, -1, -1, -1, -1, -1, NULL, -14496, 0, NULL]
   - id: 16
     desc: cast as bigint
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -310,6 +320,8 @@ cases:
         - [3, -1, -1, -1, -1, -1, NULL, 1590115420000, 0, NULL]
   - id: 17
     desc: cast as float
+    mode: offline-unsupport, python-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -328,11 +340,13 @@ cases:
       columns: ["id int32", "float_c1 float", "float_c2 float", "float_c3 float", "float_c4 float", "float_c5 float",
                 "float_c6 float", "float_c8 float", "float_c9 float", "float_c10 float"]
       rows:
-        - [1, 1.0, 1.0, 1.0, 1.0, 1.0, NULL, 1590115434496.0, 1.0, 1.0]
-        - [2, -1.0, -1.0, -1.0, -1.0, -1.0, NULL, 1590115434496.0, 0.0, -1.0]
-        - [3, -1.0, -1.0, -1.0, -1.0, -1.0, NULL, 1590115434496.0, 0.0, NULL]
+        - [1, 1.0, 1.0, 1.0, 1.0, 1.0, NULL, 1590115420000.0, 1.0, 1.0]
+        - [2, -1.0, -1.0, -1.0, -1.0, -1.0, NULL, 1590115420000.0, 0.0, -1.0]
+        - [3, -1.0, -1.0, -1.0, -1.0, -1.0, NULL, 1590115420000.0, 0.0, NULL]
   - id: 18
     desc: cast as double
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -356,14 +370,16 @@ cases:
         - [3, -1.0, -1.0, -1.0, -1.0, -1.0, NULL, 1590115420000.0, 0.0, NULL]
   - id: 19
     desc: cast as string
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
         indexs: ["index1:c6:c8"]
         rows:
-          - [1, 1, 1, 1, 1.1, 1.1, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
-          - [2, -1, -1, -1, -1.1, -1.1, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, false, "-1"]
-          - [3, -1, -1, -1, -1.1, -1.1, NULL, "2020-05-22", 1590115420000, false, ""]
+          - [1, 1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
+          - [2, -1, -1, -1, -1.0, -1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, false, "-1"]
+          - [3, -1, -1, -1, -1.0, -1.0, NULL, "2020-05-22", 1590115420000, false, ""]
     sql: |
       select id,
       string(c1) as string_c1, string(c2) as string_c2, string(c3) as string_c3, string(c4) as string_c4,
@@ -375,19 +391,20 @@ cases:
       columns: ["id int32", "string_c1 string", "string_c2 string", "string_c3 string", "string_c4 string", "string_c5 string",
                 "string_c6 string", "string_c7 string", "string_c8 string", "string_c9 string", "string_c10 string"]
       rows:
-        - [1, "1", "1", "1", "1.1", "1.1", "2020-05-22 10:43:40", "2020-05-22", "2020-05-22 10:43:40", "true", "1"]
-        - [2, "-1", "-1", "-1", "-1.1", "-1.1", "2020-05-22 10:43:40", "2020-05-22", "2020-05-22 10:43:40", "false", "-1"]
-        - [3, "-1", "-1", "-1", "-1.1", "-1.1", NULL, "2020-05-22", "2020-05-22 10:43:40", "false", ""]
+        - [1, "1", "1", "1", "1", "1", "2020-05-22 10:43:40", "2020-05-22", "2020-05-22 10:43:40", "true", "1"]
+        - [2, "-1", "-1", "-1", "-1", "-1", "2020-05-22 10:43:40", "2020-05-22", "2020-05-22 10:43:40", "false", "-1"]
+        - [3, "-1", "-1", "-1", "-1", "-1", NULL, "2020-05-22", "2020-05-22 10:43:40", "false", ""]
   - id: 20
     desc: cast as date
-    tags: ["Spark只能支持2020-05-22格式，FESQL在线可以同时支持2020-05-22 10:43:40和2020-05-22格式"]
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
         indexs: ["index1:c6:c8"]
         rows:
-          - [1, 1, 1, 1, 1.0, 1.0, "2020-05-22", "2020-05-22", 1590115420000, true, "1"]
-          - [2, -1, -1, -1, -1.0, -1.0, "2020-05-22", "2020-05-22", 1590115420000, false, "-1"]
+          - [1, 1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
+          - [2, -1, -1, -1, -1.0, -1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, false, "-1"]
           - [3, -1, -1, -1, -1.0, -1.0, NULL, "2020-05-22", 1590115420000, false, ""]
     sql: |
       select id,
@@ -402,7 +419,8 @@ cases:
         - [3, NULL, "2020-05-22", "2020-05-22", NULL]
   - id: 21
     desc: cast as timestamp
-    tags: ["Spark默认支持负数转timestamp，目前FESQL离线和在线遇到负数转为null"]
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
@@ -426,14 +444,16 @@ cases:
         - [3, NULL, NULL, NULL, NULL, NULL, NULL, 1590076800000, 1590115420000, 0, NULL]
   - id: 22
     desc: cast as bool
+    mode: offline-unsupport
+    tags: ["TODO", "@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
         indexs: ["index1:c6:c8"]
         rows:
           - [1, 1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
-          - [2, -1, -1, -1, -1.0, -1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, false, "true"]
-          - [3, -1, -1, -1, -1.0, -1.0, NULL, "2020-05-22", 1590115420000, false, "false"]
+          - [2, -1, -1, -1, -1.0, -1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, false, "-1"]
+          - [3, -1, -1, -1, -1.0, -1.0, NULL, "2020-05-22", 1590115420000, false, ""]
     sql: |
       select id,
       bool(c1) as bool_c1, bool(c2) as bool_c2, bool(c3) as bool_c3, bool(c4) as bool_c4, bool(c5) as bool_c5,
@@ -444,8 +464,8 @@ cases:
       columns: ["id int32", "bool_c1 bool", "bool_c2 bool", "bool_c3 bool", "bool_c4 bool", "bool_c5 bool",
                 "bool_c6 bool", "bool_c8 bool", "bool_c9 bool", "bool_c10 bool"]
       rows:
-        - [1, true, true, true, true, true, NULL, true, true, true]
-        - [2, true, true, true, true, true, NULL, true, false, true]
+        - [1, true, true, true, true, true, true, true, true, true]
+        - [2, true, true, true, true, true, true, true, false, true]
         - [3, true, true, true, true, true, NULL, true, false, false]
   - id: 23
     desc: cast string as bool
