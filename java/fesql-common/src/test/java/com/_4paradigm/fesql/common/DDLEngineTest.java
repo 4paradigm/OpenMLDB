@@ -28,26 +28,96 @@ public class DDLEngineTest {
 
     @DataProvider(name = "build_more_index")
     public Object[][] getSqlScript() {
-        return new Object[][]{
-                new Object[]{
-                        "support small short smallint",
-                        "ddl/ut/type.json",
-                        "ddl/ut/type.txt",
+        return new Object[][] {
+                 new Object[] {
+                         "support small short smallint",
+                         "ddl/ut/type.json",
+                         "ddl/ut/type.txt",
+                         1,
+                         2,
+                         "create table `main`(\n" +
+                                 "`col1` smallint,\n" +
+                                 "`col2` int,\n" +
+                                 "`col3` bigint,\n" +
+                                 "`col4` float,\n" +
+                                 "`col5` double,\n" +
+                                 "`col6` bool,\n" +
+                                 "`col7` string,\n" +
+                                 "`col8` timestamp,\n" +
+                                 "`col9` date,\n" +
+                                 "index(key=(`col2`), ttl=1, ttl_type=latest)\n" +
+                                 ") replicanum=1, partitionnum=2 ;\n"
+                 },
+                new Object[] {
+                        "加法 和 乘法 输出列名有重复",
+                        "ddl/ut/duplicate_col.json",
+                        "ddl/ut/duplicate_col.txt",
                         1,
-                        2,
-                        "create table `main`(\n" +
-                                "`col1` smallint,\n" +
-                                "`col2` int,\n" +
-                                "`col3` bigint,\n" +
-                                "`col4` float,\n" +
-                                "`col5` double,\n" +
-                                "`col6` bool,\n" +
-                                "`col7` string,\n" +
-                                "`col8` timestamp,\n" +
-                                "`col9` date,\n" +
-                                "index(key=(`col2`), ttl=1, ttl_type=latest)\n" +
-                                ") replicanum=1, partitionnum=2 ;\n"
-                },
+                        3,
+                        "create table `bo_bill_detail`(\n" +
+                                "`ingestionTime` timestamp,\n" +
+                                "`new_user_id` string,\n" +
+                                "`bill_ts` bigint,\n" +
+                                "`bank_id` string,\n" +
+                                "`lst_bill_amt` double,\n" +
+                                "`lst_repay_amt` double,\n" +
+                                "`card_limit` double,\n" +
+                                "`cur_blc` double,\n" +
+                                "`cur_bill_min_repay` double,\n" +
+                                "`buy_cnt` double,\n" +
+                                "`cur_bill_amt` double,\n" +
+                                "`adj_amt` double,\n" +
+                                "`rev_credit` double,\n" +
+                                "`avl_amt` double,\n" +
+                                "`advc_limit` double,\n" +
+                                "`repay_status` string,\n" +
+                                "index(key=(`new_user_id`), ts=`ingestionTime`, ttl=92160m, ttl_type=absolute)\n" +
+                                ") replicanum=1, partitionnum=3 ;\n" +
+                                "create table `bo_user`(\n" +
+                                "`ingestionTime` timestamp,\n" +
+                                "`new_user_id` string,\n" +
+                                "`sex` string,\n" +
+                                "`prof` string,\n" +
+                                "`edu` string,\n" +
+                                "`marriage` string,\n" +
+                                "`hukou_typ` string,\n" +
+                                "index(key=(`new_user_id`), ttl=1, ttl_type=latest)\n" +
+                                ") replicanum=1, partitionnum=3 ;\n" +
+                                "create table `bo_browse_history`(\n" +
+                                "`ingestionTime` timestamp,\n" +
+                                "`new_user_id` string,\n" +
+                                "`bws_ts` bigint,\n" +
+                                "`action` string,\n" +
+                                "`subaction` string,\n" +
+                                "index(key=(`new_user_id`), ts=`ingestionTime`, ttl=92160m, ttl_type=absolute)\n" +
+                                ") replicanum=1, partitionnum=3 ;\n" +
+                                "create table `action`(\n" +
+                                "`reqId` string,\n" +
+                                "`eventTime` timestamp,\n" +
+                                "`ingestionTime` timestamp,\n" +
+                                "`actionValue` int,\n" +
+                                "index(key=(`reqId`), ttl=1, ttl_type=latest)\n" +
+                                ") replicanum=1, partitionnum=3 ;\n" +
+                                "create table `bo_detail`(\n" +
+                                "`ingestionTime` timestamp,\n" +
+                                "`new_user_id` string,\n" +
+                                "`trx_ts` bigint,\n" +
+                                "`trx_typ` string,\n" +
+                                "`trx_amt` double,\n" +
+                                "`is_slry` string,\n" +
+                                "index(key=(`new_user_id`), ts=`ingestionTime`, ttl=92160m, ttl_type=absolute)\n" +
+                                ") replicanum=1, partitionnum=3 ;\n" +
+                                "create table `batch100504_flatten_request`(\n" +
+                                "`reqId` string,\n" +
+                                "`eventTime` timestamp,\n" +
+                                "`main_id` string,\n" +
+                                "`new_user_id` string,\n" +
+                                "`loan_ts` bigint,\n" +
+                                "`split_id` int,\n" +
+                                "`time1` string,\n" +
+                                "index(key=(`new_user_id`), ts=`eventTime`, ttl=92160m, ttl_type=absolute)\n" +
+                                ") replicanum=1, partitionnum=3 ;\n"
+                }
         };
     }
 
