@@ -55,10 +55,6 @@ public class SQLCase implements Serializable{
         return sql;
     }
 
-    public int getLevel() {
-        return this.level;
-    }
-
 
     public static String genAutoName() {
         return "auto_" + RandomStringUtils.randomAlphabetic(8);
