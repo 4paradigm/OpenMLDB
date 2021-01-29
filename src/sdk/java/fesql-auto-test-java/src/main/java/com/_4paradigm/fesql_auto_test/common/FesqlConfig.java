@@ -1,6 +1,8 @@
 package com._4paradigm.fesql_auto_test.common;
 
 import com._4paradigm.fesql_auto_test.util.Tool;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -11,6 +13,7 @@ import java.util.stream.Collectors;
  * @author zhaowei
  * @date 2020/6/11 11:34 AM
  */
+@Slf4j
 public class FesqlConfig {
     public static final String ZK_CLUSTER;
     public static final String ZK_ROOT_PATH;
@@ -22,8 +25,10 @@ public class FesqlConfig {
     static{
         ZK_CLUSTER = CONFIG.getProperty(FesqlGlobalVar.env+"_zk_cluster");
         ZK_ROOT_PATH = CONFIG.getProperty(FesqlGlobalVar.env+"_zk_root_path");
-        String levelStr = CONFIG.getProperty(FesqlGlobalVar.env+"_test.case.level");
+        String levelStr = System.getProperty("caseLevel");
+        levelStr = StringUtils.isEmpty(levelStr) ? "0" : levelStr;
         levels = Arrays.stream(levelStr.split(",")).map(Integer::parseInt).collect(Collectors.toList());
+        log.info("FesqlConfig: levels: {}", levels);
     }
     public static boolean isCluster() {
         return FesqlGlobalVar.env.equals("cluster");

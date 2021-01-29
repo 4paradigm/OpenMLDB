@@ -219,6 +219,10 @@
                             <name>caseDesc</name>
                             <value>${caseDesc}</value>
                         </property>
+                        <property>
+                            <name>caseLevel</name>
+                            <value>${caseLevel}</value>
+                        </property>
                     </systemProperties>
                 </configuration>
             </plugin>
