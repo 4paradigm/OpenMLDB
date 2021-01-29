@@ -1764,7 +1764,7 @@ expr_const:
 	| '-' FLOATNUM
 		{ $$ = (node_manager->MakeConstNode(-1*$2)); }
   	| BOOLVALUE
-        { $$ = (node_manager->MakeConstNode($1)); }
+        { $$ = (node_manager->MakeConstNode($1 > 0)); }
   	| NULLX
         { $$ = (node_manager->MakeConstNode()); }
     | I16_MAX {
