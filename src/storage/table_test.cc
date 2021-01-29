@@ -1155,7 +1155,7 @@ TEST_F(TableTest, GcAbsAndLat) {
         entry.set_pk("test1");
         entry.set_ts(now - 4 * (60 * 1000) - 1000);
         entry.set_value("value1");
-        ASSERT_TRUE(table.IsExpire(entry));
+        ASSERT_FALSE(table.IsExpire(entry));
     }
     {
         ::rtidb::api::LogEntry entry;

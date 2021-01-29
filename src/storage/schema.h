@@ -92,13 +92,13 @@ struct TTLSt {
     bool NeedGc() const {
         switch (ttl_type) {
             case TTLType::kAbsoluteTime:
-                return abs_ttl != 0 ? true : false;
+                return abs_ttl == 0 ? false : true;
             case TTLType::kLatestTime:
-                return lat_ttl != 0 ? true : false;
+                return lat_ttl == 0 ? false : true;
             case TTLType::kAbsAndLat:
-                return abs_ttl != 0 || lat_ttl != 0 ? true : false;
+                return abs_ttl == 0 || lat_ttl == 0 ? false : true;
             case TTLType::kAbsOrLat:
-                return abs_ttl != 0 && lat_ttl != 0 ? true : false;
+                return abs_ttl == 0 && lat_ttl == 0 ? false : true;
             default:
                 return true;
         }

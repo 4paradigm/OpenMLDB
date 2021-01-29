@@ -135,6 +135,7 @@ int TableIndex::ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::ma
         return -1;
     }
     ReSet();
+    ts_mapping->clear();
     uint32_t tid = table_meta.tid();
     uint32_t pid = table_meta.pid();
     TTLSt table_ttl;
@@ -190,7 +191,7 @@ int TableIndex::ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::ma
                 }
                 key_idx++;
             } else if (column_desc.is_ts_col()) {
-                if (ts_col_set.find(name) == ts_col_set.end()) {
+                if (ts_col_set.find(name) == ts_col_set.end() && !ts_mapping->empty()) {
                     LOG(WARNING) << "ts col " << name << " has not set in columnkey, tid " << tid;
                     return -1;
                 }
@@ -531,6 +532,11 @@ int TableIndex::AddMultiTsIndex(uint32_t pos, const std::shared_ptr<IndexDef>& i
 }
 
 int TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
+    auto multi_indexs = std::atomic_load_explicit(&multi_ts_indexs_, std::memory_order_relaxed);
+    if (!multi_indexs->empty()) {
+        return AddMultiTsIndex(multi_indexs->size(), index_def);
+    }
+
     auto old_indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
     if (old_indexs->size() >= MAX_INDEX_NUM) {
         return -1;
