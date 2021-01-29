@@ -49,7 +49,8 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
 
       logger.info("Visit concat join node to add node index info")
       val processedConcatJoinNodeIds = mutable.HashSet[Long]()
-      concatJoinNodes.map(joinNode => bindNodeIndexInfo(joinNode, planCtx, processedConcatJoinNodeIds))
+      val indexColumnName = "__CONCATJOIN_INDEX__"+ System.currentTimeMillis()
+      concatJoinNodes.map(joinNode => bindNodeIndexInfo(joinNode, planCtx, processedConcatJoinNodeIds, indexColumnName))
 
       if (config.slowRunCacheDir != null) {
         slowRunWithHDFSCache(root, planCtx, config.slowRunCacheDir, isRoot = true)
@@ -73,7 +74,7 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
   }
 
   // Bind the node index info for the nodes which use ConcatJoin for computing window concurrently
-  def bindNodeIndexInfo(concatJoinNode: PhysicalJoinNode, ctx: PlanContext, processedConcatJoinNodeIds: mutable.HashSet[Long]): Unit = {
+  def bindNodeIndexInfo(concatJoinNode: PhysicalJoinNode, ctx: PlanContext, processedConcatJoinNodeIds: mutable.HashSet[Long], indexColumnName: String): Unit = {
 
     val concatJoinNodeId = concatJoinNode.GetNodeId()
     if (ctx.hasIndexInfo(concatJoinNodeId)) {
@@ -91,7 +92,6 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
       return
     }
 
-    val indexColumnName = "__JOIN_INDEX__" + concatJoinNodeId + "__" + System.currentTimeMillis()
     visitAndBindNodeIndexInfo(ctx, concatJoinNode, destNodeId, indexColumnName, processedConcatJoinNodeIds)
     // Reset the fist concat join node to source concat join node
     ctx.getIndexInfo(concatJoinNodeId).nodeIndexType = NodeIndexType.SourceConcatJoinNode
