@@ -214,7 +214,7 @@ cases:
         - [5,"bb",24,34,68]
   - id: 5
     desc: 两个子查询lastjoin
-    tags: ["TODO","请求模式下，sdk core"]
+    tags: ["TODO","@chenjing by @zhaowei","请求模式下，sdk core,http://jira.4paradigm.com/browse/FEX-1011"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -255,7 +255,7 @@ cases:
         - [5,"bb",24,34,68]
   - id: 6
     desc: 两个子查询lastjoin-子查询带窗口特征
-    tags: ["sql执行失败"]
+    tags: ["TODO","@chenjing by @zhaowei","sql执行失败","http://jira.4paradigm.com/browse/FEX-1005"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -390,7 +390,7 @@ cases:
   - id: 9
     desc: lastjoin三张表-5个window
     mode: rtidb-batch-unsupport
-    tags: ["TODO","请求模式下，sdk core"]
+    tags: ["TODO","@chenjing by @zhaowei","请求模式下，sdk core,http://jira.4paradigm.com/browse/FEX-1007"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -549,6 +549,7 @@ cases:
         - [5,"ee",24,null]
   - id: 12
     desc: t1 join (t2 join t3)
+    tags: ["TODO","@chenjing by @zhaowei","sql执行失败","http://jira.4paradigm.com/browse/FEX-1014"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -773,6 +774,7 @@ cases:
       success: false
   - id: 19
     desc: 两个子查询lastjoin-子查询带窗口特征-没有使用索引-不带orderby
+    tags: ["TODO","@chenjing by @zhaowei","http://jira.4paradigm.com/browse/FEX-1010"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

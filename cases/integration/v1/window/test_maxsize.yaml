@@ -316,7 +316,7 @@ cases:
     id: 13
     desc: 两个窗口不同的ts的maxsize一致
     mode: rtidb-batch-unsupport
-    tags: ["sql执行失败"]
+    tags: ["TODO","@chenjing by@zhaowei","sql执行失败","http://jira.4paradigm.com/browse/FEX-1003"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -381,7 +381,6 @@ cases:
     id: 15
     desc: 两个窗口不同的key的maxsize不一致
     mode: rtidb-batch-unsupport
-    tags: ["sql执行失败"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -414,6 +413,7 @@ cases:
     id: 16
     desc: 两个窗口的不同的ts的maxsize不一致
     mode: rtidb-batch-unsupport
+    tags: ["TODO","@chenjing by@zhaowei","sql执行失败","应该和13 case是一个问题"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
