@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["t1 join (t2 join t3)"]
+debugs: []
 cases:
   - id: 0
     desc: lastjoin+窗口

@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["子查询使列别名重名,并同时select"]
+debugs: []
 cases:
   -
     id: 1
