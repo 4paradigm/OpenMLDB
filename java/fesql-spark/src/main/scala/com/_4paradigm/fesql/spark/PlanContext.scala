@@ -47,12 +47,12 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
 
   // def getModuleBufferBroadcast: Broadcast[SerializableByteBuffer] = moduleBroadCast
 
-  def getPlanResult(node: PhysicalOpNode): Option[SparkInstance] = {
-    planResults.get(PhysicalOpNode.getCPtr(node))
+  def getPlanResult(nodeId: Long): Option[SparkInstance] = {
+    planResults.get(nodeId)
   }
 
-  def putPlanResult(node: PhysicalOpNode, res: SparkInstance): Unit = {
-    planResults += PhysicalOpNode.getCPtr(node) -> res
+  def putPlanResult(nodeId: Long, res: SparkInstance): Unit = {
+    planResults.put(nodeId, res)
   }
 
   def registerDataFrame(name: String, df: DataFrame): Unit = {

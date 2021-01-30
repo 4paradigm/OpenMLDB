@@ -36,7 +36,8 @@ class SQLBaseSuite extends SparkTestSuite {
 
   def testCases(yamlPath: String) {
     val caseFile = loadYaml[CaseFile](yamlPath)
-    caseFile.getCases.asScala.filter(c => keepCase(c)).foreach(c => testCase(c))
+    // TODO: Only run the cases whose level is 0
+    caseFile.getCases.asScala.filter(c => keepCase(c)).filter(c => c.getLevel == 0).foreach(c => testCase(c))
   }
 
   def testCase(yamlPath: String, id: String): Unit = {
