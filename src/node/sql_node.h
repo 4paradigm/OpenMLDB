@@ -730,6 +730,10 @@ class ConstNode : public ExprNode {
         : ExprNode(kExprPrimary), data_type_(fesql::node::kInt16) {
         val_.vsmallint = val;
     }
+    explicit ConstNode(bool val)
+        : ExprNode(kExprPrimary), data_type_(fesql::node::kBool) {
+        val_.vint = val ? 1 : 0;
+    }
     explicit ConstNode(int val)
         : ExprNode(kExprPrimary), data_type_(fesql::node::kInt32) {
         val_.vint = val;
@@ -797,6 +801,9 @@ class ConstNode : public ExprNode {
     const bool IsNull() const { return kNull == data_type_; }
     const bool IsPlaceholder() const { return kPlaceholder == data_type_; }
     const std::string GetExprString() const;
+
+    bool GetBool() const { return val_.vint > 0; }
+
     int16_t GetSmallInt() const { return val_.vsmallint; }
 
     int GetInt() const { return val_.vint; }
@@ -1055,11 +1062,11 @@ class FrameBound : public SQLNode {
             case node::kFollowing:
                 return offset_;
             case node::kOpenFollowing:
-                return offset_-1;
+                return offset_ - 1;
             case node::kPreceding:
                 return -1 * offset_;
             case node::kOpenPreceding:
-                return -1 * (offset_-1);
+                return -1 * (offset_ - 1);
             case node::kPrecedingUnbound:
                 return INT64_MIN;
             case node::kFollowingUnbound:
@@ -1281,9 +1288,7 @@ class WindowDefNode : public SQLNode {
     void set_instance_not_in_window(bool instance_not_in_window) {
         instance_not_in_window_ = instance_not_in_window;
     }
-    const bool exclude_current_time() const {
-        return exclude_current_time_;
-    }
+    const bool exclude_current_time() const { return exclude_current_time_; }
     void set_exclude_current_time(bool exclude_current_time) {
         exclude_current_time_ = exclude_current_time;
     }
