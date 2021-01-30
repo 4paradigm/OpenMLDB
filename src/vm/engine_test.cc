@@ -199,6 +199,9 @@ INSTANTIATE_TEST_CASE_P(
     EngineTestDebugFzBenchmark, EngineTest,
     testing::ValuesIn(InitCases("/cases/debug/fz_benchmark_debug.yaml")));
 INSTANTIATE_TEST_CASE_P(
+    EngineTestFzMyhug, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/fz_ddl/test_myhug.yaml")));
+INSTANTIATE_TEST_CASE_P(
     EngineTestDebugIssues, EngineTest,
     testing::ValuesIn(InitCases("/cases/debug/issues_case.yaml")));
 

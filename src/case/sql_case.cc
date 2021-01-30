@@ -21,13 +21,36 @@
 namespace fesql {
 namespace sqlcase {
 using fesql::codec::Row;
-bool SQLCase::TypeParse(const std::string& type_str, fesql::type::Type* type) {
+bool SQLCase::TTLTypeParse(const std::string& org_type_str,
+                           ::fesql::type::TTLType* type) {
+    if (nullptr == type) {
+        LOG(WARNING) << "Null TTL Type Output";
+        return false;
+    }
+    std::string type_str = org_type_str;
+    boost::to_lower(type_str);
+    if ("absolute" == type_str) {
+        *type = fesql::type::TTLType::kTTLTimeLive;
+    } else if ("latest" == type_str) {
+        *type = fesql::type::TTLType::kTTLCountLive;
+    } else if ("absorlat" == type_str) {
+        *type = fesql::type::TTLType::kTTLTimeLiveOrCountLive;
+    } else if ("absandlat" == type_str) {
+        *type = fesql::type::TTLType::kTTLTimeLiveAndCountLive;
+    } else {
+        LOG(WARNING) << "Invalid TTLType: " << type_str;
+        return false;
+    }
+    return true;
+
+}
+bool SQLCase::TypeParse(const std::string& org_type_str, fesql::type::Type* type) {
     if (nullptr == type) {
         LOG(WARNING) << "Null Type Output";
         return false;
     }
-    std::string lower_type_str = type_str;
-    boost::to_lower(lower_type_str);
+    std::string type_str = org_type_str;
+    boost::to_lower(type_str);
     if ("int16" == type_str || "i16" == type_str || "smallint" == type_str) {
         *type = type::kInt16;
     } else if ("int32" == type_str || "i32" == type_str || "int" == type_str) {
@@ -159,6 +182,14 @@ bool SQLCase::ExtractIndex(const std::vector<std::string>& indexs,
             boost::trim(name_keys_order[3]);
             index_def->add_ttl(
                 boost::lexical_cast<int64_t>(name_keys_order[3]));
+        }
+        if (5 <= name_keys_order.size()) {
+            boost::trim(name_keys_order[3]);
+            ::fesql::type::TTLType ttl_type;
+            if (!TTLTypeParse(name_keys_order[4], &ttl_type)) {
+                return false;
+            }
+            index_def->set_ttl_type(ttl_type);
         }
     }
     return true;
