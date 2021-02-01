@@ -354,7 +354,7 @@ TEST_F(NodeManagerTest, RowMergeRowsRangeTest) {
             manager.MakeFrameExtent(manager.MakeFrameBound(kPreceding, 1000),
                                     manager.MakeFrameBound(kCurrent))));
         FrameNode *merged = manager.MergeFrameNode(frame1, frame2);
-        ASSERT_EQ(kFrameRowsRange, merged->frame_type());
+        ASSERT_EQ(kFrameRowsMergeRowsRange, merged->frame_type());
         ASSERT_EQ(kPreceding, merged->frame_range()->start()->bound_type());
         ASSERT_EQ(-86400000, merged->frame_range()->start()->GetSignedOffset());
         ASSERT_EQ(kCurrent, merged->frame_range()->end()->bound_type());
@@ -379,7 +379,7 @@ TEST_F(NodeManagerTest, RowMergeRowsRangeTest) {
             manager.MakeFrameExtent(manager.MakeFrameBound(kPreceding, 10000),
                                     manager.MakeFrameBound(kCurrent))));
         FrameNode *merged = manager.MergeFrameNode(frame3, frame4);
-        ASSERT_EQ(kFrameRowsRange, merged->frame_type());
+        ASSERT_EQ(kFrameRowsMergeRowsRange, merged->frame_type());
         ASSERT_EQ(kPreceding, merged->frame_range()->start()->bound_type());
         ASSERT_EQ(-86400000, merged->frame_range()->start()->GetSignedOffset());
         ASSERT_EQ(kCurrent, merged->frame_range()->end()->bound_type());

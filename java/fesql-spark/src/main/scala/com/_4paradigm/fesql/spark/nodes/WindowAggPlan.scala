@@ -3,91 +3,93 @@ package com._4paradigm.fesql.spark.nodes
 import java.util
 
 import com._4paradigm.fesql.common.{FesqlException, JITManager, SerializableByteBuffer}
+import com._4paradigm.fesql.node.FrameType
 import com._4paradigm.fesql.spark._
-import com._4paradigm.fesql.spark.element.FesqlConfig
-import com._4paradigm.fesql.spark.nodes.window.WindowComputerWithSampleSupport
-import com._4paradigm.fesql.spark.utils.{AutoDestructibleIterator, FesqlUtil, SparkColumnUtil, SparkRowUtil}
+import com._4paradigm.fesql.spark.nodes.window.{RowDebugger, WindowComputer, WindowSampleSupport}
+import com._4paradigm.fesql.spark.utils.{AutoDestructibleIterator, FesqlUtil, NodeIndexType, SparkColumnUtil}
 import com._4paradigm.fesql.utils.SkewUtils
-import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalWindowAggrerationNode, WindowInterface}
+import com._4paradigm.fesql.vm.Window.WindowFrameType
+import com._4paradigm.fesql.vm.PhysicalWindowAggrerationNode
 import org.apache.hadoop.fs.FileSystem
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.catalyst.util.StringUtils
 import org.apache.spark.sql.{Column, DataFrame, Row, functions}
 import org.apache.spark.sql.types._
 import org.apache.spark.util.SerializableConfiguration
-
-import scala.collection.mutable
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
-import scala.collection.{JavaConverters, mutable}
+import scala.collection.mutable
+import org.apache.spark.sql.types._
 
 
 object WindowAggPlan {
-  val logger = LoggerFactory.getLogger(this.getClass)
+
+  private val logger = LoggerFactory.getLogger(this.getClass)
 
   def gen(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance): SparkInstance = {
     // process unions
     val unionNum = node.window_unions().GetSize().toInt
 
+    // Check if we should keep the index column
+    val keepIndexColumn = SparkInstance.keepIndexColumn(ctx, node.GetNodeId())
+
     val outputRDD = if (unionNum > 0) {
-      genWithUnion(ctx, node, input)
+      genWithUnion(ctx, node, input, keepIndexColumn)
     } else {
-      genDefault(ctx, node, input)
+      genDefault(ctx, node, input, keepIndexColumn)
     }
 
-    val outputSchema = FesqlUtil.getSparkSchema(node.GetOutputSchema())
-    SparkInstance.fromRDD(outputSchema, outputRDD)
+    val outputSchema = if (keepIndexColumn) {
+      FesqlUtil.getSparkSchema(node.GetOutputSchema()).add(ctx.getIndexInfo(node.GetNodeId()).indexColumnName, LongType)
+    } else {
+      FesqlUtil.getSparkSchema(node.GetOutputSchema())
+    }
+
+    val outputDf = ctx.getSparkSession.createDataFrame(outputRDD, outputSchema)
+
+    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
   }
 
 
-  def genDefault(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance): RDD[Row] = {
+  def genDefault(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance, keepIndexColumn: Boolean): RDD[Row] = {
+    val config = ctx.getConf
+    val windowAggConfig = createWindowAggConfig(ctx, node, keepIndexColumn)
 
-    val windowAggConfig = createWindowAggConfig(ctx, node)
     // group and sort
-    if (FesqlConfig.print) {
-      logger.info(s"genDefault mode: ${FesqlConfig.mode}")
+    if (config.print) {
+      logger.info(s"genDefault mode: ${config.skewMode}")
     }
 
-    val inputDf = if (FesqlConfig.mode.equals(FesqlConfig.skew)) {
-      improveSkew(ctx, node, input.getDf(ctx.getSparkSession), windowAggConfig)
+    val inputDf = if (config.skewMode == FeSQLConfig.SKEW) {
+      improveSkew(ctx, node, input.getDfConsideringIndex(ctx, node.GetNodeId()), config, windowAggConfig)
     } else {
-      groupAndSort(ctx, node, input.getDf(ctx.getSparkSession))
+      groupAndSort(ctx, node, input.getDfConsideringIndex(ctx, node.GetNodeId()))
     }
 
     val hadoopConf = new SerializableConfiguration(
       ctx.getSparkSession.sparkContext.hadoopConfiguration)
 
-    val isPrint = FesqlConfig.print
-    val samplePartition = FesqlConfig.printSamplePartition
-
     val resultRDD = inputDf.rdd.mapPartitionsWithIndex {
       case (partitionIndex, iter) =>
-        // spark在序列化代码的时候，可能保留默认值，即使被修改了，也无法感知到，需要在分区内部再赋值一次
-        FesqlConfig.print = isPrint
-        FesqlConfig.printSamplePartition = samplePartition
-
-
-        if (FesqlConfig.print) {
-          logger.info(s"partitionIndex ${partitionIndex}")
+        if (config.print) {
+          logger.info(s"partitionIndex $partitionIndex")
         }
         // create computer
-        val computer = createComputer(partitionIndex, hadoopConf, windowAggConfig)
+        val computer = createComputer(partitionIndex, hadoopConf, config, windowAggConfig)
 
         // window iteration
-        windowAggIter(computer, iter, windowAggConfig)
+        windowAggIter(computer, iter, config, windowAggConfig)
     }
     resultRDD
   }
 
-  def genWithUnion(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance): RDD[Row] = {
-    val sess = ctx.getSparkSession
+  def genWithUnion(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance, keepIndexColumn: Boolean): RDD[Row] = {
+    val config = ctx.getConf
     val flagColName = "__FESQL_WINDOW_UNION_FLAG__" + System.currentTimeMillis()
-    val union = doUnionTables(ctx, node, input.getDf(sess), flagColName)
-    val windowAggConfig = createWindowAggConfig(ctx, node)
-    val inputDf =  if (FesqlConfig.mode.equals(FesqlConfig.skew)) {
-      improveSkew(ctx, node, union, windowAggConfig)
+    val union = doUnionTables(ctx, node, input.getDfConsideringIndex(ctx, node.GetNodeId()), flagColName, keepIndexColumn)
+    val windowAggConfig = createWindowAggConfig(ctx, node, keepIndexColumn)
+    val inputDf =  if (config.skewMode == FeSQLConfig.SKEW) {
+      improveSkew(ctx, node, union, config, windowAggConfig)
     } else {
       groupAndSort(ctx, node, union)
     }
@@ -95,20 +97,13 @@ object WindowAggPlan {
     val hadoopConf = new SerializableConfiguration(
       ctx.getSparkSession.sparkContext.hadoopConfiguration)
 
-    val isPrint = FesqlConfig.print
-    val samplePartition = FesqlConfig.printSamplePartition
-
     val resultRDD = inputDf.rdd.mapPartitionsWithIndex {
       case (partitionIndex, iter) =>
-
-        FesqlConfig.print = isPrint
-        FesqlConfig.printSamplePartition = samplePartition
-
         // create computer
-        val computer = createComputer(partitionIndex, hadoopConf, windowAggConfig)
+        val computer = createComputer(partitionIndex, hadoopConf, config, windowAggConfig)
 
         // window iteration
-        windowAggIterWithUnionFlag(computer, iter, windowAggConfig)
+        windowAggIterWithUnionFlag(computer, iter, config, windowAggConfig)
     }
     resultRDD
   }
@@ -116,18 +111,35 @@ object WindowAggPlan {
   def doUnionTables(ctx: PlanContext,
                     node: PhysicalWindowAggrerationNode,
                     source: DataFrame,
-                    flagColumnName: String): DataFrame = {
-    val sess = ctx.getSparkSession
+                    flagColumnName: String,
+                    keepIndexColumn: Boolean): DataFrame = {
     val unionNum = node.window_unions().GetSize().toInt
 
     val subTables = (0 until unionNum).map(i => {
       val subNode = node.window_unions().GetUnionNode(i)
-      val df = ctx.visitPhysicalNodes(subNode).getDf(sess)
-      if (df.schema != source.schema) {
-        throw new FesqlException("{$i}th Window union with inconsistent schema:\n" +
-          s"Expect ${source.schema}\nGet ${df.schema}")
+
+      val subDf = ctx.getSparkOutput(subNode).getDfConsideringIndex(ctx, subNode.GetNodeId())
+
+      if (keepIndexColumn) {
+        // Notice that input df may has index column, check in another way
+        if (subDf.schema.add(ctx.getIndexInfo(node.GetNodeId()).indexColumnName, LongType) != source.schema) {
+          throw new FesqlException("Keep index column, {$i}th Window union with inconsistent schema:\n" +
+            s"Expect ${source.schema}\nGet ${subDf.schema.add(ctx.getIndexInfo(node.GetNodeId()).indexColumnName, LongType)}")
+        }
+      } else {
+        if (subDf.schema != source.schema) {
+          throw new FesqlException("{$i}th Window union with inconsistent schema:\n" +
+            s"Expect ${source.schema}\nGet ${subDf.schema}")
+        }
       }
-      df.withColumn(flagColumnName, functions.lit(false))
+
+      if (keepIndexColumn) {
+        // Add one more placeholder column for sub tables if main table has index column
+        subDf.withColumn(flagColumnName + "_index_column_placeholder", functions.lit(0L)).withColumn(flagColumnName, functions.lit(false))
+      } else {
+        // Only add the union boolean column
+        subDf.withColumn(flagColumnName, functions.lit(false))
+      }
     })
 
     val mainTable = source.withColumn(flagColumnName, functions.lit(true))
@@ -136,7 +148,8 @@ object WindowAggPlan {
 
 
   def createWindowAggConfig(ctx: PlanContext,
-                            node: PhysicalWindowAggrerationNode
+                            node: PhysicalWindowAggrerationNode,
+                            keepIndexColumn: Boolean
                            ): WindowAggConfig = {
     val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node.GetProducer(0))
     val outputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
@@ -170,17 +183,31 @@ object WindowAggPlan {
     val flagIdx = if (node.window_unions().Empty()) {
       -1
     } else {
-      inputSchema.size
+      if (keepIndexColumn) {
+        // Notice that if keep index column, table will add union boolean column after index column
+        inputSchema.size + 1
+      } else {
+        inputSchema.size
+      }
+
     }
 
-
-    val sampleOutputPath = ctx.getConf("fesql.window.sampleOutputPath", "")
-    val sampleMinSize = ctx.getConf("fesql.window.sampleMinSize", -1)
+    val frameType = node.window.range.frame().frame_type()
+    val windowFrameType = if (frameType.swigValue() == FrameType.kFrameRows.swigValue()) {
+      WindowFrameType.kFrameRows
+    } else if (frameType.swigValue() == FrameType.kFrameRowsMergeRowsRange.swigValue()) {
+      WindowFrameType.kFrameRowsMergeRowsRange
+    } else {
+      WindowFrameType.kFrameRowsRange
+    }
 
     WindowAggConfig(
       windowName = windowName,
-      startOffset = node.window.range.frame.GetHistoryRangeStart(),
+      windowFrameTypeName = windowFrameType.toString,
+      startOffset = node.window().range().frame().GetHistoryRangeStart(),
+      endOffset = node.window.range.frame.GetHistoryRangeEnd(),
       rowPreceding = -1 * node.window.range.frame.GetHistoryRowsStart(),
+      maxSize = node.window.range.frame.frame_maxsize(),
       orderIdx = orderIdx,
       groupIdxs = groupIdxs.toArray,
       functionName = node.project.fn_info().fn_name(),
@@ -191,22 +218,18 @@ object WindowAggPlan {
       outputSchemaSlices = outputSchemaSlices,
       unionFlagIdx = flagIdx,
       instanceNotInWindow = node.instance_not_in_window(),
+      excludeCurrentTime = node.exclude_current_time(),
       needAppendInput = node.need_append_input(),
       limitCnt = node.GetLimitCnt(),
-      sampleOutputPath = sampleOutputPath,
-      sampleMinSize = sampleMinSize
+      keepIndexColumn = keepIndexColumn
     )
   }
 
-  /**
-   *
-   * @param ctx
-   * @param node
-   * @param input
-   * @param config
-   * @return
-   */
-  def improveSkew(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: DataFrame, config: WindowAggConfig): DataFrame = {
+  def improveSkew(ctx: PlanContext,
+                  node: PhysicalWindowAggrerationNode,
+                  input: DataFrame,
+                  sqlConfig: FeSQLConfig,
+                  config: WindowAggConfig): DataFrame = {
     input.cache()
     val windowOp = node.window()
     val groupByExprs = windowOp.partition().keys()
@@ -248,9 +271,9 @@ object WindowAggPlan {
     val reportTable = "FESQL_TEMP_WINDOW_REPORT_" + System.currentTimeMillis()
     logger.info("skew main table {}", table)
     logger.info("skew main table report{}", reportTable)
-    val quantile = math.pow(2, FesqlConfig.skewLevel.toDouble)
-    val analyzeSQL = SkewUtils.genPercentileSql(table, quantile.intValue(), keysName, ts, FesqlConfig.skewCntName)
-    logger.info(s"skew analyze sql : ${analyzeSQL}")
+    val quantile = math.pow(2, sqlConfig.skewLevel.toDouble)
+    val analyzeSQL = SkewUtils.genPercentileSql(table, quantile.intValue(), keysName, ts, sqlConfig.skewCntName)
+    logger.info(s"skew analyze sql : $analyzeSQL")
     input.createOrReplaceTempView(table)
     val reportDf = ctx.sparksql(analyzeSQL)
 //    reportDf.show()
@@ -260,27 +283,28 @@ object WindowAggPlan {
     keyScala.foreach(e => keysMap.put(e, e))
     val schemas = scala.collection.JavaConverters.seqAsJavaList(input.schema.fieldNames)
 
-    val tagSQL = SkewUtils.genPercentileTagSql(table, reportTable, quantile.intValue(), schemas, keysMap, ts, FesqlConfig.skewTag, FesqlConfig.skewPosition, FesqlConfig.skewCntName, FesqlConfig.skewCnt.longValue())
-    logger.info(s"skew tag sql : ${tagSQL}")
+    val tagSQL = SkewUtils.genPercentileTagSql(table, reportTable, quantile.intValue(), schemas, keysMap, ts,
+      sqlConfig.skewTag, sqlConfig.skewPosition, sqlConfig.skewCntName, sqlConfig.skewCnt.longValue())
+    logger.info(s"skew tag sql : $tagSQL")
     var skewDf = ctx.sparksql(tagSQL)
 
     config.skewTagIdx = skewDf.schema.fieldNames.length - 2
     config.skewPositionIdx = skewDf.schema.fieldNames.length - 1
 
-    keyScala = keyScala :+ FesqlConfig.skewTag
+    keyScala = keyScala :+ sqlConfig.skewTag
 //    skewDf = skewDf.repartition(keyScala.map(skewDf(_)): _*)
 //    skewDf = expansionData(skewDf, config)
 //    skewDf.cache()
     val skewTable = "FESQL_TEMP_WINDOW_SKEW_" + System.currentTimeMillis()
     logger.info("skew explode table {}", skewTable)
     skewDf.createOrReplaceTempView(skewTable)
-    val explodeSql = SkewUtils.explodeDataSql(skewTable, quantile.intValue(), schemas, FesqlConfig.skewTag, FesqlConfig.skewPosition, FesqlConfig.skewCnt.longValue(), config.rowPreceding)
-    logger.info(s"skew explode sql : ${explodeSql}")
+    val explodeSql = SkewUtils.explodeDataSql(skewTable, quantile.toInt, schemas,
+      sqlConfig.skewTag, sqlConfig.skewPosition, sqlConfig.skewCnt.toLong, config.rowPreceding)
+    logger.info(s"skew explode sql : $explodeSql")
     skewDf = ctx.sparksql(explodeSql)
     skewDf.cache()
-//    skewDf.show(100)
-    val partitions = FesqlConfig.paritions
-    val partitionKeys = FesqlConfig.skewTag +: keyScala
+    val partitions = sqlConfig.groupPartitions
+    val partitionKeys = sqlConfig.skewTag +: keyScala
 
     val groupedDf = if (partitions > 0) {
 //      skewDf.repartition(partitions, keyScala.map(skewDf(_)): _*)
@@ -307,7 +331,7 @@ object WindowAggPlan {
       groupByCols += SparkColumnUtil.getColumnFromIndex(input, colIdx)
     }
 
-    val partitions = FesqlConfig.paritions
+    val partitions = ctx.getConf.groupPartitions
     val groupedDf = if (partitions > 0) {
       input.repartition(partitions, groupByCols: _*)
     } else {
@@ -333,6 +357,7 @@ object WindowAggPlan {
 
   def createComputer(partitionIndex: Int,
                      hadoopConf: SerializableConfiguration,
+                     sqlConfig: FeSQLConfig,
                      config: WindowAggConfig): WindowComputer = {
     // get jit in executor process
     val tag = config.moduleTag
@@ -340,33 +365,43 @@ object WindowAggPlan {
     JITManager.initJITModule(tag, buffer)
     val jit = JITManager.getJIT(tag)
 
-    if (partitionIndex == 0 && config.sampleMinSize > 0) {
+    // create stateful computer
+    val computer = new WindowComputer(sqlConfig, config, jit, config.keepIndexColumn)
+
+    // add statistic hooks
+    if (sqlConfig.windowSampleMinSize > 0) {
       val fs = FileSystem.get(hadoopConf.value)
-      new WindowComputerWithSampleSupport(fs, config, jit)
-    } else {
-      new WindowComputer(config, jit)
+      logger.info("Enable window sample support: min_size=" + sqlConfig.windowSampleMinSize +
+        ", output_path=" + sqlConfig.windowSampleOutputPath)
+      computer.addHook(new WindowSampleSupport(fs, partitionIndex, config, sqlConfig, jit))
     }
+    if (sqlConfig.print) {
+      val isSkew = sqlConfig.skewMode == FeSQLConfig.SKEW
+      computer.addHook(new RowDebugger(sqlConfig, config, isSkew))
+    }
+    System.currentTimeMillis()
+    computer
   }
 
   def windowAggIter(computer: WindowComputer,
                     inputIter: Iterator[Row],
+                    sqlConfig: FeSQLConfig,
                     config: WindowAggConfig): Iterator[Row] = {
     var lastRow: Row = null
 
     // Take the iterator if the limit has been set
     val limitInputIter = if (config.limitCnt > 0) inputIter.take(config.limitCnt) else inputIter
 
-    // todo isSkew need to be check
-    var cnt: Long = 0L
-
     if (config.skewTagIdx != 0) {
-      FesqlConfig.mode = "skew"
+      sqlConfig.skewMode = FeSQLConfig.SKEW
+      val skewGroups = config.groupIdxs :+ config.skewTagIdx
+      computer.resetGroupKeyComparator(skewGroups, config.inputSchema)
     }
-    if (FesqlConfig.print) {
-      logger.info(s"windowAggIter mode: ${FesqlConfig.mode}")
+    if (sqlConfig.print) {
+      logger.info(s"windowAggIter mode: ${sqlConfig.skewMode}")
     }
 
-    val resIter = if (FesqlConfig.mode.equals(FesqlConfig.skew)) {
+    val resIter = if (sqlConfig.skewMode == FeSQLConfig.SKEW) {
       limitInputIter.flatMap(row => {
         if (lastRow != null) {
           computer.checkPartition(row, lastRow)
@@ -375,12 +410,8 @@ object WindowAggPlan {
 
         val tag = row.getInt(config.skewTagIdx)
         val position = row.getInt(config.skewPositionIdx)
-        if (FesqlConfig.print) {
-          printSkewRow(tag, position, cnt, config, row, computer)
-          cnt += 1
-        }
         if (tag == position) {
-          Some(computer.compute(row))
+          Some(computer.compute(row, config.keepIndexColumn, config.unionFlagIdx))
         } else {
           computer.bufferRowOnly(row)
           None
@@ -392,11 +423,7 @@ object WindowAggPlan {
           computer.checkPartition(row, lastRow)
         }
         lastRow = row
-        if (FesqlConfig.print) {
-          printRow(cnt, config, row, computer)
-          cnt += 1
-        }
-        Some(computer.compute(row))
+        Some(computer.compute(row, config.keepIndexColumn, config.unionFlagIdx))
       })
     }
     AutoDestructibleIterator(resIter) {
@@ -404,46 +431,17 @@ object WindowAggPlan {
     }
   }
 
-
-  def printRow(cnt: Long, config: WindowAggConfig, row: Row, computer: WindowComputer): Unit = {
-    if (FesqlConfig.print) {
-      if (cnt % FesqlConfig.printSamplePartition == 0) {
-        val str = new StringBuffer()
-        str.append(row.get(config.orderIdx))
-        str.append(",")
-        for (e <- config.groupIdxs) {
-          str.append(row.get(e))
-          str.append(",")
-        }
-        str.append(" window size = " + computer.getWindow.size())
-        logger.info(s"threadId = ${Thread.currentThread().getId} cnt = ${cnt} rowInfo = ${str.toString}")
-      }
-    }
-  }
-
-  def printSkewRow(tag: Int, position: Int, cnt: Long, config: WindowAggConfig, row: Row, computer: WindowComputer): Unit = {
-    if (cnt % FesqlConfig.printSamplePartition == 0) {
-      val str = new StringBuffer()
-      str.append(row.get(config.orderIdx))
-      str.append(",")
-      for (e <- config.groupIdxs) {
-        str.append(row.get(e))
-        str.append(",")
-      }
-      str.append(" window size = " + computer.getWindow.size())
-      logger.info(s"tag : postion = ${tag} : ${position} threadId = ${Thread.currentThread().getId} cnt = ${cnt} rowInfo = ${str.toString}")
-    }
-  }
-
   def windowAggIterWithUnionFlag(computer: WindowComputer,
                                  inputIter: Iterator[Row],
+                                 sqlConfig: FeSQLConfig,
                                  config: WindowAggConfig): Iterator[Row] = {
     val flagIdx = config.unionFlagIdx
     var lastRow: Row = null
     if (config.skewTagIdx != 0) {
-      FesqlConfig.mode = "skew"
+      sqlConfig.skewMode = FeSQLConfig.SKEW
+      val skewGroups = config.groupIdxs :+ config.skewTagIdx
+      computer.resetGroupKeyComparator(skewGroups, config.inputSchema)
     }
-    var cnt: Long = 0L
 
     val resIter = inputIter.flatMap(row => {
       if (lastRow != null) {
@@ -454,24 +452,17 @@ object WindowAggPlan {
       val unionFlag = row.getBoolean(flagIdx)
       if (unionFlag) {
         // primary
-        if (FesqlConfig.mode.equals(FesqlConfig.skew)) {
+        if (sqlConfig.skewMode == FeSQLConfig.SKEW) {
           val tag = row.getInt(config.skewTagIdx)
           val position = row.getInt(config.skewPositionIdx)
-          if (FesqlConfig.print) {
-            printSkewRow(tag, position, cnt, config, row, computer)
-          }
           if (tag == position) {
-            Some(computer.compute(row))
+            Some(computer.compute(row, config.keepIndexColumn, config.unionFlagIdx))
           } else {
             computer.bufferRowOnly(row)
             None
           }
         } else {
-          if (FesqlConfig.print) {
-            printRow(cnt, config, row, computer)
-            cnt += 1
-          }
-          Some(computer.compute(row))
+          Some(computer.compute(row, config.keepIndexColumn, config.unionFlagIdx))
         }
       } else {
         // secondary
@@ -489,8 +480,11 @@ object WindowAggPlan {
    * Spark closure class for window compute information
    */
   case class WindowAggConfig(windowName: String,
+                             windowFrameTypeName: String,
                              startOffset: Long,
+                             endOffset: Long,
                              rowPreceding: Long,
+                             maxSize: Long,
                              orderIdx: Int,
                              groupIdxs: Array[Int],
                              functionName: String,
@@ -503,101 +497,9 @@ object WindowAggPlan {
                              var skewTagIdx: Int = 0,
                              var skewPositionIdx: Int = 0,
                              instanceNotInWindow: Boolean,
+                             excludeCurrentTime: Boolean,
                              needAppendInput: Boolean,
                              limitCnt: Int,
-                             sampleMinSize: Int,
-                             sampleOutputPath: String)
-
-
-  /**
-   * Stateful class for window computation during row iteration
-   */
-  class WindowComputer(config: WindowAggConfig, jit: FeSQLJITWrapper) {
-
-    // reuse spark output row backed array
-    private val outputFieldNum = config.outputSchemaSlices.map(_.size).sum
-    private val outputArr = Array.fill[Any](outputFieldNum)(null)
-
-    // native row codecs
-    protected var encoder = new SparkRowCodec(config.inputSchemaSlices)
-    private var decoder = new SparkRowCodec(config.outputSchemaSlices)
-
-    // order key extractor
-    private val orderField = config.inputSchema(config.orderIdx)
-    private val orderKeyExtractor = SparkRowUtil.createOrderKeyExtractor(
-      config.orderIdx, orderField.dataType, orderField.nullable)
-
-    // append slices cnt = needAppendInput ? inputSchemaSlices.size : 0
-    private val appendSlices = if (config.needAppendInput) config.inputSchemaSlices.length else 0
-    // group key comparation
-    private val groupKeyComparator = FesqlUtil.createGroupKeyComparator(
-      config.groupIdxs, config.inputSchema)
-
-    // native function handle
-    private val fn = jit.FindFunction(config.functionName)
-
-    // window state
-    protected var window = new WindowInterface(
-      config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, if (config.startOffset == 0 && config.rowPreceding.intValue() > 0) config.rowPreceding.intValue() + 1 else 0)
-
-    def compute(row: Row): Row = {
-      // call encode
-      val nativeInputRow = encoder.encode(row)
-
-      // extract key
-      val key = orderKeyExtractor.apply(row)
-
-      // call native compute
-      // note: row is buffered automatically by core api
-      val outputNativeRow = CoreAPI.WindowProject(fn, key, nativeInputRow, true, appendSlices, window)
-
-      // call decode
-      decoder.decode(outputNativeRow, outputArr)
-
-      // release swig jni objects
-      nativeInputRow.delete()
-      outputNativeRow.delete()
-
-      Row.fromSeq(outputArr) // can reuse backed array
-    }
-
-    def bufferRowOnly(row: Row): Unit = {
-      val nativeInputRow = encoder.encode(row)
-      val key = orderKeyExtractor.apply(row)
-      window.BufferData(key, nativeInputRow)
-    }
-
-    def checkPartition(prev: Row, cur: Row): Unit = {
-      val groupChanged = groupKeyComparator.apply(cur, prev)
-      if (groupChanged) {
-        resetWindow()
-      }
-    }
-
-    def resetWindow(): Unit = {
-      // TODO: wrap iter to hook iter end; now last window is leak
-      window.delete()
-      var max_size = 0
-      if (config.startOffset == 0 && config.rowPreceding > 0) {
-        max_size = config.rowPreceding.intValue() + 1
-      }
-      window = new WindowInterface(
-        config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, max_size)
-    }
-
-    def delete(): Unit = {
-      encoder.delete()
-      encoder = null
-
-      decoder.delete()
-      decoder = null
-
-      window.delete()
-      window = null
-    }
-
-    def getWindow: WindowInterface = window
-    def getFn: Long = fn
-  }
-
+                             keepIndexColumn: Boolean)
+  
 }

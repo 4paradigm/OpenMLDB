@@ -27,6 +27,11 @@ DEFINE_bool(
     "Specify whether perform batch request optimization in batch request mode");
 DEFINE_bool(performance_sensitive, true,
             "Specify whether do performance sensitive check");
+DEFINE_bool(enable_expr_opt, true,
+            "Specify whether do expression optimization");
+DEFINE_bool(
+    enable_batch_window_parallelization, false,
+    "Specify whether enable window parallelization in spark batch mode");
 DEFINE_int32(run_iters, 0, "Measure the approximate run time if specified");
 DEFINE_int32(case_id, -1, "Specify the case id to run and skip others");
 
@@ -68,6 +73,9 @@ int RunSingle(const std::string& yaml_path) {
     options.set_cluster_optimized(FLAGS_cluster_mode == "cluster");
     options.set_batch_request_optimized(FLAGS_enable_batch_request_opt);
     options.set_performance_sensitive(FLAGS_performance_sensitive);
+    options.set_enable_expr_optimize(FLAGS_enable_expr_opt);
+    options.set_enable_batch_window_parallelization(
+        FLAGS_enable_batch_window_parallelization);
 
     JITOptions& jit_options = options.jit_options();
     jit_options.set_enable_mcjit(FLAGS_enable_mcjit);

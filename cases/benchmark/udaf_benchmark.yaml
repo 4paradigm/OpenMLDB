@@ -1,0 +1,46 @@
+db: request_bm
+debugs: []
+cases:
+  - id: 0
+    desc: 单窗口下多个udaf
+    mode: batch-unsupport
+    inputs:
+      -
+        columns: ["id int", "pk bigint", "ts timestamp",
+                  "c1 int32", "c2 int32", "c3 int32", "c4 int32", "c5 int32",
+                  "c6 int32", "c7 int32", "c8 int32", "c9 int32", "c10 int32"]
+        indexs: ["index1:pk:ts"]
+        repeat: 100
+        repeat_tag: window_scale
+        rows:
+          - [1, 1, 1590738990000, 1, 1, 1, 1, NULL, 1, 1, 1, 1, NULL]
+          - [2, 1, 1590738990000, 1, 1, 1, 2, NULL, 1, 1, 1, 2, NULL]
+          - [3, 1, 1590738990000, 1, 1, 2, 3, NULL, 1, 1, 2, 3, NULL]
+          - [4, 1, 1590738990000, 1, 2, 3, 4, NULL, 1, 2, 3, 4, NULL]
+    batch_request:
+      columns: ["id int", "pk bigint", "ts timestamp",
+                "c1 int32", "c2 int32", "c3 int32", "c4 int32", "c5 int32",
+                "c6 int32", "c7 int32", "c8 int32", "c9 int32", "c10 int32"]
+      rows:
+        - [1, 1, 1590738991000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    sql: |
+      select id,
+        distinct_count(c1) over w1 as s1,
+        distinct_count(c2) over w1 as s2,
+        distinct_count(c3) over w1 as s3,
+        distinct_count(c4) over w1 as s4,
+        distinct_count(c5) over w1 as s5,
+        distinct_count(c6) over w1 as s6,
+        distinct_count(c7) over w1 as s7,
+        distinct_count(c8) over w1 as s8,
+        distinct_count(c9) over w1 as s9,
+        distinct_count(c10) over w1 as s10 
+      from {0} window w1 as
+        (PARTITION BY {0}.pk ORDER BY {0}.`ts` ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW);
+    expect:
+      columns: ["id int", "s1 bigint", "s2 bigint", "s3 bigint", "s4 bigint", "s5 bigint",
+                "s6 bigint", "s7 bigint", "s8 bigint", "s9 bigint", "s10 bigint"]
+      rows:
+        - [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1]
+
+

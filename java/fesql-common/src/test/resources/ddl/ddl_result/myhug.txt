@@ -94,11 +94,11 @@ create table `flattenRequest`(
 `uRGiftUserNum` double,
 `uWatchTopList` int,
 `split_id` int,
-index(key=(`uUserId`), ts=`eventTime`, ttl=2881m, ttl_type=absolute),
-index(key=(`zChannel`), ts=`eventTime`, ttl=2881m, ttl_type=absolute),
-index(key=(`uSex`), ts=`eventTime`, ttl=2881m, ttl_type=absolute),
-index(key=(`zUserId`), ts=`eventTime`, ttl=2881m, ttl_type=absolute),
-index(key=(`uPlayGame`), ts=`eventTime`, ttl=601m, ttl_type=absolute),
-index(key=(`uHasJoinedGroup`), ts=`eventTime`, ttl=2881m, ttl_type=absolute),
-index(key=(`zUserId`,`uUserId`), ts=`eventTime`, ttl=2881m, ttl_type=absolute)
+index(key=(`uUserId`), ts=`eventTime`, ttl=(2881m, 10), ttl_type=absandlat),
+index(key=(`uSex`), ts=`eventTime`, ttl=(2881m, 10), ttl_type=absandlat),
+index(key=(`zChannel`), ts=`eventTime`, ttl=(2881m, 0), ttl_type=absandlat),
+index(key=(`zUserId`), ts=`eventTime`, ttl=(2881m, 0), ttl_type=absandlat),
+index(key=(`uPlayGame`), ts=`eventTime`, ttl=(601m, 0), ttl_type=absandlat),
+index(key=(`uHasJoinedGroup`), ts=`eventTime`, ttl=(2881m, 0), ttl_type=absandlat),
+index(key=(`zUserId`,`uUserId`), ts=`eventTime`, ttl=(2881m, 0), ttl_type=absandlat)
 ) replicanum=1, partitionnum=1 ;

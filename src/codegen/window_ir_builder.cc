@@ -71,6 +71,7 @@ bool MemoryWindowDecodeIRBuilder::BuildInnerRowsList(::llvm::Value* list_ptr,
     return true;
 }
 bool MemoryWindowDecodeIRBuilder::BuildInnerRangeList(::llvm::Value* list_ptr,
+                                                      ::llvm::Value* row_key,
                                                       int64_t start_offset,
                                                       int64_t end_offset,
                                                       ::llvm::Value** output) {
@@ -100,10 +101,10 @@ bool MemoryWindowDecodeIRBuilder::BuildInnerRangeList(::llvm::Value* list_ptr,
     ::llvm::Value* val_end_offset = builder.getInt64(end_offset);
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
         "fesql_storage_get_inner_range_list", i32_ty, i8_ptr_ty, i64_ty, i64_ty,
-        i8_ptr_ty);
+        i64_ty, i8_ptr_ty);
     builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
-                                   list_ptr, val_start_offset, val_end_offset,
-                                   inner_list_ptr});
+                                   list_ptr, row_key, val_start_offset,
+                                   val_end_offset, inner_list_ptr});
     *output = inner_list_ptr;
     return true;
 }

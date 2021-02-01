@@ -7,6 +7,7 @@ import com._4paradigm.fesql.flink.common.*;
 import com._4paradigm.fesql.flink.common.planner.GeneralPlanContext;
 import com._4paradigm.fesql.node.ExprListNode;
 import com._4paradigm.fesql.node.ExprNode;
+import com._4paradigm.fesql.node.FrameType;
 import com._4paradigm.fesql.node.OrderByNode;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.*;
@@ -20,6 +21,7 @@ import org.apache.flink.types.Row;
 import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -48,7 +50,7 @@ public class BatchWindowAggPlan {
         // Get group-by info
         ExprListNode groupbyKeyExprs = windowOp.partition().keys();
         List<Integer> groupbyKeyIndexes = new ArrayList<Integer>();
-        for (int i=0; i < groupbyKeyExprs.GetChildNum(); ++i) {
+        for (int i = 0; i < groupbyKeyExprs.GetChildNum(); ++i) {
             ExprNode exprNode = groupbyKeyExprs.GetChild(i);
             int index = FesqlUtil.resolveColumnIndex(exprNode, node.GetProducer(0));
             groupbyKeyIndexes.add(index);
@@ -68,8 +70,21 @@ public class BatchWindowAggPlan {
         }
 
         long startOffset = node.window().range().frame().GetHistoryRangeStart();
+        long endOffset = node.window().range().frame().GetHistoryRangeEnd();
         long rowPreceding = -1 * node.window().range().frame().GetHistoryRowsStart();
+        long maxSize = node.window().range().frame().frame_maxsize();
         boolean instanceNotInWindow = node.instance_not_in_window();
+        boolean excludeCurrentTime = node.exclude_current_time();
+
+        FrameType frameType = node.window().range().frame().frame_type();
+        Window.WindowFrameType windowFrameType;
+        if (frameType == FrameType.kFrameRows) {
+            windowFrameType = Window.WindowFrameType.kFrameRows;
+        } else if (frameType == FrameType.kFrameRowsMergeRowsRange) {
+            windowFrameType = Window.WindowFrameType.kFrameRowsMergeRowsRange;
+        } else {
+            windowFrameType = Window.WindowFrameType.kFrameRowsRange;
+        }
         boolean needAppendInput = node.need_append_input();
         int appendSlices;
         if (needAppendInput) {
@@ -103,19 +118,19 @@ public class BatchWindowAggPlan {
                 functionPointer = jit.FindFunction(functionName);
                 inputCodec = new FesqlFlinkCodec(inputSchemaLists);
                 outputCodec = new FesqlFlinkCodec(outputSchemaLists);
-                windowInterface = new WindowInterface(instanceNotInWindow, startOffset, 0, rowPreceding, 0);
+                windowInterface = new WindowInterface(instanceNotInWindow, excludeCurrentTime, windowFrameType.toString(), startOffset, endOffset, rowPreceding, maxSize);
             }
 
             @Override
             public void reduce(Iterable<Row> iterable, Collector<Row> collector) throws Exception {
 
-                for (Row currentRow: iterable) {
+                for (Row currentRow : iterable) {
                     com._4paradigm.fesql.codec.Row inputFesqlRow = inputCodec.encodeFlinkRow(currentRow);
 
                     // TODO: Check type or orderby column
                     //LocalDateTime orderbyValue = (LocalDateTime)(currentRow.getField(orderbyKeyIndex));
                     //long orderbyLongValue = orderbyValue.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-                    Timestamp timestamp = (Timestamp)currentRow.getField(orderbyKeyIndex);
+                    Timestamp timestamp = (Timestamp) currentRow.getField(orderbyKeyIndex);
                     long orderbyLongValue = timestamp.getTime();
 
                     com._4paradigm.fesql.codec.Row outputFesqlRow = CoreAPI.WindowProject(functionPointer, orderbyLongValue, inputFesqlRow, true, appendSlices, windowInterface);

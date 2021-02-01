@@ -187,6 +187,7 @@ typedef void* yyscan_t;
 %token ELSEIF
 %token ENCLOSED
 %token END
+%token EXCLUDE
 %token FUNDEFEND
 %token ENUM
 %token ESCAPED
@@ -282,6 +283,7 @@ typedef void* yyscan_t;
 %token NUMBER
 %token ON
 %token ONDUPLICATE
+%token OPEN
 %token OPTIMIZE
 %token OPTION
 %token OPTIONALLY
@@ -443,7 +445,7 @@ typedef void* yyscan_t;
  /* create table */
 %type <node>  create_stmt column_desc column_index_item column_index_key option distribution
 %type <node>  cmd_stmt
-%type <flag>  op_not_null op_if_not_exist opt_distinct_clause opt_instance_not_in_window
+%type <flag>  op_not_null op_if_not_exist opt_distinct_clause opt_instance_not_in_window opt_exclude_current_time
 %type <list>  column_desc_list column_index_item_list table_options distribution_list
 
 %type <list> opt_target_list
@@ -461,7 +463,7 @@ typedef void* yyscan_t;
                join_outer
                endpoint
 
-%type <intval> opt_window_exclusion_clause replica_num partition_num
+%type <intval> replica_num partition_num
 
 /* create procedure */
 %type <node> create_sp_stmt input_parameter
@@ -958,11 +960,16 @@ cmd_stmt:
 				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdDescTable, $2);
 				free($2);
 			}
-			|USE database_name
-			{
-				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdUseDatabase, $2);
-				free($2);
-			}
+            |USE database_name
+            {
+                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdUseDatabase, $2);
+                free($2);
+            }
+            |DROP DATABASE database_name
+            {
+                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropDatabase, $3);
+                free($3);
+            }
             |DROP TABLE table_name
             {
                 $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropTable, $3);
@@ -1757,7 +1764,7 @@ expr_const:
 	| '-' FLOATNUM
 		{ $$ = (node_manager->MakeConstNode(-1*$2)); }
   	| BOOLVALUE
-        { $$ = (node_manager->MakeConstNode($1)); }
+        { $$ = (node_manager->MakeConstNode($1 > 0)); }
   	| NULLX
         { $$ = (node_manager->MakeConstNode()); }
     | I16_MAX {
@@ -1886,9 +1893,9 @@ window_definition:
 
 window_specification:
 				'(' opt_existing_window_name opt_union_clause opt_partition_clause
-					opt_sort_clause opt_frame_clause opt_instance_not_in_window ')'
+					opt_sort_clause opt_frame_clause opt_exclude_current_time opt_instance_not_in_window')'
 					{
-                 		$$ = node_manager->MakeWindowDefNode($3, $4, $5, $6, $7);
+                 		$$ = node_manager->MakeWindowDefNode($3, $4, $5, $6, $7, $8);
                  		free($2);
                  	}
 		;
@@ -1914,6 +1921,11 @@ opt_partition_clause: PARTITION BY column_ref_list		{ $$ = $3; }
 opt_instance_not_in_window:
 			INSTANCE_NOT_IN_WINDOW { $$ = true; }
 			| /*EMPTY*/ {$$ = false;}
+
+opt_exclude_current_time:
+            EXCLUDE CURRENT_TIME{ $$ = true; }
+            | /*EMPTY*/ { $$ = false; }
+
 limit_clause:
             LIMIT INTNUM
             {
@@ -1956,7 +1968,7 @@ sort_clause:
  *
  *===========================================================*/
 opt_frame_clause:
-			frame_unit frame_extent opt_frame_size opt_window_exclusion_clause
+			frame_unit frame_extent opt_frame_size
 			{
 				$$ = node_manager->MakeFrameNode($1, $2, $3);
 
@@ -2030,10 +2042,6 @@ opt_frame_size:
             	$$ = NULL;
            	}
 
-opt_window_exclusion_clause:
-             /*EMPTY*/				{ $$ = 0; }
-            ;
-
 frame_extent:
 			frame_bound
 			{
@@ -2067,11 +2075,20 @@ frame_bound:
 				{
 				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kFollowing, $1));
 				}
-		;
+		    | frame_expr OPEN PRECEDING
+                {
+                    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kOpenPreceding, $1));
+                }
+            | frame_expr OPEN FOLLOWING
+                {
+                    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kOpenFollowing, $1));
+                }
+		    ;
 
 frame_expr: expr_const
 			|primary_time
 			;
+
 column_ref:
     column_name
     {

@@ -329,7 +329,7 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                         ASSERT_TRUE(IsNaN(act))
                             << " At " << i << " " << schema.Get(i).name();
                     } else {
-                        ASSERT_DOUBLE_EQ(act, exp)
+                        ASSERT_FLOAT_EQ(act, exp)
                             << " At " << i << " " << schema.Get(i).name();
                     }
                     break;
@@ -745,7 +745,8 @@ void EngineTestRunner::RunCheck() {
                engine_mode == kRequestMode && options_.is_cluster_optimzied()) {
         ASSERT_EQ(oss.str(), sql_case_.cluster_request_plan());
     } else if (!sql_case_.request_plan().empty() &&
-               engine_mode == kRequestMode) {
+               engine_mode == kRequestMode &&
+               !options_.is_cluster_optimzied()) {
         ASSERT_EQ(oss.str(), sql_case_.request_plan());
     }
     status = PrepareData();
@@ -789,7 +790,8 @@ void EngineTestRunner::RunBenchmark(size_t iters) {
         LOG(WARNING) << "Run error: " << status;
         return;
     }
-    PrintRows(session_->GetSchema(), output_rows);
+    ASSERT_NO_FATAL_FAILURE(
+        DoEngineCheckExpect(sql_case_, session_, output_rows));
 
     struct timeval st;
     struct timeval et;

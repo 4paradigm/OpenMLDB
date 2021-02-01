@@ -52,9 +52,7 @@ Row::~Row() {}
 
 void Row::Append(const std::vector<RefCountedSlice> &slices) {
     if (!slices.empty()) {
-        for (auto iter = slices.cbegin(); iter != slices.cend(); iter++) {
-            slices_.push_back(*iter);
-        }
+        slices_.insert(slices_.end(), slices.begin(), slices.end());
     }
 }
 void Row::Append(const Row &b) {

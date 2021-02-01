@@ -14,6 +14,7 @@
 #include "boost/algorithm/string.hpp"
 #include "boost/filesystem/operations.hpp"
 #include "boost/lexical_cast.hpp"
+#include "boost/regex.hpp"
 #include "codec/fe_row_codec.h"
 #include "glog/logging.h"
 #include "yaml-cpp/yaml.h"
@@ -184,29 +185,34 @@ bool SQLCase::ExtractSchema(const std::vector<std::string>& columns,
         LOG(WARNING) << "Invalid Schema Format";
         return false;
     }
-    for (auto col : columns) {
-        boost::trim(col);
-        boost::replace_last(col, " ", ":");
-        std::vector<std::string> name_type_vec;
-        boost::split(name_type_vec, col, boost::is_any_of(":"),
-                     boost::token_compress_on);
-        if (2 != name_type_vec.size()) {
-            LOG(WARNING) << "Invalid Schema Format:"
-                         << " Invalid Column " << col;
-            return false;
-        }
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        boost::trim(name_type_vec[0]);
-        boost::trim(name_type_vec[1]);
+    try {
+        for (auto col : columns) {
+            boost::trim(col);
+            boost::replace_last(col, " ", ":");
+            std::vector<std::string> name_type_vec;
+            boost::split(name_type_vec, col, boost::is_any_of(":"),
+                         boost::token_compress_on);
+            if (2 != name_type_vec.size()) {
+                LOG(WARNING) << "Invalid Schema Format:"
+                             << " Invalid Column " << col;
+                return false;
+            }
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            boost::trim(name_type_vec[0]);
+            boost::trim(name_type_vec[1]);
 
-        column->set_name(name_type_vec[0]);
-        fesql::type::Type type;
-        if (!TypeParse(name_type_vec[1], &type)) {
-            LOG(WARNING) << "Invalid Column Type";
-            return false;
+            column->set_name(name_type_vec[0]);
+            fesql::type::Type type;
+            if (!TypeParse(name_type_vec[1], &type)) {
+                LOG(WARNING) << "Invalid Column Type";
+                return false;
+            }
+            column->set_type(type);
+            column->set_is_not_null(false);
         }
-        column->set_type(type);
-        column->set_is_not_null(false);
+    } catch (const std::exception& ex) {
+        LOG(WARNING) << "Fail to ExtractSchema: " << ex.what();
+        return false;
     }
     return true;
 }
@@ -297,25 +303,30 @@ bool SQLCase::ExtractInputData(std::vector<Row>& rows,
 }
 bool SQLCase::ExtractInputData(const TableInfo& input,
                                std::vector<Row>& rows) const {
-    if (input.data_.empty() && input.rows_.empty()) {
-        LOG(WARNING) << "Empty Data String";
-        return false;
-    }
-    type::TableDef table;
-    if (!ExtractInputTableDef(input, table)) {
-        LOG(WARNING) << "Invalid Schema";
-        return false;
-    }
+    try {
+        if (input.data_.empty() && input.rows_.empty()) {
+            LOG(WARNING) << "Empty Data String";
+            return false;
+        }
+        type::TableDef table;
+        if (!ExtractInputTableDef(input, table)) {
+            LOG(WARNING) << "Invalid Schema";
+            return false;
+        }
 
-    if (!input.data_.empty()) {
-        if (!ExtractRows(table.columns(), input.data_, rows)) {
+        if (!input.data_.empty()) {
+            if (!ExtractRows(table.columns(), input.data_, rows)) {
+                return false;
+            }
+        } else if (!input.columns_.empty()) {
+            if (!ExtractRows(table.columns(), input.rows_, rows)) {
+                return false;
+            }
+        } else {
             return false;
         }
-    } else if (!input.columns_.empty()) {
-        if (!ExtractRows(table.columns(), input.rows_, rows)) {
-            return false;
-        }
-    } else {
+    } catch (const std::exception& ex) {
+        LOG(WARNING) << "Fail to ExtractInput Data: " << ex.what();
         return false;
     }
     return true;
@@ -479,102 +490,108 @@ bool SQLCase::ExtractRow(const vm::Schema& schema,
     auto it = schema.begin();
     uint32_t index = 0;
 
-    for (; it != schema.end(); ++it) {
-        if (index >= item_vec.size()) {
-            LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
-            return false;
-        }
-        if (item_vec[index] == "NULL" || item_vec[index] == "null") {
-            index++;
-            rb.AppendNULL();
-            continue;
-        }
-        switch (it->type()) {
-            case type::kInt16: {
-                if (!rb.AppendInt16(
-                        boost::lexical_cast<int16_t>(item_vec[index]))) {
-                    LOG(WARNING) << "Fail Append Column " << index;
-                    return false;
-                }
-                break;
-            }
-            case type::kInt32: {
-                if (!rb.AppendInt32(
-                        boost::lexical_cast<int32_t>(item_vec[index]))) {
-                    LOG(WARNING) << "Fail Append Column " << index;
-                    return false;
-                }
-                break;
-            }
-            case type::kInt64: {
-                if (!rb.AppendInt64(
-                        boost::lexical_cast<int64_t>(item_vec[index]))) {
-                    LOG(WARNING) << "Fail Append Column " << index;
-                    return false;
-                }
-                break;
-            }
-            case type::kFloat: {
-                if (!rb.AppendFloat(
-                        boost::lexical_cast<float>(item_vec[index]))) {
-                    LOG(WARNING) << "Fail Append Column " << index;
-                    return false;
-                }
-                break;
-            }
-            case type::kDouble: {
-                double d = boost::lexical_cast<double>(item_vec[index]);
-                if (!rb.AppendDouble(d)) {
-                    LOG(WARNING) << "Fail Append Column " << index;
-                    return false;
-                }
-                break;
-            }
-            case type::kBool: {
-                bool b;
-                std::istringstream ss(item_vec[index]);
-                ss >> std::boolalpha >> b;
-                if (!rb.AppendBool(b)) {
-                    LOG(WARNING) << "Fail Append Column " << index;
-                    return false;
-                }
-                break;
-            }
-            case type::kVarchar: {
-                std::string str =
-                    boost::lexical_cast<std::string>(item_vec[index]);
-                if (!rb.AppendString(str.c_str(), strlen(str.c_str()))) {
-                    LOG(WARNING) << "Fail Append Column " << index;
-                    return false;
-                }
-                break;
-            }
-            case type::kTimestamp: {
-                if (!rb.AppendTimestamp(
-                        boost::lexical_cast<int64_t>(item_vec[index]))) {
-                    return false;
-                }
-                break;
-            }
-            case type::kDate: {
-                std::vector<std::string> date_strs;
-                boost::split(date_strs, item_vec[index], boost::is_any_of("-"),
-                             boost::token_compress_on);
-
-                if (!rb.AppendDate(
-                        boost::lexical_cast<int32_t>(date_strs[0]),
-                        boost::lexical_cast<int32_t>(date_strs[1]),
-                        boost::lexical_cast<int32_t>(date_strs[2]))) {
-                    return false;
-                }
-                break;
-            }
-            default: {
-                LOG(WARNING) << "Invalid Column Type";
+    try {
+        for (; it != schema.end(); ++it) {
+            if (index >= item_vec.size()) {
+                LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
                 return false;
             }
+            if (item_vec[index] == "NULL" || item_vec[index] == "null") {
+                index++;
+                rb.AppendNULL();
+                continue;
+            }
+            switch (it->type()) {
+                case type::kInt16: {
+                    if (!rb.AppendInt16(
+                            boost::lexical_cast<int16_t>(item_vec[index]))) {
+                        LOG(WARNING) << "Fail Append Column " << index;
+                        return false;
+                    }
+                    break;
+                }
+                case type::kInt32: {
+                    if (!rb.AppendInt32(
+                            boost::lexical_cast<int32_t>(item_vec[index]))) {
+                        LOG(WARNING) << "Fail Append Column " << index;
+                        return false;
+                    }
+                    break;
+                }
+                case type::kInt64: {
+                    if (!rb.AppendInt64(
+                            boost::lexical_cast<int64_t>(item_vec[index]))) {
+                        LOG(WARNING) << "Fail Append Column " << index;
+                        return false;
+                    }
+                    break;
+                }
+                case type::kFloat: {
+                    if (!rb.AppendFloat(
+                            boost::lexical_cast<float>(item_vec[index]))) {
+                        LOG(WARNING) << "Fail Append Column " << index;
+                        return false;
+                    }
+                    break;
+                }
+                case type::kDouble: {
+                    double d = boost::lexical_cast<double>(item_vec[index]);
+                    if (!rb.AppendDouble(d)) {
+                        LOG(WARNING) << "Fail Append Column " << index;
+                        return false;
+                    }
+                    break;
+                }
+                case type::kBool: {
+                    bool b;
+                    std::istringstream ss(item_vec[index]);
+                    ss >> std::boolalpha >> b;
+                    if (!rb.AppendBool(b)) {
+                        LOG(WARNING) << "Fail Append Column " << index;
+                        return false;
+                    }
+                    break;
+                }
+                case type::kVarchar: {
+                    std::string str =
+                        boost::lexical_cast<std::string>(item_vec[index]);
+                    if (!rb.AppendString(str.c_str(), strlen(str.c_str()))) {
+                        LOG(WARNING) << "Fail Append Column " << index;
+                        return false;
+                    }
+                    break;
+                }
+                case type::kTimestamp: {
+                    if (!rb.AppendTimestamp(
+                            boost::lexical_cast<int64_t>(item_vec[index]))) {
+                        return false;
+                    }
+                    break;
+                }
+                case type::kDate: {
+                    std::vector<std::string> date_strs;
+                    boost::split(date_strs, item_vec[index],
+                                 boost::is_any_of("-"),
+                                 boost::token_compress_on);
+
+                    if (!rb.AppendDate(
+                            boost::lexical_cast<int32_t>(date_strs[0]),
+                            boost::lexical_cast<int32_t>(date_strs[1]),
+                            boost::lexical_cast<int32_t>(date_strs[2]))) {
+                        return false;
+                    }
+                    break;
+                }
+                default: {
+                    LOG(WARNING) << "Invalid Column Type";
+                    return false;
+                }
+            }
+            index++;
         }
-        index++;
+    } catch (const std::exception& ex) {
+        LOG(WARNING) << "Fail to ExtractSchema: " << ex.what();
+        return false;
     }
     *out_ptr = ptr;
     *out_size = row_size;
@@ -864,6 +881,7 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
     return true;
 }
 bool SQLCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
+                                       const YAML::Node& expect_provider,
                                        SQLCase::ExpectInfo* expect) {
     if (schema_data["schema"]) {
         expect->schema_ = schema_data["schema"].as<std::string>();
@@ -884,23 +902,31 @@ bool SQLCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
         boost::trim(expect->data_);
     }
 
-    if (schema_data["result"]) {
-        expect->rows_.clear();
-        if (!CreateRowsFromYamlNode(schema_data["result"], expect->rows_)) {
-            LOG(WARNING) << "Fail to parse rows";
-            return false;
-        }
+    YAML::Node rows_node;
+    if (expect_provider["rows"]) {
+        rows_node = expect_provider["rows"];
+    } else if (schema_data["result"]) {
+        rows_node = schema_data["result"];
     } else if (schema_data["rows"]) {
+        rows_node = schema_data["rows"];
+    }
+    if (rows_node) {
         expect->rows_.clear();
-        if (!CreateRowsFromYamlNode(schema_data["rows"], expect->rows_)) {
+        if (!CreateRowsFromYamlNode(rows_node, expect->rows_)) {
             LOG(WARNING) << "Fail to parse rows";
             return false;
         }
     }
-    if (schema_data["columns"]) {
+
+    YAML::Node columns_node;
+    if (expect_provider["columns"]) {
+        columns_node = expect_provider["columns"];
+    } else if (schema_data["columns"]) {
+        columns_node = schema_data["columns"];
+    }
+    if (columns_node) {
         expect->columns_.clear();
-        if (!CreateStringListFromYamlNode(schema_data["columns"],
-                                          expect->columns_)) {
+        if (!CreateStringListFromYamlNode(columns_node, expect->columns_)) {
             LOG(WARNING) << "Fail to parse columns";
             return false;
         }
@@ -981,6 +1007,280 @@ bool SQLCase::LoadSchemaAndRowsFromYaml(const std::string& cases_dir,
     }
     return true;
 }
+
+static bool ParseSQLCaseNode(const YAML::Node& sql_case_node,
+                             const YAML::Node& expect_provider,
+                             const std::string& global_db,
+                             const std::string& cases_dir,
+                             const std::set<std::string>& debugs,
+                             const std::vector<std::string>& filter_modes,
+                             SQLCase* sql_case_ptr, bool* is_skip) {
+    *is_skip = false;
+    SQLCase& sql_case = *sql_case_ptr;
+    sql_case.raw_node_ = YAML::Node(sql_case_node);
+    if (sql_case_node["id"]) {
+        sql_case.id_ = sql_case_node["id"].as<std::string>();
+    } else {
+        sql_case.id_ = "-1";
+    }
+
+    if (sql_case_node["desc"]) {
+        sql_case.desc_ = sql_case_node["desc"].as<std::string>();
+        boost::trim(sql_case.desc_);
+    } else {
+        sql_case.desc_ = "";
+    }
+
+    if (sql_case_node["mode"]) {
+        sql_case.mode_ = sql_case_node["mode"].as<std::string>();
+        boost::trim(sql_case.mode_);
+    } else {
+        sql_case.mode_ = "batch";
+    }
+    if (sql_case_node["level"]) {
+        sql_case.level_ = sql_case_node["level"].as<int>();
+    }
+    if (sql_case_node["debug"]) {
+        sql_case.debug_ = sql_case_node["debug"].as<bool>();
+    } else {
+        sql_case.debug_ = false;
+    }
+    if (sql_case_node["tags"]) {
+        if (!SQLCase::CreateStringListFromYamlNode(sql_case_node["tags"],
+                                                   sql_case.tags_)) {
+            LOG(WARNING) << "Fail to parse tags";
+            return false;
+        }
+        std::set<std::string> tags(sql_case.tags_.begin(),
+                                   sql_case.tags_.end());
+
+        if (tags.find("todo") != tags.cend()) {
+            LOG(INFO) << "SKIP TODO SQL Case " << sql_case.desc();
+            *is_skip = true;
+        }
+
+        if (tags.find("TODO") != tags.cend()) {
+            LOG(INFO) << "SKIP TODO SQL Case " << sql_case.desc();
+            *is_skip = true;
+        }
+    }
+
+    if (sql_case_node["batch_plan"]) {
+        sql_case.batch_plan_ = sql_case_node["batch_plan"].as<std::string>();
+        boost::trim(sql_case.batch_plan_);
+    }
+    if (sql_case_node["request_plan"]) {
+        sql_case.request_plan_ =
+            sql_case_node["request_plan"].as<std::string>();
+        boost::trim(sql_case.request_plan_);
+    }
+    if (sql_case_node["cluster_request_plan"]) {
+        sql_case.cluster_request_plan_ =
+            sql_case_node["cluster_request_plan"].as<std::string>();
+        boost::trim(sql_case.cluster_request_plan_);
+    }
+    if (sql_case_node["db"]) {
+        sql_case.db_ = sql_case_node["db"].as<std::string>();
+    } else {
+        sql_case.db_ = global_db;
+    }
+
+    if (sql_case_node["sql"]) {
+        sql_case.sql_str_ = sql_case_node["sql"].as<std::string>();
+        boost::trim(sql_case.sql_str_);
+    }
+    if (sql_case_node["sqls"]) {
+        sql_case.sql_strs_.clear();
+        if (!SQLCase::CreateStringListFromYamlNode(sql_case_node["sqls"],
+                                                   sql_case.sql_strs_)) {
+            LOG(WARNING) << "Fail to parse sqls";
+            return false;
+        }
+    }
+
+    if (sql_case_node["standard_sql"]) {
+        sql_case.standard_sql_ = sql_case_node["standard_sql"].as<bool>();
+    } else {
+        sql_case.standard_sql_ = false;
+    }
+    if (sql_case_node["batch_request_optimized"]) {
+        sql_case.batch_request_optimized_ =
+            sql_case_node["batch_request_optimized"].as<bool>();
+    } else {
+        sql_case.batch_request_optimized_ = true;
+    }
+
+    if (sql_case_node["standard_sql_compatible"]) {
+        sql_case.standard_sql_compatible_ =
+            sql_case_node["standard_sql_compatible"].as<bool>();
+    } else {
+        sql_case.standard_sql_compatible_ = true;
+    }
+
+    if (sql_case_node["inputs"]) {
+        auto inputs = sql_case_node["inputs"];
+        for (auto iter = inputs.begin(); iter != inputs.end(); iter++) {
+            SQLCase::TableInfo table;
+            auto schema_data = *iter;
+
+            if (schema_data["resource"]) {
+                std::string resource =
+                    schema_data["resource"].as<std::string>();
+                boost::trim(resource);
+                if (!SQLCase::CreateTableInfoFromYaml(cases_dir, resource,
+                                                      &table)) {
+                    return false;
+                }
+            }
+            if (!SQLCase::CreateTableInfoFromYamlNode(schema_data, &table)) {
+                return false;
+            }
+            sql_case.inputs_.push_back(table);
+        }
+    }
+
+    YAML::Node expect_node;
+    if (sql_case_node["output"]) {
+        expect_node = sql_case_node["output"];
+    } else if (sql_case_node["expect"]) {
+        expect_node = sql_case_node["expect"];
+    }
+
+    if (expect_node) {
+        if (!SQLCase::CreateExpectFromYamlNode(expect_node, expect_provider,
+                                               &sql_case.expect_)) {
+            return false;
+        }
+    } else if (expect_provider) {
+        if (!SQLCase::CreateExpectFromYamlNode(expect_provider, YAML::Node(),
+                                               &sql_case.expect_)) {
+            return false;
+        }
+    }
+    // parse expect info for "output","expect", "expectProvider"
+    if (expect_node.IsDefined() || expect_provider.IsDefined()) {
+        if (!SQLCase::CreateExpectFromYamlNode(expect_node, expect_provider,
+                                               &sql_case.expect_)) {
+            return false;
+        }
+    }
+    if (sql_case_node["batch_request"]) {
+        if (!SQLCase::CreateTableInfoFromYamlNode(
+                sql_case_node["batch_request"], &sql_case.batch_request_)) {
+            return false;
+        }
+    }
+
+    if (!debugs.empty()) {
+        if (debugs.find(sql_case.desc_) == debugs.end()) {
+            *is_skip = true;
+        }
+        sql_case.debug_ = true;
+    }
+    if (!filter_modes.empty()) {
+        bool need_filter = false;
+        for (auto filter_mode : filter_modes) {
+            if (boost::contains(sql_case.mode_, filter_mode)) {
+                need_filter = true;
+                break;
+            }
+        }
+        if (need_filter) {
+            *is_skip = true;
+        }
+    }
+    return true;
+}
+
+static bool DoExpandProviderCase(
+    size_t idx, const YAML::Node& sql_case_node,
+    const std::vector<std::vector<std::string>>& provider_contents,
+    const std::string& global_db, const std::string& cases_dir,
+    const std::set<std::string>& debugs,
+    const std::vector<std::string>& filter_modes,
+    std::vector<size_t>* choice_idxs, std::vector<SQLCase>* outputs) {
+    if (idx == provider_contents.size()) {
+        SQLCase sql_case;
+        YAML::Node expect_provider;
+        if (sql_case_node["expectProvider"]) {
+            YAML::Node expect = sql_case_node["expectProvider"];
+            size_t expect_idx = (*choice_idxs)[0];
+            if (expect[std::to_string(expect_idx)]) {
+                expect_provider = expect[std::to_string(expect_idx)];
+            } else if (expect["0"] && expect.size() == 1) {
+                expect_provider = expect["0"];
+            } else {
+                LOG(WARNING) << "Missing expect provider at " << expect_idx;
+                return false;
+            }
+        }
+        bool is_skip = false;
+        bool parse_success = ParseSQLCaseNode(
+            sql_case_node, expect_provider, global_db, cases_dir, debugs,
+            filter_modes, &sql_case, &is_skip);
+        if (!parse_success) {
+            LOG(WARNING) << "Parse sql node failed";
+            return false;
+        }
+        std::string sql = sql_case.sql_str_;
+        for (size_t i = 0; i < choice_idxs->size(); ++i) {
+            std::string repl = provider_contents[i][(*choice_idxs)[i]];
+            std::string ph = "d\\[";
+            ph.append(std::to_string(i));
+            ph.append("\\]");
+            sql = boost::regex_replace(sql, boost::regex(ph), repl);
+        }
+        sql_case.sql_str_ = sql;
+        if (!is_skip) {
+            outputs->push_back(sql_case);
+        }
+        return true;
+    }
+
+    const auto& choices = provider_contents[idx];
+    for (size_t i = 0; i < choices.size(); ++i) {
+        if (idx == 0 || (*choice_idxs)[idx - 1] != i) {
+            // d[] only choose content at same index
+            // continue;
+        }
+        (*choice_idxs)[idx] = i;
+        if (!DoExpandProviderCase(idx + 1, sql_case_node, provider_contents,
+                                  global_db, cases_dir, debugs, filter_modes,
+                                  choice_idxs, outputs)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool ExpandProviderCase(const YAML::Node& sql_case_node,
+                               const std::string& global_db,
+                               const std::string& cases_dir,
+                               const std::set<std::string>& debugs,
+                               const std::vector<std::string>& filter_modes,
+                               std::vector<SQLCase>* outputs) {
+    YAML::Node providers = sql_case_node["dataProvider"];
+    std::vector<std::vector<std::string>> provider_contents;
+    for (auto provider_iter = providers.begin();
+         provider_iter != providers.end(); provider_iter++) {
+        YAML::Node cur = (YAML::Node)(*provider_iter);
+        std::vector<std::string> choices;
+        for (auto choice_iter = cur.begin(); choice_iter != cur.end();
+             ++choice_iter) {
+            choices.push_back(choice_iter->as<std::string>());
+        }
+        provider_contents.push_back(choices);
+    }
+    if (provider_contents.empty()) {
+        LOG(WARNING) << "Empty provider";
+        return false;
+    }
+    std::vector<size_t> choice_idxs(provider_contents.size());
+    return DoExpandProviderCase(0, sql_case_node, provider_contents, global_db,
+                                cases_dir, debugs, filter_modes, &choice_idxs,
+                                outputs);
+}
+
 bool SQLCase::CreateSQLCasesFromYaml(
     const std::string& cases_dir, const std::string& yaml_path,
     std::vector<SQLCase>& sql_cases,
@@ -1014,181 +1314,43 @@ bool SQLCase::CreateSQLCasesFromYaml(
     std::set<std::string> debugs(debugs_vec.begin(), debugs_vec.end());
 
     YAML::Node sql_cases_node;
-
     if (config["SQLCases"]) {
         sql_cases_node = config["SQLCases"];
     } else if (config["cases"]) {
         sql_cases_node = config["cases"];
     } else {
-        LOG(WARNING) << "Fail to parse sql cases";
+        LOG(WARNING) << "Fail to parse sql cases: " << yaml_path;
         return false;
     }
     for (auto case_iter = sql_cases_node.begin();
          case_iter != sql_cases_node.end(); case_iter++) {
+        YAML::Node sql_case_node = (YAML::Node)(*case_iter);
+        if (sql_case_node["dataProvider"]) {
+            bool expand_ok =
+                ExpandProviderCase(sql_case_node, global_db, cases_dir, debugs,
+                                   filter_modes, &sql_cases);
+            if (!expand_ok) {
+                LOG(WARNING) << "Expand provider case failed in: " << yaml_path;
+                return false;
+            }
+            continue;
+        }
         SQLCase sql_case;
-        YAML::Node& sql_case_node = sql_case.raw_node_;
-        sql_case_node = (YAML::Node)(*case_iter);
-
-        if (sql_case_node["id"]) {
-            sql_case.id_ = sql_case_node["id"].as<std::string>();
-        } else {
-            sql_case.id_ = "-1";
-        }
-
-        if (sql_case_node["desc"]) {
-            sql_case.desc_ = sql_case_node["desc"].as<std::string>();
-            boost::trim(sql_case.desc_);
-        } else {
-            sql_case.desc_ = "";
-        }
-
-        if (!debugs.empty()) {
-            if (debugs.find(sql_case.desc_) == debugs.end()) {
-                continue;
-            } else {
-                sql_case.debug_ = true;
-            }
-        }
-        if (sql_case_node["mode"]) {
-            sql_case.mode_ = sql_case_node["mode"].as<std::string>();
-            boost::trim(sql_case.mode_);
-        } else {
-            sql_case.mode_ = "batch";
-        }
-
-        if (sql_case_node["debug"]) {
-            sql_case.debug_ = sql_case_node["debug"].as<bool>();
-        } else {
-            sql_case.debug_ = false;
-        }
-        if (!filter_modes.empty()) {
-            bool need_filter = false;
-            for (auto filter_mode : filter_modes) {
-                if (boost::contains(sql_case.mode_, filter_mode)) {
-                    need_filter = true;
-                    break;
-                }
-            }
-
-            if (need_filter) {
-                LOG(INFO) << "SKIP SQL Case " << sql_case.desc();
-                continue;
-            }
-        }
-        if (sql_case_node["tags"]) {
-            if (!CreateStringListFromYamlNode(sql_case_node["tags"],
-                                              sql_case.tags_)) {
-                LOG(WARNING) << "Fail to parse tags";
-                return false;
-            }
-            std::set<std::string> tags(sql_case.tags_.begin(),
-                                       sql_case.tags_.end());
-
-            if (tags.find("todo") != tags.cend()) {
-                continue;
-            }
-
-            if (tags.find("TODO") != tags.cend()) {
-                continue;
-            }
-        }
-
-        if (sql_case_node["batch_plan"]) {
-            sql_case.batch_plan_ =
-                sql_case_node["batch_plan"].as<std::string>();
-            boost::trim(sql_case.batch_plan_);
-        }
-        if (sql_case_node["request_plan"]) {
-            sql_case.request_plan_ =
-                sql_case_node["request_plan"].as<std::string>();
-            boost::trim(sql_case.request_plan_);
-        }
-        if (sql_case_node["cluster_request_plan"]) {
-            sql_case.cluster_request_plan_ =
-                sql_case_node["cluster_request_plan"].as<std::string>();
-            boost::trim(sql_case.cluster_request_plan_);
-        }
-        if (sql_case_node["db"]) {
-            sql_case.db_ = sql_case_node["db"].as<std::string>();
-        } else {
-            sql_case.db_ = global_db;
-        }
-
-        if (sql_case_node["sql"]) {
-            sql_case.sql_str_ = sql_case_node["sql"].as<std::string>();
-            boost::trim(sql_case.sql_str_);
-        }
-        if (sql_case_node["sqls"]) {
-            sql_case.sql_strs_.clear();
-            if (!CreateStringListFromYamlNode(sql_case_node["sqls"],
-                                              sql_case.sql_strs_)) {
-                LOG(WARNING) << "Fail to parse sqls";
-                return false;
-            }
-        }
-
-        if (sql_case_node["standard_sql"]) {
-            sql_case.standard_sql_ = sql_case_node["standard_sql"].as<bool>();
-        } else {
-            sql_case.standard_sql_ = false;
-        }
-        if (sql_case_node["batch_request_optimized"]) {
-            sql_case.batch_request_optimized_ =
-                sql_case_node["batch_request_optimized"].as<bool>();
-        } else {
-            sql_case.batch_request_optimized_ = true;
-        }
-
-        if (sql_case_node["standard_sql_compatible"]) {
-            sql_case.standard_sql_compatible_ =
-                sql_case_node["standard_sql_compatible"].as<bool>();
-        } else {
-            sql_case.standard_sql_compatible_ = true;
-        }
-
-        if (sql_case_node["inputs"]) {
-            auto inputs = sql_case_node["inputs"];
-            for (auto iter = inputs.begin(); iter != inputs.end(); iter++) {
-                SQLCase::TableInfo table;
-                auto schema_data = *iter;
-
-                if (schema_data["resource"]) {
-                    std::string resource =
-                        schema_data["resource"].as<std::string>();
-                    boost::trim(resource);
-                    if (!CreateTableInfoFromYaml(cases_dir, resource, &table)) {
-                        return false;
-                    }
-                }
-                if (!CreateTableInfoFromYamlNode(schema_data, &table)) {
-                    return false;
-                }
-                sql_case.inputs_.push_back(table);
-            }
-        }
-
-        if (sql_case_node["output"]) {
-            auto schema_data = sql_case_node["output"];
-            if (!CreateExpectFromYamlNode(schema_data, &sql_case.expect_)) {
-                return false;
-            }
-        }
-        if (sql_case_node["expect"]) {
-            auto schema_data = sql_case_node["expect"];
-            if (!CreateExpectFromYamlNode(schema_data, &sql_case.expect_)) {
-                return false;
-            }
-        }
-        if (sql_case_node["batch_request"]) {
-            if (!CreateTableInfoFromYamlNode(sql_case_node["batch_request"],
-                                             &sql_case.batch_request_)) {
-                return false;
-            }
+        bool is_skip = false;
+        bool parse_success =
+            ParseSQLCaseNode(sql_case_node, YAML::Node(), global_db, cases_dir,
+                             debugs, filter_modes, &sql_case, &is_skip);
+        if (!parse_success) {
+            LOG(WARNING) << "Parse sql case failed in: " << yaml_path;
+            return false;
+        } else if (is_skip) {
+            continue;
         }
         sql_cases.push_back(sql_case);
     }
     return true;
 }
+
 fesql::sqlcase::SQLCase SQLCase::LoadSQLCaseWithID(const std::string& dir_path,
                                                    const std::string& yaml_path,
                                                    const std::string& case_id) {

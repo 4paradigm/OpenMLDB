@@ -1,6 +1,6 @@
 # start sql code
 # output table name: sql_table
-select * from 
+select * from
 (
 select
     reqId as reqId_1,
@@ -101,11 +101,11 @@ select
     `uHome` as flattenRequest_uHome_combine_93
 from
     `flattenRequest`
-    window flattenRequest_uUserId_eventTime_0_10 as (partition by `uUserId` order by `eventTime` rows_range between 10 preceding and 0 preceding),
+    window flattenRequest_uUserId_eventTime_0_10 as (partition by `uUserId` order by `eventTime` rows between 10 preceding and 0 preceding),
     flattenRequest_zChannel_eventTime_0s_172801s as (partition by `zChannel` order by `eventTime` rows_range between 172801s preceding and 0s preceding),
     flattenRequest_uUserId_eventTime_0s_36001s as (partition by `uUserId` order by `eventTime` rows_range between 36001s preceding and 0s preceding),
     flattenRequest_uUserId_eventTime_0s_172801s as (partition by `uUserId` order by `eventTime` rows_range between 172801s preceding and 0s preceding),
-    flattenRequest_uSex_eventTime_0_10 as (partition by `uSex` order by `eventTime` rows_range between 10 preceding and 0 preceding),
+    flattenRequest_uSex_eventTime_0_10 as (partition by `uSex` order by `eventTime` rows between 10 preceding and 0 preceding),
     flattenRequest_zUserId_eventTime_0s_36001s as (partition by `zUserId` order by `eventTime` rows_range between 36001s preceding and 0s preceding),
     flattenRequest_zUserId_eventTime_0s_172801s as (partition by `zUserId` order by `eventTime` rows_range between 172801s preceding and 0s preceding),
     flattenRequest_uPlayGame_eventTime_0s_36001s as (partition by `uPlayGame` order by `eventTime` rows_range between 36001s preceding and 0s preceding),

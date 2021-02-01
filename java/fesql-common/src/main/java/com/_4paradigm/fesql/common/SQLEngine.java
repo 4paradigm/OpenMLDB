@@ -5,8 +5,8 @@ import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.nio.ByteBuffer;
+
 
 public class SQLEngine implements AutoCloseable {
 
@@ -20,10 +20,23 @@ public class SQLEngine implements AutoCloseable {
     private PhysicalOpNode plan;
 
     public SQLEngine(String sql, TypeOuterClass.Database database) throws UnsupportedFesqlException {
-        options = new EngineOptions();
-        options.set_keep_ir(true);
-        options.set_compile_only(true);
-        options.set_performance_sensitive(false);
+        // Create the default engine options
+        this.initilize(sql, database, createDefaultEngineOptions());
+    }
+    public SQLEngine(String sql, TypeOuterClass.Database database, EngineOptions engineOptions) throws UnsupportedFesqlException {
+        this.initilize(sql, database, engineOptions);
+    }
+
+    public static EngineOptions createDefaultEngineOptions() {
+        EngineOptions engineOptions = new EngineOptions();
+        engineOptions.set_keep_ir(true);
+        engineOptions.set_compile_only(true);
+        engineOptions.set_performance_sensitive(false);
+        return engineOptions;
+    }
+
+    public void initilize(String sql, TypeOuterClass.Database database, EngineOptions engineOptions) throws UnsupportedFesqlException {
+        options = engineOptions;
         catalog = new SimpleCatalog();
         session = new BatchRunSession();
         catalog.AddDatabase(database);

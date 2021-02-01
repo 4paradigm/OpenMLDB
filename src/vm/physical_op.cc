@@ -289,6 +289,50 @@ Status PhysicalConstProjectNode::InitSchema(PhysicalPlanContext* ctx) {
                                    project_source);
 }
 
+int PhysicalSimpleProjectNode::GetSelectSourceIndex() const {
+    int cur_schema_idx = -1;
+    auto input_schemas_ctx = GetProducer(0)->schemas_ctx();
+    for (size_t i = 0; i < project_.size(); ++i) {
+        Status status;
+        size_t schema_idx;
+        size_t col_idx;
+        auto expr = project_.GetExpr(i);
+        switch (expr->GetExprType()) {
+            case node::kExprColumnId: {
+                status = input_schemas_ctx->ResolveColumnIndexByID(
+                    dynamic_cast<const node::ColumnIdNode*>(expr)
+                        ->GetColumnID(),
+                    &schema_idx, &col_idx);
+                break;
+            }
+            case node::kExprColumnRef: {
+                status = input_schemas_ctx->ResolveColumnRefIndex(
+                    dynamic_cast<const node::ColumnRefNode*>(expr), &schema_idx,
+                    &col_idx);
+                break;
+            }
+            default:
+                return -1;
+        }
+        if (!status.isOK()) {
+            return -1;
+        }
+        if (project_.size() !=
+            input_schemas_ctx->GetSchemaSource(schema_idx)->size()) {
+            return -1;
+        }
+        if (i == 0) {
+            cur_schema_idx = schema_idx;
+        } else if (cur_schema_idx != static_cast<int>(schema_idx)) {
+            return -1;
+        }
+        if (col_idx != i) {
+            return -1;
+        }
+    }
+    return cur_schema_idx;
+}
+
 Status PhysicalSimpleProjectNode::InitSchema(PhysicalPlanContext* ctx) {
     auto input_schemas_ctx = GetProducer(0)->schemas_ctx();
     // init project fn
@@ -607,6 +651,9 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
                                           const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_);
+    if (exclude_current_time_) {
+        output << ", EXCLUDE_CURRENT_TIME";
+    }
     if (instance_not_in_window_) {
         output << ", INSTANCE_NOT_IN_WINDOW";
     }
@@ -1114,6 +1161,7 @@ Status PhysicalRequestUnionNode::WithNewChildren(
     CHECK_TRUE(children.size() == 2, common::kPlanError);
     auto new_union_op = new PhysicalRequestUnionNode(
         children[0], children[1], window_, instance_not_in_window_,
+        exclude_current_time_,
         output_request_row_);
 
     std::vector<const node::ExprNode*> depend_columns;
@@ -1144,6 +1192,9 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
     output << "(";
     if (!output_request_row_) {
         output << "EXCLUDE_REQUEST_ROW, ";
+    }
+    if (exclude_current_time_) {
+        output << "EXCLUDE_CURRENT_TIME, ";
     }
     output << window_.ToString() << ")";
     if (!window_unions_.Empty()) {

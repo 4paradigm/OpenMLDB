@@ -27,7 +27,7 @@ class TestProjectPlan extends SparkTestSuite {
     val planner = new SparkPlanner(sess)
 
     val res = planner.plan("select id + 1, id + 2 from t1;", Map("t1" -> t1))
-    val output = res.getDf(sess)
+    val output = res.getDf()
     output.show()
 
   }

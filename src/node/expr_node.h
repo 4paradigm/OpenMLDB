@@ -35,8 +35,28 @@ namespace node {
 
 class NodeManager;
 class ExprNode;
+class TypeNode;
 
 using fesql::base::Status;
+
+/**
+ * Summarize runtime attribute of expression
+ */
+class ExprAttrNode {
+ public:
+    ExprAttrNode(const node::TypeNode* dtype, bool nullable)
+        : type_(dtype), nullable_(nullable) {}
+
+    const node::TypeNode* type() const { return type_; }
+    bool nullable() const { return nullable_; }
+
+    void SetType(const node::TypeNode* dtype) { type_ = dtype; }
+    void SetNullable(bool flag) { nullable_ = flag; }
+
+ private:
+    const node::TypeNode* type_;
+    bool nullable_;
+};
 
 class ExprAnalysisContext {
  public:

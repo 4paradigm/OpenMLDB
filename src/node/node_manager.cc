@@ -99,11 +99,18 @@ SQLNode *NodeManager::MakeLimitNode(int count) {
 }
 SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
                                         ExprNode *orders, SQLNode *frame) {
-    return MakeWindowDefNode(nullptr, partitions, orders, frame, false);
+    return MakeWindowDefNode(nullptr, partitions, orders, frame, false, false);
+}
+SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
+                                        ExprNode *orders, SQLNode *frame,
+                                        bool open_interval_window) {
+    return MakeWindowDefNode(nullptr, partitions, orders, frame,
+                             open_interval_window, false);
 }
 SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
                                         ExprListNode *partitions,
                                         ExprNode *orders, SQLNode *frame,
+                                        bool exclude_current_time,
                                         bool instance_not_in_window) {
     WindowDefNode *node_ptr = new WindowDefNode();
     if (nullptr != orders) {
@@ -116,6 +123,7 @@ SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
         }
         node_ptr->SetOrders(dynamic_cast<OrderByNode *>(orders));
     }
+    node_ptr->set_exclude_current_time(exclude_current_time);
     node_ptr->set_instance_not_in_window(instance_not_in_window);
     node_ptr->set_union_tables(union_tables);
     node_ptr->SetPartitions(partitions);
@@ -135,15 +143,10 @@ WindowDefNode *NodeManager::MergeWindow(const WindowDefNode *w1,
         LOG(WARNING) << "Fail to Merge Window: input windows are null";
         return nullptr;
     }
-
-    if (!w1->CanMergeWith(w2)) {
-        LOG(WARNING) << "Fail to Merge Window: can't merge windows";
-        return nullptr;
-    }
     return dynamic_cast<WindowDefNode *>(MakeWindowDefNode(
         w1->union_tables(), w1->GetPartitions(), w1->GetOrders(),
         MergeFrameNode(w1->GetFrame(), w2->GetFrame()),
-        w1->instance_not_in_window()));
+        w1->exclude_current_time(), w1->instance_not_in_window()));
 }
 FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(
     FrameNode *frame1) {
@@ -161,23 +164,8 @@ FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(
                         MakeFrameBound(kCurrent), MakeFrameBound(kCurrent))),
                     0)));
         }
-        case kFrameRange: {
-            return MergeFrameNode(
-                frame1,
-                dynamic_cast<FrameNode *>(MakeFrameNode(
-                    kFrameRange,
-                    dynamic_cast<FrameExtent *>(MakeFrameExtent(
-                        MakeFrameBound(kCurrent), MakeFrameBound(kCurrent))),
-                    nullptr, 0)));
-        }
-        case kFrameRowsRange: {
-            return MergeFrameNode(
-                frame1,
-                dynamic_cast<FrameNode *>(MakeFrameNode(
-                    kFrameRowsRange,
-                    dynamic_cast<FrameExtent *>(MakeFrameExtent(
-                        MakeFrameBound(kCurrent), MakeFrameBound(kCurrent))),
-                    nullptr, 0)));
+        default: {
+            return frame1;
         }
     }
     return nullptr;
@@ -188,15 +176,9 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
         LOG(WARNING) << "Fail to Merge Frame: input frames are null";
         return nullptr;
     }
-
-    if (!frame1->CanMergeWith(frame2)) {
-        LOG(WARNING) << "Fail to Merge Frame: can't merge frames";
-        return nullptr;
-    }
-
     FrameType frame_type = frame1->frame_type() == frame2->frame_type()
                                ? frame1->frame_type()
-                               : kFrameRowsRange;
+                               : kFrameRowsMergeRowsRange;
     FrameExtent *frame_range = nullptr;
     if (nullptr == frame1->frame_range()) {
         frame_range = frame2->frame_range();
@@ -205,12 +187,13 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
     } else {
         FrameBound *start1 = frame1->frame_range()->start();
         FrameBound *start2 = frame2->frame_range()->start();
-        int start_compared = FrameBound::Compare(start1, start2);
-        FrameBound *start = start_compared < 1 ? start1 : start2;
 
         FrameBound *end1 = frame1->frame_range()->end();
         FrameBound *end2 = frame2->frame_range()->end();
+
+        int start_compared = FrameBound::Compare(start1, start2);
         int end_compared = FrameBound::Compare(end1, end2);
+        FrameBound *start = start_compared < 1 ? start1 : start2;
         FrameBound *end = end_compared >= 1 ? end1 : end2;
         frame_range = dynamic_cast<FrameExtent *>(MakeFrameExtent(start, end));
     }
@@ -232,9 +215,8 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
         FrameBound *end = end_compared >= 1 ? end1 : end2;
         frame_rows = dynamic_cast<FrameExtent *>(MakeFrameExtent(start, end));
     }
-    int64_t maxsize = frame1->frame_maxsize() > frame2->frame_maxsize()
-                          ? frame1->frame_maxsize()
-                          : frame2->frame_maxsize();
+    int64_t maxsize = frame1->frame_maxsize() == 0 ? frame2->frame_maxsize()
+                                                   : frame1->frame_maxsize();
 
     return dynamic_cast<FrameNode *>(
         MakeFrameNode(frame_type, frame_range, frame_rows, maxsize));
@@ -300,11 +282,17 @@ SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
         LOG(WARNING) << "Fail Make Frame Node: 3nd arg isn't const expression";
         return nullptr;
     }
-    return MakeFrameNode(
-        frame_type, frame_extent,
-        nullptr == frame_size
-            ? 0L
-            : dynamic_cast<ConstNode *>(frame_size)->GetAsInt64());
+
+    int64_t max_size = 0;
+    if (nullptr != frame_size) {
+        max_size = dynamic_cast<ConstNode *>(frame_size)->GetAsInt64();
+        if (max_size <= 0) {
+            LOG(WARNING) << "Invalid Frame MaxSize: MAXSIZE <= 0";
+            return nullptr;
+        }
+    }
+
+    return MakeFrameNode(frame_type, frame_extent, max_size);
 }
 
 SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
@@ -322,7 +310,8 @@ SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
             return RegisterNode(node_ptr);
         }
         case kFrameRange:
-        case kFrameRowsRange: {
+        case kFrameRowsRange:
+        case kFrameRowsMergeRowsRange: {
             FrameNode *node_ptr = new FrameNode(
                 frame_type, dynamic_cast<FrameExtent *>(frame_extent), nullptr,
                 maxsize);
@@ -339,6 +328,7 @@ SQLNode *NodeManager::MakeFrameNode(FrameType frame_type,
         new FrameNode(frame_type, frame_range, frame_rows, maxsize);
     return RegisterNode(node_ptr);
 }
+
 OrderByNode *NodeManager::MakeOrderByNode(const ExprListNode *order,
                                           const bool is_asc) {
     OrderByNode *node_ptr = new OrderByNode(order, is_asc);
@@ -1169,11 +1159,12 @@ node::UDFDefNode *NodeManager::MakeUDFDefNode(FnNodeFnDef *def) {
 }
 
 node::UDFByCodeGenDefNode *NodeManager::MakeUDFByCodeGenDefNode(
+    const std::string &name,
     const std::vector<const node::TypeNode *> &arg_types,
     const std::vector<int> &arg_nullable, const node::TypeNode *ret_type,
     bool ret_nullable) {
-    return RegisterNode(new node::UDFByCodeGenDefNode(arg_types, arg_nullable,
-                                                      ret_type, ret_nullable));
+    return RegisterNode(new node::UDFByCodeGenDefNode(
+        name, arg_types, arg_nullable, ret_type, ret_nullable));
 }
 
 node::UDAFDefNode *NodeManager::MakeUDAFDefNode(

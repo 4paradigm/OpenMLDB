@@ -100,4 +100,22 @@ public class JITManager {
             logger.info("Init jit module with tag:\n" + tag);
         }
     }
+
+    synchronized static public void removeModule(String tag) {
+        initializedModuleTags.remove(tag);
+        FeSQLJITWrapper jit = jits.remove(tag);
+        if (jit != null) {
+            FeSQLJITWrapper.DeleteJIT(jit);
+            jit.delete();
+        }
+    }
+
+    synchronized static public void clear() {
+        initializedModuleTags.clear();
+        for (Map.Entry<String, FeSQLJITWrapper> entry : jits.entrySet()) {
+            FeSQLJITWrapper.DeleteJIT(entry.getValue());
+            entry.getValue().delete();
+        }
+        jits.clear();
+    }
 }

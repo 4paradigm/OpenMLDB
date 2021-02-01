@@ -11,6 +11,7 @@
 #include "gtest/gtest.h"
 #include "proto/fe_type.pb.h"
 #include "vm/mem_catalog.h"
+#include "vm/runner.h"
 namespace fesql {
 namespace vm {
 using codec::ArrayListIterator;
@@ -253,7 +254,8 @@ TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
 
     // history current_ts -1000 ~ current_ts
     {
-        CurrentHistoryWindow window(-1000L);
+        vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -1000L, 0);
+
         window.BufferData(1L, row);
         ASSERT_EQ(1u, window.GetCount());
         window.BufferData(2L, row);
@@ -290,7 +292,8 @@ TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
 
     // history current_ts -1000 ~ current_ts max_size = 5
     {
-        CurrentHistoryWindow window(-1000L, 5);
+        vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -1000L, 0,
+                                        5);
         window.BufferData(1L, row);
         ASSERT_EQ(1u, window.GetCount());
         window.BufferData(2L, row);
@@ -316,6 +319,23 @@ TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
         window.BufferData(6000L, row);
         ASSERT_EQ(2u, window.GetCount());
     }
+
+    // history buffer error
+    {
+        vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -400L, 0,
+                                        5);
+        ASSERT_TRUE(window.BufferData(1L, row));
+        ASSERT_EQ(1u, window.GetCount());
+        ASSERT_TRUE(window.BufferData(2L, row));
+        ASSERT_EQ(2u, window.GetCount());
+        ASSERT_TRUE(window.BufferData(3L, row));
+        ASSERT_EQ(3u, window.GetCount());
+        ASSERT_TRUE(window.BufferData(400L, row));
+        ASSERT_EQ(4u, window.GetCount());
+        ASSERT_TRUE(window.BufferData(500L, row));
+        ASSERT_EQ(2u, window.GetCount());
+        ASSERT_FALSE(window.BufferData(100L, row));
+    }
 }
 
 void Check_Next_N(RowIterator* iter, int n) {
@@ -337,7 +357,7 @@ TEST_F(WindowIteratorTest, InnerRangeWindowTest) {
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
     Row row(base::RefCountedSlice::Create(ptr, 28));
-    CurrentHistoryWindow window(-3600000L);
+    vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -3600000L, 0);
     window.BufferData(1590115410000, row);
     window.BufferData(1590115420000, row);
     window.BufferData(1590115430000, row);
@@ -376,7 +396,7 @@ TEST_F(WindowIteratorTest, InnerRangeIteratorTest) {
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
     Row row(base::RefCountedSlice::Create(ptr, 28));
-    CurrentHistoryWindow window(-3600000L);
+    vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -3600000L, 0);
     window.BufferData(1590115410000, row);
     window.BufferData(1590115420000, row);
     window.BufferData(1590115430000, row);
@@ -426,7 +446,7 @@ TEST_F(WindowIteratorTest, InnerRowsWindowTest) {
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
     Row row(base::RefCountedSlice::Create(ptr, 28));
-    CurrentHistoryWindow window(-3600000L);
+    vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -3600000L, 0);
     window.BufferData(1590115410000, row);
     window.BufferData(1590115420000, row);
     window.BufferData(1590115430000, row);
@@ -466,7 +486,7 @@ TEST_F(WindowIteratorTest, InnerRowsIteratorTest) {
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
     Row row(base::RefCountedSlice::Create(ptr, 28));
-    CurrentHistoryWindow window(-3600000L);
+    vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -3600000L, 0);
     window.BufferData(1590115410000, row);
     window.BufferData(1590115420000, row);
     window.BufferData(1590115430000, row);
@@ -516,8 +536,8 @@ TEST_F(WindowIteratorTest, CurrentHistoryRowsWindowTest) {
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
     Row row(base::RefCountedSlice::Create(ptr, 28));
-    CurrentHistoryWindow window(-20000);
-    window.set_rows_preceding(9);
+    vm::CurrentHistoryWindow window(vm::Window::kFrameRowsMergeRowsRange,
+                                    -20000, 9, 0);
     window.BufferData(1590115400000, row);
     window.BufferData(1590115410000, row);
     window.BufferData(1590115420000, row);
@@ -564,6 +584,960 @@ TEST_F(WindowIteratorTest, CurrentHistoryRowsWindowTest) {
     }
 }
 
+TEST_F(WindowIteratorTest, PureHistoryWindowTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    // Window
+    // RowsRange between 3s preceding and 1s preceding MAXSIZE 2
+    vm::HistoryWindow window(
+        WindowRange(vm::Window::kFrameRowsRange, -3000, -1000, 0, 0));
+    ASSERT_TRUE(window.BufferData(1590738990000, row));
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738991000, row);
+    ASSERT_EQ(1, window.GetCount());
+    window.BufferData(1590738992000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738993000, row);
+    ASSERT_EQ(3, window.GetCount());
+    window.BufferData(1590738994000, row);
+    ASSERT_EQ(3, window.GetCount());
+    window.BufferData(1590738995000, row);
+    ASSERT_EQ(3, window.GetCount());
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590739000000, row);
+    ASSERT_EQ(3, window.GetCount());
+    window.BufferData(1590739001000, row);
+    ASSERT_EQ(4, window.GetCount());
+    window.BufferData(1590739001000, row);
+    window.BufferData(1590115480000, row);
+    window.BufferData(1590115490000, row);
+    window.BufferData(1590739001000, row);
+    window.BufferData(1590739002000, row);
+}
+TEST_F(WindowIteratorTest, PureHistoryWindowWithMaxSizeTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    // Window
+    // RowsRange between 3s preceding and 1s preceding MAXSIZE 2
+    vm::HistoryWindow window(
+        WindowRange(vm::Window::kFrameRowsRange, -3000, -1000, 0, 2));
+    ASSERT_TRUE(window.BufferData(1590738990000, row));
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738991000, row);
+    ASSERT_EQ(1, window.GetCount());
+    window.BufferData(1590738992000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738993000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738994000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738995000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590739001000, row);
+    window.BufferData(1590115480000, row);
+    window.BufferData(1590115490000, row);
+    window.BufferData(1590739001000, row);
+    window.BufferData(1590739002000, row);
+}
+
+TEST_F(WindowIteratorTest, PureHistoryWindowRowsMergeRowsRangeWithMaxSizeTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    // Window
+    // RowsRange between 3s preceding and 1s preceding MAXSIZE 2
+    vm::HistoryWindow window(
+        WindowRange(vm::Window::kFrameRowsRange, -3000, -1000, 0, 2));
+    ASSERT_TRUE(window.BufferData(1590738990000, row));
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738991000, row);
+    ASSERT_EQ(1, window.GetCount());
+    window.BufferData(1590738992000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738993000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738994000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738995000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590739001000, row);
+    ASSERT_EQ(1, window.GetCount());
+    window.BufferData(1590739002000, row);
+    ASSERT_EQ(2, window.GetCount());
+}
+
+TEST_F(WindowIteratorTest, CurrentHistoryWindowExcludeCurrentTimeTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+
+    // history current_ts -1000 ~ current_ts
+    {
+        vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -1000L, 0);
+        window.set_exclude_current_time(true);
+
+        // [1], buffer: 1
+        window.BufferData(1L, row);
+        ASSERT_EQ(1u, window.GetCount());
+
+        // [1, 2], buffer: 2
+        window.BufferData(2L, row);
+        ASSERT_EQ(2u, window.GetCount());
+
+        // [1, 2, 3], buffer: 3
+        window.BufferData(3L, row);
+        ASSERT_EQ(3u, window.GetCount());
+
+        // [1, 2, 3] buffer: 3, 3
+        window.BufferData(3L, row);
+        ASSERT_EQ(3u, window.GetCount());
+
+        // [1, 2, 3] buffer: 3, 3, 3
+        window.BufferData(3L, row);
+        ASSERT_EQ(3u, window.GetCount());
+
+        // [1, 2, 3] buffer: 3, 3, 3, 3
+        window.BufferData(3L, row);
+        ASSERT_EQ(3u, window.GetCount());
+
+        // [1, 2, 3, 3, 3, 3, 4] buffer: 4
+        window.BufferData(4L, row);
+        ASSERT_EQ(7u, window.GetCount());
+
+        // [1, 2, 3, 3, 3, 3, 4, 40] buffer: 40
+        window.BufferData(40L, row);
+        ASSERT_EQ(8u, window.GetCount());
+
+        // [1, 2, 3, 3, 3, 3, 4, 40, 500] buffer: 500
+        window.BufferData(500L, row);
+        ASSERT_EQ(9u, window.GetCount());
+
+        // [1, 2, 3, 3, 3, 3, 4, 40, 500, 1000] buffer: 1000
+        window.BufferData(1000L, row);
+        ASSERT_EQ(10u, window.GetCount());
+
+        // [1, 2, 3, 3, 3, 3, 4, 40, 500, 1000, 1001] buffer: 1001
+        window.BufferData(1001L, row);
+        ASSERT_EQ(11u, window.GetCount());
+
+        // [3, 3, 3, 3, 4, 40, 500, 1000, 1001, 1003] buffer: 1003
+        window.BufferData(1003L, row);
+        ASSERT_EQ(10u, window.GetCount());
+
+        // [4, 40, 500, 1000, 1001, 1003, 1004] buffer: 1004
+        window.BufferData(1004L, row);
+        ASSERT_EQ(7u, window.GetCount());
+    }
+
+    // history current_ts -1000 ~ current_ts
+    {
+        vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -1000L, 5);
+        window.set_exclude_current_time(true);
+
+        // [1], buffer: 1
+        window.BufferData(1L, row);
+        ASSERT_EQ(1u, window.GetCount());
+
+        // [1, 2], buffer: 2
+        window.BufferData(2L, row);
+        ASSERT_EQ(2u, window.GetCount());
+
+        // [1, 2, 3], buffer: 3
+        window.BufferData(3L, row);
+        ASSERT_EQ(3u, window.GetCount());
+
+        // [1, 2, 3] buffer: 3, 3
+        window.BufferData(3L, row);
+        ASSERT_EQ(3u, window.GetCount());
+
+        // [1, 2, 3] buffer: 3, 3, 3
+        window.BufferData(3L, row);
+        ASSERT_EQ(3u, window.GetCount());
+
+        // [1, 2, 3] buffer: 3, 3, 3, 3
+        window.BufferData(3L, row);
+        ASSERT_EQ(3u, window.GetCount());
+
+        // [3, 3, 3, 3, 4] buffer: 4
+        window.BufferData(4L, row);
+        ASSERT_EQ(5u, window.GetCount());
+
+        // [3, 3, 3, 4, 40] buffer: 40
+        window.BufferData(40L, row);
+        ASSERT_EQ(5u, window.GetCount());
+
+        // [3, 3, 4, 40, 500] buffer: 500
+        window.BufferData(500L, row);
+        ASSERT_EQ(5u, window.GetCount());
+
+        // [3, 4, 40, 500, 1000] buffer: 1000
+        window.BufferData(1000L, row);
+        ASSERT_EQ(5u, window.GetCount());
+
+        // [4, 40, 500, 1000, 1001] buffer: 1001
+        window.BufferData(1001L, row);
+        ASSERT_EQ(5u, window.GetCount());
+
+        // [40, 500, 1000, 1001, 1003] buffer: 1003
+        window.BufferData(1003L, row);
+        ASSERT_EQ(5u, window.GetCount());
+
+        // [500, 1000, 1001, 1003, 1004] buffer: 1004
+        window.BufferData(1004L, row);
+        ASSERT_EQ(5u, window.GetCount());
+    }
+    // history buffer error
+    {
+        vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -400L, 0,
+                                        5);
+        window.set_exclude_current_time(true);
+        ASSERT_TRUE(window.BufferData(1L, row));
+        ASSERT_EQ(1u, window.GetCount());
+        ASSERT_TRUE(window.BufferData(2L, row));
+        ASSERT_EQ(2u, window.GetCount());
+        ASSERT_TRUE(window.BufferData(3L, row));
+        ASSERT_EQ(3u, window.GetCount());
+        ASSERT_TRUE(window.BufferData(400L, row));
+        ASSERT_EQ(4u, window.GetCount());
+        ASSERT_TRUE(window.BufferData(500L, row));
+        ASSERT_EQ(2u, window.GetCount());
+        ASSERT_FALSE(window.BufferData(100L, row));
+    }
+}
+
+TEST_F(WindowIteratorTest, PureHistoryWindowExcludeCurrentTimeTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    // Window
+    // RowsRange between 3s preceding and 1s preceding MAXSIZE 2
+    vm::HistoryWindow window(
+        WindowRange(vm::Window::kFrameRowsRange, -3000, -1000, 0, 0));
+    window.set_exclude_current_time(true);
+    ASSERT_TRUE(window.BufferData(1590738990000, row));
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738991000, row);
+    ASSERT_EQ(1, window.GetCount());
+    window.BufferData(1590738992000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738993000, row);
+    ASSERT_EQ(3, window.GetCount());
+    window.BufferData(1590738994000, row);
+    ASSERT_EQ(3, window.GetCount());
+    window.BufferData(1590738995000, row);
+    ASSERT_EQ(3, window.GetCount());
+
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590739000000, row);
+    ASSERT_EQ(3, window.GetCount());
+    window.BufferData(1590739001000, row);
+    ASSERT_EQ(4, window.GetCount());
+    window.BufferData(1590115480000, row);
+    window.BufferData(1590115490000, row);
+    window.BufferData(1590739001000, row);
+    window.BufferData(1590739002000, row);
+}
+TEST_F(WindowIteratorTest, PureHistoryWindowWithMaxSizeExcludeCurrentTimeTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    // Window
+    // RowsRange between 3s preceding and 1s preceding MAXSIZE 2
+    vm::HistoryWindow window(
+        WindowRange(vm::Window::kFrameRowsRange, -3000, -1000, 0, 2));
+    window.set_exclude_current_time(true);
+    ASSERT_TRUE(window.BufferData(1590738990000, row));
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738991000, row);
+    ASSERT_EQ(1, window.GetCount());
+    window.BufferData(1590738992000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738993000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738994000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738995000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590739001000, row);
+    window.BufferData(1590115480000, row);
+    window.BufferData(1590115490000, row);
+    window.BufferData(1590739001000, row);
+    window.BufferData(1590739002000, row);
+}
+
+TEST_F(WindowIteratorTest,
+       PureHistoryWindowRowsMergeRowsRangeWithMaxSizeExcludeCurrentTimeTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    // Window
+    // RowsRange between 3s preceding and 1s preceding MAXSIZE 2
+    vm::HistoryWindow window(
+        WindowRange(vm::Window::kFrameRowsRange, -3000, -1000, 0, 2));
+    window.set_exclude_current_time(true);
+    ASSERT_TRUE(window.BufferData(1590738990000, row));
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590738991000, row);
+    ASSERT_EQ(1, window.GetCount());
+    window.BufferData(1590738992000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738993000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738994000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738995000, row);
+    ASSERT_EQ(2, window.GetCount());
+    window.BufferData(1590738999000, row);
+    ASSERT_EQ(0, window.GetCount());
+    window.BufferData(1590739001000, row);
+    ASSERT_EQ(1, window.GetCount());
+    window.BufferData(1590739002000, row);
+    ASSERT_EQ(2, window.GetCount());
+}
+TEST_F(WindowIteratorTest,
+       CurrentHistoryRowsAndRowRangeWindowExcludeCurrentTimeTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    {
+        vm::CurrentHistoryWindow window(vm::Window::kFrameRowsMergeRowsRange,
+                                        -20000, 9, 0);
+        window.set_exclude_current_time(false);
+        window.BufferData(1590115400000, row);
+        ASSERT_EQ(1L, window.GetCount());
+
+        window.BufferData(1590115410000, row);
+        ASSERT_EQ(2L, window.GetCount());
+        window.BufferData(1590115410000, row);
+        ASSERT_EQ(3L, window.GetCount());
+        window.BufferData(1590115410000, row);
+        ASSERT_EQ(4L, window.GetCount());
+
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(5L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(6L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(7L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(8L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(9L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(10L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(10L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(10L, window.GetCount());
+    }
+
+    {
+        vm::CurrentHistoryWindow window(vm::Window::kFrameRowsMergeRowsRange,
+                                        -20000, 9, 0);
+        window.set_exclude_current_time(true);
+        window.BufferData(1590115400000, row);
+        ASSERT_EQ(1L, window.GetCount());
+        window.BufferData(1590115410000, row);
+        ASSERT_EQ(2L, window.GetCount());
+        window.BufferData(1590115410000, row);
+        ASSERT_EQ(2L, window.GetCount());
+        window.BufferData(1590115410000, row);
+        ASSERT_EQ(2L, window.GetCount());
+
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(5L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(5L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(5L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(5L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(5L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(5L, window.GetCount());
+        window.BufferData(1590115450000, row);
+        ASSERT_EQ(5L, window.GetCount());
+
+        window.BufferData(1590115460000, row);
+        ASSERT_EQ(10L, window.GetCount());
+        window.BufferData(1590115470000, row);
+        ASSERT_EQ(10L, window.GetCount());
+        window.BufferData(1590115470000, row);
+        ASSERT_EQ(10L, window.GetCount());
+        window.BufferData(1590115470000, row);
+        ASSERT_EQ(10L, window.GetCount());
+        window.BufferData(1590115470000, row);
+        ASSERT_EQ(10L, window.GetCount());
+
+        window.BufferData(1590115480000, row);
+        ASSERT_EQ(10L, window.GetCount());
+    }
+}
+class RequestUnionWindowTest : public ::testing::Test {
+ public:
+    RequestUnionWindowTest() {}
+    ~RequestUnionWindowTest() {}
+};
+
+void CHECK_TABLE_KEY(std::shared_ptr<TableHandler> table,
+                     std::vector<uint64_t> keys) {
+    if (!table) {
+        ASSERT_TRUE(keys.empty());
+        return;
+    }
+    auto iter = table->GetIterator();
+    if (!iter) {
+        ASSERT_TRUE(keys.empty());
+        return;
+    }
+
+    iter->SeekToFirst();
+    std::vector<uint64_t> real_keys;
+    while (iter->Valid()) {
+        real_keys.push_back(iter->GetKey());
+        iter->Next();
+    }
+    ASSERT_EQ(keys, real_keys);
+}
+void CHECK_REQUEST_UNION_WINDOW(const WindowRange& window_range,
+                                const std::vector<uint64_t>& buffered_keys,
+                                uint64_t current_key,
+                                const std::vector<uint64_t>& exp_keys,
+                                const bool exclude_current_time = false) {
+    Row row;
+    auto table = std::make_shared<MemTimeTableHandler>();
+    for (uint64_t key : buffered_keys) {
+        table->AddRow(key, row);
+    }
+    auto union_table = RequestUnionRunner::RequestUnionWindow(
+        row, std::vector<std::shared_ptr<TableHandler>>({table}), current_key,
+        window_range, true, exclude_current_time);
+    CHECK_TABLE_KEY(union_table, exp_keys);
+}
+void CHECK_BUFFER_WINDOW(const WindowRange& window_range,
+                         const std::vector<uint64_t>& keys_for_buffer,
+                         uint64_t current_key,
+                         const std::vector<uint64_t>& exp_keys,
+                         const bool exclude_current_time = false) {
+    std::shared_ptr<HistoryWindow> history_window =
+        std::make_shared<HistoryWindow>(window_range);
+    history_window->set_exclude_current_time(exclude_current_time);
+
+    for (auto iter = keys_for_buffer.rbegin(); iter != keys_for_buffer.rend();
+         iter++) {
+        // Skip buffering future key-row
+        if (*iter > current_key) {
+            break;
+        }
+        history_window->BufferData(*iter, Row());
+    }
+    ASSERT_TRUE(history_window->BufferData(current_key, Row()));
+    CHECK_TABLE_KEY(history_window, exp_keys);
+}
+TEST_F(RequestUnionWindowTest, RequestRowsWindowTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+
+    auto table = std::make_shared<MemTimeTableHandler>();
+    std::vector<uint64_t> keys({10L, 9L, 8L, 7L, 6L, 5L, 4L, 3L, 2L});
+    for (uint64_t key : keys) {
+        table->AddRow(key, row);
+    }
+
+    {
+        // current row: 11
+        WindowRange window_range = WindowRange::CreateRowsWindow(5);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L, 8L, 7L, 6L});
+
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+
+    {
+        // current row: 8L
+        WindowRange window_range = WindowRange::CreateRowsWindow(5);
+        uint64_t current_key = 8L;
+        std::vector<uint64_t> exp_keys({8L, 8L, 7L, 6L, 5L, 4L});
+
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+
+    {
+        // current row: 3L
+        WindowRange window_range = WindowRange::CreateRowsWindow(5);
+        uint64_t current_key = 3L;
+        std::vector<uint64_t> exp_keys({3L, 3L, 2L});
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+
+    {
+        // current row: 1L
+        WindowRange window_range = WindowRange::CreateRowsWindow(5);
+        uint64_t current_key = 1L;
+        std::vector<uint64_t> exp_keys({1L});
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+}
+TEST_F(RequestUnionWindowTest, RequestRowsRangeWindowTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+
+    auto table = std::make_shared<MemTimeTableHandler>();
+    std::vector<uint64_t> keys({10L, 9L, 8L, 7L, 6L, 5L, 4L, 3L, 2L});
+    for (uint64_t key : keys) {
+        table->AddRow(key, row);
+    }
+
+    {
+        // current row: 11
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L, 8L, 7L, 6L});
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+    {
+        // current row: 11 exclude current time
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L, 8L, 7L, 6L});
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+
+    {
+        // current row: 11 maxsize 3
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0, 3);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L});
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+    {
+        // current row: 11 maxsize 3 exclude current time
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0, 3);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L});
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+
+    {
+        // current row: 8L
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0);
+        uint64_t current_key = 8L;
+        std::vector<uint64_t> exp_keys({8L, 8L, 7L, 6L, 5L, 4L, 3L});
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+    {
+        // current row: 8L maxsize 3
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0, 3);
+        uint64_t current_key = 8L;
+        std::vector<uint64_t> exp_keys({8L, 8L, 7L});
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys));
+        ASSERT_NO_FATAL_FAILURE(
+            CHECK_BUFFER_WINDOW(window_range, keys, current_key, exp_keys));
+    }
+
+    {
+        // current row: 8L exclude current time
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0);
+        uint64_t current_key = 8L;
+        std::vector<uint64_t> exp_keys({8L, 7L, 6L, 5L, 4L, 3L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 1L
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0);
+        uint64_t current_key = 1L;
+        std::vector<uint64_t> exp_keys({1L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 1L exclude current time
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0);
+        uint64_t current_key = 1L;
+        std::vector<uint64_t> exp_keys({1L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 13L
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 13L maxsize
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0, 3);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 13L exclude current time
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 13L maxsize
+        WindowRange window_range = WindowRange::CreateRowsRangeWindow(-5, 0, 3);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+}
+
+TEST_F(RequestUnionWindowTest, RequestRowsMergeRowsRangeWindowTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+
+    auto table = std::make_shared<MemTimeTableHandler>();
+    std::vector<uint64_t> keys({10L, 9L, 8L, 7L, 6L, 5L, 4L, 3L, 2L});
+    for (uint64_t key : keys) {
+        table->AddRow(key, row);
+    }
+
+    {
+        // current row: 11
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L, 8L, 7L, 6L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 11 exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L, 8L, 7L, 6L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 11 maxsize 3
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2, 3);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 11 maxsize 3 exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2, 3);
+        uint64_t current_key = 11L;
+        std::vector<uint64_t> exp_keys({11L, 10L, 9L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 8L
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2);
+        uint64_t current_key = 8L;
+        std::vector<uint64_t> exp_keys({8L, 8L, 7L, 6L, 5L, 4L, 3L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 8L maxsize 3
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2, 3);
+        uint64_t current_key = 8L;
+        std::vector<uint64_t> exp_keys({8L, 8L, 7L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 8L exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2);
+        uint64_t current_key = 8L;
+        std::vector<uint64_t> exp_keys({8L, 7L, 6L, 5L, 4L, 3L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 8L maxsize 3 exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2, 3);
+        uint64_t current_key = 8L;
+        std::vector<uint64_t> exp_keys({8L, 7L, 6L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 1L
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2);
+        uint64_t current_key = 1L;
+        std::vector<uint64_t> exp_keys({1L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 1L exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 2);
+        uint64_t current_key = 1L;
+        std::vector<uint64_t> exp_keys({1L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 13L
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 5);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L, 7L, 6L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 13L maxsize
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 5, 7);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L, 7L, 6L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 13L exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 5);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L, 7L, 6L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+    {
+        // current row: 13L maxsize
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 5, 7);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L, 7L, 6L});
+        const bool exclude_current_time = false;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 13L maxsize exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-5, 5, 7);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L, 7L, 6L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 13L exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-10, 5);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L, 7L, 6L, 5L, 4L, 3L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 13L exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-10, 5, 7);
+        uint64_t current_key = 13L;
+        std::vector<uint64_t> exp_keys({13L, 10L, 9L, 8L, 7L, 6L, 5L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 10L exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-7, 5);
+        uint64_t current_key = 10L;
+        std::vector<uint64_t> exp_keys({10L, 9L, 8L, 7L, 6L, 5L, 4L, 3L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+
+    {
+        // current row: 10L exclude current time
+        WindowRange window_range =
+            WindowRange::CreateRowsMergeRowsRangeWindow(-7, 5, 7);
+        uint64_t current_key = 10L;
+        std::vector<uint64_t> exp_keys({10L, 9L, 8L, 7L, 6L, 5L, 4L});
+        const bool exclude_current_time = true;
+        ASSERT_NO_FATAL_FAILURE(CHECK_REQUEST_UNION_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+        ASSERT_NO_FATAL_FAILURE(CHECK_BUFFER_WINDOW(
+            window_range, keys, current_key, exp_keys, exclude_current_time));
+    }
+}
 }  // namespace vm
 }  // namespace fesql
 int main(int argc, char** argv) {

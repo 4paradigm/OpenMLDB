@@ -11,6 +11,7 @@
 #define SRC_BM_UDF_BM_CASE_H_
 #include <string>
 #include "benchmark/benchmark.h"
+#include "vm/mem_catalog.h"
 namespace fesql {
 namespace bm {
 enum MODE { BENCHMARK, TEST };
@@ -41,6 +42,16 @@ void DateFormat(benchmark::State* state, MODE mode);
 void ByteMemPoolAlloc1000(benchmark::State* state, MODE mode,
                           size_t request_size);
 void NewFree1000(benchmark::State* state, MODE mode, size_t request_size);
+
+int64_t RunHistoryWindowBuffer(const fesql::vm::WindowRange& window_range,
+                            uint64_t data_size,
+                            const bool exclude_current_time);
+void HistoryWindowBuffer(benchmark::State* state, MODE mode, int64_t data_size);
+void HistoryWindowBufferExcludeCurrentTime(benchmark::State* state, MODE mode,
+                                           int64_t data_size);
+void RequestUnionWindow(benchmark::State* state, MODE mode, int64_t data_size);
+void RequestUnionWindowExcludeCurrentTime(benchmark::State* state, MODE mode,
+                                          int64_t data_size);
 }  // namespace bm
 }  // namespace fesql
 #endif  // SRC_BM_UDF_BM_CASE_H_

@@ -139,6 +139,8 @@ class UDFLibrary {
                         std::shared_ptr<UDFRegistry> registry);
 
  private:
+    std::string GetCanonicalName(const std::string& name) const;
+
     // argument type matching table
     std::unordered_map<std::string, std::shared_ptr<UDFLibraryEntry>> table_;
 
@@ -146,6 +148,8 @@ class UDFLibrary {
     std::unordered_map<std::string, void*> external_symbols_;
 
     node::NodeManager nm_;
+
+    const bool case_sensitive_ = false;
 };
 
 const std::string GetArgSignature(const std::vector<node::ExprNode*>& args);

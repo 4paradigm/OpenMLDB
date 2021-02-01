@@ -49,6 +49,8 @@ inline const std::string CmdTypeName(const CmdType &type) {
             return "show tables";
         case kCmdUseDatabase:
             return "use database";
+        case kCmdDropDatabase:
+            return "drop database";
         case kCmdCreateDatabase:
             return "create database";
         case kCmdSource:
@@ -252,6 +254,8 @@ inline const std::string FrameTypeName(const FrameType &type) {
             return "ROWS";
         case fesql::node::kFrameRowsRange:
             return "ROWS_RANGE";
+        case fesql::node::kFrameRowsMergeRowsRange:
+            return "ROWS_MERGE_ROWS_RANGE";
     }
     return "";
 }
@@ -260,10 +264,14 @@ inline const std::string BoundTypeName(const BoundType &type) {
     switch (type) {
         case fesql::node::kPrecedingUnbound:
             return "PRECEDING UNBOUND";
+        case fesql::node::kOpenPreceding:
+            return "OPEN PRECEDING";
         case fesql::node::kPreceding:
             return "PRECEDING";
         case fesql::node::kCurrent:
             return "CURRENT";
+        case fesql::node::kOpenFollowing:
+            return "OPEN FOLLOWING";
         case fesql::node::kFollowing:
             return "FOLLOWING";
         case fesql::node::kFollowingUnbound:
@@ -722,6 +730,10 @@ class ConstNode : public ExprNode {
         : ExprNode(kExprPrimary), data_type_(fesql::node::kInt16) {
         val_.vsmallint = val;
     }
+    explicit ConstNode(bool val)
+        : ExprNode(kExprPrimary), data_type_(fesql::node::kBool) {
+        val_.vint = val ? 1 : 0;
+    }
     explicit ConstNode(int val)
         : ExprNode(kExprPrimary), data_type_(fesql::node::kInt32) {
         val_.vint = val;
@@ -789,6 +801,9 @@ class ConstNode : public ExprNode {
     const bool IsNull() const { return kNull == data_type_; }
     const bool IsPlaceholder() const { return kPlaceholder == data_type_; }
     const std::string GetExprString() const;
+
+    bool GetBool() const { return val_.vint > 0; }
+
     int16_t GetSmallInt() const { return val_.vsmallint; }
 
     int GetInt() const { return val_.vint; }
@@ -1025,6 +1040,8 @@ class FrameBound : public SQLNode {
         switch (bound_type_) {
             case node::kCurrent:
                 return "0";
+            case node::kOpenFollowing:
+            case node::kOpenPreceding:
             case node::kFollowing:
             case node::kPreceding:
                 return std::to_string(GetSignedOffset());
@@ -1044,8 +1061,12 @@ class FrameBound : public SQLNode {
                 return 0;
             case node::kFollowing:
                 return offset_;
+            case node::kOpenFollowing:
+                return offset_ - 1;
             case node::kPreceding:
                 return -1 * offset_;
+            case node::kOpenPreceding:
+                return -1 * (offset_ - 1);
             case node::kPrecedingUnbound:
                 return INT64_MIN;
             case node::kFollowingUnbound:
@@ -1139,6 +1160,9 @@ class FrameNode : public SQLNode {
                          : frame_range_->end()->GetSignedOffset();
     }
 
+    int64_t GetHistoryRowsStartPreceding() const {
+        return -1 * GetHistoryRowsStart();
+    }
     int64_t GetHistoryRowsStart() const {
         if (nullptr == frame_rows_ && nullptr == frame_range_) {
             return INT64_MIN;
@@ -1183,13 +1207,41 @@ class FrameNode : public SQLNode {
             case kFrameRowsRange: {
                 return GetHistoryRangeEnd() < 0;
             }
+            case kFrameRowsMergeRowsRange: {
+                return GetHistoryRangeEnd() < 0;
+            }
         }
         return false;
     }
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *node) const;
     const std::string GetExprString() const;
-    bool CanMergeWith(const FrameNode *that) const;
+    bool CanMergeWith(const FrameNode *that,
+                      const bool enbale_merge_with_maxsize = true) const;
+    inline bool IsRowsRangeLikeFrame() const {
+        return kFrameRowsRange == frame_type_ ||
+               kFrameRowsMergeRowsRange == frame_type_;
+    }
+    inline bool IsRowsRangeLikeMaxSizeFrame() const {
+        return IsRowsRangeLikeFrame() && frame_maxsize_ > 0;
+    }
+    bool IsPureHistoryFrame() const {
+        switch (frame_type_) {
+            case kFrameRows: {
+                return GetHistoryRowsEnd() < 0;
+            }
+            case kFrameRowsRange: {
+                return GetHistoryRangeEnd() < 0;
+            }
+            case kFrameRowsMergeRowsRange: {
+                return GetHistoryRangeEnd() < 0 && GetHistoryRowsEnd() < 0;
+            }
+            case kFrameRange: {
+                return false;
+            }
+        }
+        return false;
+    }
 
  private:
     FrameType frame_type_;
@@ -1201,6 +1253,7 @@ class WindowDefNode : public SQLNode {
  public:
     WindowDefNode()
         : SQLNode(kWindowDef, 0, 0),
+          exclude_current_time_(false),
           instance_not_in_window_(false),
           window_name_(""),
           frame_ptr_(NULL),
@@ -1235,11 +1288,17 @@ class WindowDefNode : public SQLNode {
     void set_instance_not_in_window(bool instance_not_in_window) {
         instance_not_in_window_ = instance_not_in_window;
     }
+    const bool exclude_current_time() const { return exclude_current_time_; }
+    void set_exclude_current_time(bool exclude_current_time) {
+        exclude_current_time_ = exclude_current_time;
+    }
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *that) const;
-    bool CanMergeWith(const WindowDefNode *that) const;
+    bool CanMergeWith(const WindowDefNode *that,
+                      const bool enable_window_maxsize_merged = true) const;
 
  private:
+    bool exclude_current_time_;
     bool instance_not_in_window_;
     std::string window_name_;   /* window's own name */
     FrameNode *frame_ptr_;      /* expression for starting bound, if any */
@@ -2221,16 +2280,18 @@ class UDFDefNode : public FnDefNode {
 
 class UDFByCodeGenDefNode : public FnDefNode {
  public:
-    UDFByCodeGenDefNode(const std::vector<const node::TypeNode *> &arg_types,
+    UDFByCodeGenDefNode(const std::string &name,
+                        const std::vector<const node::TypeNode *> &arg_types,
                         const std::vector<int> &arg_nullable,
                         const node::TypeNode *ret_type, bool ret_nullable)
         : FnDefNode(kUDFByCodeGenDef),
+          name_(name),
           arg_types_(arg_types),
           arg_nullable_(arg_nullable),
           ret_type_(ret_type),
           ret_nullable_(ret_nullable) {}
 
-    const std::string GetName() const override { return "CODEGEN_UDF"; }
+    const std::string GetName() const override { return name_; }
 
     void SetGenImpl(std::shared_ptr<udf::LLVMUDFGenBase> gen_impl) {
         this->gen_impl_ = gen_impl;
@@ -2251,10 +2312,14 @@ class UDFByCodeGenDefNode : public FnDefNode {
         return Status::OK();
     }
 
+    void Print(std::ostream &output, const std::string &tab) const override;
+    bool Equals(const SQLNode *node) const override;
+
     UDFByCodeGenDefNode *ShadowCopy(NodeManager *) const override;
     UDFByCodeGenDefNode *DeepCopy(NodeManager *) const override;
 
  private:
+    const std::string name_;
     std::shared_ptr<udf::LLVMUDFGenBase> gen_impl_;
     std::vector<const node::TypeNode *> arg_types_;
     std::vector<int> arg_nullable_;
@@ -2363,6 +2428,9 @@ class UDAFDefNode : public FnDefNode {
     size_t GetArgSize() const override { return arg_types_.size(); }
 
     const TypeNode *GetArgType(size_t i) const { return arg_types_[i]; }
+    const std::vector<const TypeNode *> &GetArgTypeList() const {
+        return arg_types_;
+    }
 
     UDAFDefNode *ShadowCopy(NodeManager *) const override;
     UDAFDefNode *DeepCopy(NodeManager *) const override;

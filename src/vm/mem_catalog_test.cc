@@ -431,7 +431,7 @@ TEST_F(MemCataLogTest, mem_row_comcat_test) {
     ::fesql::type::TableDef table_right;
     BuildT2Rows(table_right, rows_right);
     // construct test
-    for (int i = 0; i < rows.size(); i++) {
+    for (size_t i = 0; i < rows.size(); i++) {
         std::shared_ptr<MemRowHandler> row =
             std::shared_ptr<MemRowHandler>(new MemRowHandler(rows[i]));
         std::shared_ptr<MemRowHandler> right_row =

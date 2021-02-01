@@ -254,12 +254,18 @@ void RunInnerListIteratorCase(T expected, const type::TableDef& table,
                     cast<PointerType>(arg0->getType()->getScalarType())
                         ->getElementType(),
                     arg0, 0);
+                auto list = reinterpret_cast<vm::Window*>(window.list);
+
+                ::llvm::Value* row_key =
+                    list->GetCount() > 0
+                        ? builder.getInt64(list->GetFrontRow().first)
+                        : builder.getInt64(0);
                 ::llvm::Value* list_ptr = builder.CreateLoad(list_gep_0);
                 if (inner_range) {
-                    CHECK_TRUE(
-                        buf_builder.BuildInnerRangeList(
-                            list_ptr, start_offset, end_offset, &inner_list),
-                        kCodegenError);
+                    CHECK_TRUE(buf_builder.BuildInnerRangeList(
+                                   list_ptr, row_key, start_offset, end_offset,
+                                   &inner_list),
+                               kCodegenError);
                 } else {
                     CHECK_TRUE(
                         buf_builder.BuildInnerRowsList(list_ptr, start_offset,
@@ -641,7 +647,7 @@ TEST_F(ListIRBuilderTest, list_double_inner_range_test) {
     BuildWindow(table, rows, &ptr);
 
     ListOfRow row_list;
-    vm::CurrentHistoryWindow window(-3600000);
+    vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -3600000, 0);
     codec::RowView row_view(table.columns());
     for (auto row : rows) {
         row_view.Reset(row.buf());
@@ -671,7 +677,7 @@ TEST_F(ListIRBuilderTest, list_double_inner_rows_test) {
     BuildWindow(table, rows, &ptr);
 
     ListOfRow row_list;
-    vm::CurrentHistoryWindow window(-3600000);
+    vm::CurrentHistoryWindow window(vm::Window::kFrameRowsRange, -3600000, 0);
     codec::RowView row_view(table.columns());
     for (auto row : rows) {
         row_view.Reset(row.buf());
