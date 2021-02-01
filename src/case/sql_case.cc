@@ -42,9 +42,9 @@ bool SQLCase::TTLTypeParse(const std::string& org_type_str,
         return false;
     }
     return true;
-
 }
-bool SQLCase::TypeParse(const std::string& org_type_str, fesql::type::Type* type) {
+bool SQLCase::TypeParse(const std::string& org_type_str,
+                        fesql::type::Type* type) {
     if (nullptr == type) {
         LOG(WARNING) << "Null Type Output";
         return false;
