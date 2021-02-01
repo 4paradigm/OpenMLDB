@@ -70,6 +70,7 @@ bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
                 default:
                     break;
             }
+            boost::to_lower(agg_func_name);
             if (!IsAggFuncName(agg_func_name)) {
                 break;
             }

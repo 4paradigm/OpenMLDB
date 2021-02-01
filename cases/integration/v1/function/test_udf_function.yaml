@@ -51,6 +51,22 @@ cases:
         - [1, NULL, NULL, 1764, 3.00, 4, 6]
         - [2, "h", NULL, NULL, NULL, NULL, NULL]
 
+  - id: 2
+    desc: 函数名大小写不敏感
+    inputs:
+      - columns: ["id int64", "c1 double", "c2 timestamp"]
+        indexs: ["index1:id:c2"]
+        rows:
+          - [1, 1.0, 1590738989000]
+    sql: select id,
+        SUM(c1) over w as r1, sUm(c1) over w as r2, sum(c1) over w as r3, log(c1) as r4 
+        from {0} window w as (PARTITION BY id ORDER BY c2 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int64", "r1 double", "r2 double", "r3 double", "r4 double"]
+      rows:
+        - [1, 1, 1, 1, 0]
+
 
   
 

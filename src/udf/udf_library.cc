@@ -10,6 +10,7 @@
 
 #include <unordered_set>
 #include <vector>
+#include "boost/algorithm/string/case_conv.hpp"
 #include "boost/filesystem.hpp"
 #include "boost/filesystem/string_file.hpp"
 
@@ -24,10 +25,19 @@ using ::fesql::common::kCodegenError;
 namespace fesql {
 namespace udf {
 
+std::string UDFLibrary::GetCanonicalName(const std::string& name) const {
+    std::string canonical_name = name;
+    if (!case_sensitive_) {
+        boost::to_lower(canonical_name);
+    }
+    return canonical_name;
+}
+
 std::shared_ptr<UDFRegistry> UDFLibrary::Find(
     const std::string& name,
     const std::vector<const node::TypeNode*>& arg_types) const {
-    auto iter = table_.find(name);
+    std::string canonical_name = GetCanonicalName(name);
+    auto iter = table_.find(canonical_name);
     if (iter == table_.end()) {
         return nullptr;
     }
@@ -41,7 +51,8 @@ std::shared_ptr<UDFRegistry> UDFLibrary::Find(
 }
 
 bool UDFLibrary::HasFunction(const std::string& name) const {
-    return table_.find(name) != table_.end();
+    std::string canonical_name = GetCanonicalName(name);
+    return table_.find(canonical_name) != table_.end();
 }
 
 void UDFLibrary::InsertRegistry(
@@ -50,11 +61,12 @@ void UDFLibrary::InsertRegistry(
     bool always_return_list,
     const std::unordered_set<size_t>& always_list_argidx,
     std::shared_ptr<UDFRegistry> registry) {
+    std::string canonical_name = GetCanonicalName(name);
     std::shared_ptr<UDFLibraryEntry> entry = nullptr;
-    auto iter = table_.find(name);
+    auto iter = table_.find(canonical_name);
     if (iter == table_.end()) {
         entry = std::make_shared<UDFLibraryEntry>();
-        table_.insert(iter, {name, entry});
+        table_.insert(iter, {canonical_name, entry});
     } else {
         entry = iter->second;
     }
@@ -99,7 +111,8 @@ void UDFLibrary::InsertRegistry(
 }
 
 bool UDFLibrary::IsUDAF(const std::string& name, size_t args) const {
-    auto iter = table_.find(name);
+    std::string canonical_name = GetCanonicalName(name);
+    auto iter = table_.find(canonical_name);
     if (iter == table_.end()) {
         return false;
     }
@@ -108,16 +121,19 @@ bool UDFLibrary::IsUDAF(const std::string& name, size_t args) const {
 }
 
 void UDFLibrary::SetIsUDAF(const std::string& name, size_t args) {
-    auto iter = table_.find(name);
+    std::string canonical_name = GetCanonicalName(name);
+    auto iter = table_.find(canonical_name);
     if (iter == table_.end()) {
-        LOG(WARNING) << name << " is not registered, can not set as udaf";
+        LOG(WARNING) << canonical_name
+                     << " is not registered, can not set as udaf";
         return;
     }
     iter->second->udaf_arg_nums.insert(args);
 }
 
 bool UDFLibrary::RequireListAt(const std::string& name, size_t index) const {
-    auto entry_iter = table_.find(name);
+    std::string canonical_name = GetCanonicalName(name);
+    auto entry_iter = table_.find(canonical_name);
     if (entry_iter == table_.end()) {
         return false;
     }
@@ -127,36 +143,42 @@ bool UDFLibrary::RequireListAt(const std::string& name, size_t index) const {
 }
 
 bool UDFLibrary::IsListReturn(const std::string& name) const {
-    auto iter = table_.find(name);
+    std::string canonical_name = GetCanonicalName(name);
+    auto iter = table_.find(canonical_name);
+    if (iter == table_.end()) {
+        return false;
+    }
     return iter->second->always_return_list;
 }
 
 ExprUDFRegistryHelper UDFLibrary::RegisterExprUDF(const std::string& name) {
-    return ExprUDFRegistryHelper(name, this);
+    return ExprUDFRegistryHelper(GetCanonicalName(name), this);
 }
 
 LLVMUDFRegistryHelper UDFLibrary::RegisterCodeGenUDF(const std::string& name) {
-    return LLVMUDFRegistryHelper(name, this);
+    return LLVMUDFRegistryHelper(GetCanonicalName(name), this);
 }
 
 ExternalFuncRegistryHelper UDFLibrary::RegisterExternal(
     const std::string& name) {
-    return ExternalFuncRegistryHelper(name, this);
+    return ExternalFuncRegistryHelper(GetCanonicalName(name), this);
 }
 
 UDAFRegistryHelper UDFLibrary::RegisterUDAF(const std::string& name) {
-    return UDAFRegistryHelper(name, this);
+    return UDAFRegistryHelper(GetCanonicalName(name), this);
 }
 
 Status UDFLibrary::RegisterAlias(const std::string& alias,
                                  const std::string& name) {
-    auto iter = table_.find(alias);
-    CHECK_TRUE(iter == table_.end(), kCodegenError, "Function name '", alias,
-               "' is duplicated");
-    iter = table_.find(name);
+    std::string canonical_name = GetCanonicalName(name);
+    std::string canonical_alias = GetCanonicalName(alias);
+    auto iter = table_.find(canonical_alias);
+    CHECK_TRUE(iter == table_.end(), kCodegenError, "Function name '",
+               canonical_alias, "' is duplicated");
+    iter = table_.find(canonical_name);
     CHECK_TRUE(iter != table_.end(), kCodegenError,
-               "Alias target Function name '", name, "' not found");
-    table_[alias] = iter->second;
+               "Alias target Function name '", canonical_name, "' not found");
+    table_[canonical_alias] = iter->second;
     return Status::OK();
 }
 
@@ -224,9 +246,10 @@ Status UDFLibrary::Transform(const std::string& name,
 
 Status UDFLibrary::Transform(const std::string& name, UDFResolveContext* ctx,
                              ExprNode** result) const {
-    auto iter = table_.find(name);
+    std::string canonical_name = GetCanonicalName(name);
+    auto iter = table_.find(canonical_name);
     CHECK_TRUE(iter != table_.end(), kCodegenError,
-               "Fail to find registered function: ", name);
+               "Fail to find registered function: ", canonical_name);
     auto& signature_table = iter->second->signature_table;
 
     std::shared_ptr<UDFRegistry> registry = nullptr;
@@ -234,11 +257,12 @@ Status UDFLibrary::Transform(const std::string& name, UDFResolveContext* ctx,
     int variadic_pos = -1;
     CHECK_STATUS(
         signature_table.Find(ctx, &registry, &signature, &variadic_pos),
-        "Fail to find matching argument signature for ", name, ": <",
+        "Fail to find matching argument signature for ", canonical_name, ": <",
         ctx->GetArgSignature(), ">");
 
-    DLOG(INFO) << "Resolve '" << name << "'<" << ctx->GetArgSignature()
-               << ">to " << name << "(" << signature << ")";
+    DLOG(INFO) << "Resolve '" << canonical_name << "'<"
+               << ctx->GetArgSignature() << ">to " << canonical_name << "("
+               << signature << ")";
     CHECK_TRUE(registry != nullptr, kCodegenError);
     return registry->Transform(ctx, result);
 }
@@ -246,9 +270,10 @@ Status UDFLibrary::Transform(const std::string& name, UDFResolveContext* ctx,
 Status UDFLibrary::ResolveFunction(const std::string& name,
                                    UDFResolveContext* ctx,
                                    node::FnDefNode** result) const {
-    auto iter = table_.find(name);
+    std::string canonical_name = GetCanonicalName(name);
+    auto iter = table_.find(canonical_name);
     CHECK_TRUE(iter != table_.end(), kCodegenError,
-               "Fail to find registered function: ", name);
+               "Fail to find registered function: ", canonical_name);
     auto& signature_table = iter->second->signature_table;
 
     std::shared_ptr<UDFRegistry> registry = nullptr;
@@ -256,11 +281,12 @@ Status UDFLibrary::ResolveFunction(const std::string& name,
     int variadic_pos = -1;
     CHECK_STATUS(
         signature_table.Find(ctx, &registry, &signature, &variadic_pos),
-        "Fail to find matching argument signature for ", name, ": <",
+        "Fail to find matching argument signature for ", canonical_name, ": <",
         ctx->GetArgSignature(), ">");
 
-    DLOG(INFO) << "Resolve '" << name << "'<" << ctx->GetArgSignature()
-               << ">to " << name << "(" << signature << ")";
+    DLOG(INFO) << "Resolve '" << canonical_name << "'<"
+               << ctx->GetArgSignature() << ">to " << canonical_name << "("
+               << signature << ")";
     CHECK_TRUE(registry != nullptr, kCodegenError);
     return registry->ResolveFunction(ctx, result);
 }
