@@ -1091,7 +1091,7 @@ static bool ParseSQLCaseNode(const YAML::Node& sql_case_node,
         }
 
         if (tags.find("TODO") != tags.cend()) {
-            LOG(INFO) << "SKIP TODO SQL Case " << sql_case.desc();
+            DLOG(INFO) << "SKIP TODO SQL Case " << sql_case.desc();
             *is_skip = true;
         }
     }

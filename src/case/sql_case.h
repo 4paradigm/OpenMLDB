@@ -203,11 +203,10 @@ class SQLCase {
                 return item_vec;
             } catch (const std::exception& ex) {
                 LOG(WARNING) << "Fail to parser fesql level: " << ex.what();
-                return std::set<std::string>({0});
+                return std::set<std::string>({"0"});
             }
         } else {
-            return std::set<std::string>({0});
-            ;
+            return std::set<std::string>({"0"});
         }
     }
     static bool IS_DEBUG() {
