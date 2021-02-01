@@ -10,7 +10,7 @@ from fesql_param import parse_args
 from fesql_case import gen_window_union_test
 from fesql_param import sample_integer_config
 
-from tools.autotest.fesql_case import gen_window_lastjoin_test, gen_window_subselect_test
+from fesql_case import gen_window_lastjoin_test, gen_window_subselect_test
 
 gen_sql = {
     0: gen_single_window_test,

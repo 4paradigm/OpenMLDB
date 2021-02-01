@@ -6,9 +6,9 @@ from fesql_param import sample_integer_config
 
 from fesql_sql import sample_window_union_project
 
-from tools.autotest.fesql_const import PRIMITIVE_TYPES
-from tools.autotest.fesql_sql import sample_last_join_project, sample_subselect_project
-from tools.autotest.gen_sample_data import gen_pk_groups
+from fesql_const import PRIMITIVE_TYPES
+from fesql_sql import sample_last_join_project, sample_subselect_project
+from gen_sample_data import gen_pk_groups
 
 import random
 

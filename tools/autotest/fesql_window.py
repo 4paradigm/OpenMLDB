@@ -3,7 +3,7 @@ from fesql_param import sample_integer_config, sample_string_config
 
 from fesql_const import WINDOW_SQL
 
-from tools.autotest.fesql_const import WINDOW_UNION_SQL
+from fesql_const import WINDOW_UNION_SQL
 
 
 class WindowDesc:

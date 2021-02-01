@@ -9,8 +9,8 @@ from gen_const_data import random_literal_bool, random_literal_int32, random_lit
 
 from fesql_param import sample_integer_config
 
-from tools.autotest.fesql_const import LAST_JOIN_SQL, LAST_JOIN_OP
-from tools.autotest.fesql_param import sample_string_config
+from fesql_const import LAST_JOIN_SQL, LAST_JOIN_OP
+from fesql_param import sample_string_config
 
 
 class ColumnInfo:
