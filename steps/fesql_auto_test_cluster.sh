@@ -2,7 +2,11 @@
 
 ROOT_DIR=`pwd`
 ulimit -c unlimited
-
+CASE_LEVEL=$1
+if [[ "${CASE_LEVEL}" == "" ]]; then
+        CASE_LEVEL="0"
+fi
+echo "fesql auto test cluster: case_level ${CASE_LEVEL}"
 echo "ROOT_DIR:${ROOT_DIR}"
 sh steps/gen_code.sh
 sh tools/install_fesql.sh
@@ -27,4 +31,4 @@ case_xml=test_v1_cluster.xml
 cd ${ROOT_DIR}/src/sdk/java/
 mvn install -Dmaven.test.skip=true
 cd ${ROOT_DIR}/src/sdk/java/fesql-auto-test-java
-mvn test -DsuiteXmlFile=test_suite/${case_xml}
+mvn test -DsuiteXmlFile=test_suite/${case_xml} -DcaseLevel=$CASE_LEVEL
