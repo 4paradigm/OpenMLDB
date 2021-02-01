@@ -15,21 +15,14 @@ namespace tablet {
 CombineIterator::CombineIterator(std::vector<QueryIt> q_its,
                                  uint64_t start_time,
                                  ::rtidb::api::GetType st_type,
-                                 const ::rtidb::storage::TTLSt& ttl)
+                                 const ::rtidb::storage::TTLSt& expired_value)
     : q_its_(std::move(q_its)),
       st_(start_time),
       st_type_(st_type),
-      ttl_type_(ttl.ttl_type),
-      expire_time_(0),
-      expire_cnt_(ttl.lat_ttl),
-      cur_qit_(nullptr) {
-    for (const auto& q_it : q_its_) {
-        if (q_it.table) {
-            expire_time_ = q_it.table->GetExpireTime(ttl);
-            break;
-        }
-    }
-}
+      ttl_type_(expired_value.ttl_type),
+      expire_time_(expired_value.abs_ttl),
+      expire_cnt_(expired_value.lat_ttl),
+      cur_qit_(nullptr) {}
 
 void CombineIterator::SeekToFirst() {
     q_its_.erase(std::remove_if(q_its_.begin(), q_its_.end(),

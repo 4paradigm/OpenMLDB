@@ -113,7 +113,7 @@ struct QueryIt {
 class CombineIterator {
  public:
     CombineIterator(std::vector<QueryIt> q_its, uint64_t start_time,
-                    ::rtidb::api::GetType st_type, const ::rtidb::storage::TTLSt& ttl);
+                    ::rtidb::api::GetType st_type, const ::rtidb::storage::TTLSt& expired_value);
     void SeekToFirst();
     void Next();
     bool Valid();

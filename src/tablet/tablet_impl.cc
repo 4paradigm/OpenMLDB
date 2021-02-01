@@ -518,7 +518,7 @@ void TabletImpl::Get(RpcController* controller,
         pid_num = request->pid_group_size();
     }
     std::vector<QueryIt> query_its(pid_num);
-    std::shared_ptr<::rtidb::storage::TTLSt> ttl;
+    std::shared_ptr<::rtidb::storage::TTLSt> expired_value;
     for (uint32_t idx = 0; idx < pid_num; idx++) {
         uint32_t pid = 0;
         if (request->pid_group_size() > 0) {
@@ -571,8 +571,9 @@ void TabletImpl::Get(RpcController* controller,
             return;
         }
         index = index_def->GetId();
-        if (!ttl) {
-            ttl = index_def->GetTTL();
+        if (!expired_value) {
+            expired_value = index_def->GetTTL();
+            expired_value->abs_ttl = table->GetExpireTime(*expired_value);
         }
         GetIterator(table, request->key(), index, ts_index, &query_its[idx].it,
                     &query_its[idx].ticket);
@@ -585,7 +586,7 @@ void TabletImpl::Get(RpcController* controller,
     }
     const ::rtidb::api::TableMeta& table_meta = query_its.begin()->table->GetTableMeta();
     const std::map<int32_t, std::shared_ptr<Schema>> vers_schema = query_its.begin()->table->GetAllVersionSchema();
-    CombineIterator combine_it(std::move(query_its), request->ts(), request->type(), *ttl);
+    CombineIterator combine_it(std::move(query_its), request->ts(), request->type(), *expired_value);
     combine_it.SeekToFirst();
     std::string* value = response->mutable_value();
     uint64_t ts = 0;
@@ -1374,7 +1375,7 @@ void TabletImpl::Scan(RpcController* controller,
         pid_num = request->pid_group_size();
     }
     std::vector<QueryIt> query_its(pid_num);
-    std::shared_ptr<::rtidb::storage::TTLSt> ttl;
+    std::shared_ptr<::rtidb::storage::TTLSt> expired_value;
     for (uint32_t idx = 0; idx < pid_num; idx++) {
         uint32_t pid = 0;
         if (request->pid_group_size() > 0) {
@@ -1427,8 +1428,9 @@ void TabletImpl::Scan(RpcController* controller,
             return;
         }
         index = index_def->GetId();
-        if (!ttl) {
-            ttl = index_def->GetTTL();
+        if (!expired_value) {
+            expired_value = index_def->GetTTL();
+            expired_value->abs_ttl = table->GetExpireTime(*expired_value);
         }
         GetIterator(table, request->pk(), index, ts_index, &query_its[idx].it,
                     &query_its[idx].ticket);
@@ -1441,7 +1443,7 @@ void TabletImpl::Scan(RpcController* controller,
     }
     const ::rtidb::api::TableMeta& table_meta = query_its.begin()->table->GetTableMeta();
     const std::map<int32_t, std::shared_ptr<Schema>> vers_schema = query_its.begin()->table->GetAllVersionSchema();
-    CombineIterator combine_it(std::move(query_its), request->st(), request->st_type(), *ttl);
+    CombineIterator combine_it(std::move(query_its), request->st(), request->st_type(), *expired_value);
     uint32_t count = 0;
     int32_t code = 0;
     if (!request->has_use_attachment() || !request->use_attachment()) {

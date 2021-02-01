@@ -130,6 +130,7 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts,
     ::rtidb::api::TableMeta meta;
     std::map<int32_t, std::shared_ptr<Schema>> vers_schema = q_its->begin()->table->GetAllVersionSchema();
     ::rtidb::storage::TTLSt ttl(expired_ts, 0, ::rtidb::storage::kAbsoluteTime);
+    ttl.abs_ttl = expired_ts;
     // get the st kSubKeyGt
     {
         // for the legacy
