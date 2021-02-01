@@ -2766,7 +2766,7 @@ void TabletImpl::GetTableStatus(
             status->set_name(table->GetName());
             ::rtidb::api::TTLDesc* ttl_desc = status->mutable_ttl_desc();
             ::rtidb::storage::TTLSt ttl = table->GetTTL();
-            ttl_desc->set_abs_ttl(ttl.abs_ttl);
+            ttl_desc->set_abs_ttl(ttl.abs_ttl / (60 * 1000));
             ttl_desc->set_lat_ttl(ttl.lat_ttl);
             ttl_desc->set_ttl_type(ttl.GetTabletTTLType());
             status->set_ttl_type(ttl.GetTabletTTLType());
