@@ -45,7 +45,7 @@ void AssertIndex(const ::rtidb::storage::IndexDef& index, const std::string& nam
     if (!ts_col_name.empty()) {
         auto ts_col = index.GetTsColumn();
         ASSERT_EQ(ts_col->GetName(), ts_col_name);
-        ASSERT_EQ(ts_col->GetTsIdx(), ts_index);
+        ASSERT_EQ(ts_col->GetTsIdx(), (uint32_t)ts_index);
     }
 }
 
@@ -268,6 +268,53 @@ TEST_F(SchemaTest, ParseColumnDescTs) {
         auto ts_col = index->GetTsColumn();
         ASSERT_EQ(ts_col->GetTsIdx(), 0);
     }
+}
+
+TEST_F(SchemaTest, ColumnKey) {
+    ::rtidb::api::TableMeta table_meta;
+    table_meta.set_ttl(10);
+    for (int i = 0; i < 10; i++) {
+        auto column_desc = table_meta.add_column_desc();
+        column_desc->set_name("col" + std::to_string(i));
+        column_desc->set_type("string");
+        if (i < 5) {
+            column_desc->set_add_ts_idx(true);
+        } else if (i == 6 || i == 7) {
+            column_desc->set_is_ts_col(true);
+            column_desc->set_type("uint64");
+        }
+    }
+    auto key = table_meta.add_column_key();
+    key->set_index_name("key1");
+    key->add_col_name("col1");
+    key->add_ts_name("col6");
+    key->add_ts_name("col7");
+    key = table_meta.add_column_key();
+    key->set_index_name("key2");
+    key->add_col_name("col2");
+    key->add_ts_name("col6");
+
+    std::map<std::string, uint8_t> ts_mapping;
+    TableIndex table_index;
+    ASSERT_GE(table_index.ParseFromMeta(table_meta, &ts_mapping), 0);
+    auto indexs = table_index.GetAllIndex();
+    ASSERT_EQ(indexs.size(), 3);
+    ASSERT_EQ(ts_mapping.size(), 2);
+    auto index = table_index.GetPkIndex();
+    ASSERT_STREQ(index->GetName().c_str(), "key1");
+
+    AssertIndex(*(table_index.GetIndex("key1")), "key1", "col1", "col6", 0, 10, 0, ::rtidb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key1", 0)), "key1", "col1", "col6", 0, 10, 0, ::rtidb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key1", 1)), "key1", "col1", "col7", 1, 10, 0, ::rtidb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key2")), "key2", "col2", "col6", 0, 10, 0, ::rtidb::storage::kAbsoluteTime);
+    auto inner_index = table_index.GetAllInnerIndex();
+    ASSERT_EQ(inner_index->size(), 2);
+    std::vector<std::string> index0 = {"key1", "key1"};
+    std::vector<uint32_t> ts_vec0 = {0, 1};
+    AssertInnerIndex(*(table_index.GetInnerIndex(0)), 0, index0, ts_vec0);
+    std::vector<std::string> index1 = {"key2"};
+    std::vector<uint32_t> ts_vec1 = { 0 };
+    AssertInnerIndex(*(table_index.GetInnerIndex(1)), 1, index1, ts_vec1);
 }
 
 TEST_F(SchemaTest, ParseMultiTTL) {

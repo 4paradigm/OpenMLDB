@@ -299,8 +299,8 @@ bool DiskTable::Put(const Dimensions& dimensions,
                 }
             }
             if (!has_found_ts) {
-                PDLOG(WARNING, "cannot find ts col %d. tid %u pid %u", ts_col->GetTsIdx(), id_, pid_);
-                return false;
+                DEBUGLOG("cannot find ts col %d. tid %u pid %u", ts_col->GetTsIdx(), id_, pid_);
+                continue;
             }
             if (index_def->IsReady()) {
                 std::string combine_key;
