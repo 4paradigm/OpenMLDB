@@ -177,7 +177,12 @@ int TableIndex::ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::ma
         for (int idx = 0; idx < table_meta.column_desc_size(); idx++) {
             const auto& column_desc = table_meta.column_desc(idx);
             std::shared_ptr<ColumnDef> col;
-            ::rtidb::type::DataType type = ::rtidb::codec::SchemaCodec::ConvertStrType(column_desc.type());
+            ::rtidb::type::DataType type;
+            if (column_desc.has_data_type()) {
+                type = column_desc.data_type();
+            } else {
+                type = ::rtidb::codec::SchemaCodec::ConvertStrType(column_desc.type());
+            }
             const std::string& name = column_desc.name();
             col = std::make_shared<ColumnDef>(name, key_idx, type, true);
             col_map.emplace(name, col);
@@ -329,7 +334,6 @@ void TableIndex::FillIndexVal(const ::rtidb::api::TableMeta& table_meta, uint32_
             std::vector<std::vector<std::shared_ptr<IndexDef>>> pos_index_vec;
             uint32_t inner_cnt = 0;
             for (int idx = 0; idx < table_meta.column_key_size(); idx++) {
-                column_key_2_inner_index_[idx]->store(inner_cnt, std::memory_order_relaxed);
                 const auto& column_key =  table_meta.column_key(idx);
                 std::string combine_col_name;
                 if (column_key.col_name_size() == 0) {
@@ -353,6 +357,7 @@ void TableIndex::FillIndexVal(const ::rtidb::api::TableMeta& table_meta, uint32_
                     pos_index_vec.push_back(std::vector<std::shared_ptr<IndexDef>>());
                     inner_cnt++;
                 }
+                column_key_2_inner_index_[idx]->store(name_pos_map[combine_col_name], std::memory_order_relaxed);
                 pos_index_vec[iter->second].push_back(GetIndex(column_key.index_name()));
             }
             for (uint32_t idx = 0; idx < pos_index_vec.size(); idx++) {

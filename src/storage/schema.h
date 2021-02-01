@@ -212,13 +212,13 @@ class IndexDef {
     IndexDef(const std::string& name, uint32_t id, IndexStatus stauts);
     IndexDef(const std::string& name, uint32_t id, const IndexStatus& stauts, ::rtidb::type::IndexType type,
              const std::vector<ColumnDef>& column_idx_map);
-    const std::string& GetName() { return name_; }
-    inline const std::shared_ptr<ColumnDef>& GetTsColumn() { return ts_column_; }
+    const std::string& GetName() const { return name_; }
+    inline const std::shared_ptr<ColumnDef>& GetTsColumn() const { return ts_column_; }
     void SetTsColumn(const std::shared_ptr<ColumnDef>& ts_column) { ts_column_ = ts_column; }
     inline bool IsReady() { return status_.load(std::memory_order_acquire) == IndexStatus::kReady; }
-    inline uint32_t GetId() { return index_id_; }
+    inline uint32_t GetId() const { return index_id_; }
     void SetStatus(IndexStatus status) { status_.store(status, std::memory_order_release); }
-    IndexStatus GetStatus() { return status_.load(std::memory_order_acquire); }
+    IndexStatus GetStatus() const { return status_.load(std::memory_order_acquire); }
     inline ::rtidb::type::IndexType GetType() { return type_; }
     inline const std::vector<ColumnDef>& GetColumns() { return columns_; }
     void SetTTL(const TTLSt& ttl);
