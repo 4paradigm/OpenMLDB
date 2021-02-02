@@ -2778,7 +2778,7 @@ void TabletImpl::GetTableStatus(
             if (status->ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
                 status->set_ttl(table->GetTTL().lat_ttl);
             } else {
-                status->set_ttl(table->GetTTL().abs_ttl);
+                status->set_ttl(table->GetTTL().abs_ttl / (60 * 1000));
             }
             if (::rtidb::api::TableState_IsValid(table->GetTableStat())) {
                 status->set_state(

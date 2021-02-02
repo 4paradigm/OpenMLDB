@@ -1261,7 +1261,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(100, (int64_t)ts.ttl() / (10 * 6000));
+                ASSERT_EQ(100, (int64_t)ts.ttl());
                 checked = true;
             }
         }
@@ -1322,7 +1322,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(50, (signed)ts.ttl() / (60 * 1000));
+                ASSERT_EQ(50, (signed)ts.ttl());
                 checked = true;
             }
         }
@@ -1344,7 +1344,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(50, (signed)ts.ttl() / (60 * 1000));
+                ASSERT_EQ(50, (signed)ts.ttl());
                 checked = true;
             }
         }
@@ -1367,7 +1367,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(100, (signed)ts.ttl() / (60 * 1000));
+                ASSERT_EQ(100, (signed)ts.ttl());
                 checked = true;
             }
         }
