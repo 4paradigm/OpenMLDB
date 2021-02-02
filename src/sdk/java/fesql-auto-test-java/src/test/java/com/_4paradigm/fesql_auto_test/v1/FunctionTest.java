@@ -21,7 +21,7 @@ public class FunctionTest extends FesqlTest {
     public Object[] testFunctionCase() throws FileNotFoundException {
         FesqlDataProviderList dp = FesqlDataProviderList.dataProviderGenerator(
                 new String[]{
-                        "/integration/v1/function/test_udaf_function.yaml"
+                        "/integration/v1/function/"
                 });
         return dp.getCases().toArray();
     }
