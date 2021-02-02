@@ -663,7 +663,7 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
         ts_vec.push_back(ts_iter->second);
     }
     uint32_t inner_id = 0;
-    if (!index_def) {
+    if (index_def) {
         inner_id = index_def->GetInnerPos();
     } else {
         inner_id = table_index_.GetAllInnerIndex()->size();
