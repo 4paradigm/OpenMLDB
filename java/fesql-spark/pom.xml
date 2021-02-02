@@ -90,6 +90,13 @@
 			<scope>test</scope>
 		</dependency>
 
+		<!-- Use for draw graph with graphviz -->
+		<dependency>
+			<groupId>guru.nidi</groupId>
+			<artifactId>graphviz-java</artifactId>
+			<version>0.18.0</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>
