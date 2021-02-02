@@ -431,6 +431,14 @@ INSTANTIATE_TEST_SUITE_P(EngineTestErrorWindow, TabletEngineTest,
 INSTANTIATE_TEST_CASE_P(EngineTestDebugIssues, TabletEngineTest,
                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/debug/issues_case.yaml")));
 
+// myhug 场景正确性验证
+INSTANTIATE_TEST_CASE_P(EngineTestFzMyhug, TabletEngineTest,
+                        testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/fz_ddl/test_myhug.yaml")));
+
+// luoji 场景正确性验证
+INSTANTIATE_TEST_CASE_P(EngineTestFzLuoji, TabletEngineTest,
+                        testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/fz_ddl/test_luoji.yaml")));
+
 }  // namespace catalog
 }  // namespace rtidb
 int main(int argc, char **argv) {

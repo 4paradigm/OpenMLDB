@@ -852,6 +852,15 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_index_optimized.yaml")));
 INSTANTIATE_TEST_CASE_P(SQLSDKTestDebugIssues, SQLSDKQueryTest,
                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/debug/issues_case.yaml")));
+
+// myhug 场景正确性验证
+INSTANTIATE_TEST_CASE_P(SQLSDKTestFzMyhug, SQLSDKQueryTest,
+                        testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_myhug.yaml")));
+
+// luoji 场景正确性验证
+INSTANTIATE_TEST_CASE_P(SQLSDKTestFzLuoji, SQLSDKQueryTest,
+                        testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_luoji.yaml")));
+
 }  // namespace sdk
 }  // namespace rtidb
 #endif  // SRC_SDK_SQL_SDK_TEST_H_
