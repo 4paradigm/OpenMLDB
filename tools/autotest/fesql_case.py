@@ -26,7 +26,7 @@ def gen_single_window_test(test_name, udf_pool, args):
         window_def = sample_window_def("w"+str(i), args)
         window_defs.append(window_def)
     window_query = sample_window_project(
-        input_name="{0}", input_columns=input_columns,
+        mainTable=input_columns,
         window_defs=window_defs, udf_defs=udf_pool,
         args=args, downward=True, keep_index=True)
 
@@ -72,7 +72,10 @@ def gen_window_union_test(test_name, udf_pool, args):
     window_num = sample_integer_config(args.window_num)
     for i in range(window_num):
         window_def = sample_window_def("w"+str(i), args)
-        window_def.window_type = sample_integer_config(args.window_type)
+        if table_num <=1:
+            window_def.window_type = 0
+        else:
+            window_def.window_type = sample_integer_config(args.window_type)
         if window_def.window_type == 1:
             for i in range(1, table_num):
                 window_def.tables.add(tables[i].name)

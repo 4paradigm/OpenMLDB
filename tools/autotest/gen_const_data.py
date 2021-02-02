@@ -3,7 +3,7 @@ import time
 
 import numpy as np
 
-from tools.autotest.fesql_const import current_time
+from fesql_const import current_time
 
 
 def random_literal_bool(nullable=True):
