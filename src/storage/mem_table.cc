@@ -903,7 +903,7 @@ void MemTableKeyIterator::Next() { NextPK(); }
 ::fesql::vm::RowIterator* MemTableKeyIterator::GetRawValue() {
     TimeEntries::Iterator* it = NULL;
     if (segments_[seg_idx_]->GetTsCnt() > 1) {
-        KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[0];  // NOLINT
+        KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];  // NOLINT
         it = entry->entries.NewIterator();
         ticket_.Push(entry);
     } else {
@@ -918,7 +918,7 @@ void MemTableKeyIterator::Next() { NextPK(); }
 std::unique_ptr<::fesql::vm::RowIterator> MemTableKeyIterator::GetValue() {
     TimeEntries::Iterator* it = NULL;
     if (segments_[seg_idx_]->GetTsCnt() > 1) {
-        KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[0];  // NOLINT
+        KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];  // NOLINT
         it = entry->entries.NewIterator();
         ticket_.Push(entry);
     } else {
