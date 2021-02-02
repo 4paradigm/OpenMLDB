@@ -306,7 +306,7 @@ cases:
       - [reqId2, 1609894068191, uUserId2, zUserId2, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2, 1.0, 2.0, 3.0, 4.0]
       # last join key is NULL
       - [NULL, 1609894068191, uUserIdNull, zUserIdNull, uSexNull, zSexNull, zChannelNull, uPlayGameNull, uHasJoinedGroupNull, 1.0, 2.0, 3.0, 4.0]
-      # only match 1 key
+      # TODO(chenjing,denglong): combine key with one NULL and one non-Null
       #- [reqId2, 1609894068191, uUserId2, NULL, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2, 1.0, 2.0, 3.0, 4.0]
       - [reqId2, 1609894068191, NULL, NULL, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2, 1.0, 2.0, 3.0, 4.0]
   expect:
