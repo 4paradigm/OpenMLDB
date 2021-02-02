@@ -1,5 +1,5 @@
 db: test_zw
-debugs: []
+debugs: ["bool_比较运算_各种类型"]
 cases:
   - id: 0
     desc: "string_比较运算_各种类型"
@@ -206,7 +206,6 @@ cases:
       success: false
   - id: 6
     desc: "bool_比较运算_各种类型"
-    tags: ["TODO","bug,@baoxinqi，true>false =>false"]
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -226,7 +225,7 @@ cases:
     expectProvider:
       0:
         rows:
-          - [false,false,false,false,false,false,true,false]
+          - [true,false,false,false,false,false,true,false]
       1:
         rows:
           - [true,true,false,false,false,false,true,true]
@@ -235,19 +234,19 @@ cases:
           - [false,false,true,true,true,true,false,false]
       3:
         rows:
-          - [true,true,true,true,true,true,false,true]
+          - [false,true,true,true,true,true,false,true]
       4:
         rows:
-          - [false,false,true,true,true,true,true,false]
+          - [true,false,true,true,true,true,true,false]
       5:
         rows:
-          - [false,false,true,true,true,true,true,false]
+          - [true,false,true,true,true,true,true,false]
       6:
         rows:
-          - [true,true,false,false,false,false,false,true]
+          - [false,true,false,false,false,false,false,true]
       7:
         rows:
-          - [true,true,false,false,false,false,false,true]
+          - [false,true,false,false,false,false,false,true]
   - id: 7
     desc: "IS_NULL_各种类型"
     tags: ["TODO","目前不支持"]
