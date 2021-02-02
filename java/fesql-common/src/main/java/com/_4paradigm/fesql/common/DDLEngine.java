@@ -501,21 +501,7 @@ class RtidbTable {
                     break;
                 }
             }
-        } else {
-            boolean isAnd = false;
-            for (RtidbIndex e : indexs) {
-                if (e.getType() == TTLType.kAbsAndLat) {
-                    isAnd = true;
-                }
-            }
-            if (isAnd) {
-                for (RtidbIndex e : indexs) {
-                    e.setType(TTLType.kAbsAndLat);
-                }
-            }
         }
-
-
     }
 
     public String toDDL() {
