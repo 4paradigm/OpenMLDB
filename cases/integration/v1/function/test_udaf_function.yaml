@@ -152,13 +152,18 @@ cases:
           - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
           - [3,"aa",1,1,33,1.1,2.1,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
-    dataProvider:
-      - ["max","max","count","sum","avg","distinct_count"]
     sql: |
-      SELECT id, c1, d[0](c10) OVER w1 as m10 FROM {0} WINDOW
+      SELECT id, count(c10) OVER w1 as count_bool, distinct_count(c10) OVER w1 as distinct_count_bool 
+      FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
-      success: false
+      order: id
+      columns: ["id int", "count_bool bigint", "distinct_count_bool bigint"]
+      rows:
+        - [1,1,1]
+        - [2,2,2]
+        - [3,3,2]
+        - [4,2,2]
   -
     id: 7
     desc: sum-timestamp
