@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["max/max/count/sum/avg/distinct_count-bool"]
+debugs: []
 cases:
   -
     id: 0

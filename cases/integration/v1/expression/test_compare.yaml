@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["bool_比较运算_各种类型"]
+debugs: []
 cases:
   - id: 0
     desc: "string_比较运算_各种类型"
