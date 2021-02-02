@@ -881,6 +881,7 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta,
 
     std::map<std::string, std::string> column_map;
     std::set<std::string> ts_set;
+    bool has_set_ts_col = false;
     if (table_meta->column_desc_size() > 0) {
         for (const auto& column_desc : table_meta->column_desc()) {
             if (column_map.find(column_desc.name()) != column_map.end()) {
@@ -889,19 +890,12 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta,
             }
             if (column_desc.is_ts_col()) {
                 if (column_desc.add_ts_idx()) {
-                    msg =
-                        "can not set add_ts_idx and is_ts_col together. column "
-                        "name " +
-                        column_desc.name();
+                    msg = "can not set add_ts_idx and is_ts_col together. column name " + column_desc.name();
                     return -1;
                 }
-                if (column_desc.type() != "int64" &&
-                    column_desc.type() != "uint64" &&
+                if (column_desc.type() != "int64" && column_desc.type() != "uint64" &&
                     column_desc.type() != "timestamp") {
-                    msg =
-                        "ttl column type must be int64, uint64, timestamp "
-                        "but " +
-                        column_desc.type();
+                    msg = "ttl column type must be int64, uint64, timestamp but " + column_desc.type();
                     return -1;
                 }
                 if (column_desc.has_abs_ttl() || column_desc.has_lat_ttl()) {
@@ -929,6 +923,7 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta,
                         return -1;
                     }
                 }
+                has_set_ts_col = true;
                 ts_set.insert(column_desc.name());
             }
             if (column_desc.add_ts_idx() &&
@@ -987,7 +982,12 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta,
             }
             std::set<std::string> ts_name_set;
             for (const auto& ts_name : column_key.ts_name()) {
-                if (ts_set.find(ts_name) == ts_set.end()) {
+                auto iter = column_map.find(ts_name);
+                if (iter == column_map.end()) {
+                    msg = "not found column name " + ts_name;
+                    return -1;
+                }
+                if (has_set_ts_col && ts_set.find(ts_name) == ts_set.end()) {
                     msg = "not found ts_name " + ts_name;
                     return -1;
                 }
@@ -1000,6 +1000,14 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta,
             if (ts_set.size() > 1 && column_key.ts_name_size() == 0) {
                 msg = "ts column num more than one, must set ts name";
                 return -1;
+            }
+            if (column_key.has_ttl()) {
+                if (column_key.ttl().abs_ttl() > FLAGS_absolute_ttl_max ||
+                        column_key.ttl().lat_ttl() > FLAGS_latest_ttl_max) {
+                    msg = "ttl is greater than conf value. max abs_ttl is " + std::to_string(FLAGS_absolute_ttl_max) +
+                        ", max lat_ttl is " + std::to_string(FLAGS_latest_ttl_max);
+                    return -1;
+                }
             }
         }
     } else if (ts_set.size() > 1) {

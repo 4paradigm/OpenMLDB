@@ -407,6 +407,13 @@ int32_t TableIndex::GetInnerIndexPos(uint32_t column_key_pos) const {
     return column_key_2_inner_index_.at(column_key_pos)->load(std::memory_order_relaxed);
 }
 
+void TableIndex::SetInnerIndexPos(uint32_t column_key_pos, uint32_t inner_pos) {
+    if (column_key_pos >= column_key_2_inner_index_.size()) {
+        return;
+    }
+    return column_key_2_inner_index_.at(column_key_pos)->store(inner_pos, std::memory_order_relaxed);
+}
+
 std::shared_ptr<IndexDef> TableIndex::GetIndex(uint32_t idx) {
     auto multi_indexs = std::atomic_load_explicit(&multi_ts_indexs_, std::memory_order_relaxed);
     if (!multi_indexs->empty()) {

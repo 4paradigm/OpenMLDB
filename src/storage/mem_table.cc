@@ -330,13 +330,9 @@ void MemTable::SchedGc() {
                         for (uint32_t k = 0; k < seg_cnt_; k++) {
                             if (segments_[i][k] != NULL) {
                                 segments_[i][k]->ReleaseAndCount(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-                                delete segments_[i][k];
-                                segments_[i][k] = NULL;
                             }
                         }
                     }
-                    delete[] segments_[i];
-                    segments_[i] = NULL;
                     deleted_num++;
                 }
                 cur_index->SetStatus(IndexStatus::kDeleted);
@@ -649,51 +645,41 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
         ::rtidb::common::ColumnKey* added_column_key = table_meta_.add_column_key();
         added_column_key->CopyFrom(column_key);
     }
-    std::vector<uint32_t> ts_vec;
-    for (int idx = 0; idx < column_key.ts_name_size(); idx++) {
-        auto ts_iter = ts_mapping_.find(column_key.ts_name(idx));
-        if (ts_iter == ts_mapping_.end()) {
-            PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", column_key.ts_name(idx).c_str(), id_, pid_);
-            return false;
-        }
-        if (std::find(ts_vec.begin(), ts_vec.end(), ts_iter->second) != ts_vec.end()) {
-            PDLOG(WARNING, "has repeated ts_name[%s]. tid %u pid %u", column_key.ts_name(idx).c_str(), id_, pid_);
-            return false;
-        }
-        ts_vec.push_back(ts_iter->second);
-    }
-    uint32_t inner_id = 0;
-    if (index_def) {
-        inner_id = index_def->GetInnerPos();
-    } else {
-        inner_id = table_index_.GetAllInnerIndex()->size();
-    }
-
-    Segment** seg_arr = new Segment*[seg_cnt_];
-    if (!ts_vec.empty()) {
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height, ts_vec);
-            PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u",
-                    inner_id, j, FLAGS_absolute_default_skiplist_height, ts_vec.size(), id_, pid_);
-        }
-    } else {
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height);
-            PDLOG(INFO, "init %u, %u segment. height %u tid %u pid %u",
-                    inner_id, j, FLAGS_absolute_default_skiplist_height, id_, pid_);
-        }
-    }
-    if (segments_[inner_id] != NULL) {
-        LOG(INFO) << "delete old index " << inner_id << " data";
-        delete[] segments_[inner_id];
-    }
-    segments_[inner_id] = seg_arr;
     if (!index_def) {
+        std::vector<uint32_t> ts_vec;
+        for (int idx = 0; idx < column_key.ts_name_size(); idx++) {
+            auto ts_iter = ts_mapping_.find(column_key.ts_name(idx));
+            if (ts_iter == ts_mapping_.end()) {
+                PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", column_key.ts_name(idx).c_str(), id_, pid_);
+                return false;
+            }
+            if (std::find(ts_vec.begin(), ts_vec.end(), ts_iter->second) != ts_vec.end()) {
+                PDLOG(WARNING, "has repeated ts_name[%s]. tid %u pid %u", column_key.ts_name(idx).c_str(), id_, pid_);
+                return false;
+            }
+            ts_vec.push_back(ts_iter->second);
+        }
+        uint32_t inner_id = table_index_.GetAllInnerIndex()->size();
+        Segment** seg_arr = new Segment*[seg_cnt_];
+        if (!ts_vec.empty()) {
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
+                seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height, ts_vec);
+                PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u",
+                        inner_id, j, FLAGS_absolute_default_skiplist_height, ts_vec.size(), id_, pid_);
+            }
+        } else {
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
+                seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height);
+                PDLOG(INFO, "init %u, %u segment. height %u tid %u pid %u",
+                        inner_id, j, FLAGS_absolute_default_skiplist_height, id_, pid_);
+            }
+        }
         index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.Size());
         if (table_index_.AddIndex(index_def) < 0) {
             PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
             return false;
         }
+        segments_[inner_id] = seg_arr;
         if (column_key.ts_name_size() > 0) {
             auto ts_col = std::make_shared<ColumnDef>(column_key.ts_name(0), 0,
                     ::rtidb::type::kTimestamp, true, ts_mapping_[column_key.ts_name(0)]);
@@ -732,6 +718,7 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
         std::vector<std::shared_ptr<IndexDef>> index_vec = { index_def };
         auto inner_index_st = std::make_shared<InnerIndexSt>(inner_id, index_vec);
         table_index_.AddInnerIndex(inner_index_st);
+        table_index_.SetInnerIndexPos(table_meta_.column_key_size() - 1, inner_id);
     }
     index_def->SetStatus(IndexStatus::kReady);
     return true;

@@ -281,6 +281,7 @@ class TableIndex {
     bool IsColName(const std::string& name);
     bool IsUniqueColName(const std::string& name);
     int32_t GetInnerIndexPos(uint32_t column_key_pos) const;
+    void SetInnerIndexPos(uint32_t column_key_pos, uint32_t inner_pos);
     void AddInnerIndex(const std::shared_ptr<InnerIndexSt>& inner_index);
 
  private:
