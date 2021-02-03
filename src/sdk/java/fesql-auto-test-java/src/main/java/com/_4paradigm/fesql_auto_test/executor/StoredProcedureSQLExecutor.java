@@ -65,7 +65,8 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
         String spSql = fesqlCase.getProcedure(sql);
         log.info("spSql: {}", spSql);
         return FesqlUtil.sqlRequestModeWithSp(
-                executor, dbName, fesqlCase.getSpName(), spSql, fesqlCase.getInputs().get(0), isAsyn);
+                executor, dbName, fesqlCase.getSpName(),  null != fesqlCase.getBatch_request(),
+                spSql, fesqlCase.getInputs().get(0), isAsyn);
     }
 
     private FesqlResult executeBatch(String sql, boolean isAsyn) throws SQLException {

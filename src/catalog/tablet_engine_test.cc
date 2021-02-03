@@ -203,6 +203,7 @@ void TabletEngineTest::BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // N
 void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // NOLINT
                                         fesql::vm::EngineOptions options) {
     int32_t input_cnt = sql_case.CountInputs();
+    bool has_batch_request = !sql_case.batch_request_.columns_.empty() || !sql_case.batch_request_.schema_.empty();
 
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
@@ -226,7 +227,7 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
         if (!args) {
             FAIL() << "fail to prepare table";
         }
-        catalog->AddTable(args->meta, args->table);
+        ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
         name_table_map.insert(std::make_pair(table_def.name(), std::make_pair(args, sql_table)));
     }
 
@@ -260,10 +261,13 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
     session.GetClusterJob().Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     std::vector<fesql::codec::Row> request_data;
+    if (has_batch_request) {
+        ASSERT_TRUE(sql_case.ExtractInputData(sql_case.batch_request_, request_data));
+    }
     const std::string &request_name = session.GetRequestName();
     for (int32_t i = 0; i < input_cnt; i++) {
         auto input = sql_case.inputs()[i];
-        if (input.name_ == request_name) {
+        if (!has_batch_request && input.name_ == request_name) {
             ASSERT_TRUE(sql_case.ExtractInputData(request_data, i));
             continue;
         }
@@ -300,9 +304,11 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
         fesql::codec::Row out_row;
         int ret = session.Run(in_row, &out_row);
         ASSERT_EQ(0, ret);
-        LOG(INFO) << "store request row into db"
-                  << ", index size: " << request_sql_table->GetIndexMap().size();
-        StoreData(request_table, request_sql_table, std::vector<fesql::codec::Row>{in_row});
+        if (!has_batch_request) {
+            LOG(INFO) << "insert request row into db"
+                      << ", index size: " << request_sql_table->GetIndexMap().size();
+            StoreData(request_table, request_sql_table, std::vector<fesql::codec::Row>{in_row});
+        }
         output.push_back(out_row);
     }
     CheckRows(schema, SortRows(schema, output, sql_case.expect().order_), case_output_data);
@@ -430,14 +436,6 @@ INSTANTIATE_TEST_SUITE_P(EngineTestErrorWindow, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/error/error_window.yaml")));
 INSTANTIATE_TEST_CASE_P(EngineTestDebugIssues, TabletEngineTest,
                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/debug/issues_case.yaml")));
-
-// myhug 场景正确性验证
-INSTANTIATE_TEST_CASE_P(EngineTestFzMyhug, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/fz_ddl/test_myhug.yaml")));
-
-// luoji 场景正确性验证
-INSTANTIATE_TEST_CASE_P(EngineTestFzLuoji, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/fz_ddl/test_luoji.yaml")));
 
 }  // namespace catalog
 }  // namespace rtidb

@@ -26,22 +26,22 @@ public class FZCaseTest extends FesqlTest {
         return dp.getCases().toArray();
     }
 
-    @Test(dataProvider = "testFZCaseData")
+    @Test(dataProvider = "testFZCaseData", enabled = false)
     public void testFZCaseBatch(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
     }
 
-    @Test(dataProvider = "testFZCaseData")
+    @Test(dataProvider = "testFZCaseData", enabled = false)
     public void testFZCaseRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
     }
 
-    @Test(dataProvider = "testFZCaseData")
+    @Test(dataProvider = "testFZCaseData", enabled = false)
     public void testFZCaseRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
     }
 
-    @Test(dataProvider = "testFZCaseData")
+    @Test(dataProvider = "testFZCaseData", enabled = false)
     public void testFZCaseRequestModeWithSpAsync(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
     }

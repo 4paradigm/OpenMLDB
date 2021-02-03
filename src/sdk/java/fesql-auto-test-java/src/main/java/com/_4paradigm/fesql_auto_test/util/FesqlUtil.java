@@ -173,10 +173,11 @@ public class FesqlUtil {
         return fesqlResult;
     }
 
-    public static FesqlResult sqlRequestMode(SqlExecutor executor, String dbName, String sql, InputDesc input) throws SQLException {
+    public static FesqlResult sqlRequestMode(SqlExecutor executor, String dbName,
+                                             Boolean need_insert_request_row, String sql, InputDesc input) throws SQLException {
         FesqlResult fesqlResult = null;
         if (sql.toLowerCase().startsWith("select")) {
-            fesqlResult = selectRequestModeWithPreparedStatement(executor, dbName, sql, input);
+            fesqlResult = selectRequestModeWithPreparedStatement(executor, dbName, need_insert_request_row, sql, input);
         } else {
             logger.error("unsupport sql: {}", sql);
         }
@@ -196,10 +197,12 @@ public class FesqlUtil {
         return fesqlResult;
     }
 
-    public static FesqlResult sqlRequestModeWithSp(SqlExecutor executor, String dbName, String spName, String sql, InputDesc rows, boolean isAsyn) throws SQLException {
+    public static FesqlResult sqlRequestModeWithSp(SqlExecutor executor, String dbName, String spName,
+                                                   Boolean needInsertRequestRow, String sql,
+                                                   InputDesc rows, boolean isAsyn) throws SQLException {
         FesqlResult fesqlResult = null;
         if (sql.toLowerCase().startsWith("create procedure")) {
-            fesqlResult = selectRequestModeWithSp(executor, dbName, spName, sql, rows, isAsyn);
+            fesqlResult = selectRequestModeWithSp(executor, dbName, spName, needInsertRequestRow, sql, rows, isAsyn);
         } else {
             logger.error("unsupport sql: {}", sql);
         }
@@ -332,6 +335,7 @@ public class FesqlUtil {
 //    }
 
     private static FesqlResult selectRequestModeWithPreparedStatement(SqlExecutor executor, String dbName,
+                                                                      Boolean need_insert_request_row,
                                                                       String selectSql, InputDesc input) {
         if (selectSql.isEmpty()) {
             logger.error("fail to execute sql in request mode: select sql is empty");
@@ -383,7 +387,7 @@ public class FesqlUtil {
                 fesqlResult.setOk(false);
                 return fesqlResult;
             }
-            if (!executor.executeInsert(dbName, inserts.get(i))) {
+            if (need_insert_request_row && !executor.executeInsert(dbName, inserts.get(i))) {
                 log.error("fail to execute sql in request mode: fail to insert request row after query");
                 fesqlResult.setOk(false);
                 return fesqlResult;
@@ -476,7 +480,8 @@ public class FesqlUtil {
     }
 
     private static FesqlResult selectRequestModeWithSp(SqlExecutor executor, String dbName, String spName,
-                String sql, InputDesc input, boolean isAsyn) {
+                                                       Boolean needInsertRequestRow,
+                                                       String sql, InputDesc input, boolean isAsyn) {
         if (sql.isEmpty()) {
             logger.error("fail to execute sql in request mode: select sql is empty");
             return null;
@@ -487,7 +492,7 @@ public class FesqlUtil {
             logger.error("fail to execute sql in request mode: request rows is null or empty");
             return null;
         }
-        List<String> inserts = input.extractInserts();
+        List<String> inserts = needInsertRequestRow ? input.extractInserts() : Lists.newArrayList();
         if (CollectionUtils.isEmpty(inserts)) {
             logger.error("fail to execute sql in request mode: fail to build insert sql for request rows");
             return null;
@@ -529,7 +534,7 @@ public class FesqlUtil {
                     return fesqlResult;
                 }
                 result.addAll(convertRestultSetToList((SQLResultSet) resultSet));
-                if (!executor.executeInsert(dbName, inserts.get(i))) {
+                if (needInsertRequestRow && !executor.executeInsert(dbName, inserts.get(i))) {
                     log.error("fail to execute sql in request mode: fail to insert request row after query");
                     fesqlResult.setOk(false);
                     return fesqlResult;
@@ -562,7 +567,7 @@ public class FesqlUtil {
     }
 
     public static FesqlResult selectBatchRequestModeWithSp(SqlExecutor executor, String dbName, String spName,
-                                                            String sql, InputDesc input, boolean isAsyn) {
+                                                           String sql, InputDesc input, boolean isAsyn) {
         if (sql.isEmpty()) {
             logger.error("fail to execute sql in batch request mode: select sql is empty");
             return null;
@@ -813,11 +818,11 @@ public class FesqlUtil {
                 requestPs.setTimestamp(i + 1, new Timestamp(Long.parseLong(obj.toString())));
             } else if (columnType == Types.DATE) {
                 if (obj instanceof java.util.Date) {
-                    requestPs.setDate(i+1, new Date(((java.util.Date) obj).getTime()));
-                } else if(obj instanceof Date) {
-                    requestPs.setDate(i + 1, (Date)(obj));
+                    requestPs.setDate(i + 1, new Date(((java.util.Date) obj).getTime()));
+                } else if (obj instanceof Date) {
+                    requestPs.setDate(i + 1, (Date) (obj));
                 } else if (obj instanceof DateTime) {
-                    requestPs.setDate(i+1, new Date(((DateTime) obj).getMillis()));
+                    requestPs.setDate(i + 1, new Date(((DateTime) obj).getMillis()));
                 } else {
                     try {
                         Date date = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(obj.toString() + " 00:00:00").getTime());
@@ -850,7 +855,7 @@ public class FesqlUtil {
     }
 
     private static java.sql.ResultSet buildRequestPreparedStatmentAsync(CallablePreparedStatement requestPs,
-                                                                   List<Object> objects) throws SQLException {
+                                                                        List<Object> objects) throws SQLException {
         boolean success = setRequestData(requestPs, objects);
         if (success) {
             com._4paradigm.sql.sdk.QueryFuture future = requestPs.executeQueryAsync(100, TimeUnit.MILLISECONDS);
