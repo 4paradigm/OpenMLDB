@@ -42,6 +42,7 @@ object JoinPlan {
 
     // Check if we can use native last join
     val supportNativeLastJoin = SparkUtil.supportNativeLastJoin(joinType, hasOrderby)
+    logger.info("Enable native last join or not: " + ctx.getConf.enableNativeLastJoin)
 
     val indexName = "__JOIN_INDEX__-" + System.currentTimeMillis()
 
