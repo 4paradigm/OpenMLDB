@@ -548,7 +548,6 @@ int TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
     if (!multi_indexs->empty()) {
         return AddMultiTsIndex(multi_indexs->size(), index_def);
     }
-
     auto old_indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
     if (old_indexs->size() >= MAX_INDEX_NUM) {
         return -1;
@@ -601,6 +600,18 @@ uint32_t TableIndex::Size() const {
     }
     auto indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
     return indexs->size();
+}
+
+int32_t TableIndex::GetMaxIndexId() const {
+    auto multi_indexs = std::atomic_load_explicit(&multi_ts_indexs_, std::memory_order_relaxed);
+    if (!multi_indexs->empty()) {
+        return multi_indexs->back().front()->GetId();
+    }
+    auto indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
+    if (!indexs->empty()) {
+        return indexs->back()->GetId();
+    }
+    return -1;
 }
 
 bool TableIndex::HasAutoGen() {

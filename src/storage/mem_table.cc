@@ -674,7 +674,7 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
                         inner_id, j, FLAGS_absolute_default_skiplist_height, id_, pid_);
             }
         }
-        index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.Size());
+        index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.GetMaxIndexId() + 1);
         if (table_index_.AddIndex(index_def) < 0) {
             PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
             return false;

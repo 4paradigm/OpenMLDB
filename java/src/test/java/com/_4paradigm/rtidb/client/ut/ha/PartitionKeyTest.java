@@ -525,14 +525,14 @@ public class PartitionKeyTest extends TestCaseBase {
                 scanMap.put(col, col + String.valueOf(1));
                 keyRow[idx++] = col + String.valueOf(1);
             }
-            KvIterator it = tableSyncClient.scan(name, scanMap, indexName, 0, 0, "col5", 0);
+            KvIterator it = tableSyncClient.scan(name, scanMap, indexName, 0, 0, "", 0);
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 5);
             Object[] value = it.getDecodedValue();
             Assert.assertEquals(value[0], "col11");
             Assert.assertEquals(value[1], "col21");
 
-            Object[] row = tableSyncClient.getRow(name, scanMap, indexName, 0, "col5", Tablet.GetType.kSubKeyEq);
+            Object[] row = tableSyncClient.getRow(name, scanMap, indexName, 0, "", Tablet.GetType.kSubKeyEq);
             Assert.assertEquals(row.length, 5);
             Assert.assertEquals(row[0], "col11");
             Assert.assertEquals(row[1], "col21");
@@ -544,10 +544,10 @@ public class PartitionKeyTest extends TestCaseBase {
                 count++;
             }
             Assert.assertEquals(50, count);
-            Assert.assertEquals(5, tableSyncClient.count(name, scanMap, indexName, "col5", true));
+            Assert.assertEquals(5, tableSyncClient.count(name, scanMap, indexName, "", true));
             String key = TableClientCommon.getCombinedKey(keyRow, true);
             tableSyncClient.delete(name, key, indexName);
-            Assert.assertEquals(0, tableSyncClient.count(name, scanMap, indexName, "col5", true));
+            Assert.assertEquals(0, tableSyncClient.count(name, scanMap, indexName, "", true));
             it = tableSyncClient.traverse(name);
             count = 0;
             while(it.valid()) {
@@ -613,18 +613,18 @@ public class PartitionKeyTest extends TestCaseBase {
                     indexName += col;
                     scanMap.put(col, col + String.valueOf(1));
                 }
-                KvIterator it = tableSyncClient.scan(name, scanMap, indexName, 0, 0, "col5", 0);
+                KvIterator it = tableSyncClient.scan(name, scanMap, indexName, 0, 0, "", 0);
                 Assert.assertTrue(it.valid());
                 Assert.assertTrue(it.getCount() == 5);
                 Object[] value = it.getDecodedValue();
                 Assert.assertEquals(value[0], "col11");
                 Assert.assertEquals(value[1], "col21");
 
-                Object[] row = tableSyncClient.getRow(name, scanMap, indexName, 0, "col5", Tablet.GetType.kSubKeyEq);
+                Object[] row = tableSyncClient.getRow(name, scanMap, indexName, 0, "", Tablet.GetType.kSubKeyEq);
                 Assert.assertEquals(row.length, 5);
                 Assert.assertEquals(row[0], "col11");
                 Assert.assertEquals(row[1], "col21");
-                Assert.assertEquals(5, tableSyncClient.count(name, scanMap, indexName, "col5", true));
+                Assert.assertEquals(5, tableSyncClient.count(name, scanMap, indexName, "", true));
             }
 
             Map<String, Object> scanMap = new HashMap<>();
@@ -646,7 +646,7 @@ public class PartitionKeyTest extends TestCaseBase {
             Assert.assertEquals(50, count);
             String key = TableClientCommon.getCombinedKey(keyRow, true);
             tableSyncClient.delete(name, key, indexName);
-            Assert.assertEquals(0, tableSyncClient.count(name, scanMap, indexName, "col5", true));
+            Assert.assertEquals(0, tableSyncClient.count(name, scanMap, indexName, "", true));
             it = tableSyncClient.traverse(name);
             count = 0;
             while(it.valid()) {

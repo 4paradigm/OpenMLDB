@@ -275,6 +275,7 @@ class TableIndex {
     std::shared_ptr<std::vector<std::shared_ptr<InnerIndexSt>>> GetAllInnerIndex() const;
     std::shared_ptr<InnerIndexSt> GetInnerIndex(uint32_t idx) const;
     uint32_t Size() const;
+    int32_t GetMaxIndexId() const;
     bool HasAutoGen();
     std::shared_ptr<IndexDef> GetPkIndex();
     const std::shared_ptr<IndexDef> GetIndexByCombineStr(const std::string& combine_str);
