@@ -158,7 +158,7 @@ cases:
         1.000000, 2.000000, 3.000000, 4.000000,
         33.000000, 1.000000, 2.000000, 404.000000, 3.000000,
         NULL, NULL, NULL, NULL, 1, 1, 101, 101, 101, 101, 101,
-        reqId2, NULL, reqId2, 1.000000, 1.000000 ]
+        reqId2, NULL, reqId2, -inf, nan ]
     - [ NULL, NULL, 1609894068191, uUserIdNull, zUserIdNull, uSexNull, zSexNull, zChannelNull, uPlayGameNull, uHasJoinedGroupNull,
         1.000000, 2.000000, 3.000000, 4.000000,
         33.000000, 1.000000, 2.000000, 404.000000, 3.000000,
@@ -214,7 +214,6 @@ cases:
         - [ 1609894067191, zUserId1, uUserId1, 1609894067191, 1.0 ]
         - [ 1609894067191, zUserId2, uUserId2, 1609894067191, 1.0 ]
         - [ 1609894067191, NULL, NULL, 1609894067191, 1.0 ]
-
   sql: |-
     select * from
     (
@@ -261,7 +260,6 @@ cases:
         "uWatchEvening double",
         "uWatchAvgLength double",
         "zSWihsperNum double" ]
-
     indexs: [
         "index1:uUserId:eventTime",
         "index2:zChannel:eventTime",
@@ -272,7 +270,6 @@ cases:
         "index1:zUserId|uUserId:eventTime",
         "index1:uUserId:eventTime",
         "index1:uUserId:eventTime" ]
-
     name: flattenRequest
     rows:
       # pure history window is empty: rows out of time range
@@ -281,8 +278,7 @@ cases:
       - [reqId2, 1609894068191, uUserId2, zUserId2, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2, 1.0, 2.0, 3.0, 4.0]
       # last join key is NULL
       - [NULL, 1609894068191, uUserIdNull, zUserIdNull, uSexNull, zSexNull, zChannelNull, uPlayGameNull, uHasJoinedGroupNull, 1.0, 2.0, 3.0, 4.0]
-      # TODO(chenjing,denglong): combine key with one NULL and one non-Null
-      #- [reqId2, 1609894068191, uUserId2, NULL, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2, 1.0, 2.0, 3.0, 4.0]
+      - [reqId2, 1609894068191, uUserId2, NULL, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2, 1.0, 2.0, 3.0, 4.0]
       - [reqId2, 1609894068191, NULL, NULL, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2, 1.0, 2.0, 3.0, 4.0]
   expect:
     schema: reqId_1:string, reqId_74:string, action_actionValue_multi_direct_73:double, reqId_75:string, bo_hislabel_fWatchedTimeLen_multi_sum_73:double, bo_hislabel_fWatchedTimeLen_multi_max_74:double, bo_hislabel_fWatchedTimeLen_multi_avg_75:double
@@ -290,5 +286,5 @@ cases:
       - [ reqId1, reqId1, 1.1, reqId1, 0.0, -inf, nan ] # should be -inf -> NULL, nan -> NULL
       - [ reqId2, reqId2, NULL, reqId2, 100.0, 1.0, 1.0 ]
       - [ NULL, NULL, 3.3, NULL, 0.0, -inf, nan]
-      #- [ reqId2, reqId2, NULL, reqId2, 0.0, -inf, nan ] # should be -inf -> NULL, nan -> NULL
+      - [ reqId2, reqId2, NULL, reqId2, 0.0, -inf, nan ] # should be -inf -> NULL, nan -> NULL
       - [ reqId2, reqId2, NULL, reqId2, 100.0, 1.0, 1.0 ]

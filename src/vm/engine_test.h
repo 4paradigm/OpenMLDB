@@ -153,7 +153,7 @@ void PrintYamlResult(const vm::Schema& schema, const std::vector<Row>& rows) {
 
 void PrintYamlV1Result(const vm::Schema& schema, const std::vector<Row>& rows) {
     std::ostringstream oss;
-    oss << "print schema\n[";
+    oss << "columns:\n[";
     for (int i = 0; i < schema.size(); i++) {
         auto col = schema.Get(i);
         oss << "\"" << col.name() << " " << YamlTypeName(col.type()) << "\"";
@@ -161,7 +161,7 @@ void PrintYamlV1Result(const vm::Schema& schema, const std::vector<Row>& rows) {
             oss << ", ";
         }
     }
-    oss << "]\nprint rows\n";
+    oss << "]\nrows:\n";
     RowView row_view(schema);
     for (auto row : rows) {
         row_view.Reset(row.buf());
