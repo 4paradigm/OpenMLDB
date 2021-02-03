@@ -45,7 +45,7 @@ std::vector<fesql::sqlcase::SQLCase> SQLCaseTest::InitCases(const std::string &y
 
     int skip_case_cnt = 0;
     std::set<std::string> levels = fesql::sqlcase::SQLCase::FESQL_LEVEL();
-    for (const auto& sql_case : cases) {
+    for (const auto &sql_case : cases) {
         if (levels.find(std::to_string(sql_case.level())) != levels.cend()) {
             level_cases.push_back(sql_case);
         } else {
@@ -53,7 +53,7 @@ std::vector<fesql::sqlcase::SQLCase> SQLCaseTest::InitCases(const std::string &y
         }
     }
     if (skip_case_cnt > 0) {
-        LOG(INFO) << "InitCases done: FESQL_LEVEL skip cases cnt: " << skip_case_cnt;
+        DLOG(INFO) << "InitCases done: FESQL_LEVEL skip cases cnt: " << skip_case_cnt;
     }
     return level_cases;
 }
@@ -259,6 +259,54 @@ const std::vector<fesql::codec::Row> SQLCaseTest::SortRows(const fesql::vm::Sche
         return output_rows;
     }
 }
+
+void SQLCaseTest::PrintResultSetYamlFormat(std::shared_ptr<fesql::sdk::ResultSet> rs) {
+    PrintResultSetYamlFormat(std::vector<std::shared_ptr<fesql::sdk::ResultSet>>({rs}));
+}
+void SQLCaseTest::PrintResultSetYamlFormat(std::vector<std::shared_ptr<fesql::sdk::ResultSet>> results) {
+    std::ostringstream oss;
+    if (results.empty()) {
+        LOG(INFO) << "EMPTY results";
+    }
+
+    auto schema = results[0] ? results[0]->GetSchema() : nullptr;
+
+    if (nullptr == schema) {
+        LOG(INFO) << "NULL Schema";
+        return;
+    }
+    LOG(INFO) << "\n" << oss.str() << "\n";
+    oss << "columns:\n[";
+    for (int i = 0; i < schema->GetColumnCnt(); i++) {
+        oss << "\"" << schema->GetColumnName(i) << " " << DataTypeName(schema->GetColumnType(i)) << "\"";
+        if (i + 1 != schema->GetColumnCnt()) {
+            oss << ", ";
+        }
+    }
+
+    oss << "\nrows:\n";
+    for (auto rs : results) {
+        rs->Reset();
+        while (rs->Next()) {
+            oss << "- [";
+            for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {
+                std::string str = rs->GetAsString(idx);
+                auto col = schema->GetColumnName(idx);
+                auto type = schema->GetColumnType(idx);
+                if (DataTypeName(type) == "string" || DataTypeName(type) == "date") {
+                    oss << "\"" << str << "\"";
+                } else {
+                    oss << str;
+                }
+                if (idx + 1 != schema->GetColumnCnt()) {
+                    oss << ", ";
+                }
+            }
+            oss << "]\n";
+        }
+    }
+    LOG(INFO) << "\n" << oss.str() << "\n";
+}
 void SQLCaseTest::PrintResultSet(std::shared_ptr<fesql::sdk::ResultSet> rs) {
     std::ostringstream oss;
     ::fesql::base::TextTable t('-', '|', '+');
@@ -343,6 +391,7 @@ void SQLCaseTest::CheckRow(fesql::codec::RowView &row_view,  // NOLINT
                            std::shared_ptr<fesql::sdk::ResultSet> rs) {
     for (int i = 0; i < row_view.GetSchema()->size(); i++) {
         DLOG(INFO) << "Check Column Idx: " << i;
+        std::string column_name = row_view.GetSchema()->Get(i).name();
         if (row_view.IsNULL(i)) {
             ASSERT_TRUE(rs->IsNULL(i)) << " At " << i;
             continue;
@@ -374,9 +423,9 @@ void SQLCaseTest::CheckRow(fesql::codec::RowView &row_view,  // NOLINT
                 double act = row_view.GetDoubleUnsafe(i);
                 double exp = rs->GetDoubleUnsafe(i);
                 if (IsNaN(exp)) {
-                    ASSERT_TRUE(IsNaN(act)) << " At " << i;
+                    ASSERT_TRUE(IsNaN(act)) << " At " << i << ":" << column_name;
                 } else {
-                    ASSERT_DOUBLE_EQ(act, exp) << " At " << i;
+                    ASSERT_DOUBLE_EQ(act, exp) << " At " << i << ":" << column_name;
                 }
 
                 break;
@@ -410,6 +459,9 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::string &
     PrintRows(schema, rows);
     LOG(INFO) << "ResultSet Rows: \n";
     PrintResultSet(rs);
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        PrintResultSetYamlFormat(rs);
+    }
     LOG(INFO) << "order: " << order_col;
 
     ASSERT_EQ(static_cast<int32_t>(rows.size()), rs->Size());
@@ -439,9 +491,8 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::string &
             std::string key = rs->GetAsString(order_idx);
             LOG(INFO) << "key : " << key;
             ASSERT_TRUE(rows_map.find(key) != rows_map.cend())
-                <<"CheckRows fail: row[" << index << "] order not expected";
-            ASSERT_FALSE(rows_map[key].second) <<
-                "CheckRows fail: row[" << index << "] duplicate key";
+                << "CheckRows fail: row[" << index << "] order not expected";
+            ASSERT_FALSE(rows_map[key].second) << "CheckRows fail: row[" << index << "] duplicate key";
             row_view.Reset(rows_map[key].first.buf());
             CheckRow(row_view, rs);
             rows_map[key].second = true;
@@ -534,6 +585,9 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::string &
     PrintRows(schema, rows);
     LOG(INFO) << "ResultSet Rows: \n";
     PrintResultSet(results);
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        PrintResultSetYamlFormat(results);
+    }
     LOG(INFO) << "order col key: " << order_col;
     fesql::codec::RowView row_view(schema);
     int order_idx = -1;

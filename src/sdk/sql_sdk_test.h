@@ -102,7 +102,7 @@ class SQLSDKQueryTest : public SQLSDKTest {
 
     static void BatchRequestExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                                        std::shared_ptr<SQLRouter> router, bool has_batch_request,
-                                       bool is_procedure = false, bool is_asyn = false);
+                                       bool is_procedure, bool is_asy);
     static void BatchRequestExecuteSQLWithCommonColumnIndices(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                                                               std::shared_ptr<SQLRouter> router,
                                                               const std::set<size_t>& common_column_indices,
@@ -700,7 +700,7 @@ void SQLSDKQueryTest::RunBatchRequestModeSDK(fesql::sqlcase::SQLCase& sql_case, 
     CreateTables(sql_case, router);
     bool has_batch_request = !sql_case.batch_request().columns_.empty();
     InsertTables(sql_case, router, has_batch_request ? kInsertAllInputs : kNotInsertLastRowOfFirstInput);
-    BatchRequestExecuteSQL(sql_case, router, has_batch_request);
+    BatchRequestExecuteSQL(sql_case, router, has_batch_request, false, false);
     DropTables(sql_case, router);
     LOG(INFO) << "BatchRequestExecuteSQL ID: " << sql_case.id() << ", DESC: " << sql_case.desc() << " done!";
 }
@@ -712,7 +712,7 @@ void SQLSDKQueryTest::DistributeRunBatchRequestModeSDK(fesql::sqlcase::SQLCase& 
     CreateTables(sql_case, router, partition_num);
     bool has_batch_request = !sql_case.batch_request().columns_.empty();
     InsertTables(sql_case, router, has_batch_request ? kInsertAllInputs : kNotInsertLastRowOfFirstInput);
-    BatchRequestExecuteSQL(sql_case, router, has_batch_request, has_batch_request);
+    BatchRequestExecuteSQL(sql_case, router, has_batch_request, false, false);
 
     DropTables(sql_case, router);
     LOG(INFO) << "DistributeRunBatchRequestExecuteSQL ID: " << sql_case.id() << ", DESC: " << sql_case.desc()

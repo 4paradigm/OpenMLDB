@@ -493,14 +493,15 @@ public class FesqlUtil {
             return null;
         }
         List<String> inserts = needInsertRequestRow ? input.extractInserts() : Lists.newArrayList();
-        if (CollectionUtils.isEmpty(inserts)) {
-            logger.error("fail to execute sql in request mode: fail to build insert sql for request rows");
-            return null;
-        }
-
-        if (rows.size() != inserts.size()) {
-            logger.error("fail to execute sql in request mode: rows size isn't match with inserts size");
-            return null;
+        if (needInsertRequestRow){
+            if (CollectionUtils.isEmpty(inserts)) {
+                logger.error("fail to execute sql in request mode: fail to build insert sql for request rows");
+                return null;
+            }
+            if (rows.size() != inserts.size()) {
+                logger.error("fail to execute sql in request mode: rows size isn't match with inserts size");
+                return null;
+            }
         }
 
         log.info("procedure sql:{}", sql);

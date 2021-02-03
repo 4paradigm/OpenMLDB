@@ -30,7 +30,7 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
     protected void prepare() throws Exception {
         boolean dbOk = executor.createDB(dbName);
         log.info("create db:{},{}", dbName, dbOk);
-        boolean useFirstInputAsRequests = !isBatchRequest;
+        boolean useFirstInputAsRequests = !isBatchRequest && null == fesqlCase.getBatch_request();
         FesqlResult res = FesqlUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), useFirstInputAsRequests);
         if (!res.isOk()) {
             throw new RuntimeException("fail to run SQLExecutor: prepare fail");
@@ -107,7 +107,7 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
                     log.error("fail to execute in request query sql executor: sql case request columns is empty");
                     return null;
                 }
-                fesqlResult = FesqlUtil.sqlRequestMode(executor, dbName, null != fesqlCase.getBatch_request(), sql, request);
+                fesqlResult = FesqlUtil.sqlRequestMode(executor, dbName, null == fesqlCase.getBatch_request(), sql, request);
             }
         }
         return fesqlResult;
