@@ -49,7 +49,7 @@ object JoinPlan {
       if (joinType == JoinType.kJoinTypeLeft) {
         left.getDf()
       } else {
-        if (supportNativeLastJoin) {
+        if (supportNativeLastJoin && ctx.getConf.enableNativeLastJoin) {
           left.getDf()
         } else {
           // Add index column for original last join, not used in native last join
@@ -76,7 +76,7 @@ object JoinPlan {
 
     val indexColIdx = if (joinType == JoinType.kJoinTypeLast) {
       leftDf.schema.size - 1
-    } else if (supportNativeLastJoin) {
+    } else if (supportNativeLastJoin && ctx.getConf.enableNativeLastJoin) {
       leftDf.schema.size - 1
     } else {
       leftDf.schema.size
@@ -163,7 +163,7 @@ object JoinPlan {
           }(RowEncoder(joined.schema))
         distinct.drop(indexName)
       } else {
-        if (supportNativeLastJoin) {
+        if (supportNativeLastJoin && ctx.getConf.enableNativeLastJoin) {
           leftDf.join(rightDf, joinConditions.reduce(_ && _),  "last")
         } else {
           joined.dropDuplicates(indexName).drop(indexName)
