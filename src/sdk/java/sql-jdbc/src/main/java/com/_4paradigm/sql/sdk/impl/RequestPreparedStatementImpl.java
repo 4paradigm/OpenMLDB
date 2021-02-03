@@ -27,6 +27,7 @@ public class RequestPreparedStatementImpl extends RequestPreparedStatement {
             }
             throw new SQLException("get GetRequestRow fail " + msg + " in construction preparedstatement");
         }
+        status.delete();
         this.currentSchema = this.currentRow.GetSchema();
         int cnt = this.currentSchema.GetColumnCnt();
         this.currentDatas = new ArrayList<>(cnt);
