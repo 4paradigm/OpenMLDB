@@ -1,11 +1,7 @@
 package com._4paradigm.fesql_auto_test.performance;
 
 import com._4paradigm.sql.jdbc.CallablePreparedStatement;
-import com._4paradigm.sql.sdk.QueryFuture;
-import com._4paradigm.sql.sdk.SdkOption;
-import com._4paradigm.sql.sdk.SqlException;
-import com._4paradigm.sql.sdk.SqlExecutor;
-import com._4paradigm.sql.sdk.impl.CallablePreparedStatementImpl;
+import com._4paradigm.sql.sdk.*;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +24,7 @@ public class StorageProcedureExample extends BaseExample {
             "                   index(key=c1, ts=c7));";
     String sql = "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     private SqlExecutor sqlExecutor = null;
-    private String db = "test_db";
+    private String db = "mydb01";
     private String spName = "sp";
     private String dropDdl = "drop table trans;";
 
@@ -37,10 +33,11 @@ public class StorageProcedureExample extends BaseExample {
         option.setZkCluster(zkCluster);
         option.setZkPath(zkPath);
         option.setSessionTimeout(10000);
+        option.setRequestTimeout(60000);
         sqlExecutor = new SqlClusterExecutor(option);
     }
 
-    public void initDDL() throws Exception {
+    public void initDDL() {
         sqlExecutor.dropDB(db);
         sqlExecutor.createDB(db);
         sqlExecutor.executeDDL(db, dropDdl);
@@ -65,6 +62,7 @@ public class StorageProcedureExample extends BaseExample {
                 " begin " + sql + " end;";
         boolean ok = sqlExecutor.executeDDL(db, spSql);
         Assert.assertTrue(ok);
+        sqlExecutor.showProcedure(db, spName);
     }
 
     public void callProcedureWithPstms() throws Exception {
@@ -131,7 +129,7 @@ public class StorageProcedureExample extends BaseExample {
                 return false;
             }
         }
-        return false;
+        return true;
     }
 
     public static void run() {

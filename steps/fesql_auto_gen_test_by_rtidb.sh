@@ -15,8 +15,11 @@ ulimit -c unlimited
 python3 -m pip install numpy -i https://pypi.tuna.tsinghua.edu.cn/simple
 python3 -m pip install PyYaml -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-python3 fesql/tools/autotest/gen_case_yaml_main.py  \
-    --udf_path=fesql/tools/autotest/udf_defs.yaml --yaml_count=1
+#python3 fesql/tools/autotest/gen_case_yaml_main.py  \
+#    --udf_path=fesql/tools/autotest/udf_defs.yaml --yaml_count=1
+cd fesql
+sh tools/gen_auto_case.sh
+cd ..
 
 sh steps/gen_code.sh
 sh tools/install_fesql.sh

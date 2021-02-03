@@ -18,6 +18,9 @@ public class FesqlConfig {
     public static final String ZK_CLUSTER;
     public static final String ZK_ROOT_PATH;
     public static final List<Integer> levels;
+    public static final String TB_ENDPOINT_0;
+    public static final String TB_ENDPOINT_1;
+    public static final String TB_ENDPOINT_2;
 
     public static final Properties CONFIG = Tool.getProperties("fesql.properties");
 
@@ -29,6 +32,9 @@ public class FesqlConfig {
         levelStr = StringUtils.isEmpty(levelStr) ? "0" : levelStr;
         levels = Arrays.stream(levelStr.split(",")).map(Integer::parseInt).collect(Collectors.toList());
         log.info("FesqlConfig: levels: {}", levels);
+        TB_ENDPOINT_0 = CONFIG.getProperty(FesqlGlobalVar.env+"_tb_endpoint_0");
+        TB_ENDPOINT_1 = CONFIG.getProperty(FesqlGlobalVar.env+"_tb_endpoint_1");
+        TB_ENDPOINT_2 = CONFIG.getProperty(FesqlGlobalVar.env+"_tb_endpoint_2");
     }
     public static boolean isCluster() {
         return FesqlGlobalVar.env.equals("cluster");
