@@ -368,7 +368,6 @@ class DiskTable : public Table {
     void SchedGc() override;
 
     void GcHead();
-    // void GcTTL();
     void GcTTLAndHead();
     void GcTTLOrHead();
 

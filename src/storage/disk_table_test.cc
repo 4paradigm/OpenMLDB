@@ -1113,59 +1113,6 @@ TEST_F(DiskTableTest, GcHead) {
     RemoveData(path);
 }
 
-/*TEST_F(DiskTableTest, GcTTL) {
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* table = new DiskTable(
-        "t1", 14, 1, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
-        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
-    ASSERT_TRUE(table->Init());
-    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    for (int idx = 0; idx < 100; idx++) {
-        std::string key = "test" + std::to_string(idx);
-        uint64_t ts = cur_time;
-        for (int k = 0; k < 5; k++) {
-            if (k > 2) {
-                ASSERT_TRUE(
-                    table->Put(key, ts - k - 10 * 60 * 1000, "value9", 6));
-            } else {
-                ASSERT_TRUE(table->Put(key, ts - k, "value", 5));
-            }
-        }
-    }
-    for (int idx = 0; idx < 100; idx++) {
-        std::string key = "test" + std::to_string(idx);
-        uint64_t ts = cur_time;
-        for (int k = 0; k < 5; k++) {
-            std::string value;
-            if (k > 2) {
-                ASSERT_TRUE(table->Get(key, ts - k - 10 * 60 * 1000, value));
-                ASSERT_EQ("value9", value);
-            } else {
-                ASSERT_TRUE(table->Get(key, ts - k, value));
-                ASSERT_EQ("value", value);
-            }
-        }
-    }
-    table->GcTTL();
-    for (int idx = 0; idx < 100; idx++) {
-        std::string key = "test" + std::to_string(idx);
-        uint64_t ts = cur_time;
-        for (int k = 0; k < 5; k++) {
-            std::string value;
-            if (k > 2) {
-                ASSERT_FALSE(table->Get(key, ts - k - 10 * 60 * 1000, value));
-            } else {
-                ASSERT_TRUE(table->Get(key, ts - k, value));
-                ASSERT_EQ("value", value);
-            }
-        }
-    }
-    delete table;
-    std::string path = FLAGS_hdd_root_path + "/14_1";
-    RemoveData(path);
-}*/
-
 TEST_F(DiskTableTest, CheckPoint) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));

@@ -432,55 +432,6 @@ void DiskTable::SchedGc() {
     UpdateTTL();
 }
 
-/*void DiskTable::GcTTL() {
-    uint64_t start_time = ::baidu::common::timer::get_micros() / 1000;
-    uint64_t expire_time = GetExpireTime();
-    if (expire_time < 1) {
-        return;
-    }
-    for (auto cf_hs : cf_hs_) {
-        rocksdb::ReadOptions ro = rocksdb::ReadOptions();
-        const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
-        ro.snapshot = snapshot;
-        // ro.prefix_same_as_start = true;
-        ro.pin_data = true;
-        rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs);
-        it->SeekToFirst();
-        std::string last_pk;
-        while (it->Valid()) {
-            std::string cur_pk;
-            uint64_t ts = 0;
-            ParseKeyAndTs(it->key(), cur_pk, ts);
-            if (cur_pk == last_pk) {
-                if (ts == 0 || ts >= expire_time) {
-                    it->Next();
-                    continue;
-                } else {
-                    std::string combine_key1 = CombineKeyTs(cur_pk, ts);
-                    std::string combine_key2 = CombineKeyTs(cur_pk, 0);
-                    rocksdb::Status s = db_->DeleteRange(
-                        write_opts_, cf_hs, rocksdb::Slice(combine_key1),
-                        rocksdb::Slice(combine_key2));
-                    if (!s.ok()) {
-                        PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s",
-                              id_, pid_, s.ToString().c_str());
-                    }
-                    it->Seek(rocksdb::Slice(combine_key2));
-                }
-            } else {
-                last_pk = cur_pk;
-                it->Next();
-            }
-        }
-        delete it;
-        db_->ReleaseSnapshot(snapshot);
-    }
-    uint64_t time_used =
-        ::baidu::common::timer::get_micros() / 1000 - start_time;
-    PDLOG(INFO, "Gc used %lu second. tid %u pid %u", time_used / 1000, id_,
-          pid_);
-}*/
-
 void DiskTable::GcHead() {
     uint64_t start_time = ::baidu::common::timer::get_micros() / 1000;
     auto inner_indexs = table_index_.GetAllInnerIndex();

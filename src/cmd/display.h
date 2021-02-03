@@ -291,17 +291,29 @@ __attribute__((unused)) static void PrintColumnKey(
                     std::vector<std::string> row_copy = row;
                     row_copy[0] = std::to_string(idx);
                     row_copy.push_back(ts_name);
-                    if (ttl_map.find(ts_name) != ttl_map.end()) {
-                        row_copy.push_back(ttl_map[ts_name].ToString());
+                    if (column_key.has_ttl()) {
+                        ::rtidb::storage::TTLSt cur_ttl_st(column_key.ttl());
+                        cur_ttl_st.abs_ttl = cur_ttl_st.abs_ttl / (60 * 1000);
+                        row_copy.push_back(cur_ttl_st.ToString());
                     } else {
-                        row_copy.push_back(ttl_st.ToString());
+                        if (ttl_map.find(ts_name) != ttl_map.end()) {
+                            row_copy.push_back(ttl_map[ts_name].ToString());
+                        } else {
+                            row_copy.push_back(ttl_st.ToString());
+                        }
                     }
                     tp.AddRow(row_copy);
                     idx++;
                 }
             } else {
                 row.push_back("-");
-                row.push_back(ttl_st.ToString());
+                if (column_key.has_ttl()) {
+                    ::rtidb::storage::TTLSt cur_ttl_st(column_key.ttl());
+                    cur_ttl_st.abs_ttl = cur_ttl_st.abs_ttl / (60 * 1000);
+                    row.push_back(cur_ttl_st.ToString());
+                } else {
+                    row.push_back(ttl_st.ToString());
+                }
                 tp.AddRow(row);
                 idx++;
             }
