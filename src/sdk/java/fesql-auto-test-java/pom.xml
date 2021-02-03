@@ -13,7 +13,7 @@
 
     <properties>
         <sql.version>2.1.0.0-SNAPSHOT</sql.version>
-        <fesql.version>0.0.2-RELEASE</fesql.version>
+        <fesql.version>0.0.1-SNAPSHOT</fesql.version>
         <suiteXmlFile>test_suite/test_v1.xml</suiteXmlFile>
         <aspectj.version>1.8.9</aspectj.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -143,6 +143,22 @@
             <artifactId>allure-testng-adaptor</artifactId>
             <version>1.5.4</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi</artifactId>
+            <version>3.17</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>3.17</version>
+        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>org.apache.poi</groupId>-->
+            <!--<artifactId>poi-ooxml-schemas</artifactId>-->
+            <!--<version>3.17</version>-->
+        <!--</dependency>-->
+
 
     </dependencies>
 
@@ -202,6 +218,10 @@
                         <property>
                             <name>caseDesc</name>
                             <value>${caseDesc}</value>
+                        </property>
+                        <property>
+                            <name>caseLevel</name>
+                            <value>${caseLevel}</value>
                         </property>
                     </systemProperties>
                 </configuration>
