@@ -101,8 +101,8 @@ class SQLSDKQueryTest : public SQLSDKTest {
                                               std::shared_ptr<SQLRouter> router, int32_t partition_num, bool is_asyn);
 
     static void BatchRequestExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                                       std::shared_ptr<SQLRouter> router, bool has_batch_request,
-                                       bool is_procedure, bool is_asy);
+                                       std::shared_ptr<SQLRouter> router, bool has_batch_request, bool is_procedure,
+                                       bool is_asy);
     static void BatchRequestExecuteSQLWithCommonColumnIndices(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                                                               std::shared_ptr<SQLRouter> router,
                                                               const std::set<size_t>& common_column_indices,
