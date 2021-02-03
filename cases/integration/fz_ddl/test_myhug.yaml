@@ -17,14 +17,6 @@ cases:
           "index5:uPlayGame:eventTime",
           "index6:uHasJoinedGroup:eventTime",
           "index7:zUserId|uUserId:eventTime" ]
-#      indexs: [
-#          "index1:uUserId:eventTime:2881m:absolute",
-#          "index2:zChannel:eventTime:2881m:absolute",
-#          "index3:uSex:eventTime:2881m:absolute",
-#          "index4:zUserId:eventTime:2881m:absolute",
-#          "index5:uPlayGame:eventTime:2881m:absolute",
-#          "index6:uHasJoinedGroup:eventTime:2881m:absolute",
-#          "index7:zUserId|uUserId:eventTime:2881m:absolute" ]
       repeat: 100
       name: flattenRequest
       rows:
@@ -36,7 +28,6 @@ cases:
         "eventTime timestamp",
         "ingestionTime timestamp",
         "actionValue double"]
-#      indexs: ["index1:reqId:null:1:latest"]
       indexs: ["index1:reqId:eventTime"]
       name: action
       rows:
@@ -47,7 +38,6 @@ cases:
                  "uUserId string",
                  "nRequestTime timestamp",
                  "fWatchedTimeLen double" ]
-#      indexs: [ "index1:zUserId|uUserId:ingestionTime:2881m:absolute" ]
       indexs: [ "index1:zUserId|uUserId:ingestionTime" ]
       name: bo_hislabel
       rows:
@@ -207,7 +197,6 @@ cases:
         "eventTime timestamp",
         "ingestionTime timestamp",
         "actionValue double"]
-#      indexs: ["index1:reqId:null:1:latest"]
       indexs: ["index1:reqId:eventTime"]
       name: action
       rows:
@@ -218,7 +207,6 @@ cases:
                  "uUserId string",
                  "nRequestTime timestamp",
                  "fWatchedTimeLen double"]
-#      indexs: ["index1:zUserId|uUserId:ingestionTime:2881m:absolute"]
       indexs: ["index1:zUserId|uUserId:ingestionTime"]
       name: bo_hislabel
       repeat: 100
