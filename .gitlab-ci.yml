@@ -4,61 +4,61 @@ services:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 stages:
-#  - precheck
+  - precheck
   - build
-#  - daily
+  - daily
   - quick
   - manual
-#  - deploy
-#
-#style_check:
-#  stage: precheck
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  script:
-#    - source /root/.bashrc && bash tools/style_check.sh
-#  artifacts:
-#    reports:
-#      junit:
-#        - ./reports/style.xml
-#
-#rdma-build:
-#  image: develop-registry.4pd.io/centos6_gcc7_fesql_rdma:0.0.12
-#  stage: build
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  script:
-#    - source /root/.bashrc && sh tools/install_fesql.sh
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && RDMA=1 bash steps/simple_compile.sh
-#    - mv build/bin/rtidb build/bin/rtidb_rdma
-#  artifacts:
-#    expire_in: 4h
-#    paths:
-#      - build/bin/rtidb_rdma
-#  when: manual
-#
-#fpga-build:
-#  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
-#  stage: build
-#  tags:
-#    - fpga
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  script:
-#    - source /root/.bashrc && sh tools/install_fesql.sh
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && bash steps/simple_compile_fpga.sh
-#  artifacts:
-#    expire_in: 4h
-#    paths:
-#      - build/bin
-#  when: manual
+  - deploy
+
+style_check:
+  stage: precheck
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  script:
+    - source /root/.bashrc && bash tools/style_check.sh
+  artifacts:
+    reports:
+      junit:
+        - ./reports/style.xml
+
+rdma-build:
+  image: develop-registry.4pd.io/centos6_gcc7_fesql_rdma:0.0.12
+  stage: build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && RDMA=1 bash steps/simple_compile.sh
+    - mv build/bin/rtidb build/bin/rtidb_rdma
+  artifacts:
+    expire_in: 4h
+    paths:
+      - build/bin/rtidb_rdma
+  when: manual
+
+fpga-build:
+  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
+  stage: build
+  tags:
+    - fpga
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/simple_compile_fpga.sh
+  artifacts:
+    expire_in: 4h
+    paths:
+      - build/bin
+  when: manual
 
 build:
   stage: build
@@ -78,108 +78,82 @@ build:
       - build/sql_pysdk/dist/*.whl
       - build/python/dist/*.whl
 
-#daily_build:
-#  stage: build
-#  script:
-#    - source /root/.bashrc && sh steps/checkout_fesql_branch.sh $FESQL_BRANCH
-#    - source /root/.bashrc && sh tools/install_fesql.sh
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && bash steps/simple_compile.sh
-#  artifacts:
-#    expire_in: 4h
-#    paths:
-#      - build/bin/rtidb
-#      - build/src/sdk/libsql_jsdk.so
-#      - build/sql_pysdk/dist/*.whl
-#      - build/python/dist/*.whl
-#  only:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#
-## mac_build:
-##   variables:
-##     CICD_RUNNER_TAG: "rtidb_mac"
-##   tags:
-##     - rtidb_mac
-##   stage: build
-##   script:
-##     - bash steps/simple_compile_mac.sh
-##     - mv build/bin/rtidb build/bin/rtidb_mac
-##   artifacts:
-##     expire_in: 4h
-##     paths:
-##       - build/bin/rtidb_mac
-##       - build/src/sdk/libsql_jsdk.dylib
-##       - build/sql_pysdk/dist/*.whl
-##   only:
-##     variables:
-##       - $ENV_BUILD == "daily"
-#
-#fpga_c++_ut:
+daily_build:
+  stage: build
+  script:
+    - source /root/.bashrc && sh steps/checkout_fesql_branch.sh $FESQL_BRANCH
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/simple_compile.sh
+  artifacts:
+    expire_in: 4h
+    paths:
+      - build/bin/rtidb
+      - build/src/sdk/libsql_jsdk.so
+      - build/sql_pysdk/dist/*.whl
+      - build/python/dist/*.whl
+  only:
+    variables:
+      - $ENV_BUILD == "daily"
+
+# mac_build:
+#   variables:
+#     CICD_RUNNER_TAG: "rtidb_mac"
+#   tags:
+#     - rtidb_mac
+#   stage: build
+#   script:
+#     - bash steps/simple_compile_mac.sh
+#     - mv build/bin/rtidb build/bin/rtidb_mac
+#   artifacts:
+#     expire_in: 4h
+#     paths:
+#       - build/bin/rtidb_mac
+#       - build/src/sdk/libsql_jsdk.dylib
+#       - build/sql_pysdk/dist/*.whl
+#   only:
+#     variables:
+#       - $ENV_BUILD == "daily"
+
+fpga_c++_ut:
+  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
+  tags:
+    - fpga
+  stage: manual
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/fpga_compile.sh
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
+  artifacts:
+    reports:
+      junit:
+        - reports/*.xml
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  when: manual
+
+#fpga_java_ut:
 #  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
 #  tags:
 #    - fpga
-#  stage: manual
-#  script:
-#    - source /root/.bashrc && sh tools/install_fesql.sh
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && bash steps/fpga_compile.sh
-#    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
-#  artifacts:
-#    reports:
-#      junit:
-#        - reports/*.xml
-#  dependencies:
-#    - build
+#  stage: test
 #  except:
 #    variables:
 #      - $ENV_BUILD == "daily"
-#  when: manual
-#
-##fpga_java_ut:
-##  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
-##  tags:
-##    - fpga
-##  stage: test
-##  except:
-##    variables:
-##      - $ENV_BUILD == "daily"
-##  before_script:
-##    - mkdir /rambuild
-##    - mount -t tmpfs -o size=3G tmpfs /rambuild
-##  script:
-##    - ln -sf /depends/thirdparty thirdparty
-##    - ln -sf /depends/thirdsrc thirdsrc
-##    - source /root/.bashrc && sh tools/install_fesql.sh
-##    - source /root/.bashrc && bash steps/simple_compile_fpga.sh
-##    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
-##  after_script:
-##    - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
-##    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
-##    - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
-##    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
-##  artifacts:
-##    reports:
-##      junit:
-##        - java/target/surefire-reports/junitreports/TEST-*.xml
-##        - java/target/surefire-reports/TEST-*.xml
-##        - java/target/failsafe-reports/junitreports/TEST-*.xml
-##        - java/target/failsafe-reports/TEST-*.xml
-#
-#java_ut:
-#  stage: quick
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#
 #  before_script:
 #    - mkdir /rambuild
 #    - mount -t tmpfs -o size=3G tmpfs /rambuild
 #  script:
 #    - ln -sf /depends/thirdparty thirdparty
 #    - ln -sf /depends/thirdsrc thirdsrc
+#    - source /root/.bashrc && sh tools/install_fesql.sh
+#    - source /root/.bashrc && bash steps/simple_compile_fpga.sh
 #    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
 #  after_script:
 #    - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
@@ -193,8 +167,34 @@ build:
 #        - java/target/surefire-reports/TEST-*.xml
 #        - java/target/failsafe-reports/junitreports/TEST-*.xml
 #        - java/target/failsafe-reports/TEST-*.xml
-#  dependencies:
-#    - build
+
+java_ut:
+  stage: quick
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
+  after_script:
+    - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
+    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
+    - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+  artifacts:
+    reports:
+      junit:
+        - java/target/surefire-reports/junitreports/TEST-*.xml
+        - java/target/surefire-reports/TEST-*.xml
+        - java/target/failsafe-reports/junitreports/TEST-*.xml
+        - java/target/failsafe-reports/TEST-*.xml
+  dependencies:
+    - build
 
 fesql_auto_test_level_0:
   stage: quick
@@ -291,354 +291,354 @@ fesql_sdk_c++_level_1+:
       - $ENV_BUILD == "daily"
   when: manual
 
-#auto_test:
-#  stage: manual
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  before_script:
-#    - mkdir /rambuild
-#    - mount -t tmpfs -o size=5G tmpfs /rambuild
-#  script:
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && bash steps/auto_test.sh steps/rtidb_integration_test.properties
-#  after_script:
-#    - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
-#    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
-#    - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
-#    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
-#  artifacts:
-#    reports:
-#      junit:
-#        - rtidb-auto-test-java/target/surefire-reports/junitreports/TEST-*.xml
-#        - rtidb-auto-test-java/target/surefire-reports/TEST-*.xml
-#        - rtidb-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
-#        - rtidb-auto-test-java/target/failsafe-reports/TEST-*.xml
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  dependencies:
-#    - build
-#  when: manual
-#
-#auto_test_add_index_column:
-#  stage: manual
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  before_script:
-#    - mkdir /rambuild
-#    - mount -t tmpfs -o size=5G tmpfs /rambuild
-#  script:
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && bash steps/auto_test.sh steps/rtidb_integration_test_1620.properties
-#  after_script:
-#    - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
-#    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
-#    - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
-#    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
-#  artifacts:
-#    reports:
-#      junit:
-#        - rtidb-auto-test-java/target/surefire-reports/junitreports/TEST-*.xml
-#        - rtidb-auto-test-java/target/surefire-reports/TEST-*.xml
-#        - rtidb-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
-#        - rtidb-auto-test-java/target/failsafe-reports/TEST-*.xml
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  dependencies:
-#    - build
-#  when: manual
-#
-#c++_ut:
-#  stage: quick
-#  script:
-#    - source /root/.bashrc && sh tools/install_fesql.sh
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && bash steps/compile.sh
-#    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
-#  artifacts:
-#    reports:
-#      junit:
-#        - reports/*.xml
-#  dependencies:
-#    - build
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#
-#py3_ut:
-#  stage: quick
-#  before_script:
-#    - mkdir /rambuild
-#    - mount -t tmpfs -o size=3G tmpfs /rambuild
-#  script:
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/run_py3_ut.sh
-#  artifacts:
-#    reports:
-#      junit:
-#        - ./python/test/*xml
-#  dependencies:
-#    - build
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#
-#fesql_auto_test_python:
-#  stage: manual
-#  before_script:
-#    - mkdir /rambuild
-#    - mount -t tmpfs -o size=3G tmpfs /rambuild
-#  script:
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test_python.sh
-#  artifacts:
-#    reports:
-#      junit:
-#        - src/sdk/python/fesql-auto-test-python/report/TEST-test_*.xml
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  dependencies:
-#    - build
-#  when: manual
-#
-#fesql_test_python:
-#  stage: manual
-#  before_script:
-#    - mkdir /rambuild
-#    - mount -t tmpfs -o size=3G tmpfs /rambuild
-#  script:
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_test_python.sh
-#  artifacts:
-#    reports:
-#      junit:
-#        - src/sdk/python/sqlalchemy-test/*xml
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  dependencies:
-#    - build
-#  when: manual
-#
-#tablet_one_demension:
-#  stage: manual
-#  before_script:
-#    - mkdir /rambuild
-#    - mount -t tmpfs -o size=3G tmpfs /rambuild
-#  script:
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-#    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
-#    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
-#  artifacts:
-#    reports:
-#      junit:
-#        - ./test-reports/*
-#  dependencies:
-#    - build
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  when: manual
-#
-#tablet_multi_demension:
-#  stage: quick
-#  before_script:
-#    - mkdir /rambuild
-#    - mount -t tmpfs -o size=3G tmpfs /rambuild
-#  script:
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-#    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
-#    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
-#  artifacts:
-#    reports:
-#      junit:
-#        - ./test-reports/*
-#  dependencies:
-#    - build
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#
-#ns_one_demension:
-#  stage: manual
-#  before_script:
-#    - mkdir /rambuild
-#    - mount -t tmpfs -o size=3G tmpfs /rambuild
-#  script:
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-#    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
-#    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
-#  artifacts:
-#    reports:
-#      junit:
-#        - ./test-reports/*
-#  dependencies:
-#    - build
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  when: manual
-#
-#ns_multi_demension:
-#  stage: quick
-#  before_script:
-#    - mkdir /rambuild
-#    - mount -t tmpfs -o size=3G tmpfs /rambuild
-#  script:
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
-#    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
-#  artifacts:
-#    reports:
-#      junit:
-#        - ./test-reports/*
-#  dependencies:
-#    - build
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#
-#disk_table:
-#  stage: manual
-#  before_script:
-#    - mkdir /rambuild
-#    - mount -t tmpfs -o size=3G tmpfs /rambuild
-#  script:
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-#    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "disk"
-#    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
-#  artifacts:
-#    reports:
-#      junit:
-#        - ./test-reports/*
-#  dependencies:
-#    - build
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  when: manual
-#
-#deploy-fedb:
-#  stage: daily
-#  script:
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && bash steps/deploy_package_fedb.sh
-#  dependencies:
-#    # - mac_build
-#    - daily_build
-#  only:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#
-#deploy-fedb-fpga:
-#  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
-#  tags:
-#    - fpga
-#  stage: daily
-#  script:
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && sh tools/install_fesql.sh
-#    - source /root/.bashrc && bash steps/simple_compile_fpga.sh
-#    - source /root/.bashrc && bash steps/package_and_upload_fedb_fpga.sh
-#  only:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#
-##TODO(kongquan) python support enable rdma switch
-#deploy-fedb-rdma:
-#  image: develop-registry.4pd.io/centos6_gcc7_fesql_rdma:0.0.12
-#  stage: deploy
-#  script:
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && sh tools/install_fesql.sh
-#    - source /root/.bashrc && bash steps/simple_compile_fpga.sh
-#    - source /root/.bashrc && bash steps/package_and_upload_fedb_rdma.sh
-#  dependencies:
-#    - rdma-build
-#  only:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#
-#deploy-package:
-#  stage: deploy
-#  script:
-#    - source /root/.bashrc && sh tools/install_fesql.sh
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && bash steps/deploy_package.sh
-#  only:
-#    - tags
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  dependencies: []
-#
-#docker-image:
-#  stage: deploy
-#  script:
-#    - source /root/.bashrc && sh tools/install_fesql.sh
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - sh docker/copy_file.sh
-#    - make blob_proxy
-#    - bash docker/push_meta.sh
-#  only:
-#    - tags
-#    - develop
-#    - release/*
-#    - feat/335-fix-blob-proxy-startup-script-in-docker
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  dependencies:
-#    - build
-#
-#fesql_auto_gen_case:
-#  stage: manual
-#  before_script:
-#    - mkdir /rambuild
-#    - mount -t tmpfs -o size=3G tmpfs /rambuild
-#  script:
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_gen_test_by_rtidb.sh
-#  after_script:
-#    - tar czf $CI_COMMIT_SHA  src/sdk/java/fesql-auto-test-java/target/allure-results
-#    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
-#    - curl -s "http://auto.4paradigm.com/job/fesql-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&allure_path=src/sdk/java/feql-auto-test-java/target/allure-results&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
-#    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
-#  artifacts:
-#    reports:
-#      junit:
-#        - src/sdk/java/fesql-auto-test-java/target/surefire-reports/junitreports/TEST-*.xml
-#        - src/sdk/java/fesql-auto-test-java/target/surefire-reports/TEST-*.xml
-#        - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
-#        - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/TEST-*.xml
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  dependencies:
-#    - build
-#  when: manual
+auto_test:
+  stage: manual
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=5G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/auto_test.sh steps/rtidb_integration_test.properties
+  after_script:
+    - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
+    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
+    - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+  artifacts:
+    reports:
+      junit:
+        - rtidb-auto-test-java/target/surefire-reports/junitreports/TEST-*.xml
+        - rtidb-auto-test-java/target/surefire-reports/TEST-*.xml
+        - rtidb-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
+        - rtidb-auto-test-java/target/failsafe-reports/TEST-*.xml
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies:
+    - build
+  when: manual
+
+auto_test_add_index_column:
+  stage: manual
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=5G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/auto_test.sh steps/rtidb_integration_test_1620.properties
+  after_script:
+    - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
+    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
+    - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+  artifacts:
+    reports:
+      junit:
+        - rtidb-auto-test-java/target/surefire-reports/junitreports/TEST-*.xml
+        - rtidb-auto-test-java/target/surefire-reports/TEST-*.xml
+        - rtidb-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
+        - rtidb-auto-test-java/target/failsafe-reports/TEST-*.xml
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies:
+    - build
+  when: manual
+
+c++_ut:
+  stage: quick
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/compile.sh
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
+  artifacts:
+    reports:
+      junit:
+        - reports/*.xml
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+
+py3_ut:
+  stage: quick
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/run_py3_ut.sh
+  artifacts:
+    reports:
+      junit:
+        - ./python/test/*xml
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+
+fesql_auto_test_python:
+  stage: manual
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test_python.sh
+  artifacts:
+    reports:
+      junit:
+        - src/sdk/python/fesql-auto-test-python/report/TEST-test_*.xml
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies:
+    - build
+  when: manual
+
+fesql_test_python:
+  stage: manual
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_test_python.sh
+  artifacts:
+    reports:
+      junit:
+        - src/sdk/python/sqlalchemy-test/*xml
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies:
+    - build
+  when: manual
+
+tablet_one_demension:
+  stage: manual
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
+    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
+  artifacts:
+    reports:
+      junit:
+        - ./test-reports/*
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  when: manual
+
+tablet_multi_demension:
+  stage: quick
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
+    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
+  artifacts:
+    reports:
+      junit:
+        - ./test-reports/*
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+
+ns_one_demension:
+  stage: manual
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
+    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
+  artifacts:
+    reports:
+      junit:
+        - ./test-reports/*
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  when: manual
+
+ns_multi_demension:
+  stage: quick
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
+    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
+  artifacts:
+    reports:
+      junit:
+        - ./test-reports/*
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+
+disk_table:
+  stage: manual
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "disk"
+    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
+  artifacts:
+    reports:
+      junit:
+        - ./test-reports/*
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  when: manual
+
+deploy-fedb:
+  stage: daily
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/deploy_package_fedb.sh
+  dependencies:
+    # - mac_build
+    - daily_build
+  only:
+    variables:
+      - $ENV_BUILD == "daily"
+
+deploy-fedb-fpga:
+  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
+  tags:
+    - fpga
+  stage: daily
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - source /root/.bashrc && bash steps/simple_compile_fpga.sh
+    - source /root/.bashrc && bash steps/package_and_upload_fedb_fpga.sh
+  only:
+    variables:
+      - $ENV_BUILD == "daily"
+
+#TODO(kongquan) python support enable rdma switch
+deploy-fedb-rdma:
+  image: develop-registry.4pd.io/centos6_gcc7_fesql_rdma:0.0.12
+  stage: deploy
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - source /root/.bashrc && bash steps/simple_compile_fpga.sh
+    - source /root/.bashrc && bash steps/package_and_upload_fedb_rdma.sh
+  dependencies:
+    - rdma-build
+  only:
+    variables:
+      - $ENV_BUILD == "daily"
+
+deploy-package:
+  stage: deploy
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/deploy_package.sh
+  only:
+    - tags
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies: []
+
+docker-image:
+  stage: deploy
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - sh docker/copy_file.sh
+    - make blob_proxy
+    - bash docker/push_meta.sh
+  only:
+    - tags
+    - develop
+    - release/*
+    - feat/335-fix-blob-proxy-startup-script-in-docker
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies:
+    - build
+
+fesql_auto_gen_case:
+  stage: manual
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_gen_test_by_rtidb.sh
+  after_script:
+    - tar czf $CI_COMMIT_SHA  src/sdk/java/fesql-auto-test-java/target/allure-results
+    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
+    - curl -s "http://auto.4paradigm.com/job/fesql-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&allure_path=src/sdk/java/feql-auto-test-java/target/allure-results&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+  artifacts:
+    reports:
+      junit:
+        - src/sdk/java/fesql-auto-test-java/target/surefire-reports/junitreports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/target/surefire-reports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/TEST-*.xml
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies:
+    - build
+  when: manual
