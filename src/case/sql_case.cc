@@ -21,6 +21,40 @@
 namespace fesql {
 namespace sqlcase {
 using fesql::codec::Row;
+
+bool SQLCase::TTLParse(const std::string& org_type_str,
+                       std::vector<int64_t>& ttls) {
+    std::string type_str = org_type_str;
+    boost::to_lower(type_str);
+    if (type_str.empty()) {
+        LOG(WARNING) << "Empty TTL String";
+        return false;
+    }
+    std::vector<std::string> ttlstrings;
+    boost::trim(type_str);
+    boost::split(ttlstrings, type_str, boost::is_any_of("|"),
+                 boost::token_compress_on);
+
+    for (std::string ttlstr : ttlstrings) {
+        char unit = ttlstr[ttlstr.size() - 1];
+        if ('d' == unit) {
+            ttls.push_back(boost::lexical_cast<int64_t>(
+                               ttlstr.substr(0, ttlstr.size() - 1)) *
+                           24 * 60);
+        } else if ('h' == unit) {
+            ttls.push_back(boost::lexical_cast<int64_t>(
+                               ttlstr.substr(0, ttlstr.size() - 1)) *
+                           60);
+        } else if ('m' == unit) {
+            ttls.push_back(boost::lexical_cast<int64_t>(
+                ttlstr.substr(0, ttlstr.size() - 1)));
+        } else {
+            ttls.push_back(
+                boost::lexical_cast<int64_t>(ttlstr.substr(0, ttlstr.size())));
+        }
+    }
+    return true;
+}
 bool SQLCase::TTLTypeParse(const std::string& org_type_str,
                            ::fesql::type::TTLType* type) {
     if (nullptr == type) {
@@ -146,52 +180,66 @@ bool SQLCase::ExtractIndex(const std::vector<std::string>& indexs,
         return false;
     }
     auto index_vec = indexs;
-    for (auto index : index_vec) {
-        boost::trim(index);
-        if (index.empty()) {
-            LOG(WARNING) << "Index String Empty";
-            return false;
-        }
-        std::vector<std::string> name_keys_order;
-        boost::split(name_keys_order, index, boost::is_any_of(":"),
-                     boost::token_compress_on);
-        if (2 > name_keys_order.size()) {
-            LOG(WARNING) << "Invalid Index Format:" << index;
-            return false;
-        }
-        ::fesql::type::IndexDef* index_def = table.add_indexes();
-        boost::trim(name_keys_order[0]);
-        index_def->set_name(name_keys_order[0]);
-
-        std::vector<std::string> keys;
-        boost::trim(name_keys_order[1]);
-        boost::split(keys, name_keys_order[1], boost::is_any_of("|"),
-                     boost::token_compress_on);
-        boost::trim(name_keys_order[1]);
-
-        for (auto key : keys) {
-            index_def->add_first_keys(key);
-        }
-
-        if (3 <= name_keys_order.size()) {
-            boost::trim(name_keys_order[2]);
-            index_def->set_second_key(name_keys_order[2]);
-        }
-
-        if (4 <= name_keys_order.size()) {
-            boost::trim(name_keys_order[3]);
-            index_def->add_ttl(
-                boost::lexical_cast<int64_t>(name_keys_order[3]));
-        }
-        if (5 <= name_keys_order.size()) {
-            boost::trim(name_keys_order[3]);
-            ::fesql::type::TTLType ttl_type;
-            if (!TTLTypeParse(name_keys_order[4], &ttl_type)) {
+    try {
+        for (auto index : index_vec) {
+            boost::trim(index);
+            if (index.empty()) {
+                LOG(WARNING) << "Index String Empty";
                 return false;
             }
-            index_def->set_ttl_type(ttl_type);
+            std::vector<std::string> name_keys_order;
+            boost::split(name_keys_order, index, boost::is_any_of(":"),
+                         boost::token_compress_on);
+            if (2 > name_keys_order.size()) {
+                LOG(WARNING) << "Invalid Index Format:" << index;
+                return false;
+            }
+            ::fesql::type::IndexDef* index_def = table.add_indexes();
+            boost::trim(name_keys_order[0]);
+            index_def->set_name(name_keys_order[0]);
+
+            std::vector<std::string> keys;
+            boost::trim(name_keys_order[1]);
+            boost::split(keys, name_keys_order[1], boost::is_any_of("|"),
+                         boost::token_compress_on);
+            boost::trim(name_keys_order[1]);
+
+            for (auto key : keys) {
+                index_def->add_first_keys(key);
+            }
+
+            if (3 <= name_keys_order.size()) {
+                boost::trim(name_keys_order[2]);
+                if (!name_keys_order[2].empty() &&
+                    name_keys_order[2] != "null") {
+                    index_def->set_second_key(name_keys_order[2]);
+                }
+            }
+
+            if (4 <= name_keys_order.size()) {
+                boost::trim(name_keys_order[3]);
+                std::vector<int64_t> ttls;
+                if (!TTLParse(name_keys_order[3], ttls)) {
+                    return false;
+                }
+                for (int64_t ttl : ttls) {
+                    index_def->add_ttl(ttl);
+                }
+            }
+            if (5 <= name_keys_order.size()) {
+                boost::trim(name_keys_order[4]);
+                ::fesql::type::TTLType ttl_type;
+                if (!TTLTypeParse(name_keys_order[4], &ttl_type)) {
+                    return false;
+                }
+                index_def->set_ttl_type(ttl_type);
+            }
         }
+    } catch (const std::exception& ex) {
+        LOG(WARNING) << "Fail to ExtractIndex: " << ex.what();
+        return false;
     }
+
     return true;
 }
 
@@ -287,14 +335,33 @@ bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
         }
 
         if (index.ttl_size() > 0) {
-            sql.append(", ttl=").append(std::to_string(index.ttl(0)));
             switch (index.ttl_type()) {
                 case type::kTTLCountLive: {
+                    sql.append(", ttl=").append(std::to_string(index.ttl(0)));
                     sql.append(", ttl_type=latest");
                     break;
                 }
                 case type::kTTLTimeLive: {
-                    sql.append(", ttl_type=absolute");
+                    sql.append(", ttl=").append(std::to_string(index.ttl(0)));
+                    sql.append("m, ttl_type=absolute");
+                    break;
+                }
+                case type::kTTLTimeLiveAndCountLive: {
+                    sql.append(", ttl=(")
+                        .append(std::to_string(index.ttl(0)))
+                        .append("m,")
+                        .append(std::to_string(index.ttl(1)))
+                        .append(")")
+                        .append(", ttl_type=absandlat");
+                    break;
+                }
+                case type::kTTLTimeLiveOrCountLive: {
+                    sql.append(", ttl=(")
+                        .append(std::to_string(index.ttl(0)))
+                        .append("m,")
+                        .append(std::to_string(index.ttl(1)))
+                        .append(")")
+                        .append(", ttl_type=absorlat");
                     break;
                 }
                 case type::kTTLNone: {

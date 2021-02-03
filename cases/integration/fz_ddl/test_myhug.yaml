@@ -4,60 +4,56 @@ cases:
   desc: mybug test
   mode: batch-unsupport
   inputs:
-    - create: |
-        create table flattenRequest(
-          reqId string,
-          eventTime timestamp,
-          uUserId string,
-          zUserId string,
-          uSex string,
-          zSex string,
-          zChannel string,
-          uPlayGame string,
-          uHasJoinedGroup string,
-          uWatchMorning double,
-          uWatchEvening double,
-          uWatchAvgLength double,
-          zSWihsperNum double,
-          index(key=(uUserId),ts=eventTime,ttl=2881m,ttl_type=absolute),
-          index(key=(zChannel),ts=eventTime,ttl=2881m,ttl_type=absolute),
-          index(key=(uSex),ts=eventTime,ttl=2881m,ttl_type=absolute),
-          index(key=(zUserId),ts=eventTime,ttl=2881m,ttl_type=absolute),
-          index(key=(uPlayGame),ts=eventTime,ttl=601m,ttl_type=absolute),
-          index(key=(uHasJoinedGroup),ts=eventTime,ttl=2881m,ttl_type=absolute),
-          index(key=(zUserId,uUserId),ts=eventTime,ttl=2881m,ttl_type=absolute)
-        );
+    -
+      columns: ["reqId string","eventTime timestamp","uUserId string","zUserId string",
+        "uSex string","zSex string","zChannel string","uPlayGame string",
+        "uHasJoinedGroup string","uWatchMorning double","uWatchEvening double",
+        "uWatchAvgLength double","zSWihsperNum double" ]
+      indexs: [
+          "index1:uUserId:eventTime",
+          "index2:zChannel:eventTime",
+          "index3:uSex:eventTime",
+          "index4:zUserId:eventTime",
+          "index5:uPlayGame:eventTime",
+          "index6:uHasJoinedGroup:eventTime",
+          "index7:zUserId|uUserId:eventTime" ]
+#      indexs: [
+#          "index1:uUserId:eventTime:2881m:absolute",
+#          "index2:zChannel:eventTime:2881m:absolute",
+#          "index3:uSex:eventTime:2881m:absolute",
+#          "index4:zUserId:eventTime:2881m:absolute",
+#          "index5:uPlayGame:eventTime:2881m:absolute",
+#          "index6:uHasJoinedGroup:eventTime:2881m:absolute",
+#          "index7:zUserId|uUserId:eventTime:2881m:absolute" ]
       repeat: 100
+      name: flattenRequest
       rows:
         - [reqId1, 1609894067190, uUserId1, zUserId1, uSex1, zSex1, zChannel1, uPlayGame1, uHasJoinedGroup1, 1.0, 2.0, 3.0, 4.0]
         - [reqId2, 1609894067190, uUserId2, zUserId2, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2, 1.0, 2.0, 3.0, 4.0]
         - [NULL, 1609894067190, uUserIdNull, zUserIdNull, uSexNull, zSexNull, zChannelNull, uPlayGameNull, uHasJoinedGroupNull, 1.0, 2.0, 3.0, 4.0]
-    - create: |
-        create table action(
-          reqId string,
-          eventTime timestamp,
-          ingestionTime timestamp,
-          actionValue double,
-          index(key=(reqId), ttl=1, ttl_type=latest)
-        );
+    - columns: [
+        "reqId string",
+        "eventTime timestamp",
+        "ingestionTime timestamp",
+        "actionValue double"]
+#      indexs: ["index1:reqId:null:1:latest"]
+      indexs: ["index1:reqId:eventTime"]
+      name: action
       rows:
         - [reqId1, 1609894067191, 1609894067191, 1.1]
         - [NULL, 1609894067191, 1609894067191, 3.3]
-    - create: |
-        create table bo_hislabel (
-          ingestionTime timestamp,
-          zUserId string,
-          uUserId string,
-          nRequestTime timestamp,
-          fWatchedTimeLen double,
-          index(key=(zUserId,uUserId), ts= ingestionTime, ttl=2881m, ttl_type=absolute)
-        );
-      repeat: 100
+    - columns: [ "ingestionTime timestamp",
+                 "zUserId string",
+                 "uUserId string",
+                 "nRequestTime timestamp",
+                 "fWatchedTimeLen double" ]
+#      indexs: [ "index1:zUserId|uUserId:ingestionTime:2881m:absolute" ]
+      indexs: [ "index1:zUserId|uUserId:ingestionTime" ]
+      name: bo_hislabel
       rows:
         - [ 1609894067191, zUserId1, uUserId1, 1609894067191, 1.0 ]
         - [ 1609894067191, zUserId2, uUserId2, 1609894067191, 1.0 ]
         - [ 1609894067191, zUserIdNull, uUserIdNull, 1609894067191, 1.0 ]
-
   sql: |
     select * from
     (
@@ -134,29 +130,20 @@ cases:
     on out0.reqId_1 = out2.reqId_75
     ;
   batch_request:
-    create: |
-      create table flattenRequest(
-        reqId string,
-        eventTime timestamp,
-        uUserId string,
-        zUserId string,
-        uSex string,
-        zSex string,
-        zChannel string,
-        uPlayGame string,
-        uHasJoinedGroup string,
-        uWatchMorning double,
-        uWatchEvening double,
-        uWatchAvgLength double,
-        zSWihsperNum double,
-        index(key=(uUserId),ts=eventTime,ttl=2881m,ttl_type=absolute),
-        index(key=(zChannel),ts=eventTime,ttl=2881m,ttl_type=absolute),
-        index(key=(uSex),ts=eventTime,ttl=2881m,ttl_type=absolute),
-        index(key=(zUserId),ts=eventTime,ttl=2881m,ttl_type=absolute),
-        index(key=(uPlayGame),ts=eventTime,ttl=601m,ttl_type=absolute),
-        index(key=(uHasJoinedGroup),ts=eventTime,ttl=2881m,ttl_type=absolute),
-        index(key=(zUserId,uUserId),ts=eventTime,ttl=2881m,ttl_type=absolute)
-      );
+    columns: [
+        "reqId string",
+        "eventTime timestamp",
+        "uUserId string",
+        "zUserId string",
+        "uSex string",
+        "zSex string",
+        "zChannel string",
+        "uPlayGame string",
+        "uHasJoinedGroup string",
+        "uWatchMorning double",
+        "uWatchEvening double",
+        "uWatchAvgLength double",
+        "zSWihsperNum double"]
     rows:
       - [reqId1, 1609894067191, uUserId1, zUserId1, uSex1, zSex1, zChannel1, uPlayGame1, uHasJoinedGroup1, 1.0, 2.0, 3.0, 4.0]
       - [reqId2, 1609894068191, uUserId2, zUserId2, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2, 1.0, 2.0, 3.0, 4.0]
@@ -187,57 +174,53 @@ cases:
         33.000000, 1.000000, 2.000000, 404.000000, 3.000000,
         101, 101, 11, 11, 101, 101, 101, 101, 101, 101, 101,
         NULL, 3.3, NULL, 1.000000, 1.000000 ]
-
-
 - id: 1
   desc: mybug bo_hislabel_fWatchedTimeLen_multi_max_74
   mode: batch-unsupport
   inputs:
-    - create: |
-        create table flattenRequest(
-          reqId string,
-          eventTime timestamp,
-          uUserId string,
-          zUserId string,
-          uSex string,
-          zSex string,
-          zChannel string,
-          uPlayGame string,
-          uHasJoinedGroup string,
-          uWatchMorning double,
-          uWatchEvening double,
-          uWatchAvgLength double,
-          zSWihsperNum double,
-          index(key=(uUserId),ts=eventTime,ttl=2881m,ttl_type=absolute),
-          index(key=(zChannel),ts=eventTime,ttl=2881m,ttl_type=absolute),
-          index(key=(uSex),ts=eventTime,ttl=2881m,ttl_type=absolute),
-          index(key=(zUserId),ts=eventTime,ttl=2881m,ttl_type=absolute),
-          index(key=(uPlayGame),ts=eventTime,ttl=601m,ttl_type=absolute),
-          index(key=(uHasJoinedGroup),ts=eventTime,ttl=2881m,ttl_type=absolute),
-          index(key=(zUserId,uUserId),ts=eventTime,ttl=2881m,ttl_type=absolute)
-        );
+    - columns: [ "reqId string",
+                 "eventTime timestamp",
+                 "uUserId string",
+                 "zUserId string",
+                 "uSex string",
+                 "zSex string",
+                 "zChannel string",
+                 "uPlayGame string",
+                 "uHasJoinedGroup string",
+                 "uWatchMorning double",
+                 "uWatchEvening double",
+                 "uWatchAvgLength double",
+                 "zSWihsperNum double" ]
+      indexs: [
+          "index1:uUserId:eventTime",
+          "index2:zChannel:eventTime",
+          "index3:uSex:eventTime",
+          "index4:zUserId:eventTime",
+          "index5:uPlayGame:eventTime",
+          "index6:uHasJoinedGroup:eventTime",
+          "index7:zUserId|uUserId:eventTime" ]
+      name: flattenRequest
       rows:
         - [reqId1, 1609894067191, uUserId1, zUserId1, uSex1, zSex1, zChannel1, uPlayGame1, uHasJoinedGroup1, 1.0, 2.0, 3.0, 4.0]
-    - create: |
-        create table action(
-          reqId string,
-          eventTime timestamp,
-          ingestionTime timestamp,
-          actionValue double,
-          index(key=(reqId), ttl=1, ttl_type=latest)
-        );
+    - columns: [
+        "reqId string",
+        "eventTime timestamp",
+        "ingestionTime timestamp",
+        "actionValue double"]
+#      indexs: ["index1:reqId:null:1:latest"]
+      indexs: ["index1:reqId:eventTime"]
+      name: action
       rows:
         - [reqId1, 1609894067191, 1609894067191, 1.1]
         - [NULL, 1609894067191, 1609894067191, 3.3]
-    - create: |
-        create table bo_hislabel (
-          ingestionTime timestamp,
-          zUserId string,
-          uUserId string,
-          nRequestTime timestamp,
-          fWatchedTimeLen double,
-          index(key=(zUserId,uUserId), ts= ingestionTime, ttl=2881m, ttl_type=absolute)
-        );
+    - columns: [ "ingestionTime timestamp",
+                 "zUserId string",
+                 "uUserId string",
+                 "nRequestTime timestamp",
+                 "fWatchedTimeLen double"]
+#      indexs: ["index1:zUserId|uUserId:ingestionTime:2881m:absolute"]
+      indexs: ["index1:zUserId|uUserId:ingestionTime"]
+      name: bo_hislabel
       repeat: 100
       rows:
         - [ 1609894067191, zUserId1, uUserId1, 1609894067191, 1.0 ]
@@ -276,29 +259,33 @@ cases:
     ;
   tags: ["@baoxinqi, max/min空表处理, avg 空表处理需要对齐feql/mysql"]
   batch_request:
-    create: |
-        create table flattenRequest(
-          reqId string,
-          eventTime timestamp,
-          uUserId string,
-          zUserId string,
-          uSex string,
-          zSex string,
-          zChannel string,
-          uPlayGame string,
-          uHasJoinedGroup string,
-          uWatchMorning double,
-          uWatchEvening double,
-          uWatchAvgLength double,
-          zSWihsperNum double,
-          index(key=(uUserId),ts=eventTime,ttl=2881m,ttl_type=absolute),
-          index(key=(zChannel),ts=eventTime,ttl=2881m,ttl_type=absolute),
-          index(key=(uSex),ts=eventTime,ttl=2881m,ttl_type=absolute),
-          index(key=(zUserId),ts=eventTime,ttl=2881m,ttl_type=absolute),
-          index(key=(uPlayGame),ts=eventTime,ttl=601m,ttl_type=absolute),
-          index(key=(uHasJoinedGroup),ts=eventTime,ttl=2881m,ttl_type=absolute),
-          index(key=(zUserId,uUserId),ts=eventTime,ttl=2881m,ttl_type=absolute)
-        );
+    columns: [
+        "reqId string",
+        "eventTime timestamp",
+        "uUserId string",
+        "zUserId string",
+        "uSex string",
+        "zSex string",
+        "zChannel string",
+        "uPlayGame string",
+        "uHasJoinedGroup string",
+        "uWatchMorning double",
+        "uWatchEvening double",
+        "uWatchAvgLength double",
+        "zSWihsperNum double" ]
+
+    indexs: [
+        "index1:uUserId:eventTime",
+        "index2:zChannel:eventTime",
+        "index3:uSex:eventTime",
+        "index4:zUserId:eventTime",
+        "index5:uPlayGame:eventTime",
+        "index6:uHasJoinedGroup:eventTime",
+        "index1:zUserId|uUserId:eventTime",
+        "index1:uUserId:eventTime",
+        "index1:uUserId:eventTime" ]
+
+    name: flattenRequest
     rows:
       # pure history window is empty: rows out of time range
       - [reqId1, 1609894067191, uUserId1, zUserId1, uSex1, zSex1, zChannel1, uPlayGame1, uHasJoinedGroup1, 1.0, 2.0, 3.0, 4.0]
@@ -317,4 +304,3 @@ cases:
       - [ NULL, NULL, 3.3, NULL, 0.0, -inf, nan]
       #- [ reqId2, reqId2, NULL, reqId2, 0.0, -inf, nan ] # should be -inf -> NULL, nan -> NULL
       - [ reqId2, reqId2, NULL, reqId2, 100.0, 1.0, 1.0 ]
-

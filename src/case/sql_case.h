@@ -103,6 +103,9 @@ class SQLCase {
     static bool TypeParse(const std::string& row_str, fesql::type::Type* type);
     static bool TTLTypeParse(const std::string& type_str,
                              ::fesql::type::TTLType* type);
+    static bool TTLParse(const std::string& type_str,
+                         std::vector<int64_t>& ttls);  // NOLINT
+
     static const std::string TypeString(fesql::type::Type type);
     static bool ExtractSchema(const std::vector<std::string>& columns,
                               type::TableDef& table);  // NOLINT

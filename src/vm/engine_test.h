@@ -330,7 +330,7 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                         ASSERT_TRUE(IsNaN(act))
                             << " At " << i << " " << schema.Get(i).name();
                     } else {
-                        ASSERT_FLOAT_EQ(act, exp)
+                        ASSERT_DOUBLE_EQ(act, exp)
                             << " At " << i << " " << schema.Get(i).name();
                     }
                     break;
