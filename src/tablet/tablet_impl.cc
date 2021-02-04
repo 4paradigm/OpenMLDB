@@ -1546,7 +1546,7 @@ void TabletImpl::Count(RpcController* controller,
     } else {
         index_name = table->GetPkIndex()->GetName();
     }
-    if (ts_index > 0) {
+    if (ts_index >= 0) {
         index_def = table->GetIndex(index_name, ts_index);
     } else {
         index_def = table->GetIndex(index_name);
