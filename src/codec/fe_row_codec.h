@@ -31,7 +31,7 @@
 namespace fesql {
 namespace codec {
 
-const uint8_t BitMapSize(uint32_t size);
+const uint32_t BitMapSize(uint32_t size);
 
 typedef ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef> Schema;
 

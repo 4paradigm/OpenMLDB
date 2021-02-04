@@ -26,7 +26,8 @@ DECLARE_bool(enable_spark_unsaferow_format);
 namespace fesql {
 namespace codec {
 
-const uint8_t BitMapSize(uint32_t size) {
+
+const uint32_t BitMapSize(uint32_t size) {
     if (FLAGS_enable_spark_unsaferow_format) {
         return 8;
     } else {
@@ -76,8 +77,9 @@ RowBuilder::RowBuilder(const Schema& schema)
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
         } else {
-            auto iter = GetTypeSizeMap().find(column.type());
-            if (iter == GetTypeSizeMap().end()) {
+            auto TYPE_SIZE_MAP = GetTypeSizeMap();
+            auto iter = TYPE_SIZE_MAP.find(column.type());
+            if (iter == TYPE_SIZE_MAP.end()) {
                 LOG(WARNING) << ::fesql::type::Type_Name(column.type())
                              << " is not supported";
             } else {
@@ -146,8 +148,9 @@ bool RowBuilder::Check(::fesql::type::Type type) {
         return false;
     }
     if (column.type() != ::fesql::type::kVarchar) {
-        auto iter = GetTypeSizeMap().find(column.type());
-        if (iter == GetTypeSizeMap().end()) {
+        auto TYPE_SIZE_MAP = GetTypeSizeMap();
+        auto iter = TYPE_SIZE_MAP.find(column.type());
+        if (iter == TYPE_SIZE_MAP.end()) {
             LOG(WARNING) << ::fesql::type::Type_Name(column.type())
                          << " is not supported";
             return false;
@@ -323,8 +326,9 @@ bool RowView::Init() {
             offset_vec_.push_back(string_field_cnt_);
             string_field_cnt_++;
         } else {
-            auto iter = GetTypeSizeMap().find(column.type());
-            if (iter == GetTypeSizeMap().end()) {
+            auto TYPE_SIZE_MAP = GetTypeSizeMap();
+            auto iter = TYPE_SIZE_MAP.find(column.type());
+            if (iter == TYPE_SIZE_MAP.end()) {
                 LOG(WARNING) << ::fesql::type::Type_Name(column.type())
                              << " is not supported";
                 is_valid_ = false;
@@ -880,8 +884,9 @@ RowFormat::RowFormat(const fesql::codec::Schema* schema)
                 std::make_pair(string_field_cnt, string_field_cnt));
             string_field_cnt += 1;
         } else {
-            auto it = codec::GetTypeSizeMap().find(column.type());
-            if (it == codec::GetTypeSizeMap().end()) {
+            auto TYPE_SIZE_MAP = codec::GetTypeSizeMap();
+            auto it = TYPE_SIZE_MAP.find(column.type());
+            if (it == TYPE_SIZE_MAP.end()) {
                 LOG(WARNING) << "fail to find column type "
                              << ::fesql::type::Type_Name(column.type());
             } else {

@@ -60,7 +60,7 @@ object UnsafeRowProjectPlan {
         val headerSize = 6
 
         // Copy and add header for input row
-        // TODO: Set header verson and size
+        // TODO: Set header version and size
         val versionHeaderBytes = ByteBuffer.allocate(2)
         val sizeHeaderBytes = ByteBuffer.allocate(4)
         val appendHeaderBytes = ByteBuffer.allocate(headerSize + inputRowSize).put(versionHeaderBytes).put(sizeHeaderBytes).put(inputBaseObject).array()

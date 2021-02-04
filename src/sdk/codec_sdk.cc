@@ -42,8 +42,9 @@ bool RowIOBufView::Init() {
             offset_vec_.push_back(string_field_cnt_);
             string_field_cnt_++;
         } else {
-            auto iter = codec::GetTypeSizeMap().find(column.type());
-            if (iter == codec::GetTypeSizeMap().end()) {
+            auto TYPE_SIZE_MAP = codec::GetTypeSizeMap();
+            auto iter = TYPE_SIZE_MAP.find(column.type());
+            if (iter == TYPE_SIZE_MAP.end()) {
                 LOG(WARNING) << ::fesql::type::Type_Name(column.type())
                              << " is not supported";
                 is_valid_ = false;
