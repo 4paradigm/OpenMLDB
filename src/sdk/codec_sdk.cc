@@ -35,15 +35,15 @@ RowIOBufView::RowIOBufView(const fesql::codec::Schema& schema)
 RowIOBufView::~RowIOBufView() {}
 
 bool RowIOBufView::Init() {
-    uint32_t offset = codec::HEADER_LENGTH + BitMapSize(schema_.size());
+    uint32_t offset = codec::HEADER_LENGTH + codec::BitMapSize(schema_.size());
     for (int idx = 0; idx < schema_.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema_.Get(idx);
         if (column.type() == ::fesql::type::kVarchar) {
             offset_vec_.push_back(string_field_cnt_);
             string_field_cnt_++;
         } else {
-            auto iter = codec::TYPE_SIZE_MAP.find(column.type());
-            if (iter == codec::TYPE_SIZE_MAP.end()) {
+            auto iter = codec::GetTypeSizeMap().find(column.type());
+            if (iter == codec::GetTypeSizeMap().end()) {
                 LOG(WARNING) << ::fesql::type::Type_Name(column.type())
                              << " is not supported";
                 is_valid_ = false;

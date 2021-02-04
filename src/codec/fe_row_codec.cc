@@ -21,8 +21,45 @@
 #include "codec/type_codec.h"
 #include "glog/logging.h"
 
+DECLARE_bool(enable_spark_unsaferow_format);
+
 namespace fesql {
 namespace codec {
+
+const uint8_t BitMapSize(uint32_t size) {
+    if (FLAGS_enable_spark_unsaferow_format) {
+//    if (true) {
+        return 8;
+    } else {
+        return ((size) >> 3) + !!((size)&0x07);
+    }
+}
+
+const std::unordered_map<::fesql::type::Type, uint8_t> GetTypeSizeMap() {
+    if (FLAGS_enable_spark_unsaferow_format) {
+        return {
+            {::fesql::type::kBool, 8},
+            {::fesql::type::kInt16, 8},
+            {::fesql::type::kInt32, 8},
+            {::fesql::type::kFloat, 8},
+            {::fesql::type::kInt64, 8},
+            {::fesql::type::kTimestamp, 8},
+            {::fesql::type::kDate, 8},
+            {::fesql::type::kDouble, 8}
+        };
+    } else {
+        return {
+            {::fesql::type::kBool, sizeof(bool)},
+            {::fesql::type::kInt16, sizeof(int16_t)},
+            {::fesql::type::kInt32, sizeof(int32_t)},
+            {::fesql::type::kFloat, sizeof(float)},
+            {::fesql::type::kInt64, sizeof(int64_t)},
+            {::fesql::type::kTimestamp, sizeof(int64_t)},
+            {::fesql::type::kDate, sizeof(int32_t)},
+            {::fesql::type::kDouble, sizeof(double)}
+        };
+    }
+}
 
 RowBuilder::RowBuilder(const Schema& schema)
     : schema_(schema),
@@ -40,8 +77,8 @@ RowBuilder::RowBuilder(const Schema& schema)
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
         } else {
-            auto iter = TYPE_SIZE_MAP.find(column.type());
-            if (iter == TYPE_SIZE_MAP.end()) {
+            auto iter = GetTypeSizeMap().find(column.type());
+            if (iter == GetTypeSizeMap().end()) {
                 LOG(WARNING) << ::fesql::type::Type_Name(column.type())
                              << " is not supported";
             } else {
@@ -110,8 +147,8 @@ bool RowBuilder::Check(::fesql::type::Type type) {
         return false;
     }
     if (column.type() != ::fesql::type::kVarchar) {
-        auto iter = TYPE_SIZE_MAP.find(column.type());
-        if (iter == TYPE_SIZE_MAP.end()) {
+        auto iter = GetTypeSizeMap().find(column.type());
+        if (iter == GetTypeSizeMap().end()) {
             LOG(WARNING) << ::fesql::type::Type_Name(column.type())
                          << " is not supported";
             return false;
@@ -287,8 +324,8 @@ bool RowView::Init() {
             offset_vec_.push_back(string_field_cnt_);
             string_field_cnt_++;
         } else {
-            auto iter = TYPE_SIZE_MAP.find(column.type());
-            if (iter == TYPE_SIZE_MAP.end()) {
+            auto iter = GetTypeSizeMap().find(column.type());
+            if (iter == GetTypeSizeMap().end()) {
                 LOG(WARNING) << ::fesql::type::Type_Name(column.type())
                              << " is not supported";
                 is_valid_ = false;
@@ -844,8 +881,8 @@ RowFormat::RowFormat(const fesql::codec::Schema* schema)
                 std::make_pair(string_field_cnt, string_field_cnt));
             string_field_cnt += 1;
         } else {
-            auto it = codec::TYPE_SIZE_MAP.find(column.type());
-            if (it == codec::TYPE_SIZE_MAP.end()) {
+            auto it = codec::GetTypeSizeMap().find(column.type());
+            if (it == codec::GetTypeSizeMap().end()) {
                 LOG(WARNING) << "fail to find column type "
                              << ::fesql::type::Type_Name(column.type());
             } else {

@@ -50,10 +50,12 @@ if (LLVM_EXT_ENABLE)
     add_definitions(-DLLVM_EXT_ENABLE)
 endif()
 
+add_library(fesql_flags STATIC ${CMAKE_SOURCE_DIR}/src/flags.cc)
+
 # fesql core library
 add_library(fesql_core STATIC ${SRC_FILE_LIST} $<TARGET_OBJECTS:fesql_proto> $<TARGET_OBJECTS:fesql_parser>)
 target_link_libraries(fesql_core
-    ${yaml_libs} ${LLVM_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB})
+    ${yaml_libs} ${LLVM_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} fesql_flags)
 
 # fesql core unittests
 if (TESTING_ENABLE)

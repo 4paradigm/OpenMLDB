@@ -263,8 +263,8 @@ BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
         } else {
-            auto it = codec::TYPE_SIZE_MAP.find(column.type());
-            if (it == codec::TYPE_SIZE_MAP.end()) {
+            auto it = codec::GetTypeSizeMap().find(column.type());
+            if (it == codec::GetTypeSizeMap().end()) {
                 LOG(WARNING) << ::fesql::type::Type_Name(column.type())
                              << " is not supported";
             } else {
