@@ -1161,8 +1161,7 @@ Status PhysicalRequestUnionNode::WithNewChildren(
     CHECK_TRUE(children.size() == 2, common::kPlanError);
     auto new_union_op = new PhysicalRequestUnionNode(
         children[0], children[1], window_, instance_not_in_window_,
-        exclude_current_time_,
-        output_request_row_);
+        exclude_current_time_, output_request_row_);
 
     std::vector<const node::ExprNode*> depend_columns;
     window_.ResolvedRelatedColumns(&depend_columns);

@@ -463,7 +463,7 @@ bool BufNativeEncoderIRBuilder::AppendString(
         return false;
     }
 
-    ::llvm::Type* bool_ty = builder.getInt1Ty();
+    ::llvm::Type* i8_ty = builder.getInt8Ty();
     ::llvm::Type* size_ty = builder.getInt32Ty();
     // get fe.string size
     ::llvm::Value* val_field_idx = builder.getInt32(field_idx);
@@ -482,7 +482,8 @@ bool BufNativeEncoderIRBuilder::AppendString(
         builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty->getPointerTo());
     ::llvm::Value* data_ptr =
         builder.CreateLoad(i8_ptr_ty, data_ptr_ptr, "load_str_data_ptr");
-    ::llvm::Value* is_null = str_val.GetIsNull(&builder);
+    ::llvm::Value* is_null =
+        builder.CreateIntCast(str_val.GetIsNull(&builder), i8_ty, true);
 
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
         "fesql_storage_encode_string_field",
@@ -492,7 +493,7 @@ bool BufNativeEncoderIRBuilder::AppendString(
         size_ty,    // col idx
         i8_ptr_ty,  // str val ptr
         size_ty,    // str val size
-        bool_ty,    // is null
+        i8_ty,      // is null
         size_ty,    // str_start_offset
         size_ty,    // str_field_offset
         size_ty,    // str_addr_space
@@ -528,14 +529,14 @@ bool BufNativeEncoderIRBuilder::AppendPrimary(::llvm::Value* i8_ptr,
     ::llvm::Value* offset = builder.getInt32(field_offset);
     if (val.IsNullable()) {
         ::llvm::Type* size_ty = builder.getInt32Ty();
-        ::llvm::Type* bool_ty = builder.getInt1Ty();
+        ::llvm::Type* i8_ty = builder.getInt8Ty();
         ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
         ::llvm::Type* void_ty = builder.getVoidTy();
         auto callee = block_->getModule()->getOrInsertFunction(
-            "fesql_storage_encode_nullbit", void_ty, i8_ptr_ty, size_ty,
-            bool_ty);
+            "fesql_storage_encode_nullbit", void_ty, i8_ptr_ty, size_ty, i8_ty);
         builder.CreateCall(callee, {i8_ptr, builder.getInt32(field_idx),
-                                    val.GetIsNull(&builder)});
+                                    builder.CreateIntCast(
+                                        val.GetIsNull(&builder), i8_ty, true)});
     }
     return BuildStoreOffset(builder, i8_ptr, offset, val.GetValue(&builder));
 }

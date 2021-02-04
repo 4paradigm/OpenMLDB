@@ -456,6 +456,9 @@ CallExprNode *NodeManager::MakeFuncNode(FnDefNode *fn,
     return RegisterNode(node_ptr);
 }
 
+ConstNode *NodeManager::MakeConstNode(bool value) {
+    return RegisterNode(new ConstNode(value));
+}
 ConstNode *NodeManager::MakeConstNode(int16_t value) {
     return RegisterNode(new ConstNode(value));
 }
