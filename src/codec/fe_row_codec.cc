@@ -28,7 +28,6 @@ namespace codec {
 
 const uint8_t BitMapSize(uint32_t size) {
     if (FLAGS_enable_spark_unsaferow_format) {
-//    if (true) {
         return 8;
     } else {
         return ((size) >> 3) + !!((size)&0x07);
