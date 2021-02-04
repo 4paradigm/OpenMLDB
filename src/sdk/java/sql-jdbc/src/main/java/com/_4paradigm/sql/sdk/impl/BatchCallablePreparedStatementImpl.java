@@ -68,6 +68,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
             throw new RuntimeException("not ok row");
         }
         currentRowBatch.AddRow(this.currentRow);
+        this.currentRow.delete();
         Status status = new Status();
         this.currentRow = router.GetRequestRow(db, currentSql, status);
         if (status.getCode() != 0 || this.currentRow == null) {

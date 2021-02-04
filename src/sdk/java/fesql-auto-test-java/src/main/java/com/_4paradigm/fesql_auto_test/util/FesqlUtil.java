@@ -888,6 +888,7 @@ public class FesqlUtil {
                 fesqlResult.setCount(result.size());
                 fesqlResult.setResult(result);
             } catch (Exception e) {
+                fesqlResult.setOk(false);
                 e.printStackTrace();
             }
         }

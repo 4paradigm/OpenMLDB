@@ -60,6 +60,7 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
             throw new RuntimeException("not ok row");
         }
         currentRowBatch.AddRow(this.currentRow);
+        this.currentRow.delete();
         Status status = new Status();
         this.currentRow = router.GetRequestRow(db, currentSql, status);
         if (this.currentRow == null || status.getCode() != 0) {
