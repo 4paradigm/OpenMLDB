@@ -221,8 +221,12 @@ std::unique_ptr<RowIterator> TabletSegmentHandler::GetIterator() {
     auto iter = partition_hander_->GetWindowIterator();
     if (iter) {
         iter->Seek(key_);
-        return iter->Valid() ? iter->GetValue()
-                             : std::unique_ptr<RowIterator>();
+        if (iter->Valid() &&
+            0 == iter->GetKey().compare(fesql::codec::Row(key_))) {
+            return iter->GetValue();
+        } else {
+            return std::unique_ptr<::fesql::vm::RowIterator>();
+        }
     }
     return std::unique_ptr<RowIterator>();
 }
@@ -230,7 +234,12 @@ RowIterator* TabletSegmentHandler::GetRawIterator() {
     auto iter = partition_hander_->GetWindowIterator();
     if (iter) {
         iter->Seek(key_);
-        return iter->Valid() ? iter->GetRawValue() : nullptr;
+        if (iter->Valid() &&
+            0 == iter->GetKey().compare(fesql::codec::Row(key_))) {
+            return iter->GetRawValue();
+        } else {
+            return nullptr;
+        }
     }
     return nullptr;
 }
