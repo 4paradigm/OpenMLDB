@@ -69,15 +69,15 @@ public class SQLExecutor extends BaseExecutor {
         List<String> sqls = fesqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
             for (String sql : sqls) {
-                log.info("sql:{}", sql);
+                // log.info("sql:{}", sql);
                 sql = FesqlUtil.formatSql(sql, tableNames);
                 fesqlResult = FesqlUtil.sql(executor, dbName, sql);
             }
         }
         String sql = fesqlCase.getSql();
         if (sql != null && sql.length() > 0) {
-//            log.info("sql:{}", sql);
-//            sql = FesqlUtil.formatSql(sql, tableNames);
+           // log.info("sql:{}", sql);
+           sql = FesqlUtil.formatSql(sql, tableNames);
             fesqlResult = FesqlUtil.sql(executor, dbName, sql);
         }
         return fesqlResult;
