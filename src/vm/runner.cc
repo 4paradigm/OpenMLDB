@@ -480,7 +480,9 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             }
             auto runner =
                 new LimitRunner(id_++, node->schemas_ctx(), op->GetLimitCnt());
-            return RegisterTask(node, UnaryInheritTask(cluster_task, runner));
+            return RegisterTask(
+                node,
+                UnaryInheritTask(cluster_task, nm_->RegisterNode(runner)));
         }
         case kPhysicalOpRename: {
             return Build(node->producers().at(0), status);

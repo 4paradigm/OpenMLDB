@@ -101,6 +101,11 @@ class SQLCase {
 
     bool AddInput(const TableInfo& table_data);
     static bool TypeParse(const std::string& row_str, fesql::type::Type* type);
+    static bool TTLTypeParse(const std::string& type_str,
+                             ::fesql::type::TTLType* type);
+    static bool TTLParse(const std::string& type_str,
+                         std::vector<int64_t>& ttls);  // NOLINT
+
     static const std::string TypeString(fesql::type::Type type);
     static bool ExtractSchema(const std::vector<std::string>& columns,
                               type::TableDef& table);  // NOLINT
@@ -201,10 +206,10 @@ class SQLCase {
                 return item_vec;
             } catch (const std::exception& ex) {
                 LOG(WARNING) << "Fail to parser fesql level: " << ex.what();
-                return std::set<std::string>({0});
+                return std::set<std::string>({"0"});
             }
         } else {
-            return std::set<std::string>({0});;
+            return std::set<std::string>({"0"});
         }
     }
     static bool IS_DEBUG() {

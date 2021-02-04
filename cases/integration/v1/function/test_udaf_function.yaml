@@ -1930,6 +1930,96 @@ cases:
         - [10, 3]
         - [11, 6]
         - [12, 3]
+  - id: 46-2
+    desc: count where value equals at
+    inputs:
+      - columns: ["id bigint", "pk bigint", "c1 string"]
+        indexs: ["index1:pk:id"]
+        rows:
+          - [1, 0, "a"]
+          - [2, 0, "b"]
+          - [3, 0, "c"]
+          - [4, 0, NULL]
+          - [5, 0, "b"]
+          - [6, 0, NULL]
+          - [7, 0, "c"]
+          - [8, 0, "a"]
+          - [9, 0, NULL]
+          - [10, 0, "c"]
+          - [11, 0, "a"]
+          - [12, 0, "b"]
+          - [13, 0, "a"]
+          - [14, 0, "a"]
+    sql: |
+      SELECT id,
+        count_where(id, ifnull(c1, "a") = ifnull(at(c1, 0), "a")) OVER w1 AS count_where_w1,
+        count_where(id, ifnull(c1, "a") = ifnull(at(c1, 0), "a")) OVER w2 AS count_where_w2
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS_RANGE BETWEEN 100s PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id bigint", "count_where_w1 bigint", "count_where_w2 bigint"]
+      rows:
+        - [1, 1, 1]
+        - [2, 1, 1]
+        - [3, 1, 1]
+        - [4, 2, 2]
+        - [5, 2, 2]
+        - [6, 3, 3]
+        - [7, 2, 2]
+        - [8, 4, 4]
+        - [9, 5, 5]
+        - [10, 3, 3]
+        - [11, 6, 6]
+        - [12, 3, 3]
+        - [13, 6, 7]
+        - [14, 7, 8]
+  - id: 46-3
+    desc: count where value equals case when at
+    inputs:
+      - columns: ["id bigint", "pk bigint", "c1 string"]
+        indexs: ["index1:pk:id"]
+        rows:
+          - [1, 0, "a"]
+          - [2, 0, "b"]
+          - [3, 0, "c"]
+          - [4, 0, NULL]
+          - [5, 0, "b"]
+          - [6, 0, NULL]
+          - [7, 0, "c"]
+          - [8, 0, "a"]
+          - [9, 0, NULL]
+          - [10, 0, "c"]
+          - [11, 0, "a"]
+          - [12, 0, "b"]
+          - [13, 0, "a"]
+          - [14, 0, "a"]
+    sql: |
+      SELECT id,
+        case when !isnull(at(c1,0)) OVER w1 then count_where(id, c1 = at(c1, 0)) OVER w1 else null end AS count_where_w1,
+        case when !isnull(at(c1,0)) OVER w2 then count_where(id, c1 = at(c1, 0)) OVER w2 else null end AS count_where_w2
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS_RANGE BETWEEN 100s PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id bigint", "count_where_w1 bigint", "count_where_w2 bigint"]
+      rows:
+        - [1, 1, 1]
+        - [2, 1, 1]
+        - [3, 1, 1]
+        - [4, NULL, NULL]
+        - [5, 2, 2]
+        - [6, NULL, NULL]
+        - [7, 2, 2]
+        - [8, 2, 2]
+        - [9, NULL, NULL]
+        - [10, 3, 3]
+        - [11, 3, 3]
+        - [12, 3, 3]
+        - [13, 3, 4]
+        - [14, 4, 5]
   -
     id: 18
     desc: 重复的聚合表达式

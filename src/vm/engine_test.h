@@ -147,14 +147,14 @@ void PrintYamlResult(const vm::Schema& schema, const std::vector<Row>& rows) {
                 oss << ", ";
             }
         }
-        oss << "]";
+        oss << "]\n";
     }
     LOG(INFO) << "\n" << oss.str() << "\n";
 }
 
 void PrintYamlV1Result(const vm::Schema& schema, const std::vector<Row>& rows) {
     std::ostringstream oss;
-    oss << "print schema\n[";
+    oss << "columns:\n[";
     for (int i = 0; i < schema.size(); i++) {
         auto col = schema.Get(i);
         oss << "\"" << col.name() << " " << YamlTypeName(col.type()) << "\"";
@@ -162,7 +162,7 @@ void PrintYamlV1Result(const vm::Schema& schema, const std::vector<Row>& rows) {
             oss << ", ";
         }
     }
-    oss << "]\nprint rows\n";
+    oss << "]\nrows:\n";
     RowView row_view(schema);
     for (auto row : rows) {
         row_view.Reset(row.buf());
@@ -288,7 +288,8 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
         row_view_exp.Reset(exp_rows[row_index].buf());
         for (int i = 0; i < schema.size(); i++) {
             if (row_view_exp.IsNULL(i)) {
-                ASSERT_TRUE(row_view.IsNULL(i)) << " At " << i;
+                ASSERT_TRUE(row_view.IsNULL(i))
+                    << " At " << i << schema.Get(i).name();
                 continue;
             }
             ASSERT_FALSE(row_view.IsNULL(i)) << " At " << i;
@@ -330,7 +331,7 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                         ASSERT_TRUE(IsNaN(act))
                             << " At " << i << " " << schema.Get(i).name();
                     } else {
-                        ASSERT_FLOAT_EQ(act, exp)
+                        ASSERT_DOUBLE_EQ(act, exp)
                             << " At " << i << " " << schema.Get(i).name();
                     }
                     break;
@@ -504,6 +505,7 @@ void DoEngineCheckExpect(const SQLCase& sql_case,
 
         LOG(INFO) << "Expect result:\n";
         PrintRows(schema, case_output_data);
+        PrintYamlResult(schema, sorted_output);
 
         ASSERT_NO_FATAL_FAILURE(
             CheckRows(schema, sorted_output, case_output_data));
@@ -898,8 +900,8 @@ class RequestEngineTestRunner : public EngineTestRunner {
         std::string request_name = request_session->GetRequestName();
 
         if (has_batch_request) {
-            CHECK_TRUE(1 == sql_case_.batch_request_.rows_.size(), kSQLError,
-                       "RequestEngine can't handler multi rows batch requests");
+            CHECK_TRUE(1 <= sql_case_.batch_request_.rows_.size(), kSQLError,
+                       "RequestEngine can't handler emtpy rows batch requests");
             CHECK_TRUE(sql_case_.ExtractInputData(sql_case_.batch_request_,
                                                   request_rows_),
                        kSQLError, "Extract case request rows failed");
@@ -941,7 +943,7 @@ class RequestEngineTestRunner : public EngineTestRunner {
 
     Status Compute(std::vector<Row>* outputs) override {
         const bool has_batch_request =
-            !sql_case_.batch_request_.columns_.empty() &&
+            !sql_case_.batch_request_.columns_.empty() ||
             !sql_case_.batch_request_.schema_.empty();
         auto request_session =
             std::dynamic_pointer_cast<RequestRunSession>(session_);
