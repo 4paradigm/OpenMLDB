@@ -357,14 +357,13 @@ cases:
         - [4,"cc",20,96,2]
         - [5,"ee",21,34,1]
   -
-    id: 13
-    desc: 多个window指定不同的ts
-    mode: rtidb-unsupport
-    tags: ["zhaowei:这个场景w2的order顺序不符合request模式,原来的预期结果不正确,已修改,麻烦赵伟确认"]
+    id: 13-1
+    desc: 多个window指定不同的ts, 数据时间乱序插入，batch模式预期
+    mode: request-unsupport, rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c3:c7", "index1:c3:c4"]
+        indexs: ["index1:c3:c7", "index2:c3:c4"]
         rows:
           - [1,"aa",20,33,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
@@ -383,6 +382,60 @@ cases:
         - [2,"bb",20,64,2]
         - [3,"cc",20,94,1]
         - [4,"dd",20,93,3]
+        - [5,"ee",21,34,1]
+  -
+    id: 13-2
+    desc: 多个window指定不同的ts, 数据时间乱序插入，request模式预期
+    mode: rtidb-batch-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c3:c7", "index2:c3:c4"]
+        rows:
+          - [1,"aa",20,33,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",20,30,1.3,2.3,1590738992000,"2020-05-03"]
+          - [4,"dd",20,32,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum, count(c4) OVER w2 as w2_c4_count FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.c3 ORDER BY {0}.c4 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint","w2_c4_count bigint"]
+      rows:
+        - [1,"aa",20,33,1]
+        - [2,"bb",20,64,1]
+        - [3,"cc",20,94,1]
+        - [4,"dd",20,93,3]
+        - [5,"ee",21,34,1]
+  -
+    id: 13-3
+    desc: 多个window指定不同的ts, 数据按时间顺序插入
+    mode: rtidb-batch-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c3:c7", "index2:c3:c4"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
+          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum, count(c4) OVER w2 as w2_c4_count FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.c3 ORDER BY {0}.c4 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint","w2_c4_count bigint"]
+      rows:
+        - [1,"aa",20,30,1]
+        - [2,"bb",20,61,2]
+        - [3,"cc",20,93,3]
+        - [4,"dd",20,96,3]
         - [5,"ee",21,34,1]
   -
     id: 14

@@ -173,7 +173,8 @@ bool Table::DecodeKeysAndTs(const IndexSt& index, const char* row,
             key = std::to_string(value);
         }
     }
-    if (fesql::vm::INVALID_POS == index.ts_pos) {
+    if (fesql::vm::INVALID_POS == index.ts_pos ||
+        row_view_.IsNULL(reinterpret_cast<const int8_t*>(row), index.ts_pos)) {
         struct timeval cur_time;
         gettimeofday(&cur_time, NULL);
         *time_ptr = cur_time.tv_sec * 1000 + cur_time.tv_usec / 1000;

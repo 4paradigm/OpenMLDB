@@ -304,7 +304,7 @@ cases:
   -
     id: 12
     desc: 子查询使列别名重名,并同时select
-    tags: ["TODO","bug-期望子查询别名不可以一致"]
+    tags: ["TODO", "@baoxinqi", "bug-期望子查询别名不可以一致FEX-1009"]
     inputs:
       -
         columns : ["id int","c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -315,9 +315,4 @@ cases:
           - [3,"cc",41,51,1590738991000]
     sql: select id,v2,v2 from (select id,c2+1 as v2,c3+1 as v2 from {0});
     expect:
-      columns: ["id int","v2 int","v2 bigint"]
-      order: id
-      rows:
-        - [1,3,4]
-        - [2,22,32]
-        - [3,42,52]
+      success: false
