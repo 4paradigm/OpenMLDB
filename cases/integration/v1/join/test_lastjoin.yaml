@@ -840,6 +840,7 @@ cases:
       success: false
   - id: 19-1
     desc: 两个子查询lastjoin-子查询带窗口特征-没有使用索引-不带orderby
+    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

@@ -140,7 +140,8 @@ bool SQLCase::ExtractIndex(const std::vector<std::string>& indexs,
         ::fesql::type::IndexDef* index_def = table.add_indexes();
         boost::trim(name_keys_order[0]);
         if (index_names.find(name_keys_order[0]) != index_names.end()) {
-            LOG(WARNING) << "Invalid Index: index name "<< name_keys_order[0] <<" duplicate";
+            LOG(WARNING) << "Invalid Index: index name " << name_keys_order[0]
+                         << " duplicate";
             return false;
         }
         index_def->set_name(name_keys_order[0]);
