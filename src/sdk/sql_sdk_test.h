@@ -89,7 +89,8 @@ class SQLSDKQueryTest : public SQLSDKTest {
     SQLSDKQueryTest() : SQLSDKTest() {}
     ~SQLSDKQueryTest() {}
     static void RequestExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                                  std::shared_ptr<SQLRouter> router, bool is_procedure = false, bool is_asyn = false);
+                                  std::shared_ptr<SQLRouter> router, bool has_batch_request, bool is_procedure = false,
+                                  bool is_asyn = false);
     static void RunRequestModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                                   std::shared_ptr<SQLRouter> router);
     static void DistributeRunRequestModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
@@ -100,8 +101,8 @@ class SQLSDKQueryTest : public SQLSDKTest {
                                               std::shared_ptr<SQLRouter> router, int32_t partition_num, bool is_asyn);
 
     static void BatchRequestExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                                       std::shared_ptr<SQLRouter> router, bool has_batch_request,
-                                       bool is_procedure = false, bool is_asyn = false);
+                                       std::shared_ptr<SQLRouter> router, bool has_batch_request, bool is_procedure,
+                                       bool is_asy);
     static void BatchRequestExecuteSQLWithCommonColumnIndices(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                                                               std::shared_ptr<SQLRouter> router,
                                                               const std::set<size_t>& common_column_indices,
@@ -281,6 +282,7 @@ void SQLSDKTest::InsertTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
             if (!insert.empty()) {
                 for (int j = 0; j < sql_case.inputs()[i].repeat_; j++) {
                     ASSERT_TRUE(router->ExecuteInsert(sql_case.db(), insert, &status));
+                    ASSERT_TRUE(router->RefreshCatalog());
                 }
             }
         }
@@ -416,7 +418,8 @@ void SQLSDKTest::RunBatchModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
 }
 
 void SQLSDKQueryTest::RequestExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                                        std::shared_ptr<SQLRouter> router, bool is_procedure, bool is_asyn) {
+                                        std::shared_ptr<SQLRouter> router, bool has_batch_request, bool is_procedure,
+                                        bool is_asyn) {
     fesql::sdk::Status status;
     // execute SQL
     std::string sql = sql_case.sql_str();
@@ -446,18 +449,20 @@ void SQLSDKQueryTest::RequestExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // N
         }
 
         fesql::type::TableDef insert_table;
-        ASSERT_TRUE(sql_case.ExtractInputTableDef(insert_table, 0));
-
         std::vector<fesql::codec::Row> insert_rows;
-        ASSERT_TRUE(sql_case.ExtractInputData(insert_rows, 0));
-
+        std::vector<std::string> inserts;
+        if (!has_batch_request) {
+            ASSERT_TRUE(sql_case.ExtractInputTableDef(insert_table, 0));
+            ASSERT_TRUE(sql_case.ExtractInputData(insert_rows, 0));
+            sql_case.BuildInsertSQLListFromInput(0, &inserts);
+        } else {
+            ASSERT_TRUE(sql_case.ExtractInputTableDef(sql_case.batch_request_, insert_table));
+            ASSERT_TRUE(sql_case.ExtractInputData(sql_case.batch_request_, insert_rows));
+        }
         CheckSchema(insert_table.columns(), *(request_row->GetSchema().get()));
-
         LOG(INFO) << "Request Row:\n";
         PrintRows(insert_table.columns(), insert_rows);
 
-        std::vector<std::string> inserts;
-        sql_case.BuildInsertSQLListFromInput(0, &inserts);
         fesql::codec::RowView row_view(insert_table.columns());
         std::vector<std::shared_ptr<fesql::sdk::ResultSet>> results;
         LOG(INFO) << "Request execute sql start!";
@@ -480,10 +485,11 @@ void SQLSDKQueryTest::RequestExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // N
             }
             if (!rs || status.code != 0) FAIL() << "sql case expect success == true";
             results.push_back(rs);
-            std::string insert_request;
-            LOG(INFO) << "insert request: \n" << inserts[i];
-            bool ok = router->ExecuteInsert(sql_case.db(), inserts[i], &status);
-            ASSERT_TRUE(ok);
+            if (!has_batch_request) {
+                LOG(INFO) << "insert request: \n" << inserts[i];
+                bool ok = router->ExecuteInsert(sql_case.db(), inserts[i], &status);
+                ASSERT_TRUE(ok);
+            }
         }
         LOG(INFO) << "Request execute sql done!";
         ASSERT_FALSE(results.empty());
@@ -670,8 +676,9 @@ void SQLSDKQueryTest::RunRequestModeSDK(fesql::sqlcase::SQLCase& sql_case,  // N
     fesql::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router);
-    InsertTables(sql_case, router, kNotInsertFirstInput);
-    RequestExecuteSQL(sql_case, router);
+    bool has_batch_request = !sql_case.batch_request().columns_.empty();
+    InsertTables(sql_case, router, has_batch_request ? kInsertAllInputs : kNotInsertFirstInput);
+    RequestExecuteSQL(sql_case, router, has_batch_request);
     DropTables(sql_case, router);
     LOG(INFO) << "RequestExecuteSQL ID: " << sql_case.id() << ", DESC: " << sql_case.desc() << " done!";
 }
@@ -680,8 +687,9 @@ void SQLSDKQueryTest::DistributeRunRequestModeSDK(fesql::sqlcase::SQLCase& sql_c
     fesql::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router, partition_num);
-    InsertTables(sql_case, router, kNotInsertFirstInput);
-    RequestExecuteSQL(sql_case, router);
+    bool has_batch_request = !sql_case.batch_request().columns_.empty();
+    InsertTables(sql_case, router, has_batch_request ? kInsertAllInputs : kNotInsertFirstInput);
+    RequestExecuteSQL(sql_case, router, has_batch_request);
     DropTables(sql_case, router);
     LOG(INFO) << "DistributeRunRequestExecuteSQL ID: " << sql_case.id() << ", DESC: " << sql_case.desc() << " done!";
 }
@@ -692,7 +700,7 @@ void SQLSDKQueryTest::RunBatchRequestModeSDK(fesql::sqlcase::SQLCase& sql_case, 
     CreateTables(sql_case, router);
     bool has_batch_request = !sql_case.batch_request().columns_.empty();
     InsertTables(sql_case, router, has_batch_request ? kInsertAllInputs : kNotInsertLastRowOfFirstInput);
-    BatchRequestExecuteSQL(sql_case, router, has_batch_request);
+    BatchRequestExecuteSQL(sql_case, router, has_batch_request, false, false);
     DropTables(sql_case, router);
     LOG(INFO) << "BatchRequestExecuteSQL ID: " << sql_case.id() << ", DESC: " << sql_case.desc() << " done!";
 }
@@ -704,7 +712,7 @@ void SQLSDKQueryTest::DistributeRunBatchRequestModeSDK(fesql::sqlcase::SQLCase& 
     CreateTables(sql_case, router, partition_num);
     bool has_batch_request = !sql_case.batch_request().columns_.empty();
     InsertTables(sql_case, router, has_batch_request ? kInsertAllInputs : kNotInsertLastRowOfFirstInput);
-    BatchRequestExecuteSQL(sql_case, router, has_batch_request);
+    BatchRequestExecuteSQL(sql_case, router, has_batch_request, false, false);
 
     DropTables(sql_case, router);
     LOG(INFO) << "DistributeRunBatchRequestExecuteSQL ID: " << sql_case.id() << ", DESC: " << sql_case.desc()
@@ -716,9 +724,10 @@ void SQLSDKQueryTest::RunRequestProcedureModeSDK(fesql::sqlcase::SQLCase& sql_ca
     fesql::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router);
-    InsertTables(sql_case, router, kNotInsertFirstInput);
+    bool has_batch_request = !sql_case.batch_request().columns_.empty();
+    InsertTables(sql_case, router, has_batch_request ? kInsertAllInputs : kNotInsertFirstInput);
     CreateProcedure(sql_case, router);
-    RequestExecuteSQL(sql_case, router, true, is_asyn);
+    RequestExecuteSQL(sql_case, router, has_batch_request, true, is_asyn);
     DropProcedure(sql_case, router);
     DropTables(sql_case, router);
     LOG(INFO) << "RequestExecuteSQL ID: " << sql_case.id() << ", DESC: " << sql_case.desc() << " done!";
@@ -744,9 +753,10 @@ void SQLSDKQueryTest::DistributeRunRequestProcedureModeSDK(fesql::sqlcase::SQLCa
     fesql::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router, partition_num);
-    InsertTables(sql_case, router, kNotInsertFirstInput);
+    bool has_batch_request = !sql_case.batch_request().columns_.empty();
+    InsertTables(sql_case, router, has_batch_request ? kInsertAllInputs : kNotInsertFirstInput);
     CreateProcedure(sql_case, router);
-    RequestExecuteSQL(sql_case, router, true, is_asyn);
+    RequestExecuteSQL(sql_case, router, has_batch_request, true, is_asyn);
     DropProcedure(sql_case, router);
     DropTables(sql_case, router);
     LOG(INFO) << "RequestExecuteSQL ID: " << sql_case.id() << ", DESC: " << sql_case.desc() << " done!";
@@ -852,6 +862,15 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_index_optimized.yaml")));
 INSTANTIATE_TEST_CASE_P(SQLSDKTestDebugIssues, SQLSDKQueryTest,
                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/debug/issues_case.yaml")));
+
+// myhug 场景正确性验证
+INSTANTIATE_TEST_CASE_P(SQLSDKTestFzMyhug, SQLSDKQueryTest,
+                        testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_myhug.yaml")));
+
+// luoji 场景正确性验证
+INSTANTIATE_TEST_CASE_P(SQLSDKTestFzLuoji, SQLSDKQueryTest,
+                        testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_luoji.yaml")));
+
 }  // namespace sdk
 }  // namespace rtidb
 #endif  // SRC_SDK_SQL_SDK_TEST_H_
