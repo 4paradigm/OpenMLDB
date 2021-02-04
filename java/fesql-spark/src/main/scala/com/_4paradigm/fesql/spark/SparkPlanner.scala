@@ -171,7 +171,7 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
         val projectNode = PhysicalProjectNode.CastFrom(root)
         projectNode.getProject_type_ match {
           case ProjectType.kTableProject =>
-            if (System.getenv("ENABLE_UNSAFEROW_OPTIMIZE") != null && System.getenv("ENABLE_UNSAFEROW_OPTIMIZE").toLowerCase.equals("true")) {
+            if (config.enableUnsafeRowOptimization) {
               logger.info("Use unsafe row optimize without encode/decode")
               UnsafeRowProjectPlan.gen(ctx, PhysicalTableProjectNode.CastFrom(projectNode), children)
             } else {
@@ -253,12 +253,16 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
     var engine: SQLEngine = null
 
     val engineOptions = SQLEngine.createDefaultEngineOptions()
-    
+
     if (config.enableWindowParallelization) {
       logger.info("Enable window parallelization optimization")
       engineOptions.set_enable_batch_window_parallelization(true)
     } else {
       logger.info("Disable window parallelization optimization, enable by setting fesql.window.parallelization")
+    }
+
+    if (config.enableUnsafeRowOptimization) {
+      engineOptions.set_enable_spark_unsaferow_format(true)
     }
 
     try {

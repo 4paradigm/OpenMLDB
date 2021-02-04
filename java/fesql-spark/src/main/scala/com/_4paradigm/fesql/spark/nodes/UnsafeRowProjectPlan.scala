@@ -40,7 +40,7 @@ object UnsafeRowProjectPlan {
       outputSchemaSlices = outputSchemaSlices
     )
 
-    val internalRowRdd = inputInstance.getDf(ctx.getSparkSession).queryExecution.toRdd
+    val internalRowRdd = inputInstance.getDfConsideringIndex(ctx, node.GetNodeId()).queryExecution.toRdd
 
     val projectRDD = internalRowRdd.mapPartitions(partitionIter => {
       // ensure worker native

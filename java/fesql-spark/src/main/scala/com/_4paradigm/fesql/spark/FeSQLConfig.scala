@@ -89,6 +89,9 @@ class FeSQLConfig extends Serializable {
   @ConfigOption(name="fesql.concatjoin.jointype", doc="The join type type for concat join(innerjoin, leftjoin, lastjoin)")
   var concatJoinJoinType = "inner"
 
+  @ConfigOption(name="fesql.enable.unsaferow.optimization", doc="Enable UnsafeRow optimization or not")
+  var enableUnsafeRowOptimization = false
+
 }
 
 
