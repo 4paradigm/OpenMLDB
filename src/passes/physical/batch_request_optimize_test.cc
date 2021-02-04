@@ -70,8 +70,11 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(
         InitCases("/cases/integration/v1/window/test_window_union.yaml")));
 INSTANTIATE_TEST_CASE_P(
+    BatchRequestTestLast_Join, BatchRequestOptimizeTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/join/test_last_join.yaml")));
+INSTANTIATE_TEST_CASE_P(
     BatchRequestTestLastJoin, BatchRequestOptimizeTest,
-    testing::ValuesIn(InitCases("/cases/integration/v1/test_last_join.yaml")));
+    testing::ValuesIn(InitCases("/cases/integration/v1/join/test_lastjoin.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineTestSelectSample, BatchRequestOptimizeTest,
