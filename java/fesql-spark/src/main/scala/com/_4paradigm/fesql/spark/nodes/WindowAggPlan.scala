@@ -6,14 +6,13 @@ import com._4paradigm.fesql.common.{FesqlException, JITManager, SerializableByte
 import com._4paradigm.fesql.node.FrameType
 import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.nodes.window.{RowDebugger, WindowComputer, WindowSampleSupport}
-import com._4paradigm.fesql.spark.utils.{AutoDestructibleIterator, FesqlUtil, NodeIndexType, SparkColumnUtil}
+import com._4paradigm.fesql.spark.utils.{AutoDestructibleIterator, FesqlUtil, SparkColumnUtil}
 import com._4paradigm.fesql.utils.SkewUtils
 import com._4paradigm.fesql.vm.Window.WindowFrameType
 import com._4paradigm.fesql.vm.PhysicalWindowAggrerationNode
 import org.apache.hadoop.fs.FileSystem
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Column, DataFrame, Row, functions}
-import org.apache.spark.sql.types._
 import org.apache.spark.util.SerializableConfiguration
 import org.slf4j.LoggerFactory
 
@@ -379,7 +378,6 @@ object WindowAggPlan {
       val isSkew = sqlConfig.skewMode == FeSQLConfig.SKEW
       computer.addHook(new RowDebugger(sqlConfig, config, isSkew))
     }
-    System.currentTimeMillis()
     computer
   }
 
@@ -408,12 +406,15 @@ object WindowAggPlan {
         }
         lastRow = row
 
+        val orderKey = computer.extractKey(row)
         val tag = row.getInt(config.skewTagIdx)
         val position = row.getInt(config.skewPositionIdx)
-        if (tag == position) {
-          Some(computer.compute(row, config.keepIndexColumn, config.unionFlagIdx))
+        if (!isValidOrder(orderKey)) {
+          None
+        } else if (tag == position) {
+          Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx))
         } else {
-          computer.bufferRowOnly(row)
+          computer.bufferRowOnly(row, orderKey)
           None
         }
       })
@@ -423,7 +424,12 @@ object WindowAggPlan {
           computer.checkPartition(row, lastRow)
         }
         lastRow = row
-        Some(computer.compute(row, config.keepIndexColumn, config.unionFlagIdx))
+        val orderKey = computer.extractKey(row)
+        if (isValidOrder(orderKey)) {
+          Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx))
+        } else {
+          None
+        }
       })
     }
     AutoDestructibleIterator(resIter) {
@@ -449,24 +455,29 @@ object WindowAggPlan {
       }
       lastRow = row
 
-      val unionFlag = row.getBoolean(flagIdx)
-      if (unionFlag) {
-        // primary
-        if (sqlConfig.skewMode == FeSQLConfig.SKEW) {
-          val tag = row.getInt(config.skewTagIdx)
-          val position = row.getInt(config.skewPositionIdx)
-          if (tag == position) {
-            Some(computer.compute(row, config.keepIndexColumn, config.unionFlagIdx))
+      val orderKey = computer.extractKey(row)
+      if (isValidOrder(orderKey)) {
+        val unionFlag = row.getBoolean(flagIdx)
+        if (unionFlag) {
+          // primary
+          if (sqlConfig.skewMode == FeSQLConfig.SKEW) {
+            val tag = row.getInt(config.skewTagIdx)
+            val position = row.getInt(config.skewPositionIdx)
+            if (tag == position) {
+              Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx))
+            } else {
+              computer.bufferRowOnly(row, orderKey)
+              None
+            }
           } else {
-            computer.bufferRowOnly(row)
-            None
+            Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx))
           }
         } else {
-          Some(computer.compute(row, config.keepIndexColumn, config.unionFlagIdx))
+          // secondary
+          computer.bufferRowOnly(row, orderKey)
+          None
         }
       } else {
-        // secondary
-        computer.bufferRowOnly(row)
         None
       }
     })
@@ -475,6 +486,9 @@ object WindowAggPlan {
       computer.delete()
     }
   }
+
+  def isValidOrder(key: Long): Boolean = key >= 0
+
 
   /**
    * Spark closure class for window compute information
