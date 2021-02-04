@@ -66,8 +66,8 @@ void StoreData(std::shared_ptr<TestArgs> args, std::shared_ptr<fesql::storage::T
             }
             raw_data.push_back(key_str);
         }
-        ASSERT_EQ(0, sdk_codec.EncodeDimension(raw_data, 1, &dimensions));
-        ASSERT_EQ(0, sdk_codec.EncodeTsDimension(raw_data, &ts_dimensions));
+        sdk_codec.EncodeDimension(raw_data, 1, &dimensions);
+        sdk_codec.EncodeTsDimension(raw_data, &ts_dimensions);
 
         rtidb::storage::Dimensions dims;
         rtidb::storage::TSDimensions ts_dims;
@@ -374,8 +374,12 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     EngineTestWindowUnion, TabletEngineTest,
     testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/window/test_window_union.yaml")));
-INSTANTIATE_TEST_SUITE_P(EngineTestLastJoin, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_last_join.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    EngineTestLast_Join, TabletEngineTest,
+    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/join/test_last_join.yaml")));
+//INSTANTIATE_TEST_SUITE_P(
+//    EngineTestLastJoin, TabletEngineTest,
+//    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/join/test_lastjoin.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     EngineTestArithmetic, TabletEngineTest,
@@ -426,8 +430,9 @@ INSTANTIATE_TEST_CASE_P(
     EngineTestIndexOptimized, TabletEngineTest,
     testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_index_optimized.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(EngineTestErrorWindow, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/error/error_window.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    EngineTestErrorWindow, TabletEngineTest,
+    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/window/error_window.yaml")));
 INSTANTIATE_TEST_CASE_P(EngineTestDebugIssues, TabletEngineTest,
                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/debug/issues_case.yaml")));
 
