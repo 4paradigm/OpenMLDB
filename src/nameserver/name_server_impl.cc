@@ -8157,35 +8157,29 @@ void NameServerImpl::UpdateTableAliveStatus(RpcController* controller, const Upd
     }
 }
 
-int NameServerImpl::UpdateEndpointTableAlive(const std::string& endpoint, bool is_alive) {
-    if (!running_.load(std::memory_order_acquire)) {
-        PDLOG(WARNING, "cur nameserver is not leader");
-        return 0;
-    }
-    std::lock_guard<std::mutex> lock(mu_);
-    for (const auto& kv : table_info_) {
-        ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::TablePartition>* table_partition =
-            kv.second->mutable_table_partition();
+int NameServerImpl::UpdateEndpointTableAliveHandle(const std::string& endpoint,
+                                                   TableInfos& table_infos, bool is_alive) { //NOLINT
+    for (const auto& kv : table_infos) {
+        ::google::protobuf::RepeatedPtrField<TablePartition>* table_parts = kv.second->mutable_table_partition();
         bool has_update = false;
-        for (int idx = 0; idx < table_partition->size(); idx++) {
-            ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::PartitionMeta>* partition_meta =
-                table_partition->Mutable(idx)->mutable_partition_meta();
+        for (int idx = 0; idx < table_parts->size(); idx++) {
+            ::google::protobuf::RepeatedPtrField<PartitionMeta>* partition_meta =
+                table_parts->Mutable(idx)->mutable_partition_meta();
             uint32_t alive_cnt = 0;
             for (int meta_idx = 0; meta_idx < partition_meta->size(); meta_idx++) {
-                ::rtidb::nameserver::PartitionMeta* cur_partition_meta = partition_meta->Mutable(meta_idx);
+                PartitionMeta* cur_partition_meta = partition_meta->Mutable(meta_idx);
                 if (cur_partition_meta->is_alive()) {
                     alive_cnt++;
                 }
             }
             if (alive_cnt == 1 && !is_alive) {
-                PDLOG(INFO,
-                      "alive_cnt is one, should not set alive to false. "
-                      "name[%s] pid[%u] endpoint[%s] is_alive[%d]",
-                      kv.first.c_str(), table_partition->Get(idx).pid(), endpoint.c_str(), is_alive);
+                LOG(INFO) << "alive_cnt is one, should not set alive to false. name[" << kv.first
+                          << "] pid [" << table_parts->Get(idx).pid()  << "] endpoint["
+                          << endpoint  << "] is_alive[" << is_alive << "]";
                 continue;
             }
             for (int meta_idx = 0; meta_idx < partition_meta->size(); meta_idx++) {
-                ::rtidb::nameserver::PartitionMeta* cur_partition_meta = partition_meta->Mutable(meta_idx);
+                PartitionMeta* cur_partition_meta = partition_meta->Mutable(meta_idx);
                 if (cur_partition_meta->endpoint() == endpoint) {
                     cur_partition_meta->set_is_alive(is_alive);
                     has_update = true;
@@ -8194,10 +8188,31 @@ int NameServerImpl::UpdateEndpointTableAlive(const std::string& endpoint, bool i
         }
         if (has_update) {
             if (!UpdateZkTableNodeWithoutNotify(kv.second.get())) {
+                LOG(WARNING) << "update fail. table[" << kv.first << "] endpoint[" << endpoint
+                          << "] is_alive[" << is_alive << "]";
                 return -1;
             }
-            PDLOG(INFO, "update success. table[%s] endpoint[%s] is_alive[%d]", kv.first.c_str(), endpoint.c_str(),
-                  is_alive);
+            LOG(INFO) << "update success. table[" << kv.first << "] endpoint[" << endpoint
+                      << "] is_alive[" << is_alive << "]";
+        }
+    }
+    return 0;
+}
+
+int NameServerImpl::UpdateEndpointTableAlive(const std::string& endpoint, bool is_alive) {
+    if (!running_.load(std::memory_order_acquire)) {
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return 0;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    int ret = UpdateEndpointTableAliveHandle(endpoint, table_info_, is_alive);
+    if (ret != 0) {
+        return ret;
+    }
+    for (auto& kv : db_table_info_) {
+        ret = UpdateEndpointTableAliveHandle(endpoint, kv.second, is_alive);
+        if (ret != 0) {
+            return ret;
         }
     }
     NotifyTableChanged();

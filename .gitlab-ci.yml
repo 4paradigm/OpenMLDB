@@ -67,6 +67,9 @@ build:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/simple_compile.sh
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
   artifacts:
     expire_in: 4h
     paths:
@@ -74,6 +77,25 @@ build:
       - build/src/sdk/libsql_jsdk.so
       - build/sql_pysdk/dist/*.whl
       - build/python/dist/*.whl
+
+daily_build:
+  stage: build
+  script:
+    - source /root/.bashrc && sh steps/checkout_fesql_branch.sh $FESQL_BRANCH
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/simple_compile.sh
+  artifacts:
+    expire_in: 4h
+    paths:
+      - build/bin/rtidb
+      - build/src/sdk/libsql_jsdk.so
+      - build/sql_pysdk/dist/*.whl
+      - build/python/dist/*.whl
+  only:
+    variables:
+      - $ENV_BUILD == "daily"
 
 # mac_build:
 #   variables:
@@ -175,16 +197,16 @@ java_ut:
   dependencies:
     - build
 
-fesql_auto_test:
-  stage: manual
+fesql_auto_test_level_0:
+  stage: quick
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test.sh
-    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test_cluster.sh
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test.sh "0"
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test_cluster.sh "0"
   after_script:
     - tar czf $CI_COMMIT_SHA  src/sdk/java/fesql-auto-test-java/target/allure-results
     - bash steps/upload-nexus.sh $CI_COMMIT_SHA
@@ -202,6 +224,72 @@ fesql_auto_test:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
+
+fesql_sdk_c++_level_0:
+  stage: quick
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/fesql_c_test_compile.sh
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_c_ut.sh 0
+  artifacts:
+    reports:
+      junit:
+        - reports/*.xml
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+
+fesql_auto_test_level_1+:
+  stage: manual
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test.sh "1,2,3,4,5"
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test_cluster.sh "1,2,3,4,5"
+  after_script:
+    - tar czf $CI_COMMIT_SHA  src/sdk/java/fesql-auto-test-java/target/allure-results
+    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
+    - curl -s "http://auto.4paradigm.com/job/fesql-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&allure_path=src/sdk/java/feql-auto-test-java/target/allure-results&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+  artifacts:
+    reports:
+      junit:
+        - src/sdk/java/fesql-auto-test-java/target/surefire-reports/junitreports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/target/surefire-reports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/TEST-*.xml
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies:
+    - build
+  when: manual
+
+
+fesql_sdk_c++_level_1+:
+  stage: manual
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/fesql_c_test_compile.sh
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_c_ut.sh "1,2,3,4,5"
+  artifacts:
+    reports:
+      junit:
+        - reports/*.xml
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
   when: manual
 
 auto_test:
@@ -458,7 +546,7 @@ deploy-fedb:
     - source /root/.bashrc && bash steps/deploy_package_fedb.sh
   dependencies:
     # - mac_build
-    - build
+    - daily_build
   only:
     variables:
       - $ENV_BUILD == "daily"

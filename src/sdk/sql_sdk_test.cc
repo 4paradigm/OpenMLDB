@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+#include "sdk/sql_sdk_test.h"
+
 #include <sched.h>
 #include <timer.h>
 #include <unistd.h>
@@ -33,17 +35,17 @@
 #include "sdk/sql_router.h"
 #include "test/base_test.h"
 #include "vm/catalog.h"
-#include "sdk/sql_sdk_test.h"
 namespace rtidb {
 namespace sdk {
 
 MiniCluster* mc_ = nullptr;
-static std::shared_ptr<SQLRouter> GetNewSQLRouter(const fesql::sqlcase::SQLCase& sql_case) {
+std::shared_ptr<SQLRouter> router_ = std::shared_ptr<SQLRouter>();
+static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.session_timeout = 30000;
-    sql_opt.enable_debug = sql_case.debug() || fesql::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
     return NewClusterSQLRouter(sql_opt);
 }
 TEST_P(SQLSDKTest, sql_sdk_batch_test) {
@@ -71,9 +73,8 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
-    auto router = GetNewSQLRouter(sql_case);
-    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
-    RunRequestModeSDK(sql_case, router);
+    ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
+    RunRequestModeSDK(sql_case, router_);
     LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 TEST_P(SQLSDKQueryTest, sql_sdk_batch_request_test) {
@@ -85,9 +86,8 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_request_test) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
-    auto router = GetNewSQLRouter(sql_case);
-    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
-    RunBatchRequestModeSDK(sql_case, router);
+    ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
+    RunBatchRequestModeSDK(sql_case, router_);
     LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
@@ -100,9 +100,8 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
-    auto router = GetNewSQLRouter(sql_case);
-    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
-    RunBatchModeSDK(sql_case, router, mc_->GetTbEndpoint());
+    ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
+    RunBatchModeSDK(sql_case, router_, mc_->GetTbEndpoint());
 }
 
 TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_test) {
@@ -114,11 +113,9 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_test) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
-    auto router = GetNewSQLRouter(sql_case);
-    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
-    RunRequestProcedureModeSDK(sql_case, router, false);
-    LOG(INFO) << "Finish sql_sdk_request_procedure_test: ID: "
-        << sql_case.id() << ", DESC: " << sql_case.desc();
+    ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
+    RunRequestProcedureModeSDK(sql_case, router_, false);
+    LOG(INFO) << "Finish sql_sdk_request_procedure_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
 TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_asyn_test) {
@@ -130,11 +127,9 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_asyn_test) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
-    auto router = GetNewSQLRouter(sql_case);
-    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
-    RunRequestProcedureModeSDK(sql_case, router, true);
-    LOG(INFO) << "Finish sql_sdk_request_procedure_asyn_test: ID: "
-        << sql_case.id() << ", DESC: " << sql_case.desc();
+    ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
+    RunRequestProcedureModeSDK(sql_case, router_, true);
+    LOG(INFO) << "Finish sql_sdk_request_procedure_asyn_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_test) {
     auto sql_case = GetParam();
@@ -149,9 +144,8 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_test) {
         return;
     }
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    auto router = GetNewSQLRouter(sql_case);
-    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
-    RunBatchRequestModeSDK(sql_case, router);
+    ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
+    RunBatchRequestModeSDK(sql_case, router_);
     LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_test) {
@@ -167,9 +161,8 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_test) {
         return;
     }
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    auto router = GetNewSQLRouter(sql_case);
-    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
-    RunBatchRequestProcedureModeSDK(sql_case, router, false);
+    ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
+    RunBatchRequestProcedureModeSDK(sql_case, router_, false);
     LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
@@ -186,9 +179,8 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_asyn_test) {
         return;
     }
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    auto router = GetNewSQLRouter(sql_case);
-    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
-    RunBatchRequestProcedureModeSDK(sql_case, router, true);
+    ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
+    RunBatchRequestProcedureModeSDK(sql_case, router_, true);
     LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
@@ -409,8 +401,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     }
     ASSERT_TRUE(router->RefreshCatalog());
     // insert
-    std::string insert_sql =
-        "insert into trans values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
+    std::string insert_sql = "insert into trans values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
     ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
     // create procedure
     std::string sp_name = "sp";
@@ -613,6 +604,7 @@ int main(int argc, char** argv) {
     int ok = ::rtidb::sdk::mc_->SetUp(2);
     sleep(1);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::rtidb::sdk::router_ = ::rtidb::sdk::GetNewSQLRouter();
     ok = RUN_ALL_TESTS();
     ::rtidb::sdk::mc_->Close();
     return ok;

@@ -10,11 +10,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
 @Slf4j
-public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
+public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
+
+    private List<String> spNames;
 
     public StoredProcedureSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest, boolean isAsyn) {
         super(executor, fesqlCase, isBatchRequest, isAsyn);
@@ -25,19 +28,22 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
         boolean dbOk = executor.createDB(dbName);
         log.info("create db:{},{}", dbName, dbOk);
         FesqlResult res = FesqlUtil.createAndInsert(
-                executor, dbName, fesqlCase.getInputs(), !isBatchRequest, 1);
+                executor, dbName, fesqlCase.getInputs(),
+                !isBatchRequest && null == fesqlCase.getBatch_request(), 1);
         if (!res.isOk()) {
             throw new RuntimeException("fail to run SQLExecutor: prepare fail");
         }
         for (InputDesc inputDesc : fesqlCase.getInputs()) {
+            tables = fesqlCase.getInputs();
             tableNames.add(inputDesc.getName());
         }
+        spNames = new ArrayList<>();
     }
 
     @Override
     protected FesqlResult execute() throws Exception {
         if (fesqlCase.getInputs().isEmpty() ||
-            CollectionUtils.isEmpty(fesqlCase.getInputs().get(0).getRows())) {
+                CollectionUtils.isEmpty(fesqlCase.getInputs().get(0).getRows())) {
             log.error("fail to execute in request query sql executor: sql case inputs is empty");
             return null;
         }
@@ -46,18 +52,22 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
         if (sql == null || sql.length() == 0) {
             return null;
         }
+        FesqlResult fesqlResult;
         if (fesqlCase.getBatch_request() != null) {
-            return executeBatch(sql, this.isAsyn);
+            fesqlResult = executeBatch(sql, this.isAsyn);
         } else {
-            return executeSingle(sql, this.isAsyn);
+            fesqlResult = executeSingle(sql, this.isAsyn);
         }
+        spNames.add(fesqlCase.getSpName());
+        return fesqlResult;
     }
 
     private FesqlResult executeSingle(String sql, boolean isAsyn) throws SQLException {
         String spSql = fesqlCase.getProcedure(sql);
         log.info("spSql: {}", spSql);
         return FesqlUtil.sqlRequestModeWithSp(
-                executor, dbName, fesqlCase.getSpName(), spSql, fesqlCase.getInputs().get(0), isAsyn);
+                executor, dbName, fesqlCase.getSpName(), null == fesqlCase.getBatch_request(),
+                spSql, fesqlCase.getInputs().get(0), isAsyn);
     }
 
     private FesqlResult executeBatch(String sql, boolean isAsyn) throws SQLException {
@@ -83,7 +93,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
         if (input.getColumns() == null) {
             throw new SQLException("No schema defined in input desc");
         }
-        for(int i = 0; i < input.getColumns().size(); ++i) {
+        for (int i = 0; i < input.getColumns().size(); ++i) {
             String[] parts = input.getColumns().get(i).split(" ");
             if (commonColumnIndices.contains(i)) {
                 builder.append("const ");
@@ -102,5 +112,17 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
         builder.append("END;");
         sql = builder.toString();
         return sql;
+    }
+
+    @Override
+    protected void tearDown() {
+        if (CollectionUtils.isEmpty(spNames)) {
+            return;
+        }
+        for (String spName : spNames) {
+            String drop = "drop procedure " + spName + ";";
+            FesqlUtil.ddl(executor, dbName, drop);
+        }
+        super.tearDown();
     }
 }
