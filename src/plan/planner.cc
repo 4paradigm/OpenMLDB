@@ -232,7 +232,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         node::ProjectListNode *merged_project =
             node_manager_->MakeProjectListPlanNode(first_window_project->GetW(),
                                                    true);
-        if (!is_cluster_optimized_ &&
+        if (!is_cluster_optimized_ && !enable_batch_window_parallelization_ &&
             node::ProjectListNode::MergeProjectList(
                 simple_project, first_window_project, merged_project)) {
             project_list_vec[0] = nullptr;
@@ -398,6 +398,7 @@ bool Planner::CreateWindowPlanNode(
             }
         }
         w_node_ptr->set_instance_not_in_window(w_ptr->instance_not_in_window());
+        w_node_ptr->set_exclude_current_time(w_ptr->exclude_current_time());
     }
     return true;
 }
@@ -818,8 +819,14 @@ bool Planner::MergeWindows(
             return p1.second < p2.second;
         });
 
+    // Merge Rows Frames First
     for (auto iter = window_id_pairs.cbegin(); iter != window_id_pairs.cend();
          iter++) {
+        if (nullptr != iter->first &&
+            iter->first->GetFrame()->IsRowsRangeLikeFrame()) {
+            // skip handling range like frames
+            continue;
+        }
         if (windows.empty()) {
             windows.push_back(iter->first);
             continue;
@@ -834,7 +841,43 @@ bool Planner::MergeWindows(
             if (nullptr == *iter_w) {
                 continue;
             }
-            if (iter->first->CanMergeWith(*iter_w)) {
+            if (iter->first->CanMergeWith(*iter_w,
+                                          enable_window_maxsize_merged_)) {
+                can_be_merged = true;
+                *iter_w = node_manager_->MergeWindow(iter->first, *iter_w);
+                has_window_merged = true;
+                break;
+            }
+        }
+
+        if (!can_be_merged) {
+            windows.push_back(iter->first);
+        }
+    }
+
+    for (auto iter = window_id_pairs.cbegin(); iter != window_id_pairs.cend();
+         iter++) {
+        if (nullptr == iter->first ||
+            !iter->first->GetFrame()->IsRowsRangeLikeFrame()) {
+            // skip handling rows frames
+            continue;
+        }
+        if (windows.empty()) {
+            windows.push_back(iter->first);
+            continue;
+        }
+        bool can_be_merged = false;
+        for (auto iter_w = windows.begin(); iter_w != windows.end(); iter_w++) {
+            if (node::SQLEquals(iter->first, *iter_w)) {
+                can_be_merged = true;
+                has_window_merged = true;
+                break;
+            }
+            if (nullptr == *iter_w) {
+                continue;
+            }
+            if (iter->first->CanMergeWith(*iter_w,
+                                          enable_window_maxsize_merged_)) {
                 can_be_merged = true;
                 *iter_w = node_manager_->MergeWindow(iter->first, *iter_w);
                 has_window_merged = true;
@@ -891,9 +934,10 @@ bool Planner::MergeProjectMap(
             if (node::SQLEquals(map_iter->first, iter->first) ||
                 (nullptr != map_iter->first &&
                  map_iter->first->CanMergeWith(iter->first))) {
+                auto frame = iter->second->GetW();
                 node::ProjectListNode *merged_project =
-                    node_manager_->MakeProjectListPlanNode(iter->second->GetW(),
-                                                           true);
+                    node_manager_->MakeProjectListPlanNode(frame,
+                                                           frame != nullptr);
                 node::ProjectListNode::MergeProjectList(
                     iter->second, map_iter->second, merged_project);
                 iter->second = merged_project;
@@ -922,7 +966,8 @@ bool Planner::ExpandCurrentHistoryWindow(
     for (auto iter = windows.begin(); iter != windows.end(); iter++) {
         const node::WindowDefNode *w_ptr = *iter;
         if (nullptr != w_ptr && nullptr != w_ptr->GetFrame() &&
-            w_ptr->GetFrame()->IsHistoryFrame()) {
+            !w_ptr->GetFrame()->IsRowsRangeLikeFrame() &&
+            w_ptr->GetFrame()->IsPureHistoryFrame()) {
             node::FrameNode *current_frame =
                 node_manager_->MergeFrameNodeWithCurrentHistoryFrame(
                     w_ptr->GetFrame());
@@ -930,6 +975,7 @@ bool Planner::ExpandCurrentHistoryWindow(
                 node_manager_->MakeWindowDefNode(
                     w_ptr->union_tables(), w_ptr->GetPartitions(),
                     w_ptr->GetOrders(), current_frame,
+                    w_ptr->exclude_current_time(),
                     w_ptr->instance_not_in_window()));
             has_window_expand = true;
         }

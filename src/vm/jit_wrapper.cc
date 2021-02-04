@@ -86,6 +86,12 @@ FeSQLJITWrapper* FeSQLJITWrapper::Create(const JITOptions& jit_options) {
     }
 }
 
+void FeSQLJITWrapper::DeleteJIT(FeSQLJITWrapper* jit) {
+    if (jit != nullptr) {
+        delete jit;
+    }
+}
+
 void InitBuiltinJITSymbols(FeSQLJITWrapper* jit) {
     jit->AddExternalFunction("malloc", (reinterpret_cast<void*>(&malloc)));
     jit->AddExternalFunction("memset", (reinterpret_cast<void*>(&memset)));

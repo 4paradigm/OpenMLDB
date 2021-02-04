@@ -395,7 +395,9 @@ bool PredicateIRBuilder::BuildGtExpr(::llvm::BasicBlock* block,
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
-    if (casted_left->getType()->isIntegerTy()) {
+    if (casted_left->getType() == builder.getInt1Ty()) {
+        *output = builder.CreateICmpUGT(casted_left, casted_right);
+    } else if (casted_left->getType()->isIntegerTy()) {
         *output = builder.CreateICmpSGT(casted_left, casted_right);
     } else if (casted_left->getType()->isFloatTy() ||
                casted_left->getType()->isDoubleTy()) {
@@ -440,7 +442,9 @@ bool PredicateIRBuilder::BuildGeExpr(::llvm::BasicBlock* block,
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
-    if (casted_left->getType()->isIntegerTy()) {
+    if (casted_left->getType() == builder.getInt1Ty()) {
+        *output = builder.CreateICmpUGE(casted_left, casted_right);
+    } else if (casted_left->getType()->isIntegerTy()) {
         *output = builder.CreateICmpSGE(casted_left, casted_right);
     } else if (casted_left->getType()->isFloatTy() ||
                casted_left->getType()->isDoubleTy()) {
@@ -485,7 +489,9 @@ bool PredicateIRBuilder::BuildLtExpr(::llvm::BasicBlock* block,
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
-    if (casted_left->getType()->isIntegerTy()) {
+    if (casted_left->getType() == builder.getInt1Ty()) {
+        *output = builder.CreateICmpULT(casted_left, casted_right);
+    } else if (casted_left->getType()->isIntegerTy()) {
         *output = builder.CreateICmpSLT(casted_left, casted_right);
     } else if (casted_left->getType()->isFloatTy() ||
                casted_left->getType()->isDoubleTy()) {
@@ -530,7 +536,9 @@ bool PredicateIRBuilder::BuildLeExpr(::llvm::BasicBlock* block,
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
-    if (casted_left->getType()->isIntegerTy()) {
+    if (casted_left->getType() == builder.getInt1Ty()) {
+        *output = builder.CreateICmpULE(casted_left, casted_right);
+    } else if (casted_left->getType()->isIntegerTy()) {
         *output = builder.CreateICmpSLE(casted_left, casted_right);
     } else if (casted_left->getType()->isFloatTy() ||
                casted_left->getType()->isDoubleTy()) {

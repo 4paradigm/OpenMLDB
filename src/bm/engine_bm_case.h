@@ -28,10 +28,17 @@ void EngineBatchModeSimpleQueryBM(const std::string& db, const std::string& sql,
 void EngineWindowSumFeature1(benchmark::State* state, MODE mode,
                              int64_t limit_cnt,
                              int64_t size);  // NOLINT
+void EngineWindowSumFeature1ExcludeCurrentTime(benchmark::State* state,
+                                               MODE mode, int64_t limit_cnt,
+                                               int64_t size);  // NOLINT
 void EngineWindowRowsSumFeature1(benchmark::State* state, MODE mode,
                                  int64_t limit_cnt,
                                  int64_t size);  // NOLINT
 
+void EngineRunBatchWindowSumFeature1ExcludeCurrentTime(benchmark::State* state,
+                                                       MODE mode,
+                                                       int64_t limit_cnt,
+                                                       int64_t size);  // NOLINT
 void EngineRunBatchWindowSumFeature1(benchmark::State* state, MODE mode,
                                      int64_t limit_cnt,
                                      int64_t size);  // NOLINT
@@ -44,10 +51,16 @@ void EngineRunBatchWindowMultiAggWindow25Feature25(benchmark::State* state,
 void EngineRunBatchWindowSumFeature5(benchmark::State* state, MODE mode,
                                      int64_t limit_cnt,
                                      int64_t size);  // NOLINT
-
+void EngineRunBatchWindowSumFeature5ExcludeCurrentTime(benchmark::State* state,
+                                                       MODE mode,
+                                                       int64_t limit_cnt,
+                                                       int64_t size);  // NOLINT
 void EngineWindowSumFeature5(benchmark::State* state, MODE mode,
                              int64_t limit_cnt,
                              int64_t size);  // NOLINT
+void EngineWindowSumFeature5ExcludeCurrentTime(benchmark::State* state,
+                                               MODE mode, int64_t limit_cnt,
+                                               int64_t size);  // NOLINT
 void EngineWindowSumFeature5Window5(benchmark::State* state, MODE mode,
                                     int64_t limit_cnt,
                                     int64_t size);  // NOLINT

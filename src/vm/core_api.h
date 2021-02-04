@@ -31,7 +31,7 @@ typedef int8_t* ByteArrayPtr;
 
 class WindowInterface {
  public:
-    WindowInterface(bool instance_not_in_window,
+    WindowInterface(bool instance_not_in_window, bool exclude_current_time,
                     const std::string& frame_type_str, int64_t start_offset,
                     int64_t end_offset, uint64_t rows_preceding,
                     uint64_t max_size);
@@ -104,7 +104,7 @@ class CoreAPI {
     static RawPtrHandle AppendRow(fesql::codec::Row*, size_t bytes);
 
     static int ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
-                                  fesql::node::ColumnRefNode* expr);
+                                  fesql::node::ExprNode* expr);
 
     static std::string ResolveSourceColumnName(
         fesql::vm::PhysicalOpNode* node, fesql::node::ColumnRefNode* expr);

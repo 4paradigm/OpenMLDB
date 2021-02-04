@@ -29,11 +29,11 @@ class TestLimitPlan extends SparkTestSuite {
     val planner = new SparkPlanner(sess)
 
     val res = planner.plan("select id, max(time2), min(amt) from t1 group by id limit 2;", Map("t1" -> t1))
-    val output = res.getDf(sess)
+    val output = res.getDf()
     assert(output.count()==2);
 
     val res2 = planner.plan("select id, max(time2), min(amt) from t1 group by id limit 1;", Map("t1" -> t1))
-    val output2 = res2.getDf(sess)
+    val output2 = res2.getDf()
     assert(output2.count()==1);
   }
 
@@ -57,11 +57,11 @@ class TestLimitPlan extends SparkTestSuite {
     val planner = new SparkPlanner(sess)
 
     val res = planner.plan("select id, time2 + 10 from t1 limit 2;", Map("t1" -> t1))
-    val output = res.getDf(sess)
+    val output = res.getDf()
     assert(output.count()==2);
 
     val res2 = planner.plan("select id, time2 + 10 from t1 limit 1;", Map("t1" -> t1))
-    val output2 = res2.getDf(sess)
+    val output2 = res2.getDf()
     assert(output2.count()==1);
   }
 
@@ -85,11 +85,11 @@ class TestLimitPlan extends SparkTestSuite {
     val planner = new SparkPlanner(sess)
 
     val res = planner.plan("select id, time2 from t1 limit 2;", Map("t1" -> t1))
-    val output = res.getDf(sess)
+    val output = res.getDf()
     assert(output.count()==2);
 
     val res2 = planner.plan("select id, time2 from t1 limit 1;", Map("t1" -> t1))
-    val output2 = res2.getDf(sess)
+    val output2 = res2.getDf()
     assert(output2.count()==1);
   }
 

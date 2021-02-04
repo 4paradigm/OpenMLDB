@@ -120,12 +120,21 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
     bool FilterOptimized(const SchemasContext* root_schemas_ctx,
                          PhysicalOpNode* in, Filter* filter,
                          PhysicalOpNode** new_in);
+    bool FilterAndOrderOptimized(const SchemasContext* root_schemas_ctx,
+                                 PhysicalOpNode* in, Filter* filter, Sort* sort,
+                                 PhysicalOpNode** new_in);
     bool JoinKeysOptimized(const SchemasContext* schemas_ctx,
                            PhysicalOpNode* in, Join* join,
                            PhysicalOpNode** new_in);
     bool KeysFilterOptimized(const SchemasContext* root_schemas_ctx,
                              PhysicalOpNode* in, Key* group, Key* hash,
                              PhysicalOpNode** new_in);
+    bool KeysAndOrderFilterOptimized(const SchemasContext* root_schemas_ctx,
+                                     PhysicalOpNode* in, Key* group, Key* hash,
+                                     Sort* sort, PhysicalOpNode** new_in);
+    bool KeyAndOrderOptimized(const SchemasContext* root_schemas_ctx,
+                              PhysicalOpNode* in, Key* group, Sort* sort,
+                              PhysicalOpNode** new_in);
     bool GroupOptimized(const SchemasContext* root_schemas_ctx,
                         PhysicalOpNode* in, Key* group,
                         PhysicalOpNode** new_in);
@@ -133,15 +142,21 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                        PhysicalOpNode* in, Sort* sort);
     bool TransformGroupExpr(const SchemasContext* schemas_ctx,
                             const node::ExprListNode* group,
-                            const std::string& table_name,
-                            const IndexHint& index_hint, std::string* index,
-                            std::vector<bool>* best_bitmap);
+                            std::shared_ptr<TableHandler> table_handler,
+                            std::string* index, std::vector<bool>* best_bitmap);
     bool TransformOrderExpr(const SchemasContext* schemas_ctx,
                             const node::OrderByNode* order,
                             const Schema& schema, const IndexSt& index_st,
                             const node::OrderByNode** output);
+    bool TransformKeysAndOrderExpr(const SchemasContext* schemas_ctx,
+                                   const node::ExprListNode* groups,
+                                   const node::OrderByNode* order,
+                                   std::shared_ptr<TableHandler> table_handler,
+                                   std::string* index,
+                                   std::vector<bool>* best_bitmap);
     bool MatchBestIndex(const std::vector<std::string>& columns,
-                        const std::string& table_name, const IndexHint& catalog,
+                        const std::vector<std::string>& order_columns,
+                        std::shared_ptr<TableHandler> table_handler,
                         std::vector<bool>* bitmap, std::string* index_name,
                         std::vector<bool>* best_bitmap);  // NOLINT
 };
@@ -272,7 +287,8 @@ class BatchModeTransformer {
                          const std::shared_ptr<Catalog>& catalog,
                          ::llvm::Module* module, const udf::UDFLibrary* library,
                          bool performance_sensitive,
-                         bool cluster_optimized_mode, bool enable_expr_opt);
+                         bool cluster_optimized_mode, bool enable_expr_opt,
+                         bool enable_window_parallelization);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
     virtual Status TransformPhysicalPlan(
@@ -391,6 +407,10 @@ class BatchModeTransformer {
     const std::shared_ptr<Catalog> catalog_;
 
  private:
+    virtual Status TransformProjectPlanOpWithWindowParallel(
+        const node::ProjectPlanNode* node, PhysicalOpNode** output);
+    virtual Status TransformProjectPlanOpWindowSerial(
+        const node::ProjectPlanNode* node, PhysicalOpNode** output);
     ::llvm::Module* module_;
     uint32_t id_;
     // window partition and order should be optimized under
@@ -398,6 +418,7 @@ class BatchModeTransformer {
     // `index_opt_strict_mode_`
     bool performance_sensitive_mode_;
     bool cluster_optimized_mode_;
+    bool enable_window_parallelization_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
     const udf::UDFLibrary* library_;

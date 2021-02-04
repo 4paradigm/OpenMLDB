@@ -55,6 +55,7 @@ class SQLCase {
     const std::string& desc() const { return desc_; }
     const std::string case_name() const;
     const std::string& mode() const { return mode_; }
+    int level() const { return level_; }
     const std::string& cluster_request_plan() const {
         return cluster_request_plan_;
     }
@@ -144,6 +145,7 @@ class SQLCase {
     static bool CreateTableInfoFromYamlNode(const YAML::Node& node,
                                             SQLCase::TableInfo* output);
     static bool CreateExpectFromYamlNode(const YAML::Node& schema_data,
+                                         const YAML::Node& expect_provider,
                                          SQLCase::ExpectInfo* table);
     static bool LoadSchemaAndRowsFromYaml(
         const std::string& cases_dir, const std::string& resource_path,
@@ -187,6 +189,23 @@ class SQLCase {
             return true;
         }
         return false;
+    }
+    static std::set<std::string> FESQL_LEVEL() {
+        const char* env_name = "FESQL_LEVEL";
+        char* value = getenv(env_name);
+        if (value != nullptr) {
+            try {
+                std::set<std::string> item_vec;
+                boost::split(item_vec, value, boost::is_any_of(","),
+                             boost::token_compress_on);
+                return item_vec;
+            } catch (const std::exception& ex) {
+                LOG(WARNING) << "Fail to parser fesql level: " << ex.what();
+                return std::set<std::string>({0});
+            }
+        } else {
+            return std::set<std::string>({0});;
+        }
     }
     static bool IS_DEBUG() {
         const char* env_name = "FESQL_DEV";
@@ -282,6 +301,7 @@ class SQLCase {
     ExpectInfo expect_;
     YAML::Node raw_node_;
     std::string sp_name_;
+    int level_ = 0;
 };
 std::string FindFesqlDirPath();
 

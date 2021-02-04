@@ -71,7 +71,6 @@ public class DDLEngine {
                 }
             }
             String res = sb.toString();
-            logger.info("gen ddl:{}", res);
             return res;
         } catch (UnsupportedFesqlException | FesqlException e) {
             e.printStackTrace();
@@ -109,7 +108,6 @@ public class DDLEngine {
                 }
             }
             String res = sb.toString();
-            logger.info("gen ddl:{}", res);
             return res;
         } catch (UnsupportedFesqlException | FesqlException e) {
             e.printStackTrace();
@@ -478,8 +476,9 @@ class RtidbTable {
                 if (index.getExpire() > e.getExpire()) {
                     e.setExpire(index.getExpire());
                 }
-                if (index.getType() == TTLType.kAbsAndLat || index.getType() != e.getType()) {
+                if (e.getType() == TTLType.kAbsAndLat || index.getType() == TTLType.kAbsAndLat || index.getType() != e.getType()) {
                     index.setType(TTLType.kAbsAndLat);
+                    e.setType(TTLType.kAbsAndLat);
                 }
                 break;
             }
@@ -502,21 +501,7 @@ class RtidbTable {
                     break;
                 }
             }
-        } else {
-            boolean isAnd = false;
-            for (RtidbIndex e : indexs) {
-                if (e.getType() == TTLType.kAbsAndLat) {
-                    isAnd = true;
-                }
-            }
-            if (isAnd) {
-                for (RtidbIndex e : indexs) {
-                    e.setType(TTLType.kAbsAndLat);
-                }
-            }
         }
-
-
     }
 
     public String toDDL() {
@@ -609,7 +594,7 @@ class RtidbIndex {
     }
     //    @Override
     public boolean equals(RtidbIndex e) {
-        return  this.getType() == e.getType() && this.getKeys().equals(e.getKeys()) && this.ts.equals(e.getTs());
+        return  this.getKeys().equals(e.getKeys()) && this.ts.equals(e.getTs());
     }
 }
 

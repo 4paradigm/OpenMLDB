@@ -19,7 +19,7 @@ class TestSparkPlanner extends SparkTestSuite {
     val planner = new SparkPlanner(sess)
     val res = planner.plan("select *, _1 + 1, inc(_1) from t;", Map("t" -> table))
 
-    val output = res.getDf(sess)
+    val output = res.getDf()
     output.show()
   }
 
@@ -42,7 +42,7 @@ class TestSparkPlanner extends SparkTestSuite {
     val planner = new SparkPlanner(sess)
     val res = planner.plan("select id as new_id, 0.0 as col2 from t1;", Map("t1" -> t1))
 
-    val output = res.getDf(sess)
+    val output = res.getDf()
     output.show()
   }
 
@@ -87,7 +87,7 @@ class TestSparkPlanner extends SparkTestSuite {
 
     val planner = new SparkPlanner(sess, config)
     val res = planner.plan(sql, Map("t" -> table))
-    val output = res.getDf(sess)
+    val output = res.getDf()
     output.show()
   }
 
@@ -123,7 +123,7 @@ class TestSparkPlanner extends SparkTestSuite {
 
     val planner = new SparkPlanner(sess)
     val res = planner.plan(sql, Map("t1" -> left, "t2" -> right))
-    val output = res.getDf(sess)
+    val output = res.getDf()
     output.show()
   }
 }

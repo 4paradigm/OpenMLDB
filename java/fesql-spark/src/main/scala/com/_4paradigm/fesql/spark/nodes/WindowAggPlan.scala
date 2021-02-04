@@ -6,7 +6,7 @@ import com._4paradigm.fesql.common.{FesqlException, JITManager, SerializableByte
 import com._4paradigm.fesql.node.FrameType
 import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.nodes.window.{RowDebugger, WindowComputer, WindowSampleSupport}
-import com._4paradigm.fesql.spark.utils.{AutoDestructibleIterator, FesqlUtil, SparkColumnUtil}
+import com._4paradigm.fesql.spark.utils.{AutoDestructibleIterator, FesqlUtil, NodeIndexType, SparkColumnUtil}
 import com._4paradigm.fesql.utils.SkewUtils
 import com._4paradigm.fesql.vm.Window.WindowFrameType
 import com._4paradigm.fesql.vm.PhysicalWindowAggrerationNode
@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+import org.apache.spark.sql.types._
 
 
 object WindowAggPlan {
@@ -29,20 +30,30 @@ object WindowAggPlan {
     // process unions
     val unionNum = node.window_unions().GetSize().toInt
 
+    // Check if we should keep the index column
+    val keepIndexColumn = SparkInstance.keepIndexColumn(ctx, node.GetNodeId())
+
     val outputRDD = if (unionNum > 0) {
-      genWithUnion(ctx, node, input)
+      genWithUnion(ctx, node, input, keepIndexColumn)
     } else {
-      genDefault(ctx, node, input)
+      genDefault(ctx, node, input, keepIndexColumn)
     }
 
-    val outputSchema = FesqlUtil.getSparkSchema(node.GetOutputSchema())
-    SparkInstance.fromRDD(outputSchema, outputRDD)
+    val outputSchema = if (keepIndexColumn) {
+      FesqlUtil.getSparkSchema(node.GetOutputSchema()).add(ctx.getIndexInfo(node.GetNodeId()).indexColumnName, LongType)
+    } else {
+      FesqlUtil.getSparkSchema(node.GetOutputSchema())
+    }
+
+    val outputDf = ctx.getSparkSession.createDataFrame(outputRDD, outputSchema)
+
+    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
   }
 
 
-  def genDefault(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance): RDD[Row] = {
+  def genDefault(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance, keepIndexColumn: Boolean): RDD[Row] = {
     val config = ctx.getConf
-    val windowAggConfig = createWindowAggConfig(ctx, node)
+    val windowAggConfig = createWindowAggConfig(ctx, node, keepIndexColumn)
 
     // group and sort
     if (config.print) {
@@ -50,9 +61,9 @@ object WindowAggPlan {
     }
 
     val inputDf = if (config.skewMode == FeSQLConfig.SKEW) {
-      improveSkew(ctx, node, input.getDf(ctx.getSparkSession), config, windowAggConfig)
+      improveSkew(ctx, node, input.getDfConsideringIndex(ctx, node.GetNodeId()), config, windowAggConfig)
     } else {
-      groupAndSort(ctx, node, input.getDf(ctx.getSparkSession))
+      groupAndSort(ctx, node, input.getDfConsideringIndex(ctx, node.GetNodeId()))
     }
 
     val hadoopConf = new SerializableConfiguration(
@@ -72,12 +83,11 @@ object WindowAggPlan {
     resultRDD
   }
 
-  def genWithUnion(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance): RDD[Row] = {
-    val sess = ctx.getSparkSession
+  def genWithUnion(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance, keepIndexColumn: Boolean): RDD[Row] = {
     val config = ctx.getConf
     val flagColName = "__FESQL_WINDOW_UNION_FLAG__" + System.currentTimeMillis()
-    val union = doUnionTables(ctx, node, input.getDf(sess), flagColName)
-    val windowAggConfig = createWindowAggConfig(ctx, node)
+    val union = doUnionTables(ctx, node, input.getDfConsideringIndex(ctx, node.GetNodeId()), flagColName, keepIndexColumn)
+    val windowAggConfig = createWindowAggConfig(ctx, node, keepIndexColumn)
     val inputDf =  if (config.skewMode == FeSQLConfig.SKEW) {
       improveSkew(ctx, node, union, config, windowAggConfig)
     } else {
@@ -101,18 +111,35 @@ object WindowAggPlan {
   def doUnionTables(ctx: PlanContext,
                     node: PhysicalWindowAggrerationNode,
                     source: DataFrame,
-                    flagColumnName: String): DataFrame = {
-    val sess = ctx.getSparkSession
+                    flagColumnName: String,
+                    keepIndexColumn: Boolean): DataFrame = {
     val unionNum = node.window_unions().GetSize().toInt
 
     val subTables = (0 until unionNum).map(i => {
       val subNode = node.window_unions().GetUnionNode(i)
-      val df = ctx.getSparkOutput(subNode).getDf(sess)
-      if (df.schema != source.schema) {
-        throw new FesqlException("{$i}th Window union with inconsistent schema:\n" +
-          s"Expect ${source.schema}\nGet ${df.schema}")
+
+      val subDf = ctx.getSparkOutput(subNode).getDfConsideringIndex(ctx, subNode.GetNodeId())
+
+      if (keepIndexColumn) {
+        // Notice that input df may has index column, check in another way
+        if (subDf.schema.add(ctx.getIndexInfo(node.GetNodeId()).indexColumnName, LongType) != source.schema) {
+          throw new FesqlException("Keep index column, {$i}th Window union with inconsistent schema:\n" +
+            s"Expect ${source.schema}\nGet ${subDf.schema.add(ctx.getIndexInfo(node.GetNodeId()).indexColumnName, LongType)}")
+        }
+      } else {
+        if (subDf.schema != source.schema) {
+          throw new FesqlException("{$i}th Window union with inconsistent schema:\n" +
+            s"Expect ${source.schema}\nGet ${subDf.schema}")
+        }
       }
-      df.withColumn(flagColumnName, functions.lit(false))
+
+      if (keepIndexColumn) {
+        // Add one more placeholder column for sub tables if main table has index column
+        subDf.withColumn(flagColumnName + "_index_column_placeholder", functions.lit(0L)).withColumn(flagColumnName, functions.lit(false))
+      } else {
+        // Only add the union boolean column
+        subDf.withColumn(flagColumnName, functions.lit(false))
+      }
     })
 
     val mainTable = source.withColumn(flagColumnName, functions.lit(true))
@@ -121,7 +148,8 @@ object WindowAggPlan {
 
 
   def createWindowAggConfig(ctx: PlanContext,
-                            node: PhysicalWindowAggrerationNode
+                            node: PhysicalWindowAggrerationNode,
+                            keepIndexColumn: Boolean
                            ): WindowAggConfig = {
     val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node.GetProducer(0))
     val outputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
@@ -155,11 +183,14 @@ object WindowAggPlan {
     val flagIdx = if (node.window_unions().Empty()) {
       -1
     } else {
-      inputSchema.size
-    }
+      if (keepIndexColumn) {
+        // Notice that if keep index column, table will add union boolean column after index column
+        inputSchema.size + 1
+      } else {
+        inputSchema.size
+      }
 
-    val sampleOutputPath = ctx.getConf.windowSampleOutputPath
-    val sampleMinSize = ctx.getConf.windowSampleMinSize
+    }
 
     val frameType = node.window.range.frame().frame_type()
     val windowFrameType = if (frameType.swigValue() == FrameType.kFrameRows.swigValue()) {
@@ -187,10 +218,10 @@ object WindowAggPlan {
       outputSchemaSlices = outputSchemaSlices,
       unionFlagIdx = flagIdx,
       instanceNotInWindow = node.instance_not_in_window(),
+      excludeCurrentTime = node.exclude_current_time(),
       needAppendInput = node.need_append_input(),
       limitCnt = node.GetLimitCnt(),
-      sampleOutputPath = sampleOutputPath,
-      sampleMinSize = sampleMinSize
+      keepIndexColumn = keepIndexColumn
     )
   }
 
@@ -272,7 +303,6 @@ object WindowAggPlan {
     logger.info(s"skew explode sql : $explodeSql")
     skewDf = ctx.sparksql(explodeSql)
     skewDf.cache()
-//    skewDf.show(100)
     val partitions = sqlConfig.groupPartitions
     val partitionKeys = sqlConfig.skewTag +: keyScala
 
@@ -336,14 +366,14 @@ object WindowAggPlan {
     val jit = JITManager.getJIT(tag)
 
     // create stateful computer
-    val computer = new WindowComputer(sqlConfig, config, jit)
+    val computer = new WindowComputer(sqlConfig, config, jit, config.keepIndexColumn)
 
     // add statistic hooks
-    if (config.sampleMinSize > 0) {
+    if (sqlConfig.windowSampleMinSize > 0) {
       val fs = FileSystem.get(hadoopConf.value)
-      logger.info("Enable window sample support: min_size=" + config.sampleMinSize +
-        ", output_path=" + config.sampleOutputPath)
-      computer.addHook(new WindowSampleSupport(fs, partitionIndex, config, jit))
+      logger.info("Enable window sample support: min_size=" + sqlConfig.windowSampleMinSize +
+        ", output_path=" + sqlConfig.windowSampleOutputPath)
+      computer.addHook(new WindowSampleSupport(fs, partitionIndex, config, sqlConfig, jit))
     }
     if (sqlConfig.print) {
       val isSkew = sqlConfig.skewMode == FeSQLConfig.SKEW
@@ -364,6 +394,8 @@ object WindowAggPlan {
 
     if (config.skewTagIdx != 0) {
       sqlConfig.skewMode = FeSQLConfig.SKEW
+      val skewGroups = config.groupIdxs :+ config.skewTagIdx
+      computer.resetGroupKeyComparator(skewGroups, config.inputSchema)
     }
     if (sqlConfig.print) {
       logger.info(s"windowAggIter mode: ${sqlConfig.skewMode}")
@@ -379,7 +411,7 @@ object WindowAggPlan {
         val tag = row.getInt(config.skewTagIdx)
         val position = row.getInt(config.skewPositionIdx)
         if (tag == position) {
-          Some(computer.compute(row))
+          Some(computer.compute(row, config.keepIndexColumn, config.unionFlagIdx))
         } else {
           computer.bufferRowOnly(row)
           None
@@ -391,7 +423,7 @@ object WindowAggPlan {
           computer.checkPartition(row, lastRow)
         }
         lastRow = row
-        Some(computer.compute(row))
+        Some(computer.compute(row, config.keepIndexColumn, config.unionFlagIdx))
       })
     }
     AutoDestructibleIterator(resIter) {
@@ -406,7 +438,9 @@ object WindowAggPlan {
     val flagIdx = config.unionFlagIdx
     var lastRow: Row = null
     if (config.skewTagIdx != 0) {
-      sqlConfig.skewMode = "skew"
+      sqlConfig.skewMode = FeSQLConfig.SKEW
+      val skewGroups = config.groupIdxs :+ config.skewTagIdx
+      computer.resetGroupKeyComparator(skewGroups, config.inputSchema)
     }
 
     val resIter = inputIter.flatMap(row => {
@@ -422,13 +456,13 @@ object WindowAggPlan {
           val tag = row.getInt(config.skewTagIdx)
           val position = row.getInt(config.skewPositionIdx)
           if (tag == position) {
-            Some(computer.compute(row))
+            Some(computer.compute(row, config.keepIndexColumn, config.unionFlagIdx))
           } else {
             computer.bufferRowOnly(row)
             None
           }
         } else {
-          Some(computer.compute(row))
+          Some(computer.compute(row, config.keepIndexColumn, config.unionFlagIdx))
         }
       } else {
         // secondary
@@ -463,9 +497,9 @@ object WindowAggPlan {
                              var skewTagIdx: Int = 0,
                              var skewPositionIdx: Int = 0,
                              instanceNotInWindow: Boolean,
+                             excludeCurrentTime: Boolean,
                              needAppendInput: Boolean,
                              limitCnt: Int,
-                             sampleMinSize: Int,
-                             sampleOutputPath: String)
+                             keepIndexColumn: Boolean)
   
 }

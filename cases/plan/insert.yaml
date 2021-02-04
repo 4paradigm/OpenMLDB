@@ -10,3 +10,6 @@ cases:
     desc: 简单INSERT NULL
     sql: insert into t1 (col1, col2, col3, col4) values(1, 2, NULL, "string");
 
+  - id: 4
+    desc: INSERT MIN_INT
+    sql: insert into t1 (col1, col2, col3, col4) values(1, 2147483647, -2147483647, "string");

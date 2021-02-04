@@ -70,6 +70,7 @@ bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
                 default:
                     break;
             }
+            boost::to_lower(agg_func_name);
             if (!IsAggFuncName(agg_func_name)) {
                 break;
             }
@@ -216,19 +217,19 @@ class StatisticalAggGenerator {
         ::llvm::Value* max;
         if (llvm_ty == ::llvm::Type::getInt16Ty(llvm_ctx)) {
             max = ::llvm::ConstantInt::get(
-                llvm_ty, std::numeric_limits<int16_t>::min(), true);
+                llvm_ty, std::numeric_limits<int16_t>::lowest(), true);
         } else if (llvm_ty == ::llvm::Type::getInt32Ty(llvm_ctx)) {
             max = ::llvm::ConstantInt::get(
-                llvm_ty, std::numeric_limits<int32_t>::min(), true);
+                llvm_ty, std::numeric_limits<int32_t>::lowest(), true);
         } else if (llvm_ty == ::llvm::Type::getInt64Ty(llvm_ctx)) {
             max = ::llvm::ConstantInt::get(
-                llvm_ty, std::numeric_limits<int64_t>::min(), true);
+                llvm_ty, std::numeric_limits<int64_t>::lowest(), true);
         } else if (llvm_ty == ::llvm::Type::getFloatTy(llvm_ctx)) {
             max = ::llvm::ConstantFP::get(llvm_ty,
-                                          std::numeric_limits<float>::min());
+                                          std::numeric_limits<float>::lowest());
         } else {
-            max = ::llvm::ConstantFP::get(llvm_ty,
-                                          std::numeric_limits<double>::min());
+            max = ::llvm::ConstantFP::get(
+                llvm_ty, std::numeric_limits<double>::lowest());
         }
         builder->CreateStore(max, accum);
         return accum;

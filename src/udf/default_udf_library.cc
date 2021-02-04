@@ -398,9 +398,13 @@ struct TopKDef {
 
 void DefaultUDFLibrary::InitStringUDF() {
     RegisterExternalTemplate<v1::ToString>("string")
-        .args_in<bool, int16_t, int32_t, int64_t, float, double>()
+        .args_in<int16_t, int32_t, int64_t, float, double>()
         .return_by_arg(true);
 
+    RegisterExternal("string")
+        .args<bool>(static_cast<void (*)(bool, codec::StringRef*)>(
+            udf::v1::bool_to_string))
+        .return_by_arg(true);
     RegisterExternal("string")
         .args<Timestamp>(
             static_cast<void (*)(codec::Timestamp*, codec::StringRef*)>(
@@ -1342,8 +1346,8 @@ void DefaultUDFLibrary::InitUDAF() {
 
     RegisterUDAFTemplate<CountUDAFDef>("count")
         .doc("Compute count of values")
-        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
-                 StringRef, LiteralTypedRow<>>();
+        .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp,
+                 Date, StringRef, LiteralTypedRow<>>();
 
     RegisterUDAFTemplate<AvgUDAFDef>("avg")
         .doc("Compute average of values")
@@ -1351,8 +1355,8 @@ void DefaultUDFLibrary::InitUDAF() {
 
     RegisterUDAFTemplate<DistinctCountDef>("distinct_count")
         .doc("Compute distinct number of values")
-        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
-                 StringRef>();
+        .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp,
+                 Date, StringRef>();
 
     RegisterUDAFTemplate<SumWhereDef>("sum_where")
         .doc("Compute sum of values match specified condition")

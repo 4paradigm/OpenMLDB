@@ -92,42 +92,75 @@ INSTANTIATE_TEST_CASE_P(
 
 INSTANTIATE_TEST_CASE_P(
     EngineTestWindowRowQuery, EngineTest,
-    testing::ValuesIn(InitCases("/cases/integration/v1/test_window_row.yaml")));
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/window/test_window_row.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineTestWindowRowsRangeQuery, EngineTest,
     testing::ValuesIn(
-        InitCases("/cases/integration/v1/test_window_row_range.yaml")));
+        InitCases("/cases/integration/v1/window/test_window_row_range.yaml")));
 
-INSTANTIATE_TEST_CASE_P(EngineTestWindowUnion, EngineTest,
-                        testing::ValuesIn(InitCases(
-                            "/cases/integration/v1/test_window_union.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestWindowUnion, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/window/test_window_union.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineTestLastJoin, EngineTest,
     testing::ValuesIn(InitCases("/cases/integration/v1/test_last_join.yaml")));
 INSTANTIATE_TEST_CASE_P(
-    EngineTestExpression, EngineTest,
-    testing::ValuesIn(InitCases("/cases/integration/v1/test_expression.yaml")));
-
-INSTANTIATE_TEST_CASE_P(EngineTestSelectSample, EngineTest,
-                        testing::ValuesIn(InitCases(
-                            "/cases/integration/v1/test_select_sample.yaml")));
+    EngineTestArithmetic, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/expression/test_arithmetic.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestCompare, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/expression/test_compare.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestCondition, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/expression/test_condition.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestLogic, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/expression/test_logic.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestType, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/expression/test_type.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineTestSubSelect, EngineTest,
-    testing::ValuesIn(InitCases("/cases/integration/v1/test_sub_select.yaml")));
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/select/test_sub_select.yaml")));
 
-INSTANTIATE_TEST_CASE_P(EngineTestUdfFunction, EngineTest,
-                        testing::ValuesIn(InitCases(
-                            "/cases/integration/v1/test_udf_function.yaml")));
-
-INSTANTIATE_TEST_CASE_P(EngineTestUdafFunction, EngineTest,
-                        testing::ValuesIn(InitCases(
-                            "/cases/integration/v1/test_udaf_function.yaml")));
 INSTANTIATE_TEST_CASE_P(
-    EngineTestWhere, EngineTest,
-    testing::ValuesIn(InitCases("/cases/integration/v1/test_where.yaml")));
+    EngineTestUdfFunction, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/function/test_udf_function.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestUdafFunction, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/function/test_udaf_function.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestCalculateFunction, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/function/test_calculate.yaml")));
+INSTANTIATE_TEST_CASE_P(EngineTestDateFunction, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/function/test_date.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestStringFunction, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/function/test_string.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSelectSample, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/select/test_select_sample.yaml")));
+INSTANTIATE_TEST_CASE_P(EngineTestWhere, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/select/test_where.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineTestFzFunction, EngineTest,
@@ -151,11 +184,52 @@ INSTANTIATE_TEST_CASE_P(
         InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
+    EngineTestWindowExcludeCurrentTime, EngineTest,
+    testing::ValuesIn(InitCases(
+        "/cases/integration/v1/test_window_exclude_current_time.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestIndexOptimized, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/test_index_optimized.yaml")));
+INSTANTIATE_TEST_CASE_P(
     EngineTestErrorWindow, EngineTest,
     testing::ValuesIn(InitCases("/cases/integration/error/error_window.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineTestDebugFzBenchmark, EngineTest,
     testing::ValuesIn(InitCases("/cases/debug/fz_benchmark_debug.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestDebugIssues, EngineTest,
+    testing::ValuesIn(InitCases("/cases/debug/issues_case.yaml")));
+
+// TODO(qiliguo) #229 sql 语句加一个大 select, 选取其中几列，
+//   添加到 expect 中的做验证
+// imported from spark offline test
+// 单表反欺诈场景
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSparkFQZ, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/spark/test_fqz_studio.yaml")));
+// 单表-广告场景
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSparkAds, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/spark/test_ads.yaml")));
+// 单表-新闻场景
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSparkNews, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/spark/test_news.yaml")));
+// 多表-京东数据场景
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSparkJD, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/spark/test_jd.yaml")));
+// 多表-信用卡用户转借记卡预测场景
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSparkCredit, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/spark/test_credit.yaml")));
 
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();

@@ -21,6 +21,7 @@ namespace fesql {
 namespace vm {
 
 WindowInterface::WindowInterface(bool instance_not_in_window,
+                                 bool exclude_current_time,
                                  const std::string& frame_type_str,
                                  int64_t start_offset, int64_t end_offset,
                                  uint64_t rows_preceding, uint64_t max_size)
@@ -28,6 +29,7 @@ WindowInterface::WindowInterface(bool instance_not_in_window,
           WindowRange(ExtractFrameType(frame_type_str), start_offset,
                       end_offset, rows_preceding, max_size)))) {
     window_impl_->set_instance_not_in_window(instance_not_in_window);
+    window_impl_->set_exclude_current_time(exclude_current_time);
 }
 
 bool WindowInterface::BufferData(uint64_t key, const Row& row) {
@@ -44,21 +46,35 @@ Window::WindowFrameType WindowInterface::ExtractFrameType(
         return Window::kFrameRowsMergeRowsRange;
     } else {
         LOG(WARNING) << "Illegal frame type: " << frame_type_str;
-        return Window::kFrameRows;;
+        return Window::kFrameRows;
     }
 }
 
 int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
-                                fesql::node::ColumnRefNode* expr) {
+                                fesql::node::ExprNode* expr) {
     const SchemasContext* schemas_ctx = node->schemas_ctx();
-    auto column_expr = dynamic_cast<const node::ColumnRefNode*>(expr);
     size_t schema_idx;
     size_t col_idx;
-    auto status =
-        schemas_ctx->ResolveColumnRefIndex(column_expr, &schema_idx, &col_idx);
+    Status status;
+    switch (expr->GetExprType()) {
+        case node::kExprColumnRef: {
+            auto column_ref = dynamic_cast<const node::ColumnRefNode*>(expr);
+            status = schemas_ctx->ResolveColumnRefIndex(column_ref, &schema_idx,
+                                                        &col_idx);
+            break;
+        }
+        case node::kExprColumnId: {
+            auto column_id = dynamic_cast<const node::ColumnIdNode*>(expr);
+            status = schemas_ctx->ResolveColumnIndexByID(
+                column_id->GetColumnID(), &schema_idx, &col_idx);
+            break;
+        }
+        default:
+            return -1;
+    }
+
     if (!status.isOK()) {
-        LOG(WARNING) << "Fail to resolve column "
-                     << column_expr->GetExprString();
+        LOG(WARNING) << "Fail to resolve column " << expr->GetExprString();
         return -1;
     }
     size_t total_offset = col_idx;

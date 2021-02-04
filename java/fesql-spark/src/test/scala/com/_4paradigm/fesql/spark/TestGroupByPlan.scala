@@ -27,7 +27,7 @@ class TestGroupByPlan extends SparkTestSuite {
     val planner = new SparkPlanner(sess)
     val res = planner.plan("select id, sum(id), sum(time2), min(amt) from t1 group by id;", Map("t1" -> t1))
 
-    val output = res.getDf(sess)
+    val output = res.getDf()
     output.show()
   }
 
