@@ -11,15 +11,13 @@ import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.type.Type;
+import org.apache.commons.collections4.Get;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1633,5 +1631,209 @@ public class TableAsyncClientTest extends TestCaseBase {
         }
     }
 
+    @Test
+    public void testMultiIndexLongTTL() {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("pk").setAddTsIdx(true).setType("string").build();
+        Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
+        Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+        Common.TTLSt ttlForKey1 = Common.TTLSt.newBuilder().setTtlType(Type.TTLType.kLatestTime).setLatTtl(10).build();
+        Common.TTLSt ttlForKey2 = Common.TTLSt.newBuilder().setTtlType(Type.TTLType.kAbsoluteTime).setAbsTtl(3).build();
+        Common.TTLSt ttlForKey3 = Common.TTLSt.newBuilder().setTtlType(Type.TTLType.kAbsAndLat).setLatTtl(10).setAbsTtl(3).build();
+        Common.TTLSt ttlForKey4 = Common.TTLSt.newBuilder().setTtlType(Type.TTLType.kAbsOrLat).setLatTtl(10).setAbsTtl(100).build();
+        Common.ColumnKey colKey1 = Common.ColumnKey.newBuilder().setIndexName("index1").addTsName("ts").addColName("pk").setTtl(ttlForKey1).build();
+        Common.ColumnKey colKey2 = Common.ColumnKey.newBuilder().setIndexName("index2").addTsName("ts").addColName("mcc").setTtl(ttlForKey2).build();
+        Common.ColumnKey colKey3 = Common.ColumnKey.newBuilder().setIndexName("index3").addTsName("ts").addColName("pk").setTtl(ttlForKey3).build();
+        Common.ColumnKey colKey4 = Common.ColumnKey.newBuilder().setIndexName("index4").addTsName("ts").addColName("mcc").setTtl(ttlForKey4).build();
+        TableInfo table = TableInfo.newBuilder()
+                .setName(name)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2)
+                .addColumnKey(colKey1).addColumnKey(colKey2).addColumnKey(colKey3).addColumnKey(colKey4)
+                .setPartitionNum(3).setReplicaNum(1)
+                .build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        long now = System.currentTimeMillis();
+        List<String> idxs = Arrays.asList("index1", "index2", "index3", "index4");
+        List<String> PKidxs = Arrays.asList("index1", "index3");
+        List<String> MCCidxs = Arrays.asList("index2", "index4");
+        List<Long> times = Arrays.asList(now, now-1000, now-1000, now-2000);
+        try {
+            Assert.assertTrue(tableSyncClient.put(name, new Object[] {"card1", "mcc1", now}));
+            Assert.assertTrue(tableSyncClient.put(name, new Object[] {"card1", "mcc2", now - 1000}));
+            Assert.assertTrue(tableSyncClient.put(name, new Object[] {"card1", "mcc3", now - 1000}));
+            Assert.assertTrue(tableSyncClient.put(name, new Object[] {"card1", "mcc4", now - 2000}));
+            for (String idx : PKidxs) {
+                ScanFuture sf = tableAsyncClient.scan(name, "card1", idx, now, 0);
+                KvIterator it = sf.get();
+                Assert.assertEquals(it.getCount(), 4);
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(new Object[] {"card1", "mcc1", now}, it.getDecodedValue());
+                it.next();
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(new Object[] {"card1", "mcc3", now - 1000}, it.getDecodedValue());
+                it.next();
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(new Object[] {"card1", "mcc2", now - 1000}, it.getDecodedValue());
+                it.next();
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(new Object[] {"card1", "mcc4", now - 2000}, it.getDecodedValue());
+                it.next();
+                Assert.assertFalse(it.valid());
+            }
+            for (String idx : PKidxs) {
+                String mccCol = new StringBuilder().append("mcc").append(1).toString();
+                GetFuture gf = tableAsyncClient.get(name, "card1", idx, now);
+                Assert.assertEquals(new Object[] {"card1", mccCol, now}, gf.getRow());
+                mccCol = new StringBuilder().append("mcc").append(3).toString();
+                gf = tableAsyncClient.get(name, "card1", idx, now-1000);
+                Assert.assertEquals(new Object[] {"card1", mccCol, now- 1000}, gf.getRow());
+                mccCol = new StringBuilder().append("mcc").append(4).toString();
+                gf = tableAsyncClient.get(name, "card1", idx, now-2000);
+                Assert.assertEquals(new Object[] {"card1", mccCol, now-2000}, gf.getRow());
+            }
+            for (String idx : PKidxs) {
+                Assert.assertEquals(4, tableSyncClient.count(name, "card1", now, 0));
+            }
+
+            for (String idx : MCCidxs) {
+                for (int i = 4; i > 0; i--) {
+                    String key = new StringBuilder().append("mcc").append(i).toString();
+                    ScanFuture sf = tableAsyncClient.scan(name, key, idx, times.get(i-1), 0);
+                    KvIterator it = sf.get();
+                    Assert.assertEquals(it.getCount(), 1);
+                    Assert.assertTrue(it.valid());
+                    Assert.assertEquals(new Object[] {"card1", key, times.get(i-1)}, it.getDecodedValue());
+                    it.next();
+                    Assert.assertFalse(it.valid());
+                }
+            }
+            for (String idx : MCCidxs) {
+                for (int i = 4; i > 0; i--) {
+                    String key = new StringBuilder().append("mcc").append(i).toString();
+                    GetFuture gf = tableAsyncClient.get(name, key, idx, times.get(i - 1));
+                    Assert.assertEquals(new Object[] {"card1", key, times.get(i - 1)}, gf.getRow());
+                    Assert.assertEquals(1, tableSyncClient.count(name, key, idx, times.get(i-1), 0));
+                }
+            }
+
+        }catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        }
+    }
+
+    @Test
+    public void testMultiIndexShortTTL() {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("pk").setAddTsIdx(true).setType("string").build();
+        Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
+        Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+        Common.TTLSt ttlForKey1 = Common.TTLSt.newBuilder().setTtlType(Type.TTLType.kLatestTime).setLatTtl(2).build();
+        Common.TTLSt ttlForKey2 = Common.TTLSt.newBuilder().setTtlType(Type.TTLType.kAbsoluteTime).setAbsTtl(1).build();
+        Common.TTLSt ttlForKey3 = Common.TTLSt.newBuilder().setTtlType(Type.TTLType.kAbsAndLat).setLatTtl(2).setAbsTtl(1).build();
+        Common.TTLSt ttlForKey4 = Common.TTLSt.newBuilder().setTtlType(Type.TTLType.kAbsOrLat).setLatTtl(2).setAbsTtl(1).build();
+        Common.ColumnKey colKey1 = Common.ColumnKey.newBuilder().setIndexName("index1").addTsName("ts").addColName("pk").setTtl(ttlForKey1).build();
+        Common.ColumnKey colKey2 = Common.ColumnKey.newBuilder().setIndexName("index2").addTsName("ts").addColName("mcc").setTtl(ttlForKey2).build();
+        Common.ColumnKey colKey3 = Common.ColumnKey.newBuilder().setIndexName("index3").addTsName("ts").addColName("pk").setTtl(ttlForKey3).build();
+        Common.ColumnKey colKey4 = Common.ColumnKey.newBuilder().setIndexName("index4").addTsName("ts").addColName("mcc").setTtl(ttlForKey4).build();
+        TableInfo table = TableInfo.newBuilder()
+                .setName(name)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2)
+                .addColumnKey(colKey1).addColumnKey(colKey2).addColumnKey(colKey3).addColumnKey(colKey4)
+                .setPartitionNum(3).setReplicaNum(1)
+                .build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        long now = System.currentTimeMillis();
+        List<String> idxs = Arrays.asList("index1", "index2", "index3", "index4");
+        List<String> PKidxs = Arrays.asList("index1", "index3");
+        List<String> MCCidxs = Arrays.asList("index2", "index4");
+        List<Long> times = Arrays.asList(now, now-1000, now-2000, now-3000);
+        try {
+            Assert.assertTrue(tableSyncClient.put(name, new Object[] {"card1", "mcc1", now}));
+            Assert.assertTrue(tableSyncClient.put(name, new Object[] {"card1", "mcc2", now - 1000}));
+            Assert.assertTrue(tableSyncClient.put(name, new Object[] {"card1", "mcc3", now - 2000}));
+            Assert.assertTrue(tableSyncClient.put(name, new Object[] {"card1", "mcc4", now - 3000}));
+            {
+                ScanFuture sf = tableAsyncClient.scan(name, "card1", "index1", now, 0);
+                KvIterator it = sf.get();
+                Assert.assertEquals(it.getCount(), 2);
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(new Object[] {"card1", "mcc1", now}, it.getDecodedValue());
+                it.next();
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(new Object[] {"card1", "mcc2", now - 1000}, it.getDecodedValue());
+                it.next();
+                Assert.assertFalse(it.valid());
+                for (String idx : PKidxs) {
+                    for (int i = 2; i > 0; i--) {
+                        String mccCol = new StringBuilder().append("mcc").append(i).toString();
+                        GetFuture gf = tableAsyncClient.get(name, "card1", idx, now - (i-1) * 1000);
+                        Assert.assertEquals(new Object[] {"card1", mccCol, now - (i-1)*1000}, gf.getRow());
+                    }
+                    Assert.assertEquals(2, tableSyncClient.count(name, "card1", now, 0));
+                }
+            }
+            {
+
+                ScanFuture sf = tableAsyncClient.scan(name, "card1", "index3", now, 0);
+                KvIterator it = sf.get();
+                Assert.assertEquals(it.getCount(), 4);
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(new Object[] {"card1", "mcc1", now}, it.getDecodedValue());
+                it.next();
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(new Object[] {"card1", "mcc2", now - 1000}, it.getDecodedValue());
+                it.next();
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(new Object[] {"card1", "mcc3", now - 2000}, it.getDecodedValue());
+                it.next();
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(new Object[] {"card1", "mcc4", now - 3000}, it.getDecodedValue());
+                it.next();
+                Assert.assertFalse(it.valid());
+            }
+            {
+                for (int i = 4; i > 0; i--) {
+                    String key = new StringBuilder().append("mcc").append(i).toString();
+                    ScanFuture sf = tableAsyncClient.scan(name, key, "index2", times.get(i-1), 0);
+                    KvIterator it = sf.get();
+                    Assert.assertEquals(it.getCount(), 1);
+                    Assert.assertTrue(it.valid());
+                    Assert.assertEquals(new Object[] {"card1", key, times.get(i-1)}, it.getDecodedValue());
+                    it.next();
+                    Assert.assertFalse(it.valid());
+                }
+            }
+            {
+                for (int i = 4; i > 0; i--) {
+                    String key = new StringBuilder().append("mcc").append(i).toString();
+                    ScanFuture sf = tableAsyncClient.scan(name, key, "index4", times.get(i-1), 0);
+                    KvIterator it = sf.get();
+                    Assert.assertEquals(it.getCount(), 1);
+                    Assert.assertTrue(it.valid());
+                    Assert.assertEquals(new Object[] {"card1", key, times.get(i-1)}, it.getDecodedValue());
+                    it.next();
+                    Assert.assertFalse(it.valid());
+                }
+            }
+            for (String idx : MCCidxs) {
+                for (int i = 2; i > 0; i--) {
+                    String key = new StringBuilder().append("mcc").append(i).toString();
+                    GetFuture gf = tableAsyncClient.get(name, key, idx, times.get(i - 1));
+                    Assert.assertEquals(new Object[] {"card1", key, times.get(i - 1)}, gf.getRow());
+                    Assert.assertEquals(1, tableSyncClient.count(name, key, idx, times.get(i-1), 0));
+                }
+            }
+        }catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        }
+    }
 
 }
