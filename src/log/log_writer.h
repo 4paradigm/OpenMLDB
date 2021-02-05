@@ -23,26 +23,50 @@ class Writer {
     // Create a writer that will append data to "*dest".
     // "*dest" must be initially empty.
     // "*dest" must remain live while this Writer is in use.
-    explicit Writer(WritableFile* dest);
+    Writer(const std::string& compress_type, WritableFile* dest);
 
     // Create a writer that will append data to "*dest".
     // "*dest" must have initial length "dest_length".
     // "*dest" must remain live while this Writer is in use.
-    Writer(WritableFile* dest, uint64_t dest_length);
+    Writer(const std::string& compress_type, WritableFile* dest, uint64_t dest_length);
 
     ~Writer();
 
     Status AddRecord(const Slice& slice);
     Status EndLog();
 
+    inline CompressType GetCompressType() {
+        return compress_type_;
+    }
+
+    inline uint32_t GetBlockSize() {
+        return block_size_;
+    }
+
+    inline uint32_t GetHeaderSize() {
+        return header_size_;
+    }
+
+    CompressType GetCompressType(const std::string& compress_type);
+
  private:
     WritableFile* dest_;
-    int block_offset_;  // Current offset in block
+    uint32_t block_offset_;  // Current offset in block
 
     // crc32c values for all supported record types.  These are
     // pre-computed to reduce the overhead of computing the crc of the
     // record type stored in the header.
     uint32_t type_crc_[kMaxRecordType + 1];
+
+    CompressType compress_type_;
+    uint32_t block_size_;
+    uint32_t header_size_;
+    // buffer of kCompressBlockSize
+    char* buffer_;
+    // buffer for compressed block
+    char* compress_buf_;
+    Status CompressRecord();
+    Status AppendInternal(WritableFile* wf, int leftover);
 
     Status EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);
 
@@ -55,10 +79,10 @@ struct WriteHandle {
     FILE* fd_;
     WritableFile* wf_;
     Writer* lw_;
-    WriteHandle(const std::string& fname, FILE* fd, uint64_t dest_length = 0)
+    WriteHandle(const std::string& compress_type, const std::string& fname, FILE* fd, uint64_t dest_length = 0)
         : fd_(fd), wf_(NULL), lw_(NULL) {
         wf_ = ::rtidb::log::NewWritableFile(fname, fd);
-        lw_ = new Writer(wf_, dest_length);
+        lw_ = new Writer(compress_type, wf_, dest_length);
     }
 
     ::rtidb::base::Status Write(const ::rtidb::base::Slice& slice) {
