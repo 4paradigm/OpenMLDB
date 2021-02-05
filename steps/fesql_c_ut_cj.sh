@@ -3,12 +3,15 @@
 # ut.sh
 #
 
-
 CASE_LEVEL=$1
+CASE_NAME=$2
 if [[ "${CASE_LEVEL}" == "" ]]; then
         CASE_LEVEL="0"
 fi
-echo "fesql c++ sdk test : case_level ${CASE_LEVEL}"
+if [[ "${CASE_NAME}" == "" ]]; then
+        CASE_NAME="tablet_engine_test\|sql_sdk_test\|sql_cluster_test"
+fi
+echo "fesql c++ sdk test : case_level ${CASE_LEVEL}, case_file ${CASE_NAME}"
 
 ROOT_DIR=`pwd`
 echo "WORK_DIR: ${ROOT_DIR}"
@@ -21,7 +24,7 @@ cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh start && cd ${ROOT_DIR}
 sleep 5
 TMPFILE="code.tmp"
 echo 0 > $TMPFILE
-ls  build/bin/ | grep test | grep "sql_sdk_test\|sql_cluster_test\|tablet_engine_test" | grep -v grep | while read line
+ls  build/bin/ | grep test | grep ${CASE_NAME} | grep -v grep | while read line
 do
     FESQL_LEVEL=${CASE_LEVEL} ./build/bin/$line --gtest_output=xml:./reports/$line.xml
     RET=$?
