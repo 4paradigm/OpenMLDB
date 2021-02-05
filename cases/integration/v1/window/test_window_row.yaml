@@ -386,7 +386,7 @@ cases:
   -
     id: 13-2
     desc: 多个window指定不同的ts, 数据时间乱序插入，request模式预期
-    mode: rtidb-batch-unsupport
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

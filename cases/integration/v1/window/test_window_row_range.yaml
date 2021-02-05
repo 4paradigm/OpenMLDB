@@ -434,10 +434,10 @@ cases:
         - [ 3,"cc",20,94,1 ]
         - [ 4,"dd",20,93,3 ]
         - [ 5,"ee",21,34,1 ]
-        -
+
   - id: 16-2
     desc: 多个window指定不同的ts, 数据时间乱序插入，request模式预期
-    mode: batch-unsupport
+    mode: offline-unsupport
     inputs:
       - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c3:c7", "index2:c3:c4" ]
