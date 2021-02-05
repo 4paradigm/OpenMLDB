@@ -20,8 +20,12 @@ namespace rtidb {
 namespace codec {
 
 bool DecodeRpcRow(const butil::IOBuf& buf, size_t offset, size_t size, size_t slice_num, fesql::codec::Row* row) {
-    if (row == nullptr || slice_num == 0 || size == 0) {
+    if (row == nullptr) {
         return false;
+    }
+    if (slice_num == 0 || size == 0) {
+        *row = fesql::codec::Row();
+        return true;
     }
     size_t cur_offset = offset;
     if (cur_offset >= buf.size()) {
