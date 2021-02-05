@@ -573,8 +573,12 @@ Status ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
         }
         case ::fesql::node::kFnOpMinus: {
             ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
-            CHECK_STATUS(arithmetic_ir_builder.BuildSubExpr(
-                NativeValue::Create(builder.getInt16(0)), left, output));
+            if (node->GetOutputType()->base() == node::kBool) {
+                *output = left;
+            } else {
+                CHECK_STATUS(arithmetic_ir_builder.BuildSubExpr(
+                    NativeValue::Create(builder.getInt16(0)), left, output));
+            }
             break;
         }
         case ::fesql::node::kFnOpBracket: {
