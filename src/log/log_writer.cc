@@ -172,8 +172,8 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
     }
     assert(block_offset_ + header_size_ + n <= static_cast<size_t>(block_size_));
     // Format the header
-    char buf[header_size_];
-    memset(buf, 0, header_size_*sizeof(char));
+    char buf[header_size_];  // NOLINT
+    memset(buf, 0, header_size_ * sizeof(char));
     if (compress_type_ == kNoCompress) {
         buf[4] = static_cast<char>(n & 0xff);
         buf[5] = static_cast<char>(n >> 8);
