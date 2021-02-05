@@ -154,7 +154,7 @@ void TabletEngineTest::BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // N
         std::string tname = sql_case.inputs()[j].name_.empty() ? ("t" + std::to_string(j)) : sql_case.inputs()[j].name_;
         boost::replace_all(sql_str, placeholder, tname);
     }
-    std::cout << sql_str << std::endl;
+    LOG(INFO) << sql_str << std::endl;
 
     fesql::base::Status get_status;
     fesql::vm::Engine engine(catalog);
@@ -167,7 +167,7 @@ void TabletEngineTest::BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // N
     if (!sql_case.expect().success_) {
         return;
     }
-    std::cout << "RUN IN MODE BATCH";
+    LOG(INFO) << "RUN IN MODE BATCH";
     fesql::vm::Schema schema;
     schema = session.GetSchema();
     PrintSchema(schema);
@@ -243,7 +243,7 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
         std::string tname = sql_case.inputs()[j].name_.empty() ? ("t" + std::to_string(j)) : sql_case.inputs()[j].name_;
         boost::replace_all(sql_str, placeholder, tname);
     }
-    std::cout << sql_str << std::endl;
+    LOG(INFO) << sql_str << std::endl;
     fesql::base::Status get_status;
     fesql::vm::RequestRunSession session;
     if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
@@ -254,7 +254,7 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
     if (!sql_case.expect().success_) {
         return;
     }
-    std::cout << "RUN IN MODE BATCH";
+    LOG(INFO) << "RUN IN MODE BATCH";
     fesql::vm::Schema schema;
     schema = session.GetSchema();
     PrintSchema(schema);
