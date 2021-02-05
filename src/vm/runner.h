@@ -892,8 +892,7 @@ class RequestUnionRunner : public Runner {
  public:
     RequestUnionRunner(const int32_t id, const SchemasContext* schema,
                        const int32_t limit_cnt, const Range& range,
-                       bool exclude_current_time,
-                       bool output_request_row)
+                       bool exclude_current_time, bool output_request_row)
         : Runner(id, kRunnerRequestUnion, schema, limit_cnt),
           range_gen_(range),
           exclude_current_time_(exclude_current_time),
@@ -1371,6 +1370,7 @@ class RunnerBuilder {
         Op* runner = new Op(std::forward<Args>(args)...);
         *result_runner = nm_->RegisterNode(runner);
     }
+
  private:
     node::NodeManager* nm_;
     bool support_cluster_optimized_;
