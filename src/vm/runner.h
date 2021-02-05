@@ -1366,6 +1366,11 @@ class RunnerBuilder {
         return cluster_job_;
     }
 
+    template <typename Op, typename... Args>
+    void CreateRunner(Op** result_runner, Args&&... args) {
+        Op* runner = new Op(std::forward<Args>(args)...);
+        *result_runner = nm_->RegisterNode(runner);
+    }
  private:
     node::NodeManager* nm_;
     bool support_cluster_optimized_;

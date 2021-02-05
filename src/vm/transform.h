@@ -318,6 +318,8 @@ class BatchModeTransformer {
     Status GenRange(Range* sort, const SchemasContext* schemas_ctx);
 
     Status ValidatePartitionDataProvider(PhysicalOpNode* physical_plan);
+    std::string ExtractSchameName(PhysicalOpNode* physical_plan);
+    Status ValidateRequestDataProvider(PhysicalOpNode* physical_plan);
     Status ValidateWindowIndexOptimization(const WindowOp& window,
                                            PhysicalOpNode* in);
     Status ValidateJoinIndexOptimization(const Join& join, PhysicalOpNode* in);
