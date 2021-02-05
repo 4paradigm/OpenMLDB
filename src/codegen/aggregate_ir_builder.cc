@@ -256,9 +256,15 @@ class StatisticalAggGenerator {
                 }
             }
             if (!min_idxs_[i].empty()) {
+                if (count_state_ == nullptr) {
+                    count_state_ = GenCountInitState(builder);
+                }
                 min_states_[i] = GenMinInitState(builder);
             }
             if (!max_idxs_[i].empty()) {
+                if (count_state_ == nullptr) {
+                    count_state_ = GenCountInitState(builder);
+                }
                 max_states_[i] = GenMaxInitState(builder);
             }
         }
@@ -343,7 +349,8 @@ class StatisticalAggGenerator {
             if (!avg_idxs_[i].empty() && avg_states_[i] != nullptr) {
                 GenAvgUpdate(i, inputs[i], is_null[i], builder);
             }
-            if ((!avg_idxs_[i].empty() || !count_idxs_[i].empty()) &&
+            if ((!avg_idxs_[i].empty() || !count_idxs_[i].empty() ||
+                 !min_idxs_[i].empty() || !max_idxs_[i].empty()) &&
                 !count_updated) {
                 GenCountUpdate(builder, is_null[i]);
                 count_updated = true;
@@ -358,13 +365,18 @@ class StatisticalAggGenerator {
     }
 
     void GenOutputs(::llvm::IRBuilder<>* builder,
-                    std::vector<std::pair<size_t, llvm::Value*>>* outputs) {
+                    std::vector<std::pair<size_t, NativeValue>>* outputs) {
         for (size_t i = 0; i < col_num_; ++i) {
             if (!sum_idxs_[i].empty()) {
                 ::llvm::Value* accum = builder->CreateLoad(sum_states_[i]);
                 for (int idx : sum_idxs_[i]) {
-                    outputs->emplace_back(std::make_pair(idx, accum));
+                    outputs->emplace_back(
+                        std::make_pair(idx, NativeValue::Create(accum)));
                 }
+            }
+            ::llvm::Value* cnt = nullptr;
+            if (count_state_ != nullptr) {
+                cnt = builder->CreateLoad(count_state_);
             }
             if (!avg_idxs_[i].empty()) {
                 ::llvm::Type* avg_ty = AggregateIRBuilder::GetOutputLLVMType(
@@ -375,29 +387,35 @@ class StatisticalAggGenerator {
                 } else {
                     sum = builder->CreateLoad(avg_states_[i]);
                 }
-                ::llvm::Value* cnt = builder->CreateLoad(count_state_);
-                cnt = builder->CreateSIToFP(cnt, avg_ty);
-                ::llvm::Value* avg = builder->CreateFDiv(sum, cnt);
+                ::llvm::Value* avg = builder->CreateFDiv(
+                    sum, builder->CreateSIToFP(cnt, avg_ty));
                 for (int idx : avg_idxs_[i]) {
-                    outputs->emplace_back(std::make_pair(idx, avg));
+                    outputs->emplace_back(
+                        std::make_pair(idx, NativeValue::Create(avg)));
                 }
             }
             if (!count_idxs_[i].empty()) {
-                ::llvm::Value* cnt = builder->CreateLoad(count_state_);
                 for (int idx : count_idxs_[i]) {
-                    outputs->emplace_back(std::make_pair(idx, cnt));
+                    outputs->emplace_back(
+                        std::make_pair(idx, NativeValue::Create(cnt)));
                 }
+            }
+            ::llvm::Value* is_empty = nullptr;
+            if (cnt != nullptr) {
+                is_empty = builder->CreateICmpEQ(cnt, builder->getInt64(0));
             }
             if (!min_idxs_[i].empty()) {
                 ::llvm::Value* accum = builder->CreateLoad(min_states_[i]);
                 for (int idx : min_idxs_[i]) {
-                    outputs->emplace_back(std::make_pair(idx, accum));
+                    outputs->emplace_back(std::make_pair(
+                        idx, NativeValue::CreateWithFlag(accum, is_empty)));
                 }
             }
             if (!max_idxs_[i].empty()) {
                 ::llvm::Value* accum = builder->CreateLoad(max_states_[i]);
                 for (int idx : max_idxs_[i]) {
-                    outputs->emplace_back(std::make_pair(idx, accum));
+                    outputs->emplace_back(std::make_pair(
+                        idx, NativeValue::CreateWithFlag(accum, is_empty)));
                 }
             }
         }
@@ -738,11 +756,11 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
     BufNativeEncoderIRBuilder output_encoder(&dummy_map, &output_schema,
                                              exit_block);
     for (auto& agg_generator : generators) {
-        std::vector<std::pair<size_t, ::llvm::Value*>> outputs;
+        std::vector<std::pair<size_t, NativeValue>> outputs;
         agg_generator.GenOutputs(&builder, &outputs);
         for (auto pair : outputs) {
-            output_encoder.BuildEncodePrimaryField(
-                output_arg, pair.first, NativeValue::Create(pair.second));
+            output_encoder.BuildEncodePrimaryField(output_arg, pair.first,
+                                                   pair.second);
         }
     }
     builder.CreateRetVoid();
