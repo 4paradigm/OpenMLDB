@@ -58,6 +58,10 @@ void StoreData(std::shared_ptr<TestArgs> args, std::shared_ptr<fesql::storage::T
         std::vector<std::string> raw_data;
         row_view.Reset(row.buf());
         for (int i = 0; i < column_size; i++) {
+            if (row_view.IsNULL(i)) {
+                raw_data.push_back(rtidb::codec::NONETOKEN);
+                continue;
+            }
             std::string key_str = sql_schema.Get(i).type() == fesql::type::kDate
                                       ? std::to_string(row_view.GetDateUnsafe(i))
                                       : row_view.GetAsString(i);
@@ -84,6 +88,7 @@ void StoreData(std::shared_ptr<TestArgs> args, std::shared_ptr<fesql::storage::T
             ts_dim->set_idx(i);
         }
         if (ts_dimensions.empty()) {
+            LOG(WARNING) << "ts is null, add current timestamp";
             ASSERT_TRUE(table->Put(ts, row.ToString(), dims));
             ts--;
         } else {
@@ -383,9 +388,9 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     EngineTestLast_Join, TabletEngineTest,
     testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/join/test_last_join.yaml")));
-//INSTANTIATE_TEST_SUITE_P(
-//    EngineTestLastJoin, TabletEngineTest,
-//    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/join/test_lastjoin.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    EngineTestLastJoin, TabletEngineTest,
+    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/join/test_lastjoin.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     EngineTestArithmetic, TabletEngineTest,
