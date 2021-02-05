@@ -508,6 +508,7 @@ public class FesqlUtil {
         log.info("procedure sql:{}", sql);
         FesqlResult fesqlResult = new FesqlResult();
         if (!executor.executeDDL(dbName, sql)) {
+            log.error("execute ddl failed! sql: {}", sql);
             fesqlResult.setOk(false);
             return fesqlResult;
         }
@@ -550,6 +551,8 @@ public class FesqlUtil {
                     }
                 }
             } catch (SQLException throwables) {
+                throwables.printStackTrace();
+                log.error("has exception. sql: {}", sql);
                 fesqlResult.setOk(false);
                 return fesqlResult;
             } finally {
