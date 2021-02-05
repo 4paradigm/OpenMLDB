@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+#include "sdk/sql_sdk_test.h"
+
 #include <sched.h>
 #include <timer.h>
 #include <unistd.h>
@@ -33,7 +35,6 @@
 #include "sdk/sql_router.h"
 #include "test/base_test.h"
 #include "vm/catalog.h"
-#include "sdk/sql_sdk_test.h"
 namespace rtidb {
 namespace sdk {
 
@@ -114,8 +115,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_test) {
     }
     ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
     RunRequestProcedureModeSDK(sql_case, router_, false);
-    LOG(INFO) << "Finish sql_sdk_request_procedure_test: ID: "
-        << sql_case.id() << ", DESC: " << sql_case.desc();
+    LOG(INFO) << "Finish sql_sdk_request_procedure_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
 TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_asyn_test) {
@@ -129,8 +129,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_asyn_test) {
     }
     ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
     RunRequestProcedureModeSDK(sql_case, router_, true);
-    LOG(INFO) << "Finish sql_sdk_request_procedure_asyn_test: ID: "
-        << sql_case.id() << ", DESC: " << sql_case.desc();
+    LOG(INFO) << "Finish sql_sdk_request_procedure_asyn_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_test) {
     auto sql_case = GetParam();
@@ -402,8 +401,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     }
     ASSERT_TRUE(router->RefreshCatalog());
     // insert
-    std::string insert_sql =
-        "insert into trans values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
+    std::string insert_sql = "insert into trans values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
     ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
     // create procedure
     std::string sp_name = "sp";
