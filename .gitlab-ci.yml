@@ -74,6 +74,9 @@ build:
     expire_in: 4h
     paths:
       - build/bin/rtidb
+      - build/bin/sql_sdk_test
+      - build/bin/sql_cluster_test
+      - build/bin/tablet_engine_test
       - build/src/sdk/libsql_jsdk.so
       - build/sql_pysdk/dist/*.whl
       - build/python/dist/*.whl
