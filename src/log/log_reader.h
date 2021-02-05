@@ -53,7 +53,7 @@ class Reader {
     // The Reader will start reading at the first record located at physical
     // position >= initial_offset within the file.
     Reader(SequentialFile* file, Reporter* reporter, bool checksum,
-           uint64_t initial_offset);
+           uint64_t initial_offset, bool compressed);
 
     ~Reader();
 
@@ -74,11 +74,23 @@ class Reader {
     void GoBackToLastBlock();
     void GoBackToStart();
 
+    inline bool GetCompressed() {
+        return compressed_;
+    }
+
+    inline uint32_t GetBlockSize() {
+        return block_size_;
+    }
+
+    inline uint32_t GetHeaderSize() {
+        return header_size_;
+    }
+
  private:
     SequentialFile* const file_;
     Reporter* const reporter_;
     bool const checksum_;
-    char* const backing_store_;
+    char* backing_store_;
     Slice buffer_;
 
     // Offset of the last record returned by ReadRecord.
@@ -96,6 +108,12 @@ class Reader {
     // particular, a run of kMiddleType and kLastType records can be silently
     // skipped in this mode
     bool resyncing_;
+
+    bool compressed_;
+    uint32_t block_size_;
+    uint32_t header_size_;
+    // buffer for uncompressed block
+    char* uncompress_buf_;
 
     // Extend record types with the following special values
     enum {
@@ -134,7 +152,7 @@ typedef ::rtidb::base::Skiplist<uint32_t, uint64_t,
 
 class LogReader {
  public:
-    LogReader(LogParts* logs, const std::string& log_path);
+    LogReader(LogParts* logs, const std::string& log_path, bool compressed);
     virtual ~LogReader();
     ::rtidb::base::Status ReadNextRecord(::rtidb::base::Slice* record,
                                          std::string* buffer);
@@ -156,6 +174,7 @@ class LogReader {
     SequentialFile* sf_;
     Reader* reader_;
     LogParts* logs_;
+    bool compressed_;
 };
 
 }  // namespace log

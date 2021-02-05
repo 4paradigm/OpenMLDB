@@ -73,6 +73,8 @@ DECLARE_uint32(task_check_interval);
 DECLARE_uint32(load_index_max_wait_time);
 DECLARE_bool(use_name);
 DECLARE_bool(enable_distsql);
+DECLARE_string(snapshot_compression);
+DECLARE_string(file_compression);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -142,6 +144,26 @@ bool TabletImpl::Init(const std::string& real_endpoint) {
 
 bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
         const std::string& endpoint, const std::string& real_endpoint) {
+    std::set<std::string> snapshot_compression_set{"off", "pz", "zlib", "snappy"};
+    if (snapshot_compression_set.find(FLAGS_snapshot_compression) == snapshot_compression_set.end()) {
+        LOG(WARNING) << "wrong snapshot_compression: " << FLAGS_snapshot_compression;
+        return false;
+    }
+    std::set<std::string> file_compression_set{"off", "pz", "zlib", "lz4"};
+    if (file_compression_set.find(FLAGS_file_compression) == file_compression_set.end()) {
+        LOG(WARNING) << "wrong FLAGS_file_compression: " << FLAGS_file_compression;
+        return false;
+    }
+#ifndef PZFPGA_ENABLE
+    if (FLAGS_snapshot_compression == "pz") {
+        LOG(WARNING) << "FLAGS_snapshot_compression is pz, but PZFPGA_ENABLE is off";
+        return false;
+    }
+    if (FLAGS_file_compression == "pz") {
+        LOG(WARNING) << "FLAGS_file_compression is pz, but PZFPGA_ENABLE is off";
+        return false;
+    }
+#endif
     zk_cluster_ = zk_cluster;
     zk_path_ = zk_path;
     endpoint_ = endpoint;
@@ -5832,7 +5854,7 @@ void TabletImpl::DumpIndexDataInternal(
             }
             return;
         }
-        ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(index_file_name, fd);
+        ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle("off", index_file_name, fd);
         whs.push_back(wh);
     }
     if (memtable_snapshot->DumpIndexData(table, column_key, idx, whs)) {
@@ -5966,7 +5988,7 @@ void TabletImpl::LoadIndexDataInternal(
         return;
     }
     ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(index_file_path, fd);
-    ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+    ::rtidb::log::Reader reader(seq_file, NULL, false, 0, false);
     std::string buffer;
     uint64_t succ_cnt = 0;
     uint64_t failed_cnt = 0;
