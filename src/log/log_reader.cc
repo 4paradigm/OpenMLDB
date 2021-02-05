@@ -339,12 +339,12 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                 }
                 case kZlib: {
                     uncompress_len = block_size_;
-#if __linux__
-                    int res = uncompress((unsigned char*)uncompress_buf_, reinterpret_cast<uint64_t*>(&uncompress_len),
+#ifdef __APPLE__
+                    int res = uncompress((unsigned char*)uncompress_buf_, reinterpret_cast<uLongf*>(&uncompress_len),
                                          (const unsigned char*)block_data, compress_len);
 #else
-
-                    int res = uncompress((unsigned char*)uncompress_buf_, reinterpret_cast<uLongf*>(&uncompress_len),
+                    // linux
+                    int res = uncompress((unsigned char*)uncompress_buf_, reinterpret_cast<uint64_t*>(&uncompress_len),
                                          (const unsigned char*)block_data, compress_len);
 #endif
                     if (res != Z_OK) {

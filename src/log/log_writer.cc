@@ -27,7 +27,7 @@ Writer::Writer(const std::string& compress_type, WritableFile* dest)
     : dest_(dest),
       block_offset_(0),
       compress_type_(GetCompressType(compress_type)),
-      header_size_(compress_type_ != kNoCompress ? kHeaderSizeForCompress : kBlockSize),
+      header_size_(compress_type_ != kNoCompress ? kHeaderSizeForCompress : kHeaderSize),
       buffer_(nullptr),
       compress_buf_(nullptr) {
     InitTypeCrc(type_crc_);
@@ -46,7 +46,7 @@ Writer::Writer(const std::string& compress_type, WritableFile* dest)
 Writer::Writer(const std::string& compress_type, WritableFile* dest, uint64_t dest_length)
     : dest_(dest),
       compress_type_(GetCompressType(compress_type)),
-      header_size_(compress_type_ != kNoCompress ? kHeaderSizeForCompress : kBlockSize),
+      header_size_(compress_type_ != kNoCompress ? kHeaderSizeForCompress : kHeaderSize),
       buffer_(nullptr),
       compress_buf_(nullptr) {
     InitTypeCrc(type_crc_);
@@ -240,11 +240,12 @@ Status Writer::CompressRecord() {
         case kZlib: {
             uint32_t dest_len = compressBound(block_size_);
 
-#if __linux__
-            int res = compress((unsigned char*)compress_buf_, reinterpret_cast<uint64_t*>(&dest_len),
+#ifdef __APPLE__
+            int res = compress((unsigned char*)compress_buf_, reinterpret_cast<uLongf*>(&dest_len),
                                (const unsigned char*)buffer_, block_size_);
 #else
-            int res = compress((unsigned char*)compress_buf_, reinterpret_cast<uLongf*>(&dest_len),
+
+            int res = compress((unsigned char*)compress_buf_, reinterpret_cast<uint64_t*>(&dest_len),
                                (const unsigned char*)buffer_, block_size_);
 #endif
             if (res != Z_OK) {
