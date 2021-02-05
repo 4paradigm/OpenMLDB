@@ -24,37 +24,43 @@ static void InitTypeCrc(uint32_t* type_crc) {
 }
 
 Writer::Writer(const std::string& compress_type, WritableFile* dest)
-    : dest_(dest), block_offset_(0), compress_type_(GetCompressType(compress_type)),
-    buffer_(nullptr), compress_buf_(nullptr) {
+    : dest_(dest),
+      block_offset_(0),
+      compress_type_(GetCompressType(compress_type)),
+      header_size_(compress_type_ != kNoCompress ? kHeaderSizeForCompress : kBlockSize),
+      buffer_(nullptr),
+      compress_buf_(nullptr) {
     InitTypeCrc(type_crc_);
     if (compress_type_ != kNoCompress) {
         block_size_ = kCompressBlockSize;
         buffer_ = new char[block_size_];
         compress_buf_ = new char[block_size_];
-        header_size_ = kHeaderSizeForCompress;
     } else {
         block_size_ = kBlockSize;
-        header_size_ = kHeaderSize;
     }
-    DLOG(INFO) << "block_size_: " << block_size_ << ", " << "header_size_: " << header_size_ << ", "
-        << "compress_type_: " << compress_type_;
+    DLOG(INFO) << "block_size_: " << block_size_ << ", "
+               << "header_size_: " << header_size_ << ", "
+               << "compress_type_: " << compress_type_;
 }
 
 Writer::Writer(const std::string& compress_type, WritableFile* dest, uint64_t dest_length)
-    : dest_(dest), compress_type_(GetCompressType(compress_type)), buffer_(nullptr), compress_buf_(nullptr) {
+    : dest_(dest),
+      compress_type_(GetCompressType(compress_type)),
+      header_size_(compress_type_ != kNoCompress ? kHeaderSizeForCompress : kBlockSize),
+      buffer_(nullptr),
+      compress_buf_(nullptr) {
     InitTypeCrc(type_crc_);
     if (compress_type_ != kNoCompress) {
         block_size_ = kCompressBlockSize;
         buffer_ = new char[block_size_];
         compress_buf_ = new char[block_size_];
-        header_size_ = kHeaderSizeForCompress;
     } else {
         block_size_ = kBlockSize;
-        header_size_ = kHeaderSize;
     }
     block_offset_ = dest_length % block_size_;
-    DLOG(INFO) << "block_size_: " << block_size_ << ", " << "header_size_: " << header_size_ << ", "
-        << "compress_type_: " << compress_type_;
+    DLOG(INFO) << "block_size_: " << block_size_ << ", "
+               << "header_size_: " << header_size_ << ", "
+               << "compress_type_: " << compress_type_;
 }
 
 Writer::~Writer() {
@@ -166,7 +172,8 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
     }
     assert(block_offset_ + header_size_ + n <= static_cast<size_t>(block_size_));
     // Format the header
-    char buf[header_size_]{0};
+    char buf[header_size_];
+    memset(buf, 0, header_size_*sizeof(char));
     if (compress_type_ == kNoCompress) {
         buf[4] = static_cast<char>(n & 0xff);
         buf[5] = static_cast<char>(n >> 8);
@@ -232,8 +239,14 @@ Status Writer::CompressRecord() {
         }
         case kZlib: {
             uint32_t dest_len = compressBound(block_size_);
+
+#if __linux__
             int res = compress((unsigned char*)compress_buf_, reinterpret_cast<uint64_t*>(&dest_len),
-                    (const unsigned char*)buffer_, block_size_);
+                               (const unsigned char*)buffer_, block_size_);
+#else
+            int res = compress((unsigned char*)compress_buf_, reinterpret_cast<uLongf*>(&dest_len),
+                               (const unsigned char*)buffer_, block_size_);
+#endif
             if (res != Z_OK) {
                 s = Status::InvalidRecord(Slice("compress failed, error code: " + res));
                 PDLOG(WARNING, "write error, compress_type: %d, msg: %s", compress_type_, s.ToString().c_str());

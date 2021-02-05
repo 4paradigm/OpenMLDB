@@ -60,7 +60,7 @@ class Writer {
 
     CompressType compress_type_;
     uint32_t block_size_;
-    uint32_t header_size_;
+    const uint32_t header_size_;
     // buffer of kCompressBlockSize
     char* buffer_;
     // buffer for compressed block
