@@ -206,7 +206,8 @@ object WindowSampleSupport {
       }
       for (i <- data.indices.reverse) {
         val row = Row.fromSeq(data(i))
-        computer.bufferRowOnly(row)
+        val orderKey = computer.extractKey(row)
+        computer.bufferRowOnly(row, orderKey)
         if (i == 0) {
           curRow = row
           curNativeRow = computer.getWindow.Get(0)
