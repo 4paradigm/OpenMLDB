@@ -39,12 +39,12 @@ class QuerySuites extends SQLBaseSuite {
   testCases("cases/integration/v1/window/test_window_row.yaml")
   testCases("cases/integration/v1/window/test_window_row_range.yaml")
   testCases("cases/integration/v1/window/test_window_union.yaml")
+    testCases("cases/integration/v1/window/error_window.yaml")
 
   testCases("cases/integration/cluster/test_window_row.yaml")
   testCases("cases/integration/cluster/test_window_row_range.yaml")
   testCases("cases/integration/cluster/window_and_lastjoin.yaml")
 
-  testCases("cases/integration/v1/window/error_window.yaml")
 
   testCases("cases/integration/spark/test_fqz_studio.yaml")
   testCases("cases/integration/spark/test_ads.yaml")

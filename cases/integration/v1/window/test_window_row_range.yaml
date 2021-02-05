@@ -434,7 +434,7 @@ cases:
         - [ 3,"cc",20,94,1 ]
         - [ 4,"dd",20,93,3 ]
         - [ 5,"ee",21,34,1 ]
-        -
+
   - id: 16-2
     desc: 多个window指定不同的ts, 数据时间乱序插入，request模式预期
     mode: batch-unsupport
