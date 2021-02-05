@@ -37,8 +37,8 @@ struct DataTypeTrait {
     static std::string to_string();
     static node::TypeNode* to_type_node(node::NodeManager* nm);
     static node::ExprNode* to_const(node::NodeManager* nm, const T&);
-    static const T minimum_value();
-    static const T maximum_value();
+    static T minimum_value();
+    static T maximum_value();
 };
 
 struct AnyArg {
@@ -78,18 +78,18 @@ struct Nullable<StringRef> {
 };
 template <typename T>
 struct IsNullableTrait {
-    static const bool value;
+    static bool value;
 };
 template <typename T>
-const bool IsNullableTrait<T>::value = false;
+bool IsNullableTrait<T>::value = false;
 
 template <typename T>
 struct IsNullableTrait<Nullable<T>> {
-    static const bool value;
+    static bool value;
 };
 
 template <typename T>
-const bool IsNullableTrait<Nullable<T>>::value = true;
+bool IsNullableTrait<Nullable<T>>::value = true;
 
 template <typename T>
 static bool operator==(const Nullable<T>& x, const Nullable<T>& y) {
@@ -134,10 +134,14 @@ struct DataTypeTrait<AnyArg> {
 template <>
 struct DataTypeTrait<bool> {
     static std::string to_string() { return "bool"; }
+    static node::DataType to_type_enum() { return node::kBool; }
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
         return nm->MakeTypeNode(node::kBool);
     }
-    static const bool zero_value() { return false; }
+    static node::ExprNode* to_const(node::NodeManager* nm, const bool& v) {
+        return nm->MakeConstNode(v);
+    }
+    static bool zero_value() { return false; }
     using CCallArgType = bool;
 };
 
@@ -152,13 +156,13 @@ struct DataTypeTrait<int16_t> {
     static node::ExprNode* to_const(node::NodeManager* nm, const int16_t& v) {
         return nm->MakeConstNode(v);
     }
-    static const int16_t minimum_value() {
+    static int16_t minimum_value() {
         return std::numeric_limits<int16_t>::lowest();
     }
-    static const int16_t maximum_value() {
+    static int16_t maximum_value() {
         return std::numeric_limits<int16_t>::max();
     }
-    static const int16_t zero_value() { return 0; }
+    static int16_t zero_value() { return 0; }
     using CCallArgType = int16_t;
 };
 
@@ -173,13 +177,13 @@ struct DataTypeTrait<int32_t> {
     static node::ExprNode* to_const(node::NodeManager* nm, const int32_t& v) {
         return nm->MakeConstNode(v);
     }
-    static const int32_t minimum_value() {
+    static int32_t minimum_value() {
         return std::numeric_limits<int32_t>::lowest();
     }
-    static const int32_t maximum_value() {
+    static int32_t maximum_value() {
         return std::numeric_limits<int32_t>::max();
     }
-    static const int32_t zero_value() { return 0; }
+    static int32_t zero_value() { return 0; }
     using CCallArgType = int32_t;
 };
 
@@ -194,13 +198,13 @@ struct DataTypeTrait<int64_t> {
     static node::ExprNode* to_const(node::NodeManager* nm, const int64_t& v) {
         return nm->MakeConstNode(v);
     }
-    static const int64_t minimum_value() {
+    static int64_t minimum_value() {
         return std::numeric_limits<int64_t>::lowest();
     }
-    static const int64_t maximum_value() {
+    static int64_t maximum_value() {
         return std::numeric_limits<int64_t>::max();
     }
-    static const int64_t zero_value() { return 0; }
+    static int64_t zero_value() { return 0; }
     using CCallArgType = int64_t;
 };
 
@@ -215,13 +219,11 @@ struct DataTypeTrait<float> {
     static node::ExprNode* to_const(node::NodeManager* nm, const float& v) {
         return nm->MakeConstNode(v);
     }
-    static const float minimum_value() {
+    static float minimum_value() {
         return std::numeric_limits<float>::lowest();
     }
-    static const float maximum_value() {
-        return std::numeric_limits<float>::max();
-    }
-    static const float zero_value() { return 0; }
+    static float maximum_value() { return std::numeric_limits<float>::max(); }
+    static float zero_value() { return 0; }
     using CCallArgType = float;
 };
 
@@ -236,13 +238,11 @@ struct DataTypeTrait<double> {
     static node::ExprNode* to_const(node::NodeManager* nm, const double& v) {
         return nm->MakeConstNode(v);
     }
-    static const double minimum_value() {
+    static double minimum_value() {
         return std::numeric_limits<double>::lowest();
     }
-    static const double maximum_value() {
-        return std::numeric_limits<double>::max();
-    }
-    static const double zero_value() { return 0; }
+    static double maximum_value() { return std::numeric_limits<double>::max(); }
+    static double zero_value() { return 0; }
     using CCallArgType = double;
 };
 
@@ -258,13 +258,11 @@ struct DataTypeTrait<codec::Timestamp> {
         return nm->MakeConstNode(v.ts_, node::kTimestamp);
     }
     static int32_t codec_type_enum() { return fesql::type::kTimestamp; }
-    static const codec::Timestamp minimum_value() {
-        return codec::Timestamp(0);
-    }
-    static const codec::Timestamp maximum_value() {
+    static codec::Timestamp minimum_value() { return codec::Timestamp(0); }
+    static codec::Timestamp maximum_value() {
         return codec::Timestamp(std::numeric_limits<int64_t>::max());
     }
-    static const codec::Timestamp zero_value() { return codec::Timestamp(0); }
+    static codec::Timestamp zero_value() { return codec::Timestamp(0); }
     using CCallArgType = codec::Timestamp*;
 };
 
@@ -280,11 +278,11 @@ struct DataTypeTrait<codec::Date> {
                                     const codec::Date& v) {
         return nm->MakeConstNode(v.date_, node::kDate);
     }
-    static const codec::Date minimum_value() { return codec::Date(0); }
-    static const codec::Date maximum_value() {
+    static codec::Date minimum_value() { return codec::Date(0); }
+    static codec::Date maximum_value() {
         return codec::Date(std::numeric_limits<int32_t>::max());
     }
-    static const codec::Date zero_value() { return codec::Date(0); }
+    static codec::Date zero_value() { return codec::Date(0); }
     using CCallArgType = codec::Date*;
 };
 
@@ -306,8 +304,8 @@ struct DataTypeTrait<codec::StringRef> {
                                     const StringRef& str) {
         return nm->MakeConstNode(str.ToString());
     }
-    static const std::string zero_value() { return ""; }
-    static const std::string minimum_value() { return ""; }
+    static codec::StringRef zero_value() { return codec::StringRef(""); }
+    static codec::StringRef minimum_value() { return codec::StringRef(""); }
 };
 
 template <typename T>

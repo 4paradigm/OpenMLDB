@@ -106,46 +106,62 @@ struct SumUDAFDef {
 template <typename T>
 struct MinUDAFDef {
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
-        helper.templates<T, T, T>()
-            .const_init(DataTypeTrait<T>::maximum_value())
-            .update([](UDFResolveContext* ctx, ExprNode* cur_min,
+        helper.templates<T, Tuple<bool, T>, T>()
+            .const_init(MakeTuple(true, DataTypeTrait<T>::maximum_value()))
+            .update([](UDFResolveContext* ctx, ExprNode* state,
                        ExprNode* input) {
                 auto nm = ctx->node_manager();
+                auto flag = nm->MakeGetFieldExpr(state, 0);
+                auto cur_min = nm->MakeGetFieldExpr(state, 1);
                 auto is_null = nm->MakeUnaryExprNode(input, node::kFnOpIsNull);
-                auto lt = nm->MakeBinaryExprNode(cur_min, input, node::kFnOpLt);
-                auto new_min = nm->MakeCondExpr(lt, cur_min, input);
-                return nm->MakeCondExpr(is_null, cur_min, new_min);
+                auto new_flag =
+                    nm->MakeCondExpr(is_null, flag, nm->MakeConstNode(false));
+                auto lt = nm->MakeBinaryExprNode(input, cur_min, node::kFnOpLt);
+                auto new_min = nm->MakeCondExpr(lt, input, cur_min);
+                new_min = nm->MakeCondExpr(is_null, cur_min, new_min);
+                return nm->MakeFuncNode("make_tuple", {new_flag, new_min},
+                                        nullptr);
             })
-            .output("identity");
+            .output([](UDFResolveContext* ctx, ExprNode* state) {
+                auto nm = ctx->node_manager();
+                auto flag = nm->MakeGetFieldExpr(state, 0);
+                auto cur_min = nm->MakeGetFieldExpr(state, 1);
+                return nm->MakeCondExpr(
+                    flag,
+                    nm->MakeCastNode(DataTypeTrait<T>::to_type_enum(),
+                                     nm->MakeConstNode()),
+                    cur_min);
+            });
     }
 };
 
 template <>
 struct MinUDAFDef<StringRef> {
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
-        helper.templates<StringRef, Tuple<int32_t, StringRef>, StringRef>()
-            .const_init(MakeTuple(0, StringRef("")))
+        helper.templates<StringRef, Tuple<bool, StringRef>, StringRef>()
+            .const_init(MakeTuple(true, StringRef("")))
             .update([](UDFResolveContext* ctx, ExprNode* state,
                        ExprNode* input) {
                 auto nm = ctx->node_manager();
-                auto first = nm->MakeGetFieldExpr(state, 0);
-                auto second = nm->MakeGetFieldExpr(state, 1);
-                auto is_first = nm->MakeBinaryExprNode(
-                    first, nm->MakeConstNode(0), node::kFnOpEq);
-
+                auto flag = nm->MakeGetFieldExpr(state, 0);
+                auto cur_min = nm->MakeGetFieldExpr(state, 1);
                 auto is_null = nm->MakeUnaryExprNode(input, node::kFnOpIsNull);
-                auto lt = nm->MakeBinaryExprNode(second, input, node::kFnOpLt);
-                auto new_min = nm->MakeCondExpr(lt, second, input);
-                new_min = nm->MakeCondExpr(is_first, input, new_min);
-                new_min = nm->MakeCondExpr(is_null, second, new_min);
-
                 auto new_flag =
-                    nm->MakeCondExpr(is_null, first, nm->MakeConstNode(1));
+                    nm->MakeCondExpr(is_null, flag, nm->MakeConstNode(false));
+                auto lt = nm->MakeBinaryExprNode(input, cur_min, node::kFnOpLt);
+                auto new_min = nm->MakeCondExpr(lt, input, cur_min);
+                new_min = nm->MakeCondExpr(flag, input, new_min);
+                new_min = nm->MakeCondExpr(is_null, cur_min, new_min);
                 return nm->MakeFuncNode("make_tuple", {new_flag, new_min},
                                         nullptr);
             })
             .output([](UDFResolveContext* ctx, ExprNode* state) {
-                return ctx->node_manager()->MakeGetFieldExpr(state, 1);
+                auto nm = ctx->node_manager();
+                auto flag = nm->MakeGetFieldExpr(state, 0);
+                auto cur_min = nm->MakeGetFieldExpr(state, 1);
+                return nm->MakeCondExpr(
+                    flag, nm->MakeCastNode(node::kVarchar, nm->MakeConstNode()),
+                    cur_min);
             });
     }
 };
@@ -153,17 +169,32 @@ struct MinUDAFDef<StringRef> {
 template <typename T>
 struct MaxUDAFDef {
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
-        helper.templates<T, T, T>()
-            .const_init(DataTypeTrait<T>::minimum_value())
-            .update([](UDFResolveContext* ctx, ExprNode* cur_max,
+        helper.templates<T, Tuple<bool, T>, T>()
+            .const_init(MakeTuple(true, DataTypeTrait<T>::minimum_value()))
+            .update([](UDFResolveContext* ctx, ExprNode* state,
                        ExprNode* input) {
                 auto nm = ctx->node_manager();
+                auto flag = nm->MakeGetFieldExpr(state, 0);
+                auto cur_max = nm->MakeGetFieldExpr(state, 1);
                 auto is_null = nm->MakeUnaryExprNode(input, node::kFnOpIsNull);
-                auto gt = nm->MakeBinaryExprNode(cur_max, input, node::kFnOpGt);
-                auto new_max = nm->MakeCondExpr(gt, cur_max, input);
-                return nm->MakeCondExpr(is_null, cur_max, new_max);
+                auto new_flag =
+                    nm->MakeCondExpr(is_null, flag, nm->MakeConstNode(false));
+                auto gt = nm->MakeBinaryExprNode(input, cur_max, node::kFnOpGt);
+                auto new_max = nm->MakeCondExpr(gt, input, cur_max);
+                new_max = nm->MakeCondExpr(is_null, cur_max, new_max);
+                return nm->MakeFuncNode("make_tuple", {new_flag, new_max},
+                                        nullptr);
             })
-            .output("identity");
+            .output([](UDFResolveContext* ctx, ExprNode* state) {
+                auto nm = ctx->node_manager();
+                auto flag = nm->MakeGetFieldExpr(state, 0);
+                auto cur_max = nm->MakeGetFieldExpr(state, 1);
+                return nm->MakeCondExpr(
+                    flag,
+                    nm->MakeCastNode(DataTypeTrait<T>::to_type_enum(),
+                                     nm->MakeConstNode()),
+                    cur_max);
+            });
     }
 };
 

@@ -93,31 +93,41 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
           curStringCnt += 1
         }
       } else {
+        var appendOK = false
         field.dataType match {
           case ShortType =>
-            rowBuilder.AppendInt16(row.getShort(fieldOffset))
+            appendOK = rowBuilder.AppendInt16(row.getShort(fieldOffset))
           case IntegerType =>
-            rowBuilder.AppendInt32(row.getInt(fieldOffset))
+            appendOK = rowBuilder.AppendInt32(row.getInt(fieldOffset))
           case LongType =>
-            rowBuilder.AppendInt64(row.getLong(fieldOffset))
+            appendOK = rowBuilder.AppendInt64(row.getLong(fieldOffset))
           case FloatType =>
-            rowBuilder.AppendFloat(row.getFloat(fieldOffset))
+            appendOK = rowBuilder.AppendFloat(row.getFloat(fieldOffset))
           case DoubleType =>
-            rowBuilder.AppendDouble(row.getDouble(fieldOffset))
+            appendOK = rowBuilder.AppendDouble(row.getDouble(fieldOffset))
           case BooleanType =>
-            rowBuilder.AppendBool(row.getBoolean(fieldOffset))
+            appendOK = rowBuilder.AppendBool(row.getBoolean(fieldOffset))
           case StringType =>
             val str = row.getString(fieldOffset)
             val strBytes = sliceStrings(curStringCnt)
-            rowBuilder.AppendString(str, strBytes.length)
+            appendOK = rowBuilder.AppendString(str, strBytes.length)
             curStringCnt += 1
           case TimestampType =>
-            rowBuilder.AppendTimestamp(row.getTimestamp(fieldOffset).getTime)
+            appendOK = rowBuilder.AppendTimestamp(row.getTimestamp(fieldOffset).getTime)
           case DateType =>
             val date = row.getDate(fieldOffset)
-            rowBuilder.AppendDate(date.getYear + 1900, date.getMonth + 1, date.getDate)
+            if (!rowBuilder.AppendDate(date.getYear + 1900, date.getMonth + 1, date.getDate)) {
+              logger.warn(s"Encode date $date failed, encode as null")
+              rowBuilder.AppendNULL()
+            }
+            appendOK = true
           case _ => throw new IllegalArgumentException(
             s"Spark type ${field.dataType} not supported")
+        }
+        if (!appendOK) {
+          throw new IllegalArgumentException(
+            s"Fail to encode ${row.get(fieldOffset)} for $i th column " +
+            s"${field.name}:${field.dataType} at slice $sliceIndex")
         }
       }
       fieldOffset += 1

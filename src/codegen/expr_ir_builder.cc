@@ -191,6 +191,11 @@ Status ExprIRBuilder::BuildConstExpr(const ::fesql::node::ConstNode* const_node,
                 llvm::Type::getTokenTy(builder.getContext()));
             break;
         }
+        case ::fesql::node::kBool: {
+            *output = NativeValue::Create(
+                builder.getInt1(const_node->GetBool() ? 1 : 0));
+            break;
+        }
         case ::fesql::node::kInt16: {
             *output = NativeValue::Create(
                 builder.getInt16(const_node->GetSmallInt()));

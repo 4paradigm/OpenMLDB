@@ -71,7 +71,6 @@ class EngineOptions {
         performance_sensitive_ = flag;
     }
 
-
     inline bool is_cluster_optimzied() const { return cluster_optimized_; }
     inline EngineOptions* set_cluster_optimized(bool flag) {
         cluster_optimized_ = flag;

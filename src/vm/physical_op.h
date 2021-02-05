@@ -461,7 +461,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
     bool is_block() const { return is_block_; }
 
     /*
-     * Add the duplicated function for swig-java which can not access 
+     * Add the duplicated function for swig-java which can not access
      * functions in template.
      */
     size_t GetNodeId() const { return node_id(); }
@@ -1128,9 +1128,7 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
         return instance_not_in_window_;
     }
 
-    const bool exclude_current_time() const {
-        return exclude_current_time_;
-    }
+    const bool exclude_current_time() const { return exclude_current_time_; }
     bool need_append_input() const { return need_append_input_; }
 
     WindowOp &window() { return window_; }
@@ -1417,8 +1415,7 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
     PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
                              const RequestWindowOp &window,
                              bool instance_not_in_window,
-                             bool exclude_current_time,
-                             bool output_request_row)
+                             bool exclude_current_time, bool output_request_row)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnion, true),
           window_(window),
           instance_not_in_window_(instance_not_in_window),
