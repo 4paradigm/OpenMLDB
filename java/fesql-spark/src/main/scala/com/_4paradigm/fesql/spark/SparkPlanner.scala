@@ -5,7 +5,7 @@ import com._4paradigm.fesql.`type`.TypeOuterClass._
 import com._4paradigm.fesql.common.{FesqlException, SQLEngine, UnsupportedFesqlException}
 import com._4paradigm.fesql.node.JoinType
 import com._4paradigm.fesql.spark.nodes._
-import com._4paradigm.fesql.spark.utils.{FesqlUtil, NodeIndexInfo, NodeIndexType}
+import com._4paradigm.fesql.spark.utils.{FesqlUtil, GraphvizUtil, NodeIndexInfo, NodeIndexType}
 import com._4paradigm.fesql.vm._
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.hadoop.fs.{FileSystem, Path}
@@ -42,6 +42,11 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
       val root = engine.getPlan
       logger.info("Get FeSQL physical plan: ")
       root.Print()
+
+      if (!config.physicalPlanGraphvizPath.equals("")) {
+        logger.info("Draw the physical plan and save to " + config.physicalPlanGraphvizPath)
+        GraphvizUtil.drawPhysicalPlan(root, config.physicalPlanGraphvizPath)
+      }
 
       logger.info("Visit physical plan to find ConcatJoin node")
       val concatJoinNodes = mutable.ArrayBuffer[PhysicalJoinNode]()
