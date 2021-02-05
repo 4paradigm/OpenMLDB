@@ -383,9 +383,9 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     EngineTestLast_Join, TabletEngineTest,
     testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/join/test_last_join.yaml")));
-INSTANTIATE_TEST_SUITE_P(
-    EngineTestLastJoin, TabletEngineTest,
-    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/join/test_lastjoin.yaml")));
+//INSTANTIATE_TEST_SUITE_P(
+//    EngineTestLastJoin, TabletEngineTest,
+//    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/join/test_lastjoin.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     EngineTestArithmetic, TabletEngineTest,
