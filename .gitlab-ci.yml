@@ -227,7 +227,6 @@ fesql_auto_test_level_0:
 fesql_sdk_c++_level_0:
   stage: quick
   script:
-    - source /root/.bashrc && sh tools/install_fesql.sh
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/fesql_c_test_compile.sh
@@ -275,7 +274,6 @@ fesql_auto_test_level_1+:
 fesql_sdk_c++_level_1+:
   stage: manual
   script:
-    - source /root/.bashrc && sh tools/install_fesql.sh
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/fesql_c_test_compile.sh
