@@ -71,7 +71,7 @@ void StoreData(std::shared_ptr<TestArgs> args, std::shared_ptr<fesql::storage::T
             raw_data.push_back(key_str);
         }
         sdk_codec.EncodeDimension(raw_data, 1, &dimensions);
-        sdk_codec.EncodeTsDimension(raw_data, &ts_dimensions);
+        sdk_codec.EncodeTsDimension(raw_data, &ts_dimensions, ts);
 
         rtidb::storage::Dimensions dims;
         rtidb::storage::TSDimensions ts_dims;
