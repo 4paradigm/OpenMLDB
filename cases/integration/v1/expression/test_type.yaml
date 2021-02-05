@@ -467,3 +467,148 @@ cases:
         - [1, true, true, true, true, true, true, true, true, true]
         - [2, true, true, true, true, true, true, true, false, true]
         - [3, true, true, true, true, true, NULL, true, false, false]
+  - id: 23
+    desc: cast string as bool
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 string"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, "t"]
+          - [2, 1, "true"]
+          - [3, 1, "f"]
+          - [4, 1, "false"]
+          - [5, 1, "1"]
+          - [6, 1, "0"]
+          - [7, 1, "y"]
+          - [8, 1, "n"]
+          - [9, 1, "yes"]
+          - [10, 1, "no"]
+          - [11, 1, ""]
+          - [12, 1, "abc"]
+    sql: |
+      select id, bool(c6) as bool_c6 from {0};
+    expect:
+      order: id
+      columns: ["id int64", "bool_c6 bool"]
+      rows:
+        - [1, true]
+        - [2, true]
+        - [3, false]
+        - [4, false]
+        - [5, true]
+        - [6, false]
+        - [7, true]
+        - [8, false]
+        - [9, true]
+        - [10, false]
+        - [11, NULL]
+        - [12, NULL]
+  - id: 24
+    desc: cast float as string
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 float"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, 1.1]
+    sql: |
+      select id, string(c6) as string_c6 from {0};
+    expect:
+      order: id
+      columns: ["id int64", "string_c6 string"]
+      rows:
+        - [1, "1.1"]
+  - id: 25
+    desc: column name prefix with _
+    inputs:
+      - columns: ["_c1 int", "_c2 string", "_c5 bigint"]
+        indexs: ["index1:_c1:_c5"]
+        rows:
+          - [1, "2020-05-22 10:43:40", 1]
+    sql: |
+      select _c1, bigint(_c2) DIV 1000 as _c2_sec from (select _c1, timestamp(_c2) as _c2 from {0});
+    expect:
+      columns: ["_c1 int", "_c2_sec bigint"]
+      rows:
+        - [1, 1590115420]
+  - id: 26
+    desc: cast int to date raise error
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 int32"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, 1]
+    sql: |
+      select id, date(c6) as date_c6 from {0};
+    expect:
+      success: false
+  - id: 27
+    desc: cast bigint to date raise error
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 int64"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, 1]
+    sql: |
+      select id, date(c6) as date_c6 from {0};
+    expect:
+      success: false
+  - id: 28
+    desc: cast smallint to date raise error
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 int16"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, 1]
+    sql: |
+      select id, date(c6) as date_c6 from {0};
+    expect:
+      success: false
+  - id: 29
+    desc: cast float to date raise error
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 float"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, 1.0]
+    sql: |
+      select id, date(c6) as date_c6 from {0};
+    expect:
+      success: false
+  - id: 30
+    desc: cast double to date raise error
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 double"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, 1.0]
+    sql: |
+      select id, date(c6) as date_c6 from {0};
+    expect:
+      success: false
+  - id: 31
+    desc: cast double to date raise error
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 bool"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, true]
+    sql: |
+      select id, date(c6) as date_c6 from {0};
+    expect:
+      success: false
+  - id: 32
+    desc: cast date numbers
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 date"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, "2020-10-12"]
+    sql: |
+      select id, int16(c6) as int16_c6, int32(c6) as int32_c6, int64(c6) as int64_c6,
+      float(c6) as float_c6, double(c6) as double_c6, bool(c6) as bool_c6 from {0};
+    expect:
+      columns: [ "id int64", "int16_c6 int16", "int32_c6 int32", "int64_c6 int64",
+                 "float_c6 float", "double_c6 double", "bool_c6 bool" ]
+
+      rows:
+        - [ 1, NULL, NULL, NULL, NULL, NULL, NULL]

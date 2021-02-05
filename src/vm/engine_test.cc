@@ -104,10 +104,16 @@ INSTANTIATE_TEST_CASE_P(
     EngineTestWindowUnion, EngineTest,
     testing::ValuesIn(
         InitCases("/cases/integration/v1/window/test_window_union.yaml")));
+INSTANTIATE_TEST_CASE_P(EngineTestWindowMaxSize, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/window/test_maxsize.yaml")));
 
-INSTANTIATE_TEST_CASE_P(
-    EngineTestLastJoin, EngineTest,
-    testing::ValuesIn(InitCases("/cases/integration/v1/test_last_join.yaml")));
+INSTANTIATE_TEST_CASE_P(EngineTestLast_Join, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/join/test_last_join.yaml")));
+INSTANTIATE_TEST_CASE_P(EngineTestLastJoin, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/join/test_lastjoin.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineTestArithmetic, EngineTest,
     testing::ValuesIn(
@@ -192,9 +198,9 @@ INSTANTIATE_TEST_CASE_P(
     EngineTestIndexOptimized, EngineTest,
     testing::ValuesIn(
         InitCases("/cases/integration/v1/test_index_optimized.yaml")));
-INSTANTIATE_TEST_CASE_P(
-    EngineTestErrorWindow, EngineTest,
-    testing::ValuesIn(InitCases("/cases/integration/error/error_window.yaml")));
+INSTANTIATE_TEST_CASE_P(EngineTestErrorWindow, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/window/error_window.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineTestDebugFzBenchmark, EngineTest,
     testing::ValuesIn(InitCases("/cases/debug/fz_benchmark_debug.yaml")));

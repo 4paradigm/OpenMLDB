@@ -64,6 +64,7 @@ static const int ENGINE_TEST_RET_SUCCESS = 0;
 static const int ENGINE_TEST_RET_INVALID_CASE = 1;
 static const int ENGINE_TEST_RET_COMPILE_ERROR = 2;
 static const int ENGINE_TEST_RET_EXECUTION_ERROR = 3;
+static const int ENGINE_TEST_INIT_CATALOG_ERROR = 4;
 
 namespace fesql {
 namespace vm {
@@ -379,7 +380,7 @@ const std::string GenerateTableName(int32_t id) {
     return "auto_t" + std::to_string(id);
 }
 
-void InitEngineCatalog(
+bool InitEngineCatalog(
     const SQLCase& sql_case, const EngineOptions& engine_options,
     std::map<std::string, std::shared_ptr<::fesql::storage::Table>>&  // NOLINT
         name_table_map,                                               // NOLINT
@@ -392,7 +393,9 @@ void InitEngineCatalog(
             actual_name = GenerateTableName(i);
         }
         type::TableDef table_def;
-        sql_case.ExtractInputTableDef(table_def, i);
+        if (!sql_case.ExtractInputTableDef(table_def, i)) {
+            return false;
+        }
         table_def.set_name(actual_name);
 
         std::shared_ptr<::fesql::storage::Table> table(
@@ -400,12 +403,17 @@ void InitEngineCatalog(
         name_table_map[table_def.name()] = table;
         if (engine_options.is_cluster_optimzied()) {
             // add table with local tablet
-            ASSERT_TRUE(AddTable(catalog, table_def, table, engine.get()));
+            if (!AddTable(catalog, table_def, table, engine.get())) {
+                return false;
+            }
         } else {
-            ASSERT_TRUE(AddTable(catalog, table_def, table));
+            if (!AddTable(catalog, table_def, table)) {
+                return false;
+            }
         }
         idx_table_name_map[i] = actual_name;
     }
+    return true;
 }
 
 void DoEngineCheckExpect(const SQLCase& sql_case,
@@ -587,8 +595,10 @@ class EngineTestRunner {
         catalog_ = BuildCommonCatalog();
         engine_ = std::make_shared<Engine>(catalog_, options_);
         InitSQLCase();
-        InitEngineCatalog(sql_case_, options_, name_table_map_,
-                          idx_table_name_map_, engine_, catalog_);
+        if (!InitEngineCatalog(sql_case_, options_, name_table_map_,
+                          idx_table_name_map_, engine_, catalog_)) {
+            return_code_ = ENGINE_TEST_INIT_CATALOG_ERROR;
+        }
     }
     virtual ~EngineTestRunner() {}
 
@@ -732,6 +742,10 @@ Status EngineTestRunner::Compile() {
 }
 
 void EngineTestRunner::RunCheck() {
+    if (ENGINE_TEST_INIT_CATALOG_ERROR == return_code_) {
+        FAIL() << "Engine Test Init Catalog Error";
+        return;
+    }
     auto engine_mode = session_->engine_mode();
     Status status = Compile();
     ASSERT_EQ(sql_case_.expect().success_, status.isOK());

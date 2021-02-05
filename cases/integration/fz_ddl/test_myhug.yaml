@@ -267,9 +267,9 @@ cases:
         "index4:zUserId:eventTime",
         "index5:uPlayGame:eventTime",
         "index6:uHasJoinedGroup:eventTime",
-        "index1:zUserId|uUserId:eventTime",
-        "index1:uUserId:eventTime",
-        "index1:uUserId:eventTime" ]
+        "index7:zUserId|uUserId:eventTime",
+        "index8:uUserId:eventTime",
+        "index9:uUserId:eventTime" ]
     name: flattenRequest
     rows:
       # pure history window is empty: rows out of time range
