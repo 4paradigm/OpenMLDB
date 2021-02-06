@@ -3,6 +3,7 @@ package com._4paradigm.fesql_auto_test.executor;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.checker.Checker;
 import com._4paradigm.fesql_auto_test.checker.CheckerStrategy;
+import com._4paradigm.fesql_auto_test.common.FesqlTest;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +28,7 @@ public abstract class BaseExecutor {
     public abstract void run();
 
     public void process() {
-        log.info(fesqlCase.getDesc() + " Begin!");
+        log.info(FesqlTest.CaseNameFormat(fesqlCase) + " Begin!");
         if (null == fesqlCase) {
             Assert.fail("executor run with null case");
             return;

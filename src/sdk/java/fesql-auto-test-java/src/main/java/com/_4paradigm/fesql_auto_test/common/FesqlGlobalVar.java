@@ -6,4 +6,5 @@ package com._4paradigm.fesql_auto_test.common;
  */
 public class FesqlGlobalVar {
     public static String env;
+    public static String level;
 }
