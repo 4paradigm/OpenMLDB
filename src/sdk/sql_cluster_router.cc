@@ -364,6 +364,8 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
     switch (column_type) {
         case rtidb::type::kBool:
             if (node_type == fesql::node::kInt32) {
+                return std::make_shared<fesql::node::ConstNode>(node.GetBool());
+            } else if (node_type == fesql::node::kBool) {
                 return std::make_shared<fesql::node::ConstNode>(node);
             }
             break;

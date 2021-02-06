@@ -339,11 +339,17 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                 }
                 case kZlib: {
                     uncompress_len = block_size_;
+#ifdef __APPLE__
+                    int res = uncompress((unsigned char*)uncompress_buf_, reinterpret_cast<uLongf*>(&uncompress_len),
+                                         (const unsigned char*)block_data, compress_len);
+#else
+                    // linux
                     int res = uncompress((unsigned char*)uncompress_buf_, reinterpret_cast<uint64_t*>(&uncompress_len),
-                                (const unsigned char*)block_data, compress_len);
+                                         (const unsigned char*)block_data, compress_len);
+#endif
                     if (res != Z_OK) {
-                        PDLOG(WARNING, "bad record when uncompress block, error code: %d, compress type: %d",
-                                res, compress_type);
+                        PDLOG(WARNING, "bad record when uncompress block, error code: %d, compress type: %d", res,
+                              compress_type);
                         return kBadRecord;
                     }
                     break;

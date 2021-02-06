@@ -23,7 +23,7 @@ public class SelectTest extends FesqlTest {
         FesqlDataProviderList dp = FesqlDataProviderList.dataProviderGenerator(
                 new String[]{
                         "/query/const_query.yaml",
-                        "/integration/v1/select"
+                        "/integration/v1/select/"
                 });
         return dp.getCases().toArray();
     }

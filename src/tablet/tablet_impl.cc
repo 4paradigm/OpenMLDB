@@ -2099,7 +2099,7 @@ void TabletImpl::ProcessQuery(RpcController* ctrl,
         }
         const std::string& sql = session.GetCompileInfo()->get_sql_context().sql;
         if (response->code() != ::rtidb::base::kOk) {
-            DLOG(WARNING) << "fail to run sql " << sql;
+            DLOG(WARNING) << "fail to run sql " << sql << " error msg: " << response->msg();
         } else {
             DLOG(INFO) << "handle request sql " << sql;
         }
