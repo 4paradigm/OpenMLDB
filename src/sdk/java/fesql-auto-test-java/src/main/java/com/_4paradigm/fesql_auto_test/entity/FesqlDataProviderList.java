@@ -20,7 +20,7 @@ public class FesqlDataProviderList {
         List<SQLCase> cases = new ArrayList<SQLCase>();
 
         for (FesqlDataProvider dataProvider : dataProviderList) {
-            for (SQLCase sqlCase : dataProvider.getCases(FesqlConfig.levels)) {
+            for (SQLCase sqlCase : dataProvider.getCases(FesqlConfig.FESQL_CASE_LEVELS)) {
                 if (!StringUtils.isEmpty(FesqlConfig.FESQL_CASE_NAME) &&
                         !FesqlConfig.FESQL_CASE_NAME.equals(FesqlTest.CaseNameFormat(sqlCase))) {
                     continue;
