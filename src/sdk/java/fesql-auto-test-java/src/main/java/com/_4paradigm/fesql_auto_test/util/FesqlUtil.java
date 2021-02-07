@@ -3,6 +3,7 @@ package com._4paradigm.fesql_auto_test.util;
 import com._4paradigm.fesql.sqlcase.model.InputDesc;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.common.FesqlConfig;
+import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.sql.*;
 import com._4paradigm.sql.ResultSet;
@@ -969,22 +970,26 @@ public class FesqlUtil {
         return obj;
     }
 
-    public static String formatSql(String sql, List<String> tableNames) {
+    public static String formatSql(String sql, List<String> tableNames, FEDBInfo fedbInfo) {
         Matcher matcher = pattern.matcher(sql);
         while (matcher.find()) {
             int index = Integer.parseInt(matcher.group(1));
             sql = sql.replace("{" + index + "}", tableNames.get(index));
         }
         if(sql.contains("{tb_endpoint_0}")){
-            sql = sql.replace("{tb_endpoint_0}", FesqlConfig.TB_ENDPOINT_0);
+            sql = sql.replace("{tb_endpoint_0}", fedbInfo.getTabletEndpoints().get(0));
         }
         if(sql.contains("{tb_endpoint_1}")){
-            sql = sql.replace("{tb_endpoint_1}", FesqlConfig.TB_ENDPOINT_1);
+            sql = sql.replace("{tb_endpoint_1}", fedbInfo.getTabletEndpoints().get(1));
         }
         if(sql.contains("{tb_endpoint_2}")){
-            sql = sql.replace("{tb_endpoint_2}", FesqlConfig.TB_ENDPOINT_2);
+            sql = sql.replace("{tb_endpoint_2}", fedbInfo.getTabletEndpoints().get(2));
         }
         return sql;
+    }
+
+    public static String formatSql(String sql, List<String> tableNames) {
+        return formatSql(sql,tableNames,FesqlConfig.mainInfo);
     }
 
 

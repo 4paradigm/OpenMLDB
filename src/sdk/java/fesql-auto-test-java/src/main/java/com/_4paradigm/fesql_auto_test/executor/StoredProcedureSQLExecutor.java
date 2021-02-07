@@ -24,7 +24,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
     }
 
     @Override
-    protected void prepare() throws Exception {
+    public void prepare() throws Exception {
         boolean dbOk = executor.createDB(dbName);
         log.info("create db:{},{}", dbName, dbOk);
         FesqlResult res = FesqlUtil.createAndInsert(
@@ -41,7 +41,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
     }
 
     @Override
-    protected FesqlResult execute() throws Exception {
+    public FesqlResult execute() throws Exception {
         if (fesqlCase.getInputs().isEmpty() ||
                 CollectionUtils.isEmpty(fesqlCase.getInputs().get(0).getRows())) {
             log.error("fail to execute in request query sql executor: sql case inputs is empty");
@@ -115,7 +115,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
     }
 
     @Override
-    protected void tearDown() {
+    public void tearDown() {
         if (CollectionUtils.isEmpty(spNames)) {
             return;
         }

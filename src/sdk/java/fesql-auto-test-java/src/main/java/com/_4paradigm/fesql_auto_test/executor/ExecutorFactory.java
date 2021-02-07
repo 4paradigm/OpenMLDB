@@ -3,8 +3,13 @@ package com._4paradigm.fesql_auto_test.executor;
 
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.common.FesqlConfig;
+import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
+import com._4paradigm.fesql_auto_test.executor.diff.DiffVersionRequestExecutor;
+import com._4paradigm.fesql_auto_test.executor.diff.DiffVersionSQLExecutor;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Map;
 
 @Slf4j
 public class ExecutorFactory {
@@ -18,6 +23,20 @@ public class ExecutorFactory {
         kRequestWithSpAsync,
         kBatchRequestWithSp,
         kBatchRequestWithSpAsync,
+        kDiffBatch,
+        kDiffRequest,
+    }
+    public static IExecutor build(SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String,FEDBInfo> fedbInfoMap, SQLCase fesqlCase, ExecutorType type) {
+        switch (type) {
+            case kDiffBatch: {
+                return new DiffVersionSQLExecutor(fesqlCase, executor, executorMap, fedbInfoMap);
+            }
+            case kDiffRequest:{
+                return new DiffVersionRequestExecutor(fesqlCase, executor, executorMap, fedbInfoMap, false, false);
+            }
+
+        }
+        return null;
     }
     public static BaseExecutor build(SqlExecutor executor, SQLCase fesqlCase, ExecutorType type) {
         switch (type) {
