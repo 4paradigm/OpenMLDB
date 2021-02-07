@@ -605,6 +605,10 @@ int main(int argc, char** argv) {
     sleep(1);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::rtidb::sdk::router_ = ::rtidb::sdk::GetNewSQLRouter();
+    if (nullptr == ::rtidb::sdk::router_) {
+        LOG(ERROR) << "Fail Test with NULL SQL router";
+        return -1;
+    }
     ok = RUN_ALL_TESTS();
     ::rtidb::sdk::mc_->Close();
     return ok;

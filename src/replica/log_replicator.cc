@@ -195,7 +195,7 @@ bool LogReplicator::Recover() {
         }
         ::rtidb::log::SequentialFile* seq_file =
             ::rtidb::log::NewSeqFile(full_path, fd);
-        ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+        ::rtidb::log::Reader reader(seq_file, NULL, false, 0, false);
         ::rtidb::base::Slice record;
         ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
         delete seq_file;
@@ -238,7 +238,7 @@ uint64_t LogReplicator::GetOffset() {
 
 void LogReplicator::SetSnapshotLogPartIndex(uint64_t offset) {
     snapshot_last_offset_.store(offset, std::memory_order_relaxed);
-    ::rtidb::log::LogReader log_reader(logs_, log_path_);
+    ::rtidb::log::LogReader log_reader(logs_, log_path_, false);
     log_reader.SetOffset(offset);
     log_reader.RollRLogFile();
     int log_part_index = log_reader.GetLogIndex();
@@ -571,7 +571,7 @@ bool LogReplicator::RollWLogFile() {
     binlog_index_.fetch_add(1, std::memory_order_relaxed);
     PDLOG(INFO, "roll write log for name %s and start offset %lld",
           name.c_str(), offset);
-    wh_ = new WriteHandle(name, fd);
+    wh_ = new WriteHandle("off", name, fd);
     return true;
 }
 
