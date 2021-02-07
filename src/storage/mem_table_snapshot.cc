@@ -41,6 +41,7 @@ DECLARE_uint32(make_snapshot_max_deleted_keys);
 DECLARE_uint32(load_table_batch);
 DECLARE_uint32(load_table_thread_num);
 DECLARE_uint32(load_table_queue_size);
+DECLARE_string(snapshot_compression);
 
 namespace rtidb {
 namespace storage {
@@ -123,9 +124,10 @@ void MemTableSnapshot::RecoverSingleSnapshot(
                   strerror(errno));
             break;
         }
+        bool compressed = IsCompressed(path);
         ::rtidb::log::SequentialFile* seq_file =
             ::rtidb::log::NewSeqFile(path, fd);
-        ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+        ::rtidb::log::Reader reader(seq_file, NULL, false, 0, compressed);
         std::string buffer;
         // second
         uint64_t consumed = ::baidu::common::timer::now_time();
@@ -215,9 +217,10 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
               strerror(errno));
         return -1;
     }
+    bool compressed = IsCompressed(full_path);
     ::rtidb::log::SequentialFile* seq_file =
         ::rtidb::log::NewSeqFile(manifest.name(), fd);
-    ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+    ::rtidb::log::Reader reader(seq_file, NULL, false, 0, compressed);
 
     std::string buffer;
     std::string tmp_buf;
@@ -292,7 +295,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
 
 uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
     deleted_keys_.clear();
-    ::rtidb::log::LogReader log_reader(log_part_, log_path_);
+    ::rtidb::log::LogReader log_reader(log_part_, log_path_, false);
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
     std::string buffer;
@@ -383,6 +386,10 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
     std::string now_time = ::rtidb::base::GetNowTime();
     std::string snapshot_name =
         now_time.substr(0, now_time.length() - 2) + ".sdb";
+    if (FLAGS_snapshot_compression != "off") {
+        snapshot_name.append(".");
+        snapshot_name.append(FLAGS_snapshot_compression);
+    }
     std::string snapshot_name_tmp = snapshot_name + ".tmp";
     std::string full_path = snapshot_path_ + snapshot_name;
     std::string tmp_file_path = snapshot_path_ + snapshot_name_tmp;
@@ -394,7 +401,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
     }
     uint64_t collected_offset = CollectDeletedKey(end_offset);
     uint64_t start_time = ::baidu::common::timer::now_time();
-    WriteHandle* wh = new WriteHandle(snapshot_name_tmp, fd);
+    WriteHandle* wh = new WriteHandle(FLAGS_snapshot_compression, snapshot_name_tmp, fd);
     ::rtidb::api::Manifest manifest;
     bool has_error = false;
     uint64_t write_count = 0;
@@ -422,7 +429,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
             deleted_index.insert(it->GetId());
         }
     }
-    ::rtidb::log::LogReader log_reader(log_part_, log_path_);
+    ::rtidb::log::LogReader log_reader(log_part_, log_path_, false);
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
     std::string buffer;
@@ -617,7 +624,8 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
     }
     ::rtidb::log::SequentialFile* seq_file =
         ::rtidb::log::NewSeqFile(manifest.name(), fd);
-    ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+    bool compressed = IsCompressed(full_path);
+    ::rtidb::log::Reader reader(seq_file, NULL, false, 0, compressed);
     std::string buffer;
     ::rtidb::api::LogEntry entry;
     bool has_error = false;
@@ -785,6 +793,10 @@ int MemTableSnapshot::ExtractIndexData(
     std::string now_time = ::rtidb::base::GetNowTime();
     std::string snapshot_name =
         now_time.substr(0, now_time.length() - 2) + ".sdb";
+    if (FLAGS_snapshot_compression != "off") {
+        snapshot_name.append(".");
+        snapshot_name.append(FLAGS_snapshot_compression);
+    }
     std::string snapshot_name_tmp = snapshot_name + ".tmp";
     std::string full_path = snapshot_path_ + snapshot_name;
     std::string tmp_file_path = snapshot_path_ + snapshot_name_tmp;
@@ -797,7 +809,7 @@ int MemTableSnapshot::ExtractIndexData(
     }
     uint64_t collected_offset = CollectDeletedKey(0);
     uint64_t start_time = ::baidu::common::timer::now_time();
-    WriteHandle* wh = new WriteHandle(snapshot_name_tmp, fd);
+    WriteHandle* wh = new WriteHandle(FLAGS_snapshot_compression, snapshot_name_tmp, fd);
     ::rtidb::api::Manifest manifest;
     bool has_error = false;
     uint64_t write_count = 0;
@@ -855,7 +867,7 @@ int MemTableSnapshot::ExtractIndexData(
         has_error = true;
     }
 
-    ::rtidb::log::LogReader log_reader(log_part_, log_path_);
+    ::rtidb::log::LogReader log_reader(log_part_, log_path_, false);
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
     std::string buffer;
@@ -1159,7 +1171,8 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
         return false;
     }
     ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(path, fd);
-    ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+    bool compressed = IsCompressed(path);
+    ::rtidb::log::Reader reader(seq_file, NULL, false, 0, compressed);
     ::rtidb::api::LogEntry entry;
     std::string buffer;
     std::string entry_buff;
@@ -1288,7 +1301,7 @@ bool MemTableSnapshot::DumpBinlogIndexData(
     const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t max_idx,
     uint32_t idx, const std::vector<::rtidb::log::WriteHandle*>& whs,
     uint64_t snapshot_offset, uint64_t collected_offset) {
-    ::rtidb::log::LogReader log_reader(log_part_, log_path_);
+    ::rtidb::log::LogReader log_reader(log_part_, log_path_, false);
     log_reader.SetOffset(snapshot_offset);
     uint64_t cur_offset = snapshot_offset;
     uint32_t partition_num = whs.size();
@@ -1430,6 +1443,15 @@ int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector
         return 2;
     }
     return 0;
+}
+
+bool MemTableSnapshot::IsCompressed(const std::string& path) {
+    if (path.find(rtidb::log::PZ_COMPRESS_SUFFIX) != std::string::npos
+            || path.find(rtidb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos
+            || path.find(rtidb::log::SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
+        return true;
+    }
+    return false;
 }
 
 }  // namespace storage

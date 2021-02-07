@@ -5,10 +5,13 @@
 #include "log/log_writer.h"
 
 #include <stdint.h>
+#include <snappy.h>
+#include <zlib.h>
 #include "log/coding.h"
 #include "log/crc32c.h"
 #include "base/glog_wapper.h" // NOLINT
-
+#include "base/endianconv.h"
+#include "base/compress.h"
 
 namespace rtidb {
 namespace log {
@@ -20,16 +23,54 @@ static void InitTypeCrc(uint32_t* type_crc) {
     }
 }
 
-Writer::Writer(WritableFile* dest) : dest_(dest), block_offset_(0) {
+Writer::Writer(const std::string& compress_type, WritableFile* dest)
+    : dest_(dest),
+      block_offset_(0),
+      compress_type_(GetCompressType(compress_type)),
+      header_size_(compress_type_ != kNoCompress ? kHeaderSizeForCompress : kHeaderSize),
+      buffer_(nullptr),
+      compress_buf_(nullptr) {
     InitTypeCrc(type_crc_);
+    if (compress_type_ != kNoCompress) {
+        block_size_ = kCompressBlockSize;
+        buffer_ = new char[block_size_];
+        compress_buf_ = new char[block_size_];
+    } else {
+        block_size_ = kBlockSize;
+    }
+    DLOG(INFO) << "block_size_: " << block_size_ << ", "
+               << "header_size_: " << header_size_ << ", "
+               << "compress_type_: " << compress_type_;
 }
 
-Writer::Writer(WritableFile* dest, uint64_t dest_length)
-    : dest_(dest), block_offset_(dest_length % kBlockSize) {
+Writer::Writer(const std::string& compress_type, WritableFile* dest, uint64_t dest_length)
+    : dest_(dest),
+      compress_type_(GetCompressType(compress_type)),
+      header_size_(compress_type_ != kNoCompress ? kHeaderSizeForCompress : kHeaderSize),
+      buffer_(nullptr),
+      compress_buf_(nullptr) {
     InitTypeCrc(type_crc_);
+    if (compress_type_ != kNoCompress) {
+        block_size_ = kCompressBlockSize;
+        buffer_ = new char[block_size_];
+        compress_buf_ = new char[block_size_];
+    } else {
+        block_size_ = kBlockSize;
+    }
+    block_offset_ = dest_length % block_size_;
+    DLOG(INFO) << "block_size_: " << block_size_ << ", "
+               << "header_size_: " << header_size_ << ", "
+               << "compress_type_: " << compress_type_;
 }
 
-Writer::~Writer() {}
+Writer::~Writer() {
+    if (buffer_) {
+        delete[] buffer_;
+    }
+    if (compress_buf_) {
+        delete[] compress_buf_;
+    }
+}
 
 Status Writer::EndLog() {
     Slice slice;
@@ -37,21 +78,28 @@ Status Writer::EndLog() {
     size_t left = 0;
     Status s;
     do {
-        const int leftover = kBlockSize - block_offset_;
+        const int32_t leftover = block_size_ - block_offset_;
         assert(leftover >= 0);
-        if (leftover < kHeaderSize) {
+        if (leftover < static_cast<int32_t>(header_size_)) {
             // Switch to a new block
             if (leftover > 0) {
-                // Fill the trailer (literal below relies on kHeaderSize being
-                // 7)
-                assert(kHeaderSize == 7);
-                dest_->Append(Slice("\x00\x00\x00\x00\x00\x00", leftover));
+                // Fill the trailer (literal below relies on header_size_ being
+                // 7 or 9)
+                if (compress_type_ == kNoCompress) {
+                    assert(header_size_ == 7);
+                } else {
+                    assert(header_size_ == 9);
+                }
+                s = AppendInternal(dest_, leftover);
+                if (!s.ok()) {
+                    return s;
+                }
             }
             block_offset_ = 0;
         }
-        // Invariant: we never leave < kHeaderSize bytes in a block.
-        assert(kBlockSize - block_offset_ - kHeaderSize >= 0);
-        const size_t avail = kBlockSize - block_offset_ - kHeaderSize;
+        // Invariant: we never leave < header_size_ bytes in a block.
+        assert(block_size_ - block_offset_ - header_size_ >= 0);
+        const size_t avail = block_size_ - block_offset_ - header_size_;
         const size_t fragment_length = (left < avail) ? left : avail;
         RecordType type = kEofType;
         PDLOG(INFO, "end log");
@@ -72,22 +120,29 @@ Status Writer::AddRecord(const Slice& slice) {
     Status s;
     bool begin = true;
     do {
-        const int leftover = kBlockSize - block_offset_;
+        const int32_t leftover = block_size_ - block_offset_;
         assert(leftover >= 0);
-        if (leftover < kHeaderSize) {
+        if (leftover < static_cast<int32_t>(header_size_)) {
             // Switch to a new block
             if (leftover > 0) {
-                // Fill the trailer (literal below relies on kHeaderSize being
-                // 7)
-                assert(kHeaderSize == 7);
-                dest_->Append(Slice("\x00\x00\x00\x00\x00\x00", leftover));
+                // Fill the trailer (literal below relies on header_size_ being
+                // 7 or 9)
+                if (compress_type_ == kNoCompress) {
+                    assert(header_size_ == 7);
+                } else {
+                    assert(header_size_ == 9);
+                }
+                s = AppendInternal(dest_, leftover);
+                if (!s.ok()) {
+                    return s;
+                }
             }
             block_offset_ = 0;
         }
-        // Invariant: we never leave < kHeaderSize bytes in a block.
-        assert(kBlockSize - block_offset_ - kHeaderSize >= 0);
+        // Invariant: we never leave < header_size_ bytes in a block.
+        assert(block_size_ - block_offset_ - header_size_ >= 0);
 
-        const size_t avail = kBlockSize - block_offset_ - kHeaderSize;
+        const size_t avail = block_size_ - block_offset_ - header_size_;
         const size_t fragment_length = (left < avail) ? left : avail;
 
         RecordType type;
@@ -110,23 +165,119 @@ Status Writer::AddRecord(const Slice& slice) {
 }
 
 Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
-    assert(n <= 0xffff);  // Must fit in two bytes
-    assert(block_offset_ + kHeaderSize + n <= kBlockSize);
+    if (compress_type_ == kNoCompress) {
+        assert(n <= 0xffff);  // Must fit in two bytes
+    } else {
+        assert(n <= 0xffffffff);  // Must fit in four bytes
+    }
+    assert(block_offset_ + header_size_ + n <= static_cast<size_t>(block_size_));
     // Format the header
-    char buf[kHeaderSize];
-    buf[4] = static_cast<char>(n & 0xff);
-    buf[5] = static_cast<char>(n >> 8);
-    buf[6] = static_cast<char>(t);
-
+    char buf[header_size_];  // NOLINT
+    memset(buf, 0, header_size_ * sizeof(char));
+    if (compress_type_ == kNoCompress) {
+        buf[4] = static_cast<char>(n & 0xff);
+        buf[5] = static_cast<char>(n >> 8);
+        buf[6] = static_cast<char>(t);
+    } else {
+        buf[4] = static_cast<char>(n & 0xff);
+        buf[5] = static_cast<char>((n >> 8) & 0xff);
+        buf[6] = static_cast<char>((n >> 16) & 0xff);
+        buf[7] = static_cast<char>((n >> 24));
+        buf[8] = static_cast<char>(t);
+    }
     // Compute the crc of the record type and the payload.
     uint32_t crc = Extend(type_crc_[t], ptr, n);
     crc = Mask(crc);  // Adjust for storage
     EncodeFixed32(buf, crc);
 
-    // Write the header and the payload
-    Status s = dest_->Append(Slice(buf, kHeaderSize));
+    if (compress_type_ == kNoCompress) {
+        // Write the header and the payload
+        Status s = dest_->Append(Slice(buf, header_size_));
+        if (s.ok()) {
+            s = dest_->Append(Slice(ptr, n));
+            if (s.ok()) {
+                s = dest_->Flush();
+            }
+        }
+        if (!s.ok()) {
+            PDLOG(WARNING, "write error. %s", s.ToString().c_str());
+        }
+
+        block_offset_ += header_size_ + n;
+        return s;
+    } else {
+        memcpy(buffer_ + block_offset_, &buf, header_size_);
+        memcpy(buffer_ + block_offset_ + header_size_, ptr, n);
+        block_offset_ += header_size_ + n;
+        // fill the trailer if kEofType
+        if (t == kEofType) {
+            memset(buffer_ + block_offset_, 0, block_size_ - block_offset_);
+            block_offset_ = block_size_;
+        }
+        if (block_offset_ == block_size_) {
+            return CompressRecord();
+        }
+        return Status::OK();
+    }
+}
+
+Status Writer::CompressRecord() {
+    Status s;
+    int32_t compress_len = -1;
+    switch (compress_type_) {
+#ifdef PZFPGA_ENABLE
+        case kPz: {
+            FPGA_env* fpga_env = rtidb::base::Compress::GetFpgaEnv();
+            compress_len = gzipfpga_compress_nohuff(
+                    fpga_env, buffer_, compress_buf_, block_size_, block_size_, 0);
+            break;
+        }
+#endif
+        case kSnappy: {
+            snappy::RawCompress(buffer_, block_size_, compress_buf_, reinterpret_cast<size_t*>(&compress_len));
+            break;
+        }
+        case kZlib: {
+            uint32_t dest_len = compressBound(block_size_);
+
+#ifdef __APPLE__
+            int res = compress((unsigned char*)compress_buf_, reinterpret_cast<uLongf*>(&dest_len),
+                               (const unsigned char*)buffer_, block_size_);
+#else
+
+            int res = compress((unsigned char*)compress_buf_, reinterpret_cast<uint64_t*>(&dest_len),
+                               (const unsigned char*)buffer_, block_size_);
+#endif
+            if (res != Z_OK) {
+                s = Status::InvalidRecord(Slice("compress failed, error code: " + res));
+                PDLOG(WARNING, "write error, compress_type: %d, msg: %s", compress_type_, s.ToString().c_str());
+                return s;
+            }
+            compress_len = static_cast<int32_t>(dest_len);
+            break;
+        }
+        default: {
+            s = Status::InvalidRecord(Slice("unsupported compress type: " + compress_type_));
+            PDLOG(WARNING, "write error, compress_type: %d, msg: %s", compress_type_, s.ToString().c_str());
+            return s;
+        }
+    }
+    if (compress_len < 0) {
+        s = Status::InvalidRecord(Slice("compress failed"));
+        PDLOG(WARNING, "write error, compress_type: %d, msg: %s", compress_type_, s.ToString().c_str());
+        return s;
+    }
+    DLOG(INFO) << "compress_len: " << compress_len << ", " << "compress_type: " << compress_type_;
+    // fill compressed data's header
+    char head_of_compress[kHeaderSizeOfCompressBlock];
+    memrev32ifbe(static_cast<void*>(&compress_len));
+    memcpy(head_of_compress, static_cast<void*>(&compress_len), sizeof(int32_t));
+    memcpy(head_of_compress + sizeof(int32_t), static_cast<void*>(&compress_type_), 1);
+    memset(head_of_compress + sizeof(int32_t) + 1, 0, kHeaderSizeOfCompressBlock - sizeof(int32_t) - 1);
+    // write header and compressed data
+    s = dest_->Append(Slice(head_of_compress, kHeaderSizeOfCompressBlock));
     if (s.ok()) {
-        s = dest_->Append(Slice(ptr, n));
+        s = dest_->Append(Slice(compress_buf_, compress_len));
         if (s.ok()) {
             s = dest_->Flush();
         }
@@ -134,9 +285,30 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
     if (!s.ok()) {
         PDLOG(WARNING, "write error. %s", s.ToString().c_str());
     }
-
-    block_offset_ += kHeaderSize + n;
     return s;
+}
+
+CompressType Writer::GetCompressType(const std::string& compress_type) {
+    if (compress_type == "pz") {
+        return kPz;
+    } else if (compress_type == "zlib") {
+        return kZlib;
+    } else if (compress_type == "snappy") {
+        return kSnappy;
+    } else {
+        return kNoCompress;
+    }
+}
+
+Status Writer::AppendInternal(WritableFile* wf, int32_t leftover) {
+    Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
+    if (compress_type_ == kNoCompress) {
+        wf->Append(fill_slice);
+        return Status::OK();
+    } else {
+        memcpy(buffer_ + block_offset_, fill_slice.data(), leftover);
+        return CompressRecord();
+    }
 }
 
 }  // namespace log

@@ -93,7 +93,7 @@ bool RollWLogFile(::rtidb::storage::WriteHandle** wh,
         return false;
     }
     logs->Insert(binlog_index, offset);
-    *wh = new ::rtidb::storage::WriteHandle(name, fd);
+    *wh = new ::rtidb::storage::WriteHandle("off", name, fd);
     binlog_index++;
     return true;
 }
