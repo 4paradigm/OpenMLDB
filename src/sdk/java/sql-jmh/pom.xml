@@ -16,7 +16,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<fesql.version>0.0.1-SNAPSHOT</fesql.version>
+		<fesql.version>0.0.3-RELEASE</fesql.version>
 	</properties>
 
 	<repositories>
