@@ -246,6 +246,7 @@ fesql_sdk_c++_tablet_engine_test_level_0:
   except:
     variables:
       - $ENV_BUILD == "daily"
+  when: manual
 
 
 fesql_sdk_c++_sql_cluster_test_level_0:
@@ -264,6 +265,7 @@ fesql_sdk_c++_sql_cluster_test_level_0:
   except:
     variables:
       - $ENV_BUILD == "daily"
+  when: manual
 
 
 fesql_sdk_c++_sql_sdk_test_level_0:
