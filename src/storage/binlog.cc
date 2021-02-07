@@ -35,7 +35,7 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
         INFO,
         "start recover table tid %u, pid %u from binlog with start offset %lu",
         tid, pid, offset);
-    ::rtidb::log::LogReader log_reader(log_part_, log_path_);
+    ::rtidb::log::LogReader log_reader(log_part_, log_path_, false);
     log_reader.SetOffset(offset);
     ::rtidb::api::LogEntry entry;
     uint64_t cur_offset = offset;
@@ -151,7 +151,7 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
                   pos);
             return false;
         }
-        ::rtidb::log::WriteHandle wh(full_path, fd, pos);
+        ::rtidb::log::WriteHandle wh("off", full_path, fd, pos);
         wh.EndLog();
         PDLOG(INFO, "append endlog record ok. file[%s]", full_path.c_str());
     }

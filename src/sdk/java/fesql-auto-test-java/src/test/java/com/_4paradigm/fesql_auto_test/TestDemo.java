@@ -31,12 +31,15 @@ public class TestDemo {
         boolean ok = router.executeInsert(dbname, insert);
         System.out.println("insert:" + ok);
         String select = "select * from t1;";
-        ResultSet rs = router.executeSQL(dbname, select);
-        System.out.println(rs.Size());
-        while (rs.Next()) {
-            System.out.println(">>1:" + rs.GetAsString(0));
-            System.out.println(">>2:" + rs.GetTimeUnsafe(1));
-            System.out.println(">>3:" + rs.GetDoubleUnsafe(2));
+        java.sql.ResultSet rawRs = router.executeSQL(dbname, select);
+        if (rawRs instanceof ResultSet) {
+            ResultSet rs = (ResultSet) rawRs;
+            System.out.println(rs.Size());
+            while (rs.Next()) {
+                System.out.println(">>1:" + rs.GetAsString(0));
+                System.out.println(">>2:" + rs.GetTimeUnsafe(1));
+                System.out.println(">>3:" + rs.GetDoubleUnsafe(2));
+            }
         }
     }
 

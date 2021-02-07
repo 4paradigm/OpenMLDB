@@ -26,6 +26,7 @@ public class FesqlClient {
         option.setZkPath(zkPath);
         option.setEnableDebug(true);
         option.setSessionTimeout(1000000);
+        option.setRequestTimeout(1000000);
         log.info("zkCluster {}, zkPath {}", option.getZkCluster(), option.getZkPath());
         try {
             executor = new SqlClusterExecutor(option);

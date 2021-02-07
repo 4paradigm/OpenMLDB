@@ -211,15 +211,15 @@ public class FESQLProjectWorkloadBenchmark {
 
         try {
             Thread.sleep(2000);
-            ResultSet rs = executor.executeSQL(db, query100);
+            ResultSet rs = (ResultSet) executor.executeSQL(db, query100);
             if (rs.Size() != 100) {
                 throw new Exception("check failed real size " + rs.Size());
             }
-            rs = executor.executeSQL(db, query200);
+            rs = (ResultSet) executor.executeSQL(db, query200);
             if (rs.Size() != 200) {
                 throw new Exception("check failed");
             }
-            rs = executor.executeSQL(db, query500);
+            rs = (ResultSet) executor.executeSQL(db, query500);
             if (rs.Size() != 500) {
                 throw new Exception("check failed");
             }

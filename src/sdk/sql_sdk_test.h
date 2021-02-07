@@ -812,11 +812,20 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/window/test_window_row_range.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestWindowMaxSize, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/window/test_maxsize.yaml")));
+
+
+INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestWindowUnion, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/window/test_window_union.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestLastJoin, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_last_join.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestLast_Join, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/join/test_last_join.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestLastJoin, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/join/test_lastjoin.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestSubSelect, SQLSDKQueryTest,
@@ -855,8 +864,9 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     SQLSDKClusterCaseWindowRowRange, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestErrorWindow, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/error/error_window.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestErrorWindow, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/window/error_window.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestIndexOptimized, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_index_optimized.yaml")));

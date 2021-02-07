@@ -16,15 +16,22 @@ public class SQLResultSet implements ResultSet {
     private com._4paradigm.sql.ResultSet resultSet;
     private boolean closed = false;
     private int rowNum = 0;
-    private QueryFuture queryFuture = null;
+    private QueryFuture queryFuture;
+    private Schema schema;
 
     public SQLResultSet(com._4paradigm.sql.ResultSet resultSet) {
         this.resultSet = resultSet;
+        if (resultSet != null) {
+            this.schema = resultSet.GetSchema();
+        }
     }
 
     public SQLResultSet(com._4paradigm.sql.ResultSet resultSet, QueryFuture future) {
         this.resultSet = resultSet;
         this.queryFuture = future;
+        if (resultSet != null) {
+            this.schema = resultSet.GetSchema();
+        }
     }
 
     private void check(int i, DataType type) throws SQLException {
@@ -44,7 +51,7 @@ public class SQLResultSet implements ResultSet {
         if (i <= 0) {
             throw new SQLException("index underflow");
         }
-        if (i > this.resultSet.GetSchema().GetColumnCnt()) {
+        if (i > schema.GetColumnCnt()) {
             throw new SQLException("index overflow");
         }
     }
@@ -56,13 +63,13 @@ public class SQLResultSet implements ResultSet {
     }
 
     private void checkDataType(int i, DataType type) throws SQLException {
-        if (this.resultSet.GetSchema().GetColumnType(i - 1) != type) {
+        if (schema.GetColumnType(i - 1) != type) {
             throw new SQLException("data type not match");
         }
     }
 
     public Schema GetInternalSchema() {
-        return this.resultSet.GetSchema();
+        return schema;
     }
 
     @Override
@@ -79,6 +86,10 @@ public class SQLResultSet implements ResultSet {
 
     @Override
     public void close() throws SQLException {
+        if (schema != null) {
+            schema.delete();
+            schema = null;
+        }
         this.resultSet.delete();
         this.resultSet = null;
         if (queryFuture != null) {
@@ -340,7 +351,7 @@ public class SQLResultSet implements ResultSet {
     public SQLResultSetMetaData getMetaData() throws SQLException {
         checkClosed();
         checkResultSetNull();
-        return new SQLResultSetMetaData(this.resultSet.GetSchema());
+        return new SQLResultSetMetaData(schema);
     }
 
     @Override
