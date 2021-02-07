@@ -508,6 +508,7 @@ public class FesqlUtil {
         log.info("procedure sql:{}", sql);
         FesqlResult fesqlResult = new FesqlResult();
         if (!executor.executeDDL(dbName, sql)) {
+            log.error("execute ddl failed! sql: {}", sql);
             fesqlResult.setOk(false);
             return fesqlResult;
         }
@@ -550,6 +551,8 @@ public class FesqlUtil {
                     }
                 }
             } catch (SQLException throwables) {
+                throwables.printStackTrace();
+                log.error("has exception. sql: {}", sql);
                 fesqlResult.setOk(false);
                 return fesqlResult;
             } finally {
@@ -881,16 +884,22 @@ public class FesqlUtil {
         }
         log.info("select sql:{}", selectSql);
         FesqlResult fesqlResult = new FesqlResult();
-        ResultSet rs = executor.executeSQL(dbName, selectSql);
-        if (rs == null) {
+        java.sql.ResultSet rawRs = executor.executeSQL(dbName, selectSql);
+
+        if (rawRs == null) {
             fesqlResult.setOk(false);
-        } else {
+        } else if  (rawRs instanceof SQLResultSet){
+            SQLResultSet rs = (SQLResultSet)rawRs;
             fesqlResult.setOk(true);
-            fesqlResult.setCount(rs.Size());
-            Schema schema = rs.GetSchema();
-            fesqlResult.setResultSchema(schema);
-            List<List<Object>> result = convertRestultSetToList(rs, schema);
-            fesqlResult.setResult(result);
+            try {
+                fesqlResult.setMetaData(rs.getMetaData());
+                List<List<Object>> result = convertRestultSetToList(rs);
+                fesqlResult.setCount(result.size());
+                fesqlResult.setResult(result);
+            } catch (Exception e) {
+                fesqlResult.setOk(false);
+                e.printStackTrace();
+            }
         }
         log.info("select result:{} \nschema={}", fesqlResult, fesqlResult.getResultSchema());
         return fesqlResult;

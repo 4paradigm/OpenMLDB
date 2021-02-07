@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 
 public class CallablePreparedStatement extends RequestPreparedStatement {
     protected String spName;
+    private com._4paradigm.sql.ProcedureInfo procedureInfo;
 
     public CallablePreparedStatement(String db, String spName, SQLRouter router) throws SQLException {
         if (db == null) throw new SQLException("db is null");
@@ -20,11 +21,10 @@ public class CallablePreparedStatement extends RequestPreparedStatement {
         this.spName = spName;
 
         Status status = new Status();
-        com._4paradigm.sql.ProcedureInfo procedureInfo = router.ShowProcedure(db, spName, status);
+        procedureInfo = router.ShowProcedure(db, spName, status);
         if (procedureInfo == null || status.getCode() != 0) {
             String msg = status.getMsg();
             status.delete();
-            status = null;
             throw new SQLException("show procedure failed, msg: " + msg);
         }
         this.currentSql = procedureInfo.GetSql();
@@ -54,6 +54,10 @@ public class CallablePreparedStatement extends RequestPreparedStatement {
     public void close() throws SQLException {
         super.close();
         this.spName = null;
+        if (this.procedureInfo != null) {
+            procedureInfo.delete();
+            procedureInfo = null;
+        }
     }
 
     public com._4paradigm.sql.sdk.QueryFuture executeQueryAsync(long timeOut, TimeUnit unit) throws SQLException {

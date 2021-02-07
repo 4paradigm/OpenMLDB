@@ -177,7 +177,7 @@ public class Demo {
 
     private void select() {
         String selectSql = "select * from trans;";
-        com._4paradigm.sql.ResultSet result = sqlExecutor.executeSQL(db, selectSql);
+        com._4paradigm.sql.ResultSet result = (com._4paradigm.sql.ResultSet)sqlExecutor.executeSQL(db, selectSql);
         Assert.assertEquals(result.Size(), 2);
     }
 

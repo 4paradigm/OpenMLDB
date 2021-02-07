@@ -37,6 +37,10 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         SQLInsertRows rows = router.GetInsertRows(db, sql, status);
         if (status.getCode() != 0) {
             String msg = status.getMsg();
+            status.delete();
+            if (rows != null) {
+                rows.delete();
+            }
             logger.error("getInsertRows fail: {}", msg);
             throw new SQLException("get insertrows fail " + msg + " in construction preparedstatement");
         }
@@ -332,10 +336,14 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         boolean ok = router.ExecuteInsert(db, currentSql, currentRows, status);
         if (!ok) {
             logger.error("getInsertRow fail: {}", status.getMsg());
+            status.delete();
+            status = null;
             return false;
         }
+        status.delete();
+        status = null;
         if (closeOnComplete) {
-            closed = true;
+            close();
         }
         return true;
     }
@@ -552,6 +560,24 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         if (closed) {
             return;
         }
+        for (String key : sqlRowsMap.keySet()) {
+            SQLInsertRows rows = sqlRowsMap.get(key);
+            rows.delete();
+            rows = null;
+        }
+        sqlRowsMap.clear();
+        if (currentRow != null) {
+            currentRow.delete();
+            currentRow = null;
+        }
+        if (currentRows != null) {
+            currentRows.delete();
+            currentRows = null;
+        }
+        if (currentSchema != null) {
+            currentSchema.delete();
+            currentSchema = null;
+        }
         closed = true;
     }
 
@@ -693,40 +719,29 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         SQLInsertRows rows = router.GetInsertRows(db, s, status);
         if (status.getCode() != 0) {
             String msg = status.getMsg();
-            logger.error("getInsertRows fail: {}", msg);
-            throw new SQLException("get insertrows fail " + msg + " in construction preparedstatement");
-        }
-        SQLInsertRow row = rows.NewRow();
-        if (row.GetHoleIdx().size() > 0) {
-            throw new SQLException("this sql need data");
-        }
-        sqlRowsMap.put(s, rows);
-    }
-
-    @Override
-    public void clearBatch() throws SQLException {
-        for (String key : sqlRowsMap.keySet()) {
-            SQLInsertRows rows = sqlRowsMap.get(key);
-            rows.delete();
-            rows = null;
-        }
-        sqlRowsMap.clear();
-        currentSchema = null;
-        currentRow.delete();
-        currentRow = null;
-        currentRows.delete();
-        currentRows = null;
-        Status status = new Status();
-        currentRows = router.GetInsertRows(db, currentSql, status);
-        if (status.getCode() != 0) {
-            String msg = status.getMsg();
-            logger.error("getInsertRows fail: {}", msg);
             status.delete();
-            status = null;
+            if (rows != null) {
+                rows.delete();
+            }
+            logger.error("getInsertRows fail: {}", msg);
             throw new SQLException("get insertrows fail " + msg + " in construction preparedstatement");
         }
         status.delete();
         status = null;
+        SQLInsertRow row = rows.NewRow();
+        if (row.GetHoleIdx().size() > 0) {
+            row.delete();
+            rows.delete();
+            throw new SQLException("this sql need data");
+        }
+        row.delete();
+        sqlRowsMap.put(s, rows);
+    }
+
+    @Override
+    @Deprecated
+    public void clearBatch() throws SQLException {
+        throw new SQLException("current do not support this method");
     }
 
     @Override
@@ -752,6 +767,8 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             }
             i++;
         }
+        status.delete();
+        status = null;
         return result;
     }
 

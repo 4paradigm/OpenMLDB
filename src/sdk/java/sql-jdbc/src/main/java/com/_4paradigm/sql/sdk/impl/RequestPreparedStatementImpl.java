@@ -20,8 +20,14 @@ public class RequestPreparedStatementImpl extends RequestPreparedStatement {
         this.currentRow = router.GetRequestRow(db, sql, status);
         if (status.getCode() != 0 || this.currentRow == null) {
             String msg = status.getMsg();
+            status.delete();
+            if (currentRow != null) {
+                currentRow.delete();
+                currentRow = null;
+            }
             throw new SQLException("get GetRequestRow fail " + msg + " in construction preparedstatement");
         }
+        status.delete();
         this.currentSchema = this.currentRow.GetSchema();
         int cnt = this.currentSchema.GetColumnCnt();
         this.currentDatas = new ArrayList<>(cnt);
