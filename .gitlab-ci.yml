@@ -5,7 +5,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
 stages:
 #  - precheck
-#  - build
+  - build
 #  - daily
 #  - quick
   - manual
@@ -59,28 +59,28 @@ stages:
 #    paths:
 #      - build/bin
 #  when: manual
-#
-#build:
-#  stage: build
-#  script:
-#    - source /root/.bashrc && sh tools/install_fesql.sh
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && bash steps/simple_compile.sh
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  artifacts:
-#    expire_in: 4h
-#    paths:
-#      - build/bin/rtidb
-#      - build/bin/sql_sdk_test
-#      - build/bin/sql_cluster_test
-#      - build/bin/tablet_engine_test
-#      - build/src/sdk/libsql_jsdk.so
-#      - build/sql_pysdk/dist/*.whl
-#      - build/python/dist/*.whl
-#
+
+build:
+  stage: build
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/simple_compile.sh
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  artifacts:
+    expire_in: 4h
+    paths:
+      - build/bin/rtidb
+      - build/bin/sql_sdk_test
+      - build/bin/sql_cluster_test
+      - build/bin/tablet_engine_test
+      - build/src/sdk/libsql_jsdk.so
+      - build/sql_pysdk/dist/*.whl
+      - build/python/dist/*.whl
+
 #daily_build:
 #  stage: build
 #  script:
@@ -677,4 +677,6 @@ fesql_auto_gen_case:
   except:
     variables:
       - $ENV_BUILD == "daily"
+  dependencies:
+    - build
   when: manual
