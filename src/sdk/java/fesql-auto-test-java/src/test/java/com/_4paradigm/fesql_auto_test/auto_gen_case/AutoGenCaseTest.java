@@ -69,12 +69,12 @@ public class AutoGenCaseTest extends FesqlTest {
     public void testGenCaseRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, executorMap, fedbInfoMap, testCase, ExecutorFactory.ExecutorType.kDiffRequest).run();
     }
-    // @Test(dataProvider = "getGenCaseData")
-    // public void testGenCaseRequestModeWithSp(SQLCase testCase) throws Exception {
-    //     ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
-    // }
-    // @Test(dataProvider = "getGenCaseData")
-    // public void testGenCaseRequestModeWithSpAsync(SQLCase testCase) throws Exception {
-    //     ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
-    // }
+    @Test(dataProvider = "getGenCaseData")
+    public void testGenCaseRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, executorMap, fedbInfoMap, testCase, ExecutorFactory.ExecutorType.kDiffRequestWithSp).run();
+    }
+    @Test(dataProvider = "getGenCaseData")
+    public void testGenCaseRequestModeWithSpAsync(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, executorMap, fedbInfoMap, testCase, ExecutorFactory.ExecutorType.kDiffRequestWithSpAsync).run();
+    }
 }

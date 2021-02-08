@@ -4,6 +4,7 @@ package com._4paradigm.fesql_auto_test.executor;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
+import com._4paradigm.fesql_auto_test.executor.diff.DiffStoredProcedureExecutor;
 import com._4paradigm.fesql_auto_test.executor.diff.DiffVersionRequestExecutor;
 import com._4paradigm.fesql_auto_test.executor.diff.DiffVersionSQLExecutor;
 import com._4paradigm.sql.sdk.SqlExecutor;
@@ -25,6 +26,8 @@ public class ExecutorFactory {
         kBatchRequestWithSpAsync,
         kDiffBatch,
         kDiffRequest,
+        kDiffRequestWithSp,
+        kDiffRequestWithSpAsync,
     }
     public static IExecutor build(SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String,FEDBInfo> fedbInfoMap, SQLCase fesqlCase, ExecutorType type) {
         switch (type) {
@@ -34,7 +37,12 @@ public class ExecutorFactory {
             case kDiffRequest:{
                 return new DiffVersionRequestExecutor(fesqlCase, executor, executorMap, fedbInfoMap, false, false);
             }
-
+            case kDiffRequestWithSp:{
+                return new DiffStoredProcedureExecutor(fesqlCase, executor, executorMap, fedbInfoMap, false, false);
+            }
+            case kDiffRequestWithSpAsync:{
+                return new DiffStoredProcedureExecutor(fesqlCase, executor, executorMap, fedbInfoMap, false, true);
+            }
         }
         return null;
     }

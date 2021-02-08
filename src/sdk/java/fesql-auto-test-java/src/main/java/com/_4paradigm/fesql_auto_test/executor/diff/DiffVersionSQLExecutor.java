@@ -80,6 +80,7 @@ public class DiffVersionSQLExecutor extends BaseDiffExecutor {
         prepare("mainVersion",executor);
         executorMap.entrySet().stream().forEach(e->prepare(e.getKey(),e.getValue()));
     }
+
     public void prepare(String version,SqlExecutor executor){
         log.info("version:{} prepare begin",version);
         boolean dbOk = executor.createDB(dbName);

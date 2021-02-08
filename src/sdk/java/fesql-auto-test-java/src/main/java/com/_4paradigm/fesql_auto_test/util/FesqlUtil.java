@@ -10,6 +10,8 @@ import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.jdbc.CallablePreparedStatement;
 import com._4paradigm.sql.jdbc.SQLResultSet;
 import com._4paradigm.sql.sdk.SqlExecutor;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.joda.time.DateTime;
@@ -22,6 +24,7 @@ import java.sql.Date;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -37,6 +40,42 @@ public class FesqlUtil {
     private static String reg = "\\{(\\d+)\\}";
     private static Pattern pattern = Pattern.compile(reg);
     private static final Logger logger = LoggerFactory.getLogger(FesqlUtil.class);
+
+    public static String buildSpSQLWithConstColumns(String spName,
+                                              String sql,
+                                              InputDesc input) throws SQLException {
+        StringBuilder builder = new StringBuilder("create procedure " + spName + "(\n");
+        HashSet<Integer> commonColumnIndices = new HashSet<>();
+        if (input.getCommon_column_indices() != null) {
+            for (String str : input.getCommon_column_indices()) {
+                if (str != null) {
+                    commonColumnIndices.add(Integer.parseInt(str));
+                }
+            }
+        }
+        if (input.getColumns() == null) {
+            throw new SQLException("No schema defined in input desc");
+        }
+        for (int i = 0; i < input.getColumns().size(); ++i) {
+            String[] parts = input.getColumns().get(i).split(" ");
+            if (commonColumnIndices.contains(i)) {
+                builder.append("const ");
+            }
+            builder.append(parts[0]);
+            builder.append(" ");
+            builder.append(parts[1]);
+            if (i != input.getColumns().size() - 1) {
+                builder.append(",");
+            }
+        }
+        builder.append(")\n");
+        builder.append("BEGIN\n");
+        builder.append(sql);
+        builder.append("\n");
+        builder.append("END;");
+        sql = builder.toString();
+        return sql;
+    }
 
     public static int getIndexByColumnName(Schema schema, String columnName) {
         int count = schema.GetColumnCnt();
@@ -374,6 +413,7 @@ public class FesqlUtil {
             java.sql.ResultSet resultSet = null;
             try {
                 resultSet = buildRequestPreparedStatment(rps, rows.get(i));
+
             } catch (SQLException throwables) {
                 fesqlResult.setOk(false);
                 return fesqlResult;
@@ -394,7 +434,7 @@ public class FesqlUtil {
                 fesqlResult.setOk(false);
                 return fesqlResult;
             }
-            if (i == 0) {
+            if (i == rows.size()-1) {
                 try {
                     fesqlResult.setMetaData(resultSet.getMetaData());
                 } catch (SQLException throwables) {
@@ -404,8 +444,8 @@ public class FesqlUtil {
             }
             try {
                 rps.close();
-                //resultSet.close();
-            } catch (SQLException throwables) {
+                // resultSet.close();
+            } catch (Exception throwables) {
                 throwables.printStackTrace();
             }
         }

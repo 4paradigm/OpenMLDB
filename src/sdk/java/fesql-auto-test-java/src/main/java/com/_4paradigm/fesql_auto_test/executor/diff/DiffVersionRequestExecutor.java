@@ -24,12 +24,6 @@ public class DiffVersionRequestExecutor extends DiffVersionSQLExecutor {
     public DiffVersionRequestExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String,FEDBInfo> fedbInfoMap,
                                       boolean isBatchRequest, boolean isAsyn) {
         super(fesqlCase, executor, executorMap, fedbInfoMap);
-        dbName = fesqlCase.getDb();
-        if (!CollectionUtils.isEmpty(fesqlCase.getInputs())) {
-            for (InputDesc inputDesc : fesqlCase.getInputs()) {
-                tableNames.add(inputDesc.getName());
-            }
-        }
         this.isBatchRequest = isBatchRequest;
         this.isAsyn = isAsyn;
     }
@@ -84,7 +78,7 @@ public class DiffVersionRequestExecutor extends DiffVersionSQLExecutor {
             }
             String sql = fesqlCase.getSql();
             if (sql != null && sql.length() > 0) {
-                log.info("sql:{}", sql);
+                // log.info("sql:{}", sql);
                 sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
                 InputDesc request = null;
                 if (isBatchRequest) {
