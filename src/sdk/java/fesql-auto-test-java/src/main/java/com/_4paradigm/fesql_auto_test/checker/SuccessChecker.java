@@ -20,6 +20,6 @@ public class SuccessChecker extends BaseChecker {
         log.info("success check");
         boolean expect =  (boolean)fesqlCase.getExpect().getSuccess();
         boolean actual = fesqlResult.isOk();
-        Assert.assertEquals(actual,expect);
+        Assert.assertEquals(actual,expect,"success验证失败");
     }
 }
