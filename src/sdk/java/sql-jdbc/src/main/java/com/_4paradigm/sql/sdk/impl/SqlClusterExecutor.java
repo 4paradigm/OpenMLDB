@@ -3,6 +3,7 @@ package com._4paradigm.sql.sdk.impl;
 import com._4paradigm.sql.*;
 import com._4paradigm.sql.common.LibraryLoader;
 import com._4paradigm.sql.jdbc.CallablePreparedStatement;
+import com._4paradigm.sql.jdbc.SQLResultSet;
 import com._4paradigm.sql.sdk.ProcedureInfo;
 import com._4paradigm.sql.sdk.Schema;
 import com._4paradigm.sql.sdk.*;
@@ -39,6 +40,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         sqlOpt.setEnable_debug(option.getEnableDebug());
         sqlOpt.setRequest_timeout(option.getRequestTimeout());
         this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
+        sqlOpt.delete();
         if (sqlRouter == null) {
             SqlException e = new SqlException("fail to create sql executer");
             throw e;
@@ -54,6 +56,8 @@ public class SqlClusterExecutor implements SqlExecutor {
         } else {
             logger.error("executeDDL fail: {}", status.getMsg());
         }
+        status.delete();
+        status = null;
         return ok;
     }
 
@@ -64,6 +68,8 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (!ok) {
             logger.error("executeInsert fail: {}", status.getMsg());
         }
+        status.delete();
+        status = null;
         return ok;
     }
 
@@ -74,6 +80,8 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (!ok) {
             logger.error("executeInsert fail: {}", status.getMsg());
         }
+        status.delete();
+        status = null;
         return ok;
     }
 
@@ -90,7 +98,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
-    public ResultSet executeSQL(String db, String sql) {
+    public java.sql.ResultSet executeSQL(String db, String sql) {
         Status status = new Status();
         ResultSet rs = sqlRouter.ExecuteSQL(db, sql, status);
         if (status.getCode() != 0) {
@@ -98,7 +106,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         }
         status.delete();
         status = null;
-        return rs;
+        return  new SQLResultSet(rs);
     }
 
     @Override
@@ -171,9 +179,13 @@ public class SqlClusterExecutor implements SqlExecutor {
         Status status = new Status();
         ExplainInfo explain = sqlRouter.Explain(dbName, sql, status);
         if (status.getCode() != 0 || explain == null) {
+            String msg = status.getMsg();
             status.delete();
             status = null;
-            throw new SQLException("getInputSchema fail! msg: " + status.getMsg());
+            if (explain != null) {
+                explain.delete();
+            }
+            throw new SQLException("getInputSchema fail! msg: " + msg);
         }
         status.delete();
         status = null;
@@ -187,6 +199,8 @@ public class SqlClusterExecutor implements SqlExecutor {
             column.setConstant(schema.IsConstant(i));
             columnList.add(column);
         }
+        schema.delete();
+        explain.delete();
         return new Schema(columnList);
     }
 
@@ -195,7 +209,13 @@ public class SqlClusterExecutor implements SqlExecutor {
         Status status = new Status();
         com._4paradigm.sql.ProcedureInfo procedureInfo = sqlRouter.ShowProcedure(dbName, proName, status);
         if (procedureInfo == null || status.getCode() != 0) {
-            throw new SQLException("show procedure failed, msg: " + status.getMsg());
+            String msg = status.getMsg();
+            status.delete();
+            status = null;
+            if (procedureInfo != null) {
+                procedureInfo.delete();
+            }
+            throw new SQLException("show procedure failed, msg: " + msg);
         }
         status.delete();
         status = null;
@@ -207,6 +227,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         spInfo.setOutputSchema(Common.convertSchema(procedureInfo.GetOutputSchema()));
         spInfo.setMainTable(procedureInfo.GetMainTable());
         spInfo.setInputTables(procedureInfo.GetTables());
+        procedureInfo.delete();
         return spInfo;
     }
 
@@ -237,6 +258,14 @@ public class SqlClusterExecutor implements SqlExecutor {
         status.delete();
         status = null;
         return ok;
+    }
+
+    @Override
+    public void close() {
+        if (sqlRouter != null) {
+            sqlRouter.delete();
+            sqlRouter = null;
+        }
     }
 
 }

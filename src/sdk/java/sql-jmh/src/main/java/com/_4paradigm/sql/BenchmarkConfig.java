@@ -43,6 +43,7 @@ public class BenchmarkConfig {
     public static float REQUEST_RATIO = 1.0f;
     public static float PROCEDURE_RATIO = 1.0f;
     public static String METHOD;
+    public static long RUNTIME = 1 * 60 * 1000;
     public static float INSERT_RATIO = 1.0f;
     static {
         try {
@@ -81,6 +82,7 @@ public class BenchmarkConfig {
             REQUEST_RATIO = Float.valueOf((String)prop.getProperty("REQUEST_RATIO", "1.0"));
             PROCEDURE_RATIO = Float.valueOf((String)prop.getProperty("PROCEDURE_RATIO", "1.0"));
             METHOD = prop.getProperty("METHOD", "insert");
+            RUNTIME = Long.valueOf((String)prop.getProperty("RUNTIME", "1000"));
             INSERT_RATIO = Float.valueOf((String)prop.getProperty("INSERT_RATIO", "1.0"));
         } catch (Exception e) {
             e.printStackTrace();

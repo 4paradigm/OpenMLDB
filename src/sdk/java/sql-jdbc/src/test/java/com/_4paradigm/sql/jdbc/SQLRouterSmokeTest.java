@@ -62,7 +62,7 @@ public class SQLRouterSmokeTest {
             Assert.assertTrue(ok);
             // select
             String select1 = "select * from tsql1010;";
-            ResultSet rs1 = router.executeSQL(dbname, select1);
+            ResultSet rs1 = (ResultSet) router.executeSQL(dbname, select1);
             Assert.assertEquals(4, rs1.Size());
             Assert.assertEquals(2, rs1.GetSchema().GetColumnCnt());
             Assert.assertEquals("kTypeInt64", rs1.GetSchema().GetColumnType(0).toString());
@@ -75,7 +75,7 @@ public class SQLRouterSmokeTest {
             Assert.assertEquals(1001, rs1.GetInt64Unsafe(0));
 
             String select2 = "select col1 from tsql1010;";
-            ResultSet rs2 = router.executeSQL(dbname, select2);
+            ResultSet rs2 = (ResultSet) router.executeSQL(dbname, select2);
             Assert.assertEquals(4, rs2.Size());
             Assert.assertEquals(1, rs2.GetSchema().GetColumnCnt());
             Assert.assertEquals("kTypeInt64", rs2.GetSchema().GetColumnType(0).toString());
@@ -85,7 +85,7 @@ public class SQLRouterSmokeTest {
             Assert.assertEquals(1001, rs2.GetInt64Unsafe(0));
 
             String select3 = "select col2 from tsql1010;";
-            ResultSet rs3 = router.executeSQL(dbname, select3);
+            ResultSet rs3 = (ResultSet) router.executeSQL(dbname, select3);
             Assert.assertEquals(4, rs3.Size());
             Assert.assertEquals(1, rs3.GetSchema().GetColumnCnt());
             Assert.assertEquals("kTypeString", rs3.GetSchema().GetColumnType(0).toString());
@@ -254,7 +254,7 @@ public class SQLRouterSmokeTest {
             Assert.assertTrue(ok);
             // select
             String select1 = "select * from tsql1010;";
-            ResultSet rs1 = router.executeSQL(dbname, select1);
+            ResultSet rs1 = (ResultSet) router.executeSQL(dbname, select1);
             Assert.assertEquals(5, rs1.Size());
             Assert.assertEquals(5, rs1.GetSchema().GetColumnCnt());
             Assert.assertEquals("kTypeInt64", rs1.GetSchema().GetColumnType(0).toString());
@@ -279,7 +279,7 @@ public class SQLRouterSmokeTest {
             }
 
             String select2 = "select col1 from tsql1010;";
-            ResultSet rs2 = router.executeSQL(dbname, select2);
+            ResultSet rs2 = (ResultSet) router.executeSQL(dbname, select2);
             Assert.assertEquals(5, rs2.Size());
             Assert.assertEquals(1, rs2.GetSchema().GetColumnCnt());
             Assert.assertEquals("kTypeInt64", rs2.GetSchema().GetColumnType(0).toString());
@@ -367,7 +367,7 @@ public class SQLRouterSmokeTest {
             impl.executeBatch();
             Assert.assertTrue(ok);
             String select1 = "select * from tsql1010;";
-            ResultSet rs1 = router.executeSQL(dbname, select1);
+            ResultSet rs1 = (ResultSet) router.executeSQL(dbname, select1);
             Assert.assertEquals(datas1.length, rs1.Size());
             Assert.assertEquals(6, rs1.GetSchema().GetColumnCnt());
 
@@ -411,7 +411,7 @@ public class SQLRouterSmokeTest {
             impl.executeBatch();
             Assert.assertTrue(ok);
             String select2 = "select * from tsql1010;";
-            ResultSet rs2 = router.executeSQL(dbname, select1);
+            ResultSet rs2 = (ResultSet) router.executeSQL(dbname, select1);
             Assert.assertEquals(datas1.length + datas2.length, rs2.Size());
             Assert.assertEquals(6, rs1.GetSchema().GetColumnCnt());
 

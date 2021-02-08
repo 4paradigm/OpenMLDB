@@ -14,18 +14,23 @@
 #include <fcntl.h>
 #include <gflags/gflags.h>
 #include <stdio.h>
+#include <snappy.h>
+#include <zlib.h>
 #include "base/status.h"
 #include "base/strings.h"
 #include "log/coding.h"
 #include "log/crc32c.h"
 #include "log/log_format.h"
 #include "base/glog_wapper.h" // NOLINT
+#include "base/endianconv.h"
+#include "base/compress.h"
 
 
 using ::rtidb::base::Status;
 
 DECLARE_bool(binlog_enable_crc);
 DECLARE_int32(binlog_name_length);
+DECLARE_string(snapshot_compression);
 
 namespace rtidb {
 namespace log {
@@ -33,28 +38,46 @@ namespace log {
 Reader::Reporter::~Reporter() {}
 
 Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
-               uint64_t initial_offset)
+               uint64_t initial_offset, bool compressed)
     : file_(file),
       reporter_(reporter),
       checksum_(checksum),
-      backing_store_(new char[kBlockSize]),
       buffer_(),
       last_record_offset_(0),
       last_record_end_offset_(0),
       end_of_buffer_offset_(0),
       last_end_of_buffer_offset_(0),
       initial_offset_(initial_offset),
-      resyncing_(initial_offset > 0) {}
+      resyncing_(initial_offset > 0),
+      compressed_(compressed),
+      uncompress_buf_(nullptr) {
+          if (compressed_) {
+              block_size_ = kCompressBlockSize;
+              uncompress_buf_ = new char[block_size_];
+              header_size_ = kHeaderSizeForCompress;
+          } else {
+              block_size_ = kBlockSize;
+              header_size_ = kHeaderSize;
+          }
+          backing_store_ = new char[block_size_];
+          DLOG(INFO) << "block_size_: " << block_size_ << ", " << "header_size_: " << header_size_ << ", "
+              << "compressed_: " << compressed_;
+      }
 
-Reader::~Reader() { delete[] backing_store_; }
+Reader::~Reader() {
+    delete[] backing_store_;
+    if (uncompress_buf_) {
+        delete[] uncompress_buf_;
+    }
+}
 
 bool Reader::SkipToInitialBlock() {
-    size_t offset_in_block = initial_offset_ % kBlockSize;
+    size_t offset_in_block = initial_offset_ % block_size_;
     uint64_t block_start_location = initial_offset_ - offset_in_block;
 
     // Don't search a block if we'd be in the trailer
-    if (offset_in_block > kBlockSize - 6) {
-        block_start_location += kBlockSize;
+    if (offset_in_block > (size_t)(block_size_ - 6)) {
+        block_start_location += block_size_;
     }
 
     end_of_buffer_offset_ = block_start_location;
@@ -92,7 +115,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
         // its internal buffer. Calculate the offset of the next physical record
         // now that it has returned, properly accounting for its header size.
         uint64_t physical_record_offset = end_of_buffer_offset_ -
-                                          buffer_.size() - kHeaderSize -
+                                          buffer_.size() - header_size_ -
                                           fragment.size();
 
         if (resyncing_) {
@@ -235,7 +258,7 @@ void Reader::ReportDrop(uint64_t bytes, const Status& reason) {
 }
 
 void Reader::GoBackToLastBlock() {
-    size_t offset_in_block = last_end_of_buffer_offset_ % kBlockSize;
+    size_t offset_in_block = last_end_of_buffer_offset_ % block_size_;
     uint64_t block_start_location = 0;
     if (last_end_of_buffer_offset_ > offset_in_block) {
         block_start_location = last_end_of_buffer_offset_ - offset_in_block;
@@ -256,41 +279,141 @@ void Reader::GoBackToStart() {
 }
 
 unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
-    if (buffer_.size() < kHeaderSize) {
+    if (buffer_.size() < static_cast<size_t>(header_size_)) {
         // Last read was a full read, so this is a trailer to skip
         buffer_.clear();
-        Status status = file_->Read(kBlockSize, &buffer_, backing_store_);
+        Status status;
+        if (!compressed_) {
+            status = file_->Read(block_size_, &buffer_, backing_store_);
+        } else {
+            // read header of compressed data
+            Slice header_of_compress;
+            status = file_->Read(kHeaderSizeOfCompressBlock, &header_of_compress, backing_store_);
+            if (!status.ok()) {
+                PDLOG(WARNING, "fail to read file %s when reading header", status.ToString().c_str());
+                return kWaitRecord;
+            }
+            const char* data = header_of_compress.data();
+            uint32_t compress_len = 0;
+            memcpy(static_cast<void*>(&compress_len), data, sizeof(uint32_t));
+            memrev32ifbe(static_cast<void*>(&compress_len));
+            CompressType compress_type = kNoCompress;
+            memcpy(static_cast<void*>(&compress_type), data + sizeof(uint32_t), 1);
+            DLOG(INFO) << "compress_len: " << compress_len << ", " << "compress_type: " << compress_type;
+#ifndef PZFPGA_ENABLE
+            if (compress_type == kPz) {
+                PDLOG(WARNING, "FLAGS_snapshot_compression is pz, but PZFPGA_ENABLE is off");
+                return kBadRecord;
+            }
+#endif
+            // read compressed data
+            Slice block;
+            status = file_->Read(compress_len, &block, backing_store_);
+            if (!status.ok()) {
+                PDLOG(WARNING, "fail to read file %s when reading block", status.ToString().c_str());
+                return kWaitRecord;
+            }
+            const char* block_data = block.data();
+            int32_t uncompress_len = 0;
+            switch (compress_type) {
+#ifdef PZFPGA_ENABLE
+                case kPz: {
+                    FPGA_env* fpga_env = rtidb::base::Compress::GetFpgaEnv();
+                    uncompress_len = gzipfpga_uncompress_nohuff(
+                            fpga_env, block_data, uncompress_buf_, compress_len, block_size_);
+                    if (uncompress_len < 0) {
+                        PDLOG(WARNING, "bad record when uncompress block, compress type: %d", compress_type);
+                        return kBadRecord;
+                    }
+                    break;
+                }
+#endif
+                case kSnappy: {
+                    snappy::GetUncompressedLength(block_data, static_cast<size_t>(compress_len),
+                        reinterpret_cast<size_t*>(&uncompress_len));
+                    if (!snappy::RawUncompress(block_data, static_cast<size_t>(compress_len), uncompress_buf_)) {
+                        PDLOG(WARNING, "bad record when uncompress block, compress type: %d", compress_type);
+                        return kBadRecord;
+                    }
+                    break;
+                }
+                case kZlib: {
+                    uncompress_len = block_size_;
+#ifdef __APPLE__
+                    int res = uncompress((unsigned char*)uncompress_buf_, reinterpret_cast<uLongf*>(&uncompress_len),
+                                         (const unsigned char*)block_data, compress_len);
+#else
+                    // linux
+                    int res = uncompress((unsigned char*)uncompress_buf_, reinterpret_cast<uint64_t*>(&uncompress_len),
+                                         (const unsigned char*)block_data, compress_len);
+#endif
+                    if (res != Z_OK) {
+                        PDLOG(WARNING, "bad record when uncompress block, error code: %d, compress type: %d", res,
+                              compress_type);
+                        return kBadRecord;
+                    }
+                    break;
+                }
+                default: {
+                    PDLOG(WARNING, "unsupported compress type: %d", compress_type);
+                    return kBadRecord;
+                }
+            }
+            if (uncompress_len != static_cast<int32_t>(block_size_)) {
+                PDLOG(WARNING, "bad record when uncompress block, uncompress_len: %d, block_size_: %d",
+                        uncompress_len, block_size_);
+                return kBadRecord;
+            }
+            DLOG(INFO) << "uncompress_len: " << uncompress_len;
+            buffer_ = Slice(uncompress_buf_, block_size_);
+        }
         offset = end_of_buffer_offset_;
         end_of_buffer_offset_ += buffer_.size();
         // Read log error
         if (!status.ok()) {
             buffer_.clear();
-            ReportDrop(kBlockSize, status);
+            ReportDrop(block_size_, status);
             PDLOG(WARNING, "fail to read file %s", status.ToString().c_str());
             return kWaitRecord;
         }
-        if (buffer_.size() < kHeaderSize) {
-            DEBUGLOG("read buffer size[%d] less than kHeaderSize[%d]",
-                  buffer_.size(), kHeaderSize);
+        if (buffer_.size() < static_cast<size_t>(header_size_)) {
+            DEBUGLOG("read buffer size[%d] less than header_size_[%d]",
+                  buffer_.size(), header_size_);
             return kWaitRecord;
         }
     }
 
     // Parse the header
     const char* header = buffer_.data();
-    const uint32_t a = static_cast<uint32_t>(header[4]) & 0xff;
-    const uint32_t b = static_cast<uint32_t>(header[5]) & 0xff;
-    const unsigned int type = header[6];
-    const uint32_t length = a | (b << 8);
-    if (kHeaderSize + length > buffer_.size()) {
+    unsigned int type = 0;
+    uint32_t length = 0;
+    if (!compressed_) {
+        const uint32_t a = static_cast<uint32_t>(header[4]) & 0xff;
+        const uint32_t b = static_cast<uint32_t>(header[5]) & 0xff;
+        type = header[6];
+        length = a | (b << 8);
+    } else {
+        const uint32_t a = static_cast<uint32_t>(header[4]) & 0xff;
+        const uint32_t b = static_cast<uint32_t>(header[5]) & 0xff;
+        const uint32_t c = static_cast<uint32_t>(header[6]) & 0xff;
+        const uint32_t d = static_cast<uint32_t>(header[7]) & 0xff;
+        type = header[8];
+        length = a | (b << 8) | (c << 16) | (d << 24);
+    }
+    if (static_cast<size_t>(header_size_ + length) > buffer_.size()) {
         DEBUGLOG("end of file %d, header size %d data length %d",
-              buffer_.size(), kHeaderSize, length);
+              buffer_.size(), header_size_, length);
         return kWaitRecord;
     }
     // Check crc
     if (checksum_) {
         uint32_t expected_crc = Unmask(DecodeFixed32(header));
-        uint32_t actual_crc = Value(header + 6, 1 + length);
+        uint32_t actual_crc = 0;
+        if (!compressed_) {
+            actual_crc = Value(header + 6, 1 + length);
+        } else {
+            actual_crc = Value(header + 8, 1 + length);
+        }
         if (actual_crc != expected_crc) {
             // Drop the rest of the buffer since "length" itself may have
             // been corrupted and if we trust it, we could find some
@@ -320,25 +443,26 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
         return kBadRecord;
     }
 
-    buffer_.remove_prefix(kHeaderSize + length);
+    buffer_.remove_prefix(header_size_ + length);
     // Skip physical record that started before initial_offset_
-    if (end_of_buffer_offset_ - buffer_.size() - kHeaderSize - length <
+    if (end_of_buffer_offset_ - buffer_.size() - header_size_ - length <
         initial_offset_) {
         result->clear();
         PDLOG(WARNING, "bad record with initial_offset");
         return kBadRecord;
     }
-    *result = Slice(header + kHeaderSize, length);
+    *result = Slice(header + header_size_, length);
     return type;
 }
 
-LogReader::LogReader(LogParts* logs, const std::string& log_path)
+LogReader::LogReader(LogParts* logs, const std::string& log_path, bool compressed)
     : log_path_(log_path) {
     sf_ = NULL;
     reader_ = NULL;
     logs_ = logs;
     log_part_index_ = -1;
     start_offset_ = 0;
+    compressed_ = compressed;
 }
 
 LogReader::~LogReader() {
@@ -469,7 +593,7 @@ int LogReader::RollRLogFile() {
         }
         delete reader_;
         // roll a new log part file, reset status
-        reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0);
+        reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0, compressed_);
         PDLOG(INFO, "roll log file from index[%d] to index[%d]",
               log_part_index_, index);
         log_part_index_ = index;

@@ -58,6 +58,10 @@ void StoreData(std::shared_ptr<TestArgs> args, std::shared_ptr<fesql::storage::T
         std::vector<std::string> raw_data;
         row_view.Reset(row.buf());
         for (int i = 0; i < column_size; i++) {
+            if (row_view.IsNULL(i)) {
+                raw_data.push_back(rtidb::codec::NONETOKEN);
+                continue;
+            }
             std::string key_str = sql_schema.Get(i).type() == fesql::type::kDate
                                       ? std::to_string(row_view.GetDateUnsafe(i))
                                       : row_view.GetAsString(i);
@@ -66,8 +70,8 @@ void StoreData(std::shared_ptr<TestArgs> args, std::shared_ptr<fesql::storage::T
             }
             raw_data.push_back(key_str);
         }
-        ASSERT_EQ(0, sdk_codec.EncodeDimension(raw_data, 1, &dimensions));
-        ASSERT_EQ(0, sdk_codec.EncodeTsDimension(raw_data, &ts_dimensions));
+        sdk_codec.EncodeDimension(raw_data, 1, &dimensions);
+        sdk_codec.EncodeTsDimension(raw_data, &ts_dimensions, ts);
 
         rtidb::storage::Dimensions dims;
         rtidb::storage::TSDimensions ts_dims;
@@ -84,6 +88,7 @@ void StoreData(std::shared_ptr<TestArgs> args, std::shared_ptr<fesql::storage::T
             ts_dim->set_idx(i);
         }
         if (ts_dimensions.empty()) {
+            LOG(WARNING) << "ts is null, add current timestamp";
             ASSERT_TRUE(table->Put(ts, row.ToString(), dims));
             ts--;
         } else {
@@ -149,7 +154,7 @@ void TabletEngineTest::BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // N
         std::string tname = sql_case.inputs()[j].name_.empty() ? ("t" + std::to_string(j)) : sql_case.inputs()[j].name_;
         boost::replace_all(sql_str, placeholder, tname);
     }
-    std::cout << sql_str << std::endl;
+    LOG(INFO) << sql_str << std::endl;
 
     fesql::base::Status get_status;
     fesql::vm::Engine engine(catalog);
@@ -162,7 +167,7 @@ void TabletEngineTest::BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // N
     if (!sql_case.expect().success_) {
         return;
     }
-    std::cout << "RUN IN MODE BATCH";
+    LOG(INFO) << "RUN IN MODE BATCH";
     fesql::vm::Schema schema;
     schema = session.GetSchema();
     PrintSchema(schema);
@@ -203,6 +208,7 @@ void TabletEngineTest::BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // N
 void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // NOLINT
                                         fesql::vm::EngineOptions options) {
     int32_t input_cnt = sql_case.CountInputs();
+    bool has_batch_request = !sql_case.batch_request_.columns_.empty() || !sql_case.batch_request_.schema_.empty();
 
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
@@ -226,7 +232,7 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
         if (!args) {
             FAIL() << "fail to prepare table";
         }
-        catalog->AddTable(args->meta, args->table);
+        ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
         name_table_map.insert(std::make_pair(table_def.name(), std::make_pair(args, sql_table)));
     }
 
@@ -237,7 +243,7 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
         std::string tname = sql_case.inputs()[j].name_.empty() ? ("t" + std::to_string(j)) : sql_case.inputs()[j].name_;
         boost::replace_all(sql_str, placeholder, tname);
     }
-    std::cout << sql_str << std::endl;
+    LOG(INFO) << sql_str << std::endl;
     fesql::base::Status get_status;
     fesql::vm::RequestRunSession session;
     if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
@@ -248,7 +254,7 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
     if (!sql_case.expect().success_) {
         return;
     }
-    std::cout << "RUN IN MODE BATCH";
+    LOG(INFO) << "RUN IN MODE BATCH";
     fesql::vm::Schema schema;
     schema = session.GetSchema();
     PrintSchema(schema);
@@ -260,10 +266,13 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
     session.GetClusterJob().Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     std::vector<fesql::codec::Row> request_data;
+    if (has_batch_request) {
+        ASSERT_TRUE(sql_case.ExtractInputData(sql_case.batch_request_, request_data));
+    }
     const std::string &request_name = session.GetRequestName();
     for (int32_t i = 0; i < input_cnt; i++) {
         auto input = sql_case.inputs()[i];
-        if (input.name_ == request_name) {
+        if (!has_batch_request && input.name_ == request_name) {
             ASSERT_TRUE(sql_case.ExtractInputData(request_data, i));
             continue;
         }
@@ -300,9 +309,11 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
         fesql::codec::Row out_row;
         int ret = session.Run(in_row, &out_row);
         ASSERT_EQ(0, ret);
-        LOG(INFO) << "store request row into db"
-                  << ", index size: " << request_sql_table->GetIndexMap().size();
-        StoreData(request_table, request_sql_table, std::vector<fesql::codec::Row>{in_row});
+        if (!has_batch_request) {
+            LOG(INFO) << "insert request row into db"
+                      << ", index size: " << request_sql_table->GetIndexMap().size();
+            StoreData(request_table, request_sql_table, std::vector<fesql::codec::Row>{in_row});
+        }
         output.push_back(out_row);
     }
     CheckRows(schema, SortRows(schema, output, sql_case.expect().order_), case_output_data);
@@ -374,8 +385,12 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     EngineTestWindowUnion, TabletEngineTest,
     testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/window/test_window_union.yaml")));
-INSTANTIATE_TEST_SUITE_P(EngineTestLastJoin, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_last_join.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    EngineTestLast_Join, TabletEngineTest,
+    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/join/test_last_join.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    EngineTestLastJoin, TabletEngineTest,
+    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/join/test_lastjoin.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     EngineTestArithmetic, TabletEngineTest,
@@ -426,8 +441,9 @@ INSTANTIATE_TEST_CASE_P(
     EngineTestIndexOptimized, TabletEngineTest,
     testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_index_optimized.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(EngineTestErrorWindow, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/error/error_window.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    EngineTestErrorWindow, TabletEngineTest,
+    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/window/error_window.yaml")));
 INSTANTIATE_TEST_CASE_P(EngineTestDebugIssues, TabletEngineTest,
                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/debug/issues_case.yaml")));
 

@@ -82,8 +82,14 @@ public class RequestPreparedStatement implements PreparedStatement {
         Status status = new Status();
         com._4paradigm.sql.ResultSet resultSet = router.ExecuteSQL(db, currentSql, currentRow, status);
         if (resultSet == null || status.getCode() != 0) {
-            throw new SQLException("execute sql fail, msg: " + status.getMsg());
+            String msg = status.getMsg();
+            status.delete();
+            if (resultSet != null) {
+                resultSet.delete();
+            }
+            throw new SQLException("execute sql fail, msg: " + msg);
         }
+        status.delete();
         SQLResultSet rs = new SQLResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
@@ -539,12 +545,17 @@ public class RequestPreparedStatement implements PreparedStatement {
         this.db = null;
         this.currentSql = null;
         this.router = null;
-        this.currentSchema = null;
+        if (this.currentSchema != null) {
+            this.currentSchema.delete();
+            this.currentSchema = null;
+        }
         this.currentDatas = null;
         this.hasSet = null;
         this.stringsLen = null;
-        this.currentRow.delete();
-        this.currentRow = null;
+        if (this.currentRow != null) {
+            this.currentRow.delete();
+            this.currentRow = null;
+        }
         this.closed = true;
     }
 
