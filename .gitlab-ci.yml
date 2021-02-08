@@ -1,6 +1,6 @@
 image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.12
 services:
-  - docker.4pd.io/docker:dind 
+  - docker:dind
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 stages:
@@ -199,7 +199,6 @@ java_ut:
         - java/target/failsafe-reports/TEST-*.xml
   dependencies:
     - build
-  when: manual
 
 fesql_auto_test_level_0:
   stage: quick
@@ -228,7 +227,6 @@ fesql_auto_test_level_0:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
-  when: manual
 
 fesql_sdk_c++_tablet_engine_test_level_0:
   stage: quick
@@ -282,7 +280,6 @@ fesql_sdk_c++_sql_sdk_test_level_0:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual
 
 fesql_auto_test_level_1+:
   stage: manual
@@ -411,7 +408,6 @@ c++_ut:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual
 
 py3_ut:
   stage: quick
@@ -431,7 +427,6 @@ py3_ut:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual
 
 fesql_auto_test_python:
   stage: manual
@@ -515,7 +510,6 @@ tablet_multi_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual
 
 ns_one_demension:
   stage: manual
@@ -558,7 +552,6 @@ ns_multi_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual
 
 disk_table:
   stage: manual
