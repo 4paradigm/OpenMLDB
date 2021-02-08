@@ -36,6 +36,7 @@ using ::rtidb::tablet::TabletImpl;
 
 DECLARE_string(db_root_path);
 DECLARE_string(endpoint);
+DECLARE_bool(use_rdma);
 
 inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
 
@@ -74,7 +75,7 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
     uint32_t tid = 2;
     uint32_t pid = 123;
 
-    ::rtidb::client::TabletClient client(leader_point, "");
+    ::rtidb::client::TabletClient client(FLAGS_use_rdma, leader_point, "");
     client.Init();
     std::vector<std::string> endpoints;
     bool ret =
@@ -115,7 +116,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     uint32_t tid = 1;
     uint32_t pid = 123;
 
-    ::rtidb::client::TabletClient client(leader_point, "");
+    ::rtidb::client::TabletClient client(FLAGS_use_rdma, leader_point, "");
     client.Init();
     std::vector<std::string> endpoints;
     bool ret =
@@ -150,7 +151,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
         exit(1);
     }
     // server.RunUntilAskedToQuit();
-    ::rtidb::client::TabletClient client1(follower_point, "");
+    ::rtidb::client::TabletClient client1(FLAGS_use_rdma, follower_point, "");
     client1.Init();
     ret = client1.CreateTable("table1", tid, pid, 14400, 0, false, endpoints,
                               ::rtidb::api::TTLType::kAbsoluteTime, 16, 0,
@@ -216,7 +217,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
     }
     uint32_t tid = 1;
     uint32_t pid = 123;
-    ::rtidb::client::TabletClient client(leader_point, "");
+    ::rtidb::client::TabletClient client(FLAGS_use_rdma, leader_point, "");
     client.Init();
     ::rtidb::api::TableMeta table_meta;
     table_meta.set_name("test");
@@ -273,7 +274,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
         PDLOG(WARNING, "fail to start server %s", follower_point.c_str());
         exit(1);
     }
-    ::rtidb::client::TabletClient client1(follower_point, "");
+    ::rtidb::client::TabletClient client1(FLAGS_use_rdma, follower_point, "");
     client1.Init();
     table_meta.set_mode(::rtidb::api::TableMode::kTableFollower);
     ret = client1.CreateTable(table_meta);

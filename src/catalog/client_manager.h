@@ -143,7 +143,8 @@ class TabletAccessor : public ::fesql::vm::Tablet {
     }
 
     bool UpdateClient(const std::string& endpoint) {
-        auto client = std::make_shared<::rtidb::client::TabletClient>(name_, endpoint);
+        // TODO: use_rdma
+        auto client = std::make_shared<::rtidb::client::TabletClient>(false, name_, endpoint);
         if (client->Init() != 0) {
             return false;
         }
