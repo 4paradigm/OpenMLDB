@@ -229,6 +229,10 @@
                             <name>caseLevel</name>
                             <value>${caseLevel}</value>
                         </property>
+                        <property>
+                            <name>fedbVersion</name>
+                            <value>${fedbVersion}</value>
+                        </property>
                     </systemProperties>
                 </configuration>
             </plugin>

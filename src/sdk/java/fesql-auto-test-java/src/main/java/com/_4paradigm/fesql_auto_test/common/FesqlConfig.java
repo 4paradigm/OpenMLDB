@@ -20,9 +20,6 @@ public class FesqlConfig {
     public static final String ZK_CLUSTER;
     public static final String ZK_ROOT_PATH;
     public static final List<Integer> levels;
-    // public static final String TB_ENDPOINT_0;
-    // public static final String TB_ENDPOINT_1;
-    // public static final String TB_ENDPOINT_2;
     public static final List<String> VERSIONS;
     public static final FEDBInfo mainInfo;
     public static final String BASE_PATH;
