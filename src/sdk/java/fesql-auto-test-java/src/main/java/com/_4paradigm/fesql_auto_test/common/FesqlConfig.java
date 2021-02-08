@@ -1,7 +1,6 @@
 package com._4paradigm.fesql_auto_test.common;
 
 import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
-import com._4paradigm.fesql_auto_test.util.DeployUtil;
 import com._4paradigm.fesql_auto_test.util.Tool;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -46,7 +45,11 @@ public class FesqlConfig {
         if(StringUtils.isEmpty(versionStr)){
             versionStr = CONFIG.getProperty(FesqlGlobalVar.env+"_versions");
         }
-        VERSIONS = Arrays.stream(versionStr.split(",")).collect(Collectors.toList());
+        if(StringUtils.isNotEmpty(versionStr)) {
+            VERSIONS = Arrays.stream(versionStr.split(",")).collect(Collectors.toList());
+        }else{
+            VERSIONS = Lists.newArrayList();
+        }
         log.info("FesqlConfig: versions: {}", VERSIONS);
         mainInfo = FEDBInfo.builder()
                 .nsNum(2)
