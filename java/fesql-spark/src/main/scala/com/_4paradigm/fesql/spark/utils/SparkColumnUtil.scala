@@ -104,12 +104,4 @@ object SparkColumnUtil {
     columnList
   }
 
-  // Set the nullable property of the dataframe
-  def setDataframeNullable(df: DataFrame, nullable: Boolean) : DataFrame = {
-    val newSchema = StructType(df.schema.map {
-      case StructField(c, t, _, m) => StructField(c, t, nullable = nullable, m)
-    })
-    df.sqlContext.createDataFrame(df.rdd, newSchema)
-  }
-
 }

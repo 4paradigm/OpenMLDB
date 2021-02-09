@@ -46,8 +46,7 @@ object ConstProjectPlan {
     })
 
     // Use Spark DataFrame to select columns
-    val emptyDf = ctx.getSparkSession.emptyDataFrame
-    val result = SparkColumnUtil.setDataframeNullable(emptyDf.select(selectColList:_*), nullable=true)
+    val result = ctx.getSparkSession.emptyDataFrame.select(selectColList:_*)
 
     SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), result)
   }
