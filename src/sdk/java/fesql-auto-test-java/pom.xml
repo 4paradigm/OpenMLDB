@@ -210,6 +210,10 @@
                 <configuration>
                     <systemProperties>
                         <property>
+                            <name>caseName</name>
+                            <value>${caseName}</value>
+                        </property>
+                        <property>
                             <name>caseEnv</name>
                             <value>${caseEnv}</value>
                         </property>
