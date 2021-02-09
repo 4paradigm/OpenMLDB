@@ -280,7 +280,7 @@ void BaseClient::UpdateBlobEndpoint(
         }
         auto iter = old_blobs.find(endpoint);
         if (iter == old_blobs.end()) {
-            // TODO use_rdma
+            // TODO(developer): use_rdma
             auto blob = std::make_shared<rtidb::client::BsClient>(false, endpoint, real_endpoint);
             if (blob->Init() != 0) {
                 std::cerr << endpoint << " initial failed!" << std::endl;
@@ -289,7 +289,7 @@ void BaseClient::UpdateBlobEndpoint(
             new_blobs.insert(std::make_pair(endpoint, blob));
         } else {
             if (!real_endpoint.empty()) {
-                // TODO use_rdma
+                // TODO(developer): use_rdma
                 iter->second = std::make_shared<rtidb::client::BsClient>(false, endpoint, real_endpoint);
                 if (iter->second->Init() != 0) {
                     std::cerr << endpoint << " initial failed!" << std::endl;

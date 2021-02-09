@@ -35,7 +35,7 @@ TabletClient::TabletClient(bool use_rdma, const std::string& endpoint, const std
     }
 
 TabletClient::TabletClient(bool use_rdma, const std::string& endpoint, const std::string& real_endpoint,
-	bool use_sleep_policy)
+    bool use_sleep_policy)
     : endpoint_(endpoint), real_endpoint_(endpoint), client_(use_rdma, endpoint, use_sleep_policy) {
         if (!real_endpoint.empty()) {
             real_endpoint_ = real_endpoint;

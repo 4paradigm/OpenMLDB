@@ -412,7 +412,7 @@ int PutData(
                 }
             }
             clients.insert(std::make_pair(endpoint,
-		std::make_shared<::rtidb::client::TabletClient>(FLAGS_use_rdma, endpoint, real_endpoint)));
+                    std::make_shared<::rtidb::client::TabletClient>(FLAGS_use_rdma, endpoint, real_endpoint)));
             if (clients[endpoint]->Init() < 0) {
                 printf("tablet client init failed, endpoint is %s\n",
                        endpoint.c_str());

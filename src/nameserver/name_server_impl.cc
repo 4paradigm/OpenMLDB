@@ -1382,7 +1382,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                     }
                     r_it->second = real_ep;
                     tit->second->client_ = std::make_shared<::rtidb::client::TabletClient>(FLAGS_use_rdma,
-							tit->first, real_ep, true);
+                                           tit->first, real_ep, true);
                     if (tit->second->client_->Init() != 0) {
                         PDLOG(WARNING, "tablet client init error. endpoint[%s]", tit->first.c_str());
                         continue;

@@ -66,13 +66,13 @@ class NameServerImplRemoteTest : public ::testing::Test {
     }
     void CreateTableRemoteBeforeAddRepClusterFunc(
         NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
-        ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_server_client_1,
-        ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_server_client_2,
+        ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_server_client_1, //NOLINT
+        ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_server_client_2, //NOLINT
         std::string db);
     void CreateAndDropTableRemoteFunc(
         NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
-        ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_server_client_1,
-        ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_server_client_2,
+        ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_server_client_1, //NOLINT
+        ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_server_client_2, //NOLINT
         std::string db);
 };
 
