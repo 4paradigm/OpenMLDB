@@ -1,11 +1,14 @@
 package com._4paradigm.fesql_auto_test.common;
 
+import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlException;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Map;
 
 /**
  * @author zhaowei
@@ -30,5 +33,8 @@ public class FesqlClient {
         } catch (SqlException e) {
             e.printStackTrace();
         }
+    }
+    public FesqlClient(FEDBInfo fedbInfo){
+        this(fedbInfo.getZk_cluster(),fedbInfo.getZk_root_path());
     }
 }

@@ -27,7 +27,7 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
 
 
     @Override
-    protected void prepare() throws Exception {
+    public void prepare() throws Exception {
         boolean dbOk = executor.createDB(dbName);
         log.info("create db:{},{}", dbName, dbOk);
         boolean useFirstInputAsRequests = !isBatchRequest && null == fesqlCase.getBatch_request();
@@ -64,7 +64,7 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
     }
 
     @Override
-    protected FesqlResult execute() throws Exception {
+    public FesqlResult execute() throws Exception {
         FesqlResult fesqlResult = null;
         List<String> sqls = fesqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {

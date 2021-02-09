@@ -46,7 +46,7 @@ public class SQLExecutor extends BaseExecutor {
     }
 
     @Override
-    protected void prepare() throws Exception {
+    public void prepare() throws Exception {
         boolean dbOk = executor.createDB(dbName);
         log.info("create db:{},{}", dbName, dbOk);
         FesqlResult res = FesqlUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), false);
@@ -64,7 +64,7 @@ public class SQLExecutor extends BaseExecutor {
     }
 
     @Override
-    protected FesqlResult execute() throws Exception {
+    public FesqlResult execute() throws Exception {
         FesqlResult fesqlResult = null;
         List<String> sqls = fesqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
@@ -84,7 +84,7 @@ public class SQLExecutor extends BaseExecutor {
     }
 
     @Override
-    protected void tearDown() {
+    public void tearDown() {
         if (CollectionUtils.isEmpty(tables)) {
             return;
         }

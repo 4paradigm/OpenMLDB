@@ -16,9 +16,8 @@ public class CheckerStrategy {
         }
         ExpectDesc expect = fesqlCase.getExpect();
 
-        // if (false == expect.getSuccess()) {
-            checkList.add(new SuccessChecker(fesqlCase, fesqlResult));
-        // }
+        checkList.add(new SuccessChecker(fesqlCase, fesqlResult));
+
         if (!expect.getColumns().isEmpty()) {
             checkList.add(new ColumnsChecker(fesqlCase, fesqlResult));
         }
