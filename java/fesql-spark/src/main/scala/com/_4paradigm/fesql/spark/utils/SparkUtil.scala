@@ -70,6 +70,7 @@ object SparkUtil {
   def checkSchemaIgnoreNullable(schema1: StructType, schema2: StructType): Boolean = {
     // Check field size
     if (schema1.fields.size != schema2.fields.size) {
+      logger.warn("Scheme size not match, schema1: %d, schema2: %d".format(schema1.fields.size, schema2.fields.size))
       return false
     }
 
@@ -79,6 +80,7 @@ object SparkUtil {
       val field1 = schema1.fields(i)
       val field2 = schema2.fields(i)
       if (field1.name != field2.name || field1.dataType != field2.dataType) {
+        logger.warn("Schema name or type not match, filed(%s %s) and field(%s %s)".format(field1.dataType, field1.name,field2.dataType, field2.name))
         return false
       }
     }
