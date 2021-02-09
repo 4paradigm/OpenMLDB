@@ -2,7 +2,6 @@ package com._4paradigm.fesql_auto_test.v1;
 
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.common.FesqlTest;
-import com._4paradigm.fesql_auto_test.entity.FesqlDataProvider;
 import com._4paradigm.fesql_auto_test.entity.FesqlDataProviderList;
 import com._4paradigm.fesql_auto_test.executor.ExecutorFactory;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +26,6 @@ public class SelectTest extends FesqlTest {
                 });
         return dp.getCases().toArray();
     }
-
 
     @Test(dataProvider = "testSelectCase")
     public void testSelect(SQLCase testCase) throws Exception {
