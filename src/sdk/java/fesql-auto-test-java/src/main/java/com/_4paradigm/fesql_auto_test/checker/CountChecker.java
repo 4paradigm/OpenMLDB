@@ -22,7 +22,7 @@ public class CountChecker extends BaseChecker {
         log.info("count check");
         int expect =  (int)fesqlCase.getExpect().getCount();
         int actual = fesqlResult.getCount();
-        Assert.assertEquals(actual,expect);
+        Assert.assertEquals(actual,expect,"count验证失败");
     }
 
 }

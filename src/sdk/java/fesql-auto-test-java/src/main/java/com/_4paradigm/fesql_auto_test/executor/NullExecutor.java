@@ -13,12 +13,12 @@ public class NullExecutor extends BaseExecutor {
     }
 
     @Override
-    protected void prepare() {
+    public void prepare() {
 
     }
 
     @Override
-    protected FesqlResult execute() {
+    public FesqlResult execute() {
         return null;
     }
 
