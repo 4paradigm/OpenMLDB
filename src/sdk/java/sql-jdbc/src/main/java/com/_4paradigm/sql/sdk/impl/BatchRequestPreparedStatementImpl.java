@@ -38,8 +38,14 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
         com._4paradigm.sql.ResultSet resultSet = router.ExecuteSQLBatchRequest(
                 db, currentSql, currentRowBatch, status);
         if (resultSet == null || status.getCode() != 0) {
-            throw new SQLException("execute sql fail: " + status.getMsg());
+            String msg = status.getMsg();
+            status.delete();
+            if (resultSet != null) {
+                resultSet.delete();
+            }
+            throw new SQLException("execute sql fail: " + msg);
         }
+        status.delete();
         SQLResultSet rs = new SQLResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
@@ -54,11 +60,14 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
             throw new RuntimeException("not ok row");
         }
         currentRowBatch.AddRow(this.currentRow);
+        this.currentRow.delete();
         Status status = new Status();
         this.currentRow = router.GetRequestRow(db, currentSql, status);
         if (this.currentRow == null || status.getCode() != 0) {
-            logger.error("getRequestRow failed: {}", status.getMsg());
-            throw new SQLException("getRequestRow failed!, msg: " + status.getMsg());
+            String msg = status.getMsg();
+            status.delete();
+            logger.error("getRequestRow failed: {}", msg);
+            throw new SQLException("getRequestRow failed!, msg: " + msg);
         }
         status.delete();
     }
@@ -76,7 +85,13 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
     @Override
     public void close() throws SQLException {
         super.close();
-        this.commonColumnIndices = null;
-        this.currentRowBatch = null;
+        if (commonColumnIndices != null) {
+            commonColumnIndices.delete();
+            commonColumnIndices = null;
+        }
+        if (currentRowBatch != null) {
+            currentRowBatch.delete();
+            currentRowBatch = null;
+        }
     }
 }

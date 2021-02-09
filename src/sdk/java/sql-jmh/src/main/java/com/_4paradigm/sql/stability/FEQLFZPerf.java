@@ -240,6 +240,37 @@ public class FEQLFZPerf {
         return requestPs;
     }
 
+    private void getData(ResultSet resultSet) {
+        if (resultSet == null) {
+            return;
+        }
+        try {
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            while (resultSet.next()) {
+                for (int i = 0; i < metaData.getColumnCount(); i++) {
+                    // String columnName = metaData.getColumnName(i + 1);
+                    int columnType = metaData.getColumnType(i + 1);
+                    if (columnType == Types.VARCHAR) {
+                        resultSet.getString(i + 1);
+                    } else if (columnType == Types.DOUBLE) {
+                        resultSet.getDouble(i + 1);
+                    } else if (columnType == Types.INTEGER) {
+                        resultSet.getInt(i + 1);
+                    } else if (columnType == Types.BIGINT) {
+                        resultSet.getLong(i + 1);
+                    } else if (columnType == Types.TIMESTAMP) {
+                        resultSet.getTimestamp(i + 1);
+                    } else if (columnType == Types.DATE) {
+                        resultSet.getDate(i + 1);
+                    }
+                }
+                break;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 //    public void putData() {
 //        while (running.get()) {
 //            for (TableInfo table : tableMap.values()) {
@@ -321,31 +352,71 @@ public class FEQLFZPerf {
             if (curRandom.nextFloat() > BenchmarkConfig.PROCEDURE_RATIO) {
                 isProcedure = true;
             }
+            PreparedStatement ps = null;
+            ResultSet resultSet = null;
             try {
                 if (cnt % 10000 == 0) {
                     logger.info("Process " + cnt + "......");
                 }
                 cnt++;
-                {
-                    PreparedStatement ps = getPreparedStatement(mode, isProcedure);
-                    ResultSet resultSet = ps.executeQuery();
-                    resultSet.close();
-                    ps.close();
-                }
-                if (isProcedure) {
-                    PreparedStatement ps = getPreparedStatement(mode, isProcedure);
-                    if (ps instanceof CallablePreparedStatement) {
-                        QueryFuture future = ((CallablePreparedStatement) ps).executeQueryAsync(10000, TimeUnit.MILLISECONDS);
-                        ResultSet resultSet = future.get();
-                        resultSet.close();
-                    }
-                    ps.close();
-                }
+                ps = getPreparedStatement(mode, isProcedure);
+                resultSet = ps.executeQuery();
+                getData(resultSet);
             } catch (Exception e) {
                 e.printStackTrace();
+            } finally {
+                close(ps, resultSet);
+            }
+            if (isProcedure) {
+                try {
+                    ps = null;
+                    resultSet = null;
+                    ps = getPreparedStatement(mode, isProcedure);
+                    if (ps instanceof CallablePreparedStatement) {
+                        QueryFuture future = ((CallablePreparedStatement) ps).executeQueryAsync(100, TimeUnit.MILLISECONDS);
+                        resultSet = future.get();
+                        getData(resultSet);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    close(ps, resultSet);
+                }
+            }
+            try {
+                String strLimit = String.valueOf(curRandom.nextInt(10000) + 1);
+                String limitSql = "select * from " + mainTable + " limit " + strLimit  + ";";
+                resultSet = executor.executeSQL(db, limitSql);
+                getData(resultSet);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    resultSet.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
+
+    private void close(PreparedStatement ps, ResultSet rs) {
+        try {
+            if (ps != null) {
+                ps.close();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        try {
+            if (rs != null) {
+                rs.close();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     public void runPut(int threadNum) {
         putExecuteService = Executors.newFixedThreadPool(threadNum);
@@ -378,6 +449,7 @@ public class FEQLFZPerf {
         running.set(false);
         queryExecuteService.shutdownNow();
         putExecuteService.shutdownNow();
+        executor.close();
     }
 
     public static void main(String[] args) {
@@ -400,11 +472,11 @@ public class FEQLFZPerf {
         long startTime = System.currentTimeMillis();
         while (true) {
             try {
-                Thread.sleep(10000);
-                /*if (System.currentTimeMillis() - startTime > 1000*600) {
+                Thread.sleep(1000);
+                if (System.currentTimeMillis() - startTime > BenchmarkConfig.RUNTIME) {
                     perf.close();
                     break;
-                }*/
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }

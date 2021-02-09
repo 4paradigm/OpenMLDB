@@ -249,7 +249,25 @@ int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data,
     }
     return 0;
 }
-
+int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data,
+                          std::vector<uint64_t>* ts_dimensions, uint64_t default_ts) {
+    for (auto idx : ts_idx_) {
+        if (idx >= raw_data.size()) {
+            return -1;
+        }
+        if (rtidb::codec::NONETOKEN == raw_data[idx]) {
+            ts_dimensions->push_back(default_ts);
+            continue;
+        }
+        try {
+            ts_dimensions->push_back(
+                boost::lexical_cast<uint64_t>(raw_data[idx]));
+        } catch (std::exception const& e) {
+            ts_dimensions->push_back(default_ts);
+        }
+    }
+    return 0;
+}
 int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data,
                                 std::vector<uint64_t>* ts_dimensions) {
     for (auto idx : ts_idx_) {

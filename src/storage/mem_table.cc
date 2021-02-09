@@ -154,7 +154,7 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
         for (const auto& index_def : inner_index->GetIndex()) {
             auto ts_col = index_def->GetTsColumn();
             if (ts_col) {
-                PDLOG(WARNING, "has not set col. tid %u pid %u", id_, pid_);
+                PDLOG(WARNING, "has set col. tid %u pid %u", id_, pid_);
                 return false;
             }
             if (index_def->IsReady()) {

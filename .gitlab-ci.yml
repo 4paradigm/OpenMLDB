@@ -1,6 +1,6 @@
 image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.12
 services:
-  - docker.4pd.io/docker:dind 
+  - docker:dind
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 stages:
@@ -67,6 +67,28 @@ build:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/simple_compile.sh
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  artifacts:
+    expire_in: 4h
+    paths:
+      - build/bin/rtidb
+      - build/bin/sql_sdk_test
+      - build/bin/sql_cluster_test
+      - build/bin/tablet_engine_test
+      - build/src/sdk/libsql_jsdk.so
+      - build/sql_pysdk/dist/*.whl
+      - build/python/dist/*.whl
+
+daily_build:
+  stage: build
+  script:
+    - source /root/.bashrc && sh steps/checkout_fesql_branch.sh $FESQL_BRANCH
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/simple_compile.sh
   artifacts:
     expire_in: 4h
     paths:
@@ -74,6 +96,9 @@ build:
       - build/src/sdk/libsql_jsdk.so
       - build/sql_pysdk/dist/*.whl
       - build/python/dist/*.whl
+  only:
+    variables:
+      - $ENV_BUILD == "daily"
 
 # mac_build:
 #   variables:
@@ -103,6 +128,7 @@ fpga_c++_ut:
     - source /root/.bashrc && sh tools/install_fesql.sh
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
+    - source /opt/fpga-rte-aclrte-19.2.0.57-v0.2.1/init-fpga.sh
     - source /root/.bashrc && bash steps/fpga_compile.sh
     - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
   artifacts:
@@ -173,7 +199,6 @@ java_ut:
         - java/target/failsafe-reports/TEST-*.xml
   dependencies:
     - build
-  when: manual
 
 fesql_auto_test_level_0:
   stage: quick
@@ -202,16 +227,14 @@ fesql_auto_test_level_0:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
-  when: manual
 
-fesql_sdk_c++_level_0:
+fesql_sdk_c++_tablet_engine_test_level_0:
   stage: quick
   script:
-    - source /root/.bashrc && sh tools/install_fesql.sh
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/fesql_c_test_compile.sh
-    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_c_ut.sh 0
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_c_ut.sh 0 tablet_engine_test
   artifacts:
     reports:
       junit:
@@ -221,7 +244,42 @@ fesql_sdk_c++_level_0:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual
+
+
+fesql_sdk_c++_sql_cluster_test_level_0:
+  stage: quick
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/fesql_c_test_compile.sh
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_c_ut.sh 0 sql_cluster_test
+  artifacts:
+    reports:
+      junit:
+        - reports/*.xml
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+
+
+fesql_sdk_c++_sql_sdk_test_level_0:
+  stage: quick
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/fesql_c_test_compile.sh
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_c_ut.sh 0 sql_sdk_test
+  artifacts:
+    reports:
+      junit:
+        - reports/*.xml
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
 
 fesql_auto_test_level_1+:
   stage: manual
@@ -256,7 +314,6 @@ fesql_auto_test_level_1+:
 fesql_sdk_c++_level_1+:
   stage: manual
   script:
-    - source /root/.bashrc && sh tools/install_fesql.sh
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/fesql_c_test_compile.sh
@@ -351,7 +408,6 @@ c++_ut:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual
 
 py3_ut:
   stage: quick
@@ -371,7 +427,6 @@ py3_ut:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual
 
 fesql_auto_test_python:
   stage: manual
@@ -455,7 +510,6 @@ tablet_multi_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual
 
 ns_one_demension:
   stage: manual
@@ -498,7 +552,6 @@ ns_multi_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual
 
 disk_table:
   stage: manual
@@ -530,7 +583,7 @@ deploy-fedb:
     - source /root/.bashrc && bash steps/deploy_package_fedb.sh
   dependencies:
     # - mac_build
-    - build
+    - daily_build
   only:
     variables:
       - $ENV_BUILD == "daily"
