@@ -16,6 +16,7 @@
         <fesql.version>0.0.3-RELEASE</fesql.version>
         <suiteXmlFile>test_suite/test_v1.xml</suiteXmlFile>
         <aspectj.version>1.8.9</aspectj.version>
+        <fe.command.version>1.0-SNAPSHOT</fe.command.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -153,6 +154,11 @@
             <artifactId>poi-ooxml</artifactId>
             <version>3.17</version>
         </dependency>
+        <dependency>
+            <groupId>com.4paradigm</groupId>
+            <artifactId>fe-command</artifactId>
+            <version>${fe.command.version}</version>
+        </dependency>
         <!--<dependency>-->
             <!--<groupId>org.apache.poi</groupId>-->
             <!--<artifactId>poi-ooxml-schemas</artifactId>-->
@@ -222,6 +228,10 @@
                         <property>
                             <name>caseLevel</name>
                             <value>${caseLevel}</value>
+                        </property>
+                        <property>
+                            <name>fedbVersion</name>
+                            <value>${fedbVersion}</value>
                         </property>
                     </systemProperties>
                 </configuration>

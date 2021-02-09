@@ -24,7 +24,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
     }
 
     @Override
-    protected void prepare() throws Exception {
+    public void prepare() throws Exception {
         boolean dbOk = executor.createDB(dbName);
         log.info("create db:{},{}", dbName, dbOk);
         FesqlResult res = FesqlUtil.createAndInsert(
@@ -41,7 +41,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
     }
 
     @Override
-    protected FesqlResult execute() throws Exception {
+    public FesqlResult execute() throws Exception {
         if (fesqlCase.getInputs().isEmpty() ||
                 CollectionUtils.isEmpty(fesqlCase.getInputs().get(0).getRows())) {
             log.error("fail to execute in request query sql executor: sql case inputs is empty");
@@ -72,50 +72,50 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
 
     private FesqlResult executeBatch(String sql, boolean isAsyn) throws SQLException {
         String spName = "sp_" + tableNames.get(0) + "_" + System.currentTimeMillis();
-        String spSql = buildSpSQLWithConstColumns(spName, sql, fesqlCase.getBatch_request());
+        String spSql = FesqlUtil.buildSpSQLWithConstColumns(spName, sql, fesqlCase.getBatch_request());
         log.info("spSql: {}", spSql);
         return FesqlUtil.selectBatchRequestModeWithSp(
                 executor, dbName, spName, spSql, fesqlCase.getBatch_request(), isAsyn);
     }
 
-    private String buildSpSQLWithConstColumns(String spName,
-                                              String sql,
-                                              InputDesc input) throws SQLException {
-        StringBuilder builder = new StringBuilder("create procedure " + spName + "(\n");
-        HashSet<Integer> commonColumnIndices = new HashSet<>();
-        if (input.getCommon_column_indices() != null) {
-            for (String str : input.getCommon_column_indices()) {
-                if (str != null) {
-                    commonColumnIndices.add(Integer.parseInt(str));
-                }
-            }
-        }
-        if (input.getColumns() == null) {
-            throw new SQLException("No schema defined in input desc");
-        }
-        for (int i = 0; i < input.getColumns().size(); ++i) {
-            String[] parts = input.getColumns().get(i).split(" ");
-            if (commonColumnIndices.contains(i)) {
-                builder.append("const ");
-            }
-            builder.append(parts[0]);
-            builder.append(" ");
-            builder.append(parts[1]);
-            if (i != input.getColumns().size() - 1) {
-                builder.append(",");
-            }
-        }
-        builder.append(")\n");
-        builder.append("BEGIN\n");
-        builder.append(sql);
-        builder.append("\n");
-        builder.append("END;");
-        sql = builder.toString();
-        return sql;
-    }
+    // private String buildSpSQLWithConstColumns(String spName,
+    //                                           String sql,
+    //                                           InputDesc input) throws SQLException {
+    //     StringBuilder builder = new StringBuilder("create procedure " + spName + "(\n");
+    //     HashSet<Integer> commonColumnIndices = new HashSet<>();
+    //     if (input.getCommon_column_indices() != null) {
+    //         for (String str : input.getCommon_column_indices()) {
+    //             if (str != null) {
+    //                 commonColumnIndices.add(Integer.parseInt(str));
+    //             }
+    //         }
+    //     }
+    //     if (input.getColumns() == null) {
+    //         throw new SQLException("No schema defined in input desc");
+    //     }
+    //     for (int i = 0; i < input.getColumns().size(); ++i) {
+    //         String[] parts = input.getColumns().get(i).split(" ");
+    //         if (commonColumnIndices.contains(i)) {
+    //             builder.append("const ");
+    //         }
+    //         builder.append(parts[0]);
+    //         builder.append(" ");
+    //         builder.append(parts[1]);
+    //         if (i != input.getColumns().size() - 1) {
+    //             builder.append(",");
+    //         }
+    //     }
+    //     builder.append(")\n");
+    //     builder.append("BEGIN\n");
+    //     builder.append(sql);
+    //     builder.append("\n");
+    //     builder.append("END;");
+    //     sql = builder.toString();
+    //     return sql;
+    // }
 
     @Override
-    protected void tearDown() {
+    public void tearDown() {
         if (CollectionUtils.isEmpty(spNames)) {
             return;
         }
