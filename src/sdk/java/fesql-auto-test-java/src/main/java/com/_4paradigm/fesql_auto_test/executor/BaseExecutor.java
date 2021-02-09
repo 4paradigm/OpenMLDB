@@ -16,7 +16,7 @@ import java.util.List;
  * @date 2020/6/15 11:23 AM
  */
 @Slf4j
-public abstract class BaseExecutor {
+public abstract class BaseExecutor implements IExecutor{
     protected SQLCase fesqlCase;
     protected SqlExecutor executor;
 
@@ -25,7 +25,7 @@ public abstract class BaseExecutor {
         this.fesqlCase = fesqlCase;
     }
 
-    public abstract void run();
+    public abstract  FesqlResult execute() throws Exception;
 
     public void process() {
         log.info(FesqlTest.CaseNameFormat(fesqlCase) + " Begin!");
@@ -45,21 +45,18 @@ public abstract class BaseExecutor {
         }
     }
 
-    protected abstract void prepare() throws Exception;
-
-    protected abstract FesqlResult execute() throws Exception;
-
-    protected FesqlResult after() {
-        return null;
-    }
-
-    protected void check(FesqlResult fesqlResult) throws Exception {
+    public void check(FesqlResult fesqlResult) throws Exception {
         List<Checker> strategyList = CheckerStrategy.build(fesqlCase, fesqlResult);
         for (Checker checker : strategyList) {
             checker.check();
         }
     }
 
-    protected void tearDown() {
+    public void tearDown() {
+    }
+
+    @Override
+    public boolean verify() {
+        return false;
     }
 }

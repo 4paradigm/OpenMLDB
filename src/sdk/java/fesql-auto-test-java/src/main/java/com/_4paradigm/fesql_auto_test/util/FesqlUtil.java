@@ -3,12 +3,15 @@ package com._4paradigm.fesql_auto_test.util;
 import com._4paradigm.fesql.sqlcase.model.InputDesc;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.common.FesqlConfig;
+import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.sql.*;
 import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.jdbc.CallablePreparedStatement;
 import com._4paradigm.sql.jdbc.SQLResultSet;
 import com._4paradigm.sql.sdk.SqlExecutor;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.joda.time.DateTime;
@@ -21,6 +24,7 @@ import java.sql.Date;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -36,6 +40,42 @@ public class FesqlUtil {
     private static String reg = "\\{(\\d+)\\}";
     private static Pattern pattern = Pattern.compile(reg);
     private static final Logger logger = LoggerFactory.getLogger(FesqlUtil.class);
+
+    public static String buildSpSQLWithConstColumns(String spName,
+                                              String sql,
+                                              InputDesc input) throws SQLException {
+        StringBuilder builder = new StringBuilder("create procedure " + spName + "(\n");
+        HashSet<Integer> commonColumnIndices = new HashSet<>();
+        if (input.getCommon_column_indices() != null) {
+            for (String str : input.getCommon_column_indices()) {
+                if (str != null) {
+                    commonColumnIndices.add(Integer.parseInt(str));
+                }
+            }
+        }
+        if (input.getColumns() == null) {
+            throw new SQLException("No schema defined in input desc");
+        }
+        for (int i = 0; i < input.getColumns().size(); ++i) {
+            String[] parts = input.getColumns().get(i).split(" ");
+            if (commonColumnIndices.contains(i)) {
+                builder.append("const ");
+            }
+            builder.append(parts[0]);
+            builder.append(" ");
+            builder.append(parts[1]);
+            if (i != input.getColumns().size() - 1) {
+                builder.append(",");
+            }
+        }
+        builder.append(")\n");
+        builder.append("BEGIN\n");
+        builder.append(sql);
+        builder.append("\n");
+        builder.append("END;");
+        sql = builder.toString();
+        return sql;
+    }
 
     public static int getIndexByColumnName(Schema schema, String columnName) {
         int count = schema.GetColumnCnt();
@@ -373,6 +413,7 @@ public class FesqlUtil {
             java.sql.ResultSet resultSet = null;
             try {
                 resultSet = buildRequestPreparedStatment(rps, rows.get(i));
+
             } catch (SQLException throwables) {
                 fesqlResult.setOk(false);
                 return fesqlResult;
@@ -393,7 +434,7 @@ public class FesqlUtil {
                 fesqlResult.setOk(false);
                 return fesqlResult;
             }
-            if (i == 0) {
+            if (i == rows.size()-1) {
                 try {
                     fesqlResult.setMetaData(resultSet.getMetaData());
                 } catch (SQLException throwables) {
@@ -403,8 +444,8 @@ public class FesqlUtil {
             }
             try {
                 rps.close();
-                //resultSet.close();
-            } catch (SQLException throwables) {
+                // resultSet.close();
+            } catch (Exception throwables) {
                 throwables.printStackTrace();
             }
         }
@@ -508,6 +549,7 @@ public class FesqlUtil {
         log.info("procedure sql:{}", sql);
         FesqlResult fesqlResult = new FesqlResult();
         if (!executor.executeDDL(dbName, sql)) {
+            log.error("execute ddl failed! sql: {}", sql);
             fesqlResult.setOk(false);
             return fesqlResult;
         }
@@ -550,6 +592,8 @@ public class FesqlUtil {
                     }
                 }
             } catch (SQLException throwables) {
+                throwables.printStackTrace();
+                log.error("has exception. sql: {}", sql);
                 fesqlResult.setOk(false);
                 return fesqlResult;
             } finally {
@@ -881,16 +925,22 @@ public class FesqlUtil {
         }
         log.info("select sql:{}", selectSql);
         FesqlResult fesqlResult = new FesqlResult();
-        ResultSet rs = executor.executeSQL(dbName, selectSql);
-        if (rs == null) {
+        java.sql.ResultSet rawRs = executor.executeSQL(dbName, selectSql);
+
+        if (rawRs == null) {
             fesqlResult.setOk(false);
-        } else {
+        } else if  (rawRs instanceof SQLResultSet){
+            SQLResultSet rs = (SQLResultSet)rawRs;
             fesqlResult.setOk(true);
-            fesqlResult.setCount(rs.Size());
-            Schema schema = rs.GetSchema();
-            fesqlResult.setResultSchema(schema);
-            List<List<Object>> result = convertRestultSetToList(rs, schema);
-            fesqlResult.setResult(result);
+            try {
+                fesqlResult.setMetaData(rs.getMetaData());
+                List<List<Object>> result = convertRestultSetToList(rs);
+                fesqlResult.setCount(result.size());
+                fesqlResult.setResult(result);
+            } catch (Exception e) {
+                fesqlResult.setOk(false);
+                e.printStackTrace();
+            }
         }
         log.info("select result:{} \nschema={}", fesqlResult, fesqlResult.getResultSchema());
         return fesqlResult;
@@ -969,22 +1019,26 @@ public class FesqlUtil {
         return obj;
     }
 
-    public static String formatSql(String sql, List<String> tableNames) {
+    public static String formatSql(String sql, List<String> tableNames, FEDBInfo fedbInfo) {
         Matcher matcher = pattern.matcher(sql);
         while (matcher.find()) {
             int index = Integer.parseInt(matcher.group(1));
             sql = sql.replace("{" + index + "}", tableNames.get(index));
         }
         if(sql.contains("{tb_endpoint_0}")){
-            sql = sql.replace("{tb_endpoint_0}", FesqlConfig.TB_ENDPOINT_0);
+            sql = sql.replace("{tb_endpoint_0}", fedbInfo.getTabletEndpoints().get(0));
         }
         if(sql.contains("{tb_endpoint_1}")){
-            sql = sql.replace("{tb_endpoint_1}", FesqlConfig.TB_ENDPOINT_1);
+            sql = sql.replace("{tb_endpoint_1}", fedbInfo.getTabletEndpoints().get(1));
         }
         if(sql.contains("{tb_endpoint_2}")){
-            sql = sql.replace("{tb_endpoint_2}", FesqlConfig.TB_ENDPOINT_2);
+            sql = sql.replace("{tb_endpoint_2}", fedbInfo.getTabletEndpoints().get(2));
         }
         return sql;
+    }
+
+    public static String formatSql(String sql, List<String> tableNames) {
+        return formatSql(sql,tableNames,FesqlConfig.mainInfo);
     }
 
 

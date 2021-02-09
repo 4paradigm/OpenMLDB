@@ -19,7 +19,7 @@ public interface SqlExecutor {
 
     boolean executeInsert(String db, String sql, SQLInsertRows rows);
     TableReader getTableReader();
-    ResultSet executeSQL(String db, String sql);
+    java.sql.ResultSet executeSQL(String db, String sql);
 
     SQLInsertRow getInsertRow(String db, String sql);
 
@@ -41,4 +41,6 @@ public interface SqlExecutor {
     Schema getInputSchema(String dbName, String sql) throws SQLException;
 
     ProcedureInfo showProcedure(String dbName, String proName) throws SQLException;
+
+    void close();
 }
