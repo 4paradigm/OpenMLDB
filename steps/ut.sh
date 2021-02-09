@@ -13,11 +13,14 @@ TMPFILE="code.tmp"
 echo 0 > $TMPFILE
 ls  build/bin/ | grep test | grep -v "sql_sdk_test\|sql_cluster_test\|tablet_engine_test"| grep -v grep | while read line
 do 
-    ./build/bin/$line --gtest_output=xml:./reports/$line.xml
+    ./build/bin/$line --gtest_output=xml:./reports/$line.xml 2>/tmp/${line}.${USER}.log 1>&2
     RET=$?
     echo "$line result code is: $RET"
     if [ $RET -ne 0 ];then 
+        cat /tmp/${line}.${USER}.log
         echo $RET > $TMPFILE
+    else
+        rm -f /tmp/${line}.${USER}.log
     fi 
 done
 code=`cat $TMPFILE`
