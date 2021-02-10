@@ -1,22 +1,27 @@
 package com._4paradigm.fesql_auto_test.executor;
 
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author zhaowei
  * @date 2020/6/15 11:29 AM
  */
 @Slf4j
-public class SQLExecutor extends BaseSQLExecutor {
+public class BatchSQLExecutor extends BaseSQLExecutor {
 
-    public SQLExecutor(SqlExecutor executor, SQLCase fesqlCase) {
-        super(executor, fesqlCase);
+    public BatchSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, ExecutorFactory.ExecutorType executorType) {
+        super(executor, fesqlCase, executorType);
+    }
+    public BatchSQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String,FEDBInfo> fedbInfoMap, ExecutorFactory.ExecutorType executorType) {
+        super(fesqlCase, executor, executorMap, fedbInfoMap, executorType);
     }
 
     @Override
@@ -43,7 +48,7 @@ public class SQLExecutor extends BaseSQLExecutor {
         log.info("version:{},create db:{},{}", version, dbName, dbOk);
         FesqlResult res = FesqlUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), false);
         if (!res.isOk()) {
-            throw new RuntimeException("fail to run SQLExecutor: prepare fail . version:"+version);
+            throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail . version:"+version);
         }
         log.info("version:{} prepare end",version);
     }

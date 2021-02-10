@@ -3,6 +3,7 @@ package com._4paradigm.fesql_auto_test.executor;
 import com._4paradigm.fesql.sqlcase.model.InputDesc;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.common.FesqlConfig;
+import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
 import com._4paradigm.sql.sdk.SqlExecutor;
@@ -11,6 +12,7 @@ import org.apache.commons.collections.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 public class RequestQuerySQLExecutor extends BaseSQLExecutor {
@@ -19,13 +21,17 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
     protected boolean isAsyn;
 
     public RequestQuerySQLExecutor(SqlExecutor executor, SQLCase fesqlCase,
-                                   boolean isBatchRequest, boolean isAsyn) {
-        super(executor, fesqlCase);
+                                   boolean isBatchRequest, boolean isAsyn, ExecutorFactory.ExecutorType executorType) {
+        super(executor, fesqlCase, executorType);
         this.isBatchRequest = isBatchRequest;
         this.isAsyn = isAsyn;
     }
-
-
+    public RequestQuerySQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String,FEDBInfo> fedbInfoMap,
+                                      boolean isBatchRequest, boolean isAsyn, ExecutorFactory.ExecutorType executorType) {
+        super(fesqlCase, executor, executorMap, fedbInfoMap, executorType);
+        this.isBatchRequest = isBatchRequest;
+        this.isAsyn = isAsyn;
+    }
     @Override
     public FesqlResult execute(String version, SqlExecutor executor) {
         log.info("version:{} execute begin",version);
@@ -89,7 +95,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
         boolean useFirstInputAsRequests = !isBatchRequest && null == fesqlCase.getBatch_request();
         FesqlResult res = FesqlUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), useFirstInputAsRequests);
         if (!res.isOk()) {
-            throw new RuntimeException("fail to run SQLExecutor: prepare fail");
+            throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail");
         }
         log.info("version:{} prepare end",version);
     }

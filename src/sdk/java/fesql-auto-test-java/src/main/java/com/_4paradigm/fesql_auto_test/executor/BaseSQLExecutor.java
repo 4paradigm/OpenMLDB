@@ -33,9 +33,10 @@ public abstract class BaseSQLExecutor implements IExecutor{
     protected String dbName;
     protected List<String> tableNames = Lists.newArrayList();
 
-    public BaseSQLExecutor(SqlExecutor executor, SQLCase fesqlCase) {
+    public BaseSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, ExecutorFactory.ExecutorType executorType) {
         this.executor = executor;
         this.fesqlCase = fesqlCase;
+        this.executorType = executorType;
         dbName = fesqlCase.getDb();
         if (!CollectionUtils.isEmpty(fesqlCase.getInputs())) {
             for (InputDesc inputDesc : fesqlCase.getInputs()) {
@@ -44,8 +45,8 @@ public abstract class BaseSQLExecutor implements IExecutor{
         }
     }
 
-    public BaseSQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String,FEDBInfo> fedbInfoMap) {
-        this(executor,fesqlCase);
+    public BaseSQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String,FEDBInfo> fedbInfoMap, ExecutorFactory.ExecutorType executorType) {
+        this(executor,fesqlCase,executorType);
         this.executor = executor;
         this.fedbInfoMap = fedbInfoMap;
     }
@@ -88,7 +89,7 @@ public abstract class BaseSQLExecutor implements IExecutor{
         }
     }
 
-    protected void check(FesqlResult fesqlResult,Map<String,FesqlResult> resultMap) throws Exception {
+    public void check(FesqlResult fesqlResult,Map<String,FesqlResult> resultMap) throws Exception {
         List<Checker> strategyList = CheckerStrategy.build(fesqlCase, fesqlResult, executorType);
         if(MapUtils.isNotEmpty(resultMap)) {
             strategyList.add(new DiffVersionChecker(fesqlCase, fesqlResult, resultMap));

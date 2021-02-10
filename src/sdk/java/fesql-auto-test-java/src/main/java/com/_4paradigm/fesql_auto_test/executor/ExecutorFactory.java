@@ -4,9 +4,6 @@ package com._4paradigm.fesql_auto_test.executor;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
-import com._4paradigm.fesql_auto_test.executor.diff.DiffStoredProcedureExecutor;
-import com._4paradigm.fesql_auto_test.executor.diff.DiffVersionRequestExecutor;
-import com._4paradigm.fesql_auto_test.executor.diff.DiffVersionSQLExecutor;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,16 +34,16 @@ public class ExecutorFactory {
     public static IExecutor build(SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String,FEDBInfo> fedbInfoMap, SQLCase fesqlCase, ExecutorType type) {
         switch (type) {
             case kDiffBatch: {
-                return new DiffVersionSQLExecutor(fesqlCase, executor, executorMap, fedbInfoMap);
+                return new BatchSQLExecutor(fesqlCase, executor, executorMap, fedbInfoMap, type);
             }
             case kDiffRequest:{
-                return new DiffVersionRequestExecutor(fesqlCase, executor, executorMap, fedbInfoMap, false, false);
+                return new RequestQuerySQLExecutor(fesqlCase, executor, executorMap, fedbInfoMap, false, false, type);
             }
             case kDiffRequestWithSp:{
-                return new DiffStoredProcedureExecutor(fesqlCase, executor, executorMap, fedbInfoMap, false, false);
+                return new StoredProcedureSQLExecutor(fesqlCase, executor, executorMap, fedbInfoMap, false, false, type);
             }
             case kDiffRequestWithSpAsync:{
-                return new DiffStoredProcedureExecutor(fesqlCase, executor, executorMap, fedbInfoMap, false, true);
+                return new StoredProcedureSQLExecutor(fesqlCase, executor, executorMap, fedbInfoMap, false, true, type);
             }
         }
         return null;
@@ -54,70 +51,70 @@ public class ExecutorFactory {
     public static BaseSQLExecutor build(SqlExecutor executor, SQLCase fesqlCase, ExecutorType type) {
         switch (type) {
             case kDDL: {
-                return getDDLExecutor(executor, fesqlCase);
+                return getDDLExecutor(executor, fesqlCase, type);
             }
             case kBatch: {
-                return getFeBatchQueryExecutor(executor, fesqlCase);
+                return getFeBatchQueryExecutor(executor, fesqlCase, type);
             }
             case kRequest: {
-                return getFeRequestQueryExecutor(executor, fesqlCase);
+                return getFeRequestQueryExecutor(executor, fesqlCase, type);
             }
             case kBatchRequest: {
-                return getFeBatchRequestQueryExecutor(executor, fesqlCase);
+                return getFeBatchRequestQueryExecutor(executor, fesqlCase, type);
             }
             case kRequestWithSp: {
-                return getFeRequestQueryWithSpExecutor(executor, fesqlCase, false);
+                return getFeRequestQueryWithSpExecutor(executor, fesqlCase, false, type);
             }
             case kRequestWithSpAsync: {
-                return getFeRequestQueryWithSpExecutor(executor, fesqlCase, true);
+                return getFeRequestQueryWithSpExecutor(executor, fesqlCase, true, type);
             }
             case kBatchRequestWithSp: {
-                return getFeBatchRequestQueryWithSpExecutor(executor, fesqlCase, false);
+                return getFeBatchRequestQueryWithSpExecutor(executor, fesqlCase, false, type);
             }
             case kBatchRequestWithSpAsync: {
-                return getFeBatchRequestQueryWithSpExecutor(executor, fesqlCase, true);
+                return getFeBatchRequestQueryWithSpExecutor(executor, fesqlCase, true, type);
             }
 
         }
         return null;
     }
-    private static BaseSQLExecutor getDDLExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase) {
+    private static BaseSQLExecutor getDDLExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase, ExecutorType type) {
         BaseSQLExecutor executor = null;
-        executor = new SQLExecutor(sqlExecutor, fesqlCase);
+        executor = new BatchSQLExecutor(sqlExecutor, fesqlCase, type);
         return executor;
     }
-    private static BaseSQLExecutor getFeBatchQueryExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase) {
+    private static BaseSQLExecutor getFeBatchQueryExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase, ExecutorType type) {
         if (FesqlConfig.isCluster()) {
             log.info("cluster unsupport batch query mode");
-            return new NullExecutor(sqlExecutor, fesqlCase);
+            return new NullExecutor(sqlExecutor, fesqlCase, type);
         }
         BaseSQLExecutor executor = null;
-        executor = new SQLExecutor(sqlExecutor, fesqlCase);
+        executor = new BatchSQLExecutor(sqlExecutor, fesqlCase, type);
         return executor;
     }
-    private static BaseSQLExecutor getFeRequestQueryExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase) {
+    private static BaseSQLExecutor getFeRequestQueryExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase, ExecutorType type) {
         BaseSQLExecutor executor = null;
-        executor = new RequestQuerySQLExecutor(sqlExecutor, fesqlCase, false, false);
+        executor = new RequestQuerySQLExecutor(sqlExecutor, fesqlCase, false, false, type);
         return executor;
     }
 
     private static BaseSQLExecutor getFeBatchRequestQueryExecutor(SqlExecutor sqlExecutor,
-                                                                  SQLCase fesqlCase) {
+                                                                  SQLCase fesqlCase, ExecutorType type) {
         RequestQuerySQLExecutor executor = new RequestQuerySQLExecutor(
-                sqlExecutor, fesqlCase, true, false);
+                sqlExecutor, fesqlCase, true, false, type);
         return executor;
     }
 
-    private static BaseSQLExecutor getFeRequestQueryWithSpExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase, boolean isAsyn) {
+    private static BaseSQLExecutor getFeRequestQueryWithSpExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase, boolean isAsyn, ExecutorType type) {
         BaseSQLExecutor executor = null;
         executor = new StoredProcedureSQLExecutor(
-                sqlExecutor, fesqlCase, false, isAsyn);
+                sqlExecutor, fesqlCase, false, isAsyn, type);
         return executor;
     }
-    private static BaseSQLExecutor getFeBatchRequestQueryWithSpExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase, boolean isAsyn) {
+    private static BaseSQLExecutor getFeBatchRequestQueryWithSpExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase, boolean isAsyn, ExecutorType type) {
         BaseSQLExecutor executor = null;
         executor = new StoredProcedureSQLExecutor(
-                sqlExecutor, fesqlCase, fesqlCase.getBatch_request() != null, isAsyn);
+                sqlExecutor, fesqlCase, fesqlCase.getBatch_request() != null, isAsyn, type);
         return executor;
     }
 }
