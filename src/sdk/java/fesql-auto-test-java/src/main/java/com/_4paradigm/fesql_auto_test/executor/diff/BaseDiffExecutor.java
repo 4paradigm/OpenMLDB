@@ -6,13 +6,12 @@ import com._4paradigm.fesql_auto_test.checker.CheckerStrategy;
 import com._4paradigm.fesql_auto_test.checker.DiffVersionChecker;
 import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
+import com._4paradigm.fesql_auto_test.executor.ExecutorFactory;
 import com._4paradigm.fesql_auto_test.executor.IExecutor;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.log4j.ConsoleAppender;
 import org.testng.Assert;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -27,6 +26,7 @@ public abstract class BaseDiffExecutor implements IExecutor{
     protected SqlExecutor executor;
     protected Map<String,SqlExecutor> executorMap;
     protected Map<String,FEDBInfo> fedbInfoMap;
+    protected ExecutorFactory.ExecutorType executorType;
 
     public BaseDiffExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String,FEDBInfo> fedbInfoMap) {
         this.executorMap = executorMap;
@@ -62,7 +62,7 @@ public abstract class BaseDiffExecutor implements IExecutor{
     protected abstract FesqlResult execute(String version,SqlExecutor executor);
 
     protected void check(FesqlResult fesqlResult,Map<String,FesqlResult> resultMap) throws Exception {
-        List<Checker> strategyList = CheckerStrategy.build(fesqlCase, fesqlResult);
+        List<Checker> strategyList = CheckerStrategy.build(fesqlCase, fesqlResult, executorType);
         strategyList.add(new DiffVersionChecker(fesqlCase,fesqlResult,resultMap));
         for (Checker checker : strategyList) {
             checker.check();

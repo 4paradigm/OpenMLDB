@@ -1,11 +1,7 @@
 package com._4paradigm.fesql_auto_test.executor;
 
-import com._4paradigm.fesql_auto_test.checker.Checker;
-import com._4paradigm.fesql_auto_test.checker.CheckerStrategy;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
-import org.testng.Assert;
-
-import java.util.List;
+import com._4paradigm.sql.sdk.SqlExecutor;
 
 /**
  * @author zhaowei
@@ -21,7 +17,7 @@ public interface IExecutor {
 
     void prepare() throws Exception;
 
-    // FesqlResult execute() throws Exception;
+    FesqlResult execute(String version,SqlExecutor executor);
 
     // void check(FesqlResult fesqlResult) throws Exception;
 

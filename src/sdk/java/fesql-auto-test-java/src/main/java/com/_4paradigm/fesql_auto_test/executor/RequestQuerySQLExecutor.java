@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
-public class RequestQuerySQLExecutor extends SQLExecutor {
+public class RequestQuerySQLExecutor extends BaseSQLExecutor {
 
     protected boolean isBatchRequest;
     protected boolean isAsyn;
@@ -27,7 +27,63 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
 
 
     @Override
-    public void prepare() throws Exception {
+    public FesqlResult execute(String version, SqlExecutor executor) {
+        log.info("version:{} execute begin",version);
+        FesqlResult fesqlResult = null;
+        try {
+            List<String> sqls = fesqlCase.getSqls();
+            if (sqls != null && sqls.size() > 0) {
+                for (String sql : sqls) {
+                    // log.info("sql:{}", sql);
+                    sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                    fesqlResult = FesqlUtil.sql(executor, dbName, sql);
+                }
+            }
+            String sql = fesqlCase.getSql();
+            if (sql != null && sql.length() > 0) {
+                // log.info("sql:{}", sql);
+                sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                InputDesc request = null;
+                if (isBatchRequest) {
+                    InputDesc batchRequest = fesqlCase.getBatch_request();
+                    if (batchRequest == null) {
+                        log.error("No batch request provided in case");
+                        return null;
+                    }
+                    List<Integer> commonColumnIndices = new ArrayList<>();
+                    if (batchRequest.getCommon_column_indices() != null) {
+                        for (String str : batchRequest.getCommon_column_indices()) {
+                            if (str != null) {
+                                commonColumnIndices.add(Integer.parseInt(str));
+                            }
+                        }
+                    }
+
+                    fesqlResult = FesqlUtil.sqlBatchRequestMode(
+                            executor, dbName, sql, batchRequest, commonColumnIndices);
+                } else {
+                    if (null != fesqlCase.getBatch_request()) {
+                        request = fesqlCase.getBatch_request();
+                    } else if (!fesqlCase.getInputs().isEmpty()) {
+                        request = fesqlCase.getInputs().get(0);
+                    }
+                    if (null == request || CollectionUtils.isEmpty(request.getColumns())) {
+                        log.error("fail to execute in request query sql executor: sql case request columns is empty");
+                        return null;
+                    }
+                    fesqlResult = FesqlUtil.sqlRequestMode(executor, dbName, null == fesqlCase.getBatch_request(), sql, request);
+                }
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        log.info("version:{} execute end",version);
+        return fesqlResult;
+    }
+
+    @Override
+    protected void prepare(String version,SqlExecutor executor) {
+        log.info("version:{} prepare begin",version);
         boolean dbOk = executor.createDB(dbName);
         log.info("create db:{},{}", dbName, dbOk);
         boolean useFirstInputAsRequests = !isBatchRequest && null == fesqlCase.getBatch_request();
@@ -35,81 +91,28 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
         if (!res.isOk()) {
             throw new RuntimeException("fail to run SQLExecutor: prepare fail");
         }
-        for (InputDesc inputDesc : fesqlCase.getInputs()) {
-            tables = fesqlCase.getInputs();
-            tableNames.add(inputDesc.getName());
-        }
+        log.info("version:{} prepare end",version);
     }
 
     @Override
-    public void run() {
+    public boolean verify() {
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("request-unsupport")) {
             log.info("skip case in request mode: {}", fesqlCase.getDesc());
-            return;
+            return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-unsupport")) {
             log.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
-            return;
+            return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-request-unsupport")) {
             log.info("skip case in rtidb request mode: {}", fesqlCase.getDesc());
-            return;
+            return false;
         }
         if (FesqlConfig.isCluster() &&
                 null != fesqlCase.getMode() && fesqlCase.getMode().contains("cluster-unsupport")) {
             log.info("cluster-unsupport, skip case in cluster request mode: {}", fesqlCase.getDesc());
-            return;
+            return false;
         }
-        process();
-    }
-
-    @Override
-    public FesqlResult execute() throws Exception {
-        FesqlResult fesqlResult = null;
-        List<String> sqls = fesqlCase.getSqls();
-        if (sqls != null && sqls.size() > 0) {
-            for (String sql : sqls) {
-                log.info("sql:{}", sql);
-                sql = FesqlUtil.formatSql(sql, tableNames);
-                fesqlResult = FesqlUtil.sql(executor, dbName, sql);
-            }
-        }
-        String sql = fesqlCase.getSql();
-        if (sql != null && sql.length() > 0) {
-            log.info("sql:{}", sql);
-            sql = FesqlUtil.formatSql(sql, tableNames);
-
-            InputDesc request = null;
-            if (isBatchRequest) {
-                InputDesc batchRequest = fesqlCase.getBatch_request();
-                if (batchRequest == null) {
-                    log.error("No batch request provided in case");
-                    return null;
-                }
-                List<Integer> commonColumnIndices = new ArrayList<>();
-                if (batchRequest.getCommon_column_indices() != null) {
-                    for (String str : batchRequest.getCommon_column_indices()) {
-                        if (str != null) {
-                            commonColumnIndices.add(Integer.parseInt(str));
-                        }
-                    }
-                }
-
-                fesqlResult = FesqlUtil.sqlBatchRequestMode(
-                        executor, dbName, sql, batchRequest, commonColumnIndices);
-            } else {
-                if (null != fesqlCase.getBatch_request()) {
-                    request = fesqlCase.getBatch_request();
-                } else if (!fesqlCase.getInputs().isEmpty()) {
-                    request = fesqlCase.getInputs().get(0);
-                }
-                if (null == request || CollectionUtils.isEmpty(request.getColumns())) {
-                    log.error("fail to execute in request query sql executor: sql case request columns is empty");
-                    return null;
-                }
-                fesqlResult = FesqlUtil.sqlRequestMode(executor, dbName, null == fesqlCase.getBatch_request(), sql, request);
-            }
-        }
-        return fesqlResult;
+        return true;
     }
 }

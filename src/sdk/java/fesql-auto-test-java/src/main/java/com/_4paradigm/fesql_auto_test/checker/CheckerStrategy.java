@@ -3,13 +3,15 @@ package com._4paradigm.fesql_auto_test.checker;
 import com._4paradigm.fesql.sqlcase.model.ExpectDesc;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
+import com._4paradigm.fesql_auto_test.executor.ExecutorFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class CheckerStrategy {
 
-    public static List<Checker> build(SQLCase fesqlCase, FesqlResult fesqlResult) {
+    public static List<Checker> build(SQLCase fesqlCase, FesqlResult fesqlResult, ExecutorFactory.ExecutorType executorType) {
+
         List<Checker> checkList = new ArrayList<>();
         if (null == fesqlCase) {
             return checkList;
