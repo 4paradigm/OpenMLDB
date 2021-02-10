@@ -29,6 +29,7 @@ public class SQLCase implements Serializable{
     InputDesc batch_request;
     ExpectDesc expect;
     String spName = genAutoName();
+    UnequalExpect unequalExpect;
 
     private Map<Integer,ExpectDesc> expectProvider;
 
