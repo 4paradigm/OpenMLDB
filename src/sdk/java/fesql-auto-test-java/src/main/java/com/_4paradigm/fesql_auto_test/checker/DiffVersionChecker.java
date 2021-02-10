@@ -14,8 +14,8 @@ import java.util.Map;
 @Slf4j
 public class DiffVersionChecker extends BaseChecker{
 
-    public DiffVersionChecker(SQLCase fesqlCase, FesqlResult fesqlResult, Map<String,FesqlResult> resultMap){
-        super(fesqlCase,fesqlResult,resultMap);
+    public DiffVersionChecker(FesqlResult fesqlResult, Map<String,FesqlResult> resultMap){
+        super(fesqlResult,resultMap);
     }
 
     @Override

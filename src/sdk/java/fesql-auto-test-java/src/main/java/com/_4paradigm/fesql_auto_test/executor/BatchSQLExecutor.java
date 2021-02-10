@@ -6,6 +6,7 @@ import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.MapUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -61,14 +62,22 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
         if (sqls != null && sqls.size() > 0) {
             for (String sql : sqls) {
                 // log.info("sql:{}", sql);
-                sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                if(MapUtils.isNotEmpty(fedbInfoMap)) {
+                    sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                }else {
+                    sql = FesqlUtil.formatSql(sql, tableNames);
+                }
                 fesqlResult = FesqlUtil.sql(executor, dbName, sql);
             }
         }
         String sql = fesqlCase.getSql();
         if (sql != null && sql.length() > 0) {
             // log.info("sql:{}", sql);
-            sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+            if(MapUtils.isNotEmpty(fedbInfoMap)) {
+                sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+            }else {
+                sql = FesqlUtil.formatSql(sql, tableNames);
+            }
             fesqlResult = FesqlUtil.sql(executor, dbName, sql);
         }
         log.info("version:{} execute end",version);

@@ -92,7 +92,7 @@ public abstract class BaseSQLExecutor implements IExecutor{
     public void check(FesqlResult fesqlResult,Map<String,FesqlResult> resultMap) throws Exception {
         List<Checker> strategyList = CheckerStrategy.build(fesqlCase, fesqlResult, executorType);
         if(MapUtils.isNotEmpty(resultMap)) {
-            strategyList.add(new DiffVersionChecker(fesqlCase, fesqlResult, resultMap));
+            strategyList.add(new DiffVersionChecker(fesqlResult, resultMap));
         }
         for (Checker checker : strategyList) {
             checker.check();

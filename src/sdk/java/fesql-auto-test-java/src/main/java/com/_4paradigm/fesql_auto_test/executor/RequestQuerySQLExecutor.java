@@ -9,6 +9,7 @@ import com._4paradigm.fesql_auto_test.util.FesqlUtil;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,18 +38,26 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
         log.info("version:{} execute begin",version);
         FesqlResult fesqlResult = null;
         try {
-            List<String> sqls = fesqlCase.getSqls();
-            if (sqls != null && sqls.size() > 0) {
-                for (String sql : sqls) {
-                    // log.info("sql:{}", sql);
-                    sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
-                    fesqlResult = FesqlUtil.sql(executor, dbName, sql);
-                }
-            }
+            // List<String> sqls = fesqlCase.getSqls();
+            // if (sqls != null && sqls.size() > 0) {
+            //     for (String sql : sqls) {
+            //         // log.info("sql:{}", sql);
+            //         if(MapUtils.isNotEmpty(fedbInfoMap)) {
+            //             sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+            //         }else {
+            //             sql = FesqlUtil.formatSql(sql, tableNames);
+            //         }
+            //         fesqlResult = FesqlUtil.sql(executor, dbName, sql);
+            //     }
+            // }
             String sql = fesqlCase.getSql();
             if (sql != null && sql.length() > 0) {
                 // log.info("sql:{}", sql);
-                sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                if(MapUtils.isNotEmpty(fedbInfoMap)) {
+                    sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                }else {
+                    sql = FesqlUtil.formatSql(sql, tableNames);
+                }
                 InputDesc request = null;
                 if (isBatchRequest) {
                     InputDesc batchRequest = fesqlCase.getBatch_request();
