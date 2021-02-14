@@ -1,5 +1,5 @@
-#image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.12
-#services:
+image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.12
+services:
   - docker:dind
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
