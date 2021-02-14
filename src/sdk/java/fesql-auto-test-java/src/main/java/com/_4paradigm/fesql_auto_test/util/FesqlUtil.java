@@ -5,13 +5,13 @@ import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
-import com._4paradigm.sql.*;
+import com._4paradigm.sql.DataType;
 import com._4paradigm.sql.ResultSet;
+import com._4paradigm.sql.SQLRequestRow;
+import com._4paradigm.sql.Schema;
 import com._4paradigm.sql.jdbc.CallablePreparedStatement;
 import com._4paradigm.sql.jdbc.SQLResultSet;
 import com._4paradigm.sql.sdk.SqlExecutor;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.joda.time.DateTime;
@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import org.testng.collections.Lists;
 
 import java.sql.*;
-import java.sql.Date;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -933,10 +932,14 @@ public class FesqlUtil {
             SQLResultSet rs = (SQLResultSet)rawRs;
             fesqlResult.setOk(true);
             try {
-                fesqlResult.setMetaData(rs.getMetaData());
-                List<List<Object>> result = convertRestultSetToList(rs);
-                fesqlResult.setCount(result.size());
-                fesqlResult.setResult(result);
+                if(rs == null){
+                    fesqlResult.setOk(false);
+                }else {
+                    fesqlResult.setMetaData(rs.getMetaData());
+                    List<List<Object>> result = convertRestultSetToList(rs);
+                    fesqlResult.setCount(result.size());
+                    fesqlResult.setResult(result);
+                }
             } catch (Exception e) {
                 fesqlResult.setOk(false);
                 e.printStackTrace();
