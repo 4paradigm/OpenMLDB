@@ -17,7 +17,7 @@ import java.io.FileNotFoundException;
  * @date 2020/6/11 2:53 PM
  */
 @Slf4j
-@Feature("lastjoin")
+@Feature("Lastjoin")
 public class LastJoinTest extends FesqlTest {
 
     @DataProvider

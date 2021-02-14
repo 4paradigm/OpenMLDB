@@ -4,23 +4,26 @@ import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.common.FesqlTest;
 import com._4paradigm.fesql_auto_test.entity.FesqlDataProviderList;
 import com._4paradigm.fesql_auto_test.executor.ExecutorFactory;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Story;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.FileNotFoundException;
 
+@Feature("BatchTest")
 public class BatchRequestTest extends FesqlTest {
-
+    @Story("BatchRequest")
     @Test(dataProvider = "testBatchRequestData")
     public void testBatchRequest(SQLCase testCase) {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatchRequest).run();
     }
-
+    @Story("SPBatchRequest")
     @Test(dataProvider = "testBatchRequestData")
     public void testSPBatchRequest(SQLCase testCase) {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatchRequestWithSp).run();
     }
-
+    @Story("SPBatchRequestAsyn")
     @Test(dataProvider = "testBatchRequestData")
     public void testSPBatchRequestAsyn(SQLCase testCase) {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatchRequestWithSpAsync).run();

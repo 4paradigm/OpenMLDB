@@ -4,6 +4,8 @@ import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.common.FesqlTest;
 import com._4paradigm.fesql_auto_test.entity.FesqlDataProviderList;
 import com._4paradigm.fesql_auto_test.executor.ExecutorFactory;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Story;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -15,6 +17,7 @@ import java.io.FileNotFoundException;
  * @date 2021/2/2
  */
 @Slf4j
+@Feature("FZCase")
 public class FZCaseTest extends FesqlTest {
 
     @DataProvider
@@ -25,22 +28,22 @@ public class FZCaseTest extends FesqlTest {
                 });
         return dp.getCases().toArray();
     }
-
+    @Story("batch")
     @Test(dataProvider = "testFZCaseData", enabled = false)
     public void testFZCaseBatch(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
     }
-
+    @Story("request")
     @Test(dataProvider = "testFZCaseData", enabled = false)
     public void testFZCaseRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
     }
-
+    @Story("requestWithSp")
     @Test(dataProvider = "testFZCaseData", enabled = false)
     public void testFZCaseRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
     }
-
+    @Story("requestWithSpAysn")
     @Test(dataProvider = "testFZCaseData", enabled = false)
     public void testFZCaseRequestModeWithSpAsync(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
