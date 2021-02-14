@@ -7,8 +7,8 @@ stages:
 #  - precheck
   - build
 #  - daily
-#  - quick
-  - manual
+  - quick
+#  - manual
 #  - deploy
 #
 #style_check:
