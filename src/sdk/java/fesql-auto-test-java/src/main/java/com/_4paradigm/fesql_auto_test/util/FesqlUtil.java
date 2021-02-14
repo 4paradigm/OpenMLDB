@@ -932,14 +932,10 @@ public class FesqlUtil {
             SQLResultSet rs = (SQLResultSet)rawRs;
             fesqlResult.setOk(true);
             try {
-                if(rs == null){
-                    fesqlResult.setOk(false);
-                }else {
-                    fesqlResult.setMetaData(rs.getMetaData());
-                    List<List<Object>> result = convertRestultSetToList(rs);
-                    fesqlResult.setCount(result.size());
-                    fesqlResult.setResult(result);
-                }
+                fesqlResult.setMetaData(rs.getMetaData());
+                List<List<Object>> result = convertRestultSetToList(rs);
+                fesqlResult.setCount(result.size());
+                fesqlResult.setResult(result);
             } catch (Exception e) {
                 fesqlResult.setOk(false);
                 e.printStackTrace();
