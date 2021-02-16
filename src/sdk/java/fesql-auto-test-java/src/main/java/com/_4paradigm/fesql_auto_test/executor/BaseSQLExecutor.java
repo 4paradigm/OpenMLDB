@@ -8,6 +8,7 @@ import com._4paradigm.fesql_auto_test.checker.DiffVersionChecker;
 import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
+import com._4paradigm.fesql_auto_test.util.ReportLog;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
@@ -32,6 +33,7 @@ public abstract class BaseSQLExecutor implements IExecutor{
     protected ExecutorFactory.ExecutorType executorType;
     protected String dbName;
     protected List<String> tableNames = Lists.newArrayList();
+    protected ReportLog log = ReportLog.of();
 
     public BaseSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, ExecutorFactory.ExecutorType executorType) {
         this.executor = executor;

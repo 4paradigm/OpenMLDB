@@ -7,7 +7,6 @@ import com._4paradigm.fesql_auto_test.executor.ExecutorFactory;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
 import io.qameta.allure.Story;
-import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -17,7 +16,7 @@ import java.io.FileNotFoundException;
  * @author zhaowei
  * @date 2020/6/11 2:53 PM
  */
-@Slf4j
+// @Slf4j
 @Feature("SelectTest")
 public class SelectTest extends FesqlTest {
 
@@ -25,8 +24,8 @@ public class SelectTest extends FesqlTest {
     public Object[] testSelectCase() throws FileNotFoundException {
         FesqlDataProviderList dp = FesqlDataProviderList.dataProviderGenerator(
                 new String[]{
-                        // "/query/const_query.yaml",
-                        "/integration/v1/select/test_select_sample.yaml"
+                        "/query/const_query.yaml",
+                        "/integration/v1/select/"
                 });
         return dp.getCases().toArray();
     }

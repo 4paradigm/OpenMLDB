@@ -5,7 +5,6 @@ import com._4paradigm.fesql.sqlcase.model.Table;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
 import com._4paradigm.sql.Schema;
-import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
 
 import java.text.ParseException;
@@ -17,7 +16,7 @@ import java.util.List;
  * @author zhaowei
  * @date 2020/6/16 3:14 PM
  */
-@Slf4j
+// @Slf4j
 public class ResultChecker extends BaseChecker {
 
     public ResultChecker(ExpectDesc expect, FesqlResult fesqlResult) {

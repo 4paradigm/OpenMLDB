@@ -5,7 +5,6 @@ import com._4paradigm.fesql_auto_test.common.FesqlTest;
 import com._4paradigm.fesql_auto_test.entity.FesqlDataProviderList;
 import com._4paradigm.fesql_auto_test.executor.ExecutorFactory;
 import io.qameta.allure.Feature;
-import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -15,7 +14,7 @@ import java.io.FileNotFoundException;
  * @author zhaowei
  * @date 2020/6/11 2:53 PM
  */
-@Slf4j
+// @Slf4j
 @Feature("Create")
 public class CreateTest extends FesqlTest {
 
