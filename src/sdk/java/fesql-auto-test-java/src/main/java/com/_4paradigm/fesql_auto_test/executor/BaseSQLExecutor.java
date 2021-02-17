@@ -10,7 +10,6 @@ import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
 import com._4paradigm.fesql_auto_test.util.ReportLog;
 import com._4paradigm.sql.sdk.SqlExecutor;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.testng.Assert;
@@ -24,7 +23,7 @@ import java.util.stream.Collectors;
  * @author zhaowei
  * @date 2020/6/15 11:23 AM
  */
-@Slf4j
+// @Slf4j
 public abstract class BaseSQLExecutor implements IExecutor{
     protected SQLCase fesqlCase;
     protected SqlExecutor executor;

@@ -209,7 +209,7 @@ fesql_auto_test_level_0:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test.sh "0"
-#    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test_cluster.sh "0"
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test_cluster.sh "0"
   after_script:
     - tar czf $CI_COMMIT_SHA  src/sdk/java/fesql-auto-test-java/target/allure-results
     - bash steps/upload-nexus.sh $CI_COMMIT_SHA
