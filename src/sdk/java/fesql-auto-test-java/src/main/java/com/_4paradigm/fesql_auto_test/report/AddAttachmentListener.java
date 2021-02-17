@@ -19,6 +19,7 @@ public class AddAttachmentListener implements IHookable {
         List<String> logs = ReportLog.of().getLogs();
         for(String log:logs){
             sb.append(log).append("\n");
+            System.out.println(log);
         }
         return sb.toString();
     }

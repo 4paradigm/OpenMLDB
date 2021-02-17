@@ -9,4 +9,9 @@ public class TestFEDBDeploy {
         FEDBDeploy deploy = new FEDBDeploy("2021-02-06");
         deploy.deployFEDB(2,3);
     }
+    @Test
+    public void test2(){
+        FEDBDeploy deploy = new FEDBDeploy("fedb");
+        deploy.deployFEDB(2,3);
+    }
 }
