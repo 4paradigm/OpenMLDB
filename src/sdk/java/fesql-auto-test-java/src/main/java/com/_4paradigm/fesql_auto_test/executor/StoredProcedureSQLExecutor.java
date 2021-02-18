@@ -87,8 +87,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
 
     @Override
     public void tearDown(String version,SqlExecutor executor) {
-        super.tearDown(version,executor);
-        // log.info("version:{},begin drop table",version);
+        log.info("version:{},begin drop table",version);
         if (CollectionUtils.isEmpty(spNames)) {
             return;
         }
@@ -96,5 +95,6 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
             String drop = "drop procedure " + spName + ";";
             FesqlUtil.ddl(executor, dbName, drop);
         }
+        super.tearDown(version,executor);
     }
 }
