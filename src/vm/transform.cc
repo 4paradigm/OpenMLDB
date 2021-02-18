@@ -923,7 +923,7 @@ Status ExtractProjectInfos(const node::PlanNodeList& projects,
                 for (size_t k = 0; k < schema_source->size(); ++k) {
                     auto col_name = schema_source->GetColumnName(k);
                     auto col_ref = node_manager->MakeColumnRefNode(
-                        col_name, all_expr->GetRelationName());
+                        col_name, schema_source->GetSourceName());
                     output->Add(col_name, col_ref, nullptr);
                 }
             }
