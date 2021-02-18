@@ -28,8 +28,6 @@ import java.util.List;
 @Slf4j
 public class ResultChecker extends BaseChecker {
 
-    private static final Logger logger = LoggerFactory.getLogger(ResultChecker.class);
-
     public ResultChecker(SQLCase fesqlCase, FesqlResult fesqlResult) {
         super(fesqlCase, fesqlResult);
     }
