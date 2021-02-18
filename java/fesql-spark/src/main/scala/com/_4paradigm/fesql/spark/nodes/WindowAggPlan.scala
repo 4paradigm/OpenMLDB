@@ -6,7 +6,7 @@ import com._4paradigm.fesql.common.{FesqlException, JITManager, SerializableByte
 import com._4paradigm.fesql.node.FrameType
 import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.nodes.window.{RowDebugger, WindowComputer, WindowSampleSupport}
-import com._4paradigm.fesql.spark.utils.{AutoDestructibleIterator, FesqlUtil, SparkColumnUtil}
+import com._4paradigm.fesql.spark.utils.{AutoDestructibleIterator, FesqlUtil, SparkColumnUtil, SparkUtil}
 import com._4paradigm.fesql.utils.SkewUtils
 import com._4paradigm.fesql.vm.Window.WindowFrameType
 import com._4paradigm.fesql.vm.PhysicalWindowAggrerationNode
@@ -121,12 +121,12 @@ object WindowAggPlan {
 
       if (keepIndexColumn) {
         // Notice that input df may has index column, check in another way
-        if (subDf.schema.add(ctx.getIndexInfo(node.GetNodeId()).indexColumnName, LongType) != source.schema) {
+        if (!SparkUtil.checkSchemaIgnoreNullable(subDf.schema.add(ctx.getIndexInfo(node.GetNodeId()).indexColumnName, LongType), source.schema)) {
           throw new FesqlException("Keep index column, {$i}th Window union with inconsistent schema:\n" +
             s"Expect ${source.schema}\nGet ${subDf.schema.add(ctx.getIndexInfo(node.GetNodeId()).indexColumnName, LongType)}")
         }
       } else {
-        if (subDf.schema != source.schema) {
+        if (!SparkUtil.checkSchemaIgnoreNullable(subDf.schema, source.schema)) {
           throw new FesqlException("{$i}th Window union with inconsistent schema:\n" +
             s"Expect ${source.schema}\nGet ${subDf.schema}")
         }

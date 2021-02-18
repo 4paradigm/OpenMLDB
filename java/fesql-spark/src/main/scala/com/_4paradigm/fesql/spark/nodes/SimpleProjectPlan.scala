@@ -52,8 +52,7 @@ object SimpleProjectPlan {
     }
 
     // Use Spark DataFrame to select columns
-    val result = SparkColumnUtil.setDataframeNullable(
-      inputDf.select(selectColList: _*), nullable=true)
+    val result = inputDf.select(selectColList: _*)
 
     SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), result)
   }

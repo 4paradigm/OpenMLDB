@@ -7,6 +7,7 @@ import java.text.SimpleDateFormat
 import com._4paradigm.fesql.common.JITManager
 import com._4paradigm.fesql.spark.api.{FesqlDataframe, FesqlSession}
 import com._4paradigm.fesql.spark.SparkTestSuite
+import com._4paradigm.fesql.spark.utils.SparkUtil
 import com._4paradigm.fesql.sqlcase.model._
 import org.apache.commons.collections.CollectionUtils
 import org.apache.spark.sql.{DataFrame, Row}
@@ -118,7 +119,8 @@ class SQLBaseSuite extends SparkTestSuite {
     }
 
     val expectSchema = parseSchema(expect.getColumns)
-    assert(data.schema == expectSchema)
+    // Notice that only check schema name and type, but not nullable attribute
+    assert(SparkUtil.checkSchemaIgnoreNullable(data.schema, expectSchema))
 
     val expectData = parseData(expect.getRows, expectSchema)
       .zipWithIndex.sortBy(_._1.mkString(","))
