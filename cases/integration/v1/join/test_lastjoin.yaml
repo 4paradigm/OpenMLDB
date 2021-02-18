@@ -213,6 +213,7 @@ cases:
         - [5,"bb",24,34,68]
   - id: 5
     desc: 基于子查询作窗口-功能边界外
+    tags: ["TODO","client core"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
