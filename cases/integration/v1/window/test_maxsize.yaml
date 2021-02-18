@@ -661,6 +661,7 @@ cases:
   -
     id: 23-2
     desc: lastjoin结合maxsize, last join副表有ts列为null
+    tags: ["TODO"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

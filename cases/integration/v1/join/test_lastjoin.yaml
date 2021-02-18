@@ -320,7 +320,7 @@ cases:
       success: true
   - id: 7
     desc: lastjoin-ts-null
-    tags: ["@chendihao", "zhaowei", "lastjoin对null的处理现在跟在线无法一致"]
+    tags: ["TODO", "@chendihao", "zhaowei", "lastjoin对null的处理现在跟在线无法一致"]
     mode: offline-unsupport
     inputs:
       -
@@ -839,7 +839,7 @@ cases:
       success: false
   - id: 15
     desc: lastjoin-重名,指定不同的表名-在线场景
-    tags: ["@zhaowei", "离线场景预期不一样,后面和可能需要针对离线在线配置不同预期"]
+    tags: ["TODO", "@zhaowei", "离线场景预期不一样,后面和可能需要针对离线在线配置不同预期"]
     mode: offline-unsupport
     inputs:
       -
