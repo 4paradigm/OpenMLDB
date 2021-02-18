@@ -84,6 +84,9 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_executable(segment_test storage/segment_test.cc flags.cc)
     target_link_libraries(segment_test gtest ${BIN_LIBS})
 
+    add_executable(schema_test storage/schema_test.cc flags.cc storage/schema.cc)
+    target_link_libraries(schema_test gtest ${BIN_LIBS})
+
     add_executable(table_test  storage/table_test.cc proto/tablet.pb.cc proto/common.pb.cc proto/type.pb.cc flags.cc)
     target_link_libraries(table_test gtest ${BIN_LIBS})
 

@@ -333,7 +333,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
                     {"name": "mcc", "type": "string", "add_ts_idx": "true"},
                     {"name": "amt", "type": "double", "add_ts_idx": "false"},
                     {"name": "ts", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
-                    {"name": "ts1", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
+                    {"name": "ts1", "type": "int64", "add_ts_idx": "false", "is_ts_col": "false"},
                     ],
 		"column_key":[
                     {"index_name":"card_mcc", "col_name": ["card", "mcc"], "ts_name":["ts"]},
@@ -360,7 +360,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         self.assertIn('MakeSnapshot ok', rs3)
         mf = self.get_manifest(self.leaderpath, tid, 0)
         self.assertEqual(mf['offset'], '7')
-        self.assertEqual(mf['count'], '4')
+        self.assertEqual(mf['count'], '3')
 
     def test_two_ts_ttl(self):
         name = 'tname{}'.format(time.time())

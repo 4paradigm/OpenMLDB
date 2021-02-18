@@ -1391,10 +1391,8 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts,
                 lat_ttl = tables[0].ttl();
             }
         }
-        ::rtidb::storage::TTLDesc ttl_desc(abs_ttl, lat_ttl);
-        ::rtidb::cmd::PrintColumnKey(ttl_type, ttl_desc,
-                                     tables[0].column_desc_v1(),
-                                     tables[0].column_key());
+        ::rtidb::storage::TTLSt ttl_st(abs_ttl, lat_ttl, ::rtidb::storage::TTLSt::ConvertTTLType(ttl_type));
+        ::rtidb::cmd::PrintColumnKey(ttl_st, tables[0].column_desc_v1(), tables[0].column_key());
 
     } else if (tables[0].column_desc_size() > 0) {
         if (tables[0].added_column_desc_size() == 0) {
@@ -4926,35 +4924,6 @@ void HandleClientHelp(const std::vector<std::string> parts,
     }
 }
 
-void HandleClientSetTTLClock(const std::vector<std::string> parts,
-                             ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 4) {
-        std::cout << "Bad format" << std::endl;
-        return;
-    }
-    struct tm tm;
-    time_t timestamp;
-    if (parts[3].length() == 14 && ::rtidb::base::IsNumber(parts[3]) &&
-        strptime(parts[3].c_str(), "%Y%m%d%H%M%S", &tm) != NULL) {
-        timestamp = mktime(&tm);
-    } else {
-        printf("time format error (e.g 20171108204001)");
-        return;
-    }
-    try {
-        bool ok = client->SetTTLClock(boost::lexical_cast<uint32_t>(parts[1]),
-                                      boost::lexical_cast<uint32_t>(parts[2]),
-                                      timestamp);
-        if (ok) {
-            std::cout << "setttlclock ok" << std::endl;
-        } else {
-            std::cout << "Fail to setttlclock" << std::endl;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad format" << std::endl;
-    }
-}
-
 void HandleClientGetTableStatus(const std::vector<std::string> parts,
                                 ::rtidb::client::TabletClient* client) {
     std::vector<::rtidb::api::TableStatus> status_vec;
@@ -5810,12 +5779,8 @@ void HandleClientShowSchema(const std::vector<std::string>& parts,
                 lat_ttl = table_meta.ttl();
             }
         }
-        ::rtidb::storage::TTLDesc ttl_desc(abs_ttl, lat_ttl);
-        std::string ttl_suff =
-            table_meta.ttl_type() == ::rtidb::api::kLatestTime ? "" : "min";
-        ::rtidb::cmd::PrintColumnKey(ttl_type, ttl_desc,
-                                     table_meta.column_desc(),
-                                     table_meta.column_key());
+        ::rtidb::storage::TTLSt ttl_st(abs_ttl, lat_ttl, ::rtidb::storage::TTLSt::ConvertTTLType(ttl_type));
+        ::rtidb::cmd::PrintColumnKey(ttl_st, table_meta.column_desc(), table_meta.column_key());
     } else if (!schema.empty()) {
         ::rtidb::cmd::PrintSchema(schema);
     } else {
@@ -6303,8 +6268,6 @@ void StartClient() {
             HandleClientGetTableStatus(parts, &client);
         } else if (parts[0] == "setexpire") {
             HandleClientSetExpire(parts, &client);
-        } else if (parts[0] == "setttlclock") {
-            HandleClientSetTTLClock(parts, &client);
         } else if (parts[0] == "connectzk") {
             HandleClientConnectZK(parts, &client);
         } else if (parts[0] == "disconnectzk") {
@@ -6540,6 +6503,8 @@ void StartNsClient() {
             HandleNSShowCatalogVersion(&client);
         } else if (parts[0] == "use") {
             HandleNsUseDb(parts, &client);
+        } else if (parts[0] == "dropdb") {
+            HandleNsDropDb(parts, &client);
         } else if (parts[0] == "sql") {
             use_sql = true;
             display_prefix = endpoint + " " + client.GetDb() + " sql> ";

@@ -113,15 +113,14 @@ struct QueryIt {
 class CombineIterator {
  public:
     CombineIterator(std::vector<QueryIt> q_its, uint64_t start_time,
-                    ::rtidb::api::GetType st_type, uint64_t expire_time,
-                    uint32_t expire_cnt);
+                    ::rtidb::api::GetType st_type, const ::rtidb::storage::TTLSt& expired_value);
     void SeekToFirst();
     void Next();
     bool Valid();
     uint64_t GetTs();
     rtidb::base::Slice GetValue();
     inline uint64_t GetExpireTime() const { return expire_time_; }
-    inline ::rtidb::api::TTLType GetTTLType() const { return ttl_type_; }
+    inline ::rtidb::storage::TTLType GetTTLType() const { return ttl_type_; }
 
  private:
     void SelectIterator();
@@ -130,8 +129,8 @@ class CombineIterator {
     std::vector<QueryIt> q_its_;
     const uint64_t st_;
     ::rtidb::api::GetType st_type_;
-    ::rtidb::api::TTLType ttl_type_;
-    const uint64_t expire_time_;
+    ::rtidb::storage::TTLType ttl_type_;
+    uint64_t expire_time_;
     const uint32_t expire_cnt_;
     QueryIt* cur_qit_;
 };

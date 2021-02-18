@@ -356,50 +356,7 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
                 table->column_desc_v1(), &output_schema);
             PrintTableSchema(std::cout, output_schema);
             ::fesql::vm::IndexList index_list;
-            ::rtidb::catalog::SchemaAdapter::ConvertIndex(table->column_key(),
-                                                          &index_list);
-            auto ttl_type = table->ttl_desc().ttl_type();
-            auto ttl_it = TTL_TYPE_MAP.find(ttl_type);
-            if (ttl_it == TTL_TYPE_MAP.end()) {
-                std::cout << "not found " <<  ::rtidb::api::TTLType_Name(ttl_type)
-                    << " in TTL_TYPE_MAP" << std::endl;
-                return;
-            }
-
-            std::map<std::string, ::rtidb::common::ColumnDesc> col_map;
-            for (auto& col : table->column_desc_v1()) {
-                col_map.insert(std::make_pair(col.name(), col));
-            }
-            for (int i = 0; i < index_list.size(); i++) {
-                ::fesql::type::IndexDef* index_def = index_list.Mutable(i);
-                index_def->set_ttl_type(ttl_it->second);
-                const std::string& ts_name = index_def->second_key();
-                if (ts_name.empty()) {
-                    if (ttl_type == ::rtidb::api::kAbsAndLat || ttl_type == ::rtidb::api::kAbsOrLat) {
-                        index_def->add_ttl(table->ttl_desc().abs_ttl());
-                        index_def->add_ttl(table->ttl_desc().lat_ttl());
-                    } else if (ttl_type == ::rtidb::api::kAbsoluteTime) {
-                        index_def->add_ttl(table->ttl_desc().abs_ttl());
-                    } else {
-                        index_def->add_ttl(table->ttl_desc().lat_ttl());
-                    }
-                    continue;
-                }
-                auto col_it = col_map.find(ts_name);
-                if (col_it == col_map.end()) {
-                    std::cout << "ts name not found in col_map" << std::endl;
-                    return;
-                }
-                auto& col = col_it->second;
-                if (ttl_type == ::rtidb::api::kAbsAndLat || ttl_type == ::rtidb::api::kAbsOrLat) {
-                    index_def->add_ttl(col.abs_ttl());
-                    index_def->add_ttl(col.lat_ttl());
-                } else if (ttl_type == ::rtidb::api::kAbsoluteTime) {
-                    index_def->add_ttl(col.abs_ttl());
-                } else {
-                    index_def->add_ttl(col.lat_ttl());
-                }
-            }
+            ::rtidb::catalog::SchemaAdapter::ConvertIndex(table->column_key(), &index_list);
             PrintTableIndex(std::cout, index_list);
             break;
         }
