@@ -3917,7 +3917,8 @@ int32_t TabletImpl::DeleteTableInternal(
             PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
         }
         if (!catalog_->DeleteTable(table->GetDB(), table->GetName(), pid)) {
-            PDLOG(WARNING, "failed to delete table form catalog. db %s tid %u pid %u", table->GetDB().c_str(), tid, pid);
+            PDLOG(WARNING, "failed to delete table form catalog. db %s tid %u pid %u",
+                    table->GetDB().c_str(), tid, pid);
         }
         code = 0;
     } while (0);
