@@ -4,6 +4,7 @@ import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.entity.FesqlDataProvider;
 import com._4paradigm.fesql_auto_test.util.ReportLog;
 import com._4paradigm.sql.sdk.SqlExecutor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.testng.Assert;
 import org.testng.ITest;
@@ -18,9 +19,9 @@ import java.util.List;
  * @author zhaowei
  * @date 2020/6/11 2:02 PM
  */
-// @Slf4j
+@Slf4j
 public class FesqlTest implements ITest {
-    protected ReportLog log = ReportLog.of();
+    protected ReportLog reportLog = ReportLog.of();
     protected static SqlExecutor executor;
     private ThreadLocal<String> testName = new ThreadLocal<>();
     private int testNum = 0;

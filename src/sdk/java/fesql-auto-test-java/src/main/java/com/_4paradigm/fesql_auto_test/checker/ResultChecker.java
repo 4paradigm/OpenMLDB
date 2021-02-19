@@ -5,6 +5,7 @@ import com._4paradigm.fesql.sqlcase.model.Table;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
 import com._4paradigm.sql.Schema;
+import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
 
 import java.text.ParseException;
@@ -16,7 +17,7 @@ import java.util.List;
  * @author zhaowei
  * @date 2020/6/16 3:14 PM
  */
-// @Slf4j
+@Slf4j
 public class ResultChecker extends BaseChecker {
 
     public ResultChecker(ExpectDesc expect, FesqlResult fesqlResult) {
@@ -26,6 +27,7 @@ public class ResultChecker extends BaseChecker {
     @Override
     public void check() throws ParseException {
         log.info("result check");
+        reportLog.info("result check");
         if (expect.getColumns().isEmpty()) {
             throw new RuntimeException("fail check result: columns are empty");
         }
@@ -47,7 +49,9 @@ public class ResultChecker extends BaseChecker {
         }
 
         log.info("expect:{}", expectRows);
+        reportLog.info("expect:{}", expectRows);
         log.info("actual:{}", actual);
+        reportLog.info("actual:{}", actual);
         Assert.assertEquals(actual.size(), expectRows.size(),
                 String.format("ResultChecker fail: expect size %d, real size %d", expectRows.size(), actual.size()));
         for (int i = 0; i < actual.size(); ++i) {
@@ -99,6 +103,7 @@ public class ResultChecker extends BaseChecker {
             this.index = index;
             if (-1 == index) {
                 log.warn("compare without index");
+                reportLog.warn("compare without index");
             }
         }
 

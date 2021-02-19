@@ -6,13 +6,14 @@ import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
 import com._4paradigm.fesql_auto_test.util.ReportLog;
 import com._4paradigm.sql.sdk.SqlExecutor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Map;
 
-// @Slf4j
+@Slf4j
 public class ExecutorFactory {
 
-    private static ReportLog log = ReportLog.of();
+    private static ReportLog reportLog = ReportLog.of();
 
     public enum ExecutorType {
         kDDL("DDL"),                       //执行DDL
@@ -88,6 +89,7 @@ public class ExecutorFactory {
     private static BaseSQLExecutor getFeBatchQueryExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase, ExecutorType type) {
         if (FesqlConfig.isCluster()) {
             log.info("cluster unsupport batch query mode");
+            reportLog.info("cluster unsupport batch query mode");
             return new NullExecutor(sqlExecutor, fesqlCase, type);
         }
         BaseSQLExecutor executor = null;

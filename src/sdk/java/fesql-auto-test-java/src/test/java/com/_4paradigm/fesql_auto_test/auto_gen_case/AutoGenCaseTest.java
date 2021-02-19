@@ -9,6 +9,7 @@ import com._4paradigm.fesql_auto_test.entity.FesqlDataProviderList;
 import com._4paradigm.fesql_auto_test.executor.ExecutorFactory;
 import com._4paradigm.fesql_auto_test.util.FEDBDeploy;
 import com._4paradigm.sql.sdk.SqlExecutor;
+import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -22,7 +23,7 @@ import java.util.Map;
  * @author zhaowei
  * @date 2020/12/28 1:05 PM
  */
-// @Slf4j
+@Slf4j
 public class AutoGenCaseTest extends FesqlTest {
 
     private Map<String,SqlExecutor> executorMap = new HashMap<>();

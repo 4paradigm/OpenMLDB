@@ -14,7 +14,7 @@ public abstract class BaseChecker implements Checker {
     protected FesqlResult fesqlResult;
     protected Map<String,FesqlResult> resultMap;
     protected ExpectDesc expect;
-    protected ReportLog log = ReportLog.of();
+    protected ReportLog reportLog = ReportLog.of();
 
     public BaseChecker(ExpectDesc expect, FesqlResult fesqlResult){
         this.expect = expect;

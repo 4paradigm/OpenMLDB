@@ -65,6 +65,4 @@ public class CheckerStrategy {
         if(euqalsExpect!=null) return euqalsExpect;
         return expect;
     }
-
-
 }

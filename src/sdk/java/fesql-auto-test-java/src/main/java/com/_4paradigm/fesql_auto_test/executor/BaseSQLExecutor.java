@@ -10,6 +10,7 @@ import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
 import com._4paradigm.fesql_auto_test.util.ReportLog;
 import com._4paradigm.sql.sdk.SqlExecutor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.testng.Assert;
@@ -23,7 +24,7 @@ import java.util.stream.Collectors;
  * @author zhaowei
  * @date 2020/6/15 11:23 AM
  */
-// @Slf4j
+@Slf4j
 public abstract class BaseSQLExecutor implements IExecutor{
     protected SQLCase fesqlCase;
     protected SqlExecutor executor;
@@ -32,7 +33,7 @@ public abstract class BaseSQLExecutor implements IExecutor{
     protected ExecutorFactory.ExecutorType executorType;
     protected String dbName;
     protected List<String> tableNames = Lists.newArrayList();
-    protected ReportLog log = ReportLog.of();
+    protected ReportLog reportLog = ReportLog.of();
 
     public BaseSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, ExecutorFactory.ExecutorType executorType) {
         this.executor = executor;
@@ -67,6 +68,7 @@ public abstract class BaseSQLExecutor implements IExecutor{
         String className = Thread.currentThread().getStackTrace()[2].getClassName();
         String methodName = Thread.currentThread().getStackTrace()[2].getMethodName();
         log.info(className+"."+methodName+":"+fesqlCase.getDesc() + " Begin!");
+        reportLog.info(className+"."+methodName+":"+fesqlCase.getDesc() + " Begin!");
         try {
             boolean verify = verify();
             if(!verify) return;
@@ -110,6 +112,7 @@ public abstract class BaseSQLExecutor implements IExecutor{
 
     public void tearDown(String version,SqlExecutor executor) {
         log.info("version:{},begin drop table",version);
+        reportLog.info("version:{},begin drop table",version);
         List<InputDesc> tables = fesqlCase.getInputs();
         if (CollectionUtils.isEmpty(tables)) {
             return;

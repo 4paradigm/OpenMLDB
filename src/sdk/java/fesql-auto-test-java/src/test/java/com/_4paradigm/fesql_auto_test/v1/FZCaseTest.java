@@ -6,6 +6,7 @@ import com._4paradigm.fesql_auto_test.entity.FesqlDataProviderList;
 import com._4paradigm.fesql_auto_test.executor.ExecutorFactory;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
+import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -15,7 +16,7 @@ import java.io.FileNotFoundException;
  * @author chenjing
  * @date 2021/2/2
  */
-// @Slf4j
+@Slf4j
 @Feature("FZCase")
 public class FZCaseTest extends FesqlTest {
 
