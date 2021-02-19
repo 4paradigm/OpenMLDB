@@ -59,7 +59,7 @@ public class CheckerStrategy {
                 if(request_batch_expect!=null) return request_batch_expect;
                 break;
         }
-        ExpectDesc realtime_expect = unequalExpect.getRealtime_expect();
+        ExpectDesc realtime_expect = unequalExpect.getOnline_expect();
         if(realtime_expect!=null) return realtime_expect;
         ExpectDesc euqalsExpect = unequalExpect.getExpect();
         if(euqalsExpect!=null) return euqalsExpect;
