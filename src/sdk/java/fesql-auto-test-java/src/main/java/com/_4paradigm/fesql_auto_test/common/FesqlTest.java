@@ -22,6 +22,11 @@ public class FesqlTest implements ITest {
     private ThreadLocal<String> testName = new ThreadLocal<>();
     private int testNum = 0;
 
+    public static String CaseNameFormat(SQLCase sqlCase) {
+        return String.format("%s_%s_%s",
+                FesqlGlobalVar.env, sqlCase.getId(), sqlCase.getDesc());
+    }
+
     @BeforeMethod
     public void BeforeMethod(Method method, Object[] testData) {
         Assert.assertNotNull(
@@ -30,11 +35,9 @@ public class FesqlTest implements ITest {
             SQLCase sqlCase = (SQLCase) testData[0];
             Assert.assertNotEquals(FesqlDataProvider.FAIL_SQL_CASE,
                     sqlCase.getDesc(), "fail to run fesql test with FAIL DATA PROVIDER SQLCase: check yaml case");
-            testName.set(String.format("[%d]%s_%s_%s_%s", testNum,
-                    method.getName(),
-                    FesqlGlobalVar.env, sqlCase.getId(), sqlCase.getDesc()));
+            testName.set(String.format("[%d]%s.%s", testNum, method.getName(), CaseNameFormat(sqlCase)));
         } else {
-            testName.set(method.getName() + "_" + testData[0]);
+            testName.set(String.format("[%d]%s.%s", testNum, method.getName(), null == testData[0] ? "null" : testData[0].toString()));
         }
         testNum++;
     }

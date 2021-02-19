@@ -1270,21 +1270,19 @@ bool NsClient::TransformToTableDef(
             case fesql::node::kColumnIndex: {
                 fesql::node::ColumnIndexNode* column_index =
                     (fesql::node::ColumnIndexNode*)column_desc;
-
-                if (column_index->GetName().empty()) {
-                    column_index->SetName(fesql::plan::GenerateName(
-                        "INDEX", table->column_key_size()));
+                std::string index_name = column_index->GetName();
+                if (index_name.empty()) {
+                    index_name = fesql::plan::GenerateName("INDEX", table->column_key_size());
+                    column_index->SetName(index_name);
                 }
-                if (index_names.find(column_index->GetName()) !=
-                    index_names.end()) {
-                    status->msg = "CREATE common: INDEX NAME " +
-                                  column_index->GetName() + " duplicate";
+                if (index_names.find(index_name) != index_names.end()) {
+                    status->msg = "CREATE common: INDEX NAME " + index_name + " duplicate";
                     status->code = fesql::common::kSQLError;
                     return false;
                 }
-                index_names.insert(column_index->GetName());
+                index_names.insert(index_name);
                 ::rtidb::common::ColumnKey* index = table->add_column_key();
-                index->set_index_name(column_index->GetName());
+                index->set_index_name(index_name);
 
                 if (column_index->GetKey().empty()) {
                     status->msg = "CREATE common: INDEX KEY empty";
@@ -1301,21 +1299,18 @@ bool NsClient::TransformToTableDef(
                     cit->second->set_add_ts_idx(true);
                     index->add_col_name(key);
                 }
+                ::rtidb::common::TTLSt* ttl_st = index->mutable_ttl();
                 if (!column_index->ttl_type().empty()) {
                     std::string ttl_type = column_index->ttl_type();
                     std::transform(ttl_type.begin(), ttl_type.end(), ttl_type.begin(), ::tolower);
                     if (ttl_type == "absolute") {
-                        table->mutable_ttl_desc()->set_ttl_type(
-                                rtidb::api::kAbsoluteTime);
+                        ttl_st->set_ttl_type(rtidb::type::kAbsoluteTime);
                     } else if (ttl_type == "latest") {
-                        table->mutable_ttl_desc()->set_ttl_type(
-                                rtidb::api::kLatestTime);
+                        ttl_st->set_ttl_type(rtidb::type::kLatestTime);
                     } else if (ttl_type == "absorlat") {
-                        table->mutable_ttl_desc()->set_ttl_type(
-                                rtidb::api::kAbsOrLat);
+                        ttl_st->set_ttl_type(rtidb::type::kAbsOrLat);
                     } else if (ttl_type == "absandlat") {
-                        table->mutable_ttl_desc()->set_ttl_type(
-                                rtidb::api::kAbsAndLat);
+                        ttl_st->set_ttl_type(rtidb::type::kAbsAndLat);
                     } else {
                         status->msg = "CREATE common: ttl_type " +
                                       column_index->ttl_type() +
@@ -1323,28 +1318,30 @@ bool NsClient::TransformToTableDef(
                         status->code = fesql::common::kSQLError;
                         return false;
                     }
+                } else {
+                    ttl_st->set_ttl_type(rtidb::type::kAbsoluteTime);
                 }
-                if (table->ttl_desc().ttl_type() == rtidb::api::kAbsoluteTime) {
+                if (ttl_st->ttl_type() == rtidb::type::kAbsoluteTime) {
                     if (column_index->GetAbsTTL() == -1 || column_index->GetLatTTL() != -2) {
                         status->msg = "CREATE common: abs ttl format error";
                         status->code = fesql::common::kSQLError;
                         return false;
                     }
                     if (column_index->GetAbsTTL() == -2) {
-                        table->mutable_ttl_desc()->set_abs_ttl(0);
+                        ttl_st->set_abs_ttl(0);
                     } else {
-                        table->mutable_ttl_desc()->set_abs_ttl(column_index->GetAbsTTL() / 60000);
+                        ttl_st->set_abs_ttl(column_index->GetAbsTTL() / 60000);
                     }
-                } else if (table->ttl_desc().ttl_type() == rtidb::api::kLatestTime) {
+                } else if (ttl_st->ttl_type() == rtidb::type::kLatestTime) {
                     if (column_index->GetLatTTL() == -1 || column_index->GetAbsTTL() != -2) {
                         status->msg = "CREATE common: lat ttl format error";
                         status->code = fesql::common::kSQLError;
                         return false;
                     }
                     if (column_index->GetLatTTL() == -2) {
-                        table->mutable_ttl_desc()->set_lat_ttl(0);
+                        ttl_st->set_lat_ttl(0);
                     } else {
-                        table->mutable_ttl_desc()->set_lat_ttl(column_index->GetLatTTL());
+                        ttl_st->set_lat_ttl(column_index->GetLatTTL());
                     }
                 } else {
                     if (column_index->GetAbsTTL() == -1) {
@@ -1353,9 +1350,9 @@ bool NsClient::TransformToTableDef(
                         return false;
                     }
                     if (column_index->GetAbsTTL() == -2) {
-                        table->mutable_ttl_desc()->set_abs_ttl(0);
+                        ttl_st->set_abs_ttl(0);
                     } else {
-                        table->mutable_ttl_desc()->set_abs_ttl(column_index->GetAbsTTL() / 60000);
+                        ttl_st->set_abs_ttl(column_index->GetAbsTTL() / 60000);
                     }
                     if (column_index->GetLatTTL() == -1) {
                         status->msg = "CREATE common: lat ttl format error";
@@ -1363,9 +1360,9 @@ bool NsClient::TransformToTableDef(
                         return false;
                     }
                     if (column_index->GetLatTTL() == -2) {
-                        table->mutable_ttl_desc()->set_lat_ttl(0);
+                        ttl_st->set_lat_ttl(0);
                     } else {
-                        table->mutable_ttl_desc()->set_lat_ttl(column_index->GetLatTTL());
+                        ttl_st->set_lat_ttl(column_index->GetLatTTL());
                     }
                 }
                 if (!column_index->GetTs().empty()) {
@@ -1393,14 +1390,6 @@ bool NsClient::TransformToTableDef(
                             status->code = fesql::common::kSQLError;
                             return false;
                         }
-                    }
-                    if (table->ttl_desc().ttl_type() == rtidb::api::kAbsoluteTime) {
-                        it->second->set_abs_ttl(table->ttl_desc().abs_ttl());
-                    } else if (table->ttl_desc().ttl_type() == rtidb::api::kLatestTime) {
-                        it->second->set_lat_ttl(table->ttl_desc().lat_ttl());
-                    } else {
-                        it->second->set_abs_ttl(table->ttl_desc().abs_ttl());
-                        it->second->set_lat_ttl(table->ttl_desc().lat_ttl());
                     }
                 } else {
                     no_ts_cnt++;

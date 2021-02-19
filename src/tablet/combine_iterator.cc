@@ -15,21 +15,14 @@ namespace tablet {
 CombineIterator::CombineIterator(std::vector<QueryIt> q_its,
                                  uint64_t start_time,
                                  ::rtidb::api::GetType st_type,
-                                 uint64_t expire_time, uint32_t expire_cnt)
+                                 const ::rtidb::storage::TTLSt& expired_value)
     : q_its_(std::move(q_its)),
       st_(start_time),
       st_type_(st_type),
-      ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
-      expire_time_(expire_time),
-      expire_cnt_(expire_cnt),
-      cur_qit_(nullptr) {
-    for (const auto& q_it : q_its_) {
-        if (q_it.table) {
-            ttl_type_ = q_it.table->GetTTLType();
-            break;
-        }
-    }
-}
+      ttl_type_(expired_value.ttl_type),
+      expire_time_(expired_value.abs_ttl),
+      expire_cnt_(expired_value.lat_ttl),
+      cur_qit_(nullptr) {}
 
 void CombineIterator::SeekToFirst() {
     q_its_.erase(std::remove_if(q_its_.begin(), q_its_.end(),
@@ -55,10 +48,10 @@ void CombineIterator::SeekToFirst() {
                 Seek(q_it.it.get(), st_, st_type_);
             } else {
                 switch (ttl_type_) {
-                    case ::rtidb::api::TTLType::kAbsoluteTime:
+                    case ::rtidb::storage::TTLType::kAbsoluteTime:
                         Seek(q_it.it.get(), st_, st_type_);
                         break;
-                    case ::rtidb::api::TTLType::kAbsAndLat:
+                    case ::rtidb::storage::TTLType::kAbsAndLat:
                         if (!SeekWithCount(q_it.it.get(), st_, st_type_,
                                            expire_cnt_, &q_it.iter_pos)) {
                             Seek(q_it.it.get(), st_, st_type_);
@@ -87,23 +80,23 @@ void CombineIterator::SelectIterator() {
             cur_ts = iter->it->GetKey();
             bool is_expire = false;
             switch (ttl_type_) {
-                case ::rtidb::api::TTLType::kAbsoluteTime:
+                case ::rtidb::storage::TTLType::kAbsoluteTime:
                     if (expire_time_ != 0 && cur_ts <= expire_time_) {
                         is_expire = true;
                     }
                     break;
-                case ::rtidb::api::TTLType::kLatestTime:
+                case ::rtidb::storage::TTLType::kLatestTime:
                     if (expire_cnt_ != 0 && iter->iter_pos >= expire_cnt_) {
                         is_expire = true;
                     }
                     break;
-                case ::rtidb::api::TTLType::kAbsAndLat:
+                case ::rtidb::storage::TTLType::kAbsAndLat:
                     if ((expire_cnt_ != 0 && iter->iter_pos >= expire_cnt_) &&
                         (expire_time_ != 0 && cur_ts <= expire_time_)) {
                         is_expire = true;
                     }
                     break;
-                case ::rtidb::api::TTLType::kAbsOrLat:
+                case ::rtidb::storage::TTLType::kAbsOrLat:
                     if ((expire_cnt_ != 0 && iter->iter_pos >= expire_cnt_) ||
                         (expire_time_ != 0 && cur_ts <= expire_time_)) {
                         is_expire = true;

@@ -118,9 +118,8 @@ public class CreateTableTest extends TestCaseBase {
         }
     }
 
-
     @Test
-    public void testColumnKey() {
+    public void testColumnKeyMults() {
         String name = String.valueOf(id.incrementAndGet());
         ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
         ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
@@ -135,7 +134,17 @@ public class CreateTableTest extends TestCaseBase {
                 .build();
         boolean ok = nsc.createTable(table);
         Assert.assertFalse(ok);
+    }
 
+    @Test
+    public void testColumnKey() {
+        String name = String.valueOf(id.incrementAndGet());
+        ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
+        ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
+        ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        ColumnDesc col3 = ColumnDesc.newBuilder().setName("col1").setAddTsIdx(false).setType("int64").build();
+        ColumnDesc col4 = ColumnDesc.newBuilder().setName("ts1").setAddTsIdx(false).setType("int64").build();
+        ColumnDesc col5 = ColumnDesc.newBuilder().setName("ts2").setAddTsIdx(false).setType("timestamp").build();
         ColumnKey colKey1 = ColumnKey.newBuilder().addColName("card").addTsName("ts1").build();
         TableInfo table1 = TableInfo.newBuilder()
                 .setName(name).setTtl(0)

@@ -1125,21 +1125,6 @@ bool TabletClient::SetExpire(uint32_t tid, uint32_t pid, bool is_expire) {
     return true;
 }
 
-bool TabletClient::SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp) {
-    ::rtidb::api::SetTTLClockRequest request;
-    ::rtidb::api::GeneralResponse response;
-    request.set_tid(tid);
-    request.set_pid(pid);
-    request.set_timestamp(timestamp);
-    bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::SetTTLClock,
-                            &request, &response, FLAGS_request_timeout_ms, 1);
-    if (!ok || response.code() != 0) {
-        return false;
-    }
-    return true;
-}
-
 bool TabletClient::GetTableFollower(uint32_t tid, uint32_t pid,
                                     uint64_t& offset,
                                     std::map<std::string, uint64_t>& info_map,
