@@ -15,7 +15,7 @@ public class UnequalExpect {
     private ExpectDesc batch_expect;
     /** 在线预期，查找顺序
      * 1.在线预期 2.所有结果一致预期  3.expect */
-    private ExpectDesc realtime_expect;
+    private ExpectDesc online_expect;
     /** 离线式预期，查找顺序
      * 1.离线预期 2.所有结果一致预期  3.expect */
     private ExpectDesc offline_expect;
