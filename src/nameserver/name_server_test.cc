@@ -133,7 +133,7 @@ TEST_F(NameServerImplTest, CreateDisallowedTable) {
     brpc::Server server;
     ASSERT_TRUE(StartNS("127.0.0.1:9631", &server, &options));
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(
-        "127.0.0.1:9631", "");
+        FLAGS_use_rdma, "127.0.0.1:9631", "");
     name_server_client.Init();
 
     brpc::ServerOptions options1;
@@ -168,8 +168,8 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     brpc::Server server;
     ASSERT_TRUE(StartNS("127.0.0.1:9631", &server, &options));
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(
-        "127.0.0.1:9631", "");
-    name_server_client.Init();
+        FLAGS_use_rdma, "127.0.0.1:9631", "");
+    int ret = name_server_client.Init();
 
     brpc::ServerOptions options1;
     brpc::Server server1;
@@ -1657,7 +1657,7 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
     brpc::Server server;
     ASSERT_TRUE(StartNS("127.0.0.1:9634", &server, &options));
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(
-        "127.0.0.1:9634", "");
+        FLAGS_use_rdma, "127.0.0.1:9634", "");
     name_server_client.Init();
 
     brpc::ServerOptions options1;
