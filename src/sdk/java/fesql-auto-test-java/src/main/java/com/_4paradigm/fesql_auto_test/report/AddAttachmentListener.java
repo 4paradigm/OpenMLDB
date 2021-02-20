@@ -34,9 +34,9 @@ public class AddAttachmentListener implements IHookable {
     @Override
     public void run(IHookCallBack callBack, ITestResult testResult) {
         callBack.runTestMethod(testResult);
-        Object parameter = testResult.getParameters()[0];
-        addCase(parameter);
         if(testResult.getThrowable()!=null) {
+            Object parameter = testResult.getParameters()[0];
+            addCase(parameter);
             addLog();
         }
     }
