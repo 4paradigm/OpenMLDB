@@ -26,23 +26,20 @@ DECLARE_bool(enable_show_tp);
 namespace rtidb {
 namespace client {
 
-TabletClient::TabletClient(const std::string& endpoint,
-        const std::string& real_endpoint)
-    : endpoint_(endpoint), real_endpoint_(endpoint), client_(endpoint) {
+TabletClient::TabletClient(bool use_rdma, const std::string& endpoint, const std::string& real_endpoint)
+    : endpoint_(endpoint), real_endpoint_(endpoint), client_(use_rdma, endpoint) {
         if (!real_endpoint.empty()) {
             real_endpoint_ = real_endpoint;
-            client_ = ::rtidb::RpcClient<
-                ::rtidb::api::TabletServer_Stub>(real_endpoint);
+            client_ = ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub>(use_rdma, real_endpoint);
         }
     }
 
-TabletClient::TabletClient(const std::string& endpoint,
-        const std::string& real_endpoint, bool use_sleep_policy)
-    : endpoint_(endpoint), real_endpoint_(endpoint), client_(endpoint, use_sleep_policy) {
+TabletClient::TabletClient(bool use_rdma, const std::string& endpoint, const std::string& real_endpoint,
+    bool use_sleep_policy)
+    : endpoint_(endpoint), real_endpoint_(endpoint), client_(use_rdma, endpoint, use_sleep_policy) {
         if (!real_endpoint.empty()) {
             real_endpoint_ = real_endpoint;
-            client_ = ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub>(
-                    real_endpoint, use_sleep_policy);
+            client_ = ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub>(use_rdma, real_endpoint, use_sleep_policy);
         }
     }
 

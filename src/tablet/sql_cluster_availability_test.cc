@@ -147,8 +147,7 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     FLAGS_endpoint = "127.0.0.1:9631";
     brpc::Server ns_server;
     StartNameServer(ns_server);
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client(FLAGS_endpoint, "");
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_use_rdma, FLAGS_endpoint, "");
     name_server_client.Init();
 
     // tablet1
@@ -277,8 +276,7 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     FLAGS_endpoint = "127.0.0.1:9631";
     brpc::Server ns_server;
     StartNameServer(ns_server);
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client(FLAGS_endpoint, "");
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_use_rdma, FLAGS_endpoint, "");
     name_server_client.Init();
 
     // tablet1
