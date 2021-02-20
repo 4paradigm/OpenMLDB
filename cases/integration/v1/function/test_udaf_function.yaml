@@ -141,7 +141,7 @@ cases:
         - [4,"aa",2,2,2,2,2,2,2,2]
   -
     id: 6
-    desc: max/max/count/sum/avg/distinct_count-bool
+    desc: count/distinct_count-bool
     level: 5
     inputs:
       -
