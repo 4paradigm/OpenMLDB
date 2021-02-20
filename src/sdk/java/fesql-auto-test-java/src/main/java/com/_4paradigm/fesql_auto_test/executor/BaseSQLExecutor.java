@@ -2,6 +2,7 @@ package com._4paradigm.fesql_auto_test.executor;
 
 import com._4paradigm.fesql.sqlcase.model.InputDesc;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.fesql.sqlcase.model.SQLCaseType;
 import com._4paradigm.fesql_auto_test.checker.Checker;
 import com._4paradigm.fesql_auto_test.checker.CheckerStrategy;
 import com._4paradigm.fesql_auto_test.checker.DiffVersionChecker;
@@ -30,12 +31,12 @@ public abstract class BaseSQLExecutor implements IExecutor{
     protected SqlExecutor executor;
     protected Map<String,SqlExecutor> executorMap;
     protected Map<String,FEDBInfo> fedbInfoMap;
-    protected ExecutorFactory.ExecutorType executorType;
+    protected SQLCaseType executorType;
     protected String dbName;
     protected List<String> tableNames = Lists.newArrayList();
     protected ReportLog reportLog = ReportLog.of();
 
-    public BaseSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, ExecutorFactory.ExecutorType executorType) {
+    public BaseSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
         this.executor = executor;
         this.fesqlCase = fesqlCase;
         this.executorType = executorType;
@@ -47,7 +48,7 @@ public abstract class BaseSQLExecutor implements IExecutor{
         }
     }
 
-    public BaseSQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String,FEDBInfo> fedbInfoMap, ExecutorFactory.ExecutorType executorType) {
+    public BaseSQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String,FEDBInfo> fedbInfoMap, SQLCaseType executorType) {
         this(executor,fesqlCase,executorType);
         this.executor = executor;
         this.fedbInfoMap = fedbInfoMap;

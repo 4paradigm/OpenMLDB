@@ -2,6 +2,7 @@ package com._4paradigm.fesql_auto_test.executor;
 
 import com._4paradigm.fesql.sqlcase.model.InputDesc;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.fesql.sqlcase.model.SQLCaseType;
 import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
@@ -22,13 +23,13 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
     protected boolean isAsyn;
 
     public RequestQuerySQLExecutor(SqlExecutor executor, SQLCase fesqlCase,
-                                   boolean isBatchRequest, boolean isAsyn, ExecutorFactory.ExecutorType executorType) {
+                                   boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
         super(executor, fesqlCase, executorType);
         this.isBatchRequest = isBatchRequest;
         this.isAsyn = isAsyn;
     }
     public RequestQuerySQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String,FEDBInfo> fedbInfoMap,
-                                      boolean isBatchRequest, boolean isAsyn, ExecutorFactory.ExecutorType executorType) {
+                                      boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
         super(fesqlCase, executor, executorMap, fedbInfoMap, executorType);
         this.isBatchRequest = isBatchRequest;
         this.isAsyn = isAsyn;
