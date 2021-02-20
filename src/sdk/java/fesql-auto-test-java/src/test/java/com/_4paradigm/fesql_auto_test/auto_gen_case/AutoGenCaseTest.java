@@ -10,6 +10,8 @@ import com._4paradigm.fesql_auto_test.entity.FesqlDataProviderList;
 import com._4paradigm.fesql_auto_test.executor.ExecutorFactory;
 import com._4paradigm.fesql_auto_test.util.FEDBDeploy;
 import com._4paradigm.sql.sdk.SqlExecutor;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Story;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -25,6 +27,7 @@ import java.util.Map;
  * @date 2020/12/28 1:05 PM
  */
 @Slf4j
+@Feature("AutoCase")
 public class AutoGenCaseTest extends FesqlTest {
 
     private Map<String,SqlExecutor> executorMap = new HashMap<>();
@@ -62,18 +65,22 @@ public class AutoGenCaseTest extends FesqlTest {
         return dp.getCases().toArray();
     }
 
+    @Story("batch")
     @Test(dataProvider = "getGenCaseData")
     public void testGenCaseBatch(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, executorMap, fedbInfoMap, testCase, SQLCaseType.kDiffBatch).run();
     }
+    @Story("request")
     @Test(dataProvider = "getGenCaseData")
     public void testGenCaseRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, executorMap, fedbInfoMap, testCase, SQLCaseType.kDiffRequest).run();
     }
+    @Story("requestWithSp")
     @Test(dataProvider = "getGenCaseData")
     public void testGenCaseRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, executorMap, fedbInfoMap, testCase, SQLCaseType.kDiffRequestWithSp).run();
     }
+    @Story("requestWithSpAysn")
     @Test(dataProvider = "getGenCaseData")
     public void testGenCaseRequestModeWithSpAsync(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, executorMap, fedbInfoMap, testCase, SQLCaseType.kDiffRequestWithSpAsync).run();
