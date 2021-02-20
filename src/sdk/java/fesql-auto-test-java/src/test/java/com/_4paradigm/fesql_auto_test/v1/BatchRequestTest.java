@@ -1,6 +1,7 @@
 package com._4paradigm.fesql_auto_test.v1;
 
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.fesql.sqlcase.model.SQLCaseType;
 import com._4paradigm.fesql_auto_test.common.FesqlTest;
 import com._4paradigm.fesql_auto_test.entity.FesqlDataProviderList;
 import com._4paradigm.fesql_auto_test.executor.ExecutorFactory;
@@ -16,17 +17,17 @@ public class BatchRequestTest extends FesqlTest {
     @Story("BatchRequest")
     @Test(dataProvider = "testBatchRequestData")
     public void testBatchRequest(SQLCase testCase) {
-        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatchRequest).run();
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatchRequest).run();
     }
     @Story("SPBatchRequest")
     @Test(dataProvider = "testBatchRequestData")
     public void testSPBatchRequest(SQLCase testCase) {
-        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatchRequestWithSp).run();
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatchRequestWithSp).run();
     }
     @Story("SPBatchRequestAsyn")
     @Test(dataProvider = "testBatchRequestData")
     public void testSPBatchRequestAsyn(SQLCase testCase) {
-        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatchRequestWithSpAsync).run();
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatchRequestWithSpAsync).run();
     }
 
     @DataProvider

@@ -1,6 +1,7 @@
 package com._4paradigm.fesql_auto_test.auto_gen_case;
 
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.fesql.sqlcase.model.SQLCaseType;
 import com._4paradigm.fesql_auto_test.common.FesqlClient;
 import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.fesql_auto_test.common.FesqlTest;
@@ -63,18 +64,18 @@ public class AutoGenCaseTest extends FesqlTest {
 
     @Test(dataProvider = "getGenCaseData")
     public void testGenCaseBatch(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, executorMap, fedbInfoMap, testCase, ExecutorFactory.ExecutorType.kDiffBatch).run();
+        ExecutorFactory.build(executor, executorMap, fedbInfoMap, testCase, SQLCaseType.kDiffBatch).run();
     }
     @Test(dataProvider = "getGenCaseData")
     public void testGenCaseRequestMode(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, executorMap, fedbInfoMap, testCase, ExecutorFactory.ExecutorType.kDiffRequest).run();
+        ExecutorFactory.build(executor, executorMap, fedbInfoMap, testCase, SQLCaseType.kDiffRequest).run();
     }
     @Test(dataProvider = "getGenCaseData")
     public void testGenCaseRequestModeWithSp(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, executorMap, fedbInfoMap, testCase, ExecutorFactory.ExecutorType.kDiffRequestWithSp).run();
+        ExecutorFactory.build(executor, executorMap, fedbInfoMap, testCase, SQLCaseType.kDiffRequestWithSp).run();
     }
     @Test(dataProvider = "getGenCaseData")
     public void testGenCaseRequestModeWithSpAsync(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, executorMap, fedbInfoMap, testCase, ExecutorFactory.ExecutorType.kDiffRequestWithSpAsync).run();
+        ExecutorFactory.build(executor, executorMap, fedbInfoMap, testCase, SQLCaseType.kDiffRequestWithSpAsync).run();
     }
 }

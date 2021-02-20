@@ -1,6 +1,7 @@
 package com._4paradigm.fesql_auto_test.ut;
 
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.fesql.sqlcase.model.SQLCaseType;
 import com._4paradigm.fesql_auto_test.common.FesqlTest;
 import com._4paradigm.fesql_auto_test.entity.FesqlDataProviderList;
 import com._4paradigm.fesql_auto_test.executor.ExecutorFactory;
@@ -32,22 +33,22 @@ public class UniqueExpectTest extends FesqlTest {
     @Test(dataProvider = "getData")
     @Step("{testCase.desc}")
     public void testUniqueExpect(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
     @Story("request")
     @Test(dataProvider = "getData")
     public void testUniqueExpectRequestMode(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
     @Test(dataProvider = "getData")
     public void testUniqueExpectRequestModeWithSp(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }
     @Story("requestWithSpAysn")
     @Test(dataProvider = "getData")
     public void testUniqueExpectRequestModeWithSpAysn(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
     }
 
 }

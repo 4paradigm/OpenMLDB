@@ -1,6 +1,7 @@
 package com._4paradigm.fesql_auto_test.v1;
 
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.fesql.sqlcase.model.SQLCaseType;
 import com._4paradigm.fesql_auto_test.common.FesqlTest;
 import com._4paradigm.fesql_auto_test.entity.FesqlDataProviderList;
 import com._4paradigm.fesql_auto_test.executor.ExecutorFactory;
@@ -31,21 +32,21 @@ public class FZCaseTest extends FesqlTest {
     @Story("batch")
     @Test(dataProvider = "testFZCaseData", enabled = false)
     public void testFZCaseBatch(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
     @Story("request")
     @Test(dataProvider = "testFZCaseData", enabled = false)
     public void testFZCaseRequestMode(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
     @Test(dataProvider = "testFZCaseData", enabled = false)
     public void testFZCaseRequestModeWithSp(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }
     @Story("requestWithSpAysn")
     @Test(dataProvider = "testFZCaseData", enabled = false)
     public void testFZCaseRequestModeWithSpAsync(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
     }
 }
