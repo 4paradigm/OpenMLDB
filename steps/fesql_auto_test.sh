@@ -40,4 +40,7 @@ case_xml=test_v1.xml
 cd ${ROOT_DIR}/src/sdk/java/
 mvn install -Dmaven.test.skip=true
 cd ${ROOT_DIR}/src/sdk/java/fesql-auto-test-java
-mvn test -DsuiteXmlFile=test_suite/${case_xml} -DcaseLevel=$CASE_LEVEL
+mvn clean test -DsuiteXmlFile=test_suite/${case_xml} -DcaseLevel=$CASE_LEVEL
+code=$?
+echo ">>>code:${code}"
+exit $code
