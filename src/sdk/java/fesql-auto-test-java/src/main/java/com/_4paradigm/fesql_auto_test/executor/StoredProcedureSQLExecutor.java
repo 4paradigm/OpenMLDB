@@ -40,7 +40,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
                 executor, dbName, fesqlCase.getInputs(),
                 !isBatchRequest && null == fesqlCase.getBatch_request(), 1);
         if (!res.isOk()) {
-            throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail");
+            throw new RuntimeException("fail to run StoredProcedureSQLExecutor: prepare fail");
         }
         log.info("version:{} prepare end",version);
         reportLog.info("version:{} prepare end",version);
