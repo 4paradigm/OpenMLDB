@@ -102,6 +102,12 @@ class Table {
     }
 
     inline std::string GetName() const { return name_; }
+    inline std::string GetDB() const {
+        if (table_meta_.has_db()) {
+            return table_meta_.db();
+        }
+        return "";
+    }
 
     inline uint32_t GetId() const { return id_; }
 

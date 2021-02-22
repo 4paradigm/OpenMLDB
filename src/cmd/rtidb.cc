@@ -411,8 +411,8 @@ int PutData(
                     real_endpoint = rit->second;
                 }
             }
-            clients.insert(std::make_pair(endpoint, std::make_shared<
-                    ::rtidb::client::TabletClient>(endpoint, real_endpoint)));
+            clients.insert(std::make_pair(endpoint,
+                    std::make_shared<::rtidb::client::TabletClient>(FLAGS_use_rdma, endpoint, real_endpoint)));
             if (clients[endpoint]->Init() < 0) {
                 printf("tablet client init failed, endpoint is %s\n",
                        endpoint.c_str());
@@ -576,9 +576,7 @@ std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
             real_endpoint = rit->second;
         }
     }
-    std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
-        std::make_shared<::rtidb::client::TabletClient>(
-        endpoint, real_endpoint);
+    auto tablet_client = std::make_shared<::rtidb::client::TabletClient>(FLAGS_use_rdma, endpoint, real_endpoint);
     if (tablet_client->Init() < 0) {
         msg = "tablet client init failed, endpoint is " + endpoint;
         tablet_client.reset();
@@ -6190,7 +6188,7 @@ void StartClient() {
     if (FLAGS_interactive) {
         std::cout << "Welcome to rtidb with version " << RTIDB_VERSION << std::endl;
     }
-    ::rtidb::client::TabletClient client(FLAGS_endpoint, "");
+    ::rtidb::client::TabletClient client(FLAGS_use_rdma, FLAGS_endpoint, "");
     client.Init();
     std::string display_prefix = FLAGS_endpoint + "> ";
     while (true) {
@@ -6355,7 +6353,7 @@ void StartNsClient() {
                   << std::endl;
         return;
     }
-    ::rtidb::client::NsClient client(endpoint, real_endpoint);
+    ::rtidb::client::NsClient client(FLAGS_use_rdma, endpoint, real_endpoint);
     if (client.Init() < 0) {
         std::cout << "client init failed" << std::endl;
         return;
@@ -6540,7 +6538,7 @@ void StartBsClient() {
     if (FLAGS_interactive) {
         std::cout << "Welcome to rtidb with version " << RTIDB_VERSION << std::endl;
     }
-    ::rtidb::client::BsClient client(FLAGS_endpoint, "");
+    ::rtidb::client::BsClient client(FLAGS_use_rdma, FLAGS_endpoint, "");
     client.Init();
     std::string display_prefix = FLAGS_endpoint + "> ";
     while (true) {

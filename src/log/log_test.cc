@@ -6,6 +6,7 @@
 //
 
 #include <gtest/gtest.h>
+#include <gflags/gflags.h>
 #include <sched.h>
 #include <sys/stat.h>
 #include <sys/types.h>

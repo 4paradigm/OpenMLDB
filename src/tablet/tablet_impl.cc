@@ -3916,6 +3916,9 @@ int32_t TabletImpl::DeleteTableInternal(
             replicator->DelAllReplicateNode();
             PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
         }
+        if (!table->GetDB().empty()) {
+            catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
+        }
         code = 0;
     } while (0);
     if (code < 0) {

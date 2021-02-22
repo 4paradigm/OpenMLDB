@@ -237,6 +237,7 @@ class Cursor(object):
                     driver.sql_router_sdk.kTypeFloat: builder.AppendFloat,
                     driver.sql_router_sdk.kTypeDouble: builder.AppendDouble,
                     driver.sql_router_sdk.kTypeString: builder.AppendString,
+                    # TODO: align python and java date process, 1900 problem
                     driver.sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and builder.AppendDate(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
                     driver.sql_router_sdk.kTypeTimestamp: builder.AppendTimestamp
                     }
