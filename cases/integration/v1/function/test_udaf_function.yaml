@@ -14,7 +14,7 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, max(c2) OVER w1 as m2,max(c3) OVER w1 as m3,max(c4) OVER w1 as m4,max(c5) OVER w1 as m5,max(c6) OVER w1 as m6,max(c7) OVER w1 as m7,max(c8) OVER w1 as m8,max(c9) OVER w1 as m9 FROM {0} WINDOW
+      SELECT {0}.id, c1, max(c2) OVER w1 as m2,max(c3) OVER w1 as m3,max(c4) OVER w1 as m4,max(c5) OVER w1 as m5,max(c6) OVER w1 as m6,max(c7) OVER w1 as m7,max(c8) OVER w1 as m8,max(c9) OVER w1 as m9 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -37,7 +37,7 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, min(c2) OVER w1 as m2,min(c3) OVER w1 as m3,min(c4) OVER w1 as m4,min(c5) OVER w1 as m5,min(c6) OVER w1 as m6,min(c7) OVER w1 as m7,min(c8) OVER w1 as m8,min(c9) OVER w1 as m9 FROM {0} WINDOW
+      SELECT {0}.id, c1, min(c2) OVER w1 as m2,min(c3) OVER w1 as m3,min(c4) OVER w1 as m4,min(c5) OVER w1 as m5,min(c6) OVER w1 as m6,min(c7) OVER w1 as m7,min(c8) OVER w1 as m8,min(c9) OVER w1 as m9 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -60,7 +60,7 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, count(c2) OVER w1 as m2,count(c3) OVER w1 as m3,count(c4) OVER w1 as m4,count(c5) OVER w1 as m5,count(c6) OVER w1 as m6,count(c7) OVER w1 as m7,count(c8) OVER w1 as m8,count(c9) OVER w1 as m9 FROM {0} WINDOW
+      SELECT {0}.id, c1, count(c2) OVER w1 as m2,count(c3) OVER w1 as m3,count(c4) OVER w1 as m4,count(c5) OVER w1 as m5,count(c6) OVER w1 as m6,count(c7) OVER w1 as m7,count(c8) OVER w1 as m8,count(c9) OVER w1 as m9 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -83,7 +83,7 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, sum(c2) OVER w1 as m2,sum(c3) OVER w1 as m3,sum(c4) OVER w1 as m4,sum(c5) OVER w1 as m5,sum(c6) OVER w1 as m6 FROM {0} WINDOW
+      SELECT {0}.id, c1, sum(c2) OVER w1 as m2,sum(c3) OVER w1 as m3,sum(c4) OVER w1 as m4,sum(c5) OVER w1 as m5,sum(c6) OVER w1 as m6 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -106,7 +106,7 @@ cases:
           - [3,"aa",1,1,33,1.1,2.1,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, avg(c2) OVER w1 as m2,avg(c3) OVER w1 as m3,avg(c4) OVER w1 as m4,avg(c5) OVER w1 as m5,avg(c6) OVER w1 as m6 FROM {0} WINDOW
+      SELECT {0}.id, c1, avg(c2) OVER w1 as m2,avg(c3) OVER w1 as m3,avg(c4) OVER w1 as m4,avg(c5) OVER w1 as m5,avg(c6) OVER w1 as m6 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -129,7 +129,7 @@ cases:
           - [3,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-02","c",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, distinct_count(c2) OVER w1 as m2,distinct_count(c3) OVER w1 as m3,distinct_count(c4) OVER w1 as m4,distinct_count(c5) OVER w1 as m5,distinct_count(c6) OVER w1 as m6,distinct_count(c7) OVER w1 as m7,distinct_count(c8) OVER w1 as m8,distinct_count(c9) OVER w1 as m9 FROM {0} WINDOW
+      SELECT {0}.id, c1, distinct_count(c2) OVER w1 as m2,distinct_count(c3) OVER w1 as m3,distinct_count(c4) OVER w1 as m4,distinct_count(c5) OVER w1 as m5,distinct_count(c6) OVER w1 as m6,distinct_count(c7) OVER w1 as m7,distinct_count(c8) OVER w1 as m8,distinct_count(c9) OVER w1 as m9 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -153,7 +153,7 @@ cases:
           - [3,"aa",1,1,33,1.1,2.1,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, count(c10) OVER w1 as count_bool, distinct_count(c10) OVER w1 as distinct_count_bool 
+      SELECT {0}.id, count(c10) OVER w1 as count_bool, distinct_count(c10) OVER w1 as distinct_count_bool 
       FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -177,7 +177,7 @@ cases:
           - [3,"aa",1590738992000,1590738992000]
           - [4,"aa",1590738993000,NULL]
     sql: |
-      SELECT id, sum(c3) OVER w1 as m2 FROM {0} WINDOW
+      SELECT {0}.id, sum(c3) OVER w1 as m2 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c2 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -200,7 +200,7 @@ cases:
           - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
           - [3,"aa",3,32,1.3,2.3,1590738992000,"2020-05-02","b"]
     sql: |
-      SELECT id, c1,avg(c7) OVER w1 as m7 FROM {0} WINDOW
+      SELECT {0}.id, c1,avg(c7) OVER w1 as m7 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       success: false
@@ -217,7 +217,7 @@ cases:
           - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
           - [3,"aa",3,32,1.3,2.3,1590738992000,"2020-05-02","b"]
     sql: |
-      SELECT id, c1,sum(c8) OVER w1 as m8 FROM {0} WINDOW
+      SELECT {0}.id, c1,sum(c8) OVER w1 as m8 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       success: false
@@ -234,7 +234,7 @@ cases:
           - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
           - [3,"aa",3,32,1.3,2.3,1590738992000,"2020-05-02","b"]
     sql: |
-      SELECT id, c1,sum(c9) OVER w1 as m9 FROM {0} WINDOW
+      SELECT {0}.id, c1,sum(c9) OVER w1 as m9 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       success: false
@@ -251,7 +251,7 @@ cases:
           - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
           - [3,"aa",3,32,1.3,2.3,1590738992000,"2020-05-02","b"]
     sql: |
-      SELECT id, c1,avg(c8) OVER w1 as m8 FROM {0} WINDOW
+      SELECT {0}.id, c1,avg(c8) OVER w1 as m8 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       success: false
@@ -268,7 +268,7 @@ cases:
           - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
           - [3,"aa",3,32,1.3,2.3,1590738992000,"2020-05-02","b"]
     sql: |
-      SELECT id, c1,avg(c9) OVER w1 as m9 FROM {0} WINDOW
+      SELECT {0}.id, c1,avg(c9) OVER w1 as m9 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       success: false
@@ -285,7 +285,7 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, max_where(c2,c2<4) OVER w1 as m2,max_where(c3,c3<4) OVER w1 as m3,max_where(c4,c10) OVER w1 as m4,max_where(c5,c5<=1.3) OVER w1 as m5,max_where(c6,c6<=2.3) OVER w1 as m6 FROM {0} WINDOW
+      SELECT {0}.id, c1, max_where(c2,c2<4) OVER w1 as m2,max_where(c3,c3<4) OVER w1 as m3,max_where(c4,c10) OVER w1 as m4,max_where(c5,c5<=1.3) OVER w1 as m5,max_where(c6,c6<=2.3) OVER w1 as m6 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -308,7 +308,7 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, min_where(c2,c2>2) OVER w1 as m2,min_where(c3,c3>=3) OVER w1 as m3,min_where(c4,c4<33) OVER w1 as m4,min_where(c5,c5<=2) OVER w1 as m5,min_where(c6,c10) OVER w1 as m6 FROM {0} WINDOW
+      SELECT {0}.id, c1, min_where(c2,c2>2) OVER w1 as m2,min_where(c3,c3>=3) OVER w1 as m3,min_where(c4,c4<33) OVER w1 as m4,min_where(c5,c5<=2) OVER w1 as m5,min_where(c6,c10) OVER w1 as m6 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -331,7 +331,7 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, sum_where(c2,c2<4) OVER w1 as m2,sum_where(c3,c3<4) OVER w1 as m3,sum_where(c4,c4<33) OVER w1 as m4,sum_where(c5,c5<=1.3) OVER w1 as m5,sum_where(c6,c10) OVER w1 as m6 FROM {0} WINDOW
+      SELECT {0}.id, c1, sum_where(c2,c2<4) OVER w1 as m2,sum_where(c3,c3<4) OVER w1 as m3,sum_where(c4,c4<33) OVER w1 as m4,sum_where(c5,c5<=1.3) OVER w1 as m5,sum_where(c6,c10) OVER w1 as m6 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -354,7 +354,7 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, avg_where(c2,c2<4) OVER w1 as m2,avg_where(c3,c3<4) OVER w1 as m3,avg_where(c4,c4<33) OVER w1 as m4,avg_where(c5,c5<=1.3) OVER w1 as m5,avg_where(c6,c10) OVER w1 as m6 FROM {0} WINDOW
+      SELECT {0}.id, c1, avg_where(c2,c2<4) OVER w1 as m2,avg_where(c3,c3<4) OVER w1 as m3,avg_where(c4,c4<33) OVER w1 as m4,avg_where(c5,c5<=1.3) OVER w1 as m5,avg_where(c6,c10) OVER w1 as m6 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -377,7 +377,7 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, count_where(c2,c2<4) OVER w1 as m2,count_where(c3,c3<4) OVER w1 as m3,count_where(c4,c4<33) OVER w1 as m4,count_where(c5,c5<=1.3) OVER w1 as m5,count_where(c6,c10) OVER w1 as m6,count_where(c7,c10) OVER w1 as m7,count_where(c8,c10) OVER w1 as m8,count_where(c9,c10) OVER w1 as m9 FROM {0} WINDOW
+      SELECT {0}.id, c1, count_where(c2,c2<4) OVER w1 as m2,count_where(c3,c3<4) OVER w1 as m3,count_where(c4,c4<33) OVER w1 as m4,count_where(c5,c5<=1.3) OVER w1 as m5,count_where(c6,c10) OVER w1 as m6,count_where(c7,c10) OVER w1 as m7,count_where(c8,c10) OVER w1 as m8,count_where(c9,c10) OVER w1 as m9 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -404,7 +404,7 @@ cases:
       - ["avg_where","sum_where","max_where","min_where"]
       - ["c7","c8","c9","c10"]
     sql: |
-      SELECT id, c1, d[0](d[1],c10) OVER w1 as m2 FROM {0} WINDOW
+      SELECT {0}.id, c1, d[0](d[1],c10) OVER w1 as m2 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       success: false
@@ -425,7 +425,7 @@ cases:
       - ["count_where"]
       - ["c10"]
     sql: |
-      SELECT id, c1, d[0](d[1],c10) OVER w1 as m2 FROM {0} WINDOW
+      SELECT {0}.id, c1, d[0](d[1],c10) OVER w1 as m2 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       success: false
@@ -452,7 +452,7 @@ cases:
     dataProvider:
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
     sql: |
-      SELECT id, {0}.c1,
+      SELECT {0}.id, {0}.c1,
       max_cate({0}.c2,d[0]) OVER w1 as m2,
       max_cate({0}.c3,d[0]) OVER w1 as m3,
       max_cate({0}.c4,d[0]) OVER w1 as m4,
@@ -528,7 +528,7 @@ cases:
     dataProvider:
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
     sql: |
-      SELECT id, {0}.c1,
+      SELECT {0}.id, {0}.c1,
       min_cate({0}.c2,d[0]) OVER w1 as m2,
       min_cate({0}.c3,d[0]) OVER w1 as m3,
       min_cate({0}.c4,d[0]) OVER w1 as m4,
@@ -599,7 +599,7 @@ cases:
     dataProvider:
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
     sql: |
-      SELECT id, {0}.c1,
+      SELECT {0}.id, {0}.c1,
       count_cate({0}.c2,d[0]) OVER w1 as m2,
       count_cate({0}.c3,d[0]) OVER w1 as m3,
       count_cate({0}.c4,d[0]) OVER w1 as m4,
@@ -670,7 +670,7 @@ cases:
     dataProvider:
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
     sql: |
-      SELECT id, {0}.c1,
+      SELECT {0}.id, {0}.c1,
       sum_cate({0}.c2,d[0]) OVER w1 as m2,
       sum_cate({0}.c3,d[0]) OVER w1 as m3,
       sum_cate({0}.c4,d[0]) OVER w1 as m4,
@@ -741,7 +741,7 @@ cases:
     dataProvider:
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
     sql: |
-      SELECT id, {0}.c1,
+      SELECT {0}.id, {0}.c1,
       avg_cate({0}.c2,d[0]) OVER w1 as m2,
       avg_cate({0}.c3,d[0]) OVER w1 as m3,
       avg_cate({0}.c4,d[0]) OVER w1 as m4,
@@ -815,7 +815,7 @@ cases:
       - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6"]
       - ["{1}.c5","{1}.c6","{1}.c10"]
     sql: |
-      SELECT id, {0}.c1,
+      SELECT {0}.id, {0}.c1,
       d[0](d[1],d[2]) OVER w1 as m2
       FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
@@ -847,7 +847,7 @@ cases:
       - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
     sql: |
-      SELECT id, {0}.c1,
+      SELECT {0}.id, {0}.c1,
       d[0](d[1],d[2]) OVER w1 as m2
       FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
@@ -876,12 +876,12 @@ cases:
     dataProvider:
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
     sql: |
-      SELECT id, {0}.c1,
-      max_cate_where({0}.c2,c10,d[0]) OVER w1 as m2,
-      max_cate_where({0}.c3,c10,d[0]) OVER w1 as m3,
-      max_cate_where({0}.c4,c10,d[0]) OVER w1 as m4,
-      max_cate_where({0}.c5,c10,d[0]) OVER w1 as m5,
-      max_cate_where({0}.c6,c10,d[0]) OVER w1 as m6
+      SELECT {0}.id, {0}.c1,
+      max_cate_where({0}.c2,{0}.c10,d[0]) OVER w1 as m2,
+      max_cate_where({0}.c3,{0}.c10,d[0]) OVER w1 as m3,
+      max_cate_where({0}.c4,{0}.c10,d[0]) OVER w1 as m4,
+      max_cate_where({0}.c5,{0}.c10,d[0]) OVER w1 as m5,
+      max_cate_where({0}.c6,{0}.c10,d[0]) OVER w1 as m6
       FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -947,12 +947,12 @@ cases:
     dataProvider:
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
     sql: |
-      SELECT id, {0}.c1,
-      min_cate_where({0}.c2,c10,d[0]) OVER w1 as m2,
-      min_cate_where({0}.c3,c10,d[0]) OVER w1 as m3,
-      min_cate_where({0}.c4,c10,d[0]) OVER w1 as m4,
-      min_cate_where({0}.c5,c10,d[0]) OVER w1 as m5,
-      min_cate_where({0}.c6,c10,d[0]) OVER w1 as m6
+      SELECT {0}.id, {0}.c1,
+      min_cate_where({0}.c2,{0}.c10,d[0]) OVER w1 as m2,
+      min_cate_where({0}.c3,{0}.c10,d[0]) OVER w1 as m3,
+      min_cate_where({0}.c4,{0}.c10,d[0]) OVER w1 as m4,
+      min_cate_where({0}.c5,{0}.c10,d[0]) OVER w1 as m5,
+      min_cate_where({0}.c6,{0}.c10,d[0]) OVER w1 as m6
       FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -1018,12 +1018,12 @@ cases:
     dataProvider:
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
     sql: |
-      SELECT id, {0}.c1,
-      count_cate_where({0}.c2,c10,d[0]) OVER w1 as m2,
-      count_cate_where({0}.c3,c10,d[0]) OVER w1 as m3,
-      count_cate_where({0}.c4,c10,d[0]) OVER w1 as m4,
-      count_cate_where({0}.c5,c10,d[0]) OVER w1 as m5,
-      count_cate_where({0}.c6,c10,d[0]) OVER w1 as m6
+      SELECT {0}.id, {0}.c1,
+      count_cate_where({0}.c2,{0}.c10,d[0]) OVER w1 as m2,
+      count_cate_where({0}.c3,{0}.c10,d[0]) OVER w1 as m3,
+      count_cate_where({0}.c4,{0}.c10,d[0]) OVER w1 as m4,
+      count_cate_where({0}.c5,{0}.c10,d[0]) OVER w1 as m5,
+      count_cate_where({0}.c6,{0}.c10,d[0]) OVER w1 as m6
       FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -1089,12 +1089,12 @@ cases:
     dataProvider:
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
     sql: |
-      SELECT id, {0}.c1,
-      sum_cate_where({0}.c2,c10,d[0]) OVER w1 as m2,
-      sum_cate_where({0}.c3,c10,d[0]) OVER w1 as m3,
-      sum_cate_where({0}.c4,c10,d[0]) OVER w1 as m4,
-      sum_cate_where({0}.c5,c10,d[0]) OVER w1 as m5,
-      sum_cate_where({0}.c6,c10,d[0]) OVER w1 as m6
+      SELECT {0}.id, {0}.c1,
+      sum_cate_where({0}.c2,{0}.c10,d[0]) OVER w1 as m2,
+      sum_cate_where({0}.c3,{0}.c10,d[0]) OVER w1 as m3,
+      sum_cate_where({0}.c4,{0}.c10,d[0]) OVER w1 as m4,
+      sum_cate_where({0}.c5,{0}.c10,d[0]) OVER w1 as m5,
+      sum_cate_where({0}.c6,{0}.c10,d[0]) OVER w1 as m6
       FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -1160,12 +1160,12 @@ cases:
     dataProvider:
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
     sql: |
-      SELECT id, {0}.c1,
-      avg_cate_where({0}.c2,c10,d[0]) OVER w1 as m2,
-      avg_cate_where({0}.c3,c10,d[0]) OVER w1 as m3,
-      avg_cate_where({0}.c4,c10,d[0]) OVER w1 as m4,
-      avg_cate_where({0}.c5,c10,d[0]) OVER w1 as m5,
-      avg_cate_where({0}.c6,c10,d[0]) OVER w1 as m6
+      SELECT {0}.id, {0}.c1,
+      avg_cate_where({0}.c2,{0}.c10,d[0]) OVER w1 as m2,
+      avg_cate_where({0}.c3,{0}.c10,d[0]) OVER w1 as m3,
+      avg_cate_where({0}.c4,{0}.c10,d[0]) OVER w1 as m4,
+      avg_cate_where({0}.c5,{0}.c10,d[0]) OVER w1 as m5,
+      avg_cate_where({0}.c6,{0}.c10,d[0]) OVER w1 as m6
       FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -1234,8 +1234,8 @@ cases:
       - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6"]
       - ["{1}.c5","{1}.c6","{1}.c10"]
     sql: |
-      SELECT id, {0}.c1,
-      d[0](d[1],c10,d[2]) OVER w1 as m2
+      SELECT {0}.id, {0}.c1,
+      d[0](d[1],{0}.c10,d[2]) OVER w1 as m2
       FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -1266,8 +1266,8 @@ cases:
       - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
     sql: |
-      SELECT id, {0}.c1,
-      d[0](d[1],c10,d[2]) OVER w1 as m2
+      SELECT {0}.id, {0}.c1,
+      d[0](d[1],{0}.c10,d[2]) OVER w1 as m2
       FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -1295,12 +1295,12 @@ cases:
     dataProvider:
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
     sql: |
-      SELECT id, {0}.c1,
-      top_n_key_max_cate_where({0}.c2,c10,d[0],1) OVER w1 as m2,
-      top_n_key_max_cate_where({0}.c3,c10,d[0],1) OVER w1 as m3,
-      top_n_key_max_cate_where({0}.c4,c10,d[0],1) OVER w1 as m4,
-      top_n_key_max_cate_where({0}.c5,c10,d[0],1) OVER w1 as m5,
-      top_n_key_max_cate_where({0}.c6,c10,d[0],1) OVER w1 as m6
+      SELECT {0}.id, {0}.c1,
+      top_n_key_max_cate_where({0}.c2,{0}.c10,d[0],1) OVER w1 as m2,
+      top_n_key_max_cate_where({0}.c3,{0}.c10,d[0],1) OVER w1 as m3,
+      top_n_key_max_cate_where({0}.c4,{0}.c10,d[0],1) OVER w1 as m4,
+      top_n_key_max_cate_where({0}.c5,{0}.c10,d[0],1) OVER w1 as m5,
+      top_n_key_max_cate_where({0}.c6,{0}.c10,d[0],1) OVER w1 as m6
       FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -1366,12 +1366,12 @@ cases:
     dataProvider:
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
     sql: |
-      SELECT id, {0}.c1,
-      top_n_key_min_cate_where({0}.c2,c10,d[0],1) OVER w1 as m2,
-      top_n_key_min_cate_where({0}.c3,c10,d[0],1) OVER w1 as m3,
-      top_n_key_min_cate_where({0}.c4,c10,d[0],1) OVER w1 as m4,
-      top_n_key_min_cate_where({0}.c5,c10,d[0],1) OVER w1 as m5,
-      top_n_key_min_cate_where({0}.c6,c10,d[0],1) OVER w1 as m6
+      SELECT {0}.id, {0}.c1,
+      top_n_key_min_cate_where({0}.c2,{0}.c10,d[0],1) OVER w1 as m2,
+      top_n_key_min_cate_where({0}.c3,{0}.c10,d[0],1) OVER w1 as m3,
+      top_n_key_min_cate_where({0}.c4,{0}.c10,d[0],1) OVER w1 as m4,
+      top_n_key_min_cate_where({0}.c5,{0}.c10,d[0],1) OVER w1 as m5,
+      top_n_key_min_cate_where({0}.c6,{0}.c10,d[0],1) OVER w1 as m6
       FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -1437,12 +1437,12 @@ cases:
     dataProvider:
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
     sql: |
-      SELECT id, {0}.c1,
-      top_n_key_sum_cate_where({0}.c2,c10,d[0],1) OVER w1 as m2,
-      top_n_key_sum_cate_where({0}.c3,c10,d[0],1) OVER w1 as m3,
-      top_n_key_sum_cate_where({0}.c4,c10,d[0],1) OVER w1 as m4,
-      top_n_key_sum_cate_where({0}.c5,c10,d[0],1) OVER w1 as m5,
-      top_n_key_sum_cate_where({0}.c6,c10,d[0],1) OVER w1 as m6
+      SELECT {0}.id, {0}.c1,
+      top_n_key_sum_cate_where({0}.c2,{0}.c10,d[0],1) OVER w1 as m2,
+      top_n_key_sum_cate_where({0}.c3,{0}.c10,d[0],1) OVER w1 as m3,
+      top_n_key_sum_cate_where({0}.c4,{0}.c10,d[0],1) OVER w1 as m4,
+      top_n_key_sum_cate_where({0}.c5,{0}.c10,d[0],1) OVER w1 as m5,
+      top_n_key_sum_cate_where({0}.c6,{0}.c10,d[0],1) OVER w1 as m6
       FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -1508,12 +1508,12 @@ cases:
     dataProvider:
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
     sql: |
-      SELECT id, {0}.c1,
-      top_n_key_avg_cate_where({0}.c2,c10,d[0],1) OVER w1 as m2,
-      top_n_key_avg_cate_where({0}.c3,c10,d[0],1) OVER w1 as m3,
-      top_n_key_avg_cate_where({0}.c4,c10,d[0],1) OVER w1 as m4,
-      top_n_key_avg_cate_where({0}.c5,c10,d[0],1) OVER w1 as m5,
-      top_n_key_avg_cate_where({0}.c6,c10,d[0],1) OVER w1 as m6
+      SELECT {0}.id, {0}.c1,
+      top_n_key_avg_cate_where({0}.c2,{0}.c10,d[0],1) OVER w1 as m2,
+      top_n_key_avg_cate_where({0}.c3,{0}.c10,d[0],1) OVER w1 as m3,
+      top_n_key_avg_cate_where({0}.c4,{0}.c10,d[0],1) OVER w1 as m4,
+      top_n_key_avg_cate_where({0}.c5,{0}.c10,d[0],1) OVER w1 as m5,
+      top_n_key_avg_cate_where({0}.c6,{0}.c10,d[0],1) OVER w1 as m6
       FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -1579,12 +1579,12 @@ cases:
     dataProvider:
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
     sql: |
-      SELECT id, {0}.c1,
-      top_n_key_count_cate_where({0}.c2,c10,d[0],1) OVER w1 as m2,
-      top_n_key_count_cate_where({0}.c3,c10,d[0],1) OVER w1 as m3,
-      top_n_key_count_cate_where({0}.c4,c10,d[0],1) OVER w1 as m4,
-      top_n_key_count_cate_where({0}.c5,c10,d[0],1) OVER w1 as m5,
-      top_n_key_count_cate_where({0}.c6,c10,d[0],1) OVER w1 as m6
+      SELECT {0}.id, {0}.c1,
+      top_n_key_count_cate_where({0}.c2,{0}.c10,d[0],1) OVER w1 as m2,
+      top_n_key_count_cate_where({0}.c3,{0}.c10,d[0],1) OVER w1 as m3,
+      top_n_key_count_cate_where({0}.c4,{0}.c10,d[0],1) OVER w1 as m4,
+      top_n_key_count_cate_where({0}.c5,{0}.c10,d[0],1) OVER w1 as m5,
+      top_n_key_count_cate_where({0}.c6,{0}.c10,d[0],1) OVER w1 as m6
       FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -1653,8 +1653,8 @@ cases:
       - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6"]
       - ["{1}.c5","{1}.c6","{1}.c10"]
     sql: |
-      SELECT id, {0}.c1,
-      d[0](d[1],c10,d[2],1) OVER w1 as m2
+      SELECT {0}.id, {0}.c1,
+      d[0](d[1],{0}.c10,d[2],1) OVER w1 as m2
       FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -1685,8 +1685,8 @@ cases:
       - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
     sql: |
-      SELECT id, {0}.c1,
-      d[0](d[1],c10,d[2],1) OVER w1 as m2
+      SELECT {0}.id, {0}.c1,
+      d[0](d[1],{0}.c10,d[2],1) OVER w1 as m2
       FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -1703,7 +1703,7 @@ cases:
           - [4, 7.0, 4.0, 2]
           - [5, 6.0, 5.0, 2]
     sql: |
-      SELECT id, 
+      SELECT {0}.id, 
         sum((c1 - c2) / c3) OVER w1 AS r1,
         sum(log(c1 + c2) + c3) OVER w1 as r2
       FROM {0}
@@ -1731,7 +1731,7 @@ cases:
           - [4, 7.0, 4.0, 2]
           - [5, 6.0, 5.0, 2]
     sql: |
-      SELECT id, 
+      SELECT {0}.id, 
         abs(sum(c3)) OVER w1 as r1,
         log((sum(c1) + sum(c2)) / c3) OVER w1 AS r2
       FROM {0}
@@ -1758,7 +1758,7 @@ cases:
           - [4, 7.0, 4.0, 2]
           - [5, 6.0, 5.0, 2]
     sql: |
-      SELECT id, 
+      SELECT {0}.id, 
         sum(c1 - count(c1)) OVER w1 AS r1,
         abs(sum(log(c1) - log(count(c1)))) OVER w1 AS r2,
         sum(c1 + sum(c2 * count(c3))) OVER w1 AS r3
@@ -1786,7 +1786,7 @@ cases:
           - [4, 7.0, 4.0, 2]
           - [5, 6.0, 5.0, 2]
     sql: |
-      SELECT id, c3,
+      SELECT {0}.id, c3,
         CAST(sum(c1) OVER w1 AS string)  AS r1,
         string(sum(c1) OVER w1)  AS r2,
         `string`(sum(c1) OVER w1)  AS r3
@@ -1819,7 +1819,7 @@ cases:
           - [8, 7.0, NULL, 1]
           - [9, 8.0, 4.4, 1]
     sql: |
-      SELECT id, 
+      SELECT {0}.id, 
         count_where(c1, c1 < c2) OVER w1 AS count_where_1,
         avg_where(c1, c1 < c2) OVER w1 AS avg_where_1,
         count_where(c2, c2 > 4) OVER w1 AS count_where_2,
@@ -1854,7 +1854,7 @@ cases:
           - [4, 1, NULL, NULL, NULL, NULL, NULL, 1590738993000, NULL, NULL]
           - [5, 1, "d", 5, 35, 1.5, 2.5, 1590738994000, "2020-05-04", false]
     sql: |
-      SELECT id,
+      SELECT {0}.id,
           at(c1, 0) OVER w1 as m1,
           at(c1, 2) OVER w1 as m2,
           at(c2, 0) OVER w1 as m3,
@@ -1910,7 +1910,7 @@ cases:
           - [11, 0, "a"]
           - [12, 0, "b"]
     sql: |
-      SELECT id, 
+      SELECT {0}.id, 
         count_where(id, ifnull(c1, "a") = ifnull(first_value(c1), "a")) OVER w1 AS count_where
       FROM {0}
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
@@ -1951,7 +1951,7 @@ cases:
           - [13, 0, "a"]
           - [14, 0, "a"]
     sql: |
-      SELECT id,
+      SELECT {0}.id,
         count_where(id, ifnull(c1, "a") = ifnull(at(c1, 0), "a")) OVER w1 AS count_where_w1,
         count_where(id, ifnull(c1, "a") = ifnull(at(c1, 0), "a")) OVER w2 AS count_where_w2
       FROM {0}
@@ -1996,7 +1996,7 @@ cases:
           - [13, 0, "a"]
           - [14, 0, "a"]
     sql: |
-      SELECT id,
+      SELECT {0}.id,
         case when !isnull(at(c1,0)) OVER w1 then count_where(id, c1 = at(c1, 0)) OVER w1 else null end AS count_where_w1,
         case when !isnull(at(c1,0)) OVER w2 then count_where(id, c1 = at(c1, 0)) OVER w2 else null end AS count_where_w2
       FROM {0}
@@ -2079,7 +2079,7 @@ cases:
   - id: 19
     desc: 多个可合并窗口上的多个聚合函数计算
     sql: |
-      SELECT id, pk, col1, std_ts,
+      SELECT {0}.id, pk, col1, std_ts,
       distinct_count(col1) OVER w1 as a1,
       distinct_count(col1) OVER w2 as a2,
       distinct_count(col1) OVER w3 as a3,
@@ -2133,7 +2133,7 @@ cases:
   - id: 20
     desc: 同窗口下多类聚合函数
     sql: |
-      SELECT id, pk, col1, std_ts,
+      SELECT {0}.id, pk, col1, std_ts,
       sum(col1 + count(col1)) OVER w as a1,
       distinct_count(col1) OVER w as a2,
       sum_where(col1, std_ts > timestamp(1590115440000)) OVER w as a3,
@@ -2179,7 +2179,7 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, max(c2) OVER w1 as m2, max(c3) OVER w1 as m3, max(c4) OVER w1 as m4,
+      SELECT {0}.id, c1, max(c2) OVER w1 as m2, max(c3) OVER w1 as m3, max(c4) OVER w1 as m4,
               max(c5) OVER w1 as m5,max(c6) OVER w1 as m6,max(c7) OVER w1 as m7,
               max(c8) OVER w1 as m8,max(c9) OVER w1 as m9 
       FROM {0} WINDOW
@@ -2206,7 +2206,7 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT id, c1, min(c2) OVER w1 as m2,min(c3) OVER w1 as m3,min(c4) OVER w1 as m4,min(c5) OVER w1 as m5,min(c6) OVER w1 as m6,min(c7) OVER w1 as m7,min(c8) OVER w1 as m8,min(c9) OVER w1 as m9 FROM {0} WINDOW
+      SELECT {0}.id, c1, min(c2) OVER w1 as m2,min(c3) OVER w1 as m3,min(c4) OVER w1 as m4,min(c5) OVER w1 as m5,min(c6) OVER w1 as m6,min(c7) OVER w1 as m7,min(c8) OVER w1 as m8,min(c9) OVER w1 as m9 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 4 PRECEDING AND 2 PRECEDING);
     expect:
       order: id
