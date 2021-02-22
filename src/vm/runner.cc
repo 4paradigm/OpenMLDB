@@ -2329,7 +2329,7 @@ std::shared_ptr<DataHandler> ConcatRunner::Run(
     size_t left_slices = producers_[0]->output_schemas()->GetSchemaSourceSize();
     size_t right_slices =
         producers_[1]->output_schemas()->GetSchemaSourceSize();
-    if (!left || !right) {
+    if (!left) {
         return std::shared_ptr<DataHandler>();
     }
     switch (left->GetHanlderType()) {
