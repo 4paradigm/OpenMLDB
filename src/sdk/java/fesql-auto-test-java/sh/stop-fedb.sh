@@ -24,3 +24,13 @@ sh fedb-ns-2/bin/start_ns.sh restart
 sh fedb-tablet-1/bin/start.sh restart
 sh fedb-tablet-2/bin/start.sh restart
 sh fedb-tablet-3/bin/start.sh restart
+
+
+sh fedb-ns-1/bin/start_ns.sh stop
+sh fedb-ns-2/bin/start_ns.sh stop
+sh fedb-tablet-1/bin/start.sh stop
+sh fedb-tablet-2/bin/start.sh stop
+sh fedb-tablet-3/bin/start.sh stop
+sh rtidb-blob-1/bin/start.sh stop
+sh rtidb-blob-proxy-1/bin/start.sh stop
+sh zookeeper-3.4.10/bin/zkServer.sh stop
