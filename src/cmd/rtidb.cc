@@ -24,7 +24,7 @@
 #include "base/strings.h"
 #include "base/ip.h"
 #include "base/server_name.h"
-#if __linux__
+#if defined(__linux__) || defined(__mac_tablet__)
 #include "blob_proxy/blob_proxy_impl.h"
 #include "blobserver/blobserver_impl.h"
 #include "nameserver/name_server_impl.h"
@@ -141,7 +141,7 @@ void GetRealEndpoint(std::string *real_endpoint) {
     }
 }
 
-#if __linux__
+#if defined(__linux__) || defined(__mac_tablet__)
 void StartNameServer() {
     SetupLog();
     std::string real_endpoint;
@@ -179,7 +179,7 @@ void StartNameServer() {
 }
 
 int THPIsEnabled() {
-#ifdef __linux__
+#if defined(__linux__) || defined(__mac_tablet__)
     char buf[1024];
     FILE* fp = fopen("/sys/kernel/mm/transparent_hugepage/enabled", "r");
     if (!fp) {
@@ -207,7 +207,7 @@ int THPIsEnabled() {
 }
 
 int SwapIsEnabled() {
-#ifdef __linux__
+#if defined(__linux__) || defined(__mac_tablet__)
     char buf[1024];
     FILE* fp = fopen("/proc/swaps", "r");
     if (!fp) {
@@ -326,7 +326,7 @@ void StartBlobProxy() {
 }
 #endif
 
-#if __linux__
+#if defined(__linux__) || defined(__mac_tablet__)
 void StartBlob() {
     SetupLog();
     std::string real_endpoint;
@@ -6592,7 +6592,7 @@ int main(int argc, char* argv[]) {
         StartNsClient();
     } else if (FLAGS_role == "sql_client") {
         ::rtidb::cmd::HandleCli();
-#if __linux__
+#if defined(__linux__) || defined(__mac_tablet__)
     } else if (FLAGS_role == "tablet") {
         StartTablet();
     } else if (FLAGS_role == "blob_proxy") {

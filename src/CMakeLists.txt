@@ -335,7 +335,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif ()
 
 if (MAC_TABLET_ENABLE)
-    add_executable(rtidb cmd/rtidb_mac.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
+    add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 else ()
     add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 endif ()
