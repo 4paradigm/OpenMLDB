@@ -29,7 +29,10 @@ public class CreateTest extends FesqlTest {
 
     @Test(dataProvider = "getCreateData")
     public void testCreate(SQLCase testCase){
+        long begin = System.currentTimeMillis();
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+        long end = System.currentTimeMillis();
+        System.out.println("AAAAAAA:"+(end-begin));
     }
 
 }

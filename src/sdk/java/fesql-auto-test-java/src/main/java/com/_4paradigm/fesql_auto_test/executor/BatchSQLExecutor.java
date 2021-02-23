@@ -48,6 +48,7 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
 
     @Override
     public void prepare(String version,SqlExecutor executor){
+        long begin = System.currentTimeMillis();
         log.info("version:{} prepare begin",version);
         reportLog.info("version:{} prepare begin",version);
         boolean dbOk = executor.createDB(dbName);
@@ -59,10 +60,13 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
         }
         log.info("version:{} prepare end",version);
         reportLog.info("version:{} prepare end",version);
+        long end = System.currentTimeMillis();
+        System.out.println("BBBBB:"+(end-begin));
     }
 
     @Override
     public FesqlResult execute(String version,SqlExecutor executor){
+        long begin = System.currentTimeMillis();
         log.info("version:{} execute begin",version);
         reportLog.info("version:{} execute begin",version);
         FesqlResult fesqlResult = null;
@@ -90,6 +94,8 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
         }
         log.info("version:{} execute end",version);
         reportLog.info("version:{} execute end",version);
+        long end = System.currentTimeMillis();
+        System.out.println("CCCC:"+(end-begin));
         return fesqlResult;
     }
 }

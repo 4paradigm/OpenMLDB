@@ -94,6 +94,7 @@ public abstract class BaseSQLExecutor implements IExecutor{
     }
 
     public void check(FesqlResult fesqlResult,Map<String,FesqlResult> resultMap) throws Exception {
+        long begin = System.currentTimeMillis();
         List<Checker> strategyList = CheckerStrategy.build(fesqlCase, fesqlResult, executorType);
         if(MapUtils.isNotEmpty(resultMap)) {
             strategyList.add(new DiffVersionChecker(fesqlResult, resultMap));
@@ -101,6 +102,8 @@ public abstract class BaseSQLExecutor implements IExecutor{
         for (Checker checker : strategyList) {
             checker.check();
         }
+        long end = System.currentTimeMillis();
+        System.out.println("EEEE:"+(end-begin));
     }
     @Override
     public void tearDown() {
@@ -112,6 +115,7 @@ public abstract class BaseSQLExecutor implements IExecutor{
 
 
     public void tearDown(String version,SqlExecutor executor) {
+        long begin = System.currentTimeMillis();
         log.info("version:{},begin drop table",version);
         reportLog.info("version:{},begin drop table",version);
         List<InputDesc> tables = fesqlCase.getInputs();
@@ -124,5 +128,7 @@ public abstract class BaseSQLExecutor implements IExecutor{
                 FesqlUtil.ddl(executor, dbName, drop);
             }
         }
+        long end = System.currentTimeMillis();
+        System.out.println("DDDD:"+(end-begin));
     }
 }

@@ -251,13 +251,20 @@ public class FesqlUtil {
     }
 
     public static FesqlResult sql(SqlExecutor executor, String dbName, String sql) {
+        long begin = System.currentTimeMillis();
         FesqlResult fesqlResult = null;
         if (sql.startsWith("create")) {
             fesqlResult = ddl(executor, dbName, sql);
+            long end = System.currentTimeMillis();
+            System.out.println("HHHHH:"+(end-begin));
         } else if (sql.startsWith("insert")) {
             fesqlResult = insert(executor, dbName, sql);
+            long end = System.currentTimeMillis();
+            System.out.println("IIIII:"+(end-begin));
         } else {
             fesqlResult = select(executor, dbName, sql);
+            long end = System.currentTimeMillis();
+            System.out.println("JJJJJ:"+(end-begin));
         }
         return fesqlResult;
     }
