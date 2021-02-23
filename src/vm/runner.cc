@@ -2939,12 +2939,12 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::RunWithRowInput(
                << pk;
     auto table_handler = task.table_handler();
     if (!table_handler) {
-        LOG(WARNING) << "table handler is null";
+        LOG(WARNING) << "remote task related table handler is null";
         return std::shared_ptr<DataHandler>();
     }
     auto tablet = table_handler->GetTablet(task.index(), pk);
     if (!tablet) {
-        DLOG(INFO) << "tablet is null, run in local mode";
+        LOG(WARNING) << "fail to run proxy runner with row: tablet is null";
         return std::shared_ptr<DataHandler>();
     } else {
         if (row.GetRowPtrCnt() > 1) {
@@ -3001,7 +3001,8 @@ std::shared_ptr<TableHandler> ProxyRequestRunner::RunWithRowsInput(
         tablet = table_handler->GetTablet(task.index(), pks);
     }
     if (!tablet) {
-        LOG(WARNING) << "fail to run proxy runner with rows: tablet is null";
+        LOG(WARNING)
+            << "fail to run proxy runner with rows: subquery tablet is null";
         return fail_ptr;
     }
     if (ctx.sp_name().empty()) {
@@ -3031,12 +3032,10 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
