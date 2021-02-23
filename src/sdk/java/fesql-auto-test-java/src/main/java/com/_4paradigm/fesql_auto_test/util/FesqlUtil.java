@@ -284,6 +284,7 @@ public class FesqlUtil {
     }
 
     public static FesqlResult ddl(SqlExecutor executor, String dbName, String ddlSql) {
+        long begin = System.currentTimeMillis();
         if (ddlSql.isEmpty()) {
             return null;
         }
@@ -294,6 +295,8 @@ public class FesqlUtil {
         fesqlResult.setOk(createOk);
         log.info("ddl result:{}", fesqlResult);
         reportLog.info("ddl result:{}", fesqlResult);
+        long end = System.currentTimeMillis();
+        System.out.println("KKKKK:"+(end-begin));
         return fesqlResult;
     }
 
@@ -1107,6 +1110,7 @@ public class FesqlUtil {
                                               List<InputDesc> inputs,
                                               boolean useFirstInputAsRequests,
                                               int replicaNum) {
+        long begin = System.currentTimeMillis();
         FesqlResult fesqlResult = new FesqlResult();
         if (inputs != null && inputs.size() > 0) {
             for (int i = 0; i < inputs.size(); i++) {
@@ -1141,6 +1145,8 @@ public class FesqlUtil {
             }
         }
         fesqlResult.setOk(true);
+        long end = System.currentTimeMillis();
+        System.out.println("LLLLL:"+(end-begin));
         return fesqlResult;
     }
 
