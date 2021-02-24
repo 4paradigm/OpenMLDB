@@ -502,9 +502,10 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
         "t1", 7, 1, mapping, 5, ::rtidb::api::TTLType::kAbsoluteTime,
         ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
-    ASSERT_EQ((int64_t)(table->GetTTL().abs_ttl * 60 * 1000), 5 * 60 * 1000);
-    ASSERT_EQ((int64_t)table->GetTTL().lat_ttl, 0);
-    ASSERT_EQ(table->GetTTLType(), ::rtidb::api::TTLType::kAbsoluteTime);
+    const auto& ttl = table->GetTTL();
+    ASSERT_EQ((int64_t)ttl.abs_ttl, 5 * 60 * 1000);
+    ASSERT_EQ((int64_t)ttl.lat_ttl, 0);
+    ASSERT_EQ(ttl.ttl_type, ::rtidb::storage::TTLType::kAbsoluteTime);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 10; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -560,9 +561,10 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
         "t1", 8, 1, mapping, 3, ::rtidb::api::TTLType::kLatestTime,
         ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
-    ASSERT_EQ((int64_t)table->GetTTL().abs_ttl, 0);
-    ASSERT_EQ((int64_t)table->GetTTL().lat_ttl, 3);
-    ASSERT_EQ(table->GetTTLType(), ::rtidb::api::TTLType::kLatestTime);
+    const auto& ttl = table->GetTTL();
+    ASSERT_EQ((int64_t)ttl.abs_ttl, 0);
+    ASSERT_EQ((int64_t)ttl.lat_ttl, 3);
+    ASSERT_EQ(ttl.ttl_type, ::rtidb::storage::TTLType::kLatestTime);
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
         uint64_t ts = 9537;
@@ -1108,59 +1110,6 @@ TEST_F(DiskTableTest, GcHead) {
     }
     delete table;
     std::string path = FLAGS_hdd_root_path + "/13_1";
-    RemoveData(path);
-}
-
-TEST_F(DiskTableTest, GcTTL) {
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* table = new DiskTable(
-        "t1", 14, 1, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
-        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
-    ASSERT_TRUE(table->Init());
-    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    for (int idx = 0; idx < 100; idx++) {
-        std::string key = "test" + std::to_string(idx);
-        uint64_t ts = cur_time;
-        for (int k = 0; k < 5; k++) {
-            if (k > 2) {
-                ASSERT_TRUE(
-                    table->Put(key, ts - k - 10 * 60 * 1000, "value9", 6));
-            } else {
-                ASSERT_TRUE(table->Put(key, ts - k, "value", 5));
-            }
-        }
-    }
-    for (int idx = 0; idx < 100; idx++) {
-        std::string key = "test" + std::to_string(idx);
-        uint64_t ts = cur_time;
-        for (int k = 0; k < 5; k++) {
-            std::string value;
-            if (k > 2) {
-                ASSERT_TRUE(table->Get(key, ts - k - 10 * 60 * 1000, value));
-                ASSERT_EQ("value9", value);
-            } else {
-                ASSERT_TRUE(table->Get(key, ts - k, value));
-                ASSERT_EQ("value", value);
-            }
-        }
-    }
-    table->GcTTL();
-    for (int idx = 0; idx < 100; idx++) {
-        std::string key = "test" + std::to_string(idx);
-        uint64_t ts = cur_time;
-        for (int k = 0; k < 5; k++) {
-            std::string value;
-            if (k > 2) {
-                ASSERT_FALSE(table->Get(key, ts - k - 10 * 60 * 1000, value));
-            } else {
-                ASSERT_TRUE(table->Get(key, ts - k, value));
-                ASSERT_EQ("value", value);
-            }
-        }
-    }
-    delete table;
-    std::string path = FLAGS_hdd_root_path + "/14_1";
     RemoveData(path);
 }
 

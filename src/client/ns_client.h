@@ -42,8 +42,7 @@ struct TabletInfo {
 
 class NsClient {
  public:
-     explicit NsClient(const std::string& endpoint,
-             const std::string& real_endpoint);
+     explicit NsClient(bool use_rdma, const std::string& endpoint, const std::string& real_endpoint);
     ~NsClient() {}
 
     int Init();

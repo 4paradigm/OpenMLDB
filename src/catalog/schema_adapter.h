@@ -38,11 +38,11 @@ typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>
     RtiDBIndex;
 
 
-static const std::unordered_map<::rtidb::api::TTLType, ::fesql::type::TTLType>
-    TTL_TYPE_MAP = {{::rtidb::api::kAbsoluteTime, ::fesql::type::kTTLTimeLive},
-                    {::rtidb::api::kLatestTime, ::fesql::type::kTTLCountLive},
-                    {::rtidb::api::kAbsAndLat, ::fesql::type::kTTLTimeLiveAndCountLive},
-                    {::rtidb::api::kAbsOrLat, ::fesql::type::kTTLTimeLiveOrCountLive}};
+static const std::unordered_map<::rtidb::type::TTLType, ::fesql::type::TTLType>
+    TTL_TYPE_MAP = {{::rtidb::type::kAbsoluteTime, ::fesql::type::kTTLTimeLive},
+                    {::rtidb::type::kLatestTime, ::fesql::type::kTTLCountLive},
+                    {::rtidb::type::kAbsAndLat, ::fesql::type::kTTLTimeLiveAndCountLive},
+                    {::rtidb::type::kAbsOrLat, ::fesql::type::kTTLTimeLiveOrCountLive}};
 
 class SchemaAdapter {
  public:
@@ -90,27 +90,39 @@ class SchemaAdapter {
             LOG(WARNING) << "output ptr is null";
             return false;
         }
-
         for (int32_t i = 0; i < index.size(); i++) {
             const ::rtidb::common::ColumnKey& key = index.Get(i);
-            if (key.ts_name_size() > 0) {
-                for (int32_t k = 0; k < key.ts_name_size(); k++) {
-                    ::fesql::type::IndexDef* index = output->Add();
-                    if (k > 0) {
-                        index->set_name(key.index_name() + std::to_string(k));
-                    } else {
-                        index->set_name(key.index_name());
-                    }
-                    auto keys = index->mutable_first_keys();
-                    keys->CopyFrom(key.col_name());
-                    index->set_second_key(key.ts_name(k));
-                    index->set_ts_offset(k);
-                }
-            } else {
+            int ts_name_pos = 0;
+            do {
                 ::fesql::type::IndexDef* index = output->Add();
                 index->set_name(key.index_name());
                 index->mutable_first_keys()->CopyFrom(key.col_name());
-            }
+                if (key.ts_name_size() > 0) {
+                    index->set_second_key(key.ts_name(ts_name_pos));
+                    index->set_ts_offset(ts_name_pos);
+                    if (ts_name_pos > 0) {
+                        index->set_name(key.index_name() + std::to_string(ts_name_pos));
+                    }
+                    ts_name_pos++;
+                }
+                if (key.has_ttl()) {
+                    auto ttl_type = key.ttl().ttl_type();
+                    auto it = TTL_TYPE_MAP.find(ttl_type);
+                    if (it == TTL_TYPE_MAP.end()) {
+                        LOG(WARNING) << "not found " <<  ::rtidb::type::TTLType_Name(ttl_type);
+                        return false;
+                    }
+                    index->set_ttl_type(it->second);
+                    if (ttl_type == ::rtidb::type::kAbsAndLat || ttl_type == ::rtidb::type::kAbsOrLat) {
+                        index->add_ttl(key.ttl().abs_ttl());
+                        index->add_ttl(key.ttl().lat_ttl());
+                    } else if (ttl_type == ::rtidb::type::kAbsoluteTime) {
+                        index->add_ttl(key.ttl().abs_ttl());
+                    } else {
+                        index->add_ttl(key.ttl().lat_ttl());
+                    }
+                }
+            } while (ts_name_pos > 0 && ts_name_pos < key.ts_name_size());
         }
         return true;
     }

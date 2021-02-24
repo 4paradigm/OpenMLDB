@@ -38,11 +38,9 @@ const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
 class TabletClient {
  public:
-    explicit TabletClient(const std::string& endpoint,
-            const std::string& real_endpoint);
+    explicit TabletClient(bool use_rdma, const std::string& endpoint, const std::string& real_endpoint);
 
-    TabletClient(const std::string& endpoint,
-            const std::string& real_endpoint, bool use_sleep_policy);
+    TabletClient(bool use_rdma, const std::string& endpoint, const std::string& real_endpoint, bool use_sleep_policy);
 
     ~TabletClient();
 
@@ -296,7 +294,6 @@ class TabletClient {
         std::string* data, uint32_t* count, std::string* msg);
 
     bool SetExpire(uint32_t tid, uint32_t pid, bool is_expire);
-    bool SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp);
     bool ConnectZK();
     bool DisConnectZK();
 
