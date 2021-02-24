@@ -130,30 +130,19 @@ public class ScanFuture implements Future<KvIterator> {
     public KvIterator get(long timeout, TimeUnit unit)
             throws InterruptedException, ExecutionException, TimeoutException {
         ScanResponse response = f.get(timeout, unit);
-        Long network = -1l;
         if (response == null) {
             throw new ExecutionException("Connection error", null);
         }
         if (response.getCode() == 0) {
-            DefaultKvIterator kit = null;
-            if (t != null) {
-                if (t.getSchemaMap().size() > 0) {
-                    kit = new DefaultKvIterator(response.getPairs(), t);
-                } else {
-                    kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), network);
-                }
-                if (t.getTableInfo().hasCompressType()) {
-                    kit.setCompressType(t.getTableInfo().getCompressType());
-                }
-            }else {
-                kit = new DefaultKvIterator(response.getPairs(), network);
+            switch (t.getTableInfo().getFormatVersion()) {
+                case 1:
+                    return getNewKvIterator(response);
+                default:
+                    return getLegacyKvIterator(response);
             }
-            kit.setCount(response.getCount());
-            return kit;
         }
         String msg = String.format("Bad request with error %s code %d", response.getMsg(), response.getCode());
         throw new ExecutionException(msg, null);
-
     }
 
 }
