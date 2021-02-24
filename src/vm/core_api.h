@@ -136,6 +136,16 @@ class CoreAPI {
                                            const bool is_instance,
                                            size_t append_slices,
                                            WindowInterface* window);
+
+    // Window project API with Spark UnsafeRow optimization
+    static fesql::codec::Row UnsafeWindowProject(
+        const fesql::vm::RawPtrHandle fn,
+        const uint64_t key, fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
+        const int inputRowSizeInBytes,
+        const bool is_instance,
+        size_t append_slices,
+        WindowInterface* window);
+
     static fesql::codec::Row WindowProject(const fesql::vm::RawPtrHandle fn,
                                            const uint64_t key, const Row row,
                                            WindowInterface* window);

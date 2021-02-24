@@ -306,6 +306,21 @@ fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
                                  window->GetWindow());
 }
 
+fesql::codec::Row CoreAPI::UnsafeWindowProject(const RawPtrHandle fn,
+                                         const uint64_t key,
+                                         fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
+                                         const int inputRowSizeInBytes,
+                                         const bool is_instance,
+                                         size_t append_slices,
+                                         WindowInterface* window) {
+    // tobe
+    // Create Row from input UnsafeRow bytes
+    auto row = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes,
+                                                      inputRowSizeInBytes));
+    return Runner::WindowProject(fn, key, row, is_instance, append_slices,
+                                 window->GetWindow());
+}
+
 fesql::codec::Row CoreAPI::GroupbyProject(
     const RawPtrHandle fn, fesql::vm::GroupbyInterface* groupby_interface) {
     return Runner::GroupbyProject(fn, groupby_interface->GetTableHandler());
