@@ -270,6 +270,7 @@ public class FesqlUtil {
     }
 
     public static FesqlResult insert(SqlExecutor executor, String dbName, String insertSql) {
+        long begin = System.currentTimeMillis();
         if (insertSql.isEmpty()) {
             return null;
         }
@@ -280,6 +281,8 @@ public class FesqlUtil {
         fesqlResult.setOk(createOk);
         log.info("insert result:{}" + fesqlResult);
         reportLog.info("insert result:{}" + fesqlResult);
+        long end = System.currentTimeMillis();
+        System.out.println("PPPP:"+(end-begin));
         return fesqlResult;
     }
 
@@ -289,14 +292,18 @@ public class FesqlUtil {
             return null;
         }
         log.info("ddl sql:{}", ddlSql);
-        reportLog.info("ddl sql:{}", ddlSql);
+        // reportLog.info("ddl sql:{}", ddlSql);
+        long end = System.currentTimeMillis();
+        System.out.println("KKKKK1:"+(end-begin));
         FesqlResult fesqlResult = new FesqlResult();
         boolean createOk = executor.executeDDL(dbName, ddlSql);
+        end = System.currentTimeMillis();
+        System.out.println("KKKKK2:"+(end-begin));
         fesqlResult.setOk(createOk);
         log.info("ddl result:{}", fesqlResult);
-        reportLog.info("ddl result:{}", fesqlResult);
-        long end = System.currentTimeMillis();
-        System.out.println("KKKKK:"+(end-begin));
+        // reportLog.info("ddl result:{}", fesqlResult);
+        end = System.currentTimeMillis();
+        System.out.println("KKKKK3:"+(end-begin));
         return fesqlResult;
     }
 
@@ -1117,15 +1124,17 @@ public class FesqlUtil {
                 String tableName = inputs.get(i).getName();
                 //create table
                 String createSql = inputs.get(i).extractCreate(replicaNum);
-                createSql = SQLCase.formatSql(createSql, i, inputs.get(i).getName());
+                createSql = SQLCase.formatSql(createSql, i, tableName);
                 if (!createSql.isEmpty()) {
                     FesqlResult res = FesqlUtil.ddl(executor, dbName, createSql);
                     if (!res.isOk()) {
                         log.error("fail to create table");
-                        reportLog.error("fail to create table");
+                        // reportLog.error("fail to create table");
                         return res;
                     }
                 }
+                long end = System.currentTimeMillis();
+                System.out.println("MMMM:"+(end-begin));
                 InputDesc input = inputs.get(i);
                 if (0 == i && useFirstInputAsRequests) {
                     continue;
@@ -1137,11 +1146,13 @@ public class FesqlUtil {
                         FesqlResult res = FesqlUtil.insert(executor, dbName, insertSql);
                         if (!res.isOk()) {
                             log.error("fail to insert table");
-                            reportLog.error("fail to insert table");
+                            // reportLog.error("fail to insert table");
                             return res;
                         }
                     }
                 }
+                end = System.currentTimeMillis();
+                System.out.println("NNNN:"+(end-begin));
             }
         }
         fesqlResult.setOk(true);
