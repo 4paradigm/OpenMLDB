@@ -36,8 +36,8 @@ public class AddAttachmentListener implements IHookable {
         callBack.runTestMethod(testResult);
         if(testResult.getThrowable()!=null) {
             Object parameter = testResult.getParameters()[0];
-            // addCase(parameter);
-            // addLog();
+            addCase(parameter);
+            addLog();
         }
     }
 }
