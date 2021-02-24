@@ -77,7 +77,7 @@ BatchModeTransformer::BatchModeTransformer(
       id_(0),
       performance_sensitive_mode_(false),
       cluster_optimized_mode_(false),
-      enable_window_parallelization_(false),
+      enable_batch_window_parallelization_(false),
       library_(library),
       plan_ctx_(node_manager, library, db, catalog, false) {}
 
@@ -94,7 +94,7 @@ BatchModeTransformer::BatchModeTransformer(
       id_(0),
       performance_sensitive_mode_(performance_sensitive),
       cluster_optimized_mode_(cluster_optimized_mode),
-      enable_window_parallelization_(enable_window_parallelization),
+      enable_batch_window_parallelization_(enable_window_parallelization),
       library_(library),
       plan_ctx_(node_manager, library, db, catalog, enable_expr_opt) {}
 
@@ -341,7 +341,7 @@ Status BatchModeTransformer::TransformProjectPlanOp(
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
                "Input node or output node is null");
 
-    if (enable_window_parallelization_) {
+    if (enable_batch_window_parallelization_) {
         return TransformProjectPlanOpWithWindowParallel(node, output);
     } else {
         return TransformProjectPlanOpWindowSerial(node, output);
@@ -923,7 +923,7 @@ Status ExtractProjectInfos(const node::PlanNodeList& projects,
                 for (size_t k = 0; k < schema_source->size(); ++k) {
                     auto col_name = schema_source->GetColumnName(k);
                     auto col_ref = node_manager->MakeColumnRefNode(
-                        col_name, all_expr->GetRelationName());
+                        col_name, schema_source->GetSourceName());
                     output->Add(col_name, col_ref, nullptr);
                 }
             }
@@ -1201,7 +1201,7 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
         LOG(WARNING) << "Final transformed result is null";
     }
 
-    if (enable_window_parallelization_) {
+    if (enable_batch_window_parallelization_) {
         LOG(INFO) << "Apply column pruning for window aggregation";
         WindowColumnPruning pass;
         PhysicalOpNode* pruned_op = nullptr;
@@ -2962,7 +2962,7 @@ bool ClusterOptimized::SimplifyJoinLeftInput(
     for (auto column : columns) {
         oss << node::ExprString(column) << ",";
     }
-    LOG(INFO) << "join resolved related columns: \n" << oss.str();
+    DLOG(INFO) << "join resolved related columns: \n" << oss.str();
 
     // find columns belong to left side
     std::vector<size_t> left_indices;
@@ -3159,7 +3159,7 @@ RequestModeTransformer::RequestModeTransformer(
     const bool enable_batch_request_opt, bool enable_expr_opt)
     : BatchModeTransformer(node_manager, db, catalog, module, library,
                            performance_sensitive, cluster_optimized,
-                           enable_expr_opt, true),
+                           enable_expr_opt, false),
       enable_batch_request_opt_(enable_batch_request_opt) {
     batch_request_info_.common_column_indices = common_column_indices;
 }

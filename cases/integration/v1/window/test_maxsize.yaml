@@ -642,7 +642,7 @@ cases:
           - [4,"bb",20,33,1.1,2.1,1590738990003,"2020-05-01"]
           - [5,"bb",21,34,1.2,2.2,1590738990004,"2020-05-02"]
     sql: |
-      select id,{0}.c1,{0}.c3,{1}.c4,
+      select {0}.id,{0}.c1,{0}.c3,{1}.c4,
       sum({1}.c4) OVER w1 as w1_c4_sum
       from {0}
       last join {1} ORDER BY {1}.c7 on {0}.c1={1}.c1
@@ -661,6 +661,7 @@ cases:
   -
     id: 23-2
     desc: lastjoin结合maxsize, last join副表有ts列为null
+    tags: ["TODO"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -681,7 +682,7 @@ cases:
           - [4,"bb",20,33,1.1,2.1,1590738990003,"2020-05-01"]
           - [5,"bb",21,34,1.2,2.2,1590738990004,"2020-05-02"]
     sql: |
-      select id,{0}.c1,{0}.c3,{1}.c4,
+      select {0}.id,{0}.c1,{0}.c3,{1}.c4,
       sum({1}.c4) OVER w1 as w1_c4_sum
       from {0}
       last join {1} ORDER BY {1}.c7 on {0}.c1={1}.c1

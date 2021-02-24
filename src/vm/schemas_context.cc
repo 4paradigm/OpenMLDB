@@ -430,7 +430,8 @@ bool SchemasContext::IsColumnAmbiguous(const std::string& column_name) const {
     }
     std::set<size_t> column_id_set;
     for (auto& pair : iter->second) {
-        column_id_set.insert(pair.second);
+        column_id_set.insert(
+            schema_sources_[pair.first]->GetColumnID(pair.second));
     }
     return column_id_set.size() != 1;
 }

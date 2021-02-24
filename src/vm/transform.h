@@ -420,7 +420,7 @@ class BatchModeTransformer {
     // `index_opt_strict_mode_`
     bool performance_sensitive_mode_;
     bool cluster_optimized_mode_;
-    bool enable_window_parallelization_;
+    bool enable_batch_window_parallelization_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
     const udf::UDFLibrary* library_;
