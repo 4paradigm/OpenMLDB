@@ -251,26 +251,18 @@ public class FesqlUtil {
     }
 
     public static FesqlResult sql(SqlExecutor executor, String dbName, String sql) {
-        long begin = System.currentTimeMillis();
         FesqlResult fesqlResult = null;
         if (sql.startsWith("create")) {
             fesqlResult = ddl(executor, dbName, sql);
-            long end = System.currentTimeMillis();
-            System.out.println("HHHHH:"+(end-begin));
         } else if (sql.startsWith("insert")) {
             fesqlResult = insert(executor, dbName, sql);
-            long end = System.currentTimeMillis();
-            System.out.println("IIIII:"+(end-begin));
         } else {
             fesqlResult = select(executor, dbName, sql);
-            long end = System.currentTimeMillis();
-            System.out.println("JJJJJ:"+(end-begin));
         }
         return fesqlResult;
     }
 
     public static FesqlResult insert(SqlExecutor executor, String dbName, String insertSql) {
-        long begin = System.currentTimeMillis();
         if (insertSql.isEmpty()) {
             return null;
         }
@@ -281,29 +273,20 @@ public class FesqlUtil {
         fesqlResult.setOk(createOk);
         log.info("insert result:{}" + fesqlResult);
         reportLog.info("insert result:{}" + fesqlResult);
-        long end = System.currentTimeMillis();
-        System.out.println("PPPP:"+(end-begin));
         return fesqlResult;
     }
 
     public static FesqlResult ddl(SqlExecutor executor, String dbName, String ddlSql) {
-        long begin = System.currentTimeMillis();
         if (ddlSql.isEmpty()) {
             return null;
         }
         log.info("ddl sql:{}", ddlSql);
-        // reportLog.info("ddl sql:{}", ddlSql);
-        long end = System.currentTimeMillis();
-        System.out.println("KKKKK1:"+(end-begin));
+        reportLog.info("ddl sql:{}", ddlSql);
         FesqlResult fesqlResult = new FesqlResult();
         boolean createOk = executor.executeDDL(dbName, ddlSql);
-        end = System.currentTimeMillis();
-        System.out.println("KKKKK2:"+(end-begin));
         fesqlResult.setOk(createOk);
         log.info("ddl result:{}", fesqlResult);
-        // reportLog.info("ddl result:{}", fesqlResult);
-        end = System.currentTimeMillis();
-        System.out.println("KKKKK3:"+(end-begin));
+        reportLog.info("ddl result:{}", fesqlResult);
         return fesqlResult;
     }
 

@@ -34,7 +34,7 @@ public class FesqlTest implements ITest {
 
     @BeforeMethod
     public void BeforeMethod(Method method, Object[] testData) {
-        // ReportLog.of().clean();
+        ReportLog.of().clean();
         Assert.assertNotNull(
                 testData[0], "fail to run fesql test with null SQLCase: check yaml case");
         if (testData[0] instanceof SQLCase) {
