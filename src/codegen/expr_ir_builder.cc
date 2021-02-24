@@ -191,6 +191,11 @@ Status ExprIRBuilder::BuildConstExpr(const ::fesql::node::ConstNode* const_node,
                 llvm::Type::getTokenTy(builder.getContext()));
             break;
         }
+        case ::fesql::node::kBool: {
+            *output = NativeValue::Create(
+                builder.getInt1(const_node->GetBool() ? 1 : 0));
+            break;
+        }
         case ::fesql::node::kInt16: {
             *output = NativeValue::Create(
                 builder.getInt16(const_node->GetSmallInt()));
@@ -568,8 +573,12 @@ Status ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
         }
         case ::fesql::node::kFnOpMinus: {
             ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
-            CHECK_STATUS(arithmetic_ir_builder.BuildSubExpr(
-                NativeValue::Create(builder.getInt16(0)), left, output));
+            if (node->GetOutputType()->base() == node::kBool) {
+                *output = left;
+            } else {
+                CHECK_STATUS(arithmetic_ir_builder.BuildSubExpr(
+                    NativeValue::Create(builder.getInt16(0)), left, output));
+            }
             break;
         }
         case ::fesql::node::kFnOpBracket: {

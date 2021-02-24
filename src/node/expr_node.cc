@@ -701,6 +701,8 @@ CallExprNode* CallExprNode::DeepCopy(NodeManager* nm) const {
 
 ConstNode* ConstNode::ShadowCopy(NodeManager* nm) const {
     switch (this->GetDataType()) {
+        case node::kBool:
+            return nm->MakeConstNode(GetBool());
         case node::kInt16:
             return nm->MakeConstNode(GetSmallInt());
         case node::kInt32:

@@ -659,9 +659,11 @@ class LLVMUDFRegistry : public UDFRegistry {
  public:
     explicit LLVMUDFRegistry(const std::string& name,
                              std::shared_ptr<LLVMUDFGenBase> gen_impl_func,
+                             size_t fixed_arg_size,
                              const std::vector<size_t>& nullable_arg_indices)
         : UDFRegistry(name),
           gen_impl_func_(gen_impl_func),
+          fixed_arg_size_(fixed_arg_size),
           nullable_arg_indices_(nullable_arg_indices) {}
 
     Status ResolveFunction(UDFResolveContext* ctx,
@@ -669,6 +671,7 @@ class LLVMUDFRegistry : public UDFRegistry {
 
  private:
     std::shared_ptr<LLVMUDFGenBase> gen_impl_func_;
+    size_t fixed_arg_size_;
     std::vector<size_t> nullable_arg_indices_;
 };
 
@@ -716,8 +719,8 @@ class LLVMUDFRegistryHelper : public UDFRegistryHelper<LLVMUDFRegistry> {
                 return_list();
             }
         }
-        auto registry =
-            std::make_shared<LLVMUDFRegistry>(name(), cur_def_, null_indices);
+        auto registry = std::make_shared<LLVMUDFRegistry>(
+            name(), cur_def_, sizeof...(Args), null_indices);
         this->InsertRegistry(
             {DataTypeTrait<Args>::to_type_node(node_manager())...}, false,
             registry);
@@ -749,8 +752,8 @@ class LLVMUDFRegistryHelper : public UDFRegistryHelper<LLVMUDFRegistry> {
                 return_list();
             }
         }
-        auto registry =
-            std::make_shared<LLVMUDFRegistry>(name(), cur_def_, null_indices);
+        auto registry = std::make_shared<LLVMUDFRegistry>(
+            name(), cur_def_, sizeof...(Args), null_indices);
         this->InsertRegistry(
             {DataTypeTrait<Args>::to_type_node(node_manager())...}, true,
             registry);
@@ -1621,8 +1624,16 @@ class UDAFRegistryHelperImpl : UDFRegistryHelper<UDAFRegistry> {
                    typename std::pair<IN, codegen::NativeValue>::second_type...,
                    codegen::NativeValue*)>& gen) {
         auto llvm_gen = std::make_shared<LLVMUDFGen<ST, IN...>>(gen, infer);
-        auto registry =
-            std::make_shared<LLVMUDFRegistry>(name() + "@update", llvm_gen);
+
+        std::vector<size_t> null_indices;
+        std::vector<int> arg_nullable = {IsNullableTrait<IN>::value...};
+        for (size_t i = 0; i < arg_nullable.size(); ++i) {
+            if (arg_nullable[i] > 0) {
+                null_indices.push_back(1 + i);
+            }
+        }
+        auto registry = std::make_shared<LLVMUDFRegistry>(
+            name() + "@update", llvm_gen, 1 + sizeof...(IN), null_indices);
         udaf_gen_.update_gen = registry;
         return *this;
     }

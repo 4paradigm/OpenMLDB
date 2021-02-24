@@ -84,10 +84,16 @@ class FeSQLConfig extends Serializable {
   var windowSampleLimit = 10
 
   @ConfigOption(name="fesql.addIndexColumn.method", doc="The method to add index column(zipWithUniqueId, zipWithIndex, monotonicallyIncreasingId")
-  var addIndexColumnMethod = "zipWithUniqueId"
+  var addIndexColumnMethod = "monotonicallyIncreasingId"
 
   @ConfigOption(name="fesql.concatjoin.jointype", doc="The join type type for concat join(innerjoin, leftjoin, lastjoin)")
   var concatJoinJoinType = "inner"
+
+  @ConfigOption(name="fesql.physical.plan.graphviz.path", doc="The path of physical plan graphviz image")
+  var physicalPlanGraphvizPath = ""
+
+  @ConfigOption(name="fesql.enable.native.last.join", doc="Enable native last join or not")
+  var enableNativeLastJoin = true
 
   @ConfigOption(name="fesql.enable.unsaferow.optimization", doc="Enable UnsafeRow optimization or not")
   var enableUnsafeRowOptimization = false

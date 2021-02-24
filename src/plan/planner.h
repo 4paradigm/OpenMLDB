@@ -112,7 +112,7 @@ class SimplePlanner : public Planner {
                   enable_batch_window_parallelization) {}
     int CreatePlanTree(const NodePointVector &parser_trees,
                        PlanNodeList &plan_trees,  // NOLINT
-                       Status &status);  // NOLINT (runtime/references)
+                       Status &status);           // NOLINT (runtime/references)
 };
 
 // TODO(chenjing): move to executor module

@@ -53,7 +53,7 @@ class WindowComputer(sqlConfig: FeSQLConfig,
     config.windowFrameTypeName,
     config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
 
-  def compute(row: Row, keepIndexColumn: Boolean, unionFlagIdx: Int): Row = {
+  def compute(row: Row, key: Long, keepIndexColumn: Boolean, unionFlagIdx: Int): Row = {
     if (hooks.nonEmpty) {
       hooks.foreach(hook => try {
         hook.preCompute(this, row)
@@ -64,9 +64,6 @@ class WindowComputer(sqlConfig: FeSQLConfig,
 
     // call encode
     val nativeInputRow = encoder.encode(row)
-
-    // extract key
-    val key = orderKeyExtractor.apply(row)
 
     // call native compute
     // note: row is buffered automatically by core api
@@ -91,17 +88,17 @@ class WindowComputer(sqlConfig: FeSQLConfig,
     if (keepIndexColumn) {
       if (unionFlagIdx == -1) {
         // No union column, use the last one
-        outputArr(outputArr.size-1) = row.get(row.size-1)
+        outputArr(outputArr.length - 1) = row.get(row.size-1)
       } else {
         // Has union column, use the last but one
-        outputArr(outputArr.size-1) = row.get(row.size-2)
+        outputArr(outputArr.length - 1) = row.get(row.size-2)
       }
     }
 
     Row.fromSeq(outputArr) // can reuse backed array
   }
 
-  def bufferRowOnly(row: Row): Unit = {
+  def bufferRowOnly(row: Row, key: Long): Unit = {
     if (hooks.nonEmpty) {
       hooks.foreach(hook => try {
         hook.preBufferOnly(this, row)
@@ -111,7 +108,6 @@ class WindowComputer(sqlConfig: FeSQLConfig,
     }
 
     val nativeInputRow = encoder.encode(row)
-    val key = orderKeyExtractor.apply(row)
     if (!window.BufferData(key, nativeInputRow)) {
       logger.error(s"BufferData Fail, please check order key: $key")
     }

@@ -64,6 +64,7 @@ static const int ENGINE_TEST_RET_SUCCESS = 0;
 static const int ENGINE_TEST_RET_INVALID_CASE = 1;
 static const int ENGINE_TEST_RET_COMPILE_ERROR = 2;
 static const int ENGINE_TEST_RET_EXECUTION_ERROR = 3;
+static const int ENGINE_TEST_INIT_CATALOG_ERROR = 4;
 
 namespace fesql {
 namespace vm {
@@ -146,14 +147,14 @@ void PrintYamlResult(const vm::Schema& schema, const std::vector<Row>& rows) {
                 oss << ", ";
             }
         }
-        oss << "]";
+        oss << "]\n";
     }
     LOG(INFO) << "\n" << oss.str() << "\n";
 }
 
 void PrintYamlV1Result(const vm::Schema& schema, const std::vector<Row>& rows) {
     std::ostringstream oss;
-    oss << "print schema\n[";
+    oss << "columns:\n[";
     for (int i = 0; i < schema.size(); i++) {
         auto col = schema.Get(i);
         oss << "\"" << col.name() << " " << YamlTypeName(col.type()) << "\"";
@@ -161,7 +162,7 @@ void PrintYamlV1Result(const vm::Schema& schema, const std::vector<Row>& rows) {
             oss << ", ";
         }
     }
-    oss << "]\nprint rows\n";
+    oss << "]\nrows:\n";
     RowView row_view(schema);
     for (auto row : rows) {
         row_view.Reset(row.buf());
@@ -287,7 +288,8 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
         row_view_exp.Reset(exp_rows[row_index].buf());
         for (int i = 0; i < schema.size(); i++) {
             if (row_view_exp.IsNULL(i)) {
-                ASSERT_TRUE(row_view.IsNULL(i)) << " At " << i;
+                ASSERT_TRUE(row_view.IsNULL(i))
+                    << " At " << i << schema.Get(i).name();
                 continue;
             }
             ASSERT_FALSE(row_view.IsNULL(i)) << " At " << i;
@@ -329,7 +331,7 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                         ASSERT_TRUE(IsNaN(act))
                             << " At " << i << " " << schema.Get(i).name();
                     } else {
-                        ASSERT_FLOAT_EQ(act, exp)
+                        ASSERT_DOUBLE_EQ(act, exp)
                             << " At " << i << " " << schema.Get(i).name();
                     }
                     break;
@@ -378,7 +380,7 @@ const std::string GenerateTableName(int32_t id) {
     return "auto_t" + std::to_string(id);
 }
 
-void InitEngineCatalog(
+bool InitEngineCatalog(
     const SQLCase& sql_case, const EngineOptions& engine_options,
     std::map<std::string, std::shared_ptr<::fesql::storage::Table>>&  // NOLINT
         name_table_map,                                               // NOLINT
@@ -391,7 +393,9 @@ void InitEngineCatalog(
             actual_name = GenerateTableName(i);
         }
         type::TableDef table_def;
-        sql_case.ExtractInputTableDef(table_def, i);
+        if (!sql_case.ExtractInputTableDef(table_def, i)) {
+            return false;
+        }
         table_def.set_name(actual_name);
 
         std::shared_ptr<::fesql::storage::Table> table(
@@ -399,12 +403,17 @@ void InitEngineCatalog(
         name_table_map[table_def.name()] = table;
         if (engine_options.is_cluster_optimzied()) {
             // add table with local tablet
-            ASSERT_TRUE(AddTable(catalog, table_def, table, engine.get()));
+            if (!AddTable(catalog, table_def, table, engine.get())) {
+                return false;
+            }
         } else {
-            ASSERT_TRUE(AddTable(catalog, table_def, table));
+            if (!AddTable(catalog, table_def, table)) {
+                return false;
+            }
         }
         idx_table_name_map[i] = actual_name;
     }
+    return true;
 }
 
 void DoEngineCheckExpect(const SQLCase& sql_case,
@@ -496,6 +505,7 @@ void DoEngineCheckExpect(const SQLCase& sql_case,
 
         LOG(INFO) << "Expect result:\n";
         PrintRows(schema, case_output_data);
+        PrintYamlResult(schema, sorted_output);
 
         ASSERT_NO_FATAL_FAILURE(
             CheckRows(schema, sorted_output, case_output_data));
@@ -585,8 +595,10 @@ class EngineTestRunner {
         catalog_ = BuildCommonCatalog();
         engine_ = std::make_shared<Engine>(catalog_, options_);
         InitSQLCase();
-        InitEngineCatalog(sql_case_, options_, name_table_map_,
-                          idx_table_name_map_, engine_, catalog_);
+        if (!InitEngineCatalog(sql_case_, options_, name_table_map_,
+                          idx_table_name_map_, engine_, catalog_)) {
+            return_code_ = ENGINE_TEST_INIT_CATALOG_ERROR;
+        }
     }
     virtual ~EngineTestRunner() {}
 
@@ -730,6 +742,10 @@ Status EngineTestRunner::Compile() {
 }
 
 void EngineTestRunner::RunCheck() {
+    if (ENGINE_TEST_INIT_CATALOG_ERROR == return_code_) {
+        FAIL() << "Engine Test Init Catalog Error";
+        return;
+    }
     auto engine_mode = session_->engine_mode();
     Status status = Compile();
     ASSERT_EQ(sql_case_.expect().success_, status.isOK());
@@ -884,8 +900,8 @@ class RequestEngineTestRunner : public EngineTestRunner {
         std::string request_name = request_session->GetRequestName();
 
         if (has_batch_request) {
-            CHECK_TRUE(1 == sql_case_.batch_request_.rows_.size(), kSQLError,
-                       "RequestEngine can't handler multi rows batch requests");
+            CHECK_TRUE(1 <= sql_case_.batch_request_.rows_.size(), kSQLError,
+                       "RequestEngine can't handler emtpy rows batch requests");
             CHECK_TRUE(sql_case_.ExtractInputData(sql_case_.batch_request_,
                                                   request_rows_),
                        kSQLError, "Extract case request rows failed");
@@ -927,7 +943,7 @@ class RequestEngineTestRunner : public EngineTestRunner {
 
     Status Compute(std::vector<Row>* outputs) override {
         const bool has_batch_request =
-            !sql_case_.batch_request_.columns_.empty() &&
+            !sql_case_.batch_request_.columns_.empty() ||
             !sql_case_.batch_request_.schema_.empty();
         auto request_session =
             std::dynamic_pointer_cast<RequestRunSession>(session_);

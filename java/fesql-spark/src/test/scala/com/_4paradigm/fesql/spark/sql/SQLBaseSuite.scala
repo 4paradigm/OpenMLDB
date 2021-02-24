@@ -7,6 +7,7 @@ import java.text.SimpleDateFormat
 import com._4paradigm.fesql.common.JITManager
 import com._4paradigm.fesql.spark.api.{FesqlDataframe, FesqlSession}
 import com._4paradigm.fesql.spark.SparkTestSuite
+import com._4paradigm.fesql.spark.utils.SparkUtil
 import com._4paradigm.fesql.sqlcase.model._
 import org.apache.commons.collections.CollectionUtils
 import org.apache.spark.sql.{DataFrame, Row}
@@ -48,7 +49,7 @@ class SQLBaseSuite extends SparkTestSuite {
 
   def keepCase(sqlCase: SQLCase): Boolean = {
     if (sqlCase.getMode != null) {
-      !sqlCase.getMode.contains("offline-unsupport")
+      !sqlCase.getMode.contains("offline-unsupport") && !sqlCase.getMode.contains("batch-unsupport")
     } else {
       true
     }
@@ -118,7 +119,8 @@ class SQLBaseSuite extends SparkTestSuite {
     }
 
     val expectSchema = parseSchema(expect.getColumns)
-    assert(data.schema == expectSchema)
+    // Notice that only check schema name and type, but not nullable attribute
+    assert(SparkUtil.checkSchemaIgnoreNullable(data.schema, expectSchema))
 
     val expectData = parseData(expect.getRows, expectSchema)
       .zipWithIndex.sortBy(_._1.mkString(","))
@@ -130,13 +132,13 @@ class SQLBaseSuite extends SparkTestSuite {
       s"Output size mismatch, get ${actualData.length} but expect ${expectData.length}")
 
     val size = expectData.length
-//    for (i <- 0 until size) {
-//      val expectId = expectData(i)._2
-//      val expectArr = expectData(i)._1
-//      val outputArr = actualData(i)._1
-//      print(s"Expect: ${expectArr.mkString(", ")} -- " +
-//        s"Output: ${outputArr.mkString(", ")}\n")
-//    }
+    //    for (i <- 0 until size) {
+    //      val expectId = expectData(i)._2
+    //      val expectArr = expectData(i)._1
+    //      val outputArr = actualData(i)._1
+    //      print(s"Expect: ${expectArr.mkString(", ")} -- " +
+    //        s"Output: ${outputArr.mkString(", ")}\n")
+    //    }
     for (i <- 0 until size) {
       val expectId = expectData(i)._2
       val expectArr = expectData(i)._1

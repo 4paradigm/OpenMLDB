@@ -282,3 +282,37 @@ cases:
         - [2, "aaaaaaaaaa", 1590738991000, 3.3, 2, "xxx", 3, 300.0]
         - [3, "bb", 1590738990000, 3.3, 3, "000", 1, 0.0]
         - [4, "cc", 1590738993000, 4.4, 4, "zzz", 3, 900.0]
+  -
+    id: 11
+    desc: 子查询使列别名重名
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [1,"aa",2,3,1590738989000]
+          - [2,"bb",21,31,1590738990000]
+          - [3,"cc",41,51,1590738991000]
+    sql: select * from (select id,c2+1 as v2,c3+1 as v2 from {0});
+    expect:
+      columns: ["id int","v2 int","v2 bigint"]
+      order: id
+      rows:
+        - [1,3,4]
+        - [2,22,32]
+        - [3,42,52]
+  -
+    id: 12
+    desc: 子查询使列别名重名,并同时select
+    tags: ["TODO", "@baoxinqi", "bug-期望子查询别名不可以一致FEX-1009"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [1,"aa",2,3,1590738989000]
+          - [2,"bb",21,31,1590738990000]
+          - [3,"cc",41,51,1590738991000]
+    sql: select id,v2,v2 from (select id,c2+1 as v2,c3+1 as v2 from {0});
+    expect:
+      success: false

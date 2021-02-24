@@ -77,7 +77,7 @@ BatchModeTransformer::BatchModeTransformer(
       id_(0),
       performance_sensitive_mode_(false),
       cluster_optimized_mode_(false),
-      enable_window_parallelization_(false),
+      enable_batch_window_parallelization_(false),
       library_(library),
       plan_ctx_(node_manager, library, db, catalog, false) {}
 
@@ -94,7 +94,7 @@ BatchModeTransformer::BatchModeTransformer(
       id_(0),
       performance_sensitive_mode_(performance_sensitive),
       cluster_optimized_mode_(cluster_optimized_mode),
-      enable_window_parallelization_(enable_window_parallelization),
+      enable_batch_window_parallelization_(enable_window_parallelization),
       library_(library),
       plan_ctx_(node_manager, library, db, catalog, enable_expr_opt) {}
 
@@ -341,7 +341,7 @@ Status BatchModeTransformer::TransformProjectPlanOp(
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
                "Input node or output node is null");
 
-    if (enable_window_parallelization_) {
+    if (enable_batch_window_parallelization_) {
         return TransformProjectPlanOpWithWindowParallel(node, output);
     } else {
         return TransformProjectPlanOpWindowSerial(node, output);
@@ -654,7 +654,11 @@ Status BatchModeTransformer::TransformWindowOp(
                                      "Fail to handle window: group "
                                      "expression should belong to left table");
                     }
-
+                    CHECK_TRUE(join_op->producers()[0]->GetOpType() ==
+                                   kPhysicalOpDataProvider,
+                               kPlanError,
+                               "Fail to handler window with request last "
+                               "join, left isn't a table provider")
                     auto request_op = dynamic_cast<PhysicalDataProviderNode*>(
                         join_op->producers()[0]);
                     auto name = request_op->table_handler_->GetName();
@@ -919,7 +923,7 @@ Status ExtractProjectInfos(const node::PlanNodeList& projects,
                 for (size_t k = 0; k < schema_source->size(); ++k) {
                     auto col_name = schema_source->GetColumnName(k);
                     auto col_ref = node_manager->MakeColumnRefNode(
-                        col_name, all_expr->GetRelationName());
+                        col_name, schema_source->GetSourceName());
                     output->Add(col_name, col_ref, nullptr);
                 }
             }
@@ -1197,7 +1201,7 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
         LOG(WARNING) << "Final transformed result is null";
     }
 
-    if (enable_window_parallelization_) {
+    if (enable_batch_window_parallelization_) {
         LOG(INFO) << "Apply column pruning for window aggregation";
         WindowColumnPruning pass;
         PhysicalOpNode* pruned_op = nullptr;
@@ -1210,6 +1214,36 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
     }
 }
 
+std::string BatchModeTransformer::ExtractSchameName(PhysicalOpNode* in) {
+    if (nullptr == in) {
+        return "";
+    }
+    if (kPhysicalOpSimpleProject == in->GetOpType()) {
+        return ExtractSchameName(in->GetProducer(0));
+    } else if (kPhysicalOpRename == in->GetOpType()) {
+        return dynamic_cast<PhysicalRenameNode*>(in)->name_;
+    } else if (kPhysicalOpDataProvider == in->GetOpType()) {
+        auto data_provider = dynamic_cast<PhysicalDataProviderNode*>(in);
+        return data_provider->table_handler_->GetName();
+    } else {
+        return "";
+    }
+    return "";
+}
+Status BatchModeTransformer::ValidateRequestDataProvider(PhysicalOpNode* in) {
+    CHECK_TRUE(nullptr != in, kPlanError, "Invalid physical node: null");
+    if (kPhysicalOpSimpleProject == in->GetOpType() ||
+        kPhysicalOpRename == in->GetOpType()) {
+        CHECK_STATUS(ValidateRequestDataProvider(in->GetProducer(0)))
+    } else {
+        CHECK_TRUE(
+            kPhysicalOpDataProvider == in->GetOpType() &&
+                kProviderTypeRequest ==
+                    dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_,
+            kPlanError, "Isn't partition provider");
+    }
+    return Status::OK();
+}
 Status BatchModeTransformer::ValidatePartitionDataProvider(PhysicalOpNode* in) {
     CHECK_TRUE(nullptr != in, kPlanError, "Invalid physical node: null");
     if (kPhysicalOpSimpleProject == in->GetOpType() ||
@@ -2194,7 +2228,7 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(
     std::string* index_name, std::vector<bool>* output_bitmap) {
     if (nullptr == groups || nullptr == output_bitmap ||
         nullptr == index_name) {
-        LOG(WARNING) << "fail to transform keys expr : key expr or output "
+        DLOG(WARNING) << "fail to transform keys expr : key expr or output "
                         "or index_name ptr is null";
         return false;
     }
@@ -2449,7 +2483,7 @@ bool ConditionOptimized::Transform(PhysicalOpNode* in,
 bool ConditionOptimized::TransfromAndConditionList(
     const node::ExprNode* condition, node::ExprListNode* and_condition_list) {
     if (nullptr == condition) {
-        LOG(WARNING) << "Skip ConditionOptimized: conditions: null condition";
+        DLOG(WARNING) << "Skip ConditionOptimized: conditions: null condition";
         return false;
     }
 
@@ -2710,12 +2744,12 @@ bool GroupAndSortOptimized::TransformOrderExpr(
     const node::OrderByNode** output) {
     *output = order;
     if (nullptr == order || nullptr == output) {
-        LOG(WARNING)
+        DLOG(WARNING)
             << "fail to optimize order expr : order expr or output is null";
         return false;
     }
     if (index_st.ts_pos == INVALID_POS) {
-        LOG(WARNING) << "not set ts col";
+        DLOG(WARNING) << "not set ts col";
         return false;
     }
     auto& ts_column = schema.Get(index_st.ts_pos);
@@ -2752,7 +2786,7 @@ bool GroupAndSortOptimized::TransformOrderExpr(
 
 bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     if (nullptr == in) {
-        LOG(WARNING) << "LeftJoin optimized skip: node is null";
+        DLOG(WARNING) << "LeftJoin optimized skip: node is null";
         return false;
     }
     if (in->producers().empty() || nullptr == in->producers()[0] ||
@@ -2771,7 +2805,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
         case kPhysicalOpGroupBy: {
             auto group_op = dynamic_cast<PhysicalGroupNode*>(in);
             if (node::ExprListNullOrEmpty(group_op->group_.keys_)) {
-                LOG(WARNING) << "Join optimized skip: groups is null or empty";
+                DLOG(WARNING) << "Join optimized skip: groups is null or empty";
             }
 
             if (!CheckExprListFromSchema(
@@ -2801,7 +2835,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             auto sort_op = dynamic_cast<PhysicalSortNode*>(in);
             if (nullptr == sort_op->sort_.orders_ ||
                 node::ExprListNullOrEmpty(sort_op->sort_.orders_->order_by_)) {
-                LOG(WARNING) << "Join optimized skip: order is null or empty";
+                DLOG(WARNING) << "Join optimized skip: order is null or empty";
             }
             if (!CheckExprListFromSchema(
                     sort_op->sort_.orders_->order_by_,
@@ -2832,9 +2866,9 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             }
 
             if (node::kJoinTypeLast != join_type) {
-                LOG(WARNING) << "Window Join optimized skip: join type should "
-                                "be LAST JOIN, but "
-                             << node::JoinTypeName(join_type);
+                DLOG(WARNING) << "Window Join optimized skip: join type should "
+                                 "be LAST JOIN, but "
+                              << node::JoinTypeName(join_type);
                 return false;
             }
             auto window_agg_op =
@@ -2844,15 +2878,16 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                 (nullptr == window_agg_op->window_.sort_.orders_ ||
                  node::ExprListNullOrEmpty(
                      window_agg_op->window_.sort_.orders_->order_by_))) {
-                LOG(WARNING) << "Window Join optimized skip: both partition and"
-                                "order are empty ";
+                DLOG(WARNING)
+                    << "Window Join optimized skip: both partition and"
+                       "order are empty ";
                 return false;
             }
             auto left_schemas_ctx = join_op->GetProducer(0)->schemas_ctx();
             if (!CheckExprDependOnChildOnly(
                      window_agg_op->window_.partition_.keys_, left_schemas_ctx)
                      .isOK()) {
-                LOG(WARNING) << "Window Join optimized skip: partition keys "
+                DLOG(WARNING) << "Window Join optimized skip: partition keys "
                                 "are resolved from secondary table";
                 return false;
             }
@@ -2860,7 +2895,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                      window_agg_op->window_.sort_.orders_->order_by_,
                      left_schemas_ctx)
                      .isOK()) {
-                LOG(WARNING) << "Window Join optimized skip: order keys are "
+                DLOG(WARNING) << "Window Join optimized skip: order keys are "
                                 "resolved from secondary table";
                 return false;
             }
@@ -2927,7 +2962,7 @@ bool ClusterOptimized::SimplifyJoinLeftInput(
     for (auto column : columns) {
         oss << node::ExprString(column) << ",";
     }
-    LOG(INFO) << "join resolved related columns: \n" << oss.str();
+    DLOG(INFO) << "join resolved related columns: \n" << oss.str();
 
     // find columns belong to left side
     std::vector<size_t> left_indices;
@@ -2965,7 +3000,7 @@ bool ClusterOptimized::SimplifyJoinLeftInput(
         simplified_projects.Add(column_names[idx], column_expr, nullptr);
     }
     if (simplified_projects.size() >= left->GetOutputSchemaSize()) {
-        LOG(WARNING) << "Simplify columns size == left output columns";
+        DLOG(WARNING) << "Simplify columns size == left output columns";
         return false;
     }
     auto root = left;
@@ -3009,7 +3044,7 @@ bool ClusterOptimized::SimplifyJoinLeftInput(
 
 bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     if (nullptr == in) {
-        LOG(WARNING) << "cluster optimized skip: node is null";
+        DLOG(WARNING) << "cluster optimized skip: node is null";
         return false;
     }
     switch (in->GetOpType()) {
@@ -3029,7 +3064,7 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     if (!SimplifyJoinLeftInput(join_op, join_op->join(),
                                                join_op->joined_schemas_ctx(),
                                                &simplify_left)) {
-                        LOG(WARNING) << "Simplify join left input failed";
+                        DLOG(WARNING) << "Simplify join left input failed";
                     }
                     Status status;
                     PhysicalRequestJoinNode* request_join_right_only = nullptr;
@@ -3075,7 +3110,7 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     if (!SimplifyJoinLeftInput(join_op, join_op->join(),
                                                join_op->joined_schemas_ctx(),
                                                &simplify_left)) {
-                        LOG(WARNING) << "Simplify join left input failed";
+                        DLOG(WARNING) << "Simplify join left input failed";
                     }
                     Status status;
                     PhysicalJoinNode* join_right_only = nullptr;
@@ -3124,7 +3159,7 @@ RequestModeTransformer::RequestModeTransformer(
     const bool enable_batch_request_opt, bool enable_expr_opt)
     : BatchModeTransformer(node_manager, db, catalog, module, library,
                            performance_sensitive, cluster_optimized,
-                           enable_expr_opt, true),
+                           enable_expr_opt, false),
       enable_batch_request_opt_(enable_batch_request_opt) {
     batch_request_info_.common_column_indices = common_column_indices;
 }
@@ -3286,7 +3321,7 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
     this->BatchModeTransformer::ApplyPasses(node, &optimized);
     if (optimized == nullptr) {
         *output = node;
-        LOG(WARNING) << "Final optimized result is null";
+        DLOG(WARNING) << "Final optimized result is null";
         return;
     }
     if (!enable_batch_request_opt_ ||

@@ -82,6 +82,9 @@ Status LLVMUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
     for (size_t pos : nullable_arg_indices_) {
         arg_nullable[pos] = true;
     }
+    for (size_t pos = fixed_arg_size_; pos < arg_nullable.size(); ++pos) {
+        arg_nullable[pos] = true;
+    }
 
     auto udf_def = dynamic_cast<node::UDFByCodeGenDefNode*>(
         ctx->node_manager()->MakeUDFByCodeGenDefNode(

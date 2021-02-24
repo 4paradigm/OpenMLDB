@@ -44,8 +44,8 @@ void ByteMemPoolAlloc1000(benchmark::State* state, MODE mode,
 void NewFree1000(benchmark::State* state, MODE mode, size_t request_size);
 
 int64_t RunHistoryWindowBuffer(const fesql::vm::WindowRange& window_range,
-                            uint64_t data_size,
-                            const bool exclude_current_time);
+                               uint64_t data_size,
+                               const bool exclude_current_time);
 void HistoryWindowBuffer(benchmark::State* state, MODE mode, int64_t data_size);
 void HistoryWindowBufferExcludeCurrentTime(benchmark::State* state, MODE mode,
                                            int64_t data_size);

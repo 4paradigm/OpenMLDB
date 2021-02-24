@@ -1617,8 +1617,7 @@ TEST_F(PlannerTest, RowsWindowExpandTest) {
         auto w = project_list->GetW();
         ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
         ASSERT_EQ("(col5) ASC", node::ExprString(w->GetOrders()));
-        ASSERT_EQ("rows[-1000,0]",
-                  w->frame_node()->GetExprString());
+        ASSERT_EQ("rows[-1000,0]", w->frame_node()->GetExprString());
     }
 
     // Pure RowsRange Frame won't expand

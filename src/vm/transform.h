@@ -318,6 +318,8 @@ class BatchModeTransformer {
     Status GenRange(Range* sort, const SchemasContext* schemas_ctx);
 
     Status ValidatePartitionDataProvider(PhysicalOpNode* physical_plan);
+    std::string ExtractSchameName(PhysicalOpNode* physical_plan);
+    Status ValidateRequestDataProvider(PhysicalOpNode* physical_plan);
     Status ValidateWindowIndexOptimization(const WindowOp& window,
                                            PhysicalOpNode* in);
     Status ValidateJoinIndexOptimization(const Join& join, PhysicalOpNode* in);
@@ -418,7 +420,7 @@ class BatchModeTransformer {
     // `index_opt_strict_mode_`
     bool performance_sensitive_mode_;
     bool cluster_optimized_mode_;
-    bool enable_window_parallelization_;
+    bool enable_batch_window_parallelization_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
     const udf::UDFLibrary* library_;

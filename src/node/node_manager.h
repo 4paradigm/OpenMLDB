@@ -106,8 +106,7 @@ class NodeManager {
                                SQLNode *frame, bool opt_open_interval_window);
     SQLNode *MakeWindowDefNode(SQLNodeList *union_tables,
                                ExprListNode *partitions, ExprNode *orders,
-                               SQLNode *frame,
-                               bool opt_open_interval_window,
+                               SQLNode *frame, bool opt_open_interval_window,
                                bool instance_not_in_window);
     WindowDefNode *MergeWindow(const WindowDefNode *w1,
                                const WindowDefNode *w2);
@@ -185,6 +184,7 @@ class NodeManager {
     ExprIdNode *MakeUnresolvedExprId(const std::string &name);
 
     // Make Fn Node
+    ConstNode *MakeConstNode(bool value);
     ConstNode *MakeConstNode(int16_t value);
     ConstNode *MakeConstNode(int value);
     ConstNode *MakeConstNode(int value, TTLType ttl_type);

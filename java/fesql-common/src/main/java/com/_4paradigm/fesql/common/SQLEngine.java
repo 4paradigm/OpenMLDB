@@ -45,7 +45,7 @@ public class SQLEngine implements AutoCloseable {
         BaseStatus status = new BaseStatus();
         boolean ok = engine.Get(sql, database.getName(), session, status);
         if (! (ok && status.getMsg().equals("ok"))) {
-            throw new UnsupportedFesqlException("SQL parse error: " + status.getMsg());
+            throw new UnsupportedFesqlException("SQL parse error: " + status.getMsg() + "\n" + status.getTrace());
         }
         status.delete();
 
