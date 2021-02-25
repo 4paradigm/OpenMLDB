@@ -2,12 +2,16 @@ package com._4paradigm.fesql_auto_test.common;
 
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.entity.FesqlDataProvider;
+import com._4paradigm.fesql_auto_test.util.ReportLog;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.testng.Assert;
 import org.testng.ITest;
-import org.testng.annotations.*;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.BeforeTest;
+import org.testng.annotations.Optional;
+import org.testng.annotations.Parameters;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -18,6 +22,7 @@ import java.util.ArrayList;
  */
 @Slf4j
 public class FesqlTest implements ITest {
+    protected ReportLog reportLog = ReportLog.of();
     protected static SqlExecutor executor;
     private ThreadLocal<String> testName = new ThreadLocal<>();
     private int testNum = 0;
@@ -29,6 +34,7 @@ public class FesqlTest implements ITest {
 
     @BeforeMethod
     public void BeforeMethod(Method method, Object[] testData) {
+        ReportLog.of().clean();
         Assert.assertNotNull(
                 testData[0], "fail to run fesql test with null SQLCase: check yaml case");
         if (testData[0] instanceof SQLCase) {

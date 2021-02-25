@@ -1,9 +1,7 @@
 package com._4paradigm.fesql_auto_test.checker;
 
-import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.MapUtils;
 import org.testng.Assert;
 
 import java.util.Map;
@@ -15,17 +13,14 @@ import java.util.Map;
 @Slf4j
 public class DiffVersionChecker extends BaseChecker{
 
-    public DiffVersionChecker(SQLCase fesqlCase, FesqlResult fesqlResult, Map<String,FesqlResult> resultMap){
-        super(fesqlCase,fesqlResult,resultMap);
+    public DiffVersionChecker(FesqlResult fesqlResult, Map<String,FesqlResult> resultMap){
+        super(fesqlResult,resultMap);
     }
 
     @Override
     public void check() throws Exception {
         log.info("diff version check");
-        if(MapUtils.isEmpty(resultMap)){
-            log.info("resultMap is empty");
-            return;
-        }
+        reportLog.info("diff version check");
         resultMap.entrySet().stream().forEach(e->{
             String version = e.getKey();
             FesqlResult result = e.getValue();
