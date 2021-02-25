@@ -29,6 +29,7 @@ public class SQLCase implements Serializable{
     InputDesc batch_request;
     ExpectDesc expect;
     String spName = genAutoName();
+    UnequalExpect unequalExpect;
 
     private Map<Integer,ExpectDesc> expectProvider;
 
@@ -82,5 +83,47 @@ public class SQLCase implements Serializable{
         builder.append("END;");
         sql = builder.toString();
         return sql;
+    }
+
+    public ExpectDesc getOnlineExpectByType(SQLCaseType sqlCaseType){
+        ExpectDesc expect = this.getExpect();
+        UnequalExpect unequalExpect = this.getUnequalExpect();
+        if(unequalExpect==null) return expect;
+        switch (sqlCaseType){
+            case kDDL:
+            case kBatch:
+                ExpectDesc batch_expect = unequalExpect.getBatch_expect();
+                if(batch_expect!=null) return batch_expect;
+                break;
+            case kRequestWithSp:
+            case kRequestWithSpAsync:
+                ExpectDesc sp_expect = unequalExpect.getSp_expect();
+                if(sp_expect!=null) return sp_expect;
+            case kRequest:
+                ExpectDesc request_expect = unequalExpect.getRequest_expect();
+                if(request_expect!=null) return request_expect;
+                break;
+            case kBatchRequest:
+            case kBatchRequestWithSp:
+            case kBatchRequestWithSpAsync:
+                ExpectDesc request_batch_expect = unequalExpect.getRequest_batch_expect();
+                if(request_batch_expect!=null) return request_batch_expect;
+                break;
+        }
+        ExpectDesc onlineExpect = unequalExpect.getOnline_expect();
+        if(onlineExpect!=null) return onlineExpect;
+        ExpectDesc euqalsExpect = unequalExpect.getExpect();
+        if(euqalsExpect!=null) return euqalsExpect;
+        return expect;
+    }
+    public ExpectDesc getOfflineExpectByType(){
+        ExpectDesc expect = this.getExpect();
+        UnequalExpect unequalExpect = this.getUnequalExpect();
+        if(unequalExpect==null) return expect;
+        ExpectDesc offlineExpect = unequalExpect.getOffline_expect();
+        if(offlineExpect!=null) return offlineExpect;
+        ExpectDesc euqalsExpect = unequalExpect.getExpect();
+        if(euqalsExpect!=null) return euqalsExpect;
+        return expect;
     }
 }
