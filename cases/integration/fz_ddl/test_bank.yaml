@@ -1,7 +1,8 @@
 db: bank
 cases:
   - desc: bank test
-    mode: batch-unsupport
+    mode: batch-unsupport, batch-request-unsupport
+    tags: ["TODO", "@baoxinqi,batch-request-unsupport cluster mode, batch request optimized bug fix"]
     id: 0
     inputs:
       - columns: [reqId string, eventTime timestamp, ingestionTime timestamp, actionValue
