@@ -916,7 +916,6 @@ Status ExtractProjectInfos(const node::PlanNodeList& projects,
         CHECK_TRUE(expr != nullptr, kPlanError);
         if (expr->GetExprType() == node::kExprAll) {
             // expand *
-            auto all_expr = dynamic_cast<node::AllNode*>(expr);
             for (size_t slice = 0; slice < schemas_ctx->GetSchemaSourceSize();
                  ++slice) {
                 auto schema_source = schemas_ctx->GetSchemaSource(slice);
@@ -1230,6 +1229,29 @@ std::string BatchModeTransformer::ExtractSchameName(PhysicalOpNode* in) {
     }
     return "";
 }
+bool BatchModeTransformer::isSourceFromTableProvider(PhysicalOpNode* in) {
+    if (nullptr == in) {
+        LOG(WARNING) << "Invalid physical node: null";
+        return false;
+    }
+    if (kPhysicalOpSimpleProject == in->GetOpType() ||
+        kPhysicalOpRename == in->GetOpType()) {
+        return isSourceFromTableProvider(in->GetProducer(0));
+    } else if (kPhysicalOpDataProvider == in->GetOpType()) {
+        return kProviderTypePartition ==
+                   dynamic_cast<PhysicalDataProviderNode*>(in)
+                       ->provider_type_ ||
+               kProviderTypeTable ==
+                   dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_;
+    }
+    return false;
+}
+Status BatchModeTransformer::ValidateTableProvider(PhysicalOpNode* in) {
+    CHECK_TRUE(nullptr != in, kPlanError, "Invalid physical node: null");
+    CHECK_TRUE(isSourceFromTableProvider(in), kPlanError,
+               "Isn't table/partition provider")
+    return Status::OK();
+}
 Status BatchModeTransformer::ValidateRequestDataProvider(PhysicalOpNode* in) {
     CHECK_TRUE(nullptr != in, kPlanError, "Invalid physical node: null");
     if (kPhysicalOpSimpleProject == in->GetOpType() ||
@@ -1293,7 +1315,25 @@ Status BatchModeTransformer::ValidateWindowIndexOptimization(
                kPlanError, "Window node hasn't been optimzied")
     return Status::OK();
 }
+Status BatchModeTransformer::ValidatePlan(PhysicalOpNode* node) {
+    if (performance_sensitive_mode_) {
+        CHECK_STATUS(ValidateIndexOptimization(node),
+                     "Fail to support physical plan in "
+                     "performance sensitive mode: \n",
+                     node->GetTreeString());
+    }
+    return Status::OK();
+}
 
+// Validate plan in request mode
+// Request mode should validate primary path and primary source
+Status RequestModeTransformer::ValidatePlan(PhysicalOpNode* node) {
+    BatchModeTransformer::ValidatePlan(node);
+    PhysicalOpNode* primary_source = nullptr;
+    CHECK_STATUS(ValidatePrimaryPath(node, &primary_source),
+                 "Fail to validate physical plan")
+    return Status::OK();
+}
 Status BatchModeTransformer::ValidateIndexOptimization(PhysicalOpNode* in) {
     CHECK_TRUE(nullptr != in, kPlanError, "Invalid physical node: null");
 
@@ -1409,13 +1449,8 @@ Status BatchModeTransformer::TransformPhysicalPlan(
 
                 DLOG(INFO) << "After optimization: \n"
                            << optimized_physical_plan->GetTreeString();
-                if (performance_sensitive_mode_) {
-                    CHECK_STATUS(
-                        ValidateIndexOptimization(optimized_physical_plan),
-                        "Fail to support physical plan in "
-                        "performance sensitive mode: \n",
-                        optimized_physical_plan->GetTreeString());
-                }
+                CHECK_STATUS(ValidatePlan(optimized_physical_plan), kPlanError,
+                             "Fail to generate physical plan, invalid plan");
                 std::set<PhysicalOpNode*> node_visited_dict;
                 CHECK_STATUS(
                     InitFnInfo(optimized_physical_plan, &node_visited_dict),
@@ -2229,7 +2264,7 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(
     if (nullptr == groups || nullptr == output_bitmap ||
         nullptr == index_name) {
         DLOG(WARNING) << "fail to transform keys expr : key expr or output "
-                        "or index_name ptr is null";
+                         "or index_name ptr is null";
         return false;
     }
 
@@ -2888,7 +2923,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                      window_agg_op->window_.partition_.keys_, left_schemas_ctx)
                      .isOK()) {
                 DLOG(WARNING) << "Window Join optimized skip: partition keys "
-                                "are resolved from secondary table";
+                                 "are resolved from secondary table";
                 return false;
             }
             if (!CheckExprDependOnChildOnly(
@@ -2896,7 +2931,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                      left_schemas_ctx)
                      .isOK()) {
                 DLOG(WARNING) << "Window Join optimized skip: order keys are "
-                                "resolved from secondary table";
+                                 "resolved from secondary table";
                 return false;
             }
 
@@ -3283,7 +3318,72 @@ Status RequestModeTransformer::TransformScanOp(const node::TablePlanNode* node,
         return BatchModeTransformer::TransformScanOp(node, output);
     }
 }
+Status RequestModeTransformer::ValidatePrimaryPath(
+    PhysicalOpNode* node, PhysicalOpNode** primary_source) {
+    CHECK_TRUE(node != NULL, kPlanError, "NULL Physical Node");
 
+    switch (node->GetOpType()) {
+        case vm::kPhysicalOpDataProvider: {
+            CHECK_TRUE(kProviderTypeRequest ==
+                           dynamic_cast<PhysicalDataProviderNode*>(node)
+                               ->provider_type_,
+                       kPlanError, "Non-support primary source node ",
+                       node->GetTreeString())
+            *primary_source = node;
+            return Status::OK();
+        }
+        case vm::kPhysicalOpJoin:
+        case vm::kPhysicalOpUnion:
+        case vm::kPhysicalOpRequestUnion:
+            // TODO(chenjing): add specific validation code for request union op
+        case vm::kPhysicalOpRequestJoin: {
+            vm::PhysicalOpNode* left_primary_source = nullptr;
+            CHECK_STATUS(
+                ValidatePrimaryPath(node->GetProducer(0), &left_primary_source))
+            CHECK_TRUE(
+                nullptr != left_primary_source, kPlanError,
+                "primary path validate fail: left primary source is null")
+            // Case 1:
+            // binary_node
+            //    + Left - PrimarySource
+            //    + Right - TableProvider
+            if (isSourceFromTableProvider(node->GetProducer(1))) {
+                *primary_source = left_primary_source;
+                return Status::OK();
+            }
+
+            vm::PhysicalOpNode* right_primary_source = nullptr;
+            CHECK_STATUS(ValidatePrimaryPath(node->GetProducer(1),
+                                             &right_primary_source))
+            CHECK_TRUE(
+                nullptr != right_primary_source, kPlanError,
+                "primary path validate fail: right primary source is null")
+            // Case 2:
+            // binary_node
+            //      + Left <-- SamePrimarySource1
+            //      + Right <-- SamePrimarySource1
+            CHECK_TRUE(
+                left_primary_source->Equals(right_primary_source), kPlanError,
+                "primary path validate fail: left path and right path has "
+                "different source")
+            return Status::OK();
+        }
+        case vm::kPhysicalOpConstProject: {
+            CHECK_TRUE(false, kPlanError,
+                       "Non-support Const Project in request mode",
+                       node->GetTreeString());
+            break;
+        }
+        default: {
+            CHECK_TRUE(node->GetProducerCnt() == 1, kPlanError,
+                       "Non-support Op ", PhysicalOpTypeName(node->GetOpType()))
+            CHECK_STATUS(
+                ValidatePrimaryPath(node->GetProducer(0), primary_source));
+            return Status::OK();
+        }
+    }
+    return Status::OK();
+}
 Status RequestModeTransformer::TransformProjectOp(
     node::ProjectListNode* project_list, PhysicalOpNode* depend,
     bool append_input, PhysicalOpNode** output) {
