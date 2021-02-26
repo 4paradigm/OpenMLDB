@@ -38,8 +38,7 @@ void ReadLog(const std::string& full_path) {
     SequentialFile* rf = NewSeqFile(full_path, fd_r);
     std::string scratch;
     bool for_snapshot = false;
-    if (full_path.find(rtidb::log::PZ_COMPRESS_SUFFIX) != std::string::npos
-            || full_path.find(rtidb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos
+    if (full_path.find(rtidb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos
             || full_path.find(rtidb::log::SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
         for_snapshot = true;
     }
