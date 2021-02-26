@@ -226,7 +226,7 @@ class SchemasContext {
         column_name_map_;
 
     // child source mapping
-    // child idx -> (child column idx -> column idx)
+    // child idx -> (child column id -> column idx)
     std::map<size_t, std::map<size_t, size_t>> child_source_map_;
 
     // schema source parts
