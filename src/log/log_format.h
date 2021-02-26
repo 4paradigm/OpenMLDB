@@ -27,9 +27,9 @@ enum RecordType {
 
 enum CompressType {
     kNoCompress = 0,
-    kPz = 1,
-    kZlib = 2,
-    kSnappy = 3
+    kZlib = 1,
+    kSnappy = 2,
+    kPz = 3
 };
 
 static const int kMaxRecordType = kEofType;
