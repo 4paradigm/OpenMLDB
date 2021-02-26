@@ -202,7 +202,6 @@ struct TopKMinCateWhereDef {
 };
 
 void DefaultUDFLibrary::InitMinByCateUDAFs() {
-
     RegisterUDAFTemplate<MinCateDef>("min_cate")
         .doc(R"(
             Compute minimum of values grouped by category key and output string.

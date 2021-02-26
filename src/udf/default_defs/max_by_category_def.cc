@@ -251,7 +251,6 @@ void DefaultUDFLibrary::InitMaxByCateUDAFs() {
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
-
     RegisterUDAFTemplate<TopKMaxCateWhereDef>("top_n_key_max_cate_where")
         .doc(R"(
             Compute maximum of values matching specified condition grouped by
@@ -280,7 +279,6 @@ void DefaultUDFLibrary::InitMaxByCateUDAFs() {
             @endcode
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
-
 }
 
 }  // namespace udf

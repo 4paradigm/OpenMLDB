@@ -211,7 +211,6 @@ struct TopKAvgCateWhereDef {
 };
 
 void DefaultUDFLibrary::InitAvgByCateUDAFs() {
-
     RegisterUDAFTemplate<AvgCateDef>("avg_cate")
         .doc(R"(
             Compute average of values grouped by category key and output string.

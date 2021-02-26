@@ -200,7 +200,6 @@ struct TopKCountCateWhereDef {
 };
 
 void DefaultUDFLibrary::InitCountByCateUDAFs() {
-
     RegisterUDAFTemplate<CountCateDef>("count_cate")
         .doc(R"(
             Compute count of values grouped by category key and output string.
@@ -279,7 +278,6 @@ void DefaultUDFLibrary::InitCountByCateUDAFs() {
             @endcode
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
-
 }
 
 }  // namespace udf
