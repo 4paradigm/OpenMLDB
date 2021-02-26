@@ -128,9 +128,7 @@ int AddRecord(const Slice& slice, std::vector<std::string>& vec) {  // NOLINT
 }
 
 std::string GetWritePath(const std::string& path) {
-    if (FLAGS_snapshot_compression == "pz") {
-        return path + rtidb::log::PZ_COMPRESS_SUFFIX;
-    } else if (FLAGS_snapshot_compression == "zlib") {
+    if (FLAGS_snapshot_compression == "zlib") {
         return path + rtidb::log::ZLIB_COMPRESS_SUFFIX;
     } else if (FLAGS_snapshot_compression == "snappy") {
         return path + rtidb::log::SNAPPY_COMPRESS_SUFFIX;
@@ -413,11 +411,8 @@ int main(int argc, char** argv) {
     ::rtidb::base::SetLogLevel(DEBUG);
     ::testing::InitGoogleTest(&argc, argv);
     int ret = 0;
-    std::vector<std::string> vec{"off", "zlib", "snappy", "pz"};
+    std::vector<std::string> vec{"off", "zlib", "snappy"};
     for (size_t i = 0; i < vec.size(); i++) {
-#ifndef PZFPGA_ENABLE
-        if (vec[i] == "pz") continue;
-#endif
         std::cout << "compress type: " << vec[i] << std::endl;
         FLAGS_snapshot_compression = vec[i];
         if (FLAGS_snapshot_compression == "off") {

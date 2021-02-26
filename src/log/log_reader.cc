@@ -23,7 +23,6 @@
 #include "log/log_format.h"
 #include "base/glog_wapper.h" // NOLINT
 #include "base/endianconv.h"
-#include "base/compress.h"
 
 
 using ::rtidb::base::Status;
@@ -300,12 +299,6 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
             CompressType compress_type = kNoCompress;
             memcpy(static_cast<void*>(&compress_type), data + sizeof(uint32_t), 1);
             DLOG(INFO) << "compress_len: " << compress_len << ", " << "compress_type: " << compress_type;
-#ifndef PZFPGA_ENABLE
-            if (compress_type == kPz) {
-                PDLOG(WARNING, "FLAGS_snapshot_compression is pz, but PZFPGA_ENABLE is off");
-                return kBadRecord;
-            }
-#endif
             // read compressed data
             Slice block;
             status = file_->Read(compress_len, &block, backing_store_);
@@ -316,18 +309,6 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
             const char* block_data = block.data();
             int32_t uncompress_len = 0;
             switch (compress_type) {
-#ifdef PZFPGA_ENABLE
-                case kPz: {
-                    FPGA_env* fpga_env = rtidb::base::Compress::GetFpgaEnv();
-                    uncompress_len = gzipfpga_uncompress_nohuff(
-                            fpga_env, block_data, uncompress_buf_, compress_len, block_size_);
-                    if (uncompress_len < 0) {
-                        PDLOG(WARNING, "bad record when uncompress block, compress type: %d", compress_type);
-                        return kBadRecord;
-                    }
-                    break;
-                }
-#endif
                 case kSnappy: {
                     snappy::GetUncompressedLength(block_data, static_cast<size_t>(compress_len),
                         reinterpret_cast<size_t*>(&uncompress_len));
