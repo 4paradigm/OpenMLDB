@@ -3334,6 +3334,7 @@ Status RequestModeTransformer::ValidatePrimaryPath(
         }
         case vm::kPhysicalOpJoin:
         case vm::kPhysicalOpUnion:
+        case vm::kPhysicalOpPostRequestUnion:
         case vm::kPhysicalOpRequestUnion:
             // TODO(chenjing): add specific validation code for request union op
         case vm::kPhysicalOpRequestJoin: {
