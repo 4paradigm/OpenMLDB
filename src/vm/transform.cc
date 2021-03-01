@@ -3366,6 +3366,7 @@ Status RequestModeTransformer::ValidatePrimaryPath(
                 left_primary_source->Equals(right_primary_source), kPlanError,
                 "primary path validate fail: left path and right path has "
                 "different source")
+            *primary_source = left_primary_source;
             return Status::OK();
         }
         case vm::kPhysicalOpConstProject: {

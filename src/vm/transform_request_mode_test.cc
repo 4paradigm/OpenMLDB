@@ -253,8 +253,8 @@ void CheckTransformPhysicalPlan(const SQLCase& sql_case,
     RequestModeTransformer transform(nm, "db", catalog, m.get(), lib, {}, false,
                                      false, false, false);
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(
-        transform.TransformPhysicalPlan(plan_trees, &physical_plan).isOK());
+    Status status = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
+    ASSERT_TRUE(status.isOK()) << "physical plan transform fail: " << status;
     std::ostringstream oss;
     physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sqlstr << "\n" << oss.str() << std::endl;
