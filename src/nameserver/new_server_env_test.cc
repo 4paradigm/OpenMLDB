@@ -31,7 +31,6 @@ DECLARE_int32(request_timeout_ms);
 DECLARE_int32(request_timeout_ms);
 DECLARE_bool(binlog_notify_on_put);
 DECLARE_bool(use_name);
-DECLARE_bool(use_rdma);
 
 using ::rtidb::zk::ZkClient;
 
@@ -164,7 +163,7 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     std::string ns_real_ep = "127.0.0.1:9631";
     brpc::Server ns_server;
     StartNameServer(ns_server, ns_real_ep);
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_use_rdma, ns_real_ep);
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(ns_real_ep);
     name_server_client.Init();
 
     // tablet1
@@ -285,7 +284,7 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
     std::string ns_real_ep = "127.0.0.1:9631";
     brpc::Server ns_server;
     StartNameServer(ns_server, ns_real_ep);
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_use_rdma, ns_real_ep);
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(ns_real_ep);
     name_server_client.Init();
 
     // tablet1
@@ -296,7 +295,7 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server tb_server1;
     StartTablet(tb_server1, tb_real_ep_1);
-    ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> tb_client_1(FLAGS_use_rdma, tb_real_ep_1);
+    ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> tb_client_1(tb_real_ep_1);
     tb_client_1.Init();
 
     // tablet2
@@ -306,7 +305,7 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server tb_server2;
     StartTablet(tb_server2, tb_real_ep_2);
-    ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> tb_client_2(FLAGS_use_rdma, tb_real_ep_2);
+    ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> tb_client_2(tb_real_ep_2);
     tb_client_2.Init();
 
     bool ok = false;
