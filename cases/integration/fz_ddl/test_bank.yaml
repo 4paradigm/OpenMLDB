@@ -1,8 +1,7 @@
 db: bank
 cases:
   - desc: bank test
-    mode: batch-unsupport, batch-request-unsupport
-    tags: ["TODO", "@baoxinqi,batch-request-unsupport cluster mode, batch request optimized bug fix"]
+    tags: ["@baoxinqi,batch-request-unsupport cluster mode, batch request optimized bug fix"]
     id: 0
     inputs:
       - columns: [reqId string, eventTime timestamp, ingestionTime timestamp, actionValue
@@ -36,7 +35,7 @@ cases:
       indexs: ["index1:new_user_id:eventTime"]
       common_column_indices: [1, 2, 3, 4, 5]
       rows:
-        - [reqId1, 1609894067190, 1609894067190, "main_id1", "new_user_id1", 1609894067190, 1, "time1_1"]
+        - [reqId1, 1609894067190, "main_id1", "new_user_id1", 1609894067190, 1, "time1_1"]
     expect:
       success: true
     sql: "select * from \n(\nselect\n    reqId as reqId_1,\n    `reqId` as flattenRequest_reqId_original_0,\n\
