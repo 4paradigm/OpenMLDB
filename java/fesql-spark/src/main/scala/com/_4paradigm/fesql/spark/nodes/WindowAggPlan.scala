@@ -12,6 +12,7 @@ import com._4paradigm.fesql.vm.Window.WindowFrameType
 import com._4paradigm.fesql.vm.PhysicalWindowAggrerationNode
 import org.apache.hadoop.fs.FileSystem
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.{Column, DataFrame, Row, functions}
 import org.apache.spark.util.SerializableConfiguration
 import org.slf4j.LoggerFactory
@@ -32,21 +33,27 @@ object WindowAggPlan {
     // Check if we should keep the index column
     val keepIndexColumn = SparkInstance.keepIndexColumn(ctx, node.GetNodeId())
 
-    val outputRDD = if (unionNum > 0) {
-      genWithUnion(ctx, node, input, keepIndexColumn)
+    if (ctx.getConf.enableUnsafeRowOptimization) {
+      // TODO: Support unsafe gen with union in the future
+      unsafeGenDefault(ctx, node, input, keepIndexColumn)
     } else {
-      genDefault(ctx, node, input, keepIndexColumn)
+      val outputRDD = if (unionNum > 0) {
+        genWithUnion(ctx, node, input, keepIndexColumn)
+      } else {
+        genDefault(ctx, node, input, keepIndexColumn)
+      }
+
+      val outputSchema = if (keepIndexColumn) {
+        FesqlUtil.getSparkSchema(node.GetOutputSchema()).add(ctx.getIndexInfo(node.GetNodeId()).indexColumnName, LongType)
+      } else {
+        FesqlUtil.getSparkSchema(node.GetOutputSchema())
+      }
+
+      val outputDf = ctx.getSparkSession.createDataFrame(outputRDD, outputSchema)
+
+      SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
     }
 
-    val outputSchema = if (keepIndexColumn) {
-      FesqlUtil.getSparkSchema(node.GetOutputSchema()).add(ctx.getIndexInfo(node.GetNodeId()).indexColumnName, LongType)
-    } else {
-      FesqlUtil.getSparkSchema(node.GetOutputSchema())
-    }
-
-    val outputDf = ctx.getSparkSession.createDataFrame(outputRDD, outputSchema)
-
-    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
   }
 
 
@@ -68,7 +75,7 @@ object WindowAggPlan {
     val hadoopConf = new SerializableConfiguration(
       ctx.getSparkSession.sparkContext.hadoopConfiguration)
 
-    val resultRDD = inputDf.rdd.mapPartitionsWithIndex {
+    inputDf.rdd.mapPartitionsWithIndex {
       case (partitionIndex, iter) =>
         if (config.print) {
           logger.info(s"partitionIndex $partitionIndex")
@@ -79,7 +86,60 @@ object WindowAggPlan {
         // window iteration
         windowAggIter(computer, iter, config, windowAggConfig)
     }
-    resultRDD
+
+  }
+
+  def unsafeGenDefault(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance, keepIndexColumn: Boolean): SparkInstance = {
+    val config = ctx.getConf
+    val windowAggConfig = createWindowAggConfig(ctx, node, keepIndexColumn)
+
+    // group and sort
+    if (config.print) {
+      logger.info(s"genDefault mode: ${config.skewMode}")
+    }
+
+    val inputDf = if (config.skewMode == FeSQLConfig.SKEW) {
+      improveSkew(ctx, node, input.getDfConsideringIndex(ctx, node.GetNodeId()), config, windowAggConfig)
+    } else {
+      groupAndSort(ctx, node, input.getDfConsideringIndex(ctx, node.GetNodeId()))
+    }
+
+    val hadoopConf = new SerializableConfiguration(
+      ctx.getSparkSession.sparkContext.hadoopConfiguration)
+
+
+    val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node.GetProducer(0))
+    val outputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
+    val outputSchema = FesqlUtil.getSparkSchema(node.GetOutputSchema())
+
+    // Combine row and internal row in the tuple for repartition
+    val rowRdd = inputDf.rdd
+    val internalRowRdd = inputDf.queryExecution.toRdd
+    val zippedRdd = rowRdd.zip(internalRowRdd)
+
+    val outputInternalRowRdd = zippedRdd.mapPartitionsWithIndex {
+      case (partitionIndex, iter) =>
+        if (config.print) {
+          logger.info(s"partitionIndex $partitionIndex")
+        }
+        // create computer
+        val computer = createComputer(partitionIndex, hadoopConf, config, windowAggConfig)
+
+        // window iteration
+        unsafeWindowAggIter(computer, iter, config, windowAggConfig, outputSchema)
+    }
+
+
+    val sparkSessionClass = Class.forName("org.apache.spark.sql.SparkSession")
+    val internalCreateDataFrameMethod = sparkSessionClass
+      .getDeclaredMethod(s"internalCreateDataFrame", classOf[RDD[InternalRow]], classOf[StructType], classOf[Boolean])
+
+    val outputDf =  internalCreateDataFrameMethod.invoke(ctx.getSparkSession, outputInternalRowRdd, outputSchema, false: java.lang.Boolean)
+      .asInstanceOf[DataFrame]
+
+    SparkInstance.fromDataFrame(outputDf)
+
+
   }
 
   def genWithUnion(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance, keepIndexColumn: Boolean): RDD[Row] = {
@@ -381,6 +441,71 @@ object WindowAggPlan {
     computer
   }
 
+  def unsafeWindowAggIter(computer: WindowComputer,
+                    inputIter: Iterator[(Row, InternalRow)],
+                    sqlConfig: FeSQLConfig,
+                    config: WindowAggConfig,
+                    outputSchema: StructType): Iterator[InternalRow] = {
+    var lastRow: Row = null
+
+    // Take the iterator if the limit has been set
+    val limitInputIter = if (config.limitCnt > 0) inputIter.take(config.limitCnt) else inputIter
+
+    if (config.skewTagIdx != 0) {
+      sqlConfig.skewMode = FeSQLConfig.SKEW
+      val skewGroups = config.groupIdxs :+ config.skewTagIdx
+      computer.resetGroupKeyComparator(skewGroups, config.inputSchema)
+    }
+    if (sqlConfig.print) {
+      logger.info(s"windowAggIter mode: ${sqlConfig.skewMode}")
+    }
+
+    val resIter = if (sqlConfig.skewMode == FeSQLConfig.SKEW) {
+      limitInputIter.flatMap(zippedRow => {
+
+        val row = zippedRow._1
+        val internalRow = zippedRow._2
+
+        if (lastRow != null) {
+          computer.checkPartition(row, lastRow)
+        }
+        lastRow = row
+
+        val orderKey = computer.extractKey(row)
+        val tag = row.getInt(config.skewTagIdx)
+        val position = row.getInt(config.skewPositionIdx)
+        if (!isValidOrder(orderKey)) {
+          None
+        } else if (tag == position) {
+          Some(computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn, config.unionFlagIdx, outputSchema))
+        } else {
+          computer.bufferRowOnly(row, orderKey)
+          None
+        }
+      })
+    } else {
+      limitInputIter.flatMap(zippedRow => {
+
+        val row = zippedRow._1
+        val internalRow = zippedRow._2
+
+        if (lastRow != null) {
+          computer.checkPartition(row, lastRow)
+        }
+        lastRow = row
+        val orderKey = computer.extractKey(row)
+        if (isValidOrder(orderKey)) {
+          Some(computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn, config.unionFlagIdx, outputSchema))
+        } else {
+          None
+        }
+      })
+    }
+    AutoDestructibleIterator(resIter) {
+      computer.delete()
+    }
+  }
+
   def windowAggIter(computer: WindowComputer,
                     inputIter: Iterator[Row],
                     sqlConfig: FeSQLConfig,
@@ -401,6 +526,7 @@ object WindowAggPlan {
 
     val resIter = if (sqlConfig.skewMode == FeSQLConfig.SKEW) {
       limitInputIter.flatMap(row => {
+
         if (lastRow != null) {
           computer.checkPartition(row, lastRow)
         }
@@ -420,6 +546,7 @@ object WindowAggPlan {
       })
     } else {
       limitInputIter.flatMap(row => {
+
         if (lastRow != null) {
           computer.checkPartition(row, lastRow)
         }
