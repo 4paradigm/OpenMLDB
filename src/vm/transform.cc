@@ -1328,7 +1328,7 @@ Status BatchModeTransformer::ValidatePlan(PhysicalOpNode* node) {
 // Validate plan in request mode
 // Request mode should validate primary path and primary source
 Status RequestModeTransformer::ValidatePlan(PhysicalOpNode* node) {
-    BatchModeTransformer::ValidatePlan(node);
+    CHECK_STATUS(BatchModeTransformer::ValidatePlan(node), "Invalid plan");
     PhysicalOpNode* primary_source = nullptr;
     CHECK_STATUS(ValidatePrimaryPath(node, &primary_source),
                  "Fail to validate physical plan")
@@ -1449,7 +1449,7 @@ Status BatchModeTransformer::TransformPhysicalPlan(
 
                 DLOG(INFO) << "After optimization: \n"
                            << optimized_physical_plan->GetTreeString();
-                CHECK_STATUS(ValidatePlan(optimized_physical_plan), kPlanError,
+                CHECK_STATUS(ValidatePlan(optimized_physical_plan),
                              "Fail to generate physical plan, invalid plan");
                 std::set<PhysicalOpNode*> node_visited_dict;
                 CHECK_STATUS(
