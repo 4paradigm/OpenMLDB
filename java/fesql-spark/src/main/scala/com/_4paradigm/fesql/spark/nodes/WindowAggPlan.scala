@@ -35,6 +35,7 @@ object WindowAggPlan {
 
     if (ctx.getConf.enableUnsafeRowOptimization) {
       // TODO: Support unsafe gen with union in the future
+      logger.info("Use unsafe row gen default for window agg node")
       unsafeGenDefault(ctx, node, input, keepIndexColumn)
     } else {
       val outputRDD = if (unionNum > 0) {
