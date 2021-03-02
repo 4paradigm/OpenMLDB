@@ -105,9 +105,18 @@ RowIterator* WindowTableIterator::GetRawValue() {
 void WindowTableIterator::GoToStart() {
     while (seg_idx_ < seg_cnt_) {
         if (!pk_it_) {
-            pk_it_ = std::unique_ptr<base::Iterator<base::Slice, void*>>(
-                segments_[index_][seg_idx_]->GetEntries()->NewIterator());
-            pk_it_->SeekToFirst();
+            if (nullptr != segments_ && nullptr != segments_[index_] &&
+                nullptr != segments_[index_][seg_idx_]) {
+                pk_it_ = std::unique_ptr<base::Iterator<base::Slice, void*>>(
+                    segments_[index_][seg_idx_]->GetEntries()->NewIterator());
+            } else {
+                return;
+            }
+            if (nullptr != pk_it_) {
+                pk_it_->SeekToFirst();
+            } else {
+                return;
+            }
         }
         if (pk_it_->Valid()) {
             return;
