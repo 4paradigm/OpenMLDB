@@ -1100,7 +1100,6 @@ public class FesqlUtil {
                                               List<InputDesc> inputs,
                                               boolean useFirstInputAsRequests,
                                               int replicaNum) {
-        long begin = System.currentTimeMillis();
         FesqlResult fesqlResult = new FesqlResult();
         if (inputs != null && inputs.size() > 0) {
             for (int i = 0; i < inputs.size(); i++) {
@@ -1116,8 +1115,6 @@ public class FesqlUtil {
                         return res;
                     }
                 }
-                long end = System.currentTimeMillis();
-                System.out.println("MMMM:"+(end-begin));
                 InputDesc input = inputs.get(i);
                 if (0 == i && useFirstInputAsRequests) {
                     continue;
@@ -1134,13 +1131,9 @@ public class FesqlUtil {
                         }
                     }
                 }
-                end = System.currentTimeMillis();
-                System.out.println("NNNN:"+(end-begin));
             }
         }
         fesqlResult.setOk(true);
-        long end = System.currentTimeMillis();
-        System.out.println("LLLLL:"+(end-begin));
         return fesqlResult;
     }
 
