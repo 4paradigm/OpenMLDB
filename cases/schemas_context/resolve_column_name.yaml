@@ -12,6 +12,8 @@ cases:
       resolve_column:
         - relation_name: t1
           column_name: col0
+          schema_idx: 0
+          col_idx: 0
           path_idx: -1
           source_col_idx: 0
           source_name: t1
@@ -29,21 +31,28 @@ cases:
         - doc: 使用源表名解析源表列名
           relation_name: t1
           column_name: col0
+          schema_idx: 0
+          col_idx: 0
           path_idx: 0
           source_col_idx: 0
           source_name: t1
         - doc: 源表列名解析必须配合表名字
           column_name: col0
           is_error: true
-        - doc: 直接使用当前表列名 
+        - doc: 直接使用当前表列名
           column_name: new_col
+          schema_idx: 0
+          col_idx: 0
           path_idx: 0
           source_col_idx: 0
           source_name: t1
         - doc: 解析新产生的列名
           column_name: col1
+          schema_idx: 0
+          col_idx: 1
           path_idx: -1
           source_col_idx: 1
+          source_name: ""
         - doc: 不能解析非当前表的源表列
           column_name: t1.col1
           is_error: true
@@ -61,4 +70,3 @@ cases:
           relation_name: t1
           column_name: col1
           is_error: true
-       

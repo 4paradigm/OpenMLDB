@@ -268,7 +268,10 @@ Status SchemasContext::ResolveColumnNameByID(size_t column_id,
     CHECK_TRUE(iter != column_id_map_.end(), kColumnNotFound,
                "Fail to find column id #", column_id,
                " in current schema context");
-    *name = GetSchema(iter->second.first)->Get(iter->second.second).name();
+    auto sc = GetSchema(iter->second.first);
+    CHECK_TRUE(sc != nullptr, kColumnNotFound, iter->second.first,
+               "th schema not found");
+    *name = sc->Get(iter->second.second).name();
     return Status::OK();
 }
 
@@ -539,26 +542,24 @@ Status SchemasContext::ResolveColumnID(
 
             // backtrace to the final source info
             size_t cur_column_id = *column_id;
-            int child_column_id = source->GetSourceColumnID(col_idx);
+            int child_col_id = source->GetSourceColumnID(col_idx);
             int path_idx = source->GetSourceChildIdx(col_idx);
             const PhysicalOpNode* cur_node = root_;
-            while (path_idx >= 0 && child_column_id >= 0 &&
-                   cur_node != nullptr) {
+            while (path_idx >= 0 && child_col_id >= 0 && cur_node != nullptr) {
                 cur_node = cur_node->GetProducer(path_idx);
                 auto child_ctx = cur_node->schemas_ctx();
                 size_t child_schema_idx;
                 size_t child_col_idx;
                 CHECK_STATUS(
                     child_ctx->ResolveColumnIndexByID(
-                        child_column_id, &child_schema_idx, &child_col_idx),
-                    "Illegal column id #", child_column_id,
+                        child_col_id, &child_schema_idx, &child_col_idx),
+                    "Illegal column id #", child_col_id,
                     " in schema context of\n", cur_node->GetTreeString());
 
                 const SchemaSource* child_source =
                     child_ctx->GetSchemaSource(child_schema_idx);
                 cur_column_id = child_source->GetColumnID(child_col_idx);
-                child_column_id =
-                    child_source->GetSourceColumnID(child_col_idx);
+                child_col_id = child_source->GetSourceColumnID(child_col_idx);
                 path_idx = child_source->GetSourceChildIdx(child_col_idx);
             }
 

@@ -139,8 +139,7 @@ void CheckColumnResolveCase(const YAML::Node& resolve_case,
 }
 
 void CheckColumnResolveCases(const SQLCase& sql_case, PhysicalOpNode* node) {
-    LOG(INFO) << "Physical plan:\n" << *node;
-    node->PrintSchema();
+    LOG(INFO) << "Physical plan:\n" << node->SchemaToString();
 
     auto& raw_node = sql_case.raw_node();
     const auto& expect = raw_node["expect"];
