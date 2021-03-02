@@ -307,12 +307,12 @@ fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
 }
 
 fesql::codec::Row CoreAPI::UnsafeWindowProject(const RawPtrHandle fn,
-                                         const uint64_t key,
-                                         fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
-                                         const int inputRowSizeInBytes,
-                                         const bool is_instance,
-                                         size_t append_slices,
-                                         WindowInterface* window) {
+    const uint64_t key,
+    fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
+    const int inputRowSizeInBytes,
+    const bool is_instance,
+    size_t append_slices,
+    WindowInterface* window) {
     // tobe
     // Create Row from input UnsafeRow bytes
     auto row = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes,
