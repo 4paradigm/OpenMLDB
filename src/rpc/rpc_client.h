@@ -66,15 +66,17 @@ static SleepRetryPolicy sleep_retry_policy;
 template <class T>
 class RpcClient {
  public:
-    explicit RpcClient(const std::string& endpoint)
+    explicit RpcClient(bool use_rdma, const std::string& endpoint)
         : endpoint_(endpoint),
           use_sleep_policy_(false),
+          use_rdma_(use_rdma),
           log_id_(0),
           stub_(NULL),
           channel_(NULL) {}
-    RpcClient(const std::string& endpoint, bool use_sleep_policy)
+    RpcClient(bool use_rdma, const std::string& endpoint, bool use_sleep_policy)
         : endpoint_(endpoint),
           use_sleep_policy_(use_sleep_policy),
+          use_rdma_(use_rdma),
           log_id_(0),
           stub_(NULL),
           channel_(NULL) {}
@@ -87,7 +89,7 @@ class RpcClient {
         channel_ = new brpc::Channel();
         brpc::ChannelOptions options;
 #ifdef __rdma__
-        options.use_rdma = FLAGS_use_rdma;
+        options.use_rdma = use_rdma_;
 #endif
         if (use_sleep_policy_) {
             options.retry_policy = &sleep_retry_policy;
@@ -201,6 +203,7 @@ class RpcClient {
  private:
     std::string endpoint_;
     bool use_sleep_policy_;
+    bool use_rdma_;
     uint64_t log_id_;
     T* stub_;
     brpc::Channel* channel_;

@@ -26,23 +26,20 @@ DECLARE_bool(enable_show_tp);
 namespace rtidb {
 namespace client {
 
-TabletClient::TabletClient(const std::string& endpoint,
-        const std::string& real_endpoint)
-    : endpoint_(endpoint), real_endpoint_(endpoint), client_(endpoint) {
+TabletClient::TabletClient(bool use_rdma, const std::string& endpoint, const std::string& real_endpoint)
+    : endpoint_(endpoint), real_endpoint_(endpoint), client_(use_rdma, endpoint) {
         if (!real_endpoint.empty()) {
             real_endpoint_ = real_endpoint;
-            client_ = ::rtidb::RpcClient<
-                ::rtidb::api::TabletServer_Stub>(real_endpoint);
+            client_ = ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub>(use_rdma, real_endpoint);
         }
     }
 
-TabletClient::TabletClient(const std::string& endpoint,
-        const std::string& real_endpoint, bool use_sleep_policy)
-    : endpoint_(endpoint), real_endpoint_(endpoint), client_(endpoint, use_sleep_policy) {
+TabletClient::TabletClient(bool use_rdma, const std::string& endpoint, const std::string& real_endpoint,
+    bool use_sleep_policy)
+    : endpoint_(endpoint), real_endpoint_(endpoint), client_(use_rdma, endpoint, use_sleep_policy) {
         if (!real_endpoint.empty()) {
             real_endpoint_ = real_endpoint;
-            client_ = ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub>(
-                    real_endpoint, use_sleep_policy);
+            client_ = ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub>(use_rdma, real_endpoint, use_sleep_policy);
         }
     }
 
@@ -1121,21 +1118,6 @@ bool TabletClient::SetExpire(uint32_t tid, uint32_t pid, bool is_expire) {
     request.set_is_expire(is_expire);
     bool ok =
         client_.SendRequest(&::rtidb::api::TabletServer_Stub::SetExpire,
-                            &request, &response, FLAGS_request_timeout_ms, 1);
-    if (!ok || response.code() != 0) {
-        return false;
-    }
-    return true;
-}
-
-bool TabletClient::SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp) {
-    ::rtidb::api::SetTTLClockRequest request;
-    ::rtidb::api::GeneralResponse response;
-    request.set_tid(tid);
-    request.set_pid(pid);
-    request.set_timestamp(timestamp);
-    bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::SetTTLClock,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;

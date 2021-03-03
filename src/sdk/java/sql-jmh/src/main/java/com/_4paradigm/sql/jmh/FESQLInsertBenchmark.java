@@ -87,7 +87,7 @@ public class FESQLInsertBenchmark {
     @Benchmark
     public void selectSimpleBm() {
         String sql = "select col1, col2, col3 from perf2 limit 10;";
-        ResultSet rs = executor.executeSQL(db, sql);
+        java.sql.ResultSet rs = executor.executeSQL(db, sql);
     }
 
     @Benchmark
@@ -97,7 +97,7 @@ public class FESQLInsertBenchmark {
             sql += String.format(", col1 as col1%d, col2 as col2%d, col3 as col3%d", i, i, i);
         }
         sql += " from perf2 limit 1;";
-        ResultSet rs = executor.executeSQL(db, sql);
+        java.sql.ResultSet rs = executor.executeSQL(db, sql);
     }
 
     @Benchmark
@@ -107,7 +107,7 @@ public class FESQLInsertBenchmark {
             sql += String.format(", col1 as col1%d, col2 as col2%d, col3 as col3%d", i, i, i);
         }
         sql += " from perf2 limit 1;";
-        ResultSet rs = executor.executeSQL(db, sql);
+        java.sql.ResultSet rs = executor.executeSQL(db, sql);
     }
 
     public static void main(String[] args) throws RunnerException {

@@ -65,8 +65,7 @@ SQLInsertRow::SQLInsertRow(
             index_map_[index_cnt++].push_back(idx);
             raw_dimensions_[idx] = fesql::codec::NONETOKEN;
         }
-        column_name_map.insert(
-            std::make_pair(table_info_->column_desc_v1(idx).name(), idx));
+        column_name_map.emplace(table_info_->column_desc_v1(idx).name(), idx);
     }
     if (table_info_->column_key_size() > 0) {
         index_map_.clear();
@@ -76,6 +75,9 @@ SQLInsertRow::SQLInsertRow(
                 index_map_[idx].push_back(column_name_map[column]);
                 raw_dimensions_[column_name_map[column]] =
                     fesql::codec::NONETOKEN;
+            }
+            for (const auto& ts_col : table_info_->column_key(idx).ts_name()) {
+                ts_set_.insert(column_name_map[ts_col]);
             }
         }
     }
@@ -292,6 +294,9 @@ bool SQLInsertRow::AppendDate(int32_t date) {
 bool SQLInsertRow::AppendNULL() {
     if (IsDimension()) {
         PackDimension(fesql::codec::NONETOKEN);
+    }
+    if (ts_set_.count(rb_.GetAppendPos())) {
+        return false;
     }
     if (rb_.AppendNULL()) {
         return MakeDefault();

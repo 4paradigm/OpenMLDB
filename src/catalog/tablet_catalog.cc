@@ -325,6 +325,7 @@ bool TabletCatalog::DeleteTable(const std::string& db, const std::string& table_
     if (it == db_it->second.end()) {
         return false;
     }
+    LOG(INFO) << "delete table from catalog. db " << db << ", name " << table_name << ", pid " << pid;
     if (it->second->DeleteTable(pid) < 1) {
         db_it->second.erase(it);
     }

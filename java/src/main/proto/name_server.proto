@@ -479,6 +479,14 @@ message ShowSdkEndpointResponse {
     optional string msg = 3;
 }
 
+message ShowCatalogRequest {}
+
+message ShowCatalogResponse {
+    repeated rtidb.common.CatalogInfo catalog = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -525,9 +533,9 @@ service NameServer {
     rpc SetSdkEndpoint(SetSdkEndpointRequest) returns (GeneralResponse);
     rpc ShowBlobServer(ShowBlobServerRequest) returns (ShowBlobServerResponse);
     rpc ShowSdkEndpoint(ShowSdkEndpointRequest) returns (ShowSdkEndpointResponse);
+    rpc ShowCatalog(ShowCatalogRequest) returns (ShowCatalogResponse);
 
     // sql procedure interfaces
     rpc CreateProcedure(rtidb.api.CreateProcedureRequest) returns (GeneralResponse);
-    rpc ShowProcedure(rtidb.api.ShowProcedureRequest) returns (rtidb.api.ShowProcedureResponse);
     rpc DropProcedure(rtidb.api.DropProcedureRequest) returns (GeneralResponse);
 }

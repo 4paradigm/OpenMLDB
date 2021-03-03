@@ -190,8 +190,7 @@ class Skiplist {
             if (pos_node == NULL) {  // doesnt find key or pos, just return
                 return NULL;
             }
-            if (compare_(pos_node->GetKey(), key) >=
-                0) {  // find key before pos, use key
+            if (compare_(pos_node->GetKey(), key) >= 0) {  // find key before pos, use key
                 return Split(pos_node->GetKey());
             }
             pos_node = pos_node->GetNext(0);

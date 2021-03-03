@@ -19,6 +19,7 @@ DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
 DECLARE_string(zk_cluster);
 DECLARE_uint32(go_back_max_try_cnt);
+DECLARE_bool(use_rdma);
 
 namespace rtidb {
 namespace replica {
@@ -45,7 +46,7 @@ ReplicateNode::ReplicateNode(const std::string& point, LogParts* logs,
                              bool rep_follower,
                              std::atomic<uint64_t>* follower_offset,
                              const std::string& real_point)
-    : log_reader_(logs, log_path),
+    : log_reader_(logs, log_path, false),
       cache_(),
       endpoint_(point),
       last_sync_offset_(0),
@@ -53,7 +54,7 @@ ReplicateNode::ReplicateNode(const std::string& point, LogParts* logs,
       tid_(tid),
       pid_(pid),
       term_(term),
-      rpc_client_(point),
+      rpc_client_(FLAGS_use_rdma, point),
       worker_(),
       leader_log_offset_(leader_log_offset),
       is_running_(false),
@@ -63,8 +64,7 @@ ReplicateNode::ReplicateNode(const std::string& point, LogParts* logs,
       rep_node_(rep_follower),
       follower_offset_(follower_offset) {
           if (!real_point.empty()) {
-              rpc_client_ =
-                  rtidb::RpcClient<::rtidb::api::TabletServer_Stub>(real_point);
+              rpc_client_ = rtidb::RpcClient<::rtidb::api::TabletServer_Stub>(FLAGS_use_rdma, real_point);
           }
       }
 
