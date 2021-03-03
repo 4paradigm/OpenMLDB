@@ -971,17 +971,23 @@ public class FesqlUtil {
 
         if (rawRs == null) {
             fesqlResult.setOk(false);
+            fesqlResult.setMsg("executeSQL fail, result is null");
         } else if  (rawRs instanceof SQLResultSet){
             SQLResultSet rs = (SQLResultSet)rawRs;
             fesqlResult.setOk(true);
             try {
                 fesqlResult.setMetaData(rs.getMetaData());
+            } catch (Exception e) {
+                fesqlResult.setMsg("getMetaData fail");
+                fesqlResult.setOk(false);
+            }
+            try {
                 List<List<Object>> result = convertRestultSetToList(rs);
                 fesqlResult.setCount(result.size());
                 fesqlResult.setResult(result);
             } catch (Exception e) {
                 fesqlResult.setOk(false);
-                e.printStackTrace();
+                fesqlResult.setMsg(e.getMessage());
             }
         }
         log.info("select result:{} \nschema={}", fesqlResult, fesqlResult.getResultSchema());
@@ -1100,7 +1106,6 @@ public class FesqlUtil {
                                               List<InputDesc> inputs,
                                               boolean useFirstInputAsRequests,
                                               int replicaNum) {
-        long begin = System.currentTimeMillis();
         FesqlResult fesqlResult = new FesqlResult();
         if (inputs != null && inputs.size() > 0) {
             for (int i = 0; i < inputs.size(); i++) {
@@ -1116,8 +1121,6 @@ public class FesqlUtil {
                         return res;
                     }
                 }
-                long end = System.currentTimeMillis();
-                System.out.println("MMMM:"+(end-begin));
                 InputDesc input = inputs.get(i);
                 if (0 == i && useFirstInputAsRequests) {
                     continue;
@@ -1134,13 +1137,9 @@ public class FesqlUtil {
                         }
                     }
                 }
-                end = System.currentTimeMillis();
-                System.out.println("NNNN:"+(end-begin));
             }
         }
         fesqlResult.setOk(true);
-        long end = System.currentTimeMillis();
-        System.out.println("LLLLL:"+(end-begin));
         return fesqlResult;
     }
 
