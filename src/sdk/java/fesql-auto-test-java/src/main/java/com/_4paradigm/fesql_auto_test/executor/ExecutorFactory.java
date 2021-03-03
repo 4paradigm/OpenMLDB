@@ -16,25 +16,6 @@ public class ExecutorFactory {
 
     private static ReportLog reportLog = ReportLog.of();
 
-    // public enum ExecutorType {
-    //     kDDL("DDL"),                       //执行DDL
-    //     kBatch("BATCH"),                     //在线批量查询
-    //     kRequest("REQUEST"),                   //请求模式
-    //     kBatchRequest("BATCH_REQUEST"),              //批量请求模式
-    //     kRequestWithSp("REQUEST_WITH_SP"),             //
-    //     kRequestWithSpAsync("REQUEST_WITH_SP_ASYNC"),
-    //     kBatchRequestWithSp("BATCH_REQUEST_WITH_SP"),
-    //     kBatchRequestWithSpAsync("BATCH_REQUEST_WITH_SP_ASYNC"),
-    //     kDiffBatch("DIFF_BATCH"),
-    //     kDiffRequest("DIFF_REQUEST"),
-    //     kDiffRequestWithSp("DIFF_REQUEST_WITH_SP"),
-    //     kDiffRequestWithSpAsync("DIFF_REQUEST_WITH_SP_ASYNC"),
-    //     ;
-    //     private String typeName;
-    //     ExecutorType(String typeName){
-    //         this.typeName = typeName;
-    //     }
-    // }
     public static IExecutor build(SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String,FEDBInfo> fedbInfoMap, SQLCase fesqlCase, SQLCaseType type) {
         switch (type) {
             case kDiffBatch: {
