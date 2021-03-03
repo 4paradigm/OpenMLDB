@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * string_ir_builder_test.cc
- *
- * Author: chenjing
- * Date: 2020/5/26
- *--------------------------------------------------------------------------
- **/
 #include "codegen/string_ir_builder.h"
 #include <memory>
 #include <string>

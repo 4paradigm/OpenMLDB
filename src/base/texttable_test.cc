@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * texttable_test.cc
- *
- * Author: chenjing
- * Date: 2019/11/12
- *--------------------------------------------------------------------------
- **/
 #include "base/texttable.h"
 #include "gtest/gtest.h"
 namespace fesql {

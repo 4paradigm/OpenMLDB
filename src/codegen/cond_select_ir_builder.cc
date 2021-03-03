@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * cond_select_ir_builder.cc
- *
- * Author: chenjing
- * Date: 2020/8/18
- *--------------------------------------------------------------------------
- **/
 #include "codegen/cond_select_ir_builder.h"
 #include <vector>
 #include "codegen/ir_base_builder.h"

@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * native_value.h
- *
- * Author: chenjing
- * Date: 2020/2/12
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_CODEGEN_NATIVE_VALUE_H_
 #define SRC_CODEGEN_NATIVE_VALUE_H_

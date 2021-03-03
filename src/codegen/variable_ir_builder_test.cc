@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * mutable_value_ir_builder_test.cc
- *
- * Author: chenjing
- * Date: 2020/2/11
- *--------------------------------------------------------------------------
- **/
 #include "codegen/variable_ir_builder.h"
 #include <memory>
 #include <utility>

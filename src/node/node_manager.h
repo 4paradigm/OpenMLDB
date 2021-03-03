@@ -15,12 +15,10 @@
  * limitations under the License.
  */
 
-// Copyright (C) 2019, 4paradigm
+
 // memory_manager.h
 //     负责FeSQL的基础元件（SQLNode, PlanNode)的创建和销毁
 //     SQL的语法解析树、查询计划里面维护的只是这些节点的指针或者引用
-// Author: chenjing
-// Date: 2019/10/28
 
 #ifndef SRC_NODE_NODE_MANAGER_H_
 #define SRC_NODE_NODE_MANAGER_H_

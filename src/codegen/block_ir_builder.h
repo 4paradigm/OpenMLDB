@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * control_flow_ir_builder.h
- *
- * Author: chenjing
- * Date: 2020/2/12
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_CODEGEN_BLOCK_IR_BUILDER_H_
 #define SRC_CODEGEN_BLOCK_IR_BUILDER_H_

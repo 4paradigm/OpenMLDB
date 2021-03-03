@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * codegen_base_test.h
- *
- * Author: chenjing
- * Date: 2020/2/14
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_CODEGEN_CODEGEN_BASE_TEST_H_
 #define SRC_CODEGEN_CODEGEN_BASE_TEST_H_

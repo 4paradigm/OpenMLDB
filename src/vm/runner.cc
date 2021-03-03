@@ -15,15 +15,6 @@
  * limitations under the License.
  */
 
-/*------------------------------------------------------------------------- *
- *Copyright (C) 2020, 4paradigm
- *
- * runner.cc
- *
- * Author: chenjing
- * Date: 2020/4/3
- *--------------------------------------------------------------------------
- **/
 #include "vm/runner.h"
 #include <memory>
 #include <string>

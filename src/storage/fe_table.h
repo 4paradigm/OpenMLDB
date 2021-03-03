@@ -15,12 +15,6 @@
  * limitations under the License.
  */
 
-//
-// table.h
-// Copyright (C) 2017 4paradigm.com
-// Author denglong
-// Date 2019-11-01
-//
 
 #pragma once
 

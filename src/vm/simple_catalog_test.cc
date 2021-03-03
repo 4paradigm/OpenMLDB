@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * simple_catalog_test.cc
- *
- * Author: chenjing
- * Date: 2020/3/12
- *--------------------------------------------------------------------------
- **/
 #include "vm/simple_catalog.h"
 #include "gtest/gtest.h"
 

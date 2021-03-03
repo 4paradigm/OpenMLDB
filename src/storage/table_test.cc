@@ -15,12 +15,6 @@
  * limitations under the License.
  */
 
-//
-// table_test.cc
-// Copyright (C) 2017 4paradigm.com
-// Author denglong
-// Date 2019-11-01
-//
 
 #include <sys/time.h>
 #include <string>

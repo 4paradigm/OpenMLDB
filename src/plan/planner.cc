@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * planner.cc
- *
- * Author: chenjing
- * Date: 2019/10/24
- *--------------------------------------------------------------------------
- **/
 #include "plan/planner.h"
 #include <map>
 #include <random>

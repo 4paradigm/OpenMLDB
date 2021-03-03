@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * engine_bm_case.h
- *
- * Author: chenjing
- * Date: 2020/4/7
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_BM_ENGINE_BM_CASE_H_
 #define SRC_BM_ENGINE_BM_CASE_H_

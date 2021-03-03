@@ -15,12 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * Author: chenjing
- * Date: 2019/11/21
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_SDK_BASE_H_
 #define SRC_SDK_BASE_H_

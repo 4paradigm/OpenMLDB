@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * date_ir_builder.h
- *
- * Author: chenjing
- * Date: 2020/6/1
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_CODEGEN_DATE_IR_BUILDER_H_
 #define SRC_CODEGEN_DATE_IR_BUILDER_H_

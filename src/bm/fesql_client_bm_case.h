@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * fesql_client_bm_case.h
- *
- * Author: chenjing
- * Date: 2019/12/25
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_BM_FESQL_CLIENT_BM_CASE_H_
 #define SRC_BM_FESQL_CLIENT_BM_CASE_H_

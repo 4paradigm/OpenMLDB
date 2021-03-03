@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * udf_registry.cc
- *
- * Author: chenjing
- * Date: 2019/11/26
- *--------------------------------------------------------------------------
- **/
 #include "udf/udf_registry.h"
 
 #include <memory>

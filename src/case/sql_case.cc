@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * sql_case.cc
- *
- * Author: chenjing
- * Date: 2020/4/23
- *--------------------------------------------------------------------------
- **/
 
 #include "case/sql_case.h"
 #include <set>

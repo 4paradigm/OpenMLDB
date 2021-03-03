@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-// iterator.h
-// Copyright (C) 2017 4paradigm.com
-// Author denglong
-// Date 2019-10-31
-//
 
 #pragma once
 #include <stdint.h>

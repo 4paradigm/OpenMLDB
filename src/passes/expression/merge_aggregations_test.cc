@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * merge_aggregations_test.cc
- *
- * Author: chenjing
- * Date: 2019/10/24
- *--------------------------------------------------------------------------
- **/
 #include "passes/expression/merge_aggregations.h"
 #include "passes/expression/expr_pass_test.h"
 #include "passes/expression/simplify.h"

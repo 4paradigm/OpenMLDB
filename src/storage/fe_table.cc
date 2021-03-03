@@ -15,13 +15,6 @@
  * limitations under the License.
  */
 
-//
-// table.cc
-// Copyright (C) 2017 4paradigm.com
-// Author denglong
-// Date 2019-11-01
-//
-//
 
 #include "storage/fe_table.h"
 #include <sys/time.h>

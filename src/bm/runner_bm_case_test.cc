@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * runner_bm_case_test.cc
- *
- * Author: chenjing
- * Date: 2020/4/8
- *--------------------------------------------------------------------------
- **/
 #include "bm/runner_bm_case.h"
 #include "gtest/gtest.h"
 namespace fesql {

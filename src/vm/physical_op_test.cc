@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * physical_op_test.cc
- *
- * Author: chenjing
- * Date: 2020/3/12
- *--------------------------------------------------------------------------
- **/
 #include "gtest/gtest.h"
 namespace fesql {
 namespace vm {

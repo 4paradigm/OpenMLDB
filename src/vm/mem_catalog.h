@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * mem_catalog.h
- *
- * Author: chenjing
- * Date: 2020/3/25
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_VM_MEM_CATALOG_H_
 #define SRC_VM_MEM_CATALOG_H_

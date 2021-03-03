@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * runner.h
- *
- * Author: chenjing
- * Date: 2020/4/3
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_VM_RUNNER_H_
 #define SRC_VM_RUNNER_H_

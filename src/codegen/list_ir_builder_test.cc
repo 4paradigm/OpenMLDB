@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * list_ir_builder_test.cc
- *
- * Author: chenjing
- * Date: 2020/2/14
- *--------------------------------------------------------------------------
- **/
 
 #include "codegen/list_ir_builder.h"
 #include <stdio.h>

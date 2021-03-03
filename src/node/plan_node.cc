@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * plan_node.cc
- *      definitions for query plan nodes
- * Author: chenjing
- * Date: 2019/10/24
- *--------------------------------------------------------------------------
- **/
 
 #include "node/plan_node.h"
 #include <string>

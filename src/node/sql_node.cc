@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * sql_node.cc
- *
- * Author: chenjing
- * Date: 2019/10/11
- *--------------------------------------------------------------------------
- **/
 
 #include "node/sql_node.h"
 #include <numeric>

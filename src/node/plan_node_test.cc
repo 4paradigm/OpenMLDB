@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * plan_node_test.cc
- *
- * Author: chenjing
- * Date: 2019/10/30
- *--------------------------------------------------------------------------
- **/
 #include "node/plan_node.h"
 #include "gtest/gtest.h"
 #include "node/node_manager.h"

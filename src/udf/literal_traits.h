@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * literal_traits.h
- *
- * Author: chenjing
- * Date: 2019/11/26
- *--------------------------------------------------------------------------
- **/
 #ifndef SRC_UDF_LITERAL_TRAITS_H_
 #define SRC_UDF_LITERAL_TRAITS_H_
 

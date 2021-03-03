@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * window.h
- *
- * Author: chenjing
- * Date: 2019/11/25
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_CODEC_LIST_ITERATOR_CODEC_H_
 #define SRC_CODEC_LIST_ITERATOR_CODEC_H_

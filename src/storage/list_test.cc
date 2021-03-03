@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-// list.h
-// Copyright (C) 2017 4paradigm.com
-// Author denglong
-// Date 2019-10-24
-//
 
 #include "storage/list.h"
 #include <sys/time.h>

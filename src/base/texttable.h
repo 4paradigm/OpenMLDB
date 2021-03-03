@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * texttable.h.cpp
- *
- * Author: chenjing
- * Date: 2019/11/12
- *--------------------------------------------------------------------------
- **/
 #ifndef SRC_BASE_TEXTTABLE_H_
 #define SRC_BASE_TEXTTABLE_H_
 #include <iomanip>

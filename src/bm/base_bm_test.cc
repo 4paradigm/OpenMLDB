@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * base_bm_test.cc
- *
- * Author: chenjing
- * Date: 2019/12/24
- *--------------------------------------------------------------------------
- **/
 #include "bm/base_bm.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"

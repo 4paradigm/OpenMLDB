@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * row_test.cc
- *
- * Author: chenjing
- * Date: 2020/4/28
- *--------------------------------------------------------------------------
- **/
 
 #include <string>
 #include <vector>

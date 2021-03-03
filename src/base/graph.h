@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * graph.h
- *
- * Author: chenjing
- * Date: 2020/3/12
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_BASE_GRAPH_H_
 #define SRC_BASE_GRAPH_H_

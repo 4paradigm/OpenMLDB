@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * udf_ir_builder.h
- *
- * Author: chenjing
- * Date: 2020/6/17
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_CODEGEN_UDF_IR_BUILDER_H_
 #define SRC_CODEGEN_UDF_IR_BUILDER_H_

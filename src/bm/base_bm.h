@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * base_bm.h
- *
- * Author: chenjing
- * Date: 2019/12/24
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_BM_BASE_BM_H_
 #define SRC_BM_BASE_BM_H_

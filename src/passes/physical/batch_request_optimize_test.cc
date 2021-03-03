@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * window_dep_analysis_test.cc
- *
- * Author: chenjing
- * Date: 2019/10/24
- *--------------------------------------------------------------------------
- **/
 #include "passes/physical/batch_request_optimize.h"
 #include "gtest/gtest.h"
 #include "vm/engine_test.h"

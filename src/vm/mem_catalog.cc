@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * mem_catalog.cc
- *
- * Author: chenjing
- * Date: 2020/3/25
- *--------------------------------------------------------------------------
- **/
 #include "vm/mem_catalog.h"
 #include <algorithm>
 namespace fesql {

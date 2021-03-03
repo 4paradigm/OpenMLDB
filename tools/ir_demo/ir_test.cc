@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * ir_test.c
- *
- * Author: chenjing
- * Date: 2020/1/20
- *--------------------------------------------------------------------------
- **/
 #include <stdbool.h>
 #include <stdio.h>
 #include <vector>

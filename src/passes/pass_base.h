@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * pass_base.h
- *
- * Author: chenjing
- * Date: 2020/3/13
- *--------------------------------------------------------------------------
- **/
 #include "base/fe_object.h"
 #include "base/fe_status.h"
 

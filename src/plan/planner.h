@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * plan.h
- *
- * Author: chenjing
- * Date: 2019/10/24
- *--------------------------------------------------------------------------
- **/
 #ifndef SRC_PLAN_PLANNER_H_
 #define SRC_PLAN_PLANNER_H_
 

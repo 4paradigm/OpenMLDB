@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * case.h
- *
- * Author: chenjing
- * Date: 2020/4/23
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_CASE_SQL_CASE_H_
 #define SRC_CASE_SQL_CASE_H_

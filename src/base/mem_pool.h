@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * mem_pool.h
- *
- * Author: chenjing
- * Date: 2020/7/22
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_BASE_MEM_POOL_H_
 #define SRC_BASE_MEM_POOL_H_

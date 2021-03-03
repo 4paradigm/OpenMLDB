@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * expr_node_test.cc
- *
- * Author: chenjing
- * Date: 2019/10/11
- *--------------------------------------------------------------------------
- **/
 
 #include "node/expr_node.h"
 #include "codec/fe_row_codec.h"

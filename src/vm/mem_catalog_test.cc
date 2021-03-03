@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * mem_catalog_test.cc
- *
- * Author: chenjing
- * Date: 2020/3/25
- *--------------------------------------------------------------------------
- **/
 #include "vm/mem_catalog.h"
 #include "gtest/gtest.h"
 #include "vm/catalog_wrapper.h"

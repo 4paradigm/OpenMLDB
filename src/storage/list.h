@@ -16,12 +16,6 @@
  */
 
 
-// list.h
-// Copyright (C) 2017 4paradigm.com
-// Author denglong
-// Date 2019-10-24
-//
-
 #pragma once
 #include <assert.h>
 #include <stdio.h>

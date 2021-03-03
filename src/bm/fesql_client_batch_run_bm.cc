@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * fesql_client_bm.cc
- *
- * Author: chenjing
- * Date: 2019/12/25
- *--------------------------------------------------------------------------
- **/
 
 #include "benchmark/benchmark.h"
 #include "bm/fesql_client_bm_case.h"

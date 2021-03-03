@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * context.cc
- *
- * Author: chenjing
- * Date: 2020/2/12
- *--------------------------------------------------------------------------
- **/
 #include "codegen/context.h"
 #include <memory>
 #include "glog/logging.h"

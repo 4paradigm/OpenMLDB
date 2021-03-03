@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * dbms_server_impl_test.cc
- *
- * Author: chenjing
- * Date: 2019/11/11
- *--------------------------------------------------------------------------
- **/
 #include "dbms/dbms_server_impl.h"
 #include "brpc/server.h"
 #include "gflags/gflags.h"

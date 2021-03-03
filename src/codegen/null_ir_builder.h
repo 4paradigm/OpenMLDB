@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * NullIRBuilder.h
- *
- * Author: chenjing
- * Date: 2020/8/18
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_CODEGEN_NULL_IR_BUILDER_H_
 

@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * boost_test.cc
- *
- * Author: chenjing
- * Date: 2020/3/12
- *--------------------------------------------------------------------------
- **/
 
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/depth_first_search.hpp>

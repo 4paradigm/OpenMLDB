@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * memory_ir_builder.cc
- *
- * Author: chenjing
- * Date: 2020/7/22
- *--------------------------------------------------------------------------
- **/
 #include "codegen/cast_expr_ir_builder.h"
 #include "codegen/memery_ir_builder.h"
 

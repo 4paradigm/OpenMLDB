@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * lambdafy_projects_test.cc
- *
- * Author: chenjing
- * Date: 2019/10/24
- *--------------------------------------------------------------------------
- **/
 #include "passes/lambdafy_projects.h"
 #include "gtest/gtest.h"
 #include "parser/parser.h"

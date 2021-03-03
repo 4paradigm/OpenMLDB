@@ -15,13 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm transform.h
- *
- * Author: chenjing
- * Date: 2020/3/13
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_VM_TRANSFORM_H_
 #define SRC_VM_TRANSFORM_H_

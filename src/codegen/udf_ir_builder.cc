@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * udf_ir_builder.cc
- *
- * Author: chenjing
- * Date: 2020/6/17
- *--------------------------------------------------------------------------
- **/
 #include "codegen/udf_ir_builder.h"
 #include <iostream>
 #include <utility>

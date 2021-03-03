@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * native_value.cc
- *
- * Author: chenjing
- * Date: 2020/2/12
- *--------------------------------------------------------------------------
- **/
 #include "codegen/native_value.h"
 #include <dlfcn.h>
 #include <execinfo.h>

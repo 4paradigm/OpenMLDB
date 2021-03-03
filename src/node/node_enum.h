@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * node_enum.h
- *
- * Author: chenjing
- * Date: 2019/10/29
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_NODE_NODE_ENUM_H_
 #define SRC_NODE_NODE_ENUM_H_

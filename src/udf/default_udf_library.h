@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * default_udf_library.cc
- *
- * Author: chenjing
- * Date: 2019/11/26
- *--------------------------------------------------------------------------
- **/
 #ifndef SRC_UDF_DEFAULT_UDF_LIBRARY_H_
 #define SRC_UDF_DEFAULT_UDF_LIBRARY_H_
 #include "udf/udf_library.h"

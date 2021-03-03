@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * graph_test.cc
- *
- * Author: chenjing
- * Date: 2020/3/12
- *--------------------------------------------------------------------------
- **/
 #include "base/graph.h"
 #include <algorithm>
 #include "gtest/gtest.h"

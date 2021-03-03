@@ -15,12 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * Author: chenjing
- * Date: 2020/3/13
- *--------------------------------------------------------------------------
- **/
 #include "passes/physical/batch_request_optimize.h"
 #include <set>
 #include <vector>

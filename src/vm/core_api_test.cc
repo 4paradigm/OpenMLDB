@@ -15,13 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- *
- * Author: chenjing
- * Date: 2020/4/23
- *--------------------------------------------------------------------------
- **/
 
 #include "vm/core_api.h"
 #include "gtest/gtest.h"

@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * status.h
- *
- * Author: chenjing
- * Date: 2019/11/21
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_BASE_FE_STATUS_H_
 #define SRC_BASE_FE_STATUS_H_

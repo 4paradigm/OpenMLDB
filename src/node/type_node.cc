@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * type_node.cc
- *
- * Author: chenjing
- * Date: 2019/10/11
- *--------------------------------------------------------------------------
- **/
 #include "node/type_node.h"
 #include "node/node_manager.h"
 #include "vm/physical_op.h"

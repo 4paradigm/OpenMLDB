@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * resolve_udf_def_test.cc
- *
- * Author: chenjing
- * Date: 2019/10/24
- *--------------------------------------------------------------------------
- **/
 #include "passes/resolve_udf_def.h"
 #include "gtest/gtest.h"
 #include "parser/parser.h"

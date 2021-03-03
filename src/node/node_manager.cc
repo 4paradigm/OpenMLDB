@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * node_manager.cc
- *
- * Author: chenjing
- * Date: 2019/10/28
- *--------------------------------------------------------------------------
- **/
 
 #include "node/node_manager.h"
 #include <string>

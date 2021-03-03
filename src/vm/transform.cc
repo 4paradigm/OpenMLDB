@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * transform.cc
- *
- * Author: chenjing
- * Date: 2020/3/13
- *--------------------------------------------------------------------------
- **/
 #include "vm/transform.h"
 #include <map>
 #include <set>

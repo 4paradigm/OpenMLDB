@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * catalog_wrapper.h
- *
- * Author: chenjing
- * Date: 2020/5/18
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_VM_CATALOG_WRAPPER_H_
 #define SRC_VM_CATALOG_WRAPPER_H_

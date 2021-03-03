@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * fe_status.cc
- *
- * Author: chenjing
- * Date: 2019/11/21
- *--------------------------------------------------------------------------
- **/
 #include "base/fe_status.h"
 
 namespace fesql {

@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * context.h
- *
- * Author: chenjing
- * Date: 2020/2/12
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_CODEGEN_CONTEXT_H_
 #define SRC_CODEGEN_CONTEXT_H_

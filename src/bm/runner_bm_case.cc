@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * runner_bm_case.cc
- *
- * Author: chenjing
- * Date: 2020/4/9
- *--------------------------------------------------------------------------
- **/
 #include "bm/runner_bm_case.h"
 #include <memory>
 #include <string>

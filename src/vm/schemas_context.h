@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * schemas_context.h
- *
- * Author: chenjing
- * Date: 2020/4/20
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_VM_SCHEMAS_CONTEXT_H_
 #define SRC_VM_SCHEMAS_CONTEXT_H_

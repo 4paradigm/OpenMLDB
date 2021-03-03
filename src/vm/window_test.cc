@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * window_test.cc
- *
- * Author: chenjing
- * Date: 2019/11/25
- *--------------------------------------------------------------------------
- **/
 #include <utility>
 #include "codec/list_iterator_codec.h"
 #include "gtest/gtest.h"

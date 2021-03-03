@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * arithmetic_expr_ir_builder.cc
- *
- * Author: chenjing
- * Date: 2020/1/8
- *--------------------------------------------------------------------------
- **/
 #include "codegen/arithmetic_expr_ir_builder.h"
 
 #include <functional>

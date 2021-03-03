@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * jit_wrapper_test.cc
- *
- * Author: chenjing
- * Date: 2020/3/12
- *--------------------------------------------------------------------------
- **/
 #include "vm/jit_wrapper.h"
 #include "codec/fe_row_codec.h"
 #include "gtest/gtest.h"

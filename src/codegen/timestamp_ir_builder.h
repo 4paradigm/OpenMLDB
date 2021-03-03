@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * timestamp_ir_builder.h
- *
- * Author: chenjing
- * Date: 2020/5/22
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_CODEGEN_TIMESTAMP_IR_BUILDER_H_
 #define SRC_CODEGEN_TIMESTAMP_IR_BUILDER_H_

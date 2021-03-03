@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * core_api.cc
- *
- * Author: chenjing
- * Date: 2020/4/23
- *--------------------------------------------------------------------------
- **/
 #include "vm/core_api.h"
 #include "base/sig_trace.h"
 #include "codec/fe_row_codec.h"

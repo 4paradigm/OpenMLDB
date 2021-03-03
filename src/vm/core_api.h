@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * core_api.h
- *
- * Author: chenjing
- * Date: 2020/4/23
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_VM_CORE_API_H_
 #define SRC_VM_CORE_API_H_

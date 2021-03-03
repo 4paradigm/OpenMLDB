@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * dbms_sdk_test.cc
- *
- * Author: chenjing
- * Date: 2019/11/7
- *--------------------------------------------------------------------------
- **/
 
 #include "sdk/dbms_sdk.h"
 #include <unistd.h>

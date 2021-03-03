@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * schema.cc
- *
- * Author: chenjing
- * Date: 2020/4/20
- *--------------------------------------------------------------------------
- **/
 #include "vm/schemas_context.h"
 #include <set>
 #include "passes/physical/physical_pass.h"

@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * struct_ir_builder.h
- *
- * Author: chenjing
- * Date: 2020/5/26
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_CODEGEN_STRUCT_IR_BUILDER_H_
 #define SRC_CODEGEN_STRUCT_IR_BUILDER_H_

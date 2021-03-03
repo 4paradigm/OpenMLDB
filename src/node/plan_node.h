@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * plan_node.h
- *
- * Author: chenjing
- * Date: 2019/10/24
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_NODE_PLAN_NODE_H_
 #define SRC_NODE_PLAN_NODE_H_

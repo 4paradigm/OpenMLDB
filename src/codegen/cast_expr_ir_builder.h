@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * cast_expr_ir_builder.h
- *
- * Author: chenjing
- * Date: 2020/1/8
- *--------------------------------------------------------------------------
- ***/
 
 #ifndef SRC_CODEGEN_CAST_EXPR_IR_BUILDER_H_
 #define SRC_CODEGEN_CAST_EXPR_IR_BUILDER_H_

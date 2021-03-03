@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * udaf_test.cc
- *
- * Author: chenjing
- * Date: 2020/6/17
- *--------------------------------------------------------------------------
- **/
 #include "udf/udf_test.h"
 
 namespace fesql {

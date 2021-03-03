@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * catalog_wrapper.cc
- *
- * Author: chenjing
- * Date: 2020/5/19
- *--------------------------------------------------------------------------
- **/
 #include "vm/catalog_wrapper.h"
 namespace fesql {
 namespace vm {

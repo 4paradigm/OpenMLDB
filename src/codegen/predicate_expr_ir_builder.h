@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * predicate_expr_ir_builder.h
- *
- * Author: chenjing
- * Date: 2020/1/9
- *--------------------------------------------------------------------------
- **/
 
 #ifndef SRC_CODEGEN_PREDICATE_EXPR_IR_BUILDER_H_
 #define SRC_CODEGEN_PREDICATE_EXPR_IR_BUILDER_H_
