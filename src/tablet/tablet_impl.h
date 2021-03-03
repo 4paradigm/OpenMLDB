@@ -271,10 +271,6 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                    const ::rtidb::api::SetExpireRequest* request,
                    ::rtidb::api::GeneralResponse* response, Closure* done);
 
-    void SetTTLClock(RpcController* controller,
-                     const ::rtidb::api::SetTTLClockRequest* request,
-                     ::rtidb::api::GeneralResponse* response, Closure* done);
-
     void UpdateTTL(RpcController* controller,
                    const ::rtidb::api::UpdateTTLRequest* request,
                    ::rtidb::api::UpdateTTLResponse* response, Closure* done);
@@ -407,7 +403,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                       uint32_t* count);
 
     int32_t CountIndex(uint64_t expire_time, uint64_t expire_cnt,
-                       ::rtidb::api::TTLType ttl_type,
+                       ::rtidb::storage::TTLType ttl_type,
                        ::rtidb::storage::TableIterator* it,
                        const ::rtidb::api::CountRequest* request,
                        uint32_t* count);

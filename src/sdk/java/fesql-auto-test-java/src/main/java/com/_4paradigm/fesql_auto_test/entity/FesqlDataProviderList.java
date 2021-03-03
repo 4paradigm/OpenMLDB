@@ -2,6 +2,7 @@ package com._4paradigm.fesql_auto_test.entity;
 
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.common.FesqlConfig;
+import com._4paradigm.fesql_auto_test.common.FesqlTest;
 import com._4paradigm.fesql_auto_test.util.Tool;
 import org.apache.commons.lang3.StringUtils;
 import org.testng.Assert;
@@ -17,14 +18,19 @@ public class FesqlDataProviderList {
 
     public List<SQLCase> getCases() {
         List<SQLCase> cases = new ArrayList<SQLCase>();
-        String caseId = System.getProperty("caseId");
-        String caseDesc= System.getProperty("caseDesc");
+
         for (FesqlDataProvider dataProvider : dataProviderList) {
-            for (SQLCase sqlCase : dataProvider.getCases(FesqlConfig.levels)) {
-                if (!StringUtils.isEmpty(caseId) && !caseId.equals(sqlCase.getId())) {
+            for (SQLCase sqlCase : dataProvider.getCases(FesqlConfig.FESQL_CASE_LEVELS)) {
+                if (!StringUtils.isEmpty(FesqlConfig.FESQL_CASE_NAME) &&
+                        !FesqlConfig.FESQL_CASE_NAME.equals(FesqlTest.CaseNameFormat(sqlCase))) {
                     continue;
                 }
-                if (!StringUtils.isEmpty(caseDesc) && !caseDesc.equals(sqlCase.getDesc())) {
+                if (!StringUtils.isEmpty(FesqlConfig.FESQL_CASE_ID)
+                        && !FesqlConfig.FESQL_CASE_ID.equals(sqlCase.getId())) {
+                    continue;
+                }
+                if (!StringUtils.isEmpty(FesqlConfig.FESQL_CASE_DESC)
+                        && !FesqlConfig.FESQL_CASE_DESC.equals(sqlCase.getDesc())) {
                     continue;
                 }
                 cases.add(sqlCase);
@@ -34,10 +40,11 @@ public class FesqlDataProviderList {
     }
 
     public static FesqlDataProviderList dataProviderGenerator(String[] caseFiles) throws FileNotFoundException {
-        String yamlPath = System.getProperty("casePath");
+
         FesqlDataProviderList fesqlDataProviderList = new FesqlDataProviderList();
         for (String caseFile : caseFiles) {
-            if (!StringUtils.isEmpty(yamlPath) && !yamlPath.equals(caseFile)) {
+            if (!StringUtils.isEmpty(FesqlConfig.FESQL_CASE_PATH)
+                    && !FesqlConfig.FESQL_CASE_PATH.equals(caseFile)) {
                 continue;
             }
             String casePath = Tool.getCasePath(caseFile);

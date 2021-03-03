@@ -24,7 +24,7 @@
 #include "base/strings.h"
 #include "base/ip.h"
 #include "base/server_name.h"
-#if __linux__
+#if defined(__linux__) || defined(__mac_tablet__)
 #include "blob_proxy/blob_proxy_impl.h"
 #include "blobserver/blobserver_impl.h"
 #include "nameserver/name_server_impl.h"
@@ -141,7 +141,7 @@ void GetRealEndpoint(std::string *real_endpoint) {
     }
 }
 
-#if __linux__
+#if defined(__linux__) || defined(__mac_tablet__)
 void StartNameServer() {
     SetupLog();
     std::string real_endpoint;
@@ -179,7 +179,7 @@ void StartNameServer() {
 }
 
 int THPIsEnabled() {
-#ifdef __linux__
+#if defined(__linux__) || defined(__mac_tablet__)
     char buf[1024];
     FILE* fp = fopen("/sys/kernel/mm/transparent_hugepage/enabled", "r");
     if (!fp) {
@@ -207,7 +207,7 @@ int THPIsEnabled() {
 }
 
 int SwapIsEnabled() {
-#ifdef __linux__
+#if defined(__linux__) || defined(__mac_tablet__)
     char buf[1024];
     FILE* fp = fopen("/proc/swaps", "r");
     if (!fp) {
@@ -326,7 +326,7 @@ void StartBlobProxy() {
 }
 #endif
 
-#if __linux__
+#if defined(__linux__) || defined(__mac_tablet__)
 void StartBlob() {
     SetupLog();
     std::string real_endpoint;
@@ -411,8 +411,8 @@ int PutData(
                     real_endpoint = rit->second;
                 }
             }
-            clients.insert(std::make_pair(endpoint, std::make_shared<
-                    ::rtidb::client::TabletClient>(endpoint, real_endpoint)));
+            clients.insert(std::make_pair(endpoint,
+                    std::make_shared<::rtidb::client::TabletClient>(FLAGS_use_rdma, endpoint, real_endpoint)));
             if (clients[endpoint]->Init() < 0) {
                 printf("tablet client init failed, endpoint is %s\n",
                        endpoint.c_str());
@@ -576,9 +576,7 @@ std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
             real_endpoint = rit->second;
         }
     }
-    std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
-        std::make_shared<::rtidb::client::TabletClient>(
-        endpoint, real_endpoint);
+    auto tablet_client = std::make_shared<::rtidb::client::TabletClient>(FLAGS_use_rdma, endpoint, real_endpoint);
     if (tablet_client->Init() < 0) {
         msg = "tablet client init failed, endpoint is " + endpoint;
         tablet_client.reset();
@@ -1397,10 +1395,8 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts,
                 lat_ttl = tables[0].ttl();
             }
         }
-        ::rtidb::storage::TTLDesc ttl_desc(abs_ttl, lat_ttl);
-        ::rtidb::cmd::PrintColumnKey(ttl_type, ttl_desc,
-                                     tables[0].column_desc_v1(),
-                                     tables[0].column_key());
+        ::rtidb::storage::TTLSt ttl_st(abs_ttl, lat_ttl, ::rtidb::storage::TTLSt::ConvertTTLType(ttl_type));
+        ::rtidb::cmd::PrintColumnKey(ttl_st, tables[0].column_desc_v1(), tables[0].column_key());
 
     } else if (tables[0].column_desc_size() > 0) {
         if (tables[0].added_column_desc_size() == 0) {
@@ -4932,35 +4928,6 @@ void HandleClientHelp(const std::vector<std::string> parts,
     }
 }
 
-void HandleClientSetTTLClock(const std::vector<std::string> parts,
-                             ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 4) {
-        std::cout << "Bad format" << std::endl;
-        return;
-    }
-    struct tm tm;
-    time_t timestamp;
-    if (parts[3].length() == 14 && ::rtidb::base::IsNumber(parts[3]) &&
-        strptime(parts[3].c_str(), "%Y%m%d%H%M%S", &tm) != NULL) {
-        timestamp = mktime(&tm);
-    } else {
-        printf("time format error (e.g 20171108204001)");
-        return;
-    }
-    try {
-        bool ok = client->SetTTLClock(boost::lexical_cast<uint32_t>(parts[1]),
-                                      boost::lexical_cast<uint32_t>(parts[2]),
-                                      timestamp);
-        if (ok) {
-            std::cout << "setttlclock ok" << std::endl;
-        } else {
-            std::cout << "Fail to setttlclock" << std::endl;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad format" << std::endl;
-    }
-}
-
 void HandleClientGetTableStatus(const std::vector<std::string> parts,
                                 ::rtidb::client::TabletClient* client) {
     std::vector<::rtidb::api::TableStatus> status_vec;
@@ -5816,12 +5783,8 @@ void HandleClientShowSchema(const std::vector<std::string>& parts,
                 lat_ttl = table_meta.ttl();
             }
         }
-        ::rtidb::storage::TTLDesc ttl_desc(abs_ttl, lat_ttl);
-        std::string ttl_suff =
-            table_meta.ttl_type() == ::rtidb::api::kLatestTime ? "" : "min";
-        ::rtidb::cmd::PrintColumnKey(ttl_type, ttl_desc,
-                                     table_meta.column_desc(),
-                                     table_meta.column_key());
+        ::rtidb::storage::TTLSt ttl_st(abs_ttl, lat_ttl, ::rtidb::storage::TTLSt::ConvertTTLType(ttl_type));
+        ::rtidb::cmd::PrintColumnKey(ttl_st, table_meta.column_desc(), table_meta.column_key());
     } else if (!schema.empty()) {
         ::rtidb::cmd::PrintSchema(schema);
     } else {
@@ -6225,7 +6188,7 @@ void StartClient() {
     if (FLAGS_interactive) {
         std::cout << "Welcome to rtidb with version " << RTIDB_VERSION << std::endl;
     }
-    ::rtidb::client::TabletClient client(FLAGS_endpoint, "");
+    ::rtidb::client::TabletClient client(FLAGS_use_rdma, FLAGS_endpoint, "");
     client.Init();
     std::string display_prefix = FLAGS_endpoint + "> ";
     while (true) {
@@ -6309,8 +6272,6 @@ void StartClient() {
             HandleClientGetTableStatus(parts, &client);
         } else if (parts[0] == "setexpire") {
             HandleClientSetExpire(parts, &client);
-        } else if (parts[0] == "setttlclock") {
-            HandleClientSetTTLClock(parts, &client);
         } else if (parts[0] == "connectzk") {
             HandleClientConnectZK(parts, &client);
         } else if (parts[0] == "disconnectzk") {
@@ -6392,7 +6353,7 @@ void StartNsClient() {
                   << std::endl;
         return;
     }
-    ::rtidb::client::NsClient client(endpoint, real_endpoint);
+    ::rtidb::client::NsClient client(FLAGS_use_rdma, endpoint, real_endpoint);
     if (client.Init() < 0) {
         std::cout << "client init failed" << std::endl;
         return;
@@ -6577,7 +6538,7 @@ void StartBsClient() {
     if (FLAGS_interactive) {
         std::cout << "Welcome to rtidb with version " << RTIDB_VERSION << std::endl;
     }
-    ::rtidb::client::BsClient client(FLAGS_endpoint, "");
+    ::rtidb::client::BsClient client(FLAGS_use_rdma, FLAGS_endpoint, "");
     client.Init();
     std::string display_prefix = FLAGS_endpoint + "> ";
     while (true) {
@@ -6631,7 +6592,7 @@ int main(int argc, char* argv[]) {
         StartNsClient();
     } else if (FLAGS_role == "sql_client") {
         ::rtidb::cmd::HandleCli();
-#if __linux__
+#if defined(__linux__) || defined(__mac_tablet__)
     } else if (FLAGS_role == "tablet") {
         StartTablet();
     } else if (FLAGS_role == "blob_proxy") {

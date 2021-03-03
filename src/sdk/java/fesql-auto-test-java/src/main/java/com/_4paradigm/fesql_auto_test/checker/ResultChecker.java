@@ -1,22 +1,14 @@
 package com._4paradigm.fesql_auto_test.checker;
 
-import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.fesql.sqlcase.model.ExpectDesc;
 import com._4paradigm.fesql.sqlcase.model.Table;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
 import com._4paradigm.sql.Schema;
-import com.google.common.base.Joiner;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 
-
-import java.sql.Date;
-import java.sql.Timestamp;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -28,23 +20,22 @@ import java.util.List;
 @Slf4j
 public class ResultChecker extends BaseChecker {
 
-    private static final Logger logger = LoggerFactory.getLogger(ResultChecker.class);
-
-    public ResultChecker(SQLCase fesqlCase, FesqlResult fesqlResult) {
-        super(fesqlCase, fesqlResult);
+    public ResultChecker(ExpectDesc expect, FesqlResult fesqlResult) {
+        super(expect, fesqlResult);
     }
 
     @Override
     public void check() throws ParseException {
         log.info("result check");
-        if (fesqlCase.getExpect().getColumns().isEmpty()) {
+        reportLog.info("result check");
+        if (expect.getColumns().isEmpty()) {
             throw new RuntimeException("fail check result: columns are empty");
         }
-        List<List<Object>> expect = FesqlUtil.convertRows(fesqlCase.getExpect().getRows(),
-                fesqlCase.getExpect().getColumns());
+        List<List<Object>> expectRows = FesqlUtil.convertRows(expect.getRows(),
+                expect.getColumns());
         List<List<Object>> actual = fesqlResult.getResult();
 
-        String orderName = fesqlCase.getExpect().getOrder();
+        String orderName = expect.getOrder();
         if (orderName != null && orderName.length() > 0) {
             Schema schema = fesqlResult.getResultSchema();
             int index = 0;
@@ -53,17 +44,19 @@ public class ResultChecker extends BaseChecker {
             } else {
                 index = FesqlUtil.getIndexByColumnName(fesqlResult.getMetaData(), orderName);
             }
-            Collections.sort(expect, new RowsSort(index));
+            Collections.sort(expectRows, new RowsSort(index));
             Collections.sort(actual, new RowsSort(index));
         }
 
-        log.info("expect:{}", expect);
+        log.info("expect:{}", expectRows);
+        reportLog.info("expect:{}", expectRows);
         log.info("actual:{}", actual);
-        Assert.assertEquals(actual.size(), expect.size(),
-                String.format("ResultChecker fail: expect size %d, real size %d", expect.size(), actual.size()));
+        reportLog.info("actual:{}", actual);
+        Assert.assertEquals(actual.size(), expectRows.size(),
+                String.format("ResultChecker fail: expect size %d, real size %d", expectRows.size(), actual.size()));
         for (int i = 0; i < actual.size(); ++i) {
             List<Object> actual_list = actual.get(i);
-            List<Object> expect_list = expect.get(i);
+            List<Object> expect_list = expectRows.get(i);
             Assert.assertEquals(actual_list.size(), expect_list.size(), String.format(
                     "ResultChecker fail at %dth row: expect row size %d, real row size %d",
                     i, expect_list.size(), actual_list.size()));
@@ -77,7 +70,7 @@ public class ResultChecker extends BaseChecker {
                             (Float) actual_val, (Float) expect_val, 1e-4,
                             String.format("ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
                                 i, j, expect_val, actual_val,
-                                Table.getTableString(fesqlCase.getExpect().getColumns(), expect),
+                                Table.getTableString(expect.getColumns(), expectRows),
                                 fesqlResult.toString())
                     );
 
@@ -87,7 +80,7 @@ public class ResultChecker extends BaseChecker {
                             (Double) actual_val, (Double) expect_val, 1e-4,
                             String.format("ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
                                     i, j, expect_val, actual_val,
-                                    Table.getTableString(fesqlCase.getExpect().getColumns(), expect),
+                                    Table.getTableString(expect.getColumns(), expectRows),
                                     fesqlResult.toString())
                     );
 
@@ -95,7 +88,7 @@ public class ResultChecker extends BaseChecker {
                     Assert.assertEquals(actual_val, expect_val, String.format(
                             "ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
                             i, j, expect_val, actual_val,
-                            Table.getTableString(fesqlCase.getExpect().getColumns(), expect),
+                            Table.getTableString(expect.getColumns(), expectRows),
                             fesqlResult.toString()));
 
                 }
@@ -110,6 +103,7 @@ public class ResultChecker extends BaseChecker {
             this.index = index;
             if (-1 == index) {
                 log.warn("compare without index");
+                reportLog.warn("compare without index");
             }
         }
 

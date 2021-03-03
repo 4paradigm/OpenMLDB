@@ -29,8 +29,14 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         com._4paradigm.sql.ResultSet resultSet = router.ExecuteSQLBatchRequest(
                 db, currentSql, currentRowBatch, status);
         if (status.getCode() != 0 || resultSet == null) {
-            throw new SQLException("execute sql fail: " + status.getMsg());
+            String msg = status.getMsg();
+            status.delete();
+            if (resultSet != null) {
+                resultSet.delete();
+            }
+            throw new SQLException("execute sql fail: " + msg);
         }
+        status.delete();
         SQLResultSet rs = new SQLResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
@@ -44,8 +50,14 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         Status status = new Status();
         QueryFuture queryFuture = router.CallSQLBatchRequestProcedure(db, spName, unit.toMillis(timeOut), currentRowBatch, status);
         if (status.getCode() != 0 || queryFuture == null) {
-            throw new SQLException("call procedure fail, msg: " + status.getMsg());
+            String msg = status.getMsg();
+            status.delete();
+            if (queryFuture != null) {
+                queryFuture.delete();
+            }
+            throw new SQLException("call procedure fail, msg: " + msg);
         }
+        status.delete();
         return new com._4paradigm.sql.sdk.QueryFuture(queryFuture);
     }
 
@@ -56,10 +68,13 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
             throw new RuntimeException("not ok row");
         }
         currentRowBatch.AddRow(this.currentRow);
+        this.currentRow.delete();
         Status status = new Status();
         this.currentRow = router.GetRequestRow(db, currentSql, status);
         if (status.getCode() != 0 || this.currentRow == null) {
-            throw new SQLException("getRequestRow failed!, msg: " + status.getMsg());
+            String msg = status.getMsg();
+            status.delete();
+            throw new SQLException("getRequestRow failed!, msg: " + msg);
         }
         status.delete();
     }
@@ -77,7 +92,13 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
     @Override
     public void close() throws SQLException {
         super.close();
-        this.commonColumnIndices = null;
-        this.currentRowBatch = null;
+        if (commonColumnIndices != null) {
+            commonColumnIndices.delete();
+            commonColumnIndices = null;
+        }
+        if (currentRowBatch != null) {
+            currentRowBatch.delete();
+            currentRowBatch = null;
+        }
     }
 }

@@ -2,6 +2,7 @@ package com._4paradigm.fesql_auto_test.common;
 
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.entity.FesqlDataProvider;
+import com._4paradigm.fesql_auto_test.util.ReportLog;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -21,23 +22,28 @@ import java.util.ArrayList;
  */
 @Slf4j
 public class FesqlTest implements ITest {
+    protected ReportLog reportLog = ReportLog.of();
     protected static SqlExecutor executor;
     private ThreadLocal<String> testName = new ThreadLocal<>();
     private int testNum = 0;
 
+    public static String CaseNameFormat(SQLCase sqlCase) {
+        return String.format("%s_%s_%s",
+                FesqlGlobalVar.env, sqlCase.getId(), sqlCase.getDesc());
+    }
+
     @BeforeMethod
     public void BeforeMethod(Method method, Object[] testData) {
+        ReportLog.of().clean();
         Assert.assertNotNull(
                 testData[0], "fail to run fesql test with null SQLCase: check yaml case");
         if (testData[0] instanceof SQLCase) {
             SQLCase sqlCase = (SQLCase) testData[0];
             Assert.assertNotEquals(FesqlDataProvider.FAIL_SQL_CASE,
                     sqlCase.getDesc(), "fail to run fesql test with FAIL DATA PROVIDER SQLCase: check yaml case");
-            testName.set(String.format("[%d]%s_%s_%s_%s", testNum,
-                    method.getName(),
-                    FesqlGlobalVar.env, sqlCase.getId(), sqlCase.getDesc()));
+            testName.set(String.format("[%d]%s.%s", testNum, method.getName(), CaseNameFormat(sqlCase)));
         } else {
-            testName.set(method.getName() + "_" + testData[0]);
+            testName.set(String.format("[%d]%s.%s", testNum, method.getName(), null == testData[0] ? "null" : testData[0].toString()));
         }
         testNum++;
     }

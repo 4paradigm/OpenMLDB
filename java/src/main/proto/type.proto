@@ -33,3 +33,12 @@ enum IndexType {
     kIncrement = 5; // auto gen increment id primary key
     kTimeSerise = 6;
 }
+
+enum TTLType {
+    kAbsoluteTime = 1;
+    kRelativeTime = 2;
+    kLatestTime = 3;
+    kAbsAndLat = 4;
+    kAbsOrLat = 5;
+}
+
