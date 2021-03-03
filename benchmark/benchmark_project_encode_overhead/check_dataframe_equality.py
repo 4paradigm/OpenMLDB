@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# benchmark/benchmark_project_encode_overhead/check_dataframe_equality.py
+# check_dataframe_equality.py
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

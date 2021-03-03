@@ -1,5 +1,5 @@
 /*
- * java/fesql-flink/src/test/java/com/_4paradigm/fesql/flink/stream/TestFesqlStreamTableEnvironment.java
+ * TestFesqlStreamTableEnvironment.java
  * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

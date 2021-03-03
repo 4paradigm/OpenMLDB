@@ -1,5 +1,5 @@
 /*
- * src/vm/schemas_context_test.cc
+ * schemas_context_test.cc
  * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

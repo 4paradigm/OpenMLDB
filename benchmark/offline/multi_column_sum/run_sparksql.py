@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import os
-# benchmark/offline/multi_column_sum/run_sparksql.py
+# run_sparksql.py
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

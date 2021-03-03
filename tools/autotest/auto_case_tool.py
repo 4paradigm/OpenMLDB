@@ -1,4 +1,4 @@
-# tools/autotest/auto_case_tool.py
+# auto_case_tool.py
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

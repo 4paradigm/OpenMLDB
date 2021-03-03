@@ -1,5 +1,5 @@
 /*
- * src/vm/mem_catalog.h
+ * mem_catalog.h
  * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

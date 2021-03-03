@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# benchmark/benchmark_project_encode_overhead/compare_project.sh
+# compare_project.sh
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

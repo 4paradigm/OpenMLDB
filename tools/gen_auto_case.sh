@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# tools/gen_auto_case.sh
+# gen_auto_case.sh
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

@@ -1,5 +1,5 @@
 /*
- * java/fesql-spark/src/main/scala/com/_4paradigm/fesql/spark/nodes/GroupByAggregationPlan.scala
+ * GroupByAggregationPlan.scala
  * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

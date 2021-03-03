@@ -1,4 +1,4 @@
-# onebox/start_cli.sh
+# start_cli.sh
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

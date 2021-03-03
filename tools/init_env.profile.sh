@@ -1,6 +1,6 @@
 #!/bin/bash
 echo "CICD environment tag: ${CICD_RUNNER_TAG}"
-# tools/init_env.profile.sh
+# init_env.profile.sh
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

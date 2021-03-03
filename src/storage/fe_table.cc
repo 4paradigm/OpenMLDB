@@ -1,5 +1,5 @@
 /*
- * src/storage/fe_table.cc
+ * fe_table.cc
  * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

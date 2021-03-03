@@ -1,6 +1,6 @@
 #!/bin/bash
 WORKSPACE=`pwd`
-# tools/test_java_sdk.sh
+# test_java_sdk.sh
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

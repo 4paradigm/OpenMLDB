@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# benchmark/benchmark_project_encode_overhead/generate_project_sql.py
+# generate_project_sql.py
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

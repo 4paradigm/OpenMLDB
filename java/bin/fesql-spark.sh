@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# java/bin/fesql-spark.sh
+# fesql-spark.sh
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

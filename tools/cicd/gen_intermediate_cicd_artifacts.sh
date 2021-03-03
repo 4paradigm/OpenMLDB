@@ -1,6 +1,6 @@
 #!/bin/bash
 # Create java artifact tar including:
-# tools/cicd/gen_intermediate_cicd_artifacts.sh
+# gen_intermediate_cicd_artifacts.sh
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

@@ -1,5 +1,5 @@
 /*
- * java/fesql-jdbc/src/test/java/com/_4paradigm/fesql/jdbc/FESQLConfig.java
+ * FESQLConfig.java
  * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

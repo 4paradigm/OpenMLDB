@@ -1,5 +1,5 @@
 /*
- * src/bm/fesql_client_bm_case.cc
+ * fesql_client_bm_case.cc
  * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

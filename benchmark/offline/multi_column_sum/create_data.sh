@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# benchmark/offline/multi_column_sum/create_data.sh
+# create_data.sh
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

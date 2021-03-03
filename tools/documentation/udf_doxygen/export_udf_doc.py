@@ -1,4 +1,4 @@
-# tools/documentation/udf_doxygen/export_udf_doc.py
+# export_udf_doc.py
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

@@ -1,5 +1,5 @@
 /*
- * java/fesql-common/src/main/java/com/_4paradigm/fesql/common/DDLEngine.java
+ * DDLEngine.java
  * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

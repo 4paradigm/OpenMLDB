@@ -1,5 +1,5 @@
 /*
- * java/fesql-spark/src/test/java/com/_4paradigm/fesql/spark/TestFesql.java
+ * TestFesql.java
  * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

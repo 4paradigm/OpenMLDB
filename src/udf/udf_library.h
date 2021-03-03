@@ -1,5 +1,5 @@
 /*
- * src/udf/udf_library.h
+ * udf_library.h
  * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

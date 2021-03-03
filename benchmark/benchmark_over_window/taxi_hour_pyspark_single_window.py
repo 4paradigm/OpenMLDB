@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# benchmark/benchmark_over_window/taxi_hour_pyspark_single_window.py
+# taxi_hour_pyspark_single_window.py
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

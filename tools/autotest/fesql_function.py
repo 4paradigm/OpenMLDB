@@ -1,4 +1,4 @@
-# tools/autotest/fesql_function.py
+# fesql_function.py
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

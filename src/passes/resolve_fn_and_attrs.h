@@ -1,5 +1,5 @@
 /*
- * src/passes/resolve_fn_and_attrs.h
+ * resolve_fn_and_attrs.h
  * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

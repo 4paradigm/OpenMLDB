@@ -1,5 +1,5 @@
 /*
- * java/fesql-flink/src/test/java/com/_4paradigm/fesql/flink/batch/planner/TestBatchGroupbyPlan.java
+ * TestBatchGroupbyPlan.java
  * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

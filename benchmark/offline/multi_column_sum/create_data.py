@@ -1,4 +1,4 @@
-# benchmark/offline/multi_column_sum/create_data.py
+# create_data.py
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

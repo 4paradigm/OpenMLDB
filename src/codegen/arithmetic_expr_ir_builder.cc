@@ -1,5 +1,5 @@
 /*
- * src/codegen/arithmetic_expr_ir_builder.cc
+ * arithmetic_expr_ir_builder.cc
  * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

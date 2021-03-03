@@ -1,5 +1,5 @@
 /*
- * src/codegen/variable_ir_builder_test.cc
+ * variable_ir_builder_test.cc
  * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

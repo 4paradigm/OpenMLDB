@@ -1,5 +1,5 @@
 /*
- * src/codegen/cast_expr_ir_builder.h
+ * cast_expr_ir_builder.h
  * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
