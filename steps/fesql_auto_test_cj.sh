@@ -26,7 +26,7 @@ lsof -i:6181 |grep 6181| awk '{print $2}'| xargs kill -9
 sleep 5
 cd onebox && sh start_onebox_on_rambuild_cj.sh && cd $ROOT_DIR
 sleep 5
-case_xml=test_v1.xml
+case_xml=test_v1_standalone.xml
 cd ${ROOT_DIR}/src/sdk/java/
 MAVEN_OPTS="-DsocksProxyHost=127.0.0.1 -DsocksProxyPort=1080" mvn install -Dmaven.test.skip=true
 cd ${ROOT_DIR}/src/sdk/java/fesql-auto-test-java
