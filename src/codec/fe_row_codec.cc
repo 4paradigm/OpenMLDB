@@ -35,29 +35,31 @@ const uint32_t BitMapSize(uint32_t size) {
     }
 }
 
-const std::unordered_map<::fesql::type::Type, uint8_t> GetTypeSizeMap() {
+static const std::unordered_map<::fesql::type::Type, uint8_t>& DEFAULT_TYPE_SIZE_MAP = {
+    {::fesql::type::kBool, sizeof(bool)},
+    {::fesql::type::kInt16, sizeof(int16_t)},
+    {::fesql::type::kInt32, sizeof(int32_t)},
+    {::fesql::type::kFloat, sizeof(float)},
+    {::fesql::type::kInt64, sizeof(int64_t)},
+    {::fesql::type::kTimestamp, sizeof(int64_t)},
+    {::fesql::type::kDate, sizeof(int32_t)},
+    {::fesql::type::kDouble, sizeof(double)}};
+
+static const std::unordered_map<::fesql::type::Type, uint8_t>& SPARK_UNSAFEROW_TYPE_SIZE_MAP = {
+    {::fesql::type::kBool, 8},
+    {::fesql::type::kInt16, 8},
+    {::fesql::type::kInt32, 8},
+    {::fesql::type::kFloat, 8},
+    {::fesql::type::kInt64, 8},
+    {::fesql::type::kTimestamp, 8},
+    {::fesql::type::kDate, 8},
+    {::fesql::type::kDouble, 8}};
+
+const std::unordered_map<::fesql::type::Type, uint8_t>& GetTypeSizeMap() {
     if (FLAGS_enable_spark_unsaferow_format) {
-        return {
-            {::fesql::type::kBool, 8},
-            {::fesql::type::kInt16, 8},
-            {::fesql::type::kInt32, 8},
-            {::fesql::type::kFloat, 8},
-            {::fesql::type::kInt64, 8},
-            {::fesql::type::kTimestamp, 8},
-            {::fesql::type::kDate, 8},
-            {::fesql::type::kDouble, 8}
-        };
+        return SPARK_UNSAFEROW_TYPE_SIZE_MAP;
     } else {
-        return {
-            {::fesql::type::kBool, sizeof(bool)},
-            {::fesql::type::kInt16, sizeof(int16_t)},
-            {::fesql::type::kInt32, sizeof(int32_t)},
-            {::fesql::type::kFloat, sizeof(float)},
-            {::fesql::type::kInt64, sizeof(int64_t)},
-            {::fesql::type::kTimestamp, sizeof(int64_t)},
-            {::fesql::type::kDate, sizeof(int32_t)},
-            {::fesql::type::kDouble, sizeof(double)}
-        };
+        return DEFAULT_TYPE_SIZE_MAP;
     }
 }
 
