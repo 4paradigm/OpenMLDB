@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 import os
 # run_sparksql.py
 # Copyright 2021 4Paradigm

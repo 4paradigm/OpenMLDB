@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # gen_case_yaml_main.py
 # Copyright 2021 4Paradigm
 #

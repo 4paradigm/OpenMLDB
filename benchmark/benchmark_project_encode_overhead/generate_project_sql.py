@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # generate_project_sql.py
 # Copyright 2021 4Paradigm

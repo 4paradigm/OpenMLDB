@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # fesql_table.py
 # Copyright 2021 4Paradigm
 #

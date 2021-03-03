@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # auto_case_tool.py
 # Copyright 2021 4Paradigm
 #

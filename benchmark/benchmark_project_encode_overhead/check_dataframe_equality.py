@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # check_dataframe_equality.py
 # Copyright 2021 4Paradigm

@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 # compare_report.py
 # Copyright 2021 4Paradigm
 #
@@ -13,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# -*- coding:utf-8 -*-
 import sys
 
 

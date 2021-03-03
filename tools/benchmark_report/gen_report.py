@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 # gen_report.py
 # Copyright 2021 4Paradigm
 #
@@ -12,14 +15,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-#! /usr/bin/env python
-# -*- coding: utf-8 -*-
-# vim:fenc=utf-8
-#
-# Copyright © 2020 wangtaize <wangtaize@m7-pce-dev01>
-#
-# Distributed under terms of the MIT license.
 
 """
 generate benchmark echats report

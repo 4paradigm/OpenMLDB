@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # compare_project.py
 # Copyright 2021 4Paradigm

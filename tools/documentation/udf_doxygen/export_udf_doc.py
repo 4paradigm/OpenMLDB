@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # export_udf_doc.py
 # Copyright 2021 4Paradigm
 #

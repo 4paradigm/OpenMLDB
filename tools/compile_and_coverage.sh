@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # compile_and_coverage.sh
 # Copyright 2021 4Paradigm
 #
@@ -13,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#! /bin/sh
 PWD=`pwd`
 
 if $(uname -a | grep -q Darwin); then

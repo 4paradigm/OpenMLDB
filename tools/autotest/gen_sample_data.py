@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # gen_sample_data.py
 # Copyright 2021 4Paradigm
 #

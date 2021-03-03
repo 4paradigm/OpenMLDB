@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # sql_magic.py
 # Copyright 2021 4Paradigm
 #

@@ -1,5 +1,5 @@
 #!/bin/bash
-cd $(cd $(dirname $0); pwd)/..
+
 # clang_format.sh
 # Copyright 2021 4Paradigm
 #
@@ -14,5 +14,7 @@ cd $(cd $(dirname $0); pwd)/..
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+cd $(cd $(dirname $0); pwd)/..
 
 find ./src | grep "\(\.h\|\.cc\)$" | xargs -I {} clang-format -i -style=file {}
