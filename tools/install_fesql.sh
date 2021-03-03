@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/sh
 #
 # install_fesql.sh
 CMAKE_TYPE=$1
