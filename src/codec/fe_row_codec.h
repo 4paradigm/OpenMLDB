@@ -43,7 +43,7 @@ const std::string NONETOKEN = "!N@U#L$L%";  // NOLINT
 const std::string EMPTY_STRING = "!@#$%";   // NOLINT
 
 // TODO(chendihao): Change to inline function if do not depend on gflags
-const std::unordered_map<::fesql::type::Type, uint8_t> GetTypeSizeMap();
+const std::unordered_map<::fesql::type::Type, uint8_t>& GetTypeSizeMap();
 
 inline uint8_t GetAddrLength(uint32_t size) {
     if (size <= UINT8_MAX) {

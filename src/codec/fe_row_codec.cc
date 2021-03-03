@@ -34,7 +34,7 @@ const uint32_t BitMapSize(uint32_t size) {
     }
 }
 
-static const std::unordered_map<::fesql::type::Type, uint8_t>&
+const std::unordered_map<::fesql::type::Type, uint8_t>&
     DEFAULT_TYPE_SIZE_MAP = {{::fesql::type::kBool, sizeof(bool)},
                              {::fesql::type::kInt16, sizeof(int16_t)},
                              {::fesql::type::kInt32, sizeof(int32_t)},
@@ -44,7 +44,7 @@ static const std::unordered_map<::fesql::type::Type, uint8_t>&
                              {::fesql::type::kDate, sizeof(int32_t)},
                              {::fesql::type::kDouble, sizeof(double)}};
 
-static const std::unordered_map<::fesql::type::Type, uint8_t>&
+const std::unordered_map<::fesql::type::Type, uint8_t>&
     SPARK_UNSAFEROW_TYPE_SIZE_MAP = {
         {::fesql::type::kBool, 8},  {::fesql::type::kInt16, 8},
         {::fesql::type::kInt32, 8}, {::fesql::type::kFloat, 8},
