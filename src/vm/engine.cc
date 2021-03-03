@@ -32,11 +32,34 @@
 
 DECLARE_bool(logtostderr);
 DECLARE_string(log_dir);
+DECLARE_bool(enable_spark_unsaferow_format);
 
 namespace fesql {
 namespace vm {
 
 static bool LLVM_IS_INITIALIZED = false;
+
+EngineOptions::EngineOptions()
+    : keep_ir_(false),
+      compile_only_(false),
+      plan_only_(false),
+      performance_sensitive_(true),
+      cluster_optimized_(false),
+      batch_request_optimized_(true),
+      enable_expr_optimize_(true),
+      enable_batch_window_parallelization_(false),
+      max_sql_cache_size_(50),
+      enable_spark_unsaferow_format_(false) {
+        // TODO(chendihao): Pass the parameter to avoid global gflag
+        FLAGS_enable_spark_unsaferow_format = enable_spark_unsaferow_format_;
+      }
+
+EngineOptions* EngineOptions::set_enable_spark_unsaferow_format(bool flag) {
+    enable_spark_unsaferow_format_ = flag;
+    FLAGS_enable_spark_unsaferow_format = flag;
+    return this;
+}
+
 Engine::Engine(const std::shared_ptr<Catalog>& catalog)
     : cl_(catalog), options_(), mu_(), lru_cache_() {}
 Engine::Engine(const std::shared_ptr<Catalog>& catalog,

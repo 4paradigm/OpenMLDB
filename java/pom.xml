@@ -8,7 +8,7 @@
     <version>0.0.4-RELEASE</version>
     <modules>
            <module>fesql-common</module>
-           <module>fesql-jdbc</module>
+           <!-- <module>fesql-jdbc</module> -->
            <module>fesql-native</module>
            <module>fesql-proto</module>
            <module>fesql-spark</module>

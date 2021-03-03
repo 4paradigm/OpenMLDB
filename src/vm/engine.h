@@ -36,6 +36,7 @@
 #include "vm/mem_catalog.h"
 #include "vm/router.h"
 #include "vm/sql_compiler.h"
+#include "gflags/gflags.h"
 
 namespace fesql {
 namespace vm {
@@ -46,16 +47,7 @@ class Engine;
 
 class EngineOptions {
  public:
-    EngineOptions()
-        : keep_ir_(false),
-          compile_only_(false),
-          plan_only_(false),
-          performance_sensitive_(true),
-          cluster_optimized_(false),
-          batch_request_optimized_(true),
-          enable_expr_optimize_(true),
-          enable_batch_window_parallelization_(false),
-          max_sql_cache_size_(50) {}
+    EngineOptions();
     inline void set_keep_ir(bool flag) { this->keep_ir_ = flag; }
     inline bool is_keep_ir() const { return this->keep_ir_; }
     inline void set_compile_only(bool flag) { this->compile_only_ = flag; }
@@ -104,6 +96,12 @@ class EngineOptions {
         return enable_batch_window_parallelization_;
     }
 
+    EngineOptions* set_enable_spark_unsaferow_format(bool flag);
+
+    inline bool is_enable_spark_unsaferow_format() const {
+        return enable_spark_unsaferow_format_;
+    }
+
     fesql::vm::JITOptions& jit_options() { return jit_options_; }
 
  private:
@@ -116,6 +114,7 @@ class EngineOptions {
     bool enable_expr_optimize_;
     bool enable_batch_window_parallelization_;
     uint32_t max_sql_cache_size_;
+    bool enable_spark_unsaferow_format_;
     JITOptions jit_options_;
 };
 

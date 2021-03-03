@@ -26,11 +26,12 @@
 #include "base/raw_buffer.h"
 #include "butil/iobuf.h"
 #include "proto/fe_type.pb.h"
+#include "gflags/gflags.h"
 
 namespace fesql {
 namespace codec {
 
-#define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
+const uint32_t BitMapSize(uint32_t size);
 
 typedef ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef> Schema;
 
@@ -41,15 +42,8 @@ static constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
 const std::string NONETOKEN = "!N@U#L$L%";  // NOLINT
 const std::string EMPTY_STRING = "!@#$%";   // NOLINT
 
-static const std::unordered_map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
-    {::fesql::type::kBool, sizeof(bool)},
-    {::fesql::type::kInt16, sizeof(int16_t)},
-    {::fesql::type::kInt32, sizeof(int32_t)},
-    {::fesql::type::kFloat, sizeof(float)},
-    {::fesql::type::kInt64, sizeof(int64_t)},
-    {::fesql::type::kTimestamp, sizeof(int64_t)},
-    {::fesql::type::kDate, sizeof(int32_t)},
-    {::fesql::type::kDouble, sizeof(double)}};
+// TODO(chendihao): Change to inline function if do not depend on gflags
+const std::unordered_map<::fesql::type::Type, uint8_t>& GetTypeSizeMap();
 
 inline uint8_t GetAddrLength(uint32_t size) {
     if (size <= UINT8_MAX) {

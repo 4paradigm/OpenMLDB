@@ -227,6 +227,43 @@ fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
         buf, fesql::codec::RowView::GetSize(buf)));
 }
 
+fesql::codec::Row CoreAPI::UnsafeRowProject(const fesql::vm::RawPtrHandle fn,
+    fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
+    const int inputRowSizeInBytes,
+    const bool need_free) {
+    // Create Row from input UnsafeRow bytes
+    auto inputRow = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes,
+                                                      inputRowSizeInBytes));
+    auto row_ptr = reinterpret_cast<const int8_t*>(&inputRow);
+
+    // Init current run step runtime
+    JITRuntime::get()->InitRunStep();
+
+    auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
+                                            const int8_t*, int8_t**)>(
+        const_cast<int8_t*>(fn));
+
+    int8_t* buf = nullptr;
+    uint32_t ret = udf(0, row_ptr, nullptr, &buf);
+
+    // Release current run step resources
+    JITRuntime::get()->ReleaseRunStep();
+
+    if (ret != 0) {
+        LOG(WARNING) << "fail to run udf " << ret;
+        return fesql::codec::Row();
+    }
+
+    return Row(base::RefCountedSlice::CreateManaged(
+        buf, fesql::codec::RowView::GetSize(buf)));
+}
+
+void CoreAPI::CopyRowToUnsafeRowBytes(const fesql::codec::Row inputRow,
+                                      fesql::vm::ByteArrayPtr outputBytes,
+                                      const int length) {
+    memcpy(outputBytes, inputRow.buf() + codec::HEADER_LENGTH, length);
+}
+
 fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
                                          const uint64_t row_key, const Row row,
                                          WindowInterface* window) {
@@ -265,6 +302,21 @@ fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
                                          const bool is_instance,
                                          size_t append_slices,
                                          WindowInterface* window) {
+    return Runner::WindowProject(fn, key, row, is_instance, append_slices,
+                                 window->GetWindow());
+}
+
+fesql::codec::Row CoreAPI::UnsafeWindowProject(const RawPtrHandle fn,
+    const uint64_t key,
+    fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
+    const int inputRowSizeInBytes,
+    const bool is_instance,
+    size_t append_slices,
+    WindowInterface* window) {
+    // tobe
+    // Create Row from input UnsafeRow bytes
+    auto row = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes,
+                                                      inputRowSizeInBytes));
     return Runner::WindowProject(fn, key, row, is_instance, append_slices,
                                  window->GetWindow());
 }
