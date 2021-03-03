@@ -12,12 +12,12 @@
 #include <google/protobuf/text_format.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <snappy.h>
 
 #include <algorithm>
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
-#include <snappy.h>
 
 #include "boost/container/deque.hpp"
 #include "config.h"  // NOLINT
