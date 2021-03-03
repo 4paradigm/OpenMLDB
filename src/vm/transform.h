@@ -1,6 +1,5 @@
 /*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * transform.h
+ * Copyright (C) 2020, 4paradigm transform.h
  *
  * Author: chenjing
  * Date: 2020/3/13
@@ -9,12 +8,14 @@
 
 #ifndef SRC_VM_TRANSFORM_H_
 #define SRC_VM_TRANSFORM_H_
+
 #include <memory>
 #include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "base/fe_status.h"
 #include "base/graph.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
@@ -22,7 +23,7 @@
 #include "node/node_manager.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
-#include "passes/physical/physical_pass.h"
+#include "passes/physical/transform_up_physical_pass.h"
 #include "udf/udf_library.h"
 #include "vm/physical_op.h"
 #include "vm/schemas_context.h"
@@ -30,6 +31,8 @@
 
 namespace fesql {
 namespace vm {
+
+using fesql::passes::PhysicalPlanPassType;
 
 class LogicalOp {
  public:
@@ -83,199 +86,8 @@ struct EqualPhysicalOp {
 
 using fesql::base::Status;
 
-class TransformUpPysicalPass : public PhysicalPass {
- public:
-    explicit TransformUpPysicalPass(PhysicalPlanContext* plan_ctx)
-        : plan_ctx_(plan_ctx),
-          node_manager_(plan_ctx->node_manager()),
-          db_(plan_ctx->db()),
-          catalog_(plan_ctx->catalog()) {}
-    ~TransformUpPysicalPass() {}
-
-    virtual bool Apply(PhysicalOpNode* in, PhysicalOpNode** out);
-    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** out) = 0;
-
-    Status Apply(PhysicalPlanContext* ctx, PhysicalOpNode* in,
-                 PhysicalOpNode** out) override {
-        return base::Status(common::kPlanError, "Not implemented");
-    }
-
- protected:
-    PhysicalPlanContext* plan_ctx_;
-    node::NodeManager* node_manager_;
-    const std::string db_;
-    std::shared_ptr<Catalog> catalog_;
-};
-
-class GroupAndSortOptimized : public TransformUpPysicalPass {
- public:
-    explicit GroupAndSortOptimized(PhysicalPlanContext* plan_ctx)
-        : TransformUpPysicalPass(plan_ctx) {}
-
-    ~GroupAndSortOptimized() {}
-
- private:
-    bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
-
-    bool FilterOptimized(const SchemasContext* root_schemas_ctx,
-                         PhysicalOpNode* in, Filter* filter,
-                         PhysicalOpNode** new_in);
-    bool FilterAndOrderOptimized(const SchemasContext* root_schemas_ctx,
-                                 PhysicalOpNode* in, Filter* filter, Sort* sort,
-                                 PhysicalOpNode** new_in);
-    bool JoinKeysOptimized(const SchemasContext* schemas_ctx,
-                           PhysicalOpNode* in, Join* join,
-                           PhysicalOpNode** new_in);
-    bool KeysFilterOptimized(const SchemasContext* root_schemas_ctx,
-                             PhysicalOpNode* in, Key* group, Key* hash,
-                             PhysicalOpNode** new_in);
-    bool KeysAndOrderFilterOptimized(const SchemasContext* root_schemas_ctx,
-                                     PhysicalOpNode* in, Key* group, Key* hash,
-                                     Sort* sort, PhysicalOpNode** new_in);
-    bool KeyAndOrderOptimized(const SchemasContext* root_schemas_ctx,
-                              PhysicalOpNode* in, Key* group, Sort* sort,
-                              PhysicalOpNode** new_in);
-    bool GroupOptimized(const SchemasContext* root_schemas_ctx,
-                        PhysicalOpNode* in, Key* group,
-                        PhysicalOpNode** new_in);
-    bool SortOptimized(const SchemasContext* root_schemas_ctx,
-                       PhysicalOpNode* in, Sort* sort);
-    bool TransformGroupExpr(const SchemasContext* schemas_ctx,
-                            const node::ExprListNode* group,
-                            std::shared_ptr<TableHandler> table_handler,
-                            std::string* index, std::vector<bool>* best_bitmap);
-    bool TransformOrderExpr(const SchemasContext* schemas_ctx,
-                            const node::OrderByNode* order,
-                            const Schema& schema, const IndexSt& index_st,
-                            const node::OrderByNode** output);
-    bool TransformKeysAndOrderExpr(const SchemasContext* schemas_ctx,
-                                   const node::ExprListNode* groups,
-                                   const node::OrderByNode* order,
-                                   std::shared_ptr<TableHandler> table_handler,
-                                   std::string* index,
-                                   std::vector<bool>* best_bitmap);
-    bool MatchBestIndex(const std::vector<std::string>& columns,
-                        const std::vector<std::string>& order_columns,
-                        std::shared_ptr<TableHandler> table_handler,
-                        std::vector<bool>* bitmap, std::string* index_name,
-                        std::vector<bool>* best_bitmap);  // NOLINT
-};
-
-class LimitOptimized : public TransformUpPysicalPass {
- public:
-    explicit LimitOptimized(PhysicalPlanContext* plan_ctx)
-        : TransformUpPysicalPass(plan_ctx) {}
-    ~LimitOptimized() {}
-
- private:
-    bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
-
-    static bool ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt);
-};
-
-class SimpleProjectOptimized : public TransformUpPysicalPass {
- public:
-    explicit SimpleProjectOptimized(PhysicalPlanContext* plan_ctx)
-        : TransformUpPysicalPass(plan_ctx) {}
-    ~SimpleProjectOptimized() {}
-
- private:
-    bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
-};
-
-struct ExprPair {
-    node::ExprNode* left_expr_ = nullptr;
-    node::ExprNode* right_expr_ = nullptr;
-};
-
-// Optimize filter condition
-// for FilterNode, JoinNode
-class ConditionOptimized : public TransformUpPysicalPass {
- public:
-    explicit ConditionOptimized(PhysicalPlanContext* plan_ctx)
-        : TransformUpPysicalPass(plan_ctx) {}
-
-    static bool TransfromAndConditionList(
-        const node::ExprNode* condition,
-        node::ExprListNode* and_condition_list);
-    static bool ExtractEqualExprPair(
-        node::ExprNode* condition,
-        std::pair<node::ExprNode*, node::ExprNode*>* expr_pair);
-    static bool TransformJoinEqualExprPair(
-        const SchemasContext* left_schemas_ctx,
-        const SchemasContext* right_schemas_ctx,
-        node::ExprListNode* and_conditions,
-        node::ExprListNode* out_condition_list,
-        std::vector<ExprPair>& condition_eq_pair);  // NOLINT
-    static bool TransformConstEqualExprPair(
-        node::ExprListNode* and_conditions,
-        node::ExprListNode* out_condition_list,
-        std::vector<ExprPair>& condition_eq_pair);  // NOLINT
-    static bool MakeConstEqualExprPair(
-        const std::pair<node::ExprNode*, node::ExprNode*> expr_pair,
-        const SchemasContext* right_schemas_ctx, ExprPair* output);
-
- private:
-    bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
-    bool JoinConditionOptimized(PhysicalBinaryNode* in, Join* join);
-    void SkipConstExpression(node::ExprListNode input,
-                             node::ExprListNode* output);
-    bool FilterConditionOptimized(PhysicalOpNode* in, Filter* filter);
-};
-
-class LeftJoinOptimized : public TransformUpPysicalPass {
- public:
-    explicit LeftJoinOptimized(PhysicalPlanContext* plan_ctx)
-        : TransformUpPysicalPass(plan_ctx) {}
-
- private:
-    bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
-    bool ColumnExist(const Schema& schema, const std::string& column);
-    bool CheckExprListFromSchema(const node::ExprListNode* expr_list,
-                                 const Schema* schema);
-};
-
-class ClusterOptimized : public TransformUpPysicalPass {
- public:
-    explicit ClusterOptimized(PhysicalPlanContext* plan_ctx)
-        : TransformUpPysicalPass(plan_ctx) {}
-
- private:
-    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
-    bool SimplifyJoinLeftInput(PhysicalOpNode* join_op, const Join& join,
-                               const SchemasContext* joined_schema_ctx,
-                               PhysicalOpNode** out);
-};
-
 typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
     LogicalGraph;
-
-enum PhysicalPlanPassType {
-    kPassColumnProjectsOptimized,
-    kPassFilterOptimized,
-    kPassGroupAndSortOptimized,
-    kPassLeftJoinOptimized,
-    kPassClusterOptimized,
-    kPassLimitOptimized
-};
-
-inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
-    switch (type) {
-        case kPassColumnProjectsOptimized:
-            return "PassColumnProjectsOptimized";
-        case kPassFilterOptimized:
-            return "PassFilterOptimized";
-        case kPassGroupAndSortOptimized:
-            return "PassGroupByOptimized";
-        case kPassLeftJoinOptimized:
-            return "PassLeftJoinOptimized";
-        case kPassLimitOptimized:
-            return "PassLimitOptimized";
-        default:
-            return "unknowPass";
-    }
-    return "";
-}
 
 class BatchModeTransformer {
  public:

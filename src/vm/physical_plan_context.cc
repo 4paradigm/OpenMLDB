@@ -1,15 +1,20 @@
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
- * physical_pass.cc
+/**
+ * vm/physical_plan_context.cc
+ * Copyright (c) 2021 4paradigm
  *
- * Author: chenjing
- * Date: 2020/3/13
- *--------------------------------------------------------------------------
- **/
-#include "passes/physical/physical_pass.h"
-
-#include <string>
-#include <vector>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "vm/physical_plan_context.h"
 
 #include "codegen/ir_base_builder.h"
 #include "passes/expression/default_passes.h"
@@ -19,62 +24,11 @@
 namespace fesql {
 namespace vm {
 
-using fesql::base::Status;
 using fesql::common::kPlanError;
 
 Status OptimizeFunctionLet(const ColumnProjects& projects,
                            node::ExprAnalysisContext* ctx,
-                           node::LambdaNode* func) {
-    CHECK_TRUE(func->GetArgSize() == 2, kPlanError);
-    CHECK_TRUE(projects.size() == func->body()->GetChildNum(), kPlanError);
-
-    // group idx -> (idx in group -> output idx)
-    std::vector<std::vector<size_t>> pos_mappings;
-
-    // frame name -> group idx
-    std::map<std::string, size_t> frame_mappings;
-
-    // expr groups
-    std::vector<node::ExprListNode*> groups;
-
-    // split expressions by frame
-    for (size_t i = 0; i < projects.size(); ++i) {
-        auto expr = func->body()->GetChild(i);
-        auto frame = projects.GetFrame(i);
-        std::string key = frame ? frame->GetExprString() : "";
-        auto iter = frame_mappings.find(key);
-        size_t group_idx;
-        if (iter == frame_mappings.end()) {
-            group_idx = groups.size();
-            frame_mappings.insert(iter, std::make_pair(key, group_idx));
-            pos_mappings.push_back(std::vector<size_t>());
-            groups.push_back(ctx->node_manager()->MakeExprList());
-        } else {
-            group_idx = iter->second;
-        }
-        pos_mappings[group_idx].push_back(i);
-        groups[group_idx]->AddChild(expr);
-    }
-
-    for (size_t i = 0; i < groups.size(); ++i) {
-        passes::ExprPassGroup pass_group;
-        pass_group.SetRow(func->GetArg(0));
-        pass_group.SetWindow(func->GetArg(1));
-        AddDefaultExprOptPasses(ctx, &pass_group);
-
-        node::ExprNode* optimized = nullptr;
-        CHECK_STATUS(pass_group.Apply(ctx, groups[i], &optimized));
-
-        CHECK_TRUE(optimized != nullptr &&
-                       optimized->GetChildNum() == pos_mappings[i].size(),
-                   kPlanError);
-        for (size_t j = 0; j < optimized->GetChildNum(); ++j) {
-            size_t output_idx = pos_mappings[i][j];
-            func->body()->SetChild(output_idx, optimized->GetChild(j));
-        }
-    }
-    return base::Status::OK();
-}
+                           node::LambdaNode* func);
 
 Status PhysicalPlanContext::InitFnDef(const node::ExprListNode* exprs,
                                       const SchemasContext* schemas_ctx,
@@ -255,124 +209,58 @@ size_t PhysicalPlanContext::GetNewColumnID() {
     return this->column_id_counter_++;
 }
 
-Status BuildColumnReplacement(const node::ExprNode* expr,
-                              const SchemasContext* origin_schema,
-                              const SchemasContext* rebase_schema,
-                              node::NodeManager* nm,
-                              passes::ExprReplacer* replacer) {
-    // Find all column expressions the expr depend on
-    std::vector<const node::ExprNode*> origin_columns;
-    CHECK_STATUS(
-        origin_schema->ResolveExprDependentColumns(expr, &origin_columns));
+Status OptimizeFunctionLet(const ColumnProjects& projects,
+                           node::ExprAnalysisContext* ctx,
+                           node::LambdaNode* func) {
+    CHECK_TRUE(func->GetArgSize() == 2, kPlanError);
+    CHECK_TRUE(projects.size() == func->body()->GetChildNum(), kPlanError);
 
-    // Build possible replacement
-    for (auto col_expr : origin_columns) {
-        if (col_expr->GetExprType() == node::kExprColumnRef) {
-            auto col_ref = dynamic_cast<const node::ColumnRefNode*>(col_expr);
-            size_t origin_schema_idx;
-            size_t origin_col_idx;
-            CHECK_STATUS(origin_schema->ResolveColumnRefIndex(
-                col_ref, &origin_schema_idx, &origin_col_idx));
-            size_t column_id = origin_schema->GetSchemaSource(origin_schema_idx)
-                                   ->GetColumnID(origin_col_idx);
+    // group idx -> (idx in group -> output idx)
+    std::vector<std::vector<size_t>> pos_mappings;
 
-            size_t new_schema_idx;
-            size_t new_col_idx;
-            Status status = rebase_schema->ResolveColumnIndexByID(
-                column_id, &new_schema_idx, &new_col_idx);
+    // frame name -> group idx
+    std::map<std::string, size_t> frame_mappings;
 
-            // (1) the column is inherited with same column id
-            if (status.isOK()) {
-                replacer->AddReplacement(col_ref->GetRelationName(),
-                                         col_ref->GetColumnName(),
-                                         nm->MakeColumnIdNode(column_id));
-                continue;
-            }
+    // expr groups
+    std::vector<node::ExprListNode*> groups;
 
-            // (2) the column is with same name
-            status = rebase_schema->ResolveColumnRefIndex(
-                col_ref, &new_schema_idx, &new_col_idx);
-            if (status.isOK()) {
-                size_t new_column_id =
-                    rebase_schema->GetSchemaSource(new_schema_idx)
-                        ->GetColumnID(new_col_idx);
-                replacer->AddReplacement(col_ref->GetRelationName(),
-                                         col_ref->GetColumnName(),
-                                         nm->MakeColumnIdNode(new_column_id));
-                continue;
-            }
-
-            // (3) pick the column at the same index
-            size_t total_idx = origin_col_idx;
-            for (size_t i = 0; i < origin_schema_idx; ++i) {
-                total_idx += origin_schema->GetSchemaSource(i)->size();
-            }
-            bool index_is_valid = false;
-            for (size_t i = 0; i < rebase_schema->GetSchemaSourceSize(); ++i) {
-                auto source = rebase_schema->GetSchemaSource(i);
-                if (total_idx < source->size()) {
-                    auto col_id_node =
-                        nm->MakeColumnIdNode(source->GetColumnID(total_idx));
-                    replacer->AddReplacement(col_ref->GetRelationName(),
-                                             col_ref->GetColumnName(),
-                                             col_id_node);
-                    replacer->AddReplacement(column_id, col_id_node);
-                    index_is_valid = true;
-                    break;
-                }
-                total_idx -= source->size();
-            }
-
-            // (3) can not build replacement
-            CHECK_TRUE(index_is_valid, common::kPlanError,
-                       "Build replacement failed: " + col_ref->GetExprString());
-
-        } else if (col_expr->GetExprType() == node::kExprColumnId) {
-            auto column_id = dynamic_cast<const node::ColumnIdNode*>(col_expr)
-                                 ->GetColumnID();
-            size_t origin_schema_idx;
-            size_t origin_col_idx;
-            CHECK_STATUS(origin_schema->ResolveColumnIndexByID(
-                column_id, &origin_schema_idx, &origin_col_idx));
-
-            size_t new_schema_idx;
-            size_t new_col_idx;
-            Status status = rebase_schema->ResolveColumnIndexByID(
-                column_id, &new_schema_idx, &new_col_idx);
-
-            // (1) the column is inherited with same column id
-            if (status.isOK()) {
-                continue;
-            }
-
-            // (2) pick the column at the same index
-            size_t total_idx = origin_col_idx;
-            for (size_t i = 0; i < origin_schema_idx; ++i) {
-                total_idx += origin_schema->GetSchemaSource(i)->size();
-            }
-            bool index_is_valid = false;
-            for (size_t i = 0; i < rebase_schema->GetSchemaSourceSize(); ++i) {
-                auto source = rebase_schema->GetSchemaSource(i);
-                if (total_idx < source->size()) {
-                    replacer->AddReplacement(
-                        column_id,
-                        nm->MakeColumnIdNode(source->GetColumnID(total_idx)));
-                    index_is_valid = true;
-                    break;
-                }
-                total_idx -= source->size();
-            }
-
-            // (3) can not build replacement
-            CHECK_TRUE(
-                index_is_valid, common::kPlanError,
-                "Build replacement failed: " + col_expr->GetExprString());
+    // split expressions by frame
+    for (size_t i = 0; i < projects.size(); ++i) {
+        auto expr = func->body()->GetChild(i);
+        auto frame = projects.GetFrame(i);
+        std::string key = frame ? frame->GetExprString() : "";
+        auto iter = frame_mappings.find(key);
+        size_t group_idx;
+        if (iter == frame_mappings.end()) {
+            group_idx = groups.size();
+            frame_mappings.insert(iter, std::make_pair(key, group_idx));
+            pos_mappings.push_back(std::vector<size_t>());
+            groups.push_back(ctx->node_manager()->MakeExprList());
         } else {
-            return Status(common::kPlanError, "Invalid column expression type");
+            group_idx = iter->second;
+        }
+        pos_mappings[group_idx].push_back(i);
+        groups[group_idx]->AddChild(expr);
+    }
+
+    for (size_t i = 0; i < groups.size(); ++i) {
+        passes::ExprPassGroup pass_group;
+        pass_group.SetRow(func->GetArg(0));
+        pass_group.SetWindow(func->GetArg(1));
+        AddDefaultExprOptPasses(ctx, &pass_group);
+
+        node::ExprNode* optimized = nullptr;
+        CHECK_STATUS(pass_group.Apply(ctx, groups[i], &optimized));
+
+        CHECK_TRUE(optimized != nullptr &&
+                       optimized->GetChildNum() == pos_mappings[i].size(),
+                   kPlanError);
+        for (size_t j = 0; j < optimized->GetChildNum(); ++j) {
+            size_t output_idx = pos_mappings[i][j];
+            func->body()->SetChild(output_idx, optimized->GetChild(j));
         }
     }
-    return Status::OK();
+    return base::Status::OK();
 }
-
 }  // namespace vm
 }  // namespace fesql

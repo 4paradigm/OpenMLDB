@@ -1318,5 +1318,125 @@ Status PhysicalRequestJoinNode::InitSchema(PhysicalPlanContext* ctx) {
     return Status::OK();
 }
 
+Status BuildColumnReplacement(const node::ExprNode* expr,
+                              const SchemasContext* origin_schema,
+                              const SchemasContext* rebase_schema,
+                              node::NodeManager* nm,
+                              passes::ExprReplacer* replacer) {
+    // Find all column expressions the expr depend on
+    std::vector<const node::ExprNode*> origin_columns;
+    CHECK_STATUS(
+        origin_schema->ResolveExprDependentColumns(expr, &origin_columns));
+
+    // Build possible replacement
+    for (auto col_expr : origin_columns) {
+        if (col_expr->GetExprType() == node::kExprColumnRef) {
+            auto col_ref = dynamic_cast<const node::ColumnRefNode*>(col_expr);
+            size_t origin_schema_idx;
+            size_t origin_col_idx;
+            CHECK_STATUS(origin_schema->ResolveColumnRefIndex(
+                col_ref, &origin_schema_idx, &origin_col_idx));
+            size_t column_id = origin_schema->GetSchemaSource(origin_schema_idx)
+                                   ->GetColumnID(origin_col_idx);
+
+            size_t new_schema_idx;
+            size_t new_col_idx;
+            Status status = rebase_schema->ResolveColumnIndexByID(
+                column_id, &new_schema_idx, &new_col_idx);
+
+            // (1) the column is inherited with same column id
+            if (status.isOK()) {
+                replacer->AddReplacement(col_ref->GetRelationName(),
+                                         col_ref->GetColumnName(),
+                                         nm->MakeColumnIdNode(column_id));
+                continue;
+            }
+
+            // (2) the column is with same name
+            status = rebase_schema->ResolveColumnRefIndex(
+                col_ref, &new_schema_idx, &new_col_idx);
+            if (status.isOK()) {
+                size_t new_column_id =
+                    rebase_schema->GetSchemaSource(new_schema_idx)
+                        ->GetColumnID(new_col_idx);
+                replacer->AddReplacement(col_ref->GetRelationName(),
+                                         col_ref->GetColumnName(),
+                                         nm->MakeColumnIdNode(new_column_id));
+                continue;
+            }
+
+            // (3) pick the column at the same index
+            size_t total_idx = origin_col_idx;
+            for (size_t i = 0; i < origin_schema_idx; ++i) {
+                total_idx += origin_schema->GetSchemaSource(i)->size();
+            }
+            bool index_is_valid = false;
+            for (size_t i = 0; i < rebase_schema->GetSchemaSourceSize(); ++i) {
+                auto source = rebase_schema->GetSchemaSource(i);
+                if (total_idx < source->size()) {
+                    auto col_id_node =
+                        nm->MakeColumnIdNode(source->GetColumnID(total_idx));
+                    replacer->AddReplacement(col_ref->GetRelationName(),
+                                             col_ref->GetColumnName(),
+                                             col_id_node);
+                    replacer->AddReplacement(column_id, col_id_node);
+                    index_is_valid = true;
+                    break;
+                }
+                total_idx -= source->size();
+            }
+
+            // (3) can not build replacement
+            CHECK_TRUE(index_is_valid, common::kPlanError,
+                       "Build replacement failed: " + col_ref->GetExprString());
+
+        } else if (col_expr->GetExprType() == node::kExprColumnId) {
+            auto column_id = dynamic_cast<const node::ColumnIdNode*>(col_expr)
+                                 ->GetColumnID();
+            size_t origin_schema_idx;
+            size_t origin_col_idx;
+            CHECK_STATUS(origin_schema->ResolveColumnIndexByID(
+                column_id, &origin_schema_idx, &origin_col_idx));
+
+            size_t new_schema_idx;
+            size_t new_col_idx;
+            Status status = rebase_schema->ResolveColumnIndexByID(
+                column_id, &new_schema_idx, &new_col_idx);
+
+            // (1) the column is inherited with same column id
+            if (status.isOK()) {
+                continue;
+            }
+
+            // (2) pick the column at the same index
+            size_t total_idx = origin_col_idx;
+            for (size_t i = 0; i < origin_schema_idx; ++i) {
+                total_idx += origin_schema->GetSchemaSource(i)->size();
+            }
+            bool index_is_valid = false;
+            for (size_t i = 0; i < rebase_schema->GetSchemaSourceSize(); ++i) {
+                auto source = rebase_schema->GetSchemaSource(i);
+                if (total_idx < source->size()) {
+                    replacer->AddReplacement(
+                        column_id,
+                        nm->MakeColumnIdNode(source->GetColumnID(total_idx)));
+                    index_is_valid = true;
+                    break;
+                }
+                total_idx -= source->size();
+            }
+
+            // (3) can not build replacement
+            CHECK_TRUE(
+                index_is_valid, common::kPlanError,
+                "Build replacement failed: " + col_expr->GetExprString());
+        } else {
+            return Status(common::kPlanError, "Invalid column expression type");
+        }
+    }
+    return Status::OK();
+}
+
+
 }  // namespace vm
 }  // namespace fesql

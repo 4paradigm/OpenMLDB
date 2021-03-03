@@ -14,9 +14,10 @@
 #define SRC_PASSES_PHYSICAL_WINDOW_COLUMN_PRUNING_H_
 
 namespace fesql {
-namespace vm {
+namespace passes {
 
 using fesql::base::Status;
+using fesql::vm::PhysicalWindowAggrerationNode;
 
 class WindowColumnPruning : public PhysicalPass {
  public:
@@ -33,6 +34,6 @@ class WindowColumnPruning : public PhysicalPass {
     std::map<size_t, PhysicalOpNode*> cache_;
 };
 
-}  // namespace vm
+}  // namespace passes
 }  // namespace fesql
 #endif  // SRC_PASSES_PHYSICAL_WINDOW_COLUMN_PRUNING_H_

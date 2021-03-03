@@ -7,11 +7,23 @@
 #include "passes/physical/batch_request_optimize.h"
 #include <set>
 #include <vector>
+#include "vm/physical_op.h"
 
 namespace fesql {
-namespace vm {
+namespace passes {
 
 using fesql::common::kPlanError;
+using fesql::vm::ColumnProjects;
+using fesql::vm::DataProviderType;
+using fesql::vm::PhysicalJoinNode;
+using fesql::vm::PhysicalOpType;
+using fesql::vm::PhysicalPostRequestUnionNode;
+using fesql::vm::PhysicalRequestProviderNodeWithCommonColumn;
+using fesql::vm::PhysicalRowProjectNode;
+using fesql::vm::PhysicalSchemaType;
+using fesql::vm::PhysicalTableProjectNode;
+using fesql::vm::ProjectType;
+using fesql::vm::Range;
 
 CommonColumnOptimize::CommonColumnOptimize(
     const std::set<size_t> common_column_indices)
@@ -19,11 +31,11 @@ CommonColumnOptimize::CommonColumnOptimize(
 
 bool CommonColumnOptimize::FindRequestUnionPath(
     PhysicalOpNode* root, std::vector<PhysicalOpNode*>* path) {
-    if (root->GetOutputType() == kSchemaTypeRow) {
+    if (root->GetOutputType() == PhysicalSchemaType::kSchemaTypeRow) {
         return false;
     }
     path->push_back(root);
-    if (root->GetOpType() == kPhysicalOpRequestUnion) {
+    if (root->GetOpType() == PhysicalOpType::kPhysicalOpRequestUnion) {
         return dynamic_cast<PhysicalRequestUnionNode*>(root)
             ->output_request_row();
     }
@@ -146,7 +158,7 @@ Status CommonColumnOptimize::ProcessRequest(
 Status CommonColumnOptimize::ProcessData(PhysicalPlanContext* ctx,
                                          PhysicalDataProviderNode* data_op,
                                          BuildOpState* state) {
-    if (data_op->provider_type_ == kProviderTypeRequest) {
+    if (data_op->provider_type_ == DataProviderType::kProviderTypeRequest) {
         return ProcessRequest(
             ctx, dynamic_cast<PhysicalRequestProviderNode*>(data_op), state);
     } else {
@@ -367,21 +379,21 @@ static Status CreateNewProject(PhysicalPlanContext* ctx, ProjectType ptype,
                                const ColumnProjects& projects,
                                PhysicalOpNode** out) {
     switch (ptype) {
-        case kRowProject: {
+        case ProjectType::kRowProject: {
             PhysicalRowProjectNode* op = nullptr;
             CHECK_STATUS(
                 ctx->CreateOp<PhysicalRowProjectNode>(&op, input, projects));
             *out = op;
             break;
         }
-        case kTableProject: {
+        case ProjectType::kTableProject: {
             PhysicalTableProjectNode* op = nullptr;
             CHECK_STATUS(
                 ctx->CreateOp<PhysicalTableProjectNode>(&op, input, projects));
             *out = op;
             break;
         }
-        case kAggregation: {
+        case ProjectType::kAggregation: {
             PhysicalAggrerationNode* op = nullptr;
             CHECK_STATUS(
                 ctx->CreateOp<PhysicalAggrerationNode>(&op, input, projects));
@@ -399,7 +411,7 @@ Status CommonColumnOptimize::ProcessProject(PhysicalPlanContext* ctx,
                                             PhysicalProjectNode* project_op,
                                             BuildOpState* state) {
     // process window agg
-    if (project_op->project_type_ == kAggregation) {
+    if (project_op->project_type_ == ProjectType::kAggregation) {
         auto window_agg_op = dynamic_cast<PhysicalAggrerationNode*>(project_op);
         return ProcessWindow(ctx, window_agg_op, state);
     }
@@ -527,7 +539,7 @@ static Status ReplaceRequestUnion(PhysicalPlanContext* ctx,
         *output = iter->second;
         return Status::OK();
     }
-    if (root->GetOpType() == kPhysicalOpRequestUnion) {
+    if (root->GetOpType() == PhysicalOpType::kPhysicalOpRequestUnion) {
         auto request_union_op = dynamic_cast<PhysicalRequestUnionNode*>(root);
         CHECK_TRUE(request_union_op == target, kPlanError,
                    "Found another request union node under window agg");
@@ -547,8 +559,10 @@ static Status ReplaceRequestUnion(PhysicalPlanContext* ctx,
     if (changed) {
         PhysicalOpNode* new_root = nullptr;
         CHECK_STATUS(ctx->WithNewChildren(root, new_children, &new_root));
-        if (new_root->GetOpType() == kPhysicalOpJoin && !new_children.empty() &&
-            new_children[0]->GetOutputType() == kSchemaTypeRow) {
+        if (new_root->GetOpType() == PhysicalOpType::kPhysicalOpJoin &&
+            !new_children.empty() &&
+            new_children[0]->GetOutputType() ==
+                PhysicalSchemaType::kSchemaTypeRow) {
             auto join_op = dynamic_cast<PhysicalJoinNode*>(new_root);
             PhysicalRequestJoinNode* request_join_op = nullptr;
             CHECK_STATUS(ctx->CreateOp<PhysicalRequestJoinNode>(
@@ -944,27 +958,27 @@ Status CommonColumnOptimize::GetOpState(PhysicalPlanContext* ctx,
         return Status::OK();
     }
     switch (input->GetOpType()) {
-        case kPhysicalOpDataProvider: {
+        case PhysicalOpType::kPhysicalOpDataProvider: {
             auto data_op = dynamic_cast<PhysicalDataProviderNode*>(input);
             CHECK_STATUS(ProcessData(ctx, data_op, state));
             break;
         }
-        case kPhysicalOpSimpleProject: {
+        case PhysicalOpType::kPhysicalOpSimpleProject: {
             auto project_op = dynamic_cast<PhysicalSimpleProjectNode*>(input);
             CHECK_STATUS(ProcessSimpleProject(ctx, project_op, state));
             break;
         }
-        case kPhysicalOpProject: {
+        case PhysicalOpType::kPhysicalOpProject: {
             auto project_op = dynamic_cast<PhysicalProjectNode*>(input);
             CHECK_STATUS(ProcessProject(ctx, project_op, state));
             break;
         }
-        case kPhysicalOpRequestJoin: {
+        case PhysicalOpType::kPhysicalOpRequestJoin: {
             auto join_op = dynamic_cast<PhysicalRequestJoinNode*>(input);
             CHECK_STATUS(ProcessJoin(ctx, join_op, state));
             break;
         }
-        case kPhysicalOpRename: {
+        case PhysicalOpType::kPhysicalOpRename: {
             auto rename_op = dynamic_cast<PhysicalRenameNode*>(input);
             CHECK_STATUS(ProcessRename(ctx, rename_op, state));
             break;
@@ -1140,5 +1154,5 @@ void CommonColumnOptimize::ExtractCommonNodeSet(std::set<size_t>* output) {
     }
 }
 
-}  // namespace vm
+}  // namespace passes
 }  // namespace fesql

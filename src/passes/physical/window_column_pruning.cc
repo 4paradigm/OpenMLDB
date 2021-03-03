@@ -13,9 +13,14 @@
 #include <vector>
 
 namespace fesql {
-namespace vm {
+namespace passes {
 
 using fesql::common::kPlanError;
+using fesql::vm::kPhysicalOpProject;
+using fesql::vm::kWindowAggregation;
+using fesql::vm::ColumnProjects;
+using fesql::vm::PhysicalProjectNode;
+using fesql::vm::PhysicalSimpleProjectNode;
 
 Status WindowColumnPruning::Apply(PhysicalPlanContext* ctx,
                                   PhysicalOpNode* input, PhysicalOpNode** out) {
@@ -184,5 +189,5 @@ Status WindowColumnPruning::ProcessWindow(PhysicalPlanContext* ctx,
     return Status::OK();
 }
 
-}  // namespace vm
+}  // namespace passes
 }  // namespace fesql
