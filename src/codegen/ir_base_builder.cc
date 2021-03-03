@@ -31,6 +31,7 @@ namespace fesql {
 namespace codegen {
 
 using base::Status;
+using ::fesql::common::kCodegenError;
 
 bool GetLLVMType(::llvm::BasicBlock* block,
                  const ::fesql::node::DataType& type,  // NOLINT
