@@ -15,9 +15,6 @@
  * limitations under the License.
  */
 
-//
-// skiplist.h
-// Copyright 2017 4paradigm.com
 
 #pragma once
 

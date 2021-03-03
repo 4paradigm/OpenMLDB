@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * resolve_fn_and_attrs.h
- *--------------------------------------------------------------------------
- **/
 #ifndef SRC_PASSES_RESOLVE_FN_AND_ATTRS_H_
 #define SRC_PASSES_RESOLVE_FN_AND_ATTRS_H_
 

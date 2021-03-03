@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * resolve_fn_and_attrs.cc
- *--------------------------------------------------------------------------
- **/
 #include "passes/resolve_fn_and_attrs.h"
 #include <utility>
 #include "passes/resolve_udf_def.h"

@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-// Copyright (C) 2019, 4paradigm
 #include "base/fe_slice.h"
 
 namespace fesql {

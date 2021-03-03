@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * merge_aggregations.cc
- *--------------------------------------------------------------------------
- **/
 #include "passes/expression/merge_aggregations.h"
 #include <set>
 #include <utility>

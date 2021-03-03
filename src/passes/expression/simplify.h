@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * simplify.h
- *--------------------------------------------------------------------------
- **/
 #ifndef SRC_PASSES_EXPRESSION_SIMPLIFY_H_
 #define SRC_PASSES_EXPRESSION_SIMPLIFY_H_
 

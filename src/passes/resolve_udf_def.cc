@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * resolve_udf_def.cc
- *--------------------------------------------------------------------------
- **/
 #include "passes/resolve_udf_def.h"
 #include "base/fe_status.h"
 #include "node/sql_node.h"

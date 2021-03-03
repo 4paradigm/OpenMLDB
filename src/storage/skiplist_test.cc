@@ -15,9 +15,6 @@
  * limitations under the License.
  */
 
-//
-// skip_list_test.cc
-// Copyright 2017 4paradigm.com
 
 #include <string>
 #include <vector>

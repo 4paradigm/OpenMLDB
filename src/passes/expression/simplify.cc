@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * simplify.cc
- *--------------------------------------------------------------------------
- **/
 #include "passes/expression/simplify.h"
 #include "node/expr_node.h"
 #include "node/node_manager.h"

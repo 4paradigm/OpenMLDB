@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * window_functions_def.cc
- *--------------------------------------------------------------------------
- **/
 #include <algorithm>
 #include <queue>
 #include <string>

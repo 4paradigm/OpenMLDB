@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * resolve_udf_def.h
- *--------------------------------------------------------------------------
- **/
 #ifndef SRC_PASSES_RESOLVE_UDF_DEF_H_
 #define SRC_PASSES_RESOLVE_UDF_DEF_H_
 

@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * default_passes.h
- *--------------------------------------------------------------------------
- **/
 #ifndef SRC_PASSES_EXPRESSION_DEFAULT_PASSES_H_
 #define SRC_PASSES_EXPRESSION_DEFAULT_PASSES_H_
 

@@ -15,9 +15,6 @@
  * limitations under the License.
  */
 
-//
-// slice_test.cc
-// Copyright 2017 4paradigm.com
 
 #include "base/fe_slice.h"
 #include "gtest/gtest.h"

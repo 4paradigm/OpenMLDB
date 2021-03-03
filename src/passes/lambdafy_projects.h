@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * lambdafy_projects.h
- *--------------------------------------------------------------------------
- **/
 #ifndef SRC_PASSES_LAMBDAFY_PROJECTS_H_
 #define SRC_PASSES_LAMBDAFY_PROJECTS_H_
 

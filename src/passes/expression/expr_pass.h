@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * expr_pass.h
- *--------------------------------------------------------------------------
- **/
 #ifndef SRC_PASSES_EXPRESSION_EXPR_PASS_H_
 #define SRC_PASSES_EXPRESSION_EXPR_PASS_H_
 

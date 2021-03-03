@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * agg_by_category_def.cc
- *--------------------------------------------------------------------------
- **/
 #include <string>
 #include <tuple>
 #include <unordered_set>

@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * merge_aggregations.h
- *--------------------------------------------------------------------------
- **/
 #ifndef SRC_PASSES_EXPRESSION_MERGE_AGGREGATIONS_H_
 #define SRC_PASSES_EXPRESSION_MERGE_AGGREGATIONS_H_
 

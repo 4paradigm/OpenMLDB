@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * expr_pass.cc
- *--------------------------------------------------------------------------
- **/
 #include "passes/expression/expr_pass.h"
 
 namespace fesql {

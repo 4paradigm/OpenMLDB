@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * window_dep_analysis.cc
- *--------------------------------------------------------------------------
- **/
 #include "passes/expression/window_iter_analysis.h"
 #include <string>
 #include <unordered_map>

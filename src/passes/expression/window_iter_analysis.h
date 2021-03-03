@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * window_iter_analysis.h
- *--------------------------------------------------------------------------
- **/
 #ifndef SRC_PASSES_EXPRESSION_WINDOW_ITER_ANALYSIS_H_
 #define SRC_PASSES_EXPRESSION_WINDOW_ITER_ANALYSIS_H_
 

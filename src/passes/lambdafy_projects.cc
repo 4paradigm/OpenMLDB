@@ -15,11 +15,6 @@
  * limitations under the License.
  */
 
-/*-------------------------------------------------------------------------
- * Copyright (C) 2019, 4paradigm
- * lambdafy_projects.cc
- *--------------------------------------------------------------------------
- **/
 #include "passes/lambdafy_projects.h"
 #include "passes/resolve_fn_and_attrs.h"
 

@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-// Copyright (C) 2019, 4paradigm
 #pragma once
 #include <assert.h>
 #include <memory.h>
