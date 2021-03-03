@@ -23,6 +23,9 @@
 namespace fesql {
 namespace vm {
 
+using fesql::base::Status;
+using fesql::vm::SchemasContext;
+
 // new and delete physical node managef
 enum PhysicalOpType {
     kPhysicalOpDataProvider,
@@ -1582,6 +1585,32 @@ class PhysicalDistinctNode : public PhysicalUnaryNode {
 
     virtual ~PhysicalDistinctNode() {}
 };
+
+/**
+ * Initialize expression replacer with schema change.
+ */
+Status BuildColumnReplacement(const node::ExprNode* expr,
+                              const SchemasContext* origin_schema,
+                              const SchemasContext* rebase_schema,
+                              node::NodeManager* nm,
+                              passes::ExprReplacer* replacer);
+
+template <typename Component>
+static Status ReplaceComponentExpr(const Component& component,
+                                   const SchemasContext* origin_schema,
+                                   const SchemasContext* rebase_schema,
+                                   node::NodeManager* nm, Component* output) {
+    *output = component;
+    std::vector<const node::ExprNode*> depend_columns;
+    component.ResolvedRelatedColumns(&depend_columns);
+    passes::ExprReplacer replacer;
+    for (auto col_expr : depend_columns) {
+        CHECK_STATUS(BuildColumnReplacement(col_expr, origin_schema,
+                                            rebase_schema, nm, &replacer));
+    }
+    return component.ReplaceExpr(replacer, nm, output);
+}
+
 
 }  // namespace vm
 }  // namespace fesql

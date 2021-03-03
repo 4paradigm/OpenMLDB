@@ -37,6 +37,7 @@
 #include "vm/simple_catalog.h"
 #include "vm/sql_compiler.h"
 #include "vm/test_base.h"
+#include "passes/physical/condition_optimized.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -46,7 +47,10 @@ ExitOnError ExitOnErr;
 namespace fesql {
 namespace vm {
 
+using fesql::passes::ConditionOptimized;
 using fesql::sqlcase::SQLCase;
+using fesql::passes::ExprPair;
+
 std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
@@ -486,7 +490,7 @@ TEST_F(TransformTest, TransformEqualExprPairTest) {
         mock_condition_list.AddChild(condition);
 
         node::ExprListNode out_condition_list;
-        std::vector<vm::ExprPair> mock_expr_pairs;
+        std::vector<ExprPair> mock_expr_pairs;
 
         ConditionOptimized::TransformJoinEqualExprPair(
             &left_ctx, &right_ctx, &mock_condition_list, &out_condition_list,
