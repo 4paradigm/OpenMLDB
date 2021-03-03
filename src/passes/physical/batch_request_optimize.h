@@ -21,9 +21,17 @@
 #define SRC_PASSES_PHYSICAL_BATCH_REQUEST_OPTIMIZE_H_
 
 namespace fesql {
-namespace vm {
+namespace passes {
 
 using fesql::base::Status;
+using fesql::vm::PhysicalRequestProviderNode;
+using fesql::vm::PhysicalDataProviderNode;
+using fesql::vm::PhysicalSimpleProjectNode;
+using fesql::vm::PhysicalProjectNode;
+using fesql::vm::PhysicalAggrerationNode;
+using fesql::vm::PhysicalRenameNode;
+using fesql::vm::PhysicalRequestJoinNode;
+using fesql::vm::PhysicalRequestUnionNode;
 
 /**
  * Split op with common columns to common and non-common parts.
@@ -133,6 +141,6 @@ class CommonColumnOptimize : public PhysicalPass {
     std::unordered_map<size_t, BuildOpState> build_dict_;
 };
 
-}  // namespace vm
+}  // namespace passes
 }  // namespace fesql
 #endif  // SRC_PASSES_PHYSICAL_BATCH_REQUEST_OPTIMIZE_H_

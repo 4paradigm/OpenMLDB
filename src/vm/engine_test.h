@@ -69,7 +69,6 @@ static const int ENGINE_TEST_INIT_CATALOG_ERROR = 4;
 namespace fesql {
 namespace vm {
 using fesql::base::Status;
-using fesql::codec::ArrayListV;
 using fesql::codec::Row;
 using fesql::common::kSQLError;
 using fesql::sqlcase::SQLCase;

@@ -41,7 +41,6 @@ namespace fesql {
 namespace vm {
 
 using ::fesql::codec::Row;
-using ::fesql::codec::RowView;
 
 class Engine;
 
