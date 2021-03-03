@@ -16,8 +16,6 @@
 #include "boost/bind.hpp"
 #include "boost/lexical_cast.hpp"
 
-using ::rtidb::base::BLOB_PREFIX;
-
 namespace rtidb {
 namespace zk {
 
@@ -191,9 +189,6 @@ bool ZkClient::RegisterName() {
         return false;
     }
     std::string sname = endpoint_;
-    if (boost::starts_with(sname, BLOB_PREFIX)) {
-        sname = sname.substr(BLOB_PREFIX.size());
-    }
     // check server name duplicate
     std::vector<std::string> sname_vec;
     std::string leader_path = zk_root_path_ + "/leader";
@@ -211,11 +206,7 @@ bool ZkClient::RegisterName() {
     if (GetNodes(endpoints)) {
         std::vector<std::string>::const_iterator it = endpoints.begin();
         for (; it != endpoints.end(); ++it) {
-            if (boost::starts_with(*it, BLOB_PREFIX)) {
-                sname_vec.push_back(it->substr(BLOB_PREFIX.size()));
-            } else {
-                sname_vec.push_back(*it);
-            }
+            sname_vec.push_back(*it);
         }
     }
     if (std::find(sname_vec.begin(), sname_vec.end(), sname) != sname_vec.end()) {

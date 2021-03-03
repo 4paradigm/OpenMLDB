@@ -27,7 +27,6 @@
 #include "storage/disk_table_snapshot.h"
 #include "storage/mem_table.h"
 #include "storage/mem_table_snapshot.h"
-#include "storage/relational_table.h"
 #include "tablet/combine_iterator.h"
 #include "tablet/file_receiver.h"
 #include "thread_pool.h"  // NOLINT
@@ -44,7 +43,6 @@ using ::rtidb::replica::ReplicatorRole;
 using ::rtidb::storage::DiskTable;
 using ::rtidb::storage::IndexDef;
 using ::rtidb::storage::MemTable;
-using ::rtidb::storage::RelationalTable;
 using ::rtidb::storage::Snapshot;
 using ::rtidb::storage::Table;
 using ::rtidb::zk::ZkClient;
@@ -55,8 +53,6 @@ const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 namespace rtidb {
 namespace tablet {
 
-typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<RelationalTable>>>
-    RelationalTables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table>>> Tables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator>>>
     Replicators;
@@ -160,10 +156,6 @@ class TabletImpl : public ::rtidb::api::TabletServer {
             const std::string& endpoint, const std::string& real_endpoint);
 
     bool RegisterZK();
-
-    void Update(RpcController* controller,
-                const ::rtidb::api::UpdateRequest* request,
-                ::rtidb::api::UpdateResponse* response, Closure* done);
 
     void Put(RpcController* controller, const ::rtidb::api::PutRequest* request,
              ::rtidb::api::PutResponse* response, Closure* done);
@@ -352,10 +344,6 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                        const ::rtidb::api::SendIndexDataRequest* request,
                        ::rtidb::api::GeneralResponse* response, Closure* done);
 
-    void BatchQuery(RpcController* controller,
-                    const rtidb::api::BatchQueryRequest* request,
-                    rtidb::api::BatchQueryResponse* response, Closure* done);
-
     void Query(RpcController* controller,
                const rtidb::api::QueryRequest* request,
                rtidb::api::QueryResponse* response, Closure* done);
@@ -427,10 +415,6 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     // std::shared_ptr<DiskTable> GetDiskTable(uint32_t tid, uint32_t pid);
     // std::shared_ptr<DiskTable> GetDiskTableUnLock(uint32_t tid, uint32_t
     // pid);
-    std::shared_ptr<RelationalTable> GetRelationalTableUnLock(uint32_t tid,
-                                                              uint32_t pid);
-    std::shared_ptr<RelationalTable> GetRelationalTable(uint32_t tid,
-                                                        uint32_t pid);
 
     std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);
 
@@ -452,10 +436,6 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     int CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_meta,
                                 bool is_load, std::string& msg);  // NOLINT
-
-    int CreateRelationalTableInternal(const ::rtidb::api::TableMeta* table_meta,
-                                      bool is_load,
-                                      std::string& msg);  // NOLINT
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
                               std::shared_ptr<::rtidb::api::TaskInfo> task);
@@ -500,18 +480,11 @@ class TabletImpl : public ::rtidb::api::TabletServer {
         uint32_t tid, uint32_t pid,
         std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
 
-    int32_t DeleteRelationalTableInternal(
-        uint32_t tid, uint32_t pid,
-        std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
-
     int LoadTableInternal(uint32_t tid, uint32_t pid,
                           std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
     int LoadDiskTableInternal(uint32_t tid, uint32_t pid,
                               const ::rtidb::api::TableMeta& table_meta,
                               std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
-    int LoadRelationalTableInternal(
-        const ::rtidb::api::TableMeta& table_meta,
-        std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
     int WriteTableMeta(const std::string& path,
                        const ::rtidb::api::TableMeta* table_meta);
 
@@ -602,7 +575,6 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     void CreateProcedure(const std::shared_ptr<fesql::sdk::ProcedureInfo> sp_info);
 
-    RelationalTables relational_tables_;
     Tables tables_;
     std::mutex mu_;
     SpinMutex spin_mutex_;

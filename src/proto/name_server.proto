@@ -1,6 +1,5 @@
 import "common.proto";
 import "tablet.proto";
-import "type.proto";
 import "sql_procedure.proto";
 package rtidb.nameserver;
 
@@ -106,12 +105,11 @@ message TableInfo {
     optional rtidb.common.StorageMode storage_mode = 14 [default = kMemory];
     repeated rtidb.common.ColumnDesc added_column_desc = 15;
     optional rtidb.api.TTLDesc ttl_desc = 16;
-    optional rtidb.type.TableType table_type = 17 [default = kTimeSeries];
-    optional uint32 format_version = 18 [default = 0];
-    optional BlobInfo blob_info = 19;
-    optional string db = 20 [default = ""];
-    repeated string partition_key = 21;
-    repeated common.VersionPair schema_versions = 22;
+    optional uint32 format_version = 17 [default = 0];
+    optional BlobInfo blob_info = 18;
+    optional string db = 19 [default = ""];
+    repeated string partition_key = 20;
+    repeated common.VersionPair schema_versions = 21;
 }
 
 message CreateTableRequest {

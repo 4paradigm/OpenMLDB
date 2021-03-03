@@ -33,7 +33,6 @@ class SQLRequestRowBatch;
 const uint32_t INVALID_TID = UINT32_MAX;
 namespace client {
 using ::rtidb::api::TaskInfo;
-using ::rtidb::type::TableType;
 const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
 class TabletClient {
@@ -88,13 +87,6 @@ class TabletClient {
                               ::rtidb::api::SQLBatchRequestQueryResponse* response,
                               const bool is_debug = false);
 
-    bool Update(
-        uint32_t tid, uint32_t pid,
-        const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>&
-            cd_columns,
-        const Schema& new_value_schema, const std::string& value,
-        uint32_t* count, std::string* msg);
-
     bool Put(uint32_t tid, uint32_t pid, const std::string& value,
              const ::rtidb::api::WriteOption& wo, int64_t* auto_gen_pk,
              std::vector<int64_t>* blob_keys, std::string* msg);
@@ -138,13 +130,6 @@ class TabletClient {
 
     bool Delete(uint32_t tid, uint32_t pid, const std::string& pk,
                 const std::string& idx_name, std::string& msg);  // NOLINT
-
-    bool Delete(uint32_t tid, uint32_t pid, const Cond_Column& cd_columns,
-                uint32_t* count, std::string* msg);
-
-    bool Delete(uint32_t tid, uint32_t pid, const Cond_Column& cd_columns,
-                uint32_t* count, std::string* msg,
-                std::vector<int64_t>* additions);
 
     bool Count(uint32_t tid, uint32_t pid, const std::string& pk,
                const std::string& idx_name, bool filter_expired_data,
@@ -191,10 +176,6 @@ class TabletClient {
 
     bool DropTable(
         uint32_t id, uint32_t pid,
-        std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
-
-    bool DropTable(
-        uint32_t id, uint32_t pid, TableType table_type,
         std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
     bool AddReplica(
@@ -286,12 +267,6 @@ class TabletClient {
 
     bool GetAllSnapshotOffset(std::map<uint32_t, std::map<uint32_t, uint64_t>>&
                                   tid_pid_offset);  // NOLINT
-
-    bool BatchQuery(
-        uint32_t tid, uint32_t pid,
-        const ::google::protobuf::RepeatedPtrField<::rtidb::api::ReadOption>&
-            ros,
-        std::string* data, uint32_t* count, std::string* msg);
 
     bool SetExpire(uint32_t tid, uint32_t pid, bool is_expire);
     bool ConnectZK();

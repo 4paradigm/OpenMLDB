@@ -25,15 +25,12 @@
 #include "base/ip.h"
 #include "base/server_name.h"
 #if defined(__linux__) || defined(__mac_tablet__)
-#include "blob_proxy/blob_proxy_impl.h"
-#include "blobserver/blobserver_impl.h"
 #include "nameserver/name_server_impl.h"
 #include "tablet/tablet_impl.h"
 #endif
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
-#include "client/bs_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
 #include "cmd/display.h"
@@ -177,6 +174,7 @@ void StartNameServer() {
     server.set_version(RTIDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
+#endif
 
 int THPIsEnabled() {
 #if defined(__linux__) || defined(__mac_tablet__)
@@ -289,85 +287,6 @@ void StartTablet() {
     server.set_version(RTIDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
-
-void StartBlobProxy() {
-    SetupLog();
-    std::string real_endpoint;
-    GetRealEndpoint(&real_endpoint);
-    ::rtidb::blobproxy::BlobProxyImpl* proxy =
-        new ::rtidb::blobproxy::BlobProxyImpl();
-    bool ok = proxy->Init();
-    if (!ok) {
-        PDLOG(WARNING, "fail to init blobproxy server");
-        exit(1);
-    }
-    brpc::ServerOptions options;
-    options.num_threads = FLAGS_thread_pool_size;
-#ifdef __rdma__
-    options.use_rdma = FLAGS_use_rdma;
-#endif
-    brpc::Server server;
-    if (server.AddService(proxy, brpc::SERVER_DOESNT_OWN_SERVICE,
-                          "/v1/get/* => Get") != 0) {
-        PDLOG(WARNING, "fail to add service");
-        exit(1);
-    }
-    server.MaxConcurrencyOf(proxy, "Get") = FLAGS_get_concurrency_limit;
-    if (real_endpoint.empty()) {
-        real_endpoint = FLAGS_endpoint;
-    }
-    if (server.Start(real_endpoint.c_str(), &options) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    PDLOG(INFO, "start blobproxy on endpoint %s with version %s", real_endpoint.c_str(), RTIDB_VERSION.c_str());
-    server.set_version(RTIDB_VERSION.c_str());
-    server.RunUntilAskedToQuit();
-}
-#endif
-
-#if defined(__linux__) || defined(__mac_tablet__)
-void StartBlob() {
-    SetupLog();
-    std::string real_endpoint;
-    GetRealEndpoint(&real_endpoint);
-    ::rtidb::blobserver::BlobServerImpl* server_impl =
-        new ::rtidb::blobserver::BlobServerImpl();
-    bool ok = server_impl->Init(real_endpoint);
-    if (!ok) {
-        PDLOG(WARNING, "fail to init tablet");
-        exit(1);
-    }
-    brpc::ServerOptions options;
-    options.num_threads = FLAGS_thread_pool_size;
-#ifdef __rdma__
-    options.use_rdma = FLAGS_use_rdma;
-#endif
-    brpc::Server server;
-    if (server.AddService(server_impl, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    server.MaxConcurrencyOf(server_impl, "Put") = FLAGS_put_concurrency_limit;
-    server_impl->SetServer(&server);
-    server.MaxConcurrencyOf(server_impl, "Get") = FLAGS_get_concurrency_limit;
-    if (real_endpoint.empty()) {
-        real_endpoint = FLAGS_endpoint;
-    }
-    if (server.Start(real_endpoint.c_str(), &options) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    PDLOG(INFO, "start blob on endpoint %s with version %s", real_endpoint.c_str(), RTIDB_VERSION.c_str());
-    if (!server_impl->RegisterZK()) {
-        PDLOG(WARNING, "Fail to register zk");
-        exit(1);
-    }
-    std::signal(SIGTERM, shutdown_signal_handler);
-    server.set_version(RTIDB_VERSION.c_str());
-    server.RunUntilAskedToQuit();
-}
-#endif
 
 int PutData(
     uint32_t tid,
@@ -584,72 +503,6 @@ std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
     return tablet_client;
 }
 
-void PutRelational(
-    uint32_t tid, const std::map<std::string, std::string>& parameter_map,
-    const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
-        schema,
-    const ::rtidb::nameserver::TableInfo& table_info) {
-    bool has_auto_gen = false;
-    std::string auto_pk_col_name;
-    const ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>&
-        column_key_list = table_info.column_key();
-    for (const ::rtidb::common::ColumnKey& column_key : column_key_list) {
-        if (column_key.index_type() == ::rtidb::type::kAutoGen) {
-            has_auto_gen = true;
-            auto_pk_col_name = column_key.col_name(0);
-        }
-        break;
-        // TODO(wangbao): other index type
-    }
-    std::map<std::string, std::string> map;
-    for (int i = 0; i < schema.size(); i++) {
-        auto iter = parameter_map.find(schema.Get(i).name());
-        if (iter == parameter_map.end() && !has_auto_gen) {
-            printf("%s is not in input \n", schema.Get(i).name().c_str());
-            return;
-        } else if (iter != parameter_map.end()) {
-            map.insert(std::make_pair(schema.Get(i).name(), iter->second));
-        }
-    }
-    if (has_auto_gen) {
-        if (map.find(auto_pk_col_name) != map.end()) {
-            printf("should not input autoGenPk column \n");
-            return;
-        }
-        map.insert(
-            std::make_pair(auto_pk_col_name, ::rtidb::codec::DEFAULT_LONG));
-    }
-    uint32_t pid = 0;
-    std::string msg;
-    std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
-        GetTabletClient(table_info, pid, msg);
-    if (!tablet_client) {
-        std::cout << "failed to get. error msg: " << msg << std::endl;
-        return;
-    }
-    std::string value;
-    ::rtidb::base::ResultMsg rm = ::rtidb::codec::RowCodec::EncodeRow(map, schema, 1, value);
-    if (rm.code < 0) {
-        printf("encode error, msg: %s\n", rm.msg.c_str());
-        return;
-    }
-    if (table_info.compress_type() == ::rtidb::nameserver::kSnappy) {
-        std::string compressed;
-        ::snappy::Compress(value.c_str(), value.length(), &compressed);
-        value = compressed;
-    }
-    ::rtidb::api::WriteOption pb_wo;
-    int64_t auto_gen_pk = 0;
-    std::vector<int64_t> blob_keys;
-    bool ok = tablet_client->Put(tid, pid, value, pb_wo,
-            &auto_gen_pk, &blob_keys, &msg);
-    if (!ok) {
-        printf("put failed, msg: %s\n", msg.c_str());
-    } else {
-        printf("put ok\n");
-    }
-}
-
 void HandleNSClientSetTTL(const std::vector<std::string>& parts,
                           ::rtidb::client::NsClient* client) {
     if (parts.size() < 4) {
@@ -739,33 +592,6 @@ void HandleNSShowTablet(const std::vector<std::string>& parts,
     bool ok = client->ShowTablet(tablets, msg);
     if (!ok) {
         std::cout << "Fail to show tablets. error msg: " << msg << std::endl;
-        return;
-    }
-    for (size_t i = 0; i < tablets.size(); i++) {
-        std::vector<std::string> row;
-        row.push_back(tablets[i].endpoint);
-        row.push_back(tablets[i].real_endpoint);
-        row.push_back(tablets[i].state);
-        row.push_back(::rtidb::base::HumanReadableTime(tablets[i].age));
-        tp.AddRow(row);
-    }
-    tp.Print(true);
-}
-
-void HandleNSShowBlobServer(const std::vector<std::string>& parts,
-                        ::rtidb::client::NsClient* client) {
-    std::vector<std::string> row;
-    row.push_back("endpoint");
-    row.push_back("real_endpoint");
-    row.push_back("state");
-    row.push_back("age");
-    ::baidu::common::TPrinter tp(row.size());
-    tp.AddRow(row);
-    std::vector<::rtidb::client::TabletInfo> tablets;
-    std::string msg;
-    bool ok = client->ShowBlobServer(tablets, msg);
-    if (!ok) {
-        std::cout << "Fail to show blobs. error msg: " << msg << std::endl;
         return;
     }
     for (size_t i = 0; i < tablets.size(); i++) {
@@ -1368,13 +1194,7 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts,
     }
     if (tables[0].column_desc_v1_size() > 0) {
         if (tables[0].added_column_desc_size() == 0) {
-            if (!tables[0].has_table_type() ||
-                tables[0].table_type() == ::rtidb::type::kTimeSeries) {
-                ::rtidb::cmd::PrintSchema(tables[0].column_desc_v1());
-            } else {
-                ::rtidb::cmd::PrintSchema(tables[0].column_desc_v1(),
-                                          ::rtidb::type::kRelational);
-            }
+            ::rtidb::cmd::PrintSchema(tables[0].column_desc_v1());
         } else {
             ::rtidb::cmd::PrintSchema(tables[0]);
         }
@@ -1500,82 +1320,6 @@ void HandleNSDelete(const std::vector<std::string>& parts,
                 std::cout << "delete ok" << std::endl;
             }
         }
-    } else {
-        if (parts.size() < 4) {
-            std::cout << "delete format error. eg: delete table_name=xxx"
-                         " where col=xxx"
-                      << std::endl;
-            return;
-        }
-        std::string table_name;
-        std::vector<std::string> temp_vec;
-        ::rtidb::base::SplitString(parts[1], "=", temp_vec);
-        if (temp_vec.size() == 2 && temp_vec[0] == "table_name" &&
-            !temp_vec[1].empty()) {
-            table_name = temp_vec[1];
-        } else {
-            std::cout << "delete format error. eg: delete table_name=xxx"
-                         " where col=xxx"
-                      << std::endl;
-            return;
-        }
-        temp_vec.clear();
-        std::map<std::string, std::string> condition_columns_map;
-        for (uint32_t i = 3; i < parts.size(); i++) {
-            ::rtidb::base::SplitString(parts[i], "=", temp_vec);
-            if (temp_vec.size() < 2 || temp_vec[1].empty()) {
-                return;
-            }
-            condition_columns_map.insert(
-                std::make_pair(temp_vec[0], temp_vec[1]));
-        }
-        if (condition_columns_map.empty()) {
-            std::cout << "delete format error. eg: delete table_name=xxx"
-                         " where col=xxx"
-                      << std::endl;
-            return;
-        }
-        std::vector<::rtidb::nameserver::TableInfo> tables;
-        std::string msg;
-        bool ret = client->ShowTable(table_name, tables, msg);
-        if (!ret) {
-            std::cout << "failed to get table info. error msg: " << msg
-                      << std::endl;
-            return;
-        }
-        if (tables.empty()) {
-            printf("get failed! table %s is not exist\n", parts[1].c_str());
-            return;
-        }
-        if (tables[0].column_desc_v1_size() == 0) {
-            std::cout << "column_desc_v1_size is 0" << std::endl;
-            return;
-        }
-        uint32_t tid = tables[0].tid();
-        uint32_t pid = 0;
-        std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
-            GetTabletClient(tables[0], pid, msg);
-        if (!tablet_client) {
-            std::cout << "failed to get. error msg: " << msg << std::endl;
-            return;
-        }
-        Schema schema;
-        rtidb::codec::SchemaCodec::ConvertColumnDesc(
-            tables[0].column_desc_v1(), schema, tables[0].added_column_desc());
-        ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns> cd_columns;
-        ::rtidb::base::ResultMsg cd_rm =
-            ::rtidb::codec::SchemaCodec::GetCdColumns(
-                schema, condition_columns_map, &cd_columns);
-        if (cd_rm.code < 0) {
-            printf("GetCdColumns error, msg: %s\n", cd_rm.msg.c_str());
-            return;
-        }
-        uint32_t count = 0;
-        if (tablet_client->Delete(tid, pid, cd_columns, &count, &msg)) {
-            std::cout << "delete ok, affected count: " << count << std::endl;
-        } else {
-            std::cout << "delete failed. error msg: " << msg << std::endl;
-        }
     }
 }
 
@@ -1603,100 +1347,6 @@ bool GetColumnMap(
         }
     }
     return true;
-}
-
-void HandleNSUpdate(const std::vector<std::string>& parts,
-                    ::rtidb::client::NsClient* client) {
-    if (parts.size() < 5) {
-        std::cout << "update format error. eg: update table_name=xxx col1=xxx "
-                     "... where col=xxx"
-                  << std::endl;
-        return;
-    }
-    std::string table_name;
-    std::vector<std::string> temp_vec;
-    ::rtidb::base::SplitString(parts[1], "=", temp_vec);
-    if (temp_vec.size() == 2 && temp_vec[0] == "table_name" &&
-        !temp_vec[1].empty()) {
-        table_name = temp_vec[1];
-    } else {
-        std::cout << "update format error. eg: update table_name=xxx col1=xxx "
-                     "... where col=xxx"
-                  << std::endl;
-        return;
-    }
-    std::map<std::string, std::string> condition_columns_map;
-    std::map<std::string, std::string> value_columns_map;
-    if (!GetColumnMap(parts, condition_columns_map, value_columns_map)) {
-        std::cout << "update format error. eg: update table_name=xxx col1=xxx "
-                     "... where col=xxx"
-                  << std::endl;
-        return;
-    }
-    if (condition_columns_map.empty() || value_columns_map.empty()) {
-        std::cout << "update format error. eg: update table_name=xxx col1=xxx "
-                     "... where col=xxx"
-                  << std::endl;
-        return;
-    }
-    std::vector<::rtidb::nameserver::TableInfo> tables;
-    std::string msg;
-    bool ret = client->ShowTable(table_name, tables, msg);
-    if (!ret) {
-        std::cout << "failed to get table info. error msg: " << msg
-                  << std::endl;
-        return;
-    }
-    if (tables.empty()) {
-        printf("get failed! table %s is not exist\n", parts[1].c_str());
-        return;
-    }
-    if (tables[0].column_desc_v1_size() == 0) {
-        std::cout << "column_desc_v1_size is 0" << std::endl;
-        return;
-    }
-    uint32_t tid = tables[0].tid();
-    uint32_t pid = 0;
-    std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
-        GetTabletClient(tables[0], pid, msg);
-    if (!tablet_client) {
-        std::cout << "failed to get. error msg: " << msg << std::endl;
-        return;
-    }
-    Schema schema;
-    rtidb::codec::SchemaCodec::ConvertColumnDesc(
-        tables[0].column_desc_v1(), schema, tables[0].added_column_desc());
-    ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns> cd_columns;
-    ::rtidb::base::ResultMsg cd_rm = ::rtidb::codec::SchemaCodec::GetCdColumns(
-        schema, condition_columns_map, &cd_columns);
-    if (cd_rm.code < 0) {
-        printf("GetCdColumns error, msg: %s\n", cd_rm.msg.c_str());
-        return;
-    }
-
-    Schema new_value_schema;
-    ::rtidb::codec::SchemaCodec::GetSchemaData(
-        value_columns_map, tables[0].column_desc_v1(), new_value_schema);
-    std::string value;
-    ::rtidb::base::ResultMsg value_rm = ::rtidb::codec::RowCodec::EncodeRow(value_columns_map,
-                                                                            new_value_schema, 1, value);
-    if (value_rm.code < 0) {
-        printf("encode error, msg: %s\n", value_rm.msg.c_str());
-        return;
-    }
-    if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
-        std::string compressed;
-        ::snappy::Compress(value.c_str(), value.length(), &compressed);
-        value = compressed;
-    }
-    uint32_t count = 0;
-    bool ok = tablet_client->Update(tid, pid, cd_columns, new_value_schema,
-                                    value, &count, &msg);
-    if (!ok) {
-        printf("update failed, msg: %s\n", msg.c_str());
-    } else {
-        printf("update ok, affected count: %u\n", count);
-    }
 }
 
 void HandleNsUseDb(const std::vector<std::string>& parts,
@@ -1879,205 +1529,6 @@ void HandleNSShowDB(::rtidb::client::NsClient* client) {
         row.push_back(dbs[i]);
         tp->AddRow(row);
         row.clear();
-    }
-    tp->Print(true);
-    delete tp;
-}
-
-void HandleNSQuery(const std::vector<std::string>& parts,
-                   ::rtidb::client::NsClient* client) {
-    if (parts.size() < 5) {
-        std::cout << "query format error. eg: query table_name=xxx col1 col2 "
-                     "... where coln=xxx"
-                  << std::endl;
-        std::cout
-            << "                    eg: query table_name=xxx * where coln=xxx"
-            << std::endl;
-        return;
-    }
-    std::string table_name;
-    std::vector<std::string> temp_vec;
-    ::rtidb::base::SplitString(parts[1], "=", temp_vec);
-    if (temp_vec.size() == 2 && temp_vec[0] == "table_name" &&
-        !temp_vec[1].empty()) {
-        table_name = temp_vec[1];
-    } else {
-        std::cout << "query format error. eg: query table_name=xxx col1 col2 "
-                     "... where coln=xxx"
-                  << std::endl;
-        std::cout
-            << "                    eg: query table_name=xxx * where coln=xxx"
-            << std::endl;
-        return;
-    }
-    std::map<std::string, std::string> condition_columns_map;
-    std::vector<std::string> print_column;
-    rtidb::api::GetType get_type;
-    if (!GetCondAndPrintColumns(parts, condition_columns_map, print_column,
-                                get_type)) {
-        std::cout << "query format error. eg: query table_name=xxx col1 col2 "
-                     "... where coln=xxx"
-                  << std::endl;
-        std::cout
-            << "                    eg: query table_name=xxx * where coln=xxx"
-            << std::endl;
-        return;
-    }
-    if (condition_columns_map.empty()) {
-        std::cout << "query format error. eg: query table_name=xxx col1 col2 "
-                     "... where coln=xxx"
-                  << std::endl;
-        std::cout
-            << "                    eg: query table_name=xxx * where coln=xxx"
-            << std::endl;
-        return;
-    }
-    if (get_type != rtidb::api::GetType::kSubKeyEq) {
-        std::cerr << "current only support equal operator" << std::endl;
-        return;
-    }
-    // TODO(kongquan): process multi columns key, and support other operator
-
-    std::vector<::rtidb::nameserver::TableInfo> tables;
-    std::string msg;
-    bool ret = client->ShowTable(table_name, tables, msg);
-    if (!ret) {
-        std::cout << "failed to get table info. error msg: " << msg
-                  << std::endl;
-        return;
-    }
-    if (tables.empty()) {
-        printf("get failed! table %s is not exist\n", parts[1].c_str());
-        return;
-    }
-    if (tables[0].column_desc_v1_size() == 0) {
-        std::cout << "column_desc_v1_size is 0" << std::endl;
-        return;
-    }
-    uint32_t tid = tables[0].tid();
-    uint32_t pid = 0;
-    std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
-        GetTabletClient(tables[0], pid, msg);
-    if (!tablet_client) {
-        std::cout << "failed to get. error msg: " << msg << std::endl;
-        return;
-    }
-    Schema schema;
-    rtidb::codec::SchemaCodec::ConvertColumnDesc(
-        tables[0].column_desc_v1(), schema, tables[0].added_column_desc());
-    if (print_column.size() > 0) {
-        std::set<std::string> columns;
-        for (int i = 0; i < schema.size(); i++) {
-            columns.insert(schema.Get(i).name());
-        }
-        for (uint64_t i = 0; i < print_column.size(); i++) {
-            if (columns.find(print_column[i]) == columns.end()) {
-                std::cerr << "query error, because column " << print_column[i]
-                          << " is not member of table columns" << std::endl;
-                return;
-            }
-        }
-    }
-    std::map<std::string, ::rtidb::type::DataType> name_type_map;
-    for (const auto& col_desc : schema) {
-        name_type_map.insert(
-            std::make_pair(col_desc.name(), col_desc.data_type()));
-    }
-    ::google::protobuf::RepeatedPtrField<::rtidb::api::ReadOption> ros_pb;
-    ::rtidb::api::ReadOption* ro = ros_pb.Add();
-    for (const auto& kv : condition_columns_map) {
-        auto iter = name_type_map.find(kv.first);
-        if (iter == name_type_map.end()) {
-            printf("query failed! col_name %s is not exist\n",
-                   kv.first.c_str());
-            return;
-        }
-        ::rtidb::api::Columns* index = ro->add_index();
-        index->add_name(kv.first);
-        if (kv.second == ::rtidb::codec::NONETOKEN || kv.second == "null") {
-            continue;
-        }
-        ::rtidb::type::DataType type = iter->second;
-        std::string val = "";
-        if (!rtidb::codec::Convert(kv.second, type, &val)) {
-            printf("convert str %s failed! \n", kv.second.c_str());
-            return;
-        }
-        index->set_value(val);
-    }
-    std::string value;
-    uint32_t count = 0;
-    bool ok = tablet_client->BatchQuery(tid, pid, ros_pb, &value, &count, &msg);
-    if (!ok) {
-        std::cout << "query error: " << msg << std::endl;
-        return;
-    }
-    if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
-        std::string uncompressed;
-        ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
-        value.swap(uncompressed);
-    }
-    std::vector<std::vector<std::string>> row_vec;
-    if (!rtidb::codec::DecodeRows(value, count, schema, &row_vec)) {
-        std::cout << "DecodeRows error" << std::endl;
-        return;
-    }
-    std::vector<std::string> row;
-    row.push_back("#");
-    ::baidu::common::TPrinter* tp = nullptr;
-    if (print_column.size() == 0) {
-        tp = new baidu::common::TPrinter(schema.size() + 1,
-                                         FLAGS_max_col_display_length);
-        for (int i = 0; i < schema.size(); i++) {
-            row.push_back(schema.Get(i).name());
-        }
-        tp->AddRow(row);
-        row.clear();
-        for (uint32_t j = 0; j < row_vec.size(); j++) {
-            std::vector<std::string> value_vec = row_vec.at(j);
-            row.push_back(std::to_string(j + 1));
-            for (int i = 0; i < schema.size(); i++) {
-                std::string val = "null";
-                if (value_vec[i] != rtidb::codec::NONETOKEN) {
-                    val = value_vec[i];
-                }
-                row.push_back(val);
-            }
-            tp->AddRow(row);
-            row.clear();
-        }
-    } else {
-        tp = new baidu::common::TPrinter(print_column.size() + 1,
-                                         FLAGS_max_col_display_length);
-        std::map<std::string, uint64_t> column_position;
-        int index_array[print_column.size()];  // NOLINT
-        for (uint64_t i = 0; i < print_column.size(); i++) {
-            row.push_back(print_column[i]);
-            column_position.insert(std::make_pair(print_column[i], i));
-        }
-        tp->AddRow(row);
-        row.clear();
-        for (int i = 0; i < schema.size(); i++) {
-            auto iter = column_position.find(schema.Get(i).name());
-            if (iter == column_position.end()) {
-                continue;
-            }
-            index_array[iter->second] = i;
-        }
-        for (uint32_t j = 0; j < row_vec.size(); j++) {
-            std::vector<std::string> value_vec = row_vec.at(j);
-            row.push_back(std::to_string(j + 1));
-            for (uint64_t i = 0; i < print_column.size(); i++) {
-                int schema_index = index_array[i];
-                std::string val = "null";
-                if (value_vec[schema_index] != rtidb::codec::NONETOKEN) {
-                    val = value_vec[schema_index];
-                }
-                row.push_back(val);
-            }
-            tp->AddRow(row);
-            row.clear();
-        }
     }
     tp->Print(true);
     delete tp;
@@ -2626,81 +2077,6 @@ void HandleNSPreview(const std::vector<std::string>& parts,
         return;
     }
     uint32_t tid = tables[0].tid();
-    if (tables[0].has_table_type() && tables[0].table_type() == rtidb::type::kRelational) {
-        Schema schema;
-        rtidb::codec::SchemaCodec::ConvertColumnDesc(
-            tables[0].column_desc_v1(), schema, tables[0].added_column_desc());
-        rtidb::codec::RowView rv(schema);
-        std::vector<std::string> row;
-        row.push_back("#");
-        for (int i = 0; i < schema.size(); i++) {
-            row.push_back(schema.Get(i).name());
-        }
-        baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
-        tp.AddRow(row);
-        row.clear();
-        uint64_t seq = 1;
-        std::string data;
-        for (int pid = 0; pid < tables[0].table_partition_size(); pid++) {
-            if (limit == 0) {
-                break;
-            }
-            std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
-                GetTabletClient(tables[0], pid, msg);
-            if (!tablet_client) {
-                std::cout << "failed to preview. error msg: " << msg
-                          << std::endl;
-                return;
-            }
-            uint32_t count = 0;
-            bool is_finish = false;
-            std::string err_msg;
-            uint64_t snapshot_id = 0;
-            std::string pk = "";
-            ::rtidb::api::ReadOption ro;
-            bool ok =
-                tablet_client->Traverse(tid, pid, ro, limit, &pk, &snapshot_id,
-                                        &data, &count, &is_finish, &err_msg);
-            if (!ok) {
-                std::cerr << "Fail to preview table, msg: " << err_msg
-                          << std::endl;
-                return;
-            }
-            if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
-                std::string uncompressed;
-                ::snappy::Uncompress(data.c_str(), data.length(), &uncompressed);
-                data = uncompressed;
-            }
-            limit -= count;
-            uint32_t offset = 0;
-            for (uint32_t i = 0; i < count; i++) {
-                const char* ch = data.c_str();
-                ch += offset;
-                row.push_back(std::to_string(seq++));
-                uint32_t value_size = 0;
-                memcpy(static_cast<void*>(&value_size), ch, 4);
-                ch += 4;
-                ok = rv.Reset(reinterpret_cast<int8_t*>(const_cast<char*>(ch)),
-                              value_size);
-                if (!ok) {
-                    std::cerr << "reset decode data error" << std::endl;
-                    return;
-                }
-                offset += 4 + value_size;
-                rtidb::codec::RowCodec::DecodeRow(schema, rv, row);
-                for (uint64_t i = 0; i < row.size(); i++) {
-                    if (row[i] == rtidb::codec::NONETOKEN) {
-                        row[i] = "null";
-                    }
-                }
-                tp.AddRow(row);
-                row.clear();
-            }
-            data.clear();
-        }
-        tp.Print(true);
-        return;
-    }
     ::rtidb::codec::SDKCodec codec(tables[0]);
     bool has_ts_col = codec.HasTSCol();
     bool no_schema = tables[0].column_desc_v1_size() == 0 && tables[0].column_desc_size() == 0;
@@ -2936,58 +2312,33 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
         std::cout << "put failed! table " << parts[1] << " is not exist\n";
         return;
     }
-    bool is_relation = tables[0].has_table_type() && tables[0].table_type() == ::rtidb::type::TableType::kRelational;
-    if (is_relation) {
-        auto iter = parameter_map.find("table_name");
-        if (iter != parameter_map.end()) {
-            table_name = iter->second;
-        } else {
-            std::cout << "get format error: table_name does not exist!\n";
-            return;
-        }
-    }
     uint32_t tid = tables[0].tid();
     if (tables[0].column_desc_v1_size() > 0) {
         uint64_t ts = 0;
         uint32_t start_index = 0;
-        if (is_relation) {
-            start_index = 2;
-        } else {
-            if (!HasIsTsCol(tables[0].column_desc_v1())) {
-                try {
-                    ts = boost::lexical_cast<uint64_t>(parts[2]);
-                } catch (std::exception const& e) {
-                    std::cout << "Invalid args. ts " << parts[2] << " should be unsigned int\n";
-                    return;
-                }
-                start_index = 3;
-            } else {
-                start_index = 2;
+        if (!HasIsTsCol(tables[0].column_desc_v1())) {
+            try {
+                ts = boost::lexical_cast<uint64_t>(parts[2]);
+            } catch (std::exception const& e) {
+                std::cout << "Invalid args. ts " << parts[2] << " should be unsigned int\n";
+                return;
             }
+            start_index = 3;
+        } else {
+            start_index = 2;
         }
         int base_size = tables[0].column_desc_v1().size();
         int add_size = tables[0].added_column_desc().size();
         int in_size = parts.size();
-        if (is_relation) {
-            for (int i = 0; i < tables[0].column_key_size(); i++) {
-                if (tables[0].column_key(i).index_type() == ::rtidb::type::kAutoGen) {
-                    in_size = parts.size() + 1;
-                }
-            }
-        }
         int modify_index = in_size - start_index - base_size;
         if (modify_index - add_size > 0 || modify_index < 0) {
             printf("put format error! input value does not match the schema\n");
             return;
         }
-        if (is_relation) {
-            PutRelational(tid, parameter_map, tables[0].column_desc_v1(), tables[0]);
-        } else {
-            std::vector<std::string> input_value(parts.begin() + start_index, parts.end());
-            auto ret = PutSchemaData(tables[0], ts, input_value);
-            if (ret.code < 0) {
-                std::cout << ret.msg << "\n";
-            }
+        std::vector<std::string> input_value(parts.begin() + start_index, parts.end());
+        auto ret = PutSchemaData(tables[0], ts, input_value);
+        if (ret.code < 0) {
+            std::cout << ret.msg << "\n";
         }
     } else if (tables[0].column_desc_size() > 0) {
         uint64_t ts = 0;
@@ -3167,19 +2518,10 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
         std::string cur_type = table_info.column_desc(idx).type();
         std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(),
                        ::tolower);
-        if (table_info.has_table_type() &&
-            table_info.table_type() == "Relational") {
-            if (::rtidb::codec::DATA_TYPE_MAP.find(cur_type) ==
-                ::rtidb::codec::DATA_TYPE_MAP.end()) {
-                printf("type %s is invalid\n", cur_type.c_str());
-                return -1;
-            }
-        } else {
-            if (type_set.find(cur_type) == type_set.end()) {
-                printf("type %s is invalid\n",
-                       table_info.column_desc(idx).type().c_str());
-                return -1;
-            }
+        if (type_set.find(cur_type) == type_set.end()) {
+            printf("type %s is invalid\n",
+                    table_info.column_desc(idx).type().c_str());
+            return -1;
         }
         if (table_info.column_desc(idx).name() == "" ||
             name_map.find(table_info.column_desc(idx).name()) !=
@@ -3236,9 +2578,7 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
         }
         column_desc->set_data_type(tp_iter->second);
     }
-    if (table_info.column_key_size() == 0 &&
-        (!table_info.has_table_type() ||
-         table_info.table_type() != "Relational")) {
+    if (table_info.column_key_size() == 0) {
         if (ts_col_set.size() > 1) {
             printf(
                 "column_key should be set when has two or more ts columns\n");
@@ -3308,50 +2648,6 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
             ::rtidb::common::ColumnKey* column_key =
                 ns_table_info.add_column_key();
             column_key->CopyFrom(table_info.column_key(idx));
-        }
-    }
-    if (table_info.has_table_type() &&
-        table_info.table_type() == "Relational") {
-        ns_table_info.set_table_type(::rtidb::type::TableType::kRelational);
-        ns_table_info.set_replica_num(1);
-        ns_table_info.set_partition_num(1);
-        ns_table_info.clear_column_key();
-        index_set.clear();
-        std::string auto_gen_pk_name = "";
-        for (int idx = 0; idx < table_info.index_size(); idx++) {
-            ::rtidb::common::ColumnKey* column_key =
-                ns_table_info.add_column_key();
-            column_key->set_index_name(table_info.index(idx).index_name());
-            for (int inner = 0; inner < table_info.index(idx).col_name_size();
-                 inner++) {
-                column_key->add_col_name(table_info.index(idx).col_name(inner));
-            }
-            std::string idx_type = table_info.index(idx).index_type();
-            std::transform(idx_type.begin(), idx_type.end(), idx_type.begin(),
-                           ::tolower);
-            const auto& idx_iter =
-                ::rtidb::codec::INDEX_TYPE_MAP.find(idx_type);
-            if (idx_iter == ::rtidb::codec::INDEX_TYPE_MAP.end()) {
-                printf("index type %s is invalid\n", idx_type.c_str());
-                return -1;
-            }
-            if (idx_iter->second == ::rtidb::type::kAutoGen) {
-                auto_gen_pk_name = table_info.index(idx).col_name(0);
-            }
-            column_key->set_index_type(idx_iter->second);
-            index_set.insert(table_info.index(idx).index_name());
-        }
-        for (int i = 0; i < table_info.column_desc_size(); i++) {
-            if (table_info.column_desc(i).name() == auto_gen_pk_name) {
-                std::string cur_type = table_info.column_desc(i).type();
-                std::transform(cur_type.begin(), cur_type.end(),
-                               cur_type.begin(), ::tolower);
-                if (cur_type != "bigint") {
-                    printf("autoGenPk column dataType must be BigInt\n");
-                    return -1;
-                }
-                break;
-            }
         }
     }
     if (index_set.empty() && table_info.column_desc_size() > 0) {
@@ -3450,28 +2746,6 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         printf("storage mode %s is invalid\n",
                table_info.storage_mode().c_str());
         return -1;
-    }
-    std::string table_type = table_info.table_type();
-    std::transform(table_type.begin(), table_type.end(), table_type.begin(),
-                   ::tolower);
-    if (table_type == "ktimeseries" || table_type == "timeseries") {
-        ns_table_info.set_table_type(rtidb::type::TableType::kTimeSeries);
-    } else if (table_type == "krelational" || table_type == "relational") {
-        ns_table_info.set_table_type(rtidb::type::TableType::kRelational);
-    } else if (table_type == "kobjectstore" || table_type == "objectstore") {
-        ns_table_info.set_table_type(rtidb::type::TableType::kObjectStore);
-    } else {
-        printf("table_type mode %s is invalid\n",
-               table_info.table_type().c_str());
-        return -1;
-    }
-
-    if (ns_table_info.has_table_type() &&
-        ns_table_info.table_type() != rtidb::type::TableType::kTimeSeries) {
-        ns_table_info.set_storage_mode(::rtidb::common::kHDD);
-        if (storage_mode == "kssd" || storage_mode == "ssd") {
-            ns_table_info.set_storage_mode(::rtidb::common::kSSD);
-        }
     }
     if (table_info.has_key_entry_max_height()) {
         if (table_info.key_entry_max_height() > FLAGS_skiplist_max_height) {
@@ -3726,7 +3000,6 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         printf("scan - get records for a period of time\n");
         printf("showtable - show table info\n");
         printf("showtablet - show tablet info\n");
-        printf("showblobserver - show blobserver info\n");
         printf("showsdkendpoint - show sdkendpoint info\n");
         printf("showns - show nameserver info\n");
         printf("showdb - show all databases\n");
@@ -3820,10 +3093,6 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("desc: show tablet info\n");
             printf("usage: showtablet\n");
             printf("ex: showtablet\n");
-        } else if (parts[1] == "showblobserver") {
-            printf("desc: show blob info\n");
-            printf("usage: showblobserver\n");
-            printf("ex: showblobserver\n");
         } else if (parts[1] == "showsdkendpoint") {
             printf("desc: show sdkendpoint info\n");
             printf("usage: showsdkendpoint\n");
@@ -4694,27 +3963,6 @@ void HandleClientDisConnectZK(const std::vector<std::string> parts,
     }
 }
 
-void HandleBsClientHelp(const std::vector<std::string>& parts) {
-    if (parts.size() < 2) {
-        printf("loadtable - load blob table\n");
-        printf("help - get cmd info\n");
-        printf("man - get cmd info\n");
-    } else if (parts.size() == 2) {
-        if (parts[1] == "loadtable") {
-            printf("desc: create table and load data\n");
-            printf("usage: loadtable tid pid \n");
-            printf("ex: loadtable 0 0\n");
-        } else {
-            printf("unsupport cmd %s\n", parts[1].c_str());
-        }
-    } else {
-        printf("help format error!\n");
-        printf("usage: help [cmd]\n");
-        printf("ex: help\n");
-        printf("ex: help create\n");
-    }
-}
-
 void HandleClientHelp(const std::vector<std::string> parts,
                       ::rtidb::client::TabletClient* client) {
     if (parts.size() < 2) {
@@ -5038,39 +4286,6 @@ void HandleClientSendSnapshot(const std::vector<std::string> parts,
 
 void HandleClientLoadTable(const std::vector<std::string> parts,
                            ::rtidb::client::TabletClient* client) {
-    if (parts.size() == 4) {
-        try {
-            ::rtidb::common::StorageMode storage_mode =
-                ::rtidb::common::StorageMode::kSSD;
-            std::string storage_str;
-            storage_str.resize(parts[3].size());
-            std::transform(parts[3].begin(), parts[3].end(),
-                           storage_str.begin(), ::tolower);
-            if (storage_str == "kssd" || storage_str == "ssd") {
-                storage_mode = ::rtidb::common::StorageMode::kSSD;
-            } else if (storage_str == "khdd" || storage_str == "hdd") {
-                storage_mode = ::rtidb::common::StorageMode::kHDD;
-            } else {
-                std::cout << "Bad LoadRelationalTable format, "
-                             "eg: loadtable tid pid [ssd]"
-                          << std::endl;
-            }
-            std::string msg;
-            bool ok = client->LoadTable(boost::lexical_cast<uint32_t>(parts[1]),
-                                        boost::lexical_cast<uint32_t>(parts[2]),
-                                        storage_mode, &msg);
-            if (ok) {
-                std::cout << "LoadTable ok" << std::endl;
-            } else {
-                std::cout << "Fail to LoadTable, msg: " << msg << std::endl;
-            }
-        } catch (boost::bad_lexical_cast& e) {
-            std::cout << "Bad LoadRelationalTable format, "
-                         "eg: loadtable tid pid [ssd]"
-                      << std::endl;
-        }
-        return;
-    }
     if (parts.size() < 6) {
         std::cout << "Bad LoadTable format eg loadtable <name> <tid> <pid> "
                      "<ttl> <seg_cnt> [<is_leader> [<storage_mode>]]"
@@ -5117,27 +4332,6 @@ void HandleClientLoadTable(const std::vector<std::string> parts,
             std::cout << "LoadTable ok" << std::endl;
         } else {
             std::cout << "Fail to LoadTable" << std::endl;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad LoadTable format" << std::endl;
-    }
-}
-
-void HandleBsClientLoadTable(const std::vector<std::string>& parts,
-                             ::rtidb::client::BsClient* client) {
-    if (parts.size() < 3) {
-        std::cout << "Bad LoadTable format eg loadtable tid pid " << std::endl;
-        return;
-    }
-    try {
-        std::string msg;
-        bool ok =
-            client->LoadTable(boost::lexical_cast<uint32_t>(parts[1]),
-                              boost::lexical_cast<uint32_t>(parts[2]), &msg);
-        if (ok) {
-            std::cout << "LoadTable ok" << std::endl;
-        } else {
-            std::cout << "Fail to LoadTable, msg: " << msg << std::endl;
         }
     } catch (boost::bad_lexical_cast& e) {
         std::cout << "Bad LoadTable format" << std::endl;
@@ -5764,7 +4958,7 @@ void HandleClientShowSchema(const std::vector<std::string>& parts,
         if (table_meta.added_column_desc_size() == 0) {
             ::rtidb::cmd::PrintSchema(table_meta.column_desc());
         } else {
-            ::rtidb::cmd::PrintSchema(schema, true);
+            ::rtidb::cmd::PrintSchema(schema);
         }
         printf("\n#ColumnKey\n");
         ::rtidb::api::TTLType ttl_type;
@@ -6415,8 +5609,6 @@ void StartNsClient() {
             continue;
         } else if (parts[0] == "showtablet") {
             HandleNSShowTablet(parts, &client);
-        } else if (parts[0] == "showblobserver") {
-            HandleNSShowBlobServer(parts, &client);
         } else if (parts[0] == "showsdkendpoint") {
             HandleNSShowSdkEndpoint(parts, &client);
         } else if (parts[0] == "showns") {
@@ -6497,10 +5689,6 @@ void StartNsClient() {
             HandleNSClientAddIndex(parts, &client);
         } else if (parts[0] == "deleteindex") {
             HandleNSClientDeleteIndex(parts, &client);
-        } else if (parts[0] == "update") {
-            HandleNSUpdate(parts, &client);
-        } else if (parts[0] == "query") {
-            HandleNSQuery(parts, &client);
         } else if (parts[0] == "showdb") {
             HandleNSShowDB(&client);
         } else if (parts[0] == "showcatalogversion") {
@@ -6530,58 +5718,6 @@ void StartNsClient() {
     }
 }
 
-void StartBsClient() {
-    if (FLAGS_endpoint.empty()) {
-        std::cout << "Start failed! not set endpoint" << std::endl;
-        return;
-    }
-    if (FLAGS_interactive) {
-        std::cout << "Welcome to rtidb with version " << RTIDB_VERSION << std::endl;
-    }
-    ::rtidb::client::BsClient client(FLAGS_use_rdma, FLAGS_endpoint, "");
-    client.Init();
-    std::string display_prefix = FLAGS_endpoint + "> ";
-    while (true) {
-        std::string buffer;
-        if (!FLAGS_interactive) {
-            buffer = FLAGS_cmd;
-        } else {
-            char* line = ::rtidb::base::linenoise(display_prefix.c_str());
-            if (line == NULL) {
-                return;
-            }
-            if (line[0] != '\0' && line[0] != '/') {
-                buffer.assign(line);
-                boost::trim(buffer);
-                if (!buffer.empty()) {
-                    ::rtidb::base::linenoiseHistoryAdd(line);
-                }
-            }
-            ::rtidb::base::linenoiseFree(line);
-            if (buffer.empty()) {
-                continue;
-            }
-        }
-        std::vector<std::string> parts;
-        ::rtidb::base::SplitString(buffer, " ", parts);
-        if (parts.empty()) {
-            continue;
-        } else if (parts[0] == "loadtable") {
-            HandleBsClientLoadTable(parts, &client);
-        } else if (parts[0] == "exit" || parts[0] == "quit") {
-            std::cout << "bye" << std::endl;
-            return;
-        } else if (parts[0] == "help" || parts[0] == "man") {
-            HandleBsClientHelp(parts);
-        } else {
-            std::cout << "unsupported cmd" << std::endl;
-        }
-        if (!FLAGS_interactive) {
-            return;
-        }
-    }
-}
-
 int main(int argc, char* argv[]) {
     #ifdef __rdma__
     std::cout << "rdma is enabled" << std::endl;
@@ -6595,20 +5731,14 @@ int main(int argc, char* argv[]) {
 #if defined(__linux__) || defined(__mac_tablet__)
     } else if (FLAGS_role == "tablet") {
         StartTablet();
-    } else if (FLAGS_role == "blob_proxy") {
-        StartBlobProxy();
     } else if (FLAGS_role == "client") {
         StartClient();
     } else if (FLAGS_role == "nameserver") {
         StartNameServer();
-    } else if (FLAGS_role == "blob") {
-        StartBlob();
 #endif
-    } else if (FLAGS_role == "bs_client") {
-        StartBsClient();
     } else {
         std::cout << "Start failed! FLAGS_role must be tablet, client, "
-                     "nameserver, ns_client, blob, bs_client or blob_proxy"
+                     "nameserver, ns_client"
                   << std::endl;
     }
     return 0;

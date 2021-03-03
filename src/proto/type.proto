@@ -19,12 +19,6 @@ enum DataType {
     kBlob = 15;
 }
 
-enum TableType {
-    kTimeSeries = 1; 
-    kRelational = 2;
-    kObjectStore = 3;
-}
-
 enum IndexType {
     kUnique = 1; // uinque index
     kNoUnique = 2;
