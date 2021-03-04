@@ -40,14 +40,9 @@ std::shared_ptr<ColumnDef> TableColumn::GetColumn(const std::string& name) {
 
 const std::vector<std::shared_ptr<ColumnDef>>& TableColumn::GetAllColumn() { return columns_; }
 
-const std::vector<uint32_t>& TableColumn::GetBlobIdxs() { return blob_idxs_; }
-
 void TableColumn::AddColumn(std::shared_ptr<ColumnDef> column_def) {
     columns_.push_back(column_def);
     column_map_.insert(std::make_pair(column_def->GetName(), column_def));
-    if (column_def->GetType() == rtidb::type::kBlob) {
-        blob_idxs_.push_back(column_def->GetId());
-    }
 }
 
 IndexDef::IndexDef(const std::string& name, uint32_t id) : name_(name), index_id_(id), inner_pos_(0),

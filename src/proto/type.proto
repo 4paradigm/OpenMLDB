@@ -16,7 +16,6 @@ enum DataType {
     // reserve 9, 10, 11, 12
     kVarchar = 13;
     kString = 14;
-    kBlob = 15;
 }
 
 enum IndexType {

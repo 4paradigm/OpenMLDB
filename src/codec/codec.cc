@@ -31,8 +31,7 @@ namespace codec {
 static const std::unordered_set<::rtidb::type::DataType> TYPE_SET(
     {::rtidb::type::kBool, ::rtidb::type::kSmallInt, ::rtidb::type::kInt,
      ::rtidb::type::kBigInt, ::rtidb::type::kFloat, ::rtidb::type::kDouble,
-     ::rtidb::type::kDate, ::rtidb::type::kTimestamp, ::rtidb::type::kVarchar,
-     ::rtidb::type::kString, ::rtidb::type::kBlob});
+     ::rtidb::type::kDate, ::rtidb::type::kTimestamp, ::rtidb::type::kVarchar});
 
 static constexpr std::array<uint32_t, 9> TYPE_SIZE_ARRAY = {
     0,
@@ -80,9 +79,6 @@ RowBuilder::RowBuilder(const Schema& schema)
             if (cur_type < TYPE_SIZE_ARRAY.size() && cur_type > 0) {
                 offset_vec_.push_back(str_field_start_offset_);
                 str_field_start_offset_ += TYPE_SIZE_ARRAY[cur_type];
-            } else if (cur_type == rtidb::type::kBlob) {
-                offset_vec_.push_back(str_field_start_offset_);
-                str_field_start_offset_ += sizeof(int64_t);
             } else {
                 PDLOG(WARNING, "type is not supported");
             }
@@ -297,20 +293,6 @@ bool RowBuilder::SetInt64(uint32_t index, int64_t val) {
     return true;
 }
 
-bool RowBuilder::AppendBlob(int64_t val) {
-    if (!SetBlob(cnt_, val)) return false;
-    cnt_++;
-    return true;
-}
-
-bool RowBuilder::SetBlob(uint32_t index, int64_t val) {
-    if (!Check(index, ::rtidb::type::kBlob)) return false;
-    SetField(index);
-    int8_t* ptr = buf_ + offset_vec_[index];
-    *(reinterpret_cast<int64_t*>(ptr)) = val;
-    return true;
-}
-
 bool RowBuilder::AppendFloat(float val) {
     if (!SetFloat(cnt_, val)) return false;
     cnt_++;
@@ -392,9 +374,6 @@ bool RowBuilder::AppendValue(const std::string& val) {
             case rtidb::type::kInt:
                 ok = AppendInt32(boost::lexical_cast<int32_t>(val));
                 break;
-            case rtidb::type::kBlob:
-                ok = AppendBlob(boost::lexical_cast<int64_t>(val));
-                break;
             case rtidb::type::kBigInt:
                 ok = AppendInt64(boost::lexical_cast<int64_t>(val));
                 break;
@@ -472,9 +451,6 @@ bool RowView::Init() {
             if (cur_type < TYPE_SIZE_ARRAY.size() && cur_type > 0) {
                 offset_vec_.push_back(offset);
                 offset += TYPE_SIZE_ARRAY[cur_type];
-            } else if (cur_type == rtidb::type::kBlob) {
-                offset_vec_.push_back(offset);
-                offset += sizeof(int64_t);
             } else {
                 is_valid_ = false;
                 return false;
@@ -626,21 +602,6 @@ int32_t RowView::GetInt64(uint32_t idx, int64_t* val) {
     return 0;
 }
 
-int32_t RowView::GetBlob(uint32_t idx, int64_t* val) {
-    if (val == NULL) {
-        return -1;
-    }
-    if (!CheckValid(idx, ::rtidb::type::kBlob)) {
-        return -1;
-    }
-    if (IsNULL(row_, idx)) {
-        return 1;
-    }
-    uint32_t offset = offset_vec_.at(idx);
-    *val = v1::GetInt64Field(row_, offset);
-    return 0;
-}
-
 int32_t RowView::GetInt16(uint32_t idx, int16_t* val) {
     if (val == NULL) {
         return -1;
@@ -703,7 +664,6 @@ int32_t RowView::GetInteger(const int8_t* row, uint32_t idx,
             break;
         }
         case ::rtidb::type::kTimestamp:
-        case ::rtidb::type::kBlob:
         case ::rtidb::type::kBigInt: {
             int64_t tmp_val = 0;
             GetValue(row, idx, type, &tmp_val);
@@ -752,7 +712,6 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
             *(reinterpret_cast<int32_t*>(val)) = v1::GetInt32Field(row, offset);
             break;
         case ::rtidb::type::kTimestamp:
-        case ::rtidb::type::kBlob:
         case ::rtidb::type::kBigInt:
             *(reinterpret_cast<int64_t*>(val)) = v1::GetInt64Field(row, offset);
             break;
@@ -854,7 +813,6 @@ int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx,
         case ::rtidb::type::kSmallInt:
         case ::rtidb::type::kInt:
         case ::rtidb::type::kTimestamp:
-        case ::rtidb::type::kBlob:
         case ::rtidb::type::kBigInt: {
             int64_t value = 0;
             GetInteger(row, idx, column.data_type(), &value);
@@ -1093,12 +1051,6 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
                 int32_t val = 0;
                 ret = cur_rv_->GetDate(idx, &val);
                 if (ret == 0) row_builder_->AppendDate(val);
-                break;
-            }
-            case ::rtidb::type::kBlob: {
-                int64_t val = 0;
-                ret = cur_rv_->GetBlob(idx, &val);
-                if (ret == 0) row_builder_->AppendBlob(val);
                 break;
             }
             case ::rtidb::type::kBigInt: {
