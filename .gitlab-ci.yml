@@ -89,18 +89,18 @@ test_java_sdk_on_linux:
 #                - java/fesql-spark/target/surefire-reports/*.xml
 #                - java/fesql-jdbc/target/surefire-reports/*.xml
 
-test_py3sdk_linux:
-    stage: test
-    script:
-        - bash tools/cicd/extract_intermediate_cicd_artifacts.sh linux
-        - bash tools/run_py3_ut.sh
-    dependencies:
-        - build_fesql_on_linux
-    artifacts:
-        reports:
-            junit:
-                - python/test/*.xml
-
+#test_py3sdk_linux:
+#    stage: test
+#    script:
+#        - bash tools/cicd/extract_intermediate_cicd_artifacts.sh linux
+#        - bash tools/run_py3_ut.sh
+#    dependencies:
+#        - build_fesql_on_linux
+#    artifacts:
+#        reports:
+#            junit:
+#                - python/test/*.xml
+#
                   #test_py3sdk_mac:
                   #    stage: test
                   #    variables:

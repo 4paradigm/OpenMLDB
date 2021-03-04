@@ -30,6 +30,20 @@ namespace std {
 %typemap(javaout) fesql::vm::RawPtrHandle "{ return $jnicall; }"
 %typemap(in) fesql::vm::RawPtrHandle %{ $1 = reinterpret_cast<fesql::vm::RawPtrHandle>($input); %}
 
+#ifdef SWIGJAVA
+// typemap from https://github.com/swig/swig/blob/master/Lib/java/various.i
+%typemap(jni) fesql::vm::ByteArrayPtr "jbyteArray"
+%typemap(jtype) fesql::vm::ByteArrayPtr "byte[]"
+%typemap(jstype) fesql::vm::ByteArrayPtr "byte[]"
+%typemap(in) fesql::vm::ByteArrayPtr {
+    $1 = (fesql::vm::ByteArrayPtr) JCALL2(GetByteArrayElements, jenv, $input, 0);
+}
+%typemap(argout) fesql::vm::ByteArrayPtr {
+    JCALL3(ReleaseByteArrayElements, jenv, $input, (jbyte *) $1, JNI_COMMIT);
+}
+%typemap(javain) fesql::vm::ByteArrayPtr "$javainput"
+%typemap(javaout) fesql::vm::ByteArrayPtr "{ return $jnicall; }"
+#endif
 
 // Fix for Java shared_ptr unref
 // %feature("unref") fesql::vm::Catalog "delete $this;"

@@ -1,11 +1,17 @@
 package com._4paradigm.fesql.spark.nodes.window
 
+import java.nio.ByteBuffer
+
 import com._4paradigm.fesql.spark.{FeSQLConfig, SparkRowCodec}
 import com._4paradigm.fesql.spark.nodes.WindowAggPlan.WindowAggConfig
 import com._4paradigm.fesql.spark.utils.{FesqlUtil, SparkRowUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, WindowInterface}
 import org.apache.commons.lang3.StringUtils
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.expressions.UnsafeRow
+import org.apache.spark.sql.catalyst.expressions.codegen.UnsafeRowWriter
+import org.apache.spark.sql.types.StructType
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -96,6 +102,60 @@ class WindowComputer(sqlConfig: FeSQLConfig,
     }
 
     Row.fromSeq(outputArr) // can reuse backed array
+  }
+
+  def unsafeCompute(internalRow: InternalRow, key: Long, keepIndexColumn: Boolean, unionFlagIdx: Int, outputSchema: StructType): InternalRow = {
+
+    // Convert to UnsafeRow
+    val inputUnsafeRow = internalRow.asInstanceOf[UnsafeRow]
+
+    // Get input UnsafeRow bytes
+    val inputBaseObject = inputUnsafeRow.getBytes
+    val inputRowSize = inputBaseObject.size
+    val headerSize = 6
+
+    // Copy and add header for input row
+    // TODO: Set header version and size
+    val versionHeaderBytes = ByteBuffer.allocate(2)
+    val sizeHeaderBytes = ByteBuffer.allocate(4)
+    val appendHeaderBytes = ByteBuffer.allocate(headerSize + inputRowSize).put(versionHeaderBytes).put(sizeHeaderBytes).put(inputBaseObject).array()
+
+    // Call native method to compute
+    val outputFesqlRow  = CoreAPI.UnsafeWindowProject(fn, key, appendHeaderBytes, inputRowSize, true, appendSlices, window)
+
+    // Create output UnsafeRow
+    val outputColumnSize = outputSchema.size
+    val outputRowWithoutHeaderSize = outputFesqlRow.size - 6
+    val outputUnsafeRowWriter = new UnsafeRowWriter(outputColumnSize, outputRowWithoutHeaderSize)
+    outputUnsafeRowWriter.reset()
+    outputUnsafeRowWriter.zeroOutNullBytes()
+
+    // Copy and remove header for output row
+    CoreAPI.CopyRowToUnsafeRowBytes(outputFesqlRow, outputUnsafeRowWriter.getBuffer, outputRowWithoutHeaderSize);
+
+    // Release native row memory
+    outputFesqlRow.delete()
+
+    // Convert to InternalRow
+    val outputUnsafeRow = outputUnsafeRowWriter.getRow
+    outputUnsafeRow.asInstanceOf[InternalRow]
+
+    /*
+    // TODO: Add index column if needed
+
+    // Append the index column if needed
+    if (keepIndexColumn) {
+      if (unionFlagIdx == -1) {
+        // No union column, use the last one
+        outputArr(outputArr.length - 1) = row.get(row.size-1)
+      } else {
+        // Has union column, use the last but one
+        outputArr(outputArr.length - 1) = row.get(row.size-2)
+      }
+    }
+
+    Row.fromSeq(outputArr) // can reuse backed array
+     */
   }
 
   def bufferRowOnly(row: Row, key: Long): Unit = {

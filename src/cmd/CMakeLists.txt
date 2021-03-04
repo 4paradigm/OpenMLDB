@@ -1,5 +1,4 @@
 # fesql bin
-add_library(fesql_flags STATIC ${CMAKE_SOURCE_DIR}/src/flags.cc)
 add_executable(fesql fesql.cc)
 target_link_libraries(fesql fesql_core fesql_flags fesql_sdk)
 

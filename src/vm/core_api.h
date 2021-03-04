@@ -27,6 +27,7 @@ class Window;
 class FeSQLJITWrapper;
 
 typedef const int8_t* RawPtrHandle;
+typedef int8_t* ByteArrayPtr;
 
 class WindowInterface {
  public:
@@ -120,11 +121,31 @@ class CoreAPI {
     static fesql::codec::Row RowConstProject(const fesql::vm::RawPtrHandle fn,
                                              const bool need_free = false);
 
+    // Row project API with Spark UnsafeRow optimization
+    static fesql::codec::Row UnsafeRowProject(const fesql::vm::RawPtrHandle fn,
+        fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
+        const int inputRowSizeInBytes,
+        const bool need_free = false);
+
+    static void CopyRowToUnsafeRowBytes(const fesql::codec::Row inputRow,
+                                        fesql::vm::ByteArrayPtr outputBytes,
+                                        const int length);
+
     static fesql::codec::Row WindowProject(const fesql::vm::RawPtrHandle fn,
                                            const uint64_t key, const Row row,
                                            const bool is_instance,
                                            size_t append_slices,
                                            WindowInterface* window);
+
+    // Window project API with Spark UnsafeRow optimization
+    static fesql::codec::Row UnsafeWindowProject(
+        const fesql::vm::RawPtrHandle fn,
+        const uint64_t key, fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
+        const int inputRowSizeInBytes,
+        const bool is_instance,
+        size_t append_slices,
+        WindowInterface* window);
+
     static fesql::codec::Row WindowProject(const fesql::vm::RawPtrHandle fn,
                                            const uint64_t key, const Row row,
                                            WindowInterface* window);

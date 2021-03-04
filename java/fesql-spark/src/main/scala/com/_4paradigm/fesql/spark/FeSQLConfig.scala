@@ -95,6 +95,9 @@ class FeSQLConfig extends Serializable {
   @ConfigOption(name="fesql.enable.native.last.join", doc="Enable native last join or not")
   var enableNativeLastJoin = true
 
+  @ConfigOption(name="fesql.enable.unsaferow.optimization", doc="Enable UnsafeRow optimization or not")
+  var enableUnsafeRowOptimization = false
+
 }
 
 
