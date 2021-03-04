@@ -26,12 +26,10 @@
 #include "storage/mem_table_snapshot.h"
 #include "storage/ticket.h"
 #include "timer.h" // NOLINT
-#include "config.h" // NOLINT
 
 DECLARE_string(db_root_path);
 DECLARE_string(hdd_root_path);
 DECLARE_string(snapshot_compression);
-DECLARE_uint32(fpga_env_num);
 
 using ::rtidb::api::LogEntry;
 namespace rtidb {
@@ -1841,16 +1839,12 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::rtidb::base::SetLogLevel(DEBUG);
     int ret = 0;
-    std::vector<std::string> vec{"off", "zlib", "snappy", "pz"};
+    std::vector<std::string> vec{"off", "zlib", "snappy"};
     for (size_t i = 0; i < vec.size(); i++) {
-#ifndef PZFPGA_ENABLE
-        if (vec[i] == "pz") continue;
-#endif
         std::cout << "compress type: " << vec[i] << std::endl;
         FLAGS_db_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
         FLAGS_hdd_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
         FLAGS_snapshot_compression = vec[i];
-        FLAGS_fpga_env_num = 4;
         ret += RUN_ALL_TESTS();
     }
     return ret;

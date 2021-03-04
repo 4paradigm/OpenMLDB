@@ -797,7 +797,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     auto cntl = std::make_shared<::brpc::Controller>();
-    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
+    cntl->set_timeout_ms(options_.request_timeout);
     auto response = std::make_shared<::rtidb::api::QueryResponse>();
     auto client = GetTabletClient(db, sql, row);
     if (!client) {
@@ -823,7 +823,7 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     const std::string& db, const std::string& sql,
     ::fesql::sdk::Status* status) {
     auto cntl = std::make_shared<::brpc::Controller>();
-    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
+    cntl->set_timeout_ms(options_.request_timeout);
     auto response = std::make_shared<::rtidb::api::QueryResponse>();
     auto client = GetTabletClient(db, sql, std::shared_ptr<SQLRequestRow>());
     if (!client) {
@@ -847,7 +847,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchRequest(
         return nullptr;
     }
     auto cntl = std::make_shared<::brpc::Controller>();
-    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
+    cntl->set_timeout_ms(options_.request_timeout);
     auto response = std::make_shared<::rtidb::api::SQLBatchRequestQueryResponse>();
     auto client = GetTabletClient(db, sql, std::shared_ptr<SQLRequestRow>());
     if (!client) {

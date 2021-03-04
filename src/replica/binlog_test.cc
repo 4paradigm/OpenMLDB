@@ -25,7 +25,6 @@
 #include "tablet/tablet_impl.h"
 #include "thread_pool.h" // NOLINT
 #include "timer.h" // NOLINT
-#include "config.h" // NOLINT
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -121,11 +120,8 @@ int main(int argc, char** argv) {
     ::rtidb::base::SetLogLevel(DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     int ret = 0;
-    std::vector<std::string> vec{"off", "zlib", "snappy", "pz"};
+    std::vector<std::string> vec{"off", "zlib", "snappy"};
     for (size_t i = 0; i < vec.size(); i++) {
-#ifndef PZFPGA_ENABLE
-        if (vec[i] == "pz") continue;
-#endif
         std::cout << "compress type: " << vec[i] << std::endl;
         FLAGS_db_root_path = "/tmp/" + GenRand();
         FLAGS_snapshot_compression = vec[i];
