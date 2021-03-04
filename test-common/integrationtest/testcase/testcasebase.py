@@ -395,10 +395,6 @@ class TestCaseBase(unittest.TestCase):
         cmd = 'put {} {}'.format(name, ' '.join(row))
         return self.run_client(endpoint, cmd, 'ns_client')
 
-    def ns_put_relation(self, endpoint, name, row):
-        cmd = 'put {} {}'.format('table_name=' + name, row)
-        return self.run_client(endpoint, cmd, 'ns_client')
-
     def ns_query(self, endpoint, name, row):
         cmd = 'query {} {}'.format('table_name=' + name, row)
         result = self.run_client(endpoint, cmd, 'ns_client')
@@ -406,10 +402,6 @@ class TestCaseBase(unittest.TestCase):
 
     def ns_update(self, endpoint, name, row):
         cmd = 'update {} {}'.format('table_name=' + name, row)
-        return self.run_client(endpoint, cmd, 'ns_client')
-
-    def ns_delete_relation(self, endpoint, name, row):
-        cmd = 'delete {} {}'.format('table_name=' + name, row)
         return self.run_client(endpoint, cmd, 'ns_client')
 
     def ns_drop(self, endpoint, tname):
@@ -542,11 +534,6 @@ class TestCaseBase(unittest.TestCase):
     def loadtable(self, endpoint, tname, tid, pid, ttl=144000, segment=8, isleader='false', *slave_endpoints):
         rs = self.run_client(endpoint, 'loadtable {} {} {} {} {} {} {}'.format(
             tname, tid, pid, ttl, segment, isleader, ' '.join(slave_endpoints)))
-        time.sleep(2)
-        return rs
-
-    def load_relation_table(self, endpoint, tid, pid, storage_mode):
-        rs = self.run_client(endpoint, 'loadtable {} {} {}'.format(tid, pid, storage_mode))
         time.sleep(2)
         return rs
 

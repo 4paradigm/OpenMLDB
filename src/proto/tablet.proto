@@ -190,14 +190,11 @@ message PutRequest {
     repeated Dimension dimensions = 6;
     repeated TSDimension ts_dimensions = 7;
     optional uint32 format_version = 8 [default = 0];
-    optional WriteOption wo = 9;
 }
 
 message PutResponse {
     optional int32 code = 1;
     optional string msg = 2;
-    optional int64 auto_gen_pk = 3;
-    repeated int64 blob_keys = 4;
 }
 
 message DeleteRequest {
@@ -205,8 +202,6 @@ message DeleteRequest {
     optional uint32 pid = 2;
     optional string key = 3;
     optional string idx_name = 4;
-    repeated Columns condition_columns = 5;
-    optional bool receive_blobs = 6 [default = false];
 }
 
 message ExecuteGcRequest {
@@ -291,8 +286,6 @@ message TraverseRequest {
     optional uint64 ts = 6;
     optional bool enable_remove_duplicated_record = 7 [default=false];
     optional string ts_name = 8;
-    optional uint64 snapshot_id = 9;
-    optional ReadOption read_option = 10;
 }
 
 message TraverseResponse {
@@ -698,17 +691,6 @@ message Columns {
     repeated string name = 1;
     optional bytes value = 2 [default = ""];
     optional GetType type = 3 [default = kSubKeyEq];
-}
-
-message ReadOption {
-    repeated Columns index = 1;
-    repeated Columns read_filter = 2;
-    repeated string col_set = 3;
-    optional uint32 limit = 4;
-}
-
-message WriteOption {
-    optional bool update_if_exist = 1 [default = false];
 }
 
 message CancelOPRequest {

@@ -174,7 +174,6 @@ void StartNameServer() {
     server.set_version(RTIDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
-#endif
 
 int THPIsEnabled() {
 #if defined(__linux__) || defined(__mac_tablet__)
@@ -287,6 +286,7 @@ void StartTablet() {
     server.set_version(RTIDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
+#endif
 
 int PutData(
     uint32_t tid,
@@ -3016,8 +3016,6 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         printf(
             "synctable - synctable from leader cluster to replica cluster\n");
         printf("deleteindx - delete index of specified table\n");
-        printf("update - update record of specified table\n");
-        printf("query - query record from relational table\n");
         printf("setsdkendpoint - set sdkendpoint for external network sdk\n");
         printf("showcatalogversion - show catalog version\n");
     } else if (parts.size() == 2) {
@@ -3262,17 +3260,6 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("desc: delete index of specified index\n");
             printf("usage: deleteindex table_name index_name");
             printf("usage: deleteindex test index0");
-        } else if (parts[1] == "update") {
-            printf("desc: update record of table\n");
-            printf(
-                "usage: update table_name=xxx col1=xxx col2=xxx where "
-                "col=xxx\n");
-            printf("eg: update table_name=test1 mcc=mcc2 where card=card0\n");
-        } else if (parts[1] == "query") {
-            printf("desc: query record from relation table\n");
-            printf("usage: query table_name=xxx col1 col2 where col3=xxx\n");
-            printf("eg: query table_name=test1 card mcc where card=card0\n");
-            printf("eg: query table_name=test1 * where card=card0\n");
         } else if (parts[1] == "createdb") {
             printf("desc: create database\n");
             printf("usage: createdb database_name\n");

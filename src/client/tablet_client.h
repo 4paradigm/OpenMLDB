@@ -87,10 +87,6 @@ class TabletClient {
                               ::rtidb::api::SQLBatchRequestQueryResponse* response,
                               const bool is_debug = false);
 
-    bool Put(uint32_t tid, uint32_t pid, const std::string& value,
-             const ::rtidb::api::WriteOption& wo, int64_t* auto_gen_pk,
-             std::vector<int64_t>* blob_keys, std::string* msg);
-
     bool Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
              const std::string& value, uint32_t format_version = 0);
 
@@ -277,11 +273,6 @@ class TabletClient {
                                         const std::string& pk, uint64_t ts,
                                         uint32_t limit,
                                         uint32_t& count);  // NOLINT
-
-    bool Traverse(uint32_t tid, uint32_t pid,
-                  const ::rtidb::api::ReadOption& ro, uint32_t limit,
-                  std::string* pk, uint64_t* snapshot_id, std::string* data,
-                  uint32_t* count, bool* is_finish, std::string* msg);
 
     void ShowTp();
 
