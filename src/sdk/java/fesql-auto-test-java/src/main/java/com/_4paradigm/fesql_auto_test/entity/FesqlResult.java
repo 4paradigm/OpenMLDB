@@ -20,6 +20,7 @@ import java.util.List;
 public class FesqlResult {
     private boolean ok;
     private int count;
+    private String msg = "";
     private List<List<Object>> result;
     private Schema resultSchema;
     private ResultSetMetaData metaData;
@@ -27,7 +28,13 @@ public class FesqlResult {
 
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder("FesqlResult{ok=" + ok + ", count=" + count + "}");
+        StringBuilder builder = new StringBuilder("FesqlResult{");
+        builder.append("ok=").append(ok);
+        if (!ok) {
+            builder.append(", msg=").append(msg);
+        }
+        builder.append(", count=").append(count);
+        builder.append("}");
         if (result != null) {
             builder.append("result=" + result.size() + ":\n");
             if (resultSchema != null) {

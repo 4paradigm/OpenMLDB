@@ -17,6 +17,7 @@ import java.sql.Date;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableAsyncProjectionTest extends TestCaseBase {
@@ -151,6 +152,11 @@ public class TableAsyncProjectionTest extends TestCaseBase {
         option.setProjection(args.projectionList);
         ScanFuture sf = tableAsyncClient.scan(args.tableInfo.getName(), args.key, args.ts, 0l, option);
         KvIterator it = sf.get();
+        Assert.assertEquals(1, it.getCount());
+        Assert.assertTrue(it.valid());
+        Assert.assertEquals(args.expected, it.getDecodedValue());
+        sf = tableAsyncClient.scan(args.tableInfo.getName(), args.key, args.ts, 0l, option);
+        it = sf.get(1000, TimeUnit.MILLISECONDS);
         Assert.assertEquals(1, it.getCount());
         Assert.assertTrue(it.valid());
         Assert.assertEquals(args.expected, it.getDecodedValue());
