@@ -124,40 +124,6 @@ bool CreateDB(::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_ser
     return ret;
 }
 
-TEST_F(NameServerImplTest, CreateDisallowedTable) {
-    FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_enable_timeseries_table = false;
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
-
-    brpc::ServerOptions options;
-    brpc::Server server;
-    ASSERT_TRUE(StartNS("127.0.0.1:9631", &server, &options));
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(
-        FLAGS_use_rdma, "127.0.0.1:9631", "");
-    name_server_client.Init();
-
-    brpc::ServerOptions options1;
-    brpc::Server server1;
-    ASSERT_TRUE(StartTablet("127.0.0.1:9500", &server1, &options1));
-
-    CreateTableRequest request;
-    GeneralResponse response;
-    TableInfo* table_info = request.mutable_table_info();
-    std::string name = "test" + GenRand();
-    table_info->set_name(name);
-    TablePartition* partion = table_info->add_table_partition();
-    partion->set_pid(0);
-    PartitionMeta* meta = partion->add_partition_meta();
-    meta->set_endpoint("127.0.0.1:9500");
-    meta->set_is_leader(true);
-    bool ok = name_server_client.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::CreateTable, &request, &response,
-        FLAGS_request_timeout_ms, 1);
-    ASSERT_TRUE(ok);
-    ASSERT_EQ(145, response.code());
-    FLAGS_enable_timeseries_table = true;
-}
-
 TEST_F(NameServerImplTest, MakesnapshotTask) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
     int32_t old_offset = FLAGS_make_snapshot_threshold_offset;

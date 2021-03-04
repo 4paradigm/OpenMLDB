@@ -198,13 +198,11 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     std::string ns_sdk_ep = "127.0.0.1:8881";
     std::string tb_sdk_ep_1 = "127.0.0.1:8882";
     std::string tb_sdk_ep_2 = "127.0.0.1:8883";
-    std::string bs_sdk_ep = "127.0.0.1:8884";
     {
         // set sdkendpoint
         SetSdkEndpoint(name_server_client, "ns1", ns_sdk_ep);
         SetSdkEndpoint(name_server_client, "tb1", tb_sdk_ep_1);
         SetSdkEndpoint(name_server_client, "tb2", tb_sdk_ep_2);
-        SetSdkEndpoint(name_server_client, "bs", bs_sdk_ep);
     }
     {
         // show sdkendpoint
@@ -215,20 +213,15 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
                 ShowSdkEndpoint, &request, &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
 
-        ::rtidb::nameserver::TabletStatus status =
-            response.tablets(0);
-        ASSERT_EQ("bs", status.endpoint());
-        ASSERT_EQ(bs_sdk_ep, status.real_endpoint());
-
-        status = response.tablets(1);
+        auto status = response.tablets(0);
         ASSERT_EQ("ns1", status.endpoint());
         ASSERT_EQ(ns_sdk_ep, status.real_endpoint());
 
-        status = response.tablets(2);
+        status = response.tablets(1);
         ASSERT_EQ("tb1", status.endpoint());
         ASSERT_EQ(tb_sdk_ep_1, status.real_endpoint());
 
-        status = response.tablets(3);
+        status = response.tablets(2);
         ASSERT_EQ("tb2", status.endpoint());
         ASSERT_EQ(tb_sdk_ep_2, status.real_endpoint());
     }
