@@ -68,6 +68,7 @@ public abstract class BaseSQLExecutor implements IExecutor{
     public void run(){
         String className = Thread.currentThread().getStackTrace()[2].getClassName();
         String methodName = Thread.currentThread().getStackTrace()[2].getMethodName();
+        System.out.println(className+"."+methodName+":"+fesqlCase.getDesc() + " Begin!");
         log.info(className+"."+methodName+":"+fesqlCase.getDesc() + " Begin!");
         reportLog.info(className+"."+methodName+":"+fesqlCase.getDesc() + " Begin!");
         try {
@@ -87,9 +88,11 @@ public abstract class BaseSQLExecutor implements IExecutor{
             check(fesqlResult,resultMap);
         } catch (Exception e) {
             e.printStackTrace();
+            System.out.println(className+"."+methodName+":"+fesqlCase.getDesc() + " FAIL!");
             Assert.fail("executor run with exception");
         }finally {
             tearDown();
+            System.out.println(className+"."+methodName+":"+fesqlCase.getDesc() + " DONE!");
         }
     }
 
