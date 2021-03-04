@@ -37,6 +37,8 @@ netstat -atnp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs k
 sleep 5
 cd onebox && sh start_onebox_on_rambuild.sh && cd $ROOT_DIR
 sleep 5
+sed -i
+sed -i "s/log4j\.rootLogger.*/log4j\.rootLogger=debug,stdout,warn,error/g" src/sdk/java/fesql-auto-test-java/src/main/resources/log4j.properties
 case_xml=test_auto_gen_case_standalone.xml
 cd ${ROOT_DIR}/src/sdk/java/
 mvn install -Dmaven.test.skip=true

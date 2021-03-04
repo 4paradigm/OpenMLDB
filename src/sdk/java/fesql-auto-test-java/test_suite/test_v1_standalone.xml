@@ -7,4 +7,7 @@
             <package name="com._4paradigm.fesql_auto_test.v1"/>
         </packages>
     </test>
+    <listeners>
+        <listener class-name="com._4paradigm.fesql_auto_test.report.AddAttachmentListener" />
+    </listeners>
 </suite>

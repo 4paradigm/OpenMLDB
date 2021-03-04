@@ -143,26 +143,16 @@ bool TabletImpl::Init(const std::string& real_endpoint) {
 
 bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
         const std::string& endpoint, const std::string& real_endpoint) {
-    std::set<std::string> snapshot_compression_set{"off", "pz", "zlib", "snappy"};
+    std::set<std::string> snapshot_compression_set{"off", "zlib", "snappy"};
     if (snapshot_compression_set.find(FLAGS_snapshot_compression) == snapshot_compression_set.end()) {
         LOG(WARNING) << "wrong snapshot_compression: " << FLAGS_snapshot_compression;
         return false;
     }
-    std::set<std::string> file_compression_set{"off", "pz", "zlib", "lz4"};
+    std::set<std::string> file_compression_set{"off", "zlib", "lz4"};
     if (file_compression_set.find(FLAGS_file_compression) == file_compression_set.end()) {
         LOG(WARNING) << "wrong FLAGS_file_compression: " << FLAGS_file_compression;
         return false;
     }
-#ifndef PZFPGA_ENABLE
-    if (FLAGS_snapshot_compression == "pz") {
-        LOG(WARNING) << "FLAGS_snapshot_compression is pz, but PZFPGA_ENABLE is off";
-        return false;
-    }
-    if (FLAGS_file_compression == "pz") {
-        LOG(WARNING) << "FLAGS_file_compression is pz, but PZFPGA_ENABLE is off";
-        return false;
-    }
-#endif
     zk_cluster_ = zk_cluster;
     zk_path_ = zk_path;
     endpoint_ = endpoint;

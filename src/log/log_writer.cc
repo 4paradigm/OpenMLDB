@@ -11,7 +11,6 @@
 #include "log/crc32c.h"
 #include "base/glog_wapper.h" // NOLINT
 #include "base/endianconv.h"
-#include "base/compress.h"
 
 namespace rtidb {
 namespace log {
@@ -225,14 +224,6 @@ Status Writer::CompressRecord() {
     Status s;
     int32_t compress_len = -1;
     switch (compress_type_) {
-#ifdef PZFPGA_ENABLE
-        case kPz: {
-            FPGA_env* fpga_env = rtidb::base::Compress::GetFpgaEnv();
-            compress_len = gzipfpga_compress_nohuff(
-                    fpga_env, buffer_, compress_buf_, block_size_, block_size_, 0);
-            break;
-        }
-#endif
         case kSnappy: {
             snappy::RawCompress(buffer_, block_size_, compress_buf_, reinterpret_cast<size_t*>(&compress_len));
             break;
@@ -289,9 +280,7 @@ Status Writer::CompressRecord() {
 }
 
 CompressType Writer::GetCompressType(const std::string& compress_type) {
-    if (compress_type == "pz") {
-        return kPz;
-    } else if (compress_type == "zlib") {
+    if (compress_type == "zlib") {
         return kZlib;
     } else if (compress_type == "snappy") {
         return kSnappy;
