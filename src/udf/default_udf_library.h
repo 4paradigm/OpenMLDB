@@ -28,6 +28,11 @@ class DefaultUDFLibrary : public UDFLibrary {
     void InitWindowFunctions();
     void InitUDAF();
     void InitAggByCateUDAFs();
+    void InitSumByCateUDAFs();
+    void InitCountByCateUDAFs();
+    void InitMinByCateUDAFs();
+    void InitMaxByCateUDAFs();
+    void InitAvgByCateUDAFs();
     void InitFeatureZero();
 
     static DefaultUDFLibrary inst_;

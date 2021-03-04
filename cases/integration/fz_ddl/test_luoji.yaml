@@ -2,7 +2,7 @@ db: luoji
 cases:
 - id: 0
   desc: luoji test
-  mode: batch-unsupport
+  mode: rtidb-batch-unsupport
   inputs:
     - columns: [
         reqId string,
@@ -156,7 +156,7 @@ cases:
 
 - id: 1
   desc: luoji test window flattenRequest_f_requestId_eventTime_0s_604801s without ttl
-  mode: batch-unsupport
+  mode: rtidb-batch-unsupport
   inputs:
     - columns: [
         reqId string,

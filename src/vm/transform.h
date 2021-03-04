@@ -108,6 +108,7 @@ class BatchModeTransformer {
         ::fesql::vm::PhysicalOpNode** output);
     virtual Status TransformQueryPlan(const ::fesql::node::PlanNode* node,
                                       ::fesql::vm::PhysicalOpNode** output);
+    virtual Status ValidatePlan(PhysicalOpNode* in);
 
     bool AddPass(PhysicalPlanPassType type);
 
@@ -129,6 +130,8 @@ class BatchModeTransformer {
     Status GenSort(Sort* sort, const SchemasContext* schemas_ctx);
     Status GenRange(Range* sort, const SchemasContext* schemas_ctx);
 
+    bool isSourceFromTableProvider(PhysicalOpNode* physical_plan);
+    Status ValidateTableProvider(PhysicalOpNode* physical_plan);
     Status ValidatePartitionDataProvider(PhysicalOpNode* physical_plan);
     std::string ExtractSchameName(PhysicalOpNode* physical_plan);
     Status ValidateRequestDataProvider(PhysicalOpNode* physical_plan);
@@ -254,10 +257,12 @@ class RequestModeTransformer : public BatchModeTransformer {
     const BatchRequestInfo& batch_request_info() const {
         return batch_request_info_;
     }
+    Status ValidatePlan(PhysicalOpNode* in) override;
+    Status ValidatePrimaryPath(PhysicalOpNode* in,
+                               PhysicalOpNode** primary_source);
 
  protected:
     void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) override;
-
     virtual Status TransformProjectOp(node::ProjectListNode* node,
                                       PhysicalOpNode* depend, bool append_input,
                                       PhysicalOpNode** output);

@@ -114,6 +114,9 @@ std::unique_ptr<WindowIterator> TabletTableHandler::GetWindowIterator(
         LOG(WARNING) << "index name " << idx_name << " not exist";
         return std::unique_ptr<storage::WindowTableIterator>();
     }
+    if (nullptr == table_->GetSegments()) {
+        return std::move(std::unique_ptr<storage::WindowTableIterator>());
+    }
     std::unique_ptr<storage::WindowTableIterator> it(
         new storage::WindowTableIterator(table_->GetSegments(),
                                          table_->GetSegCnt(),

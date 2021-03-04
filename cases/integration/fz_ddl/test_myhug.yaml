@@ -2,7 +2,7 @@ db: mybug
 cases:
 - id: 0
   desc: mybug test
-  mode: batch-unsupport
+  mode: rtidb-batch-unsupport
   inputs:
     -
       columns: ["reqId string","eventTime timestamp","uUserId string","zUserId string",
@@ -166,7 +166,7 @@ cases:
         NULL, 3.3, NULL, 1.000000, 1.000000 ]
 - id: 1
   desc: mybug bo_hislabel_fWatchedTimeLen_multi_max_74
-  mode: batch-unsupport
+  mode: rtidb-batch-unsupport
   inputs:
     - columns: [ "reqId string",
                  "eventTime timestamp",

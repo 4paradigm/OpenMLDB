@@ -217,7 +217,10 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     EngineTestFzLuoji, EngineTest,
     testing::ValuesIn(InitCases("/cases/integration/fz_ddl/test_luoji.yaml")));
-
+// bank 场景正确性验证
+INSTANTIATE_TEST_CASE_P(
+    EngineTestFzBank, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/fz_ddl/test_bank.yaml")));
 // TODO(qiliguo) #229 sql 语句加一个大 select, 选取其中几列，
 //   添加到 expect 中的做验证
 // imported from spark offline test

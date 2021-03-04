@@ -269,6 +269,10 @@ static Status CreateSimplifiedProject(PhysicalPlanContext* ctx,
         can_project = false;
         for (size_t i = 0; i < cur_input->producers().size(); ++i) {
             auto cand_input = cur_input->GetProducer(i);
+            if (cand_input->GetOutputType() !=
+                PhysicalSchemaType::kSchemaTypeRow) {
+                continue;
+            }
             bool is_valid = true;
             for (size_t j = 0; j < projects.size(); ++j) {
                 if (!ExprDependOnlyOnLeft(projects.GetExpr(j), cand_input,

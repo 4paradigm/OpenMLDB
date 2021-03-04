@@ -636,7 +636,7 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
         }
     }
     if (new_left.IsUnCompletedClusterTask() ||
-        new_left.IsUnCompletedClusterTask()) {
+        new_right.IsUnCompletedClusterTask()) {
         LOG(WARNING) << "Fail to build cluster task, can't handler "
                         "uncompleted cluster task";
         return ClusterTask();
