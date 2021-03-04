@@ -36,7 +36,7 @@ cd src/sdk/java/fesql-auto-test-java/src/main/resources
 echo "standalone_tb_endpoint_0=$IP:9520" >> fesql.properties
 echo "standalone_tb_endpoint_1=$IP:9521" >> fesql.properties
 echo "standalone_tb_endpoint_2=$IP:9522" >> fesql.properties
-case_xml=test_v1.xml
+case_xml=test_v1_standalone.xml
 cd ${ROOT_DIR}/src/sdk/java/
 mvn install -Dmaven.test.skip=true
 cd ${ROOT_DIR}/src/sdk/java/fesql-auto-test-java
