@@ -1,34 +1,35 @@
-add_library(mini_cluster_bm_common STATIC 
-mini_cluster_bm.cc sql_sdk_test.cc)
+if(TESTING_ENABLE)
+    add_library(mini_cluster_bm_common STATIC mini_cluster_bm.cc sql_sdk_test.cc)
+    add_library(base_test STATIC ../test/base_test.cc)
 
-add_library(base_test STATIC ../test/base_test.cc)
+    set(FESQL_CASE_LIBS base_test fesql_core yaml-cpp boost_filesystem)
 
-set(FESQL_CASE_LIBS base_test fesql_core yaml-cpp boost_filesystem)
+    add_executable(cluster_sdk_test cluster_sdk_test.cc)
+    target_link_libraries(cluster_sdk_test gtest ${BIN_LIBS})
 
-add_executable(cluster_sdk_test cluster_sdk_test.cc)
-target_link_libraries(cluster_sdk_test gtest ${BIN_LIBS})
+    add_executable(sql_router_test sql_router_test.cc)
+    target_link_libraries(sql_router_test gtest ${BIN_LIBS})
 
-add_executable(sql_router_test sql_router_test.cc)
-target_link_libraries(sql_router_test gtest ${BIN_LIBS})
+    add_executable(sql_sdk_test sql_sdk_test.cc)
+    target_link_libraries(sql_sdk_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
 
-add_executable(sql_sdk_test sql_sdk_test.cc)
-target_link_libraries(sql_sdk_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+    add_executable(sql_cluster_test sql_cluster_test.cc)
+    target_link_libraries(sql_cluster_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
 
-add_executable(sql_cluster_test sql_cluster_test.cc)
-target_link_libraries(sql_cluster_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+    add_executable(sql_request_row_test sql_request_row_test.cc)
+    target_link_libraries(sql_request_row_test gtest ${BIN_LIBS})
 
-add_executable(sql_request_row_test sql_request_row_test.cc)
-target_link_libraries(sql_request_row_test gtest ${BIN_LIBS})
+    add_executable(mini_cluster_bm mini_cluster_microbenchmark.cc)
+    target_link_libraries(mini_cluster_bm mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+
+    add_executable(mini_cluster_bm_request_batch mini_cluster_bm_request_batch.cc)
+    target_link_libraries(mini_cluster_bm_request_batch mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+
+    add_executable(mini_cluster_bm_request mini_cluster_bm_request.cc)
+    target_link_libraries(mini_cluster_bm_request mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+endif()
 
 set(SDK_LIBS rtidb_sdk rtidb_catalog client zk_client rtidb_flags rtidb_codec rtidb_proto base fesql_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS})
-add_executable(mini_cluster_bm mini_cluster_microbenchmark.cc)
-target_link_libraries(mini_cluster_bm mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
-
-add_executable(mini_cluster_bm_request_batch mini_cluster_bm_request_batch.cc)
-target_link_libraries(mini_cluster_bm_request_batch mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
-
-add_executable(mini_cluster_bm_request mini_cluster_bm_request.cc)
-target_link_libraries(mini_cluster_bm_request mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
 
 if(SQL_PYSDK_ENABLE)
 	find_package(Python3 COMPONENTS Interpreter Development)

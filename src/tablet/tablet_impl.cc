@@ -32,7 +32,6 @@
 #include "butil/iobuf.h"
 #include "codec/codec.h"
 #include "glog/logging.h"
-#include "rapidjson/stringbuffer.h"
 #include "storage/binlog.h"
 #include "storage/segment.h"
 #include "tablet/file_sender.h"
