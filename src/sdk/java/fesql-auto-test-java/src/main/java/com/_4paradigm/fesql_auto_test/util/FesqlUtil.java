@@ -1105,7 +1105,6 @@ public class FesqlUtil {
         return formatSql(sql,tableNames,FesqlConfig.mainInfo);
     }
 
-
     public static FesqlResult createAndInsert(SqlExecutor executor, String dbName,
                                               List<InputDesc> inputs,
                                               boolean useFirstInputAsRequests) {
