@@ -11,7 +11,6 @@ add_library(zk_client STATIC zk/zk_client.cc zk/dist_lock.cc)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_library(tablet STATIC tablet/tablet_impl.cc flags.cc tablet/file_receiver.cc tablet/file_sender.cc tablet/combine_iterator.cc)
     add_library(nameserver STATIC nameserver/name_server_impl.cc flags.cc)
-    add_library(beans storage/beans/bitcask.c storage/beans/clock_gettime_stub.c storage/beans/codec.c storage/beans/common.c storage/beans/crc32.c storage/beans/diskmgr.c storage/beans/hint.c storage/beans/hstore.c storage/beans/htree.c storage/beans/mfile.c storage/beans/quicklz.c storage/beans/record.c)
     add_library(storage STATIC storage/mem_table.cc storage/disk_table.cc storage/segment.cc storage/ticket.cc storage/mem_table_snapshot.cc storage/disk_table_snapshot.cc storage/snapshot.cc storage/table.cc storage/binlog.cc storage/schema.cc)
     add_library(log STATIC log/crc32c.cc
                            log/sequential_file.cc
@@ -19,7 +18,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
                        log/log_reader.cc
                        log/writable_file.cc flags.cc)
 
-    set(BIN_LIBS nameserver tablet rtidb_sdk rtidb_catalog client zk_client replica  base beans storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
+    set(BIN_LIBS nameserver tablet rtidb_sdk rtidb_catalog client zk_client replica  base storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${BRPC_LIBS})
@@ -166,7 +165,6 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     if (MAC_TABLET_ENABLE)
         add_library(tablet STATIC tablet/tablet_impl.cc flags.cc tablet/file_receiver.cc tablet/file_sender.cc tablet/combine_iterator.cc)
         add_library(nameserver STATIC nameserver/name_server_impl.cc flags.cc)
-        add_library(beans storage/beans/bitcask.c storage/beans/mac_clock_gettime_stub.c storage/beans/codec.c storage/beans/common.c storage/beans/crc32.c storage/beans/diskmgr.c storage/beans/hint.c storage/beans/hstore.c storage/beans/htree.c storage/beans/mfile.c storage/beans/quicklz.c storage/beans/record.c)
         add_library(storage STATIC storage/mem_table.cc storage/disk_table.cc storage/relational_table.cc storage/segment.cc storage/ticket.cc storage/mem_table_snapshot.cc storage/disk_table_snapshot.cc storage/snapshot.cc storage/table.cc storage/binlog.cc storage/schema.cc)
         add_library(log STATIC log/crc32c.cc
                 log/sequential_file.cc
@@ -174,7 +172,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
                 log/log_reader.cc
                 log/writable_file.cc flags.cc)
         enable_testing()
-        set(BIN_LIBS nameserver tablet rtidb_sdk rtidb_catalog client zk_client replica base beans storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
+        set(BIN_LIBS nameserver tablet rtidb_sdk rtidb_catalog client zk_client replica base storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
                 ${VM_LIBS}
                 ${LLVM_LIBS}
                 ${BRPC_LIBS})
