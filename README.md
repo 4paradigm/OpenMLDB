@@ -6,7 +6,9 @@ Hybrid SQL Engine是基于C++和LLVM实现的高性能SQL编译器。能基于�
 
 <img src="./docs/img/HybridSE.png" alt="image-20210301164207172" style="width:600px" align="left"/>
 
-[Hybrid SQL Language Guide](./docs/language_guide/reference.md)
+[Hybrid SQL Language Guide](./docs/en/language_guide/reference.md)
+
+[Hybrid SQL语法文档](./docs/zh-hans/language_guide/reference.md)
 
 Developer Guide
 
