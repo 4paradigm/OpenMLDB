@@ -1,6 +1,5 @@
 #!/bin/bash
 ROOT_DIR=$(cd $(dirname $0); pwd)/../..
-# deploy_fesql_spark_jar.sh
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

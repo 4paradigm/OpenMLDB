@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Usage: ./benchspark spark-submit [ARGS]
-# benchspark.sh
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
