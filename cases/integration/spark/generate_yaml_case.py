@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # generate_yaml_case.py
 # Copyright (C) 4paradigm.com
 #
