@@ -17,6 +17,7 @@ class TextTableTest : public ::testing::Test {
 };
 
 TEST_F(TextTableTest, TextTableFormatTest) {
+    std::ostringstream oss;
     base::TextTable t('-', '|', '+');
     t.add("Field");
     t.add("Type");
@@ -37,7 +38,15 @@ TEST_F(TextTableTest, TextTableFormatTest) {
     t.add("kTimestamp");
     t.add("YES");
     t.end_of_row();
-    std::cout << t << std::endl;
+    oss << t;
+    ASSERT_EQ(
+        "+---------+------------+------+\n"
+        "| Field   | Type       | NULL |\n"
+        "+---------+------------+------+\n"
+        "| column1 | kInt32     | No   |\n"
+        "| column2 | kInt64     | YES  |\n"
+        "| ts      | kTimestamp | YES  |\n"
+        "+---------+------------+------+\n", oss.str());
 }
 }  // namespace base
 }  // namespace fesql
