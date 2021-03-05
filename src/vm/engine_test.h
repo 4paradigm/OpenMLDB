@@ -196,10 +196,10 @@ void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
             break;
         }
     }
-    t.endOfRow();
+    t.end_of_row();
     if (rows.empty()) {
         t.add("Empty set");
-        t.endOfRow();
+        t.end_of_row();
         return;
     }
 
@@ -213,7 +213,7 @@ void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
                 break;
             }
         }
-        t.endOfRow();
+        t.end_of_row();
         if (t.rows().size() >= MAX_DEBUG_LINES_CNT) {
             break;
         }
