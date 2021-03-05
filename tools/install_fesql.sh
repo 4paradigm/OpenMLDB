@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/sh
 #
 # install_fesql.sh
 ENABLE_JAVA=$1
