@@ -236,6 +236,10 @@
                             <name>fedbVersion</name>
                             <value>${fedbVersion}</value>
                         </property>
+                        <property>
+                            <name>reportLog</name>
+                            <value>${reportLog}</value>
+                        </property>
                     </systemProperties>
                 </configuration>
             </plugin>

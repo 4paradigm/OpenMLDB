@@ -28,6 +28,7 @@ public class FesqlConfig {
     public static final String FESQL_CASE_NAME;
     public static final String FESQL_CASE_ID;
     public static final String FESQL_CASE_DESC;
+    public static final boolean ADD_REPORT_LOG;
 
     public static final Properties CONFIG = Tool.getProperties("fesql.properties");
 
@@ -68,6 +69,12 @@ public class FesqlConfig {
             VERSIONS = Lists.newArrayList();
         }
         log.info("FesqlConfig: versions: {}", VERSIONS);
+        String reportLogStr = System.getProperty("reportLog");
+        if(StringUtils.isNotEmpty(reportLogStr)){
+            ADD_REPORT_LOG = Boolean.parseBoolean(reportLogStr);
+        }else{
+            ADD_REPORT_LOG = true;
+        }
         mainInfo = FEDBInfo.builder()
                 .nsNum(2)
                 .tabletNum(3)

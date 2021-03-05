@@ -8,7 +8,7 @@ stages:
   - build
   - daily
   - quick
-  - manual
+  - slow
   - deploy
 
 style_check:
@@ -185,7 +185,7 @@ fesql_sdk_c++_sql_sdk_test_level_0:
       - $ENV_BUILD == "daily"
 
 fesql_auto_test_level_1+:
-  stage: manual
+  stage: slow
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -210,10 +210,9 @@ fesql_auto_test_level_1+:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
-  when: manual
 
 fesql_auto_test_level_cluster_1+:
-  stage: manual
+  stage: slow
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -238,10 +237,9 @@ fesql_auto_test_level_cluster_1+:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
-  when: manual
 
 fesql_sdk_c++_level_1+:
-  stage: manual
+  stage: slow
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
@@ -255,7 +253,6 @@ fesql_sdk_c++_level_1+:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual
 
 c++_ut:
   stage: quick
@@ -276,7 +273,7 @@ c++_ut:
       - $ENV_BUILD == "daily"
 
 fesql_auto_test_python:
-  stage: manual
+  stage: slow
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -293,10 +290,9 @@ fesql_auto_test_python:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
-  when: manual
 
 fesql_test_python:
-  stage: manual
+  stage: slow
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -313,10 +309,9 @@ fesql_test_python:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
-  when: manual
 
 tablet_one_demension:
-  stage: manual
+  stage: slow
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -335,7 +330,6 @@ tablet_one_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual
 
 tablet_multi_demension:
   stage: quick
@@ -359,7 +353,7 @@ tablet_multi_demension:
       - $ENV_BUILD == "daily"
 
 ns_one_demension:
-  stage: manual
+  stage: slow
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -378,7 +372,6 @@ ns_one_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual
 
 ns_multi_demension:
   stage: quick
@@ -448,7 +441,7 @@ docker-image:
     - build
 
 fesql_auto_gen_case:
-  stage: manual
+  stage: slow
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
