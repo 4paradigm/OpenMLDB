@@ -21,8 +21,6 @@ if [ -n "${VERSION}" ]; then
     sh ./steps/release.sh ${VERSION}
 fi
 
-sh steps/gen_code.sh
-
 mkdir -p $WORK_DIR/build  || :
 cd $WORK_DIR/build && cmake .. && make -j8
 code=$?

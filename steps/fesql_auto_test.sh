@@ -11,8 +11,7 @@ ROOT_DIR=`pwd`
 ulimit -c unlimited
 
 echo "ROOT_DIR:${ROOT_DIR}"
-sh steps/gen_code.sh
-sh tools/install_fesql.sh
+sh tools/install_fesql.sh ON
 cd ${ROOT_DIR}/fesql/java/fesql-common; mvn install
 
 mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. 
@@ -36,7 +35,7 @@ cd src/sdk/java/fesql-auto-test-java/src/main/resources
 echo "standalone_tb_endpoint_0=$IP:9520" >> fesql.properties
 echo "standalone_tb_endpoint_1=$IP:9521" >> fesql.properties
 echo "standalone_tb_endpoint_2=$IP:9522" >> fesql.properties
-case_xml=test_v1.xml
+case_xml=test_v1_standalone.xml
 cd ${ROOT_DIR}/src/sdk/java/
 mvn install -Dmaven.test.skip=true
 cd ${ROOT_DIR}/src/sdk/java/fesql-auto-test-java

@@ -48,7 +48,8 @@ namespace base {
 /* Toggle the 16 bit unsigned integer pointed by *p from little endian to
  * big endian */
 void memrev16(void *p) {
-    unsigned char *x = p, t;
+    unsigned char *x = (unsigned char *)p;
+    unsigned char t;
 
     t = x[0];
     x[0] = x[1];
@@ -58,7 +59,8 @@ void memrev16(void *p) {
 /* Toggle the 32 bit unsigned integer pointed by *p from little endian to
  * big endian */
 void memrev32(void *p) {
-    unsigned char *x = p, t;
+    unsigned char *x = (unsigned char *)p;
+    unsigned char t;
 
     t = x[0];
     x[0] = x[3];
@@ -71,7 +73,8 @@ void memrev32(void *p) {
 /* Toggle the 64 bit unsigned integer pointed by *p from little endian to
  * big endian */
 void memrev64(void *p) {
-    unsigned char *x = p, t;
+    unsigned char *x = (unsigned char *)p;
+    unsigned char t;
 
     t = x[0];
     x[0] = x[7];
