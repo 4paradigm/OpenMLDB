@@ -16,10 +16,10 @@ DECLARE_int32(request_timeout_ms);
 namespace rtidb {
 namespace client {
 
-NsClient::NsClient(bool use_rdma, const std::string& endpoint, const std::string& real_endpoint)
-    : endpoint_(endpoint), client_(use_rdma, endpoint), db_("") {
+NsClient::NsClient(const std::string& endpoint, const std::string& real_endpoint)
+    : endpoint_(endpoint), client_(endpoint), db_("") {
         if (!real_endpoint.empty()) {
-            client_ = ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>(use_rdma, real_endpoint);
+            client_ = ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>(real_endpoint);
         }
     }
 

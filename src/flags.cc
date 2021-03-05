@@ -162,7 +162,6 @@ DEFINE_uint32(absolute_default_skiplist_height, 4,
 DEFINE_bool(enable_show_tp, false, "enable show tp");
 DEFINE_uint32(max_col_display_length, 256,
               "config the max length of column display");
-DEFINE_bool(use_rdma, false, "use rdma");
 
 // rocksdb
 DEFINE_bool(disable_wal, true, "If true, do not write WAL for write.");

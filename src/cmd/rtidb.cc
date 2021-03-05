@@ -78,9 +78,6 @@ DECLARE_uint32(max_col_display_length);
 DECLARE_bool(version);
 DECLARE_bool(use_name);
 DECLARE_string(data_dir);
-#ifdef __rdma__
-DECLARE_bool(use_rdma);
-#endif
 
 const std::string RTIDB_VERSION = std::to_string(RTIDB_VERSION_MAJOR) + "." + // NOLINT
                             std::to_string(RTIDB_VERSION_MEDIUM) + "." +
@@ -155,9 +152,6 @@ void StartNameServer() {
     }
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
-#ifdef __rdma__
-    options.use_rdma = FLAGS_use_rdma;
-#endif
     brpc::Server server;
     if (server.AddService(name_server, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
@@ -255,9 +249,6 @@ void StartTablet() {
     }
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
-#ifdef __rdma__
-    options.use_rdma = FLAGS_use_rdma;
-#endif
     brpc::Server server;
     if (server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
@@ -331,7 +322,7 @@ int PutData(
                 }
             }
             clients.insert(std::make_pair(endpoint,
-                    std::make_shared<::rtidb::client::TabletClient>(FLAGS_use_rdma, endpoint, real_endpoint)));
+                    std::make_shared<::rtidb::client::TabletClient>(endpoint, real_endpoint)));
             if (clients[endpoint]->Init() < 0) {
                 printf("tablet client init failed, endpoint is %s\n",
                        endpoint.c_str());
@@ -495,7 +486,7 @@ std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
             real_endpoint = rit->second;
         }
     }
-    auto tablet_client = std::make_shared<::rtidb::client::TabletClient>(FLAGS_use_rdma, endpoint, real_endpoint);
+    auto tablet_client = std::make_shared<::rtidb::client::TabletClient>(endpoint, real_endpoint);
     if (tablet_client->Init() < 0) {
         msg = "tablet client init failed, endpoint is " + endpoint;
         tablet_client.reset();
@@ -5369,7 +5360,7 @@ void StartClient() {
     if (FLAGS_interactive) {
         std::cout << "Welcome to rtidb with version " << RTIDB_VERSION << std::endl;
     }
-    ::rtidb::client::TabletClient client(FLAGS_use_rdma, FLAGS_endpoint, "");
+    ::rtidb::client::TabletClient client(FLAGS_endpoint, "");
     client.Init();
     std::string display_prefix = FLAGS_endpoint + "> ";
     while (true) {
@@ -5534,7 +5525,7 @@ void StartNsClient() {
                   << std::endl;
         return;
     }
-    ::rtidb::client::NsClient client(FLAGS_use_rdma, endpoint, real_endpoint);
+    ::rtidb::client::NsClient client(endpoint, real_endpoint);
     if (client.Init() < 0) {
         std::cout << "client init failed" << std::endl;
         return;
@@ -5706,9 +5697,6 @@ void StartNsClient() {
 }
 
 int main(int argc, char* argv[]) {
-    #ifdef __rdma__
-    std::cout << "rdma is enabled" << std::endl;
-    #endif
     ::google::SetVersionString(RTIDB_VERSION.c_str());
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "ns_client") {

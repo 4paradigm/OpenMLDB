@@ -417,6 +417,7 @@ public class FesqlUtil {
                 rps = executor.getRequestPreparedStmt(dbName, selectSql);
             } catch (SQLException throwables) {
                 fesqlResult.setOk(false);
+                fesqlResult.setMsg("Get Request PreparedStatement Fail");
                 return fesqlResult;
             }
             java.sql.ResultSet resultSet = null;
@@ -425,10 +426,12 @@ public class FesqlUtil {
 
             } catch (SQLException throwables) {
                 fesqlResult.setOk(false);
+                fesqlResult.setMsg("Build Request PreparedStatement Fail");
                 return fesqlResult;
             }
             if (resultSet == null) {
                 fesqlResult.setOk(false);
+                fesqlResult.setMsg("Select result is null");
                 log.error("select result:{}", fesqlResult);
                 reportLog.error("select result:{}", fesqlResult);
                 return fesqlResult;
@@ -437,12 +440,14 @@ public class FesqlUtil {
                 result.addAll(convertRestultSetToList((SQLResultSet) resultSet));
             } catch (SQLException throwables) {
                 fesqlResult.setOk(false);
+                fesqlResult.setMsg("Convert Result Set To List Fail");
                 return fesqlResult;
             }
             if (need_insert_request_row && !executor.executeInsert(dbName, inserts.get(i))) {
-                log.error("fail to execute sql in request mode: fail to insert request row after query");
-                reportLog.error("fail to execute sql in request mode: fail to insert request row after query");
                 fesqlResult.setOk(false);
+                fesqlResult.setMsg("Fail to execute sql in request mode fail to insert request row after query");
+                log.error(fesqlResult.getMsg());
+                reportLog.error(fesqlResult.getMsg());
                 return fesqlResult;
             }
             if (i == rows.size()-1) {
@@ -450,6 +455,7 @@ public class FesqlUtil {
                     fesqlResult.setMetaData(resultSet.getMetaData());
                 } catch (SQLException throwables) {
                     fesqlResult.setOk(false);
+                    fesqlResult.setMsg("Fail to set meta data");
                     return fesqlResult;
                 }
             }
@@ -520,6 +526,7 @@ public class FesqlUtil {
 
         } catch (SQLException sqlException) {
             fesqlResult.setOk(false);
+            fesqlResult.setMsg("Fail to execute batch request");
             sqlException.printStackTrace();
         } finally {
             try {
@@ -575,6 +582,7 @@ public class FesqlUtil {
             log.error("execute ddl failed! sql: {}", sql);
             reportLog.error("execute ddl failed! sql: {}", sql);
             fesqlResult.setOk(false);
+            fesqlResult.setMsg("execute ddl failed");
             return fesqlResult;
         }
         List<List<Object>> result = Lists.newArrayList();
@@ -589,6 +597,7 @@ public class FesqlUtil {
                 rps = executor.getCallablePreparedStmt(dbName, spName);
                 if (rps == null) {
                     fesqlResult.setOk(false);
+                    fesqlResult.setMsg("Fail to getCallablePreparedStmt");
                     return fesqlResult;
                 }
                 if (!isAsyn) {
@@ -598,15 +607,17 @@ public class FesqlUtil {
                 }
                 if (resultSet == null) {
                     fesqlResult.setOk(false);
+                    fesqlResult.setMsg("result set is null");
                     log.error("select result:{}", fesqlResult);
                     reportLog.error("select result:{}", fesqlResult);
                     return fesqlResult;
                 }
                 result.addAll(convertRestultSetToList((SQLResultSet) resultSet));
                 if (needInsertRequestRow && !executor.executeInsert(dbName, inserts.get(i))) {
-                    log.error("fail to execute sql in request mode: fail to insert request row after query");
-                    reportLog.error("fail to execute sql in request mode: fail to insert request row after query");
                     fesqlResult.setOk(false);
+                    fesqlResult.setMsg("fail to execute sql in request mode: fail to insert request row after query");
+                    log.error(fesqlResult.getMsg());
+                    reportLog.error(fesqlResult.getMsg());
                     return fesqlResult;
                 }
                 if (i == 0) {
@@ -614,6 +625,7 @@ public class FesqlUtil {
                         fesqlResult.setMetaData(resultSet.getMetaData());
                     } catch (SQLException throwables) {
                         fesqlResult.setOk(false);
+                        fesqlResult.setMsg("fail to get/set meta data");
                         return fesqlResult;
                     }
                 }
@@ -622,6 +634,7 @@ public class FesqlUtil {
                 log.error("has exception. sql: {}", sql);
                 reportLog.error("has exception. sql: {}", sql);
                 fesqlResult.setOk(false);
+                fesqlResult.setMsg("fail to execute sql");
                 return fesqlResult;
             } finally {
                 try {
@@ -658,6 +671,7 @@ public class FesqlUtil {
         FesqlResult fesqlResult = new FesqlResult();
         if (!executor.executeDDL(dbName, sql)) {
             fesqlResult.setOk(false);
+            fesqlResult.setMsg("fail to execute ddl");
             return fesqlResult;
         }
         Object[][] rowArray = new Object[rows.size()][];
@@ -674,6 +688,7 @@ public class FesqlUtil {
             rps = executor.getCallablePreparedStmtBatch(dbName, spName);
             if (rps == null) {
                 fesqlResult.setOk(false);
+                fesqlResult.setMsg("fail to getCallablePreparedStmtBatch");
                 return fesqlResult;
             }
             for (List<Object> row : rows) {
@@ -705,6 +720,7 @@ public class FesqlUtil {
             log.error("Call procedure failed", e);
             reportLog.error("Call procedure failed", e);
             fesqlResult.setOk(false);
+            fesqlResult.setMsg("Call procedure failed");
             return fesqlResult;
         } finally {
             try {
@@ -971,6 +987,7 @@ public class FesqlUtil {
 
         if (rawRs == null) {
             fesqlResult.setOk(false);
+            fesqlResult.setMsg("executeSQL fail, result is null");
         } else if  (rawRs instanceof SQLResultSet){
             SQLResultSet rs = (SQLResultSet)rawRs;
             fesqlResult.setOk(true);
@@ -981,7 +998,7 @@ public class FesqlUtil {
                 fesqlResult.setResult(result);
             } catch (Exception e) {
                 fesqlResult.setOk(false);
-                e.printStackTrace();
+                fesqlResult.setMsg(e.getMessage());
             }
         }
         log.info("select result:{} \nschema={}", fesqlResult, fesqlResult.getResultSchema());
@@ -1088,7 +1105,6 @@ public class FesqlUtil {
         return formatSql(sql,tableNames,FesqlConfig.mainInfo);
     }
 
-
     public static FesqlResult createAndInsert(SqlExecutor executor, String dbName,
                                               List<InputDesc> inputs,
                                               boolean useFirstInputAsRequests) {
@@ -1100,7 +1116,6 @@ public class FesqlUtil {
                                               List<InputDesc> inputs,
                                               boolean useFirstInputAsRequests,
                                               int replicaNum) {
-        long begin = System.currentTimeMillis();
         FesqlResult fesqlResult = new FesqlResult();
         if (inputs != null && inputs.size() > 0) {
             for (int i = 0; i < inputs.size(); i++) {
@@ -1116,8 +1131,6 @@ public class FesqlUtil {
                         return res;
                     }
                 }
-                long end = System.currentTimeMillis();
-                System.out.println("MMMM:"+(end-begin));
                 InputDesc input = inputs.get(i);
                 if (0 == i && useFirstInputAsRequests) {
                     continue;
@@ -1134,13 +1147,9 @@ public class FesqlUtil {
                         }
                     }
                 }
-                end = System.currentTimeMillis();
-                System.out.println("NNNN:"+(end-begin));
             }
         }
         fesqlResult.setOk(true);
-        long end = System.currentTimeMillis();
-        System.out.println("LLLLL:"+(end-begin));
         return fesqlResult;
     }
 

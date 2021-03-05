@@ -11,8 +11,7 @@ ROOT_DIR=`pwd`
 ulimit -c unlimited
 
 echo "ROOT_DIR:${ROOT_DIR}"
-sh steps/gen_code.sh
-sh tools/install_fesql.sh
+sh tools/install_fesql.sh ON
 cd ${ROOT_DIR}/fesql/java/fesql-common; mvn install
 
 mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. 

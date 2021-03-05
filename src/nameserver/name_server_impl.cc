@@ -46,7 +46,6 @@ DECLARE_int32(make_snapshot_check_interval);
 DECLARE_bool(use_name);
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_timeseries_table);
-DECLARE_bool(use_rdma);
 
 using ::rtidb::base::ReturnCode;
 using ::rtidb::api::OPType::kAddIndexOP;
@@ -111,7 +110,7 @@ void ClusterInfo::UpdateNSClient(const std::vector<std::string>& children) {
         }
     }
     std::shared_ptr<::rtidb::client::NsClient> tmp_ptr =
-        std::make_shared<::rtidb::client::NsClient>(FLAGS_use_rdma, endpoint, real_endpoint);
+        std::make_shared<::rtidb::client::NsClient>(endpoint, real_endpoint);
     if (tmp_ptr->Init() < 0) {
         PDLOG(WARNING, "replica cluster ns client init failed");
         return;
@@ -165,7 +164,7 @@ int ClusterInfo::Init(std::string& msg) {
             return 451;
         }
     }
-    client_ = std::make_shared<::rtidb::client::NsClient>(FLAGS_use_rdma, endpoint, real_endpoint);
+    client_ = std::make_shared<::rtidb::client::NsClient>(endpoint, real_endpoint);
     if (client_->Init() < 0) {
         msg = "connect ns failed";
         PDLOG(WARNING, "connect ns failed, replica cluster ns");
@@ -1267,7 +1266,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                     PDLOG(WARNING, "get tablet names value failed");
                     continue;
                 }
-                tablet->client_ = std::make_shared<::rtidb::client::TabletClient>(FLAGS_use_rdma, *it, real_ep, true);
+                tablet->client_ = std::make_shared<::rtidb::client::TabletClient>(*it, real_ep, true);
                 auto n_it = real_ep_map_.find(*it);
                 if (n_it == real_ep_map_.end()) {
                     real_ep_map_.insert(std::make_pair(*it, real_ep));
@@ -1276,7 +1275,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                 }
             } else {
                 real_ep_map_.emplace(*it, *it);
-                tablet->client_ = std::make_shared<::rtidb::client::TabletClient>(FLAGS_use_rdma, *it, "", true);
+                tablet->client_ = std::make_shared<::rtidb::client::TabletClient>(*it, "", true);
             }
             if (tablet->client_->Init() != 0) {
                 PDLOG(WARNING, "tablet client init error. endpoint[%s]", it->c_str());
@@ -1301,7 +1300,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                         continue;
                     }
                     r_it->second = real_ep;
-                    tit->second->client_ = std::make_shared<::rtidb::client::TabletClient>(FLAGS_use_rdma,
+                    tit->second->client_ = std::make_shared<::rtidb::client::TabletClient>(
                                            tit->first, real_ep, true);
                     if (tit->second->client_->Init() != 0) {
                         PDLOG(WARNING, "tablet client init error. endpoint[%s]", tit->first.c_str());

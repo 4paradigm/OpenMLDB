@@ -8,7 +8,7 @@ stages:
   - build
   - daily
   - quick
-  - manual
+  - slow
   - deploy
 
 style_check:
@@ -22,24 +22,6 @@ style_check:
     reports:
       junit:
         - ./reports/style.xml
-
-rdma-build:
-  image: develop-registry.4pd.io/centos6_gcc7_fesql_rdma:0.0.12
-  stage: build
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
-  script:
-    - source /root/.bashrc && sh tools/install_fesql.sh
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && RDMA=1 bash steps/simple_compile.sh
-    - mv build/bin/rtidb build/bin/rtidb_rdma
-  artifacts:
-    expire_in: 4h
-    paths:
-      - build/bin/rtidb_rdma
-  when: manual
 
 build:
   stage: build
@@ -100,7 +82,6 @@ daily_build:
 #     variables:
 #       - $ENV_BUILD == "daily"
 
-
 fesql_auto_test_level_0:
   stage: quick
   before_script:
@@ -160,7 +141,6 @@ fesql_sdk_c++_tablet_engine_test_level_0:
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && bash steps/fesql_c_test_compile.sh
     - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_c_ut.sh 0 tablet_engine_test
   artifacts:
     reports:
@@ -172,13 +152,11 @@ fesql_sdk_c++_tablet_engine_test_level_0:
     variables:
       - $ENV_BUILD == "daily"
 
-
 fesql_sdk_c++_sql_cluster_test_level_0:
   stage: quick
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && bash steps/fesql_c_test_compile.sh
     - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_c_ut.sh 0 sql_cluster_test
   artifacts:
     reports:
@@ -190,13 +168,11 @@ fesql_sdk_c++_sql_cluster_test_level_0:
     variables:
       - $ENV_BUILD == "daily"
 
-
 fesql_sdk_c++_sql_sdk_test_level_0:
   stage: quick
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && bash steps/fesql_c_test_compile.sh
     - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_c_ut.sh 0 sql_sdk_test
   artifacts:
     reports:
@@ -209,7 +185,7 @@ fesql_sdk_c++_sql_sdk_test_level_0:
       - $ENV_BUILD == "daily"
 
 fesql_auto_test_level_1+:
-  stage: manual
+  stage: slow
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -234,10 +210,9 @@ fesql_auto_test_level_1+:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
-  when: manual
 
 fesql_auto_test_level_cluster_1+:
-  stage: manual
+  stage: slow
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -262,14 +237,12 @@ fesql_auto_test_level_cluster_1+:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
-  when: manual
 
 fesql_sdk_c++_level_1+:
-  stage: manual
+  stage: slow
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && bash steps/fesql_c_test_compile.sh
     - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_c_ut.sh "1,2,3,4,5"
   artifacts:
     reports:
@@ -280,7 +253,6 @@ fesql_sdk_c++_level_1+:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual
 
 c++_ut:
   stage: quick
@@ -301,7 +273,7 @@ c++_ut:
       - $ENV_BUILD == "daily"
 
 fesql_auto_test_python:
-  stage: manual
+  stage: slow
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -318,10 +290,9 @@ fesql_auto_test_python:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
-  when: manual
 
 fesql_test_python:
-  stage: manual
+  stage: slow
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -338,10 +309,9 @@ fesql_test_python:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
-  when: manual
 
 tablet_one_demension:
-  stage: manual
+  stage: slow
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -360,7 +330,6 @@ tablet_one_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual
 
 tablet_multi_demension:
   stage: quick
@@ -384,7 +353,7 @@ tablet_multi_demension:
       - $ENV_BUILD == "daily"
 
 ns_one_demension:
-  stage: manual
+  stage: slow
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -403,7 +372,6 @@ ns_one_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual
 
 ns_multi_demension:
   stage: quick
@@ -425,28 +393,6 @@ ns_multi_demension:
     variables:
       - $ENV_BUILD == "daily"
 
-disk_table:
-  stage: manual
-  before_script:
-    - mkdir /rambuild
-    - mount -t tmpfs -o size=3G tmpfs /rambuild
-  script:
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "disk"
-    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
-  artifacts:
-    reports:
-      junit:
-        - ./test-reports/*
-  dependencies:
-    - build
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
-  when: manual
-
 deploy-fedb:
   stage: daily
   script:
@@ -456,22 +402,6 @@ deploy-fedb:
   dependencies:
     # - mac_build
     - daily_build
-  only:
-    variables:
-      - $ENV_BUILD == "daily"
-
-
-#TODO(kongquan) python support enable rdma switch
-deploy-fedb-rdma:
-  image: develop-registry.4pd.io/centos6_gcc7_fesql_rdma:0.0.12
-  stage: deploy
-  script:
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && sh tools/install_fesql.sh
-    - source /root/.bashrc && bash steps/package_and_upload_fedb_rdma.sh
-  dependencies:
-    - rdma-build
   only:
     variables:
       - $ENV_BUILD == "daily"
@@ -511,7 +441,7 @@ docker-image:
     - build
 
 fesql_auto_gen_case:
-  stage: manual
+  stage: slow
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild

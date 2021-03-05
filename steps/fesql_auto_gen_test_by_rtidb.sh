@@ -4,7 +4,6 @@ ROOT_DIR=`pwd`
 ulimit -c unlimited
 
 #udf_defs.yaml 一般改动很小 为了节省性能 我们不用每次生成
-#sh steps/gen_code.sh
 #export JAVA_HOME=${RTIDB_DEV_JAVA_HOME:-/depends/thirdparty/jdk1.8.0_141}
 #export RTIDB_THIRDPARTY=${RTIDB_DEV_THIRDPARTY:-/depends/thirdparty}
 #cd fesql && ln -sf ${RTIDB_THIRDPARTY} thirdparty && mkdir -p build
@@ -21,8 +20,7 @@ cd fesql
 sh tools/gen_auto_case.sh
 cd ..
 
-sh steps/gen_code.sh
-sh tools/install_fesql.sh
+sh tools/install_fesql.sh ON
 cd ${ROOT_DIR}/fesql/java/fesql-common; mvn install
 mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake ..
 if [ -z "${FEDEV}" ]; then
