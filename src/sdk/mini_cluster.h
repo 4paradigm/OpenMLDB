@@ -52,7 +52,6 @@ DECLARE_bool(auto_failover);
 DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
 DECLARE_bool(enable_distsql);
-DECLARE_bool(use_rdma);
 
 namespace rtidb {
 namespace sdk {
@@ -92,7 +91,7 @@ class MiniCluster {
             return false;
         }
         sleep(2);
-        ns_client_ = new ::rtidb::client::NsClient(FLAGS_use_rdma, ns_endpoint, "");
+        ns_client_ = new ::rtidb::client::NsClient(ns_endpoint, "");
         if (ns_client_->Init() != 0) {
             LOG(WARNING) << "fail to init ns client";
             return false;
@@ -181,7 +180,7 @@ class MiniCluster {
         tb_servers_.push_back(tb_server);
         tablets_.emplace(tb_endpoint, tablet);
         sleep(2);
-        auto* client = new ::rtidb::client::TabletClient(FLAGS_use_rdma, tb_endpoint, tb_endpoint);
+        auto* client = new ::rtidb::client::TabletClient(tb_endpoint, tb_endpoint);
         if (client->Init() < 0) {
             LOG(WARNING) << "fail to init client";
             return false;

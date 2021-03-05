@@ -32,7 +32,6 @@ DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_bool(auto_failover);
-DECLARE_bool(use_rdma);
 
 using ::rtidb::zk::ZkClient;
 using google::protobuf::RepeatedPtrField;
@@ -141,13 +140,13 @@ TEST_F(NameServerImplObjectStoreTest, CreateTable) {
     NameServerImpl* nameserver_1 = new NameServerImpl();
     brpc::Server server;
     StartNameServer(&server, nameserver_1);
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client_1(FLAGS_use_rdma, FLAGS_endpoint, "");
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client_1(FLAGS_endpoint, "");
     name_server_client_1.Init();
 
     FLAGS_endpoint = "127.0.0.1:9931";
     brpc::Server server1;
     StartBlob(&server1);
-    ::rtidb::client::BsClient blob_client(FLAGS_use_rdma, FLAGS_endpoint, "");
+    ::rtidb::client::BsClient blob_client(FLAGS_endpoint, "");
     ASSERT_EQ(0, blob_client.Init());
 
     sleep(6);
@@ -199,20 +198,20 @@ TEST_F(NameServerImplObjectStoreTest, CreateTableWithBlobField) {
     NameServerImpl* nameserver = new NameServerImpl();
     brpc::Server server;
     StartNameServer(&server, nameserver);
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_use_rdma, FLAGS_endpoint, "");
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
     ASSERT_EQ(0, name_server_client.Init());
 
     FLAGS_endpoint = "127.0.0.1:9731";
     brpc::Server tablet_svr;
     ::rtidb::tablet::TabletImpl* tablet;
     StartTablet(&tablet_svr, &tablet);
-    ::rtidb::client::TabletClient tablet_client(FLAGS_use_rdma, FLAGS_endpoint, "");
+    ::rtidb::client::TabletClient tablet_client(FLAGS_endpoint, "");
     ASSERT_EQ(0, tablet_client.Init());
 
     FLAGS_endpoint = "127.0.0.1:9931";
     brpc::Server server1;
     StartBlob(&server1);
-    ::rtidb::client::BsClient blob_client(FLAGS_use_rdma, FLAGS_endpoint, "");
+    ::rtidb::client::BsClient blob_client(FLAGS_endpoint, "");
     ASSERT_EQ(0, blob_client.Init());
 
     sleep(6);

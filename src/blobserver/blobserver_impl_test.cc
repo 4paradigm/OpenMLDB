@@ -13,7 +13,6 @@
 DECLARE_string(hdd_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_string(endpoint);
-DECLARE_bool(use_rdma);
 
 namespace rtidb {
 namespace blobserver {
@@ -49,7 +48,7 @@ TEST_F(BlobServerImplTest, Basic_Test) {
     }
 
     uint32_t tid = counter++, pid = 0;
-    ::rtidb::client::BsClient client(FLAGS_use_rdma, FLAGS_endpoint, "");
+    ::rtidb::client::BsClient client(FLAGS_endpoint, "");
     ASSERT_EQ(client.Init(), 0);
     std::string err_msg;
     {

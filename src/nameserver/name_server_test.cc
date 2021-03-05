@@ -35,7 +35,6 @@ DECLARE_bool(auto_failover);
 DECLARE_bool(enable_timeseries_table);
 DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
-DECLARE_bool(use_rdma);
 
 using brpc::Server;
 using rtidb::tablet::TabletImpl;
@@ -133,7 +132,7 @@ TEST_F(NameServerImplTest, CreateDisallowedTable) {
     brpc::Server server;
     ASSERT_TRUE(StartNS("127.0.0.1:9631", &server, &options));
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(
-        FLAGS_use_rdma, "127.0.0.1:9631", "");
+        "127.0.0.1:9631", "");
     name_server_client.Init();
 
     brpc::ServerOptions options1;
@@ -168,7 +167,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     brpc::Server server;
     ASSERT_TRUE(StartNS("127.0.0.1:9631", &server, &options));
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(
-        FLAGS_use_rdma, "127.0.0.1:9631", "");
+        "127.0.0.1:9631", "");
     int ret = name_server_client.Init();
 
     brpc::ServerOptions options1;
@@ -359,7 +358,7 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    ::rtidb::client::NsClient name_server_client(FLAGS_use_rdma, endpoint, "");
+    ::rtidb::client::NsClient name_server_client(endpoint, "");
     name_server_client.Init();
     std::string key = "auto_failover";
     std::string msg;
@@ -375,7 +374,7 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
     ASSERT_STREQ(conf_map[key].c_str(), "true");
     ret = name_server_client.DisConnectZK(msg);
     sleep(5);
-    ::rtidb::client::NsClient name_server_client1(FLAGS_use_rdma, endpoint1, "");
+    ::rtidb::client::NsClient name_server_client1(endpoint1, "");
     name_server_client1.Init();
     ret = name_server_client1.ConfGet(key, conf_map, msg);
     ASSERT_TRUE(ret);
@@ -403,7 +402,7 @@ TEST_F(NameServerImplTest, CreateTable) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_use_rdma, FLAGS_endpoint, "");
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
     name_server_client.Init();
 
     FLAGS_endpoint = "127.0.0.1:9531";
@@ -481,7 +480,7 @@ TEST_F(NameServerImplTest, Offline) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_use_rdma, FLAGS_endpoint, "");
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
     name_server_client.Init();
 
     FLAGS_endpoint = "127.0.0.1:9533";
@@ -601,7 +600,7 @@ TEST_F(NameServerImplTest, SetTablePartition) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_use_rdma, FLAGS_endpoint, "");
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
     name_server_client.Init();
 
     FLAGS_endpoint = "127.0.0.1:9531";
@@ -1548,7 +1547,7 @@ TEST_F(NameServerImplTest, CreateRelationalTable) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_use_rdma, FLAGS_endpoint, "");
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
     name_server_client.Init();
 
     FLAGS_hdd_root_path = "/tmp/" + GenRand();
@@ -1657,7 +1656,7 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
     brpc::Server server;
     ASSERT_TRUE(StartNS("127.0.0.1:9634", &server, &options));
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(
-        FLAGS_use_rdma, "127.0.0.1:9634", "");
+        "127.0.0.1:9634", "");
     name_server_client.Init();
 
     brpc::ServerOptions options1;
