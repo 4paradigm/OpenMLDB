@@ -114,13 +114,13 @@ TEST_F(BlobProxyImplTest, Basic_Test) {
     NameServerImpl* nameserver_1 = new NameServerImpl();
     brpc::Server server;
     StartNameServer(&server, nameserver_1);
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client_1(FLAGS_use_rdma, FLAGS_endpoint);
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client_1(FLAGS_endpoint);
     name_server_client_1.Init();
 
     FLAGS_endpoint = "127.0.0.1:9931";
     brpc::Server server1;
     StartBlob(&server1);
-    ::rtidb::client::BsClient blob_client(FLAGS_use_rdma, FLAGS_endpoint, "");
+    ::rtidb::client::BsClient blob_client(FLAGS_endpoint, "");
     ASSERT_EQ(0, blob_client.Init());
 
     sleep(6);

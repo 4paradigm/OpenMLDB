@@ -122,8 +122,7 @@ bool ClusterSDK::CreateNsClient() {
     if (!GetRealEndpoint(endpoint, &real_endpoint)) {
         return false;
     }
-    // TODO(developer): use_rdma
-    auto ns_client = std::make_shared<::rtidb::client::NsClient>(false, endpoint, real_endpoint);
+    auto ns_client = std::make_shared<::rtidb::client::NsClient>(endpoint, real_endpoint);
     int ret = ns_client->Init();
     if (ret != 0) {
         LOG(WARNING) << "fail to init ns client with endpoint " << endpoint;

@@ -169,7 +169,7 @@ bool BaseClient::Init(std::string* msg) {
             endpoint = real_ep;
         }
     }
-    ns_client_ = new rtidb::client::NsClient(false, endpoint, "");
+    ns_client_ = new rtidb::client::NsClient(endpoint, "");
     if (ns_client_->Init() < 0) {
         *msg = "ns client init failed";
         return false;
@@ -243,7 +243,7 @@ void BaseClient::UpdateEndpoint(const std::set<std::string>& alive_endpoints) {
         }
         auto iter = old_tablets.find(endpoint);
         if (iter == old_tablets.end()) {
-            auto tablet = std::make_shared<rtidb::client::TabletClient>(false, endpoint, real_endpoint);
+            auto tablet = std::make_shared<rtidb::client::TabletClient>(endpoint, real_endpoint);
             if (tablet->Init() != 0) {
                 std::cerr << endpoint << " initial failed!" << std::endl;
                 continue;
@@ -251,7 +251,7 @@ void BaseClient::UpdateEndpoint(const std::set<std::string>& alive_endpoints) {
             new_tablets.insert(std::make_pair(endpoint, tablet));
         } else {
             if (!real_endpoint.empty()) {
-                iter->second = std::make_shared<rtidb::client::TabletClient>(false, endpoint, real_endpoint);
+                iter->second = std::make_shared<rtidb::client::TabletClient>(endpoint, real_endpoint);
                 if (iter->second->Init() != 0) {
                     std::cerr << endpoint << " initial failed!" << std::endl;
                     continue;
@@ -280,8 +280,7 @@ void BaseClient::UpdateBlobEndpoint(
         }
         auto iter = old_blobs.find(endpoint);
         if (iter == old_blobs.end()) {
-            // TODO(developer): use_rdma
-            auto blob = std::make_shared<rtidb::client::BsClient>(false, endpoint, real_endpoint);
+            auto blob = std::make_shared<rtidb::client::BsClient>(endpoint, real_endpoint);
             if (blob->Init() != 0) {
                 std::cerr << endpoint << " initial failed!" << std::endl;
                 continue;
@@ -289,8 +288,7 @@ void BaseClient::UpdateBlobEndpoint(
             new_blobs.insert(std::make_pair(endpoint, blob));
         } else {
             if (!real_endpoint.empty()) {
-                // TODO(developer): use_rdma
-                iter->second = std::make_shared<rtidb::client::BsClient>(false, endpoint, real_endpoint);
+                iter->second = std::make_shared<rtidb::client::BsClient>(endpoint, real_endpoint);
                 if (iter->second->Init() != 0) {
                     std::cerr << endpoint << " initial failed!" << std::endl;
                     continue;
@@ -463,7 +461,7 @@ std::shared_ptr<rtidb::client::TabletClient> BaseClient::GetTabletClient(
     if (!GetRealEndpoint(endpoint, &real_endpoint)) {
         return std::shared_ptr<rtidb::client::TabletClient>();
     }
-    auto tablet = std::make_shared<rtidb::client::TabletClient>(false, endpoint, real_endpoint);
+    auto tablet = std::make_shared<rtidb::client::TabletClient>(endpoint, real_endpoint);
     int code = tablet->Init();
     if (code < 0) {
         *msg = "failed init table client";
@@ -489,7 +487,7 @@ std::shared_ptr<rtidb::client::BsClient> BaseClient::GetBlobClient(
     if (!GetRealEndpoint(endpoint, &real_endpoint)) {
         return std::shared_ptr<rtidb::client::BsClient>();
     }
-    auto blob = std::make_shared<rtidb::client::BsClient>(false, endpoint, real_endpoint);
+    auto blob = std::make_shared<rtidb::client::BsClient>(endpoint, real_endpoint);
     int code = blob->Init();
     if (code < 0) {
         *msg = "failed init blob client";

@@ -72,7 +72,7 @@ TEST_F(BinlogTest, DeleteBinlog) {
     uint32_t tid = 2;
     uint32_t pid = 123;
 
-    ::rtidb::client::TabletClient client(FLAGS_use_rdma, leader_point, "");
+    ::rtidb::client::TabletClient client(leader_point, "");
     client.Init();
     std::vector<std::string> endpoints;
     bool ret =

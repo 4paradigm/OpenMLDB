@@ -49,9 +49,9 @@ TEST_F(ClientManagerTest, client_manager_test) {
     ASSERT_EQ(2u, table_st.GetPartition(1).GetFollower().size());
 
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>> tablet_clients;
-    auto client0 = std::make_shared<::rtidb::client::TabletClient>(false, "name0", "endpoint0");
-    auto client1 = std::make_shared<::rtidb::client::TabletClient>(false, "name1", "endpoint1");
-    auto client2 = std::make_shared<::rtidb::client::TabletClient>(false, "name2", "endpoint2");
+    auto client0 = std::make_shared<::rtidb::client::TabletClient>("name0", "endpoint0");
+    auto client1 = std::make_shared<::rtidb::client::TabletClient>("name1", "endpoint1");
+    auto client2 = std::make_shared<::rtidb::client::TabletClient>("name2", "endpoint2");
     tablet_clients.emplace("name0", client0);
     tablet_clients.emplace("name1", client1);
     tablet_clients.emplace("name2", client2);
@@ -65,7 +65,7 @@ TEST_F(ClientManagerTest, client_manager_test) {
     ASSERT_EQ("endpoint0",
               table_client_manager.GetPartitionClientManager(0)->GetLeader()->GetClient()->GetRealEndpoint());
 
-    auto client3 = std::make_shared<::rtidb::client::TabletClient>(false, "name0", "endpoint3");
+    auto client3 = std::make_shared<::rtidb::client::TabletClient>("name0", "endpoint3");
     tablet_clients["name0"] = client3;
     manager.UpdateClient(tablet_clients);
     ASSERT_EQ("name0", table_client_manager.GetPartitionClientManager(0)->GetLeader()->GetClient()->GetEndpoint());
