@@ -1,278 +1,64 @@
-# FeSQL
+# Readme
 
-The first and fastest AI Native Database in the world
+## What is Hybrid SQL Engine
 
-## build 
+Hybrid SQL Engine是基于C++和LLVM实现的高性能SQL编译器和执行器。支持多种应用场景（ai应用 olda数据库，分布式hatp数据库, spark，streaming sql(flink) 等）
 
-安装基础工具
-* wget
-* unzip
-* texinfo
-* gcc 8.3.1
+<img src="./docs/img/HybridSE.png" alt="image-20210301164207172" style="width:600px" align="left"/>
 
+[Hybrid SQL Language Guide](./docs/language_guide/reference.md)
 
-## 安装依赖到rtidb
+Developer Guide
 
-```
-mkdir build 
-cmake -DCMAKE_INSTALL_PREFIX=/depends/thirdparty -DCOVERAGE_ENABLE=OFF -D .. && make install
-```
-
-Linux安装依赖库
-
-```
-sh tools/get_deps.sh
-```
-
-Mac下安装依赖库(缺RocksDB和zookeepr)
+## How to build
 
 ```shell
-brew tap iveney/mocha
-brew install realpath
-brew install gettext
-brew install gettext autoconf
-brew install libtool
-brew install pinfo
-ln -s `brew ls gettext | grep bin/autopoint` /usr/local/bin
-
-sh tools/get_deps.sh mac
+% cd ${PROJECT_ROOT_DIR}
+% mkdir -p build
+% cd build
+% cmake ..
+% make -j8
 ```
 
-编译
+## Example （待补充）
 
 ```
-mkdir build && cd build && cmake .. && make -j4
-```
-
-运行测试
-
-```
-cd build && make test
-```
-
-运行覆盖统计
-
-```
-cd build && make coverage
-```
-
-## 添加测试
-
-按照如下添加测试，方便make test能够运行
-```
-add_executable(flatbuf_ir_builder_test flatbuf_ir_builder_test.cc)
-target_link_libraries(flatbuf_ir_builder_test gflags fesql_codegen fesql_proto ${llvm_libs} protobuf glog gtest pthread)
-add_test(flatbuf_ir_builder_test flatbuf_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/flatbuf_ir_builder_test.xml)
-```
-
-## 添加覆盖率
-
-将测试target append到test_list里面，方便make coverage能够运行
-```
-list(APPEND test_list flatbuf_ir_builder_test)
-```
-
-## 规范检查
-
-请使用tools/cpplint.py 检查代码规范,
-如果有一些格式问题，可以使用clang-format去格式化代码
-```
-tools/cpplint.py  filename
-clang-format filename
-```
-
-## LocalRun环境
-
-```
-cd onebox
-# 启动dbms 和 tablet
-sh start_all.sh
-# 使用 cli访问
-sh start_cli.sh
-```
-
-## CMD使用说明
-
-### 启动服务端
-
-```shell script
-./fesql --role=dbms --port=9111 --log_dir=./log/dbms &
-```
-
-### 启动客户端
-
-```shell script
-./fesql --role=client --endpoint=127.0.0.1:9111 --log_dir=./log/client
-```
-
-
-## FeSQL CMD 
-
-#### 创建数据库
-
-```mysql
-CREATE DATABASE db_name
-```
-
-#### 进入数据库
-
-```MYSQL
-USE db_name;
-```
-
-#### 查看所有数据库列表信息
-
-```mysql
- SHOW DATABASES;
-```
-
-#### 查看当前数据库下表信息
-
-```mysql
-SHOW TABLES;
-```
-
-#### 创建schema
-
-```mysql
-CREATE TABLE t1 (
-column1 int,
-col2 string,
-col3 float
-);
-```
-
-#### 查看表schema
-
-```SQL
-DESC table_name;
-+---------+---------+------+
-| Field   | Type    | Null |
-+---------+---------+------+
-| column1 | kInt32  | NO   |
-| col2    | kString | NO   |
-| col3    | kFloat  | NO   |
-+---------+---------+------+
-```
-
-
-### 查询SQL
-
-#### simple udf query
-```sql
-create table IF NOT EXISTS t1(
-    column1 int NOT NULL,
-    column2 int NOT NULL,
-    column3 float NOT NULL,
-    column4 bigint NOT NULL,
-    column5 int NOT NULL,
-    column6 string,
-    index(key=column1, ts=column4)
-);
-insert into t1 values(1, 2, 3.3, 1000, 5, "hello");
-insert into t1 values(1, 3, 4.4, 2000, 6, "world");
-insert into t1 values(11, 4, 5.5, 3000, 7, "string1");
-insert into t1 values(11, 5, 6.6, 4000, 8, "string2");
-insert into t1 values(11, 6, 7.7, 5000, 9, "string3");
-insert into t1 values(1, 2, 3.3, 1000, 5, "hello");
-insert into t1 values(1, 3, 4.4, 2000, 6, "world");
-insert into t1 values(11, 4, 5.5, 3000, 7, "string1");
-insert into t1 values(11, 5, 6.6, 4000, 8, "string2");
-insert into t1 values(11, 6, 7.7, 5000, 9, "string3");
-%%fun
-def test(a:int32,b:int32):int32
-    c=a+b
-    d=c+1
-    return d
-end
-%%sql
-SELECT column1, column2,test(column1,column5) as f1 FROM t1 limit 10;
-
-+---------+---------+----+
-| column1 | column2 | f1 |
-+---------+---------+----+
-| 1       | 3       | 8  |
-| 1       | 3       | 8  |
-| 1       | 2       | 7  |
-| 1       | 2       | 7  |
-| 11      | 6       | 21 |
-| 11      | 6       | 21 |
-| 11      | 5       | 20 |
-| 11      | 5       | 20 |
-| 11      | 4       | 19 |
-| 11      | 4       | 19 |
-+---------+---------+----+
-```
-
-### 查询window聚合结果
-```sql
-create table IF NOT EXISTS t2(
-    column1 int NOT NULL,
-    column2 int NOT NULL,
-    column3 float NOT NULL,
-    column4 bigint NOT NULL,
-    column5 int NOT NULL,
-    column6 string,
-    index(key=column6, ts=column4)
-);
-insert into t2 values(1, 2, 3.3, 1000, 5, "hello");
-insert into t2 values(1, 3, 4.4, 2000, 6, "world");
-insert into t2 values(11, 4, 5.5, 3000, 7, "string1");
-insert into t2 values(11, 5, 6.6, 4000, 8, "string2");
-insert into t2 values(11, 6, 7.7, 5000, 9, "string3");
-insert into t2 values(1, 2, 3.3, 1000, 5, "hello");
-insert into t2 values(1, 3, 4.4, 2000, 6, "world");
-insert into t2 values(11, 4, 5.5, 3000, 7, "string1");
-insert into t2 values(11, 5, 6.6, 4000, 8, "string2");
-insert into t2 values(11, 6, 7.7, 5000, 9, "string3");
-
-select column1, column2, column3, column4, column5, column6 from t2 limit 100;
-select
-sum(column1) OVER w1 as w1_col1_sum, 
-sum(column2) OVER w1 as w1_col2_sum, 
-sum(column3) OVER w1 as w1_col3_sum, 
-sum(column4) OVER w1 as w1_col4_sum, 
-sum(column5) OVER w1 as w1_col5_sum 
-FROM t2 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 ROWS BETWEEN 3000 PRECEDING AND CURRENT ROW) limit 100;
-
+% cd ${PROJECT_ROOT_DIR}
+% cd example
+% 
 
 ```
 
+## HyBridSE Roadmap
 
-## UDF
-### 算术表达式
-```python
-def test(int:a):int
-    return a+1
-end
-```
-### 逻辑和关系表达式
-```python
-def test(int:a):int
-    return a>1
-end
-```
-### 条件表达式
-```python
-def test(int:a):int
-    if a > 1 
-        return 1
-    else
-        return 0
-end
-```
+### ANSI SQL兼容
 
-### 循环表达式
+HybridSE已经兼容主流的DDL、DML语法，并将逐步增强对ANSI SQL语法的兼容性，从而简化用户从其他SQL引擎迁移的成本。
 
-```python
-def test(list<int>:elements):int
-    result = 0
-    for x in elements
-        result += x
-end
-```
+* [2021H1&H2] 完善Window的标准语法，支持Where, Group By, Join等操作
+* [2021H1&H2] 针对AI场景扩展特有的语法特性和UDAF函数
+
+### 性能
+
+HybridSE内置数十种SQL表达式和逻辑计划优化，提供标准的优化Pass实现接口，未来将会接入更多的SQL优化从而提升系统性能。
+
+* [2021H1 ]面向批式数据处理和请求式数据处理场景支持逻辑和物理计划优化
+* [2021H1] 支持高性能分布式执行计划生成和代码生成
+* [2021H2] 基于LLVM的表达式编译和生成代码优化
+* [2021H2] 更多经典SQL表达式优化过程支持
+
+### 生态
+
+HybridSE可拓展适配NoSQL、OLAP、OLTP等系统，已支持SparkSQL和FEDB底层替换，未来将兼容接入更多开源生态系统。
+
+* [2021H2] 适配流式等主流开源SQL计算框架等，如优化FlinkSQL性能等
+* [2021H2] 适配多种行编码格式和列编码格式，兼容Apache Arrow格式和生态
+* [2021H2] 支持主流编程语言接口，包括C++, Java, Python, Go, Rust SDK等
+
+## Versions
 
 
 
+## License
 
-
+Apache License 2.0
