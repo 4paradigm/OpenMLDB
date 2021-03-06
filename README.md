@@ -1,5 +1,3 @@
-# Readme
-
 ## What is Hybrid SQL Engine
 
 Hybrid SQL Engine是基于C++和LLVM实现的高性能SQL编译器。能基于场景优化支持多种应用场景（ai应用 olda数据库，分布式hatp数据库, spark, streaming sql(flink) 等）
