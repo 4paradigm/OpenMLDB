@@ -4936,7 +4936,7 @@ void HandleClientShowSchema(const std::vector<std::string>& parts,
         if (table_meta.added_column_desc_size() == 0) {
             ::rtidb::cmd::PrintSchema(table_meta.column_desc());
         } else {
-            ::rtidb::cmd::PrintSchema(schema);
+            ::rtidb::cmd::PrintSchema(schema, true);
         }
         printf("\n#ColumnKey\n");
         ::rtidb::api::TTLType ttl_type;

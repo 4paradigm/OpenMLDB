@@ -22,7 +22,7 @@ endif ()
 project(rtidb)
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
-set(CMAKE_BUILD_TYPE RelWithDebInfo)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif ()
 message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 set(RTIDB_VERSION_MAJOR 1)

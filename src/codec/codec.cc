@@ -31,7 +31,8 @@ namespace codec {
 static const std::unordered_set<::rtidb::type::DataType> TYPE_SET(
     {::rtidb::type::kBool, ::rtidb::type::kSmallInt, ::rtidb::type::kInt,
      ::rtidb::type::kBigInt, ::rtidb::type::kFloat, ::rtidb::type::kDouble,
-     ::rtidb::type::kDate, ::rtidb::type::kTimestamp, ::rtidb::type::kVarchar});
+     ::rtidb::type::kDate, ::rtidb::type::kTimestamp, ::rtidb::type::kVarchar,
+     ::rtidb::type::kString});
 
 static constexpr std::array<uint32_t, 9> TYPE_SIZE_ARRAY = {
     0,
