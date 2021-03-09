@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 set_property(GLOBAL PROPERTY PROP_SRC_FILE_LIST)
 set_property(GLOBAL PROPERTY PROP_TEST_SRC_FILE_LIST)
 
@@ -46,10 +44,7 @@ fesql_add_src_and_tests(udf)
 fesql_add_src_and_tests(node)
 fesql_add_src_and_tests(plan)
 fesql_add_src_and_tests(codegen)
-fesql_add_src_and_tests(storage)
-fesql_add_src_and_tests(dbms)
 fesql_add_src_and_tests(vm)
-fesql_add_src_and_tests(tablet)
 fesql_add_src_and_tests(codec)
 fesql_add_src_and_tests(case)
 fesql_add_src_and_tests(parser)
@@ -95,11 +90,6 @@ if (TESTING_ENABLE)
 	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
-# fesql bin
-add_subdirectory(cmd)
-
 # fesql sdk
 add_subdirectory(sdk)
 
-# fesql bm
-add_subdirectory(bm)

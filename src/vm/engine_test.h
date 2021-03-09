@@ -67,12 +67,6 @@ static const int ENGINE_TEST_INIT_CATALOG_ERROR = 4;
 
 namespace fesql {
 namespace vm {
-using fesql::base::Status;
-using fesql::codec::Row;
-using fesql::common::kSQLError;
-using fesql::sqlcase::SQLCase;
-
-enum EngineRunMode { RUNBATCH, RUNONE };
 
 std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
@@ -83,11 +77,13 @@ void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
         FAIL();
     }
 }
+
 std::vector<SQLCase> InitCases(std::string yaml_path) {
     std::vector<SQLCase> cases;
     InitCases(yaml_path, cases);
     return cases;
 }
+enum EngineRunMode { RUNBATCH, RUNONE };
 
 int GenerateSqliteTestStringCallback(void* s, int argc, char** argv,
                                      char** azColName) {
@@ -413,6 +409,7 @@ bool InitEngineCatalog(
     }
     return true;
 }
+
 
 void DoEngineCheckExpect(const SQLCase& sql_case,
                          std::shared_ptr<RunSession> session,

@@ -58,6 +58,13 @@ class SimpleCatalogTableHandler : public TableHandler {
     RowIterator *GetRawIterator() override;
 
  private:
+    inline int32_t GetColumnIndex(const std::string& column) {
+        auto it = types_dict_.find(column);
+        if (it != types_dict_.end()) {
+            return it->second.idx;
+        }
+        return -1;
+    }
     std::string db_name_;
     fesql::type::TableDef table_def_;
 
@@ -70,7 +77,7 @@ class SimpleCatalogTableHandler : public TableHandler {
  */
 class SimpleCatalog : public Catalog {
  public:
-    SimpleCatalog();
+    SimpleCatalog(const bool enable_index = false);
     SimpleCatalog(const SimpleCatalog &) = delete;
     ~SimpleCatalog();
 
@@ -79,8 +86,8 @@ class SimpleCatalog : public Catalog {
     std::shared_ptr<TableHandler> GetTable(
         const std::string &db, const std::string &table_name) override;
     bool IndexSupport() override;
-
  private:
+    bool enable_index_;
     std::map<std::string,
              std::map<std::string, std::shared_ptr<SimpleCatalogTableHandler>>>
         table_handlers_;

@@ -5,11 +5,11 @@
 
 ```SQL
 create table test(
-    column1 int NOT NULL,
-    column2 timestamp NOT NULL,
-    column3 int NOT NULL,
-    column4 string NOT NULL,
-    index(key=column4, ts=column3)
+                     column1 int NOT NULL,
+                     column2 timestamp NOT NULL,
+                     column3 bigint NOT NULL,
+                     column4 string NOT NULL,
+                     index(key=column4, ts=column3)
 );
 ```
 
@@ -19,7 +19,7 @@ create table test(
 create table test(
     column1 int NOT NULL,
     column2 timestamp NOT NULL,
-    column3 int NOT NULL,
+    column3 bigint NOT NULL,
     column4 string NOT NULL,
     index(key=(column4, column3), ts=column2)
 );
@@ -34,7 +34,7 @@ create table test(
     column2 timestamp NOT NULL,
     column3 int NOT NULL,
     column4 string NOT NULL,
-    column5 int NOT NULL,
+    column5 bigint NOT NULL,
     index(key=(column4, column3), version=(column5, 2))
 );
 ```
@@ -74,7 +74,7 @@ create table test(
 create table test(
     column1 int NOT NULL,
     column2 timestamp NOT NULL,
-    column3 int NOT NULL,
+    column3 bigint NOT NULL,
     column4 string NOT NULL,
     index(key=column4, ts=column3)
 ) replicanum=2;
@@ -85,7 +85,7 @@ create table test(
 create table test(
     column1 int NOT NULL,
     column2 timestamp NOT NULL,
-    column3 int NOT NULL,
+    column3 bigint NOT NULL,
     column4 string NOT NULL,
     index(key=column4, ts=column3)
 ) replicanum=2, distribution(leader="127.0.0.1:9927", follower="127.0.0.1:9926");

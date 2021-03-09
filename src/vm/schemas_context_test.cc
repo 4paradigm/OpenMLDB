@@ -21,13 +21,27 @@
 #include "gtest/gtest.h"
 #include "passes/physical/physical_pass.h"
 #include "vm/engine.h"
-#include "vm/engine_test.h"
 #include "vm/simple_catalog.h"
+#include "vm/test_base.h"
 #include "yaml-cpp/yaml.h"
 
 namespace fesql {
 namespace vm {
+std::vector<SQLCase> InitCases(std::string yaml_path);
+void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
+void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
+    if (!SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
+                                         yaml_path, cases)) {
+        FAIL();
+    }
+}
+
+std::vector<SQLCase> InitCases(std::string yaml_path) {
+    std::vector<SQLCase> cases;
+    InitCases(yaml_path, cases);
+    return cases;
+}
 class SchemasContextTest : public ::testing::Test {
  public:
     SchemasContextTest()
@@ -164,15 +178,12 @@ void CheckColumnResolveCases(const SQLCase& sql_case, PhysicalOpNode* node) {
 }
 
 PhysicalOpNode* GetTestSQLPlan(const SQLCase& sql_case, RunSession* session) {
-    std::map<std::string, std::shared_ptr<::fesql::storage::Table>> table_dict;
     std::map<size_t, std::string> idx_to_table_dict;
-    auto catalog = std::make_shared<tablet::TabletCatalog>();
-
+    auto catalog = std::make_shared<SimpleCatalog>();
     EngineOptions options;
     options.set_plan_only(true);
     auto engine = std::make_shared<vm::Engine>(catalog, options);
-    InitEngineCatalog(sql_case, options, table_dict, idx_to_table_dict, engine,
-                      catalog);
+    InitSimpleCataLogFromSQLCase(sql_case, catalog);
 
     // Compile sql plan
     base::Status status;

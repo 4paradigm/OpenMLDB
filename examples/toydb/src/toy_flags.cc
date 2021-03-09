@@ -15,10 +15,14 @@
  */
 
 #include <gflags/gflags.h>
-// batch config
-DEFINE_string(default_db_name, "_fesql",
-              "config the default batch catalog db name");
-
-// Offline Spark config
-DEFINE_bool(enable_spark_unsaferow_format, false,
-            "config if codec uses Spark UnsafeRow format");
+// cluster config
+DEFINE_string(fesql_endpoint, "",
+        "config the ip and port that fesql serves for");
+DEFINE_int32(fesql_port, 0, "config the port that fesql serves for");
+DEFINE_int32(fesql_thread_pool_size, 8,
+        "config the thread pool for dbms and tablet");
+DEFINE_string(tablet_endpoint, "",
+              "config the ip and port that fesql tablet for");
+// for tablet
+DEFINE_string(dbms_endpoint, "", "config the ip and port that fesql dbms for");
+DEFINE_bool(enable_keep_alive, true, "config if tablet keep alive with dbms");

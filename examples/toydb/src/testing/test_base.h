@@ -22,16 +22,13 @@
 #include <string>
 #include "glog/logging.h"
 #include "plan/planner.h"
+#include "tablet/tablet_catalog.h"
 #include "vm/catalog.h"
 #include "vm/engine.h"
-#include "vm/simple_catalog.h"
 
 namespace fesql {
 namespace vm {
-using fesql::base::Status;
-using fesql::codec::Row;
-using fesql::common::kSQLError;
-using fesql::sqlcase::SQLCase;
+
 void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
     table.set_catalog("db");
@@ -425,44 +422,65 @@ void ExtractExprFromSimpleSQL(::fesql::node::NodeManager* nm,
     *output = project->GetExpression();
 }
 
-bool AddTable(fesql::type::Database& db,  // NOLINT
-              const fesql::type::TableDef& table_def) {
-    *(db.add_tables()) = table_def;
-    return true;
-}
-
-std::shared_ptr<SimpleCatalog> BuildCommonCatalog(
-    const fesql::type::Database& database) {
-    std::shared_ptr<SimpleCatalog> catalog(new SimpleCatalog(true));
-    catalog->AddDatabase(database);
-    return catalog;
-}
-std::shared_ptr<SimpleCatalog> BuildCommonCatalog() {
-    std::shared_ptr<SimpleCatalog> catalog(new SimpleCatalog(true));
-    return catalog;
-}
-
-bool InitSimpleCataLogFromSQLCase(const SQLCase& sql_case,  // NOLINT
-                                  std::shared_ptr<SimpleCatalog> catalog) {
-    fesql::type::Database db;
-    db.set_name(sql_case.db());
-    for (int32_t i = 0; i < sql_case.CountInputs(); i++) {
-        std::string actual_name = sql_case.inputs()[i].name_;
-        if (actual_name.empty()) {
-            actual_name = SQLCase::GenRand("auto_t");
-        }
-        type::TableDef table_def;
-        if (!sql_case.ExtractInputTableDef(table_def, i)) {
-            return false;
-        }
-        table_def.set_name(actual_name);
-        if (!AddTable(db, table_def)) {
-            return false;
-        }
+bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
+              const fesql::type::TableDef& table_def,
+              std::shared_ptr<fesql::storage::Table> table) {
+    std::shared_ptr<tablet::TabletTableHandler> handler(
+        new tablet::TabletTableHandler(table_def.columns(), table_def.name(),
+                                       table_def.catalog(), table_def.indexes(),
+                                       table));
+    bool ok = handler->Init();
+    if (!ok) {
+        return false;
     }
-    catalog->AddDatabase(db);
-    return true;
+    return catalog->AddTable(handler);
 }
+
+bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
+              const fesql::type::TableDef& table_def,
+              std::shared_ptr<fesql::storage::Table> table, Engine* engine) {
+    auto local_tablet = std::shared_ptr<vm::Tablet>(
+        new vm::LocalTablet(engine, std::shared_ptr<CompileInfoCache>()));
+    std::shared_ptr<tablet::TabletTableHandler> handler(
+        new tablet::TabletTableHandler(table_def.columns(), table_def.name(),
+                                       table_def.catalog(), table_def.indexes(),
+                                       table, local_tablet));
+    bool ok = handler->Init();
+    if (!ok) {
+        return false;
+    }
+    return catalog->AddTable(handler);
+}
+
+std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
+    const fesql::type::TableDef& table_def,
+    std::shared_ptr<fesql::storage::Table> table) {
+    std::shared_ptr<tablet::TabletCatalog> catalog(new tablet::TabletCatalog());
+    bool ok = catalog->Init();
+    if (!ok) {
+        return std::shared_ptr<tablet::TabletCatalog>();
+    }
+    if (!AddTable(catalog, table_def, table)) {
+        return std::shared_ptr<tablet::TabletCatalog>();
+    }
+    type::Database database;
+    database.set_name(table_def.catalog());
+    *database.add_tables() = table_def;
+    catalog->AddDB(database);
+    return catalog;
+}
+
+std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog() {
+    std::shared_ptr<tablet::TabletCatalog> catalog(new tablet::TabletCatalog());
+    return catalog;
+}
+std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
+    const fesql::type::TableDef& table_def) {
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    return BuildCommonCatalog(table_def, table);
+}
+
 void PrintSchema(std::ostringstream& ss, const Schema& schema) {
     for (int32_t i = 0; i < schema.size(); i++) {
         if (i > 0) {

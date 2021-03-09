@@ -14,11 +14,21 @@
  * limitations under the License.
  */
 
-#include <gflags/gflags.h>
-// batch config
-DEFINE_string(default_db_name, "_fesql",
-              "config the default batch catalog db name");
+#include "benchmark/benchmark.h"
+#include "llvm/Transforms/Scalar.h"
+#include "storage_bm_case.h"
 
-// Offline Spark config
-DEFINE_bool(enable_spark_unsaferow_format, false,
-            "config if codec uses Spark UnsafeRow format");
+namespace fesql {
+namespace bm {
+using namespace ::llvm;  // NOLINT
+
+static void BM_ArrayListIterate(benchmark::State& state) {  // NOLINT
+    ArrayListIterate(&state, BENCHMARK, state.range(0));
+}
+
+BENCHMARK(BM_ArrayListIterate)->Args({100})->Args({1000})->Args({10000});
+
+}  // namespace bm
+}  // namespace fesql
+
+BENCHMARK_MAIN();
