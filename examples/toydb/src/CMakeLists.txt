@@ -39,6 +39,7 @@ toydb_add_src_and_tests(storage)
 toydb_add_src_and_tests(dbms)
 toydb_add_src_and_tests(tablet)
 toydb_add_src_and_tests(sdk)
+toydb_add_src_and_tests(testing)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(TOYDB_LIBS ${ABSL_LIBS} ${yaml_libs} ${g_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} tcmalloc ${OS_LIB} benchmark gtest)
