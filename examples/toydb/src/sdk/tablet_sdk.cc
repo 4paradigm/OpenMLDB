@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "tablet_sdk.h"
+#include "sdk/tablet_sdk.h"
 #include <map>
 #include <memory>
 #include <string>

@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-#include "tablet_sdk.h"
+#include "sdk/tablet_sdk.h"
 #include <unistd.h>
 #include "base/fe_strings.h"
 #include "brpc/server.h"
 #include "dbms/dbms_server_impl.h"
-#include "dbms_sdk.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
+#include "sdk/dbms_sdk.h"
 #include "tablet/tablet_internal_sdk.h"
 #include "tablet/tablet_server_impl.h"
 

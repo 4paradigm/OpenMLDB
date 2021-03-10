@@ -19,10 +19,10 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "base_impl.h"
+#include "../../examples/toydb/src/sdk/base_impl.h"
 #include "request_row.h"
+#include "result_set.h"
 #include "sdk/base.h"
-#include "sdk/result_set.h"
 #include "tablet_sdk.h"
 
 namespace fesql {

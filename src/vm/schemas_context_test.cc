@@ -177,7 +177,8 @@ void CheckColumnResolveCases(const SQLCase& sql_case, PhysicalOpNode* node) {
     }
 }
 
-PhysicalOpNode* GetTestSQLPlan(const SQLCase& sql_case, RunSession* session) {
+PhysicalOpNode* GetTestSQLPlan(SQLCase& sql_case, // NOLINT
+                               RunSession* session) {
     std::map<size_t, std::string> idx_to_table_dict;
     auto catalog = std::make_shared<SimpleCatalog>();
     EngineOptions options;
@@ -189,8 +190,8 @@ PhysicalOpNode* GetTestSQLPlan(const SQLCase& sql_case, RunSession* session) {
     base::Status status;
     bool ok = engine->Get(sql_case.sql_str(), sql_case.db(), *session, status);
     if (!ok) {
-        LOG(WARNING) << status;
-        return nullptr;
+    LOG(WARNING) << status;
+    return nullptr;
     }
     return session->GetCompileInfo()->get_sql_context().physical_plan;
 }
@@ -201,7 +202,7 @@ INSTANTIATE_TEST_CASE_P(
         InitCases("/cases/schemas_context/resolve_column_name.yaml")));
 
 TEST_P(SchemasContextResolveTest, test_request_column_resolve) {
-    const SQLCase& sql_case = GetParam();
+    SQLCase sql_case = GetParam();
     LOG(INFO) << "Test resolve request mode sql root of: "
               << sql_case.sql_str();
 
@@ -211,7 +212,7 @@ TEST_P(SchemasContextResolveTest, test_request_column_resolve) {
 }
 
 TEST_P(SchemasContextResolveTest, test_batch_column_resolve) {
-    const SQLCase& sql_case = GetParam();
+    SQLCase sql_case = GetParam();
     LOG(INFO) << "Test resolve request mode sql root of: "
               << sql_case.sql_str();
 

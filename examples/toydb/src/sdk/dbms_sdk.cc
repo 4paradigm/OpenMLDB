@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "dbms_sdk.h"
+#include "sdk/dbms_sdk.h"
 
 #include <iostream>
 #include <map>
@@ -28,7 +28,7 @@
 #include "plan/planner.h"
 #include "proto/dbms.pb.h"
 #include "result_set_impl.h"
-#include "tablet_sdk.h"
+#include "sdk/tablet_sdk.h"
 
 namespace fesql {
 namespace sdk {

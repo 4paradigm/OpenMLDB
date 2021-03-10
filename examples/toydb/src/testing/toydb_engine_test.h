@@ -184,7 +184,6 @@ void BatchRequestEngineCheckWithCommonColumnIndices(
               << oss.str() << "]";
     ToydbBatchRequestEngineTestRunner engine_test(sql_case, options,
                                                   common_column_indices);
-    engine_test.InitEngineCatalog();
     engine_test.RunCheck();
 }
 
@@ -233,12 +232,10 @@ void EngineCheck(const SQLCase& sql_case, const EngineOptions& options,
                  EngineMode engine_mode) {
     if (engine_mode == kBatchMode) {
         ToydbBatchEngineTestRunner engine_test(sql_case, options);
-        engine_test.InitEngineCatalog();
         engine_test.RunCheck();
         engine_test.RunSQLiteCheck();
     } else if (engine_mode == kRequestMode) {
         ToydbRequestEngineTestRunner engine_test(sql_case, options);
-        engine_test.InitEngineCatalog();
         engine_test.RunCheck();
     } else if (engine_mode == kBatchRequestMode) {
         BatchRequestEngineCheck(sql_case, options);

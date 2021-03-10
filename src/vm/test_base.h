@@ -25,6 +25,7 @@
 #include "vm/catalog.h"
 #include "vm/engine.h"
 #include "vm/simple_catalog.h"
+#include "case/sql_case.h"
 
 namespace fesql {
 namespace vm {
@@ -442,20 +443,20 @@ std::shared_ptr<SimpleCatalog> BuildCommonCatalog() {
     return catalog;
 }
 
-bool InitSimpleCataLogFromSQLCase(const SQLCase& sql_case,  // NOLINT
+bool InitSimpleCataLogFromSQLCase(SQLCase& sql_case,  // NOLINT
                                   std::shared_ptr<SimpleCatalog> catalog) {
     fesql::type::Database db;
     db.set_name(sql_case.db());
     for (int32_t i = 0; i < sql_case.CountInputs(); i++) {
-        std::string actual_name = sql_case.inputs()[i].name_;
-        if (actual_name.empty()) {
-            actual_name = SQLCase::GenRand("auto_t");
+        sql_case.inputs_[i].name_ = sql_case.inputs()[i].name_;
+        if (sql_case.inputs_[i].name_.empty()) {
+            sql_case.inputs_[i].name_ = SQLCase::GenRand("auto_t");
         }
         type::TableDef table_def;
         if (!sql_case.ExtractInputTableDef(table_def, i)) {
             return false;
         }
-        table_def.set_name(actual_name);
+        table_def.set_name(sql_case.inputs_[i].name_);
         if (!AddTable(db, table_def)) {
             return false;
         }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include <utility>
-#include "vm/engine_test.h"
+#include "testing/toydb_engine_test.h"
 
 DEFINE_string(yaml_path, "", "Yaml filepath to load cases from");
 DEFINE_string(runner_mode, "batch",
@@ -47,11 +47,11 @@ int DoRunEngine(const SQLCase& sql_case, const EngineOptions& options,
                 EngineMode engine_mode) {
     std::shared_ptr<EngineTestRunner> runner;
     if (engine_mode == kBatchMode) {
-        runner = std::make_shared<BatchEngineTestRunner>(sql_case, options);
+        runner = std::make_shared<ToydbBatchEngineTestRunner>(sql_case, options);
     } else if (engine_mode == kRequestMode) {
-        runner = std::make_shared<RequestEngineTestRunner>(sql_case, options);
+        runner = std::make_shared<ToydbRequestEngineTestRunner>(sql_case, options);
     } else {
-        runner = std::make_shared<BatchRequestEngineTestRunner>(
+        runner = std::make_shared<ToydbBatchRequestEngineTestRunner>(
             sql_case, options, sql_case.batch_request().common_column_indices_);
     }
     if (FLAGS_run_iters > 0) {

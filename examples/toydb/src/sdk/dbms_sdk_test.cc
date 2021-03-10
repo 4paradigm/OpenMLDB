@@ -15,7 +15,7 @@
  */
 
 
-#include "dbms_sdk.h"
+#include "sdk/dbms_sdk.h"
 #include <unistd.h>
 #include <map>
 #include <string>

@@ -20,8 +20,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "result_set.h"
 #include "sdk/base.h"
-#include "sdk/result_set.h"
 
 namespace fesql {
 namespace sdk {

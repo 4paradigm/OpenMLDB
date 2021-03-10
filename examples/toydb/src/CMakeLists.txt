@@ -38,7 +38,6 @@ endfunction(toydb_add_src_and_tests)
 toydb_add_src_and_tests(storage)
 toydb_add_src_and_tests(dbms)
 toydb_add_src_and_tests(tablet)
-toydb_add_src_and_tests(sdk)
 toydb_add_src_and_tests(testing)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -52,7 +51,10 @@ string(REPLACE " " ";" TOYDB_SRC_FILE_LIST ${TOYDB_SRC_FILE_LIST_STR})
 # toydb lib
 add_library(fesql_toy_lib STATIC ${TOYDB_SRC_FILE_LIST})
 add_library(toy_flags STATIC toy_flags.cc)
-target_link_libraries(fesql_toy_lib fesql_sdk fesql_flags toy_flags ${TOYDB_LIIBS})
+set(TOYDB_DEPS_LIBS fesql_core fesql_flags toy_flags
+        ${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${OS_LIB})
+
+target_link_libraries(fesql_toy_lib ${TOYDB_DEPS_LIBS})
 
 # toydb unittests
 if (TESTING_ENABLE)
@@ -78,14 +80,12 @@ if (TESTING_ENABLE)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
+# toy sdk
+add_subdirectory(sdk)
+
 # fesql bin
 add_executable(fesql cmd/fesql.cc)
-target_link_libraries(fesql fesql_core fesql_flags fesql_toy_lib)
-
-# udf exporter
-add_executable(export_udf_info cmd/export_udf_info.cc)
-target_link_libraries(export_udf_info fesql_core)
-
+target_link_libraries(fesql fesql_core fesql_flags fesql_toy_lib fesql_sdk)
 # engine execution
 add_executable(fesql_run_engine cmd/fesql_run_engine.cc)
-target_link_libraries(fesql_run_engine fesql_core fesql_flags gtest sqlite3)
+target_link_libraries(fesql_run_engine fesql_toy_lib toy_flags fesql_flags gtest sqlite3)

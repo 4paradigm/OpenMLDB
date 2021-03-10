@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "request_row.h"
+#include "sdk/request_row.h"
 
 #include <stdint.h>
 #include <string>

@@ -14,8 +14,17 @@
  * limitations under the License.
  */
 
-%module fesql_interface
-%include fesql_interface_core.i
+%module toydb_sdk
+%include "std_unique_ptr.i"
+%include std_string.i
+%include std_shared_ptr.i
+%include stl.i
+%include stdint.i
+%include std_vector.i
+#ifdef SWIGJAVA
+%include various.i
+%apply char *BYTE { char *string_buffer_var_name };
+#endif
 
 %shared_ptr(fesql::sdk::DBMSSdk);
 %shared_ptr(fesql::sdk::TabletSdk);
@@ -27,19 +36,11 @@
 %shared_ptr(fesql::sdk::RequestRow);
 
 %{
-#include "node/plan_node.h"
-#include "node/sql_node.h"
 #include "sdk/base.h"
-#include "base/iterator.h"
 #include "sdk/request_row.h"
 #include "sdk/result_set.h"
 #include "sdk/tablet_sdk.h"
 #include "sdk/dbms_sdk.h"
-#include "vm/catalog.h"
-#include "vm/engine.h"
-#include "vm/jit_wrapper.h"
-#include "vm/physical_op.h"
-#include "vm/simple_catalog.h"
 
 using namespace fesql;
 using fesql::sdk::Schema;
@@ -49,27 +50,6 @@ using fesql::sdk::TableSet;
 using fesql::sdk::RequestRow;
 using fesql::sdk::DBMSSdk;
 using fesql::sdk::TabletSdk;
-using namespace fesql::node;
-using fesql::vm::SQLContext;
-using fesql::vm::Catalog;
-using fesql::vm::PhysicalOpNode;
-using fesql::vm::PhysicalSimpleProjectNode;
-using fesql::vm::RowView;
-using fesql::vm::FnInfo;
-using fesql::vm::Sort;
-using fesql::vm::Range;
-using fesql::vm::ConditionFilter;
-using fesql::vm::ColumnProjects;
-using fesql::vm::Key;
-using fesql::vm::WindowOp;
-using fesql::vm::EngineMode;
-using fesql::base::Iterator;
-using fesql::base::ConstIterator;
-using fesql::codec::RowIterator;
-using fesql::codec::Row;
-using fesql::vm::SchemasContext;
-using fesql::vm::SchemaSource;
-using fesql::node::PlanType;
 using fesql::sdk::ExplainInfo;
 %}
 

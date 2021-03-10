@@ -21,11 +21,11 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include "../sdk/tablet_sdk.h"
+#include "sdk/tablet_sdk.h"
 #include "base/texttable.h"
 #include "plan/planner.h"
 
-#include "../sdk/dbms_sdk.h"
+#include "sdk/dbms_sdk.h"
 #include "base/fe_linenoise.h"
 #include "base/fe_strings.h"
 #include "brpc/server.h"

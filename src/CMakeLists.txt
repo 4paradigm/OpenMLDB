@@ -93,3 +93,6 @@ endif()
 # fesql sdk
 add_subdirectory(sdk)
 
+# udf exporter
+add_executable(export_udf_info cmd/export_udf_info.cc)
+target_link_libraries(export_udf_info fesql_core)

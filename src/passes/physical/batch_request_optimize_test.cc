@@ -123,9 +123,10 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(
         InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
 
-void CheckOptimizePlan(const SQLCase& sql_case,
+void CheckOptimizePlan(const SQLCase& sql_case_org,
                        const std::set<size_t> common_column_indices,
                        bool unchanged) {
+    SQLCase sql_case = sql_case_org;
     if (boost::contains(sql_case.mode(), "request-unsupport") ||
         boost::contains(sql_case.mode(), "rtidb-unsupport")) {
         LOG(INFO) << "Skip mode " << sql_case.mode();
@@ -135,19 +136,15 @@ void CheckOptimizePlan(const SQLCase& sql_case,
         return;
     }
 
-    auto catalog = std::make_shared<tablet::TabletCatalog>();
-    std::map<std::string, std::shared_ptr<::fesql::storage::Table>> table_dict;
-    std::map<size_t, std::string> idx_to_table_dict;
+    auto catalog = std::make_shared<SimpleCatalog>();
+    InitSimpleCataLogFromSQLCase(sql_case, catalog);
     EngineOptions options;
     options.set_compile_only(true);
     auto engine = std::make_shared<vm::Engine>(catalog, options);
-    InitEngineCatalog(sql_case, options, table_dict, idx_to_table_dict, engine,
-                      catalog);
-
     std::string sql_str = sql_case.sql_str();
     for (int j = 0; j < sql_case.CountInputs(); ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
-        boost::replace_all(sql_str, placeholder, idx_to_table_dict[j]);
+        boost::replace_all(sql_str, placeholder, sql_case.inputs_[j].name_);
     }
     LOG(INFO) << "Compile SQL:\n" << sql_str;
 
