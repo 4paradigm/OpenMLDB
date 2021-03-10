@@ -43,7 +43,7 @@ TEST_F(RepeaterTest, Int16_Repeater) {
     }
 }
 
-}  // namespace bm
+}  // namespace sqlcase
 }  // namespace fesql
 
 int main(int argc, char** argv) {

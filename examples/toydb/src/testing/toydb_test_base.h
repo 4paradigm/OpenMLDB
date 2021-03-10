@@ -20,6 +20,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <vector>
 #include "case/sql_case.h"
 #include "glog/logging.h"
 #include "plan/planner.h"

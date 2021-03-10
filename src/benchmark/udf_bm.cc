@@ -16,7 +16,7 @@
 
 #include "benchmark/benchmark.h"
 #include "llvm/Transforms/Scalar.h"
-#include "udf_bm_case.h"
+#include "benchmark/udf_bm_case.h"
 
 namespace fesql {
 namespace bm {

@@ -85,7 +85,6 @@ class ToydbRequestEngineTestRunner : public RequestEngineTestRunner {
         return InitToydbEngineCatalog(sql_case_, options_, name_table_map_,
                                       engine_, catalog_);
     };
-    ;
     bool InitTable(const std::string table_name) override {
         auto table = name_table_map_[table_name];
         if (!table) {

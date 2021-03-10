@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "udf_bm_case.h"
+#include "benchmark/udf_bm_case.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -28,7 +28,6 @@
 #include "udf/udf_test.h"
 #include "vm/jit_runtime.h"
 #include "vm/mem_catalog.h"
-#include "case/case_data_mock.h"
 namespace fesql {
 namespace bm {
 using sqlcase::CaseDataMock;

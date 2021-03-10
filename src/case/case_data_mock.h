@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CASE_DATA_MOCK_H_
-#define SRC_CASE_DATA_MOCK_H_
+#ifndef SRC_CASE_CASE_DATA_MOCK_H_
+#define SRC_CASE_CASE_DATA_MOCK_H_
 
 #include <memory>
 #include <random>
@@ -88,8 +88,8 @@ class CaseDataMock {
                              std::vector<Row>& buffer,   // NOLINT
                              int64_t data_size);
     static bool LoadResource(const std::string& resource_path,
-                      type::TableDef& table_def,  // NOLINT
-                      std::vector<Row>& rows);
+                             type::TableDef& table_def,  // NOLINT
+                             std::vector<Row>& rows);    // NOLINT
 };
 
 class CaseSchemaMock {
@@ -103,4 +103,4 @@ class CaseSchemaMock {
 }  // namespace sqlcase
 }  // namespace fesql
 
-#endif  // SRC_CASE_DATA_MOCK_H_
+#endif  // SRC_CASE_CASE_DATA_MOCK_H_
