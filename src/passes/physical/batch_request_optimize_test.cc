@@ -16,7 +16,7 @@
 
 #include "passes/physical/batch_request_optimize.h"
 #include "gtest/gtest.h"
-#include "vm/engine_test.h"
+#include "vm/engine_test_base.h"
 
 namespace fesql {
 namespace vm {

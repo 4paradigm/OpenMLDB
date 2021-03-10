@@ -16,13 +16,13 @@
 #ifndef EXAMPLES_TOYDB_SRC_TESTING_TOYDB_ENGINE_TEST_H_
 #define EXAMPLES_TOYDB_SRC_TESTING_TOYDB_ENGINE_TEST_H_
 
-#include "testing/toydb_test_base.h"
-#include <vector>
 #include <map>
 #include <memory>
-#include <string>
 #include <set>
-#include "vm/engine_test.h"
+#include <string>
+#include <vector>
+#include "testing/toydb_test_base.h"
+#include "vm/engine_test_base.h"
 namespace fesql {
 namespace vm {
 class ToydbBatchEngineTestRunner : public BatchEngineTestRunner {
