@@ -37,7 +37,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif ()
 # bm lib
 add_library(toydb_bm_lib STATIC ${BM_LIB_FILE_LIST})
-target_link_libraries(toydb_bm_lib fesql_sdk fesql_flags ${BM_LIIBS})
+target_link_libraries(toydb_bm_lib fesql_toy_lib fesql_sdk fesql_flags ${BM_LIIBS})
 # bm executables
 set(BM_TARGET_LIST)
 foreach(BM_SCRIPT ${BM_EXEC_FILE_LIST})

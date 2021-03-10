@@ -201,8 +201,6 @@ class ToydbBatchRequestEngineTestRunner : public BatchRequestEngineTestRunner {
         name_table_map_;
 };
 
-
-
 }  // namespace vm
 }  // namespace fesql
 #endif  // EXAMPLES_TOYDB_SRC_TESTING_TOYDB_ENGINE_TEST_BASE_H_
