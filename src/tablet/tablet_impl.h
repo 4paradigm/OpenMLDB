@@ -23,8 +23,6 @@
 #include "catalog/tablet_catalog.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
-#include "storage/disk_table.h"
-#include "storage/disk_table_snapshot.h"
 #include "storage/mem_table.h"
 #include "storage/mem_table_snapshot.h"
 #include "tablet/combine_iterator.h"
@@ -40,7 +38,6 @@ using ::google::protobuf::RpcController;
 using ::rtidb::base::SpinMutex;
 using ::rtidb::replica::LogReplicator;
 using ::rtidb::replica::ReplicatorRole;
-using ::rtidb::storage::DiskTable;
 using ::rtidb::storage::IndexDef;
 using ::rtidb::storage::MemTable;
 using ::rtidb::storage::Snapshot;
@@ -412,9 +409,6 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     // Get table by table id , no need external synchronization
     // Get table by table id , and Need external synchronization
     std::shared_ptr<Table> GetTableUnLock(uint32_t tid, uint32_t pid);
-    // std::shared_ptr<DiskTable> GetDiskTable(uint32_t tid, uint32_t pid);
-    // std::shared_ptr<DiskTable> GetDiskTableUnLock(uint32_t tid, uint32_t
-    // pid);
 
     std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);
 
@@ -433,9 +427,6 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
                             std::string& msg);  // NOLINT
-
-    int CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_meta,
-                                bool is_load, std::string& msg);  // NOLINT
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
                               std::shared_ptr<::rtidb::api::TaskInfo> task);
@@ -468,8 +459,6 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     void SchedMakeSnapshot();
 
-    void SchedMakeDiskTableSnapshot();
-
     void GetDiskused();
 
     void CheckZkClient();
@@ -482,9 +471,6 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     int LoadTableInternal(uint32_t tid, uint32_t pid,
                           std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
-    int LoadDiskTableInternal(uint32_t tid, uint32_t pid,
-                              const ::rtidb::api::TableMeta& table_meta,
-                              std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
     int WriteTableMeta(const std::string& path,
                        const ::rtidb::api::TableMeta* table_meta);
 

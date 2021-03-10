@@ -21,7 +21,6 @@
 #include "base/glog_wapper.h" // NOLINT
 #include "proto/tablet.pb.h"
 #include "storage/binlog.h"
-#include "storage/disk_table_snapshot.h"
 #include "storage/mem_table.h"
 #include "storage/mem_table_snapshot.h"
 #include "storage/ticket.h"
@@ -1468,49 +1467,6 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     it->Seek(1122);
     ASSERT_FALSE(it->Valid());
     delete it;
-}
-
-TEST_F(SnapshotTest, DiskTableMakeSnapshot) {
-    std::string snapshot_path = FLAGS_hdd_root_path + "/1_1/snapshot/";
-    DiskTableSnapshot snapshot(1, 1, ::rtidb::common::StorageMode::kHDD,
-                               FLAGS_hdd_root_path);
-    snapshot.Init();
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* disk_table_ptr = new DiskTable(
-        "test", 1, 1, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime,
-        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
-    std::shared_ptr<Table> table(disk_table_ptr);
-    table->Init();
-
-    for (int idx = 0; idx < 1000; idx++) {
-        std::string key = "test" + std::to_string(idx);
-        uint64_t ts = 9537;
-        for (int k = 0; k < 10; k++) {
-            ASSERT_TRUE(table->Put(key, ts + k, "value", 5));
-        }
-    }
-
-    snapshot.SetTerm(9);
-    uint64_t offset = 0;
-    int ret = snapshot.MakeSnapshot(table, offset, 0);
-    ASSERT_EQ(0, ret);
-    ASSERT_EQ(10000u, offset);
-
-    std::string full_path = snapshot_path + "MANIFEST";
-    ::rtidb::api::Manifest manifest;
-    {
-        int fd = open(full_path.c_str(), O_RDONLY);
-        google::protobuf::io::FileInputStream fileInput(fd);
-        fileInput.SetCloseOnDelete(true);
-        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
-    }
-    ASSERT_EQ(10000, (int64_t)manifest.offset());
-    ASSERT_EQ(10000, (int64_t)manifest.count());
-    ASSERT_EQ(9, (int64_t)manifest.term());
-
-    std::string path = FLAGS_hdd_root_path + "/1_1";
-    RemoveData(path);
 }
 
 TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
