@@ -2057,10 +2057,10 @@ void Runner::PrintData(std::ostringstream& oss,
         }
     }
 
-    t.endOfRow();
+    t.end_of_row();
     if (!data) {
         t.add("Empty set");
-        t.endOfRow();
+        t.end_of_row();
         oss << t;
         return;
     }
@@ -2070,7 +2070,7 @@ void Runner::PrintData(std::ostringstream& oss,
             auto row_handler = std::dynamic_pointer_cast<RowHandler>(data);
             if (!row_handler) {
                 t.add("NULL Row");
-                t.endOfRow();
+                t.end_of_row();
                 break;
             }
             auto row = row_handler->GetValue();
@@ -2092,26 +2092,26 @@ void Runner::PrintData(std::ostringstream& oss,
                 }
             }
 
-            t.endOfRow();
+            t.end_of_row();
             break;
         }
         case kTableHandler: {
             auto table_handler = std::dynamic_pointer_cast<TableHandler>(data);
             if (!table_handler) {
                 t.add("Empty set");
-                t.endOfRow();
+                t.end_of_row();
                 break;
             }
             auto iter = table_handler->GetIterator();
             if (!iter) {
                 t.add("Empty set");
-                t.endOfRow();
+                t.end_of_row();
                 break;
             }
             iter->SeekToFirst();
             if (!iter->Valid()) {
                 t.add("Empty set");
-                t.endOfRow();
+                t.end_of_row();
                 break;
             } else {
                 int cnt = 0;
@@ -2136,7 +2136,7 @@ void Runner::PrintData(std::ostringstream& oss,
                         }
                     }
                     iter->Next();
-                    t.endOfRow();
+                    t.end_of_row();
                 }
             }
 
@@ -2146,37 +2146,37 @@ void Runner::PrintData(std::ostringstream& oss,
             auto partition = std::dynamic_pointer_cast<PartitionHandler>(data);
             if (!partition) {
                 t.add("Empty set");
-                t.endOfRow();
+                t.end_of_row();
                 break;
             }
             auto iter = partition->GetWindowIterator();
             int cnt = 0;
             if (!iter) {
                 t.add("Empty set");
-                t.endOfRow();
+                t.end_of_row();
                 break;
             }
             iter->SeekToFirst();
             if (!iter->Valid()) {
                 t.add("Empty set");
-                t.endOfRow();
+                t.end_of_row();
                 break;
             }
             while (iter->Valid() && cnt++ < MAX_DEBUG_LINES_CNT) {
                 t.add("KEY: " + std::string(reinterpret_cast<const char*>(
                                                 iter->GetKey().buf()),
                                             iter->GetKey().size()));
-                t.endOfRow();
+                t.end_of_row();
                 auto segment_iter = iter->GetValue();
                 if (!segment_iter) {
                     t.add("Empty set");
-                    t.endOfRow();
+                    t.end_of_row();
                     break;
                 }
                 segment_iter->SeekToFirst();
                 if (!segment_iter->Valid()) {
                     t.add("Empty set");
-                    t.endOfRow();
+                    t.end_of_row();
                     break;
                 } else {
                     int partition_row_cnt = 0;
@@ -2204,7 +2204,7 @@ void Runner::PrintData(std::ostringstream& oss,
                             }
                         }
                         segment_iter->Next();
-                        t.endOfRow();
+                        t.end_of_row();
                     }
                 }
 

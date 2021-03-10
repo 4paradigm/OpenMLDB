@@ -187,7 +187,7 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
         t.add(schema->GetColumnName(i));
     }
-    t.endOfRow();
+    t.end_of_row();
     while (result_set->Next()) {
         for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
             sdk::DataType data_type = schema->GetColumnType(i);
@@ -233,7 +233,7 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
                 }
             }
         }
-        t.endOfRow();
+        t.end_of_row();
     }
     stream << t << std::endl;
     stream << result_set->Size() << " rows in set" << std::endl;
@@ -251,13 +251,13 @@ void PrintTableSchema(std::ostream &stream,
     t.add("Field");
     t.add("Type");
     t.add("Null");
-    t.endOfRow();
+    t.end_of_row();
 
     for (uint32_t i = 0; i < items_size; i++) {
         t.add(schema->GetColumnName(i));
         t.add(fesql::sdk::DataTypeName(schema->GetColumnType(i)));
         t.add(schema->IsColumnNotNull(i) ? "YES" : "NO");
-        t.endOfRow();
+        t.end_of_row();
     }
 
     stream << t;
@@ -277,10 +277,10 @@ void PrintItems(std::ostream &stream, const std::string &head,
 
     ::fesql::base::TextTable t('-', '|', '+');
     t.add(head);
-    t.endOfRow();
+    t.end_of_row();
     for (auto item : items) {
         t.add(item);
-        t.endOfRow();
+        t.end_of_row();
     }
     stream << t;
     auto items_size = items.size();

@@ -518,10 +518,10 @@ void PrintRows(const vm::Schema &schema, const std::vector<codec::Row> &rows) {
             break;
         }
     }
-    t.endOfRow();
+    t.end_of_row();
     if (rows.empty()) {
         t.add("Empty set");
-        t.endOfRow();
+        t.end_of_row();
         return;
     }
 
@@ -535,7 +535,7 @@ void PrintRows(const vm::Schema &schema, const std::vector<codec::Row> &rows) {
                 break;
             }
         }
-        t.endOfRow();
+        t.end_of_row();
         if (t.rows().size() > 10) {
             break;
         }
@@ -556,10 +556,10 @@ void PrintResultSet(std::shared_ptr<ResultSet> rs) {
             break;
         }
     }
-    t.endOfRow();
+    t.end_of_row();
     if (0 == rs->Size()) {
         t.add("Empty set");
-        t.endOfRow();
+        t.end_of_row();
         return;
     }
 
@@ -572,7 +572,7 @@ void PrintResultSet(std::shared_ptr<ResultSet> rs) {
                 break;
             }
         }
-        t.endOfRow();
+        t.end_of_row();
         if (t.rows().size() > 10) {
             break;
         }

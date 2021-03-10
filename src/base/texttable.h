@@ -26,68 +26,42 @@ namespace fesql {
 namespace base {
 class TextTable {
  public:
-    enum class Alignment { LEFT, RIGHT };
     typedef std::vector<std::string> Row;
     explicit TextTable(char horizontal = '-', char vertical = '|',
                        char corner = '+')
-        : _horizontal(horizontal), _vertical(vertical), _corner(corner) {}
+        : horizontal_(horizontal), vertical_(vertical), corner_(corner) {}
 
-    void setAlignment(unsigned i, Alignment alignment) {
-        _alignment[i] = alignment;
+
+    char vertical() const { return vertical_; }
+
+    char horizontal() const { return horizontal_; }
+
+    void add(std::string const& content) { current_row.push_back(content); }
+    size_t current_columns_size() const { return current_row.size(); }
+    void end_of_row() {
+        rows_.push_back(current_row);
+        current_row.assign(0, "");
     }
-
-    Alignment alignment(unsigned i) const { return _alignment[i]; }
-
-    char vertical() const { return _vertical; }
-
-    char horizontal() const { return _horizontal; }
-
-    void add(std::string const& content) { _current.push_back(content); }
-
-    size_t current_columns_size() const { return _current.size(); }
-    void endOfRow() {
-        _rows.push_back(_current);
-        _current.assign(0, "");
-    }
-
-    template <typename Iterator>
-    void addRow(Iterator begin, Iterator end) {
-        for (auto i = begin; i != end; ++i) {
-            add(*i);
-        }
-        endOfRow();
-    }
-
-    template <typename Container>
-    void addRow(Container const& container) {
-        addRow(container.begin(), container.end());
-    }
-
-    std::vector<Row> const& rows() const { return _rows; }
-
+    std::vector<Row> const& rows() const { return rows_; }
     void setup() const {
         if (rows().size() == 0) {
             return;
         }
-        determineWidths();
-        setupAlignment();
+        setup_widths();
     }
 
     std::string ruler() const;
-
-    void setupAlignment() const;
-    int width(unsigned i) const { return _width[i]; }
+    int width(unsigned i) const { return widths[i]; }
     friend std::ostream& operator<<(std::ostream& stream,
                                     const TextTable& table);
 
  private:
-    char _horizontal;
-    char _vertical;
-    char _corner;
-    Row _current;
-    std::vector<Row> _rows;
-    std::vector<unsigned> mutable _width;
-    std::map<unsigned, Alignment> mutable _alignment;
+    char horizontal_;
+    char vertical_;
+    char corner_;
+    Row current_row;
+    std::vector<Row> rows_;
+    std::vector<unsigned> mutable widths;
 
     static std::string repeat(unsigned times, char c) {
         std::string result;
@@ -96,8 +70,8 @@ class TextTable {
         return result;
     }
 
-    unsigned columns() const { return _rows[0].size(); }
-    void determineWidths() const;
+    unsigned columns() const { return rows_.empty() ? 0 : rows_[0].size(); }
+    void setup_widths() const;
 };
 
 }  // namespace base

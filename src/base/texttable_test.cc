@@ -25,27 +25,36 @@ class TextTableTest : public ::testing::Test {
 };
 
 TEST_F(TextTableTest, TextTableFormatTest) {
+    std::ostringstream oss;
     base::TextTable t('-', '|', '+');
     t.add("Field");
     t.add("Type");
     t.add("NULL");
-    t.endOfRow();
+    t.end_of_row();
 
     t.add("column1");
     t.add("kInt32");
     t.add("No");
-    t.endOfRow();
+    t.end_of_row();
 
     t.add("column2");
     t.add("kInt64");
     t.add("YES");
-    t.endOfRow();
+    t.end_of_row();
 
     t.add("ts");
     t.add("kTimestamp");
     t.add("YES");
-    t.endOfRow();
-    std::cout << t << std::endl;
+    t.end_of_row();
+    oss << t;
+    ASSERT_EQ(
+        "+---------+------------+------+\n"
+        "| Field   | Type       | NULL |\n"
+        "+---------+------------+------+\n"
+        "| column1 | kInt32     | No   |\n"
+        "| column2 | kInt64     | YES  |\n"
+        "| ts      | kTimestamp | YES  |\n"
+        "+---------+------------+------+\n", oss.str());
 }
 }  // namespace base
 }  // namespace fesql
