@@ -1,6 +1,5 @@
 /*
- * fe_row_codec.h
- * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,8 +24,8 @@
 #include <vector>
 #include "base/raw_buffer.h"
 #include "butil/iobuf.h"
-#include "proto/fe_type.pb.h"
 #include "gflags/gflags.h"
+#include "proto/fe_type.pb.h"
 
 namespace fesql {
 namespace codec {

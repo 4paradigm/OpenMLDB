@@ -1,6 +1,5 @@
 /*
- * sql_compiler_test.cc
- * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +35,6 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "tablet/tablet_catalog.h"
 #include "vm/simple_catalog.h"
 #include "vm/test_base.h"
 
@@ -178,47 +176,32 @@ TEST_P(SQLCompilerTest, compile_request_mode_test) {
     table_def4.set_name("t4");
     table_def5.set_name("t5");
     table_def6.set_name("t6");
-
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
-    std::shared_ptr<::fesql::storage::Table> table2(
-        new ::fesql::storage::Table(2, 1, table_def2));
-    std::shared_ptr<::fesql::storage::Table> table3(
-        new ::fesql::storage::Table(3, 1, table_def3));
-    std::shared_ptr<::fesql::storage::Table> table4(
-        new ::fesql::storage::Table(4, 1, table_def4));
-    std::shared_ptr<::fesql::storage::Table> table5(
-        new ::fesql::storage::Table(5, 1, table_def5));
-    std::shared_ptr<::fesql::storage::Table> table6(
-        new ::fesql::storage::Table(6, 1, table_def6));
-
     ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
     index->set_second_key("col5");
-    auto catalog = BuildCommonCatalog(table_def, table);
-    AddTable(catalog, table_def2, table2);
-    AddTable(catalog, table_def3, table3);
-    AddTable(catalog, table_def4, table4);
-    AddTable(catalog, table_def5, table5);
-    AddTable(catalog, table_def6, table6);
+    fesql::type::Database db;
+    db.set_name("db");
+    AddTable(db, table_def);
+    AddTable(db, table_def2);
+    AddTable(db, table_def3);
+    AddTable(db, table_def4);
+    AddTable(db, table_def5);
+    AddTable(db, table_def6);
     {
         fesql::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tb");
-        std::shared_ptr<::fesql::storage::Table> table(
-            new fesql::storage::Table(1, 1, table_def));
-        AddTable(catalog, table_def, table);
+        AddTable(db, table_def);
     }
     {
         fesql::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tc");
-        std::shared_ptr<::fesql::storage::Table> table(
-            new fesql::storage::Table(1, 1, table_def));
-        AddTable(catalog, table_def, table);
+        AddTable(db, table_def);
     }
+    auto catalog = BuildCommonCatalog(db);
     CompilerCheck(catalog, sqlstr, kRequestMode);
     RequestSchemaCheck(catalog, sqlstr, table_def);
 }
@@ -257,97 +240,83 @@ TEST_P(SQLCompilerTest, compile_batch_mode_test) {
     table_def5.set_name("t5");
     table_def6.set_name("t6");
 
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
-    std::shared_ptr<::fesql::storage::Table> table2(
-        new ::fesql::storage::Table(2, 1, table_def2));
-    std::shared_ptr<::fesql::storage::Table> table3(
-        new ::fesql::storage::Table(3, 1, table_def3));
-    std::shared_ptr<::fesql::storage::Table> table4(
-        new ::fesql::storage::Table(4, 1, table_def4));
-    std::shared_ptr<::fesql::storage::Table> table5(
-        new ::fesql::storage::Table(5, 1, table_def5));
-    std::shared_ptr<::fesql::storage::Table> table6(
-        new ::fesql::storage::Table(6, 1, table_def6));
-
     ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
     index->set_second_key("col5");
-    auto catalog = BuildCommonCatalog(table_def, table);
-    AddTable(catalog, table_def2, table2);
-    AddTable(catalog, table_def3, table3);
-    AddTable(catalog, table_def4, table4);
-    AddTable(catalog, table_def5, table5);
-    AddTable(catalog, table_def6, table6);
-
-    {
-        fesql::type::TableDef table_def;
-        BuildTableA(table_def);
-        table_def.set_name("tb");
-        std::shared_ptr<::fesql::storage::Table> table(
-            new fesql::storage::Table(1, 1, table_def));
-        AddTable(catalog, table_def, table);
-    }
-    {
-        fesql::type::TableDef table_def;
-        BuildTableA(table_def);
-        table_def.set_name("tc");
-        std::shared_ptr<::fesql::storage::Table> table(
-            new fesql::storage::Table(1, 1, table_def));
-        AddTable(catalog, table_def, table);
-    }
-    CompilerCheck(catalog, sqlstr, kBatchMode, false);
-
-    // Check for work with simple catalog
-    auto simple_catalog = std::make_shared<SimpleCatalog>();
     fesql::type::Database db;
     db.set_name("db");
-    {
-        ::fesql::type::TableDef* p_table = db.add_tables();
-        *p_table = table_def;
-    }
-    {
-        ::fesql::type::TableDef* p_table = db.add_tables();
-        *p_table = table_def2;
-    }
-    {
-        ::fesql::type::TableDef* p_table = db.add_tables();
-        *p_table = table_def3;
-    }
-    {
-        ::fesql::type::TableDef* p_table = db.add_tables();
-        *p_table = table_def4;
-    }
-    {
-        ::fesql::type::TableDef* p_table = db.add_tables();
-        *p_table = table_def5;
-    }
-    {
-        fesql::type::TableDef table_def;
-        BuildTableA(table_def);
-        table_def.set_name("ta");
-        ::fesql::type::TableDef* p_table = db.add_tables();
-        *p_table = table_def;
-    }
+    AddTable(db, table_def);
+    AddTable(db, table_def2);
+    AddTable(db, table_def3);
+    AddTable(db, table_def4);
+    AddTable(db, table_def5);
+    AddTable(db, table_def6);
     {
         fesql::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tb");
-        ::fesql::type::TableDef* p_table = db.add_tables();
-        *p_table = table_def;
+        AddTable(db, table_def);
     }
     {
         fesql::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tc");
-        ::fesql::type::TableDef* p_table = db.add_tables();
-        *p_table = table_def;
+        AddTable(db, table_def);
     }
+    auto catalog = BuildCommonCatalog(db);
+    CompilerCheck(catalog, sqlstr, kBatchMode, false);
+    {
+        // Check for work with simple catalog
+        auto simple_catalog = std::make_shared<SimpleCatalog>();
+        fesql::type::Database db;
+        db.set_name("db");
+        {
+            ::fesql::type::TableDef* p_table = db.add_tables();
+            *p_table = table_def;
+        }
+        {
+            ::fesql::type::TableDef* p_table = db.add_tables();
+            *p_table = table_def2;
+        }
+        {
+            ::fesql::type::TableDef* p_table = db.add_tables();
+            *p_table = table_def3;
+        }
+        {
+            ::fesql::type::TableDef* p_table = db.add_tables();
+            *p_table = table_def4;
+        }
+        {
+            ::fesql::type::TableDef* p_table = db.add_tables();
+            *p_table = table_def5;
+        }
+        {
+            fesql::type::TableDef table_def;
+            BuildTableA(table_def);
+            table_def.set_name("ta");
+            ::fesql::type::TableDef* p_table = db.add_tables();
+            *p_table = table_def;
+        }
+        {
+            fesql::type::TableDef table_def;
+            BuildTableA(table_def);
+            table_def.set_name("tb");
+            ::fesql::type::TableDef* p_table = db.add_tables();
+            *p_table = table_def;
+        }
+        {
+            fesql::type::TableDef table_def;
+            BuildTableA(table_def);
+            table_def.set_name("tc");
+            ::fesql::type::TableDef* p_table = db.add_tables();
+            *p_table = table_def;
+        }
 
-    simple_catalog->AddDatabase(db);
-    CompilerCheck(simple_catalog, sqlstr, kBatchMode, false);
+        simple_catalog->AddDatabase(db);
+        CompilerCheck(simple_catalog, sqlstr, kBatchMode, false);
+    }
 }
 
 TEST_P(SQLCompilerTest, compile_batch_mode_enable_window_paralled_test) {
@@ -383,98 +352,84 @@ TEST_P(SQLCompilerTest, compile_batch_mode_enable_window_paralled_test) {
     table_def4.set_name("t4");
     table_def5.set_name("t5");
     table_def6.set_name("t6");
-
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
-    std::shared_ptr<::fesql::storage::Table> table2(
-        new ::fesql::storage::Table(2, 1, table_def2));
-    std::shared_ptr<::fesql::storage::Table> table3(
-        new ::fesql::storage::Table(3, 1, table_def3));
-    std::shared_ptr<::fesql::storage::Table> table4(
-        new ::fesql::storage::Table(4, 1, table_def4));
-    std::shared_ptr<::fesql::storage::Table> table5(
-        new ::fesql::storage::Table(5, 1, table_def5));
-    std::shared_ptr<::fesql::storage::Table> table6(
-        new ::fesql::storage::Table(6, 1, table_def6));
-
     ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
     index->set_second_key("col5");
-    auto catalog = BuildCommonCatalog(table_def, table);
-    AddTable(catalog, table_def2, table2);
-    AddTable(catalog, table_def3, table3);
-    AddTable(catalog, table_def4, table4);
-    AddTable(catalog, table_def5, table5);
-    AddTable(catalog, table_def6, table6);
-
-    {
-        fesql::type::TableDef table_def;
-        BuildTableA(table_def);
-        table_def.set_name("tb");
-        std::shared_ptr<::fesql::storage::Table> table(
-            new fesql::storage::Table(1, 1, table_def));
-        AddTable(catalog, table_def, table);
-    }
-    {
-        fesql::type::TableDef table_def;
-        BuildTableA(table_def);
-        table_def.set_name("tc");
-        std::shared_ptr<::fesql::storage::Table> table(
-            new fesql::storage::Table(1, 1, table_def));
-        AddTable(catalog, table_def, table);
-    }
-    CompilerCheck(catalog, sqlstr, kBatchMode, true);
-
-    // Check for work with simple catalog
-    auto simple_catalog = std::make_shared<SimpleCatalog>();
     fesql::type::Database db;
     db.set_name("db");
-    {
-        ::fesql::type::TableDef* p_table = db.add_tables();
-        *p_table = table_def;
-    }
-    {
-        ::fesql::type::TableDef* p_table = db.add_tables();
-        *p_table = table_def2;
-    }
-    {
-        ::fesql::type::TableDef* p_table = db.add_tables();
-        *p_table = table_def3;
-    }
-    {
-        ::fesql::type::TableDef* p_table = db.add_tables();
-        *p_table = table_def4;
-    }
-    {
-        ::fesql::type::TableDef* p_table = db.add_tables();
-        *p_table = table_def5;
-    }
-    {
-        fesql::type::TableDef table_def;
-        BuildTableA(table_def);
-        table_def.set_name("ta");
-        ::fesql::type::TableDef* p_table = db.add_tables();
-        *p_table = table_def;
-    }
+    AddTable(db, table_def);
+    AddTable(db, table_def2);
+    AddTable(db, table_def3);
+    AddTable(db, table_def4);
+    AddTable(db, table_def5);
+    AddTable(db, table_def6);
     {
         fesql::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tb");
-        ::fesql::type::TableDef* p_table = db.add_tables();
-        *p_table = table_def;
+        AddTable(db, table_def);
     }
     {
         fesql::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tc");
-        ::fesql::type::TableDef* p_table = db.add_tables();
-        *p_table = table_def;
+        AddTable(db, table_def);
     }
+    auto catalog = BuildCommonCatalog(db);
+    CompilerCheck(catalog, sqlstr, kBatchMode, true);
 
-    simple_catalog->AddDatabase(db);
-    CompilerCheck(simple_catalog, sqlstr, kBatchMode, true);
+    {
+        // Check for work with simple catalog
+        auto simple_catalog = std::make_shared<SimpleCatalog>();
+        fesql::type::Database db;
+        db.set_name("db");
+        {
+            ::fesql::type::TableDef* p_table = db.add_tables();
+            *p_table = table_def;
+        }
+        {
+            ::fesql::type::TableDef* p_table = db.add_tables();
+            *p_table = table_def2;
+        }
+        {
+            ::fesql::type::TableDef* p_table = db.add_tables();
+            *p_table = table_def3;
+        }
+        {
+            ::fesql::type::TableDef* p_table = db.add_tables();
+            *p_table = table_def4;
+        }
+        {
+            ::fesql::type::TableDef* p_table = db.add_tables();
+            *p_table = table_def5;
+        }
+        {
+            fesql::type::TableDef table_def;
+            BuildTableA(table_def);
+            table_def.set_name("ta");
+            ::fesql::type::TableDef* p_table = db.add_tables();
+            *p_table = table_def;
+        }
+        {
+            fesql::type::TableDef table_def;
+            BuildTableA(table_def);
+            table_def.set_name("tb");
+            ::fesql::type::TableDef* p_table = db.add_tables();
+            *p_table = table_def;
+        }
+        {
+            fesql::type::TableDef table_def;
+            BuildTableA(table_def);
+            table_def.set_name("tc");
+            ::fesql::type::TableDef* p_table = db.add_tables();
+            *p_table = table_def;
+        }
+
+        simple_catalog->AddDatabase(db);
+        CompilerCheck(simple_catalog, sqlstr, kBatchMode, true);
+    }
 }
 
 }  // namespace vm

@@ -44,10 +44,11 @@ set(FESQL_VERSION_MINOR 0)
 set(FESQL_VERSION_BUG 0)
 
 option(TESTING_ENABLE "Enable Test" ON)
+option(BENCHMARK_ENABLE "Enable Benchmark" ON)
 option(COVERAGE_ENABLE "Enable Coverage" ON)
 option(PYSDK_ENABLE "Enable pysdk" ON)
 option(JAVASDK_ENABLE "Enable javasdk" ON)
-option(EXPRIRMENT_ENABLE "Enable experiments" OFF)
+option(EXAMPLES_ENABLE "Enable examples" ON)
 option(LLVM_EXT_ENABLE "Enable llvm ext sources" OFF)
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
@@ -170,8 +171,8 @@ if (JAVASDK_ENABLE)
 endif ()
 add_subdirectory(src)
 #TODO add flag
-if (EXPRIRMENT_ENABLE)
-    add_subdirectory(experiments)
+if (EXAMPLES_ENABLE)
+    add_subdirectory(examples)
 endif ()
 if (COVERAGE_ENABLE)
     if (CMAKE_COMPILER_IS_GNUCXX)
@@ -183,7 +184,7 @@ endif ()
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
 
-install(TARGETS fesql_core fesql_sdk
+install(TARGETS fesql_core
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

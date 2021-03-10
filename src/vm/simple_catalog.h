@@ -1,6 +1,5 @@
 /*
- * simple_catalog.h
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,6 +58,13 @@ class SimpleCatalogTableHandler : public TableHandler {
     RowIterator *GetRawIterator() override;
 
  private:
+    inline int32_t GetColumnIndex(const std::string &column) {
+        auto it = types_dict_.find(column);
+        if (it != types_dict_.end()) {
+            return it->second.idx;
+        }
+        return -1;
+    }
     std::string db_name_;
     fesql::type::TableDef table_def_;
 
@@ -71,7 +77,7 @@ class SimpleCatalogTableHandler : public TableHandler {
  */
 class SimpleCatalog : public Catalog {
  public:
-    SimpleCatalog();
+    explicit SimpleCatalog(const bool enable_index = false);
     SimpleCatalog(const SimpleCatalog &) = delete;
     ~SimpleCatalog();
 
@@ -82,6 +88,7 @@ class SimpleCatalog : public Catalog {
     bool IndexSupport() override;
 
  private:
+    bool enable_index_;
     std::map<std::string,
              std::map<std::string, std::shared_ptr<SimpleCatalogTableHandler>>>
         table_handlers_;

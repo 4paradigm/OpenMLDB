@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "codec/row.h"
 
 namespace fesql {

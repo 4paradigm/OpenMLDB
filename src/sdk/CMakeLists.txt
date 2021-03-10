@@ -16,65 +16,18 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-set(SDK_DEPS_LIBS fesql_core fesql_flags
-	${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
-
-# split sdk test and bm
-set(SDK_SRC_FILE_LIST)
-set(SDK_TEST_FILE_LIST)
-file(GLOB_RECURSE BM_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cc)
-foreach(SRC_FILE ${BM_FILES})
-    if (SRC_FILE MATCHES ".*_test.cc")
-        list(APPEND SDK_TEST_FILE_LIST ${SRC_FILE})
-    else()
-        list(APPEND SDK_SRC_FILE_LIST ${SRC_FILE})
-    endif()
-endforeach()
-
-# fesql sdk library
-add_library(fesql_sdk STATIC ${SDK_SRC_FILE_LIST})
-target_link_libraries(fesql_sdk ${SDK_DEPS_LIBS})
-
-# fesql sdk testcases
-if (TESTING_ENABLE)
-	set(TEST_CPP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-    foreach(TEST_SCRIPT ${SDK_TEST_FILE_LIST}) 
-        file(RELATIVE_PATH RELATIVE_TEST_PATH ${TEST_CPP_SOURCE_DIR} ${TEST_SCRIPT})
-        get_filename_component(TEST_TARGET_DIR ${RELATIVE_TEST_PATH} DIRECTORY)
-        get_filename_component(TEST_TARGET_NAME ${RELATIVE_TEST_PATH} NAME_WE)
-        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR})
-        add_executable(${TEST_TARGET_NAME} ${TEST_SCRIPT})
-
-        add_test(${TEST_TARGET_NAME}
-            ${TEST_TARGET_NAME}
-            --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
-        target_link_libraries(${TEST_TARGET_NAME} gtest fesql_sdk)
-        list(APPEND test_list ${TEST_TARGET_NAME})
-    endforeach()
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-endif()
-
 set_property(SOURCE fesql_interface_core.i PROPERTY CPLUSPLUS ON)
-set_property(SOURCE fesql_interface_complete.i PROPERTY CPLUSPLUS ON)
 
 if(PYSDK_ENABLE)
-if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
-    set_property(SOURCE fesql_interface_complete.i PROPERTY COMPILE_OPTIONS -python)
-else ()
-    set_property(SOURCE fesql_interface_complete.i PROPERTY COMPILE_OPTIONS -py3)
-endif ()
-
 set(UseSWIG_TARGET_NAME_PREFERENCE STANDARD)
-get_property(CUR_SWIG_FLAGS SOURCE fesql_interface_complete.i PROPERTY SWIG_FLAGS)
-set_property(SOURCE fesql_interface_complete.i PROPERTY SWIG_FLAGS -interface _fesql_pysdk)
 swig_add_library(fesql_pysdk
         TYPE SHARED
         LANGUAGE python
         OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/fesql/
-        SOURCES fesql_interface_complete.i)
+        SOURCES fesql_interface_core.i)
 target_include_directories(fesql_pysdk PRIVATE ${PYTHON_INCLUDE_DIRS})
-target_link_libraries(fesql_pysdk fesql_sdk ${SDK_DEPS_LIBS})
-set_property(SOURCE fesql_interface_complete.i PROPERTY SWIG_FLAGS ${CUR_SWIG_FLAGS})
+target_link_libraries(fesql_pysdk ${SDK_DEPS_LIBS})
+set_property(SOURCE fesql_interface_core.i PROPERTY SWIG_FLAGS ${CUR_SWIG_FLAGS})
 endif()
 
 if(JAVASDK_ENABLE)
@@ -90,21 +43,8 @@ set(sdk_core_deps_libs
 	fesql_core fesql_flags ${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${COMMON_LIBS})
 target_link_libraries(fesql_jsdk_core PRIVATE glog ${sdk_core_deps_libs})
 
-set_property(SOURCE fesql_interface_complete.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
-swig_add_library(fesql_jsdk_complete
-        TYPE SHARED
-        LANGUAGE java
-        OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/java/com/_4paradigm/
-        SOURCES fesql_interface_complete.i)
-target_include_directories(fesql_jsdk_complete PRIVATE ${JNI_INCLUDE_DIRS})
-target_compile_options(fesql_jsdk_complete PRIVATE -w)
-target_link_libraries(fesql_jsdk_complete PRIVATE fesql_sdk)
-add_dependencies(fesql_jsdk_complete fesql_jsdk_core)
-
 if(APPLE)
 	set_target_properties(fesql_jsdk_core PROPERTIES
-           SUFFIX ".dylib")
-  	set_target_properties(fesql_jsdk_complete PROPERTIES
            SUFFIX ".dylib")
 endif()
 endif()
@@ -208,8 +148,7 @@ add_custom_command(OUTPUT
     cp_java_native_so
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_jsdk_core>
     	${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/resources/
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_jsdk_complete>
-    	${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/resources/)
+    )
 
 add_custom_target(java_package ALL
   DEPENDS

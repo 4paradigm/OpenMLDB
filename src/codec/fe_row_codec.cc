@@ -1,6 +1,5 @@
 /*
- * row_codec.cc
- * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,15 +33,15 @@ const uint32_t BitMapSize(uint32_t size) {
     }
 }
 
-const std::unordered_map<::fesql::type::Type, uint8_t>&
-    DEFAULT_TYPE_SIZE_MAP = {{::fesql::type::kBool, sizeof(bool)},
-                             {::fesql::type::kInt16, sizeof(int16_t)},
-                             {::fesql::type::kInt32, sizeof(int32_t)},
-                             {::fesql::type::kFloat, sizeof(float)},
-                             {::fesql::type::kInt64, sizeof(int64_t)},
-                             {::fesql::type::kTimestamp, sizeof(int64_t)},
-                             {::fesql::type::kDate, sizeof(int32_t)},
-                             {::fesql::type::kDouble, sizeof(double)}};
+const std::unordered_map<::fesql::type::Type, uint8_t>& DEFAULT_TYPE_SIZE_MAP =
+    {{::fesql::type::kBool, sizeof(bool)},
+     {::fesql::type::kInt16, sizeof(int16_t)},
+     {::fesql::type::kInt32, sizeof(int32_t)},
+     {::fesql::type::kFloat, sizeof(float)},
+     {::fesql::type::kInt64, sizeof(int64_t)},
+     {::fesql::type::kTimestamp, sizeof(int64_t)},
+     {::fesql::type::kDate, sizeof(int32_t)},
+     {::fesql::type::kDouble, sizeof(double)}};
 
 const std::unordered_map<::fesql::type::Type, uint8_t>&
     SPARK_UNSAFEROW_TYPE_SIZE_MAP = {

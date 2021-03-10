@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# generate_yaml_case.py
-# Copyright (C) 4paradigm.com
+# Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

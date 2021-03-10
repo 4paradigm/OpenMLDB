@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "codegen/predicate_expr_ir_builder.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/ir_base_builder.h"

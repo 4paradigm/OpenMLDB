@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_VM_CATALOG_WRAPPER_H_
 #define SRC_VM_CATALOG_WRAPPER_H_
 #include <memory>

@@ -1,6 +1,5 @@
 /*
- * engine_test.h
- * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,9 +71,6 @@ using fesql::base::Status;
 using fesql::codec::Row;
 using fesql::common::kSQLError;
 using fesql::sqlcase::SQLCase;
-
-enum EngineRunMode { RUNBATCH, RUNONE };
-
 std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
@@ -84,11 +80,13 @@ void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
         FAIL();
     }
 }
+
 std::vector<SQLCase> InitCases(std::string yaml_path) {
     std::vector<SQLCase> cases;
     InitCases(yaml_path, cases);
     return cases;
 }
+enum EngineRunMode { RUNBATCH, RUNONE };
 
 int GenerateSqliteTestStringCallback(void* s, int argc, char** argv,
                                      char** azColName) {
@@ -110,7 +108,6 @@ void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema);
 void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                const std::vector<Row>& exp_rows);
 void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows);
-void StoreData(::fesql::storage::Table* table, const std::vector<Row>& rows);
 
 void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema) {
     ASSERT_EQ(schema.size(), exp_schema.size());
@@ -368,51 +365,8 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
     }
 }
 
-void StoreData(::fesql::storage::Table* table, const std::vector<Row>& rows) {
-    ASSERT_TRUE(table->Init());
-    for (auto row : rows) {
-        ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf()), row.size()));
-    }
-}
-
 const std::string GenerateTableName(int32_t id) {
     return "auto_t" + std::to_string(id);
-}
-
-bool InitEngineCatalog(
-    const SQLCase& sql_case, const EngineOptions& engine_options,
-    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>&  // NOLINT
-        name_table_map,                                               // NOLINT
-    std::map<size_t, std::string>& idx_table_name_map,                // NOLINT
-    std::shared_ptr<vm::Engine> engine,
-    std::shared_ptr<tablet::TabletCatalog> catalog) {
-    for (int32_t i = 0; i < sql_case.CountInputs(); i++) {
-        std::string actual_name = sql_case.inputs()[i].name_;
-        if (actual_name.empty()) {
-            actual_name = GenerateTableName(i);
-        }
-        type::TableDef table_def;
-        if (!sql_case.ExtractInputTableDef(table_def, i)) {
-            return false;
-        }
-        table_def.set_name(actual_name);
-
-        std::shared_ptr<::fesql::storage::Table> table(
-            new ::fesql::storage::Table(i + 1, 1, table_def));
-        name_table_map[table_def.name()] = table;
-        if (engine_options.is_cluster_optimzied()) {
-            // add table with local tablet
-            if (!AddTable(catalog, table_def, table, engine.get())) {
-                return false;
-            }
-        } else {
-            if (!AddTable(catalog, table_def, table)) {
-                return false;
-            }
-        }
-        idx_table_name_map[i] = actual_name;
-    }
-    return true;
 }
 
 void DoEngineCheckExpect(const SQLCase& sql_case,
@@ -586,18 +540,233 @@ void CheckSQLiteCompatible(const SQLCase& sql_case, const vm::Schema& schema,
         SortRows(schema, output, sql_case.expect().order_)));
 }
 
+class EngineTest : public ::testing::TestWithParam<SQLCase> {
+ public:
+    EngineTest() {}
+    virtual ~EngineTest() {}
+};
+
+class BatchRequestEngineTest : public ::testing::TestWithParam<SQLCase> {
+ public:
+    BatchRequestEngineTest() {}
+    virtual ~BatchRequestEngineTest() {}
+};
+
+INSTANTIATE_TEST_CASE_P(
+    EngineFailQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/fail_query.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestFzTest, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/fz_sql.yaml")));
+
+// INSTANTIATE_TEST_CASE_P(
+//     EngineTestFzTempTest, EngineTest,
+//     testing::ValuesIn(InitCases("/cases/query/fz_temp.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineSimpleQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineConstQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/const_query.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineUdfQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/udf_query.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineOperatorQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/operator_query.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineUdafQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/udaf_query.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineExtreamQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/extream_query.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineLastJoinQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/last_join_query.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineLastJoinWindowQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/last_join_window_query.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineWindowQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/window_query.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineWindowWithUnionQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/window_with_union_query.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineBatchGroupQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/group_query.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestWindowRowQuery, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/window/test_window_row.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestWindowRowsRangeQuery, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/window/test_window_row_range.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestWindowUnion, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/window/test_window_union.yaml")));
+INSTANTIATE_TEST_CASE_P(EngineTestWindowMaxSize, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/window/test_maxsize.yaml")));
+
+INSTANTIATE_TEST_CASE_P(EngineTestLast_Join, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/join/test_last_join.yaml")));
+INSTANTIATE_TEST_CASE_P(EngineTestLastJoin, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/join/test_lastjoin.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestArithmetic, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/expression/test_arithmetic.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestCompare, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/expression/test_compare.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestCondition, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/expression/test_condition.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestLogic, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/expression/test_logic.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestType, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/expression/test_type.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSubSelect, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/select/test_sub_select.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestUdfFunction, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/function/test_udf_function.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestUdafFunction, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/function/test_udaf_function.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestCalculateFunction, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/function/test_calculate.yaml")));
+INSTANTIATE_TEST_CASE_P(EngineTestDateFunction, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/function/test_date.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestStringFunction, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/function/test_string.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSelectSample, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/select/test_select_sample.yaml")));
+INSTANTIATE_TEST_CASE_P(EngineTestWhere, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/select/test_where.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestFzFunction, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestFzSQLFunction, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_fz_sql.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestClusterWindowAndLastJoin, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/cluster/window_and_lastjoin.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestClusterWindowRow, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/cluster/test_window_row.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestClusterWindowRowRange, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestWindowExcludeCurrentTime, EngineTest,
+    testing::ValuesIn(InitCases(
+        "/cases/integration/v1/test_window_exclude_current_time.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestIndexOptimized, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/test_index_optimized.yaml")));
+INSTANTIATE_TEST_CASE_P(EngineTestErrorWindow, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/window/error_window.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestDebugFzBenchmark, EngineTest,
+    testing::ValuesIn(InitCases("/cases/debug/fz_benchmark_debug.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestDebugIssues, EngineTest,
+    testing::ValuesIn(InitCases("/cases/debug/issues_case.yaml")));
+
+// myhug 场景正确性验证
+INSTANTIATE_TEST_CASE_P(
+    EngineTestFzMyhug, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/fz_ddl/test_myhug.yaml")));
+
+// luoji 场景正确性验证
+INSTANTIATE_TEST_CASE_P(
+    EngineTestFzLuoji, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/fz_ddl/test_luoji.yaml")));
+// bank 场景正确性验证
+INSTANTIATE_TEST_CASE_P(
+    EngineTestFzBank, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/fz_ddl/test_bank.yaml")));
+// TODO(qiliguo) #229 sql 语句加一个大 select, 选取其中几列，
+//   添加到 expect 中的做验证
+// imported from spark offline test
+// 单表反欺诈场景
+INSTANTIATE_TEST_CASE_P(EngineTestSparkFQZ, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/spark/test_fqz_studio.yaml")));
+// 单表-广告场景
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSparkAds, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/spark/test_ads.yaml")));
+// 单表-新闻场景
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSparkNews, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/spark/test_news.yaml")));
+// 多表-京东数据场景
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSparkJD, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/spark/test_jd.yaml")));
+// 多表-信用卡用户转借记卡预测场景
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSparkCredit, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/spark/test_credit.yaml")));
+
+INSTANTIATE_TEST_CASE_P(BatchRequestEngineTest, BatchRequestEngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/test_batch_request.yaml")));
 class EngineTestRunner {
  public:
     explicit EngineTestRunner(const SQLCase& sql_case,
                               const EngineOptions options)
-        : sql_case_(sql_case), options_(options) {
-        catalog_ = BuildCommonCatalog();
-        engine_ = std::make_shared<Engine>(catalog_, options_);
+        : sql_case_(sql_case), options_(options), engine_() {
         InitSQLCase();
-        if (!InitEngineCatalog(sql_case_, options_, name_table_map_,
-                          idx_table_name_map_, engine_, catalog_)) {
-            return_code_ = ENGINE_TEST_INIT_CATALOG_ERROR;
-        }
     }
     virtual ~EngineTestRunner() {}
 
@@ -609,9 +778,14 @@ class EngineTestRunner {
         const std::string& create, SQLCase::TableInfo* table_info);
     Status Compile();
     virtual void InitSQLCase();
+    virtual bool InitEngineCatalog() = 0;
+    virtual bool InitTable(const std::string table_name) = 0;
+    virtual bool AddRowsIntoTable(const std::string table_name,
+                                  const std::vector<Row>& rows) = 0;
+    virtual bool AddRowIntoTable(const std::string table_name,
+                                 const Row& rows) = 0;
     virtual Status PrepareData() = 0;
     virtual Status Compute(std::vector<codec::Row>*) = 0;
-
     int return_code() const { return return_code_; }
     const SQLCase& sql_case() const { return sql_case_; }
 
@@ -621,20 +795,12 @@ class EngineTestRunner {
  protected:
     SQLCase sql_case_;
     EngineOptions options_;
-
-    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
-        name_table_map_;
-    std::map<size_t, std::string> idx_table_name_map_;
-    std::shared_ptr<tablet::TabletCatalog> catalog_;
-
     std::shared_ptr<Engine> engine_ = nullptr;
-
     std::shared_ptr<RunSession> session_ = nullptr;
-
     int return_code_ = ENGINE_TEST_RET_INVALID_CASE;
 };
 Status EngineTestRunner::ExtractTableInfoFromCreateString(
-    const std::string& create, SQLCase::TableInfo* table_info) {
+    const std::string& create, sqlcase::SQLCase::TableInfo* table_info) {
     CHECK_TRUE(table_info != nullptr, common::kNullPointer,
                "Fail extract with null table info");
     CHECK_TRUE(!create.empty(), common::kSQLError,
@@ -703,7 +869,7 @@ Status EngineTestRunner::Compile() {
     std::string sql_str = sql_case_.sql_str();
     for (int j = 0; j < sql_case_.CountInputs(); ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
-        boost::replace_all(sql_str, placeholder, idx_table_name_map_[j]);
+        boost::replace_all(sql_str, placeholder, sql_case_.inputs_[j].name_);
     }
     LOG(INFO) << "Compile SQL:\n" << sql_str;
     CHECK_TRUE(session_ != nullptr, common::kSQLError, "Session is not set");
@@ -725,8 +891,6 @@ Status EngineTestRunner::Compile() {
         return_code_ = ENGINE_TEST_RET_COMPILE_ERROR;
     } else {
         LOG(INFO) << "SQL output schema:";
-        PrintSchema(session_->GetSchema());
-
         std::ostringstream oss;
         session_->GetPhysicalPlan()->Print(oss, "");
         LOG(INFO) << "Physical plan:";
@@ -741,7 +905,7 @@ Status EngineTestRunner::Compile() {
 }
 
 void EngineTestRunner::RunCheck() {
-    if (ENGINE_TEST_INIT_CATALOG_ERROR == return_code_) {
+    if (!InitEngineCatalog()) {
         FAIL() << "Engine Test Init Catalog Error";
         return;
     }
@@ -851,8 +1015,10 @@ class BatchEngineTestRunner : public EngineTestRunner {
                 }
             }
             if (!rows.empty()) {
-                std::string table_name = idx_table_name_map_[i];
-                StoreData(name_table_map_[table_name].get(), rows);
+                std::string table_name = sql_case_.inputs_[i].name_;
+                CHECK_TRUE(AddRowsIntoTable(table_name, rows),
+                           common::kSQLError, "Fail to add rows into table ",
+                           table_name);
             }
         }
         return Status::OK();
@@ -906,14 +1072,11 @@ class RequestEngineTestRunner : public EngineTestRunner {
                        kSQLError, "Extract case request rows failed");
         }
         for (int32_t i = 0; i < sql_case_.CountInputs(); i++) {
-            std::string input_name = idx_table_name_map_[i];
+            std::string input_name = sql_case_.inputs_[i].name_;
 
             if (input_name == request_name && !has_batch_request) {
                 CHECK_TRUE(sql_case_.ExtractInputData(request_rows_, i),
                            kSQLError, "Extract case request rows failed");
-                auto request_table = name_table_map_[request_name];
-                CHECK_TRUE(request_table->Init(), kSQLError,
-                           "Init request table failed");
                 continue;
             } else {
                 std::vector<Row> rows;
@@ -931,9 +1094,14 @@ class RequestEngineTestRunner : public EngineTestRunner {
                             store_rows.push_back(row);
                         }
                     }
-                    StoreData(name_table_map_[input_name].get(), store_rows);
+                    CHECK_TRUE(AddRowsIntoTable(input_name, store_rows),
+                               common::kSQLError,
+                               "Fail to add rows into table ", input_name);
+
                 } else {
-                    StoreData(name_table_map_[input_name].get(), rows);
+                    CHECK_TRUE(AddRowsIntoTable(input_name, rows),
+                               common::kSQLError,
+                               "Fail to add rows into table ", input_name);
                 }
             }
         }
@@ -955,10 +1123,8 @@ class RequestEngineTestRunner : public EngineTestRunner {
                 return Status(kSQLError, "Run request session failed");
             }
             if (!has_batch_request) {
-                CHECK_TRUE(name_table_map_[request_name]->Put(
-                               reinterpret_cast<const char*>(in_row.buf()),
-                               in_row.size()),
-                           kSQLError);
+                CHECK_TRUE(AddRowIntoTable(request_name, in_row), kSQLError,
+                           "Fail add row into table ", request_name);
             }
             outputs->push_back(out_row);
         }
@@ -1002,12 +1168,12 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
             std::vector<Row> rows;
             sql_case_.ExtractInputData(rows, i);
             if (!rows.empty()) {
-                if (idx_table_name_map_[i] == request_name &&
+                if (sql_case_.inputs_[i].name_ == request_name &&
                     !has_batch_request) {
                     original_request_data.push_back(rows.back());
                     rows.pop_back();
                 }
-                std::string table_name = idx_table_name_map_[i];
+                std::string table_name = sql_case_.inputs_[i].name_;
                 size_t repeat = sql_case_.inputs()[i].repeat_;
                 if (repeat > 1) {
                     size_t row_num = rows.size();
@@ -1019,7 +1185,9 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
                         offset += row_num;
                     }
                 }
-                StoreData(name_table_map_[table_name].get(), rows);
+                CHECK_TRUE(AddRowsIntoTable(table_name, rows),
+                           common::kSQLError, "Fail to add rows into table ",
+                           table_name);
             }
         }
 
@@ -1113,76 +1281,6 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
  private:
     std::vector<Row> request_rows_;
 };
-
-void BatchRequestEngineCheckWithCommonColumnIndices(
-    const SQLCase& sql_case, const EngineOptions options,
-    const std::set<size_t>& common_column_indices) {
-    std::ostringstream oss;
-    for (size_t index : common_column_indices) {
-        oss << index << ",";
-    }
-    LOG(INFO) << "BatchRequestEngineCheckWithCommonColumnIndices: "
-                 "common_column_indices = ["
-              << oss.str() << "]";
-    BatchRequestEngineTestRunner engine_test(sql_case, options,
-                                             common_column_indices);
-    engine_test.RunCheck();
-}
-
-void BatchRequestEngineCheck(const SQLCase& sql_case,
-                             const EngineOptions options) {
-    bool has_batch_request = !sql_case.batch_request().columns_.empty();
-    if (has_batch_request) {
-        BatchRequestEngineCheckWithCommonColumnIndices(
-            sql_case, options, sql_case.batch_request().common_column_indices_);
-    } else if (!sql_case.inputs().empty()) {
-        // set different common column conf
-        size_t schema_size = sql_case.inputs()[0].columns_.size();
-        std::set<size_t> common_column_indices;
-
-        // empty
-        BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
-                                                       common_column_indices);
-
-        // full
-        for (size_t i = 0; i < schema_size; ++i) {
-            common_column_indices.insert(i);
-        }
-        BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
-                                                       common_column_indices);
-        common_column_indices.clear();
-
-        // partial
-        // 0, 2, 4, ...
-        for (size_t i = 0; i < schema_size; i += 2) {
-            common_column_indices.insert(i);
-        }
-        BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
-                                                       common_column_indices);
-        common_column_indices.clear();
-        return;
-        // 1, 3, 5, ...
-        for (size_t i = 1; i < schema_size; i += 2) {
-            common_column_indices.insert(i);
-        }
-        BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
-                                                       common_column_indices);
-    }
-}
-
-void EngineCheck(const SQLCase& sql_case, const EngineOptions& options,
-                 EngineMode engine_mode) {
-    if (engine_mode == kBatchMode) {
-        BatchEngineTestRunner engine_test(sql_case, options);
-        engine_test.RunCheck();
-        engine_test.RunSQLiteCheck();
-    } else if (engine_mode == kRequestMode) {
-        RequestEngineTestRunner engine_test(sql_case, options);
-        engine_test.RunCheck();
-    } else {
-        BatchRequestEngineCheck(sql_case, options);
-    }
-}
 
 }  // namespace vm
 }  // namespace fesql

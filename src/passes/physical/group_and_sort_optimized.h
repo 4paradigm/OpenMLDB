@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 4paradigm
+ * Copyright 2021 4paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,10 +42,9 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
  private:
     bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
-    bool KeysOptimized(
-            const SchemasContext* root_schemas_ctx, PhysicalOpNode* in,
-            Key* left_key, Key* index_key, Key* right_key,
-            Sort* sort, PhysicalOpNode** new_in);
+    bool KeysOptimized(const SchemasContext* root_schemas_ctx,
+                       PhysicalOpNode* in, Key* left_key, Key* index_key,
+                       Key* right_key, Sort* sort, PhysicalOpNode** new_in);
 
     bool FilterAndOrderOptimized(const SchemasContext* root_schemas_ctx,
                                  PhysicalOpNode* in, Filter* filter, Sort* sort,

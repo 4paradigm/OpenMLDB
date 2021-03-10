@@ -1,6 +1,5 @@
 /*
- * codec_sdk.h
- * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  * Licensed under the Apache License, Version 2.0 (the "License")
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at

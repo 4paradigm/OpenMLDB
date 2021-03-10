@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 4paradigm
+ * Copyright 2021 4paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,16 @@
 #include "passes/physical/condition_optimized.h"
 
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 
 namespace fesql {
 namespace passes {
 
-using fesql::vm::PhysicalJoinNode;
-using fesql::vm::PhysicalRequestJoinNode;
 using fesql::vm::PhysicalFilterNode;
+using fesql::vm::PhysicalJoinNode;
 using fesql::vm::PhysicalOpType;
+using fesql::vm::PhysicalRequestJoinNode;
 
 bool ConditionOptimized::JoinConditionOptimized(PhysicalBinaryNode* in,
                                                 Join* join) {

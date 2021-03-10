@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CODEGEN_STRUCT_IR_BUILDER_H_
 #define SRC_CODEGEN_STRUCT_IR_BUILDER_H_
 #include "base/fe_status.h"

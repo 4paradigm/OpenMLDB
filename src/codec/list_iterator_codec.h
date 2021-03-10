@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CODEC_LIST_ITERATOR_CODEC_H_
 #define SRC_CODEC_LIST_ITERATOR_CODEC_H_
 #include <cstdint>

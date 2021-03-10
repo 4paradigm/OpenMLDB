@@ -1,6 +1,5 @@
 /*
- * flags.cc
- * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,18 +15,6 @@
  */
 
 #include <gflags/gflags.h>
-// cluster config
-DEFINE_string(fesql_endpoint, "",
-        "config the ip and port that fesql serves for");
-DEFINE_int32(fesql_port, 0, "config the port that fesql serves for");
-DEFINE_int32(fesql_thread_pool_size, 8,
-        "config the thread pool for dbms and tablet");
-DEFINE_string(tablet_endpoint, "",
-              "config the ip and port that fesql tablet for");
-// for tablet
-DEFINE_string(dbms_endpoint, "", "config the ip and port that fesql dbms for");
-DEFINE_bool(enable_keep_alive, true, "config if tablet keep alive with dbms");
-
 // batch config
 DEFINE_string(default_db_name, "_fesql",
               "config the default batch catalog db name");

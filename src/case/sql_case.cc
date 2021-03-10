@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "case/sql_case.h"
 #include <set>
 #include <string>
@@ -1173,7 +1172,9 @@ static bool ParseSQLCaseNode(const YAML::Node& sql_case_node,
         }
 
         if (tags.find("TODO") != tags.cend()) {
-            DLOG(INFO) << "SKIP TODO SQL Case " << sql_case.desc();
+            if (SQLCase::IS_DEBUG()) {
+                DLOG(INFO) << "SKIP TODO SQL Case " << sql_case.desc();
+            }
             *is_skip = true;
         }
     }
