@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_VM_ENGINE_TEST_H_
-#define SRC_VM_ENGINE_TEST_H_
+#ifndef SRC_VM_ENGINE_TEST_BASE_H_
+#define SRC_VM_ENGINE_TEST_BASE_H_
 
 #include <sqlite3.h>
 #include <stdio.h>
@@ -642,4 +642,4 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
 
 }  // namespace vm
 }  // namespace fesql
-#endif  // SRC_VM_ENGINE_TEST_H_
+#endif  // SRC_VM_ENGINE_TEST_BASE_H_
