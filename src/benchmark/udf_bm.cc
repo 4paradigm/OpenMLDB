@@ -16,7 +16,7 @@
 
 #include "benchmark/benchmark.h"
 #include "llvm/Transforms/Scalar.h"
-#include "bm/udf_bm_case.h"
+#include "udf_bm_case.h"
 
 namespace fesql {
 namespace bm {
@@ -49,24 +49,6 @@ static void BM_CopyMemTable(benchmark::State& state) {  // NOLINT
 }
 static void BM_CopyArrayList(benchmark::State& state) {  // NOLINT
     CopyArrayList(&state, BENCHMARK, state.range(0));
-}
-
-static void BM_TabletFullIterate(benchmark::State& state) {  // NOLINT
-    TabletFullIterate(&state, BENCHMARK, state.range(0));
-}
-
-static void BM_TabletWindowIterate(benchmark::State& state) {  // NOLINT
-    TabletWindowIterate(&state, BENCHMARK, state.range(0));
-}
-static void BM_MemTableIterate(benchmark::State& state) {  // NOLINT
-    MemTableIterate(&state, BENCHMARK, state.range(0));
-}
-static void BM_RequestUnionTableIterate(benchmark::State& state) {  // NOLINT
-    RequestUnionTableIterate(&state, BENCHMARK, state.range(0));
-}
-
-static void BM_MemSegmentIterate(benchmark::State& state) {  // NOLINT
-    MemSegmentIterate(&state, BENCHMARK, state.range(0));
 }
 
 static void BM_Day(benchmark::State& state) {  // NOLINT
@@ -113,35 +95,6 @@ static void BM_RequestUnionWindowExcludeCurrentTime(
     benchmark::State& state) {  // NOLINT
     RequestUnionWindowExcludeCurrentTime(&state, BENCHMARK, state.range(0));
 }
-BENCHMARK(BM_TabletFullIterate)
-    ->Args({10})
-    ->Args({100})
-    ->Args({1000})
-    ->Args({10000});
-
-BENCHMARK(BM_TabletWindowIterate)
-    ->Args({10})
-    ->Args({100})
-    ->Args({1000})
-    ->Args({10000});
-
-BENCHMARK(BM_MemTableIterate)
-    ->Args({10})
-    ->Args({100})
-    ->Args({1000})
-    ->Args({10000});
-
-BENCHMARK(BM_RequestUnionTableIterate)
-    ->Args({10})
-    ->Args({100})
-    ->Args({1000})
-    ->Args({10000});
-
-BENCHMARK(BM_MemSegmentIterate)
-    ->Args({10})
-    ->Args({100})
-    ->Args({1000})
-    ->Args({10000});
 
 BENCHMARK(BM_CopyArrayList)
     ->Args({10})

@@ -44,6 +44,7 @@ set(FESQL_VERSION_MINOR 0)
 set(FESQL_VERSION_BUG 0)
 
 option(TESTING_ENABLE "Enable Test" ON)
+option(BENCHMARK_ENABLE "Enable Benchmark" ON)
 option(COVERAGE_ENABLE "Enable Coverage" ON)
 option(PYSDK_ENABLE "Enable pysdk" ON)
 option(JAVASDK_ENABLE "Enable javasdk" ON)

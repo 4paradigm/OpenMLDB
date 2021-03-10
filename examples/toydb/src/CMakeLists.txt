@@ -82,6 +82,10 @@ endif()
 
 # toy sdk
 add_subdirectory(sdk)
+# toy bm
+if (BENCHMARK_ENABLE)
+add_subdirectory(bm)
+endif()
 
 # fesql bin
 add_executable(fesql cmd/fesql.cc)

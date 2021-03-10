@@ -17,11 +17,17 @@
 #ifndef EXAMPLES_TOYDB_SRC_BM_STORAGE_BM_CASE_H_
 #define EXAMPLES_TOYDB_SRC_BM_STORAGE_BM_CASE_H_
 #include <string>
+#include "vm/mem_catalog.h"
 #include "benchmark/benchmark.h"
 namespace fesql {
 namespace bm {
 enum MODE { BENCHMARK, TEST };
-
+void MemTableIterate(benchmark::State* state, MODE mode, int64_t data_size);
+void RequestUnionTableIterate(benchmark::State* state, MODE mode,
+                              int64_t data_size);
+void MemSegmentIterate(benchmark::State* state, MODE mode, int64_t data_size);
+void TabletFullIterate(benchmark::State* state, MODE mode, int64_t data_size);
+void TabletWindowIterate(benchmark::State* state, MODE mode, int64_t data_size);
 void ArrayListIterate(benchmark::State* state, MODE mode, int64_t data_size);
 }  // namespace bm
 }  // namespace fesql

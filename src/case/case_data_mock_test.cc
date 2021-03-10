@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-#include "bm/base_bm.h"
+#include "case/case_data_mock.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 namespace fesql {
-namespace bm {
+namespace sqlcase {
 
-class BMBaseTest : public ::testing::Test {
+class RepeaterTest : public ::testing::Test {
  public:
-    BMBaseTest() {}
-    ~BMBaseTest() {}
+    RepeaterTest() {}
+    ~RepeaterTest() {}
 };
 
-TEST_F(BMBaseTest, Int16_Repeater) {
+TEST_F(RepeaterTest, Int16_Repeater) {
     {
         IntRepeater<int16_t> repeater;
         repeater.Range(0, 100, 1);

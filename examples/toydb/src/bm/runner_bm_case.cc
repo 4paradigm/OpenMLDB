@@ -28,6 +28,7 @@
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "vm/engine.h"
+#include "testing/toydb_test_base.h"
 
 namespace fesql {
 namespace bm {
@@ -38,6 +39,8 @@ using vm::Runner;
 using vm::RunnerContext;
 using vm::RunSession;
 using vm::TableHandler;
+using sqlcase::CaseDataMock;
+
 
 using namespace ::llvm;  // NOLINT
 
@@ -56,7 +59,7 @@ static void RequestUnionRunnerCase(const std::string& sql, int runner_id,
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     // prepare data into table
-    auto catalog = BuildOnePkTableStorage(size);
+    auto catalog = vm::BuildOnePkTableStorage(size);
     Engine engine(catalog);
     RequestRunSession session;
     base::Status status;
@@ -114,7 +117,7 @@ void IndexSeekRunnerCase(const std::string sql, int runner_id,
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     // prepare data into table
-    auto catalog = BuildOnePkTableStorage(size);
+    auto catalog = vm::BuildOnePkTableStorage(size);
     Engine engine(catalog);
     RequestRunSession session;
     base::Status status;
@@ -157,7 +160,7 @@ void AggRunnerCase(const std::string sql, int runner_id,
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     // prepare data into table
-    auto catalog = BuildOnePkTableStorage(size);
+    auto catalog = vm::BuildOnePkTableStorage(size);
     Engine engine(catalog);
     RequestRunSession session;
     base::Status status;

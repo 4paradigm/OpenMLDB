@@ -20,6 +20,7 @@
 #include "benchmark/benchmark.h"
 #include "case/sql_case.h"
 #include "vm/engine.h"
+#include "bm/base_bm.h"
 
 namespace fesql {
 namespace bm {

@@ -40,7 +40,7 @@
 #include "parser/parser.h"
 #include "tablet/tablet_catalog.h"
 #include "vm/engine.h"
-#include "vm/engine_test.h"
+#include "testing/toydb_engine_test.h"
 
 namespace fesql {
 namespace bm {
@@ -49,6 +49,7 @@ using sqlcase::SQLCase;
 using vm::BatchRunSession;
 using vm::Engine;
 using vm::RequestRunSession;
+using sqlcase::CaseDataMock;
 
 using namespace ::llvm;  // NOLINT
 
@@ -109,7 +110,7 @@ static void EngineRequestMode(const std::string sql, MODE mode,
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     // prepare data into table
-    auto catalog = BuildOnePkTableStorage(size);
+    auto catalog = vm::BuildOnePkTableStorage(size);
     vm::EngineOptions options;
     if (fesql::sqlcase::SQLCase::IS_CLUSTER()) {
         options.set_cluster_optimized(true);
@@ -155,7 +156,7 @@ static void EngineBatchMode(const std::string sql, MODE mode, int64_t limit_cnt,
     // prepare data into table
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    auto catalog = BuildOnePkTableStorage(size);
+    auto catalog = vm::BuildOnePkTableStorage(size);
     Engine engine(catalog);
     BatchRunSession session;
     base::Status query_status;
@@ -664,7 +665,7 @@ void EngineRequestModeSimpleQueryBM(const std::string& db,
     int8_t* ptr = NULL;
     uint32_t size = 0;
     std::vector<Row> rows;
-    LoadResource(resource_path, table_def, rows);
+    CaseDataMock::LoadResource(resource_path, table_def, rows);
     ptr = rows[0].buf();
     size = static_cast<uint32_t>(rows[0].size());
     table_def.set_catalog(db);
@@ -675,7 +676,7 @@ void EngineRequestModeSimpleQueryBM(const std::string& db,
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
     delete ptr;
-    auto catalog = BuildCommonCatalog(table_def, table);
+    auto catalog = vm::BuildCommonCatalog(table_def, table);
 
     Engine engine(catalog);
     RequestRunSession session;
@@ -712,7 +713,7 @@ void EngineBatchModeSimpleQueryBM(const std::string& db, const std::string& sql,
     int8_t* ptr = NULL;
     uint32_t size = 0;
     std::vector<Row> rows;
-    LoadResource(resource_path, table_def, rows);
+    fesql::sqlcase::CaseDataMock::LoadResource(resource_path, table_def, rows);
     ptr = rows[0].buf();
     size = static_cast<uint32_t>(rows[0].size());
     table_def.set_catalog(db);
@@ -723,7 +724,7 @@ void EngineBatchModeSimpleQueryBM(const std::string& db, const std::string& sql,
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
     delete ptr;
-    auto catalog = BuildCommonCatalog(table_def, table);
+    auto catalog = vm::BuildCommonCatalog(table_def, table);
 
     Engine engine(catalog);
     BatchRunSession session;
@@ -843,13 +844,13 @@ void EngineBenchmarkOnCase(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
     std::unique_ptr<vm::EngineTestRunner> engine_runner;
     if (engine_mode == vm::kBatchMode) {
         engine_runner = std::unique_ptr<vm::BatchEngineTestRunner>(
-            new vm::BatchEngineTestRunner(sql_case, engine_options));
+            new vm::ToydbBatchEngineTestRunner(sql_case, engine_options));
     } else if (engine_mode == vm::kRequestMode) {
         engine_runner = std::unique_ptr<vm::RequestEngineTestRunner>(
-            new vm::RequestEngineTestRunner(sql_case, engine_options));
+            new vm::ToydbRequestEngineTestRunner(sql_case, engine_options));
     } else {
         engine_runner = std::unique_ptr<vm::BatchRequestEngineTestRunner>(
-            new vm::BatchRequestEngineTestRunner(
+            new vm::ToydbBatchRequestEngineTestRunner(
                 sql_case, engine_options,
                 sql_case.batch_request().common_column_indices_));
     }

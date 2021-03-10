@@ -62,7 +62,7 @@ endif()
 add_library(fesql_flags STATIC ${CMAKE_SOURCE_DIR}/src/flags.cc)
 
 # fesql core library
-add_library(fesql_core STATIC ${SRC_FILE_LIST} ${PROJECT_SOURCE_DIR}/src/flags.cc  $<TARGET_OBJECTS:fesql_proto> $<TARGET_OBJECTS:fesql_parser>)
+add_library(fesql_core STATIC ${SRC_FILE_LIST} ${PROJECT_SOURCE_DIR}/src/flags.cc  $<TARGET_OBJECTS:fesql_proto> $<TARGET_OBJECTS:fesql_parser> case/case_data_mock.cc)
 target_link_libraries(fesql_core
     ${yaml_libs} ${LLVM_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} fesql_flags)
 
@@ -92,6 +92,10 @@ endif()
 
 # fesql sdk
 add_subdirectory(sdk)
+# fesql bm
+if (BENCHMARK_ENABLE)
+add_subdirectory(benchmark)
+endif()
 
 # udf exporter
 add_executable(export_udf_info cmd/export_udf_info.cc)

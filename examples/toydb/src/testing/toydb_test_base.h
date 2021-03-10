@@ -26,11 +26,14 @@
 #include "tablet/tablet_catalog.h"
 #include "vm/catalog.h"
 #include "vm/engine.h"
+#include "case/case_data_mock.h"
 
 namespace fesql {
 namespace vm {
 using fesql::base::Status;
 using fesql::sqlcase::SQLCase;
+using fesql::sqlcase::SQLCase;
+using fesql::sqlcase::CaseDataMock;
 
 bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
               const fesql::type::TableDef& table_def,
@@ -102,6 +105,43 @@ bool InitToydbEngineCatalog(
 
 std::shared_ptr<tablet::TabletCatalog> BuildToydbCatalog() {
     std::shared_ptr<tablet::TabletCatalog> catalog(new tablet::TabletCatalog());
+    return catalog;
+}
+std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
+    const fesql::type::TableDef& table_def,
+    std::shared_ptr<fesql::storage::Table> table) {
+    std::shared_ptr<tablet::TabletCatalog> catalog(new tablet::TabletCatalog());
+    bool ok = catalog->Init();
+    if (!ok) {
+        return std::shared_ptr<tablet::TabletCatalog>();
+    }
+    if (!AddTable(catalog, table_def, table)) {
+        return std::shared_ptr<tablet::TabletCatalog>();
+    }
+    return catalog;
+}
+
+std::shared_ptr<tablet::TabletCatalog> BuildOnePkTableStorage(
+    int32_t data_size) {
+    DLOG(INFO) << "insert window data";
+    type::TableDef table_def;
+    std::vector<Row> buffer;
+    CaseDataMock::BuildOnePkTableData(table_def, buffer, data_size);
+    // Build index
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col0");
+    index->set_second_key("col5");
+
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+
+    table->Init();
+
+    auto catalog = BuildCommonCatalog(table_def, table);
+    for (auto row : buffer) {
+        table->Put(reinterpret_cast<char*>(row.buf()), row.size());
+    }
     return catalog;
 }
 }  // namespace vm

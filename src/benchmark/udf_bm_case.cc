@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include "bm/udf_bm_case.h"
+#include "udf_bm_case.h"
 #include <memory>
 #include <string>
 #include <vector>
-#include "bm/base_bm.h"
+#include "case/case_data_mock.h"
 #include "codec/fe_row_codec.h"
 #include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
@@ -28,8 +28,10 @@
 #include "udf/udf_test.h"
 #include "vm/jit_runtime.h"
 #include "vm/mem_catalog.h"
+#include "case/case_data_mock.h"
 namespace fesql {
 namespace bm {
+using sqlcase::CaseDataMock;
 using codec::ColumnImpl;
 using codec::Row;
 using vm::MemTableHandler;
@@ -44,30 +46,14 @@ int32_t RunCopyToTable(vm::TableHandler* table,                   // NOLINT
                        const vm::Schema* schema);                 // NOLINT
 int32_t RunCopyToTimeTable(MemTimeTableHandler& segment,          // NOLINT
                            type::TableDef& table_def);            // NOLINT
-int32_t TableHanlderIterate(vm::TableHandler* table_hander);      // NOLINT
-int32_t TableHanlderIterateTest(vm::TableHandler* table_hander);  // NOLINT
-const int64_t PartitionHandlerIterate(vm::PartitionHandler* partition_handler,
-                                      const std::string& key);
-const int64_t PartitionHandlerIterateTest(
-    vm::PartitionHandler* partition_handler, const std::string& key);
-
 static void BuildData(type::TableDef& table_def,         // NOLINT
                       vm::MemTimeTableHandler& segment,  // NOLINT
                       int64_t data_size) {
     std::vector<Row> buffer;
-    BuildOnePkTableData(table_def, buffer, data_size);
+    CaseDataMock::BuildOnePkTableData(table_def, buffer, data_size);
     uint64_t ts = 1;
     for (auto row : buffer) {
         segment.AddRow(ts, row);
-    }
-}
-static void BuildData(type::TableDef& table_def,   // NOLINT
-                      vm::MemTableHandler& table,  // NOLINT
-                      int64_t data_size) {
-    std::vector<Row> buffer;
-    BuildOnePkTableData(table_def, buffer, data_size);
-    for (auto row : buffer) {
-        table.AddRow(row);
     }
 }
 
@@ -109,111 +95,7 @@ void CopyMemTable(benchmark::State* state, MODE mode, int64_t data_size) {
         }
     }
 }
-void TabletFullIterate(benchmark::State* state, MODE mode, int64_t data_size) {
-    auto catalog = BuildOnePkTableStorage(data_size);
-    auto table_hanlder = catalog->GetTable("db", "t1");
-    switch (mode) {
-        case BENCHMARK: {
-            for (auto _ : *state) {
-                benchmark::DoNotOptimize(
-                    TableHanlderIterate(table_hanlder.get()));
-            }
-            break;
-        }
-        case TEST: {
-            if (data_size != TableHanlderIterateTest(table_hanlder.get())) {
-                FAIL();
-            }
-        }
-    }
-}
 
-void TabletWindowIterate(benchmark::State* state, MODE mode,
-                         int64_t data_size) {
-    auto catalog = BuildOnePkTableStorage(data_size);
-    auto table_hanlder = catalog->GetTable("db", "t1");
-    auto partition_handler = table_hanlder->GetPartition("index1");
-    if (!partition_handler) {
-        FAIL();
-    }
-    switch (mode) {
-        case BENCHMARK: {
-            for (auto _ : *state) {
-                benchmark::DoNotOptimize(
-                    PartitionHandlerIterate(partition_handler.get(), "hello"));
-            }
-            break;
-        }
-        case TEST: {
-            if (data_size !=
-                PartitionHandlerIterateTest(partition_handler.get(), "hello")) {
-                FAIL();
-            }
-        }
-    }
-}
-void MemTableIterate(benchmark::State* state, MODE mode, int64_t data_size) {
-    vm::MemTableHandler table_hanlder;
-    type::TableDef table_def;
-    BuildData(table_def, table_hanlder, data_size);
-    switch (mode) {
-        case BENCHMARK: {
-            for (auto _ : *state) {
-                benchmark::DoNotOptimize(TableHanlderIterate(&table_hanlder));
-            }
-            break;
-        }
-        case TEST: {
-            if (data_size != TableHanlderIterateTest(&table_hanlder)) {
-                FAIL();
-            }
-        }
-    }
-}
-
-void RequestUnionTableIterate(benchmark::State* state, MODE mode,
-                              int64_t data_size) {
-    auto table_handler = std::make_shared<vm::MemTimeTableHandler>();
-    type::TableDef table_def;
-    BuildData(table_def, *table_handler.get(), data_size);
-    codec::Row request_row = table_handler->GetBackRow().second;
-    table_handler->PopBackRow();
-
-    auto request_union = std::make_shared<vm::RequestUnionTableHandler>(
-        0, request_row, table_handler);
-    switch (mode) {
-        case BENCHMARK: {
-            for (auto _ : *state) {
-                benchmark::DoNotOptimize(
-                    TableHanlderIterate(request_union.get()));
-            }
-            break;
-        }
-        case TEST: {
-            if (data_size != TableHanlderIterateTest(request_union.get())) {
-                FAIL();
-            }
-        }
-    }
-}
-void MemSegmentIterate(benchmark::State* state, MODE mode, int64_t data_size) {
-    vm::MemTimeTableHandler table_hanlder;
-    type::TableDef table_def;
-    BuildData(table_def, table_hanlder, data_size);
-    switch (mode) {
-        case BENCHMARK: {
-            for (auto _ : *state) {
-                benchmark::DoNotOptimize(TableHanlderIterate(&table_hanlder));
-            }
-            break;
-        }
-        case TEST: {
-            if (data_size != TableHanlderIterateTest(&table_hanlder)) {
-                FAIL();
-            }
-        }
-    }
-}
 void CopyMemSegment(benchmark::State* state, MODE mode, int64_t data_size) {
     vm::MemTimeTableHandler table;
     type::TableDef table_def;
@@ -266,47 +148,6 @@ int32_t RunCopyToTimeTable(MemTimeTableHandler& segment,  // NOLINT
     return window_table->GetCount();
 }
 
-int32_t TableHanlderIterateTest(vm::TableHandler* table_hander) {  // NOLINT
-    int64_t cnt = 0;
-    auto from_iter = table_hander->GetIterator();
-    while (from_iter->Valid()) {
-        from_iter->Next();
-        cnt++;
-    }
-    return cnt;
-}
-int32_t TableHanlderIterate(vm::TableHandler* table_hander) {  // NOLINT
-    auto from_iter = table_hander->GetIterator();
-    while (from_iter->Valid()) {
-        from_iter->Next();
-    }
-    return 0;
-}
-
-const int64_t PartitionHandlerIterate(vm::PartitionHandler* partition_handler,
-                                      const std::string& key) {
-    auto p_iter = partition_handler->GetWindowIterator();
-    p_iter->Seek(key);
-    auto iter = p_iter->GetValue();
-    iter->SeekToFirst();
-    while (iter->Valid()) {
-        iter->Next();
-    }
-    return 0;
-}
-const int64_t PartitionHandlerIterateTest(
-    vm::PartitionHandler* partition_handler, const std::string& key) {
-    int64_t cnt = 0;
-    auto p_iter = partition_handler->GetWindowIterator();
-    p_iter->Seek(key);
-    auto iter = p_iter->GetValue();
-    iter->SeekToFirst();
-    while (iter->Valid()) {
-        iter->Next();
-        cnt++;
-    }
-    return cnt;
-}
 
 template <typename V>
 auto CreateSumFunc() {
@@ -556,7 +397,7 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
                     const std::string& col_name) {
     type::TableDef table_def;
     std::vector<Row> buffer;
-    BuildOnePkTableData(table_def, buffer, data_size);
+    CaseDataMock::BuildOnePkTableData(table_def, buffer, data_size);
     vm::MemTableHandler window(&table_def.columns());
     for (int i = 0; i < data_size - 1; ++i) {
         window.AddRow(buffer[i]);
@@ -568,7 +409,7 @@ void SumRequestUnionTableCol(benchmark::State* state, MODE mode,
                              int64_t data_size, const std::string& col_name) {
     type::TableDef table_def;
     std::vector<Row> buffer;
-    BuildOnePkTableData(table_def, buffer, data_size);
+    CaseDataMock::BuildOnePkTableData(table_def, buffer, data_size);
     auto window = std::make_shared<vm::MemTableHandler>(&table_def.columns());
     for (int i = 0; i < data_size - 1; ++i) {
         window->AddRow(buffer[i]);

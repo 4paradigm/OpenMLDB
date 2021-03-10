@@ -26,6 +26,7 @@
 #include "gtest/gtest.h"
 #include "sdk/dbms_sdk.h"
 #include "sdk/tablet_sdk.h"
+#include "case/case_data_mock.h"
 #include "tablet/tablet_server_impl.h"
 DECLARE_string(dbms_endpoint);
 DECLARE_string(endpoint);
@@ -34,7 +35,9 @@ DECLARE_bool(enable_keep_alive);
 
 namespace fesql {
 namespace bm {
-
+using fesql::sqlcase::Repeater;
+using fesql::sqlcase::IntRepeater;
+using fesql::sqlcase::RealRepeater;
 class MockClosure : public ::google::protobuf::Closure {
  public:
     MockClosure() {}
@@ -303,8 +306,8 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
                 groups.push_back("group" + std::to_string(i));
             }
         }
-        ::fesql::bm::Repeater<std::string> col_str64(groups);
-        ::fesql::bm::Repeater<std::string> col_str255(
+        Repeater<std::string> col_str64(groups);
+        Repeater<std::string> col_str255(
             {"aaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbb", "ccccccccccccccccccc",
              "ddddddddddddddddd"});
         int32_t fail = 0;
