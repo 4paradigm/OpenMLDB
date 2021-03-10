@@ -16,15 +16,15 @@
 #ifndef EXAMPLES_TOYDB_SRC_TESTING_TOYDB_ENGINE_TEST_BASE_H_
 #define EXAMPLES_TOYDB_SRC_TESTING_TOYDB_ENGINE_TEST_BASE_H_
 
+#include <sqlite3.h>
 #include <map>
 #include <memory>
 #include <set>
+#include <sstream>
 #include <string>
 #include <vector>
-#include <sstream>
-#include <sqlite3.h>
-#include "case/sql_case.h"
 #include "case/case_data_mock.h"
+#include "case/sql_case.h"
 #include "glog/logging.h"
 #include "tablet/tablet_catalog.h"
 #include "vm/engine_test_base.h"
