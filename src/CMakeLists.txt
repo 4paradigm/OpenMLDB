@@ -22,7 +22,7 @@ function(compile_lib LIB_NAME DIR DEPEND_FILE_LIST)
 endfunction(compile_lib)
 
 function(compile_test DIR)
-    set(TEST_LIBS nameserver tablet rtidb_sdk blobserver blob_proxy rtidb_catalog client zk_client replica base beans storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
+    set(TEST_LIBS nameserver tablet rtidb_sdk rtidb_catalog client zk_client replica base storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${BRPC_LIBS})
@@ -49,8 +49,6 @@ compile_proto(type ${PROJECT_SOURCE_DIR})
 compile_proto(client ${PROJECT_SOURCE_DIR})
 compile_proto(common ${PROJECT_SOURCE_DIR})
 compile_proto(tablet ${PROJECT_SOURCE_DIR})
-compile_proto(blob_server ${PROJECT_SOURCE_DIR})
-compile_proto(blob_proxy ${PROJECT_SOURCE_DIR})
 compile_proto(name_server ${PROJECT_SOURCE_DIR})
 compile_proto(sql_procedure ${PROJECT_SOURCE_DIR})
 
@@ -64,16 +62,13 @@ compile_lib(nameserver nameserver "")
 compile_lib(storage storage "")
 compile_lib(replica replica "")
 compile_lib(log log "flags.cc")
-compile_lib(blobserver blobserver "storage/object_store.cc flags.cc")
-compile_lib(blob_proxy blob_proxy "")
 compile_lib(rtidb_sdk sdk "")
 
-add_library(rtidb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/blob_server.pb.cc proto/blob_proxy.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc)
-add_library(beans storage/beans/bitcask.c storage/beans/clock_gettime_stub.c storage/beans/codec.c storage/beans/common.c storage/beans/crc32.c storage/beans/diskmgr.c storage/beans/hint.c storage/beans/hstore.c storage/beans/htree.c storage/beans/mfile.c storage/beans/quicklz.c storage/beans/record.c)
+add_library(rtidb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc)
 
 add_library(rtidb_flags flags.cc)
 
-set(BIN_LIBS nameserver tablet rtidb_sdk blobserver blob_proxy rtidb_catalog client zk_client replica base beans storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
+set(BIN_LIBS nameserver tablet rtidb_sdk rtidb_catalog client zk_client replica base storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
 ${VM_LIBS}
 ${LLVM_LIBS}
 ${BRPC_LIBS})
@@ -88,8 +83,6 @@ if(TESTING_ENABLE)
     compile_test(replica)
     compile_test(catalog)
     compile_test(log)
-    compile_test(blobserver)
-    compile_test(blob_proxy)
 endif()
 
 add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:rtidb_proto>)
@@ -98,5 +91,4 @@ target_link_libraries(parse_log log rtidb_proto base protobuf glog gflags unwind
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 target_link_libraries(rtidb ${BIN_LIBS})
 
-add_subdirectory(client)
 add_subdirectory(sdk)

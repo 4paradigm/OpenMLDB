@@ -32,15 +32,6 @@ DECLARE_uint32(max_col_display_length);
 namespace rtidb {
 namespace cmd {
 
-static std::string DataTypeToStr(::rtidb::type::DataType data_type) {
-    auto iter = ::rtidb::codec::DATA_TYPE_STR_MAP.find(data_type);
-    if (iter == ::rtidb::codec::DATA_TYPE_STR_MAP.end()) {
-        return "-";
-    } else {
-        return iter->second;
-    }
-}
-
 static void TransferString(std::vector<std::string>* vec) {
     std::for_each(vec->begin(), vec->end(), [](std::string& str) {
         if (str == ::rtidb::codec::NONETOKEN) {
@@ -53,8 +44,7 @@ static void TransferString(std::vector<std::string>* vec) {
 
 __attribute__((unused)) static void PrintSchema(
     const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
-        column_desc_field,
-    ::rtidb::type::TableType table_type) {
+        column_desc_field) {
     std::vector<std::string> row;
     row.push_back("#");
     row.push_back("name");
@@ -66,21 +56,11 @@ __attribute__((unused)) static void PrintSchema(
         row.clear();
         row.push_back(std::to_string(idx));
         row.push_back(column_desc.name());
-        if (table_type == ::rtidb::type::kTimeSeries) {
-            row.push_back(column_desc.type());
-        } else {
-            row.push_back(DataTypeToStr(column_desc.data_type()));
-        }
+        row.push_back(column_desc.type());
         tp.AddRow(row);
         idx++;
     }
     tp.Print(true);
-}
-
-__attribute__((unused)) static void PrintSchema(
-    const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
-        column_desc_field) {
-    return PrintSchema(column_desc_field, ::rtidb::type::kTimeSeries);
 }
 
 __attribute__((unused)) static void PrintSchema(
@@ -100,12 +80,7 @@ __attribute__((unused)) static void PrintSchema(
             row.clear();
             row.push_back(std::to_string(idx));
             row.push_back(column_desc.name());
-            if (!table_info.has_table_type() ||
-                table_info.table_type() == ::rtidb::type::kTimeSeries) {
-                row.push_back(column_desc.type());
-            } else {
-                row.push_back(DataTypeToStr(column_desc.data_type()));
-            }
+            row.push_back(column_desc.type());
             tp.AddRow(row);
             idx++;
         }

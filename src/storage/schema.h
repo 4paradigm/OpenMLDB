@@ -197,13 +197,11 @@ class TableColumn {
     std::shared_ptr<ColumnDef> GetColumn(const std::string& name);
     void AddColumn(std::shared_ptr<ColumnDef> column_def);
     const std::vector<std::shared_ptr<ColumnDef>>& GetAllColumn();
-    const std::vector<uint32_t>& GetBlobIdxs();
     inline uint32_t Size() { return columns_.size(); }
 
  private:
     std::vector<std::shared_ptr<ColumnDef>> columns_;
     std::unordered_map<std::string, std::shared_ptr<ColumnDef>> column_map_;
-    std::vector<uint32_t> blob_idxs_;
 };
 
 class IndexDef {

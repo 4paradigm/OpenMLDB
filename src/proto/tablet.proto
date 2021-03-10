@@ -1,5 +1,4 @@
 import "common.proto";
-import "type.proto";
 import "sql_procedure.proto";
 package rtidb.api;
 
@@ -191,14 +190,11 @@ message PutRequest {
     repeated Dimension dimensions = 6;
     repeated TSDimension ts_dimensions = 7;
     optional uint32 format_version = 8 [default = 0];
-    optional WriteOption wo = 9;
 }
 
 message PutResponse {
     optional int32 code = 1;
     optional string msg = 2;
-    optional int64 auto_gen_pk = 3;
-    repeated int64 blob_keys = 4;
 }
 
 message DeleteRequest {
@@ -206,8 +202,6 @@ message DeleteRequest {
     optional uint32 pid = 2;
     optional string key = 3;
     optional string idx_name = 4;
-    repeated Columns condition_columns = 5;
-    optional bool receive_blobs = 6 [default = false];
 }
 
 message ExecuteGcRequest {
@@ -292,8 +286,6 @@ message TraverseRequest {
     optional uint64 ts = 6;
     optional bool enable_remove_duplicated_record = 7 [default=false];
     optional string ts_name = 8;
-    optional uint64 snapshot_id = 9;
-    optional ReadOption read_option = 10;
 }
 
 message TraverseResponse {
@@ -352,12 +344,11 @@ message TableMeta {
     optional rtidb.common.StorageMode storage_mode = 17 [default = kMemory];
     repeated rtidb.common.ColumnDesc added_column_desc = 18;
     optional TTLDesc ttl_desc = 19;
-    optional rtidb.type.TableType table_type = 20;
     // format_version 0 , the legacy format 1 ,the new one
-    optional uint32 format_version = 21 [default = 0];
-    optional string db = 22 [default = ""];
-    repeated common.VersionPair schema_versions = 23;
-    repeated common.TablePartition table_partition = 24;
+    optional uint32 format_version = 20 [default = 0];
+    optional string db = 21 [default = ""];
+    repeated common.VersionPair schema_versions = 22;
+    repeated common.TablePartition table_partition = 23;
 }
 
 message CreateTableRequest {
@@ -385,7 +376,6 @@ message DropTableRequest {
     optional int32 tid = 1;
     optional int32 pid = 2;
     optional TaskInfo task_info = 3;
-    optional rtidb.type.TableType table_type = 4 [default = kTimeSeries];
 }
 
 message DropTableResponse {
@@ -703,46 +693,6 @@ message Columns {
     optional GetType type = 3 [default = kSubKeyEq];
 }
 
-message UpdateRequest {
-    optional uint32 tid = 1;
-    optional uint32 pid = 2;
-    repeated Columns condition_columns = 3;
-    optional Columns value_columns = 4;
-}
-
-message UpdateResponse {
-    optional string msg = 1;
-    optional int32 code = 2;
-    optional uint32 count = 3;
-}
-
-message ReadOption {
-    repeated Columns index = 1;
-    repeated Columns read_filter = 2;
-    repeated string col_set = 3;
-    optional uint32 limit = 4;
-}
-
-message WriteOption {
-    optional bool update_if_exist = 1 [default = false];
-}
-
-message BatchQueryRequest {
-    optional uint32 tid = 1;
-    optional uint32 pid = 2;
-    repeated ReadOption read_option = 3;
-    repeated string query_key = 4;
-    optional bool is_debug= 5 [default = false];
-}
-
-message BatchQueryResponse {
-    optional bytes pairs = 1;
-    optional string msg = 2;
-    optional int32 code = 3;
-    optional bool is_finish = 4;
-    optional uint32 count = 5;
-}
-
 message CancelOPRequest {
     optional uint64 op_id = 1;
 }
@@ -852,8 +802,6 @@ service TabletServer {
     rpc Delete(DeleteRequest) returns (GeneralResponse);
     rpc Count(CountRequest) returns (CountResponse);
     rpc Traverse(TraverseRequest) returns (TraverseResponse);
-    rpc Update(UpdateRequest) returns (UpdateResponse);
-    rpc BatchQuery(BatchQueryRequest) returns (BatchQueryResponse);
     rpc Query(QueryRequest) returns(QueryResponse);
     rpc SubQuery(QueryRequest) returns(QueryResponse);
     rpc SQLBatchRequestQuery(SQLBatchRequestQueryRequest) returns(SQLBatchRequestQueryResponse);

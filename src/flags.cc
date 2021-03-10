@@ -135,10 +135,6 @@ DEFINE_uint32(make_snapshot_max_deleted_keys, 1000000,
 DEFINE_uint32(make_snapshot_offline_interval, 60 * 60 * 24,
               "config tablet self makesnapshot when how long time do not "
               "makesnapshot from ns. unit is second");
-DEFINE_uint32(snapshot_ttl_time, 6 * 60,
-              "config relational table snapshot TTL time in minutes");
-DEFINE_uint32(snapshot_ttl_check_interval, 60,
-              "config relational table snapshot TTL check in minutes");
 DEFINE_string(snapshot_compression, "off", "Type of snapshot compression, can be off, snappy, zlib");
 DEFINE_int32(snapshot_pool_size, 1, "the size of tablet thread pool for making snapshot");
 
@@ -187,8 +183,3 @@ DEFINE_uint32(load_table_queue_size, 1000, "set load tabale queue size");
 // multiple data center
 DEFINE_uint32(get_replica_status_interval, 10000,
               "config the interval to sync replica cluster status time");
-// object sotre
-DEFINE_uint32(oss_flush_size, 0, "set oss cache flush kilobyte size");
-DEFINE_int32(oss_flush_period, 0, "set oss cache flush period seconds");
-DEFINE_uint32(oss_flush_delay, 1, "set oss cache flush delay seconds");
-DEFINE_string(mime_conf, "", "set mime db conf path");

@@ -509,7 +509,6 @@ TEST_P(TabletProjectTest, get_case) {
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         table_meta->set_key_entry_max_height(8);
         table_meta->set_format_version(1);
-        table_meta->set_table_type(type::kTimeSeries);
         Schema* schema = table_meta->mutable_column_desc();
         schema->CopyFrom(args->schema);
         ::rtidb::common::ColumnKey* ck = table_meta->add_column_key();
@@ -578,7 +577,6 @@ TEST_P(TabletProjectTest, sql_case) {
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         table_meta->set_key_entry_max_height(8);
         table_meta->set_format_version(1);
-        table_meta->set_table_type(type::kTimeSeries);
         Schema* schema = table_meta->mutable_column_desc();
         schema->CopyFrom(args->schema);
         ::rtidb::common::ColumnKey* ck = table_meta->add_column_key();
@@ -639,7 +637,6 @@ TEST_P(TabletProjectTest, scan_case) {
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         table_meta->set_key_entry_max_height(8);
         table_meta->set_format_version(1);
-        table_meta->set_table_type(type::kTimeSeries);
         Schema* schema = table_meta->mutable_column_desc();
         schema->CopyFrom(args->schema);
         ::rtidb::common::ColumnKey* ck = table_meta->add_column_key();

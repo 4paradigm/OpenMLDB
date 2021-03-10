@@ -19,7 +19,6 @@
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 #include "tablet/tablet_impl.h"
-#include "blobserver/blobserver_impl.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -86,24 +85,6 @@ void StartTablet(brpc::Server& server, const std::string& real_ep) { //NOLINT
         exit(1);
     }
     ok = tablet->RegisterZK();
-    ASSERT_TRUE(ok);
-    sleep(2);
-}
-
-void StartBlobServer(brpc::Server& server, const std::string& real_ep) { //NOLINT
-    ::rtidb::blobserver::BlobServerImpl* blob_server = new ::rtidb::blobserver::BlobServerImpl();
-    bool ok = blob_server->Init(real_ep);
-    ASSERT_TRUE(ok);
-    brpc::ServerOptions options;
-    if (server.AddService(blob_server, brpc::SERVER_OWNS_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server.Start(real_ep.c_str(), &options) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ok = blob_server->RegisterZK();
     ASSERT_TRUE(ok);
     sleep(2);
 }
@@ -182,13 +163,6 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     brpc::Server tb_server2;
     StartTablet(tb_server2, tb_real_ep_2);
 
-    // bs
-    FLAGS_use_name = true;
-    FLAGS_endpoint = "bs";
-    std::string bs_real_ep = "127.0.0.1:9932";
-    FLAGS_hdd_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-    brpc::Server bs_server;
-    StartBlobServer(bs_server, bs_real_ep);
     {
         std::map<std::string, std::string> map;
         ShowNameServer(&map);
@@ -220,31 +194,14 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
         ASSERT_EQ(tb_real_ep_2, status.real_endpoint());
         ASSERT_EQ("kTabletHealthy", status.state());
     }
-    {
-        // showblobserver
-        ::rtidb::nameserver::ShowBlobServerRequest request;
-        ::rtidb::nameserver::ShowBlobServerResponse response;
-        bool ok = name_server_client.SendRequest(
-                &::rtidb::nameserver::NameServer_Stub::ShowBlobServer,
-                &request, &response, FLAGS_request_timeout_ms, 1);
-        ASSERT_TRUE(ok);
-
-        const ::rtidb::nameserver::TabletStatus& status =
-            response.tablets(0);
-        ASSERT_EQ("bs", status.endpoint());
-        ASSERT_EQ(bs_real_ep, status.real_endpoint());
-        ASSERT_EQ("kTabletHealthy", status.state());
-    }
     std::string ns_sdk_ep = "127.0.0.1:8881";
     std::string tb_sdk_ep_1 = "127.0.0.1:8882";
     std::string tb_sdk_ep_2 = "127.0.0.1:8883";
-    std::string bs_sdk_ep = "127.0.0.1:8884";
     {
         // set sdkendpoint
         SetSdkEndpoint(name_server_client, "ns1", ns_sdk_ep);
         SetSdkEndpoint(name_server_client, "tb1", tb_sdk_ep_1);
         SetSdkEndpoint(name_server_client, "tb2", tb_sdk_ep_2);
-        SetSdkEndpoint(name_server_client, "bs", bs_sdk_ep);
     }
     {
         // show sdkendpoint
@@ -255,20 +212,15 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
                 ShowSdkEndpoint, &request, &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
 
-        ::rtidb::nameserver::TabletStatus status =
-            response.tablets(0);
-        ASSERT_EQ("bs", status.endpoint());
-        ASSERT_EQ(bs_sdk_ep, status.real_endpoint());
-
-        status = response.tablets(1);
+        auto status = response.tablets(0);
         ASSERT_EQ("ns1", status.endpoint());
         ASSERT_EQ(ns_sdk_ep, status.real_endpoint());
 
-        status = response.tablets(2);
+        status = response.tablets(1);
         ASSERT_EQ("tb1", status.endpoint());
         ASSERT_EQ(tb_sdk_ep_1, status.real_endpoint());
 
-        status = response.tablets(3);
+        status = response.tablets(2);
         ASSERT_EQ("tb2", status.endpoint());
         ASSERT_EQ(tb_sdk_ep_2, status.real_endpoint());
     }

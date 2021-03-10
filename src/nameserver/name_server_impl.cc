@@ -47,7 +47,6 @@ DECLARE_bool(use_name);
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_timeseries_table);
 
-using ::rtidb::base::BLOB_PREFIX;
 using ::rtidb::base::ReturnCode;
 using ::rtidb::api::OPType::kAddIndexOP;
 
@@ -1243,93 +1242,14 @@ void NameServerImpl::UpdateTabletsLocked(const std::vector<std::string>& endpoin
     UpdateTablets(endpoints);
 }
 
-void NameServerImpl::UpdateBlobServers(const std::vector<std::string>& endpoints) {
-    std::set<std::string> alive;
-    std::vector<std::string>::const_iterator it = endpoints.begin();
-    for (; it != endpoints.end(); ++it) {
-        alive.insert(*it);
-        BlobServers::iterator tit = blob_servers_.find(*it);
-        if (tit == blob_servers_.end()) {
-            std::shared_ptr<BlobServerInfo> blob = std::make_shared<BlobServerInfo>();
-            blob->state_ = TabletState::kTabletHealthy;
-            if (FLAGS_use_name) {
-                std::string real_ep;
-                if (!zk_client_->GetNodeValue(FLAGS_zk_root_path + "/map/names/" + *it, real_ep)) {
-                    PDLOG(WARNING, "get blobserver names value failed");
-                    continue;
-                }
-                blob->client_ = std::make_shared<BsClient>(*it, real_ep, true);
-                auto n_it = real_ep_map_.find(*it);
-                if (n_it == real_ep_map_.end()) {
-                    real_ep_map_.insert(std::make_pair(*it, real_ep));
-                } else {
-                    n_it->second = real_ep;
-                }
-            } else {
-                blob->client_ = std::make_shared<BsClient>(*it, "", true);
-            }
-            if (blob->client_->Init() != 0) {
-                PDLOG(WARNING, "blob client init error. endpoint[%s]", it->c_str());
-                continue;
-            }
-            blob->ctime_ = ::baidu::common::timer::get_micros() / 1000;
-            blob_servers_.insert(std::make_pair(*it, blob));
-            PDLOG(INFO, "add blob client. endpoint[%s]", it->c_str());
-        } else {
-            if (tit->second->state_ != TabletState::kTabletHealthy) {
-                if (FLAGS_use_name) {
-                    auto r_it = real_ep_map_.find(tit->first);
-                    if (r_it == real_ep_map_.end()) {
-                        PDLOG(WARNING, "%s not in real_ep_map", tit->first.c_str());
-                        continue;
-                    }
-                    tit->second->client_ = std::make_shared<BsClient>(tit->first, r_it->second, true);
-                    if (tit->second->client_->Init() != 0) {
-                        PDLOG(WARNING, "blob client init error. endpoint[%s]", tit->first.c_str());
-                        continue;
-                    }
-                }
-                tit->second->state_ = TabletState::kTabletHealthy;
-                tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
-                PDLOG(INFO, "blob is online. endpoint[%s]", tit->first.c_str());
-                thread_pool_.AddTask(boost::bind(&NameServerImpl::OnBlobOnline, this, tit->first));
-            }
-        }
-        PDLOG(INFO, "healthy blob with endpoint[%s]", it->c_str());
-    }
-
-    for (auto tit = blob_servers_.begin(); tit != blob_servers_.end(); ++tit) {
-        if (alive.find(tit->first) == alive.end() && tit->second->state_ == TabletState::kTabletHealthy) {
-            PDLOG(INFO, "offline blob with endpoint[%s]", tit->first.c_str());
-            tit->second->state_ = TabletState::kTabletOffline;
-            tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
-            if (offline_endpoint_map_.find(tit->first) == offline_endpoint_map_.end()) {
-                offline_endpoint_map_.insert(std::make_pair(tit->first, tit->second->ctime_));
-                if (running_.load(std::memory_order_acquire)) {
-                    thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval,
-                                           boost::bind(&NameServerImpl::OnBlobOffline, this, tit->first, false));
-                }
-            } else {
-                offline_endpoint_map_[tit->first] = tit->second->ctime_;
-            }
-        }
-    }
-    thread_pool_.AddTask(boost::bind(&NameServerImpl::UpdateRealEpMapToTablet, this));
-}
-
 void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
     // check exist and newly add tablets
     std::set<std::string> alive;
-    std::vector<std::string> blobs;
     std::vector<std::string> tablet_endpoints;
     {
         std::vector<std::string>::const_iterator it = endpoints.begin();
         for (; it != endpoints.end(); ++it) {
-            if (boost::starts_with(*it, BLOB_PREFIX)) {
-                blobs.push_back(it->substr(BLOB_PREFIX.size()));
-            } else {
-                tablet_endpoints.push_back(*it);
-            }
+            tablet_endpoints.push_back(*it);
         }
     }
     auto it = tablet_endpoints.begin();
@@ -1413,50 +1333,10 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             }
         }
     }
-    UpdateBlobServers(blobs);
     thread_pool_.AddTask(
         boost::bind(&NameServerImpl::DistributeTabletMode, this));
     thread_pool_.AddTask(
         boost::bind(&NameServerImpl::UpdateRealEpMapToTablet, this));
-}
-
-void NameServerImpl::OnBlobOnline(const std::string& endpoint) { return; }
-
-void NameServerImpl::OnBlobOffline(const std::string& endpoint, bool startup_flag) {
-    if (!running_.load(std::memory_order_acquire)) {
-        PDLOG(WARNING, "cur namesever is not leader");
-        return;
-    }
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        auto tit = blob_servers_.find(endpoint);
-        if (tit == blob_servers_.end()) {
-            PDLOG(WARNING, "cannot find endpoint %s in blob map", endpoint.c_str());
-            return;
-        }
-        auto iter = offline_endpoint_map_.find(endpoint);
-        if (iter == offline_endpoint_map_.end()) {
-            PDLOG(WARNING, "cannot find endpoint %s in offline endpoint map", endpoint.c_str());
-            return;
-        }
-        if (!startup_flag && tit->second->state_ == TabletState::kTabletHealthy) {
-            PDLOG(INFO, "endpoint %s is healthy, need not offline endpoint", endpoint.c_str());
-            return;
-        }
-        if (table_info_.empty() && db_table_info_.empty()) {
-            PDLOG(INFO, "endpoint %s has no table, need not offline endpoint", endpoint.c_str());
-            return;
-        }
-        uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-        if (!startup_flag && cur_time < iter->second + FLAGS_tablet_heartbeat_timeout) {
-            thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval,
-                                   boost::bind(&NameServerImpl::OnBlobOffline, this, endpoint, false));
-            return;
-        }
-    }
-    if (auto_failover_.load(std::memory_order_acquire)) {
-        PDLOG(INFO, "Run OfflineEndpoint. endpoint is %s", endpoint.c_str());
-    }
 }
 
 void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_flag) {
@@ -2692,57 +2572,40 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
                                         const std::vector<::rtidb::codec::ColumnDesc>& columns,
                                         std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term) {
     ::rtidb::api::TTLType ttl_type = ::rtidb::api::TTLType::kAbsoluteTime;
-    if (!table_info->has_table_type() || table_info->table_type() == ::rtidb::type::kTimeSeries) {
-        if (!table_info->has_ttl_desc()) {
-            if (table_info->ttl_type() == "kLatestTime") {
-                ttl_type = ::rtidb::api::TTLType::kLatestTime;
-            } else if (table_info->ttl_type() == "kAbsOrLat") {
-                ttl_type = ::rtidb::api::TTLType::kAbsOrLat;
-            } else if (table_info->ttl_type() == "kAbsAndLat") {
-                ttl_type = ::rtidb::api::TTLType::kAbsAndLat;
-            } else if (table_info->ttl_type() != "kAbsoluteTime") {
-                return -1;
-            }
-        } else {
-            ttl_type = table_info->ttl_desc().ttl_type();
+    if (!table_info->has_ttl_desc()) {
+        if (table_info->ttl_type() == "kLatestTime") {
+            ttl_type = ::rtidb::api::TTLType::kLatestTime;
+        } else if (table_info->ttl_type() == "kAbsOrLat") {
+            ttl_type = ::rtidb::api::TTLType::kAbsOrLat;
+        } else if (table_info->ttl_type() == "kAbsAndLat") {
+            ttl_type = ::rtidb::api::TTLType::kAbsAndLat;
+        } else if (table_info->ttl_type() != "kAbsoluteTime") {
+            return -1;
         }
+    } else {
+        ttl_type = table_info->ttl_desc().ttl_type();
     }
     ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress;
     if (table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
         compress_type = ::rtidb::api::CompressType::kSnappy;
     }
     ::rtidb::common::StorageMode storage_mode = ::rtidb::common::StorageMode::kMemory;
-    if (!table_info->has_table_type() || table_info->table_type() == ::rtidb::type::kTimeSeries) {
-        if (table_info->storage_mode() == ::rtidb::common::StorageMode::kSSD) {
-            storage_mode = ::rtidb::common::StorageMode::kSSD;
-        } else if (table_info->storage_mode() == ::rtidb::common::StorageMode::kHDD) {
-            storage_mode = ::rtidb::common::StorageMode::kHDD;
-        }
-    } else {
+    if (table_info->storage_mode() == ::rtidb::common::StorageMode::kSSD) {
+        storage_mode = ::rtidb::common::StorageMode::kSSD;
+    } else if (table_info->storage_mode() == ::rtidb::common::StorageMode::kHDD) {
         storage_mode = ::rtidb::common::StorageMode::kHDD;
-        if (table_info->storage_mode() == ::rtidb::common::StorageMode::kSSD) {
-            storage_mode = ::rtidb::common::StorageMode::kSSD;
-        }
     }
     ::rtidb::api::TableMeta table_meta;
     std::string schema;
-    if (table_info->has_table_type() && table_info->table_type() != ::rtidb::type::kTimeSeries) {
-        if (table_info->table_type() == ::rtidb::type::kRelational) {
-            table_meta.set_table_type(::rtidb::type::kRelational);
-        } else if (table_info->table_type() == rtidb::type::kObjectStore) {
-            table_meta.set_table_type(::rtidb::type::kObjectStore);
+    for (uint32_t i = 0; i < columns.size(); i++) {
+        if (columns[i].add_ts_idx) {
+            table_meta.add_dimensions(columns[i].name);
         }
-    } else {
-        for (uint32_t i = 0; i < columns.size(); i++) {
-            if (columns[i].add_ts_idx) {
-                table_meta.add_dimensions(columns[i].name);
-            }
-        }
-        ::rtidb::codec::SchemaCodec codec;
-        bool codec_ok = codec.Encode(columns, schema);
-        if (!codec_ok) {
-            return -1;
-        }
+    }
+    ::rtidb::codec::SchemaCodec codec;
+    bool codec_ok = codec.Encode(columns, schema);
+    if (!codec_ok) {
+        return -1;
     }
     table_meta.set_db(table_info->db());
     table_meta.set_name(table_info->name());
@@ -2854,68 +2717,13 @@ int NameServerImpl::DropTableOnTablet(std::shared_ptr<::rtidb::nameserver::Table
                     continue;
                 }
             }
-            if (!tablet_ptr->client_->DropTable(tid, pid, table_info->table_type())) {
+            if (!tablet_ptr->client_->DropTable(tid, pid)) {
                 PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]", tid, pid, endpoint.c_str());
             } else {
                 PDLOG(INFO, "drop table success. tid[%u] pid[%u] endpoint[%s]", tid, pid, endpoint.c_str());
             }
         }
     }
-    if (!table_info->has_blob_info()) {
-        return 0;
-    }
-    DropTableOnBlob(table_info);
-    return 0;
-}
-
-int NameServerImpl::DropTableOnBlobClient(const std::string& endpoint, uint32_t tid, uint32_t pid) {
-    std::shared_ptr<BlobServerInfo> blob_ptr;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        auto iter = blob_servers_.find(endpoint);
-        // check tablet if exist
-        if (iter == blob_servers_.end()) {
-            PDLOG(WARNING, "endpoint[%s] can not find client", endpoint.c_str());
-            return -2;
-        }
-        blob_ptr = iter->second;
-    }
-    if (blob_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-        PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
-        return -3;
-    }
-    std::string msg;
-    if (!blob_ptr->client_->DropTable(tid, pid, &msg)) {
-        PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]: %s", tid, pid, endpoint.c_str(), msg.c_str());
-        return -4;
-    }
-    PDLOG(INFO, "drop table success. tid[%u] pid[%u] endpoint[%s]", tid, pid, endpoint.c_str());
-    return 0;
-}
-
-int NameServerImpl::DropTableOnBlob(std::shared_ptr<TableInfo> table_info) {
-    uint32_t tid = table_info->tid();
-    std::string endpoint;
-    const std::string& name = table_info->name();
-    if (!table_info->has_blob_info()) {
-        PDLOG(WARNING, "table[%s] don't have blob", name.c_str());
-        return 0;
-    }
-    if (table_info->blob_info().blob_partition_size() < 1) {
-        PDLOG(WARNING, "table[%s] blob partition is empty", name.c_str());
-        return 0;
-    }
-
-    uint32_t pid = 0;
-    PDLOG(INFO, "begin drop table[%s] blob", name.c_str());
-    for (const auto& part : table_info->blob_info().blob_partition()) {
-        for (const auto& meta : part.partition_meta()) {
-            auto& ep = meta.endpoint();
-            DropTableOnBlobClient(ep, tid, pid);
-        }
-        pid++;
-    }
-    PDLOG(INFO, "drop table[%s] blob done", name.c_str());
     return 0;
 }
 
@@ -3607,7 +3415,7 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
     }
     for (const auto& pkv : pid_endpoint_map) {
         for (const auto& kv : pkv.second) {
-            if (!kv.second->DropTable(tid, pkv.first, table_info->table_type())) {
+            if (!kv.second->DropTable(tid, pkv.first)) {
                 PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]", tid, pkv.first, kv.first.c_str());
                 code = 313;  // if drop table failed, return error
                 continue;
@@ -3615,7 +3423,6 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
             PDLOG(INFO, "drop table. tid[%u] pid[%u] endpoint[%s]", tid, pkv.first, kv.first.c_str());
         }
     }
-    DropTableOnBlob(table_info);
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request.db().empty()) {
@@ -4259,12 +4066,6 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
-    if (!FLAGS_enable_timeseries_table && table_info->table_type() == ::rtidb::type::kTimeSeries) {
-        response->set_code(::rtidb::base::ReturnCode::kTableTypeMismatch);
-        response->set_msg("cannot create timeseries table");
-        PDLOG(WARNING, "entable_timeseries_table is false, cannot create timeseries table");
-        return;
-    }
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (!table_info->db().empty()) {
@@ -4289,15 +4090,13 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
             return;
         }
     }
-    if (!table_info->has_table_type() || table_info->table_type() == ::rtidb::type::kTimeSeries) {
-        AddDataType(table_info);
-        if (CheckTableMeta(*table_info) < 0) {
-            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
-            response->set_msg("check TableMeta failed");
-            return;
-        }
+    AddDataType(table_info);
+    if (CheckTableMeta(*table_info) < 0) {
+        response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
+        response->set_msg("check TableMeta failed");
+        return;
     }
-    if (!request->has_zone_info() && table_info->table_type() != ::rtidb::type::kObjectStore) {
+    if (!request->has_zone_info()) {
         if (FillColumnKey(*table_info) < 0) {
             response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             response->set_msg("fill column key failed");
@@ -4345,75 +4144,12 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         }
         cur_term = term_;
     }
-    if (table_info->table_type() == ::rtidb::type::kObjectStore) {
-        int ret = CreateBlobTable(table_info);
-        if (ret != 0) {
-            if (ret == 1) {
-                response->set_code(ReturnCode::kSetPartitionInfoFailed);
-                response->set_msg("not found avaiable blob server");
-            } else {
-                response->set_code(ReturnCode::kCreateTableFailed);
-                response->set_msg("create blob table failed");
-            }
-            return;
-        }
-        if (!SaveTableInfo(table_info)) {
-            response->set_code(ReturnCode::kSetZkFailed);
-            response->set_msg("set zk failed");
-            task_thread_pool_.AddTask(boost::bind(&NameServerImpl::DropTableOnBlob, this, table_info));
-            return;
-        }
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            table_info_.insert(std::make_pair(table_info->name(), table_info));
-        }
-        NotifyTableChanged();
-        response->set_code(::rtidb::base::ReturnCode::kOk);
-        response->set_msg("ok");
-        return;
-    } else if (table_info->table_type() == rtidb::type::kRelational) {
-        if (!rtidb::codec::SchemaCodec::AddTypeToColumnDesc(table_info)) {
-            response->set_code(::rtidb::base::ReturnCode::kAddTypeToColumnDescFailed);
-            response->set_msg("add type to ColumnDesc failed");
-            return;
-        }
-        bool has_blob = false;
-        for (const auto& col : table_info->column_desc_v1()) {
-            if (col.data_type() == rtidb::type::kBlob) {
-                has_blob = true;
-                break;
-            }
-        }
-        if (!has_blob) {
-            for (const auto& col : table_info->added_column_desc()) {
-                if (col.data_type() == rtidb::type::kBlob) {
-                    has_blob = true;
-                    break;
-                }
-            }
-        }
-        if (has_blob) {
-            int ret = CreateBlobTable(table_info);
-            if (ret != 0) {
-                if (ret == 1) {
-                    response->set_code(ReturnCode::kSetPartitionInfoFailed);
-                    response->set_msg("not found avaiable blob server");
-                } else {
-                    response->set_code(ReturnCode::kCreateTableFailed);
-                    response->set_msg("create table on blob server failed");
-                }
-                return;
-            }
-        }
-    }
     std::vector<::rtidb::codec::ColumnDesc> columns;
-    if (!table_info->has_table_type() || table_info->table_type() == ::rtidb::type::kTimeSeries) {
-        if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
-            response->set_code(::rtidb::base::ReturnCode::kConvertColumnDescFailed);
-            response->set_msg("convert column desc failed");
-            PDLOG(WARNING, "convert table column desc failed. name[%s] tid[%u]", table_info->name().c_str(), tid);
-            return;
-        }
+    if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
+        response->set_code(::rtidb::base::ReturnCode::kConvertColumnDescFailed);
+        response->set_msg("convert column desc failed");
+        PDLOG(WARNING, "convert table column desc failed. name[%s] tid[%u]", table_info->name().c_str(), tid);
+        return;
     }
 
     if (request->has_zone_info() && request->has_task_info() && request->task_info().IsInitialized()) {
@@ -4443,30 +4179,6 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         response->set_code(response->code());
         response->set_msg(response->msg());
     }
-}
-
-int NameServerImpl::CreateBlobTable(std::shared_ptr<TableInfo> table_info) {
-    ::rtidb::blobserver::TableMeta meta;
-    meta.set_tid(table_info->tid());
-    meta.set_pid(0);
-    meta.set_name(table_info->name());
-    meta.set_table_type(::rtidb::type::kObjectStore);
-
-    std::shared_ptr<BlobServerInfo> blob_info = SetBlobTableInfo(table_info);
-    if (!blob_info) {
-        PDLOG(WARNING, "not found available blob server");
-        return 1;
-    }
-    std::string msg;
-    bool ok = blob_info->client_->CreateTable(meta, &msg);
-    if (!ok) {
-        PDLOG(WARNING, "create table on blob server[%s] fail %s", blob_info->client_->GetEndpoint().c_str(),
-              msg.c_str());
-        return 2;
-    }
-    PDLOG(INFO, "create table %s on blob[%s] success!", table_info->name().c_str(),
-          blob_info->client_->GetEndpoint().c_str());
-    return 0;
 }
 
 bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {
@@ -4565,50 +4277,6 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
         task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
     }
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::DropTableOnTablet, this, table_info));
-}
-
-std::shared_ptr<BlobServerInfo> NameServerImpl::SetBlobTableInfo(std::shared_ptr<TableInfo> table_info) {
-    auto blob_info = table_info->mutable_blob_info();
-    auto new_part = blob_info->add_blob_partition();
-    auto new_meta = new_part->add_partition_meta();
-
-    std::map<std::string, uint64_t> endpoint_count;
-    std::lock_guard<std::mutex> lock(mu_);
-    for (const auto& it : blob_servers_) {
-        endpoint_count.insert(std::make_pair(it.first, 0));
-    }
-    for (const auto& iter : table_info_) {
-        auto info = iter.second;
-        if (!info->has_blob_info()) {
-            continue;
-        }
-        for (const auto& part : info->blob_info().blob_partition()) {
-            for (const auto& meta : part.partition_meta()) {
-                if (!meta.is_alive()) {
-                    continue;
-                }
-                auto& ep = meta.endpoint();
-                endpoint_count[ep]++;
-            }
-        }
-    }
-    std::string meta_endpoint;
-    uint64_t min = UINT64_MAX;
-    for (const auto& tit : endpoint_count) {
-        if (tit.second < min) {
-            min = tit.second;
-            meta_endpoint = tit.first;
-        }
-    }
-    BlobServers::iterator it = blob_servers_.find(meta_endpoint);
-    if (it != blob_servers_.end()) {
-        new_meta->set_endpoint(it->first);
-        new_meta->set_is_leader(true);
-        new_meta->set_is_alive(true);
-        return it->second;
-    }
-    PDLOG(WARNING, "no available blob server");
-    return std::shared_ptr<BlobServerInfo>();
 }
 
 // called by function CheckTableInfo and SyncTable
@@ -10325,11 +9993,6 @@ void NameServerImpl::SetSdkEndpoint(RpcController* controller, const SetSdkEndpo
                     ::rtidb::api::TabletState::kTabletHealthy) {
                 break;
             }
-            auto bit = blob_servers_.find(server_name);
-            if (bit != blob_servers_.end() && bit->second->state_ ==
-                    ::rtidb::api::TabletState::kTabletHealthy) {
-                break;
-            }
             has_found = false;
         } while (0);
         if (!has_found) {
@@ -10478,35 +10141,6 @@ void NameServerImpl::UpdateRemoteRealEpMap() {
     } while (false);
     task_thread_pool_.DelayTask(FLAGS_get_replica_status_interval,
                                 boost::bind(&NameServerImpl::UpdateRemoteRealEpMap, this));
-}
-
-void NameServerImpl::ShowBlobServer(RpcController* controller, const ShowBlobServerRequest* request,
-                                    ShowBlobServerResponse* response, Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
-        response->set_msg("nameserver is not leader");
-        PDLOG(WARNING, "cur nameserver is not leader");
-        return;
-    }
-    std::lock_guard<std::mutex> lock(mu_);
-    auto it = blob_servers_.begin();
-    for (; it != blob_servers_.end(); ++it) {
-        TabletStatus* status = response->add_tablets();
-        status->set_endpoint(it->first);
-        if (FLAGS_use_name) {
-            auto n_it = real_ep_map_.find(it->first);
-            if (n_it == real_ep_map_.end()) {
-                status->set_real_endpoint("-");
-            } else {
-                status->set_real_endpoint(n_it->second);
-            }
-        }
-        status->set_state(::rtidb::api::TabletState_Name(it->second->state_));
-        status->set_age(::baidu::common::timer::get_micros() / 1000 - it->second->ctime_);
-    }
-    response->set_code(::rtidb::base::ReturnCode::kOk);
-    response->set_msg("ok");
 }
 
 void NameServerImpl::ShowSdkEndpoint(RpcController* controller, const ShowSdkEndpointRequest* request,

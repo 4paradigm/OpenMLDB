@@ -49,8 +49,7 @@ static const std::unordered_map<std::string, ::rtidb::type::DataType>
                      {"varchar", ::rtidb::type::kVarchar},
                      {"string", rtidb::type::DataType::kString},
                      {"date", ::rtidb::type::kDate},
-                     {"timestamp", ::rtidb::type::kTimestamp},
-                     {"blob", ::rtidb::type::kBlob}};
+                     {"timestamp", ::rtidb::type::kTimestamp}};
 
 static const std::unordered_map<std::string, ::rtidb::type::IndexType>
     INDEX_TYPE_MAP = {{"unique", ::rtidb::type::kUnique},
@@ -69,8 +68,7 @@ static const std::unordered_map<::rtidb::type::DataType, std::string>
                          {::rtidb::type::kTimestamp, "timestamp"},
                          {::rtidb::type::kDate, "date"},
                          {::rtidb::type::kVarchar, "varchar"},
-                         {::rtidb::type::kString, "string"},
-                         {::rtidb::type::kBlob, "blob"}};
+                         {::rtidb::type::kString, "string"}};
 
 enum ColType {
     kString = 0,
@@ -219,7 +217,6 @@ class SchemaCodec {
             case rtidb::type::kTimestamp: return fesql::type::kTimestamp;
             case rtidb::type::kVarchar: return fesql::type::kVarchar;
             case rtidb::type::kString: return fesql::type::kVarchar;
-            case rtidb::type::kBlob: return fesql::type::kBlob;
             default: return fesql::type::kNull;
         }
     }
@@ -420,7 +417,6 @@ class SchemaCodec {
                     col_desc->set_type("int32");
                     break;
                 }
-                case rtidb::type::kBlob:
                 case rtidb::type::kBigInt: {
                     col_desc->set_type("int64");
                     break;

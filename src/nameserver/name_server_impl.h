@@ -23,7 +23,6 @@
 
 #include "base/hash.h"
 #include "base/random.h"
-#include "client/bs_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
 #include "codec/schema_codec.h"
@@ -42,7 +41,6 @@ namespace nameserver {
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
 using ::rtidb::api::TabletState;
-using ::rtidb::client::BsClient;
 using ::rtidb::client::NsClient;
 using ::rtidb::client::TabletClient;
 using ::rtidb::zk::DistLock;
@@ -66,12 +64,6 @@ struct TabletInfo {
     bool Health() {
         return state_ == ::rtidb::api::TabletState::kTabletHealthy;
     }
-};
-// oss info
-struct BlobServerInfo {
-    TabletState state_;
-    std::shared_ptr<BsClient> client_;
-    uint64_t ctime_;
 };
 
 class ClusterInfo {
@@ -120,7 +112,6 @@ class ClusterInfo {
 
 // the container of tablet
 typedef std::map<std::string, std::shared_ptr<TabletInfo>> Tablets;
-typedef std::map<std::string, std::shared_ptr<BlobServerInfo>> BlobServers;
 typedef std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> TableInfos;
 
 typedef boost::function<void()> TaskFun;
@@ -212,9 +203,6 @@ class NameServerImpl : public NameServer {
 
     void ShowTablet(RpcController* controller, const ShowTabletRequest* request,
                     ShowTabletResponse* response, Closure* done);
-    void ShowBlobServer(RpcController* controller,
-            const ShowBlobServerRequest* request,
-                    ShowBlobServerResponse* response, Closure* done);
     void ShowSdkEndpoint(RpcController* controller,
             const ShowSdkEndpointRequest* request,
             ShowSdkEndpointResponse* response, Closure* done);
@@ -507,17 +495,11 @@ class NameServerImpl : public NameServer {
     // Update tablets from zookeeper
     void UpdateTablets(const std::vector<std::string>& endpoints);
 
-    void UpdateBlobServers(const std::vector<std::string>& endpoints);
-
     void OnTabletOffline(const std::string& endpoint, bool startup_flag);
 
     void RecoverOfflineTablet();
 
     void OnTabletOnline(const std::string& endpoint);
-
-    void OnBlobOffline(const std::string& endpoint, bool startup_flag);
-
-    void OnBlobOnline(const std::string& endpoint);
 
     void OfflineEndpointInternal(const std::string& endpoint,
                                  uint32_t concurrency);
@@ -535,9 +517,6 @@ class NameServerImpl : public NameServer {
                       const std::string& endpoint, uint32_t pid,
                       std::shared_ptr<::rtidb::api::TaskInfo> task_info,
                       uint32_t flag);
-
-    std::shared_ptr<BlobServerInfo> SetBlobTableInfo(
-        std::shared_ptr<TableInfo> table_info);
 
     void UpdatePartitionStatus(
         const std::string& name, const std::string& db,
@@ -737,8 +716,6 @@ class NameServerImpl : public NameServer {
     std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
         uint64_t op_id, ::rtidb::api::TaskType task_type);
 
-    int CreateBlobTable(std::shared_ptr<TableInfo> table_info);
-
     bool SaveTableInfo(std::shared_ptr<TableInfo> table_info);
 
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value,
@@ -840,11 +817,6 @@ class NameServerImpl : public NameServer {
     void UpdateTableStatus();
     int DropTableOnTablet(
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
-
-    int DropTableOnBlobClient(const std::string& endpoint, uint32_t tid,
-                              uint32_t pid);
-
-    int DropTableOnBlob(std::shared_ptr<TableInfo> table_info);
 
     void CheckBinlogSyncProgress(
         const std::string& name, const std::string& db, uint32_t pid,
@@ -955,7 +927,6 @@ class NameServerImpl : public NameServer {
  private:
     std::mutex mu_;
     Tablets tablets_;
-    BlobServers blob_servers_;
     ::rtidb::nameserver::TableInfos table_info_;
     std::map<std::string, ::rtidb::nameserver::TableInfos> db_table_info_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;

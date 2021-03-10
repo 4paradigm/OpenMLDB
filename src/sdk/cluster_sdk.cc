@@ -229,9 +229,6 @@ bool ClusterSDK::InitTabletClient() {
     }
     std::map<std::string, std::string> real_ep_map;
     for (const auto& endpoint : tablets) {
-        if (boost::starts_with(endpoint, ::rtidb::base::BLOB_PREFIX)) {
-            continue;
-        }
         std::string real_endpoint;
         if (!GetRealEndpoint(endpoint, &real_endpoint)) {
             return false;

@@ -22,8 +22,6 @@ static const char LABELS[10] = {'0', '1', '2', '3', '4',
 static const uint32_t TIME_OFFSET[] = {1000, 60, 60, 24};
 static const char* TIME_LABEL[] = {"ms", "s", "m", "h", "d"};
 
-static const std::string BLOB_PREFIX = "blob_"; // NOLINT
-
 static inline void SplitString(const std::string& full,
                                const std::string& delim,
                                std::vector<std::string>& result) { // NOLINT

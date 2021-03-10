@@ -1,6 +1,5 @@
 import "common.proto";
 import "tablet.proto";
-import "type.proto";
 import "sql_procedure.proto";
 package rtidb.nameserver;
 
@@ -73,22 +72,6 @@ message UpdateTTLResponse {
     optional string msg = 2;
 }
 
-message BlobPartitionMeta {
-    optional string endpoint = 1;
-    optional bool is_leader = 2 [default = false];
-    optional bool is_alive = 3 [default = true];
-}
-
-message BlobPartition{
-    repeated BlobPartitionMeta partition_meta = 1;
-}
-
-message BlobInfo {
-    optional uint32 replica_num = 1 [default = 1];
-    repeated BlobPartition blob_partition = 2;
-    optional uint32 height = 3 [default = 1];
-}
-
 message TableInfo {
     optional string name = 1;
     optional uint64 ttl = 2 [default = 0, deprecated = true];
@@ -106,12 +89,10 @@ message TableInfo {
     optional rtidb.common.StorageMode storage_mode = 14 [default = kMemory];
     repeated rtidb.common.ColumnDesc added_column_desc = 15;
     optional rtidb.api.TTLDesc ttl_desc = 16;
-    optional rtidb.type.TableType table_type = 17 [default = kTimeSeries];
-    optional uint32 format_version = 18 [default = 0];
-    optional BlobInfo blob_info = 19;
-    optional string db = 20 [default = ""];
-    repeated string partition_key = 21;
-    repeated common.VersionPair schema_versions = 22;
+    optional uint32 format_version = 17 [default = 0];
+    optional string db = 18 [default = ""];
+    repeated string partition_key = 19;
+    repeated common.VersionPair schema_versions = 20;
 }
 
 message CreateTableRequest {
@@ -463,14 +444,6 @@ message DropDatabaseRequest {
     optional string db = 1;
 }
 
-message ShowBlobServerRequest {}
-
-message ShowBlobServerResponse {
-    repeated TabletStatus tablets = 1;
-    optional int32 code = 2;
-    optional string msg = 3;
-}
-
 message ShowSdkEndpointRequest {}
 
 message ShowSdkEndpointResponse {
@@ -531,7 +504,6 @@ service NameServer {
     rpc ShowDatabase(GeneralRequest) returns (ShowDatabaseResponse);
     rpc DropDatabase(DropDatabaseRequest) returns (GeneralResponse);
     rpc SetSdkEndpoint(SetSdkEndpointRequest) returns (GeneralResponse);
-    rpc ShowBlobServer(ShowBlobServerRequest) returns (ShowBlobServerResponse);
     rpc ShowSdkEndpoint(ShowSdkEndpointRequest) returns (ShowSdkEndpointResponse);
     rpc ShowCatalog(ShowCatalogRequest) returns (ShowCatalogResponse);
 
