@@ -50,6 +50,11 @@ void BatchRequestEngineCheck(const SQLCase& sql_case,
 void EngineCheck(const SQLCase& sql_case, const EngineOptions& options,
                  EngineMode engine_mode);
 
+int GenerateSqliteTestStringCallback(void* s, int argc, char** argv,
+                                     char** azColName);
+void CheckSQLiteCompatible(const SQLCase& sql_case, const vm::Schema& schema,
+                           const std::vector<Row>& output);
+
 class ToydbBatchEngineTestRunner : public BatchEngineTestRunner {
  public:
     explicit ToydbBatchEngineTestRunner(const SQLCase& sql_case,
@@ -93,6 +98,15 @@ class ToydbBatchEngineTestRunner : public BatchEngineTestRunner {
         return table->Put(reinterpret_cast<char*>(row.buf()), row.size());
     }
 
+    void RunSQLiteCheck() {
+        // Determine whether to compare with SQLite
+        if (sql_case_.standard_sql() && sql_case_.standard_sql_compatible()) {
+            std::vector<Row> output_rows;
+            ASSERT_TRUE(Compute(&output_rows).isOK());
+            CheckSQLiteCompatible(sql_case_, GetSession()->GetSchema(),
+                                  output_rows);
+        }
+    }
  private:
     std::shared_ptr<tablet::TabletCatalog> catalog_;
     std::map<std::string, std::shared_ptr<::fesql::storage::Table>>

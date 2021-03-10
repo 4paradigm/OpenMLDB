@@ -211,5 +211,93 @@ void EngineCheck(const SQLCase& sql_case, const EngineOptions& options,
     }
 }
 
+
+int GenerateSqliteTestStringCallback(void* s, int argc, char** argv,
+                                     char** azColName) {
+    std::string& sqliteStr = *static_cast<std::string*>(s);
+    int i;
+    for (i = 0; i < argc; i++) {
+        sqliteStr += NULL == argv[i] ? "NULL" : argv[i];
+        sqliteStr += ", ";
+    }
+    sqliteStr = sqliteStr.substr(0, sqliteStr.length() - 2);
+    sqliteStr += "\n";
+    return 0;
+}
+
+void CheckSQLiteCompatible(const SQLCase& sql_case, const vm::Schema& schema,
+                           const std::vector<Row>& output) {
+    // Use SQLite to get output
+    sqlite3* db;
+    char* zErrMsg = 0;
+    int rc;
+
+    // Create database in the memory
+    rc = sqlite3_open(":memory:", &db);
+    if (rc) {
+        LOG(ERROR) << "Can't open database: %s\n" << sqlite3_errmsg(db);
+        exit(0);
+    } else {
+        LOG(INFO) << "Database Create successfully\n";
+    }
+
+    // Create SQL statement to create a table schema
+    type::TableDef output_table;
+    sql_case.ExtractInputTableDef(output_table);
+    std::string create_table_sql;
+    SQLCase::BuildCreateSQLFromSchema(output_table, &create_table_sql, false);
+    LOG(INFO) << create_table_sql;
+
+    // Create a table schema
+    const char* create_table_sql_ch = create_table_sql.c_str();
+    rc = sqlite3_exec(db, create_table_sql_ch, 0, 0, &zErrMsg);
+    if (rc != SQLITE_OK) {
+        LOG(ERROR) << "SQL error: %s\n" << zErrMsg;
+        sqlite3_free(zErrMsg);
+    } else {
+        LOG(INFO) << "Table schema created successfully\n";
+    }
+
+    // Create SQL statements to insert data to the table (One insert)
+    std::string create_insert_sql = "";
+    std::vector<std::string> data_line;
+    sql_case.BuildInsertSQLFromInput(0, &create_insert_sql);
+
+    // Insert data into the table
+    const char* create_insert_sql_ch = create_insert_sql.c_str();
+    std::cout << create_insert_sql_ch << std::endl;
+    rc = sqlite3_exec(db, create_insert_sql_ch, 0, 0, &zErrMsg);
+    if (rc != SQLITE_OK) {
+        LOG(ERROR) << "SQL error: %s\n" << zErrMsg;
+        sqlite3_free(zErrMsg);
+    } else {
+        LOG(INFO) << "Records created successfully\n";
+    }
+
+    // Execute SQL statement
+    const char* create_execute_sql_ch = sql_case.sql_str().c_str();
+    std::string sqliteStr = "";
+    rc = sqlite3_exec(db, create_execute_sql_ch,
+                      GenerateSqliteTestStringCallback,
+                      static_cast<void*>(&sqliteStr), &zErrMsg);
+    if (rc != SQLITE_OK) {
+        LOG(ERROR) << "SQL error: " << zErrMsg
+                   << "\nsql: " << create_execute_sql_ch;
+        sqlite3_free(zErrMsg);
+    } else {
+        LOG(INFO) << "Operation done successfully\n";
+    }
+    sqlite3_close(db);
+    sqliteStr.pop_back();
+
+    // Transfer Sqlite outcome to Fesql row
+    std::vector<fesql::codec::Row> sqliteRows;
+    SQLCase::ExtractRows(schema, sqliteStr, sqliteRows);
+
+    // Compare Fesql output with SQLite output.
+    ASSERT_NO_FATAL_FAILURE(CheckRows(
+        schema, SortRows(schema, sqliteRows, sql_case.expect().order_),
+        SortRows(schema, output, sql_case.expect().order_)));
+}
 }  // namespace vm
 }  // namespace fesql

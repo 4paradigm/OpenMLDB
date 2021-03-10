@@ -75,8 +75,6 @@ enum EngineRunMode { RUNBATCH, RUNONE };
 
 std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);   // NOLINT
-int GenerateSqliteTestStringCallback(void* s, int argc, char** argv,
-                                     char** azColName);
 
 bool IsNaN(float x);
 bool IsNaN(double x);
@@ -98,8 +96,6 @@ const std::string GenerateTableName(int32_t id);
 void DoEngineCheckExpect(const SQLCase& sql_case,
                          std::shared_ptr<RunSession> session,
                          const std::vector<Row>& output);
-void CheckSQLiteCompatible(const SQLCase& sql_case, const vm::Schema& schema,
-                           const std::vector<Row>& output);
 
 class EngineTest : public ::testing::TestWithParam<SQLCase> {
  public:
@@ -195,16 +191,6 @@ class BatchEngineTestRunner : public EngineTestRunner {
         }
         CHECK_TRUE(run_ret == 0, common::kSQLError, "Run batch session failed");
         return Status::OK();
-    }
-
-    void RunSQLiteCheck() {
-        // Determine whether to compare with SQLite
-        if (sql_case_.standard_sql() && sql_case_.standard_sql_compatible()) {
-            std::vector<Row> output_rows;
-            ASSERT_TRUE(Compute(&output_rows).isOK());
-            CheckSQLiteCompatible(sql_case_, GetSession()->GetSchema(),
-                                  output_rows);
-        }
     }
 };
 
