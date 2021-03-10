@@ -45,6 +45,15 @@ class TbCluster(object):
                 tb_path = test_path + '/tablet{}'.format(i) + 'remote'
             esc_tb_path = tb_path.replace("/", "\/")
             exe_shell('export ')
+            exe_shell('rm -rf {}/*'.format(tb_path))
+            rtidb_flags = '{}/conf/tablet.flags'.format(tb_path)
+            exe_shell('mkdir -p {}/conf'.format(tb_path))
+            exe_shell('cat {} | egrep -v "endpoint|log_level|gc_interval|log_dir" > '
+                      '{}'.format(tbconfpath, rtidb_flags))
+            exe_shell("sed -i '1a --endpoint='{} {}".format(ep, rtidb_flags))
+            exe_shell("sed -i '1a --gc_interval=1' {}".format(rtidb_flags))
+            exe_shell("sed -i 's/--db_root_path=.*/--db_root_path={}\/db/' {}".format(esc_tb_path, rtidb_flags))
+
             exe_shell("sed -i '1a --zk_cluster='{} {}".format(self.zk_endpoint, rtidb_flags))
             exe_shell("sed -i 's/--recycle_bin_root_path=.*/--recycle_bin_root_path={}\/recycle/' {}".format(esc_tb_path, rtidb_flags))
             exe_shell("echo '--log_level={}' >> {}".format(conf.rtidb_log_info, rtidb_flags))
