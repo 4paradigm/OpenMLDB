@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-#include "fesql_client_bm_case.h"
+#include "bm/fesql_client_bm_case.h"
 #include <memory>
 #include <string>
 #include <vector>
-#include "sdk/dbms_sdk.h"
-#include "sdk/tablet_sdk.h"
-#include "base_bm.h"
+#include "bm/base_bm.h"
 #include "brpc/server.h"
 #include "dbms/dbms_server_impl.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "sdk/dbms_sdk.h"
+#include "sdk/tablet_sdk.h"
 #include "tablet/tablet_server_impl.h"
 DECLARE_string(dbms_endpoint);
 DECLARE_string(endpoint);

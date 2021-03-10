@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-
-#ifndef SRC_BM_RUNNER_BM_CASE_H_
-#define SRC_BM_RUNNER_BM_CASE_H_
+#ifndef EXAMPLES_TOYDB_SRC_BM_RUNNER_BM_CASE_H_
+#define EXAMPLES_TOYDB_SRC_BM_RUNNER_BM_CASE_H_
 #include "benchmark/benchmark.h"
 namespace fesql {
 namespace bm {
@@ -29,4 +28,4 @@ void WindowSumFeature1_RequestUnion(benchmark::State* state, MODE mode,
                                     int64_t size);  // NOLINT
 }  // namespace bm
 }  // namespace fesql
-#endif  // SRC_BM_RUNNER_BM_CASE_H_
+#endif  // EXAMPLES_TOYDB_SRC_BM_RUNNER_BM_CASE_H_

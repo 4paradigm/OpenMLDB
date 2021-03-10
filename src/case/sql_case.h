@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CASE_SQL_CASE_H_
 #define SRC_CASE_SQL_CASE_H_
 #include <vm/catalog.h>

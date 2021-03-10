@@ -39,13 +39,13 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
+#include "passes/physical/condition_optimized.h"
 #include "plan/planner.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/simple_catalog.h"
 #include "vm/sql_compiler.h"
 #include "vm/test_base.h"
-#include "passes/physical/condition_optimized.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -56,8 +56,8 @@ namespace fesql {
 namespace vm {
 
 using fesql::passes::ConditionOptimized;
-using fesql::sqlcase::SQLCase;
 using fesql::passes::ExprPair;
+using fesql::sqlcase::SQLCase;
 
 std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT

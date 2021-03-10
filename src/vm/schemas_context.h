@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_VM_SCHEMAS_CONTEXT_H_
 #define SRC_VM_SCHEMAS_CONTEXT_H_
 #include <map>

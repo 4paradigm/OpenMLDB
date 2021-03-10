@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "list.h"
+#include "storage/list.h"
 #include <sys/time.h>
 #include <time.h>
 #include <random>
 #include <string>
-#include "fe_skiplist.h"
+#include "storage/fe_skiplist.h"
 #include "gtest/gtest.h"
 
 namespace fesql {

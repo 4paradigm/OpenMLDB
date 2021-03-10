@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "engine_bm_case.h"
+#include "bm/engine_bm_case.h"
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-#include "base_bm.h"
+#include "bm/base_bm.h"
 #include "benchmark/benchmark.h"
 #include "codec/type_codec.h"
 #include "gtest/gtest.h"

@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-#ifndef SRC_VM_TEST_BASE_H_
-#define SRC_VM_TEST_BASE_H_
+#ifndef EXAMPLES_TOYDB_SRC_TESTING_TOYDB_TEST_BASE_H_
+#define EXAMPLES_TOYDB_SRC_TESTING_TOYDB_TEST_BASE_H_
 
 #include <memory>
 #include <sstream>
 #include <string>
+#include "case/sql_case.h"
 #include "glog/logging.h"
 #include "plan/planner.h"
 #include "tablet/tablet_catalog.h"
 #include "vm/catalog.h"
 #include "vm/engine.h"
-#include "case/sql_case.h"
 
 namespace fesql {
 namespace vm {
@@ -62,10 +62,10 @@ bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     return catalog->AddTable(handler);
 }
 bool InitToydbEngineCatalog(
-    SQLCase& sql_case, // NOLINT
+    SQLCase& sql_case,  // NOLINT
     const EngineOptions& engine_options,
     std::map<std::string, std::shared_ptr<::fesql::storage::Table>>&  // NOLINT
-    name_table_map,                                               // NOLINT
+        name_table_map,                                               // NOLINT
     std::shared_ptr<vm::Engine> engine,
     std::shared_ptr<tablet::TabletCatalog> catalog) {
     LOG(INFO) << "Init Toy DB Engine & Catalog";
@@ -81,6 +81,10 @@ bool InitToydbEngineCatalog(
 
         std::shared_ptr<::fesql::storage::Table> table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
+        if (!table->Init()) {
+            LOG(WARNING) << "Fail to init toydb storage table";
+            return false;
+        }
         name_table_map[table_def.name()] = table;
         if (engine_options.is_cluster_optimzied()) {
             // add table with local tablet
@@ -103,4 +107,4 @@ std::shared_ptr<tablet::TabletCatalog> BuildToydbCatalog() {
 }  // namespace vm
 }  // namespace fesql
 
-#endif  // SRC_VM_TEST_BASE_H_
+#endif  // EXAMPLES_TOYDB_SRC_TESTING_TOYDB_TEST_BASE_H_

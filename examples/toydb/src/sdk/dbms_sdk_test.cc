@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "sdk/dbms_sdk.h"
 #include <unistd.h>
 #include <map>

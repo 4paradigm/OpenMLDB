@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "udf_bm_case.h"
+#include "bm/udf_bm_case.h"
 #include "gtest/gtest.h"
 namespace fesql {
 namespace bm {

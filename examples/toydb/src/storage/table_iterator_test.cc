@@ -18,8 +18,8 @@
 #include <iostream>
 #include <string>
 #include "codec/row.h"
-#include "fe_table.h"
-#include "fe_table_iterator.h"
+#include "storage/fe_table.h"
+#include "storage/fe_table_iterator.h"
 #include "gtest/gtest.h"
 
 namespace fesql {

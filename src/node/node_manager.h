@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 // memory_manager.h
 //     负责FeSQL的基础元件（SQLNode, PlanNode)的创建和销毁
 //     SQL的语法解析树、查询计划里面维护的只是这些节点的指针或者引用

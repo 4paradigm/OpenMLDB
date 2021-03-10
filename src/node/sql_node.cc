@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "node/sql_node.h"
 #include <numeric>
 #include <utility>

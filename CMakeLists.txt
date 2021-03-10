@@ -47,7 +47,7 @@ option(TESTING_ENABLE "Enable Test" ON)
 option(COVERAGE_ENABLE "Enable Coverage" ON)
 option(PYSDK_ENABLE "Enable pysdk" ON)
 option(JAVASDK_ENABLE "Enable javasdk" ON)
-option(EXAMPLES_ENABLE "Enable examples" OFF)
+option(EXAMPLES_ENABLE "Enable examples" ON)
 option(LLVM_EXT_ENABLE "Enable llvm ext sources" OFF)
 
 if (CMAKE_BUILD_TYPE STREQUAL "")

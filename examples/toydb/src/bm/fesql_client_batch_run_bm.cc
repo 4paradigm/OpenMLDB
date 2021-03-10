@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-
 #include "benchmark/benchmark.h"
-#include "fesql_client_bm_case.h"
+#include "bm/fesql_client_bm_case.h"
 #include "glog/logging.h"
 #include "llvm/Support/TargetSelect.h"
 

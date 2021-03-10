@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-
-#include "fe_segment.h"
+#include "storage/fe_segment.h"
 #include <mutex>  //NOLINT
 
 namespace fesql {

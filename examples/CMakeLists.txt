@@ -11,4 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+include_directories(${INCLUDE_DIRECTORIES}
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_BINARY_DIR}/src
+        ${PROJECT_SOURCE_DIR}/examples)
 add_subdirectory(toydb)

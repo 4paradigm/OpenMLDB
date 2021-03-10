@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "vm/simple_catalog.h"
+#include <utility>
 
 namespace fesql {
 namespace vm {
@@ -50,14 +51,14 @@ SimpleCatalogTableHandler::SimpleCatalogTableHandler(
     // build col info and index info
     // init types var
     for (int32_t i = 0; i < table_def.columns_size(); i++) {
-        const type::ColumnDef& column = table_def.columns(i);
+        const type::ColumnDef &column = table_def.columns(i);
         codec::ColInfo col_info(column.name(), column.type(), i, 0);
         types_dict_.insert(std::make_pair(column.name(), col_info));
     }
 
     // init index hint
     for (int32_t i = 0; i < table_def.indexes().size(); i++) {
-        const type::IndexDef& index_def = table_def.indexes().Get(i);
+        const type::IndexDef &index_def = table_def.indexes().Get(i);
         vm::IndexSt index_st;
         index_st.index = i;
         index_st.ts_pos = ::fesql::vm::INVALID_POS;
@@ -74,7 +75,7 @@ SimpleCatalogTableHandler::SimpleCatalogTableHandler(
         }
         index_st.name = index_def.name();
         for (int32_t j = 0; j < index_def.first_keys_size(); j++) {
-            const std::string& key = index_def.first_keys(j);
+            const std::string &key = index_def.first_keys(j);
             auto it = types_dict_.find(key);
             if (it == types_dict_.end()) {
                 LOG(WARNING) << "column " << key << " does not exist in table "

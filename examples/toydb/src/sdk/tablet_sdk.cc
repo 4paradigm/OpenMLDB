@@ -28,7 +28,7 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "proto/fe_tablet.pb.h"
-#include "result_set_impl.h"
+#include "sdk/result_set_impl.h"
 
 namespace fesql {
 namespace sdk {

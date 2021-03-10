@@ -29,13 +29,13 @@
 #include "boost/compute/detail/lru_cache.hpp"
 #include "codec/fe_row_codec.h"
 #include "codec/list_iterator_codec.h"
+#include "gflags/gflags.h"
 #include "llvm-c/Target.h"
 #include "proto/fe_common.pb.h"
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
 #include "vm/router.h"
 #include "vm/sql_compiler.h"
-#include "gflags/gflags.h"
 
 namespace fesql {
 namespace vm {

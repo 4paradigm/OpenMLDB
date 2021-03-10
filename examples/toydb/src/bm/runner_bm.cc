@@ -15,8 +15,8 @@
  */
 
 #include "benchmark/benchmark.h"
+#include "bm/runner_bm_case.h"
 #include "llvm/Transforms/Scalar.h"
-#include "runner_bm_case.h"
 
 namespace fesql {
 namespace bm {

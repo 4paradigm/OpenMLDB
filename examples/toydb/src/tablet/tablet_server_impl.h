@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_TABLET_TABLET_SERVER_IMPL_H_
-#define SRC_TABLET_TABLET_SERVER_IMPL_H_
+#ifndef EXAMPLES_TOYDB_SRC_TABLET_TABLET_SERVER_IMPL_H_
+#define EXAMPLES_TOYDB_SRC_TABLET_TABLET_SERVER_IMPL_H_
 
 #include <map>
 #include <memory>
@@ -25,7 +25,7 @@
 #include "brpc/server.h"
 #include "proto/dbms.pb.h"
 #include "proto/fe_tablet.pb.h"
-#include "tablet_catalog.h"
+#include "tablet/tablet_catalog.h"
 #include "vm/engine.h"
 
 namespace fesql {
@@ -99,4 +99,4 @@ class TabletServerImpl : public TabletServer {
 
 }  // namespace tablet
 }  // namespace fesql
-#endif  // SRC_TABLET_TABLET_SERVER_IMPL_H_
+#endif  // EXAMPLES_TOYDB_SRC_TABLET_TABLET_SERVER_IMPL_H_

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "base_bm.h"
+#include "bm/base_bm.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 namespace fesql {

@@ -13,10 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_VM_TOYDB_ENGINE_TEST_H_
-#define SRC_VM_TOYDB_ENGINE_TEST_H_
+#ifndef EXAMPLES_TOYDB_SRC_TESTING_TOYDB_ENGINE_TEST_H_
+#define EXAMPLES_TOYDB_SRC_TESTING_TOYDB_ENGINE_TEST_H_
 
 #include "testing/toydb_test_base.h"
+#include <vector>
+#include <map>
+#include <memory>
+#include <string>
+#include <set>
 #include "vm/engine_test.h"
 namespace fesql {
 namespace vm {
@@ -24,7 +29,7 @@ class ToydbBatchEngineTestRunner : public BatchEngineTestRunner {
  public:
     explicit ToydbBatchEngineTestRunner(const SQLCase& sql_case,
                                         const EngineOptions options)
-        : BatchEngineTestRunner(sql_case, options), catalog_(){}
+        : BatchEngineTestRunner(sql_case, options), catalog_() {}
     bool InitEngineCatalog() override {
         catalog_ = BuildToydbCatalog();
         engine_ = std::make_shared<Engine>(catalog_, options_);
@@ -244,4 +249,4 @@ void EngineCheck(const SQLCase& sql_case, const EngineOptions& options,
 
 }  // namespace vm
 }  // namespace fesql
-#endif  // SRC_VM_ENGINE_TEST_H_
+#endif  // EXAMPLES_TOYDB_SRC_TESTING_TOYDB_ENGINE_TEST_H_

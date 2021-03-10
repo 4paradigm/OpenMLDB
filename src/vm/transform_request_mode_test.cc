@@ -79,8 +79,8 @@ class TransformRequestModeTest : public ::testing::TestWithParam<SQLCase> {
     ::fesql::node::NodeManager manager;
 };
 
-void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog,
-                       std::string sql, std::string exp) {
+void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
+                       std::string exp) {
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
 
     boost::to_lower(sql);

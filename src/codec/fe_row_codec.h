@@ -24,8 +24,8 @@
 #include <vector>
 #include "base/raw_buffer.h"
 #include "butil/iobuf.h"
-#include "proto/fe_type.pb.h"
 #include "gflags/gflags.h"
+#include "proto/fe_type.pb.h"
 
 namespace fesql {
 namespace codec {

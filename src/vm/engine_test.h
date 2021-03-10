@@ -1016,8 +1016,6 @@ class BatchEngineTestRunner : public EngineTestRunner {
             }
             if (!rows.empty()) {
                 std::string table_name = sql_case_.inputs_[i].name_;
-                CHECK_TRUE(InitTable(table_name), common::kSQLError,
-                           "Fail to init table ", table_name);
                 CHECK_TRUE(AddRowsIntoTable(table_name, rows),
                            common::kSQLError, "Fail to add rows into table ",
                            table_name);
@@ -1079,8 +1077,6 @@ class RequestEngineTestRunner : public EngineTestRunner {
             if (input_name == request_name && !has_batch_request) {
                 CHECK_TRUE(sql_case_.ExtractInputData(request_rows_, i),
                            kSQLError, "Extract case request rows failed");
-                CHECK_TRUE(InitTable(request_name), kSQLError,
-                           "Init request table failed");
                 continue;
             } else {
                 std::vector<Row> rows;
@@ -1098,18 +1094,14 @@ class RequestEngineTestRunner : public EngineTestRunner {
                             store_rows.push_back(row);
                         }
                     }
-                    CHECK_TRUE(InitTable(input_name), common::kSQLError,
-                               "Fail to init table ", input_name);
                     CHECK_TRUE(AddRowsIntoTable(input_name, store_rows),
-                               common::kSQLError, "Fail to add rows into table ",
-                               input_name);
+                               common::kSQLError,
+                               "Fail to add rows into table ", input_name);
 
                 } else {
-                    CHECK_TRUE(InitTable(input_name), common::kSQLError,
-                               "Fail to init table ", input_name);
                     CHECK_TRUE(AddRowsIntoTable(input_name, rows),
-                               common::kSQLError, "Fail to add rows into table ",
-                               input_name);
+                               common::kSQLError,
+                               "Fail to add rows into table ", input_name);
                 }
             }
         }

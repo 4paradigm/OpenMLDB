@@ -27,7 +27,7 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "proto/dbms.pb.h"
-#include "result_set_impl.h"
+#include "sdk/result_set_impl.h"
 #include "sdk/tablet_sdk.h"
 
 namespace fesql {

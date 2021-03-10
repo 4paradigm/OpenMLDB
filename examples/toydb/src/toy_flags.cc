@@ -17,10 +17,10 @@
 #include <gflags/gflags.h>
 // cluster config
 DEFINE_string(fesql_endpoint, "",
-        "config the ip and port that fesql serves for");
+              "config the ip and port that fesql serves for");
 DEFINE_int32(fesql_port, 0, "config the port that fesql serves for");
 DEFINE_int32(fesql_thread_pool_size, 8,
-        "config the thread pool for dbms and tablet");
+             "config the thread pool for dbms and tablet");
 DEFINE_string(tablet_endpoint, "",
               "config the ip and port that fesql tablet for");
 // for tablet

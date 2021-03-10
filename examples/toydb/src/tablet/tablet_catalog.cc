@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "tablet_catalog.h"
+#include "tablet/tablet_catalog.h"
 #include <map>
 #include <memory>
 #include <string>

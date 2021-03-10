@@ -47,9 +47,11 @@ int DoRunEngine(const SQLCase& sql_case, const EngineOptions& options,
                 EngineMode engine_mode) {
     std::shared_ptr<EngineTestRunner> runner;
     if (engine_mode == kBatchMode) {
-        runner = std::make_shared<ToydbBatchEngineTestRunner>(sql_case, options);
+        runner =
+            std::make_shared<ToydbBatchEngineTestRunner>(sql_case, options);
     } else if (engine_mode == kRequestMode) {
-        runner = std::make_shared<ToydbRequestEngineTestRunner>(sql_case, options);
+        runner =
+            std::make_shared<ToydbRequestEngineTestRunner>(sql_case, options);
     } else {
         runner = std::make_shared<ToydbBatchRequestEngineTestRunner>(
             sql_case, options, sql_case.batch_request().common_column_indices_);

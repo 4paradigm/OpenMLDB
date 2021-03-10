@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-
-#ifndef SRC_BM_BASE_BM_H_
-#define SRC_BM_BASE_BM_H_
+#ifndef EXAMPLES_TOYDB_SRC_BM_BASE_BM_H_
+#define EXAMPLES_TOYDB_SRC_BM_BASE_BM_H_
 
 #include <memory>
 #include <random>
@@ -235,4 +234,4 @@ std::shared_ptr<tablet::TabletCatalog> BuildOnePkTableStorage(
 }  // namespace bm
 }  // namespace fesql
 
-#endif  // SRC_BM_BASE_BM_H_
+#endif  // EXAMPLES_TOYDB_SRC_BM_BASE_BM_H_

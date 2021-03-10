@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "tablet_server_impl.h"
+#include "tablet/tablet_server_impl.h"
 
 #include <map>
 #include <memory>

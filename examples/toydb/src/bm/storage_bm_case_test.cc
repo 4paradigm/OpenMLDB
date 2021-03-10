@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "storage_bm_case.h"
+#include "bm/storage_bm_case.h"
 #include "gtest/gtest.h"
 namespace fesql {
 namespace bm {

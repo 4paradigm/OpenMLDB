@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "dbms_server_impl.h"
+#include "dbms/dbms_server_impl.h"
 #include "brpc/server.h"
 
 namespace fesql {

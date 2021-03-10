@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-
 #include "benchmark/benchmark.h"
-#include "engine_bm_case.h"
+#include "bm/engine_bm_case.h"
 
 namespace fesql {
 namespace bm {

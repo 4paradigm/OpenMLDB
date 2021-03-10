@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_SDK_BASE_IMPL_H_
-#define SRC_SDK_BASE_IMPL_H_
+#ifndef EXAMPLES_TOYDB_SRC_SDK_BASE_IMPL_H_
+#define EXAMPLES_TOYDB_SRC_SDK_BASE_IMPL_H_
 
 #include <memory>
 #include <string>
@@ -76,4 +76,4 @@ class TableSetImpl : public TableSet {
 
 }  // namespace sdk
 }  // namespace fesql
-#endif  // SRC_SDK_BASE_IMPL_H_
+#endif  // EXAMPLES_TOYDB_SRC_SDK_BASE_IMPL_H_

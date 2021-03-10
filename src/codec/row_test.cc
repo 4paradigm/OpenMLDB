@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <string>
 #include <vector>
 #include "case/sql_case.h"

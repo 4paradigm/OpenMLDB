@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef SRC_SDK_RESULT_SET_IMPL_H_
-#define SRC_SDK_RESULT_SET_IMPL_H_
+#ifndef EXAMPLES_TOYDB_SRC_SDK_RESULT_SET_IMPL_H_
+#define EXAMPLES_TOYDB_SRC_SDK_RESULT_SET_IMPL_H_
 
 #include <memory>
 #include <string>
-#include "base_impl.h"
+#include "sdk/base_impl.h"
 #include "brpc/controller.h"
 #include "butil/iobuf.h"
 #include "codec/fe_row_codec.h"
@@ -87,4 +87,4 @@ class ResultSetImpl : public ResultSet {
 
 }  // namespace sdk
 }  // namespace fesql
-#endif  // SRC_SDK_RESULT_SET_IMPL_H_
+#endif  // EXAMPLES_TOYDB_SRC_SDK_RESULT_SET_IMPL_H_

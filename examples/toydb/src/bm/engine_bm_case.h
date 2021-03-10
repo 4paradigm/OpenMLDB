@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-
-#ifndef SRC_BM_ENGINE_BM_CASE_H_
-#define SRC_BM_ENGINE_BM_CASE_H_
+#ifndef EXAMPLES_TOYDB_SRC_BM_ENGINE_BM_CASE_H_
+#define EXAMPLES_TOYDB_SRC_BM_ENGINE_BM_CASE_H_
 #include <string>
 #include "benchmark/benchmark.h"
 #include "case/sql_case.h"
@@ -118,4 +117,4 @@ void EngineBenchmarkOnCase(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
 
 }  // namespace bm
 }  // namespace fesql
-#endif  // SRC_BM_ENGINE_BM_CASE_H_
+#endif  // EXAMPLES_TOYDB_SRC_BM_ENGINE_BM_CASE_H_

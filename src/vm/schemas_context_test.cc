@@ -177,7 +177,7 @@ void CheckColumnResolveCases(const SQLCase& sql_case, PhysicalOpNode* node) {
     }
 }
 
-PhysicalOpNode* GetTestSQLPlan(SQLCase& sql_case, // NOLINT
+PhysicalOpNode* GetTestSQLPlan(SQLCase& sql_case,  // NOLINT
                                RunSession* session) {
     std::map<size_t, std::string> idx_to_table_dict;
     auto catalog = std::make_shared<SimpleCatalog>();
@@ -190,8 +190,8 @@ PhysicalOpNode* GetTestSQLPlan(SQLCase& sql_case, // NOLINT
     base::Status status;
     bool ok = engine->Get(sql_case.sql_str(), sql_case.db(), *session, status);
     if (!ok) {
-    LOG(WARNING) << status;
-    return nullptr;
+        LOG(WARNING) << status;
+        return nullptr;
     }
     return session->GetCompileInfo()->get_sql_context().physical_plan;
 }

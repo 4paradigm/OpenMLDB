@@ -20,12 +20,12 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include "case/sql_case.h"
 #include "glog/logging.h"
 #include "plan/planner.h"
 #include "vm/catalog.h"
 #include "vm/engine.h"
 #include "vm/simple_catalog.h"
-#include "case/sql_case.h"
 
 namespace fesql {
 namespace vm {

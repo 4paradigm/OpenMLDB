@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "tablet_internal_sdk.h"
+#include "tablet/tablet_internal_sdk.h"
 #include "glog/logging.h"
 
 namespace fesql {

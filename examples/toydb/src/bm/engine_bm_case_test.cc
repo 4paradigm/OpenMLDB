@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "engine_bm_case.h"
+#include "bm/engine_bm_case.h"
 #include "gtest/gtest.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"

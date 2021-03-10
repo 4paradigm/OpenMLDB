@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 #include "base/fe_slice.h"
-#include "fe_skiplist.h"
+#include "storage/fe_skiplist.h"
 #include "gtest/gtest.h"
 
 namespace fesql {

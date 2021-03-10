@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_DBMS_DBMS_SERVER_IMPL_H_
-#define SRC_DBMS_DBMS_SERVER_IMPL_H_
+#ifndef EXAMPLES_TOYDB_SRC_DBMS_DBMS_SERVER_IMPL_H_
+#define EXAMPLES_TOYDB_SRC_DBMS_DBMS_SERVER_IMPL_H_
 
 #include <map>
 #include <mutex>  // NOLINT (build/c++11)
@@ -78,4 +78,4 @@ class DBMSServerImpl : public DBMSServer {
 
 }  // namespace dbms
 }  // namespace fesql
-#endif  // SRC_DBMS_DBMS_SERVER_IMPL_H_
+#endif  // EXAMPLES_TOYDB_SRC_DBMS_DBMS_SERVER_IMPL_H_

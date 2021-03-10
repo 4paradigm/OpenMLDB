@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "runner_bm_case.h"
+#include "bm/runner_bm_case.h"
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-#include "base_bm.h"
+#include "bm/base_bm.h"
 #include "gtest/gtest.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstrTypes.h"

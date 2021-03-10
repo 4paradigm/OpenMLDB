@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_UDF_UDF_H_
 #define SRC_UDF_UDF_H_
 #include <stdint.h>

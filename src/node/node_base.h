@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_NODE_NODE_BASE_H_
 #define SRC_NODE_NODE_BASE_H_
 

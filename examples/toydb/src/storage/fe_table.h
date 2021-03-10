@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #pragma once
 
 #include <atomic>
@@ -25,7 +24,7 @@
 #include <vector>
 #include "base/iterator.h"
 #include "codec/fe_row_codec.h"
-#include "fe_segment.h"
+#include "storage/fe_segment.h"
 #include "vm/catalog.h"
 
 namespace fesql {

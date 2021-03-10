@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_TABLET_TABLET_INTERNAL_SDK_H_
-#define SRC_TABLET_TABLET_INTERNAL_SDK_H_
+#ifndef EXAMPLES_TOYDB_SRC_TABLET_TABLET_INTERNAL_SDK_H_
+#define EXAMPLES_TOYDB_SRC_TABLET_TABLET_INTERNAL_SDK_H_
 
 #include <string>
 #include "brpc/channel.h"
@@ -39,4 +39,4 @@ class TabletInternalSDK {
 
 }  // namespace tablet
 }  // namespace fesql
-#endif  // SRC_TABLET_TABLET_INTERNAL_SDK_H_
+#endif  // EXAMPLES_TOYDB_SRC_TABLET_TABLET_INTERNAL_SDK_H_
