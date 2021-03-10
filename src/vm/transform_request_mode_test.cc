@@ -220,7 +220,7 @@ void CheckTransformPhysicalPlan(const SQLCase& sql_case,
         table_def.set_name("tc");
         AddTable(db, table_def);
     }
-    auto catalog = BuildCommonCatalog(db);
+    auto catalog = BuildSimpleCatalog(db);
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
     {
@@ -520,7 +520,7 @@ TEST_P(TransformRequestModePassOptimizedTest, pass_pass_optimized_test) {
         index->set_second_key("col5");
         AddTable(db, table_def);
     }
-    auto catalog = BuildCommonCatalog(db);
+    auto catalog = BuildSimpleCatalog(db);
     PhysicalPlanCheck(catalog, in_out.first, in_out.second);
 }
 

@@ -414,13 +414,13 @@ bool AddTable(fesql::type::Database& db,  // NOLINT
     *(db.add_tables()) = table_def;
     return true;
 }
-std::shared_ptr<SimpleCatalog> BuildCommonCatalog(
+std::shared_ptr<SimpleCatalog> BuildSimpleCatalog(
     const fesql::type::Database& database) {
     std::shared_ptr<SimpleCatalog> catalog(new SimpleCatalog(true));
     catalog->AddDatabase(database);
     return catalog;
 }
-std::shared_ptr<SimpleCatalog> BuildCommonCatalog() {
+std::shared_ptr<SimpleCatalog> BuildSimpleCatalog() {
     std::shared_ptr<SimpleCatalog> catalog(new SimpleCatalog(true));
     return catalog;
 }

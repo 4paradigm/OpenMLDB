@@ -180,7 +180,7 @@ TEST_P(TransformTest, transform_physical_plan) {
         table_def.set_name("tc");
         AddTable(db, table_def);
     }
-    auto catalog = BuildCommonCatalog(db);
+    auto catalog = BuildSimpleCatalog(db);
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
     {
@@ -275,7 +275,7 @@ TEST_P(TransformTest, transform_physical_plan_enable_window_paralled) {
         table_def.set_name("tc");
         AddTable(db, table_def);
     }
-    auto catalog = BuildCommonCatalog(db);
+    auto catalog = BuildSimpleCatalog(db);
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
     {
@@ -544,7 +544,7 @@ TEST_P(TransformTest, window_merge_opt_test) {
         table_def.set_name("tc");
         AddTable(db, table_def);
     }
-    auto catalog = BuildCommonCatalog(db);
+    auto catalog = BuildSimpleCatalog(db);
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
     {
@@ -613,7 +613,7 @@ TEST_P(KeyGenTest, GenTest) {
     fesql::type::Database db;
     db.set_name("db");
     AddTable(db, table_def);
-    auto catalog = BuildCommonCatalog(db);
+    auto catalog = BuildSimpleCatalog(db);
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
@@ -661,7 +661,7 @@ TEST_P(FilterGenTest, GenFilter) {
     db.set_name("db");
     AddTable(db, table_def);
     AddTable(db, table_def2);
-    auto catalog = BuildCommonCatalog(db);
+    auto catalog = BuildSimpleCatalog(db);
     node::ExprNode* condition;
     ExtractExprFromSimpleSQL(&nm, GetParam(), &condition);
 
@@ -1079,7 +1079,7 @@ TEST_P(TransformPassOptimizedTest, pass_optimized_test) {
         }
         AddTable(db, table_def);
     }
-    auto catalog = BuildCommonCatalog(db);
+    auto catalog = BuildSimpleCatalog(db);
     auto in_out = GetParam();
     PhysicalPlanCheck(catalog, in_out.first, in_out.second);
 }

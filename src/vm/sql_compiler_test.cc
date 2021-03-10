@@ -201,7 +201,7 @@ TEST_P(SQLCompilerTest, compile_request_mode_test) {
         table_def.set_name("tc");
         AddTable(db, table_def);
     }
-    auto catalog = BuildCommonCatalog(db);
+    auto catalog = BuildSimpleCatalog(db);
     CompilerCheck(catalog, sqlstr, kRequestMode);
     RequestSchemaCheck(catalog, sqlstr, table_def);
 }
@@ -265,7 +265,7 @@ TEST_P(SQLCompilerTest, compile_batch_mode_test) {
         table_def.set_name("tc");
         AddTable(db, table_def);
     }
-    auto catalog = BuildCommonCatalog(db);
+    auto catalog = BuildSimpleCatalog(db);
     CompilerCheck(catalog, sqlstr, kBatchMode, false);
     {
         // Check for work with simple catalog
@@ -377,7 +377,7 @@ TEST_P(SQLCompilerTest, compile_batch_mode_enable_window_paralled_test) {
         table_def.set_name("tc");
         AddTable(db, table_def);
     }
-    auto catalog = BuildCommonCatalog(db);
+    auto catalog = BuildSimpleCatalog(db);
     CompilerCheck(catalog, sqlstr, kBatchMode, true);
 
     {

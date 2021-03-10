@@ -39,21 +39,15 @@ toydb_add_src_and_tests(storage)
 toydb_add_src_and_tests(dbms)
 toydb_add_src_and_tests(tablet)
 toydb_add_src_and_tests(testing)
-
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(TOYDB_LIBS ${ABSL_LIBS} ${yaml_libs} ${g_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} tcmalloc ${OS_LIB} benchmark gtest)
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(TOYDB_LIBS ${ABSL_LIBS} ${yaml_libs} ${g_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB} benchmark gtest)
-endif ()
 get_property(TOYDB_SRC_FILE_LIST_STR GLOBAL PROPERTY TOYDB_SRC_FILE_LIST)
 string(REPLACE " " ";" TOYDB_SRC_FILE_LIST ${TOYDB_SRC_FILE_LIST_STR})
 
-# toydb lib
-add_library(fesql_toy_lib STATIC ${TOYDB_SRC_FILE_LIST})
 add_library(toy_flags STATIC toy_flags.cc)
+
+# toydb lib
 set(TOYDB_DEPS_LIBS fesql_core fesql_flags toy_flags sqlite3
         ${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${OS_LIB})
-
+add_library(fesql_toy_lib STATIC ${TOYDB_SRC_FILE_LIST})
 target_link_libraries(fesql_toy_lib ${TOYDB_DEPS_LIBS})
 
 # toydb unittests
@@ -73,8 +67,8 @@ if (TESTING_ENABLE)
                 --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
 
         target_link_libraries(${TEST_TARGET_NAME}
-                fesql_toy_lib fesql_sdk fesql_flags
-                gtest benchmark ${yaml_libs} ${BRPC_LIBS} ${OS_LIBS} ${g_libs} sqlite3)
+                fesql_toy_lib fesql_sdk fesql_flags sqlite3
+                gtest benchmark ${yaml_libs} ${BRPC_LIBS} ${OS_LIBS} ${g_libs})
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach()
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

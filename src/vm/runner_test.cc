@@ -169,7 +169,7 @@ TEST_P(RunnerTest, request_mode_test) {
         table_def.set_name("tc");
         AddTable(db, table_def);
     }
-    auto catalog = BuildCommonCatalog(db);
+    auto catalog = BuildSimpleCatalog(db);
     RunnerCheck(catalog, sqlstr, kRequestMode);
 }
 
@@ -228,7 +228,7 @@ TEST_P(RunnerTest, batch_mode_test) {
         table_def.set_name("tc");
         AddTable(db, table_def);
     }
-    auto catalog = BuildCommonCatalog(db);
+    auto catalog = BuildSimpleCatalog(db);
     RunnerCheck(catalog, sqlstr, kBatchMode);
 }
 
@@ -266,7 +266,7 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     fesql::type::Database db;
     db.set_name("db");
     AddTable(db, table_def);
-    auto catalog = BuildCommonCatalog(db);
+    auto catalog = BuildSimpleCatalog(db);
     RunnerCheck(catalog, sqlstr, kBatchMode);
 
     SQLCompiler sql_compiler(catalog);
@@ -306,7 +306,7 @@ TEST_F(RunnerTest, RunnerPrintDataTest) {
     fesql::type::Database db;
     db.set_name("db");
     AddTable(db, table_def);
-    auto catalog = BuildCommonCatalog(db);
+    auto catalog = BuildSimpleCatalog(db);
     std::vector<Row> rows;
     fesql::type::TableDef temp_table;
     BuildRows(temp_table, rows);
@@ -369,7 +369,7 @@ TEST_F(RunnerTest, RunnerPrintDataMemTimeTableTest) {
     fesql::type::Database db;
     db.set_name("db");
     AddTable(db, table_def);
-    auto catalog = BuildCommonCatalog(db);
+    auto catalog = BuildSimpleCatalog(db);
     std::vector<Row> rows;
     fesql::type::TableDef temp_table;
     BuildRows(temp_table, rows);

@@ -51,10 +51,10 @@ void ExtractExprFromSimpleSQL(::fesql::node::NodeManager* nm,
                               const std::string& sql, node::ExprNode** output);
 bool AddTable(fesql::type::Database& db,  // NOLINT
               const fesql::type::TableDef& table_def);
-std::shared_ptr<SimpleCatalog> BuildCommonCatalog(
+std::shared_ptr<SimpleCatalog> BuildSimpleCatalog(
     const fesql::type::Database& database);
 
-std::shared_ptr<SimpleCatalog> BuildCommonCatalog();
+std::shared_ptr<SimpleCatalog> BuildSimpleCatalog();
 bool InitSimpleCataLogFromSQLCase(SQLCase& sql_case,  // NOLINT
                                   std::shared_ptr<SimpleCatalog> catalog);
 
