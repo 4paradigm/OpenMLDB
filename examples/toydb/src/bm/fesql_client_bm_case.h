@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "benchmark/benchmark.h"
-#include "bm/base_bm.h"
+#include "testing/toydb_engine_test.h"
 namespace fesql {
 namespace bm {
 enum MODE { BENCHMARK, TEST };

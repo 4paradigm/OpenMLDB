@@ -20,7 +20,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "bm/base_bm.h"
 #include "benchmark/benchmark.h"
 #include "codec/type_codec.h"
 #include "gtest/gtest.h"
@@ -39,8 +38,6 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "parser/parser.h"
 #include "tablet/tablet_catalog.h"
-#include "vm/engine.h"
-#include "testing/toydb_engine_test.h"
 
 namespace fesql {
 namespace bm {

@@ -17,6 +17,7 @@
 #ifndef EXAMPLES_TOYDB_SRC_BM_RUNNER_BM_CASE_H_
 #define EXAMPLES_TOYDB_SRC_BM_RUNNER_BM_CASE_H_
 #include "benchmark/benchmark.h"
+#include "testing/toydb_engine_test.h"
 namespace fesql {
 namespace bm {
 enum MODE { BENCHMARK, TEST };

@@ -19,7 +19,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "bm/base_bm.h"
 #include "gtest/gtest.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstrTypes.h"
@@ -28,7 +27,6 @@
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "vm/engine.h"
-#include "testing/toydb_test_base.h"
 
 namespace fesql {
 namespace bm {

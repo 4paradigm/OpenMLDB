@@ -16,16 +16,10 @@
 
 #include "bm/storage_bm_case.h"
 #include <memory>
-#include <string>
 #include <vector>
-#include "base/mem_pool.h"
-#include "bm/base_bm.h"
 #include "codec/fe_row_codec.h"
-#include "codegen/ir_base_builder.h"
-#include "codegen/window_ir_builder.h"
 #include "gtest/gtest.h"
 #include "storage/list.h"
-#include "testing/toydb_test_base.h"
 
 namespace fesql {
 namespace bm {
