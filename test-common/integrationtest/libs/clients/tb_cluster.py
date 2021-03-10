@@ -1,3 +1,19 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # -*- coding: utf-8 -*-
 import sys
 import os
@@ -29,14 +45,6 @@ class TbCluster(object):
                 tb_path = test_path + '/tablet{}'.format(i) + 'remote'
             esc_tb_path = tb_path.replace("/", "\/")
             exe_shell('export ')
-            exe_shell('rm -rf {}/*'.format(tb_path))
-            rtidb_flags = '{}/conf/tablet.flags'.format(tb_path)
-            exe_shell('mkdir -p {}/conf'.format(tb_path))
-            exe_shell('cat {} | egrep -v "endpoint|log_level|gc_interval|log_dir" > '
-                      '{}'.format(tbconfpath, rtidb_flags))
-            exe_shell("sed -i '1a --endpoint='{} {}".format(ep, rtidb_flags))
-            exe_shell("sed -i '1a --gc_interval=1' {}".format(rtidb_flags))
-            exe_shell("sed -i 's/--db_root_path=.*/--db_root_path={}\/db/' {}".format(esc_tb_path, rtidb_flags))
             exe_shell("sed -i '1a --zk_cluster='{} {}".format(self.zk_endpoint, rtidb_flags))
             exe_shell("sed -i 's/--recycle_bin_root_path=.*/--recycle_bin_root_path={}\/recycle/' {}".format(esc_tb_path, rtidb_flags))
             exe_shell("echo '--log_level={}' >> {}".format(conf.rtidb_log_info, rtidb_flags))
