@@ -42,7 +42,7 @@ void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema) {
     ASSERT_EQ(schema.size(), exp_schema.size());
     for (int i = 0; i < schema.size(); i++) {
         ASSERT_EQ(schema.Get(i).DebugString(), exp_schema.Get(i).DebugString())
-                            << "Fail column type at " << i;
+            << "Fail column type at " << i;
     }
 }
 
@@ -115,7 +115,6 @@ void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
     LOG(INFO) << "\n" << oss.str() << "\n";
 }
 
-
 const std::vector<Row> SortRows(const vm::Schema& schema,
                                 const std::vector<Row>& rows,
                                 const std::string& order_col) {
@@ -142,7 +141,7 @@ const std::vector<Row> SortRows(const vm::Schema& schema,
         std::sort(
             sort_rows.begin(), sort_rows.end(),
             [](std::pair<std::string, Row>& a, std::pair<std::string, Row>& b) {
-              return a.first < b.first;
+                return a.first < b.first;
             });
         std::vector<Row> output_rows;
         for (auto row : sort_rows) {
@@ -160,7 +159,7 @@ const std::vector<Row> SortRows(const vm::Schema& schema,
         }
         std::sort(sort_rows.begin(), sort_rows.end(),
                   [](std::pair<int64_t, Row>& a, std::pair<int64_t, Row>& b) {
-                    return a.first < b.first;
+                      return a.first < b.first;
                   });
         std::vector<Row> output_rows;
         for (auto row : sort_rows) {
@@ -183,7 +182,7 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
         for (int i = 0; i < schema.size(); i++) {
             if (row_view_exp.IsNULL(i)) {
                 ASSERT_TRUE(row_view.IsNULL(i))
-                                    << " At " << i << schema.Get(i).name();
+                    << " At " << i << schema.Get(i).name();
                 continue;
             }
             ASSERT_FALSE(row_view.IsNULL(i)) << " At " << i;
@@ -191,19 +190,19 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                 case fesql::type::kInt32: {
                     ASSERT_EQ(row_view.GetInt32Unsafe(i),
                               row_view_exp.GetInt32Unsafe(i))
-                                        << " At " << i << " " << schema.Get(i).name();
+                        << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
                 case fesql::type::kInt64: {
                     ASSERT_EQ(row_view.GetInt64Unsafe(i),
                               row_view_exp.GetInt64Unsafe(i))
-                                        << " At " << i << " " << schema.Get(i).name();
+                        << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
                 case fesql::type::kInt16: {
                     ASSERT_EQ(row_view.GetInt16Unsafe(i),
                               row_view_exp.GetInt16Unsafe(i))
-                                        << " At " << i << " " << schema.Get(i).name();
+                        << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
                 case fesql::type::kFloat: {
@@ -211,10 +210,10 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                     float exp = row_view_exp.GetFloatUnsafe(i);
                     if (IsNaN(exp)) {
                         ASSERT_TRUE(IsNaN(act))
-                                            << " At " << i << " " << schema.Get(i).name();
+                            << " At " << i << " " << schema.Get(i).name();
                     } else {
                         ASSERT_FLOAT_EQ(act, exp)
-                                            << " At " << i << " " << schema.Get(i).name();
+                            << " At " << i << " " << schema.Get(i).name();
                     }
                     break;
                 }
@@ -223,35 +222,35 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                     double exp = row_view_exp.GetDoubleUnsafe(i);
                     if (IsNaN(exp)) {
                         ASSERT_TRUE(IsNaN(act))
-                                            << " At " << i << " " << schema.Get(i).name();
+                            << " At " << i << " " << schema.Get(i).name();
                     } else {
                         ASSERT_DOUBLE_EQ(act, exp)
-                                            << " At " << i << " " << schema.Get(i).name();
+                            << " At " << i << " " << schema.Get(i).name();
                     }
                     break;
                 }
                 case fesql::type::kVarchar: {
                     ASSERT_EQ(row_view.GetStringUnsafe(i),
                               row_view_exp.GetStringUnsafe(i))
-                                        << " At " << i << " " << schema.Get(i).name();
+                        << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
                 case fesql::type::kDate: {
                     ASSERT_EQ(row_view.GetDateUnsafe(i),
                               row_view_exp.GetDateUnsafe(i))
-                                        << " At " << i << " " << schema.Get(i).name();
+                        << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
                 case fesql::type::kTimestamp: {
                     ASSERT_EQ(row_view.GetTimestampUnsafe(i),
                               row_view_exp.GetTimestampUnsafe(i))
-                                        << " At " << i << " " << schema.Get(i).name();
+                        << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
                 case fesql::type::kBool: {
                     ASSERT_EQ(row_view.GetBoolUnsafe(i),
                               row_view_exp.GetBoolUnsafe(i))
-                                        << " At " << i << " " << schema.Get(i).name();
+                        << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
                 default: {
@@ -266,7 +265,6 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
 const std::string GenerateTableName(int32_t id) {
     return "auto_t" + std::to_string(id);
 }
-
 
 void DoEngineCheckExpect(const SQLCase& sql_case,
                          std::shared_ptr<RunSession> session,
@@ -284,7 +282,7 @@ void DoEngineCheckExpect(const SQLCase& sql_case,
             sql_ctx.batch_request_info.output_common_column_indices;
         if (!output_common_column_indices.empty() &&
             output_common_column_indices.size() !=
-            static_cast<size_t>(schema.size()) &&
+                static_cast<size_t>(schema.size()) &&
             sql_ctx.is_batch_request_optimized) {
             LOG(INFO) << "Reorder batch request outputs for non-trival common "
                          "columns";
@@ -438,7 +436,6 @@ void CheckSQLiteCompatible(const SQLCase& sql_case, const vm::Schema& schema,
         schema, SortRows(schema, sqliteRows, sql_case.expect().order_),
         SortRows(schema, output, sql_case.expect().order_)));
 }
-
 
 INSTANTIATE_TEST_CASE_P(
     EngineFailQuery, EngineTest,
