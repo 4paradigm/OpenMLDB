@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include <utility>
-#include "testing/toydb_engine_test.h"
+#include "testing/toydb_engine_test_base.h"
 
 DEFINE_string(yaml_path, "", "Yaml filepath to load cases from");
 DEFINE_string(runner_mode, "batch",

@@ -19,7 +19,7 @@
 #include <string>
 #include "benchmark/benchmark.h"
 #include "case/sql_case.h"
-#include "testing/toydb_engine_test.h"
+#include "testing/toydb_engine_test_base.h"
 
 namespace fesql {
 namespace bm {

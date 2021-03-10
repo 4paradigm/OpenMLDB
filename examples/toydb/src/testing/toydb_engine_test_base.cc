@@ -14,27 +14,22 @@
  * limitations under the License.
  */
 
-#ifndef EXAMPLES_TOYDB_SRC_TESTING_TOYDB_TEST_BASE_H_
-#define EXAMPLES_TOYDB_SRC_TESTING_TOYDB_TEST_BASE_H_
+#include "testing/toydb_engine_test_base.h"
+#include "gtest/gtest.h"
+#include "gtest/internal/gtest-param-util.h"
 
-#include <memory>
-#include <sstream>
-#include <string>
-#include <vector>
-#include "case/sql_case.h"
-#include "glog/logging.h"
-#include "plan/planner.h"
-#include "tablet/tablet_catalog.h"
-#include "vm/catalog.h"
-#include "vm/engine.h"
-#include "case/case_data_mock.h"
+using namespace llvm;       // NOLINT (build/namespaces)
+using namespace llvm::orc;  // NOLINT (build/namespaces)
 
 namespace fesql {
 namespace vm {
-using fesql::base::Status;
-using fesql::sqlcase::SQLCase;
-using fesql::sqlcase::SQLCase;
 using fesql::sqlcase::CaseDataMock;
+bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
+              const fesql::type::TableDef& table_def,
+              std::shared_ptr<fesql::storage::Table> table);
+bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
+              const fesql::type::TableDef& table_def,
+              std::shared_ptr<fesql::storage::Table> table, Engine* engine);
 
 bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
               const fesql::type::TableDef& table_def,
@@ -69,7 +64,7 @@ bool InitToydbEngineCatalog(
     SQLCase& sql_case,  // NOLINT
     const EngineOptions& engine_options,
     std::map<std::string, std::shared_ptr<::fesql::storage::Table>>&  // NOLINT
-        name_table_map,                                               // NOLINT
+    name_table_map,                                               // NOLINT
     std::shared_ptr<vm::Engine> engine,
     std::shared_ptr<tablet::TabletCatalog> catalog) {
     LOG(INFO) << "Init Toy DB Engine & Catalog";
@@ -103,6 +98,7 @@ bool InitToydbEngineCatalog(
     }
     return true;
 }
+
 
 std::shared_ptr<tablet::TabletCatalog> BuildToydbCatalog() {
     std::shared_ptr<tablet::TabletCatalog> catalog(new tablet::TabletCatalog());
@@ -145,7 +141,75 @@ std::shared_ptr<tablet::TabletCatalog> BuildOnePkTableStorage(
     }
     return catalog;
 }
+void BatchRequestEngineCheckWithCommonColumnIndices(
+    const SQLCase& sql_case, const EngineOptions options,
+    const std::set<size_t>& common_column_indices) {
+    std::ostringstream oss;
+    for (size_t index : common_column_indices) {
+        oss << index << ",";
+    }
+    LOG(INFO) << "BatchRequestEngineCheckWithCommonColumnIndices: "
+                 "common_column_indices = ["
+              << oss.str() << "]";
+    ToydbBatchRequestEngineTestRunner engine_test(sql_case, options,
+                                                  common_column_indices);
+    engine_test.RunCheck();
+}
+
+void BatchRequestEngineCheck(const SQLCase& sql_case,
+                             const EngineOptions options) {
+    bool has_batch_request = !sql_case.batch_request().columns_.empty();
+    if (has_batch_request) {
+        BatchRequestEngineCheckWithCommonColumnIndices(
+            sql_case, options, sql_case.batch_request().common_column_indices_);
+    } else if (!sql_case.inputs().empty()) {
+        // set different common column conf
+        size_t schema_size = sql_case.inputs()[0].columns_.size();
+        std::set<size_t> common_column_indices;
+
+        // empty
+        BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
+                                                       common_column_indices);
+
+        // full
+        for (size_t i = 0; i < schema_size; ++i) {
+            common_column_indices.insert(i);
+        }
+        BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
+                                                       common_column_indices);
+        common_column_indices.clear();
+
+        // partial
+        // 0, 2, 4, ...
+        for (size_t i = 0; i < schema_size; i += 2) {
+            common_column_indices.insert(i);
+        }
+        BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
+                                                       common_column_indices);
+        common_column_indices.clear();
+        return;
+        // 1, 3, 5, ...
+        for (size_t i = 1; i < schema_size; i += 2) {
+            common_column_indices.insert(i);
+        }
+        BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
+                                                       common_column_indices);
+    }
+}
+
+void EngineCheck(const SQLCase& sql_case, const EngineOptions& options,
+                 EngineMode engine_mode) {
+    if (engine_mode == kBatchMode) {
+        ToydbBatchEngineTestRunner engine_test(sql_case, options);
+        engine_test.RunCheck();
+        engine_test.RunSQLiteCheck();
+    } else if (engine_mode == kRequestMode) {
+        ToydbRequestEngineTestRunner engine_test(sql_case, options);
+        engine_test.RunCheck();
+    } else if (engine_mode == kBatchRequestMode) {
+        BatchRequestEngineCheck(sql_case, options);
+    }
+}
+
 }  // namespace vm
 }  // namespace fesql
-
-#endif  // EXAMPLES_TOYDB_SRC_TESTING_TOYDB_TEST_BASE_H_

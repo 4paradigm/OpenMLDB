@@ -26,31 +26,15 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
-#include "vm/engine.h"
 
 namespace fesql {
 namespace bm {
-using vm::DataHandler;
+
 using vm::Engine;
 using vm::RequestRunSession;
-using vm::Runner;
 using vm::RunnerContext;
-using vm::RunSession;
-using vm::TableHandler;
 using sqlcase::CaseDataMock;
-
-
 using namespace ::llvm;  // NOLINT
-
-static Runner* GetRunner(Runner* root, int id);
-static bool RunnerRun(
-    RunSession* session, Runner* runner,
-    std::shared_ptr<TableHandler> table_handler, int64_t limit_cnt,
-    std::vector<std::shared_ptr<DataHandler>>& result);  // NOLINT
-static void RequestUnionRunnerCase(const std::string& sql, int runner_id,
-                                   benchmark::State* state, MODE mode,
-                                   int64_t limit_cnt, int64_t size);
-
 static void RequestUnionRunnerCase(const std::string& sql, int runner_id,
                                    benchmark::State* state, MODE mode,
                                    int64_t limit_cnt, int64_t size) {
@@ -101,57 +85,6 @@ static void RequestUnionRunnerCase(const std::string& sql, int runner_id,
     }
 }
 
-void IndexSeekRunnerCase(const std::string sql, int runner_id,
-                         benchmark::State* state, MODE mode, int64_t limit_cnt,
-                         int64_t data_size);
-
-void AggRunnerCase(const std::string sql, int runner_id,
-                   benchmark::State* state, MODE mode, int64_t limit_cnt,
-                   int64_t data_size);
-
-void IndexSeekRunnerCase(const std::string sql, int runner_id,
-                         benchmark::State* state, MODE mode, int64_t limit_cnt,
-                         int64_t size) {
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    // prepare data into table
-    auto catalog = vm::BuildOnePkTableStorage(size);
-    Engine engine(catalog);
-    RequestRunSession session;
-    base::Status status;
-    ASSERT_TRUE(engine.Get(sql, "db", session, status));
-    auto table = catalog->GetTable("db", "t1");
-    if (!table) {
-        LOG(WARNING) << "table not exist";
-        return;
-    }
-
-    std::ostringstream plan_oss;
-    session.GetPhysicalPlan()->Print(plan_oss, "");
-    LOG(INFO) << "physical plan:\n" << plan_oss.str() << std::endl;
-    std::ostringstream runner_oss;
-    session.GetClusterJob().Print(runner_oss, "");
-    LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
-    std::unique_ptr<codec::RowView> row_view = std::unique_ptr<codec::RowView>(
-        new codec::RowView(session.GetSchema()));
-
-    auto start_runner = GetRunner(session.GetMainTask(), runner_id);
-    ASSERT_TRUE(nullptr != start_runner);
-    switch (mode) {
-        case BENCHMARK: {
-            for (auto _ : *state) {
-                std::vector<std::shared_ptr<DataHandler>> res;
-                benchmark::DoNotOptimize(
-                    RunnerRun(&session, start_runner, table, limit_cnt, res));
-            }
-        }
-        case TEST: {
-            std::vector<std::shared_ptr<DataHandler>> res;
-            ASSERT_TRUE(
-                RunnerRun(&session, start_runner, table, limit_cnt, res));
-        }
-    }
-}
 void AggRunnerCase(const std::string sql, int runner_id,
                    benchmark::State* state, MODE mode, int64_t limit_cnt,
                    int64_t size) {

@@ -17,9 +17,9 @@
 #ifndef EXAMPLES_TOYDB_SRC_BM_STORAGE_BM_CASE_H_
 #define EXAMPLES_TOYDB_SRC_BM_STORAGE_BM_CASE_H_
 #include <string>
-#include "vm/mem_catalog.h"
 #include "benchmark/benchmark.h"
-#include "testing/toydb_engine_test.h"
+#include "testing/toydb_engine_test_base.h"
+#include "vm/mem_catalog.h"
 namespace fesql {
 namespace bm {
 enum MODE { BENCHMARK, TEST };

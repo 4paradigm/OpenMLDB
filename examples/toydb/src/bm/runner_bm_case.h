@@ -16,11 +16,29 @@
 
 #ifndef EXAMPLES_TOYDB_SRC_BM_RUNNER_BM_CASE_H_
 #define EXAMPLES_TOYDB_SRC_BM_RUNNER_BM_CASE_H_
+#include <string>
 #include "benchmark/benchmark.h"
-#include "testing/toydb_engine_test.h"
+#include "testing/toydb_engine_test_base.h"
+#include "vm/engine.h"
 namespace fesql {
 namespace bm {
+using vm::Runner;
+using vm::RunSession;
+using vm::DataHandler;
+using vm::TableHandler;
 enum MODE { BENCHMARK, TEST };
+static Runner* GetRunner(Runner* root, int id);
+static bool RunnerRun(
+    RunSession* session, Runner* runner,
+    std::shared_ptr<TableHandler> table_handler, int64_t limit_cnt,
+    std::vector<std::shared_ptr<DataHandler>>& result);  // NOLINT
+static void RequestUnionRunnerCase(const std::string& sql, int runner_id,
+                                   benchmark::State* state, MODE mode,
+                                   int64_t limit_cnt, int64_t size);
+
+void AggRunnerCase(const std::string sql, int runner_id,
+                   benchmark::State* state, MODE mode, int64_t limit_cnt,
+                   int64_t data_size);
 void WindowSumFeature1_Aggregation(benchmark::State* state, MODE mode,
                                    int64_t limit_cnt,
                                    int64_t size);  // NOLINT

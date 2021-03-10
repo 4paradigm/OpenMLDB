@@ -16,6 +16,12 @@
 #include "vm/engine_test_base.h"
 namespace fesql {
 namespace vm {
+void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
+    if (!SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
+                                         yaml_path, cases)) {
+        FAIL();
+    }
+}
 std::vector<SQLCase> InitCases(std::string yaml_path) {
     std::vector<SQLCase> cases;
     InitCases(yaml_path, cases);
@@ -435,6 +441,200 @@ void CheckSQLiteCompatible(const SQLCase& sql_case, const vm::Schema& schema,
     ASSERT_NO_FATAL_FAILURE(CheckRows(
         schema, SortRows(schema, sqliteRows, sql_case.expect().order_),
         SortRows(schema, output, sql_case.expect().order_)));
+}
+Status EngineTestRunner::ExtractTableInfoFromCreateString(
+    const std::string& create, sqlcase::SQLCase::TableInfo* table_info) {
+    CHECK_TRUE(table_info != nullptr, common::kNullPointer,
+               "Fail extract with null table info");
+    CHECK_TRUE(!create.empty(), common::kSQLError,
+               "Fail extract with empty create string");
+
+    node::NodeManager manager;
+    parser::FeSQLParser parser;
+    fesql::plan::NodePointVector trees;
+    base::Status status;
+    int ret = parser.parse(create, trees, &manager, status);
+
+    if (0 != status.code) {
+        std::cout << status << std::endl;
+    }
+    CHECK_TRUE(0 == ret, common::kSQLError, "Fail to parser SQL");
+    //    ASSERT_EQ(1, trees.size());
+    //    std::cout << *(trees.front()) << std::endl;
+    plan::SimplePlanner planner_ptr(&manager);
+    node::PlanNodeList plan_trees;
+    CHECK_TRUE(0 == planner_ptr.CreatePlanTree(trees, plan_trees, status),
+               common::kPlanError, "Fail to resolve logical plan");
+    CHECK_TRUE(1u == plan_trees.size(), common::kPlanError,
+               "Fail to extract table info with multi logical plan tree");
+    CHECK_TRUE(
+        nullptr != plan_trees[0] &&
+        node::kPlanTypeCreate == plan_trees[0]->type_,
+        common::kPlanError,
+        "Fail to extract table info with invalid SQL, CREATE SQL is required");
+    node::CreatePlanNode* create_plan =
+        dynamic_cast<node::CreatePlanNode*>(plan_trees[0]);
+    table_info->name_ = create_plan->GetTableName();
+    CHECK_TRUE(create_plan->ExtractColumnsAndIndexs(table_info->columns_,
+                                                    table_info->indexs_),
+               common::kPlanError, "Invalid Create Plan Node");
+    std::ostringstream oss;
+    oss << "name: " << table_info->name_ << "\n";
+    oss << "columns: [";
+    for (auto column : table_info->columns_) {
+        oss << column << ",";
+    }
+    oss << "]\n";
+    oss << "indexs: [";
+    for (auto index : table_info->indexs_) {
+        oss << index << ",";
+    }
+    oss << "]\n";
+    LOG(INFO) << oss.str();
+    return Status::OK();
+}
+
+void EngineTestRunner::InitSQLCase() {
+    for (size_t idx = 0; idx < sql_case_.inputs_.size(); idx++) {
+        if (!sql_case_.inputs_[idx].create_.empty()) {
+            auto status = ExtractTableInfoFromCreateString(
+                sql_case_.inputs_[idx].create_, &sql_case_.inputs_[idx]);
+            ASSERT_TRUE(status.isOK()) << status;
+        }
+    }
+
+    if (!sql_case_.batch_request_.create_.empty()) {
+        auto status = ExtractTableInfoFromCreateString(
+            sql_case_.batch_request_.create_, &sql_case_.batch_request_);
+        ASSERT_TRUE(status.isOK()) << status;
+    }
+}
+
+
+Status EngineTestRunner::Compile() {
+    std::string sql_str = sql_case_.sql_str();
+    for (int j = 0; j < sql_case_.CountInputs(); ++j) {
+        std::string placeholder = "{" + std::to_string(j) + "}";
+        boost::replace_all(sql_str, placeholder, sql_case_.inputs_[j].name_);
+    }
+    LOG(INFO) << "Compile SQL:\n" << sql_str;
+    CHECK_TRUE(session_ != nullptr, common::kSQLError, "Session is not set");
+    if (fesql::sqlcase::SQLCase::IS_DEBUG() || sql_case_.debug()) {
+        session_->EnableDebug();
+    }
+    struct timeval st;
+    struct timeval et;
+    gettimeofday(&st, nullptr);
+    Status status;
+    bool ok = engine_->Get(sql_str, sql_case_.db(), *session_, status);
+    gettimeofday(&et, nullptr);
+    double mill =
+        (et.tv_sec - st.tv_sec) * 1000 + (et.tv_usec - st.tv_usec) / 1000.0;
+    LOG(INFO) << "SQL Compile take " << mill << " milliseconds";
+
+    if (!ok || !status.isOK()) {
+        LOG(INFO) << status.str();
+        return_code_ = ENGINE_TEST_RET_COMPILE_ERROR;
+    } else {
+        LOG(INFO) << "SQL output schema:";
+        std::ostringstream oss;
+        session_->GetPhysicalPlan()->Print(oss, "");
+        LOG(INFO) << "Physical plan:";
+        std::cerr << oss.str() << std::endl;
+
+        std::ostringstream runner_oss;
+        session_->GetClusterJob().Print(runner_oss, "");
+        LOG(INFO) << "Runner plan:";
+        std::cerr << runner_oss.str() << std::endl;
+    }
+    return status;
+}
+
+void EngineTestRunner::RunCheck() {
+    if (!InitEngineCatalog()) {
+        FAIL() << "Engine Test Init Catalog Error";
+        return;
+    }
+    auto engine_mode = session_->engine_mode();
+    Status status = Compile();
+    ASSERT_EQ(sql_case_.expect().success_, status.isOK());
+    if (!status.isOK()) {
+        return_code_ = ENGINE_TEST_RET_COMPILE_ERROR;
+        return;
+    }
+    std::ostringstream oss;
+    session_->GetPhysicalPlan()->Print(oss, "");
+    if (!sql_case_.batch_plan().empty() && engine_mode == kBatchMode) {
+        ASSERT_EQ(oss.str(), sql_case_.batch_plan());
+    } else if (!sql_case_.cluster_request_plan().empty() &&
+               engine_mode == kRequestMode && options_.is_cluster_optimzied()) {
+        ASSERT_EQ(oss.str(), sql_case_.cluster_request_plan());
+    } else if (!sql_case_.request_plan().empty() &&
+               engine_mode == kRequestMode &&
+               !options_.is_cluster_optimzied()) {
+        ASSERT_EQ(oss.str(), sql_case_.request_plan());
+    }
+    status = PrepareData();
+    ASSERT_TRUE(status.isOK()) << "Prepare data error: " << status;
+    if (!status.isOK()) {
+        return;
+    }
+    std::vector<Row> output_rows;
+    status = Compute(&output_rows);
+    ASSERT_TRUE(status.isOK()) << "Session run error: " << status;
+    if (!status.isOK()) {
+        return_code_ = ENGINE_TEST_RET_EXECUTION_ERROR;
+        return;
+    }
+    ASSERT_NO_FATAL_FAILURE(
+        DoEngineCheckExpect(sql_case_, session_, output_rows));
+    return_code_ = ENGINE_TEST_RET_SUCCESS;
+}
+
+void EngineTestRunner::RunBenchmark(size_t iters) {
+    auto engine_mode = session_->engine_mode();
+    if (engine_mode == kRequestMode) {
+        LOG(WARNING) << "Request mode case can not properly run many times";
+        return;
+    }
+
+    Status status = Compile();
+    if (!status.isOK()) {
+        LOG(WARNING) << "Compile error: " << status;
+        return;
+    }
+    status = PrepareData();
+    if (!status.isOK()) {
+        LOG(WARNING) << "Prepare data error: " << status;
+        return;
+    }
+
+    std::vector<Row> output_rows;
+    status = Compute(&output_rows);
+    if (!status.isOK()) {
+        LOG(WARNING) << "Run error: " << status;
+        return;
+    }
+    ASSERT_NO_FATAL_FAILURE(
+        DoEngineCheckExpect(sql_case_, session_, output_rows));
+
+    struct timeval st;
+    struct timeval et;
+    gettimeofday(&st, nullptr);
+    for (size_t i = 0; i < iters; ++i) {
+        output_rows.clear();
+        status = Compute(&output_rows);
+        if (!status.isOK()) {
+            LOG(WARNING) << "Run error at " << i << "th iter: " << status;
+            return;
+        }
+    }
+    gettimeofday(&et, nullptr);
+    if (iters != 0) {
+        double mill =
+            (et.tv_sec - st.tv_sec) * 1000 + (et.tv_usec - st.tv_usec) / 1000.0;
+        printf("Engine run take approximately %.5f ms per run\n", mill / iters);
+    }
 }
 
 INSTANTIATE_TEST_CASE_P(
