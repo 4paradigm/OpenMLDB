@@ -84,7 +84,7 @@ if (TESTING_ENABLE)
 
             target_link_options(${TEST_TARGET_NAME} PRIVATE -rdynamic)
 	    target_link_libraries(${TEST_TARGET_NAME} gtest fesql_core fesql_flags
-                ${yaml_libs} ${BRPC_LIBS} sqlite3)
+                ${yaml_libs} ${BRPC_LIBS})
     	list(APPEND test_list ${TEST_TARGET_NAME})
 	endforeach()
 	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

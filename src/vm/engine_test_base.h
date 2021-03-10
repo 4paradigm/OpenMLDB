@@ -16,7 +16,6 @@
 #ifndef SRC_VM_ENGINE_TEST_BASE_H_
 #define SRC_VM_ENGINE_TEST_BASE_H_
 
-#include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <algorithm>

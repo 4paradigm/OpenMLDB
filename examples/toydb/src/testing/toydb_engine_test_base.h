@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <sqlite3.h>
 #include "case/sql_case.h"
 #include "case/case_data_mock.h"
 #include "glog/logging.h"
@@ -107,6 +108,7 @@ class ToydbBatchEngineTestRunner : public BatchEngineTestRunner {
                                   output_rows);
         }
     }
+
  private:
     std::shared_ptr<tablet::TabletCatalog> catalog_;
     std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
