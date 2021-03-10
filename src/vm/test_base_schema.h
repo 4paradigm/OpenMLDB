@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 #ifndef SRC_VM_TEST_BASE_SCHEMA_H_
 #define SRC_VM_TEST_BASE_SCHEMA_H_
 #include "vm/catalog.h"

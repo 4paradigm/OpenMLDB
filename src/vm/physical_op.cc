@@ -1445,5 +1445,6 @@ Status BuildColumnReplacement(const node::ExprNode* expr,
     return Status::OK();
 }
 
+
 }  // namespace vm
 }  // namespace fesql

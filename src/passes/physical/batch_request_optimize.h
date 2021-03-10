@@ -32,14 +32,14 @@ namespace fesql {
 namespace passes {
 
 using fesql::base::Status;
-using fesql::vm::PhysicalAggrerationNode;
+using fesql::vm::PhysicalRequestProviderNode;
 using fesql::vm::PhysicalDataProviderNode;
+using fesql::vm::PhysicalSimpleProjectNode;
 using fesql::vm::PhysicalProjectNode;
+using fesql::vm::PhysicalAggrerationNode;
 using fesql::vm::PhysicalRenameNode;
 using fesql::vm::PhysicalRequestJoinNode;
-using fesql::vm::PhysicalRequestProviderNode;
 using fesql::vm::PhysicalRequestUnionNode;
-using fesql::vm::PhysicalSimpleProjectNode;
 
 /**
  * Split op with common columns to common and non-common parts.

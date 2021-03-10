@@ -16,16 +16,16 @@
 #include "passes/physical/condition_optimized.h"
 
 #include <string>
-#include <utility>
 #include <vector>
+#include <utility>
 
 namespace fesql {
 namespace passes {
 
-using fesql::vm::PhysicalFilterNode;
 using fesql::vm::PhysicalJoinNode;
-using fesql::vm::PhysicalOpType;
 using fesql::vm::PhysicalRequestJoinNode;
+using fesql::vm::PhysicalFilterNode;
+using fesql::vm::PhysicalOpType;
 
 bool ConditionOptimized::JoinConditionOptimized(PhysicalBinaryNode* in,
                                                 Join* join) {

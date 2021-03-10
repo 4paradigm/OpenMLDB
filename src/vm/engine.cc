@@ -49,9 +49,9 @@ EngineOptions::EngineOptions()
       enable_batch_window_parallelization_(false),
       max_sql_cache_size_(50),
       enable_spark_unsaferow_format_(false) {
-    // TODO(chendihao): Pass the parameter to avoid global gflag
-    FLAGS_enable_spark_unsaferow_format = enable_spark_unsaferow_format_;
-}
+        // TODO(chendihao): Pass the parameter to avoid global gflag
+        FLAGS_enable_spark_unsaferow_format = enable_spark_unsaferow_format_;
+      }
 
 EngineOptions* EngineOptions::set_enable_spark_unsaferow_format(bool flag) {
     enable_spark_unsaferow_format_ = flag;

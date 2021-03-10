@@ -19,10 +19,10 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "sdk/base.h"
 #include "sdk/base_impl.h"
 #include "sdk/request_row.h"
 #include "sdk/result_set.h"
-#include "sdk/base.h"
 #include "sdk/tablet_sdk.h"
 
 namespace fesql {

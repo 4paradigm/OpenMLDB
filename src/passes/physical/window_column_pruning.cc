@@ -25,9 +25,9 @@ namespace fesql {
 namespace passes {
 
 using fesql::common::kPlanError;
-using fesql::vm::ColumnProjects;
 using fesql::vm::kPhysicalOpProject;
 using fesql::vm::kWindowAggregation;
+using fesql::vm::ColumnProjects;
 using fesql::vm::PhysicalProjectNode;
 using fesql::vm::PhysicalSimpleProjectNode;
 

@@ -691,7 +691,7 @@ TEST_F(ExprIRBuilderTest, test_get_field) {
         new codec::Row(base::RefCountedSlice::Create(buf, row_size));
     udf::LiteralTypedRow<int16_t, int32_t, int64_t, float, double,
                          codec::Timestamp, codec::Date, codec::StringRef>
-        typed_row(reinterpret_cast<int8_t *>(row));
+    typed_row(reinterpret_cast<int8_t *>(row));
 
     auto make_get_field = [](node::NodeManager *nm, node::ExprNode *input,
                              size_t idx) {

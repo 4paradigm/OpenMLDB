@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 #ifndef SRC_VM_MEM_CATALOG_H_
 #define SRC_VM_MEM_CATALOG_H_
 
