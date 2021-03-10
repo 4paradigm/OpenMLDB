@@ -51,7 +51,7 @@ string(REPLACE " " ";" TOYDB_SRC_FILE_LIST ${TOYDB_SRC_FILE_LIST_STR})
 # toydb lib
 add_library(fesql_toy_lib STATIC ${TOYDB_SRC_FILE_LIST})
 add_library(toy_flags STATIC toy_flags.cc)
-set(TOYDB_DEPS_LIBS fesql_core fesql_flags toy_flags
+set(TOYDB_DEPS_LIBS fesql_core fesql_flags toy_flags sqlite3
         ${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${OS_LIB})
 
 target_link_libraries(fesql_toy_lib ${TOYDB_DEPS_LIBS})
