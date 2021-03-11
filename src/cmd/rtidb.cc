@@ -2724,20 +2724,6 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
                table_info.compress_type().c_str());
         return -1;
     }
-    std::string storage_mode = table_info.storage_mode();
-    std::transform(storage_mode.begin(), storage_mode.end(),
-                   storage_mode.begin(), ::tolower);
-    if (storage_mode == "kmemory" || storage_mode == "memory") {
-        ns_table_info.set_storage_mode(::rtidb::common::kMemory);
-    } else if (storage_mode == "kssd" || storage_mode == "ssd") {
-        ns_table_info.set_storage_mode(::rtidb::common::kSSD);
-    } else if (storage_mode == "khdd" || storage_mode == "hdd") {
-        ns_table_info.set_storage_mode(::rtidb::common::kHDD);
-    } else {
-        printf("storage mode %s is invalid\n",
-               table_info.storage_mode().c_str());
-        return -1;
-    }
     if (table_info.has_key_entry_max_height()) {
         if (table_info.key_entry_max_height() > FLAGS_skiplist_max_height) {
             printf(
@@ -2921,9 +2907,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
         if ((ns_table_info.ttl_desc().ttl_type() ==
                  ::rtidb::api::TTLType::kAbsAndLat ||
              ns_table_info.ttl_desc().ttl_type() ==
-                 ::rtidb::api::TTLType::kAbsOrLat) &&
-            ns_table_info.storage_mode() !=
-                ::rtidb::common::StorageMode::kMemory) {
+                 ::rtidb::api::TTLType::kAbsOrLat)) {
             std::cout << "Create failed. Disktable doesn't support abs&&lat, "
                          "abs||lat in this version."
                       << std::endl;
@@ -4081,12 +4065,8 @@ void HandleClientHelp(const std::vector<std::string> parts,
         } else if (parts[1] == "loadtable") {
             printf("desc: create table and load data\n");
             printf(
-                "usage: loadtable table_name tid pid ttl segment_cnt is_leader "
-                "storage_mode\n");
+                "usage: loadtable table_name tid pid ttl segment_cnt is_leader");
             printf("ex: loadtable table1 1 0 144000 8 true memory\n");
-            printf("---------for relation table------\n");
-            printf("usage: loadtable tid pid storage_mode\n");
-            printf("ex: loadtable 1 0 hdd\n");
         } else if (parts[1] == "changerole") {
             printf("desc: change role\n");
             printf("usage: changerole tid pid role\n");
@@ -4266,7 +4246,7 @@ void HandleClientLoadTable(const std::vector<std::string> parts,
                            ::rtidb::client::TabletClient* client) {
     if (parts.size() < 6) {
         std::cout << "Bad LoadTable format eg loadtable <name> <tid> <pid> "
-                     "<ttl> <seg_cnt> [<is_leader> [<storage_mode>]]"
+                     "<ttl> <seg_cnt> [<is_leader>]"
                   << std::endl;
         return;
     }
@@ -4284,28 +4264,15 @@ void HandleClientLoadTable(const std::vector<std::string> parts,
             } else {
                 std::cout
                     << "Bad LoadTable format eg loadtable <name> <tid> <pid> "
-                       "<ttl> <seg_cnt> [<is_leader> [<storage_mode>]]"
+                       "<ttl> <seg_cnt> [<is_leader>]"
                     << std::endl;
                 return;
-            }
-        }
-        ::rtidb::common::StorageMode storage_mode =
-            ::rtidb::common::StorageMode::kMemory;
-        if (parts.size() > 7) {
-            std::string storage_str;
-            storage_str.resize(parts[7].size());
-            std::transform(parts[7].begin(), parts[7].end(),
-                           storage_str.begin(), ::tolower);
-            if (storage_str == "kssd" || storage_str == "ssd") {
-                storage_mode = ::rtidb::common::StorageMode::kSSD;
-            } else if (storage_str == "khdd" || storage_str == "hdd") {
-                storage_mode = ::rtidb::common::StorageMode::kHDD;
             }
         }
         bool ok =
             client->LoadTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
                               boost::lexical_cast<uint32_t>(parts[3]), ttl,
-                              is_leader, seg_cnt, storage_mode);
+                              is_leader, seg_cnt);
         if (ok) {
             std::cout << "LoadTable ok" << std::endl;
         } else {

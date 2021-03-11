@@ -86,13 +86,12 @@ message TableInfo {
     optional uint32 key_entry_max_height = 11;
     repeated rtidb.common.ColumnDesc column_desc_v1 = 12;
     repeated rtidb.common.ColumnKey column_key = 13;
-    optional rtidb.common.StorageMode storage_mode = 14 [default = kMemory];
-    repeated rtidb.common.ColumnDesc added_column_desc = 15;
-    optional rtidb.api.TTLDesc ttl_desc = 16;
-    optional uint32 format_version = 17 [default = 0];
-    optional string db = 18 [default = ""];
-    repeated string partition_key = 19;
-    repeated common.VersionPair schema_versions = 20;
+    repeated rtidb.common.ColumnDesc added_column_desc = 14;
+    optional rtidb.api.TTLDesc ttl_desc = 15;
+    optional uint32 format_version = 16 [default = 0];
+    optional string db = 17 [default = ""];
+    repeated string partition_key = 18;
+    repeated common.VersionPair schema_versions = 19;
 }
 
 message CreateTableRequest {

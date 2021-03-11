@@ -521,10 +521,7 @@ __attribute__((unused)) static void PrintTableInfo(
                 }
                 if (value.table_partition(idx)
                         .partition_meta(meta_idx)
-                        .has_record_byte_size() &&
-                    (!value.has_storage_mode() ||
-                     value.storage_mode() ==
-                         ::rtidb::common::StorageMode::kMemory)) {
+                        .has_record_byte_size()) {
                     row.push_back(::rtidb::base::HumanReadableString(
                         value.table_partition(idx)
                             .partition_meta(meta_idx)
@@ -557,7 +554,6 @@ __attribute__((unused)) static void PrintTableStatus(
     row.push_back("memused");
     row.push_back("compress_type");
     row.push_back("skiplist_height");
-    row.push_back("storage_mode");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
 
@@ -602,27 +598,11 @@ __attribute__((unused)) static void PrintTableStatus(
             }
         }
         row.push_back(std::to_string(table_status.time_offset()) + "s");
-        if (!table_status.has_storage_mode() ||
-            table_status.storage_mode() ==
-                ::rtidb::common::StorageMode::kMemory) {
-            row.push_back(::rtidb::base::HumanReadableString(
-                table_status.record_byte_size() +
-                table_status.record_idx_byte_size()));
-        } else {
-            row.push_back("-");
-        }
+        row.push_back(::rtidb::base::HumanReadableString(
+                    table_status.record_byte_size() +
+                    table_status.record_idx_byte_size()));
         row.push_back(
             ::rtidb::api::CompressType_Name(table_status.compress_type()));
-        if (!table_status.has_storage_mode() ||
-            table_status.storage_mode() ==
-                ::rtidb::common::StorageMode::kMemory) {
-            row.push_back(std::to_string(table_status.skiplist_height()));
-            row.push_back("kMemory");
-        } else {
-            row.push_back("-");
-            row.push_back(
-                ::rtidb::common::StorageMode_Name(table_status.storage_mode()));
-        }
         tp.AddRow(row);
     }
     tp.Print(true);
@@ -657,10 +637,6 @@ __attribute__((unused)) static void PrintTableInformation(
     std::string partition_num = std::to_string(table.partition_num());
     std::string compress_type =
         ::rtidb::nameserver::CompressType_Name(table.compress_type());
-    std::string storage_mode = "kMemory";
-    if (table.has_storage_mode()) {
-        storage_mode = ::rtidb::common::StorageMode_Name(table.storage_mode());
-    }
     uint64_t record_cnt = 0;
     uint64_t memused = 0;
     uint64_t diskused = 0;
@@ -694,8 +670,6 @@ __attribute__((unused)) static void PrintTableInformation(
     row.push_back(compress_type);
     tp.AddRow(row);
     row.clear();
-    row.push_back("storage_mode");
-    row.push_back(storage_mode);
     tp.AddRow(row);
     row.clear();
     row.push_back("record_cnt");

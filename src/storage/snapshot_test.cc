@@ -27,7 +27,6 @@
 #include "timer.h" // NOLINT
 
 DECLARE_string(db_root_path);
-DECLARE_string(hdd_root_path);
 DECLARE_string(snapshot_compression);
 
 using ::rtidb::api::LogEntry;
@@ -50,7 +49,6 @@ inline uint32_t GenRand() { return rand() % 10000000 + 1; }
 void RemoveData(const std::string& path) {
     ::rtidb::base::RemoveDir(path + "/data");
     ::rtidb::base::RemoveDir(path);
-    ::rtidb::base::RemoveDir(FLAGS_hdd_root_path);
 }
 
 int GetManifest(const std::string file, ::rtidb::api::Manifest* manifest) {
@@ -1799,7 +1797,6 @@ int main(int argc, char** argv) {
     for (size_t i = 0; i < vec.size(); i++) {
         std::cout << "compress type: " << vec[i] << std::endl;
         FLAGS_db_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
-        FLAGS_hdd_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
         FLAGS_snapshot_compression = vec[i];
         ret += RUN_ALL_TESTS();
     }

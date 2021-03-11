@@ -513,14 +513,12 @@ bool TabletClient::SendSnapshot(uint32_t tid, uint32_t remote_tid, uint32_t pid,
 
 bool TabletClient::LoadTable(const std::string& name, uint32_t id, uint32_t pid,
                              uint64_t ttl, uint32_t seg_cnt) {
-    return LoadTable(name, id, pid, ttl, false, seg_cnt,
-                     ::rtidb::common::StorageMode::kMemory);
+    return LoadTable(name, id, pid, ttl, false, seg_cnt);
 }
 
 bool TabletClient::LoadTable(const std::string& name, uint32_t tid,
                              uint32_t pid, uint64_t ttl, bool leader,
                              uint32_t seg_cnt,
-                             ::rtidb::common::StorageMode storage_mode,
                              std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::TableMeta table_meta;
     table_meta.set_name(name);
@@ -528,7 +526,6 @@ bool TabletClient::LoadTable(const std::string& name, uint32_t tid,
     table_meta.set_pid(pid);
     table_meta.set_ttl(ttl);
     table_meta.set_seg_cnt(seg_cnt);
-    table_meta.set_storage_mode(storage_mode);
     if (leader) {
         table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
     } else {
@@ -555,14 +552,11 @@ bool TabletClient::LoadTable(const ::rtidb::api::TableMeta& table_meta,
     return false;
 }
 
-bool TabletClient::LoadTable(uint32_t tid, uint32_t pid,
-                             ::rtidb::common::StorageMode storage_mode,
-                             std::string* msg) {
+bool TabletClient::LoadTable(uint32_t tid, uint32_t pid, std::string* msg) {
     ::rtidb::api::LoadTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
-    table_meta->set_storage_mode(storage_mode);
     table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     ::rtidb::api::GeneralResponse response;
     bool ok =
@@ -685,14 +679,12 @@ bool TabletClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
 }
 
 bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid,
-                               ::rtidb::common::StorageMode storage_mode,
                                uint64_t& term, uint64_t& offset,
                                bool& has_table, bool& is_leader) {
     ::rtidb::api::GetTermPairRequest request;
     ::rtidb::api::GetTermPairResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    request.set_storage_mode(storage_mode);
     bool ret = client_.SendRequest(
         &::rtidb::api::TabletServer_Stub::GetTermPair, &request, &response,
         FLAGS_request_timeout_ms, FLAGS_request_max_retry);
@@ -709,13 +701,11 @@ bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid,
 }
 
 bool TabletClient::GetManifest(uint32_t tid, uint32_t pid,
-                               ::rtidb::common::StorageMode storage_mode,
                                ::rtidb::api::Manifest& manifest) {
     ::rtidb::api::GetManifestRequest request;
     ::rtidb::api::GetManifestResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    request.set_storage_mode(storage_mode);
     bool ret = client_.SendRequest(
         &::rtidb::api::TabletServer_Stub::GetManifest, &request, &response,
         FLAGS_request_timeout_ms, FLAGS_request_max_retry);
@@ -1238,12 +1228,10 @@ bool TabletClient::DisConnectZK() {
     return true;
 }
 
-bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid,
-                                ::rtidb::common::StorageMode storage_mode) {
+bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid) {
     ::rtidb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
-    request.set_storage_mode(storage_mode);
     ::rtidb::api::GeneralResponse response;
     bool ok =
         client_.SendRequest(&::rtidb::api::TabletServer_Stub::DeleteBinlog,

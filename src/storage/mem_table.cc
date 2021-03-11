@@ -32,7 +32,7 @@ static const uint32_t SEED = 0xe17a1465;
 
 MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t seg_cnt,
                    const std::map<std::string, uint32_t>& mapping, uint64_t ttl, ::rtidb::api::TTLType ttl_type)
-    : Table(::rtidb::common::StorageMode::kMemory, name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping, ttl_type,
+    : Table(name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping, ttl_type,
             ::rtidb::api::CompressType::kNoCompress),
       seg_cnt_(seg_cnt),
       segments_(MAX_INDEX_NUM, NULL),
@@ -42,7 +42,7 @@ MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t 
       record_byte_size_(0) {}
 
 MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta)
-    : Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(), 0, true, 60 * 1000,
+    : Table(table_meta.name(), table_meta.tid(), table_meta.pid(), 0, true, 60 * 1000,
             std::map<std::string, uint32_t>(), ::rtidb::api::TTLType::kAbsoluteTime,
             ::rtidb::api::CompressType::kNoCompress),
       segments_(MAX_INDEX_NUM, NULL) {

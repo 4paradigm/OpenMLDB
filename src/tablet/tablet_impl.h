@@ -517,23 +517,18 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                       uint64_t target_ts);
 
     bool ChooseDBRootPath(uint32_t tid, uint32_t pid,
-                          const ::rtidb::common::StorageMode& mode,
                           std::string& path);  // NOLINT
 
     bool ChooseRecycleBinRootPath(uint32_t tid, uint32_t pid,
-                                  const ::rtidb::common::StorageMode& mode,
                                   std::string& path);  // NOLINT
 
     bool ChooseTableRootPath(uint32_t tid, uint32_t pid,
-                             const ::rtidb::common::StorageMode& mode,
                              std::string& path);  // NOLINT
 
     bool GetTableRootSize(uint32_t tid, uint32_t pid,
-                          const ::rtidb::common::StorageMode& mode,
                           uint64_t& size);  // NOLINT
 
     int32_t GetSnapshotOffset(uint32_t tid, uint32_t pid,
-                              common::StorageMode sm,
                               std::string& msg,                   // NOLINT
                               uint64_t& term, uint64_t& offset);  // NOLINT
 
@@ -577,10 +572,8 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
     brpc::Server* server_;
-    std::map<::rtidb::common::StorageMode, std::vector<std::string>>
-        mode_root_paths_;
-    std::map<::rtidb::common::StorageMode, std::vector<std::string>>
-        mode_recycle_root_paths_;
+    std::vector<std::string> mode_root_paths_;
+    std::vector<std::string> mode_recycle_root_paths_;
     std::atomic<bool> follower_;
     std::shared_ptr<std::map<std::string, std::string>> real_ep_map_;
     // thread safe

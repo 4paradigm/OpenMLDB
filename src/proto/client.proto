@@ -26,9 +26,8 @@ message TableInfo {
     optional string compress_type = 9 [default = "kNoCompress"];
     optional uint32 key_entry_max_height = 10;
     repeated rtidb.common.ColumnKey column_key = 11;
-    optional string storage_mode = 12 [default = "kMemory"];
-    optional rtidb.api.TTLDesc ttl_desc = 13;
-    repeated IndexDef index = 14;
-    optional uint32 format_version = 15 [default = 0];
-    repeated string partition_key = 16;
+    optional rtidb.api.TTLDesc ttl_desc = 12;
+    repeated IndexDef index = 13;
+    optional uint32 format_version = 14 [default = 0];
+    repeated string partition_key = 15;
 }

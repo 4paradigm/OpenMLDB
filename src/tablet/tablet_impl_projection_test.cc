@@ -31,11 +31,7 @@
 #include "vm/engine.h"
 
 DECLARE_string(db_root_path);
-DECLARE_string(ssd_root_path);
-DECLARE_string(hdd_root_path);
 DECLARE_string(recycle_bin_root_path);
-DECLARE_string(recycle_ssd_bin_root_path);
-DECLARE_string(recycle_hdd_bin_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(gc_interval);
@@ -701,14 +697,8 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     std::string k1 = ::rtidb::tablet::GenRand();
     std::string k2 = ::rtidb::tablet::GenRand();
-    FLAGS_ssd_root_path = "/tmp/ssd" + k1 + ",/tmp/ssd" + k2;
     FLAGS_db_root_path = "/tmp/db" + k1 + ",/tmp/db" + k2;
-    FLAGS_hdd_root_path = "/tmp/hdd" + k1 + ",/tmp/hdd" + k2;
     FLAGS_recycle_bin_root_path = "/tmp/recycle" + k1 + ",/tmp/recycle" + k2;
-    FLAGS_recycle_ssd_bin_root_path =
-        "/tmp/ssd_recycle" + k1 + ",/tmp/ssd_recycle" + k2;
-    FLAGS_recycle_hdd_bin_root_path =
-        "/tmp/hdd_recycle" + k1 + ",/tmp/hdd_recycle" + k2;
     ::fesql::vm::Engine::InitializeGlobalLLVM();
     return RUN_ALL_TESTS();
 }

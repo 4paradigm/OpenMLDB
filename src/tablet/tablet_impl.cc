@@ -47,15 +47,12 @@ using ::rtidb::base::ReturnCode;
 using ::rtidb::codec::SchemaCodec;
 
 DECLARE_int32(gc_interval);
-DECLARE_int32(disk_gc_interval);
 DECLARE_int32(gc_pool_size);
 DECLARE_int32(statdb_ttl);
 DECLARE_uint32(scan_max_bytes_size);
 DECLARE_uint32(scan_reserve_size);
 DECLARE_double(mem_release_rate);
 DECLARE_string(db_root_path);
-DECLARE_string(ssd_root_path);
-DECLARE_string(hdd_root_path);
 DECLARE_bool(binlog_notify_on_put);
 DECLARE_int32(task_pool_size);
 DECLARE_int32(io_pool_size);
@@ -65,8 +62,6 @@ DECLARE_uint32(make_snapshot_offline_interval);
 DECLARE_bool(recycle_bin_enabled);
 DECLARE_uint32(recycle_ttl);
 DECLARE_string(recycle_bin_root_path);
-DECLARE_string(recycle_ssd_bin_root_path);
-DECLARE_string(recycle_hdd_bin_root_path);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(get_table_diskused_interval);
 DECLARE_uint32(task_check_interval);
@@ -160,20 +155,10 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     notify_path_ = zk_path + "/table/notify";
     sp_root_path_ = zk_path + "/store_procedure/db_sp_data";
     std::lock_guard<std::mutex> lock(mu_);
-    ::rtidb::base::SplitString(FLAGS_db_root_path, ",",
-                               mode_root_paths_[::rtidb::common::kMemory]);
-    ::rtidb::base::SplitString(FLAGS_ssd_root_path, ",",
-                               mode_root_paths_[::rtidb::common::kSSD]);
-    ::rtidb::base::SplitString(FLAGS_hdd_root_path, ",",
-                               mode_root_paths_[::rtidb::common::kHDD]);
+    ::rtidb::base::SplitString(FLAGS_db_root_path, ",", mode_root_paths_);
 
     ::rtidb::base::SplitString(
-        FLAGS_recycle_bin_root_path, ",",
-        mode_recycle_root_paths_[::rtidb::common::kMemory]);
-    ::rtidb::base::SplitString(FLAGS_recycle_ssd_bin_root_path, ",",
-                               mode_recycle_root_paths_[::rtidb::common::kSSD]);
-    ::rtidb::base::SplitString(FLAGS_recycle_hdd_bin_root_path, ",",
-                               mode_recycle_root_paths_[::rtidb::common::kHDD]);
+        FLAGS_recycle_bin_root_path, ",", mode_recycle_root_paths_);
 
     if (!zk_cluster.empty()) {
         zk_client_ = new ZkClient(zk_cluster, real_endpoint,
@@ -194,41 +179,18 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
         return false;
     }
 
-    if (!CreateMultiDir(mode_root_paths_[::rtidb::common::kMemory])) {
+    if (!CreateMultiDir(mode_root_paths_)) {
         PDLOG(WARNING, "fail to create db root path %s",
               FLAGS_db_root_path.c_str());
         return false;
     }
 
-    if (!CreateMultiDir(mode_root_paths_[::rtidb::common::kSSD])) {
-        PDLOG(WARNING, "fail to create ssd root path %s",
-              FLAGS_ssd_root_path.c_str());
-        return false;
-    }
-
-    if (!CreateMultiDir(mode_root_paths_[::rtidb::common::kHDD])) {
-        PDLOG(WARNING, "fail to create hdd root path %s",
-              FLAGS_hdd_root_path.c_str());
-        return false;
-    }
-
-    if (!CreateMultiDir(mode_recycle_root_paths_[::rtidb::common::kMemory])) {
+    if (!CreateMultiDir(mode_recycle_root_paths_)) {
         PDLOG(WARNING, "fail to create recycle bin root path %s",
               FLAGS_recycle_bin_root_path.c_str());
         return false;
     }
 
-    if (!CreateMultiDir(mode_recycle_root_paths_[::rtidb::common::kSSD])) {
-        PDLOG(WARNING, "fail to create recycle ssd bin root path %s",
-              FLAGS_recycle_ssd_bin_root_path.c_str());
-        return false;
-    }
-
-    if (!CreateMultiDir(mode_recycle_root_paths_[::rtidb::common::kHDD])) {
-        PDLOG(WARNING, "fail to create recycle bin root path %s",
-              FLAGS_recycle_hdd_bin_root_path.c_str());
-        return false;
-    }
     std::map<std::string, std::string> real_endpoint_map = { {endpoint, real_endpoint} };
     if (!catalog_->UpdateClient(real_endpoint_map)) {
         PDLOG(WARNING, "update client failed");
@@ -1487,8 +1449,7 @@ void TabletImpl::Count(RpcController* controller,
     }
     index = index_def->GetId();
     ttl = *index_def->GetTTL();
-    if (!request->filter_expired_data() &&
-        table->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
+    if (!request->filter_expired_data()) {
         MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
         if (mem_table != NULL) {
             uint64_t count = 0;
@@ -2476,8 +2437,7 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         table->SetSchema(schema);
         // update TableMeta.txt
         std::string db_root_path;
-        ::rtidb::common::StorageMode mode = table_meta.storage_mode();
-        bool ok = ChooseDBRootPath(tid, pid, mode, db_root_path);
+        bool ok = ChooseDBRootPath(tid, pid, db_root_path);
         if (!ok) {
             response->set_code(ReturnCode::kFailToGetDbRootPath);
             response->set_msg("fail to get db root path");
@@ -2529,7 +2489,6 @@ void TabletImpl::GetTableStatus(
             status->set_tid(table->GetId());
             status->set_pid(table->GetPid());
             status->set_compress_type(table->GetCompressType());
-            status->set_storage_mode(table->GetStorageMode());
             status->set_name(table->GetName());
             ::rtidb::api::TTLDesc* ttl_desc = status->mutable_ttl_desc();
             ::rtidb::storage::TTLSt ttl = table->GetTTL();
@@ -2553,8 +2512,6 @@ void TabletImpl::GetTableStatus(
                 status->set_offset(replicator->GetOffset());
             }
             status->set_record_cnt(table->GetRecordCnt());
-            if (table->GetStorageMode() ==
-                ::rtidb::common::StorageMode::kMemory) {
                 if (MemTable* mem_table =
                         dynamic_cast<MemTable*>(table.get())) {
                     status->set_is_expire(mem_table->GetExpireStatus());
@@ -2584,7 +2541,6 @@ void TabletImpl::GetTableStatus(
                     }
                     status->set_idx_cnt(record_idx_cnt);
                 }
-            }
             if (request->has_need_schema() && request->need_schema()) {
                 status->set_schema(table->GetSchema());
             }
@@ -2606,13 +2562,11 @@ void TabletImpl::SetExpire(RpcController* controller,
         response->set_msg("table is not exist");
         return;
     }
-    if (table->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
-        MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
-        if (mem_table != NULL) {
-            mem_table->SetExpire(request->is_expire());
-            PDLOG(INFO, "set table expire[%d]. tid[%u] pid[%u]",
-                  request->is_expire(), request->tid(), request->pid());
-        }
+    MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
+    if (mem_table != NULL) {
+        mem_table->SetExpire(request->is_expire());
+        PDLOG(INFO, "set table expire[%d]. tid[%u] pid[%u]",
+                request->is_expire(), request->tid(), request->pid());
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -2691,15 +2645,13 @@ void TabletImpl::MakeSnapshotInternal(
         if (task) {
             if (ret == 0) {
                 task->set_status(::rtidb::api::kDone);
-                if (table->GetStorageMode() == common::StorageMode::kMemory) {
-                    auto right_now =
-                        std::chrono::system_clock::now().time_since_epoch();
-                    int64_t ts =
-                        std::chrono::duration_cast<std::chrono::seconds>(
+                auto right_now =
+                    std::chrono::system_clock::now().time_since_epoch();
+                int64_t ts =
+                    std::chrono::duration_cast<std::chrono::seconds>(
                             right_now)
-                            .count();
-                    table->SetMakeSnapshotTime(ts);
-                }
+                    .count();
+                table->SetMakeSnapshotTime(ts);
             } else {
                 task->set_status(::rtidb::api::kFailed);
             }
@@ -2787,16 +2739,13 @@ void TabletImpl::SchedMakeSnapshot() {
                 if (iter->first == 0 && inner->first == 0) {
                     continue;
                 }
-                if (inner->second->GetStorageMode() ==
-                    ::rtidb::common::StorageMode::kMemory) {
-                    if (ts - inner->second->GetMakeSnapshotTime() <=
-                            FLAGS_make_snapshot_offline_interval &&
+                if (ts - inner->second->GetMakeSnapshotTime() <=
+                        FLAGS_make_snapshot_offline_interval &&
                         !zk_cluster_.empty()) {
-                        continue;
-                    }
-                    table_set.push_back(
-                        std::make_pair(iter->first, inner->first));
+                    continue;
                 }
+                table_set.push_back(
+                        std::make_pair(iter->first, inner->first));
             }
         }
     }
@@ -2820,12 +2769,8 @@ void TabletImpl::SendData(RpcController* controller,
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    ::rtidb::common::StorageMode mode = ::rtidb::common::kMemory;
-    if (request->has_storage_mode()) {
-        mode = request->storage_mode();
-    }
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, mode, db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");
@@ -3020,7 +2965,7 @@ void TabletImpl::SendSnapshotInternal(
         }
         std::string db_root_path;
         bool ok =
-            ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
+            ChooseDBRootPath(tid, pid, db_root_path);
         if (!ok) {
             PDLOG(WARNING, "fail to get db root path for table tid %u, pid %u",
                   tid, pid);
@@ -3038,8 +2983,7 @@ void TabletImpl::SendSnapshotInternal(
             }
             real_endpoint = iter->second;
         }
-        FileSender sender(
-                remote_tid, pid, table->GetStorageMode(), real_endpoint);
+        FileSender sender(remote_tid, pid, real_endpoint);
         if (!sender.Init()) {
             PDLOG(WARNING,
                   "Init FileSender failed. tid[%u] pid[%u] endpoint[%s]", tid,
@@ -3075,19 +3019,11 @@ void TabletImpl::SendSnapshotInternal(
             }
             snapshot_file = manifest.name();
         }
-        if (table->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
-            // send snapshot file
-            if (sender.SendFile(snapshot_file, full_path + snapshot_file) < 0) {
-                PDLOG(WARNING, "send snapshot failed. tid[%u] pid[%u]", tid,
-                      pid);
-                break;
-            }
-        } else {
-            if (sender.SendDir(snapshot_file, full_path + snapshot_file) < 0) {
-                PDLOG(WARNING, "send snapshot failed. tid[%u] pid[%u]", tid,
-                      pid);
-                break;
-            }
+        // send snapshot file
+        if (sender.SendFile(snapshot_file, full_path + snapshot_file) < 0) {
+            PDLOG(WARNING, "send snapshot failed. tid[%u] pid[%u]", tid,
+                    pid);
+            break;
         }
         // send manifest file
         file_name = "MANIFEST";
@@ -3256,7 +3192,7 @@ void TabletImpl::LoadTable(RpcController* controller,
         }
         std::string root_path;
         bool ok =
-            ChooseDBRootPath(tid, pid, table_meta.storage_mode(), root_path);
+            ChooseDBRootPath(tid, pid, root_path);
         if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
             response->set_msg("fail to get table db root path");
@@ -3293,28 +3229,25 @@ void TabletImpl::LoadTable(RpcController* controller,
             response->set_msg("write data failed");
             break;
         }
-        if (table_meta.storage_mode() == rtidb::common::kMemory) {
-            std::string msg;
-            if (CreateTableInternal(&table_meta, msg) < 0) {
-                response->set_code(
+        if (CreateTableInternal(&table_meta, msg) < 0) {
+            response->set_code(
                     ::rtidb::base::ReturnCode::kCreateTableFailed);
-                response->set_msg(msg.c_str());
-                break;
-            }
-            uint64_t ttl = table_meta.ttl();
-            std::string name = table_meta.name();
-            uint32_t seg_cnt = 8;
-            if (table_meta.seg_cnt() > 0) {
-                seg_cnt = table_meta.seg_cnt();
-            }
-            PDLOG(INFO,
-                  "start to recover table with id %u pid %u name %s seg_cnt %d "
-                  "idx_cnt %u schema_size %u ttl %llu",
-                  tid, pid, name.c_str(), seg_cnt, table_meta.dimensions_size(),
-                  table_meta.schema().size(), ttl);
-            task_pool_.AddTask(boost::bind(&TabletImpl::LoadTableInternal, this,
-                                           tid, pid, task_ptr));
+            response->set_msg(msg.c_str());
+            break;
         }
+        uint64_t ttl = table_meta.ttl();
+        std::string name = table_meta.name();
+        uint32_t seg_cnt = 8;
+        if (table_meta.seg_cnt() > 0) {
+            seg_cnt = table_meta.seg_cnt();
+        }
+        PDLOG(INFO,
+                "start to recover table with id %u pid %u name %s seg_cnt %d "
+                "idx_cnt %u schema_size %u ttl %llu",
+                tid, pid, name.c_str(), seg_cnt, table_meta.dimensions_size(),
+                table_meta.schema().size(), ttl);
+        task_pool_.AddTask(boost::bind(&TabletImpl::LoadTableInternal, this,
+                    tid, pid, task_ptr));
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         return;
@@ -3353,7 +3286,7 @@ int TabletImpl::LoadTableInternal(
         uint64_t snapshot_offset = 0;
         std::string db_root_path;
         bool ok =
-            ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
+            ChooseDBRootPath(tid, pid, db_root_path);
         if (!ok) {
             PDLOG(WARNING, "fail to find db root path for table tid %u pid %u",
                   tid, pid);
@@ -3406,13 +3339,12 @@ int32_t TabletImpl::DeleteTableInternal(
             break;
         }
         bool ok =
-            ChooseDBRootPath(tid, pid, table->GetStorageMode(), root_path);
+            ChooseDBRootPath(tid, pid, root_path);
         if (!ok) {
             PDLOG(WARNING, "fail to get db root path. tid %u pid %u", tid, pid);
             break;
         }
-        ok = ChooseRecycleBinRootPath(tid, pid, table->GetStorageMode(),
-                                      recycle_bin_root_path);
+        ok = ChooseRecycleBinRootPath(tid, pid, recycle_bin_root_path);
         if (!ok) {
             PDLOG(WARNING, "fail to get recycle bin root path. tid %u pid %u",
                   tid, pid);
@@ -3517,7 +3449,7 @@ void TabletImpl::CreateTable(RpcController* controller,
           ::rtidb::api::TableMode_Name(request->table_meta().mode()).c_str());
     std::string db_root_path;
     bool ok =
-        ChooseDBRootPath(tid, pid, table_meta->storage_mode(), db_root_path);
+        ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         PDLOG(WARNING, "fail to find db root path tid[%u] pid[%u]", tid, pid);
         response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
@@ -3554,8 +3486,7 @@ void TabletImpl::CreateTable(RpcController* controller,
                 tid, pid);
         return;
     }
-    if (table_meta->format_version() == 1 &&
-            table_meta->storage_mode() == ::rtidb::common::kMemory) {
+    if (table_meta->format_version() == 1) {
         bool ok = catalog_->AddTable(*table_meta, table);
         engine_.ClearCacheLocked(table_meta->db());
         if (ok) {
@@ -3653,11 +3584,10 @@ void TabletImpl::GetTableFollower(
 }
 
 int32_t TabletImpl::GetSnapshotOffset(uint32_t tid, uint32_t pid,
-                                      rtidb::common::StorageMode sm,
                                       std::string& msg, uint64_t& term,
                                       uint64_t& offset) {
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, sm, db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         msg = "fail to get db root path";
         PDLOG(WARNING, "fail to get table db root path");
@@ -3691,7 +3621,6 @@ void TabletImpl::GetAllSnapshotOffset(
     RpcController* controller, const ::rtidb::api::EmptyRequest* request,
     ::rtidb::api::TableSnapshotOffsetResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    std::map<uint32_t, rtidb::common::StorageMode> table_sm;
     std::map<uint32_t, std::vector<uint32_t>> tid_pid;
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
@@ -3703,11 +3632,9 @@ void TabletImpl::GetAllSnapshotOffset(
             uint32_t tid = table_iter->first;
             std::vector<uint32_t> pids;
             auto part_iter = table_iter->second.begin();
-            rtidb::common::StorageMode sm = part_iter->second->GetStorageMode();
             for (; part_iter != table_iter->second.end(); part_iter++) {
                 pids.push_back(part_iter->first);
             }
-            table_sm.insert(std::make_pair(tid, sm));
             tid_pid.insert(std::make_pair(tid, pids));
         }
     }
@@ -3718,8 +3645,7 @@ void TabletImpl::GetAllSnapshotOffset(
         table->set_tid(tid);
         for (auto pid : iter->second) {
             uint64_t term = 0, offset = 0;
-            rtidb::common::StorageMode sm = table_sm.find(tid)->second;
-            int32_t code = GetSnapshotOffset(tid, pid, sm, msg, term, offset);
+            int32_t code = GetSnapshotOffset(tid, pid, msg, term, offset);
             if (code != 0) {
                 continue;
             }
@@ -3763,17 +3689,13 @@ void TabletImpl::GetTermPair(RpcController* controller,
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
     std::shared_ptr<Table> table = GetTable(tid, pid);
-    ::rtidb::common::StorageMode mode = ::rtidb::common::kMemory;
-    if (request->has_storage_mode()) {
-        mode = request->storage_mode();
-    }
     if (!table) {
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_has_table(false);
         response->set_msg("table is not exist");
         std::string msg;
         uint64_t term = 0, offset = 0;
-        int32_t code = GetSnapshotOffset(tid, pid, mode, msg, term, offset);
+        int32_t code = GetSnapshotOffset(tid, pid, msg, term, offset);
         response->set_code(code);
         if (code == 0) {
             response->set_term(term);
@@ -3808,12 +3730,8 @@ void TabletImpl::DeleteBinlog(RpcController* controller,
     brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    ::rtidb::common::StorageMode mode = ::rtidb::common::kMemory;
-    if (request->has_storage_mode()) {
-        mode = request->storage_mode();
-    }
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, mode, db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");
@@ -3827,7 +3745,7 @@ void TabletImpl::DeleteBinlog(RpcController* controller,
         if (FLAGS_recycle_bin_enabled) {
             std::string recycle_bin_root_path;
             ok =
-                ChooseRecycleBinRootPath(tid, pid, mode, recycle_bin_root_path);
+                ChooseRecycleBinRootPath(tid, pid, recycle_bin_root_path);
             if (!ok) {
                 response->set_code(
                     ::rtidb::base::ReturnCode::kFailToGetRecycleRootPath);
@@ -3859,11 +3777,7 @@ void TabletImpl::CheckFile(RpcController* controller,
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
     std::string db_root_path;
-    ::rtidb::common::StorageMode mode = ::rtidb::common::kMemory;
-    if (request->has_storage_mode()) {
-        mode = request->storage_mode();
-    }
-    bool ok = ChooseDBRootPath(tid, pid, mode, db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");
@@ -3907,12 +3821,8 @@ void TabletImpl::GetManifest(RpcController* controller,
                              Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::string db_root_path;
-    ::rtidb::common::StorageMode mode = ::rtidb::common::kMemory;
-    if (request->has_storage_mode()) {
-        mode = request->storage_mode();
-    }
     bool ok =
-        ChooseDBRootPath(request->tid(), request->pid(), mode, db_root_path);
+        ChooseDBRootPath(request->tid(), request->pid(), db_root_path);
     if (!ok) {
         response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");
@@ -4031,7 +3941,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
         return -1;
     }
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         PDLOG(WARNING, "fail to get table db root path");
         msg.assign("fail to get table db root path");
@@ -4085,8 +3995,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
         std::make_pair(table_meta->pid(), snapshot));
     replicators_[table_meta->tid()].insert(
         std::make_pair(table_meta->pid(), replicator));
-    if (table_meta->format_version() == 1 &&
-            table_meta->storage_mode() == ::rtidb::common::kMemory) {
+    if (table_meta->format_version() == 1) {
         bool ok = catalog_->AddTable(*table_meta, table);
         engine_.ClearCacheLocked(table_meta->db());
         if (ok) {
@@ -4362,9 +4271,6 @@ void TabletImpl::GcTable(uint32_t tid, uint32_t pid, bool execute_once) {
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (table) {
         int32_t gc_interval = FLAGS_gc_interval;
-        if (table->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
-            gc_interval = FLAGS_disk_gc_interval;
-        }
         table->SchedGc();
         if (!execute_once) {
             gc_pool_.DelayTask(
@@ -4611,10 +4517,8 @@ void TabletImpl::SchedDelBinlog(uint32_t tid, uint32_t pid) {
     }
 }
 
-bool TabletImpl::ChooseDBRootPath(uint32_t tid, uint32_t pid,
-                                  const ::rtidb::common::StorageMode& mode,
-                                  std::string& path) {
-    std::vector<std::string>& paths = mode_root_paths_[mode];
+bool TabletImpl::ChooseDBRootPath(uint32_t tid, uint32_t pid, std::string& path) {
+    std::vector<std::string>& paths = mode_root_paths_;
     if (paths.size() < 1) {
         return false;
     }
@@ -4631,10 +4535,8 @@ bool TabletImpl::ChooseDBRootPath(uint32_t tid, uint32_t pid,
     return path.size();
 }
 
-bool TabletImpl::ChooseRecycleBinRootPath(
-    uint32_t tid, uint32_t pid, const ::rtidb::common::StorageMode& mode,
-    std::string& path) {
-    std::vector<std::string>& paths = mode_recycle_root_paths_[mode];
+bool TabletImpl::ChooseRecycleBinRootPath(uint32_t tid, uint32_t pid, std::string& path) {
+    std::vector<std::string>& paths = mode_recycle_root_paths_;
     if (paths.size() < 1) return false;
 
     if (paths.size() == 1) {
@@ -4673,10 +4575,8 @@ void TabletImpl::DelRecycle(const std::string& path) {
 }
 
 void TabletImpl::SchedDelRecycle() {
-    for (auto kv : mode_recycle_root_paths_) {
-        for (auto path : kv.second) {
-            DelRecycle(path);
-        }
+    for (auto path : mode_recycle_root_paths_) {
+        DelRecycle(path);
     }
     task_pool_.DelayTask(FLAGS_recycle_ttl * 60 * 1000,
                          boost::bind(&TabletImpl::SchedDelRecycle, this));
@@ -4695,11 +4595,9 @@ bool TabletImpl::CreateMultiDir(const std::vector<std::string>& dirs) {
     return true;
 }
 
-bool TabletImpl::ChooseTableRootPath(uint32_t tid, uint32_t pid,
-                                     const ::rtidb::common::StorageMode& mode,
-                                     std::string& path) {
+bool TabletImpl::ChooseTableRootPath(uint32_t tid, uint32_t pid, std::string& path) {
     std::string root_path;
-    bool ok = ChooseDBRootPath(tid, pid, mode, root_path);
+    bool ok = ChooseDBRootPath(tid, pid, root_path);
     if (!ok) {
         PDLOG(WARNING, "table db path doesn't found. tid %u, pid %u", tid, pid);
         return false;
@@ -4712,11 +4610,9 @@ bool TabletImpl::ChooseTableRootPath(uint32_t tid, uint32_t pid,
     return true;
 }
 
-bool TabletImpl::GetTableRootSize(uint32_t tid, uint32_t pid,
-                                  const ::rtidb::common::StorageMode& mode,
-                                  uint64_t& size) {
+bool TabletImpl::GetTableRootSize(uint32_t tid, uint32_t pid, uint64_t& size) {
     std::string table_path;
-    if (!ChooseTableRootPath(tid, pid, mode, table_path)) {
+    if (!ChooseTableRootPath(tid, pid, table_path)) {
         return false;
     }
     if (!::rtidb::base::GetDirSizeRecur(table_path, size)) {
@@ -4739,8 +4635,7 @@ void TabletImpl::GetDiskused() {
     }
     for (const auto& table : tables) {
         uint64_t size = 0;
-        if (!GetTableRootSize(table->GetId(), table->GetPid(),
-                              table->GetStorageMode(), size)) {
+        if (!GetTableRootSize(table->GetId(), table->GetPid(), size)) {
             PDLOG(WARNING, "get table root size failed. tid[%u] pid[%u]",
                   table->GetId(), table->GetPid());
         } else {
@@ -4776,15 +4671,8 @@ void TabletImpl::DeleteIndex(RpcController* controller,
         response->set_msg("table is not exist");
         return;
     }
-    if (table->GetStorageMode() != ::rtidb::common::kMemory) {
-        response->set_code(::rtidb::base::ReturnCode::kOperatorNotSupport);
-        response->set_msg("only support mem_table");
-        PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
-        return;
-    }
     std::string root_path;
-    if (!ChooseDBRootPath(tid, pid, ::rtidb::common::StorageMode::kMemory,
-                          root_path)) {
+    if (!ChooseDBRootPath(tid, pid, root_path)) {
         response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get table db root path");
         PDLOG(WARNING, "table db path is not found. tid %u, pid %u", tid, pid);
@@ -4866,7 +4754,7 @@ void TabletImpl::SendIndexDataInternal(
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
     std::string db_root_path;
-    if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path)) {
+    if (!ChooseDBRootPath(tid, pid, db_root_path)) {
         PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid,
               pid);
         SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
@@ -4895,8 +4783,7 @@ void TabletImpl::SendIndexDataInternal(
                 return;
             }
             std::string des_db_root_path;
-            if (!ChooseDBRootPath(tid, kv.first, table->GetStorageMode(),
-                                  des_db_root_path)) {
+            if (!ChooseDBRootPath(tid, kv.first, des_db_root_path)) {
                 PDLOG(WARNING,
                       "fail to find db root path for table tid %u pid %u", tid,
                       kv.first);
@@ -4948,8 +4835,7 @@ void TabletImpl::SendIndexDataInternal(
                 }
                 real_endpoint = iter->second;
             }
-            FileSender sender(tid, kv.first, table->GetStorageMode(),
-                              real_endpoint);
+            FileSender sender(tid, kv.first, real_endpoint);
             if (!sender.Init()) {
                 PDLOG(WARNING,
                       "Init FileSender failed. tid[%u] pid[%u] des_pid[%u] "
@@ -5004,12 +4890,6 @@ void TabletImpl::DumpIndexData(
                 response->set_msg("table is not exist");
                 break;
             }
-            if (table->GetStorageMode() != ::rtidb::common::kMemory) {
-                response->set_code(
-                    ::rtidb::base::ReturnCode::kOperatorNotSupport);
-                response->set_msg("only support mem_table");
-                break;
-            }
             if (table->GetTableStat() != ::rtidb::storage::kNormal) {
                 PDLOG(WARNING,
                       "table state is %d, cannot dump index data. %u, pid %u",
@@ -5052,7 +4932,7 @@ void TabletImpl::DumpIndexDataInternal(
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
     std::string db_root_path;
-    if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path)) {
+    if (!ChooseDBRootPath(tid, pid, db_root_path)) {
         PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid,
               pid);
         SetTaskStatus(task, ::rtidb::api::kFailed);
@@ -5119,12 +4999,6 @@ void TabletImpl::LoadIndexData(
             response->set_msg("table is not exist");
             break;
         }
-        if (table->GetStorageMode() != ::rtidb::common::kMemory) {
-            response->set_code(::rtidb::base::ReturnCode::kOperatorNotSupport);
-            response->set_msg("only support mem_table");
-            PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
-            break;
-        }
         if (table->GetTableStat() != ::rtidb::storage::kNormal) {
             PDLOG(WARNING,
                   "table state is %d, cannot load index data. tid %u, pid %u",
@@ -5180,7 +5054,7 @@ void TabletImpl::LoadIndexDataInternal(
         return;
     }
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid,
               pid);
@@ -5249,7 +5123,7 @@ void TabletImpl::LoadIndexDataInternal(
     if (cur_pid == partition_num - 1 || (cur_pid + 1 == pid && pid == partition_num - 1)) {
         if (FLAGS_recycle_bin_enabled) {
             std::string recycle_bin_root_path;
-            ok = ChooseRecycleBinRootPath(tid, pid, table->GetStorageMode(), recycle_bin_root_path);
+            ok = ChooseRecycleBinRootPath(tid, pid, recycle_bin_root_path);
             if (!ok) {
                 LOG(WARNING) << "fail to get recycle bin root path. tid " << tid << " pid " << pid;
                 rtidb::base::RemoveDirRecursive(index_path);
@@ -5302,14 +5176,6 @@ void TabletImpl::ExtractIndexData(
                 PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, pid);
                 response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
                 response->set_msg("table is not exist");
-                break;
-            }
-            if (table->GetStorageMode() != ::rtidb::common::kMemory) {
-                response->set_code(
-                    ::rtidb::base::ReturnCode::kOperatorNotSupport);
-                PDLOG(WARNING, "only support mem_table. tid %u pid %u", tid,
-                      pid);
-                response->set_msg("only support mem_table");
                 break;
             }
             if (table->GetTableStat() != ::rtidb::storage::kNormal) {
@@ -5397,7 +5263,7 @@ void TabletImpl::AddIndex(RpcController* controller,
         return;
     }
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, ::rtidb::common::StorageMode::kMemory, db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");

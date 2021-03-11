@@ -32,8 +32,6 @@
 #include "timer.h"  // NOLINT
 
 DECLARE_string(db_root_path);
-DECLARE_string(ssd_root_path);
-DECLARE_string(hdd_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(gc_interval);
@@ -6150,7 +6148,5 @@ int main(int argc, char** argv) {
     ::rtidb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
-    FLAGS_ssd_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
-    FLAGS_hdd_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     return RUN_ALL_TESTS();
 }

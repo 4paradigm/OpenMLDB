@@ -20,7 +20,6 @@
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
-DECLARE_string(hdd_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
