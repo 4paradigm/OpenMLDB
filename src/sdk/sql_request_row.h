@@ -29,7 +29,7 @@
 #include "codec/fe_row_selector.h"
 #include "sdk/base.h"
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 class SQLRequestRow {
@@ -143,5 +143,5 @@ class ColumnIndicesSet {
 };
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_SDK_SQL_REQUEST_ROW_H_

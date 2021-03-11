@@ -135,7 +135,7 @@
 #include <string>
 #include <vector>
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 #define LINENOISE_DEFAULT_HISTORY_MAX_LEN 1000
@@ -1218,4 +1218,4 @@ int linenoiseHistoryLoad(const char *filename) {
     return 0;
 }
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb

@@ -29,9 +29,9 @@
 #include "log/log_format.h"
 #include "log/sequential_file.h"
 
-using ::rtidb::base::Slice;
+using ::fedb::base::Slice;
 
-namespace rtidb {
+namespace fedb {
 
 namespace base {
 class Status;
@@ -72,7 +72,7 @@ class Reader {
     // "*scratch" as temporary storage.  The contents filled in *record
     // will only be valid until the next mutating operation on this
     // reader or the next mutation to *scratch.
-    ::rtidb::base::Status ReadRecord(Slice* record, std::string* scratch);
+    ::fedb::base::Status ReadRecord(Slice* record, std::string* scratch);
 
     // Returns the physical offset of the last record returned by ReadRecord.
     //
@@ -156,15 +156,15 @@ class Reader {
     void operator=(const Reader&);
 };
 
-typedef ::rtidb::base::Skiplist<uint32_t, uint64_t,
-                                ::rtidb::base::DefaultComparator>
+typedef ::fedb::base::Skiplist<uint32_t, uint64_t,
+                                ::fedb::base::DefaultComparator>
     LogParts;
 
 class LogReader {
  public:
     LogReader(LogParts* logs, const std::string& log_path, bool compressed);
     virtual ~LogReader();
-    ::rtidb::base::Status ReadNextRecord(::rtidb::base::Slice* record,
+    ::fedb::base::Status ReadNextRecord(::fedb::base::Slice* record,
                                          std::string* buffer);
     int RollRLogFile();
     int OpenSeqFile(const std::string& path);
@@ -188,6 +188,6 @@ class LogReader {
 };
 
 }  // namespace log
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_LOG_LOG_READER_H_

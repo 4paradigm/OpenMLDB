@@ -32,7 +32,7 @@
 #include "storage/schema.h"
 #include "storage/table.h"
 
-namespace rtidb {
+namespace fedb {
 namespace catalog {
 
 
@@ -167,10 +167,10 @@ class TabletPartitionHandler : public ::fesql::vm::PartitionHandler,
 class TabletTableHandler : public ::fesql::vm::TableHandler,
                            public std::enable_shared_from_this<fesql::vm::TableHandler> {
  public:
-    explicit TabletTableHandler(const ::rtidb::api::TableMeta &meta,
+    explicit TabletTableHandler(const ::fedb::api::TableMeta &meta,
                                 std::shared_ptr<fesql::vm::Tablet> local_tablet);
 
-    explicit TabletTableHandler(const ::rtidb::nameserver::TableInfo &meta,
+    explicit TabletTableHandler(const ::fedb::nameserver::TableInfo &meta,
                                 std::shared_ptr<fesql::vm::Tablet> local_tablet);
 
     bool Init(const ClientManager &client_manager);
@@ -206,11 +206,11 @@ class TabletTableHandler : public ::fesql::vm::TableHandler,
 
     inline int32_t GetTid() { return table_st_.GetTid(); }
 
-    void AddTable(std::shared_ptr<::rtidb::storage::Table> table);
+    void AddTable(std::shared_ptr<::fedb::storage::Table> table);
 
     int DeleteTable(uint32_t pid);
 
-    void Update(const ::rtidb::nameserver::TableInfo &meta, const ClientManager &client_manager);
+    void Update(const ::fedb::nameserver::TableInfo &meta, const ClientManager &client_manager);
 
  private:
     inline int32_t GetColumnIndex(const std::string &column) {
@@ -223,7 +223,7 @@ class TabletTableHandler : public ::fesql::vm::TableHandler,
 
  private:
     ::fesql::vm::Schema schema_;
-    ::rtidb::storage::TableSt table_st_;
+    ::fedb::storage::TableSt table_st_;
     std::shared_ptr<Tables> tables_;
     ::fesql::vm::Types types_;
     ::fesql::vm::IndexList index_list_;
@@ -247,7 +247,7 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     bool AddDB(const ::fesql::type::Database &db);
 
-    bool AddTable(const ::rtidb::api::TableMeta &meta, std::shared_ptr<::rtidb::storage::Table> table);
+    bool AddTable(const ::fedb::api::TableMeta &meta, std::shared_ptr<::fedb::storage::Table> table);
 
     std::shared_ptr<::fesql::type::Database> GetDatabase(const std::string &db) override;
 
@@ -259,7 +259,7 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     bool DeleteDB(const std::string &db);
 
-    void Refresh(const std::vector<::rtidb::nameserver::TableInfo> &table_info_vec, uint64_t version,
+    void Refresh(const std::vector<::fedb::nameserver::TableInfo> &table_info_vec, uint64_t version,
             const Procedures& db_sp_map);
 
     bool AddProcedure(const std::string &db, const std::string &sp_name,
@@ -280,7 +280,7 @@ class TabletCatalog : public ::fesql::vm::Catalog {
     const Procedures& GetProcedures();
 
  private:
-    ::rtidb::base::SpinMutex mu_;
+    ::fedb::base::SpinMutex mu_;
     TabletTables tables_;
     TabletDB db_;
     Procedures db_sp_map_;
@@ -291,5 +291,5 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 };
 
 }  // namespace catalog
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_CATALOG_TABLET_CATALOG_H_

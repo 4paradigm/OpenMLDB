@@ -22,7 +22,7 @@
 #include "sdk/base.h"
 #include "sdk/base_impl.h"
 
-namespace rtidb {
+namespace fedb {
 namespace catalog {
 
 class ProcedureInfoImpl : public fesql::sdk::ProcedureInfo {
@@ -68,4 +68,4 @@ class ProcedureInfoImpl : public fesql::sdk::ProcedureInfo {
 };
 
 }  // namespace catalog
-}  // namespace rtidb
+}  // namespace fedb

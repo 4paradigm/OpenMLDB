@@ -29,7 +29,7 @@
 #include "sdk/base.h"
 #include "sdk/result_set.h"
 
-namespace rtidb {
+namespace fedb {
 namespace test {
 class SQLCaseTest : public ::testing::TestWithParam<fesql::sqlcase::SQLCase> {
  public:
@@ -71,5 +71,5 @@ class SQLCaseTest : public ::testing::TestWithParam<fesql::sqlcase::SQLCase> {
 };
 
 }  // namespace test
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_TEST_BASE_TEST_H_

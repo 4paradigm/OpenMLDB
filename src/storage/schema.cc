@@ -23,13 +23,13 @@
 #include "codec/schema_codec.h"
 #include "glog/logging.h"
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
-ColumnDef::ColumnDef(const std::string& name, uint32_t id, ::rtidb::type::DataType type, bool not_null)
+ColumnDef::ColumnDef(const std::string& name, uint32_t id, ::fedb::type::DataType type, bool not_null)
     : name_(name), id_(id), type_(type), not_null_(not_null), ts_idx_(-1) {}
 
-ColumnDef::ColumnDef(const std::string& name, uint32_t id, ::rtidb::type::DataType type, bool not_null, int32_t ts_idx)
+ColumnDef::ColumnDef(const std::string& name, uint32_t id, ::fedb::type::DataType type, bool not_null, int32_t ts_idx)
     : name_(name), id_(id), type_(type), not_null_(not_null), ts_idx_(ts_idx) {}
 
 std::shared_ptr<ColumnDef> TableColumn::GetColumn(uint32_t idx) {
@@ -57,13 +57,13 @@ void TableColumn::AddColumn(std::shared_ptr<ColumnDef> column_def) {
 
 IndexDef::IndexDef(const std::string& name, uint32_t id) : name_(name), index_id_(id), inner_pos_(0),
      status_(IndexStatus::kReady),
-     type_(::rtidb::type::IndexType::kTimeSerise), columns_(), ttl_st_(), ts_column_(nullptr) {}
+     type_(::fedb::type::IndexType::kTimeSerise), columns_(), ttl_st_(), ts_column_(nullptr) {}
 
 IndexDef::IndexDef(const std::string& name, uint32_t id, IndexStatus status)
     : name_(name), index_id_(id), inner_pos_(0), status_(status),
-      type_(::rtidb::type::IndexType::kTimeSerise), columns_(), ttl_st_(), ts_column_(nullptr) {}
+      type_(::fedb::type::IndexType::kTimeSerise), columns_(), ttl_st_(), ts_column_(nullptr) {}
 
-IndexDef::IndexDef(const std::string& name, uint32_t id, const IndexStatus& status, ::rtidb::type::IndexType type,
+IndexDef::IndexDef(const std::string& name, uint32_t id, const IndexStatus& status, ::fedb::type::IndexType type,
                    const std::vector<ColumnDef>& columns)
     : name_(name), index_id_(id), inner_pos_(0), status_(status), type_(type), columns_(columns),
       ttl_st_(), ts_column_(nullptr) {}
@@ -85,9 +85,9 @@ TTLType IndexDef::GetTTLType() const {
 uint32_t InnerIndexSt::GetKeyEntryMaxHeight(uint32_t abs_max_height, uint32_t lat_max_height) const {
     uint32_t max_height = lat_max_height;
     for (const auto& cur_index : index_) {
-        ::rtidb::storage::TTLType ttl_type = cur_index->GetTTLType();
-        if (ttl_type == ::rtidb::storage::TTLType::kAbsoluteTime ||
-                ttl_type == ::rtidb::storage::TTLType::kAbsAndLat) {
+        ::fedb::storage::TTLType ttl_type = cur_index->GetTTLType();
+        if (ttl_type == ::fedb::storage::TTLType::kAbsoluteTime ||
+                ttl_type == ::fedb::storage::TTLType::kAbsAndLat) {
             max_height = abs_max_height;
             break;
         }
@@ -135,7 +135,7 @@ void TableIndex::ReSet() {
     std::atomic_store_explicit(&unique_col_name_vec_, new_unique_vec, std::memory_order_relaxed);
 }
 
-int TableIndex::ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::map<std::string, uint8_t>* ts_mapping) {
+int TableIndex::ParseFromMeta(const ::fedb::api::TableMeta& table_meta, std::map<std::string, uint8_t>* ts_mapping) {
     if (ts_mapping == nullptr) {
         return -1;
     }
@@ -149,7 +149,7 @@ int TableIndex::ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::ma
     } else {
         uint64_t abs_ttl = 0;
         uint64_t lat_ttl = 0;
-        if (table_meta.ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime) {
+        if (table_meta.ttl_type() == ::fedb::api::TTLType::kAbsoluteTime) {
             abs_ttl = table_meta.ttl() * 60 * 1000;
         } else {
             lat_ttl = table_meta.ttl();
@@ -182,11 +182,11 @@ int TableIndex::ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::ma
         for (int idx = 0; idx < table_meta.column_desc_size(); idx++) {
             const auto& column_desc = table_meta.column_desc(idx);
             std::shared_ptr<ColumnDef> col;
-            ::rtidb::type::DataType type;
+            ::fedb::type::DataType type;
             if (column_desc.has_data_type()) {
                 type = column_desc.data_type();
             } else {
-                type = ::rtidb::codec::SchemaCodec::ConvertStrType(column_desc.type());
+                type = ::fedb::codec::SchemaCodec::ConvertStrType(column_desc.type());
             }
             const std::string& name = column_desc.name();
             col = std::make_shared<ColumnDef>(name, key_idx, type, true);
@@ -194,7 +194,7 @@ int TableIndex::ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::ma
             if (column_desc.add_ts_idx()) {
                 std::vector<ColumnDef> col_vec = { *col };
                 auto index = std::make_shared<IndexDef>(name, key_idx, IndexStatus::kReady,
-                        ::rtidb::type::IndexType::kTimeSerise, col_vec);
+                        ::fedb::type::IndexType::kTimeSerise, col_vec);
                 index->SetTTL(table_ttl);
                 if (AddIndex(index) < 0) {
                     return -1;
@@ -216,7 +216,7 @@ int TableIndex::ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::ma
                 if (column_desc.has_abs_ttl() || column_desc.has_lat_ttl()) {
                     cur_ttl = TTLSt(column_desc.abs_ttl() * 60 * 1000, column_desc.lat_ttl(), table_ttl.ttl_type);
                 } else if (column_desc.has_ttl()) {
-                    if (table_meta.ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime) {
+                    if (table_meta.ttl_type() == ::fedb::api::TTLType::kAbsoluteTime) {
                         cur_ttl = TTLSt(column_desc.ttl() * 60 * 1000, 0, table_ttl.ttl_type);
                     } else {
                         cur_ttl = TTLSt(0, column_desc.ttl(), table_ttl.ttl_type);
@@ -243,11 +243,11 @@ int TableIndex::ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::ma
             for (int pos = 0; pos < table_meta.column_key_size(); pos++) {
                 const auto& column_key =  table_meta.column_key(pos);
                 std::string name = column_key.index_name();
-                ::rtidb::storage::IndexStatus status;
+                ::fedb::storage::IndexStatus status;
                 if (column_key.flag()) {
-                    status = ::rtidb::storage::IndexStatus::kDeleted;
+                    status = ::fedb::storage::IndexStatus::kDeleted;
                 } else {
-                    status = ::rtidb::storage::IndexStatus::kReady;
+                    status = ::fedb::storage::IndexStatus::kReady;
                 }
                 std::vector<ColumnDef> col_vec;
                 for (const auto& cur_col_name : column_key.col_name()) {
@@ -256,7 +256,7 @@ int TableIndex::ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::ma
                 int ts_name_pos = 0;
                 do {
                     auto index = std::make_shared<IndexDef>(column_key.index_name(), key_idx, status,
-                            ::rtidb::type::IndexType::kTimeSerise, col_vec);
+                            ::fedb::type::IndexType::kTimeSerise, col_vec);
                     index->SetTTL(table_ttl);
                     if (column_key.ts_name_size() > 0) {
                         const std::string& ts_name = column_key.ts_name(ts_name_pos);
@@ -268,7 +268,7 @@ int TableIndex::ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::ma
                     }
                     if (column_key.has_ttl()) {
                         const auto& proto_ttl = column_key.ttl();
-                        index->SetTTL(::rtidb::storage::TTLSt(proto_ttl));
+                        index->SetTTL(::fedb::storage::TTLSt(proto_ttl));
                     }
                     if (has_multi_ts) {
                         if (AddMultiTsIndex(pos, index) < 0) {
@@ -323,7 +323,7 @@ int TableIndex::ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::ma
     return 0;
 }
 
-void TableIndex::FillIndexVal(const ::rtidb::api::TableMeta& table_meta, uint32_t ts_num) {
+void TableIndex::FillIndexVal(const ::fedb::api::TableMeta& table_meta, uint32_t ts_num) {
     inner_indexs_->clear();
     if (table_meta.column_key_size() > 0 && ts_num > 1) {
         if (!multi_ts_indexs_->empty()) {
@@ -565,7 +565,7 @@ int TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
     }
     new_indexs->push_back(index_def);
     std::atomic_store_explicit(&indexs_, new_indexs, std::memory_order_relaxed);
-    if (index_def->GetType() == ::rtidb::type::kPrimaryKey || index_def->GetType() == ::rtidb::type::kAutoGen) {
+    if (index_def->GetType() == ::fedb::type::kPrimaryKey || index_def->GetType() == ::fedb::type::kAutoGen) {
         pk_index_ = index_def;
     }
 
@@ -580,7 +580,7 @@ int TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
         }
         combine_name.append(col_def.GetName());
         new_vec->push_back(col_def.GetName());
-        if (index_def->GetType() == ::rtidb::type::kUnique) {
+        if (index_def->GetType() == ::fedb::type::kUnique) {
             new_unique_vec->push_back(col_def.GetName());
         }
     }
@@ -620,7 +620,7 @@ int32_t TableIndex::GetMaxIndexId() const {
 }
 
 bool TableIndex::HasAutoGen() {
-    if (pk_index_->GetType() == ::rtidb::type::kAutoGen) {
+    if (pk_index_->GetType() == ::fedb::type::kAutoGen) {
         return true;
     }
     return false;
@@ -656,7 +656,7 @@ bool TableIndex::IsUniqueColName(const std::string& name) {
     return true;
 }
 
-PartitionSt::PartitionSt(const ::rtidb::nameserver::TablePartition& partitions) : pid_(partitions.pid()) {
+PartitionSt::PartitionSt(const ::fedb::nameserver::TablePartition& partitions) : pid_(partitions.pid()) {
     for (const auto& meta : partitions.partition_meta()) {
         if (!meta.is_alive()) {
             continue;
@@ -669,7 +669,7 @@ PartitionSt::PartitionSt(const ::rtidb::nameserver::TablePartition& partitions) 
     }
 }
 
-PartitionSt::PartitionSt(const ::rtidb::common::TablePartition& partitions) : pid_(partitions.pid()) {
+PartitionSt::PartitionSt(const ::fedb::common::TablePartition& partitions) : pid_(partitions.pid()) {
     for (const auto& meta : partitions.partition_meta()) {
         if (!meta.is_alive()) {
             continue;
@@ -701,7 +701,7 @@ bool PartitionSt::operator==(const PartitionSt& partition_st) const {
     return true;
 }
 
-TableSt::TableSt(const ::rtidb::nameserver::TableInfo& table_info)
+TableSt::TableSt(const ::fedb::nameserver::TableInfo& table_info)
     : name_(table_info.name()),
       db_(table_info.db()),
       tid_(table_info.tid()),
@@ -718,7 +718,7 @@ TableSt::TableSt(const ::rtidb::nameserver::TableInfo& table_info)
     }
 }
 
-TableSt::TableSt(const ::rtidb::api::TableMeta& meta)
+TableSt::TableSt(const ::fedb::api::TableMeta& meta)
     : name_(meta.name()),
       db_(meta.db()),
       tid_(meta.tid()),
@@ -748,4 +748,4 @@ bool TableSt::SetPartition(const PartitionSt& partition_st) {
 }
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb

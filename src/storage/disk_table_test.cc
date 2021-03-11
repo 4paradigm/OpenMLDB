@@ -29,7 +29,7 @@ DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
 DECLARE_uint32(max_traverse_cnt);
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 inline uint32_t GenRand() {
@@ -38,10 +38,10 @@ inline uint32_t GenRand() {
 }
 
 void RemoveData(const std::string& path) {
-    ::rtidb::base::RemoveDir(path + "/data");
-    ::rtidb::base::RemoveDir(path);
-    ::rtidb::base::RemoveDir(FLAGS_hdd_root_path);
-    ::rtidb::base::RemoveDir(FLAGS_ssd_root_path);
+    ::fedb::base::RemoveDir(path + "/data");
+    ::fedb::base::RemoveDir(path);
+    ::fedb::base::RemoveDir(FLAGS_hdd_root_path);
+    ::fedb::base::RemoveDir(FLAGS_ssd_root_path);
 }
 
 class DiskTableTest : public ::testing::Test {
@@ -76,8 +76,8 @@ TEST_F(DiskTableTest, Put) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable(
-        "yjtable1", 1, 1, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
-        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+        "yjtable1", 1, 1, mapping, 10, ::fedb::api::TTLType::kAbsoluteTime,
+        ::fedb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -112,22 +112,22 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
     DiskTable* table = new DiskTable(
-        "yjtable2", 2, 1, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
-        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+        "yjtable2", 2, 1, mapping, 10, ::fedb::api::TTLType::kAbsoluteTime,
+        ::fedb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     ASSERT_EQ(3, (int64_t)table->GetIdxCnt());
     //    ASSERT_EQ(0, table->GetRecordIdxCnt());
     //    ASSERT_EQ(0, table->GetRecordCnt());
     Dimensions dimensions;
-    ::rtidb::api::Dimension* d0 = dimensions.Add();
+    ::fedb::api::Dimension* d0 = dimensions.Add();
     d0->set_key("yjdim0");
     d0->set_idx(0);
 
-    ::rtidb::api::Dimension* d1 = dimensions.Add();
+    ::fedb::api::Dimension* d1 = dimensions.Add();
     d1->set_key("yjdim1");
     d1->set_idx(1);
 
-    ::rtidb::api::Dimension* d2 = dimensions.Add();
+    ::fedb::api::Dimension* d2 = dimensions.Add();
     d2->set_key("yjdim2");
     d2->set_idx(2);
     bool ok = table->Put(1, "yjtestvalue", dimensions);
@@ -234,17 +234,17 @@ TEST_F(DiskTableTest, LongPut) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     DiskTable* table = new DiskTable(
-        "yjtable3", 3, 1, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
-        ::rtidb::common::StorageMode::kSSD, FLAGS_ssd_root_path);
+        "yjtable3", 3, 1, mapping, 10, ::fedb::api::TTLType::kAbsoluteTime,
+        ::fedb::common::StorageMode::kSSD, FLAGS_ssd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 10; idx++) {
         Dimensions dimensions;
-        ::rtidb::api::Dimension* d0 = dimensions.Add();
+        ::fedb::api::Dimension* d0 = dimensions.Add();
         d0->set_key("ThisIsAVeryLongKeyWhichLengthIsMoreThan40" +
                     std::to_string(idx));
         d0->set_idx(0);
 
-        ::rtidb::api::Dimension* d1 = dimensions.Add();
+        ::fedb::api::Dimension* d1 = dimensions.Add();
         d1->set_key("ThisIsAnotherVeryLongKeyWhichLengthIsMoreThan40" +
                     std::to_string(idx));
         d1->set_idx(1);
@@ -301,8 +301,8 @@ TEST_F(DiskTableTest, Delete) {
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
     DiskTable* table = new DiskTable(
-        "yjtable2", 4, 1, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
-        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+        "yjtable2", 4, 1, mapping, 10, ::fedb::api::TTLType::kAbsoluteTime,
+        ::fedb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 10; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -338,8 +338,8 @@ TEST_F(DiskTableTest, TraverseIterator) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable(
-        "t1", 5, 1, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime,
-        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+        "t1", 5, 1, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime,
+        ::fedb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -430,8 +430,8 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable(
-        "t1", 6, 1, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime,
-        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+        "t1", 6, 1, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime,
+        ::fedb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -509,13 +509,13 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable(
-        "t1", 7, 1, mapping, 5, ::rtidb::api::TTLType::kAbsoluteTime,
-        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+        "t1", 7, 1, mapping, 5, ::fedb::api::TTLType::kAbsoluteTime,
+        ::fedb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     const auto& ttl = table->GetTTL();
     ASSERT_EQ((int64_t)ttl.abs_ttl, 5 * 60 * 1000);
     ASSERT_EQ((int64_t)ttl.lat_ttl, 0);
-    ASSERT_EQ(ttl.ttl_type, ::rtidb::storage::TTLType::kAbsoluteTime);
+    ASSERT_EQ(ttl.ttl_type, ::fedb::storage::TTLType::kAbsoluteTime);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 10; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -568,13 +568,13 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable(
-        "t1", 8, 1, mapping, 3, ::rtidb::api::TTLType::kLatestTime,
-        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+        "t1", 8, 1, mapping, 3, ::fedb::api::TTLType::kLatestTime,
+        ::fedb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     const auto& ttl = table->GetTTL();
     ASSERT_EQ((int64_t)ttl.abs_ttl, 0);
     ASSERT_EQ((int64_t)ttl.lat_ttl, 3);
-    ASSERT_EQ(ttl.ttl_type, ::rtidb::storage::TTLType::kLatestTime);
+    ASSERT_EQ(ttl.ttl_type, ::fedb::storage::TTLType::kLatestTime);
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
         uint64_t ts = 9537;
@@ -644,8 +644,8 @@ TEST_F(DiskTableTest, Load) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable(
-        "t1", 9, 1, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
-        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+        "t1", 9, 1, mapping, 10, ::fedb::api::TTLType::kAbsoluteTime,
+        ::fedb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -672,8 +672,8 @@ TEST_F(DiskTableTest, Load) {
     delete table;
 
     table = new DiskTable(
-        "t1", 9, 1, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
-        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+        "t1", 9, 1, mapping, 10, ::fedb::api::TTLType::kAbsoluteTime,
+        ::fedb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->LoadTable());
     raw_key = "test35";
     it = table->NewIterator(raw_key, ticket);
@@ -699,8 +699,8 @@ TEST_F(DiskTableTest, CompactFilter) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable(
-        "t1", 10, 1, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
-        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+        "t1", 10, 1, mapping, 10, ::fedb::api::TTLType::kAbsoluteTime,
+        ::fedb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 100; idx++) {
@@ -749,32 +749,32 @@ TEST_F(DiskTableTest, CompactFilter) {
 }
 
 TEST_F(DiskTableTest, CompactFilterMulTs) {
-    ::rtidb::api::TableMeta table_meta;
+    ::fedb::api::TableMeta table_meta;
     table_meta.set_tid(11);
     table_meta.set_pid(1);
     table_meta.set_ttl(10);
-    table_meta.set_storage_mode(::rtidb::common::kHDD);
-    ::rtidb::common::ColumnDesc* column_desc = table_meta.add_column_desc();
+    table_meta.set_storage_mode(::fedb::common::kHDD);
+    ::fedb::common::ColumnDesc* column_desc = table_meta.add_column_desc();
     column_desc->set_name("card");
     column_desc->set_type("string");
-    ::rtidb::common::ColumnDesc* column_desc1 = table_meta.add_column_desc();
+    ::fedb::common::ColumnDesc* column_desc1 = table_meta.add_column_desc();
     column_desc1->set_name("mcc");
     column_desc1->set_type("string");
-    ::rtidb::common::ColumnDesc* column_desc2 = table_meta.add_column_desc();
+    ::fedb::common::ColumnDesc* column_desc2 = table_meta.add_column_desc();
     column_desc2->set_name("ts1");
     column_desc2->set_type("uint64");
     column_desc2->set_is_ts_col(true);
     column_desc2->set_ttl(3);
-    ::rtidb::common::ColumnDesc* column_desc3 = table_meta.add_column_desc();
+    ::fedb::common::ColumnDesc* column_desc3 = table_meta.add_column_desc();
     column_desc3->set_name("ts2");
     column_desc3->set_type("uint64");
     column_desc3->set_is_ts_col(true);
     column_desc3->set_ttl(5);
-    ::rtidb::common::ColumnKey* column_key = table_meta.add_column_key();
+    ::fedb::common::ColumnKey* column_key = table_meta.add_column_key();
     column_key->set_index_name("card");
     column_key->add_ts_name("ts1");
     column_key->add_ts_name("ts2");
-    ::rtidb::common::ColumnKey* column_key1 = table_meta.add_column_key();
+    ::fedb::common::ColumnKey* column_key1 = table_meta.add_column_key();
     column_key1->set_index_name("mcc");
     column_key1->add_ts_name("ts2");
 
@@ -783,20 +783,20 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 100; idx++) {
         Dimensions dims;
-        ::rtidb::api::Dimension* dim = dims.Add();
+        ::fedb::api::Dimension* dim = dims.Add();
         dim->set_key("card" + std::to_string(idx));
         dim->set_idx(0);
-        ::rtidb::api::Dimension* dim1 = dims.Add();
+        ::fedb::api::Dimension* dim1 = dims.Add();
         dim1->set_key("mcc" + std::to_string(idx));
         dim1->set_idx(1);
         std::string key = "test" + std::to_string(idx);
         if (idx == 5 || idx == 10) {
             for (int i = 0; i < 10; i++) {
                 TSDimensions ts_dims;
-                ::rtidb::api::TSDimension* ts_dim = ts_dims.Add();
+                ::fedb::api::TSDimension* ts_dim = ts_dims.Add();
                 ts_dim->set_ts(cur_time - i * 60 * 1000);
                 ts_dim->set_idx(0);
-                ::rtidb::api::TSDimension* ts_dim1 = ts_dims.Add();
+                ::fedb::api::TSDimension* ts_dim1 = ts_dims.Add();
                 ts_dim1->set_ts(cur_time - i * 60 * 1000);
                 ts_dim1->set_idx(1);
                 ASSERT_TRUE(
@@ -806,10 +806,10 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
         } else {
             for (int i = 0; i < 10; i++) {
                 TSDimensions ts_dims;
-                ::rtidb::api::TSDimension* ts_dim = ts_dims.Add();
+                ::fedb::api::TSDimension* ts_dim = ts_dims.Add();
                 ts_dim->set_ts(cur_time - i);
                 ts_dim->set_idx(0);
-                ::rtidb::api::TSDimension* ts_dim1 = ts_dims.Add();
+                ::fedb::api::TSDimension* ts_dim1 = ts_dims.Add();
                 ts_dim1->set_ts(cur_time - i);
                 ts_dim1->set_idx(1);
                 ASSERT_TRUE(
@@ -923,33 +923,33 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
 }
 
 TEST_F(DiskTableTest, GcHeadMulTs) {
-    ::rtidb::api::TableMeta table_meta;
+    ::fedb::api::TableMeta table_meta;
     table_meta.set_tid(12);
     table_meta.set_pid(1);
     table_meta.set_ttl(10);
-    table_meta.set_ttl_type(::rtidb::api::TTLType::kLatestTime);
-    table_meta.set_storage_mode(::rtidb::common::kHDD);
-    ::rtidb::common::ColumnDesc* column_desc = table_meta.add_column_desc();
+    table_meta.set_ttl_type(::fedb::api::TTLType::kLatestTime);
+    table_meta.set_storage_mode(::fedb::common::kHDD);
+    ::fedb::common::ColumnDesc* column_desc = table_meta.add_column_desc();
     column_desc->set_name("card");
     column_desc->set_type("string");
-    ::rtidb::common::ColumnDesc* column_desc1 = table_meta.add_column_desc();
+    ::fedb::common::ColumnDesc* column_desc1 = table_meta.add_column_desc();
     column_desc1->set_name("mcc");
     column_desc1->set_type("string");
-    ::rtidb::common::ColumnDesc* column_desc2 = table_meta.add_column_desc();
+    ::fedb::common::ColumnDesc* column_desc2 = table_meta.add_column_desc();
     column_desc2->set_name("ts1");
     column_desc2->set_type("uint64");
     column_desc2->set_is_ts_col(true);
     column_desc2->set_ttl(3);
-    ::rtidb::common::ColumnDesc* column_desc3 = table_meta.add_column_desc();
+    ::fedb::common::ColumnDesc* column_desc3 = table_meta.add_column_desc();
     column_desc3->set_name("ts2");
     column_desc3->set_type("uint64");
     column_desc3->set_is_ts_col(true);
     column_desc3->set_ttl(5);
-    ::rtidb::common::ColumnKey* column_key = table_meta.add_column_key();
+    ::fedb::common::ColumnKey* column_key = table_meta.add_column_key();
     column_key->set_index_name("card");
     column_key->add_ts_name("ts1");
     column_key->add_ts_name("ts2");
-    ::rtidb::common::ColumnKey* column_key1 = table_meta.add_column_key();
+    ::fedb::common::ColumnKey* column_key1 = table_meta.add_column_key();
     column_key1->set_index_name("mcc");
     column_key1->add_ts_name("ts2");
 
@@ -958,10 +958,10 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 100; idx++) {
         Dimensions dims;
-        ::rtidb::api::Dimension* dim = dims.Add();
+        ::fedb::api::Dimension* dim = dims.Add();
         dim->set_key("card" + std::to_string(idx));
         dim->set_idx(0);
-        ::rtidb::api::Dimension* dim1 = dims.Add();
+        ::fedb::api::Dimension* dim1 = dims.Add();
         dim1->set_key("mcc" + std::to_string(idx));
         dim1->set_idx(1);
         std::string key = "test" + std::to_string(idx);
@@ -970,10 +970,10 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
                 break;
             }
             TSDimensions ts_dims;
-            ::rtidb::api::TSDimension* ts_dim = ts_dims.Add();
+            ::fedb::api::TSDimension* ts_dim = ts_dims.Add();
             ts_dim->set_ts(cur_time - i);
             ts_dim->set_idx(0);
-            ::rtidb::api::TSDimension* ts_dim1 = ts_dims.Add();
+            ::fedb::api::TSDimension* ts_dim1 = ts_dims.Add();
             ts_dim1->set_ts(cur_time - i);
             ts_dim1->set_idx(1);
             ASSERT_TRUE(table->Put(dims, ts_dims, "value" + std::to_string(i)));
@@ -1073,8 +1073,8 @@ TEST_F(DiskTableTest, GcHead) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable(
-        "t1", 13, 1, mapping, 3, ::rtidb::api::TTLType::kLatestTime,
-        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+        "t1", 13, 1, mapping, 3, ::fedb::api::TTLType::kLatestTime,
+        ::fedb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -1127,8 +1127,8 @@ TEST_F(DiskTableTest, CheckPoint) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable(
-        "t1", 15, 1, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime,
-        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+        "t1", 15, 1, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime,
+        ::fedb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -1158,13 +1158,13 @@ TEST_F(DiskTableTest, CheckPoint) {
     delete table;
 
     std::string data_path = FLAGS_hdd_root_path + "/15_1/data";
-    ::rtidb::base::RemoveDir(data_path);
+    ::fedb::base::RemoveDir(data_path);
 
-    ::rtidb::base::Rename(snapshot_path, data_path);
+    ::fedb::base::Rename(snapshot_path, data_path);
 
     table = new DiskTable(
-        "t1", 15, 1, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime,
-        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+        "t1", 15, 1, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime,
+        ::fedb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->LoadTable());
     raw_key = "test35";
     it = table->NewIterator(raw_key, ticket);
@@ -1199,12 +1199,12 @@ TEST_F(DiskTableTest, CheckPoint) {
 }
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    ::rtidb::base::SetLogLevel(INFO);
-    FLAGS_hdd_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
-    FLAGS_ssd_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
+    ::fedb::base::SetLogLevel(INFO);
+    FLAGS_hdd_root_path = "/tmp/" + std::to_string(::fedb::storage::GenRand());
+    FLAGS_ssd_root_path = "/tmp/" + std::to_string(::fedb::storage::GenRand());
     return RUN_ALL_TESTS();
 }

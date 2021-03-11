@@ -49,7 +49,7 @@
 
 DECLARE_int32(request_sleep_time);
 
-namespace rtidb {
+namespace fedb {
 
 class SleepRetryPolicy : public brpc::RetryPolicy {
  public:
@@ -265,7 +265,7 @@ class RpcCallback : public google::protobuf::Closure {
     std::atomic<uint32_t> ref_count_;
 };
 
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_RPC_RPC_CLIENT_H_
 

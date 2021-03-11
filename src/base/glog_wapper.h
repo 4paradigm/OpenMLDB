@@ -29,7 +29,7 @@ using google::FATAL;
 using google::INFO;
 using google::WARNING;
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 const int DEBUG = -1;
@@ -54,19 +54,19 @@ inline void SetLogFile(std::string path) {
 }
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
-using ::rtidb::base::DEBUG;
+using ::fedb::base::DEBUG;
 
 #define PDLOG(level, fmt, args...)      \
     COMPACT_GOOGLE_LOG_##level.stream() \
-        << ::rtidb::base::FormatArgs(fmt, ##args)
+        << ::fedb::base::FormatArgs(fmt, ##args)
 
 #define DEBUGLOG(fmt, args...)                             \
     {                                                      \
-        if (::rtidb::base::log_level == -1)                \
+        if (::fedb::base::log_level == -1)                \
             COMPACT_GOOGLE_LOG_INFO.stream()               \
-                << ::rtidb::base::FormatArgs(fmt, ##args); \
+                << ::fedb::base::FormatArgs(fmt, ##args); \
     }                                                      \
     while (0)
 

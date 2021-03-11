@@ -22,7 +22,7 @@
 #include <cstdint>
 #include <mutex> // NOLINT
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 template <class T>
@@ -78,6 +78,6 @@ class RingQueue {
 };
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_BASE_RINGQUEUE_H_

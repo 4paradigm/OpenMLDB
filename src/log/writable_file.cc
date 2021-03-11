@@ -27,10 +27,10 @@
 #include "base/slice.h"
 #include "base/status.h"
 
-using ::rtidb::base::Slice;
-using ::rtidb::base::Status;
+using ::fedb::base::Slice;
+using ::fedb::base::Status;
 
-namespace rtidb {
+namespace fedb {
 namespace log {
 
 static Status IOError(const std::string& context, int err_number) {
@@ -109,4 +109,4 @@ WritableFile* NewWritableFile(const std::string& fname, FILE* f) {
 }
 
 }  // namespace log
-}  // namespace rtidb
+}  // namespace fedb

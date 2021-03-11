@@ -28,10 +28,10 @@
 #include "base/glog_wapper.h" // NOLINT
 
 
-using ::rtidb::base::Slice;
-using ::rtidb::base::Status;
+using ::fedb::base::Slice;
+using ::fedb::base::Status;
 
-namespace rtidb {
+namespace fedb {
 namespace log {
 
 class PosixSequentialFile : public SequentialFile {
@@ -98,4 +98,4 @@ SequentialFile* NewSeqFile(const std::string& fname, FILE* f) {
 }
 
 }  // namespace log
-}  // namespace rtidb
+}  // namespace fedb

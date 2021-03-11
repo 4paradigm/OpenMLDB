@@ -21,7 +21,7 @@
 #include "sdk/result_set.h"
 #define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_CNT 20
-namespace rtidb {
+namespace fedb {
 namespace test {
 std::string SQLCaseTest::GenRand(const std::string &prefix) {
     return prefix + std::to_string(rand() % 10000000 + 1);  // NOLINT
@@ -631,4 +631,4 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::string &
 }
 
 }  // namespace test
-}  // namespace rtidb
+}  // namespace fedb

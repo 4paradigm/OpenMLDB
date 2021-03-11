@@ -20,7 +20,7 @@
 
 #include <mutex> // NOLINT
 #include <set>
-namespace rtidb {
+namespace fedb {
 namespace base {
 // thread_safe set
 template <class T>
@@ -51,5 +51,5 @@ class set {
 };
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_BASE_SET_H_

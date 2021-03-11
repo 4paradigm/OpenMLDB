@@ -53,7 +53,7 @@ DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
 DECLARE_bool(enable_distsql);
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 class MiniCluster {
@@ -76,8 +76,8 @@ class MiniCluster {
         sleep(1);
         LOG(INFO) << "zk cluster " << zk_cluster_ << " zk path " << zk_path_
             << " enable_distsql = " << FLAGS_enable_distsql;
-        ::rtidb::nameserver::NameServerImpl* nameserver =
-            new ::rtidb::nameserver::NameServerImpl();
+        ::fedb::nameserver::NameServerImpl* nameserver =
+            new ::fedb::nameserver::NameServerImpl();
         bool ok = nameserver->Init(zk_cluster_, zk_path_, ns_endpoint, "");
         if (!ok) {
             return false;
@@ -91,7 +91,7 @@ class MiniCluster {
             return false;
         }
         sleep(2);
-        ns_client_ = new ::rtidb::client::NsClient(ns_endpoint, "");
+        ns_client_ = new ::fedb::client::NsClient(ns_endpoint, "");
         if (ns_client_->Init() != 0) {
             LOG(WARNING) << "fail to init ns client";
             return false;
@@ -130,9 +130,9 @@ class MiniCluster {
 
     std::string GetZkPath() { return zk_path_; }
 
-    ::rtidb::client::NsClient* GetNsClient() { return ns_client_; }
+    ::fedb::client::NsClient* GetNsClient() { return ns_client_; }
 
-    ::rtidb::tablet::TabletImpl* GetTablet(const std::string& endpoint) {
+    ::fedb::tablet::TabletImpl* GetTablet(const std::string& endpoint) {
         auto iter = tablets_.find(endpoint);
         if (iter != tablets_.end()) {
             return iter->second;
@@ -140,7 +140,7 @@ class MiniCluster {
         return nullptr;
     }
 
-    ::rtidb::client::TabletClient* GetTabletClient(const std::string& endpoint) {
+    ::fedb::client::TabletClient* GetTabletClient(const std::string& endpoint) {
         auto iter = tb_clients_.find(endpoint);
         if (iter != tb_clients_.end()) {
             return iter->second;
@@ -160,7 +160,7 @@ class MiniCluster {
     bool StartTablet(brpc::Server* tb_server) {
         std::string tb_endpoint = "127.0.0.1:" + GenRand();
         tb_endpoints_.push_back(tb_endpoint);
-        ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+        ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
         bool ok = tablet->Init(zk_cluster_, zk_path_, tb_endpoint, "");
         if (!ok) {
             return false;
@@ -180,7 +180,7 @@ class MiniCluster {
         tb_servers_.push_back(tb_server);
         tablets_.emplace(tb_endpoint, tablet);
         sleep(2);
-        auto* client = new ::rtidb::client::TabletClient(tb_endpoint, tb_endpoint);
+        auto* client = new ::fedb::client::TabletClient(tb_endpoint, tb_endpoint);
         if (client->Init() < 0) {
             LOG(WARNING) << "fail to init client";
             return false;
@@ -195,11 +195,11 @@ class MiniCluster {
     std::vector<std::string> tb_endpoints_;
     std::string zk_cluster_;
     std::string zk_path_;
-    ::rtidb::client::NsClient* ns_client_;
-    std::map<std::string, ::rtidb::tablet::TabletImpl*> tablets_;
-    std::map<std::string, ::rtidb::client::TabletClient*> tb_clients_;
+    ::fedb::client::NsClient* ns_client_;
+    std::map<std::string, ::fedb::tablet::TabletImpl*> tablets_;
+    std::map<std::string, ::fedb::client::TabletClient*> tb_clients_;
 };
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_SDK_MINI_CLUSTER_H_

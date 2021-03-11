@@ -42,9 +42,9 @@
 #include "storage/table.h"
 #include "timer.h"  // NOLINT
 
-typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
+typedef google::protobuf::RepeatedPtrField<::fedb::api::Dimension> Dimensions;
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 static const uint32_t TS_LEN = sizeof(uint64_t);
@@ -241,7 +241,7 @@ class DiskTableIterator : public TableIterator {
     virtual ~DiskTableIterator();
     bool Valid() override;
     void Next() override;
-    rtidb::base::Slice GetValue() const override;
+    fedb::base::Slice GetValue() const override;
     std::string GetPK() const override;
     uint64_t GetKey() const override;
     void SeekToFirst() override;
@@ -261,18 +261,18 @@ class DiskTableTraverseIterator : public TableIterator {
  public:
     DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it,
                               const rocksdb::Snapshot* snapshot,
-                              ::rtidb::storage::TTLType ttl_type,
+                              ::fedb::storage::TTLType ttl_type,
                               const uint64_t& expire_time,
                               const uint64_t& expire_cnt);
     DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it,
                               const rocksdb::Snapshot* snapshot,
-                              ::rtidb::storage::TTLType ttl_type,
+                              ::fedb::storage::TTLType ttl_type,
                               const uint64_t& expire_time,
                               const uint64_t& expire_cnt, int32_t ts_idx);
     virtual ~DiskTableTraverseIterator();
     bool Valid() override;
     void Next() override;
-    rtidb::base::Slice GetValue() const override;
+    fedb::base::Slice GetValue() const override;
     std::string GetPK() const override;
     uint64_t GetKey() const override;
     void SeekToFirst() override;
@@ -288,7 +288,7 @@ class DiskTableTraverseIterator : public TableIterator {
     rocksdb::Iterator* it_;
     const rocksdb::Snapshot* snapshot_;
     uint32_t record_idx_;
-    ::rtidb::storage::TTLSt expire_value_;
+    ::fedb::storage::TTLSt expire_value_;
     std::string pk_;
     uint64_t ts_;
     bool has_ts_idx_;
@@ -300,11 +300,11 @@ class DiskTable : public Table {
  public:
     DiskTable(const std::string& name, uint32_t id, uint32_t pid,
               const std::map<std::string, uint32_t>& mapping, uint64_t ttl,
-              ::rtidb::api::TTLType ttl_type,
-              ::rtidb::common::StorageMode storage_mode,
+              ::fedb::api::TTLType ttl_type,
+              ::fedb::common::StorageMode storage_mode,
               const std::string& db_root_path);
 
-    DiskTable(const ::rtidb::api::TableMeta& table_meta,
+    DiskTable(const ::fedb::api::TableMeta& table_meta,
               const std::string& db_root_path);
     DiskTable(const DiskTable&) = delete;
     DiskTable& operator=(const DiskTable&) = delete;
@@ -383,7 +383,7 @@ class DiskTable : public Table {
     void GcTTLAndHead();
     void GcTTLOrHead();
 
-    bool IsExpire(const ::rtidb::api::LogEntry& entry) override;
+    bool IsExpire(const ::fedb::api::LogEntry& entry) override;
 
     void CompactDB() {
         for (rocksdb::ColumnFamilyHandle* cf : cf_hs_) {
@@ -403,8 +403,8 @@ class DiskTable : public Table {
     KeyTSComparator cmp_;
     std::atomic<uint64_t> offset_;
     std::string db_root_path_;
-    ::rtidb::storage::TTLType ttl_type_;
+    ::fedb::storage::TTLType ttl_type_;
 };
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb

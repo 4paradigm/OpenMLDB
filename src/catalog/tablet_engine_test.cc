@@ -24,9 +24,9 @@
 #include "test/base_test.h"
 #include "timer.h"  // NOLINT
 #include "vm/engine.h"
-namespace rtidb {
+namespace fedb {
 namespace catalog {
-class TabletEngineTest : public rtidb::test::SQLCaseTest {
+class TabletEngineTest : public fedb::test::SQLCaseTest {
  public:
     TabletEngineTest() {}
     virtual ~TabletEngineTest() {}
@@ -35,8 +35,8 @@ class TabletEngineTest : public rtidb::test::SQLCaseTest {
                                  fesql::vm::EngineOptions options = fesql::vm::EngineOptions());
 };
 struct TestArgs {
-    std::shared_ptr<::rtidb::storage::Table> table;
-    ::rtidb::api::TableMeta meta;
+    std::shared_ptr<::fedb::storage::Table> table;
+    ::fedb::api::TableMeta meta;
     std::string row;
     std::string idx_name;
     std::string pk;
@@ -46,35 +46,35 @@ void StoreData(std::shared_ptr<TestArgs> args, std::shared_ptr<fesql::storage::T
                const std::vector<fesql::codec::Row> &rows) {
     auto meta = args->meta;
     auto table = args->table;
-    rtidb::codec::SDKCodec sdk_codec(meta);
+    fedb::codec::SDKCodec sdk_codec(meta);
     LOG(INFO) << "store data start: rows size " << rows.size() << ", index size: " << sql_table->GetIndexMap().size();
     fesql::codec::RowView row_view(sql_table->GetTableDef().columns());
     int column_size = sql_table->GetTableDef().columns_size();
     auto sql_schema = sql_table->GetTableDef().columns();
     uint64_t ts = ::baidu::common::timer::get_micros() / 1000;
     for (auto row : rows) {
-        std::map<uint32_t, rtidb::codec::Dimension> dimensions;
+        std::map<uint32_t, fedb::codec::Dimension> dimensions;
         std::vector<uint64_t> ts_dimensions;
         std::vector<std::string> raw_data;
         row_view.Reset(row.buf());
         for (int i = 0; i < column_size; i++) {
             if (row_view.IsNULL(i)) {
-                raw_data.push_back(rtidb::codec::NONETOKEN);
+                raw_data.push_back(fedb::codec::NONETOKEN);
                 continue;
             }
             std::string key_str = sql_schema.Get(i).type() == fesql::type::kDate
                                       ? std::to_string(row_view.GetDateUnsafe(i))
                                       : row_view.GetAsString(i);
             if (key_str == "") {
-                key_str = rtidb::codec::EMPTY_STRING;
+                key_str = fedb::codec::EMPTY_STRING;
             }
             raw_data.push_back(key_str);
         }
         sdk_codec.EncodeDimension(raw_data, 1, &dimensions);
         sdk_codec.EncodeTsDimension(raw_data, &ts_dimensions, ts);
 
-        rtidb::storage::Dimensions dims;
-        rtidb::storage::TSDimensions ts_dims;
+        fedb::storage::Dimensions dims;
+        fedb::storage::TSDimensions ts_dims;
 
         auto iter = dimensions.find(0);
         for (auto dimension : iter->second) {
@@ -106,7 +106,7 @@ std::shared_ptr<TestArgs> PrepareTableWithTableDef(const fesql::type::TableDef &
     args->meta.set_tid(tid);
     args->meta.set_pid(0);
     args->meta.set_seg_cnt(8);
-    args->meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+    args->meta.set_mode(::fedb::api::TableMode::kTableLeader);
     args->meta.set_ttl_type(api::TTLType::kAbsoluteTime);
     args->meta.set_ttl(0);
 
@@ -116,7 +116,7 @@ std::shared_ptr<TestArgs> PrepareTableWithTableDef(const fesql::type::TableDef &
         return std::shared_ptr<TestArgs>();
     }
 
-    args->table = std::shared_ptr<::rtidb::storage::MemTable>(new ::rtidb::storage::MemTable(args->meta));
+    args->table = std::shared_ptr<::fedb::storage::MemTable>(new ::fedb::storage::MemTable(args->meta));
     args->table->Init();
     return args;
 }
@@ -356,7 +356,7 @@ INSTANTIATE_TEST_SUITE_P(EngineSimpleQuery, TabletEngineTest,
 INSTANTIATE_TEST_SUITE_P(EngineUdfQuery, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/udf_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineUdafQuery, TabletEngineTest,
-                         testing::ValuesIn(rtidb::test::SQLCaseTest::InitCases("/cases/query/udaf_query.yaml")));
+                         testing::ValuesIn(fedb::test::SQLCaseTest::InitCases("/cases/query/udaf_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineExtreamQuery, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/extream_query.yaml")));
 
@@ -448,7 +448,7 @@ INSTANTIATE_TEST_CASE_P(EngineTestDebugIssues, TabletEngineTest,
                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/debug/issues_case.yaml")));
 
 }  // namespace catalog
-}  // namespace rtidb
+}  // namespace fedb
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::fesql::vm::Engine::InitializeGlobalLLVM();

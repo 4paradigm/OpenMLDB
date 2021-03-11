@@ -58,7 +58,7 @@
 
 #include <stdint.h>
 #include "base/endianconv.h"
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 /* Toggle the 16 bit unsigned integer pointed by *p from little endian to
@@ -122,4 +122,4 @@ uint64_t intrev64(uint64_t v) {
 }
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb

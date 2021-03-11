@@ -41,10 +41,10 @@ DECLARE_int32(request_timeout_ms);
 DECLARE_bool(binlog_notify_on_put);
 DECLARE_bool(auto_failover);
 
-using ::rtidb::zk::ZkClient;
-using ::rtidb::nameserver::NameServerImpl;
+using ::fedb::zk::ZkClient;
+using ::fedb::nameserver::NameServerImpl;
 
-namespace rtidb {
+namespace fedb {
 namespace tablet {
 
 inline std::string GenRand() {
@@ -65,13 +65,13 @@ class SqlClusterTest : public ::testing::Test {
     ~SqlClusterTest() {}
 };
 
-std::shared_ptr<rtidb::sdk::SQLRouter> GetNewSQLRouter() {
+std::shared_ptr<fedb::sdk::SQLRouter> GetNewSQLRouter() {
     ::fesql::vm::Engine::InitializeGlobalLLVM();
-    rtidb::sdk::SQLRouterOptions sql_opt;
+    fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = FLAGS_zk_cluster;
     sql_opt.zk_path = FLAGS_zk_root_path;
     sql_opt.enable_debug = true;
-    return rtidb::sdk::NewClusterSQLRouter(sql_opt);
+    return fedb::sdk::NewClusterSQLRouter(sql_opt);
 }
 
 void StartNameServer(brpc::Server& server) { //NOLINT
@@ -90,7 +90,7 @@ void StartNameServer(brpc::Server& server) { //NOLINT
     sleep(2);
 }
 
-void StartTablet(brpc::Server* server, ::rtidb::tablet::TabletImpl* tablet) { //NOLINT
+void StartTablet(brpc::Server* server, ::fedb::tablet::TabletImpl* tablet) { //NOLINT
     bool ok = tablet->Init("");
     ASSERT_TRUE(ok);
     brpc::ServerOptions options;
@@ -106,14 +106,14 @@ void StartTablet(brpc::Server* server, ::rtidb::tablet::TabletImpl* tablet) { //
     sleep(2);
 }
 
-void DropTable(::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_server_client, // NOLINT
+void DropTable(::fedb::RpcClient<::fedb::nameserver::NameServer_Stub>& name_server_client, // NOLINT
         const std::string& db, const std::string& table_name, bool success) {
-    ::rtidb::nameserver::DropTableRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::DropTableRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_db(db);
     request.set_name(table_name);
     bool ok = name_server_client.SendRequest(
-            &::rtidb::nameserver::NameServer_Stub::DropTable,
+            &::fedb::nameserver::NameServer_Stub::DropTable,
             &request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     if (success) {
@@ -123,28 +123,28 @@ void DropTable(::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_se
     }
 }
 
-void DropProcedure(::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_server_client, // NOLINT
+void DropProcedure(::fedb::RpcClient<::fedb::nameserver::NameServer_Stub>& name_server_client, // NOLINT
         const std::string& db, const std::string& sp_name) {
-    ::rtidb::nameserver::DropProcedureRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::DropProcedureRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_db_name(db);
     request.set_sp_name(sp_name);
     bool ok = name_server_client.SendRequest(
-            &::rtidb::nameserver::NameServer_Stub::DropProcedure,
+            &::fedb::nameserver::NameServer_Stub::DropProcedure,
             &request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(response.code(), 0);
 }
 
-void ShowTable(::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_server_client, // NOLINT
+void ShowTable(::fedb::RpcClient<::fedb::nameserver::NameServer_Stub>& name_server_client, // NOLINT
 
         const std::string& db, int32_t size) {
-    ::rtidb::nameserver::ShowTableRequest request;
-    ::rtidb::nameserver::ShowTableResponse response;
+    ::fedb::nameserver::ShowTableRequest request;
+    ::fedb::nameserver::ShowTableResponse response;
     request.set_db(db);
     request.set_show_all(true);
     bool ok = name_server_client.SendRequest(
-            &::rtidb::nameserver::NameServer_Stub::ShowTable,
+            &::fedb::nameserver::NameServer_Stub::ShowTable,
             &request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(response.table_info_size(), size);
@@ -159,26 +159,26 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     FLAGS_endpoint = "127.0.0.1:9631";
     brpc::Server ns_server;
     StartNameServer(ns_server);
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
+    ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
     name_server_client.Init();
 
     // tablet1
     FLAGS_endpoint = "127.0.0.1:9831";
     FLAGS_db_root_path = "/tmp/" + GenRand();
     brpc::Server* tb_server1 = new brpc::Server();
-    ::rtidb::tablet::TabletImpl* tablet1 = new ::rtidb::tablet::TabletImpl();
+    ::fedb::tablet::TabletImpl* tablet1 = new ::fedb::tablet::TabletImpl();
     StartTablet(tb_server1, tablet1);
 
     {
         // showtablet
-        ::rtidb::nameserver::ShowTabletRequest request;
-        ::rtidb::nameserver::ShowTabletResponse response;
+        ::fedb::nameserver::ShowTabletRequest request;
+        ::fedb::nameserver::ShowTabletResponse response;
         bool ok = name_server_client.SendRequest(
-                &::rtidb::nameserver::NameServer_Stub::ShowTablet,
+                &::fedb::nameserver::NameServer_Stub::ShowTablet,
                 &request, &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(response.tablets_size(), 1);
-        ::rtidb::nameserver::TabletStatus status =
+        ::fedb::nameserver::TabletStatus status =
             response.tablets(0);
         ASSERT_EQ(FLAGS_endpoint, status.endpoint());
         ASSERT_EQ("kTabletHealthy", status.state());
@@ -253,7 +253,7 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     ASSERT_FALSE(rs);
     // restart
     brpc::Server* tb_server2 = new brpc::Server();
-    ::rtidb::tablet::TabletImpl* tablet2 = new ::rtidb::tablet::TabletImpl();
+    ::fedb::tablet::TabletImpl* tablet2 = new ::fedb::tablet::TabletImpl();
     StartTablet(tb_server2, tablet2);
     sleep(3);
     rs = router->CallProcedure(db, sp_name, request_row, &status);
@@ -288,26 +288,26 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     FLAGS_endpoint = "127.0.0.1:9631";
     brpc::Server ns_server;
     StartNameServer(ns_server);
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
+    ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
     name_server_client.Init();
 
     // tablet1
     FLAGS_endpoint = "127.0.0.1:9831";
     FLAGS_db_root_path = "/tmp/" + GenRand();
     brpc::Server* tb_server1 = new brpc::Server();
-    ::rtidb::tablet::TabletImpl* tablet1 = new ::rtidb::tablet::TabletImpl();
+    ::fedb::tablet::TabletImpl* tablet1 = new ::fedb::tablet::TabletImpl();
     StartTablet(tb_server1, tablet1);
 
     {
         // showtablet
-        ::rtidb::nameserver::ShowTabletRequest request;
-        ::rtidb::nameserver::ShowTabletResponse response;
+        ::fedb::nameserver::ShowTabletRequest request;
+        ::fedb::nameserver::ShowTabletResponse response;
         bool ok = name_server_client.SendRequest(
-                &::rtidb::nameserver::NameServer_Stub::ShowTablet,
+                &::fedb::nameserver::NameServer_Stub::ShowTablet,
                 &request, &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(response.tablets_size(), 1);
-        ::rtidb::nameserver::TabletStatus status =
+        ::fedb::nameserver::TabletStatus status =
             response.tablets(0);
         ASSERT_EQ(FLAGS_endpoint, status.endpoint());
         ASSERT_EQ("kTabletHealthy", status.state());
@@ -394,7 +394,7 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     ASSERT_FALSE(rs);
     // restart
     brpc::Server* tb_server2 = new brpc::Server();
-    ::rtidb::tablet::TabletImpl* tablet2 = new ::rtidb::tablet::TabletImpl();
+    ::fedb::tablet::TabletImpl* tablet2 = new ::fedb::tablet::TabletImpl();
     StartTablet(tb_server2, tablet2);
     sleep(3);
     rs = router->CallProcedure(db, sp_name, request_row, &status);
@@ -439,13 +439,13 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
 }
 
 }  // namespace tablet
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 2000;
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::rtidb::base::SetLogLevel(INFO);
+    ::fedb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     return RUN_ALL_TESTS();
 }

@@ -17,7 +17,7 @@
 
 #include "catalog/distribute_iterator.h"
 
-namespace rtidb {
+namespace fedb {
 namespace catalog {
 
 FullTableIterator::FullTableIterator(std::shared_ptr<Tables> tables) :
@@ -82,7 +82,7 @@ void DistributeWindowIterator::Seek(const std::string& key) {
         return;
     }
     if (pid_num_ > 0) {
-        cur_pid_ = (uint32_t)(::rtidb::base::hash64(key) % pid_num_);
+        cur_pid_ = (uint32_t)(::fedb::base::hash64(key) % pid_num_);
     }
     auto iter = tables_->find(cur_pid_);
     if (iter != tables_->end()) {
@@ -148,4 +148,4 @@ std::unique_ptr<::fesql::codec::RowIterator> DistributeWindowIterator::GetValue(
 const ::fesql::codec::Row DistributeWindowIterator::GetKey() { return it_->GetKey(); }
 
 }  // namespace catalog
-}  // namespace rtidb
+}  // namespace fedb

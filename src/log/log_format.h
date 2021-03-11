@@ -24,7 +24,7 @@
 #ifndef SRC_LOG_LOG_FORMAT_H_
 #define SRC_LOG_LOG_FORMAT_H_
 
-namespace rtidb {
+namespace fedb {
 namespace log {
 
 enum RecordType {
@@ -68,6 +68,6 @@ static const std::string ZLIB_COMPRESS_SUFFIX = ".zlib";  // NOLINT
 static const std::string SNAPPY_COMPRESS_SUFFIX = ".snappy";  // NOLINT
 
 }  // namespace log
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_LOG_LOG_FORMAT_H_

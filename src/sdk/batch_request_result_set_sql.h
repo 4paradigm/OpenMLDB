@@ -30,13 +30,13 @@
 #include "sdk/base_impl.h"
 #include "sdk/result_set.h"
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 class SQLBatchRequestResultSet : public ::fesql::sdk::ResultSet {
  public:
     SQLBatchRequestResultSet(
-        const std::shared_ptr<::rtidb::api::SQLBatchRequestQueryResponse>& response,
+        const std::shared_ptr<::fedb::api::SQLBatchRequestQueryResponse>& response,
         const std::shared_ptr<brpc::Controller>& cntl);
     ~SQLBatchRequestResultSet();
 
@@ -83,7 +83,7 @@ class SQLBatchRequestResultSet : public ::fesql::sdk::ResultSet {
     bool IsValidColumnIdx(size_t index) const;
     size_t GetCommonColumnNum() const;
 
-    std::shared_ptr<::rtidb::api::SQLBatchRequestQueryResponse> response_;
+    std::shared_ptr<::fedb::api::SQLBatchRequestQueryResponse> response_;
     int32_t index_;
     uint32_t byte_size_;
     uint32_t position_;
@@ -105,5 +105,5 @@ class SQLBatchRequestResultSet : public ::fesql::sdk::ResultSet {
 
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_SDK_BATCH_REQUEST_RESULT_SET_SQL_H_

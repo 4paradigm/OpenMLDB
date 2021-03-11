@@ -36,11 +36,11 @@
 #include "sdk/sql_router.h"
 #include "test/base_test.h"
 #include "vm/catalog.h"
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
-typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> RtiDBIndex;
+typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey> RtiDBIndex;
 
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
@@ -50,9 +50,9 @@ enum InsertRule {
     kNotInsertLastRowOfFirstInput,
     kInsertAllInputs,
 };
-class SQLSDKTest : public rtidb::test::SQLCaseTest {
+class SQLSDKTest : public fedb::test::SQLCaseTest {
  public:
-    SQLSDKTest() : rtidb::test::SQLCaseTest() {}
+    SQLSDKTest() : fedb::test::SQLCaseTest() {}
     ~SQLSDKTest() {}
     void SetUp() { LOG(INFO) << "SQLSDKTest TearDown"; }
     void TearDown() { LOG(INFO) << "SQLSDKTest TearDown"; }
@@ -67,7 +67,7 @@ class SQLSDKTest : public rtidb::test::SQLCaseTest {
                              std::shared_ptr<SQLRouter> router, InsertRule insert_rule);
 
     static void CovertFesqlRowToRequestRow(fesql::codec::RowView* row_view,
-                                           std::shared_ptr<rtidb::sdk::SQLRequestRow> request_row);
+                                           std::shared_ptr<fedb::sdk::SQLRequestRow> request_row);
     static void BatchExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                                 std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints);
     static void RunBatchModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
@@ -292,7 +292,7 @@ void SQLSDKTest::InsertTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
 }
 
 void SQLSDKTest::CovertFesqlRowToRequestRow(fesql::codec::RowView* row_view,
-                                            std::shared_ptr<rtidb::sdk::SQLRequestRow> request_row) {
+                                            std::shared_ptr<fedb::sdk::SQLRequestRow> request_row) {
     ASSERT_EQ(row_view->GetSchema()->size(), request_row->GetSchema()->GetColumnCnt());
 
     int32_t init_size = 0;
@@ -882,5 +882,5 @@ INSTANTIATE_TEST_CASE_P(SQLSDKTestFzLuoji, SQLSDKQueryTest,
                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_luoji.yaml")));
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_SDK_SQL_SDK_TEST_H_

@@ -29,7 +29,7 @@
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 static constexpr uint32_t MAX_INDEX_NUM = 200;
@@ -43,56 +43,56 @@ enum TTLType {
 };
 
 struct TTLSt {
-    TTLSt() : abs_ttl(0), lat_ttl(0), ttl_type(::rtidb::storage::TTLType::kAbsoluteTime) {}
-    TTLSt(uint64_t abs, uint64_t lat, ::rtidb::storage::TTLType type) : abs_ttl(abs), lat_ttl(lat), ttl_type(type) {}
-    explicit TTLSt(const ::rtidb::api::TTLDesc& ttl_desc) : abs_ttl(ttl_desc.abs_ttl() * 60 * 1000),
+    TTLSt() : abs_ttl(0), lat_ttl(0), ttl_type(::fedb::storage::TTLType::kAbsoluteTime) {}
+    TTLSt(uint64_t abs, uint64_t lat, ::fedb::storage::TTLType type) : abs_ttl(abs), lat_ttl(lat), ttl_type(type) {}
+    explicit TTLSt(const ::fedb::api::TTLDesc& ttl_desc) : abs_ttl(ttl_desc.abs_ttl() * 60 * 1000),
         lat_ttl(ttl_desc.lat_ttl()) {
         ttl_type = ConvertTTLType(ttl_desc.ttl_type());
     }
 
-    explicit TTLSt(const ::rtidb::common::TTLSt& ttl) : abs_ttl(ttl.abs_ttl() * 60 * 1000), lat_ttl(ttl.lat_ttl()) {
+    explicit TTLSt(const ::fedb::common::TTLSt& ttl) : abs_ttl(ttl.abs_ttl() * 60 * 1000), lat_ttl(ttl.lat_ttl()) {
         ttl_type = ConvertTTLType(ttl.ttl_type());
     }
 
-    static TTLType ConvertTTLType(::rtidb::api::TTLType type) {
+    static TTLType ConvertTTLType(::fedb::api::TTLType type) {
         switch (type) {
-            case ::rtidb::api::TTLType::kAbsoluteTime:
+            case ::fedb::api::TTLType::kAbsoluteTime:
                 return TTLType::kAbsoluteTime;
-            case ::rtidb::api::TTLType::kLatestTime:
+            case ::fedb::api::TTLType::kLatestTime:
                 return TTLType::kLatestTime;
-            case ::rtidb::api::TTLType::kAbsAndLat:
+            case ::fedb::api::TTLType::kAbsAndLat:
                 return TTLType::kAbsAndLat;
-            case ::rtidb::api::TTLType::kAbsOrLat:
+            case ::fedb::api::TTLType::kAbsOrLat:
                 return TTLType::kAbsOrLat;
             default:
                 return TTLType::kAbsoluteTime;
         }
     }
 
-    ::rtidb::api::TTLType GetTabletTTLType() const {
+    ::fedb::api::TTLType GetTabletTTLType() const {
         switch (ttl_type) {
             case TTLType::kAbsoluteTime:
-                return ::rtidb::api::TTLType::kAbsoluteTime;
+                return ::fedb::api::TTLType::kAbsoluteTime;
             case TTLType::kLatestTime:
-                return ::rtidb::api::TTLType::kLatestTime;
+                return ::fedb::api::TTLType::kLatestTime;
             case TTLType::kAbsAndLat:
-                return ::rtidb::api::TTLType::kAbsAndLat;
+                return ::fedb::api::TTLType::kAbsAndLat;
             case TTLType::kAbsOrLat:
-                return ::rtidb::api::TTLType::kAbsOrLat;
+                return ::fedb::api::TTLType::kAbsOrLat;
             default:
-                return ::rtidb::api::TTLType::kAbsoluteTime;
+                return ::fedb::api::TTLType::kAbsoluteTime;
         }
     }
 
-    static TTLType ConvertTTLType(::rtidb::type::TTLType type) {
+    static TTLType ConvertTTLType(::fedb::type::TTLType type) {
         switch (type) {
-            case ::rtidb::type::TTLType::kAbsoluteTime:
+            case ::fedb::type::TTLType::kAbsoluteTime:
                 return TTLType::kAbsoluteTime;
-            case ::rtidb::type::TTLType::kLatestTime:
+            case ::fedb::type::TTLType::kLatestTime:
                 return TTLType::kLatestTime;
-            case ::rtidb::type::TTLType::kAbsAndLat:
+            case ::fedb::type::TTLType::kAbsAndLat:
                 return TTLType::kAbsAndLat;
-            case ::rtidb::type::TTLType::kAbsOrLat:
+            case ::fedb::type::TTLType::kAbsOrLat:
                 return TTLType::kAbsOrLat;
             default:
                 return TTLType::kAbsoluteTime;
@@ -176,17 +176,17 @@ enum class IndexStatus { kReady = 0, kWaiting, kDeleting, kDeleted };
 
 class ColumnDef {
  public:
-    ColumnDef(const std::string& name, uint32_t id, ::rtidb::type::DataType type, bool not_null);
-    ColumnDef(const std::string& name, uint32_t id, ::rtidb::type::DataType type, bool not_null, int ts_idx);
+    ColumnDef(const std::string& name, uint32_t id, ::fedb::type::DataType type, bool not_null);
+    ColumnDef(const std::string& name, uint32_t id, ::fedb::type::DataType type, bool not_null, int ts_idx);
     inline uint32_t GetId() const { return id_; }
     inline const std::string& GetName() const { return name_; }
-    inline ::rtidb::type::DataType GetType() const { return type_; }
+    inline ::fedb::type::DataType GetType() const { return type_; }
     inline bool NotNull() const { return not_null_; }
     void SetTsIdx(int32_t ts_idx) { ts_idx_ = ts_idx; }
     inline int32_t GetTsIdx() const { return ts_idx_; }
 
-    static bool CheckTsType(::rtidb::type::DataType type) {
-        if (type == ::rtidb::type::kBigInt || type == ::rtidb::type::kTimestamp) {
+    static bool CheckTsType(::fedb::type::DataType type) {
+        if (type == ::fedb::type::kBigInt || type == ::fedb::type::kTimestamp) {
             return true;
         }
         return false;
@@ -195,7 +195,7 @@ class ColumnDef {
  private:
     std::string name_;
     uint32_t id_;
-    ::rtidb::type::DataType type_;
+    ::fedb::type::DataType type_;
     bool not_null_;
     int32_t ts_idx_;
 };
@@ -218,7 +218,7 @@ class IndexDef {
  public:
     IndexDef(const std::string& name, uint32_t id);
     IndexDef(const std::string& name, uint32_t id, IndexStatus stauts);
-    IndexDef(const std::string& name, uint32_t id, const IndexStatus& stauts, ::rtidb::type::IndexType type,
+    IndexDef(const std::string& name, uint32_t id, const IndexStatus& stauts, ::fedb::type::IndexType type,
              const std::vector<ColumnDef>& column_idx_map);
     const std::string& GetName() const { return name_; }
     inline const std::shared_ptr<ColumnDef>& GetTsColumn() const { return ts_column_; }
@@ -227,7 +227,7 @@ class IndexDef {
     inline uint32_t GetId() const { return index_id_; }
     void SetStatus(IndexStatus status) { status_.store(status, std::memory_order_release); }
     IndexStatus GetStatus() const { return status_.load(std::memory_order_acquire); }
-    inline ::rtidb::type::IndexType GetType() { return type_; }
+    inline ::fedb::type::IndexType GetType() { return type_; }
     inline const std::vector<ColumnDef>& GetColumns() { return columns_; }
     void SetTTL(const TTLSt& ttl);
     TTLType GetTTLType() const;
@@ -240,7 +240,7 @@ class IndexDef {
     uint32_t index_id_;
     uint32_t inner_pos_;
     std::atomic<IndexStatus> status_;
-    ::rtidb::type::IndexType type_;
+    ::fedb::type::IndexType type_;
     std::vector<ColumnDef> columns_;
     std::shared_ptr<TTLSt> ttl_st_;
     std::shared_ptr<ColumnDef> ts_column_;
@@ -272,7 +272,7 @@ bool ColumnDefSortFunc(const ColumnDef& cd_a, const ColumnDef& cd_b);
 class TableIndex {
  public:
     TableIndex();
-    int ParseFromMeta(const ::rtidb::api::TableMeta& table_meta, std::map<std::string, uint8_t>* ts_mapping);
+    int ParseFromMeta(const ::fedb::api::TableMeta& table_meta, std::map<std::string, uint8_t>* ts_mapping);
     void ReSet();
     std::shared_ptr<IndexDef> GetIndex(uint32_t idx);
     std::shared_ptr<IndexDef> GetIndex(const std::string& name);
@@ -295,7 +295,7 @@ class TableIndex {
 
  private:
     int AddMultiTsIndex(uint32_t pos, const std::shared_ptr<IndexDef>& index);
-    void FillIndexVal(const ::rtidb::api::TableMeta& table_meta, uint32_t ts_num);
+    void FillIndexVal(const ::fedb::api::TableMeta& table_meta, uint32_t ts_num);
 
  private:
     std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
@@ -311,8 +311,8 @@ class TableIndex {
 class PartitionSt {
  public:
     PartitionSt() = default;
-    explicit PartitionSt(const ::rtidb::nameserver::TablePartition& partitions);
-    explicit PartitionSt(const ::rtidb::common::TablePartition& partitions);
+    explicit PartitionSt(const ::fedb::nameserver::TablePartition& partitions);
+    explicit PartitionSt(const ::fedb::common::TablePartition& partitions);
 
     inline const std::string& GetLeader() const { return leader_; }
     inline const std::vector<std::string>& GetFollower() const { return follower_; }
@@ -330,9 +330,9 @@ class TableSt {
  public:
     TableSt() : name_(), db_(), tid_(0), pid_num_(0), partitions_() {}
 
-    explicit TableSt(const ::rtidb::nameserver::TableInfo& table_info);
+    explicit TableSt(const ::fedb::nameserver::TableInfo& table_info);
 
-    explicit TableSt(const ::rtidb::api::TableMeta& meta);
+    explicit TableSt(const ::fedb::api::TableMeta& meta);
 
     inline const std::string& GetName() const { return name_; }
 
@@ -356,11 +356,11 @@ class TableSt {
 
     inline uint32_t GetPartitionNum() const { return pid_num_; }
 
-    inline const ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& GetColumns() const {
+    inline const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>& GetColumns() const {
         return column_desc_;
     }
 
-    inline const ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>& GetColumnKey() const {
+    inline const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>& GetColumnKey() const {
         return column_key_;
     }
 
@@ -369,10 +369,10 @@ class TableSt {
     std::string db_;
     uint32_t tid_;
     uint32_t pid_num_;
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> column_desc_;
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> column_key_;
+    ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc> column_desc_;
+    ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey> column_key_;
     std::shared_ptr<std::vector<PartitionSt>> partitions_;
 };
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb

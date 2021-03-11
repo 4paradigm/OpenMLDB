@@ -27,9 +27,9 @@
 #include "zk/zk_client.h"
 
 using ::baidu::common::ThreadPool;
-using ::rtidb::zk::ZkClient;
+using ::fedb::zk::ZkClient;
 
-namespace rtidb {
+namespace fedb {
 namespace zk {
 
 enum LockState { kLocked, kLostLock, kTryLock };
@@ -77,6 +77,6 @@ class DistLock {
 };
 
 }  // namespace zk
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_ZK_DIST_LOCK_H_
