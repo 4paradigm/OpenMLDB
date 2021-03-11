@@ -44,7 +44,7 @@ class TestCaseBase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         infoLogger.info('\n' + '|' * 50 + ' TEST {} STARTED '.format(cls) + '|' * 50 + '\n')
-        cls.welcome = 'Welcome to rtidb with version {}\n'.format(os.getenv('rtidbver'))
+        cls.welcome = 'Welcome to fedb with version {}\n'.format(os.getenv('rtidbver'))
         cls.testpath = os.getenv('testpath')
         cls.rtidb_path = os.getenv('rtidbpath')
         cls.conf_path = os.getenv('confpath')

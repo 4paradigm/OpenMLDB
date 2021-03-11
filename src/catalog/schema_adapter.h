@@ -73,12 +73,12 @@ class SchemaAdapter {
 
         for (int32_t i = 0; i < sql_schema.size(); i++) {
             auto& sql_column = sql_schema.Get(i);
-            auto rtidb_column = schema_output->Add();
-            if (!ConvertType(sql_column, rtidb_column)) {
+            auto fedb_column = schema_output->Add();
+            if (!ConvertType(sql_column, fedb_column)) {
                 return false;
             }
             if (ts_cols.find(sql_column.name()) != ts_cols.cend()) {
-                rtidb_column->set_is_ts_col(true);
+                fedb_column->set_is_ts_col(true);
             }
         }
         return true;
@@ -142,18 +142,18 @@ class SchemaAdapter {
         return true;
     }
 
-    static bool ConvertSchema(const RtiDBSchema& rtidb_schema,
+    static bool ConvertSchema(const RtiDBSchema& fedb_schema,
                               ::fesql::vm::Schema* output) {
         if (output == nullptr) {
             LOG(WARNING) << "output ptr is null";
             return false;
         }
-        if (rtidb_schema.empty()) {
-            LOG(WARNING) << "rtidb_schema is empty";
+        if (fedb_schema.empty()) {
+            LOG(WARNING) << "fedb_schema is empty";
             return false;
         }
-        for (int32_t i = 0; i < rtidb_schema.size(); i++) {
-            const common::ColumnDesc& column = rtidb_schema.Get(i);
+        for (int32_t i = 0; i < fedb_schema.size(); i++) {
+            const common::ColumnDesc& column = fedb_schema.Get(i);
             ::fesql::type::ColumnDef* new_column = output->Add();
             new_column->set_name(column.name());
             new_column->set_is_not_null(column.not_null());
@@ -199,15 +199,15 @@ class SchemaAdapter {
     }
 
     static bool ConvertSchema(const ::fesql::vm::Schema& fesql_schema,
-            RtiDBSchema* rtidb_schema) {
-        if (rtidb_schema == nullptr) {
-            LOG(WARNING) << "rtidb_schema is null";
+            RtiDBSchema* fedb_schema) {
+        if (fedb_schema == nullptr) {
+            LOG(WARNING) << "fedb_schema is null";
             return false;
         }
         for (int32_t i = 0; i < fesql_schema.size(); i++) {
             const fesql::type::ColumnDef& sql_column = fesql_schema.Get(i);
-            fedb::common::ColumnDesc* rtidb_column = rtidb_schema->Add();
-            if (!ConvertType(sql_column, rtidb_column)) {
+            fedb::common::ColumnDesc* fedb_column = fedb_schema->Add();
+            if (!ConvertType(sql_column, fedb_column)) {
                 return false;
             }
         }
@@ -215,37 +215,37 @@ class SchemaAdapter {
     }
 
     static bool ConvertType(fesql::node::DataType fesql_type,
-            fedb::type::DataType* rtidb_type) {
-        if (rtidb_type == nullptr) {
+            fedb::type::DataType* fedb_type) {
+        if (fedb_type == nullptr) {
             return false;
         }
         switch (fesql_type) {
             case fesql::node::kBool:
-                *rtidb_type = fedb::type::kBool;
+                *fedb_type = fedb::type::kBool;
                 break;
             case fesql::node::kInt16:
-                *rtidb_type = fedb::type::kSmallInt;
+                *fedb_type = fedb::type::kSmallInt;
                 break;
             case fesql::node::kInt32:
-                *rtidb_type = fedb::type::kInt;
+                *fedb_type = fedb::type::kInt;
                 break;
             case fesql::node::kInt64:
-                *rtidb_type = fedb::type::kBigInt;
+                *fedb_type = fedb::type::kBigInt;
                 break;
             case fesql::node::kFloat:
-                *rtidb_type = fedb::type::kFloat;
+                *fedb_type = fedb::type::kFloat;
                 break;
             case fesql::node::kDouble:
-                *rtidb_type = fedb::type::kDouble;
+                *fedb_type = fedb::type::kDouble;
                 break;
             case fesql::node::kDate:
-                *rtidb_type = fedb::type::kDate;
+                *fedb_type = fedb::type::kDate;
                 break;
             case fesql::node::kTimestamp:
-                *rtidb_type = fedb::type::kTimestamp;
+                *fedb_type = fedb::type::kTimestamp;
                 break;
             case fesql::node::kVarchar:
-                *rtidb_type = fedb::type::kVarchar;
+                *fedb_type = fedb::type::kVarchar;
                 break;
             default:
                 LOG(WARNING) << "unsupported type" << fesql_type;
@@ -255,41 +255,41 @@ class SchemaAdapter {
     }
 
     static bool ConvertType(const fesql::type::ColumnDef& sql_column,
-            fedb::common::ColumnDesc* rtidb_column) {
-        if (rtidb_column == nullptr) {
-            LOG(WARNING) << "rtidb_column is null";
+            fedb::common::ColumnDesc* fedb_column) {
+        if (fedb_column == nullptr) {
+            LOG(WARNING) << "fedb_column is null";
             return false;
         }
-        rtidb_column->set_name(sql_column.name());
-        rtidb_column->set_not_null(sql_column.is_not_null());
-        rtidb_column->set_is_constant(sql_column.is_constant());
+        fedb_column->set_name(sql_column.name());
+        fedb_column->set_not_null(sql_column.is_not_null());
+        fedb_column->set_is_constant(sql_column.is_constant());
         switch (sql_column.type()) {
             case fesql::type::kBool:
-                rtidb_column->set_data_type(fedb::type::kBool);
+                fedb_column->set_data_type(fedb::type::kBool);
                 break;
             case fesql::type::kInt16:
-                rtidb_column->set_data_type(fedb::type::kSmallInt);
+                fedb_column->set_data_type(fedb::type::kSmallInt);
                 break;
             case fesql::type::kInt32:
-                rtidb_column->set_data_type(fedb::type::kInt);
+                fedb_column->set_data_type(fedb::type::kInt);
                 break;
             case fesql::type::kInt64:
-                rtidb_column->set_data_type(fedb::type::kBigInt);
+                fedb_column->set_data_type(fedb::type::kBigInt);
                 break;
             case fesql::type::kFloat:
-                rtidb_column->set_data_type(fedb::type::kFloat);
+                fedb_column->set_data_type(fedb::type::kFloat);
                 break;
             case fesql::type::kDouble:
-                rtidb_column->set_data_type(fedb::type::kDouble);
+                fedb_column->set_data_type(fedb::type::kDouble);
                 break;
             case fesql::type::kDate:
-                rtidb_column->set_data_type(fedb::type::kDate);
+                fedb_column->set_data_type(fedb::type::kDate);
                 break;
             case fesql::type::kTimestamp:
-                rtidb_column->set_data_type(fedb::type::kTimestamp);
+                fedb_column->set_data_type(fedb::type::kTimestamp);
                 break;
             case fesql::type::kVarchar:
-                rtidb_column->set_data_type(fedb::type::kVarchar);
+                fedb_column->set_data_type(fedb::type::kVarchar);
                 break;
             default:
                 LOG(WARNING) << "type "

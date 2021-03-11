@@ -144,7 +144,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ASSERT_TRUE(StartNS("127.0.0.1:9631", &server, &options));
     ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub> name_server_client(
             "127.0.0.1:9631", "");
-    int ret = name_server_client.Init();
+    name_server_client.Init();
 
     brpc::ServerOptions options1;
     brpc::Server server1;

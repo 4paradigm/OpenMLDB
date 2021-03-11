@@ -71,14 +71,14 @@ DECLARE_int32(put_concurrency_limit);
 DECLARE_int32(scan_concurrency_limit);
 DECLARE_int32(get_concurrency_limit);
 DEFINE_string(role, "tablet | nameserver | client | ns_client | sql_client",
-              "Set the rtidb role for start");
+              "Set the fedb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
 
 DECLARE_string(log_dir);
 DEFINE_int32(log_file_size, 1024, "Config the log size in MB");
 DEFINE_int32(log_file_count, 24, "Config the log count");
-DEFINE_string(log_level, "debug", "Set the rtidb log level, eg: debug or info");
+DEFINE_string(log_level, "debug", "Set the fedb log level, eg: debug or info");
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(skiplist_max_height);
@@ -89,11 +89,11 @@ DECLARE_bool(version);
 DECLARE_bool(use_name);
 DECLARE_string(data_dir);
 
-const std::string RTIDB_VERSION = std::to_string(RTIDB_VERSION_MAJOR) + "." + // NOLINT
-                            std::to_string(RTIDB_VERSION_MEDIUM) + "." +
-                            std::to_string(RTIDB_VERSION_MINOR) + "." +
-                            std::to_string(RTIDB_VERSION_BUG) + "." +
-                            RTIDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
+const std::string FEDB_VERSION = std::to_string(FEDB_VERSION_MAJOR) + "." + // NOLINT
+                            std::to_string(FEDB_VERSION_MEDIUM) + "." +
+                            std::to_string(FEDB_VERSION_MINOR) + "." +
+                            std::to_string(FEDB_VERSION_BUG) + "." +
+                            FEDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
 
 static std::map<std::string, std::string> real_ep_map;
 
@@ -174,8 +174,8 @@ void StartNameServer() {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    PDLOG(INFO, "start nameserver on endpoint %s with version %s", real_endpoint.c_str(), RTIDB_VERSION.c_str());
-    server.set_version(RTIDB_VERSION.c_str());
+    PDLOG(INFO, "start nameserver on endpoint %s with version %s", real_endpoint.c_str(), FEDB_VERSION.c_str());
+    server.set_version(FEDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
 
@@ -235,7 +235,7 @@ void StartTablet() {
     if (THPIsEnabled()) {
         PDLOG(WARNING,
               "THP is enabled in your kernel. This will create latency and "
-              "memory usage issues with RTIDB."
+              "memory usage issues with FEDB."
               "To fix this issue run the command 'echo never > "
               "/sys/kernel/mm/transparent_hugepage/enabled' and "
               "'echo never > /sys/kernel/mm/transparent_hugepage/defrag' as "
@@ -244,7 +244,7 @@ void StartTablet() {
     if (SwapIsEnabled()) {
         PDLOG(WARNING,
               "Swap is enabled in your kernel. This will create latency and "
-              "memory usage issues with RTIDB."
+              "memory usage issues with FEDB."
               "To fix this issue run the command 'swapoff -a' as root");
     }
     SetupLog();
@@ -276,15 +276,15 @@ void StartTablet() {
         exit(1);
     }
 #ifdef PZFPGA_ENABLE
-    PDLOG(INFO, "start tablet on endpoint %s with version %s with fpga", real_endpoint.c_str(), RTIDB_VERSION.c_str());
+    PDLOG(INFO, "start tablet on endpoint %s with version %s with fpga", real_endpoint.c_str(), FEDB_VERSION.c_str());
 #else
-    PDLOG(INFO, "start tablet on endpoint %s with version %s", real_endpoint.c_str(), RTIDB_VERSION.c_str());
+    PDLOG(INFO, "start tablet on endpoint %s with version %s", real_endpoint.c_str(), FEDB_VERSION.c_str());
 #endif
     if (!tablet->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
     }
-    server.set_version(RTIDB_VERSION.c_str());
+    server.set_version(FEDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
 #endif
@@ -3224,7 +3224,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("desc: add remote replica cluster\n");
             printf("usage: addrepcluster zk_endpoints zk_path cluster_alias\n");
             printf(
-                "ex: addrepcluster 10.1.1.1:2181,10.1.1.2:2181 /rtidb_cluster "
+                "ex: addrepcluster 10.1.1.1:2181,10.1.1.2:2181 /fedb_cluster "
                 "prod_dc01\n");
         } else if (parts[1] == "showrepcluster") {
             printf("desc: show remote replica cluster\n");
@@ -5368,7 +5368,7 @@ void StartClient() {
         return;
     }
     if (FLAGS_interactive) {
-        std::cout << "Welcome to rtidb with version " << RTIDB_VERSION << std::endl;
+        std::cout << "Welcome to fedb with version " << FEDB_VERSION << std::endl;
     }
     ::fedb::client::TabletClient client(FLAGS_endpoint, "");
     client.Init();
@@ -5482,7 +5482,7 @@ void StartNsClient() {
     std::string endpoint;
     std::string real_endpoint;
     if (FLAGS_interactive) {
-        std::cout << "Welcome to rtidb with version " << RTIDB_VERSION << std::endl;
+        std::cout << "Welcome to fedb with version " << FEDB_VERSION << std::endl;
     }
     std::shared_ptr<::fedb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
@@ -5707,7 +5707,7 @@ void StartNsClient() {
 }
 
 int main(int argc, char* argv[]) {
-    ::google::SetVersionString(RTIDB_VERSION.c_str());
+    ::google::SetVersionString(FEDB_VERSION.c_str());
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "ns_client") {
         StartNsClient();

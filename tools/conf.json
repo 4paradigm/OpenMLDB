@@ -1,6 +1,6 @@
 {
     "zookeeper":{
-        "path":"/home/denglong/env/test",
+        "path":"/home/name/env/test",
         "package":"./package/zookeeper-3.4.10.tar.gz",
         "java_package":"./package/jdk-8u121-linux-x64.tar.gz",
         "inner_port1":2881,
@@ -9,7 +9,7 @@
         "address_arr":[
             {
                 "address":"172.27.129.198:12201",
-                "path":"/home/denglong/env/zk",
+                "path":"/home/name/env/zk",
                 "inner_port1":5881,
                 "inner_port2":6881
             },
@@ -18,10 +18,10 @@
             }
             ]
     },
-    "zk_root_path":"/rtidb_cluster",
+    "zk_root_path":"/fedb_cluster",
     "nameserver": {
-        "path":"/home/denglong/env/test/nameserver",
-        "package":"./package/rtidb-cluster-1.4.0.tar.gz",
+        "path":"/home/name/env/test/nameserver",
+        "package":"./package/fedb-cluster-1.4.0.tar.gz",
         "address_arr": [
             {
                 "address":"172.27.129.198:6927"
@@ -29,8 +29,8 @@
         ]
     },
     "tablet": {
-        "path":"/home/denglong/env/test/tablet",
-        "package":"./package/rtidb-cluster-1.4.0.tar.gz",
+        "path":"/home/name/env/test/tablet",
+        "package":"./package/fedb-cluster-1.4.0.tar.gz",
         "address_arr": [
             {
                 "address":"172.27.129.198:9027"

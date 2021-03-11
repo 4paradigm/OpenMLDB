@@ -206,7 +206,7 @@ void SQLSDKTest::CreateProcedure(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         ASSERT_TRUE(sql_case.BuildCreateSpSQLFromInput(0, sql, common_idx, &create_sp));
     }
 
-    for (int i = 0; i < sql_case.inputs_.size(); i++) {
+    for (size_t i = 0; i < sql_case.inputs_.size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
         boost::replace_all(create_sp, placeholder, sql_case.inputs()[i].name_);
     }
@@ -226,7 +226,7 @@ void SQLSDKTest::CreateProcedure(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         for (size_t idx : sql_case.batch_request().common_column_indices_) {
             input_common_indices.insert(idx);
         }
-        for (size_t i = 0; i < sp_info->GetInputSchema().GetColumnCnt(); ++i) {
+        for (int i = 0; i < sp_info->GetInputSchema().GetColumnCnt(); ++i) {
             auto is_const = input_common_indices.find(i) != input_common_indices.end();
             ASSERT_EQ(is_const, sp_info->GetInputSchema().IsConstant(i)) << "At input column " << i;
         }
@@ -235,7 +235,7 @@ void SQLSDKTest::CreateProcedure(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
             for (size_t idx : sql_case.expect().common_column_indices_) {
                 output_common_indices.insert(idx);
             }
-            for (size_t i = 0; i < sp_info->GetOutputSchema().GetColumnCnt(); ++i) {
+            for (int i = 0; i < sp_info->GetOutputSchema().GetColumnCnt(); ++i) {
                 auto is_const = output_common_indices.find(i) != output_common_indices.end();
                 ASSERT_EQ(is_const, sp_info->GetOutputSchema().IsConstant(i)) << "At output column " << i;
             }
@@ -337,7 +337,7 @@ void SQLSDKTest::CovertFesqlRowToRequestRow(fesql::codec::RowView* row_view,
                 ASSERT_TRUE(request_row->AppendString(row_view->GetStringUnsafe(i)));
                 break;
             default: {
-                FAIL() << "Fail conver fesql row to rtidb sdk request row";
+                FAIL() << "Fail conver fesql row to fedb sdk request row";
                 return;
             }
         }
@@ -855,13 +855,13 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestBatchRequest, SQLSDKBatchRequestQueryTest,
     testing::ValuesIn(SQLSDKBatchRequestQueryTest::InitCases("/cases/integration/v1/test_batch_request.yaml")));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SQLSDKClusterCaseWindowAndLastJoin, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/cluster/window_and_lastjoin.yaml")));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SQLSDKClusterCaseWindowRow, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/cluster/test_window_row.yaml")));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SQLSDKClusterCaseWindowRowRange, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
 INSTANTIATE_TEST_SUITE_P(
@@ -870,15 +870,15 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestIndexOptimized, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_index_optimized.yaml")));
-INSTANTIATE_TEST_CASE_P(SQLSDKTestDebugIssues, SQLSDKQueryTest,
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestDebugIssues, SQLSDKQueryTest,
                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/debug/issues_case.yaml")));
 
 // myhug 场景正确性验证
-INSTANTIATE_TEST_CASE_P(SQLSDKTestFzMyhug, SQLSDKQueryTest,
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestFzMyhug, SQLSDKQueryTest,
                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_myhug.yaml")));
 
 // luoji 场景正确性验证
-INSTANTIATE_TEST_CASE_P(SQLSDKTestFzLuoji, SQLSDKQueryTest,
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestFzLuoji, SQLSDKQueryTest,
                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_luoji.yaml")));
 
 }  // namespace sdk

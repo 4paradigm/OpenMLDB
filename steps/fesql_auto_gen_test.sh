@@ -17,9 +17,9 @@
 ROOT_DIR=`pwd`
 ulimit -c unlimited
 
-export JAVA_HOME=${RTIDB_DEV_JAVA_HOME:-/depends/thirdparty/jdk1.8.0_141}
-export RTIDB_THIRDPARTY=${RTIDB_DEV_THIRDPARTY:-/depends/thirdparty}
-cd fesql && ln -sf ${RTIDB_THIRDPARTY} thirdparty && mkdir -p build
+export JAVA_HOME=${FEDB_DEV_JAVA_HOME:-/depends/thirdparty/jdk1.8.0_141}
+export FEDB_THIRDPARTY=${FEDB_DEV_THIRDPARTY:-/depends/thirdparty}
+cd fesql && ln -sf ${FEDB_THIRDPARTY} thirdparty && mkdir -p build
 cd build && cmake .. && make fesql_proto && make fesql_parser && make -j5
 cd ${ROOT_DIR}
 ./fesql/build/src/export_udf_info --output_file=./udf_defs.yaml

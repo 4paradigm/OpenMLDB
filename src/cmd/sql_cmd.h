@@ -55,11 +55,11 @@ const std::string LOGO =  // NOLINT
     " | | |  __ / |__| | |_) |\n"
     " |_|  \\___||_____/|____/\n";
 
-const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) + "." +  // NOLINT
-                            std::to_string(RTIDB_VERSION_MEDIUM) + "." +
-                            std::to_string(RTIDB_VERSION_MINOR) + "." +
-                            std::to_string(RTIDB_VERSION_BUG) + "." +
-                            RTIDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
+const std::string VERSION = std::to_string(FEDB_VERSION_MAJOR) + "." +  // NOLINT
+                            std::to_string(FEDB_VERSION_MEDIUM) + "." +
+                            std::to_string(FEDB_VERSION_MINOR) + "." +
+                            std::to_string(FEDB_VERSION_BUG) + "." +
+                            FEDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
 
 std::string db = "";  // NOLINT
 ::fedb::sdk::ClusterSDK *cs = NULL;

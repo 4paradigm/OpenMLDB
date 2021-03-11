@@ -1,3 +1,0 @@
-ingest_pipeline: ingest/rtidb_pipeline.json
-module_version: '1.0'
-prospector: config/rtidb-accesslog.yml

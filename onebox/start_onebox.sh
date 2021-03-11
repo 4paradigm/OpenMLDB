@@ -36,7 +36,7 @@ test -d tablet0-ssd-binlogs && rm -rf tablet0-ssd-binlogs
 test -d recycle_bin0 && rm -rf recycle_bin0
 test -d recycle_hdd_bin0 && rm -rf recycle_hdd_bin0
 test -d recycle_ssd_bin0 && rm -rf recycle_ssd_bin0
-../build/bin/rtidb --db_root_path=tablet0-binlogs \
+../build/bin/fedb --db_root_path=tablet0-binlogs \
                    --hdd_root_path=tablet0-hdd-binlogs \
                    --ssd_root_path=tablet0-ssd-binlogs \
                    --recycle_bin_root_path=recycle_bin0 \
@@ -56,7 +56,7 @@ test -d recycle_ssd_bin1 && rm -rf recycle_ssd_bin1
 
 
 # start tablet1
-../build/bin/rtidb --db_root_path=tablet1-binlogs \
+../build/bin/fedb --db_root_path=tablet1-binlogs \
                    --hdd_root_path=tablet1-hdd-binlogs \
                    --ssd_root_path=tablet1-ssd-binlogs \
                    --recycle_bin_root_path=recycle_bin1 \
@@ -76,7 +76,7 @@ test -d recycle_ssd_bin2 && rm -rf recycle_ssd_bin2
 
 
 # start tablet2
-../build/bin/rtidb --db_root_path=tablet2-binlogs \
+../build/bin/fedb --db_root_path=tablet2-binlogs \
                    --hdd_root_path=tablet2-hdd-binlogs \
                    --ssd_root_path=tablet2-ssd-binlogs \
                    --recycle_bin_root_path=recycle_bin2 \
@@ -95,7 +95,7 @@ test -d recycle_ssd_bin3 && rm -rf recycle_ssd_bin3
 test -d recycle_hdd_bin3 && rm -rf recycle_hdd_bin3
 
 # start blob1
-../build/bin/rtidb --hdd_root_path=blob1-hdd-binlogs \
+../build/bin/fedb --hdd_root_path=blob1-hdd-binlogs \
                    --ssd_root_path=blob1-ssd-binlogs \
                    --recycle_bin_root_path=recycle_bin3 \
                    --recycle_ssd_bin_root_path=recycle_ssd_bin3 \
@@ -107,21 +107,21 @@ test -d recycle_hdd_bin3 && rm -rf recycle_hdd_bin3
                    --zk_root_path=/onebox > blob1.log 2>&1 &
 
 # start ns1 
-../build/bin/rtidb --endpoint=${NS1} --role=nameserver \
+../build/bin/fedb --endpoint=${NS1} --role=nameserver \
                    --zk_cluster=${ZK_CLUSTER}\
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
                    --zk_root_path=/onebox > ns1.log 2>&1 &
 
 # start ns2 
-../build/bin/rtidb --endpoint=${NS2} --role=nameserver \
+../build/bin/fedb --endpoint=${NS2} --role=nameserver \
                    --zk_cluster=${ZK_CLUSTER}\
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
                    --zk_root_path=/onebox > ns2.log 2>&1 &
 
 # start ns3 
-../build/bin/rtidb --endpoint=${NS3} --role=nameserver \
+../build/bin/fedb --endpoint=${NS3} --role=nameserver \
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
                    --zk_cluster=${ZK_CLUSTER}\

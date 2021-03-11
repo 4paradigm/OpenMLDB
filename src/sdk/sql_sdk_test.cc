@@ -585,7 +585,7 @@ TEST_F(SQLSDKTest, create_table) {
             }
         }
     }
-    ASSERT_EQ(pid_map.size(), 1);
+    ASSERT_EQ(pid_map.size(), 1u);
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test1;", &status));
     ASSERT_TRUE(router->DropDB(db, &status));

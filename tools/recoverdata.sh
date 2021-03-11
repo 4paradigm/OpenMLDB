@@ -1,5 +1,4 @@
 #!/bin/bash
-source ./env.sh
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,4 +13,5 @@ source ./env.sh
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-python rtidb_migrate.py --rtidb_bin_path=$RTIDB_BIN_PATH --zk_cluster=$ZK_CLUSTER --zk_root_path=$ZK_ROOT_PATH --cmd=recoverdata
+source ./env.sh
+python fedb_migrate.py --fedb_bin_path=$FEDB_BIN_PATH --zk_cluster=$ZK_CLUSTER --zk_root_path=$ZK_ROOT_PATH --cmd=recoverdata
