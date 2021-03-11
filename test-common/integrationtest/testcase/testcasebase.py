@@ -165,13 +165,13 @@ class TestCaseBase(unittest.TestCase):
             conf = role
         else:
             pass
-        cmd = '{}/rtidb --flagfile={}/conf/{}.flags'.format(self.testpath, client_path, conf)
+        cmd = '{}/fedb --flagfile={}/conf/{}.flags'.format(self.testpath, client_path, conf)
         infoLogger.info(cmd)
         args = shlex.split(cmd)
         need_start = False
         for _ in range(20):
             rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(endpoint.split(':')[1]))
-            if 'rtidb' not in rs:
+            if 'fedb' not in rs:
                 need_start = True
                 time.sleep(1)
                 subprocess.Popen(args, stdout=open('{}/info.log'.format(client_path), 'a'),
@@ -179,7 +179,7 @@ class TestCaseBase(unittest.TestCase):
             else:
                 time.sleep(1)
                 rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(endpoint.split(':')[1]))
-                if 'rtidb' in rs:
+                if 'fedb' in rs:
                     return True, need_start
         return False, need_start
 

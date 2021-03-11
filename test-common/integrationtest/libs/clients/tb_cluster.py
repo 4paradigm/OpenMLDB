@@ -74,13 +74,13 @@ class TbCluster(object):
             exe_shell("echo '--recycle_ssd_bin_root_path={}/ssd_recycle/' >> {}".format(tb_path, rtidb_flags))
             exe_shell("echo '--recycle_hdd_bin_root_path={}/hdd_recycle/' >> {}".format(tb_path, rtidb_flags))
             exe_shell("ulimit -c unlimited")
-            cmd = '{}/rtidb --flagfile={}/conf/tablet.flags'.format(test_path, tb_path)
-            infoLogger.info('start rtidb: {}'.format(cmd))
+            cmd = '{}/fedb --flagfile={}/conf/tablet.flags'.format(test_path, tb_path)
+            infoLogger.info('start fedb: {}'.format(cmd))
             args = shlex.split(cmd)
             started = []
             for _ in range(5):
                 rs = exe_shell('lsof -i:{}|grep -v "PID"'.format(ep.split(':')[1]))
-                if 'rtidb' not in rs:
+                if 'fedb' not in rs:
                     time.sleep(2)
                     subprocess.Popen(args,stdout=open('{}/info.log'.format(tb_path), 'a'),
                                      stderr=open('{}/warning.log'.format(tb_path), 'a'))
