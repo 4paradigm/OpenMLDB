@@ -45,9 +45,27 @@ std::shared_ptr<TableHandler> SimpleCatalog::GetTable(
 }
 bool SimpleCatalog::IndexSupport() { return enable_index_; }
 
+bool SimpleCatalog::InsertRows(const std::string &db_name,
+                               const std::string &table_name,
+                               const std::vector<Row> &rows) {
+    auto table = GetTable(db_name, table_name);
+    if (!table) {
+        LOG(WARNING) << "table:" << table_name
+                     << " isn't exist in db:" << db_name;
+    }
+    for (auto &row : rows) {
+        if (!std::dynamic_pointer_cast<SimpleCatalogTableHandler>(table)
+                 ->AddRow(row)) {
+            return false;
+        }
+    }
+    return true;
+}
 SimpleCatalogTableHandler::SimpleCatalogTableHandler(
     const std::string &db_name, const fesql::type::TableDef &table_def)
-    : db_name_(db_name), table_def_(table_def) {
+    : db_name_(db_name),
+      table_def_(table_def),
+      row_view_(table_def_.columns()) {
     // build col info and index info
     // init types var
     for (int32_t i = 0; i < table_def.columns_size(); i++) {
@@ -85,7 +103,10 @@ SimpleCatalogTableHandler::SimpleCatalogTableHandler(
             index_st.keys.push_back(it->second);
         }
         index_hint_.insert(std::make_pair(index_st.name, index_st));
+        table_storage.insert(std::make_pair(
+            index_st.name, std::make_shared<MemPartitionHandler>()));
     }
+    full_table_storage_ = std::make_shared<MemTableHandler>();
 }
 
 const Types &SimpleCatalogTableHandler::GetTypes() { return this->types_dict_; }
@@ -107,9 +128,12 @@ const std::string &SimpleCatalogTableHandler::GetDatabase() {
 }
 
 std::unique_ptr<WindowIterator> SimpleCatalogTableHandler::GetWindowIterator(
-    const std::string &) {
-    LOG(ERROR) << "Unsupported operation: GetWindowIterator()";
-    return nullptr;
+    const std::string &index_name) {
+    if (table_storage.find(index_name) == table_storage.end()) {
+        return nullptr;
+    } else {
+        return table_storage[index_name]->GetWindowIterator();
+    }
 }
 
 const uint64_t SimpleCatalogTableHandler::GetCount() { return 0; }
@@ -121,18 +145,76 @@ fesql::codec::Row SimpleCatalogTableHandler::At(uint64_t pos) {
 
 std::shared_ptr<PartitionHandler> SimpleCatalogTableHandler::GetPartition(
     const std::string &index_name) {
-    LOG(ERROR) << "Unsupported operation: GetPartition()";
-    return nullptr;
+    if (table_storage.find(index_name) == table_storage.end()) {
+        return nullptr;
+    } else {
+        return table_storage[index_name];
+    }
 }
 
 std::unique_ptr<RowIterator> SimpleCatalogTableHandler::GetIterator() {
-    LOG(ERROR) << "Unsupported operation: GetRawIterator()";
-    return nullptr;
+    return full_table_storage_->GetIterator();
 }
 
 RowIterator *SimpleCatalogTableHandler::GetRawIterator() {
-    LOG(ERROR) << "Unsupported operation: GetRawIterator()";
-    return nullptr;
+    return full_table_storage_->GetRawIterator();
+}
+
+bool SimpleCatalogTableHandler::DecodeKeysAndTs(const IndexSt &index,
+                                                const int8_t *buf,
+                                                uint32_t size, std::string &key,
+                                                int64_t *time_ptr) {
+    for (const auto &col : index.keys) {
+        if (!key.empty()) {
+            key.append("|");
+        }
+        if (row_view_.IsNULL(buf, col.idx)) {
+            key.append(codec::NONETOKEN);
+        } else if (col.type == ::fesql::type::kVarchar) {
+            const char *val = NULL;
+            uint32_t length = 0;
+            row_view_.GetValue(buf, col.idx, &val, &length);
+            if (length != 0) {
+                key.append(val, length);
+            } else {
+                key.append(codec::EMPTY_STRING);
+            }
+        } else {
+            int64_t value = 0;
+            row_view_.GetInteger(buf, col.idx, col.type, &value);
+            key.append(std::to_string(value));
+        }
+    }
+
+    if (fesql::vm::INVALID_POS == index.ts_pos ||
+        row_view_.IsNULL(buf, index.ts_pos)) {
+        *time_ptr = 0;
+        return true;
+    }
+    row_view_.GetInteger(buf, index.ts_pos,
+                         table_def_.columns(index.ts_pos).type(), time_ptr);
+    return true;
+}
+bool SimpleCatalogTableHandler::AddRow(const Row row) {
+    if (row.GetRowPtrCnt() != 1) {
+        LOG(ERROR) << "Invalid row";
+    }
+    full_table_storage_->AddRow(row);
+    for (const auto &kv : index_hint_) {
+        auto partition = table_storage[kv.first];
+        if (!partition) {
+            LOG(WARNING) << "Invalid index " << kv.first;
+            return false;
+        }
+        std::string key;
+        int64_t time = 1;
+        if (!DecodeKeysAndTs(kv.second, row.buf(), row.size(), key, &time)) {
+            LOG(ERROR) << "Invalid row";
+            return false;
+        }
+        partition->AddRow(key, time, row);
+    }
+    return true;
 }
 
 }  // namespace vm

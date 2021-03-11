@@ -38,6 +38,17 @@ TEST_F(SimpleCatalogTest, test) {
         column->set_type(::fesql::type::kInt32);
         column->set_name("col1");
     }
+    {
+        ::fesql::type::ColumnDef *column = table->add_columns();
+        column->set_type(::fesql::type::kInt64);
+        column->set_name("col2");
+    }
+    {
+        auto index = table->add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col0");
+        index->set_second_key("col2");
+    }
 
     SimpleCatalog catalog;
     catalog.AddDatabase(db);
@@ -51,9 +62,10 @@ TEST_F(SimpleCatalogTest, test) {
     ASSERT_EQ(tbl_handle->GetName(), "t");
     ASSERT_EQ(tbl_handle->GetDatabase(), "db");
 
+    ASSERT_TRUE(tbl_handle->GetWindowIterator("index1") != nullptr);
     ASSERT_EQ(tbl_handle->GetWindowIterator(""), nullptr);
     ASSERT_EQ(tbl_handle->GetCount(), 0);
-    ASSERT_EQ(tbl_handle->GetIterator(), nullptr);
+    ASSERT_TRUE(tbl_handle->GetIterator() != nullptr);
 }
 
 }  // namespace vm
