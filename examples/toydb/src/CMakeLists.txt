@@ -63,9 +63,8 @@ if (TESTING_ENABLE)
         add_executable(${TEST_TARGET_NAME} ${TEST_SCRIPT})
 
         add_test(${TEST_TARGET_NAME}
-                ${TEST_TARGET_NAME}
+                ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
                 --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
-
         target_link_libraries(${TEST_TARGET_NAME}
                 fesql_toy_lib fesql_sdk fesql_flags sqlite3
                 gtest benchmark ${yaml_libs} ${BRPC_LIBS} ${OS_LIBS} ${g_libs})
