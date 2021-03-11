@@ -266,13 +266,6 @@ class TestAutoRecoverTable(TestCaseBase):
         (34, 38, 2, -1, 36, 13, -1, 36, 33, 17, 35),
         (34, 38, 4, -1, 36, 14, -1, 36, 33, 17, 35),
     )
-    @ddt.unpack
-    def test_disk_table(self, *steps):
-        steps_dict = self.get_steps_dict()
-        for i in steps:
-            eval(steps_dict[i])
-        self.ns_drop(self.ns_leader, self.tname)
-
 
 if __name__ == "__main__":
     load(TestAutoRecoverTable)

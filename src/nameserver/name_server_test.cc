@@ -33,8 +33,6 @@ DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_bool(auto_failover);
 DECLARE_bool(enable_timeseries_table);
-DECLARE_string(ssd_root_path);
-DECLARE_string(hdd_root_path);
 
 using brpc::Server;
 using rtidb::tablet::TabletImpl;
