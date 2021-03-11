@@ -87,6 +87,9 @@ class CaseDataMock {
     static void BuildOnePkTableData(type::TableDef& table_def,  // NOLINT
                              std::vector<Row>& buffer,   // NOLINT
                              int64_t data_size);
+    static void BuildTableAndData(type::TableDef& table_def,  // NOLINT
+                                    std::vector<Row>& buffer,   // NOLINT
+                                    int64_t data_size);
     static bool LoadResource(const std::string& resource_path,
                              type::TableDef& table_def,  // NOLINT
                              std::vector<Row>& rows);    // NOLINT

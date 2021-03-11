@@ -26,9 +26,9 @@ namespace fesql {
 namespace vm {
 using fesql::sqlcase::CaseDataMock;
 
-TEST_F(EngineTest, SimpleEngineTest) {
+std::shared_ptr<Catalog> BuildSimpleCatalogWithData() {
     // Build Simple Catalog
-    auto catalog = BuildSimpleCatalog();
+    auto catalog = std::make_shared<SimpleCatalog>(true);
 
     // database simple_db
     fesql::type::Database db;
@@ -37,8 +37,9 @@ TEST_F(EngineTest, SimpleEngineTest) {
     // prepare table t1 schema and data
     fesql::type::TableDef table_def;
     std::vector<Row> t1_rows;
-    fesql::sqlcase::CaseDataMock::BuildOnePkTableData(table_def, t1_rows, 10);
+    sqlcase::CaseDataMock::BuildTableAndData(table_def, t1_rows, 10);
 
+    // config table name and index
     table_def.set_name("t1");
     ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
@@ -46,25 +47,20 @@ TEST_F(EngineTest, SimpleEngineTest) {
     index->add_first_keys("col2");
     index->set_second_key("col5");
 
-    // table t2
-    fesql::type::TableDef table_def2;
-    fesql::sqlcase::CaseSchemaMock::BuildTableDef(table_def2);
-    table_def2.set_name("t2");
-
     // add t1 into db
     *(db.add_tables()) = table_def;
-    *(db.add_tables()) = table_def2;
 
     // add simple_db into catalog
     catalog->AddDatabase(db);
 
     // insert data into simple_db
     catalog->InsertRows("simple_db", "t1", t1_rows);
-
-    // end of building catalog
-
+    return catalog;
+}
+TEST_F(EngineTest, SimpleEngineTest) {
     // Build Simple Engine
     EngineOptions options;
+    std::shared_ptr<Catalog> catalog = BuildSimpleCatalogWithData();
     Engine engine(catalog, options);
     std::string sql =
         "select col0, col1, col2, col3, col4, col5, col6, col1+col2 as col12, "
