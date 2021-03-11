@@ -260,12 +260,5 @@ class TestAutoRecoverTable(TestCaseBase):
                          ['leader', '144000min', 'yes', 'kNoCompress'])
         self.ns_drop(self.ns_leader, self.tname)
 
-    @ddt.data(
-        (34, 37, 2, -1, 36, 13, -1, 36, 33, 17, 35),
-        (34, 37, 4, -1, 36, 14, -1, 36, 33, 17, 35),
-        (34, 38, 2, -1, 36, 13, -1, 36, 33, 17, 35),
-        (34, 38, 4, -1, 36, 14, -1, 36, 33, 17, 35),
-    )
-
 if __name__ == "__main__":
     load(TestAutoRecoverTable)
