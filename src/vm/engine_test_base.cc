@@ -87,6 +87,8 @@ void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
     if (rows.empty()) {
         t.add("Empty set");
         t.end_of_row();
+        oss << t << std::endl;
+        LOG(INFO) << "\n" << oss.str() << "\n";
         return;
     }
 

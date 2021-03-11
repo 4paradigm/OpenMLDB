@@ -45,6 +45,53 @@ HybridSE提供C++编程接口，用户可以在C/C++项目中使用来编译SQL�
 
 ```C++
 
+TEST_F(EngineTest, SimpleEngineTest) {
+    // Build Simple Catalog
+    auto catalog = BuildSimpleCatalog();
+
+    // database simple_db
+    fesql::type::Database db;
+    db.set_name("simple_db");
+
+    // prepare table t1 schema and data
+    fesql::type::TableDef table_def;
+    std::vector<Row> t1_rows;
+  
+    fesql::sqlcase::CaseDataMock::BuildOnePkTableData(table_def, t1_rows, 10);
+    table_def.set_name("t1");
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index12");
+    index->add_first_keys("col1");
+    index->add_first_keys("col2");
+    index->set_second_key("col5");
+  
+    // add t1 into db
+    *(db.add_tables()) = table_def;
+  
+    // add simple_db into catalog
+    catalog->AddDatabase(db);
+
+    // insert data into simple_db
+    catalog->InsertRows("simple_db", "t1", t1_rows);
+
+    // Build Simple Engine
+    EngineOptions options;
+    Engine engine(catalog, options);
+    std::string sql =
+        "select col0, col1, col2, col3, col4, col5, col6, col1+col2 as col12, "
+        "col3+col4 as col34 from t1;";
+    {
+        base::Status get_status;
+        BatchRunSession session;
+        // compile sql
+        ASSERT_TRUE(engine.Get(sql, "simple_db", session, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        std::vector<Row> outputs;
+        ASSERT_EQ(10, session.Run(outputs));
+        PrintRows(session.GetSchema(), outputs);
+    }
+}
+
 ```
 
 
