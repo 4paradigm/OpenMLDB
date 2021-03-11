@@ -43,16 +43,55 @@ make -j4
 
 HybridSE提供C++编程接口，用户可以在C/C++项目中使用来编译SQL以及生成最终的可执行代码
 
-```C++
-
+```c++
 TEST_F(EngineTest, SimpleEngineTest) {
-    // New Simple Catalog
+    // build Simple Catalog
+    auto catalog = std::make_shared<SimpleCatalog>(true);
+    // database simple_db
+    fesql::type::Database db;
+    db.set_name("simple_db");
+
+    // prepare table t1 schema and data
+    fesql::type::TableDef table_def;
+    {
+        table_def.set_name("t1");
+        table_def.set_catalog("db");
+        {
+            ::fesql::type::ColumnDef* column = table_def.add_columns();
+            column->set_type(::fesql::type::kVarchar);
+            column->set_name("col0");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table_def.add_columns();
+            column->set_type(::fesql::type::kInt32);
+            column->set_name("col1");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table_def.add_columns();
+            column->set_type(::fesql::type::kInt64);
+            column->set_name("col2");
+        }
+    }
+    *(db.add_tables()) = table_def;
+    catalog->AddDatabase(db);
+
+    // insert data into simple_db
+    std::vector<Row> t1_rows;
+    for (int i = 0; i < 10; ++i) {
+        std::string str1 = "hello";
+        codec::RowBuilder builder(table_def.columns());
+        uint32_t total_size = builder.CalTotalLength(str1.size());
+        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+        builder.SetBuffer(ptr, total_size);
+        builder.AppendString(str1.c_str(), str1.size());
+        builder.AppendInt32(1);
+        builder.AppendInt64(1576571615000 - i);
+        t1_rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
+    }
+    catalog->InsertRows("simple_db", "t1", t1_rows);
+
+    // build simple engine
     EngineOptions options;
-  
-  	// Build your catalog 
-    std::shared_ptr<Catalog> catalog = BuildSimpleCatalogWithData();
-  
-  	// init engine
     Engine engine(catalog, options);
     std::string sql =
         "select col0, col1, col2, col3, col4, col5, col6, col1+col2 as col12, "
@@ -63,54 +102,33 @@ TEST_F(EngineTest, SimpleEngineTest) {
         // compile sql
         ASSERT_TRUE(engine.Get(sql, "simple_db", session, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
-      
-      	// run sql query
         std::vector<Row> outputs;
-        ASSERT_EQ(10, session.Run(outputs));
+        // run sql query
+        ASSERT_EQ(0, session.Run(outputs));
+        LOG(INFO) << "output size " << outputs.size();
         PrintRows(session.GetSchema(), outputs);
     }
 }
-
 ```
+
+#### 编译和运行SimpleEngine
+
+```shell
+cd hybridse/build
+cmake .. -DTESTING_ENABLE=ON 
+make simple_engine_test
+./src/vm/simple_engine_test
+```
+
+
 
 ### 使用Java编程接口
 
 HybridSE也提供Java编程接口，基于Java/Scala的项目也可以使用来实现SQL语法支持，详情参考[HybridSE Java SDK](https://github.com/4paradigm/hybridse)。
 
-```scala
-private def withSQLEngine[T](sql: String, db: Database, config: FeSQLConfig)(body: SQLEngine => T): T = {
-  var engine: SQLEngine = null
- 
-  val engineOptions = SQLEngine.createDefaultEngineOptions()
- 
-  if (config.enableWindowParallelization) {
-    logger.info("Enable window parallelization optimization")
-    engineOptions.set_enable_batch_window_parallelization(true)
-  } else {
-    logger.info("Disable window parallelization optimization, enable by setting fesql.window.parallelization")
-  }
- 
-  if (config.enableUnsafeRowOptimization) {
-    engineOptions.set_enable_spark_unsaferow_format(true)
-  }
- 
-  try {
-    engine = new SQLEngine(sql, db, engineOptions)
-    val res = body(engine)
-    res
-  } finally {
-    if (engine != null) {
-      engine.close()
-    }
-  }
-}
-```
 
 
-
-## 示例
-
-### 一个简单NewSQL数据库
+### 示例: 一个简单NewSQL数据库
 
 开发者使用HybridSE可以快速实现一个支持SQL的高性能数据库。examples/toydb就是一个简易的单机版面向实时决策的NewSQL数据库。
 
@@ -131,8 +149,6 @@ sh start_all.sh
 sh start_cli.sh
 ```
 
-
-
 toydb支持基本的NewSQL数据库的操作，具体操作细节，参详[ToyDB快速使用手册](./docs/zh-hans/developer_guide/toydb_tutorial/toydb_usage.md)
 
 ## 生态项目
@@ -141,12 +157,7 @@ toydb支持基本的NewSQL数据库的操作，具体操作细节，参详[ToyDB
 | :----------------------------------------------------------- | :----- | :----------------------------------------------- |
 | [FEDB](https://wiki.4paradigm.com/display/PlatformRD/FEDB-README.md) | 开源   | 一个面向实时决策的NewSQL数据库                   |
 | [NativeSpark](https://wiki.4paradigm.com/display/PlatformRD/NativeSpark+README.md) | 开源   | 基于LLVM优化的Spark兼容的高性能原生执行引擎      |
-| ToyDB                                                        | 开发中 | 基于HybridSE开发的简易SQL数据库                  |
 | NativeFlink                                                  | 开发中 | 基于HybridSE开发的高性能批流一体FlinkSQL执行引擎 |
-
-## 项目贡献
-
-
 
 ## 未来规划
 
