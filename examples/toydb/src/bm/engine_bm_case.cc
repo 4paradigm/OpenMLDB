@@ -864,6 +864,11 @@ void EngineBenchmarkOnCase(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         }
         return;
     }
+
+    if (!engine_runner->InitEngineCatalog()) {
+        LOG(ERROR) << "Engine Test Init Catalog Error";
+        return;
+    }
     base::Status status = engine_runner->Compile();
     if (!status.isOK()) {
         LOG(WARNING) << "Compile error: " << status;

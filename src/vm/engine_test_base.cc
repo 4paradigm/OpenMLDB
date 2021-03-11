@@ -28,7 +28,6 @@ std::vector<SQLCase> InitCases(std::string yaml_path) {
     return cases;
 }
 
-
 bool IsNaN(float x) { return x != x; }
 bool IsNaN(double x) { return x != x; }
 
@@ -385,7 +384,7 @@ Status EngineTestRunner::ExtractTableInfoFromCreateString(
                "Fail to extract table info with multi logical plan tree");
     CHECK_TRUE(
         nullptr != plan_trees[0] &&
-        node::kPlanTypeCreate == plan_trees[0]->type_,
+            node::kPlanTypeCreate == plan_trees[0]->type_,
         common::kPlanError,
         "Fail to extract table info with invalid SQL, CREATE SQL is required");
     node::CreatePlanNode* create_plan =
@@ -426,8 +425,8 @@ void EngineTestRunner::InitSQLCase() {
     }
 }
 
-
 Status EngineTestRunner::Compile() {
+    CHECK_TRUE(engine_ != nullptr, common::kSQLError, "Engine is not init");
     std::string sql_str = sql_case_.sql_str();
     for (int j = 0; j < sql_case_.CountInputs(); ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
@@ -468,7 +467,7 @@ Status EngineTestRunner::Compile() {
 
 void EngineTestRunner::RunCheck() {
     if (!InitEngineCatalog()) {
-        FAIL() << "Engine Test Init Catalog Error";
+        LOG(ERROR) << "Engine Test Init Catalog Error";
         return;
     }
     auto engine_mode = session_->engine_mode();
@@ -508,12 +507,15 @@ void EngineTestRunner::RunCheck() {
 }
 
 void EngineTestRunner::RunBenchmark(size_t iters) {
+    if (!InitEngineCatalog()) {
+        LOG(ERROR) << "Engine Test Init Catalog Error";
+        return;
+    }
     auto engine_mode = session_->engine_mode();
     if (engine_mode == kRequestMode) {
         LOG(WARNING) << "Request mode case can not properly run many times";
         return;
     }
-
     Status status = Compile();
     if (!status.isOK()) {
         LOG(WARNING) << "Compile error: " << status;
