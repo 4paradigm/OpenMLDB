@@ -244,7 +244,7 @@ c++_ut:
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && cd build && cmake -DTESTING_ENABLE=ON -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF .. && make -j5
+    - source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF .. && make -j5
     - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
   artifacts:
     reports:
