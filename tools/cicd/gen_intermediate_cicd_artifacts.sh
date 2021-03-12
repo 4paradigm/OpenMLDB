@@ -25,5 +25,5 @@ tar cfz intermediate_cicd_artifact_${SUFFIX}.tar.gz \
 	./java/fesql-native \
 	./java/fesql-proto \
 	build/python/dist/*.whl \
-	build/examples/toydb/src/fesql
+	build/examples/toydb/src/toydb
 
