@@ -42,15 +42,6 @@ ls -l build/bin/
 cp -r build/bin/fedb ${package}/bin/fedb
 test -e build/bin/fedb_mac &&  cp -r build/bin/fedb_mac ${package}/bin/fedb_mac_cli
 cd ${package}/bin
-wget http://pkg.4paradigm.com/rtidb/dev/node_exporter
-wget http://pkg.4paradigm.com/rtidb/metricbeat
-wget http://pkg.4paradigm.com/rtidb/filebeat
-wget http://pkg.4paradigm.com/rtidb/dev/prometheus_client-0.6.0.tar.gz
-chmod a+x node_exporter
-chmod a+x metricbeat
-chmod a+x filebeat
-tar -xvzf prometheus_client-0.6.0.tar.gz
-rm prometheus_client-0.6.0.tar.gz
 cd ../..
 tar -cvzf ${package}.tar.gz ${package}
 echo "package at ./${package}"
