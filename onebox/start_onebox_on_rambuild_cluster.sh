@@ -30,7 +30,7 @@ TABLET3=$IP:9522
 BLOB1=$IP:9720
 
 RAMBUILD_PREFIX=/tmp/rambuild
-../build/bin/rtidb --db_root_path=${RAMBUILD_PREFIX}/tablet0-binlogs \
+../build/bin/fedb --db_root_path=${RAMBUILD_PREFIX}/tablet0-binlogs \
                    --hdd_root_path=${RAMBUILD_PREFIX}/tablet0-hdd-binlogs \
                    --ssd_root_path=${RAMBUILD_PREFIX}/tablet0-ssd-binlogs \
                    --recycle_bin_root_path=${RAMBUILD_PREFIX}/recycle_bin0 \
@@ -44,7 +44,7 @@ RAMBUILD_PREFIX=/tmp/rambuild
                    --zk_root_path=/cluster> tablet0.log 2>&1 &
 
 # start tablet1
-../build/bin/rtidb --db_root_path=${RAMBUILD_PREFIX}/tablet1-binlogs \
+../build/bin/fedb --db_root_path=${RAMBUILD_PREFIX}/tablet1-binlogs \
                    --hdd_root_path=${RAMBUILD_PREFIX}/tablet1-hdd-binlogs \
                    --ssd_root_path=${RAMBUILD_PREFIX}/tablet1-ssd-binlogs \
                    --recycle_bin_root_path=${RAMBUILD_PREFIX}/recycle_bin1 \
@@ -58,7 +58,7 @@ RAMBUILD_PREFIX=/tmp/rambuild
                    --zk_root_path=/cluster > tablet1.log 2>&1 &
 
 # start tablet2
-../build/bin/rtidb --db_root_path=${RAMBUILD_PREFIX}/tablet2-binlogs \
+../build/bin/fedb --db_root_path=${RAMBUILD_PREFIX}/tablet2-binlogs \
                    --hdd_root_path=${RAMBUILD_PREFIX}/tablet2-hdd-binlogs \
                    --ssd_root_path=${RAMBUILD_PREFIX}/tablet2-ssd-binlogs \
                    --recycle_bin_root_path=${RAMBUILD_PREFIX}/recycle_bin2 \
@@ -72,7 +72,7 @@ RAMBUILD_PREFIX=/tmp/rambuild
                    --zk_root_path=/cluster > tablet2.log 2>&1 &
 
 # start ns1
-../build/bin/rtidb --endpoint=${NS1} --role=nameserver \
+../build/bin/fedb --endpoint=${NS1} --role=nameserver \
                    --zk_cluster=${ZK_CLUSTER}\
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
@@ -81,7 +81,7 @@ RAMBUILD_PREFIX=/tmp/rambuild
 sleep 2
 
 # start ns2
-../build/bin/rtidb --endpoint=${NS2} --role=nameserver \
+../build/bin/fedb --endpoint=${NS2} --role=nameserver \
                    --zk_cluster=${ZK_CLUSTER}\
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
@@ -90,25 +90,12 @@ sleep 2
 sleep 2
 
 # start ns3
-../build/bin/rtidb --endpoint=${NS3} --role=nameserver \
+../build/bin/fedb --endpoint=${NS3} --role=nameserver \
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
                    --request_timeout_ms=100000\
                    --zk_cluster=${ZK_CLUSTER}\
                    --zk_root_path=/cluster > ns3.log 2>&1 &
-
-sleep 5
-# start blob1
-../build/bin/rtidb --hdd_root_path=${RAMBUILD_PREFIX}/blob1-hdd-binlogs \
-                   --ssd_root_path=${RAMBUILD_PREFIX}/blob1-ssd-binlogs \
-                   --recycle_bin_root_path=${RAMBUILD_PREFIX}/recycle_bin3 \
-                   --recycle_ssd_bin_root_path=${RAMBUILD_PREFIX}/recycle_ssd_bin3 \
-                   --recycle_hdd_bin_root_path=${RAMBUILD_PREFIX}/recycle_hdd_bin3 \
-                   --endpoint=${BLOB1} --role=blob \
-                   --binlog_notify_on_put=true\
-                   --zk_cluster=${ZK_CLUSTER}\
-                   --zk_keep_alive_check_interval=100000000\
-                   --zk_root_path=/cluster > blob1.log 2>&1 &
 
 sleep 5
 

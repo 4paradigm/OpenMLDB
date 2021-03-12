@@ -94,18 +94,6 @@ test -d recycle_bin3 && rm -rf recycle_bin3
 test -d recycle_ssd_bin3 && rm -rf recycle_ssd_bin3
 test -d recycle_hdd_bin3 && rm -rf recycle_hdd_bin3
 
-# start blob1
-../build/bin/fedb --hdd_root_path=blob1-hdd-binlogs \
-                   --ssd_root_path=blob1-ssd-binlogs \
-                   --recycle_bin_root_path=recycle_bin3 \
-                   --recycle_ssd_bin_root_path=recycle_ssd_bin3 \
-                   --recycle_hdd_bin_root_path=recycle_hdd_bin3 \
-                   --endpoint=${BLOB1} --role=blob \
-                   --binlog_notify_on_put=true\
-                   --zk_cluster=${ZK_CLUSTER}\
-                   --zk_keep_alive_check_interval=100000000\
-                   --zk_root_path=/onebox > blob1.log 2>&1 &
-
 # start ns1 
 ../build/bin/fedb --endpoint=${NS1} --role=nameserver \
                    --zk_cluster=${ZK_CLUSTER}\
