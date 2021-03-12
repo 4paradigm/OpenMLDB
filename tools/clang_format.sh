@@ -14,7 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cd $(cd $(dirname $0); pwd)/..
+set -eE
+
+cd "$(dirname "$0")"
+cd "$(git rev-parse --show-toplevel)"
 
 find ./src | grep "\(\.h\|\.cc\)$" | xargs -I {} clang-format -i -style=file {}
 find ./examples/toydb/src | grep "\(\.h\|\.cc\)$" | xargs -I {} clang-format -i -style=file {}

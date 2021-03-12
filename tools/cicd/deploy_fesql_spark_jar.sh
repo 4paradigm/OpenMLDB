@@ -1,5 +1,5 @@
 #!/bin/bash
-ROOT_DIR=$(cd $(dirname $0); pwd)/../..
+
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,5 +14,8 @@ ROOT_DIR=$(cd $(dirname $0); pwd)/../..
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -eE
+
+ROOT_DIR=$(cd $(dirname $0); pwd)/../..
 cd ${ROOT_DIR}/java
 mvn package -DskipTests=true -Dscalatest.skip=true -Prun_shade
