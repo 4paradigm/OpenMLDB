@@ -26,7 +26,7 @@ extern "C" {
 
 
 
-namespace rtidb {
+namespace fedb {
 namespace zk {
 
 DistLock::DistLock(const std::string& root_path, ZkClient* zk_client,
@@ -152,4 +152,4 @@ void DistLock::CurrentLockValue(std::string& value) {
 }
 
 }  // namespace zk
-}  // namespace rtidb
+}  // namespace fedb

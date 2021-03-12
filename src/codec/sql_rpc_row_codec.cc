@@ -16,7 +16,7 @@
 
 #include "codec/sql_rpc_row_codec.h"
 
-namespace rtidb {
+namespace fedb {
 namespace codec {
 
 bool DecodeRpcRow(const butil::IOBuf& buf, size_t offset, size_t size, size_t slice_num, fesql::codec::Row* row) {
@@ -106,4 +106,4 @@ bool EncodeRpcRow(const int8_t* buf, size_t size, butil::IOBuf* io_buf) {
 }
 
 }  // namespace codec
-}  // namespace rtidb
+}  // namespace fedb

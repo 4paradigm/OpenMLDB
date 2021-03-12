@@ -1,7 +1,18 @@
-//
-// Copyright (C) 2017 4paradigm.com
-// Created by kongsys on 8/16/19.
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef SRC_BASE_TASKPOOL_HPP_
 #define SRC_BASE_TASKPOOL_HPP_
@@ -10,7 +21,7 @@
 #include <boost/function.hpp>
 #include "base/ringqueue.h"
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 class TaskPool {
  public:
@@ -84,11 +95,11 @@ class TaskPool {
     }
     bool stop_;
     uint32_t threads_num_;
-    ::rtidb::base::RingQueue<Task> queue_;
+    ::fedb::base::RingQueue<Task> queue_;
     std::vector<pthread_t> tids_;
     std::condition_variable work_cv_, queue_cv_;
     std::mutex mutex_;
 };
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_BASE_TASKPOOL_HPP_

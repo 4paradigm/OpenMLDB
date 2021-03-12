@@ -18,7 +18,7 @@
 #include "base/ringqueue.h"
 #include "gtest/gtest.h"
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 class RingQueueTest : public ::testing::Test {
@@ -79,7 +79,7 @@ TEST_F(RingQueueTest, pop) {
 }
 
 };  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

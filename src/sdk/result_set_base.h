@@ -25,7 +25,7 @@
 #include "sdk/base_impl.h"
 #include "sdk/codec_sdk.h"
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 class ResultSetBase {
@@ -77,6 +77,6 @@ class ResultSetBase {
 };
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_SDK_RESULT_SET_BASE_H_

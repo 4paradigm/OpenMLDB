@@ -45,29 +45,29 @@ DECLARE_int32(gc_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_int32(binlog_delete_interval);
 
-namespace rtidb {
+namespace fedb {
 namespace tablet {
 
-using ::rtidb::api::TableStatus;
+using ::fedb::api::TableStatus;
 
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
 
-void CreateBaseTable(::rtidb::storage::Table*& table,  // NOLINT
-                     const ::rtidb::api::TTLType& ttl_type, uint64_t ttl,
+void CreateBaseTable(::fedb::storage::Table*& table,  // NOLINT
+                     const ::fedb::api::TTLType& ttl_type, uint64_t ttl,
                      uint64_t start_ts) {
-    ::rtidb::api::TableMeta table_meta;
+    ::fedb::api::TableMeta table_meta;
     table_meta.set_name("table");
     table_meta.set_tid(1);
     table_meta.set_pid(0);
     table_meta.set_ttl(ttl);
     table_meta.set_seg_cnt(8);
-    table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+    table_meta.set_mode(::fedb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
     table_meta.set_ttl_type(ttl_type);
 
-    ::rtidb::common::ColumnDesc* desc = table_meta.add_column_desc();
+    ::fedb::common::ColumnDesc* desc = table_meta.add_column_desc();
     desc->set_name("card");
     desc->set_type("string");
     desc->set_add_ts_idx(true);
@@ -95,24 +95,24 @@ void CreateBaseTable(::rtidb::storage::Table*& table,  // NOLINT
     desc->set_is_ts_col(true);
     desc->set_ttl(ttl);
 
-    ::rtidb::common::ColumnKey* column_key = table_meta.add_column_key();
+    ::fedb::common::ColumnKey* column_key = table_meta.add_column_key();
     column_key->set_index_name("card");
     column_key->add_ts_name("ts1");
     column_key->add_ts_name("ts2");
     column_key = table_meta.add_column_key();
     column_key->set_index_name("mcc");
     column_key->add_ts_name("ts1");
-    table = new ::rtidb::storage::MemTable(table_meta);
+    table = new ::fedb::storage::MemTable(table_meta);
     table->Init();
     for (int i = 0; i < 1000; i++) {
-        ::rtidb::api::PutRequest request;
-        ::rtidb::api::Dimension* dim = request.add_dimensions();
+        ::fedb::api::PutRequest request;
+        ::fedb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
         dim->set_key("card" + std::to_string(i % 100));
         dim = request.add_dimensions();
         dim->set_idx(1);
         dim->set_key("mcc" + std::to_string(i));
-        ::rtidb::api::TSDimension* ts = request.add_ts_dimensions();
+        ::fedb::api::TSDimension* ts = request.add_ts_dimensions();
         ts->set_idx(0);
         ts->set_ts(start_ts + i);
         ts = request.add_ts_dimensions();
@@ -133,22 +133,22 @@ class TabletFuncTest : public ::testing::Test {
 
 void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts,
                            uint64_t expired_ts) {
-    ::rtidb::tablet::TabletImpl tablet_impl;
+    ::fedb::tablet::TabletImpl tablet_impl;
     std::string value;
     uint64_t ts;
     int32_t code = 0;
-    ::rtidb::api::TableMeta meta;
+    ::fedb::api::TableMeta meta;
     std::map<int32_t, std::shared_ptr<Schema>> vers_schema = q_its->begin()->table->GetAllVersionSchema();
-    ::rtidb::storage::TTLSt ttl(expired_ts, 0, ::rtidb::storage::kAbsoluteTime);
+    ::fedb::storage::TTLSt ttl(expired_ts, 0, ::fedb::storage::kAbsoluteTime);
     ttl.abs_ttl = expired_ts;
     // get the st kSubKeyGt
     {
         // for the legacy
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_ts(100 + base_ts);
-        request.set_type(::rtidb::api::GetType::kSubKeyGt);
+        request.set_type(::fedb::api::GetType::kSubKeyGt);
         request.set_et(100 + base_ts);
-        request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
+        request.set_et_type(::fedb::api::GetType::kSubKeyEq);
         CombineIterator combine_it(*q_its, request.ts(), request.type(), ttl);
         combine_it.SeekToFirst();
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
@@ -160,11 +160,11 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts,
     // get the st kSubKeyLe
     {
         // for the legacy
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_ts(100 + base_ts);
-        request.set_type(::rtidb::api::GetType::kSubKeyLe);
+        request.set_type(::fedb::api::GetType::kSubKeyLe);
         request.set_et(100 + base_ts);
-        request.set_et_type(::rtidb::api::GetType::kSubKeyGe);
+        request.set_et_type(::fedb::api::GetType::kSubKeyGe);
         CombineIterator combine_it(*q_its, request.ts(), request.type(), ttl);
         combine_it.SeekToFirst();
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
@@ -176,11 +176,11 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts,
     // get the st 900kSubKeyLe
     {
         // for the legacy
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_ts(900 + base_ts);
-        request.set_type(::rtidb::api::GetType::kSubKeyLe);
+        request.set_type(::fedb::api::GetType::kSubKeyLe);
         request.set_et(100 + base_ts);
-        request.set_et_type(::rtidb::api::GetType::kSubKeyGe);
+        request.set_et_type(::fedb::api::GetType::kSubKeyGe);
         CombineIterator combine_it(*q_its, request.ts(), request.type(), ttl);
         combine_it.SeekToFirst();
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
@@ -192,11 +192,11 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts,
     // get the st 899kSubKeyLe
     {
         // for the legacy
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_ts(899 + base_ts);
-        request.set_type(::rtidb::api::GetType::kSubKeyLe);
+        request.set_type(::fedb::api::GetType::kSubKeyLe);
         request.set_et(100 + base_ts);
-        request.set_et_type(::rtidb::api::GetType::kSubKeyGe);
+        request.set_et_type(::fedb::api::GetType::kSubKeyGe);
         CombineIterator combine_it(*q_its, request.ts(), request.type(), ttl);
         combine_it.SeekToFirst();
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
@@ -208,11 +208,11 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts,
     // get the st 800 kSubKeyLe
     {
         // for the legacy
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_ts(899 + base_ts);
-        request.set_type(::rtidb::api::GetType::kSubKeyLe);
+        request.set_type(::fedb::api::GetType::kSubKeyLe);
         request.set_et(800 + base_ts);
-        request.set_et_type(::rtidb::api::GetType::kSubKeyGe);
+        request.set_et_type(::fedb::api::GetType::kSubKeyGe);
         CombineIterator combine_it(*q_its, request.ts(), request.type(), ttl);
         combine_it.SeekToFirst();
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
@@ -224,11 +224,11 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts,
     // get the st 800 kSubKeyLe
     {
         // for the legacy
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_ts(899 + base_ts);
-        request.set_type(::rtidb::api::GetType::kSubKeyLe);
+        request.set_type(::fedb::api::GetType::kSubKeyLe);
         request.set_et(800 + base_ts);
-        request.set_et_type(::rtidb::api::GetType::kSubKeyGt);
+        request.set_et_type(::fedb::api::GetType::kSubKeyGt);
         CombineIterator combine_it(*q_its, request.ts(), request.type(), ttl);
         combine_it.SeekToFirst();
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
@@ -237,21 +237,21 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts,
 }
 
 void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
-    ::rtidb::tablet::TabletImpl tablet_impl;
+    ::fedb::tablet::TabletImpl tablet_impl;
     std::string value;
     uint64_t ts;
     int32_t code = 0;
-    ::rtidb::api::TableMeta meta;
+    ::fedb::api::TableMeta meta;
     std::map<int32_t, std::shared_ptr<Schema>> vers_schema = q_its->begin()->table->GetAllVersionSchema();
-    ::rtidb::storage::TTLSt ttl(0, 10, ::rtidb::storage::kLatestTime);
+    ::fedb::storage::TTLSt ttl(0, 10, ::fedb::storage::kLatestTime);
     // get the st kSubKeyGt
     {
         // for the legacy
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_ts(1100);
-        request.set_type(::rtidb::api::GetType::kSubKeyGt);
+        request.set_type(::fedb::api::GetType::kSubKeyGt);
         request.set_et(1100);
-        request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
+        request.set_et_type(::fedb::api::GetType::kSubKeyEq);
         CombineIterator combine_it(*q_its, request.ts(), request.type(), ttl);
         combine_it.SeekToFirst();
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
@@ -262,11 +262,11 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
 
     // get the st == et
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_ts(1100);
-        request.set_type(::rtidb::api::GetType::kSubKeyEq);
+        request.set_type(::fedb::api::GetType::kSubKeyEq);
         request.set_et(1100);
-        request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
+        request.set_et_type(::fedb::api::GetType::kSubKeyEq);
         CombineIterator combine_it(*q_its, request.ts(), request.type(), ttl);
         combine_it.SeekToFirst();
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
@@ -277,11 +277,11 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
 
     // get the st < et
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_ts(1100);
-        request.set_type(::rtidb::api::GetType::kSubKeyEq);
+        request.set_type(::fedb::api::GetType::kSubKeyEq);
         request.set_et(1101);
-        request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
+        request.set_et_type(::fedb::api::GetType::kSubKeyEq);
         CombineIterator combine_it(*q_its, request.ts(), request.type(), ttl);
         combine_it.SeekToFirst();
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
@@ -290,11 +290,11 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
 
     // get the st > et
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_ts(1101);
-        request.set_type(::rtidb::api::GetType::kSubKeyEq);
+        request.set_type(::fedb::api::GetType::kSubKeyEq);
         request.set_et(1100);
-        request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
+        request.set_et_type(::fedb::api::GetType::kSubKeyEq);
         CombineIterator combine_it(*q_its, request.ts(), request.type(), ttl);
         combine_it.SeekToFirst();
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
@@ -303,11 +303,11 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
 
     // get the st > et
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_ts(1201);
-        request.set_type(::rtidb::api::GetType::kSubKeyLe);
+        request.set_type(::fedb::api::GetType::kSubKeyLe);
         request.set_et(1200);
-        request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
+        request.set_et_type(::fedb::api::GetType::kSubKeyEq);
         CombineIterator combine_it(*q_its, request.ts(), request.type(), ttl);
         combine_it.SeekToFirst();
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
@@ -318,11 +318,11 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
 }
 
 TEST_F(TabletFuncTest, GetLatestIndex_default_iterator) {
-    ::rtidb::storage::Table* table;
-    CreateBaseTable(table, ::rtidb::api::TTLType::kLatestTime, 10, 1000);
+    ::fedb::storage::Table* table;
+    CreateBaseTable(table, ::fedb::api::TTLType::kLatestTime, 10, 1000);
     std::vector<QueryIt> query_its(1);
-    query_its[0].ticket = std::make_shared<::rtidb::storage::Ticket>();
-    ::rtidb::storage::TableIterator* it =
+    query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
+    ::fedb::storage::TableIterator* it =
         table->NewIterator("card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
@@ -330,11 +330,11 @@ TEST_F(TabletFuncTest, GetLatestIndex_default_iterator) {
 }
 
 TEST_F(TabletFuncTest, GetLatestIndex_ts0_iterator) {
-    ::rtidb::storage::Table* table = NULL;
-    CreateBaseTable(table, ::rtidb::api::TTLType::kLatestTime, 10, 1000);
+    ::fedb::storage::Table* table = NULL;
+    CreateBaseTable(table, ::fedb::api::TTLType::kLatestTime, 10, 1000);
     std::vector<QueryIt> query_its(1);
-    query_its[0].ticket = std::make_shared<::rtidb::storage::Ticket>();
-    ::rtidb::storage::TableIterator* it =
+    query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
+    ::fedb::storage::TableIterator* it =
         table->NewIterator(0, 0, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
@@ -342,11 +342,11 @@ TEST_F(TabletFuncTest, GetLatestIndex_ts0_iterator) {
 }
 
 TEST_F(TabletFuncTest, GetLatestIndex_ts1_iterator) {
-    ::rtidb::storage::Table* table = NULL;
-    CreateBaseTable(table, ::rtidb::api::TTLType::kLatestTime, 10, 1000);
+    ::fedb::storage::Table* table = NULL;
+    CreateBaseTable(table, ::fedb::api::TTLType::kLatestTime, 10, 1000);
     std::vector<QueryIt> query_its(1);
-    query_its[0].ticket = std::make_shared<::rtidb::storage::Ticket>();
-    ::rtidb::storage::TableIterator* it =
+    query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
+    ::fedb::storage::TableIterator* it =
         table->NewIterator(0, 1, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
@@ -355,11 +355,11 @@ TEST_F(TabletFuncTest, GetLatestIndex_ts1_iterator) {
 
 TEST_F(TabletFuncTest, GetTimeIndex_default_iterator) {
     uint64_t base_ts = ::baidu::common::timer::get_micros();
-    ::rtidb::storage::Table* table = NULL;
-    CreateBaseTable(table, ::rtidb::api::TTLType::kAbsoluteTime, 1000, base_ts);
+    ::fedb::storage::Table* table = NULL;
+    CreateBaseTable(table, ::fedb::api::TTLType::kAbsoluteTime, 1000, base_ts);
     std::vector<QueryIt> query_its(1);
-    query_its[0].ticket = std::make_shared<::rtidb::storage::Ticket>();
-    ::rtidb::storage::TableIterator* it =
+    query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
+    ::fedb::storage::TableIterator* it =
         table->NewIterator("card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
@@ -368,11 +368,11 @@ TEST_F(TabletFuncTest, GetTimeIndex_default_iterator) {
 
 TEST_F(TabletFuncTest, GetTimeIndex_ts0_iterator) {
     uint64_t base_ts = ::baidu::common::timer::get_micros();
-    ::rtidb::storage::Table* table = NULL;
-    CreateBaseTable(table, ::rtidb::api::TTLType::kAbsoluteTime, 1000, base_ts);
+    ::fedb::storage::Table* table = NULL;
+    CreateBaseTable(table, ::fedb::api::TTLType::kAbsoluteTime, 1000, base_ts);
     std::vector<QueryIt> query_its(1);
-    query_its[0].ticket = std::make_shared<::rtidb::storage::Ticket>();
-    ::rtidb::storage::TableIterator* it =
+    query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
+    ::fedb::storage::TableIterator* it =
         table->NewIterator(0, 0, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
@@ -381,11 +381,11 @@ TEST_F(TabletFuncTest, GetTimeIndex_ts0_iterator) {
 
 TEST_F(TabletFuncTest, GetTimeIndex_ts1_iterator) {
     uint64_t base_ts = ::baidu::common::timer::get_micros();
-    ::rtidb::storage::Table* table = NULL;
-    CreateBaseTable(table, ::rtidb::api::TTLType::kAbsoluteTime, 1000, base_ts);
+    ::fedb::storage::Table* table = NULL;
+    CreateBaseTable(table, ::fedb::api::TTLType::kAbsoluteTime, 1000, base_ts);
     std::vector<QueryIt> query_its(1);
-    query_its[0].ticket = std::make_shared<::rtidb::storage::Ticket>();
-    ::rtidb::storage::TableIterator* it =
+    query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
+    ::fedb::storage::TableIterator* it =
         table->NewIterator(0, 1, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
@@ -393,7 +393,7 @@ TEST_F(TabletFuncTest, GetTimeIndex_ts1_iterator) {
 }
 
 }  // namespace tablet
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

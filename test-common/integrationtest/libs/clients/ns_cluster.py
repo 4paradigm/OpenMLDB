@@ -96,13 +96,13 @@ class NsCluster(object):
                 exe_shell("echo '--get_replica_status_interval=600000' >> {}".format(nameserver_flags))
             exe_shell("echo '--zk_session_timeout=2000' >> {}".format(nameserver_flags))
             exe_shell("ulimit -c unlimited")
-            cmd = '{}/rtidb --flagfile={}'.format(self.test_path, nameserver_flags)
-            infoLogger.info('start rtidb: {}'.format(cmd))
+            cmd = '{}/fedb --flagfile={}'.format(self.test_path, nameserver_flags)
+            infoLogger.info('start fedb: {}'.format(cmd))
             args = shlex.split(cmd)
             started = []
             for _ in range(5):
                 rs = exe_shell('lsof -i:{}|grep -v "PID"'.format(ep.split(':')[1]))
-                if 'rtidb' not in rs:
+                if 'fedb' not in rs:
                     time.sleep(2)
                     subprocess.Popen(args,stdout=open('{}/info.log'.format(ns_path), 'a'),
                                      stderr=open('{}/warning.log'.format(ns_path), 'a'))
@@ -115,10 +115,10 @@ class NsCluster(object):
     def get_ns_leader(self, is_remote = False):
         cmd = '';
         if not is_remote:
-            cmd = "{}/rtidb --zk_cluster={} --zk_root_path={} --role={} --interactive=false --cmd={}".format(self.test_path, 
+            cmd = "{}/fedb --zk_cluster={} --zk_root_path={} --role={} --interactive=false --cmd={}".format(self.test_path, 
                         self.zk_endpoint, "/onebox", "ns_client", "'showns'")
         else:
-            cmd = "{}/rtidb --zk_cluster={} --zk_root_path={} --role={} --interactive=false --cmd={}".format(self.test_path, 
+            cmd = "{}/fedb --zk_cluster={} --zk_root_path={} --role={} --interactive=false --cmd={}".format(self.test_path, 
                         self.zk_endpoint, "/remote", "ns_client", "'showns'")
         for i in xrange(5):
             result = exe_shell(cmd)

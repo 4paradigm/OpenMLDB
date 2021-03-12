@@ -28,7 +28,7 @@
 #include "sdk/sql_request_row.h"
 #include "sdk/table_reader.h"
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 struct SQLRouterOptions {
@@ -80,37 +80,37 @@ class SQLRouter {
                                fesql::sdk::Status* status) = 0;
 
     virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
-                               std::shared_ptr<rtidb::sdk::SQLInsertRow> row,
+                               std::shared_ptr<fedb::sdk::SQLInsertRow> row,
                                fesql::sdk::Status* status) = 0;
 
     virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
-                               std::shared_ptr<rtidb::sdk::SQLInsertRows> row,
+                               std::shared_ptr<fedb::sdk::SQLInsertRows> row,
                                fesql::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<rtidb::sdk::TableReader> GetTableReader() = 0;
+    virtual std::shared_ptr<fedb::sdk::TableReader> GetTableReader() = 0;
 
     virtual std::shared_ptr<ExplainInfo> Explain(
         const std::string& db, const std::string& sql,
         ::fesql::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<rtidb::sdk::SQLRequestRow> GetRequestRow(
+    virtual std::shared_ptr<fedb::sdk::SQLRequestRow> GetRequestRow(
         const std::string& db, const std::string& sql,
         fesql::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<rtidb::sdk::SQLRequestRow> GetRequestRowByProcedure(const std::string& db,
+    virtual std::shared_ptr<fedb::sdk::SQLRequestRow> GetRequestRowByProcedure(const std::string& db,
         const std::string& sp_name, ::fesql::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<rtidb::sdk::SQLInsertRow> GetInsertRow(
+    virtual std::shared_ptr<fedb::sdk::SQLInsertRow> GetInsertRow(
         const std::string& db, const std::string& sql,
         ::fesql::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<rtidb::sdk::SQLInsertRows> GetInsertRows(
+    virtual std::shared_ptr<fedb::sdk::SQLInsertRows> GetInsertRows(
         const std::string& db, const std::string& sql,
         ::fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
-        std::shared_ptr<rtidb::sdk::SQLRequestRow> row,
+        std::shared_ptr<fedb::sdk::SQLRequestRow> row,
         fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
@@ -119,33 +119,33 @@ class SQLRouter {
 
     virtual std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQLBatchRequest(
         const std::string& db, const std::string& sql,
-        std::shared_ptr<rtidb::sdk::SQLRequestRowBatch> row_batch,
+        std::shared_ptr<fedb::sdk::SQLRequestRowBatch> row_batch,
         ::fesql::sdk::Status* status) = 0;
 
     virtual bool RefreshCatalog() = 0;
 
     virtual std::shared_ptr<fesql::sdk::ResultSet> CallProcedure(
             const std::string& db, const std::string& sp_name,
-            std::shared_ptr<rtidb::sdk::SQLRequestRow> row, fesql::sdk::Status* status) = 0;
+            std::shared_ptr<fedb::sdk::SQLRequestRow> row, fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<fesql::sdk::ResultSet> CallSQLBatchRequestProcedure(
             const std::string& db, const std::string& sp_name,
-            std::shared_ptr<rtidb::sdk::SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) = 0;
+            std::shared_ptr<fedb::sdk::SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<fesql::sdk::ProcedureInfo> ShowProcedure(
             const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<rtidb::sdk::QueryFuture> CallProcedure(
+    virtual std::shared_ptr<fedb::sdk::QueryFuture> CallProcedure(
             const std::string& db, const std::string& sp_name, int64_t timeout_ms,
-            std::shared_ptr<rtidb::sdk::SQLRequestRow> row, fesql::sdk::Status* status) = 0;
+            std::shared_ptr<fedb::sdk::SQLRequestRow> row, fesql::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<rtidb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
+    virtual std::shared_ptr<fedb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
             const std::string& db, const std::string& sp_name, int64_t timeout_ms,
-            std::shared_ptr<rtidb::sdk::SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) = 0;
+            std::shared_ptr<fedb::sdk::SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) = 0;
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_SDK_SQL_ROUTER_H_

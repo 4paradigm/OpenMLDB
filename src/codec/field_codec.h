@@ -29,10 +29,10 @@
 #include "proto/type.pb.h"
 #include "codec/memcomparable_format.h"
 
-namespace rtidb {
+namespace fedb {
 namespace codec {
 
-using ::rtidb::type::DataType;
+using ::fedb::type::DataType;
 /**
  *  encode part
  */
@@ -75,7 +75,7 @@ static inline bool Convert(const std::string& str, DataType data_type,
                     std::string* out) {
     try {
         switch (data_type) {
-            case ::rtidb::type::kBool: {
+            case ::fedb::type::kBool: {
                 out->resize(1);
                 char* buffer = const_cast<char*>(out->data());
                 std::string tmp = str;
@@ -90,53 +90,53 @@ static inline bool Convert(const std::string& str, DataType data_type,
                 }
                 break;
             }
-            case ::rtidb::type::kSmallInt: {
+            case ::fedb::type::kSmallInt: {
                 out->resize(2);
                 char* buffer = const_cast<char*>(out->data());
                 int16_t val = boost::lexical_cast<int16_t>(str);
                 Convert(val, buffer);
                 break;
             }
-            case ::rtidb::type::kInt: {
+            case ::fedb::type::kInt: {
                 out->resize(4);
                 char* buffer = const_cast<char*>(out->data());
                 int32_t val = boost::lexical_cast<int32_t>(str);
                 Convert(val, buffer);
                 break;
             }
-            case ::rtidb::type::kBigInt:
-            case ::rtidb::type::kTimestamp: {
+            case ::fedb::type::kBigInt:
+            case ::fedb::type::kTimestamp: {
                 out->resize(8);
                 char* buffer = const_cast<char*>(out->data());
                 int64_t val = boost::lexical_cast<int64_t>(str);
                 Convert(val, buffer);
                 break;
             }
-            case ::rtidb::type::kFloat: {
+            case ::fedb::type::kFloat: {
                 out->resize(4);
                 char* buffer = const_cast<char*>(out->data());
                 float val = boost::lexical_cast<float>(str);
                 Convert(val, buffer);
                 break;
             }
-            case ::rtidb::type::kDouble: {
+            case ::fedb::type::kDouble: {
                 out->resize(8);
                 char* buffer = const_cast<char*>(out->data());
                 double val = boost::lexical_cast<double>(str);
                 Convert(val, buffer);
                 break;
             }
-            case ::rtidb::type::kVarchar:
-            case ::rtidb::type::kString: {
+            case ::fedb::type::kVarchar:
+            case ::fedb::type::kString: {
                 *out = str;
                 break;
             }
-            case ::rtidb::type::kDate: {
+            case ::fedb::type::kDate: {
                 std::vector<std::string> parts;
-                ::rtidb::base::SplitString(str, "-", parts);
+                ::fedb::base::SplitString(str, "-", parts);
                 if (parts.size() != 3) {
                     PDLOG(WARNING, "bad data format, data type %s.",
-                            rtidb::type::DataType_Name(data_type).c_str());
+                            fedb::type::DataType_Name(data_type).c_str());
                     return false;
                 }
                 uint32_t year = boost::lexical_cast<uint32_t>(parts[0]);
@@ -155,7 +155,7 @@ static inline bool Convert(const std::string& str, DataType data_type,
             }
             default: {
                 PDLOG(WARNING, "unsupported data type %s.",
-                      rtidb::type::DataType_Name(data_type).c_str());
+                      fedb::type::DataType_Name(data_type).c_str());
                 return false;
             }
         }
@@ -197,56 +197,56 @@ static inline void GetDouble(const char* ch, void* res) {
 }
 
 __attribute__((unused)) static bool PackValue(const void *from,
-        ::rtidb::type::DataType data_type,
+        ::fedb::type::DataType data_type,
         std::string* key) {
     size_t k_size = key->size();
     int ret = 0;
     switch (data_type) {
-        case ::rtidb::type::kBool: {
+        case ::fedb::type::kBool: {
             key->resize(sizeof(int8_t) + k_size);
             char* to = const_cast<char*>(key->data()) + k_size;
             ret =
-                ::rtidb::codec::PackInteger(from, sizeof(int8_t), false, to);
+                ::fedb::codec::PackInteger(from, sizeof(int8_t), false, to);
             break;
         }
-        case ::rtidb::type::kSmallInt: {
+        case ::fedb::type::kSmallInt: {
             key->resize(sizeof(int16_t) + k_size);
             char* to = const_cast<char*>(key->data()) + k_size;
             ret =
-                ::rtidb::codec::PackInteger(from, sizeof(int16_t), false, to);
+                ::fedb::codec::PackInteger(from, sizeof(int16_t), false, to);
             break;
         }
-        case ::rtidb::type::kInt:
-        case ::rtidb::type::kDate: {
+        case ::fedb::type::kInt:
+        case ::fedb::type::kDate: {
             key->resize(sizeof(int32_t) + k_size);
             char* to = const_cast<char*>(key->data()) + k_size;
             ret =
-                ::rtidb::codec::PackInteger(from, sizeof(int32_t), false, to);
+                ::fedb::codec::PackInteger(from, sizeof(int32_t), false, to);
             break;
         }
-        case ::rtidb::type::kBigInt:
-        case ::rtidb::type::kTimestamp: {
+        case ::fedb::type::kBigInt:
+        case ::fedb::type::kTimestamp: {
             key->resize(sizeof(int64_t) + k_size);
             char* to = const_cast<char*>(key->data()) + k_size;
             ret =
-                ::rtidb::codec::PackInteger(from, sizeof(int64_t), false, to);
+                ::fedb::codec::PackInteger(from, sizeof(int64_t), false, to);
             break;
         }
-        case ::rtidb::type::kFloat: {
+        case ::fedb::type::kFloat: {
             key->resize(sizeof(float) + k_size);
             char* to = const_cast<char*>(key->data()) + k_size;
-            ret = ::rtidb::codec::PackFloat(from, to);
+            ret = ::fedb::codec::PackFloat(from, to);
             break;
         }
-        case ::rtidb::type::kDouble: {
+        case ::fedb::type::kDouble: {
             key->resize(sizeof(double) + k_size);
             char* to = const_cast<char*>(key->data()) + k_size;
-            ret = ::rtidb::codec::PackDouble(from, to);
+            ret = ::fedb::codec::PackDouble(from, to);
             break;
         }
         default: {
             PDLOG(WARNING, "unsupported data type %s.",
-                  rtidb::type::DataType_Name(data_type).c_str());
+                  fedb::type::DataType_Name(data_type).c_str());
             return false;
         }
     }
@@ -256,4 +256,4 @@ __attribute__((unused)) static bool PackValue(const void *from,
     return true;
 }
 }  // namespace codec
-}  // namespace rtidb
+}  // namespace fedb

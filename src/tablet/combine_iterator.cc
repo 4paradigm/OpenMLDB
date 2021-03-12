@@ -19,13 +19,13 @@
 #include <utility>
 #include "base/glog_wapper.h"
 
-namespace rtidb {
+namespace fedb {
 namespace tablet {
 
 CombineIterator::CombineIterator(std::vector<QueryIt> q_its,
                                  uint64_t start_time,
-                                 ::rtidb::api::GetType st_type,
-                                 const ::rtidb::storage::TTLSt& expired_value)
+                                 ::fedb::api::GetType st_type,
+                                 const ::fedb::storage::TTLSt& expired_value)
     : q_its_(std::move(q_its)),
       st_(start_time),
       st_type_(st_type),
@@ -43,12 +43,12 @@ void CombineIterator::SeekToFirst() {
     if (q_its_.empty()) {
         return;
     }
-    if (st_type_ == ::rtidb::api::GetType::kSubKeyEq) {
-        st_type_ = ::rtidb::api::GetType::kSubKeyLe;
+    if (st_type_ == ::fedb::api::GetType::kSubKeyEq) {
+        st_type_ = ::fedb::api::GetType::kSubKeyLe;
     }
-    if (!::rtidb::api::GetType_IsValid(st_type_)) {
+    if (!::fedb::api::GetType_IsValid(st_type_)) {
         PDLOG(WARNING, "invalid st type %s",
-              ::rtidb::api::GetType_Name(st_type_).c_str());
+              ::fedb::api::GetType_Name(st_type_).c_str());
         q_its_.clear();
         return;
     }
@@ -58,10 +58,10 @@ void CombineIterator::SeekToFirst() {
                 Seek(q_it.it.get(), st_, st_type_);
             } else {
                 switch (ttl_type_) {
-                    case ::rtidb::storage::TTLType::kAbsoluteTime:
+                    case ::fedb::storage::TTLType::kAbsoluteTime:
                         Seek(q_it.it.get(), st_, st_type_);
                         break;
-                    case ::rtidb::storage::TTLType::kAbsAndLat:
+                    case ::fedb::storage::TTLType::kAbsAndLat:
                         if (!SeekWithCount(q_it.it.get(), st_, st_type_,
                                            expire_cnt_, &q_it.iter_pos)) {
                             Seek(q_it.it.get(), st_, st_type_);
@@ -90,23 +90,23 @@ void CombineIterator::SelectIterator() {
             cur_ts = iter->it->GetKey();
             bool is_expire = false;
             switch (ttl_type_) {
-                case ::rtidb::storage::TTLType::kAbsoluteTime:
+                case ::fedb::storage::TTLType::kAbsoluteTime:
                     if (expire_time_ != 0 && cur_ts <= expire_time_) {
                         is_expire = true;
                     }
                     break;
-                case ::rtidb::storage::TTLType::kLatestTime:
+                case ::fedb::storage::TTLType::kLatestTime:
                     if (expire_cnt_ != 0 && iter->iter_pos >= expire_cnt_) {
                         is_expire = true;
                     }
                     break;
-                case ::rtidb::storage::TTLType::kAbsAndLat:
+                case ::fedb::storage::TTLType::kAbsAndLat:
                     if ((expire_cnt_ != 0 && iter->iter_pos >= expire_cnt_) &&
                         (expire_time_ != 0 && cur_ts <= expire_time_)) {
                         is_expire = true;
                     }
                     break;
-                case ::rtidb::storage::TTLType::kAbsOrLat:
+                case ::fedb::storage::TTLType::kAbsOrLat:
                     if ((expire_cnt_ != 0 && iter->iter_pos >= expire_cnt_) ||
                         (expire_time_ != 0 && cur_ts <= expire_time_)) {
                         is_expire = true;
@@ -147,9 +147,9 @@ bool CombineIterator::Valid() { return cur_qit_ != nullptr; }
 
 uint64_t CombineIterator::GetTs() { return cur_qit_->it->GetKey(); }
 
-rtidb::base::Slice CombineIterator::GetValue() {
+fedb::base::Slice CombineIterator::GetValue() {
     return cur_qit_->it->GetValue();
 }
 
 }  // namespace tablet
-}  // namespace rtidb
+}  // namespace fedb

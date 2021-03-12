@@ -24,7 +24,7 @@
 
 #include "timer.h"  // NOLINT
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 class IdGenerator {
@@ -54,4 +54,4 @@ class IdGenerator {
 };
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb

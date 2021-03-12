@@ -35,11 +35,11 @@ DECLARE_int32(request_timeout_ms);
 
 
 
-namespace rtidb {
+namespace fedb {
 namespace tablet {
 
 FileSender::FileSender(uint32_t tid, uint32_t pid,
-                       ::rtidb::common::StorageMode storage_mode,
+                       ::fedb::common::StorageMode storage_mode,
                        const std::string& endpoint)
     : tid_(tid),
       pid_(pid),
@@ -73,7 +73,7 @@ bool FileSender::Init() {
         PDLOG(WARNING, "init channel failed. endpoint[%s]", endpoint_.c_str());
         return false;
     }
-    stub_ = new ::rtidb::api::TabletServer_Stub(channel_);
+    stub_ = new ::fedb::api::TabletServer_Stub(channel_);
     return true;
 }
 
@@ -84,7 +84,7 @@ int FileSender::WriteData(const std::string& file_name,
         return -1;
     }
     uint64_t cur_time = ::baidu::common::timer::get_micros();
-    ::rtidb::api::SendDataRequest request;
+    ::fedb::api::SendDataRequest request;
     request.set_tid(tid_);
     request.set_pid(pid_);
     request.set_file_name(file_name);
@@ -101,7 +101,7 @@ int FileSender::WriteData(const std::string& file_name,
     if (len > 0 && len < FLAGS_stream_block_size) {
         request.set_eof(true);
     }
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::GeneralResponse response;
     stub_->SendData(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
         PDLOG(WARNING, "send data failed. tid %u pid %u file %s error msg %s",
@@ -136,7 +136,7 @@ int FileSender::SendFile(const std::string& file_name,
         return -1;
     }
     uint64_t file_size = 0;
-    if (!::rtidb::base::GetFileSize(full_path, file_size)) {
+    if (!::fedb::base::GetFileSize(full_path, file_size)) {
         PDLOG(WARNING, "get size failed. file[%s]", full_path.c_str());
         return -1;
     }
@@ -228,8 +228,8 @@ int FileSender::SendFileInternal(const std::string& file_name,
 
 int FileSender::CheckFile(const std::string& file_name,
                           const std::string& dir_name, uint64_t file_size) {
-    ::rtidb::api::CheckFileRequest check_request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::CheckFileRequest check_request;
+    ::fedb::api::GeneralResponse response;
     check_request.set_tid(tid_);
     check_request.set_pid(pid_);
     check_request.set_file(file_name);
@@ -259,7 +259,7 @@ int FileSender::CheckFile(const std::string& file_name,
 int FileSender::SendDir(const std::string& dir_name,
                         const std::string& full_path) {
     std::vector<std::string> file_vec;
-    ::rtidb::base::GetFileName(full_path, file_vec);
+    ::fedb::base::GetFileName(full_path, file_vec);
     for (const std::string& file : file_vec) {
         if (SendFile(file.substr(file.find_last_of("/") + 1), dir_name, file) <
             0) {
@@ -270,4 +270,4 @@ int FileSender::SendDir(const std::string& dir_name,
 }
 
 }  // namespace tablet
-}  // namespace rtidb
+}  // namespace fedb

@@ -20,7 +20,7 @@
 
 #include <string>
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 static inline uint32_t hash(const void* key, uint32_t len, uint32_t seed) {
@@ -116,6 +116,6 @@ static inline int64_t hash64(const std::string& key) {
 }
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_BASE_HASH_H_

@@ -21,10 +21,10 @@
 #include "catalog/schema_adapter.h"
 #include "glog/logging.h"
 
-namespace rtidb {
+namespace fedb {
 namespace catalog {
 
-SDKTableHandler::SDKTableHandler(const ::rtidb::nameserver::TableInfo& meta,
+SDKTableHandler::SDKTableHandler(const ::fedb::nameserver::TableInfo& meta,
         const ClientManager& client_manager)
     : meta_(meta), schema_(), name_(meta.name()), db_(meta.db()),
     table_client_manager_(std::make_shared<TableClientManager>(meta.table_partition(), client_manager)) {}
@@ -95,7 +95,7 @@ std::shared_ptr<::fesql::vm::Tablet> SDKTableHandler::GetTablet(const std::strin
     uint32_t pid = 0;
     uint32_t pid_num = meta_.table_partition_size();
     if (pid_num > 0) {
-        pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);
+        pid = (uint32_t)(::fedb::base::hash64(pk) % pid_num);
     }
     return table_client_manager_->GetTablet(pid);
 }
@@ -115,9 +115,9 @@ bool SDKTableHandler::GetTablet(std::vector<std::shared_ptr<TabletAccessor>>* ta
     return true;
 }
 
-bool SDKCatalog::Init(const std::vector<::rtidb::nameserver::TableInfo>& tables, const Procedures& db_sp_map) {
+bool SDKCatalog::Init(const std::vector<::fedb::nameserver::TableInfo>& tables, const Procedures& db_sp_map) {
     for (size_t i = 0; i < tables.size(); i++) {
-        const ::rtidb::nameserver::TableInfo& table_meta = tables[i];
+        const ::fedb::nameserver::TableInfo& table_meta = tables[i];
         std::shared_ptr<SDKTableHandler> table = std::make_shared<SDKTableHandler>(table_meta, *client_manager_);
         if (!table->Init()) {
             LOG(WARNING) << "fail to init table " << table_meta.name();
@@ -168,4 +168,4 @@ std::shared_ptr<::fesql::sdk::ProcedureInfo> SDKCatalog::GetProcedureInfo(
 }
 
 }  // namespace catalog
-}  // namespace rtidb
+}  // namespace fedb

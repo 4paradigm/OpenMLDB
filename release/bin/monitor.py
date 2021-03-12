@@ -23,10 +23,10 @@ method = ["put", "get", "scan", "query", "subquery", "batchquery", "sqlbatchrequ
 method_set = set(method)
 monitor_key = ["count", "error", "qps", "latency", "latency_50",
                "latency_90", "latency_99", "latency_999", "latency_9999", "max_latency"]
-rtidb_log = {
+fedb_log = {
     "tablet": [
         {
-            "file_name": "/rtidb_mon.log",
+            "file_name": "/fedb_mon.log",
             "offset": 0,
             "item": {
                 "name": "restart_num",
@@ -45,7 +45,7 @@ rtidb_log = {
         }],
     "ns": [
         {
-            "file_name": "/rtidb_ns_mon.log",
+            "file_name": "/fedb_ns_mon.log",
             "offset": 0,
             "item": {
                 "name": "restart_num",
@@ -183,10 +183,10 @@ if __name__ == "__main__":
     gauge = {}
     for cur_method in method:
         gauge[cur_method] = Gauge(
-            "rtidb_" + cur_method, cur_method, ["latency", "type"])
+            "fedb_" + cur_method, cur_method, ["latency", "type"])
 
-    gauge["log"] = Gauge("rtidb_log", "log", ["role", "type"])
-    gauge["memory"] = Gauge("rtidb_memory", "memory", ["role", "type"])
+    gauge["log"] = Gauge("fedb_log", "log", ["role", "type"])
+    gauge["memory"] = Gauge("fedb_memory", "memory", ["role", "type"])
 
     endpoint = ""
     if "endpoint" in conf_map:
@@ -213,10 +213,10 @@ if __name__ == "__main__":
                 os.rename(log_file_name, log_file_name + "." + last_date)
                 last_date = new_date
                 log_file = open(log_file_name, 'w')
-            for module in rtidb_log.keys():
+            for module in fedb_log.keys():
                 if module not in conf_map:
                     continue
-                for var in rtidb_log[module]:
+                for var in fedb_log[module]:
                     (count, offset) = search_key(
                         conf_map[module] + var["file_name"], var["offset"], var["item"]["key"])
                     if var["item"]["name"] == "restart_num":
@@ -225,8 +225,8 @@ if __name__ == "__main__":
                             log_file.write(time_stamp + "\t" +
                                            module + " start\n")
                             var["item"]["num"] += count
-                            rtidb_log[module][1]["item"]["offset"] = 0
-                            rtidb_log[module][1]["item"]["num"] = 0
+                            fedb_log[module][1]["item"]["offset"] = 0
+                            fedb_log[module][1]["item"]["num"] = 0
                         value = count - 1 if count > 0 else count
                         gauge["log"].labels(
                             module, var["item"]["name"]).set(var["item"]["num"])

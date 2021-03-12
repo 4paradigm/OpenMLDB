@@ -25,7 +25,7 @@
 #include "proto/tablet.pb.h"
 #include "storage/segment.h"
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 class KvIteratorTest : public ::testing::Test {
@@ -35,19 +35,19 @@ class KvIteratorTest : public ::testing::Test {
 };
 
 TEST_F(KvIteratorTest, Iterator_NULL) {
-    ::rtidb::api::ScanResponse* response = new ::rtidb::api::ScanResponse();
+    ::fedb::api::ScanResponse* response = new ::fedb::api::ScanResponse();
     KvIterator kv_it(response);
     ASSERT_FALSE(kv_it.Valid());
 }
 
 TEST_F(KvIteratorTest, Iterator_ONE) {
-    ::rtidb::api::ScanResponse* response = new ::rtidb::api::ScanResponse();
+    ::fedb::api::ScanResponse* response = new ::fedb::api::ScanResponse();
     std::string* pairs = response->mutable_pairs();
     pairs->resize(17);
     char* data = reinterpret_cast<char*>(&((*pairs)[0]));
-    ::rtidb::storage::DataBlock* db1 =
-        new ::rtidb::storage::DataBlock(1, "hello", 5);
-    ::rtidb::codec::Encode(9527, db1, data, 0);
+    ::fedb::storage::DataBlock* db1 =
+        new ::fedb::storage::DataBlock(1, "hello", 5);
+    ::fedb::codec::Encode(9527, db1, data, 0);
     KvIterator kv_it(response);
     ASSERT_TRUE(kv_it.Valid());
     ASSERT_EQ(9527, (int64_t)(kv_it.GetKey()));
@@ -57,17 +57,17 @@ TEST_F(KvIteratorTest, Iterator_ONE) {
 }
 
 TEST_F(KvIteratorTest, Iterator) {
-    ::rtidb::api::ScanResponse* response = new ::rtidb::api::ScanResponse();
+    ::fedb::api::ScanResponse* response = new ::fedb::api::ScanResponse();
 
     std::string* pairs = response->mutable_pairs();
     pairs->resize(34);
     char* data = reinterpret_cast<char*>(&((*pairs)[0]));
-    ::rtidb::storage::DataBlock* db1 =
-        new ::rtidb::storage::DataBlock(1, "hello", 5);
-    ::rtidb::storage::DataBlock* db2 =
-        new ::rtidb::storage::DataBlock(1, "hell1", 5);
-    ::rtidb::codec::Encode(9527, db1, data, 0);
-    ::rtidb::codec::Encode(9528, db2, data, 17);
+    ::fedb::storage::DataBlock* db1 =
+        new ::fedb::storage::DataBlock(1, "hello", 5);
+    ::fedb::storage::DataBlock* db2 =
+        new ::fedb::storage::DataBlock(1, "hell1", 5);
+    ::fedb::codec::Encode(9527, db1, data, 0);
+    ::fedb::codec::Encode(9528, db2, data, 17);
     KvIterator kv_it(response);
     ASSERT_TRUE(kv_it.Valid());
     ASSERT_EQ(9527, (signed)kv_it.GetKey());
@@ -81,18 +81,18 @@ TEST_F(KvIteratorTest, Iterator) {
 }
 
 TEST_F(KvIteratorTest, HasPK) {
-    ::rtidb::api::TraverseResponse* response =
-        new ::rtidb::api::TraverseResponse();
+    ::fedb::api::TraverseResponse* response =
+        new ::fedb::api::TraverseResponse();
 
     std::string* pairs = response->mutable_pairs();
     pairs->resize(52);
     char* data = reinterpret_cast<char*>(&((*pairs)[0]));
-    ::rtidb::storage::DataBlock* db1 =
-        new ::rtidb::storage::DataBlock(1, "hello", 5);
-    ::rtidb::storage::DataBlock* db2 =
-        new ::rtidb::storage::DataBlock(1, "hell1", 5);
-    ::rtidb::codec::EncodeFull("test1", 9527, db1, data, 0);
-    ::rtidb::codec::EncodeFull("test2", 9528, db2, data, 26);
+    ::fedb::storage::DataBlock* db1 =
+        new ::fedb::storage::DataBlock(1, "hello", 5);
+    ::fedb::storage::DataBlock* db2 =
+        new ::fedb::storage::DataBlock(1, "hell1", 5);
+    ::fedb::codec::EncodeFull("test1", 9527, db1, data, 0);
+    ::fedb::codec::EncodeFull("test2", 9528, db2, data, 26);
     KvIterator kv_it(response);
     ASSERT_TRUE(kv_it.Valid());
     ASSERT_STREQ("test1", kv_it.GetPK().c_str());
@@ -108,7 +108,7 @@ TEST_F(KvIteratorTest, HasPK) {
 }
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
