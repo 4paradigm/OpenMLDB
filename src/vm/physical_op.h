@@ -1597,19 +1597,19 @@ class PhysicalDistinctNode : public PhysicalUnaryNode {
 /**
  * Initialize expression replacer with schema change.
  */
-Status BuildColumnReplacement(const node::ExprNode* expr,
-                              const SchemasContext* origin_schema,
-                              const SchemasContext* rebase_schema,
-                              node::NodeManager* nm,
-                              passes::ExprReplacer* replacer);
+Status BuildColumnReplacement(const node::ExprNode *expr,
+                              const SchemasContext *origin_schema,
+                              const SchemasContext *rebase_schema,
+                              node::NodeManager *nm,
+                              passes::ExprReplacer *replacer);
 
 template <typename Component>
-static Status ReplaceComponentExpr(const Component& component,
-                                   const SchemasContext* origin_schema,
-                                   const SchemasContext* rebase_schema,
-                                   node::NodeManager* nm, Component* output) {
+static Status ReplaceComponentExpr(const Component &component,
+                                   const SchemasContext *origin_schema,
+                                   const SchemasContext *rebase_schema,
+                                   node::NodeManager *nm, Component *output) {
     *output = component;
-    std::vector<const node::ExprNode*> depend_columns;
+    std::vector<const node::ExprNode *> depend_columns;
     component.ResolvedRelatedColumns(&depend_columns);
     passes::ExprReplacer replacer;
     for (auto col_expr : depend_columns) {
@@ -1618,7 +1618,6 @@ static Status ReplaceComponentExpr(const Component& component,
     }
     return component.ReplaceExpr(replacer, nm, output);
 }
-
 
 }  // namespace vm
 }  // namespace fesql

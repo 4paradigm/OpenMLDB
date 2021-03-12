@@ -130,10 +130,10 @@ class CoreAPI {
                                              const bool need_free = false);
 
     // Row project API with Spark UnsafeRow optimization
-    static fesql::codec::Row UnsafeRowProject(const fesql::vm::RawPtrHandle fn,
+    static fesql::codec::Row UnsafeRowProject(
+        const fesql::vm::RawPtrHandle fn,
         fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
-        const int inputRowSizeInBytes,
-        const bool need_free = false);
+        const int inputRowSizeInBytes, const bool need_free = false);
 
     static void CopyRowToUnsafeRowBytes(const fesql::codec::Row inputRow,
                                         fesql::vm::ByteArrayPtr outputBytes,
@@ -147,12 +147,10 @@ class CoreAPI {
 
     // Window project API with Spark UnsafeRow optimization
     static fesql::codec::Row UnsafeWindowProject(
-        const fesql::vm::RawPtrHandle fn,
-        const uint64_t key, fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
-        const int inputRowSizeInBytes,
-        const bool is_instance,
-        size_t append_slices,
-        WindowInterface* window);
+        const fesql::vm::RawPtrHandle fn, const uint64_t key,
+        fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
+        const int inputRowSizeInBytes, const bool is_instance,
+        size_t append_slices, WindowInterface* window);
 
     static fesql::codec::Row WindowProject(const fesql::vm::RawPtrHandle fn,
                                            const uint64_t key, const Row row,

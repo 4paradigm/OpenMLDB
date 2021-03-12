@@ -20,10 +20,12 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "glog/logging.h"
 #include "proto/fe_type.pb.h"
 #include "vm/catalog.h"
+#include "vm/mem_catalog.h"
 
 namespace fesql {
 namespace vm {
@@ -57,12 +59,25 @@ class SimpleCatalogTableHandler : public TableHandler {
 
     RowIterator *GetRawIterator() override;
 
+    bool AddRow(const Row row);
+    bool DecodeKeysAndTs(const IndexSt &index, const int8_t *buf, uint32_t size,
+                         std::string &key, int64_t *time_ptr); //NOLINT
+
  private:
+    inline int32_t GetColumnIndex(const std::string &column) {
+        auto it = types_dict_.find(column);
+        if (it != types_dict_.end()) {
+            return it->second.idx;
+        }
+        return -1;
+    }
     std::string db_name_;
     fesql::type::TableDef table_def_;
-
     Types types_dict_;
     IndexHint index_hint_;
+    codec::RowView row_view_;
+    std::map<std::string, std::shared_ptr<MemPartitionHandler>> table_storage;
+    std::shared_ptr<MemTableHandler> full_table_storage_;
 };
 
 /**
@@ -70,7 +85,7 @@ class SimpleCatalogTableHandler : public TableHandler {
  */
 class SimpleCatalog : public Catalog {
  public:
-    SimpleCatalog();
+    explicit SimpleCatalog(const bool enable_index = false);
     SimpleCatalog(const SimpleCatalog &) = delete;
     ~SimpleCatalog();
 
@@ -80,7 +95,11 @@ class SimpleCatalog : public Catalog {
         const std::string &db, const std::string &table_name) override;
     bool IndexSupport() override;
 
+    bool InsertRows(const std::string &db, const std::string &table,
+                    const std::vector<Row> &row);
+
  private:
+    bool enable_index_;
     std::map<std::string,
              std::map<std::string, std::shared_ptr<SimpleCatalogTableHandler>>>
         table_handlers_;

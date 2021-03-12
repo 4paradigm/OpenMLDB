@@ -16,4 +16,4 @@
 #
 # style_check.sh
 
-python tools/cpplint.py --output=junit --root=. --recursive src/* 2> ./style.xml
+python tools/cpplint.py --output=junit --root=. --recursive src/* examples/toydb/src/* 2> ./style.xml

@@ -34,7 +34,6 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "tablet/tablet_catalog.h"
 #include "vm/sql_compiler.h"
 #include "vm/test_base.h"
 
@@ -144,47 +143,33 @@ TEST_P(RunnerTest, request_mode_test) {
     table_def4.set_name("t4");
     table_def5.set_name("t5");
     table_def6.set_name("t6");
-
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
-    std::shared_ptr<::fesql::storage::Table> table2(
-        new ::fesql::storage::Table(2, 1, table_def2));
-    std::shared_ptr<::fesql::storage::Table> table3(
-        new ::fesql::storage::Table(3, 1, table_def3));
-    std::shared_ptr<::fesql::storage::Table> table4(
-        new ::fesql::storage::Table(4, 1, table_def4));
-    std::shared_ptr<::fesql::storage::Table> table5(
-        new ::fesql::storage::Table(5, 1, table_def5));
-    std::shared_ptr<::fesql::storage::Table> table6(
-        new ::fesql::storage::Table(6, 1, table_def6));
-
     ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
     index->set_second_key("col5");
-    auto catalog = BuildCommonCatalog(table_def, table);
-    AddTable(catalog, table_def2, table2);
-    AddTable(catalog, table_def3, table3);
-    AddTable(catalog, table_def4, table4);
-    AddTable(catalog, table_def5, table5);
-    AddTable(catalog, table_def6, table6);
+
+    fesql::type::Database db;
+    db.set_name("db");
+    AddTable(db, table_def);
+    AddTable(db, table_def2);
+    AddTable(db, table_def3);
+    AddTable(db, table_def4);
+    AddTable(db, table_def5);
+    AddTable(db, table_def6);
     {
         fesql::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tb");
-        std::shared_ptr<::fesql::storage::Table> table(
-            new fesql::storage::Table(1, 1, table_def));
-        AddTable(catalog, table_def, table);
+        AddTable(db, table_def);
     }
     {
         fesql::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tc");
-        std::shared_ptr<::fesql::storage::Table> table(
-            new fesql::storage::Table(1, 1, table_def));
-        AddTable(catalog, table_def, table);
+        AddTable(db, table_def);
     }
+    auto catalog = BuildSimpleCatalog(db);
     RunnerCheck(catalog, sqlstr, kRequestMode);
 }
 
@@ -218,47 +203,32 @@ TEST_P(RunnerTest, batch_mode_test) {
     table_def4.set_name("t4");
     table_def5.set_name("t5");
     table_def6.set_name("t6");
-
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
-    std::shared_ptr<::fesql::storage::Table> table2(
-        new ::fesql::storage::Table(2, 1, table_def2));
-    std::shared_ptr<::fesql::storage::Table> table3(
-        new ::fesql::storage::Table(3, 1, table_def3));
-    std::shared_ptr<::fesql::storage::Table> table4(
-        new ::fesql::storage::Table(4, 1, table_def4));
-    std::shared_ptr<::fesql::storage::Table> table5(
-        new ::fesql::storage::Table(5, 1, table_def5));
-    std::shared_ptr<::fesql::storage::Table> table6(
-        new ::fesql::storage::Table(6, 1, table_def6));
-
     ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
     index->set_second_key("col5");
-    auto catalog = BuildCommonCatalog(table_def, table);
-    AddTable(catalog, table_def2, table2);
-    AddTable(catalog, table_def3, table3);
-    AddTable(catalog, table_def4, table4);
-    AddTable(catalog, table_def5, table5);
-    AddTable(catalog, table_def6, table6);
+    fesql::type::Database db;
+    db.set_name("db");
+    AddTable(db, table_def);
+    AddTable(db, table_def2);
+    AddTable(db, table_def3);
+    AddTable(db, table_def4);
+    AddTable(db, table_def5);
+    AddTable(db, table_def6);
     {
         fesql::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tb");
-        std::shared_ptr<::fesql::storage::Table> table(
-            new fesql::storage::Table(1, 1, table_def));
-        AddTable(catalog, table_def, table);
+        AddTable(db, table_def);
     }
     {
         fesql::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tc");
-        std::shared_ptr<::fesql::storage::Table> table(
-            new fesql::storage::Table(1, 1, table_def));
-        AddTable(catalog, table_def, table);
+        AddTable(db, table_def);
     }
+    auto catalog = BuildSimpleCatalog(db);
     RunnerCheck(catalog, sqlstr, kBatchMode);
 }
 
@@ -288,14 +258,15 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
     ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col3");
     index->add_first_keys("col4");
     index->set_second_key("col5");
-    auto catalog = BuildCommonCatalog(table_def, table);
+    fesql::type::Database db;
+    db.set_name("db");
+    AddTable(db, table_def);
+    auto catalog = BuildSimpleCatalog(db);
     RunnerCheck(catalog, sqlstr, kBatchMode);
 
     SQLCompiler sql_compiler(catalog);
@@ -327,14 +298,15 @@ TEST_F(RunnerTest, RunnerPrintDataTest) {
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
     ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col3");
     index->add_first_keys("col4");
     index->set_second_key("col5");
-    auto catalog = BuildCommonCatalog(table_def, table);
+    fesql::type::Database db;
+    db.set_name("db");
+    AddTable(db, table_def);
+    auto catalog = BuildSimpleCatalog(db);
     std::vector<Row> rows;
     fesql::type::TableDef temp_table;
     BuildRows(temp_table, rows);
@@ -389,14 +361,15 @@ TEST_F(RunnerTest, RunnerPrintDataMemTimeTableTest) {
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
     ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col3");
     index->add_first_keys("col4");
     index->set_second_key("col5");
-    auto catalog = BuildCommonCatalog(table_def, table);
+    fesql::type::Database db;
+    db.set_name("db");
+    AddTable(db, table_def);
+    auto catalog = BuildSimpleCatalog(db);
     std::vector<Row> rows;
     fesql::type::TableDef temp_table;
     BuildRows(temp_table, rows);

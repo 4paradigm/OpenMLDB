@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 set_property(GLOBAL PROPERTY PROP_SRC_FILE_LIST)
 set_property(GLOBAL PROPERTY PROP_TEST_SRC_FILE_LIST)
 
@@ -46,10 +44,7 @@ fesql_add_src_and_tests(udf)
 fesql_add_src_and_tests(node)
 fesql_add_src_and_tests(plan)
 fesql_add_src_and_tests(codegen)
-fesql_add_src_and_tests(storage)
-fesql_add_src_and_tests(dbms)
 fesql_add_src_and_tests(vm)
-fesql_add_src_and_tests(tablet)
 fesql_add_src_and_tests(codec)
 fesql_add_src_and_tests(case)
 fesql_add_src_and_tests(parser)
@@ -67,7 +62,7 @@ endif()
 add_library(fesql_flags STATIC ${CMAKE_SOURCE_DIR}/src/flags.cc)
 
 # fesql core library
-add_library(fesql_core STATIC ${SRC_FILE_LIST} ${PROJECT_SOURCE_DIR}/src/flags.cc  $<TARGET_OBJECTS:fesql_proto> $<TARGET_OBJECTS:fesql_parser>)
+add_library(fesql_core STATIC ${SRC_FILE_LIST} ${PROJECT_SOURCE_DIR}/src/flags.cc  $<TARGET_OBJECTS:fesql_proto> $<TARGET_OBJECTS:fesql_parser> case/case_data_mock.cc vm/engine_test_base.cc vm/test_base.cc)
 target_link_libraries(fesql_core
     ${yaml_libs} ${LLVM_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} fesql_flags)
 
@@ -89,17 +84,19 @@ if (TESTING_ENABLE)
 
             target_link_options(${TEST_TARGET_NAME} PRIVATE -rdynamic)
 	    target_link_libraries(${TEST_TARGET_NAME} gtest fesql_core fesql_flags
-                ${yaml_libs} ${BRPC_LIBS} sqlite3)
+                ${yaml_libs} ${BRPC_LIBS})
     	list(APPEND test_list ${TEST_TARGET_NAME})
 	endforeach()
 	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
-# fesql bin
-add_subdirectory(cmd)
-
 # fesql sdk
 add_subdirectory(sdk)
-
 # fesql bm
-add_subdirectory(bm)
+if (BENCHMARK_ENABLE)
+add_subdirectory(benchmark)
+endif()
+
+# udf exporter
+add_executable(export_udf_info cmd/export_udf_info.cc)
+target_link_libraries(export_udf_info fesql_core)
