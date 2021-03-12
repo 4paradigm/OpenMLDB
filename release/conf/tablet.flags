@@ -7,7 +7,7 @@
 
 # if tablet run as cluster mode zk_cluster and zk_root_path should be set
 #--zk_cluster=172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181
-#--zk_root_path=/rtidb_cluster
+#--zk_root_path=/fedb_cluster
 
 # concurrency conf
 # thread_pool_size建议和cpu核数一致

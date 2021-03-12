@@ -25,7 +25,7 @@
 #include "base/fe_strings.h"
 #include "glog/logging.h"
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 #define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
@@ -474,4 +474,4 @@ bool SQLRequestRowBatch::AddRow(std::shared_ptr<SQLRequestRow> row) {
 }
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb

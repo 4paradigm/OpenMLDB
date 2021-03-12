@@ -27,7 +27,7 @@ extern "C" {
 
 
 
-namespace rtidb {
+namespace fedb {
 namespace zk {
 
 static bool call_invoked = false;
@@ -151,7 +151,7 @@ TEST_F(ZkClientTest, ZkNodeChange) {
 }
 
 }  // namespace zk
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     srand(time(NULL));

@@ -31,12 +31,12 @@
 #include "vm/catalog.h"
 #include "catalog/base.h"
 
-namespace rtidb {
+namespace fedb {
 namespace catalog {
 
 class SDKTableHandler : public ::fesql::vm::TableHandler {
  public:
-    SDKTableHandler(const ::rtidb::nameserver::TableInfo& meta,
+    SDKTableHandler(const ::fedb::nameserver::TableInfo& meta,
             const ClientManager& client_manager);
 
     bool Init();
@@ -98,7 +98,7 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
     }
 
  private:
-    ::rtidb::nameserver::TableInfo meta_;
+    ::fedb::nameserver::TableInfo meta_;
     ::fesql::vm::Schema schema_;
     std::string name_;
     std::string db_;
@@ -123,7 +123,7 @@ class SDKCatalog : public ::fesql::vm::Catalog {
 
     ~SDKCatalog() {}
 
-    bool Init(const std::vector<::rtidb::nameserver::TableInfo>& tables,
+    bool Init(const std::vector<::fedb::nameserver::TableInfo>& tables,
             const Procedures& db_sp_map);
 
     std::shared_ptr<::fesql::type::Database> GetDatabase(const std::string& db) override {
@@ -150,5 +150,5 @@ class SDKCatalog : public ::fesql::vm::Catalog {
 };
 
 }  // namespace catalog
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_CATALOG_SDK_CATALOG_H_

@@ -31,11 +31,11 @@
 #include <string>
 #include "base/port.h"
 
-namespace rtidb {
+namespace fedb {
 namespace log {
 
 inline void EncodeFixed32(char* buf, uint32_t value) {
-    if (rtidb::base::kLittleEndian) {
+    if (fedb::base::kLittleEndian) {
         memcpy(buf, &value, sizeof(value));
     } else {
         buf[0] = value & 0xff;
@@ -46,7 +46,7 @@ inline void EncodeFixed32(char* buf, uint32_t value) {
 }
 
 inline void EncodeFixed64(char* buf, uint64_t value) {
-    if (rtidb::base::kLittleEndian) {
+    if (fedb::base::kLittleEndian) {
         memcpy(buf, &value, sizeof(value));
     } else {
         buf[0] = value & 0xff;
@@ -61,7 +61,7 @@ inline void EncodeFixed64(char* buf, uint64_t value) {
 }
 
 inline uint32_t DecodeFixed32(const char* ptr) {
-    if (rtidb::base::kLittleEndian) {
+    if (fedb::base::kLittleEndian) {
         // Load the raw bytes
         uint32_t result;
         memcpy(&result, ptr,
@@ -77,7 +77,7 @@ inline uint32_t DecodeFixed32(const char* ptr) {
 }
 
 inline uint64_t DecodeFixed64(const char* ptr) {
-    if (rtidb::base::kLittleEndian) {
+    if (fedb::base::kLittleEndian) {
         // Load the raw bytes
         uint64_t result;
         memcpy(&result, ptr,
@@ -91,6 +91,6 @@ inline uint64_t DecodeFixed64(const char* ptr) {
 }
 
 }  // namespace log
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_LOG_CODING_H_

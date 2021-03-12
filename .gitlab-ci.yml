@@ -36,7 +36,7 @@ build:
   artifacts:
     expire_in: 4h
     paths:
-      - build/bin/rtidb
+      - build/bin/fedb
       - build/bin/sql_sdk_test
       - build/bin/sql_cluster_test
       - build/bin/tablet_engine_test
@@ -55,7 +55,7 @@ daily_build:
   artifacts:
     expire_in: 4h
     paths:
-      - build/bin/rtidb
+      - build/bin/fedb
       - build/src/sdk/libsql_jsdk.so
       - build/sql_pysdk/dist/*.whl
       - build/python/dist/*.whl
@@ -65,17 +65,17 @@ daily_build:
 
 # mac_build:
 #   variables:
-#     CICD_RUNNER_TAG: "rtidb_mac"
+#     CICD_RUNNER_TAG: "fedb_mac"
 #   tags:
-#     - rtidb_mac
+#     - fedb_mac
 #   stage: build
 #   script:
 #     - bash steps/simple_compile_mac.sh
-#     - mv build/bin/rtidb build/bin/rtidb_mac
+#     - mv build/bin/fedb build/bin/fedb_mac
 #   artifacts:
 #     expire_in: 4h
 #     paths:
-#       - build/bin/rtidb_mac
+#       - build/bin/fedb_mac
 #       - build/src/sdk/libsql_jsdk.dylib
 #       - build/sql_pysdk/dist/*.whl
 #   only:
@@ -91,11 +91,6 @@ fesql_auto_test_level_0:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test.sh "0"
-  after_script:
-    - tar czf $CI_COMMIT_SHA  src/sdk/java/fesql-auto-test-java/target/allure-results
-    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
-    - curl -s "http://auto.4paradigm.com/job/fesql-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&allure_path=src/sdk/java/feql-auto-test-java/target/allure-results&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
-    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
   artifacts:
     reports:
       junit:
@@ -118,11 +113,6 @@ fesql_auto_test_level_cluster_0:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test_cluster.sh "0"
-  after_script:
-    - tar czf $CI_COMMIT_SHA  src/sdk/java/fesql-auto-test-java/target/allure-results
-    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
-    - curl -s "http://auto.4paradigm.com/job/fesql-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&allure_path=src/sdk/java/feql-auto-test-java/target/allure-results&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
-    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
   artifacts:
     reports:
       junit:
@@ -193,11 +183,6 @@ fesql_auto_test_level_1+:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test.sh "1,2,3,4,5"
-  after_script:
-    - tar czf $CI_COMMIT_SHA  src/sdk/java/fesql-auto-test-java/target/allure-results
-    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
-    - curl -s "http://auto.4paradigm.com/job/fesql-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&allure_path=src/sdk/java/feql-auto-test-java/target/allure-results&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
-    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
   artifacts:
     reports:
       junit:
@@ -220,11 +205,6 @@ fesql_auto_test_level_cluster_1+:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test_cluster.sh "1,2,3,4,5"
-  after_script:
-    - tar czf $CI_COMMIT_SHA  src/sdk/java/fesql-auto-test-java/target/allure-results
-    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
-    - curl -s "http://auto.4paradigm.com/job/fesql-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&allure_path=src/sdk/java/feql-auto-test-java/target/allure-results&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
-    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
   artifacts:
     reports:
       junit:
@@ -320,7 +300,7 @@ tablet_one_demension:
     - ln -sf /depends/thirdsrc thirdsrc
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
-    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
+    - cp -r /rambuild/fedb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
       junit:
@@ -341,7 +321,7 @@ tablet_multi_demension:
     - ln -sf /depends/thirdsrc thirdsrc
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
-    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
+    - cp -r /rambuild/fedb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
       junit:
@@ -362,7 +342,7 @@ ns_one_demension:
     - ln -sf /depends/thirdsrc thirdsrc
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
-    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
+    - cp -r /rambuild/fedb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
       junit:
@@ -382,7 +362,7 @@ ns_multi_demension:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
-    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
+    - cp -r /rambuild/fedb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
       junit:
@@ -448,12 +428,7 @@ fesql_auto_gen_case:
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_gen_test_by_rtidb.sh
-  after_script:
-    - tar czf $CI_COMMIT_SHA  src/sdk/java/fesql-auto-test-java/target/allure-results
-    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
-    - curl -s "http://auto.4paradigm.com/job/fesql-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&allure_path=src/sdk/java/feql-auto-test-java/target/allure-results&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
-    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_gen_test_by_fedb.sh
   artifacts:
     reports:
       junit:

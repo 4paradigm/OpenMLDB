@@ -25,7 +25,7 @@
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 
-namespace rtidb {
+namespace fedb {
 namespace codec {
 
 class SqlRpcRowCodecTest : public ::testing::Test {};
@@ -125,7 +125,7 @@ TEST_F(SqlRpcRowCodecTest, TestMultiSlice) {
 }
 
 }  // namespace codec
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

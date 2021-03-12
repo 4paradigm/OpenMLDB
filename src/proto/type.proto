@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package rtidb.type;
+package fedb.type;
 
 option cc_generic_services = false;
-option java_package = "com._4paradigm.rtidb.type";
+option java_package = "com._4paradigm.fedb.type";
 option java_outer_classname = "Type";
 
 enum DataType {

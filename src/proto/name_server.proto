@@ -17,10 +17,10 @@
 import "common.proto";
 import "tablet.proto";
 import "sql_procedure.proto";
-package rtidb.nameserver;
+package fedb.nameserver;
 
 option cc_generic_services = true;
-option java_package = "com._4paradigm.rtidb.ns";
+option java_package = "com._4paradigm.fedb.ns";
 option java_outer_classname = "NS";
 
 enum CompressType {
@@ -79,7 +79,7 @@ message UpdateTTLRequest {
     optional string ttl_type = 2 [default = "kAbsoluteTime", deprecated = true];
     optional uint64 value = 3 [default = 0, deprecated = true];
     optional string ts_name = 4;
-    optional rtidb.api.TTLDesc ttl_desc = 5;
+    optional fedb.api.TTLDesc ttl_desc = 5;
     optional string db = 6 [default = ""];
 }
 
@@ -100,11 +100,11 @@ message TableInfo {
     optional uint32 replica_num = 9; // contain the leader
     optional CompressType compress_type = 10 [default = kNoCompress];
     optional uint32 key_entry_max_height = 11;
-    repeated rtidb.common.ColumnDesc column_desc_v1 = 12;
-    repeated rtidb.common.ColumnKey column_key = 13;
-    optional rtidb.common.StorageMode storage_mode = 14 [default = kMemory];
-    repeated rtidb.common.ColumnDesc added_column_desc = 15;
-    optional rtidb.api.TTLDesc ttl_desc = 16;
+    repeated fedb.common.ColumnDesc column_desc_v1 = 12;
+    repeated fedb.common.ColumnKey column_key = 13;
+    optional fedb.common.StorageMode storage_mode = 14 [default = kMemory];
+    repeated fedb.common.ColumnDesc added_column_desc = 15;
+    optional fedb.api.TTLDesc ttl_desc = 16;
     optional uint32 format_version = 17 [default = 0];
     optional string db = 18 [default = ""];
     repeated string partition_key = 19;
@@ -114,13 +114,13 @@ message TableInfo {
 message CreateTableRequest {
     required TableInfo table_info = 1;
     optional ZoneInfo zone_info = 2;
-    optional rtidb.api.TaskInfo task_info = 3;
+    optional fedb.api.TaskInfo task_info = 3;
 }
 
 message DropTableRequest {
     required string name = 1;
     optional ZoneInfo zone_info = 2;
-    optional rtidb.api.TaskInfo task_info = 3;
+    optional fedb.api.TaskInfo task_info = 3;
     optional string db = 4 [default = ""];
 }
 
@@ -129,7 +129,7 @@ message LoadTableRequest {
     optional string endpoint = 2;
     optional uint32 pid = 3;
     optional ZoneInfo zone_info = 4;
-    optional rtidb.api.TaskInfo task_info = 5;
+    optional fedb.api.TaskInfo task_info = 5;
     optional string db = 6 [default = ""];
 }
 
@@ -174,7 +174,7 @@ message AddReplicaNSRequest {
     repeated uint32 pid_group = 4;
     repeated string endpoint_group = 5; //for remote
     optional ZoneInfo zone_info = 6; //for remote
-    optional rtidb.api.TaskInfo task_info = 7; //for remote
+    optional fedb.api.TaskInfo task_info = 7; //for remote
     optional string db = 8 [default = ""];
 }
 
@@ -228,7 +228,7 @@ message ShowTabletRequest {}
 
 message AddTableFieldRequest {
     optional string name = 1;
-    optional rtidb.common.ColumnDesc column_desc = 2;
+    optional fedb.common.ColumnDesc column_desc = 2;
     optional string db = 3 [default = ""];
 }
 
@@ -301,7 +301,7 @@ message ChangeLeaderData {
     optional string leader = 6;
     repeated string follower = 7;
     optional string candidate_leader = 8;
-    repeated rtidb.common.EndpointAndTid remote_follower = 9;
+    repeated fedb.common.EndpointAndTid remote_follower = 9;
     optional string db = 10 [default = ""];
 }
 
@@ -423,7 +423,7 @@ message SetSdkEndpointRequest {
 message AddIndexMeta {
     optional string name = 1;
     optional uint32 pid = 2;
-    optional rtidb.common.ColumnKey column_key = 3;
+    optional fedb.common.ColumnKey column_key = 3;
     optional uint32 idx = 4;
     optional string db = 5 [default = ""];
     optional bool skip_data = 6 [default = false];
@@ -431,9 +431,9 @@ message AddIndexMeta {
 
 message AddIndexRequest {
     optional string name = 1;
-    optional rtidb.common.ColumnKey column_key = 2;
+    optional fedb.common.ColumnKey column_key = 2;
     optional string db = 3 [default = ""];
-    repeated rtidb.common.ColumnDesc cols = 4;
+    repeated fedb.common.ColumnDesc cols = 4;
 }
 
 message DeleteIndexRequest {
@@ -471,7 +471,7 @@ message ShowSdkEndpointResponse {
 message ShowCatalogRequest {}
 
 message ShowCatalogResponse {
-    repeated rtidb.common.CatalogInfo catalog = 1;
+    repeated fedb.common.CatalogInfo catalog = 1;
     optional int32 code = 2;
     optional string msg = 3;
 }
@@ -506,8 +506,8 @@ service NameServer {
     rpc AddReplicaClusterByNs(ReplicaClusterByNsRequest) returns (AddReplicaClusterByNsResponse);
     rpc RemoveReplicaClusterByNs(ReplicaClusterByNsRequest) returns (GeneralResponse);
     rpc SwitchMode(SwitchModeRequest) returns (GeneralResponse);
-    rpc GetTaskStatus(rtidb.api.TaskStatusRequest) returns (rtidb.api.TaskStatusResponse);
-    rpc DeleteOPTask(rtidb.api.DeleteTaskRequest) returns (rtidb.api.GeneralResponse);
+    rpc GetTaskStatus(fedb.api.TaskStatusRequest) returns (fedb.api.TaskStatusResponse);
+    rpc DeleteOPTask(fedb.api.DeleteTaskRequest) returns (fedb.api.GeneralResponse);
     rpc CreateTableInfo(CreateTableInfoRequest) returns (CreateTableInfoResponse);
     rpc CreateTableInfoSimply(CreateTableInfoRequest) returns (CreateTableInfoResponse);
     rpc LoadTable(LoadTableRequest) returns (GeneralResponse);
@@ -524,6 +524,6 @@ service NameServer {
     rpc ShowCatalog(ShowCatalogRequest) returns (ShowCatalogResponse);
 
     // sql procedure interfaces
-    rpc CreateProcedure(rtidb.api.CreateProcedureRequest) returns (GeneralResponse);
-    rpc DropProcedure(rtidb.api.DropProcedureRequest) returns (GeneralResponse);
+    rpc CreateProcedure(fedb.api.CreateProcedureRequest) returns (GeneralResponse);
+    rpc DropProcedure(fedb.api.DropProcedureRequest) returns (GeneralResponse);
 }

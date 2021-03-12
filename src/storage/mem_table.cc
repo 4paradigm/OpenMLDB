@@ -34,15 +34,15 @@ DECLARE_uint32(absolute_default_skiplist_height);
 DECLARE_uint32(latest_default_skiplist_height);
 DECLARE_uint32(max_traverse_cnt);
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 static const uint32_t SEED = 0xe17a1465;
 
 MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t seg_cnt,
-                   const std::map<std::string, uint32_t>& mapping, uint64_t ttl, ::rtidb::api::TTLType ttl_type)
-    : Table(::rtidb::common::StorageMode::kMemory, name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping, ttl_type,
-            ::rtidb::api::CompressType::kNoCompress),
+                   const std::map<std::string, uint32_t>& mapping, uint64_t ttl, ::fedb::api::TTLType ttl_type)
+    : Table(::fedb::common::StorageMode::kMemory, name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping, ttl_type,
+            ::fedb::api::CompressType::kNoCompress),
       seg_cnt_(seg_cnt),
       segments_(MAX_INDEX_NUM, NULL),
       enable_gc_(true),
@@ -50,10 +50,10 @@ MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t 
       segment_released_(false),
       record_byte_size_(0) {}
 
-MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta)
+MemTable::MemTable(const ::fedb::api::TableMeta& table_meta)
     : Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(), 0, true, 60 * 1000,
-            std::map<std::string, uint32_t>(), ::rtidb::api::TTLType::kAbsoluteTime,
-            ::rtidb::api::CompressType::kNoCompress),
+            std::map<std::string, uint32_t>(), ::fedb::api::TTLType::kAbsoluteTime,
+            ::fedb::api::CompressType::kNoCompress),
       segments_(MAX_INDEX_NUM, NULL) {
     seg_cnt_ = 8;
     enable_gc_ = true;
@@ -124,15 +124,15 @@ bool MemTable::Init() {
     return true;
 }
 
-void MemTable::SetCompressType(::rtidb::api::CompressType compress_type) { compress_type_ = compress_type; }
+void MemTable::SetCompressType(::fedb::api::CompressType compress_type) { compress_type_ = compress_type; }
 
-::rtidb::api::CompressType MemTable::GetCompressType() { return compress_type_; }
+::fedb::api::CompressType MemTable::GetCompressType() { return compress_type_; }
 
 bool MemTable::Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) {
     if (segments_.empty()) return false;
     uint32_t index = 0;
     if (seg_cnt_ > 1) {
-        index = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+        index = ::fedb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
     }
     Segment* segment = segments_[0][index];
     Slice spk(pk);
@@ -184,10 +184,10 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
         if (need_put) {
             uint32_t seg_idx = 0;
             if (seg_cnt_ > 1) {
-                seg_idx = ::rtidb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
+                seg_idx = ::fedb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
             }
             Segment* segment = segments_[kv.first][seg_idx];
-            segment->Put(::rtidb::base::Slice(kv.second), time, block);
+            segment->Put(::fedb::base::Slice(kv.second), time, block);
         }
     }
     record_cnt_.fetch_add(1, std::memory_order_relaxed);
@@ -249,10 +249,10 @@ bool MemTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsio
         if (need_put) {
             uint32_t seg_idx = 0;
             if (seg_cnt_ > 1) {
-                seg_idx = ::rtidb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
+                seg_idx = ::fedb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
             }
             Segment* segment = segments_[kv.first][seg_idx];
-            segment->Put(::rtidb::base::Slice(kv.second), ts_dimemsions, block);
+            segment->Put(::fedb::base::Slice(kv.second), ts_dimemsions, block);
         }
     }
     record_cnt_.fetch_add(1, std::memory_order_relaxed);
@@ -267,7 +267,7 @@ bool MemTable::Put(const Slice& pk, uint64_t time, DataBlock* row, uint32_t idx)
     }
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
-        seg_idx = ::rtidb::base::hash(pk.data(), pk.size(), SEED) % seg_cnt_;
+        seg_idx = ::fedb::base::hash(pk.data(), pk.size(), SEED) % seg_cnt_;
     }
     uint32_t real_idx = index_def->GetInnerPos();
     Segment* segment = segments_[real_idx][seg_idx];
@@ -283,7 +283,7 @@ bool MemTable::Delete(const std::string& pk, uint32_t idx) {
     Slice spk(pk);
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
-        seg_idx = ::rtidb::base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
+        seg_idx = ::fedb::base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
     }
     uint32_t real_idx = index_def->GetInnerPos();
     Segment* segment = segments_[real_idx][seg_idx];
@@ -383,7 +383,7 @@ void MemTable::SchedGc() {
 // tll as ms
 uint64_t MemTable::GetExpireTime(const TTLSt& ttl_st) {
     if (!enable_gc_.load(std::memory_order_relaxed) || ttl_st.abs_ttl == 0 ||
-            ttl_st.ttl_type == ::rtidb::storage::TTLType::kLatestTime) {
+            ttl_st.ttl_type == ::fedb::storage::TTLType::kLatestTime) {
         return 0;
     }
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
@@ -391,8 +391,8 @@ uint64_t MemTable::GetExpireTime(const TTLSt& ttl_st) {
 }
 
 bool MemTable::CheckLatest(uint32_t index_id, int32_t ts_idx, const std::string& key, uint64_t ts) {
-    ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::TableIterator* it = nullptr;
+    ::fedb::storage::Ticket ticket;
+    ::fedb::storage::TableIterator* it = nullptr;
     if (ts_idx >= 0) {
         it = NewIterator(index_id, ts_idx, key, ticket);
     } else {
@@ -467,16 +467,16 @@ bool MemTable::IsExpire(const LogEntry& entry) {
             bool is_expire = false;
             uint32_t index_id = index_def->GetId();
             switch (ttl_type) {
-                case ::rtidb::storage::TTLType::kLatestTime:
+                case ::fedb::storage::TTLType::kLatestTime:
                     is_expire = CheckLatest(index_id, ts_idx, kv.second, ts);
                     break;
-                case ::rtidb::storage::TTLType::kAbsoluteTime:
+                case ::fedb::storage::TTLType::kAbsoluteTime:
                     is_expire = CheckAbsolute(*ttl, ts);
                     break;
-                case ::rtidb::storage::TTLType::kAbsOrLat:
+                case ::fedb::storage::TTLType::kAbsOrLat:
                     is_expire = CheckAbsolute(*ttl, ts) || CheckLatest(index_id, ts_idx, kv.second, ts);
                     break;
-                case ::rtidb::storage::TTLType::kAbsAndLat:
+                case ::fedb::storage::TTLType::kAbsAndLat:
                     is_expire = CheckAbsolute(*ttl, ts) && CheckLatest(index_id, ts_idx, kv.second, ts);
                     break;
                 default:
@@ -497,7 +497,7 @@ int MemTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
     }
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
-        seg_idx = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+        seg_idx = ::fedb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
     }
     Slice spk(pk);
     uint32_t real_idx = index_def->GetInnerPos();
@@ -517,7 +517,7 @@ int MemTable::GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk, u
     }
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
-        seg_idx = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+        seg_idx = ::fedb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
     }
     Slice spk(pk);
     uint32_t real_idx = index_def->GetInnerPos();
@@ -535,7 +535,7 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
     }
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
-        seg_idx = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+        seg_idx = ::fedb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
     }
     Slice spk(pk);
     uint32_t real_idx = index_def->GetInnerPos();
@@ -555,7 +555,7 @@ TableIterator* MemTable::NewIterator(uint32_t index, int32_t ts_idx, const std::
     }
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
-        seg_idx = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+        seg_idx = ::fedb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
     }
     Slice spk(pk);
     uint32_t real_idx = index_def->GetInnerPos();
@@ -641,7 +641,7 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     return true;
 }
 
-bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
+bool MemTable::AddIndex(const ::fedb::common::ColumnKey& column_key) {
     // TODO(denglong): support ttl type and merge index
     std::shared_ptr<IndexDef> index_def = GetIndex(column_key.index_name());
     if (index_def) {
@@ -651,7 +651,7 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
         }
         table_meta_.mutable_column_key(index_def->GetId())->CopyFrom(column_key);
     } else {
-        ::rtidb::common::ColumnKey* added_column_key = table_meta_.add_column_key();
+        ::fedb::common::ColumnKey* added_column_key = table_meta_.add_column_key();
         added_column_key->CopyFrom(column_key);
     }
     if (!index_def) {
@@ -691,7 +691,7 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
         segments_[inner_id] = seg_arr;
         if (column_key.ts_name_size() > 0) {
             auto ts_col = std::make_shared<ColumnDef>(column_key.ts_name(0), 0,
-                    ::rtidb::type::kTimestamp, true, ts_mapping_[column_key.ts_name(0)]);
+                    ::fedb::type::kTimestamp, true, ts_mapping_[column_key.ts_name(0)]);
             index_def->SetTsColumn(ts_col);
             auto index_vec = table_index_.GetAllIndex();
             bool has_set_ttl = false;
@@ -710,16 +710,16 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
         } else {
             const auto& table_meta = GetTableMeta();
             if (table_meta.has_ttl_desc()) {
-                index_def->SetTTL(::rtidb::storage::TTLSt(table_meta.ttl_desc()));
+                index_def->SetTTL(::fedb::storage::TTLSt(table_meta.ttl_desc()));
             } else {
                 uint64_t abs_ttl = 0;
                 uint64_t lat_ttl = 0;
-                if (table_meta.ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime) {
+                if (table_meta.ttl_type() == ::fedb::api::TTLType::kAbsoluteTime) {
                     abs_ttl = table_meta.ttl() * 60 * 1000;
                 } else {
                     lat_ttl = table_meta.ttl();
                 }
-                index_def->SetTTL(::rtidb::storage::TTLSt(abs_ttl, lat_ttl,
+                index_def->SetTTL(::fedb::storage::TTLSt(abs_ttl, lat_ttl,
                             TTLSt::ConvertTTLType(table_meta.ttl_type())));
             }
         }
@@ -835,7 +835,7 @@ TableIterator* MemTable::NewTraverseIterator(uint32_t index, uint32_t ts_index) 
                 expire_time, expire_cnt, ts_index);
 }
 
-MemTableKeyIterator::MemTableKeyIterator(Segment** segments, uint32_t seg_cnt, ::rtidb::storage::TTLType ttl_type,
+MemTableKeyIterator::MemTableKeyIterator(Segment** segments, uint32_t seg_cnt, ::fedb::storage::TTLType ttl_type,
                                          uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index)
     : segments_(segments),
       seg_cnt_(seg_cnt),
@@ -879,7 +879,7 @@ void MemTableKeyIterator::Seek(const std::string& key) {
     }
     ticket_.Pop();
     if (seg_cnt_ > 1) {
-        seg_idx_ = ::rtidb::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
+        seg_idx_ = ::fedb::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
     }
     Slice spk(key);
     pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
@@ -955,7 +955,7 @@ void MemTableKeyIterator::NextPK() {
 }
 
 MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt,
-                                                   ::rtidb::storage::TTLType ttl_type,
+                                                   ::fedb::storage::TTLType ttl_type,
                                                    uint64_t expire_time, uint64_t expire_cnt,
                                                    uint32_t ts_index)
     : segments_(segments),
@@ -1050,7 +1050,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
     }
     ticket_.Pop();
     if (seg_cnt_ > 1) {
-        seg_idx_ = ::rtidb::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
+        seg_idx_ = ::fedb::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
     }
     Slice spk(key);
     pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
@@ -1073,7 +1073,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
                 NextPK();
             }
         } else {
-            if (expire_value_.ttl_type == ::rtidb::storage::TTLType::kLatestTime) {
+            if (expire_value_.ttl_type == ::fedb::storage::TTLType::kLatestTime) {
                 it_->SeekToFirst();
                 record_idx_ = 1;
                 while (it_->Valid() && record_idx_ <= expire_value_.lat_ttl) {
@@ -1101,8 +1101,8 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
     }
 }
 
-rtidb::base::Slice MemTableTraverseIterator::GetValue() const {
-    return rtidb::base::Slice(it_->GetValue()->data, it_->GetValue()->size);
+fedb::base::Slice MemTableTraverseIterator::GetValue() const {
+    return fedb::base::Slice(it_->GetValue()->data, it_->GetValue()->size);
 }
 
 uint64_t MemTableTraverseIterator::GetKey() const {
@@ -1162,4 +1162,4 @@ void MemTableTraverseIterator::SeekToFirst() {
 }
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb

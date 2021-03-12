@@ -34,7 +34,7 @@ DECLARE_uint32(write_buffer_mb);
 DECLARE_uint32(block_cache_shardbits);
 DECLARE_bool(verify_compression);
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 static rocksdb::Options ssd_option_template;
@@ -43,11 +43,11 @@ static bool options_template_initialized = false;
 
 DiskTable::DiskTable(const std::string& name, uint32_t id, uint32_t pid,
                      const std::map<std::string, uint32_t>& mapping,
-                     uint64_t ttl, ::rtidb::api::TTLType ttl_type,
-                     ::rtidb::common::StorageMode storage_mode,
+                     uint64_t ttl, ::fedb::api::TTLType ttl_type,
+                     ::fedb::common::StorageMode storage_mode,
                      const std::string& db_root_path)
     : Table(storage_mode, name, id, pid, ttl * 60 * 1000, true, 0, mapping,
-            ttl_type, ::rtidb::api::CompressType::kNoCompress),
+            ttl_type, ::fedb::api::CompressType::kNoCompress),
       write_opts_(),
       offset_(0),
       db_root_path_(db_root_path) {
@@ -59,12 +59,12 @@ DiskTable::DiskTable(const std::string& name, uint32_t id, uint32_t pid,
     ttl_type_ = TTLSt::ConvertTTLType(ttl_type);
 }
 
-DiskTable::DiskTable(const ::rtidb::api::TableMeta& table_meta,
+DiskTable::DiskTable(const ::fedb::api::TableMeta& table_meta,
                      const std::string& db_root_path)
     : Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(),
             table_meta.pid(), 0, true, 0, std::map<std::string, uint32_t>(),
-            ::rtidb::api::TTLType::kAbsoluteTime,
-            ::rtidb::api::CompressType::kNoCompress),
+            ::fedb::api::TTLType::kAbsoluteTime,
+            ::fedb::api::CompressType::kNoCompress),
       write_opts_(),
       offset_(0),
       db_root_path_(db_root_path) {
@@ -174,7 +174,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
     auto inner_indexs = table_index_.GetAllInnerIndex();
     for (const auto& inner_index : *inner_indexs) {
         rocksdb::ColumnFamilyOptions cfo;
-        if (storage_mode_ == ::rtidb::common::StorageMode::kSSD) {
+        if (storage_mode_ == ::fedb::common::StorageMode::kSSD) {
             cfo = rocksdb::ColumnFamilyOptions(ssd_option_template);
             options_ = ssd_option_template;
         } else {
@@ -185,8 +185,8 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
         const auto& indexs = inner_index->GetIndex();
         auto index_def = indexs.front();
-        if (index_def->GetTTLType() == ::rtidb::storage::TTLType::kAbsoluteTime ||
-            index_def->GetTTLType() == ::rtidb::storage::TTLType::kAbsOrLat) {
+        if (index_def->GetTTLType() == ::fedb::storage::TTLType::kAbsoluteTime ||
+            index_def->GetTTLType() == ::fedb::storage::TTLType::kAbsOrLat) {
             cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(inner_index);
         }
         cf_ds_.push_back(
@@ -204,7 +204,7 @@ bool DiskTable::Init() {
     InitColumnFamilyDescriptor();
     std::string path = db_root_path_ + "/" + std::to_string(id_) + "_" +
                        std::to_string(pid_) + "/data";
-    if (!::rtidb::base::MkdirRecur(path)) {
+    if (!::fedb::base::MkdirRecur(path)) {
         PDLOG(WARNING, "fail to create path %s", path.c_str());
         return false;
     }
@@ -412,7 +412,7 @@ bool DiskTable::LoadTable() {
     InitColumnFamilyDescriptor();
     std::string path = db_root_path_ + "/" + std::to_string(id_) + "_" +
                        std::to_string(pid_) + "/data";
-    if (!rtidb::base::IsExists(path)) {
+    if (!fedb::base::IsExists(path)) {
         return false;
     }
     options_.create_if_missing = false;
@@ -431,11 +431,11 @@ bool DiskTable::LoadTable() {
 }
 
 void DiskTable::SchedGc() {
-    if (ttl_type_ == ::rtidb::storage::TTLType::kLatestTime) {
+    if (ttl_type_ == ::fedb::storage::TTLType::kLatestTime) {
         GcHead();
-    } else if (ttl_type_ == ::rtidb::storage::TTLType::kAbsAndLat) {
+    } else if (ttl_type_ == ::fedb::storage::TTLType::kAbsAndLat) {
         GcTTLAndHead();
-    } else if (ttl_type_ == ::rtidb::storage::TTLType::kAbsOrLat) {
+    } else if (ttl_type_ == ::fedb::storage::TTLType::kAbsOrLat) {
         GcTTLOrHead();
     } else {
         // rocksdb will delete expired key when compact
@@ -584,14 +584,14 @@ void DiskTable::GcTTLAndHead() {}
 
 // ttl as ms
 uint64_t DiskTable::GetExpireTime(const TTLSt& ttl_st) {
-    if (ttl_st.abs_ttl == 0 || ttl_st.ttl_type == ::rtidb::storage::TTLType::kLatestTime) {
+    if (ttl_st.abs_ttl == 0 || ttl_st.ttl_type == ::fedb::storage::TTLType::kLatestTime) {
         return 0;
     }
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     return cur_time - ttl_st.abs_ttl;
 }
 
-bool DiskTable::IsExpire(const ::rtidb::api::LogEntry& entry) {
+bool DiskTable::IsExpire(const ::fedb::api::LogEntry& entry) {
     // TODO(denglong)
     return false;
 }
@@ -751,9 +751,9 @@ bool DiskTableIterator::Valid() {
 
 void DiskTableIterator::Next() { return it_->Next(); }
 
-rtidb::base::Slice DiskTableIterator::GetValue() const {
+fedb::base::Slice DiskTableIterator::GetValue() const {
     rocksdb::Slice value = it_->value();
-    return rtidb::base::Slice(value.data(), value.size());
+    return fedb::base::Slice(value.data(), value.size());
 }
 
 std::string DiskTableIterator::GetPK() const { return pk_; }
@@ -782,7 +782,7 @@ void DiskTableIterator::Seek(const uint64_t ts) {
 
 DiskTableTraverseIterator::DiskTableTraverseIterator(
     rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
-    ::rtidb::storage::TTLType ttl_type, const uint64_t& expire_time,
+    ::fedb::storage::TTLType ttl_type, const uint64_t& expire_time,
     const uint64_t& expire_cnt)
     : db_(db),
       it_(it),
@@ -795,7 +795,7 @@ DiskTableTraverseIterator::DiskTableTraverseIterator(
 
 DiskTableTraverseIterator::DiskTableTraverseIterator(
     rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
-    ::rtidb::storage::TTLType ttl_type, const uint64_t& expire_time,
+    ::fedb::storage::TTLType ttl_type, const uint64_t& expire_time,
     const uint64_t& expire_cnt, int32_t ts_idx)
     : db_(db),
       it_(it),
@@ -856,9 +856,9 @@ void DiskTableTraverseIterator::Next() {
     }
 }
 
-rtidb::base::Slice DiskTableTraverseIterator::GetValue() const {
+fedb::base::Slice DiskTableTraverseIterator::GetValue() const {
     rocksdb::Slice value = it_->value();
-    return rtidb::base::Slice(value.data(), value.size());
+    return fedb::base::Slice(value.data(), value.size());
 }
 
 std::string DiskTableTraverseIterator::GetPK() const { return pk_; }
@@ -901,7 +901,7 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
         combine = CombineKeyTs(pk, time);
     }
     it_->Seek(rocksdb::Slice(combine));
-    if (expire_value_.ttl_type == ::rtidb::storage::TTLType::kLatestTime) {
+    if (expire_value_.ttl_type == ::fedb::storage::TTLType::kLatestTime) {
         record_idx_ = 0;
         for (; it_->Valid(); it_->Next()) {
             uint8_t cur_ts_idx = UINT8_MAX;
@@ -1035,4 +1035,4 @@ void DiskTableTraverseIterator::NextPK() {
 }
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb

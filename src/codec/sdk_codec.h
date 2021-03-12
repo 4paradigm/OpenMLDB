@@ -26,19 +26,19 @@
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
 
-namespace rtidb {
+namespace fedb {
 namespace codec {
 
-using Index = google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>;
+using Index = google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>;
 using Dimension = std::vector<std::pair<std::string, uint32_t>>;
-using Schema = google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>;
-using VerSchema = google::protobuf::RepeatedPtrField<rtidb::common::VersionPair>;
+using Schema = google::protobuf::RepeatedPtrField<fedb::common::ColumnDesc>;
+using VerSchema = google::protobuf::RepeatedPtrField<fedb::common::VersionPair>;
 
 class SDKCodec {
  public:
-    explicit SDKCodec(const ::rtidb::nameserver::TableInfo& table_info);
+    explicit SDKCodec(const ::fedb::nameserver::TableInfo& table_info);
 
-    explicit SDKCodec(const ::rtidb::api::TableMeta& table_info);
+    explicit SDKCodec(const ::fedb::api::TableMeta& table_info);
 
     int EncodeDimension(const std::map<std::string, std::string>& raw_data,
                         uint32_t pid_num,
@@ -72,7 +72,7 @@ class SDKCodec {
  private:
     Schema schema_;
     Index index_;
-    std::vector<::rtidb::codec::ColumnDesc> old_schema_;
+    std::vector<::fedb::codec::ColumnDesc> old_schema_;
     std::map<std::string, uint32_t> schema_idx_map_;
     std::vector<uint32_t> ts_idx_;
     std::vector<uint32_t> partition_col_idx_;
@@ -84,4 +84,4 @@ class SDKCodec {
 };
 
 }  // namespace codec
-}  // namespace rtidb
+}  // namespace fedb

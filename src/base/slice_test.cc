@@ -18,7 +18,7 @@
 #include "base/slice.h"
 #include "gtest/gtest.h"
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 class SliceTest : public ::testing::Test {
@@ -45,7 +45,7 @@ TEST_F(SliceTest, Assign) {
 }
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

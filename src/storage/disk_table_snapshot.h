@@ -24,13 +24,13 @@
 #include "storage/snapshot.h"
 #include "storage/table.h"
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 class DiskTableSnapshot : public Snapshot {
  public:
     DiskTableSnapshot(uint32_t tid, uint32_t pid,
-                      ::rtidb::common::StorageMode storage_mode,
+                      ::fedb::common::StorageMode storage_mode,
                       const std::string& db_root_path);
     virtual ~DiskTableSnapshot() = default;
     bool Init() override;
@@ -41,10 +41,10 @@ class DiskTableSnapshot : public Snapshot {
     void SetTerm(uint64_t term) { term_ = term; }
 
  private:
-    ::rtidb::common::StorageMode storage_mode_;
+    ::fedb::common::StorageMode storage_mode_;
     uint64_t term_;
     std::string db_root_path_;
 };
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb

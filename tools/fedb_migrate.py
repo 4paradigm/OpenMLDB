@@ -23,9 +23,9 @@ USE_SHELL = sys.platform.startswith( "win" )
 from optparse import OptionParser
 parser = OptionParser()
 
-parser.add_option("--rtidb_bin_path", 
-                  dest="rtidb_bin_path",
-                  help="the rtidb bin path")
+parser.add_option("--fedb_bin_path", 
+                  dest="fedb_bin_path",
+                  help="the fedb bin path")
 
 parser.add_option("--zk_cluster", 
                   dest="zk_cluster",
@@ -48,7 +48,7 @@ parser.add_option("--showtable_path",
                   help="the path of showtable result file")
 
 (options, args) = parser.parse_args()
-common_cmd =  [options.rtidb_bin_path, "--zk_cluster=" + options.zk_cluster, "--zk_root_path=" + options.zk_root_path, "--role=ns_client", "--interactive=false"]
+common_cmd =  [options.fedb_bin_path, "--zk_cluster=" + options.zk_cluster, "--zk_root_path=" + options.zk_root_path, "--role=ns_client", "--interactive=false"]
 
 def promot_input(msg,validate_func=None,try_times=1):
     while try_times>0:
@@ -156,7 +156,7 @@ def GetTablesStatus(output):
 
 def Analysis():
     # show table
-    show_table = [options.rtidb_bin_path, "--zk_cluster=" + options.zk_cluster, "--zk_root_path=" + options.zk_root_path,
+    show_table = [options.fedb_bin_path, "--zk_cluster=" + options.zk_cluster, "--zk_root_path=" + options.zk_root_path,
         "--role=ns_client", "--interactive=false", "--cmd=showtable"]
     code, stdout,stderr = RunWithRetuncode(show_table)
     if code != 0:
@@ -179,7 +179,7 @@ def Analysis():
     print ">getablestatus"
 
 def GetLeaderFollowerOffset(endpoint, tid, pid):
-    command = [options.rtidb_bin_path, "--endpoint=%s"%endpoint, "--role=client", "--interactive=false", "--cmd=getfollower %s %s"%(tid, pid)]
+    command = [options.fedb_bin_path, "--endpoint=%s"%endpoint, "--role=client", "--interactive=false", "--cmd=getfollower %s %s"%(tid, pid)]
     code, stdout,stderr = RunWithRetuncode(command)
     if code != 0:
         print "fail to getfollower"
@@ -277,7 +277,7 @@ def RecoverData():
     # check whether table partition is not exixted
     partitions = GetTables(stdout)
     # print partitions
-    tablet_cmd = [options.rtidb_bin_path, "--role=client",  "--interactive=false"]
+    tablet_cmd = [options.fedb_bin_path, "--role=client",  "--interactive=false"]
     for endpoint in partitions:
         cmd_gettablestatus = "--cmd=gettablestatus"
         gettablestatus = list(tablet_cmd)
@@ -307,7 +307,7 @@ def RecoverData():
         print "confset auto_failover false"
 
     # updatetablealive $TABLE 1 172.27.128.37:9797 yes
-    # ./build/bin/rtidb --cmd="updatetablealive $TABLE 1 172.27.128.37:9797 yes" --role=ns_client --endpoint=172.27.128.37:6527 --interactive=false
+    # ./build/bin/fedb --cmd="updatetablealive $TABLE 1 172.27.128.37:9797 yes" --role=ns_client --endpoint=172.27.128.37:6527 --interactive=false
     # updatetablealive all of tables no
     leader_table = {}
     follower_table = []
@@ -339,7 +339,7 @@ def RecoverData():
                 follower_table.append(p)
             print "updatetablealive tid[{}] pid[{}] endpoint[{}] no".format(p[1], p[2], p[3])
 
-    # ./build/bin/rtidb --cmd="loadtable $TABLE $TID $PID 144000 3 true" --role=client --endpoint=$TABLET_ENDPOINT --interactive=false
+    # ./build/bin/fedb --cmd="loadtable $TABLE $TID $PID 144000 3 true" --role=client --endpoint=$TABLET_ENDPOINT --interactive=false
     for key in leader_table:
         # get table info
         table = leader_table[key]

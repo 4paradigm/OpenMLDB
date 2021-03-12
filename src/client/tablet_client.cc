@@ -33,14 +33,14 @@ DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_bool(enable_show_tp);
 
-namespace rtidb {
+namespace fedb {
 namespace client {
 
 TabletClient::TabletClient(const std::string& endpoint, const std::string& real_endpoint)
     : endpoint_(endpoint), real_endpoint_(endpoint), client_(endpoint) {
         if (!real_endpoint.empty()) {
             real_endpoint_ = real_endpoint;
-            client_ = ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub>(real_endpoint);
+            client_ = ::fedb::RpcClient<::fedb::api::TabletServer_Stub>(real_endpoint);
         }
     }
 
@@ -49,7 +49,7 @@ TabletClient::TabletClient(const std::string& endpoint, const std::string& real_
     : endpoint_(endpoint), real_endpoint_(endpoint), client_(endpoint, use_sleep_policy) {
         if (!real_endpoint.empty()) {
             real_endpoint_ = real_endpoint;
-            client_ = ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub>(real_endpoint, use_sleep_policy);
+            client_ = ::fedb::RpcClient<::fedb::api::TabletServer_Stub>(real_endpoint, use_sleep_policy);
         }
     }
 
@@ -64,18 +64,18 @@ const std::string& TabletClient::GetRealEndpoint() const { return real_endpoint_
 bool TabletClient::CreateTable(
     const std::string& name, uint32_t tid, uint32_t pid, uint64_t abs_ttl,
     uint64_t lat_ttl, uint32_t seg_cnt,
-    const std::vector<::rtidb::codec::ColumnDesc>& columns,
-    const ::rtidb::api::TTLType& type, bool leader,
+    const std::vector<::fedb::codec::ColumnDesc>& columns,
+    const ::fedb::api::TTLType& type, bool leader,
     const std::vector<std::string>& endpoints, uint64_t term,
-    const ::rtidb::api::CompressType compress_type) {
+    const ::fedb::api::CompressType compress_type) {
     std::string schema;
-    ::rtidb::codec::SchemaCodec codec;
+    ::fedb::codec::SchemaCodec codec;
     bool codec_ok = codec.Encode(columns, schema);
     if (!codec_ok) {
         return false;
     }
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     for (uint32_t i = 0; i < columns.size(); i++) {
         if (columns[i].add_ts_idx) {
             table_meta->add_dimensions(columns[i].name);
@@ -84,11 +84,11 @@ bool TabletClient::CreateTable(
     table_meta->set_name(name);
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
-    if (type == ::rtidb::api::kLatestTime) {
+    if (type == ::fedb::api::kLatestTime) {
         if (lat_ttl > FLAGS_latest_ttl_max) {
             return false;
         }
-    } else if (type == ::rtidb::api::TTLType::kAbsoluteTime) {
+    } else if (type == ::fedb::api::TTLType::kAbsoluteTime) {
         if (abs_ttl > FLAGS_absolute_ttl_max) {
             return false;
         }
@@ -99,31 +99,31 @@ bool TabletClient::CreateTable(
         }
     }
     table_meta->set_seg_cnt(seg_cnt);
-    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+    table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
     table_meta->set_schema(schema);
     table_meta->set_ttl_type(type);
-    ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+    ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
     ttl_desc->set_lat_ttl(lat_ttl);
-    if (type == ::rtidb::api::TTLType::kAbsoluteTime) {
+    if (type == ::fedb::api::TTLType::kAbsoluteTime) {
         table_meta->set_ttl(abs_ttl);
     } else {
         table_meta->set_ttl(lat_ttl);
     }
     table_meta->set_compress_type(compress_type);
     if (leader) {
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         table_meta->set_term(term);
         for (size_t i = 0; i < endpoints.size(); i++) {
             table_meta->add_replicas(endpoints[i]);
         }
     } else {
-        table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
+        table_meta->set_mode(::fedb::api::TableMode::kTableFollower);
     }
-    ::rtidb::api::CreateTableResponse response;
+    ::fedb::api::CreateTableResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateTable,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::CreateTable,
                             &request, &response, FLAGS_request_timeout_ms * 2, 1);
     if (ok && response.code() == 0) {
         return true;
@@ -133,10 +133,10 @@ bool TabletClient::CreateTable(
 
 bool TabletClient::Query(const std::string& db, const std::string& sql,
                          const std::string& row, brpc::Controller* cntl,
-                         rtidb::api::QueryResponse* response,
+                         fedb::api::QueryResponse* response,
                          const bool is_debug) {
     if (cntl == NULL || response == NULL) return false;
-    ::rtidb::api::QueryRequest request;
+    ::fedb::api::QueryRequest request;
     request.set_sql(sql);
     request.set_db(db);
     request.set_is_batch(false);
@@ -149,7 +149,7 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
         LOG(WARNING) << "Encode row buffer failed";
         return false;
     }
-    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Query, cntl,
+    bool ok = client_.SendRequest(&::fedb::api::TabletServer_Stub::Query, cntl,
                                   &request, response);
     if (!ok || response->code() != 0) {
         LOG(WARNING) << "fail to query tablet";
@@ -160,15 +160,15 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
 
 bool TabletClient::Query(const std::string& db, const std::string& sql,
                          brpc::Controller* cntl,
-                         ::rtidb::api::QueryResponse* response,
+                         ::fedb::api::QueryResponse* response,
                          const bool is_debug) {
     if (cntl == NULL || response == NULL) return false;
-    ::rtidb::api::QueryRequest request;
+    ::fedb::api::QueryRequest request;
     request.set_sql(sql);
     request.set_db(db);
     request.set_is_batch(true);
     request.set_is_debug(is_debug);
-    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Query, cntl,
+    bool ok = client_.SendRequest(&::fedb::api::TabletServer_Stub::Query, cntl,
                                   &request, response);
 
     if (!ok || response->code() != 0) {
@@ -181,8 +181,8 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
 /**
  * Utility function to encode row batch data into rpc attachment buffer
  */
-static bool EncodeRowBatch(std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
-                           ::rtidb::api::SQLBatchRequestQueryRequest* request,
+static bool EncodeRowBatch(std::shared_ptr<::fedb::sdk::SQLRequestRowBatch> row_batch,
+                           ::fedb::api::SQLBatchRequestQueryRequest* request,
                            butil::IOBuf* io_buf) {
     auto common_slice = row_batch->GetCommonSlice();
     if (common_slice->empty()) {
@@ -210,12 +210,12 @@ static bool EncodeRowBatch(std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row
 }
 
 bool TabletClient::SQLBatchRequestQuery(const std::string& db, const std::string& sql,
-                                        std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
+                                        std::shared_ptr<::fedb::sdk::SQLRequestRowBatch> row_batch,
                                         brpc::Controller* cntl,
-                                        ::rtidb::api::SQLBatchRequestQueryResponse* response,
+                                        ::fedb::api::SQLBatchRequestQueryResponse* response,
                                         const bool is_debug) {
     if (cntl == NULL || response == NULL) return false;
-    ::rtidb::api::SQLBatchRequestQueryRequest request;
+    ::fedb::api::SQLBatchRequestQueryRequest request;
     request.set_sql(sql);
     request.set_db(db);
     request.set_is_debug(is_debug);
@@ -229,9 +229,9 @@ bool TabletClient::SQLBatchRequestQuery(const std::string& db, const std::string
         return false;
     }
 
-    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SQLBatchRequestQuery,
+    bool ok = client_.SendRequest(&::fedb::api::TabletServer_Stub::SQLBatchRequestQuery,
                                   cntl, &request, response);
-    if (!ok || response->code() != ::rtidb::base::kOk) {
+    if (!ok || response->code() != ::fedb::base::kOk) {
         LOG(WARNING) << "fail to query tablet" << response->msg();
         return false;
     }
@@ -242,15 +242,15 @@ bool TabletClient::CreateTable(const std::string& name, uint32_t tid,
                                uint32_t pid, uint64_t abs_ttl, uint64_t lat_ttl,
                                bool leader,
                                const std::vector<std::string>& endpoints,
-                               const ::rtidb::api::TTLType& type,
+                               const ::fedb::api::TTLType& type,
                                uint32_t seg_cnt, uint64_t term,
-                               const ::rtidb::api::CompressType compress_type) {
-    ::rtidb::api::CreateTableRequest request;
-    if (type == ::rtidb::api::kLatestTime) {
+                               const ::fedb::api::CompressType compress_type) {
+    ::fedb::api::CreateTableRequest request;
+    if (type == ::fedb::api::kLatestTime) {
         if (lat_ttl > FLAGS_latest_ttl_max) {
             return false;
         }
-    } else if (type == ::rtidb::api::TTLType::kAbsoluteTime) {
+    } else if (type == ::fedb::api::TTLType::kAbsoluteTime) {
         if (abs_ttl > FLAGS_absolute_ttl_max) {
             return false;
         }
@@ -260,29 +260,29 @@ bool TabletClient::CreateTable(const std::string& name, uint32_t tid,
             return false;
         }
     }
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name(name);
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
-    ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+    ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
     ttl_desc->set_lat_ttl(lat_ttl);
     table_meta->set_compress_type(compress_type);
     table_meta->set_seg_cnt(seg_cnt);
     if (leader) {
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         table_meta->set_term(term);
     } else {
-        table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
+        table_meta->set_mode(::fedb::api::TableMode::kTableFollower);
     }
     for (size_t i = 0; i < endpoints.size(); i++) {
         table_meta->add_replicas(endpoints[i]);
     }
     // table_meta->set_ttl_type(type);
-    ::rtidb::api::CreateTableResponse response;
+    ::fedb::api::CreateTableResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateTable,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::CreateTable,
                             &request, &response, FLAGS_request_timeout_ms * 2, 1);
     if (ok && response.code() == 0) {
         return true;
@@ -290,13 +290,13 @@ bool TabletClient::CreateTable(const std::string& name, uint32_t tid,
     return false;
 }
 
-bool TabletClient::CreateTable(const ::rtidb::api::TableMeta& table_meta) {
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta_ptr = request.mutable_table_meta();
+bool TabletClient::CreateTable(const ::fedb::api::TableMeta& table_meta) {
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta_ptr = request.mutable_table_meta();
     table_meta_ptr->CopyFrom(table_meta);
-    ::rtidb::api::CreateTableResponse response;
+    ::fedb::api::CreateTableResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateTable,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::CreateTable,
                             &request, &response, FLAGS_request_timeout_ms * 2, 1);
     if (ok && response.code() == 0) {
         return true;
@@ -305,20 +305,20 @@ bool TabletClient::CreateTable(const ::rtidb::api::TableMeta& table_meta) {
 }
 
 bool TabletClient::UpdateTableMetaForAddField(
-    uint32_t tid, const std::vector<rtidb::common::ColumnDesc>& cols,
-    const rtidb::common::VersionPair& pair, const std::string& schema, std::string& msg) {
-    ::rtidb::api::UpdateTableMetaForAddFieldRequest request;
-    ::rtidb::api::GeneralResponse response;
+    uint32_t tid, const std::vector<fedb::common::ColumnDesc>& cols,
+    const fedb::common::VersionPair& pair, const std::string& schema, std::string& msg) {
+    ::fedb::api::UpdateTableMetaForAddFieldRequest request;
+    ::fedb::api::GeneralResponse response;
     request.set_tid(tid);
     for (const auto& col : cols) {
-        ::rtidb::common::ColumnDesc* column_desc_ptr = request.add_column_descs();
+        ::fedb::common::ColumnDesc* column_desc_ptr = request.add_column_descs();
         column_desc_ptr->CopyFrom(col);
     }
     request.set_schema(schema);
-    rtidb::common::VersionPair* new_pair = request.mutable_version_pair();
+    fedb::common::VersionPair* new_pair = request.mutable_version_pair();
     new_pair->CopyFrom(pair);
     bool ok = client_.SendRequest(
-        &::rtidb::api::TabletServer_Stub::UpdateTableMetaForAddField, &request,
+        &::fedb::api::TabletServer_Stub::UpdateTableMetaForAddField, &request,
         &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
         return true;
@@ -337,20 +337,20 @@ bool TabletClient::Put(
     uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
     const std::vector<std::pair<std::string, uint32_t>>& dimensions,
     uint32_t format_version) {
-    ::rtidb::api::PutRequest request;
+    ::fedb::api::PutRequest request;
     request.set_time(time);
     request.set_value(value);
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_format_version(format_version);
     for (size_t i = 0; i < dimensions.size(); i++) {
-        ::rtidb::api::Dimension* d = request.add_dimensions();
+        ::fedb::api::Dimension* d = request.add_dimensions();
         d->set_key(dimensions[i].first);
         d->set_idx(dimensions[i].second);
     }
-    ::rtidb::api::PutResponse response;
+    ::fedb::api::PutResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::Put, &request,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::Put, &request,
                             &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
         return true;
@@ -363,24 +363,24 @@ bool TabletClient::Put(
     const std::vector<std::pair<std::string, uint32_t>>& dimensions,
     const std::vector<uint64_t>& ts_dimensions, const std::string& value,
     uint32_t format_version) {
-    ::rtidb::api::PutRequest request;
+    ::fedb::api::PutRequest request;
     request.set_value(value);
     request.set_tid(tid);
     request.set_pid(pid);
     for (size_t i = 0; i < dimensions.size(); i++) {
-        ::rtidb::api::Dimension* d = request.add_dimensions();
+        ::fedb::api::Dimension* d = request.add_dimensions();
         d->set_key(dimensions[i].first);
         d->set_idx(dimensions[i].second);
     }
     for (size_t i = 0; i < ts_dimensions.size(); i++) {
-        ::rtidb::api::TSDimension* d = request.add_ts_dimensions();
+        ::fedb::api::TSDimension* d = request.add_ts_dimensions();
         d->set_ts(ts_dimensions[i]);
         d->set_idx(i);
     }
     request.set_format_version(format_version);
-    ::rtidb::api::PutResponse response;
+    ::fedb::api::PutResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::Put, &request,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::Put, &request,
                             &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
         return true;
@@ -400,17 +400,17 @@ bool TabletClient::Put(
 bool TabletClient::Put(uint32_t tid, uint32_t pid, const char* pk,
                        uint64_t time, const char* value, uint32_t size,
                        uint32_t format_version) {
-    ::rtidb::api::PutRequest request;
+    ::fedb::api::PutRequest request;
     request.set_pk(pk);
     request.set_time(time);
     request.set_value(value, size);
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_format_version(format_version);
-    ::rtidb::api::PutResponse response;
+    ::fedb::api::PutResponse response;
 
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::Put, &request,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::Put, &request,
                             &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
         return true;
@@ -428,7 +428,7 @@ bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& pk,
 
 bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid, uint64_t offset,
                                 std::shared_ptr<TaskInfo> task_info) {
-    ::rtidb::api::GeneralRequest request;
+    ::fedb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     if (task_info) {
@@ -437,9 +437,9 @@ bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid, uint64_t offset,
     if (offset > 0) {
         request.set_offset(offset);
     }
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::GeneralResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::MakeSnapshot,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::MakeSnapshot,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
         return true;
@@ -449,13 +449,13 @@ bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid, uint64_t offset,
 
 bool TabletClient::FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t term,
                                  uint64_t& offset) {
-    ::rtidb::api::AppendEntriesRequest request;
+    ::fedb::api::AppendEntriesRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_term(term);
-    ::rtidb::api::AppendEntriesResponse response;
+    ::fedb::api::AppendEntriesResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::AppendEntries,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::AppendEntries,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
         offset = response.log_offset();
@@ -466,15 +466,15 @@ bool TabletClient::FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t term,
 
 bool TabletClient::PauseSnapshot(uint32_t tid, uint32_t pid,
                                  std::shared_ptr<TaskInfo> task_info) {
-    ::rtidb::api::GeneralRequest request;
+    ::fedb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
     }
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::GeneralResponse response;
     bool ok = client_.SendRequest(
-        &::rtidb::api::TabletServer_Stub::PauseSnapshot, &request, &response,
+        &::fedb::api::TabletServer_Stub::PauseSnapshot, &request, &response,
         FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (ok && response.code() == 0) {
         return true;
@@ -484,15 +484,15 @@ bool TabletClient::PauseSnapshot(uint32_t tid, uint32_t pid,
 
 bool TabletClient::RecoverSnapshot(uint32_t tid, uint32_t pid,
                                    std::shared_ptr<TaskInfo> task_info) {
-    ::rtidb::api::GeneralRequest request;
+    ::fedb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
     }
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::GeneralResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::RecoverSnapshot,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::RecoverSnapshot,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
         return true;
@@ -503,7 +503,7 @@ bool TabletClient::RecoverSnapshot(uint32_t tid, uint32_t pid,
 bool TabletClient::SendSnapshot(uint32_t tid, uint32_t remote_tid, uint32_t pid,
                                 const std::string& endpoint,
                                 std::shared_ptr<TaskInfo> task_info) {
-    ::rtidb::api::SendSnapshotRequest request;
+    ::fedb::api::SendSnapshotRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_endpoint(endpoint);
@@ -511,9 +511,9 @@ bool TabletClient::SendSnapshot(uint32_t tid, uint32_t remote_tid, uint32_t pid,
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
     }
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::GeneralResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::SendSnapshot,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::SendSnapshot,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
         return true;
@@ -524,15 +524,15 @@ bool TabletClient::SendSnapshot(uint32_t tid, uint32_t remote_tid, uint32_t pid,
 bool TabletClient::LoadTable(const std::string& name, uint32_t id, uint32_t pid,
                              uint64_t ttl, uint32_t seg_cnt) {
     return LoadTable(name, id, pid, ttl, false, seg_cnt,
-                     ::rtidb::common::StorageMode::kMemory);
+                     ::fedb::common::StorageMode::kMemory);
 }
 
 bool TabletClient::LoadTable(const std::string& name, uint32_t tid,
                              uint32_t pid, uint64_t ttl, bool leader,
                              uint32_t seg_cnt,
-                             ::rtidb::common::StorageMode storage_mode,
+                             ::fedb::common::StorageMode storage_mode,
                              std::shared_ptr<TaskInfo> task_info) {
-    ::rtidb::api::TableMeta table_meta;
+    ::fedb::api::TableMeta table_meta;
     table_meta.set_name(name);
     table_meta.set_tid(tid);
     table_meta.set_pid(pid);
@@ -540,24 +540,24 @@ bool TabletClient::LoadTable(const std::string& name, uint32_t tid,
     table_meta.set_seg_cnt(seg_cnt);
     table_meta.set_storage_mode(storage_mode);
     if (leader) {
-        table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+        table_meta.set_mode(::fedb::api::TableMode::kTableLeader);
     } else {
-        table_meta.set_mode(::rtidb::api::TableMode::kTableFollower);
+        table_meta.set_mode(::fedb::api::TableMode::kTableFollower);
     }
     return LoadTable(table_meta, task_info);
 }
 
-bool TabletClient::LoadTable(const ::rtidb::api::TableMeta& table_meta,
+bool TabletClient::LoadTable(const ::fedb::api::TableMeta& table_meta,
                              std::shared_ptr<TaskInfo> task_info) {
-    ::rtidb::api::LoadTableRequest request;
-    ::rtidb::api::TableMeta* cur_table_meta = request.mutable_table_meta();
+    ::fedb::api::LoadTableRequest request;
+    ::fedb::api::TableMeta* cur_table_meta = request.mutable_table_meta();
     cur_table_meta->CopyFrom(table_meta);
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
     }
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::GeneralResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::LoadTable,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::LoadTable,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
         return true;
@@ -566,17 +566,17 @@ bool TabletClient::LoadTable(const ::rtidb::api::TableMeta& table_meta,
 }
 
 bool TabletClient::LoadTable(uint32_t tid, uint32_t pid,
-                             ::rtidb::common::StorageMode storage_mode,
+                             ::fedb::common::StorageMode storage_mode,
                              std::string* msg) {
-    ::rtidb::api::LoadTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::LoadTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
     table_meta->set_storage_mode(storage_mode);
-    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-    ::rtidb::api::GeneralResponse response;
+    table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+    ::fedb::api::GeneralResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::LoadTable,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::LoadTable,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg->swap(*response.mutable_msg());
     if (ok && response.code() == 0) {
@@ -594,12 +594,12 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
 bool TabletClient::ChangeRole(
     uint32_t tid, uint32_t pid, bool leader,
     const std::vector<std::string>& endpoints, uint64_t term,
-    const std::vector<::rtidb::common::EndpointAndTid>* endpoint_tid) {
-    ::rtidb::api::ChangeRoleRequest request;
+    const std::vector<::fedb::common::EndpointAndTid>* endpoint_tid) {
+    ::fedb::api::ChangeRoleRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     if (leader) {
-        request.set_mode(::rtidb::api::TableMode::kTableLeader);
+        request.set_mode(::fedb::api::TableMode::kTableLeader);
         request.set_term(term);
         if ((endpoint_tid != nullptr) && (!endpoint_tid->empty())) {
             for (auto& endpoint : *endpoint_tid) {
@@ -607,13 +607,13 @@ bool TabletClient::ChangeRole(
             }
         }
     } else {
-        request.set_mode(::rtidb::api::TableMode::kTableFollower);
+        request.set_mode(::fedb::api::TableMode::kTableFollower);
     }
     for (auto iter = endpoints.begin(); iter != endpoints.end(); iter++) {
         request.add_replicas(*iter);
     }
-    ::rtidb::api::ChangeRoleResponse response;
-    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::ChangeRole,
+    ::fedb::api::ChangeRoleResponse response;
+    bool ok = client_.SendRequest(&::fedb::api::TabletServer_Stub::ChangeRole,
                                   &request, &response, FLAGS_request_timeout_ms,
                                   FLAGS_request_max_retry);
     if (ok && response.code() == 0) {
@@ -624,12 +624,12 @@ bool TabletClient::ChangeRole(
 
 bool TabletClient::SetMaxConcurrency(const std::string& key,
                                      int32_t max_concurrency) {
-    ::rtidb::api::SetConcurrencyRequest request;
+    ::fedb::api::SetConcurrencyRequest request;
     request.set_key(key);
     request.set_max_concurrency(max_concurrency);
-    ::rtidb::api::SetConcurrencyResponse response;
+    ::fedb::api::SetConcurrencyResponse response;
     bool ret =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::SetConcurrency,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::SetConcurrency,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ret || response.code() != 0) {
         std::cout << response.msg() << std::endl;
@@ -638,10 +638,10 @@ bool TabletClient::SetMaxConcurrency(const std::string& key,
     return true;
 }
 
-bool TabletClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
-    ::rtidb::api::TaskStatusRequest request;
+bool TabletClient::GetTaskStatus(::fedb::api::TaskStatusResponse& response) {
+    ::fedb::api::TaskStatusRequest request;
     bool ret =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTaskStatus,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::GetTaskStatus,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ret || response.code() != 0) {
         return false;
@@ -650,28 +650,28 @@ bool TabletClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
 }
 
 bool TabletClient::UpdateTTL(uint32_t tid, uint32_t pid,
-                             const ::rtidb::api::TTLType& type,
+                             const ::fedb::api::TTLType& type,
                              uint64_t abs_ttl, uint64_t lat_ttl,
                              const std::string& ts_name) {
-    ::rtidb::api::UpdateTTLRequest request;
+    ::fedb::api::UpdateTTLRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_type(type);
-    if (type == ::rtidb::api::TTLType::kLatestTime) {
+    if (type == ::fedb::api::TTLType::kLatestTime) {
         request.set_value(lat_ttl);
     } else {
         request.set_value(abs_ttl);
     }
-    ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+    ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
     ttl_desc->set_lat_ttl(lat_ttl);
     if (!ts_name.empty()) {
         request.set_ts_name(ts_name);
     }
-    ::rtidb::api::UpdateTTLResponse response;
+    ::fedb::api::UpdateTTLResponse response;
     bool ret = client_.SendRequest(
-        &::rtidb::api::TabletServer_Stub::UpdateTTL, &request, &response,
+        &::fedb::api::TabletServer_Stub::UpdateTTL, &request, &response,
         FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (ret && response.code() == 0) {
         return true;
@@ -680,13 +680,13 @@ bool TabletClient::UpdateTTL(uint32_t tid, uint32_t pid,
 }
 
 bool TabletClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
-    ::rtidb::api::DeleteTaskRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::DeleteTaskRequest request;
+    ::fedb::api::GeneralResponse response;
     for (auto op_id : op_id_vec) {
         request.add_op_id(op_id);
     }
     bool ret = client_.SendRequest(
-        &::rtidb::api::TabletServer_Stub::DeleteOPTask, &request, &response,
+        &::fedb::api::TabletServer_Stub::DeleteOPTask, &request, &response,
         FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ret || response.code() != 0) {
         return false;
@@ -695,16 +695,16 @@ bool TabletClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
 }
 
 bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid,
-                               ::rtidb::common::StorageMode storage_mode,
+                               ::fedb::common::StorageMode storage_mode,
                                uint64_t& term, uint64_t& offset,
                                bool& has_table, bool& is_leader) {
-    ::rtidb::api::GetTermPairRequest request;
-    ::rtidb::api::GetTermPairResponse response;
+    ::fedb::api::GetTermPairRequest request;
+    ::fedb::api::GetTermPairResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_storage_mode(storage_mode);
     bool ret = client_.SendRequest(
-        &::rtidb::api::TabletServer_Stub::GetTermPair, &request, &response,
+        &::fedb::api::TabletServer_Stub::GetTermPair, &request, &response,
         FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ret || response.code() != 0) {
         return false;
@@ -719,15 +719,15 @@ bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid,
 }
 
 bool TabletClient::GetManifest(uint32_t tid, uint32_t pid,
-                               ::rtidb::common::StorageMode storage_mode,
-                               ::rtidb::api::Manifest& manifest) {
-    ::rtidb::api::GetManifestRequest request;
-    ::rtidb::api::GetManifestResponse response;
+                               ::fedb::common::StorageMode storage_mode,
+                               ::fedb::api::Manifest& manifest) {
+    ::fedb::api::GetManifestRequest request;
+    ::fedb::api::GetManifestResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_storage_mode(storage_mode);
     bool ret = client_.SendRequest(
-        &::rtidb::api::TabletServer_Stub::GetManifest, &request, &response,
+        &::fedb::api::TabletServer_Stub::GetManifest, &request, &response,
         FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ret || response.code() != 0) {
         return false;
@@ -737,10 +737,10 @@ bool TabletClient::GetManifest(uint32_t tid, uint32_t pid,
 }
 
 bool TabletClient::GetTableStatus(
-    ::rtidb::api::GetTableStatusResponse& response) {
-    ::rtidb::api::GetTableStatusRequest request;
+    ::fedb::api::GetTableStatusResponse& response) {
+    ::fedb::api::GetTableStatusRequest request;
     bool ret =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTableStatus,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::GetTableStatus,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (ret) {
         return true;
@@ -749,19 +749,19 @@ bool TabletClient::GetTableStatus(
 }
 
 bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid,
-                                  ::rtidb::api::TableStatus& table_status) {
+                                  ::fedb::api::TableStatus& table_status) {
     return GetTableStatus(tid, pid, false, table_status);
 }
 
 bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
-                                  ::rtidb::api::TableStatus& table_status) {
-    ::rtidb::api::GetTableStatusRequest request;
+                                  ::fedb::api::TableStatus& table_status) {
+    ::fedb::api::GetTableStatusRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_need_schema(need_schema);
-    ::rtidb::api::GetTableStatusResponse response;
+    ::fedb::api::GetTableStatusResponse response;
     bool ret =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTableStatus,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::GetTableStatus,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ret) {
         return false;
@@ -773,7 +773,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     return false;
 }
 
-::rtidb::base::KvIterator* TabletClient::Scan(
+::fedb::base::KvIterator* TabletClient::Scan(
     uint32_t tid, uint32_t pid, const std::string& pk, uint64_t stime,
     uint64_t etime, const std::string& idx_name, const std::string& ts_name,
     uint32_t limit, uint32_t atleast, std::string& msg) {
@@ -781,7 +781,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
         msg = "atleast should be no greater than limit";
         return NULL;
     }
-    ::rtidb::api::ScanRequest request;
+    ::fedb::api::ScanRequest request;
     request.set_pk(pk);
     request.set_st(stime);
     request.set_et(etime);
@@ -795,9 +795,9 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
         request.set_ts_name(ts_name);
     }
     request.set_limit(limit);
-    ::rtidb::api::ScanResponse* response = new ::rtidb::api::ScanResponse();
+    ::fedb::api::ScanResponse* response = new ::fedb::api::ScanResponse();
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan, &request,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::Scan, &request,
                             response, FLAGS_request_timeout_ms, 1);
     response->mutable_metric()->set_rptime(
         ::baidu::common::timer::get_micros());
@@ -807,11 +807,11 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     if (!ok || response->code() != 0) {
         return NULL;
     }
-    ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
+    ::fedb::base::KvIterator* kv_it = new ::fedb::base::KvIterator(response);
     return kv_it;
 }
 
-::rtidb::base::KvIterator* TabletClient::Scan(uint32_t tid, uint32_t pid,
+::fedb::base::KvIterator* TabletClient::Scan(uint32_t tid, uint32_t pid,
                                               const std::string& pk,
                                               uint64_t stime, uint64_t etime,
                                               const std::string& idx_name,
@@ -820,7 +820,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     return Scan(tid, pid, pk, stime, etime, idx_name, "", limit, atleast, msg);
 }
 
-::rtidb::base::KvIterator* TabletClient::Scan(uint32_t tid, uint32_t pid,
+::fedb::base::KvIterator* TabletClient::Scan(uint32_t tid, uint32_t pid,
                                               const std::string& pk,
                                               uint64_t stime, uint64_t etime,
                                               uint32_t limit, uint32_t atleast,
@@ -829,7 +829,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
         msg = "atleast should be no greater than limit";
         return NULL;
     }
-    ::rtidb::api::ScanRequest request;
+    ::fedb::api::ScanRequest request;
     request.set_pk(pk);
     request.set_st(stime);
     request.set_et(etime);
@@ -838,10 +838,10 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     request.set_limit(limit);
     request.set_atleast(atleast);
     request.mutable_metric()->set_sqtime(::baidu::common::timer::get_micros());
-    ::rtidb::api::ScanResponse* response = new ::rtidb::api::ScanResponse();
+    ::fedb::api::ScanResponse* response = new ::fedb::api::ScanResponse();
     uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan, &request,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::Scan, &request,
                             response, FLAGS_request_timeout_ms, 1);
     response->mutable_metric()->set_rptime(
         ::baidu::common::timer::get_micros());
@@ -851,7 +851,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     if (!ok || response->code() != 0) {
         return NULL;
     }
-    ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
+    ::fedb::base::KvIterator* kv_it = new ::fedb::base::KvIterator(response);
     if (FLAGS_enable_show_tp) {
         consumed = ::baidu::common::timer::get_micros() - consumed;
         percentile_.push_back(consumed);
@@ -860,13 +860,13 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
 }
 
 bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
-                                  ::rtidb::api::TableMeta& table_meta) {
-    ::rtidb::api::GetTableSchemaRequest request;
+                                  ::fedb::api::TableMeta& table_meta) {
+    ::fedb::api::GetTableSchemaRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
-    ::rtidb::api::GetTableSchemaResponse response;
+    ::fedb::api::GetTableSchemaResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTableSchema,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::GetTableSchema,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
         table_meta.CopyFrom(response.table_meta());
@@ -878,21 +878,21 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
     return false;
 }
 
-::rtidb::base::KvIterator* TabletClient::Scan(uint32_t tid, uint32_t pid,
+::fedb::base::KvIterator* TabletClient::Scan(uint32_t tid, uint32_t pid,
                                               const char* pk, uint64_t stime,
                                               uint64_t etime, std::string& msg,
                                               bool showm) {
-    ::rtidb::api::ScanRequest request;
+    ::fedb::api::ScanRequest request;
     request.set_pk(pk);
     request.set_st(stime);
     request.set_et(etime);
     request.set_tid(tid);
     request.set_pid(pid);
     request.mutable_metric()->set_sqtime(::baidu::common::timer::get_micros());
-    ::rtidb::api::ScanResponse* response = new ::rtidb::api::ScanResponse();
+    ::fedb::api::ScanResponse* response = new ::fedb::api::ScanResponse();
     uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan, &request,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::Scan, &request,
                             response, FLAGS_request_timeout_ms, 1);
     response->mutable_metric()->set_rptime(
         ::baidu::common::timer::get_micros());
@@ -902,7 +902,7 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
     if (!ok || response->code() != 0) {
         return NULL;
     }
-    ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
+    ::fedb::base::KvIterator* kv_it = new ::fedb::base::KvIterator(response);
     if (showm) {
         while (kv_it->Valid()) {
             kv_it->Next();
@@ -941,15 +941,15 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
 
 bool TabletClient::DropTable(uint32_t id, uint32_t pid,
                              std::shared_ptr<TaskInfo> task_info) {
-    ::rtidb::api::DropTableRequest request;
+    ::fedb::api::DropTableRequest request;
     request.set_tid(id);
     request.set_pid(pid);
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
     }
-    ::rtidb::api::DropTableResponse response;
+    ::fedb::api::DropTableResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::DropTable,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::DropTable,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
@@ -966,8 +966,8 @@ bool TabletClient::AddReplica(uint32_t tid, uint32_t pid,
 bool TabletClient::AddReplica(uint32_t tid, uint32_t pid,
                               const std::string& endpoint, uint32_t remote_tid,
                               std::shared_ptr<TaskInfo> task_info) {
-    ::rtidb::api::ReplicaRequest request;
-    ::rtidb::api::AddReplicaResponse response;
+    ::fedb::api::ReplicaRequest request;
+    ::fedb::api::AddReplicaResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_endpoint(endpoint);
@@ -978,7 +978,7 @@ bool TabletClient::AddReplica(uint32_t tid, uint32_t pid,
         request.mutable_task_info()->CopyFrom(*task_info);
     }
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::AddReplica,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::AddReplica,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
@@ -991,23 +991,23 @@ bool TabletClient::DelReplica(uint32_t tid, uint32_t pid,
                               std::shared_ptr<TaskInfo> task_info) {
     if (task_info) {
         // fix the bug FEX-439
-        ::rtidb::api::GetTableFollowerRequest get_follower_request;
-        ::rtidb::api::GetTableFollowerResponse get_follower_response;
+        ::fedb::api::GetTableFollowerRequest get_follower_request;
+        ::fedb::api::GetTableFollowerResponse get_follower_response;
         get_follower_request.set_tid(tid);
         get_follower_request.set_pid(pid);
         bool ok = client_.SendRequest(
-            &::rtidb::api::TabletServer_Stub::GetTableFollower,
+            &::fedb::api::TabletServer_Stub::GetTableFollower,
             &get_follower_request, &get_follower_response,
             FLAGS_request_timeout_ms, 1);
         if (ok) {
             if (get_follower_response.code() < 0 &&
                 get_follower_response.msg() == "has no follower") {
-                task_info->set_status(::rtidb::api::TaskStatus::kDone);
+                task_info->set_status(::fedb::api::TaskStatus::kDone);
                 PDLOG(INFO,
                       "update task status from[kDoing] to[kDone]. op_id[%lu], "
                       "task_type[%s]",
                       task_info->op_id(),
-                      ::rtidb::api::TaskType_Name(task_info->task_type())
+                      ::fedb::api::TaskType_Name(task_info->task_type())
                           .c_str());
                 return true;
             }
@@ -1021,20 +1021,20 @@ bool TabletClient::DelReplica(uint32_t tid, uint32_t pid,
                     }
                 }
                 if (!has_replica) {
-                    task_info->set_status(::rtidb::api::TaskStatus::kDone);
+                    task_info->set_status(::fedb::api::TaskStatus::kDone);
                     PDLOG(INFO,
                           "update task status from[kDoing] to[kDone]. "
                           "op_id[%lu], task_type[%s]",
                           task_info->op_id(),
-                          ::rtidb::api::TaskType_Name(task_info->task_type())
+                          ::fedb::api::TaskType_Name(task_info->task_type())
                               .c_str());
                     return true;
                 }
             }
         }
     }
-    ::rtidb::api::ReplicaRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::ReplicaRequest request;
+    ::fedb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_endpoint(endpoint);
@@ -1042,7 +1042,7 @@ bool TabletClient::DelReplica(uint32_t tid, uint32_t pid,
         request.mutable_task_info()->CopyFrom(*task_info);
     }
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::DelReplica,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::DelReplica,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
@@ -1051,13 +1051,13 @@ bool TabletClient::DelReplica(uint32_t tid, uint32_t pid,
 }
 
 bool TabletClient::SetExpire(uint32_t tid, uint32_t pid, bool is_expire) {
-    ::rtidb::api::SetExpireRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::SetExpireRequest request;
+    ::fedb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_is_expire(is_expire);
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::SetExpire,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::SetExpire,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
@@ -1069,12 +1069,12 @@ bool TabletClient::GetTableFollower(uint32_t tid, uint32_t pid,
                                     uint64_t& offset,
                                     std::map<std::string, uint64_t>& info_map,
                                     std::string& msg) {
-    ::rtidb::api::GetTableFollowerRequest request;
-    ::rtidb::api::GetTableFollowerResponse response;
+    ::fedb::api::GetTableFollowerRequest request;
+    ::fedb::api::GetTableFollowerResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTableFollower,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::GetTableFollower,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (response.has_msg()) {
         msg = response.msg();
@@ -1106,15 +1106,15 @@ void TabletClient::ShowTp() {
 bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk,
                        uint64_t time, std::string& value, uint64_t& ts,
                        std::string& msg) {
-    ::rtidb::api::GetRequest request;
-    ::rtidb::api::GetResponse response;
+    ::fedb::api::GetRequest request;
+    ::fedb::api::GetResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_key(pk);
     request.set_ts(time);
     uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::Get, &request,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::Get, &request,
                             &response, FLAGS_request_timeout_ms, 1);
     if (FLAGS_enable_show_tp) {
         consumed = ::baidu::common::timer::get_micros() - consumed;
@@ -1141,8 +1141,8 @@ bool TabletClient::Count(uint32_t tid, uint32_t pid, const std::string& pk,
                          const std::string& idx_name,
                          const std::string& ts_name, bool filter_expired_data,
                          uint64_t& value, std::string& msg) {
-    ::rtidb::api::CountRequest request;
-    ::rtidb::api::CountResponse response;
+    ::fedb::api::CountRequest request;
+    ::fedb::api::CountResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_key(pk);
@@ -1154,7 +1154,7 @@ bool TabletClient::Count(uint32_t tid, uint32_t pid, const std::string& pk,
         request.set_ts_name(ts_name);
     }
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::Count, &request,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::Count, &request,
                             &response, FLAGS_request_timeout_ms, 1);
     if (response.has_msg()) {
         msg = response.msg();
@@ -1176,8 +1176,8 @@ bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk,
                        uint64_t time, const std::string& idx_name,
                        const std::string& ts_name, std::string& value,
                        uint64_t& ts, std::string& msg) {
-    ::rtidb::api::GetRequest request;
-    ::rtidb::api::GetResponse response;
+    ::fedb::api::GetRequest request;
+    ::fedb::api::GetResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_key(pk);
@@ -1189,7 +1189,7 @@ bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk,
         request.set_ts_name(ts_name);
     }
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::Get, &request,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::Get, &request,
                             &response, FLAGS_request_timeout_ms, 1);
     if (response.has_msg()) {
         msg = response.msg();
@@ -1204,8 +1204,8 @@ bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk,
 
 bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk,
                           const std::string& idx_name, std::string& msg) {
-    ::rtidb::api::DeleteRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::DeleteRequest request;
+    ::fedb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_key(pk);
@@ -1213,7 +1213,7 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk,
         request.set_idx_name(idx_name);
     }
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::Delete, &request,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::Delete, &request,
                             &response, FLAGS_request_timeout_ms, 1);
     if (response.has_msg()) {
         msg = response.msg();
@@ -1225,10 +1225,10 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk,
 }
 
 bool TabletClient::ConnectZK() {
-    ::rtidb::api::ConnectZKRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::ConnectZKRequest request;
+    ::fedb::api::GeneralResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::ConnectZK,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::ConnectZK,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
@@ -1237,10 +1237,10 @@ bool TabletClient::ConnectZK() {
 }
 
 bool TabletClient::DisConnectZK() {
-    ::rtidb::api::DisConnectZKRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::DisConnectZKRequest request;
+    ::fedb::api::GeneralResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::DisConnectZK,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::DisConnectZK,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
@@ -1249,14 +1249,14 @@ bool TabletClient::DisConnectZK() {
 }
 
 bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid,
-                                ::rtidb::common::StorageMode storage_mode) {
-    ::rtidb::api::GeneralRequest request;
+                                ::fedb::common::StorageMode storage_mode) {
+    ::fedb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_storage_mode(storage_mode);
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::GeneralResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::DeleteBinlog,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::DeleteBinlog,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
@@ -1264,14 +1264,14 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid,
     return true;
 }
 
-::rtidb::base::KvIterator* TabletClient::Traverse(uint32_t tid, uint32_t pid,
+::fedb::base::KvIterator* TabletClient::Traverse(uint32_t tid, uint32_t pid,
                                                   const std::string& idx_name,
                                                   const std::string& pk,
                                                   uint64_t ts, uint32_t limit,
                                                   uint32_t& count) {
-    ::rtidb::api::TraverseRequest request;
-    ::rtidb::api::TraverseResponse* response =
-        new ::rtidb::api::TraverseResponse();
+    ::fedb::api::TraverseRequest request;
+    ::fedb::api::TraverseResponse* response =
+        new ::fedb::api::TraverseResponse();
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_limit(limit);
@@ -1282,22 +1282,22 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid,
         request.set_pk(pk);
         request.set_ts(ts);
     }
-    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Traverse,
+    bool ok = client_.SendRequest(&::fedb::api::TabletServer_Stub::Traverse,
                                   &request, response, FLAGS_request_timeout_ms,
                                   FLAGS_request_max_retry);
     if (!ok || response->code() != 0) {
         return NULL;
     }
-    ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
+    ::fedb::base::KvIterator* kv_it = new ::fedb::base::KvIterator(response);
     count = response->count();
     return kv_it;
 }
 
 bool TabletClient::SetMode(bool mode) {
-    ::rtidb::api::SetModeRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::SetModeRequest request;
+    ::fedb::api::GeneralResponse response;
     request.set_follower(mode);
-    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SetMode,
+    bool ok = client_.SendRequest(&::fedb::api::TabletServer_Stub::SetMode,
                                   &request, &response, FLAGS_request_timeout_ms,
                                   FLAGS_request_max_retry);
     if (!ok || response.code() != 0) {
@@ -1308,10 +1308,10 @@ bool TabletClient::SetMode(bool mode) {
 
 bool TabletClient::GetAllSnapshotOffset(
     std::map<uint32_t, std::map<uint32_t, uint64_t>>& tid_pid_offset) {
-    ::rtidb::api::EmptyRequest request;
-    ::rtidb::api::TableSnapshotOffsetResponse response;
+    ::fedb::api::EmptyRequest request;
+    ::fedb::api::TableSnapshotOffsetResponse response;
     bool ok = client_.SendRequest(
-        &rtidb::api::TabletServer_Stub::GetAllSnapshotOffset, &request,
+        &fedb::api::TabletServer_Stub::GetAllSnapshotOffset, &request,
         &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ok) {
         return false;
@@ -1333,13 +1333,13 @@ bool TabletClient::GetAllSnapshotOffset(
 
 bool TabletClient::DeleteIndex(uint32_t tid, uint32_t pid,
                                const std::string& idx_name, std::string* msg) {
-    ::rtidb::api::DeleteIndexRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::DeleteIndexRequest request;
+    ::fedb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_idx_name(idx_name);
     bool ok =
-        client_.SendRequest(&rtidb::api::TabletServer_Stub::DeleteIndex,
+        client_.SendRequest(&fedb::api::TabletServer_Stub::DeleteIndex,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
@@ -1349,43 +1349,43 @@ bool TabletClient::DeleteIndex(uint32_t tid, uint32_t pid,
 }
 
 bool TabletClient::AddIndex(uint32_t tid, uint32_t pid,
-                            const ::rtidb::common::ColumnKey& column_key,
+                            const ::fedb::common::ColumnKey& column_key,
                             std::shared_ptr<TaskInfo> task_info) {
-    ::rtidb::api::AddIndexRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::AddIndexRequest request;
+    ::fedb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    ::rtidb::common::ColumnKey* cur_column_key = request.mutable_column_key();
+    ::fedb::common::ColumnKey* cur_column_key = request.mutable_column_key();
     cur_column_key->CopyFrom(column_key);
     bool ok =
-        client_.SendRequest(&rtidb::api::TabletServer_Stub::AddIndex, &request,
+        client_.SendRequest(&fedb::api::TabletServer_Stub::AddIndex, &request,
                             &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
-        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+        task_info->set_status(::fedb::api::TaskStatus::kFailed);
         return false;
     }
-    task_info->set_status(::rtidb::api::TaskStatus::kDone);
+    task_info->set_status(::fedb::api::TaskStatus::kDone);
     return true;
 }
 
 bool TabletClient::DumpIndexData(uint32_t tid, uint32_t pid,
                                  uint32_t partition_num,
-                                 const ::rtidb::common::ColumnKey& column_key,
+                                 const ::fedb::common::ColumnKey& column_key,
                                  uint32_t idx,
                                  std::shared_ptr<TaskInfo> task_info) {
-    ::rtidb::api::DumpIndexDataRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::DumpIndexDataRequest request;
+    ::fedb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_partition_num(partition_num);
     request.set_idx(idx);
-    ::rtidb::common::ColumnKey* cur_column_key = request.mutable_column_key();
+    ::fedb::common::ColumnKey* cur_column_key = request.mutable_column_key();
     cur_column_key->CopyFrom(column_key);
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
     }
     bool ok =
-        client_.SendRequest(&rtidb::api::TabletServer_Stub::DumpIndexData,
+        client_.SendRequest(&fedb::api::TabletServer_Stub::DumpIndexData,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
@@ -1397,8 +1397,8 @@ bool TabletClient::SendIndexData(
     uint32_t tid, uint32_t pid,
     const std::map<uint32_t, std::string>& pid_endpoint_map,
     std::shared_ptr<TaskInfo> task_info) {
-    ::rtidb::api::SendIndexDataRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::SendIndexDataRequest request;
+    ::fedb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     for (const auto& kv : pid_endpoint_map) {
@@ -1410,7 +1410,7 @@ bool TabletClient::SendIndexData(
         request.mutable_task_info()->CopyFrom(*task_info);
     }
     bool ok =
-        client_.SendRequest(&rtidb::api::TabletServer_Stub::SendIndexData,
+        client_.SendRequest(&fedb::api::TabletServer_Stub::SendIndexData,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
@@ -1421,8 +1421,8 @@ bool TabletClient::SendIndexData(
 bool TabletClient::LoadIndexData(uint32_t tid, uint32_t pid,
                                  uint32_t partition_num,
                                  std::shared_ptr<TaskInfo> task_info) {
-    ::rtidb::api::LoadIndexDataRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::LoadIndexDataRequest request;
+    ::fedb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_partition_num(partition_num);
@@ -1430,7 +1430,7 @@ bool TabletClient::LoadIndexData(uint32_t tid, uint32_t pid,
         request.mutable_task_info()->CopyFrom(*task_info);
     }
     bool ok =
-        client_.SendRequest(&rtidb::api::TabletServer_Stub::LoadIndexData,
+        client_.SendRequest(&fedb::api::TabletServer_Stub::LoadIndexData,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
@@ -1440,21 +1440,21 @@ bool TabletClient::LoadIndexData(uint32_t tid, uint32_t pid,
 
 bool TabletClient::ExtractIndexData(
     uint32_t tid, uint32_t pid, uint32_t partition_num,
-    const ::rtidb::common::ColumnKey& column_key, uint32_t idx,
+    const ::fedb::common::ColumnKey& column_key, uint32_t idx,
     std::shared_ptr<TaskInfo> task_info) {
-    ::rtidb::api::ExtractIndexDataRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::ExtractIndexDataRequest request;
+    ::fedb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_partition_num(partition_num);
     request.set_idx(idx);
-    ::rtidb::common::ColumnKey* cur_column_key = request.mutable_column_key();
+    ::fedb::common::ColumnKey* cur_column_key = request.mutable_column_key();
     cur_column_key->CopyFrom(column_key);
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
     }
     bool ok =
-        client_.SendRequest(&rtidb::api::TabletServer_Stub::ExtractIndexData,
+        client_.SendRequest(&fedb::api::TabletServer_Stub::ExtractIndexData,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
@@ -1463,11 +1463,11 @@ bool TabletClient::ExtractIndexData(
 }
 
 bool TabletClient::CancelOP(const uint64_t op_id) {
-    ::rtidb::api::CancelOPRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::CancelOPRequest request;
+    ::fedb::api::GeneralResponse response;
     request.set_op_id(op_id);
     bool ret = client_.SendRequest(
-        &::rtidb::api::TabletServer_Stub::CancelOP, &request, &response,
+        &::fedb::api::TabletServer_Stub::CancelOP, &request, &response,
         FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ret || response.code() != 0) {
         return false;
@@ -1479,10 +1479,10 @@ bool TabletClient::GetCatalog(uint64_t* version) {
     if (version == nullptr) {
         return false;
     }
-    ::rtidb::api::GetCatalogRequest request;
-    ::rtidb::api::GetCatalogResponse response;
+    ::fedb::api::GetCatalogRequest request;
+    ::fedb::api::GetCatalogResponse response;
     bool ok = client_.SendRequest(
-            &::rtidb::api::TabletServer_Stub::GetCatalog,
+            &::fedb::api::TabletServer_Stub::GetCatalog,
             &request, &response, FLAGS_request_timeout_ms,
             FLAGS_request_max_retry);
     if (!ok || response.code() != 0) {
@@ -1494,17 +1494,17 @@ bool TabletClient::GetCatalog(uint64_t* version) {
 
 bool TabletClient::UpdateRealEndpointMap(
         const std::map<std::string, std::string>& map) {
-    ::rtidb::api::UpdateRealEndpointMapRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::UpdateRealEndpointMapRequest request;
+    ::fedb::api::GeneralResponse response;
     for (std::map<std::string, std::string>::const_iterator it = map.cbegin();
             it != map.cend(); ++it) {
-        ::rtidb::api::RealEndpointPair* pair =
+        ::fedb::api::RealEndpointPair* pair =
             request.add_real_endpoint_map();
         pair->set_name(it->first);
         pair->set_real_endpoint(it->second);
     }
     bool ok = client_.SendRequest(
-            &::rtidb::api::TabletServer_Stub::UpdateRealEndpointMap,
+            &::fedb::api::TabletServer_Stub::UpdateRealEndpointMap,
             &request, &response, FLAGS_request_timeout_ms,
             FLAGS_request_max_retry);
     if (!ok || response.code() != 0) {
@@ -1513,9 +1513,9 @@ bool TabletClient::UpdateRealEndpointMap(
     return true;
 }
 
-bool TabletClient::CreateProcedure(const rtidb::api::CreateProcedureRequest& sp_request, std::string& msg) {
-    rtidb::api::GeneralResponse response;
-    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateProcedure,
+bool TabletClient::CreateProcedure(const fedb::api::CreateProcedureRequest& sp_request, std::string& msg) {
+    fedb::api::GeneralResponse response;
+    bool ok = client_.SendRequest(&::fedb::api::TabletServer_Stub::CreateProcedure,
             &sp_request, &response, sp_request.timeout_ms(), FLAGS_request_max_retry);
     msg = response.msg();
     if (!ok || response.code() != 0) {
@@ -1524,20 +1524,20 @@ bool TabletClient::CreateProcedure(const rtidb::api::CreateProcedureRequest& sp_
     return true;
 }
 
-bool TabletClient::AsyncScan(const ::rtidb::api::ScanRequest& request,
-        rtidb::RpcCallback<rtidb::api::ScanResponse>* callback) {
+bool TabletClient::AsyncScan(const ::fedb::api::ScanRequest& request,
+        fedb::RpcCallback<fedb::api::ScanResponse>* callback) {
     if (callback == nullptr) {
         return false;
     }
-    return client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan,
+    return client_.SendRequest(&::fedb::api::TabletServer_Stub::Scan,
             callback->GetController().get(), &request,
             callback->GetResponse().get(), callback);
 }
 
-bool TabletClient::Scan(const ::rtidb::api::ScanRequest& request,
+bool TabletClient::Scan(const ::fedb::api::ScanRequest& request,
         brpc::Controller* cntl,
-        ::rtidb::api::ScanResponse* response) {
-    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan, cntl,
+        ::fedb::api::ScanResponse* response) {
+    bool ok = client_.SendRequest(&::fedb::api::TabletServer_Stub::Scan, cntl,
                                   &request, response);
     if (!ok || response->code() != 0) {
         LOG(WARNING) << "fail to scan table with tid " << request.tid();
@@ -1548,10 +1548,10 @@ bool TabletClient::Scan(const ::rtidb::api::ScanRequest& request,
 
 bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name,
                          const std::string& row, brpc::Controller* cntl,
-                         rtidb::api::QueryResponse* response,
+                         fedb::api::QueryResponse* response,
                          bool is_debug, uint64_t timeout_ms) {
     if (cntl == NULL || response == NULL) return false;
-    ::rtidb::api::QueryRequest request;
+    ::fedb::api::QueryRequest request;
     request.set_sp_name(sp_name);
     request.set_db(db);
     request.set_is_debug(is_debug);
@@ -1566,7 +1566,7 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
         LOG(WARNING) << "encode row buf failed";
         return false;
     }
-    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Query, cntl,
+    bool ok = client_.SendRequest(&::fedb::api::TabletServer_Stub::Query, cntl,
                                   &request, response);
     if (!ok || response->code() != 0) {
         LOG(WARNING) << "fail to query tablet";
@@ -1575,34 +1575,34 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
     return true;
 }
 
-bool TabletClient::SubQuery(const ::rtidb::api::QueryRequest& request,
-        rtidb::RpcCallback<rtidb::api::QueryResponse>* callback) {
+bool TabletClient::SubQuery(const ::fedb::api::QueryRequest& request,
+        fedb::RpcCallback<fedb::api::QueryResponse>* callback) {
     if (callback == nullptr) {
         return false;
     }
-    return client_.SendRequest(&::rtidb::api::TabletServer_Stub::SubQuery,
+    return client_.SendRequest(&::fedb::api::TabletServer_Stub::SubQuery,
             callback->GetController().get(), &request,
             callback->GetResponse().get(), callback);
 }
-bool TabletClient::SubBatchRequestQuery(const ::rtidb::api::SQLBatchRequestQueryRequest& request,
-                                        rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback) {
+bool TabletClient::SubBatchRequestQuery(const ::fedb::api::SQLBatchRequestQueryRequest& request,
+                                        fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback) {
     if (callback == nullptr) {
         return false;
     }
-    return client_.SendRequest(&::rtidb::api::TabletServer_Stub::SQLBatchRequestQuery,
+    return client_.SendRequest(&::fedb::api::TabletServer_Stub::SQLBatchRequestQuery,
                                callback->GetController().get(), &request,
                                callback->GetResponse().get(), callback);
 }
 
 bool TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
-        std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
+        std::shared_ptr<::fedb::sdk::SQLRequestRowBatch> row_batch,
         brpc::Controller* cntl,
-        rtidb::api::SQLBatchRequestQueryResponse* response,
+        fedb::api::SQLBatchRequestQueryResponse* response,
         bool is_debug, uint64_t timeout_ms) {
     if (cntl == NULL || response == NULL) {
         return false;
     }
-    ::rtidb::api::SQLBatchRequestQueryRequest request;
+    ::fedb::api::SQLBatchRequestQueryRequest request;
     request.set_sp_name(sp_name);
     request.set_is_procedure(true);
     request.set_db(db);
@@ -1614,9 +1614,9 @@ bool TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std
         return false;
     }
 
-    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SQLBatchRequestQuery,
+    bool ok = client_.SendRequest(&::fedb::api::TabletServer_Stub::SQLBatchRequestQuery,
                                   cntl, &request, response);
-    if (!ok || response->code() != ::rtidb::base::kOk) {
+    if (!ok || response->code() != ::fedb::base::kOk) {
         LOG(WARNING) << "fail to query tablet";
         return false;
     }
@@ -1624,12 +1624,12 @@ bool TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std
 }
 
 bool TabletClient::DropProcedure(const std::string& db_name, const std::string& sp_name) {
-    ::rtidb::api::DropProcedureRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::DropProcedureRequest request;
+    ::fedb::api::GeneralResponse response;
     request.set_db_name(db_name);
     request.set_sp_name(sp_name);
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::DropProcedure,
+        client_.SendRequest(&::fedb::api::TabletServer_Stub::DropProcedure,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
@@ -1639,11 +1639,11 @@ bool TabletClient::DropProcedure(const std::string& db_name, const std::string& 
 
 bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name,
         const std::string& row, uint64_t timeout_ms, bool is_debug,
-        rtidb::RpcCallback<rtidb::api::QueryResponse>* callback) {
+        fedb::RpcCallback<fedb::api::QueryResponse>* callback) {
     if (callback == nullptr) {
         return false;
     }
-    ::rtidb::api::QueryRequest request;
+    ::fedb::api::QueryRequest request;
     request.set_db(db);
     request.set_sp_name(sp_name);
     request.set_is_debug(is_debug);
@@ -1658,19 +1658,19 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
         return false;
     }
     callback->GetController()->set_timeout_ms(timeout_ms);
-    return client_.SendRequest(&::rtidb::api::TabletServer_Stub::Query,
+    return client_.SendRequest(&::fedb::api::TabletServer_Stub::Query,
             callback->GetController().get(), &request, callback->GetResponse().get(), callback);
 }
 
 bool TabletClient::CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name,
-        std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
+        std::shared_ptr<::fedb::sdk::SQLRequestRowBatch> row_batch,
         bool is_debug, uint64_t timeout_ms,
-        rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback) {
+        fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback) {
     if (callback == nullptr) {
         return false;
     }
-    ::rtidb::api::SQLBatchRequestQueryRequest request;
+    ::fedb::api::SQLBatchRequestQueryRequest request;
     request.set_sp_name(sp_name);
     request.set_is_procedure(true);
     request.set_db(db);
@@ -1682,10 +1682,10 @@ bool TabletClient::CallSQLBatchRequestProcedure(
     }
 
     callback->GetController()->set_timeout_ms(timeout_ms);
-    return client_.SendRequest(&::rtidb::api::TabletServer_Stub::SQLBatchRequestQuery,
+    return client_.SendRequest(&::fedb::api::TabletServer_Stub::SQLBatchRequestQuery,
             callback->GetController().get(), &request, callback->GetResponse().get(), callback);
 }
 
 
 }  // namespace client
-}  // namespace rtidb
+}  // namespace fedb

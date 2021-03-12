@@ -27,7 +27,7 @@
 #include "proto/tablet.pb.h"
 #include "storage/segment.h"
 
-namespace rtidb {
+namespace fedb {
 namespace codec {
 
 class CodecTest : public ::testing::Test {
@@ -37,36 +37,36 @@ class CodecTest : public ::testing::Test {
 };
 
 TEST_F(CodecTest, EncodeRows_empty) {
-    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>> data;
+    boost::container::deque<std::pair<uint64_t, ::fedb::base::Slice>> data;
     std::string pairs;
-    int32_t size = ::rtidb::codec::EncodeRows(data, 0, &pairs);
+    int32_t size = ::fedb::codec::EncodeRows(data, 0, &pairs);
     ASSERT_EQ(size, 0);
 }
 
 TEST_F(CodecTest, EncodeRows_invalid) {
-    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>> data;
-    int32_t size = ::rtidb::codec::EncodeRows(data, 0, NULL);
+    boost::container::deque<std::pair<uint64_t, ::fedb::base::Slice>> data;
+    int32_t size = ::fedb::codec::EncodeRows(data, 0, NULL);
     ASSERT_EQ(size, -1);
 }
 
 TEST_F(CodecTest, EncodeRows) {
-    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>> data;
+    boost::container::deque<std::pair<uint64_t, ::fedb::base::Slice>> data;
     std::string test1 = "value1";
     std::string test2 = "value2";
     std::string empty;
     uint32_t total_block_size =
         test1.length() + test2.length() + empty.length();
     data.emplace_back(
-        1, std::move(::rtidb::base::Slice(test1.c_str(), test1.length())));
+        1, std::move(::fedb::base::Slice(test1.c_str(), test1.length())));
     data.emplace_back(
-        2, std::move(::rtidb::base::Slice(test2.c_str(), test2.length())));
+        2, std::move(::fedb::base::Slice(test2.c_str(), test2.length())));
     data.emplace_back(
-        3, std::move(::rtidb::base::Slice(empty.c_str(), empty.length())));
+        3, std::move(::fedb::base::Slice(empty.c_str(), empty.length())));
     std::string pairs;
-    int32_t size = ::rtidb::codec::EncodeRows(data, total_block_size, &pairs);
+    int32_t size = ::fedb::codec::EncodeRows(data, total_block_size, &pairs);
     ASSERT_EQ(size, 3 * 12 + 6 + 6);
     std::vector<std::pair<uint64_t, std::string*>> new_data;
-    ::rtidb::codec::Decode(&pairs, new_data);
+    ::fedb::codec::Decode(&pairs, new_data);
     ASSERT_EQ(data.size(), new_data.size());
     ASSERT_EQ(new_data[0].second->compare(test1), 0);
     ASSERT_EQ(new_data[1].second->compare(test2), 0);
@@ -75,15 +75,15 @@ TEST_F(CodecTest, EncodeRows) {
 
 TEST_F(CodecTest, NULLTest) {
     Schema schema;
-    ::rtidb::common::ColumnDesc* col = schema.Add();
+    ::fedb::common::ColumnDesc* col = schema.Add();
     col->set_name("col1");
-    col->set_data_type(::rtidb::type::kSmallInt);
+    col->set_data_type(::fedb::type::kSmallInt);
     col = schema.Add();
     col->set_name("col2");
-    col->set_data_type(::rtidb::type::kBool);
+    col->set_data_type(::fedb::type::kBool);
     col = schema.Add();
     col->set_name("col3");
-    col->set_data_type(::rtidb::type::kVarchar);
+    col->set_data_type(::fedb::type::kVarchar);
     RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(9);
     std::string row;
@@ -110,21 +110,21 @@ TEST_F(CodecTest, NULLTest) {
 
 TEST_F(CodecTest, Normal) {
     Schema schema;
-    ::rtidb::common::ColumnDesc* col = schema.Add();
+    ::fedb::common::ColumnDesc* col = schema.Add();
     col->set_name("col1");
-    col->set_data_type(::rtidb::type::kInt);
+    col->set_data_type(::fedb::type::kInt);
     col = schema.Add();
     col->set_name("col2");
-    col->set_data_type(::rtidb::type::kSmallInt);
+    col->set_data_type(::fedb::type::kSmallInt);
     col = schema.Add();
     col->set_name("col3");
-    col->set_data_type(::rtidb::type::kFloat);
+    col->set_data_type(::fedb::type::kFloat);
     col = schema.Add();
     col->set_name("col4");
-    col->set_data_type(::rtidb::type::kDouble);
+    col->set_data_type(::fedb::type::kDouble);
     col = schema.Add();
     col->set_name("col5");
-    col->set_data_type(::rtidb::type::kBigInt);
+    col->set_data_type(::fedb::type::kBigInt);
     RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(0);
     std::string row;
@@ -155,14 +155,14 @@ TEST_F(CodecTest, Normal) {
 TEST_F(CodecTest, Encode) {
     Schema schema;
     for (int i = 0; i < 10; i++) {
-        ::rtidb::common::ColumnDesc* col = schema.Add();
+        ::fedb::common::ColumnDesc* col = schema.Add();
         col->set_name("col" + std::to_string(i));
         if (i % 3 == 0) {
-            col->set_data_type(::rtidb::type::kSmallInt);
+            col->set_data_type(::fedb::type::kSmallInt);
         } else if (i % 3 == 1) {
-            col->set_data_type(::rtidb::type::kDouble);
+            col->set_data_type(::fedb::type::kDouble);
         } else {
-            col->set_data_type(::rtidb::type::kVarchar);
+            col->set_data_type(::fedb::type::kVarchar);
         }
     }
     RowBuilder builder(schema);
@@ -206,14 +206,14 @@ TEST_F(CodecTest, Encode) {
 TEST_F(CodecTest, AppendNULL) {
     Schema schema;
     for (int i = 0; i < 20; i++) {
-        ::rtidb::common::ColumnDesc* col = schema.Add();
+        ::fedb::common::ColumnDesc* col = schema.Add();
         col->set_name("col" + std::to_string(i));
         if (i % 3 == 0) {
-            col->set_data_type(::rtidb::type::kSmallInt);
+            col->set_data_type(::fedb::type::kSmallInt);
         } else if (i % 3 == 1) {
-            col->set_data_type(::rtidb::type::kDouble);
+            col->set_data_type(::fedb::type::kDouble);
         } else {
-            col->set_data_type(::rtidb::type::kVarchar);
+            col->set_data_type(::fedb::type::kVarchar);
         }
     }
     RowBuilder builder(schema);
@@ -279,12 +279,12 @@ TEST_F(CodecTest, AppendNULL) {
 TEST_F(CodecTest, AppendNULLAndEmpty) {
     Schema schema;
     for (int i = 0; i < 20; i++) {
-        ::rtidb::common::ColumnDesc* col = schema.Add();
+        ::fedb::common::ColumnDesc* col = schema.Add();
         col->set_name("col" + std::to_string(i));
         if (i % 2 == 0) {
-            col->set_data_type(::rtidb::type::kSmallInt);
+            col->set_data_type(::fedb::type::kSmallInt);
         } else {
-            col->set_data_type(::rtidb::type::kVarchar);
+            col->set_data_type(::fedb::type::kVarchar);
         }
     }
     RowBuilder builder(schema);
@@ -347,17 +347,17 @@ TEST_F(CodecTest, AppendNULLAndEmpty) {
 TEST_F(CodecTest, ManyCol) {
     std::vector<int> num_vec = {10, 20, 50, 100, 1000, 10000, 100000};
     for (auto col_num : num_vec) {
-        ::rtidb::api::TableMeta def;
+        ::fedb::api::TableMeta def;
         for (int i = 0; i < col_num; i++) {
-            ::rtidb::common::ColumnDesc* col = def.add_column_desc();
+            ::fedb::common::ColumnDesc* col = def.add_column_desc();
             col->set_name("col" + std::to_string(i + 1));
-            col->set_data_type(::rtidb::type::kVarchar);
+            col->set_data_type(::fedb::type::kVarchar);
             col = def.add_column_desc();
             col->set_name("col" + std::to_string(i + 2));
-            col->set_data_type(::rtidb::type::kBigInt);
+            col->set_data_type(::fedb::type::kBigInt);
             col = def.add_column_desc();
             col->set_name("col" + std::to_string(i + 3));
-            col->set_data_type(::rtidb::type::kDouble);
+            col->set_data_type(::fedb::type::kDouble);
         }
         RowBuilder builder(def.column_desc());
         uint32_t size = builder.CalTotalLength(10 * col_num);
@@ -398,14 +398,14 @@ TEST_F(CodecTest, ManyCol) {
 TEST_F(CodecTest, NotAppendCol) {
     Schema schema;
     for (int i = 0; i < 10; i++) {
-        ::rtidb::common::ColumnDesc* col = schema.Add();
+        ::fedb::common::ColumnDesc* col = schema.Add();
         col->set_name("col" + std::to_string(i));
         if (i % 3 == 0) {
-            col->set_data_type(::rtidb::type::kSmallInt);
+            col->set_data_type(::fedb::type::kSmallInt);
         } else if (i % 3 == 1) {
-            col->set_data_type(::rtidb::type::kDouble);
+            col->set_data_type(::fedb::type::kDouble);
         } else {
-            col->set_data_type(::rtidb::type::kVarchar);
+            col->set_data_type(::fedb::type::kVarchar);
         }
     }
     RowBuilder builder(schema);
@@ -454,9 +454,9 @@ TEST_F(CodecTest, NotAppendCol) {
 TEST_F(CodecTest, NotAppendString) {
     Schema schema;
     for (int i = 0; i < 10; i++) {
-        ::rtidb::common::ColumnDesc* col = schema.Add();
+        ::fedb::common::ColumnDesc* col = schema.Add();
         col->set_name("col" + std::to_string(i));
-        col->set_data_type(::rtidb::type::kVarchar);
+        col->set_data_type(::fedb::type::kVarchar);
     }
     RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(100);
@@ -490,7 +490,7 @@ TEST_F(CodecTest, NotAppendString) {
 }
 
 }  // namespace codec
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

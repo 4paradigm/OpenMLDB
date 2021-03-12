@@ -20,7 +20,7 @@
 
 #include <string>
 
-namespace rtidb {
+namespace fedb {
 
 namespace base {
 class Status;
@@ -52,6 +52,6 @@ class WritableFile {
 WritableFile* NewWritableFile(const std::string& fname, FILE* f);
 
 }  // namespace log
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_LOG_WRITABLE_FILE_H_

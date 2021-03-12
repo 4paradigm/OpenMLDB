@@ -22,7 +22,7 @@
 #include "proto/tablet.pb.h"
 #include "storage/table.h"
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 class Snapshot {
@@ -40,7 +40,7 @@ class Snapshot {
     int GenManifest(const std::string& snapshot_name, uint64_t key_count,
                     uint64_t offset, uint64_t term);
     static int GetLocalManifest(const std::string& full_path,
-                                ::rtidb::api::Manifest& manifest);  // NOLINT
+                                ::fedb::api::Manifest& manifest);  // NOLINT
 
  protected:
     uint32_t tid_;
@@ -51,4 +51,4 @@ class Snapshot {
 };
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb

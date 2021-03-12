@@ -32,9 +32,9 @@ DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
 
-using ::rtidb::zk::ZkClient;
+using ::fedb::zk::ZkClient;
 
-namespace rtidb {
+namespace fedb {
 namespace tablet {
 
 uint32_t counter = 10;
@@ -87,13 +87,13 @@ TEST_F(TabletImplTest, KeepAlive) {
 }
 
 }  // namespace tablet
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::rtidb::base::SetLogLevel(DEBUG);
+    ::fedb::base::SetLogLevel(DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::fedb::tablet::GenRand();
     return RUN_ALL_TESTS();
 }

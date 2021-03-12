@@ -26,12 +26,12 @@
 #include "codec/fe_schema_codec.h"
 #include "glog/logging.h"
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 static const std::string EMPTY_STR;  // NOLINT
 SQLBatchRequestResultSet::SQLBatchRequestResultSet(
-    const std::shared_ptr<::rtidb::api::SQLBatchRequestQueryResponse>& response,
+    const std::shared_ptr<::fedb::api::SQLBatchRequestQueryResponse>& response,
     const std::shared_ptr<brpc::Controller>& cntl)
     : response_(response),
       index_(-1),
@@ -45,7 +45,7 @@ SQLBatchRequestResultSet::SQLBatchRequestResultSet(
 SQLBatchRequestResultSet::~SQLBatchRequestResultSet() {}
 
 bool SQLBatchRequestResultSet::Init() {
-    if (!response_ || response_->code() != ::rtidb::base::kOk) {
+    if (!response_ || response_->code() != ::fedb::base::kOk) {
         LOG(WARNING) << "bad response code " << response_->code();
         return false;
     }
@@ -353,4 +353,4 @@ bool SQLBatchRequestResultSet::GetTime(uint32_t index, int64_t* mills) {
 }
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb

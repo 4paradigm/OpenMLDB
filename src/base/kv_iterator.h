@@ -25,12 +25,12 @@
 #include "base/slice.h"
 #include "proto/tablet.pb.h"
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 class KvIterator {
  public:
-    explicit KvIterator(::rtidb::api::ScanResponse* response)
+    explicit KvIterator(::fedb::api::ScanResponse* response)
         : response_(response),
           buffer_(NULL),
           tsize_(0),
@@ -45,7 +45,7 @@ class KvIterator {
         Next();
     }
 
-    explicit KvIterator(::rtidb::api::TraverseResponse* response)
+    explicit KvIterator(::fedb::api::TraverseResponse* response)
         : response_(response),
           buffer_(NULL),
           tsize_(0),
@@ -60,7 +60,7 @@ class KvIterator {
         Next();
     }
 
-    KvIterator(::rtidb::api::ScanResponse* response, bool clean)
+    KvIterator(::fedb::api::ScanResponse* response, bool clean)
         : response_(response),
           buffer_(NULL),
           tsize_(0),
@@ -75,7 +75,7 @@ class KvIterator {
         Next();
     }
 
-    KvIterator(::rtidb::api::TraverseResponse* response, bool clean)
+    KvIterator(::fedb::api::TraverseResponse* response, bool clean)
         : response_(response),
           buffer_(NULL),
           tsize_(0),
@@ -168,5 +168,5 @@ class KvIterator {
 };
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_BASE_KV_ITERATOR_H_
