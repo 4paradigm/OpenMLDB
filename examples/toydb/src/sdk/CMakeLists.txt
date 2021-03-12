@@ -17,7 +17,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_BINARY_DIR}/src
 		${PROJECT_SOURCE_DIR}/examples/toydb/src)
 
-set(SDK_DEPS_LIBS fesql_core fesql_flags
+set(SDK_DEPS_LIBS fesql_core fesql_flags fesql_sdk
 	${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
 # split sdk test and bm
@@ -33,8 +33,8 @@ foreach(SRC_FILE ${BM_FILES})
 endforeach()
 
 # fesql sdk library
-add_library(fesql_sdk STATIC ${SDK_SRC_FILE_LIST})
-target_link_libraries(fesql_sdk ${SDK_DEPS_LIBS})
+add_library(toydb_sdk STATIC ${SDK_SRC_FILE_LIST})
+target_link_libraries(toydb_sdk ${SDK_DEPS_LIBS})
 
 # fesql sdk testcases
 if (TESTING_ENABLE)
@@ -49,7 +49,7 @@ if (TESTING_ENABLE)
         add_test(${TEST_TARGET_NAME}
             ${TEST_TARGET_NAME}
             --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
-        target_link_libraries(${TEST_TARGET_NAME} gtest fesql_sdk toy_flags fesql_toy_lib)
+        target_link_libraries(${TEST_TARGET_NAME} gtest toydb_sdk toydb_flags toydb_lib)
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach()
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

@@ -16,6 +16,26 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
+
+set(SDK_DEPS_LIBS fesql_core fesql_flags
+		${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
+
+# split sdk test and bm
+set(SDK_SRC_FILE_LIST)
+set(SDK_TEST_FILE_LIST)
+file(GLOB_RECURSE BM_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cc)
+foreach(SRC_FILE ${BM_FILES})
+	if (SRC_FILE MATCHES ".*_test.cc")
+		list(APPEND SDK_TEST_FILE_LIST ${SRC_FILE})
+	else()
+		list(APPEND SDK_SRC_FILE_LIST ${SRC_FILE})
+	endif()
+endforeach()
+
+# fesql sdk library
+add_library(fesql_sdk STATIC ${SDK_SRC_FILE_LIST})
+target_link_libraries(fesql_sdk ${SDK_DEPS_LIBS})
+
 set_property(SOURCE fesql_interface_core.i PROPERTY CPLUSPLUS ON)
 
 if(PYSDK_ENABLE)

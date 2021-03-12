@@ -17,6 +17,7 @@
 #include "case/case_data_mock.h"
 #include "gtest/gtest.h"
 #include "gtest/internal/gtest-param-util.h"
+#include "engine_test_base.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
