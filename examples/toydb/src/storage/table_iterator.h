@@ -22,9 +22,9 @@
 #include "base/fe_slice.h"
 #include "base/iterator.h"
 #include "codec/list_iterator_codec.h"
-#include "storage/fe_segment.h"
-#include "storage/fe_table.h"
 #include "glog/logging.h"
+#include "storage/segment.h"
+#include "storage/table_impl.h"
 #include "vm/catalog.h"
 
 namespace fesql {

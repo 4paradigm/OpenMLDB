@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "storage/fe_table.h"
+#include "storage/table_impl.h"
 #include <sys/time.h>
 #include <algorithm>
 #include <string>

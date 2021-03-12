@@ -80,9 +80,9 @@ if (BENCHMARK_ENABLE)
 add_subdirectory(bm)
 endif()
 
-# fesql bin
-add_executable(fesql cmd/fesql.cc)
-target_link_libraries(fesql fesql_core fesql_flags toydb_lib toydb_sdk fesql_sdk)
+# toydb bin
+add_executable(toydb cmd/toydb.cc)
+target_link_libraries(toydb toydb_lib toydb_sdk fesql_sdk fesql_core fesql_flags )
 # engine execution
-add_executable(fesql_run_engine cmd/fesql_run_engine.cc)
-target_link_libraries(fesql_run_engine toydb_lib toydb_sdk toydb_flags fesql_flags gtest sqlite3)
+add_executable(toydb_run_engine cmd/toydb_run_engine.cc)
+target_link_libraries(toydb_run_engine toydb_lib toydb_sdk toydb_flags fesql_flags gtest sqlite3)

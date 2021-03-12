@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
+#include "storage/table_iterator.h"
 #include <sys/time.h>
 #include <iostream>
 #include <string>
 #include "codec/row.h"
-#include "storage/fe_table.h"
-#include "storage/fe_table_iterator.h"
 #include "gtest/gtest.h"
+#include "storage/table_impl.h"
 
 namespace fesql {
 namespace storage {

@@ -32,11 +32,11 @@ foreach(SRC_FILE ${BM_FILES})
     endif()
 endforeach()
 
-# fesql sdk library
+# toydb_sdk library
 add_library(toydb_sdk STATIC ${SDK_SRC_FILE_LIST})
 target_link_libraries(toydb_sdk ${SDK_DEPS_LIBS})
 
-# fesql sdk testcases
+# toydb sdk testcases
 if (TESTING_ENABLE)
 	set(TEST_CPP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
     foreach(TEST_SCRIPT ${SDK_TEST_FILE_LIST}) 

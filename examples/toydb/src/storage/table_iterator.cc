@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "storage/fe_table_iterator.h"
+#include "storage/table_iterator.h"
 #include <memory>
 #include <string>
 #include <utility>
