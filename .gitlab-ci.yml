@@ -26,7 +26,7 @@ style_check:
 build:
   stage: build
   script:
-    - source /root/.bashrc && sh tools/install_fesql.sh
+    - source /root/.bashrc && sh tools/install_fesql.sh ON
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/simple_compile.sh
