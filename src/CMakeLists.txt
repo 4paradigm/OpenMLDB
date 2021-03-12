@@ -50,8 +50,6 @@ function(compile_test DIR)
             add_executable(${TEST_TARGET_NAME} ${SRC_FILE} $<TARGET_OBJECTS:fedb_proto>)
             if (${TEST_TARGET_NAME} STREQUAL "tablet_impl_mem_test")
                 target_link_libraries(${TEST_TARGET_NAME} tcmalloc ${TEST_LIBS} gtest)
-            elseif (${TEST_TARGET_NAME} STREQUAL "tablet_engine_test")
-                target_link_libraries(${TEST_TARGET_NAME} base_test ${TEST_LIBS} yaml-cpp boost_filesystem gtest)
             else()
                 target_link_libraries(${TEST_TARGET_NAME} ${TEST_LIBS} gtest)
             endif()
@@ -86,6 +84,12 @@ set(BIN_LIBS nameserver tablet fedb_sdk fedb_catalog client zk_client replica ba
 ${VM_LIBS}
 ${LLVM_LIBS}
 ${BRPC_LIBS})
+
+if (SDK_TESTING_ENABLE)
+    add_executable(tablet_engine_test catalog/tablet_engine_test.cc)
+    add_library(base_test STATIC test/base_test.cc)
+    target_link_libraries(${TEST_TARGET_NAME} base_test ${BIN_LIBS} yaml-cpp boost_filesystem gtest)
+endif()
 
 if(TESTING_ENABLE)
     compile_test(base)

@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if (SDK_TESTING_ENABLE)
+    add_executable(sql_sdk_test sql_sdk_test.cc)
+    target_link_libraries(sql_sdk_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+
+    add_executable(sql_cluster_test sql_cluster_test.cc)
+    target_link_libraries(sql_cluster_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+endif()
+
 if(TESTING_ENABLE)
     add_library(mini_cluster_bm_common STATIC mini_cluster_bm.cc sql_sdk_test.cc)
     add_library(base_test STATIC ../test/base_test.cc)
@@ -24,11 +32,6 @@ if(TESTING_ENABLE)
     add_executable(sql_router_test sql_router_test.cc)
     target_link_libraries(sql_router_test gtest ${BIN_LIBS})
 
-    add_executable(sql_sdk_test sql_sdk_test.cc)
-    target_link_libraries(sql_sdk_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
-
-    add_executable(sql_cluster_test sql_cluster_test.cc)
-    target_link_libraries(sql_cluster_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
 
     add_executable(sql_request_row_test sql_request_row_test.cc)
     target_link_libraries(sql_request_row_test gtest ${BIN_LIBS})
