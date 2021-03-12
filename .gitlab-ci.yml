@@ -39,7 +39,6 @@ build:
       - build/bin/rtidb
       - build/bin/sql_sdk_test
       - build/bin/sql_cluster_test
-      - build/bin/tablet_engine_test
       - build/src/sdk/libsql_jsdk.so
       - build/sql_pysdk/dist/*.whl
       - build/python/dist/*.whl
@@ -135,22 +134,6 @@ fesql_auto_test_level_cluster_0:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
-
-fesql_sdk_c++_tablet_engine_test_level_0:
-  stage: quick
-  script:
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_c_ut.sh 0 tablet_engine_test
-  artifacts:
-    reports:
-      junit:
-        - reports/*.xml
-  dependencies:
-    - build
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
 
 fesql_sdk_c++_sql_cluster_test_level_0:
   stage: quick
