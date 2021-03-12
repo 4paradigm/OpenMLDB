@@ -1,5 +1,4 @@
 #!/bin/bash
-echo "CICD environment tag: ${CICD_RUNNER_TAG}"
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +12,10 @@ echo "CICD environment tag: ${CICD_RUNNER_TAG}"
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+set -eE
+
+echo "CICD environment tag: ${CICD_RUNNER_TAG}"
 
 echo "Third party packages path: ${CICD_RUNNER_THIRDPARTY_PATH}"
 if [[ "$OSTYPE" == "linux-gnu"* ]]

@@ -1,5 +1,4 @@
 #!/bin/bash
-WORKSPACE=`pwd`
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,9 +13,16 @@ WORKSPACE=`pwd`
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -eE
 
-cd ${WORKSPACE}/onebox && sh start_all.sh
-cd ${WORKSPACE}/java
+cd "$(dirname "$0")"
+cd "$(git rev-parse --show-toplevel)"
+
+pushd examples/toydb/onebox/
+sh start_all.sh
+popd
+
+cd java
 mvn scoverage:report
 TEST_SUCCESS=$?
 if [[ -x "$(command -v pages)" ]]; then

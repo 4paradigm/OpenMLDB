@@ -14,16 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-PWD=`pwd`
+set -eE
 
-if $(uname -a | grep -q Darwin); then
-    JOBS=$(sysctl -n machdep.cpu.core_count)
-else
-    JOBS=$(grep -c ^processor /proc/cpuinfo 2>/dev/null)
-fi 
+cd "$(dirname "$0")"
+cd "$(git rev-parse --show-toplevel)"
+
+if uname -a | grep -q Darwin; then
+    # in case coreutils not install on mac
+    alias nproc='sysctl -n hw.logicalcpu'
+fi
 
 export PATH=${PWD}/thirdparty/bin:$PATH
-mkdir -p build && cd build 
+mkdir -p build && cd build
 cmake .. -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON
-make fesql_proto && make fesql_parser && make -j${JOBS}
-make coverage -j${JOBS}
+make fesql_proto && make fesql_parser && make -j"$(nproc)"
+make coverage -j"$(nproc)"
