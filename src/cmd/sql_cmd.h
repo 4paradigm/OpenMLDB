@@ -41,9 +41,9 @@ DECLARE_string(zk_root_path);
 DECLARE_bool(interactive);
 DECLARE_string(cmd);
 
-using ::rtidb::catalog::TTL_TYPE_MAP;
+using ::fedb::catalog::TTL_TYPE_MAP;
 
-namespace rtidb {
+namespace fedb {
 namespace cmd {
 
 const std::string LOGO =  // NOLINT
@@ -55,15 +55,15 @@ const std::string LOGO =  // NOLINT
     " | | |  __ / |__| | |_) |\n"
     " |_|  \\___||_____/|____/\n";
 
-const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) + "." +  // NOLINT
-                            std::to_string(RTIDB_VERSION_MEDIUM) + "." +
-                            std::to_string(RTIDB_VERSION_MINOR) + "." +
-                            std::to_string(RTIDB_VERSION_BUG) + "." +
-                            RTIDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
+const std::string VERSION = std::to_string(FEDB_VERSION_MAJOR) + "." +  // NOLINT
+                            std::to_string(FEDB_VERSION_MEDIUM) + "." +
+                            std::to_string(FEDB_VERSION_MINOR) + "." +
+                            std::to_string(FEDB_VERSION_BUG) + "." +
+                            FEDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
 
 std::string db = "";  // NOLINT
-::rtidb::sdk::ClusterSDK *cs = NULL;
-::rtidb::sdk::SQLClusterRouter *sr = NULL;
+::fedb::sdk::ClusterSDK *cs = NULL;
+::fedb::sdk::SQLClusterRouter *sr = NULL;
 
 void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     if (!result_set || result_set->Size() == 0) {
@@ -352,11 +352,11 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
                 return;
             }
             ::fesql::vm::Schema output_schema;
-            ::rtidb::catalog::SchemaAdapter::ConvertSchema(
+            ::fedb::catalog::SchemaAdapter::ConvertSchema(
                 table->column_desc_v1(), &output_schema);
             PrintTableSchema(std::cout, output_schema);
             ::fesql::vm::IndexList index_list;
-            ::rtidb::catalog::SchemaAdapter::ConvertIndex(table->column_key(), &index_list);
+            ::fedb::catalog::SchemaAdapter::ConvertIndex(table->column_key(), &index_list);
             PrintTableIndex(std::cout, index_list);
             break;
         }
@@ -519,7 +519,7 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
 }
 
 void HandleCreateIndex(const fesql::node::CreateIndexNode *create_index_node) {
-    ::rtidb::common::ColumnKey column_key;
+    ::fedb::common::ColumnKey column_key;
     column_key.set_index_name(create_index_node->index_name_);
     for (const auto &key : create_index_node->index_->GetKey()) {
         column_key.add_col_name(key);
@@ -631,16 +631,16 @@ void HandleCli() {
         std::cout << LOGO << std::endl;
         std::cout << "v" << VERSION << std::endl;
     }
-    ::rtidb::sdk::ClusterOptions copt;
+    ::fedb::sdk::ClusterOptions copt;
     copt.zk_cluster = FLAGS_zk_cluster;
     copt.zk_path = FLAGS_zk_root_path;
-    cs = new ::rtidb::sdk::ClusterSDK(copt);
+    cs = new ::fedb::sdk::ClusterSDK(copt);
     bool ok = cs->Init();
     if (!ok) {
         std::cout << "Fail to connect to db" << std::endl;
         return;
     }
-    sr = new ::rtidb::sdk::SQLClusterRouter(cs);
+    sr = new ::fedb::sdk::SQLClusterRouter(cs);
     if (!sr->Init()) {
         std::cout << "Fail to connect to db" << std::endl;
         return;
@@ -657,7 +657,7 @@ void HandleCli() {
             buffer = FLAGS_cmd;
             db = FLAGS_database;
         } else {
-            char *line = ::rtidb::base::linenoise(
+            char *line = ::fedb::base::linenoise(
                 multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
             if (line == NULL) {
                 return;
@@ -665,10 +665,10 @@ void HandleCli() {
             if (line[0] != '\0' && line[0] != '/') {
                 buffer.assign(line);
                 if (!buffer.empty()) {
-                    ::rtidb::base::linenoiseHistoryAdd(line);
+                    ::fedb::base::linenoiseHistoryAdd(line);
                 }
             }
-            ::rtidb::base::linenoiseFree(line);
+            ::fedb::base::linenoiseFree(line);
             if (buffer.empty()) {
                 continue;
             }
@@ -692,6 +692,6 @@ void HandleCli() {
 }
 
 }  // namespace cmd
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_CMD_SQL_CMD_H_

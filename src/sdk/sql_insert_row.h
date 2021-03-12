@@ -33,29 +33,29 @@
 #include "proto/name_server.pb.h"
 #include "sdk/base.h"
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 typedef std::shared_ptr<std::map<uint32_t, std::shared_ptr<::fesql::node::ConstNode>>> DefaultValueMap;
 
-static inline ::fesql::sdk::DataType ConvertType(::rtidb::type::DataType type) {
+static inline ::fesql::sdk::DataType ConvertType(::fedb::type::DataType type) {
     switch (type) {
-        case rtidb::type::kBool:
+        case fedb::type::kBool:
             return ::fesql::sdk::kTypeBool;
-        case rtidb::type::kSmallInt:
+        case fedb::type::kSmallInt:
             return ::fesql::sdk::kTypeInt16;
-        case rtidb::type::kInt:
+        case fedb::type::kInt:
             return ::fesql::sdk::kTypeInt32;
-        case rtidb::type::kBigInt:
+        case fedb::type::kBigInt:
             return ::fesql::sdk::kTypeInt64;
-        case rtidb::type::kFloat:
+        case fedb::type::kFloat:
             return ::fesql::sdk::kTypeFloat;
-        case rtidb::type::kDouble:
+        case fedb::type::kDouble:
             return ::fesql::sdk::kTypeDouble;
-        case rtidb::type::kTimestamp:
+        case fedb::type::kTimestamp:
             return ::fesql::sdk::kTypeTimestamp;
-        case rtidb::type::kString:
-        case rtidb::type::kVarchar:
+        case fedb::type::kString:
+        case fedb::type::kVarchar:
             return ::fesql::sdk::kTypeString;
         default:
             return ::fesql::sdk::kTypeUnknow;
@@ -65,7 +65,7 @@ static inline ::fesql::sdk::DataType ConvertType(::rtidb::type::DataType type) {
 class SQLInsertRow {
  public:
     explicit SQLInsertRow(
-        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+        std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
         std::shared_ptr<fesql::sdk::Schema> schema, DefaultValueMap default_map,
         uint32_t default_str_length);
     ~SQLInsertRow() = default;
@@ -114,7 +114,7 @@ class SQLInsertRow {
     }
 
  private:
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info_;
+    std::shared_ptr<::fedb::nameserver::TableInfo> table_info_;
     std::shared_ptr<fesql::sdk::Schema> schema_;
     DefaultValueMap default_map_;
     uint32_t default_string_length_;
@@ -123,14 +123,14 @@ class SQLInsertRow {
     std::map<uint32_t, std::string> raw_dimensions_;
     std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions_;
     std::vector<uint64_t> ts_;
-    ::rtidb::codec::RowBuilder rb_;
+    ::fedb::codec::RowBuilder rb_;
     std::string val_;
     uint32_t str_size_;
 };
 
 class SQLInsertRows {
  public:
-    SQLInsertRows(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+    SQLInsertRows(std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
                   std::shared_ptr<fesql::sdk::Schema> schema,
                   DefaultValueMap default_map, uint32_t str_size);
     ~SQLInsertRows() = default;
@@ -144,7 +144,7 @@ class SQLInsertRows {
     }
 
  private:
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info_;
+    std::shared_ptr<::fedb::nameserver::TableInfo> table_info_;
     std::shared_ptr<fesql::sdk::Schema> schema_;
     DefaultValueMap default_map_;
     uint32_t default_str_length_;
@@ -152,5 +152,5 @@ class SQLInsertRows {
 };
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_SDK_SQL_INSERT_ROW_H_

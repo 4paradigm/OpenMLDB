@@ -23,13 +23,13 @@
 #include "glog/logging.h"
 
 DECLARE_int32(request_timeout_ms);
-namespace rtidb {
+namespace fedb {
 namespace client {
 
 NsClient::NsClient(const std::string& endpoint, const std::string& real_endpoint)
     : endpoint_(endpoint), client_(endpoint), db_("") {
         if (!real_endpoint.empty()) {
-            client_ = ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>(real_endpoint);
+            client_ = ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub>(real_endpoint);
         }
     }
 
@@ -42,11 +42,11 @@ const std::string& NsClient::GetDb() { return db_; }
 void NsClient::ClearDb() { db_.clear(); }
 
 bool NsClient::Use(std::string db, std::string& msg) {
-    ::rtidb::nameserver::UseDatabaseRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::UseDatabaseRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_db(db);
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::UseDatabase,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::UseDatabase,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -60,21 +60,21 @@ bool NsClient::CreateDatabase(const std::string& db, std::string& msg) {
     if (db.empty()) {
         return false;
     }
-    ::rtidb::nameserver::CreateDatabaseRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::CreateDatabaseRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_db(db);
     bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::CreateDatabase, &request,
+        &::fedb::nameserver::NameServer_Stub::CreateDatabase, &request,
         &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     return ok && response.code() == 0;
 }
 
 bool NsClient::ShowDatabase(std::vector<std::string>* dbs, std::string& msg) {
-    ::rtidb::nameserver::GeneralRequest request;
-    ::rtidb::nameserver::ShowDatabaseResponse response;
+    ::fedb::nameserver::GeneralRequest request;
+    ::fedb::nameserver::ShowDatabaseResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowDatabase,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::ShowDatabase,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     for (auto db : response.db()) {
         dbs->push_back(db);
@@ -84,26 +84,26 @@ bool NsClient::ShowDatabase(std::vector<std::string>* dbs, std::string& msg) {
 }
 
 bool NsClient::DropDatabase(const std::string& db, std::string& msg) {
-    ::rtidb::nameserver::DropDatabaseRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::DropDatabaseRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_db(db);
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropDatabase,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::DropDatabase,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     return ok && response.code() == 0;
 }
 
 bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg) {
-    ::rtidb::nameserver::ShowTabletRequest request;
-    ::rtidb::nameserver::ShowTabletResponse response;
+    ::fedb::nameserver::ShowTabletRequest request;
+    ::fedb::nameserver::ShowTabletResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTablet,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::ShowTablet,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         for (int32_t i = 0; i < response.tablets_size(); i++) {
-            const ::rtidb::nameserver::TabletStatus& status =
+            const ::fedb::nameserver::TabletStatus& status =
                 response.tablets(i);
             TabletInfo info;
             info.endpoint = status.endpoint();
@@ -119,14 +119,14 @@ bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg) {
 
 bool NsClient::ShowSdkEndpoint(std::vector<TabletInfo>& tablets,
         std::string& msg) {
-    ::rtidb::nameserver::ShowSdkEndpointRequest request;
-    ::rtidb::nameserver::ShowSdkEndpointResponse response;
-    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::
+    ::fedb::nameserver::ShowSdkEndpointRequest request;
+    ::fedb::nameserver::ShowSdkEndpointResponse response;
+    bool ok = client_.SendRequest(&::fedb::nameserver::NameServer_Stub::
             ShowSdkEndpoint, &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         for (int32_t i = 0; i < response.tablets_size(); i++) {
-            const ::rtidb::nameserver::TabletStatus& status =
+            const ::fedb::nameserver::TabletStatus& status =
                 response.tablets(i);
             TabletInfo info;
             info.endpoint = status.endpoint();
@@ -140,22 +140,22 @@ bool NsClient::ShowSdkEndpoint(std::vector<TabletInfo>& tablets,
 
 bool NsClient::ShowTable(const std::string& name, const std::string& db,
                          bool show_all,
-                         std::vector<::rtidb::nameserver::TableInfo>& tables,
+                         std::vector<::fedb::nameserver::TableInfo>& tables,
                          std::string& msg) {
-    ::rtidb::nameserver::ShowTableRequest request;
+    ::fedb::nameserver::ShowTableRequest request;
     if (!name.empty()) {
         request.set_name(name);
     }
     request.set_db(db);
     request.set_show_all(show_all);
-    ::rtidb::nameserver::ShowTableResponse response;
+    ::fedb::nameserver::ShowTableResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTable,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::ShowTable,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         for (int32_t i = 0; i < response.table_info_size(); i++) {
-            ::rtidb::nameserver::TableInfo table_info;
+            ::fedb::nameserver::TableInfo table_info;
             table_info.CopyFrom(response.table_info(i));
             tables.push_back(table_info);
         }
@@ -165,12 +165,12 @@ bool NsClient::ShowTable(const std::string& name, const std::string& db,
 }
 
 bool NsClient::ShowTable(const std::string& name,
-                         std::vector<::rtidb::nameserver::TableInfo>& tables,
+                         std::vector<::fedb::nameserver::TableInfo>& tables,
                          std::string& msg) {
     return ShowTable(name, GetDb(), false, tables, msg);
 }
 
-bool NsClient::ShowAllTable(std::vector<::rtidb::nameserver::TableInfo>& tables,
+bool NsClient::ShowAllTable(std::vector<::fedb::nameserver::TableInfo>& tables,
                             std::string& msg) {
     return ShowTable("", "", true, tables, msg);
 }
@@ -183,14 +183,14 @@ bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid,
 bool NsClient::MakeSnapshot(const std::string& name, const std::string& db,
                             uint32_t pid, uint64_t end_offset,
                             std::string& msg) {
-    ::rtidb::nameserver::MakeSnapshotNSRequest request;
+    ::fedb::nameserver::MakeSnapshotNSRequest request;
     request.set_name(name);
     request.set_pid(pid);
     request.set_offset(end_offset);
     request.set_db(db);
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::GeneralResponse response;
     bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::MakeSnapshotNS, &request,
+        &::fedb::nameserver::NameServer_Stub::MakeSnapshotNS, &request,
         &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -199,10 +199,10 @@ bool NsClient::MakeSnapshot(const std::string& name, const std::string& db,
     return false;
 }
 
-bool NsClient::ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response,
+bool NsClient::ShowOPStatus(::fedb::nameserver::ShowOPStatusResponse& response,
                             const std::string& name, uint32_t pid,
                             std::string& msg) {
-    ::rtidb::nameserver::ShowOPStatusRequest request;
+    ::fedb::nameserver::ShowOPStatusRequest request;
     if (!name.empty()) {
         request.set_name(name);
         request.set_db(GetDb());
@@ -211,7 +211,7 @@ bool NsClient::ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response,
         request.set_pid(pid);
     }
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowOPStatus,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::ShowOPStatus,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -221,11 +221,11 @@ bool NsClient::ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response,
 }
 
 bool NsClient::CancelOP(uint64_t op_id, std::string& msg) {
-    ::rtidb::nameserver::CancelOPRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::CancelOPRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_op_id(op_id);
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::CancelOP,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::CancelOP,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -235,17 +235,17 @@ bool NsClient::CancelOP(uint64_t op_id, std::string& msg) {
 }
 
 bool NsClient::AddTableField(const std::string& table_name,
-                             const ::rtidb::common::ColumnDesc& column_desc,
+                             const ::fedb::common::ColumnDesc& column_desc,
                              std::string& msg) {
-    ::rtidb::nameserver::AddTableFieldRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::AddTableFieldRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_name(table_name);
     request.set_db(GetDb());
-    ::rtidb::common::ColumnDesc* column_desc_ptr =
+    ::fedb::common::ColumnDesc* column_desc_ptr =
         request.mutable_column_desc();
     column_desc_ptr->CopyFrom(column_desc);
     bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::AddTableField, &request,
+        &::fedb::nameserver::NameServer_Stub::AddTableField, &request,
         &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -362,9 +362,9 @@ bool NsClient::HandleSQLCreateTable(
         case fesql::node::kPlanTypeCreate: {
             fesql::node::CreatePlanNode* create =
                 dynamic_cast<fesql::node::CreatePlanNode*>(plan);
-            ::rtidb::nameserver::CreateTableRequest request;
-            ::rtidb::nameserver::GeneralResponse response;
-            ::rtidb::nameserver::TableInfo* table_info =
+            ::fedb::nameserver::CreateTableRequest request;
+            ::fedb::nameserver::GeneralResponse response;
+            ::fedb::nameserver::TableInfo* table_info =
                 request.mutable_table_info();
             table_info->set_db(db);
             TransformToTableDef(create, table_info, sql_status);
@@ -372,7 +372,7 @@ bool NsClient::HandleSQLCreateTable(
                 return false;
             }
             client_.SendRequest(
-                &::rtidb::nameserver::NameServer_Stub::CreateTable, &request,
+                &::fedb::nameserver::NameServer_Stub::CreateTable, &request,
                 &response, FLAGS_request_timeout_ms, 1);
             sql_status->msg = response.msg();
             if (0 != response.code()) {
@@ -389,16 +389,16 @@ bool NsClient::HandleSQLCreateTable(
     return true;
 }
 
-bool NsClient::CreateProcedure(const ::rtidb::api::ProcedureInfo& sp_info,
+bool NsClient::CreateProcedure(const ::fedb::api::ProcedureInfo& sp_info,
         uint64_t request_timeout, std::string* msg) {
     if (msg == nullptr) return false;
-    ::rtidb::api::CreateProcedureRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
-    ::rtidb::api::ProcedureInfo* sp_info_ptr = request.mutable_sp_info();
+    ::fedb::api::CreateProcedureRequest request;
+    ::fedb::nameserver::GeneralResponse response;
+    ::fedb::api::ProcedureInfo* sp_info_ptr = request.mutable_sp_info();
     sp_info_ptr->CopyFrom(sp_info);
     request.set_timeout_ms(request_timeout);
     bool ok = client_.SendRequest(
-            &::rtidb::nameserver::NameServer_Stub::CreateProcedure, &request,
+            &::fedb::nameserver::NameServer_Stub::CreateProcedure, &request,
             &response, request_timeout, 1);
     *msg = response.msg();
     if (!ok || response.code() != 0) {
@@ -407,14 +407,14 @@ bool NsClient::CreateProcedure(const ::rtidb::api::ProcedureInfo& sp_info,
     return true;
 }
 
-bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
+bool NsClient::CreateTable(const ::fedb::nameserver::TableInfo& table_info,
                            std::string& msg) {
-    ::rtidb::nameserver::CreateTableRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
-    ::rtidb::nameserver::TableInfo* table_info_r = request.mutable_table_info();
+    ::fedb::nameserver::CreateTableRequest request;
+    ::fedb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::TableInfo* table_info_r = request.mutable_table_info();
     table_info_r->CopyFrom(table_info);
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::CreateTable,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -429,12 +429,12 @@ bool NsClient::DropTable(const std::string& name, std::string& msg) {
 
 bool NsClient::DropTable(const std::string& db, const std::string& name,
                          std::string& msg) {
-    ::rtidb::nameserver::DropTableRequest request;
+    ::fedb::nameserver::DropTableRequest request;
     request.set_name(name);
     request.set_db(db);
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::GeneralResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::DropTable,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -446,16 +446,16 @@ bool NsClient::DropTable(const std::string& db, const std::string& name,
 bool NsClient::SyncTable(const std::string& name,
                          const std::string& cluster_alias, uint32_t pid,
                          std::string& msg) {
-    ::rtidb::nameserver::SyncTableRequest request;
+    ::fedb::nameserver::SyncTableRequest request;
     request.set_name(name);
     request.set_cluster_alias(cluster_alias);
     if (pid != INVALID_PID) {
         request.set_pid(pid);
     }
     request.set_db(GetDb());
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::GeneralResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::SyncTable,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::SyncTable,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -466,12 +466,12 @@ bool NsClient::SyncTable(const std::string& name,
 
 bool NsClient::SetSdkEndpoint(const std::string& server_name,
         const std::string& sdk_endpoint, std::string* msg) {
-    ::rtidb::nameserver::SetSdkEndpointRequest request;
+    ::fedb::nameserver::SetSdkEndpointRequest request;
     request.set_server_name(server_name);
     request.set_sdk_endpoint(sdk_endpoint);
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::GeneralResponse response;
     bool ok = client_.SendRequest(
-            &::rtidb::nameserver::NameServer_Stub::SetSdkEndpoint,
+            &::fedb::nameserver::NameServer_Stub::SetSdkEndpoint,
             &request, &response, FLAGS_request_timeout_ms, 1);
     msg->swap(*response.mutable_msg());
     if (ok && response.code() == 0) {
@@ -486,8 +486,8 @@ bool NsClient::AddReplica(const std::string& name,
     if (pid_set.empty()) {
         return false;
     }
-    ::rtidb::nameserver::AddReplicaNSRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::AddReplicaNSRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_name(name);
     request.set_pid(*(pid_set.begin()));
     request.set_endpoint(endpoint);
@@ -498,7 +498,7 @@ bool NsClient::AddReplica(const std::string& name,
         }
     }
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddReplicaNS,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::AddReplicaNS,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -510,25 +510,25 @@ bool NsClient::AddReplica(const std::string& name,
 bool NsClient::AddReplicaNS(const std::string& name,
                             const std::vector<std::string>& endpoint_vec,
                             uint32_t pid,
-                            const ::rtidb::nameserver::ZoneInfo& zone_info,
-                            const ::rtidb::api::TaskInfo& task_info) {
+                            const ::fedb::nameserver::ZoneInfo& zone_info,
+                            const ::fedb::api::TaskInfo& task_info) {
     if (endpoint_vec.empty()) {
         return false;
     }
-    ::rtidb::nameserver::AddReplicaNSRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::AddReplicaNSRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_name(name);
     for (auto& endpoint : endpoint_vec) {
         request.add_endpoint_group(endpoint);
     }
     request.set_pid(pid);
     request.set_endpoint(endpoint_vec.front());
-    ::rtidb::api::TaskInfo* task_info_p = request.mutable_task_info();
+    ::fedb::api::TaskInfo* task_info_p = request.mutable_task_info();
     task_info_p->CopyFrom(task_info);
-    ::rtidb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
+    ::fedb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
     zone_info_p->CopyFrom(zone_info);
     bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::AddReplicaNSFromRemote, &request,
+        &::fedb::nameserver::NameServer_Stub::AddReplicaNSFromRemote, &request,
         &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
         return true;
@@ -542,8 +542,8 @@ bool NsClient::DelReplica(const std::string& name,
     if (pid_set.empty()) {
         return false;
     }
-    ::rtidb::nameserver::DelReplicaNSRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::DelReplicaNSRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_name(name);
     request.set_pid(*(pid_set.begin()));
     request.set_endpoint(endpoint);
@@ -554,7 +554,7 @@ bool NsClient::DelReplica(const std::string& name,
         }
     }
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DelReplicaNS,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::DelReplicaNS,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -565,13 +565,13 @@ bool NsClient::DelReplica(const std::string& name,
 
 bool NsClient::ConfSet(const std::string& key, const std::string& value,
                        std::string& msg) {
-    ::rtidb::nameserver::ConfSetRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
-    ::rtidb::nameserver::Pair* conf = request.mutable_conf();
+    ::fedb::nameserver::ConfSetRequest request;
+    ::fedb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::Pair* conf = request.mutable_conf();
     conf->set_key(key);
     conf->set_value(value);
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ConfSet,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::ConfSet,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -584,10 +584,10 @@ bool NsClient::ConfGet(const std::string& key,
                        std::map<std::string, std::string>& conf_map,
                        std::string& msg) {
     conf_map.clear();
-    ::rtidb::nameserver::ConfGetRequest request;
-    ::rtidb::nameserver::ConfGetResponse response;
+    ::fedb::nameserver::ConfGetRequest request;
+    ::fedb::nameserver::ConfGetResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ConfGet,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::ConfGet,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -612,8 +612,8 @@ bool NsClient::ConfGet(const std::string& key,
 
 bool NsClient::ChangeLeader(const std::string& name, uint32_t pid,
                             std::string& candidate_leader, std::string& msg) {
-    ::rtidb::nameserver::ChangeLeaderRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::ChangeLeaderRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_name(name);
     request.set_pid(pid);
     if (!candidate_leader.empty()) {
@@ -621,7 +621,7 @@ bool NsClient::ChangeLeader(const std::string& name, uint32_t pid,
     }
     request.set_db(GetDb());
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ChangeLeader,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::ChangeLeader,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -632,14 +632,14 @@ bool NsClient::ChangeLeader(const std::string& name, uint32_t pid,
 
 bool NsClient::OfflineEndpoint(const std::string& endpoint,
                                uint32_t concurrency, std::string& msg) {
-    ::rtidb::nameserver::OfflineEndpointRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::OfflineEndpointRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_endpoint(endpoint);
     if (concurrency > 0) {
         request.set_concurrency(concurrency);
     }
     bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::OfflineEndpoint, &request,
+        &::fedb::nameserver::NameServer_Stub::OfflineEndpoint, &request,
         &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -651,8 +651,8 @@ bool NsClient::OfflineEndpoint(const std::string& endpoint,
 bool NsClient::Migrate(const std::string& src_endpoint, const std::string& name,
                        const std::set<uint32_t>& pid_set,
                        const std::string& des_endpoint, std::string& msg) {
-    ::rtidb::nameserver::MigrateRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::MigrateRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_src_endpoint(src_endpoint);
     request.set_name(name);
     request.set_des_endpoint(des_endpoint);
@@ -661,7 +661,7 @@ bool NsClient::Migrate(const std::string& src_endpoint, const std::string& name,
         request.add_pid(pid);
     }
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::Migrate,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::Migrate,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -672,15 +672,15 @@ bool NsClient::Migrate(const std::string& src_endpoint, const std::string& name,
 
 bool NsClient::RecoverEndpoint(const std::string& endpoint, bool need_restore,
                                uint32_t concurrency, std::string& msg) {
-    ::rtidb::nameserver::RecoverEndpointRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::RecoverEndpointRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_endpoint(endpoint);
     if (concurrency > 0) {
         request.set_concurrency(concurrency);
     }
     request.set_need_restore(need_restore);
     bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::RecoverEndpoint, &request,
+        &::fedb::nameserver::NameServer_Stub::RecoverEndpoint, &request,
         &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -691,14 +691,14 @@ bool NsClient::RecoverEndpoint(const std::string& endpoint, bool need_restore,
 
 bool NsClient::RecoverTable(const std::string& name, uint32_t pid,
                             const std::string& endpoint, std::string& msg) {
-    ::rtidb::nameserver::RecoverTableRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::RecoverTableRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_name(name);
     request.set_pid(pid);
     request.set_endpoint(endpoint);
     request.set_db(GetDb());
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::RecoverTable,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::RecoverTable,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -708,10 +708,10 @@ bool NsClient::RecoverTable(const std::string& name, uint32_t pid,
 }
 
 bool NsClient::ConnectZK(std::string& msg) {
-    ::rtidb::nameserver::ConnectZKRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::ConnectZKRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ConnectZK,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::ConnectZK,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -721,10 +721,10 @@ bool NsClient::ConnectZK(std::string& msg) {
 }
 
 bool NsClient::DisConnectZK(std::string& msg) {
-    ::rtidb::nameserver::DisConnectZKRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::DisConnectZKRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DisConnectZK,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::DisConnectZK,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -735,17 +735,17 @@ bool NsClient::DisConnectZK(std::string& msg) {
 
 bool NsClient::SetTablePartition(
     const std::string& name,
-    const ::rtidb::nameserver::TablePartition& table_partition,
+    const ::fedb::nameserver::TablePartition& table_partition,
     std::string& msg) {
-    ::rtidb::nameserver::SetTablePartitionRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::SetTablePartitionRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_name(name);
     request.set_db(GetDb());
-    ::rtidb::nameserver::TablePartition* cur_table_partition =
+    ::fedb::nameserver::TablePartition* cur_table_partition =
         request.mutable_table_partition();
     cur_table_partition->CopyFrom(table_partition);
     bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::SetTablePartition, &request,
+        &::fedb::nameserver::NameServer_Stub::SetTablePartition, &request,
         &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -756,14 +756,14 @@ bool NsClient::SetTablePartition(
 
 bool NsClient::GetTablePartition(
     const std::string& name, uint32_t pid,
-    ::rtidb::nameserver::TablePartition& table_partition, std::string& msg) {
-    ::rtidb::nameserver::GetTablePartitionRequest request;
-    ::rtidb::nameserver::GetTablePartitionResponse response;
+    ::fedb::nameserver::TablePartition& table_partition, std::string& msg) {
+    ::fedb::nameserver::GetTablePartitionRequest request;
+    ::fedb::nameserver::GetTablePartitionResponse response;
     request.set_name(name);
     request.set_pid(pid);
     request.set_db(GetDb());
     bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::GetTablePartition, &request,
+        &::fedb::nameserver::NameServer_Stub::GetTablePartition, &request,
         &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -776,8 +776,8 @@ bool NsClient::GetTablePartition(
 bool NsClient::UpdateTableAliveStatus(const std::string& endpoint,
                                       std::string& name, uint32_t pid,
                                       bool is_alive, std::string& msg) {
-    ::rtidb::nameserver::UpdateTableAliveRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::UpdateTableAliveRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_endpoint(endpoint);
     request.set_name(name);
     request.set_is_alive(is_alive);
@@ -785,7 +785,7 @@ bool NsClient::UpdateTableAliveStatus(const std::string& endpoint,
         request.set_pid(pid);
     }
     bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::UpdateTableAliveStatus, &request,
+        &::fedb::nameserver::NameServer_Stub::UpdateTableAliveStatus, &request,
         &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -795,17 +795,17 @@ bool NsClient::UpdateTableAliveStatus(const std::string& endpoint,
 }
 
 bool NsClient::UpdateTTL(const std::string& name,
-                         const ::rtidb::api::TTLType& type, uint64_t abs_ttl,
+                         const ::fedb::api::TTLType& type, uint64_t abs_ttl,
                          uint64_t lat_ttl, const std::string& ts_name,
                          std::string& msg) {
-    ::rtidb::nameserver::UpdateTTLRequest request;
-    ::rtidb::nameserver::UpdateTTLResponse response;
+    ::fedb::nameserver::UpdateTTLRequest request;
+    ::fedb::nameserver::UpdateTTLResponse response;
     request.set_name(name);
-    ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+    ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
     ttl_desc->set_lat_ttl(lat_ttl);
-    if (type == ::rtidb::api::TTLType::kAbsoluteTime) {
+    if (type == ::fedb::api::TTLType::kAbsoluteTime) {
         request.set_ttl_type("kAbsoluteTime");
         request.set_value(abs_ttl);
     } else {
@@ -817,7 +817,7 @@ bool NsClient::UpdateTTL(const std::string& name,
     }
     request.set_db(GetDb());
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::UpdateTTL,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::UpdateTTL,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -827,13 +827,13 @@ bool NsClient::UpdateTTL(const std::string& name,
 }
 
 bool NsClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
-    ::rtidb::api::DeleteTaskRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::DeleteTaskRequest request;
+    ::fedb::api::GeneralResponse response;
     for (auto op_id : op_id_vec) {
         request.add_op_id(op_id);
     }
     bool ret =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DeleteOPTask,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::DeleteOPTask,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ret || response.code() != 0) {
         return false;
@@ -841,10 +841,10 @@ bool NsClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
     return true;
 }
 
-bool NsClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
-    ::rtidb::api::TaskStatusRequest request;
+bool NsClient::GetTaskStatus(::fedb::api::TaskStatusResponse& response) {
+    ::fedb::api::TaskStatusRequest request;
     bool ret = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::GetTaskStatus, &request,
+        &::fedb::nameserver::NameServer_Stub::GetTaskStatus, &request,
         &response, FLAGS_request_timeout_ms, 1);
     if (!ret || response.code() != 0) {
         return false;
@@ -854,27 +854,27 @@ bool NsClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
 
 bool NsClient::LoadTable(const std::string& name, const std::string& endpoint,
                          uint32_t pid,
-                         const ::rtidb::nameserver::ZoneInfo& zone_info,
-                         const ::rtidb::api::TaskInfo& task_info) {
+                         const ::fedb::nameserver::ZoneInfo& zone_info,
+                         const ::fedb::api::TaskInfo& task_info) {
     return LoadTable(name, GetDb(), endpoint, pid, zone_info, task_info);
 }
 
 bool NsClient::LoadTable(const std::string& name, const std::string& db,
                          const std::string& endpoint, uint32_t pid,
-                         const ::rtidb::nameserver::ZoneInfo& zone_info,
-                         const ::rtidb::api::TaskInfo& task_info) {
-    ::rtidb::nameserver::LoadTableRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+                         const ::fedb::nameserver::ZoneInfo& zone_info,
+                         const ::fedb::api::TaskInfo& task_info) {
+    ::fedb::nameserver::LoadTableRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_name(name);
     request.set_endpoint(endpoint);
     request.set_pid(pid);
     request.set_db(db);
-    ::rtidb::api::TaskInfo* task_info_p = request.mutable_task_info();
+    ::fedb::api::TaskInfo* task_info_p = request.mutable_task_info();
     task_info_p->CopyFrom(task_info);
-    ::rtidb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
+    ::fedb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
     zone_info_p->CopyFrom(zone_info);
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::LoadTable,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::LoadTable,
                             &request, &response, FLAGS_request_timeout_ms, 3);
     if (ok && response.code() == 0) {
         return true;
@@ -883,16 +883,16 @@ bool NsClient::LoadTable(const std::string& name, const std::string& db,
 }
 
 bool NsClient::CreateRemoteTableInfo(
-    const ::rtidb::nameserver::ZoneInfo& zone_info,
-    ::rtidb::nameserver::TableInfo& table_info, std::string& msg) {
-    ::rtidb::nameserver::CreateTableInfoRequest request;
-    ::rtidb::nameserver::CreateTableInfoResponse response;
-    ::rtidb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
+    const ::fedb::nameserver::ZoneInfo& zone_info,
+    ::fedb::nameserver::TableInfo& table_info, std::string& msg) {
+    ::fedb::nameserver::CreateTableInfoRequest request;
+    ::fedb::nameserver::CreateTableInfoResponse response;
+    ::fedb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
     zone_info_p->CopyFrom(zone_info);
-    ::rtidb::nameserver::TableInfo* table_info_p = request.mutable_table_info();
+    ::fedb::nameserver::TableInfo* table_info_p = request.mutable_table_info();
     table_info_p->CopyFrom(table_info);
     bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::CreateTableInfo, &request,
+        &::fedb::nameserver::NameServer_Stub::CreateTableInfo, &request,
         &response, FLAGS_request_timeout_ms, 3);
     msg = response.msg();
     table_info = response.table_info();
@@ -903,16 +903,16 @@ bool NsClient::CreateRemoteTableInfo(
 }
 
 bool NsClient::CreateRemoteTableInfoSimply(
-    const ::rtidb::nameserver::ZoneInfo& zone_info,
-    ::rtidb::nameserver::TableInfo& table_info, std::string& msg) {
-    ::rtidb::nameserver::CreateTableInfoRequest request;
-    ::rtidb::nameserver::CreateTableInfoResponse response;
-    ::rtidb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
+    const ::fedb::nameserver::ZoneInfo& zone_info,
+    ::fedb::nameserver::TableInfo& table_info, std::string& msg) {
+    ::fedb::nameserver::CreateTableInfoRequest request;
+    ::fedb::nameserver::CreateTableInfoResponse response;
+    ::fedb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
     zone_info_p->CopyFrom(zone_info);
-    ::rtidb::nameserver::TableInfo* table_info_p = request.mutable_table_info();
+    ::fedb::nameserver::TableInfo* table_info_p = request.mutable_table_info();
     table_info_p->CopyFrom(table_info);
     bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::CreateTableInfoSimply, &request,
+        &::fedb::nameserver::NameServer_Stub::CreateTableInfoSimply, &request,
         &response, FLAGS_request_timeout_ms, 3);
     msg = response.msg();
     table_info = response.table_info();
@@ -922,20 +922,20 @@ bool NsClient::CreateRemoteTableInfoSimply(
     return false;
 }
 
-bool NsClient::DropTableRemote(const ::rtidb::api::TaskInfo& task_info,
+bool NsClient::DropTableRemote(const ::fedb::api::TaskInfo& task_info,
                                const std::string& name, const std::string& db,
-                               const ::rtidb::nameserver::ZoneInfo& zone_info,
+                               const ::fedb::nameserver::ZoneInfo& zone_info,
                                std::string& msg) {
-    ::rtidb::nameserver::DropTableRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
-    ::rtidb::api::TaskInfo* task_info_p = request.mutable_task_info();
+    ::fedb::nameserver::DropTableRequest request;
+    ::fedb::nameserver::GeneralResponse response;
+    ::fedb::api::TaskInfo* task_info_p = request.mutable_task_info();
     task_info_p->CopyFrom(task_info);
-    ::rtidb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
+    ::fedb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
     zone_info_p->CopyFrom(zone_info);
     request.set_name(name);
     request.set_db(db);
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::DropTable,
                             &request, &response, FLAGS_request_timeout_ms, 3);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -945,20 +945,20 @@ bool NsClient::DropTableRemote(const ::rtidb::api::TaskInfo& task_info,
 }
 
 bool NsClient::CreateTableRemote(
-    const ::rtidb::api::TaskInfo& task_info,
-    const ::rtidb::nameserver::TableInfo& table_info,
-    const ::rtidb::nameserver::ZoneInfo& zone_info, std::string& msg) {
-    ::rtidb::nameserver::CreateTableRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
-    ::rtidb::api::TaskInfo* task_info_p = request.mutable_task_info();
+    const ::fedb::api::TaskInfo& task_info,
+    const ::fedb::nameserver::TableInfo& table_info,
+    const ::fedb::nameserver::ZoneInfo& zone_info, std::string& msg) {
+    ::fedb::nameserver::CreateTableRequest request;
+    ::fedb::nameserver::GeneralResponse response;
+    ::fedb::api::TaskInfo* task_info_p = request.mutable_task_info();
     task_info_p->CopyFrom(task_info);
-    ::rtidb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
+    ::fedb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
     zone_info_p->CopyFrom(zone_info);
-    ::rtidb::nameserver::TableInfo* table_info_p;
+    ::fedb::nameserver::TableInfo* table_info_p;
     table_info_p = request.mutable_table_info();
     table_info_p->CopyFrom(table_info);
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::CreateTable,
                             &request, &response, FLAGS_request_timeout_ms, 3);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -970,15 +970,15 @@ bool NsClient::CreateTableRemote(
 bool NsClient::AddReplicaClusterByNs(const std::string& alias,
                                      const std::string& name,
                                      const uint64_t term, std::string& msg) {
-    ::rtidb::nameserver::ReplicaClusterByNsRequest request;
-    ::rtidb::nameserver::ZoneInfo* zone_info = request.mutable_zone_info();
-    ::rtidb::nameserver::AddReplicaClusterByNsResponse response;
+    ::fedb::nameserver::ReplicaClusterByNsRequest request;
+    ::fedb::nameserver::ZoneInfo* zone_info = request.mutable_zone_info();
+    ::fedb::nameserver::AddReplicaClusterByNsResponse response;
     zone_info->set_replica_alias(alias);
     zone_info->set_zone_name(name);
     zone_info->set_zone_term(term);
-    zone_info->set_mode(::rtidb::nameserver::kFOLLOWER);
+    zone_info->set_mode(::fedb::nameserver::kFOLLOWER);
     bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::AddReplicaClusterByNs, &request,
+        &::fedb::nameserver::NameServer_Stub::AddReplicaClusterByNs, &request,
         &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && ((response.code() == 0) || (response.code() == 408))) {
@@ -990,8 +990,8 @@ bool NsClient::AddReplicaClusterByNs(const std::string& alias,
 bool NsClient::AddReplicaCluster(const std::string& zk_ep,
                                  const std::string& zk_path,
                                  const std::string& alias, std::string& msg) {
-    ::rtidb::nameserver::ClusterAddress request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::ClusterAddress request;
+    ::fedb::nameserver::GeneralResponse response;
     if (zk_ep.size() < 1 || zk_path.size() < 1 || alias.size() < 1) {
         msg = "zookeeper endpoints or zk_path or alias is null";
         return false;
@@ -1001,7 +1001,7 @@ bool NsClient::AddReplicaCluster(const std::string& zk_ep,
     request.set_zk_endpoints(zk_ep);
 
     bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::AddReplicaCluster, &request,
+        &::fedb::nameserver::NameServer_Stub::AddReplicaCluster, &request,
         &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
 
@@ -1012,13 +1012,13 @@ bool NsClient::AddReplicaCluster(const std::string& zk_ep,
 }
 
 bool NsClient::ShowReplicaCluster(
-    std::vector<::rtidb::nameserver::ClusterAddAge>& clusterinfo,
+    std::vector<::fedb::nameserver::ClusterAddAge>& clusterinfo,
     std::string& msg) {
     clusterinfo.clear();
-    ::rtidb::nameserver::GeneralRequest request;
-    ::rtidb::nameserver::ShowReplicaClusterResponse response;
+    ::fedb::nameserver::GeneralRequest request;
+    ::fedb::nameserver::ShowReplicaClusterResponse response;
     bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::ShowReplicaCluster, &request,
+        &::fedb::nameserver::NameServer_Stub::ShowReplicaCluster, &request,
         &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && (response.code() == 0)) {
@@ -1034,11 +1034,11 @@ bool NsClient::ShowReplicaCluster(
 
 bool NsClient::RemoveReplicaCluster(const std::string& alias,
                                     std::string& msg) {
-    ::rtidb::nameserver::RemoveReplicaOfRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::RemoveReplicaOfRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_alias(alias);
     bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::RemoveReplicaCluster, &request,
+        &::fedb::nameserver::NameServer_Stub::RemoveReplicaCluster, &request,
         &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -1051,15 +1051,15 @@ bool NsClient::RemoveReplicaClusterByNs(const std::string& alias,
                                         const std::string& zone_name,
                                         const uint64_t term, int& code,
                                         std::string& msg) {
-    ::rtidb::nameserver::ReplicaClusterByNsRequest request;
-    ::rtidb::nameserver::ZoneInfo* zone_info = request.mutable_zone_info();
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::ReplicaClusterByNsRequest request;
+    ::fedb::nameserver::ZoneInfo* zone_info = request.mutable_zone_info();
+    ::fedb::nameserver::GeneralResponse response;
     zone_info->set_replica_alias(alias);
     zone_info->set_zone_term(term);
     zone_info->set_zone_name(zone_name);
-    zone_info->set_mode(::rtidb::nameserver::kNORMAL);
+    zone_info->set_mode(::fedb::nameserver::kNORMAL);
     bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::RemoveReplicaClusterByNs,
+        &::fedb::nameserver::NameServer_Stub::RemoveReplicaClusterByNs,
         &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -1068,13 +1068,13 @@ bool NsClient::RemoveReplicaClusterByNs(const std::string& alias,
     return false;
 }
 
-bool NsClient::SwitchMode(const ::rtidb::nameserver::ServerMode mode,
+bool NsClient::SwitchMode(const ::fedb::nameserver::ServerMode mode,
                           std::string& msg) {
-    ::rtidb::nameserver::SwitchModeRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::SwitchModeRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_sm(mode);
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::SwitchMode,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::SwitchMode,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -1084,21 +1084,21 @@ bool NsClient::SwitchMode(const ::rtidb::nameserver::ServerMode mode,
 }
 
 bool NsClient::AddIndex(const std::string& table_name,
-                        const ::rtidb::common::ColumnKey& column_key, std::vector<rtidb::common::ColumnDesc>* cols,
+                        const ::fedb::common::ColumnKey& column_key, std::vector<fedb::common::ColumnDesc>* cols,
                         std::string& msg) {
-    ::rtidb::nameserver::AddIndexRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
-    ::rtidb::common::ColumnKey* cur_column_key = request.mutable_column_key();
+    ::fedb::nameserver::AddIndexRequest request;
+    ::fedb::nameserver::GeneralResponse response;
+    ::fedb::common::ColumnKey* cur_column_key = request.mutable_column_key();
     request.set_name(table_name);
     cur_column_key->CopyFrom(column_key);
     request.set_db(GetDb());
     if (cols != nullptr) {
         for (const auto& col : *cols) {
-            rtidb::common::ColumnDesc* new_col = request.add_cols();
+            fedb::common::ColumnDesc* new_col = request.add_cols();
             new_col->CopyFrom(col);
         }
     }
-    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddIndex,
+    bool ok = client_.SendRequest(&::fedb::nameserver::NameServer_Stub::AddIndex,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -1109,13 +1109,13 @@ bool NsClient::AddIndex(const std::string& table_name,
 
 bool NsClient::DeleteIndex(const std::string& db, const std::string& table_name,
                            const std::string& idx_name, std::string& msg) {
-    ::rtidb::nameserver::DeleteIndexRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::DeleteIndexRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_table_name(table_name);
     request.set_idx_name(idx_name);
     request.set_db_name(db);
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DeleteIndex,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::DeleteIndex,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     int code = response.code();
@@ -1132,9 +1132,9 @@ bool NsClient::ShowCatalogVersion(std::map<std::string, uint64_t>* version_map, 
         return false;
     }
     version_map->clear();
-    ::rtidb::nameserver::ShowCatalogRequest request;
-    ::rtidb::nameserver::ShowCatalogResponse response;
-    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowCatalog, &request, &response,
+    ::fedb::nameserver::ShowCatalogRequest request;
+    ::fedb::nameserver::ShowCatalogResponse response;
+    bool ok = client_.SendRequest(&::fedb::nameserver::NameServer_Stub::ShowCatalog, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     int code = response.code();
     if (ok && code == 0) {
@@ -1149,13 +1149,13 @@ bool NsClient::ShowCatalogVersion(std::map<std::string, uint64_t>* version_map, 
 
 bool NsClient::TransformToTableDef(
     ::fesql::node::CreatePlanNode* create_node,
-    ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status) {
+    ::fedb::nameserver::TableInfo* table, fesql::plan::Status* status) {
     if (create_node == NULL || table == NULL || status == NULL) return false;
     std::string table_name = create_node->GetTableName();
     const fesql::node::NodePointVector& column_desc_list = create_node->GetColumnDescList();
     const fesql::node::NodePointVector& distribution_list = create_node->GetDistributionList();
     std::set<std::string> index_names;
-    std::map<std::string, ::rtidb::common::ColumnDesc*> column_names;
+    std::map<std::string, ::fedb::common::ColumnDesc*> column_names;
     table->set_name(table_name);
     // todo: change default setting
     int replica_num = create_node->GetReplicaNum();
@@ -1173,8 +1173,8 @@ bool NsClient::TransformToTableDef(
     }
     table->set_partition_num(create_node->GetPartitionNum());
     table->set_format_version(1);
-    ::rtidb::api::TTLDesc* ttl_desc = table->mutable_ttl_desc();
-    ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+    ::fedb::api::TTLDesc* ttl_desc = table->mutable_ttl_desc();
+    ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
     ttl_desc->set_abs_ttl(0);
     ttl_desc->set_lat_ttl(0);
     int no_ts_cnt = 0;
@@ -1183,7 +1183,7 @@ bool NsClient::TransformToTableDef(
             case fesql::node::kColumnDesc: {
                 fesql::node::ColumnDefNode* column_def =
                     (fesql::node::ColumnDefNode*)column_desc;
-                ::rtidb::common::ColumnDesc* column_desc =
+                ::fedb::common::ColumnDesc* column_desc =
                     table->add_column_desc_v1();
                 if (column_names.find(column_desc->name()) !=
                     column_names.end()) {
@@ -1199,47 +1199,47 @@ bool NsClient::TransformToTableDef(
                 switch (column_def->GetColumnType()) {
                     case fesql::node::kBool:
                         column_desc->set_data_type(
-                            rtidb::type::DataType::kBool);
+                            fedb::type::DataType::kBool);
                         column_desc->set_type("bool");
                         break;
                     case fesql::node::kInt16:
                         column_desc->set_data_type(
-                            rtidb::type::DataType::kSmallInt);
+                            fedb::type::DataType::kSmallInt);
                         column_desc->set_type("int16");
                         break;
                     case fesql::node::kInt32:
-                        column_desc->set_data_type(rtidb::type::DataType::kInt);
+                        column_desc->set_data_type(fedb::type::DataType::kInt);
                         column_desc->set_type("int32");
                         break;
                     case fesql::node::kInt64:
                         column_desc->set_data_type(
-                            rtidb::type::DataType::kBigInt);
+                            fedb::type::DataType::kBigInt);
                         column_desc->set_type("int64");
                         break;
                     case fesql::node::kFloat:
                         column_desc->set_data_type(
-                            rtidb::type::DataType::kFloat);
+                            fedb::type::DataType::kFloat);
                         column_desc->set_type("float");
                         break;
                     case fesql::node::kDouble:
                         column_desc->set_data_type(
-                            rtidb::type::DataType::kDouble);
+                            fedb::type::DataType::kDouble);
                         column_desc->set_type("double");
                         break;
                     case fesql::node::kTimestamp: {
                         column_desc->set_data_type(
-                            rtidb::type::DataType::kTimestamp);
+                            fedb::type::DataType::kTimestamp);
                         column_desc->set_type("timestamp");
                         break;
                     }
                     case fesql::node::kVarchar:
                         column_desc->set_data_type(
-                            rtidb::type::DataType::kVarchar);
+                            fedb::type::DataType::kVarchar);
                         column_desc->set_type("string");
                         break;
                     case fesql::node::kDate:
                         column_desc->set_data_type(
-                            rtidb::type::DataType::kDate);
+                            fedb::type::DataType::kDate);
                         column_desc->set_type("date");
                         break;
                     default: {
@@ -1268,7 +1268,7 @@ bool NsClient::TransformToTableDef(
                     return false;
                 }
                 index_names.insert(index_name);
-                ::rtidb::common::ColumnKey* index = table->add_column_key();
+                ::fedb::common::ColumnKey* index = table->add_column_key();
                 index->set_index_name(index_name);
 
                 if (column_index->GetKey().empty()) {
@@ -1286,18 +1286,18 @@ bool NsClient::TransformToTableDef(
                     cit->second->set_add_ts_idx(true);
                     index->add_col_name(key);
                 }
-                ::rtidb::common::TTLSt* ttl_st = index->mutable_ttl();
+                ::fedb::common::TTLSt* ttl_st = index->mutable_ttl();
                 if (!column_index->ttl_type().empty()) {
                     std::string ttl_type = column_index->ttl_type();
                     std::transform(ttl_type.begin(), ttl_type.end(), ttl_type.begin(), ::tolower);
                     if (ttl_type == "absolute") {
-                        ttl_st->set_ttl_type(rtidb::type::kAbsoluteTime);
+                        ttl_st->set_ttl_type(fedb::type::kAbsoluteTime);
                     } else if (ttl_type == "latest") {
-                        ttl_st->set_ttl_type(rtidb::type::kLatestTime);
+                        ttl_st->set_ttl_type(fedb::type::kLatestTime);
                     } else if (ttl_type == "absorlat") {
-                        ttl_st->set_ttl_type(rtidb::type::kAbsOrLat);
+                        ttl_st->set_ttl_type(fedb::type::kAbsOrLat);
                     } else if (ttl_type == "absandlat") {
-                        ttl_st->set_ttl_type(rtidb::type::kAbsAndLat);
+                        ttl_st->set_ttl_type(fedb::type::kAbsAndLat);
                     } else {
                         status->msg = "CREATE common: ttl_type " +
                                       column_index->ttl_type() +
@@ -1306,9 +1306,9 @@ bool NsClient::TransformToTableDef(
                         return false;
                     }
                 } else {
-                    ttl_st->set_ttl_type(rtidb::type::kAbsoluteTime);
+                    ttl_st->set_ttl_type(fedb::type::kAbsoluteTime);
                 }
-                if (ttl_st->ttl_type() == rtidb::type::kAbsoluteTime) {
+                if (ttl_st->ttl_type() == fedb::type::kAbsoluteTime) {
                     if (column_index->GetAbsTTL() == -1 || column_index->GetLatTTL() != -2) {
                         status->msg = "CREATE common: abs ttl format error";
                         status->code = fesql::common::kSQLError;
@@ -1319,7 +1319,7 @@ bool NsClient::TransformToTableDef(
                     } else {
                         ttl_st->set_abs_ttl(column_index->GetAbsTTL() / 60000);
                     }
-                } else if (ttl_st->ttl_type() == rtidb::type::kLatestTime) {
+                } else if (ttl_st->ttl_type() == fedb::type::kLatestTime) {
                     if (column_index->GetLatTTL() == -1 || column_index->GetAbsTTL() != -2) {
                         status->msg = "CREATE common: lat ttl format error";
                         status->code = fesql::common::kSQLError;
@@ -1362,16 +1362,16 @@ bool NsClient::TransformToTableDef(
                         return false;
                     }
                     switch (it->second->data_type()) {
-                        case rtidb::type::DataType::kInt:
-                        case rtidb::type::DataType::kSmallInt:
-                        case rtidb::type::DataType::kBigInt:
-                        case rtidb::type::DataType::kTimestamp: {
+                        case fedb::type::DataType::kInt:
+                        case fedb::type::DataType::kSmallInt:
+                        case fedb::type::DataType::kBigInt:
+                        case fedb::type::DataType::kTimestamp: {
                             it->second->set_is_ts_col(true);
                             break;
                         }
                         default: {
                             status->msg = "CREATE common: TS Type " +
-                                          rtidb::type::DataType_Name(
+                                          fedb::type::DataType_Name(
                                               it->second->data_type()) +
                                           " not support";
                             status->code = fesql::common::kSQLError;
@@ -1406,7 +1406,7 @@ bool NsClient::TransformToTableDef(
             status->code = fesql::common::kSQLError;
             return false;
         }
-        ::rtidb::nameserver::TablePartition* table_partition =
+        ::fedb::nameserver::TablePartition* table_partition =
             table->add_table_partition();
         table_partition->set_pid(0);
         std::vector<std::string> ep_vec;
@@ -1424,7 +1424,7 @@ bool NsClient::TransformToTableDef(
                         return false;
                     }
                     ep_vec.push_back(ep);
-                    ::rtidb::nameserver::PartitionMeta* meta =
+                    ::fedb::nameserver::PartitionMeta* meta =
                         table_partition->add_partition_meta();
                     meta->set_endpoint(ep);
                     if (p_meta_node->GetRoleType() == fesql::node::kLeader) {
@@ -1456,12 +1456,12 @@ bool NsClient::TransformToTableDef(
 
 bool NsClient::DropProcedure(const std::string& db_name,
         const std::string& sp_name, std::string& msg) {
-    ::rtidb::api::DropProcedureRequest request;
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::api::DropProcedureRequest request;
+    ::fedb::nameserver::GeneralResponse response;
     request.set_db_name(db_name);
     request.set_sp_name(sp_name);
     bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropProcedure,
+        client_.SendRequest(&::fedb::nameserver::NameServer_Stub::DropProcedure,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
@@ -1471,4 +1471,4 @@ bool NsClient::DropProcedure(const std::string& db_name,
 }
 
 }  // namespace client
-}  // namespace rtidb
+}  // namespace fedb

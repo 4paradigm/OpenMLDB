@@ -29,7 +29,7 @@
 #include "sdk/result_set.h"
 #include "sdk/result_set_base.h"
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 class ResultSetSQL : public ::fesql::sdk::ResultSet {
@@ -40,11 +40,11 @@ class ResultSetSQL : public ::fesql::sdk::ResultSet {
     ~ResultSetSQL();
 
     static std::shared_ptr<::fesql::sdk::ResultSet> MakeResultSet(
-        const std::shared_ptr<::rtidb::api::QueryResponse>& response, const std::shared_ptr<brpc::Controller>& cntl,
+        const std::shared_ptr<::fedb::api::QueryResponse>& response, const std::shared_ptr<brpc::Controller>& cntl,
         ::fesql::sdk::Status* status);
 
     static std::shared_ptr<::fesql::sdk::ResultSet> MakeResultSet(
-        const std::shared_ptr<::rtidb::api::ScanResponse>& response,
+        const std::shared_ptr<::fedb::api::ScanResponse>& response,
         const ::google::protobuf::RepeatedField<uint32_t>& projection, const std::shared_ptr<brpc::Controller>& cntl,
         std::shared_ptr<::fesql::vm::TableHandler> table_handler, ::fesql::sdk::Status* status);
 
@@ -93,5 +93,5 @@ class ResultSetSQL : public ::fesql::sdk::ResultSet {
 };
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_SDK_RESULT_SET_SQL_H_

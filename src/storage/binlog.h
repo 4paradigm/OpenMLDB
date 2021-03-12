@@ -22,11 +22,11 @@
 #include "log/log_writer.h"
 #include "storage/table.h"
 
-typedef ::rtidb::base::Skiplist<uint32_t, uint64_t,
-                                ::rtidb::base::DefaultComparator>
+typedef ::fedb::base::Skiplist<uint32_t, uint64_t,
+                                ::fedb::base::DefaultComparator>
     LogParts;
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 class Binlog {
@@ -42,4 +42,4 @@ class Binlog {
 };
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb

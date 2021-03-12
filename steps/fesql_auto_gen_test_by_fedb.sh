@@ -18,9 +18,9 @@ ROOT_DIR=`pwd`
 ulimit -c unlimited
 
 #udf_defs.yaml 一般改动很小 为了节省性能 我们不用每次生成
-#export JAVA_HOME=${RTIDB_DEV_JAVA_HOME:-/depends/thirdparty/jdk1.8.0_141}
-#export RTIDB_THIRDPARTY=${RTIDB_DEV_THIRDPARTY:-/depends/thirdparty}
-#cd fesql && ln -sf ${RTIDB_THIRDPARTY} thirdparty && mkdir -p build
+#export JAVA_HOME=${FEDB_DEV_JAVA_HOME:-/depends/thirdparty/jdk1.8.0_141}
+#export FEDB_THIRDPARTY=${FEDB_DEV_THIRDPARTY:-/depends/thirdparty}
+#cd fesql && ln -sf ${FEDB_THIRDPARTY} thirdparty && mkdir -p build
 #cd build && cmake .. && make fesql_proto && make fesql_parser && make -j5
 #cd ${ROOT_DIR}
 #./fesql/build/src/export_udf_info --output_file=fesql/tools/autotest/udf_defs.yaml

@@ -53,12 +53,12 @@
 #define PLATFORM_IS_LITTLE_ENDIAN (__BYTE_ORDER == __LITTLE_ENDIAN)
 #endif
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 static const bool kLittleEndian = PLATFORM_IS_LITTLE_ENDIAN;
 #undef PLATFORM_IS_LITTLE_ENDIAN
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_BASE_PORT_H_

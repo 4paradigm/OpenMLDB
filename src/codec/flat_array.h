@@ -27,7 +27,7 @@
 #include "base/endianconv.h"
 #include "codec/schema_codec.h"
 
-namespace rtidb {
+namespace fedb {
 namespace codec {
 
 static const uint8_t bool_true = 1;
@@ -579,6 +579,6 @@ class FlatArrayIterator {
 };
 
 }  // namespace codec
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_CODEC_FLAT_ARRAY_H_

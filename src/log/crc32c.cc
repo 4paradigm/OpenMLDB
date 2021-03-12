@@ -28,7 +28,7 @@
 #include "base/port.h"
 #include "log/coding.h"
 
-namespace rtidb {
+namespace fedb {
 namespace log {
 
 static const uint32_t table0_[256] = {
@@ -263,4 +263,4 @@ uint32_t Extend(uint32_t crc, const char *buf, size_t size) {
 }
 
 }  // namespace log
-}  // namespace rtidb
+}  // namespace fedb

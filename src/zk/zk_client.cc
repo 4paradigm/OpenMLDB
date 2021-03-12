@@ -26,7 +26,7 @@
 #include "boost/bind.hpp"
 #include "boost/lexical_cast.hpp"
 
-namespace rtidb {
+namespace fedb {
 namespace zk {
 
 void LogEventWrapper(zhandle_t* zh, int type, int state, const char* path,
@@ -638,4 +638,4 @@ bool ZkClient::Mkdir(const std::string& path) {
 }
 
 }  // namespace zk
-}  // namespace rtidb
+}  // namespace fedb

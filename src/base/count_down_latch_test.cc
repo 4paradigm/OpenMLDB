@@ -22,7 +22,7 @@
 
 using ::baidu::common::ThreadPool;
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 class CountDownLatchTest : public ::testing::Test {
@@ -62,7 +62,7 @@ TEST_F(CountDownLatchTest, MultiIsDone) {
 }
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

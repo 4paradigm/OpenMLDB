@@ -24,7 +24,7 @@
 
 #include <string>
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 class Slice {
@@ -161,5 +161,5 @@ inline int Slice::compare(const Slice& b) const {
 }
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_BASE_SLICE_H_

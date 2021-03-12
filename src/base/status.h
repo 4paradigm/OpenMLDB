@@ -21,7 +21,7 @@
 #include <string>
 #include "base/slice.h"
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 struct ResultMsg {
@@ -275,6 +275,6 @@ enum ReturnCode {
 };
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_BASE_STATUS_H_

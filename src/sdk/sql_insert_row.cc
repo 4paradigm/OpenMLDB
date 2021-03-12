@@ -24,11 +24,11 @@
 #include "base/fe_strings.h"
 #include "glog/logging.h"
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 SQLInsertRows::SQLInsertRows(
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+    std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
     std::shared_ptr<fesql::sdk::Schema> schema, DefaultValueMap default_map,
     uint32_t default_str_length)
     : table_info_(table_info),
@@ -47,7 +47,7 @@ std::shared_ptr<SQLInsertRow> SQLInsertRows::NewRow() {
 }
 
 SQLInsertRow::SQLInsertRow(
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+    std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
     std::shared_ptr<fesql::sdk::Schema> schema, DefaultValueMap default_map,
     uint32_t default_string_length)
     : table_info_(table_info),
@@ -124,7 +124,7 @@ SQLInsertRow::GetDimensions() {
             key += raw_dimensions_[idx];
         }
         if (pid_num > 0) {
-            pid = (uint32_t)(::rtidb::base::hash64(key) % pid_num);
+            pid = (uint32_t)(::fedb::base::hash64(key) % pid_num);
         }
         auto iter = dimensions_.find(pid);
         if (iter == dimensions_.end()) {
@@ -143,24 +143,24 @@ bool SQLInsertRow::MakeDefault() {
             return AppendNULL();
         }
         switch (table_info_->column_desc_v1(rb_.GetAppendPos()).data_type()) {
-            case rtidb::type::kBool:
+            case fedb::type::kBool:
                 return AppendBool(it->second->GetInt());
-            case rtidb::type::kSmallInt:
+            case fedb::type::kSmallInt:
                 return AppendInt16(it->second->GetSmallInt());
-            case rtidb::type::kInt:
+            case fedb::type::kInt:
                 return AppendInt32(it->second->GetInt());
-            case rtidb::type::kBigInt:
+            case fedb::type::kBigInt:
                 return AppendInt64(it->second->GetLong());
-            case rtidb::type::kFloat:
+            case fedb::type::kFloat:
                 return AppendFloat(it->second->GetFloat());
-            case rtidb::type::kDouble:
+            case fedb::type::kDouble:
                 return AppendDouble(it->second->GetDouble());
-            case rtidb::type::kDate:
+            case fedb::type::kDate:
                 return AppendDate(it->second->GetInt());
-            case rtidb::type::kTimestamp:
+            case fedb::type::kTimestamp:
                 return AppendTimestamp(it->second->GetLong());
-            case rtidb::type::kVarchar:
-            case rtidb::type::kString:
+            case fedb::type::kVarchar:
+            case fedb::type::kString:
                 return AppendString(it->second->GetStr());
             default:
                 return false;
@@ -313,4 +313,4 @@ bool SQLInsertRow::Build() {
 }
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb

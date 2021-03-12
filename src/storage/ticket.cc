@@ -17,7 +17,7 @@
 
 #include "storage/ticket.h"
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 Ticket::Ticket() {}
@@ -46,4 +46,4 @@ void Ticket::Pop() {
 }
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb

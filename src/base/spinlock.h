@@ -32,7 +32,7 @@
 #include <atomic>
 #include <thread> // NOLINT
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 inline void AsmVolatilePause() {
@@ -78,4 +78,4 @@ class SpinMutex {
 };
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb

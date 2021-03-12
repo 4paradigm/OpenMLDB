@@ -21,7 +21,7 @@
 #include "sdk/mini_cluster_bm.h"
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
-::rtidb::sdk::MiniCluster* mc;
+::fedb::sdk::MiniCluster* mc;
 #define DEFINE_BATCH_REQUEST_CASE(NAME, PATH, CASE_ID)                         \
     static void BM_BatchRequest_##NAME(benchmark::State& state) {              \
         auto sql_case = LoadSQLCaseWithID(PATH, CASE_ID);                      \
@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
     FLAGS_enable_localtablet = !fesql::sqlcase::SQLCase::IS_DISABLE_LOCALTABLET();
     ::benchmark::Initialize(&argc, argv);
     if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
-    ::rtidb::sdk::MiniCluster mini_cluster(6181);
+    ::fedb::sdk::MiniCluster mini_cluster(6181);
     mc = &mini_cluster;
     if (!fesql::sqlcase::SQLCase::IS_CLUSTER()) {
         mini_cluster.SetUp(1);

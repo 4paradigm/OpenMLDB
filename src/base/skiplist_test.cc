@@ -21,7 +21,7 @@
 #include "base/slice.h"
 #include "gtest/gtest.h"
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 class NodeTest : public ::testing::Test {
@@ -674,7 +674,7 @@ TEST_F(SkiplistTest, Duplicate) {
 }
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

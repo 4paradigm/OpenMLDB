@@ -24,7 +24,7 @@
 #include <iostream>
 #include "base/random.h"
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 struct DefaultComparator {
@@ -474,6 +474,6 @@ class Skiplist {
 };
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_BASE_SKIPLIST_H_
