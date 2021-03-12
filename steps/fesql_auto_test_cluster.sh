@@ -22,6 +22,7 @@ if [[ "${CASE_LEVEL}" == "" ]]; then
 fi
 echo "fesql auto test cluster: case_level ${CASE_LEVEL}"
 echo "ROOT_DIR:${ROOT_DIR}"
+sh tools/install_fesql.sh ON
 cd ${ROOT_DIR}/fesql/java/fesql-common; mvn install
 
 mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. 
