@@ -76,7 +76,7 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
         t.add(schema->GetColumnName(i));
     }
-    t.endOfRow();
+    t.end_of_row();
     while (result_set->Next()) {
         for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
             if (result_set->IsNULL(i)) {
@@ -148,7 +148,7 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
                 }
             }
         }
-        t.endOfRow();
+        t.end_of_row();
     }
     stream << t << std::endl;
     stream << result_set->Size() << " rows in set" << std::endl;
@@ -163,7 +163,7 @@ void PrintTableIndex(std::ostream &stream,
     t.add("ts");
     t.add("ttl");
     t.add("ttl_type");
-    t.endOfRow();
+    t.end_of_row();
     for (int i = 0; i < index_list.size(); i++) {
         const ::fesql::type::IndexDef &index = index_list.Get(i);
         t.add(std::to_string(i + 1));
@@ -192,7 +192,7 @@ void PrintTableIndex(std::ostream &stream,
         } else {
             t.add("kAbsOrLat");
         }
-        t.endOfRow();
+        t.end_of_row();
     }
     stream << t;
 }
@@ -208,7 +208,7 @@ void PrintTableSchema(std::ostream &stream, const ::fesql::vm::Schema &schema) {
     t.add("Field");
     t.add("Type");
     t.add("Null");
-    t.endOfRow();
+    t.end_of_row();
 
     for (uint32_t i = 0; i < items_size; i++) {
         auto column = schema.Get(i);
@@ -216,7 +216,7 @@ void PrintTableSchema(std::ostream &stream, const ::fesql::vm::Schema &schema) {
         t.add(column.name());
         t.add(::fesql::type::Type_Name(column.type()));
         t.add(column.is_not_null() ? "NO" : "YES");
-        t.endOfRow();
+        t.end_of_row();
     }
     stream << t;
 }
@@ -230,10 +230,10 @@ void PrintItems(std::ostream &stream, const std::string &head,
 
     ::fesql::base::TextTable t('-', ' ', ' ');
     t.add(head);
-    t.endOfRow();
+    t.end_of_row();
     for (auto item : items) {
         t.add(item);
-        t.endOfRow();
+        t.end_of_row();
     }
     stream << t;
     auto items_size = items.size();
@@ -254,11 +254,11 @@ void PrintItems(const std::vector<std::pair<std::string, std::string>> &items,
     ::fesql::base::TextTable t('-', ' ', ' ');
     t.add("DB");
     t.add("SP");
-    t.endOfRow();
+    t.end_of_row();
     for (auto item : items) {
         t.add(item.first);
         t.add(item.second);
-        t.endOfRow();
+        t.end_of_row();
     }
     stream << t;
     auto items_size = items.size();
@@ -285,7 +285,7 @@ void PrintProcedureSchema(const std::string& head,
         t.add("Field");
         t.add("Type");
         t.add("IsConstant");
-        t.endOfRow();
+        t.end_of_row();
 
         for (uint32_t i = 0; i < items_size; i++) {
             auto column = schema.Get(i);
@@ -293,7 +293,7 @@ void PrintProcedureSchema(const std::string& head,
             t.add(column.name());
             t.add(::fesql::type::Type_Name(column.type()));
             t.add(column.is_constant() ? "YES" : "NO");
-            t.endOfRow();
+            t.end_of_row();
         }
         stream << t << std::endl;
     } catch(std::bad_cast) {
