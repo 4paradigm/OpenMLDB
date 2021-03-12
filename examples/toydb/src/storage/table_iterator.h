@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef EXAMPLES_TOYDB_SRC_STORAGE_FE_TABLE_ITERATOR_H_
-#define EXAMPLES_TOYDB_SRC_STORAGE_FE_TABLE_ITERATOR_H_
+#ifndef EXAMPLES_TOYDB_SRC_STORAGE_TABLE_ITERATOR_H_
+#define EXAMPLES_TOYDB_SRC_STORAGE_TABLE_ITERATOR_H_
 
 #include <memory>
 #include <string>
@@ -155,4 +155,4 @@ class FullTableIterator : public ConstIterator<uint64_t, Row> {
 }  // namespace storage
 }  // namespace fesql
 
-#endif  // EXAMPLES_TOYDB_SRC_STORAGE_FE_TABLE_ITERATOR_H_
+#endif  // EXAMPLES_TOYDB_SRC_STORAGE_TABLE_ITERATOR_H_
