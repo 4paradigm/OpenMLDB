@@ -97,12 +97,12 @@ if(TESTING_ENABLE)
     compile_test(replica)
     compile_test(catalog)
     compile_test(log)
+else()
+    add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:fedb_proto>)
+    target_link_libraries(parse_log log fedb_proto base protobuf glog gflags unwind lzma ssl crypto z snappy dl pthread)
+
+    add_executable(fedb cmd/fedb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
+    target_link_libraries(fedb ${BIN_LIBS})
 endif()
-
-add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:fedb_proto>)
-target_link_libraries(parse_log log fedb_proto base protobuf glog gflags unwind lzma ssl crypto z snappy dl pthread)
-
-add_executable(fedb cmd/fedb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
-target_link_libraries(fedb ${BIN_LIBS})
 
 add_subdirectory(sdk)
