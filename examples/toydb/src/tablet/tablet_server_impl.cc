@@ -28,8 +28,8 @@
 #include "gflags/gflags.h"
 
 DECLARE_string(dbms_endpoint);
-DECLARE_string(fesql_endpoint);
-DECLARE_int32(fesql_port);
+DECLARE_string(toydb_endpoint);
+DECLARE_int32(toydb_port);
 DECLARE_bool(enable_keep_alive);
 
 namespace fesql {
@@ -63,7 +63,7 @@ bool TabletServerImpl::Init() {
 
 void TabletServerImpl::KeepAlive() {
     dbms::DBMSServer_Stub stub(dbms_ch_);
-    std::string endpoint = FLAGS_fesql_endpoint;
+    std::string endpoint = FLAGS_toydb_endpoint;
     dbms::KeepAliveRequest request;
     request.set_endpoint(endpoint);
     dbms::KeepAliveResponse response;

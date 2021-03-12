@@ -36,10 +36,10 @@
 #include "sdk/dbms_sdk.h"
 #include "tablet/tablet_server_impl.h"
 
-DECLARE_string(fesql_endpoint);
+DECLARE_string(toydb_endpoint);
 DECLARE_string(tablet_endpoint);
-DECLARE_int32(fesql_port);
-DECLARE_int32(fesql_thread_pool_size);
+DECLARE_int32(toydb_port);
+DECLARE_int32(toydb_thread_pool_size);
 DEFINE_string(role, "tablet | dbms | client ", "Set the fesql role");
 
 namespace fesql {
@@ -75,7 +75,7 @@ void StartTablet(int argc, char *argv[]) {
     }
 
     brpc::ServerOptions options;
-    options.num_threads = FLAGS_fesql_thread_pool_size;
+    options.num_threads = FLAGS_toydb_thread_pool_size;
     brpc::Server server;
 
     if (server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
@@ -83,7 +83,7 @@ void StartTablet(int argc, char *argv[]) {
         exit(1);
     }
 
-    if (server.Start(FLAGS_fesql_port, &options) != 0) {
+    if (server.Start(FLAGS_toydbl_port, &options) != 0) {
         LOG(WARNING) << "Fail to start tablet server";
         exit(1);
     }
@@ -91,7 +91,7 @@ void StartTablet(int argc, char *argv[]) {
     std::ostringstream oss;
     oss << FESQL_VERSION_MAJOR << "." << FESQL_VERSION_MEDIUM << "."
         << FESQL_VERSION_MINOR << "." << FESQL_VERSION_BUG;
-    DLOG(INFO) << "start tablet on port " << FLAGS_fesql_port
+    DLOG(INFO) << "start tablet on port " << FLAGS_toydb_port
                << " with version " << oss.str();
     server.set_version(oss.str());
     server.RunUntilAskedToQuit();
@@ -101,7 +101,7 @@ void StartDBMS(char *argv[]) {
     SetupLogging(argv);
     ::fesql::dbms::DBMSServerImpl *dbms = new ::fesql::dbms::DBMSServerImpl();
     brpc::ServerOptions options;
-    options.num_threads = FLAGS_fesql_thread_pool_size;
+    options.num_threads = FLAGS_toydb_thread_pool_size;
     brpc::Server server;
 
     if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
@@ -109,7 +109,7 @@ void StartDBMS(char *argv[]) {
         exit(1);
     }
 
-    if (server.Start(FLAGS_fesql_port, &options) != 0) {
+    if (server.Start(FLAGS_toydb_port, &options) != 0) {
         LOG(WARNING) << "Fail to start dbms server";
         exit(1);
     }
@@ -117,7 +117,7 @@ void StartDBMS(char *argv[]) {
     std::ostringstream oss;
     oss << FESQL_VERSION_MAJOR << "." << FESQL_VERSION_MEDIUM << "."
         << FESQL_VERSION_MINOR << "." << FESQL_VERSION_BUG;
-    DLOG(INFO) << "start dbms on port " << FLAGS_fesql_port << " with version "
+    DLOG(INFO) << "start dbms on port " << FLAGS_toydb_port << " with version "
                << oss.str();
     server.set_version(oss.str());
     server.RunUntilAskedToQuit();
@@ -295,7 +295,7 @@ void HandleSQLScript(
     const std::string &script,
     fesql::sdk::Status &status) {  // NOLINT (runtime/references)
     if (!dbms_sdk) {
-        dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_fesql_endpoint);
+        dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_toydb_endpoint);
         if (!dbms_sdk) {
             status.code = fesql::common::kRpcError;
             status.msg = "Fail to connect to dbms";
@@ -404,7 +404,7 @@ void HandleSQLScript(
 void HandleCmd(const fesql::node::CmdNode *cmd_node,
                fesql::sdk::Status &status) {  // NOLINT (runtime/references)
     if (dbms_sdk == NULL) {
-        dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_fesql_endpoint);
+        dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_toydb_endpoint);
         if (dbms_sdk == NULL) {
             std::cout << "Fail to connect to dbms" << std::endl;
             return;
