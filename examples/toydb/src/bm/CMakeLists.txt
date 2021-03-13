@@ -37,7 +37,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif ()
 # bm lib
 add_library(toydb_bm_lib STATIC ${BM_LIB_FILE_LIST})
-target_link_libraries(toydb_bm_lib fesql_toy_lib fesql_sdk fesql_flags ${BM_LIIBS})
+target_link_libraries(toydb_bm_lib toydb_lib toydb_sdk fesql_sdk fesql_flags ${BM_LIIBS})
 # bm executables
 set(BM_TARGET_LIST)
 foreach(BM_SCRIPT ${BM_EXEC_FILE_LIST})
@@ -48,7 +48,7 @@ foreach(BM_SCRIPT ${BM_EXEC_FILE_LIST})
         add_executable(${BM_TARGET_NAME} ${BM_SCRIPT})
 
         target_link_libraries(${BM_TARGET_NAME}
-            fesql_sdk fesql_flags fesql_toy_lib fesql_sdk toydb_bm_lib ${BM_LIBS} benchmark sqlite3)
+            fesql_sdk fesql_flags toydb_lib toydb_sdk toydb_bm_lib ${BM_LIBS} benchmark sqlite3)
         list(APPEND BM_TARGET_LIST ${BM_TARGET_NAME})
 endforeach()
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -69,7 +69,7 @@ if (TESTING_ENABLE)
             --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
 
         target_link_libraries(${TEST_TARGET_NAME}
-                fesql_toy_lib toydb_bm_lib fesql_sdk fesql_sdk fesql_flags
+                toydb_lib toydb_sdk toydb_bm_lib fesql_sdk fesql_flags
             gtest benchmark ${yaml_libs} ${BRPC_LIBS} ${OS_LIBS} ${g_libs} sqlite3)
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach()

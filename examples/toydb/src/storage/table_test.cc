@@ -17,8 +17,8 @@
 #include <sys/time.h>
 #include <string>
 #include "codec/fe_row_codec.h"
-#include "storage/fe_table.h"
 #include "gtest/gtest.h"
+#include "storage/table_impl.h"
 
 namespace fesql {
 namespace storage {

@@ -24,12 +24,12 @@ cd "$PROJECT_ROOT"
 mkdir -p log/dbms
 mkdir -p log/tablet
 BUILD_DIR=$PROJECT_ROOT/build/examples/toydb
-"$BUILD_DIR/src/fesql" --role=dbms  --fesql_port=9211 > dbms.log 2>&1 &
+"$BUILD_DIR/src/toydb" --role=dbms  --toydb_port=9211 > dbms.log 2>&1 &
 sleep 5
-"$BUILD_DIR/src/fesql" --role=tablet --fesql_endpoint=127.0.0.1:9212 --fesql_port=9212 --dbms_endpoint=127.0.0.1:9211 > tablet.log 2>&1 &
+"$BUILD_DIR/src/toydb" --role=tablet --toydb_endpoint=127.0.0.1:9212 --toydb_port=9212 --dbms_endpoint=127.0.0.1:9211 > tablet.log 2>&1 &
 sleep 5
 
-if pgrep -f 'src/fesql --role=dbms'; then
+if pgrep -f 'src/toydb --role=dbms'; then
 	echo "onebox dbms service started"
 else
 	echo "start onebox dbms service failed"
@@ -37,7 +37,7 @@ else
 	exit 1
 fi
 
-if pgrep -f 'src/fesql --role=tablet'; then
+if pgrep -f 'src/toydb --role=tablet'; then
 	echo "onebox tablet service started"
 else
 	echo "start onebox tablet service failed"

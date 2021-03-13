@@ -25,8 +25,8 @@
 #include "base/iterator.h"
 #include "base/spin_lock.h"
 #include "proto/fe_type.pb.h"
-#include "storage/fe_skiplist.h"
 #include "storage/list.h"
+#include "storage/skiplist.h"
 
 namespace fesql {
 namespace storage {

@@ -42,13 +42,13 @@ toydb_add_src_and_tests(testing)
 get_property(TOYDB_SRC_FILE_LIST_STR GLOBAL PROPERTY TOYDB_SRC_FILE_LIST)
 string(REPLACE " " ";" TOYDB_SRC_FILE_LIST ${TOYDB_SRC_FILE_LIST_STR})
 
-add_library(toy_flags STATIC toy_flags.cc)
+add_library(toydb_flags STATIC toydb_flags.cc)
 
 # toydb lib
-set(TOYDB_DEPS_LIBS fesql_core fesql_flags toy_flags sqlite3
+set(TOYDB_DEPS_LIBS fesql_core fesql_sdk fesql_flags toydb_flags sqlite3
         ${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${OS_LIB})
-add_library(fesql_toy_lib STATIC ${TOYDB_SRC_FILE_LIST})
-target_link_libraries(fesql_toy_lib ${TOYDB_DEPS_LIBS})
+add_library(toydb_lib STATIC ${TOYDB_SRC_FILE_LIST})
+target_link_libraries(toydb_lib ${TOYDB_DEPS_LIBS})
 
 # toydb unittests
 if (TESTING_ENABLE)
@@ -66,7 +66,7 @@ if (TESTING_ENABLE)
                 ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
                 --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
         target_link_libraries(${TEST_TARGET_NAME}
-                fesql_toy_lib fesql_sdk fesql_flags sqlite3
+                toydb_lib toydb_sdk fesql_flags sqlite3
                 gtest benchmark ${yaml_libs} ${BRPC_LIBS} ${OS_LIBS} ${g_libs})
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach()
@@ -80,9 +80,9 @@ if (BENCHMARK_ENABLE)
 add_subdirectory(bm)
 endif()
 
-# fesql bin
-add_executable(fesql cmd/fesql.cc)
-target_link_libraries(fesql fesql_core fesql_flags fesql_toy_lib fesql_sdk)
+# toydb bin
+add_executable(toydb cmd/toydb.cc)
+target_link_libraries(toydb toydb_lib toydb_sdk fesql_sdk fesql_core fesql_flags )
 # engine execution
-add_executable(fesql_run_engine cmd/fesql_run_engine.cc)
-target_link_libraries(fesql_run_engine fesql_toy_lib toy_flags fesql_flags gtest sqlite3)
+add_executable(toydb_run_engine cmd/toydb_run_engine.cc)
+target_link_libraries(toydb_run_engine toydb_lib toydb_sdk toydb_flags fesql_flags gtest sqlite3)

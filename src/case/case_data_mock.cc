@@ -19,8 +19,8 @@ namespace sqlcase {
 using fesql::codec::Row;
 
 bool CaseDataMock::LoadResource(const std::string& resource_path,
-                  type::TableDef& table_def,  // NOLINT
-                  std::vector<Row>& rows) {   // NOLINT
+                                type::TableDef& table_def,  // NOLINT
+                                std::vector<Row>& rows) {   // NOLINT
     if (!SQLCase::LoadSchemaAndRowsFromYaml(fesql::sqlcase::FindFesqlDirPath(),
                                             resource_path, table_def, rows)) {
         return false;
@@ -28,8 +28,8 @@ bool CaseDataMock::LoadResource(const std::string& resource_path,
     return true;
 }
 void CaseDataMock::BuildOnePkTableData(type::TableDef& table_def,  // NOLINT
-                         std::vector<Row>& buffer,   // NOLINT
-                         int64_t data_size) {
+                                       std::vector<Row>& buffer,   // NOLINT
+                                       int64_t data_size) {
     ::fesql::sqlcase::Repeater<std::string> col0(
         std::vector<std::string>({"hello"}));
     IntRepeater<int32_t> col1;
@@ -42,9 +42,8 @@ void CaseDataMock::BuildOnePkTableData(type::TableDef& table_def,  // NOLINT
     col4.Range(100.0, 10000.0, 10.0);
     IntRepeater<int64_t> col5;
     col5.Range(1576571615000 - 100000000, 1576571615000, 1000);
-    Repeater<std::string> col6({"astring", "bstring", "cstring",
-                                             "dstring", "estring", "fstring",
-                                             "gstring", "hstring"});
+    Repeater<std::string> col6({"astring", "bstring", "cstring", "dstring",
+                                "estring", "fstring", "gstring", "hstring"});
 
     CaseSchemaMock::BuildTableDef(table_def);
     for (int i = 0; i < data_size; ++i) {
@@ -65,6 +64,27 @@ void CaseDataMock::BuildOnePkTableData(type::TableDef& table_def,  // NOLINT
     }
 }
 
+void CaseDataMock::BuildTableAndData(type::TableDef& table_def,  // NOLINT
+                                  std::vector<Row>& buffer,   // NOLINT
+                                  int64_t data_size) {
+    CaseSchemaMock::BuildTableDef(table_def);
+    for (int i = 0; i < data_size; ++i) {
+        std::string str1 = "hello";
+        std::string str2 = "astring";
+        codec::RowBuilder builder(table_def.columns());
+        uint32_t total_size = builder.CalTotalLength(str1.size() + str2.size());
+        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+        builder.SetBuffer(ptr, total_size);
+        builder.AppendString(str1.c_str(), str1.size());
+        builder.AppendInt32(1);
+        builder.AppendInt16(2);
+        builder.AppendFloat(3.0);
+        builder.AppendDouble(4.0);
+        builder.AppendInt64(1576571615000-i);
+        builder.AppendString(str2.c_str(), str2.size());
+        buffer.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
+    }
+}
 void CaseSchemaMock::BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
     table.set_catalog("db");

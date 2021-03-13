@@ -421,8 +421,7 @@ std::shared_ptr<SimpleCatalog> BuildSimpleCatalog(
     return catalog;
 }
 std::shared_ptr<SimpleCatalog> BuildSimpleCatalog() {
-    std::shared_ptr<SimpleCatalog> catalog(new SimpleCatalog(true));
-    return catalog;
+    return std::make_shared<SimpleCatalog>(true);
 }
 bool InitSimpleCataLogFromSQLCase(SQLCase& sql_case,  // NOLINT
                                   std::shared_ptr<SimpleCatalog> catalog) {

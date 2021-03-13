@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
+#include "storage/skiplist.h"
 #include <string>
 #include <vector>
 #include "base/fe_slice.h"
-#include "storage/fe_skiplist.h"
 #include "gtest/gtest.h"
 
 namespace fesql {

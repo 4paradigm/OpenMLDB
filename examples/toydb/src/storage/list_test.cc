@@ -19,8 +19,8 @@
 #include <time.h>
 #include <random>
 #include <string>
-#include "storage/fe_skiplist.h"
 #include "gtest/gtest.h"
+#include "storage/skiplist.h"
 
 namespace fesql {
 namespace storage {
