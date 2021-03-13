@@ -24,7 +24,7 @@ if [[ "${CASE_LEVEL}" == "" ]]; then
         CASE_LEVEL="0"
 fi
 if [[ "${CASE_NAME}" == "" ]]; then
-        CASE_NAME="tablet_engine_test\|sql_sdk_test\|sql_cluster_test"
+        CASE_NAME="sql_sdk_test\|sql_cluster_test"
 fi
 echo "fesql c++ sdk test : case_level ${CASE_LEVEL}, case_file ${CASE_NAME}"
 
