@@ -83,7 +83,7 @@ void StartTablet(int argc, char *argv[]) {
         exit(1);
     }
 
-    if (server.Start(FLAGS_toydbl_port, &options) != 0) {
+    if (server.Start(FLAGS_toydb_port, &options) != 0) {
         LOG(WARNING) << "Fail to start tablet server";
         exit(1);
     }
