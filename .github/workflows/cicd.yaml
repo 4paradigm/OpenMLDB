@@ -7,5 +7,5 @@ jobs:
       -
         run: |
           echo "test"
-          ls -al
+          ls -al ..
           pwd
