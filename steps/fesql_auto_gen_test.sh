@@ -37,21 +37,3 @@ ls -l logs
 failed_num=`ls logs | wc -l`
 echo "failed_num=$failed_num"
 echo "CI_COMMIT_SHA:$CI_COMMIT_SHA"
-tar czvf $CI_COMMIT_SHA logs
-if [ $failed_num -gt 0 ];then
-  sh -x steps/upload_to_pkg.sh http://pkg.4paradigm.com:81/rtidb/test/fesql-log/ $CI_COMMIT_SHA
-  exit 1
-else
-  exit 0
-fi
-#
-#cd ${ROOT_DIR}
-#echo "CCC"
-#ls -al fesql/build
-#echo "DDDD"
-#ls -al fesql/build/src/
-#
-#cd ${ROOT_DIR}/src/sdk/java/
-#mvn install -Dmaven.test.skip=true
-#cd ${ROOT_DIR}/src/sdk/java/fesql-auto-test-java
-#mvn test -DsuiteXmlFile=test_suite/${case_xml}

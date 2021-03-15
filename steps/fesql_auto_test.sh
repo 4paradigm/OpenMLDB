@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# compile.sh
-
 CASE_LEVEL=$1
 if [[ "${CASE_LEVEL}" == "" ]]; then
         CASE_LEVEL="0"
@@ -29,11 +27,7 @@ sh tools/install_fesql.sh ON
 cd ${ROOT_DIR}/fesql/java/fesql-common; mvn install
 
 mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. 
-if [ -z "${FEDEV}" ]; then
-    make -j5 sql_javasdk_package || { echo "compile error"; exit 1; }
-else
-    make -j16 || { echo "compile error"; exit 1; }
-fi
+make -j5 sql_javasdk_package || { echo "compile error"; exit 1; }
 cd ${ROOT_DIR}
 test -d /rambuild/ut_zookeeper && rm -rf /rambuild/ut_zookeeper/*
 cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf

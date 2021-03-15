@@ -14,7 +14,6 @@
 
 #! /bin/sh
 #
-# compile.sh
 CMAKE_TYPE=$1
 if [[ "${CMAKE_TYPE}" != "Debug" ]]; then
         CMAKE_TYPE="RelWithDebInfo"
