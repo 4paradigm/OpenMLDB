@@ -7,17 +7,17 @@ jobs:
     runs-on: ubuntu-16.04
 #    container: centos7
     steps:
-      - run: source /root/.bashrc && bash tools/style_check.sh
+      - run: sh tools/style_check.sh
   build:
     runs-on: ubuntu-16.04
     container: centos:7
     steps:
       -
         run: |
-          source /root/.bashrc && sh tools/install_fesql.sh
+          source sh tools/install_fesql.sh
           ln -sf /depends/thirdparty thirdparty
           ln -sf /depends/thirdsrc thirdsrc
-          source /root/.bashrc && bash steps/simple_compile.sh
+          source sh steps/simple_compile.sh
       - uses: actions/upload-artifact@v2
         with:
           name: build-artifact
