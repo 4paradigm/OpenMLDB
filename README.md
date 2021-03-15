@@ -1,14 +1,12 @@
 # FEDB
 
 ## 介绍
-FEDB是一个面向实时决策的NewSQL数据库。目前还处于unstalbe状态并且有许多功能待补齐
+FEDB是一个面向实时推理和决策应用开发的NewSQL数据库。目前还处于unstable状态并且有许多功能待补齐
 
-## 整体架构 
 ![架构图](images/rtidb_arch.png)
-## 背景
-FEDB有什么特点?  
+## FEDB有什么特点
 * 高性能  
-c++实现，底层基于内存的存储引擎，执行引擎利用LLVM高度优化。在AI场景下相比其他数据库有很大的优势
+c++实现，底层基于内存的存储引擎，执行引擎利用LLVM高度优化。在AI场景下相比其他数据库有很大的优势，参考[FEDB论文](https://vldb.org/pvldb/vol14/p799-chen.pdf)
 * SQL兼容/迁移成本低  
 兼容大部分ANSI SQL语法，有python和java client。其中java client支持大部分JDBC接口
 * 在线离线一致性  
@@ -40,16 +38,6 @@ c++实现，底层基于内存的存储引擎，执行引擎利用LLVM高度优�
     sh get_deps.sh
     #训练模型, 看到如下信息说明训练成功
     sh train.sh
-    Starting training...
-    [1] valid_0's l2: 1.17079e+07   valid_0's l1: 620.283
-    Training until validation scores don't improve for 5 rounds
-    [2] valid_0's l2: 1.17068e+07   valid_0's l1: 622.091
-    [3] valid_0's l2: 1.17066e+07   valid_0's l1: 622.494
-    [4] valid_0's l2: 1.17072e+07   valid_0's l1: 622.287
-    [5] valid_0's l2: 1.17077e+07   valid_0's l1: 622.263
-    [6] valid_0's l2: 1.17098e+07   valid_0's l1: 625.248
-    Early stopping, best iteration is:
-    [1] valid_0's l2: 1.17079e+07   valid_0's l1: 620.283
     # 创建数据库和表并导入数据到数据库
     python3 import.py
     # 启动推理服务
@@ -69,7 +57,7 @@ FEDB目前已经兼容主流DDL、DML语法，并逐步增强ANSI SQL语法的�
 * [2021H1] 完善Window的标准语法，支持Where, Group By, Join等操作
 * [2021H1&H2]针对AI场景扩展特有的语法特性和UDAF函数
 ### 功能/性能提升
-为了提升FEDB的性能，内部使用了内存存储引擎，长时间运行会有内存碎片的问题，未来会解决这一问题。目前内存引擎有数据恢复慢的弊端，引入[PMEM](https://www.intel.com/content/www/us/en/architecture-and-technology/optane-dc-persistent-memory.html)(Intel Optane DC Persistent Memory Module)会大大降低数据恢复的时间
+为了满足实时推理与决策场景的高性能需求，fedb选择内存作为存储引擎介质，而目前业界使用内存存储引擎都存在内存碎片和重启恢复效率问题，fedb计划在内存分配算法进行优化降低碎片问题以及引入[PMEM](https://www.intel.com/content/www/us/en/architecture-and-technology/optane-dc-persistent-memory.html)(Intel Optane DC Persistent Memory Module)存储介质提升数据恢复效率，具体计划如下
 * [2021H1]解决内存碎片问题
 * [2021H2]支持PMEM存储引擎
 ### 生态构建
