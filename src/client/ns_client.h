@@ -34,8 +34,6 @@
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
-#include "sdk/dbms_sdk.h"
-#include "sdk/result_set_impl.h"
 #include "catalog/schema_adapter.h"
 
 namespace fedb {
