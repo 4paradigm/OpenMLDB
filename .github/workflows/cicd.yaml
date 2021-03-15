@@ -4,6 +4,7 @@ env:
   GIT_SUBMODULE_STRATEGY: recursive
 jobs:
   style_check:
+    container: centos7
     steps:
       - run: source /root/.bashrc && bash tools/style_check.sh
   build:
