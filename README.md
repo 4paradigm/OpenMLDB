@@ -3,6 +3,7 @@
 ## 介绍
 
 FEDB是一个面向实时推理和决策应用开发的NewSQL数据库
+
 注:目前还处于unstable状态并且有许多功能待补齐,不能运用于生产环境
 
 ![架构图](images/rtidb_arch.png)
