@@ -5,7 +5,6 @@ jobs:
     runs-on: ubuntu-16.04
     steps:
       -
-        uses: 4paradigm/HybridSErelease@opensource_1.0.0.0
         run: |
           echo "test"
           ls -al
