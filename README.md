@@ -21,13 +21,13 @@ HybridSE是一个模块化的SQL编译器和执行器，提供了SQL语法校验
 
 ## 编译
 
-使用Docker镜像。
+1.使用Docker镜像
 
 ```shell
 docker run -it develop-registry.4pd.io/centos6_gcc7_fesql:master bash
 ```
 
-从源码编译项目
+2.从源码编译项目
 
 ```shell
 git clone git@github.com:4paradigm/hybridse.git
