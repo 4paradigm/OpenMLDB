@@ -19,9 +19,10 @@ jobs:
         username: ${{ github.actor }}
         password: $CR_PAT
     steps:
-      - run: |
-        ls -al
-        source /root/.bashrc && bash tools/style_check.sh
+      -
+        run: |
+          ls -al
+          source /root/.bashrc && bash tools/style_check.sh
   build:
     runs-on: ubuntu-latest
     container: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
