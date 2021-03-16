@@ -10,16 +10,10 @@ import libs.utils as utils
 import collections
 
 @ddt.ddt
-@multi_dimension(True)
 class TestMultiCluster(TestCaseBase):
 
-    @ddt.data(
-        ['kMemory'],
-        ['kSSD'],
-        ['kHDD'],
-    )
     @ddt.unpack
-    def test_create_after_add_rep_cluster(self, storage_mode):
+    def test_create_after_add_rep_cluster(self):
         """
         指定时间列的schema表建表删表与数据同步测试
         """
@@ -37,7 +31,6 @@ class TestMultiCluster(TestCaseBase):
                 "ttl": 0,
                 "partition_num": 4,
                 "replica_num": 3,
-                "storage_mode": storage_mode,
                 "column_desc":[
                    {"name": "card", "type": "string", "add_ts_idx": "true"},
                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},
@@ -146,13 +139,8 @@ class TestMultiCluster(TestCaseBase):
         self.remove_replica_cluster(self.ns_leader, self.alias)
         time.sleep(3)
 
-    @ddt.data(
-        ['kMemory'],
-        ['kSSD'],
-        ['kHDD'],
-    )
     @ddt.unpack
-    def test_create_before_add_rep_cluster(self, storage_mode):
+    def test_create_before_add_rep_cluster(self):
         """
         指定时间列的schema表建表删表与数据同步测试
         """
@@ -161,7 +149,6 @@ class TestMultiCluster(TestCaseBase):
         table_meta = {
                 "name": name,
                 "ttl": 0,
-                "storage_mode": storage_mode,
                 "partition_num": 4,
                 "replica_num": 3,
                 "column_desc":[
@@ -276,13 +263,8 @@ class TestMultiCluster(TestCaseBase):
         self.remove_replica_cluster(self.ns_leader, self.alias)
         time.sleep(3)
 
-    @ddt.data(
-        ['kMemory'],
-        ['kSSD'],
-        ['kHDD'],
-    )
     @ddt.unpack
-    def test_synctable_without_table(self, storage_mode):
+    def test_synctable_without_table(self):
         """
         从集群没有与主集群有相同表名的表
         """
@@ -291,7 +273,6 @@ class TestMultiCluster(TestCaseBase):
         table_meta = {
                 "name": name,
                 "ttl": 0,
-                "storage_mode": storage_mode,
                 "table_partition": [
                     {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 ],
@@ -428,13 +409,8 @@ class TestMultiCluster(TestCaseBase):
         self.remove_replica_cluster(self.ns_leader, self.alias)
         time.sleep(3)
 
-    @ddt.data(
-        ['kMemory'],
-        ['kSSD'],
-        ['kHDD'],
-    )
     @ddt.unpack
-    def test_synctable_with_table(self, storage_mode):
+    def test_synctable_with_table(self):
         """
         从集群有与主集群有可以match的表
         """
@@ -443,7 +419,6 @@ class TestMultiCluster(TestCaseBase):
         table_meta = {
                 "name": name,
                 "ttl": 0,
-                "storage_mode": storage_mode,
                 "table_partition": [
                     {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 ],
@@ -481,7 +456,6 @@ class TestMultiCluster(TestCaseBase):
         table_meta_r = {
                 "name": name,
                 "ttl": 0,
-                "storage_mode": storage_mode,
                 "table_partition": [
                     {"endpoint": self.leader_r,"pid_group": "0-2","is_leader": "true"},
                 ],
@@ -602,13 +576,8 @@ class TestMultiCluster(TestCaseBase):
         self.remove_replica_cluster(self.ns_leader, self.alias)
         time.sleep(3)
 
-    @ddt.data(
-        ['kMemory'],
-        ['kSSD'],
-        ['kHDD'],
-    )
     @ddt.unpack
-    def test_synctable_with_table_has_pid(self, storage_mode):
+    def test_synctable_with_table_has_pid(self):
         """
         从集群有与主集群有可以match的表(同步某个分片)
         """
@@ -617,7 +586,6 @@ class TestMultiCluster(TestCaseBase):
         table_meta = {
                 "name": name,
                 "ttl": 0,
-                "storage_mode": storage_mode,
                 "table_partition": [
                     {"endpoint": self.leader,"pid_group": "0","is_leader": "true"},
                 ],
@@ -655,7 +623,6 @@ class TestMultiCluster(TestCaseBase):
         table_meta_r = {
                 "name": name,
                 "ttl": 0,
-                "storage_mode": storage_mode,
                 "table_partition": [
                     {"endpoint": self.leader_r,"pid_group": "0","is_leader": "true"},
                 ],
@@ -777,13 +744,8 @@ class TestMultiCluster(TestCaseBase):
         self.remove_replica_cluster(self.ns_leader, self.alias)
         time.sleep(3)
 
-    @ddt.data(
-        ['kMemory'],
-        ['kSSD'],
-        ['kHDD'],
-    )
     @ddt.unpack
-    def test_second_add_rep_cluster(self, storage_mode):
+    def test_second_add_rep_cluster(self):
         """
         主从集群建连、同步、断连、建连，依然能够同步数据 
         """
@@ -801,7 +763,6 @@ class TestMultiCluster(TestCaseBase):
                 "ttl": 0,
                 "partition_num": 3,
                 "replica_num": 1,
-                "storage_mode": storage_mode,
                 "column_desc":[
                    {"name": "card", "type": "string", "add_ts_idx": "true"},
                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},

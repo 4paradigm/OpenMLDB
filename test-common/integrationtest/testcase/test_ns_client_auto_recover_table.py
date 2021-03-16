@@ -32,13 +32,12 @@ class TestAutoRecoverTable(TestCaseBase):
         self.pid = 3
         self.put_large_datas(data_count, data_thread)
 
-    def create_new_table_put(self, storage_mode, data_count, data_thread=1):
+    def create_new_table_put(self, data_count, data_thread=1):
         self.tname = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
                 "name": self.tname,
                 "ttl": 14400,
-                "storage_mode": storage_mode,
                 "replica_num" : 3,
                 "partition_num" : 4,
                 "column_desc" : [{"name" : "k1", "type" : "string", "add_ts_idx" : "true"},
@@ -94,8 +93,6 @@ class TestAutoRecoverTable(TestCaseBase):
             34: 'self.confset(self.ns_leader, "auto_failover", "true")',
             35: 'self.confset(self.ns_leader, "auto_failover", "false")',
             36: 'self.wait_op_done(self.tname)',
-            37: 'self.create_new_table_put("kHDD", 10)',
-            38: 'self.create_new_table_put("kSSD", 10)',
         }
 
     @ddt.data(

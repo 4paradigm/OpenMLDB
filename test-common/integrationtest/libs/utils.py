@@ -61,7 +61,6 @@ def write(strs, file_name, patt):
 
 def gen_table_metadata(name, ttl_type, ttl, seg_cnt, *table_partitions):
     metadata = []
-    # "storage_mode": "kSSD"
     basic_info_schema = ('name', 'ttl_type', 'ttl', 'seg_cnt')
     basic_info = zip(basic_info_schema, (name, ttl_type, ttl, seg_cnt))
     metadata.append([(i[0], i[1]) for i in basic_info if i[1] is not None])
@@ -76,10 +75,10 @@ def gen_table_metadata(name, ttl_type, ttl, seg_cnt, *table_partitions):
                 metadata.append({})
     return metadata
 
-def gen_table_metadata_ssd(name, ttl_type, ttl, seg_cnt,storage_mode, *table_partitions):
+def gen_table_metadata_ssd(name, ttl_type, ttl, seg_cnt, *table_partitions):
     metadata = []
-    basic_info_schema = ('name', 'ttl_type', 'ttl', 'seg_cnt','storage_mode')
-    basic_info = zip(basic_info_schema, (name, ttl_type, ttl, seg_cnt,"\""+storage_mode+"\""))
+    basic_info_schema = ('name', 'ttl_type', 'ttl', 'seg_cnt')
+    basic_info = zip(basic_info_schema, (name, ttl_type, ttl, seg_cnt))
     metadata.append([(i[0], i[1]) for i in basic_info if i[1] is not None])
     if table_partitions[0] is not None:
         for tp in table_partitions:
