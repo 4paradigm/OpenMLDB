@@ -5,12 +5,12 @@ env:
 jobs:
   style_check:
     runs-on: ubuntu-16.04
-    container: centos:7
+    container: centos6_gcc7_hybridsql:latest
     steps:
       - run: source /root/.bashrc && bash tools/style_check.sh
   build:
     runs-on: ubuntu-16.04
-    container: centos:7
+    container: centos6_gcc7_hybridsql:latest
     steps:
       -
         run: |
