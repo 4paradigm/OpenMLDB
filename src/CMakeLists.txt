@@ -100,3 +100,7 @@ endif()
 # udf exporter
 add_executable(export_udf_info cmd/export_udf_info.cc)
 target_link_libraries(export_udf_info fesql_core)
+
+# simple engine demo
+add_executable(simple_engine_demo cmd/simple_engine_demo.cc)
+target_link_libraries(simple_engine_demo fesql_core)
