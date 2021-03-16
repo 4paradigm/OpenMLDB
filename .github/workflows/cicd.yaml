@@ -2,7 +2,12 @@ name: FEDB-CICD
 on: [push, pull_request]
 env:
   GIT_SUBMODULE_STRATEGY: recursive
+  CR_PAT: ${{ secrets.CR_PAT }}
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "CR_PAT:$CR_PAT"
   style_check:
     runs-on: ubuntu-latest
     container: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
