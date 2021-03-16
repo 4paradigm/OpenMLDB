@@ -144,6 +144,7 @@ find_package(SWIG REQUIRED)
 include(UseSWIG)
 
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
+include_directories(${PROJECT_SOURCE_DIR}/src/include)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib64)
 
@@ -184,6 +185,10 @@ endif ()
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
 
+FILE(GLOB header_files "${CMAKE_CURRENT_SOURCE_DIR}/src/include/*")
+FILE(GLOB proto_header_files "${CMAKE_BINARY_DIR}/src/proto/*.pb.h")
+INSTALL(DIRECTORY ${header_files} DESTINATION include)
+INSTALL(FILES ${proto_header_files} DESTINATION include/proto/)
 install(TARGETS fesql_core fesql_sdk
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
