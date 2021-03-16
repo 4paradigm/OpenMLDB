@@ -8,7 +8,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "CR_PAT:$CR_PAT"
+      - uses: actions/checkout@v2
+      - run: ls -al
       - name: Log into registry
         run: echo "$CR_PAT" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
   style_check:
