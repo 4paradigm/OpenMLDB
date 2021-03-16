@@ -310,102 +310,6 @@ class Engine {
     EngineLRUCache lru_cache_;
 };
 
-class LocalTabletRowHandler : public RowHandler {
- public:
-    LocalTabletRowHandler(uint32_t task_id, const RequestRunSession& session,
-                          const Row& request)
-        : RowHandler(),
-          status_(base::Status::Running()),
-          table_name_(""),
-          db_(""),
-          schema_(nullptr),
-          task_id_(task_id),
-          session_(session),
-          request_(request),
-          value_() {}
-    virtual ~LocalTabletRowHandler() {}
-    const Row& GetValue() override {
-        if (!status_.isRunning()) {
-            return value_;
-        }
-        status_ = SyncValue();
-        return value_;
-    }
-    base::Status SyncValue() {
-        DLOG(INFO) << "Sync Value ... local tablet SubQuery request: task id "
-                   << task_id_;
-        if (0 != session_.Run(task_id_, request_, &value_)) {
-            return base::Status(common::kCallMethodError,
-                                "sub query fail: session run fail");
-        }
-        return base::Status::OK();
-    }
-    const Schema* GetSchema() override { return schema_; }
-    const std::string& GetName() override { return table_name_; }
-    const std::string& GetDatabase() override { return db_; }
-    base::Status status_;
-    std::string table_name_;
-    std::string db_;
-    const Schema* schema_;
-    uint32_t task_id_;
-    RequestRunSession session_;
-    Row request_;
-    Row value_;
-};
-class LocalTabletTableHandler : public MemTableHandler {
- public:
-    LocalTabletTableHandler(uint32_t task_id,
-                            const BatchRequestRunSession session,
-                            const std::vector<Row> requests,
-                            const bool request_is_common)
-        : status_(base::Status::Running()),
-          task_id_(task_id),
-          session_(session),
-          requests_(requests),
-          request_is_common_(request_is_common) {}
-    ~LocalTabletTableHandler() {}
-    Row At(uint64_t pos) override {
-        if (!status_.isRunning()) {
-            return MemTableHandler::At(pos);
-        }
-        status_ = SyncValue();
-        return MemTableHandler::At(pos);
-    }
-    std::unique_ptr<RowIterator> GetIterator() {
-        if (status_.isRunning()) {
-            status_ = SyncValue();
-        }
-        return MemTableHandler::GetIterator();
-    }
-    RowIterator* GetRawIterator() {
-        if (status_.isRunning()) {
-            status_ = SyncValue();
-        }
-        return MemTableHandler::GetRawIterator();
-    }
-    virtual const uint64_t GetCount() {
-        if (status_.isRunning()) {
-            status_ = SyncValue();
-        }
-        return MemTableHandler::GetCount();
-    }
-
- private:
-    base::Status SyncValue() {
-        DLOG(INFO) << "Local tablet SubQuery batch request: task id "
-                   << task_id_;
-        if (0 != session_.Run(task_id_, requests_, table_)) {
-            return base::Status(common::kCallMethodError,
-                                "sub query fail: session run fail");
-        }
-        return base::Status::OK();
-    }
-    base::Status status_;
-    uint32_t task_id_;
-    BatchRequestRunSession session_;
-    const std::vector<Row> requests_;
-    const bool request_is_common_;
-};
 class LocalTablet : public Tablet {
  public:
     explicit LocalTablet(fesql::vm::Engine* engine,
@@ -419,91 +323,12 @@ class LocalTablet : public Tablet {
                                          const std::string& db,
                                          const std::string& sql, const Row& row,
                                          const bool is_procedure,
-                                         const bool is_debug) override {
-        DLOG(INFO) << "Local tablet SubQuery request: task id " << task_id;
-        RequestRunSession session;
-        base::Status status;
-        if (is_debug) {
-            session.EnableDebug();
-        }
-        if (is_procedure) {
-            if (!sp_cache_) {
-                auto error = std::shared_ptr<RowHandler>(
-                    new ErrorRowHandler(common::kProcedureNotFound,
-                                        "SubQuery Fail: procedure not found, "
-                                        "procedure cache not exist"));
-                LOG(WARNING) << error->GetStatus();
-                return error;
-            }
-            auto request_compile_info =
-                sp_cache_->GetRequestInfo(db, sql, status);
-            if (!status.isOK()) {
-                auto error = std::shared_ptr<RowHandler>(new ErrorRowHandler(
-                    status.code, "SubQuery Fail: " + status.msg));
-                LOG(WARNING) << error->GetStatus();
-                return error;
-            }
-            session.SetSpName(sql);
-            session.SetCompileInfo(request_compile_info);
-        } else {
-            if (!engine_->Get(sql, db, session, status)) {
-                auto error = std::shared_ptr<RowHandler>(new ErrorRowHandler(
-                    status.code, "SubQuery Fail: " + status.msg));
-                LOG(WARNING) << error->GetStatus();
-                return error;
-            }
-        }
-
-        return std::shared_ptr<RowHandler>(
-            new LocalTabletRowHandler(task_id, session, row));
-    }
+                                         const bool is_debug) override;
     virtual std::shared_ptr<TableHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
         const std::set<size_t>& common_column_indices,
         const std::vector<Row>& in_rows, const bool request_is_common,
-        const bool is_procedure, const bool is_debug) {
-        DLOG(INFO) << "Local tablet SubQuery batch request: task id "
-                   << task_id;
-        BatchRequestRunSession session;
-        for (size_t idx : common_column_indices) {
-            session.AddCommonColumnIdx(idx);
-        }
-        base::Status status;
-        if (is_debug) {
-            session.EnableDebug();
-        }
-        if (is_procedure) {
-            if (!sp_cache_) {
-                auto error = std::shared_ptr<TableHandler>(
-                    new ErrorTableHandler(common::kProcedureNotFound,
-                                          "SubQuery Fail: procedure not found, "
-                                          "procedure cache not exist"));
-                LOG(WARNING) << error->GetStatus();
-                return error;
-            }
-            auto request_compile_info =
-                sp_cache_->GetBatchRequestInfo(db, sql, status);
-            if (!status.isOK()) {
-                auto error =
-                    std::shared_ptr<TableHandler>(new ErrorTableHandler(
-                        status.code, "SubQuery Fail: " + status.msg));
-                LOG(WARNING) << error->GetStatus();
-                return error;
-            }
-            session.SetSpName(sql);
-            session.SetCompileInfo(request_compile_info);
-        } else {
-            if (!engine_->Get(sql, db, session, status)) {
-                auto error =
-                    std::shared_ptr<TableHandler>(new ErrorTableHandler(
-                        status.code, "SubQuery Fail: " + status.msg));
-                LOG(WARNING) << error->GetStatus();
-                return error;
-            }
-        }
-        return std::make_shared<LocalTabletTableHandler>(
-            task_id, session, in_rows, request_is_common);
-    }
+        const bool is_procedure, const bool is_debug);
     const std::string& GetName() const { return name_; }
 
  private:

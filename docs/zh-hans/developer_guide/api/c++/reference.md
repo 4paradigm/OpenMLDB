@@ -17,24 +17,24 @@
 
 ## Codec
 
-| Members          |      |
-| ---------------- | ---- |
-| Row              |      |
-| RowView          |      |
-| RowIOBufView     |      |
-|                  |      |
-| UpdateCatalog    |      |
-| ClearCacheLocked |      |
+| Members       |      |
+| ------------- | ---- |
+| Row           |      |
+| RowView       |      |
+| RowIOBufView  |      |
+| RowFormat     |      |
+| ColInfo       |      |
+| StringColInfo |      |
 
 
 
-## Engine
+## EngineImpl
 
 | Members                 |            |
 | ----------------------- | ---------- |
 | CompileInfo             |            |
 | CompileInfoCache        |            |
-| Engine                  | New Engine |
+| EngineImpl                  | New EngineImpl |
 | EngineOptions           |            |
 | ExplainOutput           |            |
 | RunSession              |            |

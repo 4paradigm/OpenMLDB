@@ -16,7 +16,6 @@
 
 #ifndef SRC_VM_CATALOG_H_
 #define SRC_VM_CATALOG_H_
-#include <node/sql_node.h>
 #include <map>
 #include <memory>
 #include <set>
@@ -24,6 +23,7 @@
 #include <utility>
 #include <vector>
 #include "base/fe_slice.h"
+#include "base/fe_status.h"
 #include "codec/fe_row_codec.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row.h"

@@ -183,7 +183,10 @@ if (COVERAGE_ENABLE)
     endif ()
 endif ()
 
-set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
+if (CMAKE_INSTALL_PREFIX STREQUAL "")
+    set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
+endif ()
+message (STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
 
 FILE(GLOB header_files "${CMAKE_CURRENT_SOURCE_DIR}/src/include/*")
 FILE(GLOB proto_header_files "${CMAKE_BINARY_DIR}/src/proto/*.pb.h")
