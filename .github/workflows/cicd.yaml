@@ -3,7 +3,6 @@ on: [push, pull_request]
 env:
   GIT_SUBMODULE_STRATEGY: recursive
   CR_PAT: 1cf68583e36cf11ebcd22a10333247e0298347e4
-  IMAGE_TOKEN: 1cf68583e36cf11ebcd22a10333247e0298347e4
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -18,7 +17,7 @@ jobs:
       image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
       credentials:
         username: ${{ github.actor }}
-        password: 1cf68583e36cf11ebcd22a10333247e0298347e4
+        password: ${{ secrets.CR_PAT }}
     steps:
       - uses: actions/checkout@v2
         with:
