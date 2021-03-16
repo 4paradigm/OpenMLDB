@@ -17,7 +17,7 @@ jobs:
       image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
       credentials:
         username: ${{ github.actor }}
-        password: zw@1020688
+#        password: zw@1020688
     steps:
       - run: source /root/.bashrc && bash tools/style_check.sh
   build:
