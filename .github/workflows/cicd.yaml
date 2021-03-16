@@ -2,8 +2,8 @@ name: FEDB-CICD
 on: [push, pull_request]
 env:
   GIT_SUBMODULE_STRATEGY: recursive
-  IMAGE_USER: wuyou10206
-  IMAGE_PWD: 1cf68583e36cf11ebcd22a10333247e0298347e4
+  CR_PAT: 1cf68583e36cf11ebcd22a10333247e0298347e4
+  IMAGE_TOKEN: 1cf68583e36cf11ebcd22a10333247e0298347e4
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -16,8 +16,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
       credentials:
-        username: $IMAGE_USER
-        password: $IMAGE_PWD
+        username: ${{ github.actor }}
+        password: $IMAGE_TOKEN
     steps:
       - run: source /root/.bashrc && bash tools/style_check.sh
   build:
