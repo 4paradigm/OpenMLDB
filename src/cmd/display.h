@@ -603,6 +603,7 @@ __attribute__((unused)) static void PrintTableStatus(
                     table_status.record_idx_byte_size()));
         row.push_back(
             ::rtidb::api::CompressType_Name(table_status.compress_type()));
+        row.push_back(std::to_string(table_status.skiplist_height()));
         tp.AddRow(row);
     }
     tp.Print(true);
