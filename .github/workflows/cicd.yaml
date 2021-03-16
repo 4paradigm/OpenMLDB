@@ -2,15 +2,12 @@ name: FEDB-CICD
 on: [push, pull_request]
 env:
   GIT_SUBMODULE_STRATEGY: recursive
-  CR_PAT: 1cf68583e36cf11ebcd22a10333247e0298347e4
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - run: ls -al
-      - name: Log into registry
-        run: echo "$CR_PAT" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
   style_check:
     runs-on: ubuntu-latest
     container:
@@ -28,8 +25,15 @@ jobs:
           source /root/.bashrc && bash tools/style_check.sh
   build:
     runs-on: ubuntu-latest
-    container: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
+    container:
+      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.CR_PAT_ZW }}
     steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
       -
         run: |
           source /root/.bashrc && sh tools/install_fesql.sh
