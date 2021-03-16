@@ -7,6 +7,7 @@ FEDB是一个面向实时推理和决策应用开发的NewSQL数据库
 注:目前还处于unstable状态并且有许多功能待补齐,不能运用于生产环境
 
 ![架构图](images/fedb_arch.png)
+了解HybridSE[更多信息](https://github.com/4paradigm/HybridSE)
 ## FEDB有什么特点
 * 高性能  
 c++实现，底层基于内存的存储引擎，执行引擎利用LLVM高度优化。在实时推理和决策场景下相比其他数据库有很大的优势，参考[FEDB论文](https://vldb.org/pvldb/vol14/p799-chen.pdf)
