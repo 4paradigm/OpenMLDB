@@ -4,12 +4,12 @@ env:
   GIT_SUBMODULE_STRATEGY: recursive
 jobs:
   style_check:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-latest
     container: centos6_gcc7_hybridsql:latest
     steps:
       - run: source /root/.bashrc && bash tools/style_check.sh
   build:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-latest
     container: centos6_gcc7_hybridsql:latest
     steps:
       -
