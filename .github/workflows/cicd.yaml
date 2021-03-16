@@ -19,6 +19,7 @@ jobs:
         username: ${{ github.actor }}
         password: 1cf68583e36cf11ebcd22a10333247e0298347e4
     steps:
+      - uses: actions/checkout@v2
       -
         run: |
           ls -al
