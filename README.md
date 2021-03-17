@@ -18,9 +18,14 @@ c++实现，底层基于内存的存储引擎，执行引擎利用LLVM高度优�
 * 支持分布式，易扩展
 ## 快速开始
 ### 编译
-1. 启动镜像 docker run -v \`pwd\`:/fedb -it FEDB-docker bash
-2. cd /fedb && sh tools/install_fesql.sh
-3. mkdir -p build && cmake ../ && make -j5 fedb
+```
+git clone https://github.com/4paradigm/fedb.git
+docker run -v \`pwd\`/fedb:/fedb -it FEDB-docker bash
+cd /fedb
+git submodule init fesql && git submodule update fesql
+sh tools/install_fesql.sh
+mkdir -p build && cmake ../ && make -j5 fedb
+```
 ### 示例
 一个快速搭建机器学习实时推理应用的例子，例子介绍[参考](https://github.com/4paradigm/SparkSQLWithFeDB)
 1. 拉取并启动镜像

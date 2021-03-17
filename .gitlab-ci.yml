@@ -236,7 +236,7 @@ c++_ut:
       - $ENV_BUILD == "daily"
 
 fesql_auto_test_python:
-  stage: quick
+  stage: slow
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
