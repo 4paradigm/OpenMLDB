@@ -12,7 +12,7 @@ setup(
         'Programming Language :: Python :: 3',
         ],
     install_requires=[
-        "sqlalchemy"
+        "sqlalchemy < 1.4.0"
     ],
     include_package_data=True,
     package_data = {'':['*.so']},
