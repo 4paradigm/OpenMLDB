@@ -9,7 +9,7 @@ jobs:
       - uses: actions/checkout@v2
       - run: |
           ls -al
-          echo "commitId：${{ github.event.head_commit }}"
+          echo "commitId：${{ github.event.head_commit.id }}"
   style_check:
     runs-on: ubuntu-latest
     container:
