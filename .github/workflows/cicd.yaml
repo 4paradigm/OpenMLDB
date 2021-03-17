@@ -46,6 +46,7 @@ jobs:
       -
         run: |
           cd fesql
+          ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
           git pull
           ls -al
 #          cd ..
