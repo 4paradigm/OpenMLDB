@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "case/sql_case.h"
 #include <set>
 #include <string>
@@ -1553,6 +1552,22 @@ bool SQLCase::BuildCreateSpSQLFromSchema(const type::TableDef& table,
     *create_sql = sql;
     return true;
 }
-
+std::set<std::string> SQLCase::FESQL_LEVEL() {
+    const char* env_name = "FESQL_LEVEL";
+    char* value = getenv(env_name);
+    if (value != nullptr) {
+        try {
+            std::set<std::string> item_vec;
+            boost::split(item_vec, value, boost::is_any_of(","),
+                         boost::token_compress_on);
+            return item_vec;
+        } catch (const std::exception& ex) {
+            LOG(WARNING) << "Fail to parser fesql level: " << ex.what();
+            return std::set<std::string>({"0"});
+        }
+    } else {
+        return std::set<std::string>({"0"});
+    }
+}
 }  // namespace sqlcase
 }  // namespace fesql

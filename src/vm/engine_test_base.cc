@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "vm/engine_test_base.h"
+#include "vm/sql_compiler.h"
 namespace fesql {
 namespace vm {
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
@@ -272,7 +273,9 @@ void DoEngineCheckExpect(const SQLCase& sql_case,
 
     bool is_batch_request = session->engine_mode() == kBatchRequestMode;
     if (is_batch_request) {
-        const auto& sql_ctx = session->GetCompileInfo()->get_sql_context();
+        const auto& sql_ctx =
+            std::dynamic_pointer_cast<SQLCompileInfo>(session->GetCompileInfo())
+                ->get_sql_context();
         const auto& output_common_column_indices =
             sql_ctx.batch_request_info.output_common_column_indices;
         if (!output_common_column_indices.empty() &&
@@ -453,12 +456,16 @@ Status EngineTestRunner::Compile() {
     } else {
         LOG(INFO) << "SQL output schema:";
         std::ostringstream oss;
-        session_->GetPhysicalPlan()->Print(oss, "");
+        std::dynamic_pointer_cast<SQLCompileInfo>(session_->GetCompileInfo())
+            ->GetPhysicalPlan()
+            ->Print(oss, "");
         LOG(INFO) << "Physical plan:";
         std::cerr << oss.str() << std::endl;
 
         std::ostringstream runner_oss;
-        session_->GetClusterJob().Print(runner_oss, "");
+        std::dynamic_pointer_cast<SQLCompileInfo>(session_->GetCompileInfo())
+            ->GetClusterJob()
+            .Print(runner_oss, "");
         LOG(INFO) << "Runner plan:";
         std::cerr << runner_oss.str() << std::endl;
     }
@@ -478,7 +485,9 @@ void EngineTestRunner::RunCheck() {
         return;
     }
     std::ostringstream oss;
-    session_->GetPhysicalPlan()->Print(oss, "");
+    std::dynamic_pointer_cast<SQLCompileInfo>(session_->GetCompileInfo())
+        ->GetPhysicalPlan()
+        ->Print(oss, "");
     if (!sql_case_.batch_plan().empty() && engine_mode == kBatchMode) {
         ASSERT_EQ(oss.str(), sql_case_.batch_plan());
     } else if (!sql_case_.cluster_request_plan().empty() &&

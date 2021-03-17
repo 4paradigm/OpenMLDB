@@ -27,8 +27,9 @@
 #include "codegen/buf_ir_builder.h"
 #include "gflags/gflags.h"
 #include "llvm-c/Target.h"
-#include "vm/mem_catalog.h"
 #include "vm/local_tablet_handler.h"
+#include "vm/mem_catalog.h"
+#include "vm/sql_compiler.h"
 
 DECLARE_bool(logtostderr);
 DECLARE_string(log_dir);
@@ -77,7 +78,8 @@ bool Engine::GetDependentTables(const std::string& sql, const std::string& db,
                                 EngineMode engine_mode,
                                 std::set<std::string>* tables,
                                 base::Status& status) {
-    std::shared_ptr<CompileInfo> info(new CompileInfo());
+    std::shared_ptr<SQLCompileInfo> info =
+        std::make_shared<SQLCompileInfo>();
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
     info->get_sql_context().engine_mode = engine_mode;
@@ -150,16 +152,17 @@ bool Engine::GetDependentTables(node::PlanNode* node,
 bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
                                std::shared_ptr<CompileInfo> info,
                                base::Status& status) {  // NOLINT
-    auto& cache_ctx = info->get_sql_context();
-    if (cache_ctx.engine_mode != session.engine_mode()) {
+    if (info->GetEngineMode() != session.engine_mode()) {
         status =
             Status(common::kSQLError,
                    "Inconsistent cache, mode expect " +
                        EngineModeName(session.engine_mode()) + " but get " +
-                       EngineModeName(cache_ctx.engine_mode));
+                       EngineModeName(info->GetEngineMode()));
         return false;
     }
     if (session.engine_mode() == kBatchRequestMode) {
+        auto& cache_ctx =
+            std::dynamic_pointer_cast<SQLCompileInfo>(info)->get_sql_context();
         auto batch_req_sess = dynamic_cast<BatchRequestRunSession*>(&session);
         if (batch_req_sess == nullptr) {
             return false;
@@ -179,10 +182,10 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
 bool Engine::Get(const std::string& sql, const std::string& db,
                  RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
-    std::shared_ptr<CompileInfo> info =
+    std::shared_ptr<CompileInfo> cached_info =
         GetCacheLocked(db, sql, session.engine_mode());
-    if (info && IsCompatibleCache(session, info, status)) {
-        session.SetCompileInfo(info);
+    if (cached_info && IsCompatibleCache(session, cached_info, status)) {
+        session.SetCompileInfo(cached_info);
         return true;
     }
     // TODO(baoxinqi): IsCompatibleCache fail, return false, or reset status.
@@ -192,8 +195,9 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     }
     DLOG(INFO) << "Compile FESQL ...";
     status = base::Status::OK();
-    info = std::shared_ptr<CompileInfo>(new CompileInfo());
-    auto& sql_context = info->get_sql_context();
+    std::shared_ptr<SQLCompileInfo> info(new SQLCompileInfo());
+    auto& sql_context =
+        std::dynamic_pointer_cast<SQLCompileInfo>(info)->get_sql_context();
     sql_context.sql = sql;
     sql_context.db = db;
     sql_context.engine_mode = session.engine_mode();
@@ -389,21 +393,27 @@ bool RunSession::SetCompileInfo(
 
 int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
     DLOG(INFO) << "Request Row Run with main task";
-    return Run(compile_info_->get_sql_context().cluster_job.main_task_id(),
+    return Run(std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                   ->get_sql_context()
+                   .cluster_job.main_task_id(),
                in_row, out_row);
 }
 int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row,
                                Row* out_row) {
-    auto task =
-        compile_info_->get_sql_context().cluster_job.GetTask(task_id).GetRoot();
+    auto task = std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                    ->get_sql_context()
+                    .cluster_job.GetTask(task_id)
+                    .GetRoot();
     if (nullptr == task) {
         LOG(WARNING) << "fail to run request plan: taskid" << task_id
                      << " not exist!";
         return -2;
     }
     DLOG(INFO) << "Request Row Run with task_id " << task_id;
-    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, in_row,
-                      sp_name_, is_debug_);
+    RunnerContext ctx(&std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                           ->get_sql_context()
+                           .cluster_job,
+                      in_row, sp_name_, is_debug_);
     auto output = task->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run request plan output is null";
@@ -418,16 +428,22 @@ int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row,
 
 int32_t BatchRequestRunSession::Run(const std::vector<Row>& request_batch,
                                     std::vector<Row>& output) {
-    return Run(compile_info_->get_sql_context().cluster_job.main_task_id(),
+    return Run(std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                   ->get_sql_context()
+                   .cluster_job.main_task_id(),
                request_batch, output);
 }
 int32_t BatchRequestRunSession::Run(const uint32_t id,
                                     const std::vector<Row>& request_batch,
                                     std::vector<Row>& output) {
-    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job,
+    RunnerContext ctx(&std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                           ->get_sql_context()
+                           .cluster_job,
                       request_batch, sp_name_, is_debug_);
-    auto task =
-        compile_info_->get_sql_context().cluster_job.GetTask(id).GetRoot();
+    auto task = std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                    ->get_sql_context()
+                    .cluster_job.GetTask(id)
+                    .GetRoot();
     if (nullptr == task) {
         LOG(WARNING) << "fail to run request plan: taskid" << id
                      << " not exist!";
@@ -447,8 +463,12 @@ int32_t BatchRequestRunSession::Run(const uint32_t id,
 }
 
 std::shared_ptr<TableHandler> BatchRunSession::Run() {
-    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, is_debug_);
-    auto output = compile_info_->get_sql_context()
+    RunnerContext ctx(&std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                           ->get_sql_context()
+                           .cluster_job,
+                      is_debug_);
+    auto output = std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                      ->get_sql_context()
                       .cluster_job.GetMainTask()
                       .GetRoot()
                       ->RunWithCache(ctx);
@@ -476,11 +496,10 @@ std::shared_ptr<TableHandler> BatchRunSession::Run() {
 }
 
 int32_t BatchRunSession::Run(std::vector<Row>& rows, uint64_t limit) {
-    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, is_debug_);
-    auto output = compile_info_->get_sql_context()
-                      .cluster_job.GetTask(0)
-                      .GetRoot()
-                      ->RunWithCache(ctx);
+    auto& sql_ctx = std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                        ->get_sql_context();
+    RunnerContext ctx(&sql_ctx.cluster_job, is_debug_);
+    auto output = sql_ctx.cluster_job.GetTask(0).GetRoot()->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
         return -1;

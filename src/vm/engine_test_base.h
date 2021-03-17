@@ -68,6 +68,7 @@ namespace fesql {
 namespace vm {
 using fesql::base::Status;
 using fesql::codec::Row;
+using fesql::codec::RowView;
 using fesql::common::kSQLError;
 using fesql::sqlcase::SQLCase;
 enum EngineRunMode { RUNBATCH, RUNONE };

@@ -194,7 +194,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
     // ::llvm::errs() << *(m.get());
-    auto jit = std::unique_ptr<FeSQLJITWrapper>(
+    auto jit = std::shared_ptr<FeSQLJITWrapper>(
         FeSQLJITWrapper::Create(ctx.jit_options));
     if (jit == nullptr || !jit->Init()) {
         status.msg = "fail to init jit let";
@@ -218,7 +218,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     if (!ResolvePlanFnAddress(ctx.physical_plan, jit, status)) {
         return false;
     }
-    ctx.jit = std::move(jit);
+    ctx.jit = jit;
     DLOG(INFO) << "compile sql " << ctx.sql << " done";
     return true;
 }
@@ -407,7 +407,7 @@ bool SQLCompiler::Parse(SQLContext& ctx,
     return true;
 }
 bool SQLCompiler::ResolvePlanFnAddress(vm::PhysicalOpNode* node,
-                                       std::unique_ptr<FeSQLJITWrapper>& jit,
+                                       std::shared_ptr<FeSQLJITWrapper>& jit,
                                        Status& status) {
     if (nullptr == node) {
         status.msg = "fail to resolve project fn address: node is null";

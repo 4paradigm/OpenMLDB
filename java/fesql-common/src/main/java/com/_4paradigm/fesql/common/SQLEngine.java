@@ -32,7 +32,7 @@ public class SQLEngine implements AutoCloseable {
     private EngineOptions options;
     private Engine engine;
     private BatchRunSession session;
-    private CompileInfo compileInfo;
+    private SQLCompileInfo compileInfo;
     private PhysicalOpNode plan;
 
     public SQLEngine(String sql, TypeOuterClass.Database database) throws UnsupportedFesqlException {
@@ -64,9 +64,10 @@ public class SQLEngine implements AutoCloseable {
             throw new UnsupportedFesqlException("SQL parse error: " + status.getMsg() + "\n" + status.getTrace());
         }
         status.delete();
-
-        compileInfo = session.GetCompileInfo();
-        plan = session.GetPhysicalPlan();
+        if (session.GetCompileInfo().GetCompileType().swigValue() != ComileType.kCompileSQL.swigValue()) {
+            throw new UnsupportedFesqlException("SQL compile type error: " + session.GetCompileInfo().GetCompileType().toString());
+        }
+        compileInfo = SQLCompileInfo.CastFrom(session.GetCompileInfo());
     }
 
     public PhysicalOpNode getPlan() {

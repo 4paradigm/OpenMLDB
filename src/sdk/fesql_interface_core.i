@@ -38,6 +38,7 @@ namespace std {
 %shared_ptr(fesql::vm::Catalog);
 %shared_ptr(fesql::vm::SimpleCatalog);
 %shared_ptr(fesql::vm::CompileInfo);
+%shared_ptr(fesql::vm::SQLCompileInfo);
 
 %typemap(jni) fesql::vm::RawPtrHandle "jlong"
 %typemap(jtype) fesql::vm::RawPtrHandle "long"
@@ -93,13 +94,14 @@ namespace std {
 #include "base/iterator.h"
 #include "vm/catalog.h"
 #include "vm/engine.h"
+#include "vm/engine_context.h"
+#include "vm/sql_compiler.h"
 #include "vm/jit_wrapper.h"
 #include "vm/physical_op.h"
 #include "vm/simple_catalog.h"
 
 using namespace fesql;
 using namespace fesql::node;
-using fesql::vm::SQLContext;
 using fesql::vm::Catalog;
 using fesql::vm::PhysicalOpNode;
 using fesql::vm::PhysicalSimpleProjectNode;
@@ -112,6 +114,7 @@ using fesql::vm::ColumnProjects;
 using fesql::vm::Key;
 using fesql::vm::WindowOp;
 using fesql::vm::EngineMode;
+using fesql::vm::EngineOptions;
 using fesql::base::Iterator;
 using fesql::base::ConstIterator;
 using fesql::codec::RowIterator;
@@ -169,6 +172,8 @@ using fesql::node::DataType;
 %include "vm/simple_catalog.h"
 %include "vm/schemas_context.h"
 %include "vm/engine.h"
+%include "vm/engine_context.h"
+%include "vm/sql_compiler.h"
 %include "vm/physical_op.h"
 %include "vm/jit_wrapper.h"
 %include "vm/core_api.h"

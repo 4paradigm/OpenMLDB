@@ -21,15 +21,11 @@
 #include "dbms/dbms_server_impl.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
-#include "llvm/Support/InitLLVM.h"
-#include "llvm/Support/TargetSelect.h"
 #include "sdk/dbms_sdk.h"
 #include "tablet/tablet_internal_sdk.h"
 #include "tablet/tablet_server_impl.h"
 
 DECLARE_bool(enable_keep_alive);
-using namespace llvm;       // NOLINT
-using namespace llvm::orc;  // NOLINT
 
 namespace fesql {
 namespace sdk {
@@ -1449,9 +1445,7 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    InitLLVM X(argc, argv);
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
+    fesql::vm::Engine::InitializeGlobalLLVM();
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_enable_keep_alive = false;
     return RUN_ALL_TESTS();

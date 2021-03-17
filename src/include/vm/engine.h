@@ -26,16 +26,14 @@
 #include <vector>
 #include "base/raw_buffer.h"
 #include "base/spin_lock.h"
-#include "boost/compute/detail/lru_cache.hpp"
 #include "codec/fe_row_codec.h"
 #include "codec/list_iterator_codec.h"
+#include "gflags/gflags.h"
 #include "llvm-c/Target.h"
 #include "proto/fe_common.pb.h"
 #include "vm/catalog.h"
-#include "vm/mem_catalog.h"
 #include "vm/router.h"
-#include "vm/sql_compiler.h"
-#include "gflags/gflags.h"
+#include "vm/engine_context.h"
 
 namespace fesql {
 namespace vm {
@@ -117,21 +115,6 @@ class EngineOptions {
     JITOptions jit_options_;
 };
 
-class CompileInfo {
- public:
-    SQLContext& get_sql_context() { return this->sql_ctx; }
-
-    bool get_ir_buffer(const base::RawBuffer& buf) {
-        auto& str = this->sql_ctx.ir;
-        return buf.CopyFrom(str.data(), str.size());
-    }
-
-    size_t get_ir_size() { return this->sql_ctx.ir.size(); }
-
- private:
-    SQLContext sql_ctx;
-};
-
 class RunSession {
  public:
     explicit RunSession(EngineMode engine_mode);
@@ -139,31 +122,17 @@ class RunSession {
     virtual ~RunSession();
 
     virtual const Schema& GetSchema() const {
-        return compile_info_->get_sql_context().schema;
+        return compile_info_->GetSchema();
     }
 
     virtual const std::string& GetEncodedSchema() const {
-        return compile_info_->get_sql_context().encoded_schema;
+        return compile_info_->GetEncodedSchema();
     }
 
-    virtual fesql::vm::PhysicalOpNode* GetPhysicalPlan() {
-        return compile_info_->get_sql_context().physical_plan;
-    }
-
-    virtual fesql::vm::Runner* GetMainTask() {
-        return compile_info_->get_sql_context()
-            .cluster_job.GetMainTask()
-            .GetRoot();
-    }
-    virtual fesql::vm::ClusterJob& GetClusterJob() {
-        return compile_info_->get_sql_context().cluster_job;
-    }
-
-    virtual std::shared_ptr<CompileInfo> GetCompileInfo() {
+    virtual std::shared_ptr<fesql::vm::CompileInfo> GetCompileInfo() {
         return compile_info_;
     }
-
-    bool SetCompileInfo(const std::shared_ptr<CompileInfo>& compile_info);
+    bool SetCompileInfo(const std::shared_ptr<fesql::vm::CompileInfo>& compile_info);
 
     void EnableDebug() { is_debug_ = true; }
     void DisableDebug() { is_debug_ = false; }
@@ -173,8 +142,8 @@ class RunSession {
     EngineMode engine_mode() const { return engine_mode_; }
 
  protected:
-    std::shared_ptr<CompileInfo> compile_info_;
-    EngineMode engine_mode_;
+    std::shared_ptr<fesql::vm::CompileInfo> compile_info_;
+    fesql::vm::EngineMode engine_mode_;
     bool is_debug_;
     std::string sp_name_;
     friend Engine;
@@ -200,10 +169,10 @@ class RequestRunSession : public RunSession {
     int32_t Run(const Row& in_row, Row* output);                    // NOLINT
     int32_t Run(uint32_t task_id, const Row& in_row, Row* output);  // NOLINT
     virtual const Schema& GetRequestSchema() const {
-        return compile_info_->get_sql_context().request_schema;
+        return compile_info_->GetRequestSchema();
     }
     virtual const std::string& GetRequestName() const {
-        return compile_info_->get_sql_context().request_name;
+        return compile_info_->GetRequestName();
     }
 };
 
@@ -213,10 +182,10 @@ class BatchRequestRunSession : public RunSession {
     ~BatchRequestRunSession() {}
 
     const Schema& GetRequestSchema() const {
-        return compile_info_->get_sql_context().request_schema;
+        return compile_info_->GetRequestSchema();
     }
     const std::string& GetRequestName() const {
-        return compile_info_->get_sql_context().request_name;
+        return compile_info_->GetRequestName();
     }
     int32_t Run(const uint32_t id, const std::vector<Row>& request_batch,
                 std::vector<Row>& output);  // NOLINT
@@ -243,20 +212,6 @@ struct ExplainOutput {
     vm::Router router;
 };
 
-typedef std::map<
-    EngineMode,
-    std::map<std::string, boost::compute::detail::lru_cache<
-                              std::string, std::shared_ptr<CompileInfo>>>>
-    EngineLRUCache;
-class CompileInfoCache {
- public:
-    virtual std::shared_ptr<fesql::vm::CompileInfo> GetRequestInfo(
-        const std::string& db, const std::string& sp_name,
-        base::Status& status) = 0;  // NOLINT
-    virtual std::shared_ptr<fesql::vm::CompileInfo> GetBatchRequestInfo(
-        const std::string& db, const std::string& sp_name,
-        base::Status& status) = 0;  // NOLINT
-};
 class Engine {
  public:
     Engine(const std::shared_ptr<Catalog>& cl, const EngineOptions& options);

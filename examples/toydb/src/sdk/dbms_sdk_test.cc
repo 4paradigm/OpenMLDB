@@ -26,8 +26,6 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "llvm/Support/InitLLVM.h"
-#include "llvm/Support/TargetSelect.h"
 #include "tablet/tablet_server_impl.h"
 
 DECLARE_string(dbms_endpoint);
@@ -35,8 +33,6 @@ DECLARE_string(endpoint);
 DECLARE_int32(port);
 DECLARE_bool(enable_keep_alive);
 
-using namespace llvm;       // NOLINT
-using namespace llvm::orc;  // NOLINT
 
 namespace fesql {
 namespace sdk {
@@ -743,9 +739,7 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
 }  // namespace fesql
 int main(int argc, char *argv[]) {
     ::testing::InitGoogleTest(&argc, argv);
-    InitLLVM X(argc, argv);
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
+    fesql::vm::Engine::InitializeGlobalLLVM();
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_enable_keep_alive = false;
     return RUN_ALL_TESTS();

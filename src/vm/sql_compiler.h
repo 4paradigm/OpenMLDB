@@ -27,6 +27,7 @@
 #include "proto/fe_common.pb.h"
 #include "udf/udf_library.h"
 #include "vm/catalog.h"
+#include "vm/engine_context.h"
 #include "vm/jit_wrapper.h"
 #include "vm/runner.h"
 
@@ -34,10 +35,6 @@ namespace fesql {
 namespace vm {
 
 using fesql::base::Status;
-
-enum EngineMode { kBatchMode, kRequestMode, kBatchRequestMode };
-
-std::string EngineModeName(EngineMode mode);
 
 struct BatchRequestInfo {
     // common column indices in batch request mode
@@ -52,7 +49,7 @@ struct BatchRequestInfo {
 
 struct SQLContext {
     // mode: batch|request|batch request
-    EngineMode engine_mode;
+    ::fesql::vm::EngineMode engine_mode;
     bool is_performance_sensitive = false;
     bool is_cluster_optimized = false;
     bool is_batch_request_optimized = false;
@@ -65,12 +62,12 @@ struct SQLContext {
     std::string db;
     // the logical plan
     ::fesql::node::PlanNodeList logical_plan;
-    PhysicalOpNode* physical_plan = nullptr;
+    ::fesql::vm::PhysicalOpNode* physical_plan = nullptr;
     fesql::vm::ClusterJob cluster_job;
     // TODO(wangtaize) add a light jit engine
     // eg using bthead to compile ir
-    JITOptions jit_options;
-    std::unique_ptr<FeSQLJITWrapper> jit = nullptr;
+    fesql::vm::JITOptions jit_options;
+    std::shared_ptr<fesql::vm::FeSQLJITWrapper> jit = nullptr;
     Schema schema;
     Schema request_schema;
     std::string request_name;
@@ -83,7 +80,7 @@ struct SQLContext {
     ::fesql::node::NodeManager nm;
     ::fesql::udf::UDFLibrary* udf_library = nullptr;
 
-    BatchRequestInfo batch_request_info;
+    ::fesql::vm::BatchRequestInfo batch_request_info;
 
     SQLContext() {}
     ~SQLContext() {}
@@ -96,6 +93,60 @@ bool GetLibsFiles(const std::string& dir_path,
                   std::vector<std::string>& filenames,  // NOLINT
                   base::Status& status);                // NOLINT
 const std::string FindFesqlDirPath();
+
+class SQLCompileInfo : public CompileInfo {
+ public:
+    SQLCompileInfo() {}
+    ~SQLCompileInfo() {}
+    fesql::vm::SQLContext& get_sql_context() { return this->sql_ctx; }
+
+    bool get_ir_buffer(const base::RawBuffer& buf) {
+        auto& str = this->sql_ctx.ir;
+        return buf.CopyFrom(str.data(), str.size());
+    }
+    size_t get_ir_size() { return this->sql_ctx.ir.size(); }
+
+    const fesql::vm::Schema& GetSchema() const { return sql_ctx.schema; }
+
+    const fesql::vm::ComileType GetCompileType() const {
+        return ComileType::kCompileSQL;
+    }
+    const fesql::vm::EngineMode GetEngineMode() const {
+        return sql_ctx.engine_mode;
+    }
+    const std::string& GetEncodedSchema() const {
+        return sql_ctx.encoded_schema;
+    }
+
+    virtual const Schema& GetRequestSchema() const {
+        return sql_ctx.request_schema;
+    }
+    virtual const std::string& GetRequestName() const {
+        return sql_ctx.request_name;
+    }
+
+    fesql::vm::PhysicalOpNode* GetPhysicalPlan() {
+        return sql_ctx.physical_plan;
+    }
+    virtual fesql::vm::Runner* GetMainTask() {
+        return sql_ctx.cluster_job.GetMainTask().GetRoot();
+    }
+    virtual fesql::vm::ClusterJob& GetClusterJob() {
+        return sql_ctx.cluster_job;
+    }
+    virtual void DumpPhysicalPlan(std::ostream& output,
+                                  const std::string& tab) {
+        sql_ctx.physical_plan->Print(output, tab);
+    }
+    virtual void DumpClusterJob(std::ostream& output, const std::string& tab) {
+        sql_ctx.cluster_job.Print(output, tab);
+    }
+    static SQLCompileInfo *CastFrom(CompileInfo *node) {
+        return dynamic_cast<SQLCompileInfo*>(node);
+    }
+ private:
+    fesql::vm::SQLContext sql_ctx;
+};
 
 class SQLCompiler {
  public:
@@ -114,7 +165,7 @@ class SQLCompiler {
     void KeepIR(SQLContext& ctx, llvm::Module* m);  // NOLINT
 
     bool ResolvePlanFnAddress(PhysicalOpNode* node,
-                              std::unique_ptr<FeSQLJITWrapper>& jit,  // NOLINT
+                              std::shared_ptr<FeSQLJITWrapper>& jit,  // NOLINT
                               Status& status);                        // NOLINT
 
     Status BuildPhysicalPlan(SQLContext* ctx,
@@ -140,6 +191,7 @@ class SQLCompiler {
     bool dump_plan_;
     bool plan_only_;
 };
+
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_SQL_COMPILER_H_
