@@ -38,17 +38,21 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT_ZW }}
     steps:
-      - name: git_enable
-        run: ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
+#      - name: git_enable
+#        run: ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
       - uses: actions/checkout@v1
-        with:
-          submodules: true
+#        with:
+#          submodules: true
       -
         run: |
-          source /root/.bashrc && sh tools/install_fesql.sh
-          ln -sf /depends/thirdparty thirdparty
-          ln -sf /depends/thirdsrc thirdsrc
-          source /root/.bashrc && bash steps/simple_compile.sh
+          cd fesql
+          git pull
+          ls -al
+#          cd ..
+#          source /root/.bashrc && sh tools/install_fesql.sh
+#          ln -sf /depends/thirdparty thirdparty
+#          ln -sf /depends/thirdsrc thirdsrc
+#          source /root/.bashrc && bash steps/simple_compile.sh
       - uses: actions/upload-artifact@v2
         with:
           name: build-artifact
