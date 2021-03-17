@@ -44,11 +44,18 @@ jobs:
 #        with:
 #          submodules: true
       -
+        name: clone fesql
         run: |
           ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
           git clone https://wuyou10206:zw%401020688@github.com/4paradigm/HybridSE.git fesql
-          ls -al fesql
-          source /root/.bashrc && sh tools/install_fesql.sh
+      - name: tar thirdparty
+        run: |
+           tar -zxvf /depends/thirdparty.tar.gz -C /depends/
+           mv /depends/depends/thirdparty /depends/thirdparty
+      - name: build fesql
+        run: source /root/.bashrc && sh tools/install_fesql.sh
+      - name: build fedb
+        run: |
           ln -sf /depends/thirdparty thirdparty
           ln -sf /depends/thirdsrc thirdsrc
           source /root/.bashrc && bash steps/simple_compile.sh
