@@ -7,7 +7,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: ls -al
+      - run: |
+          ls -al
+          echo "commitId：${{ github.event.head_commit.message }}"
   style_check:
     runs-on: ubuntu-latest
     container:
