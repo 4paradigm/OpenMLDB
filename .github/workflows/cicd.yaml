@@ -38,8 +38,8 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT_ZW }}
     steps:
-#      - name: git_enable
-#        run: ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
+      - name: git_enable
+        run: ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
       - uses: actions/checkout@v1
         with:
           submodules: true
