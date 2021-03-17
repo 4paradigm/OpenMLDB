@@ -17,11 +17,7 @@ BLOB1=$IP:9720
 
 RAMBUILD_PREFIX=/Users/chenjing/tmp/rambuild
 ../build/bin/rtidb --db_root_path=${RAMBUILD_PREFIX}/tablet0-binlogs \
-                   --hdd_root_path=${RAMBUILD_PREFIX}/tablet0-hdd-binlogs \
-                   --ssd_root_path=${RAMBUILD_PREFIX}/tablet0-ssd-binlogs \
                    --recycle_bin_root_path=${RAMBUILD_PREFIX}/recycle_bin0 \
-                   --recycle_ssd_bin_root_path=${RAMBUILD_PREFIX}/recycle_ssd_bin0 \
-                   --recycle_hdd_bin_root_path=${RAMBUILD_PREFIX}/recycle_hdd_bin0 \
                    --endpoint=${TABLET1} --role=tablet \
                    --binlog_notify_on_put=true\
                    --zk_cluster=${ZK_CLUSTER}\
@@ -30,11 +26,7 @@ RAMBUILD_PREFIX=/Users/chenjing/tmp/rambuild
 
 # start tablet1
 ../build/bin/rtidb --db_root_path=${RAMBUILD_PREFIX}/tablet1-binlogs \
-                   --hdd_root_path=${RAMBUILD_PREFIX}/tablet1-hdd-binlogs \
-                   --ssd_root_path=${RAMBUILD_PREFIX}/tablet1-ssd-binlogs \
                    --recycle_bin_root_path=${RAMBUILD_PREFIX}/recycle_bin1 \
-                   --recycle_ssd_bin_root_path=${RAMBUILD_PREFIX}/recycle_ssd-bin1 \
-                   --recycle_hdd_bin_root_path=${RAMBUILD_PREFIX}/recycle_hdd-bin1 \
                    --endpoint=${TABLET2} --role=tablet \
                    --zk_cluster=${ZK_CLUSTER}\
                    --binlog_notify_on_put=true\
@@ -43,11 +35,7 @@ RAMBUILD_PREFIX=/Users/chenjing/tmp/rambuild
 
 # start tablet2
 ../build/bin/rtidb --db_root_path=${RAMBUILD_PREFIX}/tablet2-binlogs \
-                   --hdd_root_path=${RAMBUILD_PREFIX}/tablet2-hdd-binlogs \
-                   --ssd_root_path=${RAMBUILD_PREFIX}/tablet2-ssd-binlogs \
                    --recycle_bin_root_path=${RAMBUILD_PREFIX}/recycle_bin2 \
-                   --recycle_ssd_bin_root_path=${RAMBUILD_PREFIX}/recycle_ssd_bin2 \
-                   --recycle_hdd_bin_root_path=${RAMBUILD_PREFIX}/recycle_hdd_bin2 \
                    --endpoint=${TABLET3} --role=tablet \
                    --binlog_notify_on_put=true\
                    --zk_cluster=${ZK_CLUSTER}\
@@ -79,19 +67,6 @@ sleep 2
                    --request_timeout_ms=100000\
                    --zk_cluster=${ZK_CLUSTER}\
                    --zk_root_path=/onebox > ns3.log 2>&1 &
-
-sleep 5
-# start blob1
-../build/bin/rtidb --hdd_root_path=${RAMBUILD_PREFIX}/blob1-hdd-binlogs \
-                   --ssd_root_path=${RAMBUILD_PREFIX}/blob1-ssd-binlogs \
-                   --recycle_bin_root_path=${RAMBUILD_PREFIX}/recycle_bin3 \
-                   --recycle_ssd_bin_root_path=${RAMBUILD_PREFIX}/recycle_ssd_bin3 \
-                   --recycle_hdd_bin_root_path=${RAMBUILD_PREFIX}/recycle_hdd_bin3 \
-                   --endpoint=${BLOB1} --role=blob \
-                   --binlog_notify_on_put=true\
-                   --zk_cluster=${ZK_CLUSTER}\
-                   --zk_keep_alive_check_interval=100000000\
-                   --zk_root_path=/onebox > blob1.log 2>&1 &
 
 sleep 5
 
