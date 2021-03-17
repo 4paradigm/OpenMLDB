@@ -28,7 +28,7 @@ jobs:
           git submodule update
       -
         run: |
-          ls -al
+          ls -al fesql
           source /root/.bashrc && bash tools/style_check.sh
   build:
     runs-on: ubuntu-latest
