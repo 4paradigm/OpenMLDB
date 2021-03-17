@@ -6,7 +6,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v1
       - run: |
           ls -al
           echo "commitId：${{ github.event.head_commit.id }}"
@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: git_enable
         run: ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v1
         with:
           submodules: true
       -
