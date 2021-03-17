@@ -31,6 +31,8 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT_ZW }}
     steps:
+      - name: git_enable
+        run: source /opt/rh/git-sclo-git25/enable
       - uses: actions/checkout@v2
         with:
           submodules: true
