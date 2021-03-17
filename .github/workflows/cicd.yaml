@@ -11,7 +11,7 @@ jobs:
   style_check:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
+      image: ghcr.io/4paradigm/centos6_gcc7_fesql:legacy
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT_ZW }}
@@ -26,7 +26,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
+      image: ghcr.io/4paradigm/centos6_gcc7_fesql:legacy
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT_ZW }}
