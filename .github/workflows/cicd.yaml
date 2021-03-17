@@ -19,8 +19,12 @@ jobs:
         password: ${{ secrets.CR_PAT_ZW }}
     steps:
       - uses: actions/checkout@v1
-        with:
-          submodules: true
+#        with:
+#          submodules: true
+      - name: update submodule
+        run: |
+          git submodule init
+          git submodule update
       -
         run: |
           ls -al
