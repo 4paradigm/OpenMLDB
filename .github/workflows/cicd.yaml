@@ -34,7 +34,7 @@ jobs:
         password: ${{ secrets.CR_PAT_ZW }}
     steps:
       - name: git_enable
-        run: source /opt/rh/sclo-git25/enable
+        run: cat '[ -r /opt/rh/sclo-git25/enable ] && . /opt/rh/sclo-git25/enable' > /etc/profile.d/enable-git.sh
       - uses: actions/checkout@v2
         with:
           submodules: true
