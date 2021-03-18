@@ -1,6 +1,6 @@
 [submodule "cmake-modules"]
 	path = cmake-modules
 	url = https://github.com/bilke/cmake-modules.git
-[submodule "sql3"]
+[submodule "fesql"]
 	path = fesql
-	url = ../../ai-native-db/fesql.git
+	url = https://wuyou10206:1cf68583e36cf11ebcd22a10333247e0298347e4@github.com/4paradigm/HybridSE.git
