@@ -189,8 +189,6 @@ endif ()
 message (STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
 
 
-INSTALL(DIRECTORY ${header_files} DESTINATION include)
-INSTALL(FILES ${proto_header_files} DESTINATION include/proto/)
 install(TARGETS fesql_core fesql_sdk
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -199,4 +197,6 @@ FILE(GLOB header_files "${CMAKE_CURRENT_SOURCE_DIR}/src/include/*")
 FILE(GLOB proto_header_files "${CMAKE_BINARY_DIR}/src/proto/*.pb.h")
 message("CMAKE_BINARY_DIR ${CMAKE_BINARY_DIR}")
 message("proto_header_files ${proto_header_files}")
+INSTALL(DIRECTORY ${header_files} DESTINATION include)
+INSTALL(FILES ${proto_header_files} DESTINATION include/proto/)
 
