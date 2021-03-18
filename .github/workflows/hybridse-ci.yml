@@ -41,6 +41,7 @@ jobs:
       # and build directories, but this is only available with CMake 3.13 and higher.
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
       run: |
+        mkdir -p build
         cd build
         cmake ${{ github.workspace }} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBENCHMARK_ENABLE_LTO=true -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=ON -DJAVASDK_ENABLE=OFF DPYSDK_ENABLE=OFF
 
