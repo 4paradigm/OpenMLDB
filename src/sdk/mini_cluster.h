@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_SDK_MINI_CLUSTER_H_
 #define SRC_SDK_MINI_CLUSTER_H_
 
@@ -57,7 +56,7 @@ namespace fedb {
 namespace sdk {
 
 constexpr int MAX_TABLET_NUM = 3;
-
+#pragma pack(8)
 class MiniCluster {
  public:
     explicit MiniCluster(int32_t zk_port)
@@ -103,7 +102,7 @@ class MiniCluster {
         }
         tablet_num_ = tablet_num;
         for (int i = 0; i < tablet_num; i++) {
-            if (!StartTablet(tb_servers_[i])) {
+            if (!StartTablet(&tb_servers_[i])) {
                LOG(WARNING) << "fail to start tablet";
                return false;
             }
@@ -158,7 +157,7 @@ class MiniCluster {
     }
 
  private:
-    bool StartTablet(brpc::Server& tb_server) {
+    bool StartTablet(brpc::Server* tb_server) {
         std::string tb_endpoint = "127.0.0.1:" + GenRand();
         tb_endpoints_.push_back(tb_endpoint);
         ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
@@ -167,11 +166,11 @@ class MiniCluster {
             return false;
         }
         brpc::ServerOptions ts_opt;
-        if (tb_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        if (tb_server->AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
             LOG(WARNING) << "fail to start tablet";
             return false;
         }
-        if (tb_server.Start(tb_endpoint.c_str(), &ts_opt) != 0) {
+        if (tb_server->Start(tb_endpoint.c_str(), &ts_opt) != 0) {
             return false;
         }
         ok = tablet->RegisterZK();

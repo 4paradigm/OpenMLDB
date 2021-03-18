@@ -26,7 +26,7 @@
 #include <vector>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "boost/algorithm/string.hpp"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
@@ -431,7 +431,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     auto rs = router->CallProcedure(db, sp_name, request_row, &status);
     if (!rs) FAIL() << "call procedure failed";
     auto schema = rs->GetSchema();
-    ASSERT_EQ(schema->GetColumnCnt(), 3u);
+    ASSERT_EQ(schema->GetColumnCnt(), 3);
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ(rs->GetStringUnsafe(0), "bb");
     ASSERT_EQ(rs->GetInt32Unsafe(1), 23);
@@ -447,7 +447,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     ASSERT_EQ(sp_info->GetTables().size(), 1u);
     ASSERT_EQ(sp_info->GetTables().at(0), "trans");
     auto& input_schema = sp_info->GetInputSchema();
-    ASSERT_EQ(input_schema.GetColumnCnt(), 7u);
+    ASSERT_EQ(input_schema.GetColumnCnt(), 7);
     ASSERT_EQ(input_schema.GetColumnName(0), "c1");
     ASSERT_EQ(input_schema.GetColumnName(1), "c3");
     ASSERT_EQ(input_schema.GetColumnName(2), "c4");
@@ -467,7 +467,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     ASSERT_TRUE(!input_schema.IsConstant(2));
 
     auto& output_schema = sp_info->GetOutputSchema();
-    ASSERT_EQ(output_schema.GetColumnCnt(), 3u);
+    ASSERT_EQ(output_schema.GetColumnCnt(), 3);
     ASSERT_EQ(output_schema.GetColumnName(0), "c1");
     ASSERT_EQ(output_schema.GetColumnName(1), "c3");
     ASSERT_EQ(output_schema.GetColumnName(2), "w1_c4_sum");
