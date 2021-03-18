@@ -31,6 +31,7 @@
 #include <utility>
 #include <vector>
 
+#include "boost/bind.hpp"
 #include "boost/container/deque.hpp"
 #include "config.h"  // NOLINT
 #ifdef TCMALLOC_ENABLE

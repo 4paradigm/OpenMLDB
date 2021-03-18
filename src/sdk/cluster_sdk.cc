@@ -30,8 +30,7 @@
 #include <vector>
 #include "base/hash.h"
 #include "base/strings.h"
-#include "boost/algorithm/string.hpp"
-#include "boost/function.hpp"
+#include "boost/bind.hpp"
 #include "glog/logging.h"
 
 namespace fedb {
