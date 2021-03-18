@@ -35,6 +35,7 @@ jobs:
 
     - name: Build
       run: |
+        yum install python27
         ./tools/compile_and_test.sh
 
     - name: benchmark
