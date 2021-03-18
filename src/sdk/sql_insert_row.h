@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_SDK_SQL_INSERT_ROW_H_
 #define SRC_SDK_SQL_INSERT_ROW_H_
 
@@ -26,7 +25,6 @@
 #include <vector>
 
 #include "base/hash.h"
-#include "boost/lexical_cast.hpp"
 #include "codec/codec.h"
 #include "codec/fe_row_codec.h"
 #include "node/sql_node.h"

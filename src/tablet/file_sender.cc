@@ -20,7 +20,7 @@
 #include <vector>
 #include <boost/algorithm/string/predicate.hpp>
 #include "base/file_util.h"
-#include "base/glog_wapper.h" // NOLINT
+#include "base/glog_wapper.h"
 #include "timer.h" // NOLINT
 
 DECLARE_int32(send_file_max_try);
@@ -32,8 +32,6 @@ DECLARE_int32(stream_close_wait_time_ms);
 DECLARE_int32(retry_send_file_wait_time_ms);
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
-
-
 
 namespace fedb {
 namespace tablet {

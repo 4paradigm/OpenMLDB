@@ -55,7 +55,7 @@ void AssertIndex(const ::fedb::storage::IndexDef& index, const std::string& name
     if (!ts_col_name.empty()) {
         auto ts_col = index.GetTsColumn();
         ASSERT_EQ(ts_col->GetName(), ts_col_name);
-        ASSERT_EQ(ts_col->GetTsIdx(), (uint32_t)ts_index);
+        ASSERT_EQ((uint32_t)ts_col->GetTsIdx(), ts_index);
     }
 }
 
@@ -169,8 +169,8 @@ TEST_F(SchemaTest, ParseEmpty) {
     TableIndex table_index;
     ASSERT_GE(table_index.ParseFromMeta(table_meta, &ts_mapping), 0);
     auto indexs = table_index.GetAllIndex();
-    ASSERT_EQ(indexs.size(), 1);
-    ASSERT_EQ(ts_mapping.size(), 0);
+    ASSERT_EQ(indexs.size(), 1u);
+    ASSERT_EQ(ts_mapping.size(), 0u);
     auto index = table_index.GetPkIndex();
     ASSERT_STREQ(index->GetName().c_str(), "idx0");
 }
@@ -185,8 +185,8 @@ TEST_F(SchemaTest, ParseOld) {
     TableIndex table_index;
     ASSERT_GE(table_index.ParseFromMeta(table_meta, &ts_mapping), 0);
     auto indexs = table_index.GetAllIndex();
-    ASSERT_EQ(indexs.size(), 3);
-    ASSERT_EQ(ts_mapping.size(), 0);
+    ASSERT_EQ(indexs.size(), 3u);
+    ASSERT_EQ(ts_mapping.size(), 0u);
     auto index = table_index.GetPkIndex();
     ASSERT_STREQ(index->GetName().c_str(), "index0");
     index = table_index.GetIndex("index1");
@@ -194,7 +194,7 @@ TEST_F(SchemaTest, ParseOld) {
     index = table_index.GetIndex("index2");
     ASSERT_STREQ(index->GetName().c_str(), "index2");
     auto ttl = index->GetTTL();
-    ASSERT_EQ(ttl->abs_ttl / (60 * 1000), 10);
+    ASSERT_EQ(ttl->abs_ttl / (60 * 1000), 10u);
     ASSERT_EQ(ttl->ttl_type, ::fedb::storage::kAbsoluteTime);
 }
 
@@ -213,8 +213,8 @@ TEST_F(SchemaTest, ParseColumnDesc) {
     TableIndex table_index;
     ASSERT_GE(table_index.ParseFromMeta(table_meta, &ts_mapping), 0);
     auto indexs = table_index.GetAllIndex();
-    ASSERT_EQ(indexs.size(), 5);
-    ASSERT_EQ(ts_mapping.size(), 0);
+    ASSERT_EQ(indexs.size(), 5u);
+    ASSERT_EQ(ts_mapping.size(), 0u);
     auto index = table_index.GetPkIndex();
     ASSERT_STREQ(index->GetName().c_str(), "col0");
     for (int i = 0; i < 5; i++) {
@@ -222,7 +222,7 @@ TEST_F(SchemaTest, ParseColumnDesc) {
         index = table_index.GetIndex(index_name);
         ASSERT_STREQ(index->GetName().c_str(), index_name.c_str());
         auto ttl = index->GetTTL();
-        ASSERT_EQ(ttl->abs_ttl / (60 * 1000), 10);
+        ASSERT_EQ(ttl->abs_ttl / (60 * 1000), 10u);
         ASSERT_EQ(ttl->ttl_type, ::fedb::storage::kAbsoluteTime);
     }
 }
@@ -264,8 +264,8 @@ TEST_F(SchemaTest, ParseColumnDescTs) {
     TableIndex table_index;
     ASSERT_GE(table_index.ParseFromMeta(table_meta, &ts_mapping), 0);
     auto indexs = table_index.GetAllIndex();
-    ASSERT_EQ(indexs.size(), 5);
-    ASSERT_EQ(ts_mapping.size(), 1);
+    ASSERT_EQ(indexs.size(), 5u);
+    ASSERT_EQ(ts_mapping.size(), 1u);
     auto index = table_index.GetPkIndex();
     ASSERT_STREQ(index->GetName().c_str(), "col0");
     for (int i = 0; i < 5; i++) {
@@ -273,7 +273,7 @@ TEST_F(SchemaTest, ParseColumnDescTs) {
         index = table_index.GetIndex(index_name);
         ASSERT_STREQ(index->GetName().c_str(), index_name.c_str());
         auto ttl = index->GetTTL();
-        ASSERT_EQ(ttl->abs_ttl / (60 * 1000), 10);
+        ASSERT_EQ(ttl->abs_ttl / (60 * 1000), 10u);
         ASSERT_EQ(ttl->ttl_type, ::fedb::storage::kAbsoluteTime);
         auto ts_col = index->GetTsColumn();
         ASSERT_EQ(ts_col->GetTsIdx(), 0);
@@ -308,8 +308,8 @@ TEST_F(SchemaTest, ColumnKey) {
     TableIndex table_index;
     ASSERT_GE(table_index.ParseFromMeta(table_meta, &ts_mapping), 0);
     auto indexs = table_index.GetAllIndex();
-    ASSERT_EQ(indexs.size(), 3);
-    ASSERT_EQ(ts_mapping.size(), 2);
+    ASSERT_EQ(indexs.size(), 3u);
+    ASSERT_EQ(ts_mapping.size(), 2u);
     auto index = table_index.GetPkIndex();
     ASSERT_STREQ(index->GetName().c_str(), "key1");
 
@@ -318,7 +318,7 @@ TEST_F(SchemaTest, ColumnKey) {
     AssertIndex(*(table_index.GetIndex("key1", 1)), "key1", "col1", "col7", 1, 10, 0, ::fedb::storage::kAbsoluteTime);
     AssertIndex(*(table_index.GetIndex("key2")), "key2", "col2", "col6", 0, 10, 0, ::fedb::storage::kAbsoluteTime);
     auto inner_index = table_index.GetAllInnerIndex();
-    ASSERT_EQ(inner_index->size(), 2);
+    ASSERT_EQ(inner_index->size(), 2u);
     std::vector<std::string> index0 = {"key1", "key1"};
     std::vector<uint32_t> ts_vec0 = {0, 1};
     AssertInnerIndex(*(table_index.GetInnerIndex(0)), 0, index0, ts_vec0);
@@ -349,8 +349,8 @@ TEST_F(SchemaTest, ParseMultiTTL) {
     TableIndex table_index;
     ASSERT_GE(table_index.ParseFromMeta(table_meta, &ts_mapping), 0);
     auto indexs = table_index.GetAllIndex();
-    ASSERT_EQ(indexs.size(), 7);
-    ASSERT_EQ(ts_mapping.size(), 3);
+    ASSERT_EQ(indexs.size(), 7u);
+    ASSERT_EQ(ts_mapping.size(), 3u);
     auto index = table_index.GetPkIndex();
     AssertIndex(*index, "key1", "col0", "col7", 0, 100, 0, ::fedb::storage::kAbsoluteTime);
     AssertIndex(*(table_index.GetIndex("key1")), "key1", "col0", "col7", 0, 100, 0, ::fedb::storage::kAbsoluteTime);
@@ -361,7 +361,7 @@ TEST_F(SchemaTest, ParseMultiTTL) {
     AssertIndex(*(table_index.GetIndex("key6")), "key6", "col1", "col8", 1, 0, 1, ::fedb::storage::kAbsoluteTime);
     AssertIndex(*(table_index.GetIndex("key7")), "key7", "col5", "col8", 1, 400, 2, ::fedb::storage::kAbsOrLat);
     auto inner_index = table_index.GetAllInnerIndex();
-    ASSERT_EQ(inner_index->size(), 5);
+    ASSERT_EQ(inner_index->size(), 5u);
     std::vector<std::string> index0 = {"key1", "key2"};
     std::vector<uint32_t> ts_vec0 = {0, 1};
     AssertInnerIndex(*(table_index.GetInnerIndex(0)), 0, index0, ts_vec0);

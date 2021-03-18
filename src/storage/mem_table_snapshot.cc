@@ -17,9 +17,11 @@
 #include "storage/mem_table_snapshot.h"
 
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#ifdef DISALLOW_COPY_AND_ASSIGN
+#undef DISALLOW_COPY_AND_ASSIGN
+#endif
 #include <snappy.h>
 #include <unistd.h>
-
 #include <set>
 #include <utility>
 

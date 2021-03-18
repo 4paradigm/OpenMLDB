@@ -373,7 +373,7 @@ TEST_F(SQLClusterTest, create_table) {
             }
         }
     }
-    ASSERT_EQ(pid_map.size(), 2);
+    ASSERT_EQ(pid_map.size(), 2u);
     ASSERT_EQ(pid_map.begin()->second, pid_map.rbegin()->second);
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test1;", &status));

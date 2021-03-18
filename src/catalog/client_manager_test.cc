@@ -44,7 +44,7 @@ TEST_F(ClientManagerTest, client_manager_test) {
         }
     }
     ::fedb::storage::TableSt table_st(table_info);
-    ASSERT_EQ(8, table_st.GetPartitionNum());
+    ASSERT_EQ(8u, table_st.GetPartitionNum());
     ASSERT_EQ("name0", table_st.GetPartition(1).GetLeader());
     ASSERT_EQ(2u, table_st.GetPartition(1).GetFollower().size());
 

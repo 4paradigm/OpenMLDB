@@ -45,6 +45,7 @@ typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey> RtiDBInd
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
+
 enum InsertRule {
     kNotInsertFirstInput,
     kNotInsertLastRowOfFirstInput,

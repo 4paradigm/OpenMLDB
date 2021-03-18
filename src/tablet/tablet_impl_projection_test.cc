@@ -21,8 +21,6 @@
 #include <google/protobuf/text_format.h>
 #include <sys/stat.h>
 
-#include <boost/lexical_cast.hpp>
-
 #include "base/file_util.h"
 #include "base/glog_wapper.h"  //NOLINT
 #include "base/kv_iterator.h"
