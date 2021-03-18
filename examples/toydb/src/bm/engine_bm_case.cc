@@ -681,7 +681,7 @@ void EngineRequestModeSimpleQueryBM(const std::string& db,
     engine.Get(sql, db, session, query_status);
     LOG(INFO) << query_status;
     std::ostringstream runner_oss;
-    session.GetClusterJob().Print(runner_oss, "");
+    session.GetCompileInfo()->DumpClusterJob(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     auto table_handler = catalog->GetTable(db, query_table);
     switch (mode) {
