@@ -3,13 +3,6 @@ on: [push, pull_request]
 env:
   GIT_SUBMODULE_STRATEGY: recursive
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v1
-      - run: |
-          ls -al
-          echo "commitId：${{ github.event.head_commit.id }}"
   style_check:
     runs-on: ubuntu-latest
     container:
@@ -28,6 +21,7 @@ jobs:
           ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
           git submodule init
           git submodule update
+#          echo "commitId：${{ github.event.head_commit.id }}"
       - name: style_check
         run: source /root/.bashrc && bash tools/style_check.sh
   build:
@@ -54,7 +48,7 @@ jobs:
 #           tar -zxvf /depends/thirdparty.tar.gz -C /depends/
 #           mv /depends/depends/thirdparty /depends/
       - name: build fesql
-        run: source /root/.bashrc && sh tools/install_fesql.sh
+        run: source /root/.bashrc && bash tools/install_fesql.sh
       - name: build fedb
         run: |
           ln -sf /depends/thirdparty thirdparty
