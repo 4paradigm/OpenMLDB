@@ -2,14 +2,21 @@ name: FEDB-CICD
 on: [push, pull_request]
 env:
   GIT_SUBMODULE_STRATEGY: recursive
+defaults:
+  runs-on: ubuntu-latest
+  container:
+    image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
+    credentials:
+      username: ${{ github.actor }}
+      password: ${{ secrets.CR_PAT_ZW }}
 jobs:
   style_check:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.CR_PAT_ZW }}
+#    runs-on: ubuntu-latest
+#    container:
+#      image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
+#      credentials:
+#        username: ${{ github.actor }}
+#        password: ${{ secrets.CR_PAT_ZW }}
     steps:
       - uses: actions/checkout@v1
 #        with:
@@ -26,12 +33,12 @@ jobs:
         run: source /root/.bashrc && bash tools/style_check.sh
   build:
     needs: [style_check]
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.CR_PAT_ZW }}
+#    runs-on: ubuntu-latest
+#    container:
+#      image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
+#      credentials:
+#        username: ${{ github.actor }}
+#        password: ${{ secrets.CR_PAT_ZW }}
     steps:
       - uses: actions/checkout@v1
 #        with:
