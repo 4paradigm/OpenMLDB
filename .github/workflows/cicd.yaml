@@ -54,38 +54,30 @@ jobs:
           ln -sf /depends/thirdparty thirdparty
           ln -sf /depends/thirdsrc thirdsrc
           source /root/.bashrc && bash steps/simple_compile.sh
-      - run: |
-          pwd
-          ls -al build
-          ls -al build/bin
-          ls -al build/bin/fedb
-          ls -al build/src/sdk/
-          ls -al build/sql_pysdk/dist
-          ls -al build/python/dist/
       - uses: actions/upload-artifact@v1
         with:
-          name: build-fedb
+          name: fedb
           path: build/bin/fedb
       - uses: actions/upload-artifact@v1
         with:
-          name: build-sql_sdk_test
+          name: \sql_sdk_test
           path: build/bin/sql_sdk_test
       - uses: actions/upload-artifact@v1
         with:
-          name: build-sql_cluster_test
+          name: sql_cluster_test
           path: build/bin/sql_cluster_test
       - uses: actions/upload-artifact@v1
         with:
-          name: libsql_jsdk
+          name: libsql_jsdk.so
           path: build/src/sdk/libsql_jsdk.so
       - uses: actions/upload-artifact@v1
         with:
           name: sql_pysdk
-          path: build/sql_pysdk/dist/*.whl
+          path: build/sql_pysdk/dist/
       - uses: actions/upload-artifact@v1
         with:
           name: python-whl
-          path: build/python/dist/*.whl
+          path: build/python/dist/
   c++_ut:
     needs: [build]
     runs-on: ubuntu-latest
@@ -103,7 +95,7 @@ jobs:
           ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
           git submodule init
           git submodule update
-      - name: build fedb
+      - name: exec-ut
         run: |
           ln -sf /depends/thirdparty thirdparty
           ln -sf /depends/thirdsrc thirdsrc
@@ -111,23 +103,45 @@ jobs:
           source /root/.bashrc && sh tools/install_fesql.sh
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF .. && make -j$(nproc) && cd ../
           source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
-
-
-
-
-
-
-
-
-#c++_ut:
-#  stage: quick
-#  script:
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && sh tools/install_fesql.sh
-#    - source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF .. && make -j5 && cd ../
-#    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
-#  artifacts:
-#    reports:
-#      junit:
-#        - reports/*.xml
+      - uses: actions/upload-artifact@v1
+        with:
+          name: c++_ut-report
+          path: reports/
+  fesql_auto_test_level_0:
+    needs: [build]
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.CR_PAT_ZW }}
+    steps:
+      - uses: actions/checkout@v1
+      - name: update nss
+        run: yum update -y nss curl libcurl
+      - name: update submodule
+        run: |
+          ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
+          git submodule init
+          git submodule update
+      - name: set_up
+        run: |
+          mkdir /rambuild
+          mount -t tmpfs -o size=3G tmpfs /rambuild
+          mkdir -p build/bin
+      - uses: actions/download-artifact@v1
+        with:
+          name: fedb
+          path: build/bin
+      - run: |
+          ls -al
+          cat build/bin/fedb
+      - name: exec-test
+        run: |
+          ln -sf /depends/thirdparty thirdparty
+          ln -sf /depends/thirdsrc thirdsrc
+          source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test.sh "0"
+      - uses: actions/upload-artifact@v1
+        with:
+          name: fesql_auto_test-0-report
+          path: src/sdk/java/fesql-auto-test-java/target/surefire-reports
