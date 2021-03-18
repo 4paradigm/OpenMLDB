@@ -29,6 +29,7 @@
 #include "vm/catalog.h"
 #include "proto/tablet.pb.h"
 #include "catalog/base.h"
+#include "node/node_enum.h"
 
 namespace fedb {
 namespace catalog {

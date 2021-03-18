@@ -21,11 +21,12 @@
 
 #include "base/strings.h"
 #include "glog/logging.h"
+#include "plan/plan_api.h"
 
 DECLARE_int32(request_timeout_ms);
 namespace fedb {
 namespace client {
-
+using fesql::plan::PlanAPI;
 NsClient::NsClient(const std::string& endpoint, const std::string& real_endpoint)
     : endpoint_(endpoint), client_(endpoint), db_("") {
         if (!real_endpoint.empty()) {
@@ -261,11 +262,10 @@ bool NsClient::ExecuteSQL(const std::string& script, std::string& msg) {
 bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
                           std::string& msg) {
     fesql::node::NodeManager node_manager;
-    fesql::parser::FeSQLParser parser;
     DLOG(INFO) << "start to execute script from dbms:\n" << script;
     fesql::base::Status sql_status;
     fesql::node::NodePointVector parser_trees;
-    parser.parse(script, parser_trees, &node_manager, sql_status);
+    PlanAPI::CreateSyntaxTreeFromScript(script, parser_trees, &node_manager, sql_status);
     if (parser_trees.empty() || 0 != sql_status.code) {
         msg = sql_status.msg;
         return false;
@@ -345,9 +345,8 @@ bool NsClient::HandleSQLCmd(const fesql::node::CmdNode* cmd_node,
 bool NsClient::HandleSQLCreateTable(
     const fesql::node::NodePointVector& parser_trees, const std::string& db,
     fesql::node::NodeManager* node_manager, fesql::base::Status* sql_status) {
-    fesql::plan::SimplePlanner planner(node_manager);
     fesql::node::PlanNodeList plan_trees;
-    planner.CreatePlanTree(parser_trees, plan_trees, *sql_status);
+    PlanAPI::CreatePlanTreeFromSyntaxTree(parser_trees, plan_trees, node_manager, *sql_status);
     if (plan_trees.empty() || 0 != sql_status->code) {
         return false;
     }
@@ -1259,7 +1258,7 @@ bool NsClient::TransformToTableDef(
                     (fesql::node::ColumnIndexNode*)column_desc;
                 std::string index_name = column_index->GetName();
                 if (index_name.empty()) {
-                    index_name = fesql::plan::GenerateName("INDEX", table->column_key_size());
+                    index_name = PlanAPI::GenerateName("INDEX", table->column_key_size());
                     column_index->SetName(index_name);
                 }
                 if (index_names.find(index_name) != index_names.end()) {

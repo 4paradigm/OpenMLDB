@@ -21,7 +21,6 @@
 
 #include <string>
 
-#include "base/fe_strings.h"
 #include "glog/logging.h"
 
 namespace fedb {

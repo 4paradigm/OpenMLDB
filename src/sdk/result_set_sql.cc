@@ -21,7 +21,6 @@
 #include <string>
 #include <utility>
 
-#include "base/fe_strings.h"
 #include "base/status.h"
 #include "catalog/schema_adapter.h"
 #include "catalog/sdk_catalog.h"
