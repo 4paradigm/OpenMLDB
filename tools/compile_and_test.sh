@@ -17,6 +17,9 @@ set -eE
 set -o nounset
 
 cd "$(dirname "$0")"
+
+source init_env.profile.sh
+
 cd "$(git rev-parse --show-toplevel)"
 
 if uname -a | grep -q Darwin; then

@@ -31,5 +31,4 @@ jobs:
     - name: Build
       shell: bash
       run: |
-        bash -x tools/init_env.profile.sh
         bash -x tools/compile_and_test.sh
