@@ -43,7 +43,7 @@ jobs:
       run: |
         mkdir -p build
         cd build
-        cmake ${{ github.workspace }} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBENCHMARK_ENABLE_LTO=true -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=ON -DJAVASDK_ENABLE=OFF DPYSDK_ENABLE=OFF
+        cmake ${{ github.workspace }} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBENCHMARK_ENABLE_LTO=true -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=ON -DJAVASDK_ENABLE=OFF -DPYSDK_ENABLE=OFF
 
     - name: Build
       shell: bash
