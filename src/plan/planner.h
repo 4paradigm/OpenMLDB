@@ -56,15 +56,14 @@ class Planner {
         const std::string &table_name, const NodePointVector &column_desc_list,
         type::TableDef *table,
         Status &status);  // NOLINT (runtime/references)
-
+    bool MergeWindows(const std::map<const node::WindowDefNode *,
+        node::ProjectListNode *> &map,
+                      std::vector<const node::WindowDefNode *> *windows);
  protected:
     const bool is_batch_mode_;
     const bool is_cluster_optimized_;
     const bool enable_window_maxsize_merged_;
     const bool enable_batch_window_parallelization_;
-    bool MergeWindows(const std::map<const node::WindowDefNode *,
-                                     node::ProjectListNode *> &map,
-                      std::vector<const node::WindowDefNode *> *windows);
     bool ExpandCurrentHistoryWindow(
         std::vector<const node::WindowDefNode *> *windows);
     bool IsTable(node::PlanNode *node);
