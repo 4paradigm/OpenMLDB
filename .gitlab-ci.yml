@@ -46,7 +46,7 @@ coverage_report:
         paths: 
             - build/coverage
 
-build_fesql_on_linux:
+build_hybridse_on_linux:
     stage: build
     script:
         - bash tools/compile_and_test.sh
