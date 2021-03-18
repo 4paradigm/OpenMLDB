@@ -38,4 +38,4 @@ mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE_LTO=true -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=OFF -DJAVASDK_ENABLE=OFF -DPYSDK_ENABLE=OFF -DEXAMPLES_ENABLE=OFF
 make fesql_proto && make fesql_parser
 make -j"$(nproc)"
-make test -j"$(nproc)"
+# make test -j"$(nproc)"
