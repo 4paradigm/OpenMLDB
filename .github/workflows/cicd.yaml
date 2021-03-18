@@ -51,10 +51,11 @@ jobs:
       - name: tar thirdparty
         run: |
            tar -zxvf /depends/thirdparty.tar.gz -C /depends/
-           mv /depends/depends/thirdparty /depends/thirdparty
-           ls -al /depends/thirdparty
+           mv /depends/depends/thirdparty /depends/
       - name: build fesql
-        run: source /root/.bashrc && sh tools/install_fesql.sh
+        run: |
+          ls -al /depends/thirdparty
+          source /root/.bashrc && sh tools/install_fesql.sh
       - name: build fedb
         run: |
           ls -al
