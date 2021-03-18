@@ -85,3 +85,7 @@ add_custom_target(fesql_proto_java
         -I ${PROJECT_SOURCE_DIR}/src/proto
         --java_out=${PROJECT_SOURCE_DIR}/java/fesql-proto/src/main/java
         ${PROJECT_SOURCE_DIR}/src/proto/*.proto)
+
+FILE(GLOB proto_header_files "${CMAKE_BINARY_DIR}/src/proto/*.pb.h")
+message("proto_header_files ${proto_header_files}")
+INSTALL(FILES ${proto_header_files} DESTINATION include/proto/)
