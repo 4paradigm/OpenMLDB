@@ -41,8 +41,7 @@ jobs:
       # Note the current convention is to use the -S and -B options here to specify source
       # and build directories, but this is only available with CMake 3.13 and higher.
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBENCHMARK_ENABLE_LTO=true -DCOVERAGE_ENABLE=OFF \
-            -DTESTING_ENABLE=ON -DJAVASDK_ENABLE=OFF DPYSDK_ENABLE=OFF
+      run: cmake ${{ github.workspace }} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBENCHMARK_ENABLE_LTO=true -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=ON -DJAVASDK_ENABLE=OFF DPYSDK_ENABLE=OFF
 
     - name: Build
       working-directory: ${{github.workspace}}/build
