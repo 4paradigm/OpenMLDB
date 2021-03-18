@@ -78,8 +78,8 @@ bool Engine::GetDependentTables(const std::string& sql, const std::string& db,
                                 EngineMode engine_mode,
                                 std::set<std::string>* tables,
                                 base::Status& status) {
-    std::shared_ptr<SQLCompileInfo> info =
-        std::make_shared<SQLCompileInfo>();
+    std::shared_ptr<fesql::vm::SQLCompileInfo> info =
+        std::make_shared<fesql::vm::SQLCompileInfo>();
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
     info->get_sql_context().engine_mode = engine_mode;
@@ -195,7 +195,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     }
     DLOG(INFO) << "Compile FESQL ...";
     status = base::Status::OK();
-    std::shared_ptr<SQLCompileInfo> info(new SQLCompileInfo());
+    std::shared_ptr<SQLCompileInfo> info = std::make_shared<SQLCompileInfo>();
     auto& sql_context =
         std::dynamic_pointer_cast<SQLCompileInfo>(info)->get_sql_context();
     sql_context.sql = sql;

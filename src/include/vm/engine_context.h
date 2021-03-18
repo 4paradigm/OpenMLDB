@@ -20,6 +20,7 @@
 #include <memory>
 #include <string>
 #include "boost/compute/detail/lru_cache.hpp"
+#include "vm/physical_op.h"
 namespace fesql {
 namespace vm {
 
@@ -52,6 +53,7 @@ class CompileInfo {
     virtual const Schema& GetRequestSchema() const = 0;
     virtual const std::string& GetRequestName() const = 0;
     virtual const fesql::vm::BatchRequestInfo& GetBatchRequestInfo() const = 0;
+    virtual const fesql::vm::PhysicalOpNode* GetPhysicalPlan() const = 0;
     virtual void DumpPhysicalPlan(std::ostream& output,
                                   const std::string& tab) = 0;
     virtual void DumpClusterJob(std::ostream& output,

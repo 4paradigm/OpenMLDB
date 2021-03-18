@@ -30,6 +30,7 @@
 #include "vm/engine_context.h"
 #include "vm/jit_wrapper.h"
 #include "vm/runner.h"
+#include "vm/physical_op.h"
 
 namespace fesql {
 namespace vm {
@@ -118,7 +119,7 @@ class SQLCompileInfo : public CompileInfo {
     virtual const fesql::vm::BatchRequestInfo& GetBatchRequestInfo() const {
         return sql_ctx.batch_request_info;
     }
-    fesql::vm::PhysicalOpNode* GetPhysicalPlan() {
+    virtual const fesql::vm::PhysicalOpNode* GetPhysicalPlan() const {
         return sql_ctx.physical_plan;
     }
     virtual fesql::vm::Runner* GetMainTask() {

@@ -30,7 +30,7 @@ public class RequestEngine implements AutoCloseable {
     private EngineOptions options;
     private Engine engine;
     private RequestRunSession session;
-    private SQLCompileInfo compileInfo;
+    private CompileInfo compileInfo;
     private PhysicalOpNode plan;
 
 
@@ -50,10 +50,7 @@ public class RequestEngine implements AutoCloseable {
             throw new UnsupportedFesqlException("SQL parse error: " + status.getMsg());
         }
         status.delete();
-        if (session.GetCompileInfo().GetCompileType().swigValue() != ComileType.kCompileSQL.swigValue()) {
-            throw new UnsupportedFesqlException("SQL compile type error: " + session.GetCompileInfo().GetCompileType().toString());
-        }
-        compileInfo = SQLCompileInfo.CastFrom(session.GetCompileInfo());
+        compileInfo = session.GetCompileInfo();
         plan = compileInfo.GetPhysicalPlan();
     }
 
