@@ -14,12 +14,16 @@
 # limitations under the License.
 
 set -eE
+set -o nounset
+
+source /opt/rh/devtoolset-7/enable
+source /opt/rh/sclo-git25/enable
+[ -r /etc/profile.d/enable-thirdparty.sh ] && source /etc/profile.d/enable-thirdparty.sh
 
 cd "$(dirname "$0")"
-
-source init_env.profile.sh
-
 cd "$(git rev-parse --show-toplevel)"
+
+ln -sf /depends/thirdparty thirdparty
 
 if uname -a | grep -q Darwin; then
     # in case coreutils not install on mac

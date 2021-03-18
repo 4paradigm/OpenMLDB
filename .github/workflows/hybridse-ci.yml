@@ -31,4 +31,4 @@ jobs:
     - name: Build
       shell: bash
       run: |
-        bash -x tools/compile_and_test.sh
+        ./tools/compile_and_test.sh
