@@ -31,6 +31,7 @@ jobs:
       - name: style_check
         run: source /root/.bashrc && bash tools/style_check.sh
   build:
+    needs: [style_check]
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
@@ -38,8 +39,6 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT_ZW }}
     steps:
-#      - name: git_enable
-#        run: ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
       - uses: actions/checkout@v1
 #        with:
 #          submodules: true
@@ -50,10 +49,6 @@ jobs:
           ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
           git submodule init
           git submodule update
-#      - name: clone fesql
-#        run: |
-#          ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
-#          git clone https://wuyou10206:zw%401020688@github.com/4paradigm/HybridSE.git fesql
 #      - name: tar thirdparty
 #        run: |
 #           tar -zxvf /depends/thirdparty.tar.gz -C /depends/
