@@ -15,8 +15,8 @@
  */
 
 
-#ifndef SRC_CODEC_LIST_ITERATOR_CODEC_H_
-#define SRC_CODEC_LIST_ITERATOR_CODEC_H_
+#ifndef SRC_INCLUDE_CODEC_LIST_ITERATOR_CODEC_H_
+#define SRC_INCLUDE_CODEC_LIST_ITERATOR_CODEC_H_
 #include <cstdint>
 #include <iostream>
 #include <memory>
@@ -532,4 +532,4 @@ class ColumnIterator : public ConstIterator<uint64_t, V> {
 }  // namespace codec
 }  // namespace fesql
 
-#endif  // SRC_CODEC_LIST_ITERATOR_CODEC_H_
+#endif  // SRC_INCLUDE_CODEC_LIST_ITERATOR_CODEC_H_

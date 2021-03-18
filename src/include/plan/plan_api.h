@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef FESQL_PLAN_API_H
-#define FESQL_PLAN_API_H
+#ifndef SRC_INCLUDE_PLAN_PLAN_API_H_
+#define SRC_INCLUDE_PLAN_PLAN_API_H_
+#include <string>
 #include "node/node_manager.h"
 namespace fesql {
 namespace plan {
@@ -32,7 +33,7 @@ class PlanAPI {
         Status& status);  // NOLINT
     static bool CreatePlanTreeFromSyntaxTree(
         const NodePointVector& syntax_trees,
-        PlanNodeList& plan_trees,       // NOLINT
+        PlanNodeList& plan_trees,  // NOLINT
         NodeManager* node_manager,
         Status& status);  // NOLINT (runtime/references)
     static bool CreatePlanTreeFromScript(
@@ -45,4 +46,4 @@ class PlanAPI {
 
 }  // namespace plan
 }  // namespace fesql
-#endif  // FESQL_PLAN_API_H
+#endif  // SRC_INCLUDE_PLAN_PLAN_API_H_

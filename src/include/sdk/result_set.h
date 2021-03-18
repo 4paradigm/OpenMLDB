@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_SDK_RESULT_SET_H_
-#define SRC_SDK_RESULT_SET_H_
+#ifndef SRC_INCLUDE_SDK_RESULT_SET_H_
+#define SRC_INCLUDE_SDK_RESULT_SET_H_
 
 #include <stdint.h>
 #include <string>
@@ -220,4 +220,4 @@ class ResultSet {
 
 }  // namespace sdk
 }  // namespace fesql
-#endif  // SRC_SDK_RESULT_SET_H_
+#endif  // SRC_INCLUDE_SDK_RESULT_SET_H_

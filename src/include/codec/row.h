@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEC_ROW_H_
-#define SRC_CODEC_ROW_H_
+#ifndef SRC_INCLUDE_CODEC_ROW_H_
+#define SRC_INCLUDE_CODEC_ROW_H_
 
 #include <cstdint>
 #include <map>
@@ -97,4 +97,4 @@ class Row {
 
 }  // namespace codec
 }  // namespace fesql
-#endif  // SRC_CODEC_ROW_H_
+#endif  // SRC_INCLUDE_CODEC_ROW_H_

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_BASE_FE_HASH_H_
-#define SRC_BASE_FE_HASH_H_
+#ifndef SRC_INCLUDE_BASE_FE_HASH_H_
+#define SRC_INCLUDE_BASE_FE_HASH_H_
 
 #include <stdint.h>
 
@@ -102,4 +102,4 @@ __attribute__((unused)) static uint64_t MurmurHash64A(const void *key, int len,
 
 }  // namespace base
 }  // namespace fesql
-#endif  // SRC_BASE_FE_HASH_H_
+#endif  // SRC_INCLUDE_BASE_FE_HASH_H_

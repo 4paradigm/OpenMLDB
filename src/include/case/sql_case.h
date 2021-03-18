@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CASE_SQL_CASE_H_
-#define SRC_CASE_SQL_CASE_H_
+#ifndef SRC_INCLUDE_CASE_SQL_CASE_H_
+#define SRC_INCLUDE_CASE_SQL_CASE_H_
 #include <vm/catalog.h>
 #include <yaml-cpp/node/node.h>
 #include <yaml-cpp/yaml.h>
@@ -303,4 +303,4 @@ std::string FindFesqlDirPath();
 
 }  // namespace sqlcase
 }  // namespace fesql
-#endif  // SRC_CASE_SQL_CASE_H_
+#endif  // SRC_INCLUDE_CASE_SQL_CASE_H_

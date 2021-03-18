@@ -15,8 +15,8 @@
  */
 
 
-#ifndef SRC_SDK_BASE_STRUCT_H_
-#define SRC_SDK_BASE_STRUCT_H_
+#ifndef SRC_INCLUDE_SDK_BASE_STRUCT_H_
+#define SRC_INCLUDE_SDK_BASE_STRUCT_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -278,4 +278,4 @@ inline const std::string DataTypeName(const DataType& type) {
 
 }  // namespace sdk
 }  // namespace fesql
-#endif  // SRC_SDK_BASE_STRUCT_H_
+#endif  // SRC_INCLUDE_SDK_BASE_STRUCT_H_

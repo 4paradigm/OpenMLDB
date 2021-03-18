@@ -17,8 +17,8 @@
 #include "base/fe_object.h"
 #include "base/fe_status.h"
 
-#ifndef SRC_PASSES_PASS_BASE_H_
-#define SRC_PASSES_PASS_BASE_H_
+#ifndef SRC_INCLUDE_PASSES_PASS_BASE_H_
+#define SRC_INCLUDE_PASSES_PASS_BASE_H_
 
 namespace fesql {
 namespace passes {
@@ -34,4 +34,4 @@ class PassBase : public base::FeBaseObject {
 
 }  // namespace passes
 }  // namespace fesql
-#endif  // SRC_PASSES_PASS_BASE_H_
+#endif  // SRC_INCLUDE_PASSES_PASS_BASE_H_

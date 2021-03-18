@@ -13,8 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef FESQL_LOCAL_TABLET_HANDLER_H
-#define FESQL_LOCAL_TABLET_HANDLER_H
+#ifndef SRC_VM_LOCAL_TABLET_HANDLER_H_
+#define SRC_VM_LOCAL_TABLET_HANDLER_H_
+#include <memory>
+#include <string>
+#include <vector>
 #include "vm/engine.h"
 #include "vm/mem_catalog.h"
 namespace fesql {
@@ -118,4 +121,4 @@ class LocalTabletTableHandler : public MemTableHandler {
 };
 }  // namespace vm
 }  // namespace fesql
-#endif  // FESQL_LOCAL_TABLET_HANDLER_H
+#endif  // SRC_VM_LOCAL_TABLET_HANDLER_H_

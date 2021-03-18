@@ -15,7 +15,6 @@
  */
 
 #include "plan/planner.h"
-#include "plan/plan_api.h"
 #include <map>
 #include <random>
 #include <set>
@@ -23,6 +22,7 @@
 #include <utility>
 #include <vector>
 #include "parser/parser.h"
+#include "plan/plan_api.h"
 #include "proto/fe_common.pb.h"
 
 namespace fesql {

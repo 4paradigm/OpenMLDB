@@ -15,8 +15,8 @@
  */
 
 
-#ifndef SRC_NODE_SQL_NODE_H_
-#define SRC_NODE_SQL_NODE_H_
+#ifndef SRC_INCLUDE_NODE_SQL_NODE_H_
+#define SRC_INCLUDE_NODE_SQL_NODE_H_
 
 #include <glog/logging.h>
 #include <iostream>
@@ -2602,4 +2602,4 @@ void PrintValue(std::ostream &output, const std::string &org_tab,
                 bool last_child);
 }  // namespace node
 }  // namespace fesql
-#endif  // SRC_NODE_SQL_NODE_H_
+#endif  // SRC_INCLUDE_NODE_SQL_NODE_H_

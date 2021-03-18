@@ -15,8 +15,8 @@
  */
 
 
-#ifndef SRC_VM_PHYSICAL_OP_H_
-#define SRC_VM_PHYSICAL_OP_H_
+#ifndef SRC_INCLUDE_VM_PHYSICAL_OP_H_
+#define SRC_INCLUDE_VM_PHYSICAL_OP_H_
 #include <list>
 #include <memory>
 #include <set>
@@ -1620,4 +1620,4 @@ static Status ReplaceComponentExpr(const Component &component,
 
 }  // namespace vm
 }  // namespace fesql
-#endif  // SRC_VM_PHYSICAL_OP_H_
+#endif  // SRC_INCLUDE_VM_PHYSICAL_OP_H_

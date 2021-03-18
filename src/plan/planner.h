@@ -52,10 +52,11 @@ class Planner {
         const NodePointVector &parser_trees,
         PlanNodeList &plan_trees,  // NOLINT (runtime/references)
         Status &status) = 0;       // NOLINT (runtime/references)
-    static bool TransformTableDef(const std::string &table_name,
-                                  const NodePointVector &column_desc_list,
-                                  type::TableDef *table,
-                                  Status &status);  // NOLINT (runtime/references)
+    static bool TransformTableDef(
+        const std::string &table_name, const NodePointVector &column_desc_list,
+        type::TableDef *table,
+        Status &status);  // NOLINT (runtime/references)
+
  protected:
     const bool is_batch_mode_;
     const bool is_cluster_optimized_;
@@ -109,7 +110,6 @@ class Planner {
             &map,
         std::map<const node::WindowDefNode *, node::ProjectListNode *> *output,
         Status &status);  // NOLINT (runtime/references)
-
 };
 
 class SimplePlanner : public Planner {
@@ -125,8 +125,6 @@ class SimplePlanner : public Planner {
                        PlanNodeList &plan_trees,  // NOLINT
                        Status &status);           // NOLINT (runtime/references)
 };
-
-
 
 }  // namespace plan
 }  // namespace fesql

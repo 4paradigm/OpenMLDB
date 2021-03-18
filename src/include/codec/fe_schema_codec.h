@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEC_FE_SCHEMA_CODEC_H_
-#define SRC_CODEC_FE_SCHEMA_CODEC_H_
+#ifndef SRC_INCLUDE_CODEC_FE_SCHEMA_CODEC_H_
+#define SRC_INCLUDE_CODEC_FE_SCHEMA_CODEC_H_
 
 #include <cstring>
 #include <iostream>
@@ -122,4 +122,4 @@ class SchemaCodec {
 
 }  // namespace codec
 }  // namespace fesql
-#endif  // SRC_CODEC_FE_SCHEMA_CODEC_H_
+#endif  // SRC_INCLUDE_CODEC_FE_SCHEMA_CODEC_H_

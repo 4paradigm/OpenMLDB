@@ -15,8 +15,8 @@
  */
 
 
-#ifndef SRC_VM_MEM_CATALOG_H_
-#define SRC_VM_MEM_CATALOG_H_
+#ifndef SRC_INCLUDE_VM_MEM_CATALOG_H_
+#define SRC_INCLUDE_VM_MEM_CATALOG_H_
 
 #include <deque>
 #include <functional>
@@ -775,4 +775,4 @@ int8_t* RowGetSlice(int8_t* row_ptr, size_t idx);
 size_t RowGetSliceSize(int8_t* row_ptr, size_t idx);
 }  // namespace vm
 }  // namespace fesql
-#endif  // SRC_VM_MEM_CATALOG_H_
+#endif  // SRC_INCLUDE_VM_MEM_CATALOG_H_

@@ -15,8 +15,8 @@
  */
 
 
-#ifndef SRC_NODE_TYPE_NODE_H_
-#define SRC_NODE_TYPE_NODE_H_
+#ifndef SRC_INCLUDE_NODE_TYPE_NODE_H_
+#define SRC_INCLUDE_NODE_TYPE_NODE_H_
 
 #include <string>
 #include <vector>
@@ -142,4 +142,4 @@ class RowTypeNode : public TypeNode {
 
 }  // namespace node
 }  // namespace fesql
-#endif  // SRC_NODE_TYPE_NODE_H_
+#endif  // SRC_INCLUDE_NODE_TYPE_NODE_H_

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEC_FE_ROW_SELECTOR_H_
-#define SRC_CODEC_FE_ROW_SELECTOR_H_
+#ifndef SRC_INCLUDE_CODEC_FE_ROW_SELECTOR_H_
+#define SRC_INCLUDE_CODEC_FE_ROW_SELECTOR_H_
 
 #include <utility>
 #include <vector>
@@ -49,4 +49,4 @@ class RowSelector {
 
 }  // namespace codec
 }  // namespace fesql
-#endif  // SRC_CODEC_FE_ROW_SELECTOR_H_
+#endif  // SRC_INCLUDE_CODEC_FE_ROW_SELECTOR_H_

@@ -15,8 +15,8 @@
  */
 
 
-#ifndef SRC_BASE_FE_STATUS_H_
-#define SRC_BASE_FE_STATUS_H_
+#ifndef SRC_INCLUDE_BASE_FE_STATUS_H_
+#define SRC_INCLUDE_BASE_FE_STATUS_H_
 #include <string>
 #include "glog/logging.h"
 #include "proto/fe_common.pb.h"
@@ -104,4 +104,4 @@ std::ostream& operator<<(std::ostream& os, const Status& status);  // NOLINT
 
 }  // namespace base
 }  // namespace fesql
-#endif  // SRC_BASE_FE_STATUS_H_
+#endif  // SRC_INCLUDE_BASE_FE_STATUS_H_

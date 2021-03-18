@@ -15,8 +15,8 @@
  */
 
 
-#ifndef SRC_NODE_PLAN_NODE_H_
-#define SRC_NODE_PLAN_NODE_H_
+#ifndef SRC_INCLUDE_NODE_PLAN_NODE_H_
+#define SRC_INCLUDE_NODE_PLAN_NODE_H_
 
 #include <glog/logging.h>
 #include <list>
@@ -554,4 +554,4 @@ void PrintPlanNode(std::ostream &output, const std::string &org_tab,
 }  // namespace node
 }  // namespace fesql
 
-#endif  // SRC_NODE_PLAN_NODE_H_
+#endif  // SRC_INCLUDE_NODE_PLAN_NODE_H_

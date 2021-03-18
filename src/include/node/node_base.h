@@ -15,8 +15,8 @@
  */
 
 
-#ifndef SRC_NODE_NODE_BASE_H_
-#define SRC_NODE_NODE_BASE_H_
+#ifndef SRC_INCLUDE_NODE_NODE_BASE_H_
+#define SRC_INCLUDE_NODE_NODE_BASE_H_
 
 #include <glog/logging.h>
 #include <sstream>
@@ -100,4 +100,4 @@ class NodeBase : public base::FeBaseObject {
 
 }  // namespace node
 }  // namespace fesql
-#endif  // SRC_NODE_NODE_BASE_H_
+#endif  // SRC_INCLUDE_NODE_NODE_BASE_H_

@@ -15,8 +15,8 @@
  */
 
 
-#ifndef SRC_BASE_MEM_POOL_H_
-#define SRC_BASE_MEM_POOL_H_
+#ifndef SRC_INCLUDE_BASE_MEM_POOL_H_
+#define SRC_INCLUDE_BASE_MEM_POOL_H_
 #include <stddef.h>
 #include <stdint.h>
 #include <list>
@@ -100,4 +100,4 @@ class ByteMemoryPool {
 }  // namespace base
 }  // namespace fesql
 
-#endif  // SRC_BASE_MEM_POOL_H_
+#endif  // SRC_INCLUDE_BASE_MEM_POOL_H_

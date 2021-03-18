@@ -15,8 +15,8 @@
  */
 
 
-#ifndef SRC_NODE_EXPR_NODE_H_
-#define SRC_NODE_EXPR_NODE_H_
+#ifndef SRC_INCLUDE_NODE_EXPR_NODE_H_
+#define SRC_INCLUDE_NODE_EXPR_NODE_H_
 
 #include <string>
 #include <vector>
@@ -83,4 +83,4 @@ class ExprAnalysisContext {
 
 }  // namespace node
 }  // namespace fesql
-#endif  // SRC_NODE_EXPR_NODE_H_
+#endif  // SRC_INCLUDE_NODE_EXPR_NODE_H_

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_VM_CATALOG_H_
-#define SRC_VM_CATALOG_H_
+#ifndef SRC_INCLUDE_VM_CATALOG_H_
+#define SRC_INCLUDE_VM_CATALOG_H_
 #include <map>
 #include <memory>
 #include <set>
@@ -349,4 +349,4 @@ class Catalog {
 }  // namespace vm
 }  // namespace fesql
 
-#endif  // SRC_VM_CATALOG_H_
+#endif  // SRC_INCLUDE_VM_CATALOG_H_

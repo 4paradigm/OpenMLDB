@@ -15,8 +15,8 @@
  */
 
 
-#ifndef SRC_BASE_SIG_TRACE_H_
-#define SRC_BASE_SIG_TRACE_H_
+#ifndef SRC_INCLUDE_BASE_SIG_TRACE_H_
+#define SRC_INCLUDE_BASE_SIG_TRACE_H_
 
 #include <dlfcn.h>
 #include <execinfo.h>
@@ -57,4 +57,4 @@ void FeSignalBacktraceHandler(int sig) {
 
 }  // namespace base
 }  // namespace fesql
-#endif  // SRC_BASE_SIG_TRACE_H_
+#endif  // SRC_INCLUDE_BASE_SIG_TRACE_H_

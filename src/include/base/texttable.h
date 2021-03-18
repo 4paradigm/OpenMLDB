@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_BASE_TEXTTABLE_H_
-#define SRC_BASE_TEXTTABLE_H_
+#ifndef SRC_INCLUDE_BASE_TEXTTABLE_H_
+#define SRC_INCLUDE_BASE_TEXTTABLE_H_
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -76,4 +76,4 @@ class TextTable {
 
 }  // namespace base
 }  // namespace fesql
-#endif  // SRC_BASE_TEXTTABLE_H_
+#endif  // SRC_INCLUDE_BASE_TEXTTABLE_H_

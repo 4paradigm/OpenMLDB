@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_BASE_FE_OBJECT_H_
-#define SRC_BASE_FE_OBJECT_H_
+#ifndef SRC_INCLUDE_BASE_FE_OBJECT_H_
+#define SRC_INCLUDE_BASE_FE_OBJECT_H_
 
 namespace fesql {
 namespace base {
@@ -27,4 +27,4 @@ class FeBaseObject {
 
 }  // namespace base
 }  // namespace fesql
-#endif  // SRC_BASE_FE_OBJECT_H_
+#endif  // SRC_INCLUDE_BASE_FE_OBJECT_H_

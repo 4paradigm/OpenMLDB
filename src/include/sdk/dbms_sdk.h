@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-#ifndef SRC_SDK_DBMS_SDK_H_
-#define SRC_SDK_DBMS_SDK_H_
+#ifndef SRC_INCLUDE_SDK_DBMS_SDK_H_
+#define SRC_INCLUDE_SDK_DBMS_SDK_H_
 
 #include <memory>
 #include <string>
 #include <vector>
-#include "base_impl.h"
-#include "request_row.h"
-#include "result_set.h"
+#include "sdk/base_impl.h"
+#include "sdk/request_row.h"
+#include "sdk/result_set.h"
 #include "sdk/base.h"
 #include "sdk/tablet_sdk.h"
 
@@ -85,4 +85,4 @@ std::shared_ptr<DBMSSdk> CreateDBMSSdk(const std::string &endpoint);
 
 }  // namespace sdk
 }  // namespace fesql
-#endif  // SRC_SDK_DBMS_SDK_H_
+#endif  // SRC_INCLUDE_SDK_DBMS_SDK_H_

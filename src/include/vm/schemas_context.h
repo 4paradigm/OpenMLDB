@@ -15,8 +15,8 @@
  */
 
 
-#ifndef SRC_VM_SCHEMAS_CONTEXT_H_
-#define SRC_VM_SCHEMAS_CONTEXT_H_
+#ifndef SRC_INCLUDE_VM_SCHEMAS_CONTEXT_H_
+#define SRC_INCLUDE_VM_SCHEMAS_CONTEXT_H_
 #include <map>
 #include <set>
 #include <string>
@@ -249,4 +249,4 @@ class SchemasContext {
 }  // namespace vm
 }  // namespace fesql
 
-#endif  // SRC_VM_SCHEMAS_CONTEXT_H_
+#endif  // SRC_INCLUDE_VM_SCHEMAS_CONTEXT_H_

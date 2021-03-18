@@ -15,8 +15,8 @@
  */
 
 
-#ifndef SRC_SDK_BASE_H_
-#define SRC_SDK_BASE_H_
+#ifndef SRC_INCLUDE_SDK_BASE_H_
+#define SRC_INCLUDE_SDK_BASE_H_
 
 #include <stdint.h>
 #include <memory>
@@ -131,4 +131,4 @@ class ProcedureInfo {
 
 }  // namespace sdk
 }  // namespace fesql
-#endif  // SRC_SDK_BASE_H_
+#endif  // SRC_INCLUDE_SDK_BASE_H_

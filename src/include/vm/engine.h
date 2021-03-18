@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_VM_ENGINE_H_
-#define SRC_VM_ENGINE_H_
+#ifndef SRC_INCLUDE_VM_ENGINE_H_
+#define SRC_INCLUDE_VM_ENGINE_H_
 
 #include <map>
 #include <memory>
@@ -32,8 +32,8 @@
 #include "llvm-c/Target.h"
 #include "proto/fe_common.pb.h"
 #include "vm/catalog.h"
-#include "vm/router.h"
 #include "vm/engine_context.h"
+#include "vm/router.h"
 
 namespace fesql {
 namespace vm {
@@ -132,7 +132,8 @@ class RunSession {
     virtual std::shared_ptr<fesql::vm::CompileInfo> GetCompileInfo() {
         return compile_info_;
     }
-    bool SetCompileInfo(const std::shared_ptr<fesql::vm::CompileInfo>& compile_info);
+    bool SetCompileInfo(
+        const std::shared_ptr<fesql::vm::CompileInfo>& compile_info);
 
     void EnableDebug() { is_debug_ = true; }
     void DisableDebug() { is_debug_ = false; }
@@ -294,4 +295,4 @@ class LocalTablet : public Tablet {
 
 }  // namespace vm
 }  // namespace fesql
-#endif  // SRC_VM_ENGINE_H_
+#endif  // SRC_INCLUDE_VM_ENGINE_H_

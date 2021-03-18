@@ -12,8 +12,8 @@
 //  are chosen so you can use std::unique_lock or std::lock_guard with it.
 //
 
-#ifndef SRC_BASE_SPIN_LOCK_H_
-#define SRC_BASE_SPIN_LOCK_H_
+#ifndef SRC_INCLUDE_BASE_SPIN_LOCK_H_
+#define SRC_INCLUDE_BASE_SPIN_LOCK_H_
 
 #include <atomic>
 #include <memory>
@@ -67,4 +67,4 @@ class SpinMutex {
 }  // namespace base
 }  // namespace fesql
 
-#endif  // SRC_BASE_SPIN_LOCK_H_
+#endif  // SRC_INCLUDE_BASE_SPIN_LOCK_H_

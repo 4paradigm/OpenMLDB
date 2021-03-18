@@ -13,8 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef FESQL_ENGINE_CONTEXT_H
-#define FESQL_ENGINE_CONTEXT_H
+#ifndef SRC_INCLUDE_VM_ENGINE_CONTEXT_H_
+#define SRC_INCLUDE_VM_ENGINE_CONTEXT_H_
+#include <set>
+#include <map>
+#include <memory>
+#include <string>
 #include "boost/compute/detail/lru_cache.hpp"
 namespace fesql {
 namespace vm {
@@ -92,4 +96,4 @@ class JITOptions {
 };
 }  // namespace vm
 }  // namespace fesql
-#endif  // FESQL_ENGINE_CONTEXT_H
+#endif  // SRC_INCLUDE_VM_ENGINE_CONTEXT_H_

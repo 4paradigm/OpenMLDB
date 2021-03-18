@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEC_TYPE_CODEC_H_
-#define SRC_CODEC_TYPE_CODEC_H_
+#ifndef SRC_INCLUDE_CODEC_TYPE_CODEC_H_
+#define SRC_INCLUDE_CODEC_TYPE_CODEC_H_
 
 #include <stdint.h>
 #include <cstddef>
@@ -483,4 +483,4 @@ struct hash<fesql::codec::StringRef> {
 
 }  // namespace std
 
-#endif  // SRC_CODEC_TYPE_CODEC_H_
+#endif  // SRC_INCLUDE_CODEC_TYPE_CODEC_H_

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_SDK_TABLET_SDK_H_
-#define SRC_SDK_TABLET_SDK_H_
+#ifndef SRC_INCLUDE_SDK_TABLET_SDK_H_
+#define SRC_INCLUDE_SDK_TABLET_SDK_H_
 
 #include <memory>
 #include <string>
@@ -63,4 +63,4 @@ std::shared_ptr<TabletSdk> CreateTabletSdk(const std::string& endpoint);
 
 }  // namespace sdk
 }  // namespace fesql
-#endif  // SRC_SDK_TABLET_SDK_H_
+#endif  // SRC_INCLUDE_SDK_TABLET_SDK_H_

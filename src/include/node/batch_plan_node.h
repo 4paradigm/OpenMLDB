@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_NODE_BATCH_PLAN_NODE_H_
-#define SRC_NODE_BATCH_PLAN_NODE_H_
+#ifndef SRC_INCLUDE_NODE_BATCH_PLAN_NODE_H_
+#define SRC_INCLUDE_NODE_BATCH_PLAN_NODE_H_
 
 #include <string>
 #include <vector>
@@ -109,4 +109,4 @@ class BatchPlanTree {
 }  // namespace node
 }  // namespace fesql
 
-#endif  // SRC_NODE_BATCH_PLAN_NODE_H_
+#endif  // SRC_INCLUDE_NODE_BATCH_PLAN_NODE_H_
