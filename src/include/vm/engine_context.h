@@ -43,6 +43,8 @@ enum ComileType {
 };
 class CompileInfo {
  public:
+    CompileInfo() {}
+    virtual ~CompileInfo() {}
     virtual bool GetIRBuffer(const base::RawBuffer& buf) = 0;
     virtual size_t GetIRSize() = 0;
     virtual const EngineMode GetEngineMode() const = 0;

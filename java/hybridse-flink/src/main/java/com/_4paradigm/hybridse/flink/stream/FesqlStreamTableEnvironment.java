@@ -16,8 +16,8 @@
 
 package com._4paradigm.hybridse.flink.stream;
 
-import com._4paradigm.hybridse.common.FesqlException;
-import com._4paradigm.hybridse.common.UnsupportedFesqlException;
+import com._4paradigm.hybridse.common.HybridSEException;
+import com._4paradigm.hybridse.common.UnsupportedHybridSEException;
 import com._4paradigm.hybridse.flink.common.planner.FesqlFlinkPlanner;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -174,7 +174,7 @@ public class FesqlStreamTableEnvironment {
         }
     }
 
-    public Table fesqlQuery(String query) throws FesqlException, UnsupportedFesqlException {
+    public Table fesqlQuery(String query) throws HybridSEException, UnsupportedHybridSEException {
         // Normalize SQL format
         if (!query.trim().endsWith(";")) {
             query = query.trim() + ";";

@@ -71,9 +71,9 @@ public class TestParseSQL {
         PhysicalOpNode root = compileInfo.GetPhysicalPlan();
         root.Print();
 
-        FeSQLJITWrapper jit = FeSQLJITWrapper.Create();
+        HybridSEJITWrapper jit = HybridSEJITWrapper.Create();
         jit.Init();
-        FeSQLJITWrapper.InitJITSymbols(jit);
+        HybridSEJITWrapper.InitJITSymbols(jit);
         jit.AddModuleFromBuffer(buffer);
 
         engine.delete();

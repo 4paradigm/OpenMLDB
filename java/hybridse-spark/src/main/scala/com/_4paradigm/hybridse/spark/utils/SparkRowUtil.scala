@@ -16,7 +16,7 @@
 
 package com._4paradigm.hybridse.spark.utils
 
-import com._4paradigm.hybridse.common.FesqlException
+import com._4paradigm.hybridse.common.HybridSEException
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 
@@ -31,7 +31,7 @@ object SparkRowUtil {
       case TimestampType => row: Row => row.getTimestamp(keyIdx).getTime
       case DateType => row: Row=>row.getDate(keyIdx).getTime
       case _ =>
-        throw new FesqlException(s"Illegal window key type: $sparkType")
+        throw new HybridSEException(s"Illegal window key type: $sparkType")
     }
   }
 }

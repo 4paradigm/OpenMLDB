@@ -277,6 +277,16 @@ bool RowBuilder::AppendString(const char* val, uint32_t length) {
     return true;
 }
 
+RowView::RowView()
+    : str_addr_length_(0),
+      is_valid_(false),
+      string_field_cnt_(0),
+      str_field_start_offset_(0),
+      size_(0),
+      row_(NULL),
+      schema_(),
+      offset_vec_() {
+}
 RowView::RowView(const Schema& schema)
     : str_addr_length_(0),
       is_valid_(true),
@@ -288,7 +298,6 @@ RowView::RowView(const Schema& schema)
       offset_vec_() {
     Init();
 }
-
 RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size)
     : str_addr_length_(0),
       is_valid_(true),

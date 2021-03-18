@@ -20,7 +20,7 @@ import java.io._
 
 import com._4paradigm.hybridse.common.JITManager
 import com._4paradigm.hybridse.spark.nodes.WindowAggPlan.WindowAggConfig
-import com._4paradigm.hybridse.vm.{CoreAPI, FeSQLJITWrapper}
+import com._4paradigm.hybridse.vm.{CoreAPI, HybridSEJITWrapper}
 import com._4paradigm.hybridse.codec.{Row => NativeRow}
 import com._4paradigm.hybridse.spark.FeSQLConfig
 import org.apache.hadoop.conf.Configuration
@@ -34,7 +34,7 @@ class WindowSampleSupport(fs: FileSystem,
                           partitionIndex: Int,
                           config: WindowAggConfig,
                           sqlConfig: FeSQLConfig,
-                          jit: FeSQLJITWrapper) extends WindowHook {
+                          jit: HybridSEJITWrapper) extends WindowHook {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 

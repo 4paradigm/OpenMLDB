@@ -18,10 +18,10 @@ package com._4paradigm.hybridse.flink.common.planner;
 
 import com._4paradigm.hybridse.FeSqlLibrary;
 import com._4paradigm.hybridse.common.SQLEngine;
-import com._4paradigm.hybridse.common.UnsupportedFesqlException;
+import com._4paradigm.hybridse.common.UnsupportedHybridSEException;
 import com._4paradigm.hybridse.flink.batch.FesqlBatchTableEnvironment;
 import com._4paradigm.hybridse.flink.batch.planner.*;
-import com._4paradigm.hybridse.common.FesqlException;
+import com._4paradigm.hybridse.common.HybridSEException;
 import com._4paradigm.hybridse.flink.common.FesqlUtil;
 import com._4paradigm.hybridse.flink.stream.FesqlStreamTableEnvironment;
 import com._4paradigm.hybridse.flink.stream.planner.StreamDataProviderPlan;
@@ -69,7 +69,7 @@ public class FesqlFlinkPlanner {
         this.tableSchemaMap = env.getRegisteredTableSchemaMap();
     }
 
-    public Table plan(String sqlQuery) throws FesqlException, UnsupportedFesqlException {
+    public Table plan(String sqlQuery) throws HybridSEException, UnsupportedHybridSEException {
 
         TypeOuterClass.Database fesqlDatabase = FesqlUtil.buildDatabase("flink_db", this.tableSchemaMap);
         SQLEngine engine = new SQLEngine(sqlQuery, fesqlDatabase);
@@ -90,14 +90,14 @@ public class FesqlFlinkPlanner {
         try {
             engine.close();
         } catch (Exception e) {
-            throw new FesqlException(String.format("Fail to close engine, error message: %s", e.getMessage()));
+            throw new HybridSEException(String.format("Fail to close engine, error message: %s", e.getMessage()));
         }
 
         return table;
 
     }
 
-    public Table visitPhysicalNode(GeneralPlanContext planContext, PhysicalOpNode node) throws FesqlException, UnsupportedFesqlException {
+    public Table visitPhysicalNode(GeneralPlanContext planContext, PhysicalOpNode node) throws HybridSEException, UnsupportedHybridSEException {
 
         List<Table> children = new ArrayList<Table>();
         for (int i=0; i < node.GetProducerCnt(); ++i) {
@@ -151,10 +151,10 @@ public class FesqlFlinkPlanner {
                     outputTable = BatchGroupbyAggPlan.gen(planContext, physicalGroupAggrerationNode, children.get(0));
                 } else {
                     // TODO: need to convert upsert stream to Table, refer to https://github.com/apache/flink/pull/6787
-                    throw new UnsupportedFesqlException(String.format("Planner does not support project type %s", projectType));
+                    throw new UnsupportedHybridSEException(String.format("Planner does not support project type %s", projectType));
                 }
             } else {
-                throw new UnsupportedFesqlException(String.format("Planner does not support project type %s", projectType));
+                throw new UnsupportedHybridSEException(String.format("Planner does not support project type %s", projectType));
             }
         } else if (opType.swigValue() == PhysicalOpType.kPhysicalOpGroupBy.swigValue()) {
             PhysicalGroupNode physicalGroupNode = PhysicalGroupNode.CastFrom(node);
@@ -167,7 +167,7 @@ public class FesqlFlinkPlanner {
                 outputTable = StreamLimitPlan.gen(planContext, physicalLimitNode, children.get(0));
             }
         } else {
-            throw new UnsupportedFesqlException(String.format("Planner does not support physical op %s", node));
+            throw new UnsupportedHybridSEException(String.format("Planner does not support physical op %s", node));
         }
 
         return outputTable;

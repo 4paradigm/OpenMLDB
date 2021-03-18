@@ -19,7 +19,7 @@ package com._4paradigm.hybridse.spark.nodes
 import com._4paradigm.hybridse.common.{JITManager, SerializableByteBuffer}
 import com._4paradigm.hybridse.spark._
 import com._4paradigm.hybridse.spark.utils.{AutoDestructibleIterator, FesqlUtil}
-import com._4paradigm.hybridse.vm.{CoreAPI, FeSQLJITWrapper, PhysicalTableProjectNode}
+import com._4paradigm.hybridse.vm.{CoreAPI, HybridSEJITWrapper, PhysicalTableProjectNode}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{LongType, StructType}
 import org.slf4j.LoggerFactory
@@ -84,7 +84,7 @@ object RowProjectPlan {
   }
 
 
-  def projectIter(inputIter: Iterator[Row], jit: FeSQLJITWrapper, config: ProjectConfig): Iterator[Row] = {
+  def projectIter(inputIter: Iterator[Row], jit: HybridSEJITWrapper, config: ProjectConfig): Iterator[Row] = {
     // reusable output row inst
     val outputFields = if (config.keepIndexColumn) config.outputSchemaSlices.map(_.size).sum + 1 else config.outputSchemaSlices.map(_.size).sum
     val outputArr = Array.fill[Any](outputFields)(null)

@@ -16,13 +16,13 @@
 
 package com._4paradigm.hybridse.flink.common.planner;
 
-import com._4paradigm.hybridse.common.FesqlException;
+import com._4paradigm.hybridse.common.HybridSEException;
 import com._4paradigm.hybridse.vm.PhysicalGroupNode;
 import org.apache.flink.table.api.Table;
 
 public class MockGroupbyPlan {
 
-    public static Table gen(GeneralPlanContext planContext, PhysicalGroupNode node, Table childTable) throws FesqlException {
+    public static Table gen(GeneralPlanContext planContext, PhysicalGroupNode node, Table childTable) throws HybridSEException {
         // Do nothing for groupby node and the child node should use groupby API
         return childTable;
     }

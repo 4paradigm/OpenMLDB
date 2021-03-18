@@ -1485,7 +1485,7 @@ std::string FindHybridSEDirPath() {
 
     while (current_path.has_parent_path()) {
         current_path = current_path.parent_path();
-        if (current_path.filename().string() == "hybridse") {
+        if (current_path.filename().string() == "fesql") {
             hybridse_path = current_path;
             find_hybridse_dir = true;
             break;
@@ -1494,7 +1494,7 @@ std::string FindHybridSEDirPath() {
         for (boost::filesystem::directory_iterator iter(current_path);
              iter != endIter; iter++) {
             if (boost::filesystem::is_directory(*iter) &&
-                iter->path().filename() == "hybridse") {
+                iter->path().filename() == "fesql") {
                 hybridse_path = iter->path();
                 find_hybridse_dir = true;
                 break;

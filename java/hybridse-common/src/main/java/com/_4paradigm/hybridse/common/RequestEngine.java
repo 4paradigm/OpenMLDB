@@ -34,7 +34,7 @@ public class RequestEngine implements AutoCloseable {
     private PhysicalOpNode plan;
 
 
-    public RequestEngine(String sql, TypeOuterClass.Database database) throws UnsupportedFesqlException {
+    public RequestEngine(String sql, TypeOuterClass.Database database) throws UnsupportedHybridSEException {
         options = new EngineOptions();
         options.set_keep_ir(true);
         options.set_compile_only(true);
@@ -47,7 +47,7 @@ public class RequestEngine implements AutoCloseable {
         BaseStatus status = new BaseStatus();
         boolean ok = engine.Get(sql, database.getName(), session, status);
         if (!(ok && status.getMsg().equals("ok"))) {
-            throw new UnsupportedFesqlException("SQL parse error: " + status.getMsg());
+            throw new UnsupportedHybridSEException("SQL parse error: " + status.getMsg());
         }
         status.delete();
         compileInfo = session.GetCompileInfo();

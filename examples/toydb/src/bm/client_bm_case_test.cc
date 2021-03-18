@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "bm/hybridse_client_bm_case.h"
+#include "bm/client_bm_case.h"
 #include "gperftools/heap-profiler.h"
 #include "gtest/gtest.h"
 #include "llvm/Support/InitLLVM.h"

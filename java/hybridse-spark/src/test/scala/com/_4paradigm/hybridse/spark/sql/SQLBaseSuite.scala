@@ -20,7 +20,7 @@ import java.io.{File, FileInputStream}
 import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
 
-import com._4paradigm.hybridse.common.JITManager
+import com._4paradigm.hybridse.common.{JITManager, UnsupportedHybridSEException}
 import com._4paradigm.hybridse.spark.api.{FesqlDataframe, FesqlSession}
 import com._4paradigm.hybridse.spark.SparkTestSuite
 import com._4paradigm.hybridse.spark.utils.SparkUtil
@@ -97,7 +97,7 @@ class SQLBaseSuite extends SparkTestSuite {
 
       val sql = sqlCase.getSql
       if (sqlCase.getExpect != null && !sqlCase.getExpect.getSuccess) {
-        assertThrows[com._4paradigm.hybridse.common.UnsupportedFesqlException] {
+        assertThrows[UnsupportedHybridSEException] {
           spark.sql(sql).sparkDf
         }
       } else {

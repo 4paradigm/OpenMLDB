@@ -16,7 +16,7 @@
 
 package com._4paradigm.hybridse.spark.nodes
 
-import com._4paradigm.hybridse.common.FesqlException
+import com._4paradigm.hybridse.common.HybridSEException
 import com._4paradigm.hybridse.node.JoinType
 import com._4paradigm.hybridse.spark._
 import com._4paradigm.hybridse.spark.utils.{NodeIndexType, SparkColumnUtil, SparkUtil}
@@ -33,7 +33,7 @@ object ConcatJoinPlan {
     // Check join type
     val joinType = node.join().join_type()
     if (joinType != JoinType.kJoinTypeConcat) {
-      throw new FesqlException(s"Concat join type $joinType not supported")
+      throw new HybridSEException(s"Concat join type $joinType not supported")
     }
 
     val indexName = ctx.getIndexInfo(node.GetNodeId()).indexColumnName
@@ -56,7 +56,7 @@ object ConcatJoinPlan {
           leftDf.join(rightDf, leftDf(indexName) === rightDf(indexName), "left")
         }
       }
-      case _ => throw new FesqlException("Unsupported concat join join type: " + joinType)
+      case _ => throw new HybridSEException("Unsupported concat join join type: " + joinType)
     }
 
     val nodeIndexType = ctx.getIndexInfo(node.GetNodeId()).nodeIndexType
@@ -71,7 +71,7 @@ object ConcatJoinPlan {
         logger.info("Drop the index column %s for internal concat join node from left dataframe".format(indexName))
         resultDf.drop(leftDf(indexName))
       }
-      case _ => throw new FesqlException("Handle unsupported concat join node index type: %s".format(nodeIndexType))
+      case _ => throw new HybridSEException("Handle unsupported concat join node index type: %s".format(nodeIndexType))
     }
 
     SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)

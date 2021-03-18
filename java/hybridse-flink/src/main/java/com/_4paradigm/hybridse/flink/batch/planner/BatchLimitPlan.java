@@ -16,7 +16,7 @@
 
 package com._4paradigm.hybridse.flink.batch.planner;
 
-import com._4paradigm.hybridse.common.FesqlException;
+import com._4paradigm.hybridse.common.HybridSEException;
 import com._4paradigm.hybridse.flink.common.planner.GeneralPlanContext;
 import com._4paradigm.hybridse.vm.PhysicalLimitNode;
 import org.apache.flink.api.common.functions.FilterFunction;
@@ -33,7 +33,7 @@ public class BatchLimitPlan {
 
     private static int currentCnt = 0;
 
-    public static Table gen(GeneralPlanContext planContext, PhysicalLimitNode node, Table childTable) throws FesqlException {
+    public static Table gen(GeneralPlanContext planContext, PhysicalLimitNode node, Table childTable) throws HybridSEException {
 
         DataSet<Row> inputDataset = planContext.getBatchTableEnvironment().toDataSet(childTable, Row.class);
         final int limitCnt = node.GetLimitCnt();

@@ -16,7 +16,7 @@
 
 package com._4paradigm.hybridse.spark.nodes
 
-import com._4paradigm.hybridse.common.FesqlException
+import com._4paradigm.hybridse.common.HybridSEException
 import com._4paradigm.hybridse.spark.{PlanContext, SparkInstance}
 import com._4paradigm.hybridse.vm.PhysicalDataProviderNode
 
@@ -26,7 +26,7 @@ object DataProviderPlan {
   def gen(ctx: PlanContext, node: PhysicalDataProviderNode, inputs: Seq[SparkInstance]): SparkInstance = {
     val tableName = node.GetName()
     val df = ctx.getDataFrame(tableName).getOrElse {
-      throw new FesqlException(s"Input table $tableName not found")
+      throw new HybridSEException(s"Input table $tableName not found")
     }
 
     // If limit has been set

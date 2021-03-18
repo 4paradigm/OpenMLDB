@@ -18,7 +18,7 @@ package com._4paradigm.hybridse.common;
 
 import com._4paradigm.hybridse.FeSqlLibrary;
 import com._4paradigm.hybridse.vm.Engine;
-import com._4paradigm.hybridse.vm.FeSQLJITWrapper;
+import com._4paradigm.hybridse.vm.HybridSEJITWrapper;
 import com._4paradigm.hybridse.vm.JITOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,17 +39,17 @@ public class JITManager {
     }
 
     // One jit currently only take one llvm module, since symbol may duplicate
-    static private Map<String, FeSQLJITWrapper> jits = new HashMap<>();
+    static private Map<String, HybridSEJITWrapper> jits = new HashMap<>();
     static private Set<String> initializedModuleTags = new HashSet<>();
 
-    synchronized static public FeSQLJITWrapper getJIT(String tag) {
+    synchronized static public HybridSEJITWrapper getJIT(String tag) {
         if (! jits.containsKey(tag)) {
-            FeSQLJITWrapper jit = FeSQLJITWrapper.Create(getJITOptions());
+            HybridSEJITWrapper jit = HybridSEJITWrapper.Create(getJITOptions());
             if (jit == null) {
                 throw new RuntimeException("Fail to create native jit");
             }
             jit.Init();
-            FeSQLJITWrapper.InitJITSymbols(jit);
+            HybridSEJITWrapper.InitJITSymbols(jit);
             jits.put(tag, jit);
         }
         return jits.get(tag);
@@ -95,7 +95,7 @@ public class JITManager {
     }
 
     synchronized static private void initModule(String tag, ByteBuffer moduleBuffer) {
-        FeSQLJITWrapper jit = getJIT(tag);
+        HybridSEJITWrapper jit = getJIT(tag);
         if (! moduleBuffer.isDirect()) {
             throw new RuntimeException("JIT must use direct buffer");
         }
@@ -119,17 +119,17 @@ public class JITManager {
 
     synchronized static public void removeModule(String tag) {
         initializedModuleTags.remove(tag);
-        FeSQLJITWrapper jit = jits.remove(tag);
+        HybridSEJITWrapper jit = jits.remove(tag);
         if (jit != null) {
-            FeSQLJITWrapper.DeleteJIT(jit);
+            HybridSEJITWrapper.DeleteJIT(jit);
             jit.delete();
         }
     }
 
     synchronized static public void clear() {
         initializedModuleTags.clear();
-        for (Map.Entry<String, FeSQLJITWrapper> entry : jits.entrySet()) {
-            FeSQLJITWrapper.DeleteJIT(entry.getValue());
+        for (Map.Entry<String, HybridSEJITWrapper> entry : jits.entrySet()) {
+            HybridSEJITWrapper.DeleteJIT(entry.getValue());
             entry.getValue().delete();
         }
         jits.clear();

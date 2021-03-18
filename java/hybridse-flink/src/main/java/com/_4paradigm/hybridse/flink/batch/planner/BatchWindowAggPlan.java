@@ -16,7 +16,7 @@
 
 package com._4paradigm.hybridse.flink.batch.planner;
 
-import com._4paradigm.hybridse.common.FesqlException;
+import com._4paradigm.hybridse.common.HybridSEException;
 import com._4paradigm.hybridse.common.JITManager;
 import com._4paradigm.hybridse.common.SerializableByteBuffer;
 import com._4paradigm.hybridse.flink.common.*;
@@ -47,7 +47,7 @@ public class BatchWindowAggPlan {
 
     private static final Logger logger = LoggerFactory.getLogger(BatchWindowAggPlan.class);
 
-    public static Table gen(GeneralPlanContext planContext, PhysicalWindowAggrerationNode node, Table childTable) throws FesqlException {
+    public static Table gen(GeneralPlanContext planContext, PhysicalWindowAggrerationNode node, Table childTable) throws HybridSEException {
 
         DataSet<Row> inputDataset = planContext.getBatchTableEnvironment().toDataSet(childTable, Row.class);
 
@@ -76,7 +76,7 @@ public class BatchWindowAggPlan {
         OrderByNode orderByNode = windowOp.sort().orders();
         ExprListNode orderbyExprListNode = orderByNode.order_by();
         if (orderbyExprListNode.GetChildNum() > 1) {
-            throw new FesqlException("Multiple window order is not supported yet");
+            throw new HybridSEException("Multiple window order is not supported yet");
         }
         ExprNode orderbyExprNode = orderbyExprListNode.GetChild(0);
         int orderbyKeyIndex = FesqlUtil.resolveColumnIndex(orderbyExprNode, node.GetProducer(0));
@@ -130,7 +130,7 @@ public class BatchWindowAggPlan {
                 // Init non-serializable objects
                 ByteBuffer moduleByteBuffer = moduleBuffer.getBuffer();
                 JITManager.initJITModule(moduleTag, moduleByteBuffer);
-                FeSQLJITWrapper jit = JITManager.getJIT(moduleTag);
+                HybridSEJITWrapper jit = JITManager.getJIT(moduleTag);
                 functionPointer = jit.FindFunction(functionName);
                 inputCodec = new FesqlFlinkCodec(inputSchemaLists);
                 outputCodec = new FesqlFlinkCodec(outputSchemaLists);

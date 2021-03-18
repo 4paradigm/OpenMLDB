@@ -16,7 +16,7 @@
 
 package com._4paradigm.hybridse.spark.nodes
 
-import com._4paradigm.hybridse.common.UnsupportedFesqlException
+import com._4paradigm.hybridse.common.UnsupportedHybridSEException
 import com._4paradigm.hybridse.spark._
 import com._4paradigm.hybridse.spark.utils.{FesqlUtil, SparkColumnUtil}
 import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalSimpleProjectNode}
@@ -111,7 +111,7 @@ object SimpleProjectPlan {
           childCol, childType, castType)
         castColumn -> castType
 
-      case _ => throw new UnsupportedFesqlException(
+      case _ => throw new UnsupportedHybridSEException(
         s"Simple project do not support expression type ${expr.GetExprType}")
     }
   }

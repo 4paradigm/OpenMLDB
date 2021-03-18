@@ -16,7 +16,7 @@
 
 package com._4paradigm.hybridse.flink.stream.planner;
 
-import com._4paradigm.hybridse.common.FesqlException;
+import com._4paradigm.hybridse.common.HybridSEException;
 import com._4paradigm.hybridse.common.JITManager;
 import com._4paradigm.hybridse.common.SerializableByteBuffer;
 import com._4paradigm.hybridse.flink.common.*;
@@ -58,7 +58,7 @@ public class StreamWindowAggPlan {
 
     private static final Logger logger = LoggerFactory.getLogger(StreamWindowAggPlan.class);
 
-    public static Table gen(GeneralPlanContext planContext, PhysicalWindowAggrerationNode node, Table childTable) throws FesqlException {
+    public static Table gen(GeneralPlanContext planContext, PhysicalWindowAggrerationNode node, Table childTable) throws HybridSEException {
 
         DataStream<Row> inputDatastream = planContext.getStreamTableEnvironment().toAppendStream(childTable, Row.class);
 
@@ -87,13 +87,13 @@ public class StreamWindowAggPlan {
         OrderByNode orderByNode = windowOp.sort().orders();
         ExprListNode orderbyExprListNode = orderByNode.order_by();
         if (orderbyExprListNode.GetChildNum() > 1) {
-            throw new FesqlException("Multiple window order is not supported yet");
+            throw new HybridSEException("Multiple window order is not supported yet");
         }
         ExprNode orderbyExprNode = orderbyExprListNode.GetChild(0);
         int orderbyKeyIndex = FesqlUtil.resolveColumnIndex(orderbyExprNode, node.GetProducer(0));
         // TODO: Use timer to trigger instead of sorting, do not support descending now
         if (!orderByNode.is_asc()) {
-            throw new FesqlException("Do not support desceding for over window");
+            throw new HybridSEException("Do not support desceding for over window");
         }
 
         FrameType frameType = node.window().range().frame().frame_type();
@@ -151,7 +151,7 @@ public class StreamWindowAggPlan {
                     // Init non-serializable objects
                     ByteBuffer moduleByteBuffer = moduleBuffer.getBuffer();
                     JITManager.initJITModule(moduleTag, moduleByteBuffer);
-                    FeSQLJITWrapper jit = JITManager.getJIT(moduleTag);
+                    HybridSEJITWrapper jit = JITManager.getJIT(moduleTag);
                     functionPointer = jit.FindFunction(functionName);
                     inputCodec = new FesqlFlinkCodec(inputSchemaLists);
                     outputCodec = new FesqlFlinkCodec(outputSchemaLists);
@@ -234,7 +234,7 @@ public class StreamWindowAggPlan {
                     // Init non-serializable objects
                     ByteBuffer moduleByteBuffer = moduleBuffer.getBuffer();
                     JITManager.initJITModule(moduleTag, moduleByteBuffer);
-                    FeSQLJITWrapper jit = JITManager.getJIT(moduleTag);
+                    HybridSEJITWrapper jit = JITManager.getJIT(moduleTag);
                     functionPointer = jit.FindFunction(functionName);
                     inputCodec = new FesqlFlinkCodec(inputSchemaLists);
                     outputCodec = new FesqlFlinkCodec(outputSchemaLists);

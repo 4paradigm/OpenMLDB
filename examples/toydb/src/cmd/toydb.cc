@@ -29,8 +29,8 @@
 #include "base/fe_strings.h"
 #include "brpc/server.h"
 #include "dbms/dbms_server_impl.h"
-#include "hybridse_version.h"  //NOLINT
 #include "glog/logging.h"
+#include "hybridse_version.h"  //NOLINT
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "sdk/dbms_sdk.h"
@@ -89,8 +89,8 @@ void StartTablet(int argc, char *argv[]) {
     }
 
     std::ostringstream oss;
-    oss << FESQL_VERSION_MAJOR << "." << FESQL_VERSION_MEDIUM << "."
-        << FESQL_VERSION_MINOR << "." << FESQL_VERSION_BUG;
+    oss << HYBRIDSE_VERSION_MAJOR << "." << HYBRIDSE_VERSION_MINOR << "."
+        << HYBRIDSE_VERSION_BUG;
     DLOG(INFO) << "start tablet on port " << FLAGS_toydb_port
                << " with version " << oss.str();
     server.set_version(oss.str());
@@ -116,8 +116,8 @@ void StartDBMS(char *argv[]) {
     }
 
     std::ostringstream oss;
-    oss << FESQL_VERSION_MAJOR << "." << FESQL_VERSION_MEDIUM << "."
-        << FESQL_VERSION_MINOR << "." << FESQL_VERSION_BUG;
+    oss << HYBRIDSE_VERSION_MAJOR << "." << HYBRIDSE_VERSION_MINOR << "."
+        << HYBRIDSE_VERSION_BUG;
     DLOG(INFO) << "start dbms on port " << FLAGS_toydb_port << " with version "
                << oss.str();
     server.set_version(oss.str());
@@ -126,9 +126,9 @@ void StartDBMS(char *argv[]) {
 
 void StartClient(char *argv[]) {
     SetupLogging(argv);
-    std::cout << "Welcome to HybridSE " << FESQL_VERSION_MAJOR << "."
-              << FESQL_VERSION_MEDIUM << "." << FESQL_VERSION_MINOR << "."
-              << FESQL_VERSION_BUG << std::endl;
+    std::cout << "Welcome to HybridSE " << HYBRIDSE_VERSION_MAJOR << "."
+              << HYBRIDSE_VERSION_MINOR << "." << HYBRIDSE_VERSION_BUG
+              << std::endl;
     cmd_client_db.name = "";
     std::string log = "hybridse";
     std::string display_prefix = ">";

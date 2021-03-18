@@ -21,7 +21,7 @@ import java.nio.ByteBuffer
 import com._4paradigm.hybridse.spark.{FeSQLConfig, SparkRowCodec}
 import com._4paradigm.hybridse.spark.nodes.WindowAggPlan.WindowAggConfig
 import com._4paradigm.hybridse.spark.utils.{FesqlUtil, SparkRowUtil}
-import com._4paradigm.hybridse.vm.{CoreAPI, FeSQLJITWrapper, WindowInterface}
+import com._4paradigm.hybridse.vm.{CoreAPI, HybridSEJITWrapper, WindowInterface}
 import org.apache.commons.lang3.StringUtils
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.InternalRow
@@ -37,7 +37,7 @@ import scala.collection.mutable
   */
 class WindowComputer(sqlConfig: FeSQLConfig,
                      config: WindowAggConfig,
-                     jit: FeSQLJITWrapper,
+                     jit: HybridSEJITWrapper,
                      keepIndexColumn: Boolean) {
 
   private val logger = LoggerFactory.getLogger(this.getClass)

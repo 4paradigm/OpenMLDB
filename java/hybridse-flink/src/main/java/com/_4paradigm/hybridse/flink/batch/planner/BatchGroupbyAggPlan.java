@@ -16,7 +16,7 @@
 
 package com._4paradigm.hybridse.flink.batch.planner;
 
-import com._4paradigm.hybridse.common.FesqlException;
+import com._4paradigm.hybridse.common.HybridSEException;
 import com._4paradigm.hybridse.common.JITManager;
 import com._4paradigm.hybridse.common.SerializableByteBuffer;
 import com._4paradigm.hybridse.flink.common.*;
@@ -43,7 +43,7 @@ public class BatchGroupbyAggPlan {
 
     private static final Logger logger = LoggerFactory.getLogger(BatchGroupbyAggPlan.class);
 
-    public static Table gen(GeneralPlanContext planContext, PhysicalGroupAggrerationNode node, Table childTable) throws FesqlException {
+    public static Table gen(GeneralPlanContext planContext, PhysicalGroupAggrerationNode node, Table childTable) throws HybridSEException {
 
         DataSet<Row> inputDataset = planContext.getBatchTableEnvironment().toDataSet(childTable, Row.class);
 
@@ -89,7 +89,7 @@ public class BatchGroupbyAggPlan {
                 // Init non-serializable objects
                 ByteBuffer moduleByteBuffer = moduleBuffer.getBuffer();
                 JITManager.initJITModule(moduleTag, moduleByteBuffer);
-                FeSQLJITWrapper jit = JITManager.getJIT(moduleTag);
+                HybridSEJITWrapper jit = JITManager.getJIT(moduleTag);
                 functionPointer = jit.FindFunction(functionName);
                 inputCodec = new FesqlFlinkCodec(inputSchemaLists);
                 outputCodec = new FesqlFlinkCodec(outputSchemaLists);

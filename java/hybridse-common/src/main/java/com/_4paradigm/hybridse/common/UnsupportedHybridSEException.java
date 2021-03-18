@@ -16,17 +16,17 @@
 
 package com._4paradigm.hybridse.common;
 
-public class FesqlException extends Exception {
+public class UnsupportedHybridSEException extends Exception {
 
     private String message;
     private Throwable cause;
 
-    public FesqlException(String message) {
+    public UnsupportedHybridSEException(String message) {
         this.message = message;
         this.cause = null;
     }
 
-    public FesqlException(String message, Throwable cause) {
+    public UnsupportedHybridSEException(String message, Throwable cause) {
         this.message = message;
         this.cause = cause;
     }

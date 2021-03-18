@@ -16,7 +16,7 @@
 
 package com._4paradigm.hybridse.flink.common.planner;
 
-import com._4paradigm.hybridse.common.FesqlException;
+import com._4paradigm.hybridse.common.HybridSEException;
 import com._4paradigm.hybridse.flink.common.FesqlUtil;
 import com._4paradigm.hybridse.node.ConstNode;
 import com._4paradigm.hybridse.node.ExprNode;
@@ -38,7 +38,7 @@ import static org.apache.flink.table.api.Expressions.lit;
 
 public class GeneralSimpleProjectPlan {
 
-    public static Table gen(GeneralPlanContext planContext, PhysicalSimpleProjectNode node, Table childTable) throws FesqlException {
+    public static Table gen(GeneralPlanContext planContext, PhysicalSimpleProjectNode node, Table childTable) throws HybridSEException {
 
         ColumnProjects projects = node.project();
 
@@ -83,7 +83,7 @@ public class GeneralSimpleProjectPlan {
                 } else if (columnType == kVarchar) {
                     selectColumnList.add(lit(constNode.GetStr()).cast(DataTypes.STRING()).as(outputColName));
                 } else {
-                    throw new FesqlException(String.format("FESQL type %s is not support as constant column", columnType));
+                    throw new HybridSEException(String.format("FESQL type %s is not support as constant column", columnType));
                 }
             }
         }

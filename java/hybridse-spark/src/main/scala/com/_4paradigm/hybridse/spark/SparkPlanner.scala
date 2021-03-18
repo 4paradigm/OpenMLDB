@@ -18,7 +18,7 @@ package com._4paradigm.hybridse.spark
 
 import com._4paradigm.hybridse.FeSqlLibrary
 import com._4paradigm.hybridse.`type`.TypeOuterClass._
-import com._4paradigm.hybridse.common.{FesqlException, SQLEngine, UnsupportedFesqlException}
+import com._4paradigm.hybridse.common.{HybridSEException, SQLEngine, UnsupportedHybridSEException}
 import com._4paradigm.hybridse.node.JoinType
 import com._4paradigm.hybridse.spark.nodes._
 import com._4paradigm.hybridse.spark.utils.{FesqlUtil, GraphvizUtil, NodeIndexInfo, NodeIndexType}
@@ -205,7 +205,7 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
           case ProjectType.kGroupAggregation =>
             GroupByAggregationPlan.gen(ctx, PhysicalGroupAggrerationNode.CastFrom(projectNode), children.head)
 
-          case _ => throw new UnsupportedFesqlException(
+          case _ => throw new UnsupportedHybridSEException(
             s"Project type ${projectNode.getProject_type_} not supported")
         }
       case PhysicalOpType.kPhysicalOpGroupBy =>
@@ -219,7 +219,7 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
       //case PhysicalOpType.kPhysicalOpFilter =>
       //  FilterPlan.gen(ctx, PhysicalFilterNode.CastFrom(root), children.head)
       case _ =>
-        throw new UnsupportedFesqlException(s"Plan type $opType not supported")
+        throw new UnsupportedHybridSEException(s"Plan type $opType not supported")
     }
 
     // Set the output to context cache

@@ -18,10 +18,8 @@ package com._4paradigm.hybridse.common;
 import com._4paradigm.hybridse.FeSqlLibrary;
 
 import com._4paradigm.hybridse.node.ColumnRefNode;
-import com._4paradigm.hybridse.node.ExprListNode;
 import com._4paradigm.hybridse.node.ExprNode;
 import com._4paradigm.hybridse.node.ExprType;
-import com._4paradigm.hybridse.tablet.Tablet;
 import com._4paradigm.hybridse.type.TypeOuterClass;
 import com._4paradigm.hybridse.vm.*;
 import com.google.gson.Gson;
@@ -45,16 +43,16 @@ public class DDLEngine {
 
     public static String SQLTableName = "sql_table";
 
-    public static int resolveColumnIndex(ExprNode expr, PhysicalOpNode planNode) throws FesqlException {
+    public static int resolveColumnIndex(ExprNode expr, PhysicalOpNode planNode) throws HybridSEException {
         if (expr.getExpr_type_() == ExprType.kExprColumnRef) {
             int index = CoreAPI.ResolveColumnIndex(planNode, ColumnRefNode.CastFrom(expr));
             if (index >= 0 && index <= planNode.GetOutputSchema().size()) {
                 return index;
             } else {
-                throw new FesqlException("Fail to resolve {} with index = {}".format(expr.GetExprString(), index));
+                throw new HybridSEException("Fail to resolve {} with index = {}".format(expr.GetExprString(), index));
             }
         }
-        throw new FesqlException("Expr {} not supported".format(expr.GetExprString()));
+        throw new HybridSEException("Expr {} not supported".format(expr.GetExprString()));
     }
 
     public static String genDDL(String sql, String schema, int replicanum, int partitionnum) throws Exception {
@@ -84,7 +82,7 @@ public class DDLEngine {
             }
             String res = sb.toString();
             return res;
-        } catch (UnsupportedFesqlException | FesqlException e) {
+        } catch (UnsupportedHybridSEException | HybridSEException e) {
             e.printStackTrace();
         }
         throw new Exception("failed to gen ddl for " + schema);
@@ -121,7 +119,7 @@ public class DDLEngine {
             }
             String res = sb.toString();
             return res;
-        } catch (UnsupportedFesqlException | FesqlException e) {
+        } catch (UnsupportedHybridSEException | HybridSEException e) {
             e.printStackTrace();
         }
         throw new Exception("failed to gen ddl");
@@ -234,7 +232,7 @@ public class DDLEngine {
         logger.info("begin to pares lastjoin op");
     }
 
-    public static Map<String, RtidbTable> parseRtidbIndex(List<PhysicalOpNode> nodes, Map<String, TypeOuterClass.TableDef> tableDefMap) throws FesqlException {
+    public static Map<String, RtidbTable> parseRtidbIndex(List<PhysicalOpNode> nodes, Map<String, TypeOuterClass.TableDef> tableDefMap) throws HybridSEException {
         Map<String, RtidbTable> rtidbTables = new HashMap<>();
         Map<String, String> table2OrgTable = new HashMap<>();
         for (PhysicalOpNode node : nodes) {
@@ -427,7 +425,7 @@ public class DDLEngine {
         RequestEngine engine = null;
         try {
             engine = new RequestEngine(sql, db.build());
-        } catch (UnsupportedFesqlException e) {
+        } catch (UnsupportedHybridSEException e) {
             e.printStackTrace();
         }
         PhysicalOpNode plan = engine.getPlan();
@@ -443,7 +441,7 @@ public class DDLEngine {
         RequestEngine engine = null;
         try {
             engine = new RequestEngine(sql, db);
-        } catch (UnsupportedFesqlException e) {
+        } catch (UnsupportedHybridSEException e) {
             e.printStackTrace();
         }
         PhysicalOpNode plan = engine.getPlan();

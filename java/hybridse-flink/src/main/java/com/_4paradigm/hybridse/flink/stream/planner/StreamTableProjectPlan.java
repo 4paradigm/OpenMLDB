@@ -16,14 +16,14 @@
 
 package com._4paradigm.hybridse.flink.stream.planner;
 
-import com._4paradigm.hybridse.common.FesqlException;
+import com._4paradigm.hybridse.common.HybridSEException;
 import com._4paradigm.hybridse.common.JITManager;
 import com._4paradigm.hybridse.common.SerializableByteBuffer;
 import com._4paradigm.hybridse.flink.common.*;
 import com._4paradigm.hybridse.flink.common.planner.GeneralPlanContext;
 import com._4paradigm.hybridse.type.TypeOuterClass;
 import com._4paradigm.hybridse.vm.CoreAPI;
-import com._4paradigm.hybridse.vm.FeSQLJITWrapper;
+import com._4paradigm.hybridse.vm.HybridSEJITWrapper;
 import com._4paradigm.hybridse.vm.PhysicalTableProjectNode;
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
@@ -41,7 +41,7 @@ public class StreamTableProjectPlan {
 
     private static final Logger logger = LoggerFactory.getLogger(StreamTableProjectPlan.class);
 
-    public static Table gen(GeneralPlanContext planContext, PhysicalTableProjectNode node, Table childTable) throws FesqlException {
+    public static Table gen(GeneralPlanContext planContext, PhysicalTableProjectNode node, Table childTable) throws HybridSEException {
 
         DataStream<Row> inputDatastream = planContext.getStreamTableEnvironment().toAppendStream(childTable, Row.class);
 
@@ -66,7 +66,7 @@ public class StreamTableProjectPlan {
                 super.open(parameters);
                 ByteBuffer moduleByteBuffer = moduleBuffer.getBuffer();
                 JITManager.initJITModule(moduleTag, moduleByteBuffer);
-                FeSQLJITWrapper jit = JITManager.getJIT(moduleTag);
+                HybridSEJITWrapper jit = JITManager.getJIT(moduleTag);
                 functionPointer = jit.FindFunction(functionName);
                 inputCodec = new FesqlFlinkCodec(inputSchemaLists);
                 outputCodec = new FesqlFlinkCodec(outputSchemaLists);

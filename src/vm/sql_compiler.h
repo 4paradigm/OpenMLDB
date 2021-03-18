@@ -87,7 +87,7 @@ const std::string FindHybridSEDirPath();
 class SQLCompileInfo : public CompileInfo {
  public:
     SQLCompileInfo() : sql_ctx() {}
-    ~SQLCompileInfo() {}
+    virtual ~SQLCompileInfo() {}
     hybridse::vm::SQLContext& get_sql_context() { return this->sql_ctx; }
 
     bool GetIRBuffer(const base::RawBuffer& buf) {

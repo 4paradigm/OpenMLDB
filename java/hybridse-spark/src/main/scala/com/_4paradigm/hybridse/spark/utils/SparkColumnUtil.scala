@@ -16,7 +16,7 @@
 
 package com._4paradigm.hybridse.spark.utils
 
-import com._4paradigm.hybridse.common.{FesqlException, UnsupportedFesqlException}
+import com._4paradigm.hybridse.common.{HybridSEException, UnsupportedHybridSEException}
 import com._4paradigm.hybridse.node.{ColumnRefNode, ConstNode, ExprNode, ExprType, DataType => FesqlDataType}
 import com._4paradigm.hybridse.spark.PlanContext
 import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalJoinNode, PhysicalOpNode}
@@ -37,11 +37,11 @@ object SparkColumnUtil {
       case ExprType.kExprColumnRef | ExprType.kExprColumnId =>
         val index = CoreAPI.ResolveColumnIndex(planNode, expr)
         if (index < 0) {
-          throw new FesqlException(s"Can not resolve column of left table: ${expr.GetExprString()}")
+          throw new HybridSEException(s"Can not resolve column of left table: ${expr.GetExprString()}")
         }
         getColumnFromIndex(left, index)
 
-      case _ => throw new FesqlException(
+      case _ => throw new HybridSEException(
         s"Expr ${expr.GetExprString()} not supported")
     }
   }
@@ -55,11 +55,11 @@ object SparkColumnUtil {
         val leftSize = planNode.GetProducer(0).GetOutputSchema().size()
         val index = CoreAPI.ResolveColumnIndex(planNode, expr)
         if (index < leftSize) {
-          throw new FesqlException("Can not resolve column of left table")
+          throw new HybridSEException("Can not resolve column of left table")
         }
         getColumnFromIndex(right, index - leftSize)
 
-      case _ => throw new FesqlException(
+      case _ => throw new HybridSEException(
         s"Expr ${expr.GetExprString()} not supported")
     }
   }
@@ -70,13 +70,13 @@ object SparkColumnUtil {
       case ExprType.kExprColumnRef | ExprType.kExprColumnId =>
         val index = CoreAPI.ResolveColumnIndex(planNode, expr)
         if (index < 0) {
-          throw new FesqlException(s"Fail to resolve ${expr.GetExprString()}, get index: ${index}")
+          throw new HybridSEException(s"Fail to resolve ${expr.GetExprString()}, get index: ${index}")
         } else if (index >= planNode.GetOutputSchema().size()) {
-          throw new FesqlException(s"Column index out of bounds: $index")
+          throw new HybridSEException(s"Column index out of bounds: $index")
         }
         index
 
-      case _ => throw new FesqlException(
+      case _ => throw new HybridSEException(
         s"Expr ${expr.GetExprString()} not supported")
     }
   }
@@ -87,9 +87,9 @@ object SparkColumnUtil {
       case ExprType.kExprColumnRef | ExprType.kExprColumnId=>
         val index = CoreAPI.ResolveColumnIndex(planNode, expr)
         if (index < 0) {
-          throw new FesqlException(s"Fail to resolve ${expr.GetExprString()}")
+          throw new HybridSEException(s"Fail to resolve ${expr.GetExprString()}")
         } else if (index >= planNode.GetOutputSchema().size()) {
-          throw new FesqlException(s"Column index out of bounds: $index")
+          throw new HybridSEException(s"Column index out of bounds: $index")
         }
         getColumnFromIndex(inputDf, index)
 
@@ -99,10 +99,10 @@ object SparkColumnUtil {
           case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 => lit(constNode.GetAsInt64())
           case FesqlDataType.kFloat | FesqlDataType.kDouble => lit(constNode.GetAsDouble())
           case FesqlDataType.kVarchar => lit(constNode.GetAsString())
-          case _ => throw new UnsupportedFesqlException(s"Fail to support const node ${constNode.GetExprString()}")
+          case _ => throw new UnsupportedHybridSEException(s"Fail to support const node ${constNode.GetExprString()}")
         }
 
-      case _ => throw new UnsupportedFesqlException(
+      case _ => throw new UnsupportedHybridSEException(
         s"Fail to resolve expr type: ${expr.getExpr_type_}, expr node: ${expr.GetExprString()}")
     }
 

@@ -35,11 +35,11 @@ public class SQLEngine implements AutoCloseable {
     private CompileInfo compileInfo;
     private PhysicalOpNode plan;
 
-    public SQLEngine(String sql, TypeOuterClass.Database database) throws UnsupportedFesqlException {
+    public SQLEngine(String sql, TypeOuterClass.Database database) throws UnsupportedHybridSEException {
         // Create the default engine options
         this.initilize(sql, database, createDefaultEngineOptions());
     }
-    public SQLEngine(String sql, TypeOuterClass.Database database, EngineOptions engineOptions) throws UnsupportedFesqlException {
+    public SQLEngine(String sql, TypeOuterClass.Database database, EngineOptions engineOptions) throws UnsupportedHybridSEException {
         this.initilize(sql, database, engineOptions);
     }
 
@@ -51,7 +51,7 @@ public class SQLEngine implements AutoCloseable {
         return engineOptions;
     }
 
-    public void initilize(String sql, TypeOuterClass.Database database, EngineOptions engineOptions) throws UnsupportedFesqlException {
+    public void initilize(String sql, TypeOuterClass.Database database, EngineOptions engineOptions) throws UnsupportedHybridSEException {
         options = engineOptions;
         catalog = new SimpleCatalog();
         session = new BatchRunSession();
@@ -61,7 +61,7 @@ public class SQLEngine implements AutoCloseable {
         BaseStatus status = new BaseStatus();
         boolean ok = engine.Get(sql, database.getName(), session, status);
         if (! (ok && status.getMsg().equals("ok"))) {
-            throw new UnsupportedFesqlException("SQL parse error: " + status.getMsg() + "\n" + status.getTrace());
+            throw new UnsupportedHybridSEException("SQL parse error: " + status.getMsg() + "\n" + status.getTrace());
         }
         status.delete();
         compileInfo = session.GetCompileInfo();

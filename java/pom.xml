@@ -5,10 +5,9 @@
 
     <groupId>com._4paradigm.hybridse</groupId>
     <artifactId>hybridse-sdk</artifactId>
-    <version>0.0.4-RELEASE</version>
+    <version>0.1.0-SNAPSHOT</version>
     <modules>
            <module>hybridse-common</module>
-           <!-- <module>hybridse-jdbc</module> -->
            <module>hybridse-native</module>
            <module>hybridse-proto</module>
            <module>hybridse-spark</module>
@@ -23,6 +22,14 @@
     <build>
         <pluginManagement>
             <plugins>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>versions-maven-plugin</artifactId>
+                    <version>2.3</version>
+                    <configuration>
+                        <generateBackupPoms>false</generateBackupPoms>
+                    </configuration>
+                </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>

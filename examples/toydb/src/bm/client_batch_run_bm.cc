@@ -15,7 +15,7 @@
  */
 
 #include "benchmark/benchmark.h"
-#include "bm/hybridse_client_bm_case.h"
+#include "bm/client_bm_case.h"
 #include "glog/logging.h"
 #include "llvm/Support/TargetSelect.h"
 

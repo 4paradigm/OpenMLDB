@@ -102,6 +102,7 @@ class RowBuilder {
 
 class RowView {
  public:
+    RowView();
     RowView(const hybridse::codec::Schema& schema, const int8_t* row,
             uint32_t size);
     explicit RowView(const hybridse::codec::Schema& schema);

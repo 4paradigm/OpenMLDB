@@ -18,7 +18,7 @@ package com._4paradigm.hybridse.flink.common;
 
 import com._4paradigm.hybridse.codec.RowBuilder;
 import com._4paradigm.hybridse.codec.RowView;
-import com._4paradigm.hybridse.common.FesqlException;
+import com._4paradigm.hybridse.common.HybridSEException;
 import com._4paradigm.hybridse.type.TypeOuterClass;
 import com._4paradigm.hybridse.vm.CoreAPI;
 import org.apache.flink.types.Row;
@@ -83,7 +83,7 @@ public class FesqlFlinkCodec {
     /**
      * Encode Flink row to FESQL row.
      */
-    public com._4paradigm.hybridse.codec.Row encodeFlinkRow(Row flinkRow) throws FesqlException {
+    public com._4paradigm.hybridse.codec.Row encodeFlinkRow(Row flinkRow) throws HybridSEException {
         com._4paradigm.hybridse.codec.Row fesqlRow = null;
 
         List<Integer> sliceSizes = getFesqlRowSliceSizes(flinkRow);
@@ -106,7 +106,7 @@ public class FesqlFlinkCodec {
         return fesqlRow;
     }
 
-    public Row decodeFesqlRow(com._4paradigm.hybridse.codec.Row fesqlRow) throws FesqlException {
+    public Row decodeFesqlRow(com._4paradigm.hybridse.codec.Row fesqlRow) throws HybridSEException {
 
         int totalFieldNum = 0;
         for (int i=0; i < this.sliceNum; ++i) {
@@ -120,7 +120,7 @@ public class FesqlFlinkCodec {
             List<TypeOuterClass.ColumnDef> columnDefs = this.columnDefLists.get(i);
 
             if (!rowView.Reset(fesqlRow.buf(i), fesqlRow.size(i))) {
-                throw new FesqlException("Fail to setup row builder, maybe row buf is corrupted");
+                throw new HybridSEException("Fail to setup row builder, maybe row buf is corrupted");
             }
 
             int fieldNum = columnDefs.size();
@@ -165,7 +165,7 @@ public class FesqlFlinkCodec {
                                 rowView.GetMonthUnsafe(days), rowView.GetDayUnsafe(days));
                         flinkRow.setField(totalFieldIndex, value);
                     } else {
-                        throw new FesqlException(String.format("Fail to decode row with type %s", columnType));
+                        throw new HybridSEException(String.format("Fail to decode row with type %s", columnType));
                     }
                 }
 
@@ -200,7 +200,7 @@ public class FesqlFlinkCodec {
         return sliceSizes;
     }
 
-    public void encodeSingleFlinkRow(Row flinkRow, long outputBufPointer, int outputSize, int sliceIndex) throws FesqlException {
+    public void encodeSingleFlinkRow(Row flinkRow, long outputBufPointer, int outputSize, int sliceIndex) throws HybridSEException {
         RowBuilder rowBuilder = this.rowBuilders.get(sliceIndex);
         rowBuilder.SetBuffer(outputBufPointer, outputSize);
 
@@ -254,7 +254,7 @@ public class FesqlFlinkCodec {
                     Date dateValue = (Date) value;
                     rowBuilder.AppendDate(dateValue.getYear()+1900, dateValue.getMonth(), dateValue.getDate());
                 } else {
-                    throw new FesqlException(String.format("Fail to encode row with type %s", columnType));
+                    throw new HybridSEException(String.format("Fail to encode row with type %s", columnType));
                 }
             }
 

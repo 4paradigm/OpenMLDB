@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import com._4paradigm.hybridse.common.FesqlException;
+import com._4paradigm.hybridse.common.HybridSEException;
 import com._4paradigm.hybridse.node.ColumnRefNode;
 import com._4paradigm.hybridse.node.ExprNode;
 import com._4paradigm.hybridse.node.ExprType;
@@ -44,7 +44,7 @@ public class FesqlUtil {
     /**
      * Build FESQL datatype with Flink datatype.
      */
-    public static Type getFesqlType(DataType flinkDataType) throws FesqlException {
+    public static Type getFesqlType(DataType flinkDataType) throws HybridSEException {
         LogicalType logicalType = flinkDataType.getLogicalType();
         if (logicalType instanceof IntType) {
             // Notice that no short or long in flink logical type
@@ -62,14 +62,14 @@ public class FesqlUtil {
         } else if (logicalType instanceof TimestampType) {
             return Type.kTimestamp;
         } else {
-            throw new FesqlException(String.format("Do not support Flink datatype %s", flinkDataType));
+            throw new HybridSEException(String.format("Do not support Flink datatype %s", flinkDataType));
         }
     }
 
     /**
      * Build FESQL table def with Flink table schema.
      */
-    public static TypeOuterClass.TableDef buildTableDef(String tableName, TableSchema tableSchema) throws FesqlException {
+    public static TypeOuterClass.TableDef buildTableDef(String tableName, TableSchema tableSchema) throws HybridSEException {
 
         TypeOuterClass.TableDef.Builder tableBuilder = TypeOuterClass.TableDef.newBuilder();
         tableBuilder.setName(tableName);
@@ -89,7 +89,7 @@ public class FesqlUtil {
     /**
      * Build FESQL database with map of table name and schema.
      */
-    public static TypeOuterClass.Database buildDatabase(String dbName, Map<String, TableSchema> tableSchemaMap) throws FesqlException {
+    public static TypeOuterClass.Database buildDatabase(String dbName, Map<String, TableSchema> tableSchemaMap) throws HybridSEException {
 
         TypeOuterClass.Database.Builder builder = TypeOuterClass.Database.newBuilder();
         builder.setName(dbName);
@@ -115,7 +115,7 @@ public class FesqlUtil {
         return outputLists;
     }
 
-    public static RowTypeInfo generateRowTypeInfo(List<TypeOuterClass.ColumnDef> columnDefs) throws FesqlException {
+    public static RowTypeInfo generateRowTypeInfo(List<TypeOuterClass.ColumnDef> columnDefs) throws HybridSEException {
         int fieldNum = columnDefs.size();
         TypeInformation<?>[] fieldTypes = new TypeInformation<?>[fieldNum];
 
@@ -144,7 +144,7 @@ public class FesqlUtil {
             } else if (columnType == kDate) {
                 fieldTypes[i] = Types.SQL_DATE;
             } else {
-                throw new FesqlException(String.format("Fail to convert row type info with %s", columnType));
+                throw new HybridSEException(String.format("Fail to convert row type info with %s", columnType));
             }
 
         }
@@ -152,18 +152,18 @@ public class FesqlUtil {
         return new RowTypeInfo(fieldTypes);
     }
 
-    public static int resolveColumnIndex(ExprNode exprNode, PhysicalOpNode physicalOpNode) throws FesqlException {
+    public static int resolveColumnIndex(ExprNode exprNode, PhysicalOpNode physicalOpNode) throws HybridSEException {
         if (exprNode.getExpr_type_().swigValue() == ExprType.kExprColumnRef.swigValue()) {
             int index = CoreAPI.ResolveColumnIndex(physicalOpNode, ColumnRefNode.CastFrom(exprNode));
             if (index < 0) {
-                throw new FesqlException("Fail to resolve column ref expression node and get index " + index);
+                throw new HybridSEException("Fail to resolve column ref expression node and get index " + index);
             } else if (index >= physicalOpNode.GetOutputSchema().size()) {
-                throw new FesqlException("Fail to resolve column ref  expression node and get index " + index);
+                throw new HybridSEException("Fail to resolve column ref  expression node and get index " + index);
             } else {
                 return index;
             }
         } else {
-            throw new FesqlException("Do not support nono-columnref expression");
+            throw new HybridSEException("Do not support nono-columnref expression");
         }
     }
 }
