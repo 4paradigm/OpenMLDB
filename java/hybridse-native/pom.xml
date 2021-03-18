@@ -3,15 +3,15 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
 	<parent>
-		<artifactId>fesql-sdk</artifactId>
-		<groupId>com._4paradigm.fesql</groupId>
+		<artifactId>hybridse-sdk</artifactId>
+		<groupId>com._4paradigm.hybridse</groupId>
         <version>0.0.4-RELEASE</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<modelVersion>4.0.0</modelVersion>
-	<artifactId>fesql-native</artifactId>
+	<artifactId>hybridse-native</artifactId>
 	<packaging>jar</packaging>
-	<name>fesql-native</name>
+	<name>hybridse-native</name>
 	<version>0.0.4-RELEASE</version>
 
 	<properties>
@@ -20,8 +20,8 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>com._4paradigm.fesql</groupId>
-			<artifactId>fesql-proto</artifactId>
+			<groupId>com._4paradigm.hybridse</groupId>
+			<artifactId>hybridse-proto</artifactId>
 			<version>0.0.4-RELEASE</version>
 		</dependency>
 
@@ -52,7 +52,7 @@
 					<include>**/*</include>
 				</includes>
 				<excludes>
-					<!-- <exclude>libfesql_jsdk_complete*</exclude> -->
+					<!-- <exclude>libhybridse_jsdk_complete*</exclude> -->
 				</excludes>
 			</resource>
 			<resource>

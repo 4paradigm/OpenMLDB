@@ -3,16 +3,16 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com._4paradigm.fesql</groupId>
-    <artifactId>fesql-sdk</artifactId>
+    <groupId>com._4paradigm.hybridse</groupId>
+    <artifactId>hybridse-sdk</artifactId>
     <version>0.0.4-RELEASE</version>
     <modules>
-           <module>fesql-common</module>
-           <!-- <module>fesql-jdbc</module> -->
-           <module>fesql-native</module>
-           <module>fesql-proto</module>
-           <module>fesql-spark</module>
-           <module>fesql-flink</module>
+           <module>hybridse-common</module>
+           <!-- <module>hybridse-jdbc</module> -->
+           <module>hybridse-native</module>
+           <module>hybridse-proto</module>
+           <module>hybridse-spark</module>
+           <module>hybridse-flink</module>
     </modules>
     <packaging>pom</packaging>
     <name>sdk</name>
