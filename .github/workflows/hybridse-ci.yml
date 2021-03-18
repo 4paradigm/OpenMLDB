@@ -30,8 +30,8 @@ jobs:
 
     - name: lint
       run: |
-        yum install -y python27
-        ./tools/style_check.sh
+        # requires python3, marked temporary
+        # ./tools/style_check.sh
 
     - name: Build
       run: |
@@ -39,5 +39,6 @@ jobs:
 
     - name: benchmark
       run: |
-        bash tools/micro_bench.sh | tee micro_bench_report.txt
-        bash tools/gen_micro_bench_compare.sh
+        # cost too much time
+        # bash tools/micro_bench.sh | tee micro_bench_report.txt
+        # bash tools/gen_micro_bench_compare.sh
