@@ -54,6 +54,12 @@ jobs:
           ln -sf /depends/thirdparty thirdparty
           ln -sf /depends/thirdsrc thirdsrc
           source /root/.bashrc && bash steps/simple_compile.sh
+      - run: |
+          ls -al build
+          ls -al build/bin
+          ls -al build/src/sdk/
+          ls -al build/sql_pysdk/
+          ls -al build/python/dist/
       - uses: actions/upload-artifact@v1
         with:
           name: build-artifact
