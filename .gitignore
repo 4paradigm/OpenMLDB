@@ -30,3 +30,4 @@ java/hybridse-native/src/main/java/com/*
 tools/documentation/udf_doxygen/html
 tools/documentation/udf_doxygen/udfs
 style.xml
+hybridse_version.h
