@@ -19,17 +19,17 @@ jobs:
         password: ${{ secrets.CR_PAT_ZW }}
     steps:
       - uses: actions/checkout@v1
-        with:
-          submodules: true
-#      - name: update submodule
-#        run: |
-#          ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
-#          git submodule init
-#          git submodule update
-      -
+#        with:
+#          submodules: true
+      - name: update nss
+        run: yum update -y nss curl libcurl
+      - name: update submodule
         run: |
-          ls -al fesql
-          source /root/.bashrc && bash tools/style_check.sh
+          ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
+          git submodule init
+          git submodule update
+      - name: style_check
+        run: source /root/.bashrc && bash tools/style_check.sh
   build:
     runs-on: ubuntu-latest
     container:
