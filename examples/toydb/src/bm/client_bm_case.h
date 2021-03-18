@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef EXAMPLES_TOYDB_SRC_BM_FESQL_CLIENT_BM_CASE_H_
-#define EXAMPLES_TOYDB_SRC_BM_FESQL_CLIENT_BM_CASE_H_
+#ifndef EXAMPLES_TOYDB_SRC_BM_CLIENT_BM_CASE_H_
+#define EXAMPLES_TOYDB_SRC_BM_CLIENT_BM_CASE_H_
 #include <stdio.h>
 #include <stdlib.h>
 #include "benchmark/benchmark.h"
@@ -45,4 +45,4 @@ void GROUPBY_CASE0_QUERY(benchmark::State *state_ptr, MODE mode,
 
 }  // namespace bm
 }  // namespace hybridse
-#endif  // EXAMPLES_TOYDB_SRC_BM_FESQL_CLIENT_BM_CASE_H_
+#endif  // EXAMPLES_TOYDB_SRC_BM_CLIENT_BM_CASE_H_

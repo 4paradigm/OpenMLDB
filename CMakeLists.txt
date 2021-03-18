@@ -36,7 +36,7 @@ endif ()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
 
-project(fesql)
+project(hybridse)
 
 set(FESQL_VERSION_MAJOR 0)
 set(FESQL_VERSION_MEDIUM 1)
@@ -187,7 +187,7 @@ if (CMAKE_INSTALL_PREFIX STREQUAL "")
     set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
 endif ()
 message(STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
-install(TARGETS fesql_core fesql_sdk
+install(TARGETS hybridse_core hybridse_sdk
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

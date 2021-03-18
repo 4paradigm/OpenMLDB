@@ -50,9 +50,8 @@ namespace hybridse {
 namespace cmd {
 
 static const int SIMPLE_ENGINE_RET_SUCCESS = 0;
-static const int SIMPLE_ENGINE_CATALOG_ERROR = 2;
-static const int SIMPLE_ENGINE_DATA_ERROR = 3;
-static const int SIMPLE_ENGINE_COMPILE_ERROR = 3;
+static const int SIMPLE_ENGINE_DATA_ERROR = 1;
+static const int SIMPLE_ENGINE_COMPILE_ERROR = 2;
 static const int SIMPLE_ENGINE_RUN_ERROR = 3;
 static const int MAX_DEBUG_COLUMN_CNT = 20;
 static const int MAX_DEBUG_LINES_CNT = 20;

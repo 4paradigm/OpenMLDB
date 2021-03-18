@@ -78,8 +78,7 @@ bool Engine::GetDependentTables(const std::string& sql, const std::string& db,
                                 EngineMode engine_mode,
                                 std::set<std::string>* tables,
                                 base::Status& status) {
-    std::shared_ptr<hybridse::vm::SQLCompileInfo> info =
-        std::make_shared<hybridse::vm::SQLCompileInfo>();
+    auto info = std::make_shared<hybridse::vm::SQLCompileInfo>();
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
     info->get_sql_context().engine_mode = engine_mode;

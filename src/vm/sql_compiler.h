@@ -29,8 +29,8 @@
 #include "vm/catalog.h"
 #include "vm/engine_context.h"
 #include "vm/jit_wrapper.h"
-#include "vm/runner.h"
 #include "vm/physical_op.h"
+#include "vm/runner.h"
 
 namespace hybridse {
 namespace vm {
@@ -86,7 +86,7 @@ const std::string FindFesqlDirPath();
 
 class SQLCompileInfo : public CompileInfo {
  public:
-    SQLCompileInfo() {}
+    SQLCompileInfo(): sql_ctx() {}
     ~SQLCompileInfo() {}
     hybridse::vm::SQLContext& get_sql_context() { return this->sql_ctx; }
 
