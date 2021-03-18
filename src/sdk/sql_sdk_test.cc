@@ -26,8 +26,7 @@
 #include <vector>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  // NOLINT
-#include "boost/algorithm/string.hpp"
+#include "base/glog_wapper.h"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
 #include "gflags/gflags.h"
@@ -48,6 +47,15 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
     return NewClusterSQLRouter(sql_opt);
 }
+
+static bool IsSupportMode(const std::string& mode) {
+    if (mode.find("rtidb-unsupport") != std::string::npos ||
+            mode.find("request-unsupport") != std::string::npos) {
+        return false;
+    }
+    return true;
+}
+
 TEST_P(SQLSDKTest, sql_sdk_batch_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
@@ -67,9 +75,7 @@ TEST_P(SQLSDKTest, sql_sdk_batch_test) {
 TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-        boost::contains(sql_case.mode(), "request-unsupport")) {
+    if (!IsSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -80,9 +86,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
 TEST_P(SQLSDKQueryTest, sql_sdk_batch_request_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-        boost::contains(sql_case.mode(), "request-unsupport")) {
+    if (!IsSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -107,9 +111,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
 TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-        boost::contains(sql_case.mode(), "request-unsupport")) {
+    if (!IsSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -121,9 +123,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_test) {
 TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_asyn_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-        boost::contains(sql_case.mode(), "request-unsupport")) {
+    if (!IsSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -133,9 +133,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_asyn_test) {
 }
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_test) {
     auto sql_case = GetParam();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-        boost::contains(sql_case.mode(), "request-unsupport")) {
+    if (!IsSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -150,9 +148,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_test) {
 }
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_test) {
     auto sql_case = GetParam();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-        boost::contains(sql_case.mode(), "request-unsupport")) {
+    if (!IsSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -168,9 +164,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_test) {
 
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_asyn_test) {
     auto sql_case = GetParam();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-        boost::contains(sql_case.mode(), "request-unsupport")) {
+    if (!IsSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -431,7 +425,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     auto rs = router->CallProcedure(db, sp_name, request_row, &status);
     if (!rs) FAIL() << "call procedure failed";
     auto schema = rs->GetSchema();
-    ASSERT_EQ(schema->GetColumnCnt(), 3u);
+    ASSERT_EQ(schema->GetColumnCnt(), 3);
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ(rs->GetStringUnsafe(0), "bb");
     ASSERT_EQ(rs->GetInt32Unsafe(1), 23);
@@ -447,7 +441,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     ASSERT_EQ(sp_info->GetTables().size(), 1u);
     ASSERT_EQ(sp_info->GetTables().at(0), "trans");
     auto& input_schema = sp_info->GetInputSchema();
-    ASSERT_EQ(input_schema.GetColumnCnt(), 7u);
+    ASSERT_EQ(input_schema.GetColumnCnt(), 7);
     ASSERT_EQ(input_schema.GetColumnName(0), "c1");
     ASSERT_EQ(input_schema.GetColumnName(1), "c3");
     ASSERT_EQ(input_schema.GetColumnName(2), "c4");
@@ -467,7 +461,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     ASSERT_TRUE(!input_schema.IsConstant(2));
 
     auto& output_schema = sp_info->GetOutputSchema();
-    ASSERT_EQ(output_schema.GetColumnCnt(), 3u);
+    ASSERT_EQ(output_schema.GetColumnCnt(), 3);
     ASSERT_EQ(output_schema.GetColumnName(0), "c1");
     ASSERT_EQ(output_schema.GetColumnName(1), "c3");
     ASSERT_EQ(output_schema.GetColumnName(2), "w1_c4_sum");

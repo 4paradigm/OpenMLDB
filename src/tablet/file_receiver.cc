@@ -17,12 +17,9 @@
 
 
 #include "tablet/file_receiver.h"
-#include <boost/algorithm/string/predicate.hpp>
 #include "base/file_util.h"
+#include "base/glog_wapper.h"
 #include "base/strings.h"
-#include "base/glog_wapper.h" // NOLINT
-
-
 
 namespace fedb {
 namespace tablet {
@@ -45,7 +42,7 @@ bool FileReceiver::Init() {
         fclose(file_);
         file_ = NULL;
     }
-    if (!boost::ends_with(path_, "/")) {
+    if (path_.back() != '/') {
         path_.append("/");
     }
     if (!::fedb::base::MkdirRecur(path_)) {

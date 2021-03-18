@@ -18,7 +18,6 @@
 #ifndef SRC_SDK_CLUSTER_SDK_H_
 #define SRC_SDK_CLUSTER_SDK_H_
 
-#include <snappy.h>
 #include <map>
 #include <memory>
 #include <string>

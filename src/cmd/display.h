@@ -159,7 +159,7 @@ __attribute__((unused)) static void PrintSchema(const std::string& schema,
     tp.AddRow(header);
     for (uint32_t i = 0; i < raw.size(); i++) {
         std::vector<std::string> row;
-        row.push_back(boost::lexical_cast<std::string>(i));
+        row.push_back(std::to_string(i));
         row.push_back(raw[i].name);
         switch (raw[i].type) {
             case ::fedb::codec::ColType::kInt32:
@@ -351,7 +351,7 @@ __attribute__((unused)) static void ShowTableRows(
         if (!codec->HasTSCol()) {
             vrow.insert(vrow.begin(), std::to_string(it->GetKey()));
         }
-        vrow.insert(vrow.begin(), boost::lexical_cast<std::string>(index));
+        vrow.insert(vrow.begin(), std::to_string(index));
         TransferString(&vrow);
         uint64_t remain_size = max_size - vrow.size();
         for (uint64_t i = 0; i < remain_size; i++) {

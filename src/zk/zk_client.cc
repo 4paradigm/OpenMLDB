@@ -23,7 +23,6 @@
 #include "base/glog_wapper.h"
 #include "base/strings.h"
 #include "boost/algorithm/string.hpp"
-#include "boost/bind.hpp"
 #include "boost/lexical_cast.hpp"
 
 namespace fedb {

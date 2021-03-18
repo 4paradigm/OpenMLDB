@@ -17,6 +17,10 @@
 
 #include "sdk/cluster_sdk.h"
 
+#ifdef DISALLOW_COPY_AND_ASSIGN
+#undef DISALLOW_COPY_AND_ASSIGN
+#endif
+#include <snappy.h>
 #include <algorithm>
 #include <map>
 #include <memory>
@@ -26,8 +30,7 @@
 #include <vector>
 #include "base/hash.h"
 #include "base/strings.h"
-#include "boost/algorithm/string.hpp"
-#include "boost/function.hpp"
+#include "boost/bind.hpp"
 #include "glog/logging.h"
 
 namespace fedb {

@@ -17,7 +17,7 @@ style_check:
     variables:
       - $ENV_BUILD == "daily"
   script:
-    - source /root/.bashrc && bash tools/style_check.sh
+    - source /root/.bashrc && bash steps/style_check.sh
   artifacts:
     reports:
       junit:

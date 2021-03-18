@@ -18,6 +18,7 @@
 #include <gflags/gflags.h>
 #include <sched.h>
 #include <unistd.h>
+#include <boost/bind.hpp>
 #include "base/kv_iterator.h"
 #include "gtest/gtest.h"
 #include "base/glog_wapper.h" // NOLINT

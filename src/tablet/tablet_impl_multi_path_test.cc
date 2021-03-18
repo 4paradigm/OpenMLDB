@@ -20,7 +20,6 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 #include <sys/stat.h>
-#include <boost/lexical_cast.hpp>
 #include "base/file_util.h"
 #include "base/kv_iterator.h"
 #include "base/strings.h"

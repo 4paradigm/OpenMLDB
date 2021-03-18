@@ -23,11 +23,16 @@
 
 #include <algorithm>
 #include <set>
+#ifdef DISALLOW_COPY_AND_ASSIGN
+#undef DISALLOW_COPY_AND_ASSIGN
+#endif
+#include <snappy.h>
 #include <utility>
 
 #include "base/glog_wapper.h"
 #include "base/status.h"
 #include "boost/algorithm/string.hpp"
+#include "boost/bind.hpp"
 #include "timer.h"  // NOLINT
 
 DECLARE_string(endpoint);
