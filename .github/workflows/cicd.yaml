@@ -58,7 +58,7 @@ jobs:
         with:
           name: build-artifact
           path: |
-            build/bin/rtidb
+            build/bin/fedb
             build/bin/sql_sdk_test
             build/bin/sql_cluster_test
             build/bin/tablet_engine_test
