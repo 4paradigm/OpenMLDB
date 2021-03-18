@@ -1,12 +1,11 @@
 /*
- * sql_rpc_row_codec.cc
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "codec/sql_rpc_row_codec.h"
 
-namespace rtidb {
+namespace fedb {
 namespace codec {
 
 bool DecodeRpcRow(const butil::IOBuf& buf, size_t offset, size_t size, size_t slice_num, fesql::codec::Row* row) {
@@ -106,4 +106,4 @@ bool EncodeRpcRow(const int8_t* buf, size_t size, butil::IOBuf* io_buf) {
 }
 
 }  // namespace codec
-}  // namespace rtidb
+}  // namespace fedb

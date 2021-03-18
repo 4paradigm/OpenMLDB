@@ -1,9 +1,19 @@
-//
-// log_reader.cc
-// Copyright (C) 2017 4paradigm.com
-// Author vagrant
-// Date 2017-06-16
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
@@ -25,13 +35,13 @@
 #include "base/endianconv.h"
 
 
-using ::rtidb::base::Status;
+using ::fedb::base::Status;
 
 DECLARE_bool(binlog_enable_crc);
 DECLARE_int32(binlog_name_length);
 DECLARE_string(snapshot_compression);
 
-namespace rtidb {
+namespace fedb {
 namespace log {
 
 Reader::Reporter::~Reporter() {}
@@ -479,23 +489,23 @@ uint64_t LogReader::GetLastRecordEndOffset() {
     return reader_->LastRecordEndOffset();
 }
 
-::rtidb::base::Status LogReader::ReadNextRecord(::rtidb::base::Slice* record,
+::fedb::base::Status LogReader::ReadNextRecord(::fedb::base::Slice* record,
                                                 std::string* buffer) {
     // first read record
     if (sf_ == NULL) {
         if (RollRLogFile() < 0) {
             PDLOG(WARNING, "fail to roll read log");
-            return ::rtidb::base::Status::WaitRecord();
+            return ::fedb::base::Status::WaitRecord();
         }
     }
-    ::rtidb::base::Status status = reader_->ReadRecord(record, buffer);
+    ::fedb::base::Status status = reader_->ReadRecord(record, buffer);
     if (status.IsEof()) {
         PDLOG(INFO, "reach the end of file. index %d", log_part_index_);
         if (RollRLogFile() < 0) {
             // reache the latest log part
             return status;
         }
-        return ::rtidb::base::Status::Eof();
+        return ::fedb::base::Status::Eof();
     }
     return status;
 }
@@ -567,7 +577,7 @@ int LogReader::RollRLogFile() {
         // open a new log part file
         std::string full_path =
             log_path_ + "/" +
-            ::rtidb::base::FormatToString(index, FLAGS_binlog_name_length) +
+            ::fedb::base::FormatToString(index, FLAGS_binlog_name_length) +
             ".log";
         if (OpenSeqFile(full_path) != 0) {
             return -1;
@@ -595,9 +605,9 @@ int LogReader::OpenSeqFile(const std::string& path) {
         sf_ = NULL;
     }
     PDLOG(INFO, "open log file %s", path.c_str());
-    sf_ = ::rtidb::log::NewSeqFile(path, fd);
+    sf_ = ::fedb::log::NewSeqFile(path, fd);
     return 0;
 }
 
 }  // namespace log
-}  // namespace rtidb
+}  // namespace fedb

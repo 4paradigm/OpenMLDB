@@ -1,9 +1,19 @@
-//
-// segment.h
-// Copyright (C) 2017 4paradigm.com
-// Author wangtaize
-// Date 2017-03-31
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #ifndef SRC_STORAGE_SEGMENT_H_
 #define SRC_STORAGE_SEGMENT_H_
@@ -20,13 +30,13 @@
 #include "storage/schema.h"
 #include "storage/ticket.h"
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
-typedef google::protobuf::RepeatedPtrField<::rtidb::api::TSDimension>
+typedef google::protobuf::RepeatedPtrField<::fedb::api::TSDimension>
     TSDimensions;
 
-using ::rtidb::base::Slice;
+using ::fedb::base::Slice;
 
 class Segment;
 class Ticket;
@@ -62,7 +72,7 @@ struct TimeComparator {
 };
 
 static const TimeComparator tcmp;
-typedef ::rtidb::base::Skiplist<uint64_t, DataBlock*, TimeComparator>
+typedef ::fedb::base::Skiplist<uint64_t, DataBlock*, TimeComparator>
     TimeEntries;
 
 class MemTableIterator : public TableIterator {
@@ -72,7 +82,7 @@ class MemTableIterator : public TableIterator {
     void Seek(const uint64_t time) override;
     bool Valid() override;
     void Next() override;
-    rtidb::base::Slice GetValue() const override;
+    fedb::base::Slice GetValue() const override;
     uint64_t GetKey() const override;
     void SeekToFirst() override;
     void SeekToLast() override;
@@ -123,15 +133,15 @@ class KeyEntry {
 };
 
 struct SliceComparator {
-    int operator()(const ::rtidb::base::Slice& a,
-                   const ::rtidb::base::Slice& b) const {
+    int operator()(const ::fedb::base::Slice& a,
+                   const ::fedb::base::Slice& b) const {
         return a.compare(b);
     }
 };
 
-typedef ::rtidb::base::Skiplist<::rtidb::base::Slice, void*, SliceComparator>
+typedef ::fedb::base::Skiplist<::fedb::base::Slice, void*, SliceComparator>
     KeyEntries;
-typedef ::rtidb::base::Skiplist<uint64_t, ::rtidb::base::Node<Slice, void*>*,
+typedef ::fedb::base::Skiplist<uint64_t, ::fedb::base::Node<Slice, void*>*,
                                 TimeComparator>
     KeyEntryNodeList;
 
@@ -235,16 +245,16 @@ class Segment {
                          uint64_t& gc_record_byte_size);  // NOLINT
 
  private:
-    void FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node,
+    void FreeList(::fedb::base::Node<uint64_t, DataBlock*>* node,
                   uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,  // NOLINT
                   uint64_t& gc_record_byte_size);                 // NOLINT
     void SplitList(KeyEntry* entry, uint64_t ts,
-                   ::rtidb::base::Node<uint64_t, DataBlock*>** node);
+                   ::fedb::base::Node<uint64_t, DataBlock*>** node);
 
     void GcEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt,  // NOLINT
                          uint64_t& gc_record_cnt,                 // NOLINT
                          uint64_t& gc_record_byte_size);          // NOLINT
-    void FreeEntry(::rtidb::base::Node<Slice, void*>* entry_node,
+    void FreeEntry(::fedb::base::Node<Slice, void*>* entry_node,
                    uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,  // NOLINT
                    uint64_t& gc_record_byte_size);                 // NOLINT
 
@@ -266,5 +276,5 @@ class Segment {
 };
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_STORAGE_SEGMENT_H_

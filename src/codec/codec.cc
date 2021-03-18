@@ -1,12 +1,11 @@
 /*
- * codec.cc
- * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 
 #include "codec/codec.h"
 #include <array>
@@ -23,16 +23,16 @@
 #include "base/glog_wapper.h"
 #include "boost/lexical_cast.hpp"
 
-namespace rtidb {
+namespace fedb {
 namespace codec {
 
 #define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
 
-static const std::unordered_set<::rtidb::type::DataType> TYPE_SET(
-    {::rtidb::type::kBool, ::rtidb::type::kSmallInt, ::rtidb::type::kInt,
-     ::rtidb::type::kBigInt, ::rtidb::type::kFloat, ::rtidb::type::kDouble,
-     ::rtidb::type::kDate, ::rtidb::type::kTimestamp, ::rtidb::type::kVarchar,
-     ::rtidb::type::kString});
+static const std::unordered_set<::fedb::type::DataType> TYPE_SET(
+    {::fedb::type::kBool, ::fedb::type::kSmallInt, ::fedb::type::kInt,
+     ::fedb::type::kBigInt, ::fedb::type::kFloat, ::fedb::type::kDouble,
+     ::fedb::type::kDate, ::fedb::type::kTimestamp, ::fedb::type::kVarchar,
+     ::fedb::type::kString});
 
 static constexpr std::array<uint32_t, 9> TYPE_SIZE_ARRAY = {
     0,
@@ -70,10 +70,10 @@ RowBuilder::RowBuilder(const Schema& schema)
       schema_version_(1) {
     str_field_start_offset_ = HEADER_LENGTH + BitMapSize(schema.size());
     for (int idx = 0; idx < schema.size(); idx++) {
-        const ::rtidb::common::ColumnDesc& column = schema.Get(idx);
-        rtidb::type::DataType cur_type = column.data_type();
-        if (cur_type == ::rtidb::type::kVarchar ||
-            cur_type == ::rtidb::type::kString) {
+        const ::fedb::common::ColumnDesc& column = schema.Get(idx);
+        fedb::type::DataType cur_type = column.data_type();
+        if (cur_type == ::fedb::type::kVarchar ||
+            cur_type == ::fedb::type::kString) {
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
         } else {
@@ -133,11 +133,11 @@ uint32_t RowBuilder::CalTotalLength(uint32_t string_length) {
     return 0;
 }
 
-bool RowBuilder::Check(uint32_t index, ::rtidb::type::DataType type) {
+bool RowBuilder::Check(uint32_t index, ::fedb::type::DataType type) {
     if ((int32_t)index >= schema_.size()) {
         return false;
     }
-    const ::rtidb::common::ColumnDesc& column = schema_.Get(index);
+    const ::fedb::common::ColumnDesc& column = schema_.Get(index);
     if (column.data_type() != type) {
         return false;
     }
@@ -154,7 +154,7 @@ bool RowBuilder::AppendDate(int32_t date) {
 }
 
 bool RowBuilder::SetDate(uint32_t index, int32_t date) {
-    if (!Check(index, ::rtidb::type::kDate)) return false;
+    if (!Check(index, ::fedb::type::kDate)) return false;
     SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int32_t*>(ptr)) = date;
@@ -172,7 +172,7 @@ bool RowBuilder::SetDate(uint32_t index, uint32_t year, uint32_t month,
     if (year < 1900 || year > 9999) return false;
     if (month < 1 || month > 12) return false;
     if (day < 1 || day > 31) return false;
-    if (!Check(index, ::rtidb::type::kDate)) return false;
+    if (!Check(index, ::fedb::type::kDate)) return false;
     int8_t* ptr = buf_ + offset_vec_[index];
     int32_t data = (year - 1900) << 16;
     data = data | ((month - 1) << 8);
@@ -194,12 +194,12 @@ bool RowBuilder::AppendNULL() {
 }
 
 bool RowBuilder::SetNULL(uint32_t index) {
-    const ::rtidb::common::ColumnDesc& column = schema_.Get(index);
+    const ::fedb::common::ColumnDesc& column = schema_.Get(index);
     if (column.not_null()) return false;
     int8_t* ptr = buf_ + HEADER_LENGTH + (index >> 3);
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (index & 0x07);
-    if (column.data_type() == ::rtidb::type::kVarchar ||
-        column.data_type() == rtidb::type::kString) {
+    if (column.data_type() == ::fedb::type::kVarchar ||
+        column.data_type() == fedb::type::kString) {
         uint32_t str_pos = offset_vec_[index];
         SetStrOffset(str_pos + 1);
     }
@@ -231,7 +231,7 @@ bool RowBuilder::AppendBool(bool val) {
 }
 
 bool RowBuilder::SetBool(uint32_t index, bool val) {
-    if (!Check(index, ::rtidb::type::kBool)) return false;
+    if (!Check(index, ::fedb::type::kBool)) return false;
     SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<uint8_t*>(ptr)) = val ? 1 : 0;
@@ -245,7 +245,7 @@ bool RowBuilder::AppendInt32(int32_t val) {
 }
 
 bool RowBuilder::SetInt32(uint32_t index, int32_t val) {
-    if (!Check(index, ::rtidb::type::kInt)) return false;
+    if (!Check(index, ::fedb::type::kInt)) return false;
     SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int32_t*>(ptr)) = val;
@@ -259,7 +259,7 @@ bool RowBuilder::AppendInt16(int16_t val) {
 }
 
 bool RowBuilder::SetInt16(uint32_t index, int16_t val) {
-    if (!Check(index, ::rtidb::type::kSmallInt)) return false;
+    if (!Check(index, ::fedb::type::kSmallInt)) return false;
     SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int16_t*>(ptr)) = val;
@@ -273,7 +273,7 @@ bool RowBuilder::AppendTimestamp(int64_t val) {
 }
 
 bool RowBuilder::SetTimestamp(uint32_t index, int64_t val) {
-    if (!Check(index, ::rtidb::type::kTimestamp)) return false;
+    if (!Check(index, ::fedb::type::kTimestamp)) return false;
     SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
@@ -287,7 +287,7 @@ bool RowBuilder::AppendInt64(int64_t val) {
 }
 
 bool RowBuilder::SetInt64(uint32_t index, int64_t val) {
-    if (!Check(index, ::rtidb::type::kBigInt)) return false;
+    if (!Check(index, ::fedb::type::kBigInt)) return false;
     SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
@@ -301,7 +301,7 @@ bool RowBuilder::AppendFloat(float val) {
 }
 
 bool RowBuilder::SetFloat(uint32_t index, float val) {
-    if (!Check(index, ::rtidb::type::kFloat)) return false;
+    if (!Check(index, ::fedb::type::kFloat)) return false;
     SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<float*>(ptr)) = val;
@@ -315,7 +315,7 @@ bool RowBuilder::AppendDouble(double val) {
 }
 
 bool RowBuilder::SetDouble(uint32_t index, double val) {
-    if (!Check(index, ::rtidb::type::kDouble)) return false;
+    if (!Check(index, ::fedb::type::kDouble)) return false;
     SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<double*>(ptr)) = val;
@@ -329,8 +329,8 @@ bool RowBuilder::AppendString(const char* val, uint32_t length) {
 }
 
 bool RowBuilder::SetString(uint32_t index, const char* val, uint32_t length) {
-    if (val == NULL || (!Check(index, ::rtidb::type::kVarchar) &&
-                        !Check(index, rtidb::type::kString))) {
+    if (val == NULL || (!Check(index, ::fedb::type::kVarchar) &&
+                        !Check(index, fedb::type::kString))) {
         return false;
     }
     if (str_offset_ + length > size_) return false;
@@ -349,14 +349,14 @@ bool RowBuilder::SetString(uint32_t index, const char* val, uint32_t length) {
 
 bool RowBuilder::AppendValue(const std::string& val) {
     bool ok = false;
-    const ::rtidb::common::ColumnDesc& col = schema_.Get(cnt_);
+    const ::fedb::common::ColumnDesc& col = schema_.Get(cnt_);
     try {
         switch (col.data_type()) {
-            case rtidb::type::kString:
-            case rtidb::type::kVarchar:
+            case fedb::type::kString:
+            case fedb::type::kVarchar:
                 ok = AppendString(val.c_str(), val.length());
                 break;
-            case rtidb::type::kBool: {
+            case fedb::type::kBool: {
                 std::string b_val = val;
                 std::transform(b_val.begin(), b_val.end(), b_val.begin(),
                                ::tolower);
@@ -369,27 +369,27 @@ bool RowBuilder::AppendValue(const std::string& val) {
                 }
                 break;
             }
-            case rtidb::type::kSmallInt:
+            case fedb::type::kSmallInt:
                 ok = AppendInt16(boost::lexical_cast<int16_t>(val));
                 break;
-            case rtidb::type::kInt:
+            case fedb::type::kInt:
                 ok = AppendInt32(boost::lexical_cast<int32_t>(val));
                 break;
-            case rtidb::type::kBigInt:
+            case fedb::type::kBigInt:
                 ok = AppendInt64(boost::lexical_cast<int64_t>(val));
                 break;
-            case rtidb::type::kTimestamp:
+            case fedb::type::kTimestamp:
                 ok = AppendTimestamp(boost::lexical_cast<int64_t>(val));
                 break;
-            case rtidb::type::kFloat:
+            case fedb::type::kFloat:
                 ok = AppendFloat(boost::lexical_cast<float>(val));
                 break;
-            case rtidb::type::kDouble:
+            case fedb::type::kDouble:
                 ok = AppendDouble(boost::lexical_cast<double>(val));
                 break;
-            case rtidb::type::kDate: {
+            case fedb::type::kDate: {
                 std::vector<std::string> parts;
-                ::rtidb::base::SplitString(val, "-", parts);
+                ::fedb::base::SplitString(val, "-", parts);
                 if (parts.size() != 3) {
                     ok = false;
                     break;
@@ -442,10 +442,10 @@ RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size)
 bool RowView::Init() {
     uint32_t offset = HEADER_LENGTH + BitMapSize(schema_.size());
     for (int idx = 0; idx < schema_.size(); idx++) {
-        const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
-        rtidb::type::DataType cur_type = column.data_type();
-        if (cur_type == ::rtidb::type::kVarchar ||
-            cur_type == ::rtidb::type::kString) {
+        const ::fedb::common::ColumnDesc& column = schema_.Get(idx);
+        fedb::type::DataType cur_type = column.data_type();
+        if (cur_type == ::fedb::type::kVarchar ||
+            cur_type == ::fedb::type::kString) {
             offset_vec_.push_back(string_field_cnt_);
             string_field_cnt_++;
         } else {
@@ -489,14 +489,14 @@ bool RowView::Reset(const int8_t* row) {
     return true;
 }
 
-bool RowView::CheckValid(uint32_t idx, ::rtidb::type::DataType type) {
+bool RowView::CheckValid(uint32_t idx, ::fedb::type::DataType type) {
     if (row_ == NULL || !is_valid_) {
         return false;
     }
     if ((int32_t)idx >= schema_.size()) {
         return false;
     }
-    const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
+    const ::fedb::common::ColumnDesc& column = schema_.Get(idx);
     if (column.data_type() != type) {
         return false;
     }
@@ -507,7 +507,7 @@ int32_t RowView::GetBool(uint32_t idx, bool* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::rtidb::type::kBool)) {
+    if (!CheckValid(idx, ::fedb::type::kBool)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -528,7 +528,7 @@ int32_t RowView::GetDate(uint32_t idx, uint32_t* year, uint32_t* month,
     if (year == NULL || month == NULL || day == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::rtidb::type::kDate)) {
+    if (!CheckValid(idx, ::fedb::type::kDate)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -547,7 +547,7 @@ int32_t RowView::GetDate(uint32_t idx, int32_t* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::rtidb::type::kDate)) {
+    if (!CheckValid(idx, ::fedb::type::kDate)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -562,7 +562,7 @@ int32_t RowView::GetInt32(uint32_t idx, int32_t* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::rtidb::type::kInt)) {
+    if (!CheckValid(idx, ::fedb::type::kInt)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -577,7 +577,7 @@ int32_t RowView::GetTimestamp(uint32_t idx, int64_t* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::rtidb::type::kTimestamp)) {
+    if (!CheckValid(idx, ::fedb::type::kTimestamp)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -592,7 +592,7 @@ int32_t RowView::GetInt64(uint32_t idx, int64_t* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::rtidb::type::kBigInt)) {
+    if (!CheckValid(idx, ::fedb::type::kBigInt)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -607,7 +607,7 @@ int32_t RowView::GetInt16(uint32_t idx, int16_t* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::rtidb::type::kSmallInt)) {
+    if (!CheckValid(idx, ::fedb::type::kSmallInt)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -622,7 +622,7 @@ int32_t RowView::GetFloat(uint32_t idx, float* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::rtidb::type::kFloat)) {
+    if (!CheckValid(idx, ::fedb::type::kFloat)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -637,7 +637,7 @@ int32_t RowView::GetDouble(uint32_t idx, double* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::rtidb::type::kDouble)) {
+    if (!CheckValid(idx, ::fedb::type::kDouble)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -649,23 +649,23 @@ int32_t RowView::GetDouble(uint32_t idx, double* val) {
 }
 
 int32_t RowView::GetInteger(const int8_t* row, uint32_t idx,
-                            ::rtidb::type::DataType type, int64_t* val) {
+                            ::fedb::type::DataType type, int64_t* val) {
     int32_t ret = 0;
     switch (type) {
-        case ::rtidb::type::kSmallInt: {
+        case ::fedb::type::kSmallInt: {
             int16_t tmp_val = 0;
             ret = GetValue(row, idx, type, &tmp_val);
             if (ret == 0) *val = tmp_val;
             break;
         }
-        case ::rtidb::type::kInt: {
+        case ::fedb::type::kInt: {
             int32_t tmp_val = 0;
             GetValue(row, idx, type, &tmp_val);
             if (ret == 0) *val = tmp_val;
             break;
         }
-        case ::rtidb::type::kTimestamp:
-        case ::rtidb::type::kBigInt: {
+        case ::fedb::type::kTimestamp:
+        case ::fedb::type::kBigInt: {
             int64_t tmp_val = 0;
             GetValue(row, idx, type, &tmp_val);
             if (ret == 0) *val = tmp_val;
@@ -678,14 +678,14 @@ int32_t RowView::GetInteger(const int8_t* row, uint32_t idx,
 }
 
 int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
-                          ::rtidb::type::DataType type, void* val) {
+                          ::fedb::type::DataType type, void* val) {
     if (schema_.size() == 0 || row == NULL) {
         return -1;
     }
     if ((int32_t)idx >= schema_.size()) {
         return -1;
     }
-    const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
+    const ::fedb::common::ColumnDesc& column = schema_.Get(idx);
     if (column.data_type() != type) {
         return -1;
     }
@@ -697,7 +697,7 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
     }
     uint32_t offset = offset_vec_.at(idx);
     switch (type) {
-        case ::rtidb::type::kBool: {
+        case ::fedb::type::kBool: {
             int8_t v = v1::GetBoolField(row, offset);
             if (v == 1) {
                 *(reinterpret_cast<bool*>(val)) = true;
@@ -706,23 +706,23 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
             }
             break;
         }
-        case ::rtidb::type::kSmallInt:
+        case ::fedb::type::kSmallInt:
             *(reinterpret_cast<int16_t*>(val)) = v1::GetInt16Field(row, offset);
             break;
-        case ::rtidb::type::kInt:
+        case ::fedb::type::kInt:
             *(reinterpret_cast<int32_t*>(val)) = v1::GetInt32Field(row, offset);
             break;
-        case ::rtidb::type::kTimestamp:
-        case ::rtidb::type::kBigInt:
+        case ::fedb::type::kTimestamp:
+        case ::fedb::type::kBigInt:
             *(reinterpret_cast<int64_t*>(val)) = v1::GetInt64Field(row, offset);
             break;
-        case ::rtidb::type::kFloat:
+        case ::fedb::type::kFloat:
             *(reinterpret_cast<float*>(val)) = v1::GetFloatField(row, offset);
             break;
-        case ::rtidb::type::kDouble:
+        case ::fedb::type::kDouble:
             *(reinterpret_cast<double*>(val)) = v1::GetDoubleField(row, offset);
             break;
-        case ::rtidb::type::kDate:
+        case ::fedb::type::kDate:
             *(reinterpret_cast<int32_t*>(val)) =
                 static_cast<int32_t>(v1::GetInt32Field(row, offset));
             break;
@@ -740,9 +740,9 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val,
     if ((int32_t)idx >= schema_.size()) {
         return -1;
     }
-    const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
-    if (column.data_type() != ::rtidb::type::kVarchar &&
-        column.data_type() != ::rtidb::type::kString) {
+    const ::fedb::common::ColumnDesc& column = schema_.Get(idx);
+    if (column.data_type() != ::fedb::type::kVarchar &&
+        column.data_type() != ::fedb::type::kString) {
         return -1;
     }
     uint32_t size = GetSize(row);
@@ -767,8 +767,8 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
         return -1;
     }
 
-    if (!CheckValid(idx, ::rtidb::type::kVarchar) &&
-        !CheckValid(idx, rtidb::type::kString)) {
+    if (!CheckValid(idx, ::fedb::type::kVarchar) &&
+        !CheckValid(idx, fedb::type::kString)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -796,7 +796,7 @@ int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx,
     if ((int32_t)idx >= schema_.size()) {
         return -1;
     }
-    const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
+    const ::fedb::common::ColumnDesc& column = schema_.Get(idx);
     if (GetSize(row) <= HEADER_LENGTH) {
         return -1;
     }
@@ -805,39 +805,39 @@ int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx,
         return 1;
     }
     switch (column.data_type()) {
-        case ::rtidb::type::kBool: {
+        case ::fedb::type::kBool: {
             bool value = false;
-            GetValue(row, idx, ::rtidb::type::kBool, &value);
+            GetValue(row, idx, ::fedb::type::kBool, &value);
             value == true ? val->assign("true") : val->assign("false");
             break;
         }
-        case ::rtidb::type::kSmallInt:
-        case ::rtidb::type::kInt:
-        case ::rtidb::type::kTimestamp:
-        case ::rtidb::type::kBigInt: {
+        case ::fedb::type::kSmallInt:
+        case ::fedb::type::kInt:
+        case ::fedb::type::kTimestamp:
+        case ::fedb::type::kBigInt: {
             int64_t value = 0;
             GetInteger(row, idx, column.data_type(), &value);
             val->assign(std::to_string(value));
             break;
         }
-        case ::rtidb::type::kFloat: {
+        case ::fedb::type::kFloat: {
             float value = 0.0;
-            GetValue(row, idx, ::rtidb::type::kFloat, &value);
+            GetValue(row, idx, ::fedb::type::kFloat, &value);
             val->assign(std::to_string(value));
             break;
         }
-        case ::rtidb::type::kDouble: {
+        case ::fedb::type::kDouble: {
             double value = 0.0;
-            GetValue(row, idx, ::rtidb::type::kDouble, &value);
+            GetValue(row, idx, ::fedb::type::kDouble, &value);
             val->assign(std::to_string(value));
             break;
         }
-        case ::rtidb::type::kDate: {
+        case ::fedb::type::kDate: {
             uint32_t year = 0;
             uint32_t month = 0;
             uint32_t day = 0;
             int32_t date = 0;
-            GetValue(row, idx, ::rtidb::type::kDate, &date);
+            GetValue(row, idx, ::fedb::type::kDate, &date);
             day = date & 0x0000000FF;
             date = date >> 8;
             month = 1 + (date & 0x0000FF);
@@ -847,8 +847,8 @@ int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx,
             val->assign(ss.str());
             break;
         }
-        case ::rtidb::type::kVarchar:
-        case ::rtidb::type::kString: {
+        case ::fedb::type::kVarchar:
+        case ::fedb::type::kString: {
             char* ch = NULL;
             uint32_t size = 0;
             GetValue(row, idx, &ch, &size);
@@ -979,7 +979,7 @@ bool RowProject::Init() {
     cur_rv_ = it->second;
     for (int32_t i = 0; i < plist_.size(); i++) {
         uint32_t idx = plist_.Get(i);
-        const ::rtidb::common::ColumnDesc& column = cur_schema_->Get(idx);
+        const ::fedb::common::ColumnDesc& column = cur_schema_->Get(idx);
         output_schema_.Add()->CopyFrom(column);
     }
     row_builder_ = new RowBuilder(output_schema_);
@@ -989,7 +989,7 @@ bool RowProject::Init() {
 bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
                          int8_t** output_ptr, uint32_t* out_size) {
     if (row_ptr == NULL || output_ptr == NULL || out_size == NULL) return false;
-    uint8_t version = rtidb::codec::RowView::GetSchemaVersion(row_ptr);
+    uint8_t version = fedb::codec::RowView::GetSchemaVersion(row_ptr);
     if (version != cur_ver_) {
         auto it = vers_views_.find(version);
         if (it == vers_views_.end()) {
@@ -1005,9 +1005,9 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
     uint32_t str_size = 0;
     for (int32_t i = 0; i < plist_.size(); i++) {
         uint32_t idx = plist_.Get(i);
-        const ::rtidb::common::ColumnDesc& column = cur_schema_->Get(idx);
-        if (column.data_type() == ::rtidb::type::kVarchar ||
-            column.data_type() == ::rtidb::type::kString) {
+        const ::fedb::common::ColumnDesc& column = cur_schema_->Get(idx);
+        if (column.data_type() == ::fedb::type::kVarchar ||
+            column.data_type() == ::fedb::type::kString) {
             if (cur_rv_->IsNULL(idx)) continue;
             uint32_t length = 0;
             char* content = nullptr;
@@ -1023,63 +1023,63 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
     row_builder_->SetBuffer(reinterpret_cast<int8_t*>(ptr), total_size);
     for (int32_t i = 0; i < plist_.size(); i++) {
         uint32_t idx = plist_.Get(i);
-        const ::rtidb::common::ColumnDesc& column = cur_schema_->Get(idx);
+        const ::fedb::common::ColumnDesc& column = cur_schema_->Get(idx);
         int32_t ret = 0;
         if (cur_rv_->IsNULL(idx)) {
             row_builder_->AppendNULL();
             continue;
         }
         switch (column.data_type()) {
-            case ::rtidb::type::kBool: {
+            case ::fedb::type::kBool: {
                 bool val = false;
                 ret = cur_rv_->GetBool(idx, &val);
                 if (ret == 0) row_builder_->AppendBool(val);
                 break;
             }
-            case ::rtidb::type::kSmallInt: {
+            case ::fedb::type::kSmallInt: {
                 int16_t val = 0;
                 ret = cur_rv_->GetInt16(idx, &val);
                 if (ret == 0) row_builder_->AppendInt16(val);
                 break;
             }
-            case ::rtidb::type::kInt: {
+            case ::fedb::type::kInt: {
                 int32_t val = 0;
                 ret = cur_rv_->GetInt32(idx, &val);
                 if (ret == 0) row_builder_->AppendInt32(val);
                 break;
             }
-            case ::rtidb::type::kDate: {
+            case ::fedb::type::kDate: {
                 int32_t val = 0;
                 ret = cur_rv_->GetDate(idx, &val);
                 if (ret == 0) row_builder_->AppendDate(val);
                 break;
             }
-            case ::rtidb::type::kBigInt: {
+            case ::fedb::type::kBigInt: {
                 int64_t val = 0;
                 ret = cur_rv_->GetInt64(idx, &val);
                 if (ret == 0) row_builder_->AppendInt64(val);
                 break;
             }
-            case ::rtidb::type::kTimestamp: {
+            case ::fedb::type::kTimestamp: {
                 int64_t val = 0;
                 ret = cur_rv_->GetTimestamp(idx, &val);
                 if (ret == 0) row_builder_->AppendTimestamp(val);
                 break;
             }
-            case ::rtidb::type::kFloat: {
+            case ::fedb::type::kFloat: {
                 float val = 0;
                 ret = cur_rv_->GetFloat(idx, &val);
                 if (ret == 0) row_builder_->AppendFloat(val);
                 break;
             }
-            case ::rtidb::type::kDouble: {
+            case ::fedb::type::kDouble: {
                 double val = 0;
                 ret = cur_rv_->GetDouble(idx, &val);
                 if (ret == 0) row_builder_->AppendDouble(val);
                 break;
             }
-            case ::rtidb::type::kString:
-            case ::rtidb::type::kVarchar: {
+            case ::fedb::type::kString:
+            case ::fedb::type::kVarchar: {
                 char* val = NULL;
                 uint32_t size = 0;
                 ret = cur_rv_->GetString(idx, &val, &size);
@@ -1103,4 +1103,4 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
 }
 
 }  // namespace codec
-}  // namespace rtidb
+}  // namespace fedb

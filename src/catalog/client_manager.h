@@ -1,14 +1,11 @@
 /*
- * client_manager.h
- * Copyright (C) 4paradigm.com 2020
- * Author denglong
- * Date 2020-09-14
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 
 #ifndef SRC_CATALOG_CLIENT_MANAGER_H_
 #define SRC_CATALOG_CLIENT_MANAGER_H_
@@ -35,14 +33,14 @@
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
 
-namespace rtidb {
+namespace fedb {
 namespace catalog {
 
-using TablePartitions = ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::TablePartition>;
+using TablePartitions = ::google::protobuf::RepeatedPtrField<::fedb::nameserver::TablePartition>;
 
 class TabletRowHandler : public ::fesql::vm::RowHandler {
  public:
-    TabletRowHandler(const std::string& db, rtidb::RpcCallback<rtidb::api::QueryResponse>* callback);
+    TabletRowHandler(const std::string& db, fedb::RpcCallback<fedb::api::QueryResponse>* callback);
     ~TabletRowHandler();
     explicit TabletRowHandler(::fesql::base::Status status);
     const ::fesql::vm::Schema* GetSchema() override { return nullptr; }
@@ -57,11 +55,11 @@ class TabletRowHandler : public ::fesql::vm::RowHandler {
     std::string name_;
     ::fesql::base::Status status_;
     ::fesql::codec::Row row_;
-    rtidb::RpcCallback<rtidb::api::QueryResponse>* callback_;
+    fedb::RpcCallback<fedb::api::QueryResponse>* callback_;
 };
 class AsyncTableHandler : public ::fesql::vm::MemTableHandler {
  public:
-    explicit AsyncTableHandler(rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback,
+    explicit AsyncTableHandler(fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback,
                                const bool is_common);
     ~AsyncTableHandler() {
         if (nullptr != callback_) {
@@ -91,7 +89,7 @@ class AsyncTableHandler : public ::fesql::vm::MemTableHandler {
  private:
     void SyncRpcResponse();
     fesql::base::Status status_;
-    rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback_;
+    fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback_;
     bool request_is_common_;
 };
 class AsyncTablesHandler : public ::fesql::vm::MemTableHandler {
@@ -135,15 +133,15 @@ class TabletAccessor : public ::fesql::vm::Tablet {
  public:
     explicit TabletAccessor(const std::string& name) : name_(name), tablet_client_() {}
 
-    TabletAccessor(const std::string& name, const std::shared_ptr<::rtidb::client::TabletClient>& client)
+    TabletAccessor(const std::string& name, const std::shared_ptr<::fedb::client::TabletClient>& client)
         : name_(name), tablet_client_(client) {}
 
-    std::shared_ptr<::rtidb::client::TabletClient> GetClient() {
+    std::shared_ptr<::fedb::client::TabletClient> GetClient() {
         return std::atomic_load_explicit(&tablet_client_, std::memory_order_relaxed);
     }
 
     bool UpdateClient(const std::string& endpoint) {
-        auto client = std::make_shared<::rtidb::client::TabletClient>(name_, endpoint);
+        auto client = std::make_shared<::fedb::client::TabletClient>(name_, endpoint);
         if (client->Init() != 0) {
             return false;
         }
@@ -151,7 +149,7 @@ class TabletAccessor : public ::fesql::vm::Tablet {
         return true;
     }
 
-    bool UpdateClient(const std::shared_ptr<::rtidb::client::TabletClient>& client) {
+    bool UpdateClient(const std::shared_ptr<::fedb::client::TabletClient>& client) {
         std::atomic_store_explicit(&tablet_client_, client, std::memory_order_relaxed);
         return true;
     }
@@ -169,7 +167,7 @@ class TabletAccessor : public ::fesql::vm::Tablet {
 
  private:
     std::string name_;
-    std::shared_ptr<::rtidb::client::TabletClient> tablet_client_;
+    std::shared_ptr<::fedb::client::TabletClient> tablet_client_;
 };
 class TabletsAccessor : public ::fesql::vm::Tablet {
  public:
@@ -223,7 +221,7 @@ class PartitionClientManager {
     uint32_t pid_;
     std::shared_ptr<TabletAccessor> leader_;
     std::vector<std::shared_ptr<TabletAccessor>> followers_;
-    ::rtidb::base::Random rand_;
+    ::fedb::base::Random rand_;
 };
 
 class ClientManager;
@@ -232,7 +230,7 @@ class TableClientManager {
  public:
     TableClientManager(const TablePartitions& partitions, const ClientManager& client_manager);
 
-    TableClientManager(const ::rtidb::storage::TableSt& table_st, const ClientManager& client_manager);
+    TableClientManager(const ::fedb::storage::TableSt& table_st, const ClientManager& client_manager);
 
     void Show() const {
         DLOG(INFO) << "show client manager ";
@@ -256,7 +254,7 @@ class TableClientManager {
         return std::shared_ptr<PartitionClientManager>();
     }
 
-    bool UpdatePartitionClientManager(const ::rtidb::storage::PartitionSt& partition,
+    bool UpdatePartitionClientManager(const ::fedb::storage::PartitionSt& partition,
                                       const ClientManager& client_manager);
 
     std::shared_ptr<TabletAccessor> GetTablet(uint32_t pid) const {
@@ -297,15 +295,15 @@ class ClientManager {
 
     bool UpdateClient(const std::map<std::string, std::string>& real_ep_map);
 
-    bool UpdateClient(const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients);
+    bool UpdateClient(const std::map<std::string, std::shared_ptr<::fedb::client::TabletClient>>& tablet_clients);
 
  private:
     std::unordered_map<std::string, std::string> real_endpoint_map_;
     std::unordered_map<std::string, std::shared_ptr<TabletAccessor>> clients_;
-    mutable ::rtidb::base::SpinMutex mu_;
-    mutable ::rtidb::base::Random rand_;
+    mutable ::fedb::base::SpinMutex mu_;
+    mutable ::fedb::base::Random rand_;
 };
 
 }  // namespace catalog
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_CATALOG_CLIENT_MANAGER_H_

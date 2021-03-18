@@ -1,12 +1,11 @@
 /*
- * sql_cluster_router.cc
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 
 #include "sdk/sql_cluster_router.h"
 
@@ -36,7 +36,7 @@
 
 DECLARE_int32(request_timeout_ms);
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 class ExplainInfoImpl : public ExplainInfo {
@@ -77,7 +77,7 @@ class ExplainInfoImpl : public ExplainInfo {
 
 class QueryFutureImpl : public QueryFuture {
  public:
-    explicit QueryFutureImpl(rtidb::RpcCallback<rtidb::api::QueryResponse>* callback)
+    explicit QueryFutureImpl(fedb::RpcCallback<fedb::api::QueryResponse>* callback)
         : callback_(callback) {
             if (callback_) {
                 callback_->Ref();
@@ -104,7 +104,7 @@ class QueryFutureImpl : public QueryFuture {
             status->msg = "request error, " + callback_->GetController()->ErrorText();
             return nullptr;
         }
-        if (callback_->GetResponse()->code() != ::rtidb::base::kOk) {
+        if (callback_->GetResponse()->code() != ::fedb::base::kOk) {
             status->code = callback_->GetResponse()->code();
             status->msg = "request error, " + callback_->GetResponse()->msg();
             return nullptr;
@@ -121,13 +121,13 @@ class QueryFutureImpl : public QueryFuture {
     }
 
  private:
-    rtidb::RpcCallback<rtidb::api::QueryResponse>* callback_;
+    fedb::RpcCallback<fedb::api::QueryResponse>* callback_;
 };
 
 class BatchQueryFutureImpl : public QueryFuture {
  public:
     explicit BatchQueryFutureImpl(
-            rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback)
+            fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback)
         : callback_(callback) {
             if (callback_) {
                 callback_->Ref();
@@ -155,8 +155,8 @@ class BatchQueryFutureImpl : public QueryFuture {
             status->msg = "request error. " + callback_->GetController()->ErrorText();
             return nullptr;
         }
-        std::shared_ptr<::rtidb::sdk::SQLBatchRequestResultSet> rs =
-            std::make_shared<rtidb::sdk::SQLBatchRequestResultSet>(
+        std::shared_ptr<::fedb::sdk::SQLBatchRequestResultSet> rs =
+            std::make_shared<fedb::sdk::SQLBatchRequestResultSet>(
                     callback_->GetResponse(), callback_->GetController());
         bool ok = rs->Init();
         if (!ok) {
@@ -172,7 +172,7 @@ class BatchQueryFutureImpl : public QueryFuture {
     }
 
  private:
-    rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback_;
+    fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback_;
 };
 
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
@@ -270,7 +270,7 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
             cache->table_info, cache->column_schema, cache->default_map,
             cache->str_length);
     }
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
+    std::shared_ptr<::fedb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
     uint32_t str_length = 0;
     if (!GetInsertInfo(db, sql, status, &table_info, &default_map,
@@ -287,7 +287,7 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
 
 bool SQLClusterRouter::GetInsertInfo(
     const std::string& db, const std::string& sql, ::fesql::sdk::Status* status,
-    std::shared_ptr<::rtidb::nameserver::TableInfo>* table_info,
+    std::shared_ptr<::fedb::nameserver::TableInfo>* table_info,
     DefaultValueMap* default_map, uint32_t* str_length) {
     if (status == NULL || table_info == NULL || default_map == NULL ||
         str_length == NULL) {
@@ -359,17 +359,17 @@ bool SQLClusterRouter::GetInsertInfo(
 }
 
 std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
-    const fesql::node::ConstNode& node, rtidb::type::DataType column_type) {
+    const fesql::node::ConstNode& node, fedb::type::DataType column_type) {
     fesql::node::DataType node_type = node.GetDataType();
     switch (column_type) {
-        case rtidb::type::kBool:
+        case fedb::type::kBool:
             if (node_type == fesql::node::kInt32) {
                 return std::make_shared<fesql::node::ConstNode>(node.GetBool());
             } else if (node_type == fesql::node::kBool) {
                 return std::make_shared<fesql::node::ConstNode>(node);
             }
             break;
-        case rtidb::type::kSmallInt:
+        case fedb::type::kSmallInt:
             if (node_type == fesql::node::kInt16) {
                 return std::make_shared<fesql::node::ConstNode>(node);
             } else if (node_type == fesql::node::kInt32) {
@@ -377,7 +377,7 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                     node.GetAsInt16());
             }
             break;
-        case rtidb::type::kInt:
+        case fedb::type::kInt:
             if (node_type == fesql::node::kInt16) {
                 return std::make_shared<fesql::node::ConstNode>(
                     node.GetAsInt32());
@@ -387,7 +387,7 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 return std::make_shared<fesql::node::ConstNode>(node.GetAsInt32());
             }
             break;
-        case rtidb::type::kBigInt:
+        case fedb::type::kBigInt:
             if (node_type == fesql::node::kInt16 ||
                 node_type == fesql::node::kInt32) {
                 return std::make_shared<fesql::node::ConstNode>(
@@ -396,7 +396,7 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 return std::make_shared<fesql::node::ConstNode>(node);
             }
             break;
-        case rtidb::type::kFloat:
+        case fedb::type::kFloat:
             if (node_type == fesql::node::kDouble ||
                 node_type == fesql::node::kInt32 ||
                 node_type == fesql::node::kInt16) {
@@ -406,7 +406,7 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 return std::make_shared<fesql::node::ConstNode>(node);
             }
             break;
-        case rtidb::type::kDouble:
+        case fedb::type::kDouble:
             if (node_type == fesql::node::kFloat ||
                 node_type == fesql::node::kInt32 ||
                 node_type == fesql::node::kInt16) {
@@ -416,7 +416,7 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 return std::make_shared<fesql::node::ConstNode>(node);
             }
             break;
-        case rtidb::type::kDate:
+        case fedb::type::kDate:
             if (node_type == fesql::node::kVarchar) {
                 int32_t year;
                 int32_t month;
@@ -435,7 +435,7 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 return std::make_shared<fesql::node::ConstNode>(node);
             }
             break;
-        case rtidb::type::kTimestamp:
+        case fedb::type::kTimestamp:
             if (node_type == fesql::node::kInt16 ||
                 node_type == fesql::node::kInt32 ||
                 node_type == fesql::node::kTimestamp) {
@@ -445,8 +445,8 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 return std::make_shared<fesql::node::ConstNode>(node);
             }
             break;
-        case rtidb::type::kVarchar:
-        case rtidb::type::kString:
+        case fedb::type::kVarchar:
+        case fedb::type::kString:
             if (node_type == fesql::node::kVarchar) {
                 return std::make_shared<fesql::node::ConstNode>(node);
             }
@@ -458,7 +458,7 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
 }
 
 DefaultValueMap SQLClusterRouter::GetDefaultMap(
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+    std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
     const std::map<uint32_t, uint32_t>& column_map,
     ::fesql::node::ExprListNode* row, uint32_t* str_length) {
     if (row == NULL || str_length == NULL) {
@@ -512,8 +512,8 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
             }
             default_map->insert(std::make_pair(idx, val));
             if (!primary->IsNull() &&
-                (column.data_type() == ::rtidb::type::kVarchar ||
-                 column.data_type() == ::rtidb::type::kString)) {
+                (column.data_type() == ::fedb::type::kVarchar ||
+                 column.data_type() == ::fedb::type::kString)) {
                 *str_length += strlen(primary->GetStr());
             }
         }
@@ -523,7 +523,7 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
 
 std::shared_ptr<SQLCache> SQLClusterRouter::GetCache(
     const std::string& db, const std::string& sql) {
-    std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+    std::lock_guard<::fedb::base::SpinMutex> lock(mu_);
     auto it = input_lru_cache_.find(db);
     if (it != input_lru_cache_.end()) {
         auto value = it->second.get(sql);
@@ -536,10 +536,10 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetCache(
 
 void SQLClusterRouter::SetCache(const std::string& db, const std::string& sql,
                                 std::shared_ptr<SQLCache> router_cache) {
-    std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+    std::lock_guard<::fedb::base::SpinMutex> lock(mu_);
     auto it = input_lru_cache_.find(db);
     if (it == input_lru_cache_.end()) {
-        boost::compute::detail::lru_cache<std::string, std::shared_ptr<::rtidb::sdk::SQLCache>>
+        boost::compute::detail::lru_cache<std::string, std::shared_ptr<::fedb::sdk::SQLCache>>
             sql_cache(options_.max_sql_cache_size);
         input_lru_cache_.insert(std::make_pair(db, sql_cache));
         it = input_lru_cache_.find(db);
@@ -558,7 +558,7 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(
             cache->table_info, cache->column_schema, cache->default_map,
             cache->str_length);
     }
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
+    std::shared_ptr<::fedb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
     uint32_t str_length = 0;
     if (!GetInsertInfo(db, sql, status, &table_info, &default_map,
@@ -676,9 +676,9 @@ bool SQLClusterRouter::DropDB(const std::string& db,
     return true;
 }
 
-std::shared_ptr<::rtidb::client::TabletClient> SQLClusterRouter::GetTabletClient(
+std::shared_ptr<::fedb::client::TabletClient> SQLClusterRouter::GetTabletClient(
     const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row) {
-    std::shared_ptr<::rtidb::catalog::TabletAccessor> tablet;
+    std::shared_ptr<::fedb::catalog::TabletAccessor> tablet;
     auto cache = GetCache(db, sql);
     if (!cache) {
         ::fesql::vm::ExplainOutput explain;
@@ -691,7 +691,7 @@ std::shared_ptr<::rtidb::client::TabletClient> SQLClusterRouter::GetTabletClient
                 auto table_info = cluster_sdk_->GetTableInfo(db, explain.router.GetMainTable());
                 ::fesql::vm::Schema raw_schema;
                 if (table_info &&
-                        ::rtidb::catalog::SchemaAdapter::ConvertSchema(table_info->column_desc_v1(), &raw_schema)) {
+                        ::fedb::catalog::SchemaAdapter::ConvertSchema(table_info->column_desc_v1(), &raw_schema)) {
                     schema = std::make_shared<::fesql::sdk::SchemaImpl>(raw_schema);
                 }
             }
@@ -720,7 +720,7 @@ std::shared_ptr<::rtidb::client::TabletClient> SQLClusterRouter::GetTabletClient
     }
     if (!tablet) {
         LOG(WARNING) << "fail to get tablet";
-        return std::shared_ptr<::rtidb::client::TabletClient>();
+        return std::shared_ptr<::fedb::client::TabletClient>();
     }
     return tablet->GetClient();
 }
@@ -730,7 +730,7 @@ std::shared_ptr<TableReader> SQLClusterRouter::GetTableReader() {
     return reader;
 }
 
-std::shared_ptr<rtidb::client::TabletClient> SQLClusterRouter::GetTablet(
+std::shared_ptr<fedb::client::TabletClient> SQLClusterRouter::GetTablet(
         const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) {
     if (status == nullptr) return nullptr;
     std::shared_ptr<fesql::sdk::ProcedureInfo> sp_info =
@@ -798,7 +798,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     }
     auto cntl = std::make_shared<::brpc::Controller>();
     cntl->set_timeout_ms(options_.request_timeout);
-    auto response = std::make_shared<::rtidb::api::QueryResponse>();
+    auto response = std::make_shared<::fedb::api::QueryResponse>();
     auto client = GetTabletClient(db, sql, row);
     if (!client) {
         status->msg = "not tablet found";
@@ -809,7 +809,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         status->msg = "request server error, msg: " + response->msg();
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
-    if (response->code() != ::rtidb::base::kOk) {
+    if (response->code() != ::fedb::base::kOk) {
         status->code = response->code();
         status->msg = "request error, " + response->msg();
         return std::shared_ptr<::fesql::sdk::ResultSet>();
@@ -824,7 +824,7 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     ::fesql::sdk::Status* status) {
     auto cntl = std::make_shared<::brpc::Controller>();
     cntl->set_timeout_ms(options_.request_timeout);
-    auto response = std::make_shared<::rtidb::api::QueryResponse>();
+    auto response = std::make_shared<::fedb::api::QueryResponse>();
     auto client = GetTabletClient(db, sql, std::shared_ptr<SQLRequestRow>());
     if (!client) {
         DLOG(INFO) << "no tablet avilable for sql " << sql;
@@ -848,7 +848,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchRequest(
     }
     auto cntl = std::make_shared<::brpc::Controller>();
     cntl->set_timeout_ms(options_.request_timeout);
-    auto response = std::make_shared<::rtidb::api::SQLBatchRequestQueryResponse>();
+    auto response = std::make_shared<::fedb::api::SQLBatchRequestQueryResponse>();
     auto client = GetTabletClient(db, sql, std::shared_ptr<SQLRequestRow>());
     if (!client) {
         status->code = -1;
@@ -862,12 +862,12 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchRequest(
         status->msg = "request server error " + response->msg();
         return nullptr;
     }
-    if (response->code() != ::rtidb::base::kOk) {
+    if (response->code() != ::fedb::base::kOk) {
         status->code = -1;
         status->msg = response->msg();
         return nullptr;
     }
-    auto rs = std::make_shared<rtidb::sdk::SQLBatchRequestResultSet>(response, cntl);
+    auto rs = std::make_shared<fedb::sdk::SQLBatchRequestResultSet>(response, cntl);
     if (!rs->Init()) {
         status->code = -1;
         status->msg = "batch request result set init fail";
@@ -880,7 +880,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
                                      const std::string& sql,
                                      ::fesql::sdk::Status* status) {
     if (status == NULL) return false;
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
+    std::shared_ptr<::fedb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
     uint32_t str_length = 0;
     if (!GetInsertInfo(db, sql, status, &table_info, &default_map,
@@ -890,7 +890,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
         return false;
     }
     std::shared_ptr<SQLInsertRow> row = std::make_shared<SQLInsertRow>(
-        table_info, ::rtidb::sdk::ConvertToSchema(table_info), default_map,
+        table_info, ::fedb::sdk::ConvertToSchema(table_info), default_map,
         str_length);
     if (!row) {
         status->msg = "fail to parse row from sql " + sql;
@@ -907,7 +907,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
         LOG(WARNING) << status->msg;
         return false;
     }
-    std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>> tablets;
+    std::vector<std::shared_ptr<::fedb::catalog::TabletAccessor>> tablets;
     bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
     if (!ret || tablets.empty()) {
         status->msg = "fail to get table " + table_info->name() + " tablet";
@@ -918,7 +918,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
 }
 
 bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>& row,
-        const std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>>& tablets,
+        const std::vector<std::shared_ptr<::fedb::catalog::TabletAccessor>>& tablets,
         ::fesql::sdk::Status* status) {
     if (status == nullptr) {
         return false;
@@ -970,9 +970,9 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     }
     std::shared_ptr<SQLCache> cache = GetCache(db, sql);
     if (cache) {
-        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
+        std::shared_ptr<::fedb::nameserver::TableInfo> table_info =
             cache->table_info;
-        std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>> tablets;
+        std::vector<std::shared_ptr<::fedb::catalog::TabletAccessor>> tablets;
         bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
         if (!ret || tablets.empty()) {
             status->msg = "fail to get table " + table_info->name() + " tablet";
@@ -1003,8 +1003,8 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     }
     std::shared_ptr<SQLCache> cache = GetCache(db, sql);
     if (cache) {
-        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = cache->table_info;
-        std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>> tablets;
+        std::shared_ptr<::fedb::nameserver::TableInfo> table_info = cache->table_info;
+        std::vector<std::shared_ptr<::fedb::catalog::TabletAccessor>> tablets;
         bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
         if (!ret || tablets.empty()) {
             status->msg = "fail to get table " + table_info->name() + " tablet";
@@ -1090,7 +1090,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
     }
 
     auto cntl = std::make_shared<::brpc::Controller>();
-    auto response = std::make_shared<::rtidb::api::QueryResponse>();
+    auto response = std::make_shared<::fedb::api::QueryResponse>();
     bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(),
                              options_.enable_debug, options_.request_timeout);
     if (!ok) {
@@ -1099,7 +1099,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
         LOG(WARNING) << status->msg;
         return nullptr;
     }
-    if (response->code() != ::rtidb::base::kOk) {
+    if (response->code() != ::fedb::base::kOk) {
         status->code = -1;
         status->msg = response->msg();
         LOG(WARNING) << status->msg;
@@ -1121,7 +1121,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProc
     }
 
     auto cntl = std::make_shared<::brpc::Controller>();
-    auto response = std::make_shared<::rtidb::api::SQLBatchRequestQueryResponse>();
+    auto response = std::make_shared<::fedb::api::SQLBatchRequestQueryResponse>();
     bool ok = tablet->CallSQLBatchRequestProcedure(
             db, sp_name, row_batch, cntl.get(), response.get(),
             options_.enable_debug, options_.request_timeout);
@@ -1130,12 +1130,12 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProc
         status->msg = "request server error, msg: " + response->msg();
         return nullptr;
     }
-    if (response->code() != ::rtidb::base::kOk) {
+    if (response->code() != ::fedb::base::kOk) {
         status->code = -1;
         status->msg = response->msg();
         return nullptr;
     }
-    auto rs = std::make_shared<::rtidb::sdk::SQLBatchRequestResultSet>(response, cntl);
+    auto rs = std::make_shared<::fedb::sdk::SQLBatchRequestResultSet>(response, cntl);
     if (!rs->Init()) {
         status->code = -1;
         status->msg = "resuletSetSQL init failed";
@@ -1162,7 +1162,7 @@ std::shared_ptr<fesql::sdk::ProcedureInfo> SQLClusterRouter::ShowProcedure(
 
 bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVector& parser_trees,
         const std::string& db, const std::string& sql,
-        std::shared_ptr<::rtidb::client::NsClient> ns_ptr,
+        std::shared_ptr<::fedb::client::NsClient> ns_ptr,
         fesql::node::NodeManager* node_manager, std::string* msg) {
     if (node_manager == nullptr || msg == nullptr) {
         return false;
@@ -1190,7 +1190,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVect
                 return false;
             }
             // construct sp_info
-            rtidb::api::ProcedureInfo sp_info;
+            fedb::api::ProcedureInfo sp_info;
             sp_info.set_db_name(db);
             sp_info.set_sp_name(create_sp->GetSpName());
             sp_info.set_sql(sql);
@@ -1207,10 +1207,10 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVect
                         *msg = "cast InputParameterNode failed";
                         return false;
                     }
-                    rtidb::common::ColumnDesc* col_desc = schema->Add();
+                    fedb::common::ColumnDesc* col_desc = schema->Add();
                     col_desc->set_name(input_ptr->GetColumnName());
-                    rtidb::type::DataType rtidb_type;
-                    bool ok = ::rtidb::catalog::SchemaAdapter::ConvertType(input_ptr->GetColumnType(),
+                    fedb::type::DataType rtidb_type;
+                    bool ok = ::fedb::catalog::SchemaAdapter::ConvertType(input_ptr->GetColumnType(),
                             &rtidb_type);
                     if (!ok) {
                         *msg = "convert type failed";
@@ -1246,7 +1246,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVect
                 return false;
             }
             RtidbSchema rtidb_input_schema;
-            if (!rtidb::catalog::SchemaAdapter::ConvertSchema(explain_output.input_schema, &rtidb_input_schema)) {
+            if (!fedb::catalog::SchemaAdapter::ConvertSchema(explain_output.input_schema, &rtidb_input_schema)) {
                 *msg = "convert input schema failed";
                 return false;
             }
@@ -1257,7 +1257,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVect
             sp_info.mutable_input_schema()->CopyFrom(*schema);
             // get output schema, and fill sp_info
             RtidbSchema rtidb_output_schema;
-            if (!rtidb::catalog::SchemaAdapter::ConvertSchema(explain_output.output_schema, &rtidb_output_schema)) {
+            if (!fedb::catalog::SchemaAdapter::ConvertSchema(explain_output.output_schema, &rtidb_output_schema)) {
                 *msg = "convert output schema failed";
                 return false;
             }
@@ -1302,8 +1302,8 @@ bool SQLClusterRouter::CheckParameter(const RtidbSchema& parameter,
         }
         if (parameter.Get(i).data_type() != input_schema.Get(i).data_type()) {
             LOG(WARNING) << "check column type failed, expect "
-                << rtidb::type::DataType_Name(input_schema.Get(i).data_type())
-                << ", but " << rtidb::type::DataType_Name(parameter.Get(i).data_type());
+                << fedb::type::DataType_Name(input_schema.Get(i).data_type())
+                << ", but " << fedb::type::DataType_Name(parameter.Get(i).data_type());
             return false;
         }
     }
@@ -1328,43 +1328,43 @@ std::shared_ptr<fesql::sdk::ProcedureInfo> SQLClusterRouter::ShowProcedure(
     return cluster_sdk_->GetProcedureInfo(db, sp_name, msg);
 }
 
-std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
+std::shared_ptr<fedb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
     const std::string& db, const std::string& sp_name, int64_t timeout_ms,
     std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) {
     if (!row || !status) {
-        return std::shared_ptr<rtidb::sdk::QueryFuture>();
+        return std::shared_ptr<fedb::sdk::QueryFuture>();
     }
     if (!row->OK()) {
         status->code = -1;
         status->msg = "make sure the request row is built before execute sql";
         LOG(WARNING) << "make sure the request row is built before execute sql";
-        return std::shared_ptr<rtidb::sdk::QueryFuture>();
+        return std::shared_ptr<fedb::sdk::QueryFuture>();
     }
     auto tablet = GetTablet(db, sp_name, status);
     if (!tablet) {
-        return std::shared_ptr<rtidb::sdk::QueryFuture>();
+        return std::shared_ptr<fedb::sdk::QueryFuture>();
     }
 
-    std::shared_ptr<rtidb::api::QueryResponse> response =
-        std::make_shared<rtidb::api::QueryResponse>();
+    std::shared_ptr<fedb::api::QueryResponse> response =
+        std::make_shared<fedb::api::QueryResponse>();
     std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
-    rtidb::RpcCallback<rtidb::api::QueryResponse>* callback =
-            new rtidb::RpcCallback<rtidb::api::QueryResponse>(response, cntl);
+    fedb::RpcCallback<fedb::api::QueryResponse>* callback =
+            new fedb::RpcCallback<fedb::api::QueryResponse>(response, cntl);
 
-    std::shared_ptr<rtidb::sdk::QueryFutureImpl> future =
-        std::make_shared<rtidb::sdk::QueryFutureImpl>(callback);
+    std::shared_ptr<fedb::sdk::QueryFutureImpl> future =
+        std::make_shared<fedb::sdk::QueryFutureImpl>(callback);
     bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), timeout_ms,
             options_.enable_debug, callback);
     if (!ok) {
         status->code = -1;
         status->msg = "request server error, msg: " + response->msg();
         LOG(WARNING) << status->msg;
-        return std::shared_ptr<rtidb::sdk::QueryFuture>();
+        return std::shared_ptr<fedb::sdk::QueryFuture>();
     }
     return future;
 }
 
-std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestProcedure(
+std::shared_ptr<fedb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
         std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) {
     if (!row_batch || !status) {
@@ -1376,12 +1376,12 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestPr
     }
 
     std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
-    auto response = std::make_shared<rtidb::api::SQLBatchRequestQueryResponse>();
-    rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback =
-           new rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>(response, cntl);
+    auto response = std::make_shared<fedb::api::SQLBatchRequestQueryResponse>();
+    fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback =
+           new fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>(response, cntl);
 
-    std::shared_ptr<rtidb::sdk::BatchQueryFutureImpl> future =
-        std::make_shared<rtidb::sdk::BatchQueryFutureImpl>(callback);
+    std::shared_ptr<fedb::sdk::BatchQueryFutureImpl> future =
+        std::make_shared<fedb::sdk::BatchQueryFutureImpl>(callback);
     bool ok = tablet->CallSQLBatchRequestProcedure(
             db, sp_name, row_batch, options_.enable_debug, timeout_ms, callback);
     if (!ok) {
@@ -1394,4 +1394,4 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestPr
 }
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb

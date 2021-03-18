@@ -1,10 +1,26 @@
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import "common.proto";
 import "sql_procedure.proto";
-package rtidb.api;
+package fedb.api;
 
 option cc_generic_services = true;
 option java_generic_services = true;
-option java_package = "com._4paradigm.rtidb.tablet";
+option java_package = "com._4paradigm.fedb.tablet";
 option java_outer_classname = "Tablet";
 
 enum TableMode {
@@ -338,9 +354,9 @@ message TableMeta {
     repeated string dimensions = 12 [deprecated = true];
     optional CompressType compress_type = 13;
     optional uint32 key_entry_max_height = 14;
-    repeated rtidb.common.ColumnDesc column_desc = 15;
-    repeated rtidb.common.ColumnKey column_key = 16;
-    repeated rtidb.common.ColumnDesc added_column_desc = 17;
+    repeated fedb.common.ColumnDesc column_desc = 15;
+    repeated fedb.common.ColumnKey column_key = 16;
+    repeated fedb.common.ColumnDesc added_column_desc = 17;
     optional TTLDesc ttl_desc = 18;
     // format_version 0 , the legacy format 1 ,the new one
     optional uint32 format_version = 19 [default = 0];
@@ -354,10 +370,10 @@ message CreateTableRequest {
 }
 message UpdateTableMetaForAddFieldRequest {
     optional uint32 tid = 1;
-    optional rtidb.common.ColumnDesc column_desc = 2;
+    optional fedb.common.ColumnDesc column_desc = 2;
     optional string schema = 3;
-    repeated rtidb.common.ColumnDesc column_descs = 4;
-    optional rtidb.common.VersionPair version_pair = 5;
+    repeated fedb.common.ColumnDesc column_descs = 4;
+    optional fedb.common.VersionPair version_pair = 5;
 }
 
 message CreateTableResponse {
@@ -457,7 +473,7 @@ message ChangeRoleRequest {
     optional uint64 term = 3;
     optional TableMode mode = 4;
     repeated string replicas = 5;
-    repeated rtidb.common.EndpointAndTid endpoint_tid = 6;
+    repeated fedb.common.EndpointAndTid endpoint_tid = 6;
 }
 
 message SendSnapshotRequest {
@@ -634,7 +650,7 @@ message CheckFileRequest {
 message AddIndexRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
-    optional rtidb.common.ColumnKey column_key = 3;
+    optional fedb.common.ColumnKey column_key = 3;
 }
 
 message SetModeRequest {
@@ -660,7 +676,7 @@ message DumpIndexDataRequest {
     optional uint32 pid = 2;
     optional uint32 partition_num = 3;
     optional uint32 idx = 4;
-    optional rtidb.common.ColumnKey column_key = 5;
+    optional fedb.common.ColumnKey column_key = 5;
     optional TaskInfo task_info = 6;
 }
 
@@ -676,7 +692,7 @@ message ExtractIndexDataRequest {
     optional uint32 pid = 2;
     optional uint32 partition_num = 3;
     optional uint32 idx = 4;
-    optional rtidb.common.ColumnKey column_key = 5;
+    optional fedb.common.ColumnKey column_key = 5;
     optional TaskInfo task_info = 6;
 }
 
@@ -781,7 +797,7 @@ message ExplainResponse {
 message GetCatalogRequest {}
 
 message GetCatalogResponse {
-    optional rtidb.common.CatalogInfo catalog = 1;
+    optional fedb.common.CatalogInfo catalog = 1;
     optional int32 code = 2;
     optional string msg = 3;
 }
@@ -849,6 +865,6 @@ service TabletServer {
     rpc UpdateRealEndpointMap(UpdateRealEndpointMapRequest) returns (GeneralResponse);
 
     // sql procedure interfaces
-    rpc CreateProcedure(rtidb.api.CreateProcedureRequest) returns (GeneralResponse);
-    rpc DropProcedure(rtidb.api.DropProcedureRequest) returns (GeneralResponse);
+    rpc CreateProcedure(fedb.api.CreateProcedureRequest) returns (GeneralResponse);
+    rpc DropProcedure(fedb.api.DropProcedureRequest) returns (GeneralResponse);
 }

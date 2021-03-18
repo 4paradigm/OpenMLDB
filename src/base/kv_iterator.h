@@ -1,7 +1,19 @@
-//
-// base/kv_iterator.h
-// Copyright (C) 2019 4paradigm.com
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #ifndef SRC_BASE_KV_ITERATOR_H_
 #define SRC_BASE_KV_ITERATOR_H_
 
@@ -13,12 +25,12 @@
 #include "base/slice.h"
 #include "proto/tablet.pb.h"
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 class KvIterator {
  public:
-    explicit KvIterator(::rtidb::api::ScanResponse* response)
+    explicit KvIterator(::fedb::api::ScanResponse* response)
         : response_(response),
           buffer_(NULL),
           tsize_(0),
@@ -33,7 +45,7 @@ class KvIterator {
         Next();
     }
 
-    explicit KvIterator(::rtidb::api::TraverseResponse* response)
+    explicit KvIterator(::fedb::api::TraverseResponse* response)
         : response_(response),
           buffer_(NULL),
           tsize_(0),
@@ -48,7 +60,7 @@ class KvIterator {
         Next();
     }
 
-    KvIterator(::rtidb::api::ScanResponse* response, bool clean)
+    KvIterator(::fedb::api::ScanResponse* response, bool clean)
         : response_(response),
           buffer_(NULL),
           tsize_(0),
@@ -63,7 +75,7 @@ class KvIterator {
         Next();
     }
 
-    KvIterator(::rtidb::api::TraverseResponse* response, bool clean)
+    KvIterator(::fedb::api::TraverseResponse* response, bool clean)
         : response_(response),
           buffer_(NULL),
           tsize_(0),
@@ -156,5 +168,5 @@ class KvIterator {
 };
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_BASE_KV_ITERATOR_H_

@@ -1,9 +1,20 @@
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-// row_codec.h
-// Copyright (C) 2017 4paradigm.com
-// Author denglong
-// Date 2020-04-30
-//
+
 #pragma once
 
 #include <algorithm>
@@ -19,10 +30,10 @@
 #include "codec/schema_codec.h"
 #include "storage/segment.h"
 
-namespace rtidb {
+namespace fedb {
 namespace codec {
 
-using ::rtidb::storage::DataBlock;
+using ::fedb::storage::DataBlock;
 
 class RowCodec {
  public:
@@ -31,9 +42,9 @@ class RowCodec {
         const Schema& schema) {
         int32_t str_len = 0;
         for (int i = 0; i < schema.size(); i++) {
-            const ::rtidb::common::ColumnDesc& col = schema.Get(i);
-            if (col.data_type() == ::rtidb::type::kVarchar ||
-                col.data_type() == ::rtidb::type::kString) {
+            const ::fedb::common::ColumnDesc& col = schema.Get(i);
+            if (col.data_type() == ::fedb::type::kVarchar ||
+                col.data_type() == ::fedb::type::kString) {
                 auto iter = str_map.find(col.name());
                 if (iter == str_map.end()) {
                     return -1;
@@ -58,9 +69,9 @@ class RowCodec {
         }
         int32_t str_len = 0;
         for (int i = 0; i < schema.size(); i++) {
-            const ::rtidb::common::ColumnDesc& col = schema.Get(i);
-            if (col.data_type() == ::rtidb::type::kVarchar ||
-                col.data_type() == ::rtidb::type::kString) {
+            const ::fedb::common::ColumnDesc& col = schema.Get(i);
+            if (col.data_type() == ::fedb::type::kVarchar ||
+                col.data_type() == ::fedb::type::kString) {
                 if (!col.not_null() &&
                     (input_value[i] == "null" || input_value[i] == NONETOKEN)) {
                     continue;
@@ -74,63 +85,63 @@ class RowCodec {
         return str_len;
     }
 
-    static ::rtidb::base::ResultMsg EncodeRow(
+    static ::fedb::base::ResultMsg EncodeRow(
         const std::vector<std::string> input_value, const Schema& schema, uint32_t version,
         std::string& row) {  // NOLINT
         if (input_value.empty() ||
             input_value.size() != (uint64_t)schema.size()) {
-            return ::rtidb::base::ResultMsg(-1, "input error");
+            return ::fedb::base::ResultMsg(-1, "input error");
         }
         int32_t str_len = CalStrLength(input_value, schema);
         if (str_len < 0) {
-            return ::rtidb::base::ResultMsg(-1, "cal str len failed");
+            return ::fedb::base::ResultMsg(-1, "cal str len failed");
         }
-        ::rtidb::codec::RowBuilder builder(schema);
+        ::fedb::codec::RowBuilder builder(schema);
         uint32_t size = builder.CalTotalLength(str_len);
         builder.SetSchemaVersion(version);
         row.resize(size);
         builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
         for (int i = 0; i < schema.size(); i++) {
-            const ::rtidb::common::ColumnDesc& col = schema.Get(i);
+            const ::fedb::common::ColumnDesc& col = schema.Get(i);
             if (!col.not_null() &&
                 (input_value[i] == "null" || input_value[i] == NONETOKEN)) {
                 builder.AppendNULL();
                 continue;
             } else if (input_value[i] == "null" ||
                        input_value[i] == NONETOKEN) {
-                return ::rtidb::base::ResultMsg(
+                return ::fedb::base::ResultMsg(
                     -1, col.name() + " should not be null");
             }
             if (!builder.AppendValue(input_value[i])) {
                 std::string msg =
-                    "append " + ::rtidb::type::DataType_Name(col.data_type()) +
+                    "append " + ::fedb::type::DataType_Name(col.data_type()) +
                     " error";
-                return ::rtidb::base::ResultMsg(-1, msg);
+                return ::fedb::base::ResultMsg(-1, msg);
             }
         }
-        return ::rtidb::base::ResultMsg(0, "ok");
+        return ::fedb::base::ResultMsg(0, "ok");
     }
 
-    static ::rtidb::base::ResultMsg EncodeRow(
+    static ::fedb::base::ResultMsg EncodeRow(
         const std::map<std::string, std::string>& str_map, const Schema& schema, int32_t version,
         std::string& row) {  // NOLINT
         if (str_map.empty() || str_map.size() != (uint64_t)schema.size()) {
-            return ::rtidb::base::ResultMsg(-1, "input error");
+            return ::fedb::base::ResultMsg(-1, "input error");
         }
         int32_t str_len = CalStrLength(str_map, schema);
         if (str_len < 0) {
-            return ::rtidb::base::ResultMsg(-1, "cal str len error");
+            return ::fedb::base::ResultMsg(-1, "cal str len error");
         }
-        ::rtidb::codec::RowBuilder builder(schema);
+        ::fedb::codec::RowBuilder builder(schema);
         builder.SetSchemaVersion(version);
         uint32_t size = builder.CalTotalLength(str_len);
         row.resize(size);
         builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
         for (int i = 0; i < schema.size(); i++) {
-            const ::rtidb::common::ColumnDesc& col = schema.Get(i);
+            const ::fedb::common::ColumnDesc& col = schema.Get(i);
             auto iter = str_map.find(col.name());
             if (iter == str_map.end()) {
-                return ::rtidb::base::ResultMsg(-1,
+                return ::fedb::base::ResultMsg(-1,
                                                 col.name() + " not in str_map");
             }
             if (!col.not_null() &&
@@ -138,64 +149,64 @@ class RowCodec {
                 builder.AppendNULL();
                 continue;
             } else if (iter->second == "null" || iter->second == NONETOKEN) {
-                return ::rtidb::base::ResultMsg(
+                return ::fedb::base::ResultMsg(
                     -1, col.name() + " should not be null");
             }
             if (!builder.AppendValue(iter->second)) {
                 std::string msg =
-                    "append " + ::rtidb::type::DataType_Name(col.data_type()) +
+                    "append " + ::fedb::type::DataType_Name(col.data_type()) +
                     " error";
-                return ::rtidb::base::ResultMsg(-1, msg);
+                return ::fedb::base::ResultMsg(-1, msg);
             }
         }
-        return ::rtidb::base::ResultMsg(0, "ok");
+        return ::fedb::base::ResultMsg(0, "ok");
     }
 
-    static ::rtidb::base::ResultMsg EncodeRow(
+    static ::fedb::base::ResultMsg EncodeRow(
         const std::vector<std::string>& input_value,
-        const std::vector<::rtidb::codec::ColumnDesc>& columns,
+        const std::vector<::fedb::codec::ColumnDesc>& columns,
         int modify_times, std::string* row) {
         if (input_value.size() != columns.size()) {
-            return ::rtidb::base::ResultMsg(-1, "input error");
+            return ::fedb::base::ResultMsg(-1, "input error");
         }
         uint16_t cnt = (uint16_t)input_value.size();
-        ::rtidb::codec::FlatArrayCodec codec(row, cnt, modify_times);
+        ::fedb::codec::FlatArrayCodec codec(row, cnt, modify_times);
         for (uint32_t i = 0; i < input_value.size(); i++) {
             bool codec_ok = false;
             try {
-                if (columns[i].type == ::rtidb::codec::ColType::kInt32) {
+                if (columns[i].type == ::fedb::codec::ColType::kInt32) {
                     codec_ok = codec.Append(
                         boost::lexical_cast<int32_t>(input_value[i]));
-                } else if (columns[i].type == ::rtidb::codec::ColType::kInt64) {
+                } else if (columns[i].type == ::fedb::codec::ColType::kInt64) {
                     codec_ok = codec.Append(
                         boost::lexical_cast<int64_t>(input_value[i]));
                 } else if (columns[i].type ==
-                           ::rtidb::codec::ColType::kUInt32) {
+                           ::fedb::codec::ColType::kUInt32) {
                     if (!boost::algorithm::starts_with(input_value[i], "-")) {
                         codec_ok = codec.Append(
                             boost::lexical_cast<uint32_t>(input_value[i]));
                     }
                 } else if (columns[i].type ==
-                           ::rtidb::codec::ColType::kUInt64) {
+                           ::fedb::codec::ColType::kUInt64) {
                     if (!boost::algorithm::starts_with(input_value[i], "-")) {
                         codec_ok = codec.Append(
                             boost::lexical_cast<uint64_t>(input_value[i]));
                     }
-                } else if (columns[i].type == ::rtidb::codec::ColType::kFloat) {
+                } else if (columns[i].type == ::fedb::codec::ColType::kFloat) {
                     codec_ok = codec.Append(
                         boost::lexical_cast<float>(input_value[i]));
                 } else if (columns[i].type ==
-                           ::rtidb::codec::ColType::kDouble) {
+                           ::fedb::codec::ColType::kDouble) {
                     codec_ok = codec.Append(
                         boost::lexical_cast<double>(input_value[i]));
                 } else if (columns[i].type ==
-                           ::rtidb::codec::ColType::kString) {
+                           ::fedb::codec::ColType::kString) {
                     codec_ok = codec.Append(input_value[i]);
                 } else if (columns[i].type ==
-                           ::rtidb::codec::ColType::kTimestamp) {
+                           ::fedb::codec::ColType::kTimestamp) {
                     codec_ok = codec.AppendTimestamp(
                         boost::lexical_cast<uint64_t>(input_value[i]));
-                } else if (columns[i].type == ::rtidb::codec::ColType::kDate) {
+                } else if (columns[i].type == ::fedb::codec::ColType::kDate) {
                     std::string date = input_value[i] + " 00:00:00";
                     tm tm_s;
                     time_t time;
@@ -203,20 +214,20 @@ class RowCodec {
                     strcpy(buf, date.c_str());  // NOLINT
                     char* result = strptime(buf, "%Y-%m-%d %H:%M:%S", &tm_s);
                     if (result == NULL) {
-                        return ::rtidb::base::ResultMsg(-1,
+                        return ::fedb::base::ResultMsg(-1,
                                                         "date format error");
                     }
                     tm_s.tm_isdst = -1;
                     time = mktime(&tm_s) * 1000;
                     codec_ok = codec.AppendDate(uint64_t(time));
-                } else if (columns[i].type == ::rtidb::codec::ColType::kInt16) {
+                } else if (columns[i].type == ::fedb::codec::ColType::kInt16) {
                     codec_ok = codec.Append(
                         boost::lexical_cast<int16_t>(input_value[i]));
                 } else if (columns[i].type ==
-                           ::rtidb::codec::ColType::kUInt16) {
+                           ::fedb::codec::ColType::kUInt16) {
                     codec_ok = codec.Append(
                         boost::lexical_cast<uint16_t>(input_value[i]));
-                } else if (columns[i].type == ::rtidb::codec::ColType::kBool) {
+                } else if (columns[i].type == ::fedb::codec::ColType::kBool) {
                     bool value = false;
                     std::string raw_value = input_value[i];
                     std::transform(raw_value.begin(), raw_value.end(),
@@ -226,7 +237,7 @@ class RowCodec {
                     } else if (raw_value == "false") {
                         value = false;
                     } else {
-                        return ::rtidb::base::ResultMsg(-1,
+                        return ::fedb::base::ResultMsg(-1,
                                                         "bool format error");
                     }
                     codec_ok = codec.Append(value);
@@ -234,20 +245,20 @@ class RowCodec {
                     codec_ok = codec.AppendNull();
                 }
             } catch (std::exception const& e) {
-                return ::rtidb::base::ResultMsg(-1, e.what());
+                return ::fedb::base::ResultMsg(-1, e.what());
             }
             if (!codec_ok) {
-                return ::rtidb::base::ResultMsg(-1, "encode failed");
+                return ::fedb::base::ResultMsg(-1, "encode failed");
             }
         }
         codec.Build();
-        return ::rtidb::base::ResultMsg(0, "ok");
+        return ::fedb::base::ResultMsg(0, "ok");
     }
 
     static bool DecodeRow(const Schema& schema,  // NOLINT
-                          const ::rtidb::base::Slice& value,
+                          const ::fedb::base::Slice& value,
                           std::vector<std::string>& value_vec) {  // NOLINT
-        rtidb::codec::RowView rv(
+        fedb::codec::RowView rv(
             schema, reinterpret_cast<int8_t*>(const_cast<char*>(value.data())),
             value.size());
         return DecodeRow(schema, rv, false, 0, schema.size(), &value_vec);
@@ -255,18 +266,18 @@ class RowCodec {
 
     static bool DecodeRow(const Schema& schema, const int8_t* data, int32_t size, bool replace_empty_str,
                           int start, int len, std::vector<std::string>& values) { // NOLINT
-        rtidb::codec::RowView rv(schema, data, size);
+        fedb::codec::RowView rv(schema, data, size);
         return DecodeRow(schema, rv, replace_empty_str, start, len, &values);
     }
 
     static bool DecodeRow(const Schema& schema,                   // NOLINT
-                          rtidb::codec::RowView& rv,              // NOLINT
+                          fedb::codec::RowView& rv,              // NOLINT
                           std::vector<std::string>& value_vec) {  // NOLINT
         return DecodeRow(schema, rv, false, 0, schema.size(), &value_vec);
     }
 
     static bool DecodeRow(const Schema& schema,
-                          rtidb::codec::RowView& rv,  // NOLINT
+                          fedb::codec::RowView& rv,  // NOLINT
                           bool replace_empty_str, int start, int length, std::vector<std::string>* value_vec) {
         int end = start + length;
         if (length <= 0) {
@@ -288,15 +299,15 @@ class RowCodec {
     }
 
     static bool DecodeRow(uint32_t base_schema_size,
-                          const ::rtidb::base::Slice& value,
+                          const ::fedb::base::Slice& value,
                           std::vector<std::string>* vrow) {
         return DecodeRow(base_schema_size, base_schema_size, value, vrow);
     }
 
     static bool DecodeRow(uint32_t base_schema_size, uint32_t get_row_num,
-                          const ::rtidb::base::Slice& value,
+                          const ::fedb::base::Slice& value,
                           std::vector<std::string>* vrow) {
-        rtidb::codec::FlatArrayIterator fit(value.data(), value.size(), base_schema_size);
+        fedb::codec::FlatArrayIterator fit(value.data(), value.size(), base_schema_size);
         while (get_row_num > 0) {
             std::string col;
             if (!fit.Valid()) {
@@ -307,46 +318,46 @@ class RowCodec {
             ColType type = fit.GetType();
             if (fit.IsNULL()) {
                 col = NONETOKEN;
-            } else if (type == ::rtidb::codec::ColType::kString ||
-                       type == ::rtidb::codec::ColType::kEmptyString) {
+            } else if (type == ::fedb::codec::ColType::kString ||
+                       type == ::fedb::codec::ColType::kEmptyString) {
                 fit.GetString(&col);
-            } else if (type == ::rtidb::codec::ColType::kUInt16) {
+            } else if (type == ::fedb::codec::ColType::kUInt16) {
                 uint16_t uint16_col = 0;
                 fit.GetUInt16(&uint16_col);
                 col = boost::lexical_cast<std::string>(uint16_col);
-            } else if (type == ::rtidb::codec::ColType::kInt16) {
+            } else if (type == ::fedb::codec::ColType::kInt16) {
                 int16_t int16_col = 0;
                 fit.GetInt16(&int16_col);
                 col = boost::lexical_cast<std::string>(int16_col);
-            } else if (type == ::rtidb::codec::ColType::kInt32) {
+            } else if (type == ::fedb::codec::ColType::kInt32) {
                 int32_t int32_col = 0;
                 fit.GetInt32(&int32_col);
                 col = boost::lexical_cast<std::string>(int32_col);
-            } else if (type == ::rtidb::codec::ColType::kInt64) {
+            } else if (type == ::fedb::codec::ColType::kInt64) {
                 int64_t int64_col = 0;
                 fit.GetInt64(&int64_col);
                 col = boost::lexical_cast<std::string>(int64_col);
-            } else if (type == ::rtidb::codec::ColType::kUInt32) {
+            } else if (type == ::fedb::codec::ColType::kUInt32) {
                 uint32_t uint32_col = 0;
                 fit.GetUInt32(&uint32_col);
                 col = boost::lexical_cast<std::string>(uint32_col);
-            } else if (type == ::rtidb::codec::ColType::kUInt64) {
+            } else if (type == ::fedb::codec::ColType::kUInt64) {
                 uint64_t uint64_col = 0;
                 fit.GetUInt64(&uint64_col);
                 col = boost::lexical_cast<std::string>(uint64_col);
-            } else if (type == ::rtidb::codec::ColType::kDouble) {
+            } else if (type == ::fedb::codec::ColType::kDouble) {
                 double double_col = 0.0;
                 fit.GetDouble(&double_col);
                 col = boost::lexical_cast<std::string>(double_col);
-            } else if (type == ::rtidb::codec::ColType::kFloat) {
+            } else if (type == ::fedb::codec::ColType::kFloat) {
                 float float_col = 0.0f;
                 fit.GetFloat(&float_col);
                 col = boost::lexical_cast<std::string>(float_col);
-            } else if (type == ::rtidb::codec::ColType::kTimestamp) {
+            } else if (type == ::fedb::codec::ColType::kTimestamp) {
                 uint64_t ts = 0;
                 fit.GetTimestamp(&ts);
                 col = boost::lexical_cast<std::string>(ts);
-            } else if (type == ::rtidb::codec::ColType::kDate) {
+            } else if (type == ::fedb::codec::ColType::kDate) {
                 uint64_t dt = 0;
                 fit.GetDate(&dt);
                 time_t rawtime = (time_t)dt / 1000;
@@ -354,7 +365,7 @@ class RowCodec {
                 char buf[20];
                 strftime(buf, 20, "%Y-%m-%d", timeinfo);
                 col.assign(buf);
-            } else if (type == ::rtidb::codec::ColType::kBool) {
+            } else if (type == ::fedb::codec::ColType::kBool) {
                 bool value = false;
                 fit.GetBool(&value);
                 if (value) {
@@ -373,7 +384,7 @@ class RowCodec {
 __attribute__((unused)) static bool DecodeRows(
     const std::string& data, uint32_t count, const Schema& schema,
     std::vector<std::vector<std::string>>* row_vec) {
-    rtidb::codec::RowView rv(schema);
+    fedb::codec::RowView rv(schema);
     uint32_t offset = 0;
     for (uint32_t i = 0; i < count; i++) {
         std::vector<std::string> row;
@@ -388,11 +399,11 @@ __attribute__((unused)) static bool DecodeRows(
             return false;
         }
         offset += 4 + value_size;
-        if (!rtidb::codec::RowCodec::DecodeRow(schema, rv, row)) {
+        if (!fedb::codec::RowCodec::DecodeRow(schema, rv, row)) {
             return false;
         }
         for (uint64_t i = 0; i < row.size(); i++) {
-            if (row[i] == rtidb::codec::NONETOKEN) {
+            if (row[i] == fedb::codec::NONETOKEN) {
                 row[i] = "null";
             }
         }
@@ -432,7 +443,7 @@ static inline void Encode(const DataBlock* data, char* buffer,
                           uint32_t offset) {
     return Encode(data->data, data->size, buffer, offset);
 }
-static inline int32_t EncodeRows(const std::vector<::rtidb::base::Slice>& rows,
+static inline int32_t EncodeRows(const std::vector<::fedb::base::Slice>& rows,
                                  uint32_t total_block_size, std::string* body) {
     if (body == NULL) {
         PDLOG(WARNING, "invalid output body");
@@ -446,14 +457,14 @@ static inline int32_t EncodeRows(const std::vector<::rtidb::base::Slice>& rows,
     uint32_t offset = 0;
     char* rbuffer = reinterpret_cast<char*>(&((*body)[0]));
     for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
-        ::rtidb::codec::Encode(lit->data(), lit->size(), rbuffer, offset);
+        ::fedb::codec::Encode(lit->data(), lit->size(), rbuffer, offset);
         offset += (4 + lit->size());
     }
     return total_size;
 }
 
 static inline int32_t EncodeRows(
-    const boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>&
+    const boost::container::deque<std::pair<uint64_t, ::fedb::base::Slice>>&
         rows,
     uint32_t total_block_size, std::string* pairs) {
     if (pairs == NULL) {
@@ -469,7 +480,7 @@ static inline int32_t EncodeRows(
     char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
     uint32_t offset = 0;
     for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
-        ::rtidb::codec::Encode(lit->first, lit->second.data(),
+        ::fedb::codec::Encode(lit->first, lit->second.data(),
                                lit->second.size(), rbuffer, offset);
         offset += (4 + 8 + lit->second.size());
     }
@@ -509,7 +520,7 @@ static inline void Decode(
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
     DEBUGLOG("total size %d %s", total_size,
-             ::rtidb::base::DebugString(*str).c_str());
+             ::fedb::base::DebugString(*str).c_str());
     while (total_size > 0) {
         uint32_t size = 0;
         memcpy(static_cast<void*>(&size), buffer, 4);
@@ -536,7 +547,7 @@ static inline void DecodeFull(
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
     DEBUGLOG("total size %u %s", total_size,
-             ::rtidb::base::DebugString(*str).c_str());
+             ::fedb::base::DebugString(*str).c_str());
     while (total_size > 0) {
         uint32_t size = 0;
         memcpy(static_cast<void*>(&size), buffer, 4);
@@ -569,4 +580,4 @@ static inline void DecodeFull(
 }
 
 }  // namespace codec
-}  // namespace rtidb
+}  // namespace fedb

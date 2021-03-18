@@ -1,6 +1,19 @@
-//
-// glog_wapper_test.cc
-// Copyright 2017 4paradigm.com
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #include "base/glog_wapper.h"
 
@@ -9,7 +22,7 @@
 
 #include "gtest/gtest.h"
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 class GlogWapperTest : public ::testing::Test {
@@ -19,9 +32,9 @@ class GlogWapperTest : public ::testing::Test {
 };
 
 TEST_F(GlogWapperTest, Log) {
-    ::rtidb::base::SetLogLevel(DEBUG);
+    ::fedb::base::SetLogLevel(DEBUG);
     std::string path = "hello";
-    ::rtidb::base::SetLogFile(path);
+    ::fedb::base::SetLogFile(path);
     PDLOG(INFO, "hello %d %f", 290, 3.1);
     std::string s = "word";
     PDLOG(INFO, "hello %s", s);
@@ -33,7 +46,7 @@ TEST_F(GlogWapperTest, Log) {
 }
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

@@ -1,12 +1,11 @@
 /*
- * sql_sdk_test.cc
- * Copyright (C) 4paradigm.com 2020 chenjing <chenjing@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 
 #include "sdk/sql_sdk_test.h"
 
@@ -35,7 +35,7 @@
 #include "sdk/sql_router.h"
 #include "test/base_test.h"
 #include "vm/catalog.h"
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 MiniCluster* mc_ = nullptr;
@@ -570,7 +570,7 @@ TEST_F(SQLSDKTest, create_table) {
     }
     ASSERT_TRUE(router->RefreshCatalog());
     auto ns_client = mc_->GetNsClient();
-    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::vector<::fedb::nameserver::TableInfo> tables;
     std::string msg;
     ASSERT_TRUE(ns_client->ShowTable("", db, false, tables, msg));
     ASSERT_TRUE(!tables.empty());
@@ -585,31 +585,31 @@ TEST_F(SQLSDKTest, create_table) {
             }
         }
     }
-    ASSERT_EQ(pid_map.size(), 1);
+    ASSERT_EQ(pid_map.size(), 1u);
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test1;", &status));
     ASSERT_TRUE(router->DropDB(db, &status));
 }
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::fesql::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
     FLAGS_zk_session_timeout = 100000;
-    ::rtidb::sdk::MiniCluster mc(6181);
-    ::rtidb::sdk::mc_ = &mc;
-    int ok = ::rtidb::sdk::mc_->SetUp(2);
+    ::fedb::sdk::MiniCluster mc(6181);
+    ::fedb::sdk::mc_ = &mc;
+    int ok = ::fedb::sdk::mc_->SetUp(2);
     sleep(1);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::rtidb::sdk::router_ = ::rtidb::sdk::GetNewSQLRouter();
-    if (nullptr == ::rtidb::sdk::router_) {
+    ::fedb::sdk::router_ = ::fedb::sdk::GetNewSQLRouter();
+    if (nullptr == ::fedb::sdk::router_) {
         LOG(ERROR) << "Fail Test with NULL SQL router";
         return -1;
     }
     ok = RUN_ALL_TESTS();
-    ::rtidb::sdk::mc_->Close();
+    ::fedb::sdk::mc_->Close();
     return ok;
 }

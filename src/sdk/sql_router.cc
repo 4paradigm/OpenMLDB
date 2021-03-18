@@ -1,12 +1,11 @@
 /*
- * sql_router.cc
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,12 +14,13 @@
  * limitations under the License.
  */
 
+
 #include "sdk/sql_router.h"
 
 #include "glog/logging.h"
 #include "sdk/sql_cluster_router.h"
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(
@@ -34,4 +34,4 @@ std::shared_ptr<SQLRouter> NewClusterSQLRouter(
 }
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb

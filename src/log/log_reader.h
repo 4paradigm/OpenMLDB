@@ -1,9 +1,19 @@
-//
-// log_reader.h
-// Copyright (C) 2017 4paradigm.com
-// Author vagrant
-// Date 2017-06-16
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
@@ -19,9 +29,9 @@
 #include "log/log_format.h"
 #include "log/sequential_file.h"
 
-using ::rtidb::base::Slice;
+using ::fedb::base::Slice;
 
-namespace rtidb {
+namespace fedb {
 
 namespace base {
 class Status;
@@ -62,7 +72,7 @@ class Reader {
     // "*scratch" as temporary storage.  The contents filled in *record
     // will only be valid until the next mutating operation on this
     // reader or the next mutation to *scratch.
-    ::rtidb::base::Status ReadRecord(Slice* record, std::string* scratch);
+    ::fedb::base::Status ReadRecord(Slice* record, std::string* scratch);
 
     // Returns the physical offset of the last record returned by ReadRecord.
     //
@@ -146,15 +156,15 @@ class Reader {
     void operator=(const Reader&);
 };
 
-typedef ::rtidb::base::Skiplist<uint32_t, uint64_t,
-                                ::rtidb::base::DefaultComparator>
+typedef ::fedb::base::Skiplist<uint32_t, uint64_t,
+                                ::fedb::base::DefaultComparator>
     LogParts;
 
 class LogReader {
  public:
     LogReader(LogParts* logs, const std::string& log_path, bool compressed);
     virtual ~LogReader();
-    ::rtidb::base::Status ReadNextRecord(::rtidb::base::Slice* record,
+    ::fedb::base::Status ReadNextRecord(::fedb::base::Slice* record,
                                          std::string* buffer);
     int RollRLogFile();
     int OpenSeqFile(const std::string& path);
@@ -178,6 +188,6 @@ class LogReader {
 };
 
 }  // namespace log
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_LOG_LOG_READER_H_

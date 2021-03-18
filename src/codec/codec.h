@@ -1,9 +1,19 @@
-//
-// codec.h
-// Copyright (C) 2017 4paradigm.com
-// Author wangtaize
-// Date 2017-03-31
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #ifndef SRC_CODEC_CODEC_H_
 #define SRC_CODEC_CODEC_H_
@@ -22,11 +32,11 @@
 #include "base/strings.h"
 #include "proto/common.pb.h"
 
-namespace rtidb {
+namespace fedb {
 namespace codec {
 
 using ProjectList = ::google::protobuf::RepeatedField<uint32_t>;
-using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using Schema = ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>;
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
@@ -102,7 +112,7 @@ class RowBuilder {
     inline uint32_t GetAppendPos() { return cnt_; }
 
  private:
-    bool Check(uint32_t index, ::rtidb::type::DataType type);
+    bool Check(uint32_t index, ::fedb::type::DataType type);
     inline void SetField(uint32_t index);
     inline void SetStrOffset(uint32_t str_pos);
     bool SetString(uint32_t index, const char* val, uint32_t length);
@@ -155,10 +165,10 @@ class RowView {
     }
 
     int32_t GetValue(const int8_t* row, uint32_t idx,
-                     ::rtidb::type::DataType type, void* val);
+                     ::fedb::type::DataType type, void* val);
 
     int32_t GetInteger(const int8_t* row, uint32_t idx,
-                       ::rtidb::type::DataType type, int64_t* val);
+                       ::fedb::type::DataType type, int64_t* val);
 
     int32_t GetValue(const int8_t* row, uint32_t idx, char** val,
                      uint32_t* length);
@@ -168,7 +178,7 @@ class RowView {
 
  private:
     bool Init();
-    bool CheckValid(uint32_t idx, ::rtidb::type::DataType type);
+    bool CheckValid(uint32_t idx, ::fedb::type::DataType type);
 
  private:
     uint8_t str_addr_length_;
@@ -309,6 +319,6 @@ inline std::string Int64ToString(const int64_t key) {
 }
 
 }  // namespace codec
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_CODEC_CODEC_H_

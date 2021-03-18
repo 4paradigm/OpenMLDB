@@ -1,13 +1,26 @@
-//
-// flat_array_test.cc
-// Copyright 2017 4paradigm.com
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #include <iostream>
 #include "base/strings.h"
 #include "codec/flat_array.h"
 #include "gtest/gtest.h"
 
-namespace rtidb {
+namespace fedb {
 namespace codec {
 
 class FlatArrayTest : public ::testing::Test {
@@ -77,7 +90,7 @@ TEST_F(FlatArrayTest, Encode) {
     ASSERT_TRUE(ok);
     codec.Build();
     std::cout << buffer.size() << std::endl;
-    std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
+    std::cout << ::fedb::base::DebugString(buffer) << std::endl;
     ASSERT_EQ((int32_t)buffer.size(), 13);
     FlatArrayIterator it(buffer.c_str(), buffer.size(), 2);
     ASSERT_EQ(kFloat, it.GetType());
@@ -100,7 +113,7 @@ TEST_F(FlatArrayTest, Encode) {
     codec2.Append("wtz");
     codec2.Append(1.0f);
     codec2.Build();
-    std::cout << ::rtidb::base::DebugString(buffer2) << std::endl;
+    std::cout << ::fedb::base::DebugString(buffer2) << std::endl;
 }
 
 TEST_F(FlatArrayTest, Encode1) {
@@ -112,7 +125,7 @@ TEST_F(FlatArrayTest, Encode1) {
     ok = codec.Append(v);
     ASSERT_TRUE(ok);
     codec.Build();
-    std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
+    std::cout << ::fedb::base::DebugString(buffer) << std::endl;
 }
 
 TEST_F(FlatArrayTest, TimestampEncode) {
@@ -126,7 +139,7 @@ TEST_F(FlatArrayTest, TimestampEncode) {
     ok = codec.AppendTimestamp(11111);
     ASSERT_TRUE(ok);
     codec.Build();
-    std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
+    std::cout << ::fedb::base::DebugString(buffer) << std::endl;
 }
 
 TEST_F(FlatArrayTest, DateEncode) {
@@ -148,7 +161,7 @@ TEST_F(FlatArrayTest, DateEncode) {
     ok = codec.Append(value2);
     ASSERT_TRUE(ok);
     codec.Build();
-    std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
+    std::cout << ::fedb::base::DebugString(buffer) << std::endl;
 }
 
 TEST_F(FlatArrayTest, EncodeNullEmpty) {
@@ -162,7 +175,7 @@ TEST_F(FlatArrayTest, EncodeNullEmpty) {
     ok = codec.Append(empty_str);
     ASSERT_TRUE(ok);
     codec.Build();
-    std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
+    std::cout << ::fedb::base::DebugString(buffer) << std::endl;
     ASSERT_EQ((int64_t)(buffer.size()), 11);
     FlatArrayIterator it(buffer.c_str(), buffer.size(), 3);
     ASSERT_EQ(kFloat, it.GetType());
@@ -187,7 +200,7 @@ TEST_F(FlatArrayTest, EncodeNullEmpty) {
 }
 
 }  // namespace codec
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

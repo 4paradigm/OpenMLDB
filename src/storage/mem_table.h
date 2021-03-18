@@ -1,9 +1,19 @@
-//
-// mem_table.h
-// Copyright (C) 2017 4paradigm.com
-// Author wangtaize
-// Date 2017-03-31
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #ifndef SRC_STORAGE_MEM_TABLE_H_
 #define SRC_STORAGE_MEM_TABLE_H_
@@ -21,18 +31,18 @@
 #include "storage/ticket.h"
 #include "vm/catalog.h"
 
-using ::rtidb::api::LogEntry;
-using ::rtidb::base::Slice;
+using ::fedb::api::LogEntry;
+using ::fedb::base::Slice;
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
-typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
+typedef google::protobuf::RepeatedPtrField<::fedb::api::Dimension> Dimensions;
 
 class MemTableWindowIterator : public ::fesql::vm::RowIterator {
  public:
     MemTableWindowIterator(TimeEntries::Iterator* it,
-                           ::rtidb::storage::TTLType ttl_type, uint64_t expire_time,
+                           ::fedb::storage::TTLType ttl_type, uint64_t expire_time,
                            uint64_t expire_cnt)
         : it_(it), record_idx_(0), expire_value_(expire_time, expire_cnt, ttl_type), row_() {}
 
@@ -72,7 +82,7 @@ class MemTableWindowIterator : public ::fesql::vm::RowIterator {
 class MemTableKeyIterator : public ::fesql::vm::WindowIterator {
  public:
     MemTableKeyIterator(Segment** segments, uint32_t seg_cnt,
-                        ::rtidb::storage::TTLType ttl_type, uint64_t expire_time,
+                        ::fedb::storage::TTLType ttl_type, uint64_t expire_time,
                         uint64_t expire_cnt, uint32_t ts_index);
 
     ~MemTableKeyIterator();
@@ -99,7 +109,7 @@ class MemTableKeyIterator : public ::fesql::vm::WindowIterator {
     uint32_t seg_idx_;
     KeyEntries::Iterator* pk_it_;
     TimeEntries::Iterator* it_;
-    ::rtidb::storage::TTLType ttl_type_;
+    ::fedb::storage::TTLType ttl_type_;
     uint64_t expire_time_;
     uint64_t expire_cnt_;
     uint32_t ts_index_;
@@ -110,14 +120,14 @@ class MemTableKeyIterator : public ::fesql::vm::WindowIterator {
 class MemTableTraverseIterator : public TableIterator {
  public:
     MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt,
-                             ::rtidb::storage::TTLType ttl_type,
+                             ::fedb::storage::TTLType ttl_type,
                              uint64_t expire_time,
                              uint64_t expire_cnt, uint32_t ts_index);
     virtual ~MemTableTraverseIterator();
     inline bool Valid() override;
     void Next() override;
     void Seek(const std::string& key, uint64_t time) override;
-    rtidb::base::Slice GetValue() const override;
+    fedb::base::Slice GetValue() const override;
     std::string GetPK() const override;
     uint64_t GetKey() const override;
     void SeekToFirst() override;
@@ -144,9 +154,9 @@ class MemTable : public Table {
  public:
     MemTable(const std::string& name, uint32_t id, uint32_t pid,
              uint32_t seg_cnt, const std::map<std::string, uint32_t>& mapping,
-             uint64_t ttl, ::rtidb::api::TTLType ttl_type);
+             uint64_t ttl, ::fedb::api::TTLType ttl_type);
 
-    explicit MemTable(const ::rtidb::api::TableMeta& table_meta);
+    explicit MemTable(const ::fedb::api::TableMeta& table_meta);
     virtual ~MemTable();
     MemTable(const MemTable&) = delete;
     MemTable& operator=(const MemTable&) = delete;
@@ -202,8 +212,8 @@ class MemTable : public Table {
     uint64_t GetRecordIdxByteSize();
     uint64_t GetRecordPkCnt();
 
-    void SetCompressType(::rtidb::api::CompressType compress_type);
-    ::rtidb::api::CompressType GetCompressType();
+    void SetCompressType(::fedb::api::CompressType compress_type);
+    ::fedb::api::CompressType GetCompressType();
 
     inline uint64_t GetRecordByteSize() const {
         return record_byte_size_.load(std::memory_order_relaxed);
@@ -221,7 +231,7 @@ class MemTable : public Table {
 
     uint64_t GetExpireTime(const TTLSt& ttl_st) override;
 
-    bool IsExpire(const ::rtidb::api::LogEntry& entry) override;
+    bool IsExpire(const ::fedb::api::LogEntry& entry) override;
 
     inline bool GetExpireStatus() {
         return enable_gc_.load(std::memory_order_relaxed);
@@ -239,7 +249,7 @@ class MemTable : public Table {
 
     bool DeleteIndex(std::string idx_name);
 
-    bool AddIndex(const ::rtidb::common::ColumnKey& column_key);
+    bool AddIndex(const ::fedb::common::ColumnKey& column_key);
 
  private:
     bool CheckAbsolute(const TTLSt& ttl, uint64_t ts);
@@ -258,6 +268,6 @@ class MemTable : public Table {
 };
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_STORAGE_MEM_TABLE_H_

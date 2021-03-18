@@ -1,9 +1,19 @@
-//
-// log_test.cc
-// Copyright (C) 2017 4paradigm.com
-// Author vagrant
-// Date 2017-06-16
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #include <gtest/gtest.h>
 #include <gflags/gflags.h>
@@ -24,15 +34,15 @@
 #include "proto/tablet.pb.h"
 #include "config.h" // NOLINT
 
-using ::rtidb::base::Slice;
-using ::rtidb::base::Status;
+using ::fedb::base::Slice;
+using ::fedb::base::Status;
 
 DECLARE_string(snapshot_compression);
 bool compressed_ = true;
 uint32_t block_size_ = 1024 * 4;
 uint32_t header_size_ = 7;
 
-namespace rtidb {
+namespace fedb {
 namespace log {
 
 class LogWRTest : public ::testing::Test {
@@ -129,9 +139,9 @@ int AddRecord(const Slice& slice, std::vector<std::string>& vec) {  // NOLINT
 
 std::string GetWritePath(const std::string& path) {
     if (FLAGS_snapshot_compression == "zlib") {
-        return path + rtidb::log::ZLIB_COMPRESS_SUFFIX;
+        return path + fedb::log::ZLIB_COMPRESS_SUFFIX;
     } else if (FLAGS_snapshot_compression == "snappy") {
-        return path + rtidb::log::SNAPPY_COMPRESS_SUFFIX;
+        return path + fedb::log::SNAPPY_COMPRESS_SUFFIX;
     } else {
         return path;
     }
@@ -139,7 +149,7 @@ std::string GetWritePath(const std::string& path) {
 
 TEST_F(LogWRTest, TestWriteSize) {
     std::string log_dir = "/tmp/" + GenRand() + "/";
-    ::rtidb::base::MkdirRecur(log_dir);
+    ::fedb::base::MkdirRecur(log_dir);
     std::string fname = "test.log";
     std::string full_path = log_dir + "/" + GetWritePath(fname);
     FILE* fd_w = fopen(full_path.c_str(), "ab+");
@@ -158,7 +168,7 @@ TEST_F(LogWRTest, TestWriteAndRead) {
         "hello1", std::string(block_size_ - header_size_, 'b')};
     for (int i = 0; i < 1; i++) {
         std::string log_dir = "/tmp/" + GenRand() + "/";
-        ::rtidb::base::MkdirRecur(log_dir);
+        ::fedb::base::MkdirRecur(log_dir);
         std::string fname = "test.log";
         std::string full_path = log_dir + "/" + fname;
         full_path = GetWritePath(full_path);
@@ -203,7 +213,7 @@ TEST_F(LogWRTest, TestWriteAndRead) {
 
 TEST_F(LogWRTest, TestLogEntry) {
     std::string log_dir = "/tmp/" + GenRand() + "/";
-    ::rtidb::base::MkdirRecur(log_dir);
+    ::fedb::base::MkdirRecur(log_dir);
     std::string fname = "test.log";
     std::string full_path = log_dir + "/" + fname;
     full_path = GetWritePath(full_path);
@@ -212,7 +222,7 @@ TEST_F(LogWRTest, TestLogEntry) {
     WritableFile* wf = NewWritableFile(fname, fd_w);
     Writer writer(FLAGS_snapshot_compression, wf);
 
-    ::rtidb::api::LogEntry entry;
+    ::fedb::api::LogEntry entry;
     entry.set_pk("test0");
     entry.set_ts(9527);
     entry.set_value("test1");
@@ -234,7 +244,7 @@ TEST_F(LogWRTest, TestLogEntry) {
         Slice value2;
         status = reader.ReadRecord(&value2, &scratch2);
         ASSERT_TRUE(status.ok());
-        ::rtidb::api::LogEntry entry2;
+        ::fedb::api::LogEntry entry2;
         ok = entry2.ParseFromString(value2.ToString());
         ASSERT_TRUE(ok);
         ASSERT_EQ("test0", entry2.pk());
@@ -253,7 +263,7 @@ TEST_F(LogWRTest, TestLogEntry) {
         Slice value2;
         status = reader.ReadRecord(&value2, &scratch2);
         ASSERT_TRUE(status.ok());
-        ::rtidb::api::LogEntry entry2;
+        ::fedb::api::LogEntry entry2;
         ok = entry2.ParseFromString(value2.ToString());
         ASSERT_TRUE(ok);
         ASSERT_EQ("test0", entry2.pk());
@@ -280,7 +290,7 @@ TEST_F(LogWRTest, TestLogEntry) {
 
 TEST_F(LogWRTest, TestWait) {
     std::string log_dir = "/tmp/" + GenRand() + "/";
-    ::rtidb::base::MkdirRecur(log_dir);
+    ::fedb::base::MkdirRecur(log_dir);
     std::string fname = "test.log";
     std::string full_path = log_dir + "/" + fname;
     full_path = GetWritePath(full_path);
@@ -340,7 +350,7 @@ TEST_F(LogWRTest, TestWait) {
 
 TEST_F(LogWRTest, TestGoBack) {
     std::string log_dir = "/tmp/" + GenRand() + "/";
-    ::rtidb::base::MkdirRecur(log_dir);
+    ::fedb::base::MkdirRecur(log_dir);
     std::string fname = "test.log";
     std::string full_path = log_dir + "/" + fname;
     FILE* fd_w = fopen(full_path.c_str(), "ab+");
@@ -383,7 +393,7 @@ TEST_F(LogWRTest, TestGoBack) {
 
 TEST_F(LogWRTest, TestInit) {
     std::string log_dir = "/tmp/" + GenRand() + "/";
-    ::rtidb::base::MkdirRecur(log_dir);
+    ::fedb::base::MkdirRecur(log_dir);
     std::string fname = "test.log";
     std::string full_path = log_dir + "/" + fname;
     FILE* fd_w = fopen(full_path.c_str(), "ab+");
@@ -404,11 +414,11 @@ TEST_F(LogWRTest, TestInit) {
 }
 
 }  // namespace log
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     srand(time(NULL));
-    ::rtidb::base::SetLogLevel(DEBUG);
+    ::fedb::base::SetLogLevel(DEBUG);
     ::testing::InitGoogleTest(&argc, argv);
     int ret = 0;
     std::vector<std::string> vec{"off", "zlib", "snappy"};
@@ -417,11 +427,11 @@ int main(int argc, char** argv) {
         FLAGS_snapshot_compression = vec[i];
         if (FLAGS_snapshot_compression == "off") {
             compressed_ = false;
-            block_size_ = rtidb::log::kBlockSize;
-            header_size_ = rtidb::log::kHeaderSize;
+            block_size_ = fedb::log::kBlockSize;
+            header_size_ = fedb::log::kHeaderSize;
         } else {
-            block_size_ = rtidb::log::kCompressBlockSize;
-            header_size_ = rtidb::log::kHeaderSizeForCompress;
+            block_size_ = fedb::log::kCompressBlockSize;
+            header_size_ = fedb::log::kHeaderSizeForCompress;
             compressed_ = true;
         }
         ret += RUN_ALL_TESTS();

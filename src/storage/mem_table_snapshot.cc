@@ -1,10 +1,19 @@
-//
-// snapshot.cc
-// Copyright (C) 2017 4paradigm.com
-// Author vagrant
-// Date 2017-07-24
-//
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "storage/mem_table_snapshot.h"
 
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -33,7 +42,7 @@
 #include "timer.h"        // NOLINT
 
 using google::protobuf::RepeatedPtrField;
-using ::rtidb::codec::SchemaCodec;
+using ::fedb::codec::SchemaCodec;
 
 DECLARE_uint64(gc_on_table_recover_count);
 DECLARE_int32(binlog_name_length);
@@ -43,7 +52,7 @@ DECLARE_uint32(load_table_thread_num);
 DECLARE_uint32(load_table_queue_size);
 DECLARE_string(snapshot_compression);
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 const std::string SNAPSHOT_SUBFIX = ".sdb";  // NOLINT
@@ -60,12 +69,12 @@ bool MemTableSnapshot::Init() {
                      std::to_string(pid_) + "/snapshot/";
     log_path_ = db_root_path_ + "/" + std::to_string(tid_) + "_" +
                 std::to_string(pid_) + "/binlog/";
-    if (!::rtidb::base::MkdirRecur(snapshot_path_)) {
+    if (!::fedb::base::MkdirRecur(snapshot_path_)) {
         PDLOG(WARNING, "fail to create db meta path %s",
               snapshot_path_.c_str());
         return false;
     }
-    if (!::rtidb::base::MkdirRecur(log_path_)) {
+    if (!::fedb::base::MkdirRecur(log_path_)) {
         PDLOG(WARNING, "fail to create db meta path %s", log_path_.c_str());
         return false;
     }
@@ -73,7 +82,7 @@ bool MemTableSnapshot::Init() {
 }
 
 bool MemTableSnapshot::Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) {
-    ::rtidb::api::Manifest manifest;
+    ::fedb::api::Manifest manifest;
     manifest.set_offset(0);
     int ret = GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
     if (ret == -1) {
@@ -108,7 +117,7 @@ void MemTableSnapshot::RecoverFromSnapshot(const std::string& snapshot_name,
 void MemTableSnapshot::RecoverSingleSnapshot(
     const std::string& path, std::shared_ptr<Table> table,
     std::atomic<uint64_t>* g_succ_cnt, std::atomic<uint64_t>* g_failed_cnt) {
-    ::rtidb::base::TaskPool load_pool_(FLAGS_load_table_thread_num,
+    ::fedb::base::TaskPool load_pool_(FLAGS_load_table_thread_num,
                                        FLAGS_load_table_batch);
     std::atomic<uint64_t> succ_cnt, failed_cnt;
     succ_cnt = failed_cnt = 0;
@@ -125,9 +134,9 @@ void MemTableSnapshot::RecoverSingleSnapshot(
             break;
         }
         bool compressed = IsCompressed(path);
-        ::rtidb::log::SequentialFile* seq_file =
-            ::rtidb::log::NewSeqFile(path, fd);
-        ::rtidb::log::Reader reader(seq_file, NULL, false, 0, compressed);
+        ::fedb::log::SequentialFile* seq_file =
+            ::fedb::log::NewSeqFile(path, fd);
+        ::fedb::log::Reader reader(seq_file, NULL, false, 0, compressed);
         std::string buffer;
         // second
         uint64_t consumed = ::baidu::common::timer::now_time();
@@ -136,8 +145,8 @@ void MemTableSnapshot::RecoverSingleSnapshot(
 
         while (true) {
             buffer.clear();
-            ::rtidb::base::Slice record;
-            ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
+            ::fedb::base::Slice record;
+            ::fedb::base::Status status = reader.ReadRecord(&record, &buffer);
             if (status.IsWaitRecord() || status.IsEof()) {
                 consumed = ::baidu::common::timer::now_time() - consumed;
                 PDLOG(INFO,
@@ -186,7 +195,7 @@ void MemTableSnapshot::Put(std::string& path, std::shared_ptr<Table>& table,
                            std::vector<std::string*> recordPtr,
                            std::atomic<uint64_t>* succ_cnt,
                            std::atomic<uint64_t>* failed_cnt) {
-    ::rtidb::api::LogEntry entry;
+    ::fedb::api::LogEntry entry;
     for (auto it = recordPtr.cbegin(); it != recordPtr.cend(); it++) {
         bool ok = entry.ParseFromString(**it);
         if (!ok) {
@@ -206,7 +215,7 @@ void MemTableSnapshot::Put(std::string& path, std::shared_ptr<Table>& table,
 }
 
 int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
-                                  const ::rtidb::api::Manifest& manifest,
+                                  const ::fedb::api::Manifest& manifest,
                                   WriteHandle* wh, uint64_t& count,
                                   uint64_t& expired_key_num,
                                   uint64_t& deleted_key_num) {
@@ -218,23 +227,23 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
         return -1;
     }
     bool compressed = IsCompressed(full_path);
-    ::rtidb::log::SequentialFile* seq_file =
-        ::rtidb::log::NewSeqFile(manifest.name(), fd);
-    ::rtidb::log::Reader reader(seq_file, NULL, false, 0, compressed);
+    ::fedb::log::SequentialFile* seq_file =
+        ::fedb::log::NewSeqFile(manifest.name(), fd);
+    ::fedb::log::Reader reader(seq_file, NULL, false, 0, compressed);
 
     std::string buffer;
     std::string tmp_buf;
-    ::rtidb::api::LogEntry entry;
+    ::fedb::api::LogEntry entry;
     bool has_error = false;
     std::set<uint32_t> deleted_index;
     for (const auto& it : table->GetAllIndex()) {
-        if (it->GetStatus() != ::rtidb::storage::IndexStatus::kReady) {
+        if (it->GetStatus() != ::fedb::storage::IndexStatus::kReady) {
             deleted_index.insert(it->GetId());
         }
     }
     while (true) {
-        ::rtidb::base::Slice record;
-        ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
+        ::fedb::base::Slice record;
+        ::fedb::base::Status status = reader.ReadRecord(&record, &buffer);
         if (status.IsEof()) {
             break;
         }
@@ -248,7 +257,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
         if (!entry.ParseFromString(record.ToString())) {
             PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s",
                   tid_, pid_,
-                  ::rtidb::base::DebugString(record.ToString()).c_str());
+                  ::fedb::base::DebugString(record.ToString()).c_str());
             has_error = true;
             break;
         }
@@ -295,7 +304,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
 
 uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
     deleted_keys_.clear();
-    ::rtidb::log::LogReader log_reader(log_part_, log_path_, false);
+    ::fedb::log::LogReader log_reader(log_part_, log_path_, false);
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
     std::string buffer;
@@ -311,14 +320,14 @@ uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
             return cur_offset;
         }
         buffer.clear();
-        ::rtidb::base::Slice record;
-        ::rtidb::base::Status status =
+        ::fedb::base::Slice record;
+        ::fedb::base::Status status =
             log_reader.ReadNextRecord(&record, &buffer);
         if (status.ok()) {
-            ::rtidb::api::LogEntry entry;
+            ::fedb::api::LogEntry entry;
             if (!entry.ParseFromString(record.ToString())) {
                 PDLOG(WARNING, "fail to parse LogEntry. record[%s] size[%ld]",
-                      ::rtidb::base::DebugString(record.ToString()).c_str(),
+                      ::fedb::base::DebugString(record.ToString()).c_str(),
                       record.ToString().size());
                 break;
             }
@@ -332,7 +341,7 @@ uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
             }
             cur_offset = entry.log_index();
             if (entry.has_method_type() &&
-                entry.method_type() == ::rtidb::api::MethodType::kDelete) {
+                entry.method_type() == ::fedb::api::MethodType::kDelete) {
                 if (entry.dimensions_size() == 0) {
                     PDLOG(WARNING, "no dimesion. tid %u pid %u offset %lu",
                           tid_, pid_, cur_offset);
@@ -383,7 +392,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
         return -1;
     }
     making_snapshot_.store(true, std::memory_order_release);
-    std::string now_time = ::rtidb::base::GetNowTime();
+    std::string now_time = ::fedb::base::GetNowTime();
     std::string snapshot_name =
         now_time.substr(0, now_time.length() - 2) + ".sdb";
     if (FLAGS_snapshot_compression != "off") {
@@ -402,7 +411,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
     uint64_t collected_offset = CollectDeletedKey(end_offset);
     uint64_t start_time = ::baidu::common::timer::now_time();
     WriteHandle* wh = new WriteHandle(FLAGS_snapshot_compression, snapshot_name_tmp, fd);
-    ::rtidb::api::Manifest manifest;
+    ::fedb::api::Manifest manifest;
     bool has_error = false;
     uint64_t write_count = 0;
     uint64_t expired_key_num = 0;
@@ -425,25 +434,25 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
     // get deleted index
     std::set<uint32_t> deleted_index;
     for (const auto& it : table->GetAllIndex()) {
-        if (it->GetStatus() == ::rtidb::storage::IndexStatus::kDeleted) {
+        if (it->GetStatus() == ::fedb::storage::IndexStatus::kDeleted) {
             deleted_index.insert(it->GetId());
         }
     }
-    ::rtidb::log::LogReader log_reader(log_part_, log_path_, false);
+    ::fedb::log::LogReader log_reader(log_part_, log_path_, false);
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
     std::string buffer;
     std::string tmp_buf;
     while (!has_error && cur_offset < collected_offset) {
         buffer.clear();
-        ::rtidb::base::Slice record;
-        ::rtidb::base::Status status =
+        ::fedb::base::Slice record;
+        ::fedb::base::Status status =
             log_reader.ReadNextRecord(&record, &buffer);
         if (status.ok()) {
-            ::rtidb::api::LogEntry entry;
+            ::fedb::api::LogEntry entry;
             if (!entry.ParseFromString(record.ToString())) {
                 PDLOG(WARNING, "fail to parse LogEntry. record[%s] size[%ld]",
-                      ::rtidb::base::DebugString(record.ToString()).c_str(),
+                      ::fedb::base::DebugString(record.ToString()).c_str(),
                       record.ToString().size());
                 has_error = true;
                 break;
@@ -458,7 +467,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
             }
             cur_offset = entry.log_index();
             if (entry.has_method_type() &&
-                entry.method_type() == ::rtidb::api::MethodType::kDelete) {
+                entry.method_type() == ::fedb::api::MethodType::kDelete) {
                 continue;
             }
             if (entry.has_term()) {
@@ -475,7 +484,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
                 expired_key_num++;
                 continue;
             }
-            ::rtidb::base::Status status = wh->Write(record);
+            ::fedb::base::Status status = wh->Write(record);
             if (!status.ok()) {
                 PDLOG(WARNING, "fail to write snapshot. path[%s] status[%s]",
                       tmp_file_path.c_str(), status.ToString().c_str());
@@ -559,7 +568,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
     return ret;
 }
 
-int MemTableSnapshot::RemoveDeletedKey(const ::rtidb::api::LogEntry& entry,
+int MemTableSnapshot::RemoveDeletedKey(const ::fedb::api::LogEntry& entry,
                                        const std::set<uint32_t>& deleted_index,
                                        std::string* buffer) {
     uint64_t cur_offset = entry.log_index();
@@ -588,11 +597,11 @@ int MemTableSnapshot::RemoveDeletedKey(const ::rtidb::api::LogEntry& entry,
                 entry.dimensions_size()) {
                 return 1;
             } else {
-                ::rtidb::api::LogEntry tmp_entry(entry);
+                ::fedb::api::LogEntry tmp_entry(entry);
                 tmp_entry.clear_dimensions();
                 for (int pos = 0; pos < entry.dimensions_size(); pos++) {
                     if (deleted_pos_set.find(pos) == deleted_pos_set.end()) {
-                        ::rtidb::api::Dimension* dimension =
+                        ::fedb::api::Dimension* dimension =
                             tmp_entry.add_dimensions();
                         dimension->CopyFrom(entry.dimensions(pos));
                     }
@@ -607,10 +616,10 @@ int MemTableSnapshot::RemoveDeletedKey(const ::rtidb::api::LogEntry& entry,
 }
 
 int MemTableSnapshot::ExtractIndexFromSnapshot(
-    std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest,
-    WriteHandle* wh, const ::rtidb::common::ColumnKey& column_key, uint32_t idx,
+    std::shared_ptr<Table> table, const ::fedb::api::Manifest& manifest,
+    WriteHandle* wh, const ::fedb::common::ColumnKey& column_key, uint32_t idx,
     uint32_t partition_num,
-    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t max_idx,
+    const std::vector<::fedb::codec::ColumnDesc>& columns, uint32_t max_idx,
     const std::vector<uint32_t>& index_cols, uint64_t& count,
     uint64_t& expired_key_num, uint64_t& deleted_key_num) {
     uint32_t tid = table->GetId();
@@ -622,20 +631,20 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
               strerror(errno));
         return -1;
     }
-    ::rtidb::log::SequentialFile* seq_file =
-        ::rtidb::log::NewSeqFile(manifest.name(), fd);
+    ::fedb::log::SequentialFile* seq_file =
+        ::fedb::log::NewSeqFile(manifest.name(), fd);
     bool compressed = IsCompressed(full_path);
-    ::rtidb::log::Reader reader(seq_file, NULL, false, 0, compressed);
+    ::fedb::log::Reader reader(seq_file, NULL, false, 0, compressed);
     std::string buffer;
-    ::rtidb::api::LogEntry entry;
+    ::fedb::api::LogEntry entry;
     bool has_error = false;
     uint64_t extract_count = 0;
     uint64_t schame_size_less_count = 0;
     uint64_t other_error_count = 0;
     DLOG(INFO) << "extract index data from snapshot";
     while (true) {
-        ::rtidb::base::Slice record;
-        ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
+        ::fedb::base::Slice record;
+        ::fedb::base::Status status = reader.ReadRecord(&record, &buffer);
         if (status.IsEof()) {
             break;
         }
@@ -649,7 +658,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
         if (!entry.ParseFromString(record.ToString())) {
             PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s",
                   tid_, pid_,
-                  ::rtidb::base::DebugString(record.ToString()).c_str());
+                  ::fedb::base::DebugString(record.ToString()).c_str());
             has_error = true;
             break;
         }
@@ -678,13 +687,13 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                     deleted_key_num++;
                     continue;
                 } else {
-                    ::rtidb::api::LogEntry tmp_entry(entry);
+                    ::fedb::api::LogEntry tmp_entry(entry);
                     entry.clear_dimensions();
                     for (int pos = 0; pos < tmp_entry.dimensions_size();
                          pos++) {
                         if (deleted_pos_set.find(pos) ==
                             deleted_pos_set.end()) {
-                            ::rtidb::api::Dimension* dimension =
+                            ::fedb::api::Dimension* dimension =
                                 entry.add_dimensions();
                             dimension->CopyFrom(tmp_entry.dimensions(pos));
                         }
@@ -699,7 +708,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
             expired_key_num++;
             continue;
         }
-        if (!(entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete)) {
+        if (!(entry.has_method_type() && entry.method_type() == ::fedb::api::MethodType::kDelete)) {
             // new column_key
             std::vector<std::string> row;
             int ret = DecodeData(table, columns, entry, max_idx, row);
@@ -725,7 +734,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                 DLOG(INFO) << "skip empty key";
                 continue;
             }
-            uint32_t index_pid = ::rtidb::base::hash64(cur_key) % partition_num;
+            uint32_t index_pid = ::fedb::base::hash64(cur_key) % partition_num;
             // update entry and write entry into memory
             if (index_pid == pid) {
                 if (entry.dimensions_size() == 1 && entry.dimensions(0).idx() == idx) {
@@ -733,7 +742,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                     DLOG(INFO) << "skip not default key " << cur_key;
                     continue;
                 }
-                ::rtidb::api::Dimension* dim = entry.add_dimensions();
+                ::fedb::api::Dimension* dim = entry.add_dimensions();
                 dim->set_key(cur_key);
                 dim->set_idx(idx);
                 entry.SerializeToString(&tmp_buf);
@@ -782,7 +791,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
 }
 
 int MemTableSnapshot::ExtractIndexData(
-    std::shared_ptr<Table> table, const ::rtidb::common::ColumnKey& column_key,
+    std::shared_ptr<Table> table, const ::fedb::common::ColumnKey& column_key,
     uint32_t idx, uint32_t partition_num, uint64_t& out_offset) {
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
@@ -790,7 +799,7 @@ int MemTableSnapshot::ExtractIndexData(
         PDLOG(INFO, "snapshot is doing now. tid %u, pid %u", tid, pid);
         return -1;
     }
-    std::string now_time = ::rtidb::base::GetNowTime();
+    std::string now_time = ::fedb::base::GetNowTime();
     std::string snapshot_name =
         now_time.substr(0, now_time.length() - 2) + ".sdb";
     if (FLAGS_snapshot_compression != "off") {
@@ -810,7 +819,7 @@ int MemTableSnapshot::ExtractIndexData(
     uint64_t collected_offset = CollectDeletedKey(0);
     uint64_t start_time = ::baidu::common::timer::now_time();
     WriteHandle* wh = new WriteHandle(FLAGS_snapshot_compression, snapshot_name_tmp, fd);
-    ::rtidb::api::Manifest manifest;
+    ::fedb::api::Manifest manifest;
     bool has_error = false;
     uint64_t write_count = 0;
     uint64_t expired_key_num = 0;
@@ -818,9 +827,9 @@ int MemTableSnapshot::ExtractIndexData(
     uint64_t last_term = 0;
 
     std::string schema = table->GetSchema();
-    std::vector<::rtidb::codec::ColumnDesc> columns;
+    std::vector<::fedb::codec::ColumnDesc> columns;
     if (!schema.empty()) {
-        ::rtidb::codec::SchemaCodec codec;
+        ::fedb::codec::SchemaCodec codec;
         codec.Decode(schema, columns);
     } else {
         PDLOG(INFO, "schema is empty. tid %u, pid %u", tid, pid);
@@ -867,7 +876,7 @@ int MemTableSnapshot::ExtractIndexData(
         has_error = true;
     }
 
-    ::rtidb::log::LogReader log_reader(log_part_, log_path_, false);
+    ::fedb::log::LogReader log_reader(log_part_, log_path_, false);
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
     std::string buffer;
@@ -875,12 +884,12 @@ int MemTableSnapshot::ExtractIndexData(
     DLOG(INFO) << "extract index data from binlog";
     while (!has_error && cur_offset < collected_offset) {
         buffer.clear();
-        ::rtidb::base::Slice record;
-        ::rtidb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
+        ::fedb::base::Slice record;
+        ::fedb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
         if (status.ok()) {
-            ::rtidb::api::LogEntry entry;
+            ::fedb::api::LogEntry entry;
             if (!entry.ParseFromString(record.ToString())) {
-                LOG(WARNING) << "fail to parse LogEntry. record " << rtidb::base::DebugString(record.ToString())
+                LOG(WARNING) << "fail to parse LogEntry. record " << fedb::base::DebugString(record.ToString())
                              << " size " << record.ToString().size() << " tid " << tid << " pid " << pid;
                 has_error = true;
                 break;
@@ -894,7 +903,7 @@ int MemTableSnapshot::ExtractIndexData(
                 continue;
             }
             cur_offset = entry.log_index();
-            if (entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete) {
+            if (entry.has_method_type() && entry.method_type() == ::fedb::api::MethodType::kDelete) {
                 continue;
             }
             if (entry.has_term()) {
@@ -926,11 +935,11 @@ int MemTableSnapshot::ExtractIndexData(
                         deleted_key_num++;
                         continue;
                     } else {
-                        ::rtidb::api::LogEntry tmp_entry(entry);
+                        ::fedb::api::LogEntry tmp_entry(entry);
                         entry.clear_dimensions();
                         for (int pos = 0; pos < tmp_entry.dimensions_size(); pos++) {
                             if (deleted_pos_set.find(pos) == deleted_pos_set.end()) {
-                                ::rtidb::api::Dimension* dimension = entry.add_dimensions();
+                                ::fedb::api::Dimension* dimension = entry.add_dimensions();
                                 dimension->CopyFrom(tmp_entry.dimensions(pos));
                             }
                         }
@@ -943,7 +952,7 @@ int MemTableSnapshot::ExtractIndexData(
                 expired_key_num++;
                 continue;
             }
-            if (!(entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete)) {
+            if (!(entry.has_method_type() && entry.method_type() == ::fedb::api::MethodType::kDelete)) {
                 // new column_key
                 std::vector<std::string> row;
                 int ret = DecodeData(table, columns, entry, max_idx, row);
@@ -967,14 +976,14 @@ int MemTableSnapshot::ExtractIndexData(
                     DLOG(INFO) << "skip empty key";
                     continue;
                 }
-                uint32_t index_pid = ::rtidb::base::hash64(cur_key) % partition_num;
+                uint32_t index_pid = ::fedb::base::hash64(cur_key) % partition_num;
                 // update entry and write entry into memory
                 if (index_pid == pid) {
                     if (entry.dimensions_size() == 1 && entry.dimensions(0).idx() == idx) {
                         DLOG(INFO) << "skip not default key " << cur_key;
                         continue;
                     }
-                    ::rtidb::api::Dimension* dim = entry.add_dimensions();
+                    ::fedb::api::Dimension* dim = entry.add_dimensions();
                     dim->set_key(cur_key);
                     dim->set_idx(idx);
                     entry.SerializeToString(&tmp_buf);
@@ -987,7 +996,7 @@ int MemTableSnapshot::ExtractIndexData(
                     extract_count++;
                 }
             }
-            ::rtidb::base::Status status = wh->Write(record);
+            ::fedb::base::Status status = wh->Write(record);
             if (!status.ok()) {
                 PDLOG(WARNING, "fail to write snapshot. path[%s] status[%s]",
                       tmp_file_path.c_str(), status.ToString().c_str());
@@ -1071,8 +1080,8 @@ int MemTableSnapshot::ExtractIndexData(
 bool MemTableSnapshot::PackNewIndexEntry(
     std::shared_ptr<Table> table,
     const std::vector<std::vector<uint32_t>>& index_cols,
-    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t max_idx,
-    uint32_t idx, uint32_t partition_num, ::rtidb::api::LogEntry* entry,
+    const std::vector<::fedb::codec::ColumnDesc>& columns, uint32_t max_idx,
+    uint32_t idx, uint32_t partition_num, ::fedb::api::LogEntry* entry,
     uint32_t* index_pid) {
     if (entry->dimensions_size() == 0) {
         std::string combined_key = entry->pk() + "|0";
@@ -1124,7 +1133,7 @@ bool MemTableSnapshot::PackNewIndexEntry(
             continue;
         }
 
-        uint32_t pid = ::rtidb::base::hash64(cur_key) % partition_num;
+        uint32_t pid = ::fedb::base::hash64(cur_key) % partition_num;
         if (i < index_cols.size() - 1) {
             pid_set.insert(pid);
         } else {
@@ -1139,7 +1148,7 @@ bool MemTableSnapshot::PackNewIndexEntry(
     }
     if (pid_set.find(*index_pid) == pid_set.end()) {
         entry->clear_dimensions();
-        ::rtidb::api::Dimension* dim = entry->add_dimensions();
+        ::fedb::api::Dimension* dim = entry->add_dimensions();
         dim->set_key(key);
         dim->set_idx(idx);
         return true;
@@ -1150,11 +1159,11 @@ bool MemTableSnapshot::PackNewIndexEntry(
 bool MemTableSnapshot::DumpSnapshotIndexData(
     std::shared_ptr<Table> table,
     const std::vector<std::vector<uint32_t>>& index_cols,
-    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t max_idx,
-    uint32_t idx, const std::vector<::rtidb::log::WriteHandle*>& whs,
+    const std::vector<::fedb::codec::ColumnDesc>& columns, uint32_t max_idx,
+    uint32_t idx, const std::vector<::fedb::log::WriteHandle*>& whs,
     uint64_t* snapshot_offset) {
     uint32_t partition_num = whs.size();
-    ::rtidb::api::Manifest manifest;
+    ::fedb::api::Manifest manifest;
     manifest.set_offset(0);
     int ret = GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
     if (ret == -1) {
@@ -1170,17 +1179,17 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
               strerror(errno));
         return false;
     }
-    ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(path, fd);
+    ::fedb::log::SequentialFile* seq_file = ::fedb::log::NewSeqFile(path, fd);
     bool compressed = IsCompressed(path);
-    ::rtidb::log::Reader reader(seq_file, NULL, false, 0, compressed);
-    ::rtidb::api::LogEntry entry;
+    ::fedb::log::Reader reader(seq_file, NULL, false, 0, compressed);
+    ::fedb::api::LogEntry entry;
     std::string buffer;
     std::string entry_buff;
     DLOG(INFO) << "begin dump snapshot index data";
     while (true) {
         buffer.clear();
-        ::rtidb::base::Slice record;
-        ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
+        ::fedb::base::Slice record;
+        ::fedb::base::Status status = reader.ReadRecord(&record, &buffer);
         if (status.IsWaitRecord() || status.IsEof()) {
             PDLOG(INFO,
                   "read path %s for table tid %u pid %u completed, succ_cnt "
@@ -1209,7 +1218,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
         }
         std::string entry_str;
         entry.SerializeToString(&entry_str);
-        ::rtidb::base::Slice new_record(entry_str);
+        ::fedb::base::Slice new_record(entry_str);
         status = whs[index_pid]->Write(new_record);
         if (!status.ok()) {
             delete seq_file;
@@ -1226,14 +1235,14 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
 }
 
 bool MemTableSnapshot::DumpIndexData(
-    std::shared_ptr<Table> table, const ::rtidb::common::ColumnKey& column_key,
-    uint32_t idx, const std::vector<::rtidb::log::WriteHandle*>& whs) {
+    std::shared_ptr<Table> table, const ::fedb::common::ColumnKey& column_key,
+    uint32_t idx, const std::vector<::fedb::log::WriteHandle*>& whs) {
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
     std::string schema = table->GetSchema();
-    std::vector<::rtidb::codec::ColumnDesc> columns;
+    std::vector<::fedb::codec::ColumnDesc> columns;
     if (!schema.empty()) {
-        ::rtidb::codec::SchemaCodec codec;
+        ::fedb::codec::SchemaCodec codec;
         codec.Decode(schema, columns);
     } else {
         PDLOG(INFO, "schema of table tid[%u] pid[%u]is empty", tid, pid);
@@ -1298,14 +1307,14 @@ bool MemTableSnapshot::DumpIndexData(
 bool MemTableSnapshot::DumpBinlogIndexData(
     std::shared_ptr<Table> table,
     const std::vector<std::vector<uint32_t>>& index_cols,
-    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t max_idx,
-    uint32_t idx, const std::vector<::rtidb::log::WriteHandle*>& whs,
+    const std::vector<::fedb::codec::ColumnDesc>& columns, uint32_t max_idx,
+    uint32_t idx, const std::vector<::fedb::log::WriteHandle*>& whs,
     uint64_t snapshot_offset, uint64_t collected_offset) {
-    ::rtidb::log::LogReader log_reader(log_part_, log_path_, false);
+    ::fedb::log::LogReader log_reader(log_part_, log_path_, false);
     log_reader.SetOffset(snapshot_offset);
     uint64_t cur_offset = snapshot_offset;
     uint32_t partition_num = whs.size();
-    ::rtidb::api::LogEntry entry;
+    ::fedb::api::LogEntry entry;
     uint64_t succ_cnt = 0;
     uint64_t failed_cnt = 0;
     uint64_t consumed = ::baidu::common::timer::now_time();
@@ -1315,8 +1324,8 @@ bool MemTableSnapshot::DumpBinlogIndexData(
     DLOG(INFO) << "begin dump binlog index data";
     while (cur_offset < collected_offset) {
         buffer.clear();
-        ::rtidb::base::Slice record;
-        ::rtidb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
+        ::fedb::base::Slice record;
+        ::fedb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
         if (status.IsWaitRecord()) {
             int end_log_index = log_reader.GetEndLogIndex();
             int cur_log_index = log_reader.GetLogIndex();
@@ -1349,7 +1358,7 @@ bool MemTableSnapshot::DumpBinlogIndexData(
         entry_buff.assign(record.data(), record.size());
         if (!entry.ParseFromString(entry_buff)) {
             PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s",
-                  tid_, pid_, ::rtidb::base::DebugString(entry_buff).c_str());
+                  tid_, pid_, ::fedb::base::DebugString(entry_buff).c_str());
             failed_cnt++;
             continue;
         }
@@ -1371,7 +1380,7 @@ bool MemTableSnapshot::DumpBinlogIndexData(
         }
         std::string entry_str;
         entry.SerializeToString(&entry_str);
-        ::rtidb::base::Slice new_record(entry_str);
+        ::fedb::base::Slice new_record(entry_str);
         status = whs[index_pid]->Write(new_record);
         if (!status.ok()) {
             PDLOG(WARNING, "fail to dump index entrylog in binlog to pid[%u].",
@@ -1384,12 +1393,12 @@ bool MemTableSnapshot::DumpBinlogIndexData(
     return true;
 }
 
-int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector<::rtidb::codec::ColumnDesc>& columns,
-                                  const rtidb::api::LogEntry& entry, uint32_t max_idx, std::vector<std::string>& row) {
-    const ::rtidb::api::TableMeta& table_meta = table->GetTableMeta();
+int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector<::fedb::codec::ColumnDesc>& columns,
+                                  const fedb::api::LogEntry& entry, uint32_t max_idx, std::vector<std::string>& row) {
+    const ::fedb::api::TableMeta& table_meta = table->GetTableMeta();
     std::string buff;
-    rtidb::base::Slice data;
-    if (table->GetCompressType() == rtidb::api::kSnappy) {
+    fedb::base::Slice data;
+    if (table->GetCompressType() == fedb::api::kSnappy) {
         snappy::Uncompress(entry.value().data(), entry.value().size(), &buff);
         data.reset(buff.data(), buff.size());
     } else {
@@ -1413,7 +1422,7 @@ int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector
                 col_cnt = col_cnt_tmp;
             }
         }
-        bool ok = rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc_size(), max_idx + 1, data, &row);
+        bool ok = fedb::codec::RowCodec::DecodeRow(table_meta.column_desc_size(), max_idx + 1, data, &row);
         if (!ok) {
             DLOG(WARNING) << "decode data error";
             return 3;
@@ -1425,7 +1434,7 @@ int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector
         return 0;
     }
     const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
-    uint8_t version = rtidb::codec::RowView::GetSchemaVersion(raw);
+    uint8_t version = fedb::codec::RowView::GetSchemaVersion(raw);
     int32_t data_size = data.size();
     std::shared_ptr<Schema> schema = table->GetVersionSchema(version);
     if (schema == nullptr) {
@@ -1433,7 +1442,7 @@ int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector
         return 1;
     }
 
-    bool ok = rtidb::codec::RowCodec::DecodeRow(*schema, raw, data_size, true, 0, max_idx + 1, row);
+    bool ok = fedb::codec::RowCodec::DecodeRow(*schema, raw, data_size, true, 0, max_idx + 1, row);
     if (!ok) {
         DLOG(WARNING) << "decode data error";
         return 3;
@@ -1446,12 +1455,12 @@ int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector
 }
 
 bool MemTableSnapshot::IsCompressed(const std::string& path) {
-    if (path.find(rtidb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos
-            || path.find(rtidb::log::SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
+    if (path.find(fedb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos
+            || path.find(fedb::log::SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
         return true;
     }
     return false;
 }
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb

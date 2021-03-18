@@ -1,12 +1,11 @@
 /*
- * batch_request_result_set_impl.cc
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 
 #include "sdk/batch_request_result_set_sql.h"
 
@@ -26,12 +26,12 @@
 #include "codec/fe_schema_codec.h"
 #include "glog/logging.h"
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 static const std::string EMPTY_STR;  // NOLINT
 SQLBatchRequestResultSet::SQLBatchRequestResultSet(
-    const std::shared_ptr<::rtidb::api::SQLBatchRequestQueryResponse>& response,
+    const std::shared_ptr<::fedb::api::SQLBatchRequestQueryResponse>& response,
     const std::shared_ptr<brpc::Controller>& cntl)
     : response_(response),
       index_(-1),
@@ -45,7 +45,7 @@ SQLBatchRequestResultSet::SQLBatchRequestResultSet(
 SQLBatchRequestResultSet::~SQLBatchRequestResultSet() {}
 
 bool SQLBatchRequestResultSet::Init() {
-    if (!response_ || response_->code() != ::rtidb::base::kOk) {
+    if (!response_ || response_->code() != ::fedb::base::kOk) {
         LOG(WARNING) << "bad response code " << response_->code();
         return false;
     }
@@ -353,4 +353,4 @@ bool SQLBatchRequestResultSet::GetTime(uint32_t index, int64_t* mills) {
 }
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb

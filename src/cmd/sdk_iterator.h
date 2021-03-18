@@ -1,7 +1,20 @@
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-// cmd/sdk_iterator.h
-// Copyright (C) 2019 4paradigm.com
-//
+
 
 #pragma once
 
@@ -11,13 +24,13 @@
 
 #include "base/kv_iterator.h"
 
-namespace rtidb {
+namespace fedb {
 namespace cmd {
 
 class SDKIterator {
  public:
     explicit SDKIterator(
-        std::vector<std::shared_ptr<::rtidb::base::KvIterator>> iter_vec,
+        std::vector<std::shared_ptr<::fedb::base::KvIterator>> iter_vec,
         uint32_t limit)
         : iter_vec_(iter_vec), cur_iter_(), limit_(limit), cnt_(0) {
         Next();
@@ -56,7 +69,7 @@ class SDKIterator {
             iter_vec_.erase(
                 std::remove_if(
                     iter_vec_.begin(), iter_vec_.end(),
-                    [](const std::shared_ptr<::rtidb::base::KvIterator>& it) {
+                    [](const std::shared_ptr<::fedb::base::KvIterator>& it) {
                         return !it;
                     }),
                 iter_vec_.end());
@@ -68,14 +81,14 @@ class SDKIterator {
 
     uint64_t GetKey() const { return cur_iter_->GetKey(); }
 
-    ::rtidb::base::Slice GetValue() { return cur_iter_->GetValue(); }
+    ::fedb::base::Slice GetValue() { return cur_iter_->GetValue(); }
 
  private:
-    std::vector<std::shared_ptr<::rtidb::base::KvIterator>> iter_vec_;
-    std::shared_ptr<::rtidb::base::KvIterator> cur_iter_;
+    std::vector<std::shared_ptr<::fedb::base::KvIterator>> iter_vec_;
+    std::shared_ptr<::fedb::base::KvIterator> cur_iter_;
     uint32_t limit_;
     uint32_t cnt_;
 };
 
 }  // namespace cmd
-}  // namespace rtidb
+}  // namespace fedb

@@ -1,9 +1,20 @@
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-// file_receiver.cc
-// Copyright (C) 2017 4paradigm.com
-// Author denglong
-// Date 2019-08-15
-//
+
 
 #include "tablet/file_receiver.h"
 #include <boost/algorithm/string/predicate.hpp>
@@ -13,7 +24,7 @@
 
 
 
-namespace rtidb {
+namespace fedb {
 namespace tablet {
 
 FileReceiver::FileReceiver(const std::string& file_name,
@@ -37,7 +48,7 @@ bool FileReceiver::Init() {
     if (!boost::ends_with(path_, "/")) {
         path_.append("/");
     }
-    if (!::rtidb::base::MkdirRecur(path_)) {
+    if (!::fedb::base::MkdirRecur(path_)) {
         PDLOG(WARNING, "mkdir failed! path[%s]", path_.c_str());
         return false;
     }
@@ -83,8 +94,8 @@ int FileReceiver::WriteData(const std::string& data, uint64_t block_id) {
 void FileReceiver::SaveFile() {
     std::string full_path = path_ + file_name_;
     std::string tmp_file_path = full_path + ".tmp";
-    if (::rtidb::base::IsExists(full_path)) {
-        std::string backup_file = full_path + "." + ::rtidb::base::GetNowTime();
+    if (::fedb::base::IsExists(full_path)) {
+        std::string backup_file = full_path + "." + ::fedb::base::GetNowTime();
         rename(full_path.c_str(), backup_file.c_str());
     }
     rename(tmp_file_path.c_str(), full_path.c_str());
@@ -92,4 +103,4 @@ void FileReceiver::SaveFile() {
 }
 
 }  // namespace tablet
-}  // namespace rtidb
+}  // namespace fedb

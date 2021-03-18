@@ -1,6 +1,19 @@
-//
-// glog_wapper.cc
-// Copyright 2017 4paradigm.com
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #ifndef SRC_BASE_GLOG_WAPPER_H_
 #define SRC_BASE_GLOG_WAPPER_H_
@@ -16,7 +29,7 @@ using google::FATAL;
 using google::INFO;
 using google::WARNING;
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 const int DEBUG = -1;
@@ -41,19 +54,19 @@ inline void SetLogFile(std::string path) {
 }
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
-using ::rtidb::base::DEBUG;
+using ::fedb::base::DEBUG;
 
 #define PDLOG(level, fmt, args...)      \
     COMPACT_GOOGLE_LOG_##level.stream() \
-        << ::rtidb::base::FormatArgs(fmt, ##args)
+        << ::fedb::base::FormatArgs(fmt, ##args)
 
 #define DEBUGLOG(fmt, args...)                             \
     {                                                      \
-        if (::rtidb::base::log_level == -1)                \
+        if (::fedb::base::log_level == -1)                \
             COMPACT_GOOGLE_LOG_INFO.stream()               \
-                << ::rtidb::base::FormatArgs(fmt, ##args); \
+                << ::fedb::base::FormatArgs(fmt, ##args); \
     }                                                      \
     while (0)
 

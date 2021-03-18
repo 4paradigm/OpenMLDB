@@ -1,9 +1,19 @@
-//
-// new_env_test.cc
-// Copyright (C) 2020 4paradigm.com
-// Author wangbao
-// Date 2020-08-14
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #include <brpc/server.h>
 #include <gflags/gflags.h>
@@ -30,9 +40,9 @@ DECLARE_int32(request_timeout_ms);
 DECLARE_bool(binlog_notify_on_put);
 DECLARE_bool(use_name);
 
-using ::rtidb::zk::ZkClient;
+using ::fedb::zk::ZkClient;
 
-namespace rtidb {
+namespace fedb {
 namespace nameserver {
 
 inline std::string GenRand() {
@@ -71,7 +81,7 @@ void StartNameServer(brpc::Server& server, const std::string& real_ep) { //NOLIN
 }
 
 void StartTablet(brpc::Server& server, const std::string& real_ep) { //NOLINT
-    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+    ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
     bool ok = tablet->Init(real_ep);
     ASSERT_TRUE(ok);
     brpc::ServerOptions options;
@@ -88,21 +98,21 @@ void StartTablet(brpc::Server& server, const std::string& real_ep) { //NOLINT
     sleep(2);
 }
 
-void SetSdkEndpoint(::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_server_client, //NOLINT
+void SetSdkEndpoint(::fedb::RpcClient<::fedb::nameserver::NameServer_Stub>& name_server_client, //NOLINT
         const std::string& server_name, const std::string& sdk_endpoint) {
-    ::rtidb::nameserver::SetSdkEndpointRequest request;
+    ::fedb::nameserver::SetSdkEndpointRequest request;
     request.set_server_name(server_name);
     request.set_sdk_endpoint(sdk_endpoint);
-    ::rtidb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::GeneralResponse response;
     bool ok = name_server_client.SendRequest(
-            &::rtidb::nameserver::NameServer_Stub::SetSdkEndpoint,
+            &::fedb::nameserver::NameServer_Stub::SetSdkEndpoint,
             &request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
 }
 
 void ShowNameServer(std::map<std::string, std::string>* map) {
-    std::shared_ptr<::rtidb::zk::ZkClient> zk_client;
-    zk_client = std::make_shared<::rtidb::zk::ZkClient>(
+    std::shared_ptr<::fedb::zk::ZkClient> zk_client;
+    zk_client = std::make_shared<::fedb::zk::ZkClient>(
             FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
     if (!zk_client->Init()) {
         ASSERT_TRUE(false);
@@ -143,14 +153,14 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     std::string ns_real_ep = "127.0.0.1:9631";
     brpc::Server ns_server;
     StartNameServer(ns_server, ns_real_ep);
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(ns_real_ep);
+    ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub> name_server_client(ns_real_ep);
     name_server_client.Init();
 
     // tablet1
     FLAGS_use_name = true;
     FLAGS_endpoint = "tb1";
     std::string tb_real_ep_1 = "127.0.0.1:9831";
-    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::fedb::nameserver::GenRand();
     brpc::Server tb_server1;
     StartTablet(tb_server1, tb_real_ep_1);
 
@@ -158,7 +168,7 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     FLAGS_use_name = true;
     FLAGS_endpoint = "tb2";
     std::string tb_real_ep_2 = "127.0.0.1:9931";
-    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::fedb::nameserver::GenRand();
     brpc::Server tb_server2;
     StartTablet(tb_server2, tb_real_ep_2);
 
@@ -175,14 +185,14 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     }
     {
         // showtablet
-        ::rtidb::nameserver::ShowTabletRequest request;
-        ::rtidb::nameserver::ShowTabletResponse response;
+        ::fedb::nameserver::ShowTabletRequest request;
+        ::fedb::nameserver::ShowTabletResponse response;
         bool ok = name_server_client.SendRequest(
-                &::rtidb::nameserver::NameServer_Stub::ShowTablet,
+                &::fedb::nameserver::NameServer_Stub::ShowTablet,
                 &request, &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
 
-        ::rtidb::nameserver::TabletStatus status =
+        ::fedb::nameserver::TabletStatus status =
             response.tablets(0);
         ASSERT_EQ("tb1", status.endpoint());
         ASSERT_EQ(tb_real_ep_1, status.real_endpoint());
@@ -204,10 +214,10 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     }
     {
         // show sdkendpoint
-        ::rtidb::nameserver::ShowSdkEndpointRequest request;
-        ::rtidb::nameserver::ShowSdkEndpointResponse response;
+        ::fedb::nameserver::ShowSdkEndpointRequest request;
+        ::fedb::nameserver::ShowSdkEndpointResponse response;
         bool ok = name_server_client.SendRequest(
-                &::rtidb::nameserver::NameServer_Stub::
+                &::fedb::nameserver::NameServer_Stub::
                 ShowSdkEndpoint, &request, &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
 
@@ -235,7 +245,7 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
     std::string ns_real_ep = "127.0.0.1:9631";
     brpc::Server ns_server;
     StartNameServer(ns_server, ns_real_ep);
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(ns_real_ep);
+    ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub> name_server_client(ns_real_ep);
     name_server_client.Init();
 
     // tablet1
@@ -243,20 +253,20 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
     FLAGS_use_name = true;
     FLAGS_endpoint = "tb1";
     std::string tb_real_ep_1 = "127.0.0.1:9831";
-    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::fedb::nameserver::GenRand();
     brpc::Server tb_server1;
     StartTablet(tb_server1, tb_real_ep_1);
-    ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> tb_client_1(tb_real_ep_1);
+    ::fedb::RpcClient<::fedb::api::TabletServer_Stub> tb_client_1(tb_real_ep_1);
     tb_client_1.Init();
 
     // tablet2
     FLAGS_use_name = true;
     FLAGS_endpoint = "tb2";
     std::string tb_real_ep_2 = "127.0.0.1:9931";
-    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::fedb::nameserver::GenRand();
     brpc::Server tb_server2;
     StartTablet(tb_server2, tb_real_ep_2);
-    ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> tb_client_2(tb_real_ep_2);
+    ::fedb::RpcClient<::fedb::api::TabletServer_Stub> tb_client_2(tb_real_ep_2);
     tb_client_2.Init();
 
     bool ok = false;
@@ -275,40 +285,40 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
         meta->set_endpoint("tb2");
         meta->set_is_leader(false);
         ok = name_server_client.SendRequest(
-            &::rtidb::nameserver::NameServer_Stub::CreateTable, &request,
+            &::fedb::nameserver::NameServer_Stub::CreateTable, &request,
             &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
     }
     uint32_t tid = 0;
     {
-        ::rtidb::nameserver::ShowTableRequest request;
-        ::rtidb::nameserver::ShowTableResponse response;
+        ::fedb::nameserver::ShowTableRequest request;
+        ::fedb::nameserver::ShowTableResponse response;
         request.set_name(name);
-        bool ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTable,
+        bool ok = name_server_client.SendRequest(&::fedb::nameserver::NameServer_Stub::ShowTable,
                     &request, &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         tid = response.table_info(0).tid();
     }
     {
-        ::rtidb::api::PutRequest put_request;
-        ::rtidb::api::PutResponse put_response;
+        ::fedb::api::PutRequest put_request;
+        ::fedb::api::PutResponse put_response;
         put_request.set_pk("1");
         put_request.set_time(1);
         put_request.set_value("a");
         put_request.set_tid(tid);
         put_request.set_pid(0);
-        ok = tb_client_1.SendRequest(&::rtidb::api::TabletServer_Stub::Put, &put_request,
+        ok = tb_client_1.SendRequest(&::fedb::api::TabletServer_Stub::Put, &put_request,
                 &put_response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, put_response.code());
     }
     {
-        ::rtidb::api::TraverseRequest traverse_request;
-        ::rtidb::api::TraverseResponse traverse_response;
+        ::fedb::api::TraverseRequest traverse_request;
+        ::fedb::api::TraverseResponse traverse_response;
         traverse_request.set_pid(0);
         traverse_request.set_tid(tid);
-        ok = tb_client_1.SendRequest(&::rtidb::api::TabletServer_Stub::Traverse,
+        ok = tb_client_1.SendRequest(&::fedb::api::TabletServer_Stub::Traverse,
                 &traverse_request, &traverse_response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, traverse_response.code());
@@ -318,11 +328,11 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
     }
     sleep(3);
     {
-        ::rtidb::api::TraverseRequest traverse_request;
-        ::rtidb::api::TraverseResponse traverse_response;
+        ::fedb::api::TraverseRequest traverse_request;
+        ::fedb::api::TraverseResponse traverse_response;
         traverse_request.set_tid(tid);
         traverse_request.set_pid(0);
-        ok = tb_client_2.SendRequest(&::rtidb::api::TabletServer_Stub::Traverse,
+        ok = tb_client_2.SendRequest(&::fedb::api::TabletServer_Stub::Traverse,
                 &traverse_request, &traverse_response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, traverse_response.code());
@@ -333,13 +343,13 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
 }
 
 }  // namespace nameserver
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::rtidb::base::SetLogLevel(INFO);
+    ::fedb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     return RUN_ALL_TESTS();
 }

@@ -1,9 +1,19 @@
-//
-// snapshot.cc
-// Copyright (C) 2017 4paradigm.com
-// Author denglong
-// Date 2019-08-07
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #include "storage/snapshot.h"
 #include <fcntl.h>
@@ -16,7 +26,7 @@
 
 
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 const std::string MANIFEST = "MANIFEST"; // NOLINT
@@ -27,7 +37,7 @@ int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count,
           snapshot_name.c_str(), key_count);
     std::string full_path = snapshot_path_ + MANIFEST;
     std::string tmp_file = snapshot_path_ + MANIFEST + ".tmp";
-    ::rtidb::api::Manifest manifest;
+    ::fedb::api::Manifest manifest;
     std::string manifest_info;
     manifest.set_offset(offset);
     manifest.set_name(snapshot_name);
@@ -61,7 +71,7 @@ int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count,
 }
 
 int Snapshot::GetLocalManifest(const std::string& full_path,
-                               ::rtidb::api::Manifest& manifest) {
+                               ::fedb::api::Manifest& manifest) {
     int fd = open(full_path.c_str(), O_RDONLY);
     if (fd < 0) {
         PDLOG(INFO, "[%s] is not exist", MANIFEST.c_str());
@@ -78,4 +88,4 @@ int Snapshot::GetLocalManifest(const std::string& full_path,
 }
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb

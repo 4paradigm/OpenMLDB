@@ -1,9 +1,19 @@
-//
-// tablet_impl_test.cc
-// Copyright (C) 2017 4paradigm.com
-// Author wangtaize
-// Date 2017-04-05
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #include "tablet/tablet_impl.h"
 
@@ -44,15 +54,15 @@ DECLARE_string(recycle_bin_root_path);
 DECLARE_string(endpoint);
 DECLARE_uint32(recycle_ttl);
 
-namespace rtidb {
+namespace fedb {
 namespace tablet {
 
-using ::rtidb::api::TableStatus;
+using ::fedb::api::TableStatus;
 using Schema =
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+    ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>;
 
 uint32_t counter = 10;
-static const ::rtidb::base::DefaultComparator scmp;
+static const ::fedb::base::DefaultComparator scmp;
 
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
@@ -71,8 +81,8 @@ class TabletImplTest : public ::testing::Test {
     ~TabletImplTest() {}
 };
 
-bool RollWLogFile(::rtidb::storage::WriteHandle** wh,
-                  ::rtidb::storage::LogParts* logs, const std::string& log_path,
+bool RollWLogFile(::fedb::storage::WriteHandle** wh,
+                  ::fedb::storage::LogParts* logs, const std::string& log_path,
                   uint32_t& binlog_index, uint64_t offset,  // NOLINT
                   bool append_end = true) {
     if (*wh != NULL) {
@@ -82,8 +92,8 @@ bool RollWLogFile(::rtidb::storage::WriteHandle** wh,
         delete *wh;
         *wh = NULL;
     }
-    std::string name = ::rtidb::base::FormatToString(binlog_index, 8) + ".log";
-    ::rtidb::base::MkdirRecur(log_path);
+    std::string name = ::fedb::base::FormatToString(binlog_index, 8) + ".log";
+    ::fedb::base::MkdirRecur(log_path);
     std::string full_path = log_path + "/" + name;
     FILE* fd = fopen(full_path.c_str(), "ab+");
     if (fd == NULL) {
@@ -91,13 +101,13 @@ bool RollWLogFile(::rtidb::storage::WriteHandle** wh,
         return false;
     }
     logs->Insert(binlog_index, offset);
-    *wh = new ::rtidb::storage::WriteHandle("off", name, fd);
+    *wh = new ::fedb::storage::WriteHandle("off", name, fd);
     binlog_index++;
     return true;
 }
 
 int MultiDimensionEncode(
-    const std::vector<::rtidb::codec::ColumnDesc>& colum_desc,
+    const std::vector<::fedb::codec::ColumnDesc>& colum_desc,
     const std::vector<std::string>& input,
     std::vector<std::pair<std::string, uint32_t>>& dimensions,  // NOLINT
     std::string& buffer) {                                      // NOLINT
@@ -106,7 +116,7 @@ int MultiDimensionEncode(
         std::cout << "Input value mismatch schema" << std::endl;
         return -1;
     }
-    ::rtidb::codec::FlatArrayCodec codec(&buffer, (uint8_t)cnt);
+    ::fedb::codec::FlatArrayCodec codec(&buffer, (uint8_t)cnt);
     uint32_t idx_cnt = 0;
     for (uint32_t i = 0; i < input.size(); i++) {
         if (colum_desc[i].add_ts_idx) {
@@ -114,19 +124,19 @@ int MultiDimensionEncode(
             idx_cnt++;
         }
         bool codec_ok = false;
-        if (colum_desc[i].type == ::rtidb::codec::ColType::kInt32) {
+        if (colum_desc[i].type == ::fedb::codec::ColType::kInt32) {
             codec_ok = codec.Append(boost::lexical_cast<int32_t>(input[i]));
-        } else if (colum_desc[i].type == ::rtidb::codec::ColType::kInt64) {
+        } else if (colum_desc[i].type == ::fedb::codec::ColType::kInt64) {
             codec_ok = codec.Append(boost::lexical_cast<int64_t>(input[i]));
-        } else if (colum_desc[i].type == ::rtidb::codec::ColType::kUInt32) {
+        } else if (colum_desc[i].type == ::fedb::codec::ColType::kUInt32) {
             codec_ok = codec.Append(boost::lexical_cast<uint32_t>(input[i]));
-        } else if (colum_desc[i].type == ::rtidb::codec::ColType::kUInt64) {
+        } else if (colum_desc[i].type == ::fedb::codec::ColType::kUInt64) {
             codec_ok = codec.Append(boost::lexical_cast<uint64_t>(input[i]));
-        } else if (colum_desc[i].type == ::rtidb::codec::ColType::kFloat) {
+        } else if (colum_desc[i].type == ::fedb::codec::ColType::kFloat) {
             codec_ok = codec.Append(boost::lexical_cast<float>(input[i]));
-        } else if (colum_desc[i].type == ::rtidb::codec::ColType::kDouble) {
+        } else if (colum_desc[i].type == ::fedb::codec::ColType::kDouble) {
             codec_ok = codec.Append(boost::lexical_cast<double>(input[i]));
-        } else if (colum_desc[i].type == ::rtidb::codec::ColType::kString) {
+        } else if (colum_desc[i].type == ::fedb::codec::ColType::kString) {
             codec_ok = codec.Append(input[i]);
         }
         if (!codec_ok) {
@@ -141,33 +151,33 @@ int MultiDimensionEncode(
 void MultiDimensionDecode(const std::string& value,
                           std::vector<std::string>& output,  // NOLINT
                           uint16_t column_num) {
-    rtidb::codec::FlatArrayIterator fit(value.c_str(), value.size(),
+    fedb::codec::FlatArrayIterator fit(value.c_str(), value.size(),
                                         column_num);
     while (fit.Valid()) {
         std::string col;
-        if (fit.GetType() == ::rtidb::codec::ColType::kString) {
+        if (fit.GetType() == ::fedb::codec::ColType::kString) {
             fit.GetString(&col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt32) {
+        } else if (fit.GetType() == ::fedb::codec::ColType::kInt32) {
             int32_t int32_col = 0;
             fit.GetInt32(&int32_col);
             col = boost::lexical_cast<std::string>(int32_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt64) {
+        } else if (fit.GetType() == ::fedb::codec::ColType::kInt64) {
             int64_t int64_col = 0;
             fit.GetInt64(&int64_col);
             col = boost::lexical_cast<std::string>(int64_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt32) {
+        } else if (fit.GetType() == ::fedb::codec::ColType::kUInt32) {
             uint32_t uint32_col = 0;
             fit.GetUInt32(&uint32_col);
             col = boost::lexical_cast<std::string>(uint32_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt64) {
+        } else if (fit.GetType() == ::fedb::codec::ColType::kUInt64) {
             uint64_t uint64_col = 0;
             fit.GetUInt64(&uint64_col);
             col = boost::lexical_cast<std::string>(uint64_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kDouble) {
+        } else if (fit.GetType() == ::fedb::codec::ColType::kDouble) {
             double double_col = 0.0;
             fit.GetDouble(&double_col);
             col = boost::lexical_cast<std::string>(double_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kFloat) {
+        } else if (fit.GetType() == ::fedb::codec::ColType::kFloat) {
             float float_col = 0.0f;
             fit.GetFloat(&float_col);
             col = boost::lexical_cast<std::string>(float_col);
@@ -180,26 +190,26 @@ void MultiDimensionDecode(const std::string& value,
 void PrepareLatestTableData(TabletImpl& tablet, int32_t tid,  // NOLINT
                             int32_t pid) {
     for (int32_t i = 0; i < 100; i++) {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk(boost::lexical_cast<std::string>(i % 10));
         prequest.set_time(i + 1);
         prequest.set_value(boost::lexical_cast<std::string>(i));
         prequest.set_tid(tid);
         prequest.set_pid(pid);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         MockClosure closure;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
 
     for (int32_t i = 0; i < 100; i++) {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("10");
         prequest.set_time(i % 10 + 1);
         prequest.set_value(boost::lexical_cast<std::string>(i));
         prequest.set_tid(tid);
         prequest.set_pid(pid);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         MockClosure closure;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
@@ -213,15 +223,15 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
     MockClosure closure;
     uint32_t id = counter++;
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_ttl(0);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -230,11 +240,11 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
     {
         //
-        ::rtidb::api::CountRequest request;
+        ::fedb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
-        ::rtidb::api::CountResponse response;
+        ::fedb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(10u, response.count());
@@ -242,12 +252,12 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
     {
         //
-        ::rtidb::api::CountRequest request;
+        ::fedb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_filter_expired_data(true);
-        ::rtidb::api::CountResponse response;
+        ::fedb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(10u, response.count());
@@ -255,12 +265,12 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
     {
         //
-        ::rtidb::api::CountRequest request;
+        ::fedb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("10");
         request.set_filter_expired_data(true);
-        ::rtidb::api::CountResponse response;
+        ::fedb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(100u, response.count());
@@ -268,13 +278,13 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
     {
         //
-        ::rtidb::api::CountRequest request;
+        ::fedb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("10");
         request.set_filter_expired_data(true);
         request.set_enable_remove_duplicated_record(true);
-        ::rtidb::api::CountResponse response;
+        ::fedb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(10u, response.count());
@@ -282,12 +292,12 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
     {
         // default
-        ::rtidb::api::CountRequest request;
+        ::fedb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_filter_expired_data(true);
-        ::rtidb::api::CountResponse response;
+        ::fedb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(10u, response.count());
@@ -295,14 +305,14 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
     {
         // default st et type
-        ::rtidb::api::CountRequest request;
+        ::fedb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_st(91);
         request.set_et(81);
         request.set_filter_expired_data(true);
-        ::rtidb::api::CountResponse response;
+        ::fedb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1u, response.count());
@@ -310,15 +320,15 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
     {
         // st type=le et type=ge
-        ::rtidb::api::CountRequest request;
+        ::fedb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_st(91);
         request.set_et(81);
-        request.set_et_type(::rtidb::api::GetType::kSubKeyGe);
+        request.set_et_type(::fedb::api::GetType::kSubKeyGe);
         request.set_filter_expired_data(true);
-        ::rtidb::api::CountResponse response;
+        ::fedb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(2u, response.count());
@@ -326,15 +336,15 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
     {
         // st type=le et type=ge
-        ::rtidb::api::CountRequest request;
+        ::fedb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_st(90);
         request.set_et(81);
-        request.set_et_type(::rtidb::api::GetType::kSubKeyGe);
+        request.set_et_type(::fedb::api::GetType::kSubKeyGe);
         request.set_filter_expired_data(true);
-        ::rtidb::api::CountResponse response;
+        ::fedb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1u, response.count());
@@ -348,15 +358,15 @@ TEST_F(TabletImplTest, Count_Time_Table) {
     MockClosure closure;
     uint32_t id = counter++;
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_ttl(0);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -365,11 +375,11 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
     {
         //
-        ::rtidb::api::CountRequest request;
+        ::fedb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
-        ::rtidb::api::CountResponse response;
+        ::fedb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(10, (int32_t)response.count());
@@ -377,12 +387,12 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
     {
         //
-        ::rtidb::api::CountRequest request;
+        ::fedb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_filter_expired_data(true);
-        ::rtidb::api::CountResponse response;
+        ::fedb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(10, (int64_t)(response.count()));
@@ -390,12 +400,12 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
     {
         //
-        ::rtidb::api::CountRequest request;
+        ::fedb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("10");
         request.set_filter_expired_data(true);
-        ::rtidb::api::CountResponse response;
+        ::fedb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(100, (signed)response.count());
@@ -403,13 +413,13 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
     {
         //
-        ::rtidb::api::CountRequest request;
+        ::fedb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("10");
         request.set_filter_expired_data(true);
         request.set_enable_remove_duplicated_record(true);
-        ::rtidb::api::CountResponse response;
+        ::fedb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(10, (signed)response.count());
@@ -417,12 +427,12 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
     {
         // default
-        ::rtidb::api::CountRequest request;
+        ::fedb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_filter_expired_data(true);
-        ::rtidb::api::CountResponse response;
+        ::fedb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(10, (signed)response.count());
@@ -430,14 +440,14 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
     {
         // default st et type
-        ::rtidb::api::CountRequest request;
+        ::fedb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_st(91);
         request.set_et(81);
         request.set_filter_expired_data(true);
-        ::rtidb::api::CountResponse response;
+        ::fedb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, (signed)response.count());
@@ -445,15 +455,15 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
     {
         // st type=le et type=ge
-        ::rtidb::api::CountRequest request;
+        ::fedb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_st(91);
         request.set_et(81);
-        request.set_et_type(::rtidb::api::GetType::kSubKeyGe);
+        request.set_et_type(::fedb::api::GetType::kSubKeyGe);
         request.set_filter_expired_data(true);
-        ::rtidb::api::CountResponse response;
+        ::fedb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(2, (signed)response.count());
@@ -461,15 +471,15 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
     {
         // st type=le et type=ge
-        ::rtidb::api::CountRequest request;
+        ::fedb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_st(90);
         request.set_et(81);
-        request.set_et_type(::rtidb::api::GetType::kSubKeyGe);
+        request.set_et_type(::fedb::api::GetType::kSubKeyGe);
         request.set_filter_expired_data(true);
-        ::rtidb::api::CountResponse response;
+        ::fedb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, (signed)response.count());
@@ -483,15 +493,15 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
     MockClosure closure;
     uint32_t id = counter++;
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_ttl(5);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -501,17 +511,17 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
     // scan with default type
     {
         std::string key = "1";
-        ::rtidb::api::ScanRequest sr;
+        ::fedb::api::ScanRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_pk(key);
         sr.set_st(92);
         sr.set_et(90);
-        ::rtidb::api::ScanResponse srp;
+        ::fedb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(1, (signed)srp.count());
-        ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(&srp);
+        ::fedb::base::KvIterator* kv_it = new ::fedb::base::KvIterator(&srp);
         ASSERT_TRUE(kv_it->Valid());
         ASSERT_EQ(92l, (signed)kv_it->GetKey());
         ASSERT_STREQ("91", kv_it->GetValue().ToString().c_str());
@@ -521,18 +531,18 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
 
     // scan with default et ge
     {
-        ::rtidb::api::ScanRequest sr;
+        ::fedb::api::ScanRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_pk("1");
         sr.set_st(92);
         sr.set_et(0);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
-        ::rtidb::api::ScanResponse srp;
+        sr.set_et_type(::fedb::api::kSubKeyGe);
+        ::fedb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
-        ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(&srp);
+        ::fedb::base::KvIterator* kv_it = new ::fedb::base::KvIterator(&srp);
         ASSERT_TRUE(kv_it->Valid());
         ASSERT_EQ(92l, (signed)kv_it->GetKey());
         ASSERT_STREQ("91", kv_it->GetValue().ToString().c_str());
@@ -546,12 +556,12 @@ TEST_F(TabletImplTest, Get) {
     tablet.Init("");
     // table not found
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(1);
         request.set_pid(0);
         request.set_key("test");
         request.set_ts(0);
-        ::rtidb::api::GetResponse response;
+        ::fedb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(100, response.code());
@@ -559,15 +569,15 @@ TEST_F(TabletImplTest, Get) {
     // create table
     uint32_t id = counter++;
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_wal(true);
         table_meta->set_ttl(1);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -575,58 +585,58 @@ TEST_F(TabletImplTest, Get) {
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     // key not found
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(now);
-        ::rtidb::api::GetResponse response;
+        ::fedb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(109, response.code());
     }
     // put/get expired key
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test0");
         prequest.set_time(now - 2 * 60 * 1000);
         prequest.set_value("value0");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         MockClosure closure;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test0");
         request.set_ts(0);
-        ::rtidb::api::GetResponse response;
+        ::fedb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(109, response.code());
     }
     // put some key
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test");
         prequest.set_time(now);
         prequest.set_value("test10");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         MockClosure closure;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test");
         prequest.set_time(now - 2);
         prequest.set_value("test9");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         MockClosure closure;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
@@ -636,12 +646,12 @@ TEST_F(TabletImplTest, Get) {
         ASSERT_EQ(0, presponse.code());
     }
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(now - 2);
-        ::rtidb::api::GetResponse response;
+        ::fedb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -652,23 +662,23 @@ TEST_F(TabletImplTest, Get) {
         ASSERT_EQ("test10", response.value());
     }
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(now - 1);
-        ::rtidb::api::GetResponse response;
+        ::fedb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(109, response.code());
     }
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(now - 2);
-        ::rtidb::api::GetResponse response;
+        ::fedb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -676,12 +686,12 @@ TEST_F(TabletImplTest, Get) {
     }
     {
         // get expired key
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(now - 120 * 1000);
-        ::rtidb::api::GetResponse response;
+        ::fedb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(307, response.code());
@@ -689,40 +699,40 @@ TEST_F(TabletImplTest, Get) {
     // create latest ttl table
     id = counter++;
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t1");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(5);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     int num = 10;
     while (num) {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test");
         prequest.set_time(num);
         prequest.set_value("test" + std::to_string(num));
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         MockClosure closure;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
         num--;
     }
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(5);
-        ::rtidb::api::GetResponse response;
+        ::fedb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_NE(0, response.code());
@@ -750,91 +760,91 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
     // create table
     uint32_t id = counter++;
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_wal(true);
         table_meta->set_ttl(100);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // table not exist
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(0);
         request.set_pid(0);
-        request.set_type(::rtidb::api::TTLType::kAbsoluteTime);
+        request.set_type(::fedb::api::TTLType::kAbsoluteTime);
         request.set_value(0);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(100, response.code());
     }
     // bigger than max ttl
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::rtidb::api::TTLType::kAbsoluteTime);
+        request.set_type(::fedb::api::TTLType::kAbsoluteTime);
         request.set_value(60 * 24 * 365 * 30 * 2);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(132, response.code());
     }
     // ttl type mismatch
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::rtidb::api::kLatestTime);
+        request.set_type(::fedb::api::kLatestTime);
         request.set_value(0);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(112, response.code());
     }
     // normal case
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
-    ::rtidb::api::PutRequest prequest;
+    ::fedb::api::PutRequest prequest;
     prequest.set_pk("test");
     prequest.set_time(now - 60 * 60 * 1000);
     prequest.set_value("test9");
     prequest.set_tid(id);
     prequest.set_pid(0);
-    ::rtidb::api::PutResponse presponse;
+    ::fedb::api::PutResponse presponse;
     MockClosure closure;
     tablet.Put(NULL, &prequest, &presponse, &closure);
     ASSERT_EQ(0, presponse.code());
-    ::rtidb::api::GetRequest grequest;
+    ::fedb::api::GetRequest grequest;
     grequest.set_tid(id);
     grequest.set_pid(0);
     grequest.set_key("test");
     grequest.set_ts(0);
-    ::rtidb::api::GetResponse gresponse;
+    ::fedb::api::GetResponse gresponse;
     tablet.Get(NULL, &grequest, &gresponse, &closure);
     ASSERT_EQ(0, gresponse.code());
     ASSERT_EQ("test9", gresponse.value());
     // UpdateTTLRequest
-    ::rtidb::api::UpdateTTLRequest request;
+    ::fedb::api::UpdateTTLRequest request;
     request.set_tid(id);
     request.set_pid(0);
-    request.set_type(::rtidb::api::TTLType::kAbsoluteTime);
-    ::rtidb::api::UpdateTTLResponse response;
+    request.set_type(::fedb::api::TTLType::kAbsoluteTime);
+    ::fedb::api::UpdateTTLResponse response;
     // ExecuteGcRequest
-    ::rtidb::api::ExecuteGcRequest request_execute;
-    ::rtidb::api::GeneralResponse response_execute;
+    ::fedb::api::ExecuteGcRequest request_execute;
+    ::fedb::api::GeneralResponse response_execute;
     request_execute.set_tid(id);
     request_execute.set_pid(0);
     // etTableStatusRequest
-    ::rtidb::api::GetTableStatusRequest gr;
-    ::rtidb::api::GetTableStatusResponse gres;
+    ::fedb::api::GetTableStatusRequest gr;
+    ::fedb::api::GetTableStatusResponse gres;
     // ttl update to zero
     {
         request.set_value(0);
@@ -850,7 +860,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ASSERT_EQ(0, gres.code());
         bool checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(100, (int64_t)ts.ttl());
                 checked = true;
@@ -869,7 +879,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ASSERT_EQ(0, gres.code());
         checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(0, (int64_t)(ts.ttl()));
                 checked = true;
@@ -892,7 +902,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ASSERT_EQ(0, gres.code());
         bool checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(0, (signed)ts.ttl());
                 checked = true;
@@ -911,7 +921,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ASSERT_EQ(0, gres.code());
         checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(50, (signed)ts.ttl());
                 checked = true;
@@ -933,7 +943,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ASSERT_EQ(0, gres.code());
         bool checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(50, (signed)ts.ttl());
                 checked = true;
@@ -956,7 +966,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ASSERT_EQ(0, gres.code());
         checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(100, (signed)ts.ttl());
                 checked = true;
@@ -976,75 +986,75 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
     // create table
     uint32_t id = counter++;
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_wal(true);
         table_meta->set_ttl(1);
-        table_meta->set_ttl_type(::rtidb::api::kLatestTime);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_ttl_type(::fedb::api::kLatestTime);
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // table not exist
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(0);
         request.set_pid(0);
-        request.set_type(::rtidb::api::kLatestTime);
+        request.set_type(::fedb::api::kLatestTime);
         request.set_value(0);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(100, response.code());
     }
     // reach the max ttl
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::rtidb::api::kLatestTime);
+        request.set_type(::fedb::api::kLatestTime);
         request.set_value(20000);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(132, response.code());
     }
     // ttl type mismatch
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::rtidb::api::TTLType::kAbsoluteTime);
+        request.set_type(::fedb::api::TTLType::kAbsoluteTime);
         request.set_value(0);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(112, response.code());
     }
     // normal case
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::rtidb::api::kLatestTime);
+        request.set_type(::fedb::api::kLatestTime);
         request.set_value(2);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         sleep(70);
-        ::rtidb::api::GetTableStatusRequest gr;
-        ::rtidb::api::GetTableStatusResponse gres;
+        ::fedb::api::GetTableStatusRequest gr;
+        ::fedb::api::GetTableStatusResponse gres;
         tablet.GetTableStatus(NULL, &gr, &gres, &closure);
         ASSERT_EQ(0, gres.code());
         bool checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(2, (signed)ts.ttl());
                 checked = true;
@@ -1060,78 +1070,78 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
     tablet.Init("");
     {
         uint32_t id = counter++;
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_wal(true);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
         // get schema
-        ::rtidb::api::GetTableSchemaRequest request0;
+        ::fedb::api::GetTableSchemaRequest request0;
         request0.set_tid(id);
         request0.set_pid(1);
-        ::rtidb::api::GetTableSchemaResponse response0;
+        ::fedb::api::GetTableSchemaResponse response0;
         tablet.GetTableSchema(NULL, &request0, &response0, &closure);
         ASSERT_EQ("", response0.schema());
     }
     {
-        std::vector<::rtidb::codec::ColumnDesc> columns;
-        ::rtidb::codec::ColumnDesc desc1;
-        desc1.type = ::rtidb::codec::ColType::kString;
+        std::vector<::fedb::codec::ColumnDesc> columns;
+        ::fedb::codec::ColumnDesc desc1;
+        desc1.type = ::fedb::codec::ColType::kString;
         desc1.name = "card";
         desc1.add_ts_idx = true;
         columns.push_back(desc1);
 
-        ::rtidb::codec::ColumnDesc desc2;
-        desc2.type = ::rtidb::codec::ColType::kDouble;
+        ::fedb::codec::ColumnDesc desc2;
+        desc2.type = ::fedb::codec::ColType::kDouble;
         desc2.name = "amt";
         desc2.add_ts_idx = false;
         columns.push_back(desc2);
 
-        ::rtidb::codec::ColumnDesc desc3;
-        desc3.type = ::rtidb::codec::ColType::kInt32;
+        ::fedb::codec::ColumnDesc desc3;
+        desc3.type = ::fedb::codec::ColType::kInt32;
         desc3.name = "apprv_cde";
         desc3.add_ts_idx = false;
         columns.push_back(desc3);
 
-        ::rtidb::codec::SchemaCodec codec;
+        ::fedb::codec::SchemaCodec codec;
         std::string buffer;
         codec.Encode(columns, buffer);
         uint32_t id = counter++;
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_wal(true);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         table_meta->set_schema(buffer);
-        ::rtidb::api::CreateTableResponse response;
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
-        ::rtidb::api::GetTableSchemaRequest request0;
+        ::fedb::api::GetTableSchemaRequest request0;
         request0.set_tid(id);
         request0.set_pid(1);
-        ::rtidb::api::GetTableSchemaResponse response0;
+        ::fedb::api::GetTableSchemaResponse response0;
         tablet.GetTableSchema(NULL, &request0, &response0, &closure);
         ASSERT_TRUE(response0.schema().size() != 0);  // NOLINT
 
-        std::vector<::rtidb::codec::ColumnDesc> ncolumns;
+        std::vector<::fedb::codec::ColumnDesc> ncolumns;
         codec.Decode(response0.schema(), ncolumns);
         ASSERT_EQ(3, (signed)ncolumns.size());
-        ASSERT_EQ(::rtidb::codec::ColType::kString, ncolumns[0].type);
+        ASSERT_EQ(::fedb::codec::ColType::kString, ncolumns[0].type);
         ASSERT_EQ("card", ncolumns[0].name);
-        ASSERT_EQ(::rtidb::codec::ColType::kDouble, ncolumns[1].type);
+        ASSERT_EQ(::fedb::codec::ColType::kDouble, ncolumns[1].type);
         ASSERT_EQ("amt", ncolumns[1].name);
-        ASSERT_EQ(::rtidb::codec::ColType::kInt32, ncolumns[2].type);
+        ASSERT_EQ(::fedb::codec::ColType::kInt32, ncolumns[2].type);
         ASSERT_EQ("apprv_cde", ncolumns[2].name);
     }
 }
@@ -1140,42 +1150,42 @@ TEST_F(TabletImplTest, MultiGet) {
     TabletImpl tablet;
     tablet.Init("");
     uint32_t id = counter++;
-    std::vector<::rtidb::codec::ColumnDesc> columns;
-    ::rtidb::codec::ColumnDesc desc1;
-    desc1.type = ::rtidb::codec::ColType::kString;
+    std::vector<::fedb::codec::ColumnDesc> columns;
+    ::fedb::codec::ColumnDesc desc1;
+    desc1.type = ::fedb::codec::ColType::kString;
     desc1.name = "pk";
     desc1.add_ts_idx = true;
     columns.push_back(desc1);
 
-    ::rtidb::codec::ColumnDesc desc2;
-    desc2.type = ::rtidb::codec::ColType::kString;
+    ::fedb::codec::ColumnDesc desc2;
+    desc2.type = ::fedb::codec::ColType::kString;
     desc2.name = "amt";
     desc2.add_ts_idx = true;
     columns.push_back(desc2);
 
-    ::rtidb::codec::ColumnDesc desc3;
-    desc3.type = ::rtidb::codec::ColType::kInt32;
+    ::fedb::codec::ColumnDesc desc3;
+    desc3.type = ::fedb::codec::ColType::kInt32;
     desc3.name = "apprv_cde";
     desc3.add_ts_idx = false;
     columns.push_back(desc3);
 
-    ::rtidb::codec::SchemaCodec codec;
+    ::fedb::codec::SchemaCodec codec;
     std::string buffer;
     codec.Encode(columns, buffer);
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
-    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+    table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
     table_meta->set_schema(buffer);
     for (uint32_t i = 0; i < columns.size(); i++) {
         if (columns[i].add_ts_idx) {
             table_meta->add_dimensions(columns[i].name);
         }
     }
-    ::rtidb::api::CreateTableResponse response;
+    ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
@@ -1189,24 +1199,24 @@ TEST_F(TabletImplTest, MultiGet) {
         std::string value;
         std::vector<std::pair<std::string, uint32_t>> dimensions;
         MultiDimensionEncode(columns, input, dimensions, value);
-        ::rtidb::api::PutRequest request;
+        ::fedb::api::PutRequest request;
         request.set_time(1100);
         request.set_value(value);
         request.set_tid(id);
         request.set_pid(1);
         for (size_t i = 0; i < dimensions.size(); i++) {
-            ::rtidb::api::Dimension* d = request.add_dimensions();
+            ::fedb::api::Dimension* d = request.add_dimensions();
             d->set_key(dimensions[i].first);
             d->set_idx(dimensions[i].second);
         }
-        ::rtidb::api::PutResponse response;
+        ::fedb::api::PutResponse response;
         MockClosure closure;
         tablet.Put(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get
-    ::rtidb::api::GetRequest get_request;
-    ::rtidb::api::GetResponse get_response;
+    ::fedb::api::GetRequest get_request;
+    ::fedb::api::GetResponse get_response;
     get_request.set_tid(id);
     get_request.set_pid(1);
     get_request.set_key("abcd2");
@@ -1225,8 +1235,8 @@ TEST_F(TabletImplTest, MultiGet) {
     ASSERT_STREQ("12122", vec[2].c_str());
 
     // delete index
-    ::rtidb::api::DeleteIndexRequest deleteindex_request;
-    ::rtidb::api::GeneralResponse deleteindex_response;
+    ::fedb::api::DeleteIndexRequest deleteindex_request;
+    ::fedb::api::GeneralResponse deleteindex_response;
     // delete first index should fail
     deleteindex_request.set_idx_name("pk");
     deleteindex_request.set_tid(id);
@@ -1251,8 +1261,8 @@ TEST_F(TabletImplTest, MultiGet) {
     ASSERT_EQ(108, get_response.code());
 
     // scan index not found
-    ::rtidb::api::ScanRequest scan_request;
-    ::rtidb::api::ScanResponse scan_response;
+    ::fedb::api::ScanRequest scan_request;
+    ::fedb::api::ScanResponse scan_response;
     scan_request.set_tid(id);
     scan_request.set_pid(1);
     scan_request.set_pk("abcd2");
@@ -1267,38 +1277,38 @@ TEST_F(TabletImplTest, TTL) {
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     TabletImpl tablet;
     tablet.Init("");
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_wal(true);
-    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+    table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
     // 1 minutes
     table_meta->set_ttl(1);
-    ::rtidb::api::CreateTableResponse response;
+    ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(now);
         prequest.set_value("test1");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(now - 2 * 60 * 1000);
         prequest.set_value("test2");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
@@ -1309,14 +1319,14 @@ TEST_F(TabletImplTest, CreateTable) {
     TabletImpl tablet;
     tablet.Init("");
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_wal(true);
         table_meta->set_ttl(0);
-        ::rtidb::api::CreateTableResponse response;
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -1326,7 +1336,7 @@ TEST_F(TabletImplTest, CreateTable) {
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
         fileInput.SetCloseOnDelete(true);
-        ::rtidb::api::TableMeta table_meta_test;
+        ::fedb::api::TableMeta table_meta_test;
         google::protobuf::TextFormat::Parse(&fileInput, &table_meta_test);
         ASSERT_EQ(table_meta_test.tid(), (signed)id);
         ASSERT_STREQ(table_meta_test.name().c_str(), "t0");
@@ -1336,11 +1346,11 @@ TEST_F(TabletImplTest, CreateTable) {
         ASSERT_EQ(129, response.code());
     }
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_ttl(0);
-        ::rtidb::api::CreateTableResponse response;
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(129, response.code());
@@ -1351,24 +1361,24 @@ TEST_F(TabletImplTest, Put) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
-    ::rtidb::api::CreateTableResponse response;
+    ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
 
-    ::rtidb::api::PutRequest prequest;
+    ::fedb::api::PutRequest prequest;
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
     prequest.set_tid(2);
     prequest.set_pid(2);
-    ::rtidb::api::PutResponse presponse;
+    ::fedb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse, &closure);
     ASSERT_EQ(100, presponse.code());
     prequest.set_tid(id);
@@ -1381,70 +1391,70 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
-    ::rtidb::api::CreateTableResponse response;
+    ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9527);
         prequest.set_value("testx");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
 
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9528);
         prequest.set_value("testx");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9528);
         prequest.set_value("testx");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
 
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9529);
         prequest.set_value("testx");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    ::rtidb::api::ScanRequest sr;
+    ::fedb::api::ScanRequest sr;
     sr.set_tid(id);
     sr.set_pid(1);
     sr.set_pk("test1");
     sr.set_st(9530);
     sr.set_et(0);
     sr.set_enable_remove_duplicated_record(true);
-    ::rtidb::api::ScanResponse srp;
+    ::fedb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(3, (signed)srp.count());
@@ -1454,41 +1464,41 @@ TEST_F(TabletImplTest, Scan_with_latestN) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
-    table_meta->set_ttl_type(::rtidb::api::kLatestTime);
-    ::rtidb::api::CreateTableResponse response;
+    table_meta->set_ttl_type(::fedb::api::kLatestTime);
+    ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     for (int ts = 9527; ts < 9540; ts++) {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(ts);
         prequest.set_value("test" + std::to_string(ts));
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    ::rtidb::api::ScanRequest sr;
+    ::fedb::api::ScanRequest sr;
     sr.set_tid(id);
     sr.set_pid(1);
     sr.set_pk("test1");
     sr.set_st(0);
     sr.set_et(0);
     sr.set_limit(2);
-    ::rtidb::api::ScanResponse srp;
+    ::fedb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(2, (signed)srp.count());
-    ::rtidb::base::KvIterator* kv_it =
-        new ::rtidb::base::KvIterator(&srp, false);
+    ::fedb::base::KvIterator* kv_it =
+        new ::fedb::base::KvIterator(&srp, false);
     ASSERT_EQ(9539, (signed)kv_it->GetKey());
     ASSERT_STREQ("test9539", kv_it->GetValue().ToString().c_str());
     kv_it->Next();
@@ -1503,36 +1513,36 @@ TEST_F(TabletImplTest, Traverse) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
-    ::rtidb::api::CreateTableResponse response;
+    ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     for (int ts = 9527; ts < 9540; ts++) {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(ts);
         prequest.set_value("test" + std::to_string(ts));
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    ::rtidb::api::TraverseRequest sr;
+    ::fedb::api::TraverseRequest sr;
     sr.set_tid(id);
     sr.set_pid(1);
     sr.set_limit(100);
-    ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
+    ::fedb::api::TraverseResponse* srp = new ::fedb::api::TraverseResponse();
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(13, (signed)srp->count());
-    ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(srp);
+    ::fedb::base::KvIterator* kv_it = new ::fedb::base::KvIterator(srp);
     for (int cnt = 0; cnt < 13; cnt++) {
         uint64_t cur_ts = 9539 - cnt;
         ASSERT_EQ(cur_ts, kv_it->GetKey());
@@ -1550,14 +1560,14 @@ TEST_F(TabletImplTest, TraverseTTL) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(5);
     table_meta->set_seg_cnt(1);
-    ::rtidb::api::CreateTableResponse response;
+    ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
@@ -1565,34 +1575,34 @@ TEST_F(TabletImplTest, TraverseTTL) {
     uint64_t key_base = 10000;
     for (int i = 0; i < 100; i++) {
         uint64_t ts = cur_time - 10 * 60 * 1000 + i;
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test" + std::to_string(key_base + i));
         prequest.set_time(ts);
         prequest.set_value("test" + std::to_string(ts));
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     key_base = 21000;
     for (int i = 0; i < 60; i++) {
         uint64_t ts = cur_time + i;
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test" + std::to_string(key_base + i));
         prequest.set_time(ts);
         prequest.set_value("test" + std::to_string(ts));
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    ::rtidb::api::TraverseRequest sr;
+    ::fedb::api::TraverseRequest sr;
     sr.set_tid(id);
     sr.set_pid(1);
     sr.set_limit(100);
-    ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
+    ::fedb::api::TraverseResponse* srp = new ::fedb::api::TraverseResponse();
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(0, (signed)srp->count());
@@ -1635,14 +1645,14 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(5);
     table_meta->set_seg_cnt(1);
-    ::rtidb::common::ColumnDesc* desc = table_meta->add_column_desc();
+    ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
     desc->set_name("card");
     desc->set_type("string");
     desc->set_add_ts_idx(true);
@@ -1664,14 +1674,14 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
     desc->set_type("int64");
     desc->set_add_ts_idx(false);
     desc->set_is_ts_col(true);
-    ::rtidb::common::ColumnKey* column_key = table_meta->add_column_key();
+    ::fedb::common::ColumnKey* column_key = table_meta->add_column_key();
     column_key->set_index_name("card");
     column_key->add_ts_name("ts1");
     column_key->add_ts_name("ts2");
     column_key = table_meta->add_column_key();
     column_key->set_index_name("mcc");
     column_key->add_ts_name("ts2");
-    ::rtidb::api::CreateTableResponse response;
+    ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
@@ -1681,14 +1691,14 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
         for (int idx = 0; idx < 2; idx++) {
             uint64_t ts_value = cur_time - 10 * 60 * 1000 - idx;
             uint64_t ts1_value = cur_time - idx;
-            ::rtidb::api::PutRequest prequest;
-            ::rtidb::api::Dimension* dim = prequest.add_dimensions();
+            ::fedb::api::PutRequest prequest;
+            ::fedb::api::Dimension* dim = prequest.add_dimensions();
             dim->set_idx(0);
             dim->set_key("card" + std::to_string(key_base + i));
             dim = prequest.add_dimensions();
             dim->set_idx(1);
             dim->set_key("mcc" + std::to_string(key_base + i));
-            ::rtidb::api::TSDimension* ts = prequest.add_ts_dimensions();
+            ::fedb::api::TSDimension* ts = prequest.add_ts_dimensions();
             ts->set_idx(0);
             ts->set_ts(ts_value);
             ts = prequest.add_ts_dimensions();
@@ -1697,7 +1707,7 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
             std::string value = "value" + std::to_string(i);
             prequest.set_tid(id);
             prequest.set_pid(1);
-            ::rtidb::api::PutResponse presponse;
+            ::fedb::api::PutResponse presponse;
             tablet.Put(NULL, &prequest, &presponse, &closure);
             ASSERT_EQ(0, presponse.code());
         }
@@ -1707,14 +1717,14 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
         for (int idx = 0; idx < 2; idx++) {
             uint64_t ts1_value = cur_time - 10 * 60 * 1000 - idx;
             uint64_t ts_value = cur_time - idx;
-            ::rtidb::api::PutRequest prequest;
-            ::rtidb::api::Dimension* dim = prequest.add_dimensions();
+            ::fedb::api::PutRequest prequest;
+            ::fedb::api::Dimension* dim = prequest.add_dimensions();
             dim->set_idx(0);
             dim->set_key("card" + std::to_string(key_base + i));
             dim = prequest.add_dimensions();
             dim->set_idx(1);
             dim->set_key("mcc" + std::to_string(key_base + i));
-            ::rtidb::api::TSDimension* ts = prequest.add_ts_dimensions();
+            ::fedb::api::TSDimension* ts = prequest.add_ts_dimensions();
             ts->set_idx(0);
             ts->set_ts(ts_value);
             ts = prequest.add_ts_dimensions();
@@ -1723,17 +1733,17 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
             std::string value = "value" + std::to_string(i);
             prequest.set_tid(id);
             prequest.set_pid(1);
-            ::rtidb::api::PutResponse presponse;
+            ::fedb::api::PutResponse presponse;
             tablet.Put(NULL, &prequest, &presponse, &closure);
             ASSERT_EQ(0, presponse.code());
         }
     }
-    ::rtidb::api::TraverseRequest sr;
+    ::fedb::api::TraverseRequest sr;
     sr.set_tid(id);
     sr.set_pid(1);
     sr.set_idx_name("card");
     sr.set_limit(100);
-    ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
+    ::fedb::api::TraverseResponse* srp = new ::fedb::api::TraverseResponse();
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(14, (signed)srp->count());
@@ -1806,59 +1816,59 @@ TEST_F(TabletImplTest, Scan_with_limit) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
     table_meta->set_wal(true);
-    ::rtidb::api::CreateTableResponse response;
+    ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9527);
         prequest.set_value("test0");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9528);
         prequest.set_value("test0");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
 
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9529);
         prequest.set_value("test0");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    ::rtidb::api::ScanRequest sr;
+    ::fedb::api::ScanRequest sr;
     sr.set_tid(id);
     sr.set_pid(1);
     sr.set_pk("test1");
     sr.set_st(9530);
     sr.set_et(9526);
     sr.set_limit(2);
-    ::rtidb::api::ScanResponse srp;
+    ::fedb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(2, (signed)srp.count());
@@ -1868,24 +1878,24 @@ TEST_F(TabletImplTest, Scan) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
     table_meta->set_wal(true);
-    ::rtidb::api::CreateTableResponse response;
+    ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
-    ::rtidb::api::ScanRequest sr;
+    ::fedb::api::ScanRequest sr;
     sr.set_tid(2);
     sr.set_pk("test1");
     sr.set_st(9528);
     sr.set_et(9527);
     sr.set_limit(10);
-    ::rtidb::api::ScanResponse srp;
+    ::fedb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, (signed)srp.pairs().size());
     ASSERT_EQ(100, srp.code());
@@ -1897,12 +1907,12 @@ TEST_F(TabletImplTest, Scan) {
     ASSERT_EQ(0, (signed)srp.count());
 
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9527);
         prequest.set_value("test0");
         prequest.set_tid(2);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
 
         ASSERT_EQ(100, presponse.code());
@@ -1913,12 +1923,12 @@ TEST_F(TabletImplTest, Scan) {
         ASSERT_EQ(0, presponse.code());
     }
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9528);
         prequest.set_value("test0");
         prequest.set_tid(2);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
 
         ASSERT_EQ(100, presponse.code());
@@ -1944,27 +1954,27 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
     MockClosure closure;
     // create a latest table
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(3);
-        table_meta->set_ttl_type(::rtidb::api::kLatestTime);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_ttl_type(::fedb::api::kLatestTime);
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
 
     // version 1
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_value("test1");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         prequest.set_time(1);
         tablet.Put(NULL, &prequest, &presponse, &closure);
@@ -1972,12 +1982,12 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
 
     // version 2
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_value("test2");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         prequest.set_time(2);
         tablet.Put(NULL, &prequest, &presponse, &closure);
@@ -1985,12 +1995,12 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
 
     // version 3
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_value("test3");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         prequest.set_time(3);
         tablet.Put(NULL, &prequest, &presponse, &closure);
@@ -1998,12 +2008,12 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
 
     // get version 1
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test1");
         request.set_ts(1);
-        ::rtidb::api::GetResponse response;
+        ::fedb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, (signed)response.ts());
@@ -2012,24 +2022,24 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
 
     // update ttl
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(1);
-        request.set_type(::rtidb::api::kLatestTime);
+        request.set_type(::fedb::api::kLatestTime);
         request.set_value(2);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
 
     // get version 1 again
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test1");
         request.set_ts(1);
-        ::rtidb::api::GetResponse response;
+        ::fedb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
@@ -2039,36 +2049,36 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
 
     // get version 1 again
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test1");
         request.set_ts(1);
-        ::rtidb::api::GetResponse response;
+        ::fedb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(109, response.code());
         ASSERT_EQ("key not found", response.msg());
     }
     // revert ttl
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(1);
-        request.set_type(::rtidb::api::kLatestTime);
+        request.set_type(::fedb::api::kLatestTime);
         request.set_value(3);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
 
     // make sure that gc has clean the data
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test1");
         request.set_ts(1);
-        ::rtidb::api::GetResponse response;
+        ::fedb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(109, response.code());
         ASSERT_EQ("key not found", response.msg());
@@ -2081,37 +2091,37 @@ TEST_F(TabletImplTest, GC) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(1);
     table_meta->set_wal(true);
-    ::rtidb::api::CreateTableResponse response;
+    ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
 
-    ::rtidb::api::PutRequest prequest;
+    ::fedb::api::PutRequest prequest;
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
     prequest.set_tid(id);
     prequest.set_pid(1);
-    ::rtidb::api::PutResponse presponse;
+    ::fedb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse, &closure);
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     prequest.set_time(now);
     tablet.Put(NULL, &prequest, &presponse, &closure);
-    ::rtidb::api::ScanRequest sr;
+    ::fedb::api::ScanRequest sr;
     sr.set_tid(id);
     sr.set_pid(1);
     sr.set_pk("test1");
     sr.set_st(now);
     sr.set_et(9527);
     sr.set_limit(10);
-    ::rtidb::api::ScanResponse srp;
+    ::fedb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(1, (signed)srp.count());
@@ -2122,31 +2132,31 @@ TEST_F(TabletImplTest, DropTable) {
     uint32_t id = counter++;
     tablet.Init("");
     MockClosure closure;
-    ::rtidb::api::DropTableRequest dr;
+    ::fedb::api::DropTableRequest dr;
     dr.set_tid(id);
     dr.set_pid(1);
-    ::rtidb::api::DropTableResponse drs;
+    ::fedb::api::DropTableResponse drs;
     tablet.DropTable(NULL, &dr, &drs, &closure);
     ASSERT_EQ(100, drs.code());
 
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(1);
-    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-    ::rtidb::api::CreateTableResponse response;
+    table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+    ::fedb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
 
-    ::rtidb::api::PutRequest prequest;
+    ::fedb::api::PutRequest prequest;
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
     prequest.set_tid(id);
     prequest.set_pid(1);
-    ::rtidb::api::PutResponse presponse;
+    ::fedb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse, &closure);
     ASSERT_EQ(0, presponse.code());
     tablet.DropTable(NULL, &dr, &drs, &closure);
@@ -2164,49 +2174,49 @@ TEST_F(TabletImplTest, DropTableNoRecycle) {
     FLAGS_recycle_bin_enabled = false;
     FLAGS_db_root_path = "/tmp/gtest/db";
     FLAGS_recycle_bin_root_path = "/tmp/gtest/recycle";
-    ::rtidb::base::RemoveDirRecursive("/tmp/gtest");
+    ::fedb::base::RemoveDirRecursive("/tmp/gtest");
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
     MockClosure closure;
-    ::rtidb::api::DropTableRequest dr;
+    ::fedb::api::DropTableRequest dr;
     dr.set_tid(id);
     dr.set_pid(1);
-    ::rtidb::api::DropTableResponse drs;
+    ::fedb::api::DropTableResponse drs;
     tablet.DropTable(NULL, &dr, &drs, &closure);
     ASSERT_EQ(100, drs.code());
 
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(1);
-    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-    ::rtidb::api::CreateTableResponse response;
+    table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+    ::fedb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
 
-    ::rtidb::api::PutRequest prequest;
+    ::fedb::api::PutRequest prequest;
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
     prequest.set_tid(id);
     prequest.set_pid(1);
-    ::rtidb::api::PutResponse presponse;
+    ::fedb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse, &closure);
     ASSERT_EQ(0, presponse.code());
     tablet.DropTable(NULL, &dr, &drs, &closure);
     ASSERT_EQ(0, drs.code());
     sleep(1);
-    ::rtidb::base::GetChildFileName(FLAGS_db_root_path, file_vec);
+    ::fedb::base::GetChildFileName(FLAGS_db_root_path, file_vec);
     ASSERT_TRUE(file_vec.empty());
     file_vec.clear();
-    ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ::fedb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_TRUE(file_vec.empty());
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
-    ::rtidb::base::RemoveDirRecursive("/tmp/gtest");
+    ::fedb::base::RemoveDirRecursive("/tmp/gtest");
     FLAGS_recycle_bin_enabled = tmp_recycle_bin_enabled;
     FLAGS_db_root_path = tmp_db_root_path;
     FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
@@ -2218,8 +2228,8 @@ TEST_F(TabletImplTest, Recover) {
     {
         TabletImpl tablet;
         tablet.Init("");
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
@@ -2227,17 +2237,17 @@ TEST_F(TabletImplTest, Recover) {
         table_meta->set_seg_cnt(128);
         table_meta->set_term(1024);
         table_meta->add_replicas("127.0.0.1:9527");
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9527);
         prequest.set_value("test0");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
@@ -2245,15 +2255,15 @@ TEST_F(TabletImplTest, Recover) {
     {
         TabletImpl tablet;
         tablet.Init("");
-        ::rtidb::api::LoadTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::LoadTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_seg_cnt(64);
         table_meta->add_replicas("127.0.0.1:9530");
         table_meta->add_replicas("127.0.0.1:9531");
-        ::rtidb::api::GeneralResponse response;
+        ::fedb::api::GeneralResponse response;
         tablet.LoadTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -2263,7 +2273,7 @@ TEST_F(TabletImplTest, Recover) {
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
         fileInput.SetCloseOnDelete(true);
-        ::rtidb::api::TableMeta table_meta_test;
+        ::fedb::api::TableMeta table_meta_test;
         google::protobuf::TextFormat::Parse(&fileInput, &table_meta_test);
         ASSERT_EQ(table_meta_test.seg_cnt(), 64);
         ASSERT_EQ(table_meta_test.term(), 1024lu);
@@ -2271,30 +2281,30 @@ TEST_F(TabletImplTest, Recover) {
         ASSERT_STREQ(table_meta_test.replicas(0).c_str(), "127.0.0.1:9530");
 
         sleep(1);
-        ::rtidb::api::ScanRequest sr;
+        ::fedb::api::ScanRequest sr;
         sr.set_tid(id);
         sr.set_pid(1);
         sr.set_pk("test1");
         sr.set_st(9530);
         sr.set_et(9526);
-        ::rtidb::api::ScanResponse srp;
+        ::fedb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(1, (signed)srp.count());
-        ::rtidb::api::GeneralRequest grq;
+        ::fedb::api::GeneralRequest grq;
         grq.set_tid(id);
         grq.set_pid(1);
-        ::rtidb::api::GeneralResponse grp;
+        ::fedb::api::GeneralResponse grp;
         grp.set_code(-1);
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
         ASSERT_EQ(0, grp.code());
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9528);
         prequest.set_value("test1");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
         sleep(2);
@@ -2303,24 +2313,24 @@ TEST_F(TabletImplTest, Recover) {
     {
         TabletImpl tablet;
         tablet.Init("");
-        ::rtidb::api::LoadTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::LoadTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(0);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::GeneralResponse response;
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::GeneralResponse response;
         tablet.LoadTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         sleep(1);
-        ::rtidb::api::ScanRequest sr;
+        ::fedb::api::ScanRequest sr;
         sr.set_tid(id);
         sr.set_pid(1);
         sr.set_pk("test1");
         sr.set_st(9530);
         sr.set_et(9526);
-        ::rtidb::api::ScanResponse srp;
+        ::fedb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -2330,12 +2340,12 @@ TEST_F(TabletImplTest, Recover) {
 TEST_F(TabletImplTest, LoadWithDeletedKey) {
     uint32_t id = counter++;
     MockClosure closure;
-    ::rtidb::api::TableMeta table_meta_test;
+    ::fedb::api::TableMeta table_meta_test;
     {
         TabletImpl tablet;
         tablet.Init("");
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
@@ -2343,42 +2353,42 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
         table_meta->set_seg_cnt(8);
         table_meta->set_term(1024);
 
-        ::rtidb::common::ColumnDesc* column_desc1 =
+        ::fedb::common::ColumnDesc* column_desc1 =
             table_meta->add_column_desc();
         column_desc1->set_name("card");
         column_desc1->set_type("string");
         column_desc1->set_add_ts_idx(true);
-        ::rtidb::common::ColumnDesc* column_desc2 =
+        ::fedb::common::ColumnDesc* column_desc2 =
             table_meta->add_column_desc();
         column_desc2->set_name("mcc");
         column_desc2->set_type("string");
         column_desc2->set_add_ts_idx(true);
 
         table_meta->add_replicas("127.0.0.1:9527");
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         for (int i = 0; i < 5; i++) {
-            ::rtidb::api::PutRequest request;
+            ::fedb::api::PutRequest request;
             request.set_time(1100);
             request.set_value("test");
             request.set_tid(id);
             request.set_pid(1);
-            ::rtidb::api::Dimension* d1 = request.add_dimensions();
+            ::fedb::api::Dimension* d1 = request.add_dimensions();
             d1->set_idx(0);
             d1->set_key("card" + std::to_string(i));
-            ::rtidb::api::Dimension* d2 = request.add_dimensions();
+            ::fedb::api::Dimension* d2 = request.add_dimensions();
             d2->set_idx(1);
             d2->set_key("mcc" + std::to_string(i));
-            ::rtidb::api::PutResponse response;
+            ::fedb::api::PutResponse response;
             MockClosure closure;
             tablet.Put(NULL, &request, &response, &closure);
             ASSERT_EQ(0, response.code());
         }
-        ::rtidb::api::DeleteIndexRequest deleteindex_request;
-        ::rtidb::api::GeneralResponse deleteindex_response;
+        ::fedb::api::DeleteIndexRequest deleteindex_request;
+        ::fedb::api::GeneralResponse deleteindex_response;
         // delete first index should fail
         deleteindex_request.set_idx_name("mcc");
         deleteindex_request.set_tid(id);
@@ -2391,25 +2401,25 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
     {
         TabletImpl tablet;
         tablet.Init("");
-        ::rtidb::api::LoadTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::LoadTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(0);
-        ::rtidb::api::GeneralResponse response;
+        ::fedb::api::GeneralResponse response;
         MockClosure closure;
         tablet.LoadTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         sleep(1);
-        ::rtidb::api::ScanRequest sr;
+        ::fedb::api::ScanRequest sr;
         sr.set_tid(id);
         sr.set_pid(1);
         sr.set_pk("mcc0");
         sr.set_idx_name("mcc");
         sr.set_st(1200);
         sr.set_et(1000);
-        ::rtidb::api::ScanResponse srp;
+        ::fedb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(108, srp.code());
         sr.set_pk("card0");
@@ -2426,18 +2436,18 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
     FLAGS_binlog_delete_interval = 1000;
     FLAGS_make_snapshot_threshold_offset = 0;
     uint32_t tid = counter++;
-    ::rtidb::storage::LogParts* log_part =
-        new ::rtidb::storage::LogParts(12, 4, scmp);
+    ::fedb::storage::LogParts* log_part =
+        new ::fedb::storage::LogParts(12, 4, scmp);
     std::string binlog_dir =
         FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog/";
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
-    ::rtidb::storage::WriteHandle* wh = NULL;
+    ::fedb::storage::WriteHandle* wh = NULL;
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
     int count = 1;
     for (; count <= 10; count++) {
         offset++;
-        ::rtidb::api::LogEntry entry;
+        ::fedb::api::LogEntry entry;
         entry.set_log_index(offset);
         std::string key = "key";
         entry.set_pk(key);
@@ -2445,8 +2455,8 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         entry.set_value("value" + std::to_string(count));
         std::string buffer;
         entry.SerializeToString(&buffer);
-        ::rtidb::base::Slice slice(buffer);
-        ::rtidb::base::Status status = wh->Write(slice);
+        ::fedb::base::Slice slice(buffer);
+        ::fedb::base::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
@@ -2460,7 +2470,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
     count = 1;
     for (; count <= 20; count++) {
         offset++;
-        ::rtidb::api::LogEntry entry;
+        ::fedb::api::LogEntry entry;
         entry.set_log_index(offset);
         std::string key = "key_new";
         entry.set_pk(key);
@@ -2468,8 +2478,8 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         entry.set_value("value_new" + std::to_string(count));
         std::string buffer;
         entry.SerializeToString(&buffer);
-        ::rtidb::base::Slice slice(buffer);
-        ::rtidb::base::Status status = wh->Write(slice);
+        ::fedb::base::Slice slice(buffer);
+        ::fedb::base::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
@@ -2478,7 +2488,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
     count = 1;
     for (; count <= 30; count++) {
         offset++;
-        ::rtidb::api::LogEntry entry;
+        ::fedb::api::LogEntry entry;
         entry.set_log_index(offset);
         std::string key = "key_xxx";
         entry.set_pk(key);
@@ -2486,8 +2496,8 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         entry.set_value("value_xxx" + std::to_string(count));
         std::string buffer;
         entry.SerializeToString(&buffer);
-        ::rtidb::base::Slice slice(buffer);
-        ::rtidb::base::Status status = wh->Write(slice);
+        ::fedb::base::Slice slice(buffer);
+        ::fedb::base::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
@@ -2495,25 +2505,25 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
     {
         TabletImpl tablet;
         tablet.Init("");
-        ::rtidb::api::LoadTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::LoadTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(tid);
         table_meta->set_pid(0);
         table_meta->set_ttl(0);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::GeneralResponse response;
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::GeneralResponse response;
         MockClosure closure;
         tablet.LoadTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         sleep(1);
-        ::rtidb::api::ScanRequest sr;
+        ::fedb::api::ScanRequest sr;
         sr.set_tid(tid);
         sr.set_pid(0);
         sr.set_pk("key_new");
         sr.set_st(50);
         sr.set_et(0);
-        ::rtidb::api::ScanResponse srp;
+        ::fedb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(20, (signed)srp.count());
@@ -2528,20 +2538,20 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(30, (signed)srp.count());
 
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9528);
         prequest.set_value("test1");
         prequest.set_tid(tid);
         prequest.set_pid(0);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
 
-        ::rtidb::api::GeneralRequest grq;
+        ::fedb::api::GeneralRequest grq;
         grq.set_tid(tid);
         grq.set_pid(0);
-        ::rtidb::api::GeneralResponse grp;
+        ::fedb::api::GeneralResponse grp;
         grp.set_code(-1);
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
         ASSERT_EQ(0, grp.code());
@@ -2553,7 +2563,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
         fileInput.SetCloseOnDelete(true);
-        ::rtidb::api::Manifest manifest;
+        ::fedb::api::Manifest manifest;
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
         ASSERT_EQ(61, (signed)manifest.offset());
 
@@ -2561,7 +2571,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         std::vector<std::string> vec;
         std::string binlog_path =
             FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog";
-        ::rtidb::base::GetFileName(binlog_path, vec);
+        ::fedb::base::GetFileName(binlog_path, vec);
         ASSERT_EQ(4, (signed)vec.size());
         std::sort(vec.begin(), vec.end());
         std::string file_name = binlog_path + "/00000001.log";
@@ -2583,15 +2593,15 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
     MockClosure closure;
     // create a latest table
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         // 3 minutes
         table_meta->set_ttl(3);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
+        ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
@@ -2599,13 +2609,13 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
     //
     uint64_t now1 = ::baidu::common::timer::get_micros() / 1000;
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_value("test1");
         prequest.set_tid(id);
         prequest.set_pid(1);
         prequest.set_time(now1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         prequest.set_time(1);
         tablet.Put(NULL, &prequest, &presponse, &closure);
@@ -2613,13 +2623,13 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
     // 1 minute before
     uint64_t now2 = now1 - 60 * 1000;
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_value("test2");
         prequest.set_tid(id);
         prequest.set_pid(1);
         prequest.set_time(now2);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         prequest.set_time(1);
         tablet.Put(NULL, &prequest, &presponse, &closure);
@@ -2628,13 +2638,13 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
     // 2 minute before
     uint64_t now3 = now1 - 2 * 60 * 1000;
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_value("test3");
         prequest.set_tid(id);
         prequest.set_pid(1);
         prequest.set_time(now3);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         prequest.set_time(1);
         tablet.Put(NULL, &prequest, &presponse, &closure);
@@ -2642,12 +2652,12 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
 
     // get now3
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test1");
         request.set_ts(now3);
-        ::rtidb::api::GetResponse response;
+        ::fedb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(now3, response.ts());
@@ -2656,12 +2666,12 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
 
     // update ttl
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(1);
-        request.set_type(::rtidb::api::TTLType::kAbsoluteTime);
+        request.set_type(::fedb::api::TTLType::kAbsoluteTime);
         request.set_value(1);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
@@ -2669,12 +2679,12 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
     sleep(70);
     // get now3
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test1");
         request.set_ts(now3);
-        ::rtidb::api::GetResponse response;
+        ::fedb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(307, response.code());
         ASSERT_EQ("invalid args", response.msg());
@@ -2687,31 +2697,31 @@ TEST_F(TabletImplTest, DropTableFollower) {
     TabletImpl tablet;
     tablet.Init("");
     MockClosure closure;
-    ::rtidb::api::DropTableRequest dr;
+    ::fedb::api::DropTableRequest dr;
     dr.set_tid(id);
     dr.set_pid(1);
-    ::rtidb::api::DropTableResponse drs;
+    ::fedb::api::DropTableResponse drs;
     tablet.DropTable(NULL, &dr, &drs, &closure);
     ASSERT_EQ(100, drs.code());
 
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(1);
-    table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
+    table_meta->set_mode(::fedb::api::TableMode::kTableFollower);
     table_meta->add_replicas("127.0.0.1:9527");
-    ::rtidb::api::CreateTableResponse response;
+    ::fedb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
-    ::rtidb::api::PutRequest prequest;
+    ::fedb::api::PutRequest prequest;
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
     prequest.set_tid(id);
     prequest.set_pid(1);
-    ::rtidb::api::PutResponse presponse;
+    ::fedb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse, &closure);
     // ReadOnly
     ASSERT_EQ(103, presponse.code());
@@ -2734,76 +2744,76 @@ TEST_F(TabletImplTest, TestGetType) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(4);
     table_meta->set_wal(true);
-    table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
-    ::rtidb::api::CreateTableResponse response;
+    table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+    ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     // 1
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test");
         prequest.set_time(1);
         prequest.set_value("test1");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     // 2
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test");
         prequest.set_time(2);
         prequest.set_value("test2");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     // 3
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test");
         prequest.set_time(3);
         prequest.set_value("test3");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     // 6
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test");
         prequest.set_time(6);
         prequest.set_value("test6");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     // eq
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(1);
-        request.set_type(::rtidb::api::GetType::kSubKeyEq);
+        request.set_type(::fedb::api::GetType::kSubKeyEq);
 
-        ::rtidb::api::GetResponse response;
+        ::fedb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2812,13 +2822,13 @@ TEST_F(TabletImplTest, TestGetType) {
     }
     // le
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(5);
-        request.set_type(::rtidb::api::GetType::kSubKeyLe);
-        ::rtidb::api::GetResponse response;
+        request.set_type(::fedb::api::GetType::kSubKeyLe);
+        ::fedb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2827,14 +2837,14 @@ TEST_F(TabletImplTest, TestGetType) {
     }
     // lt
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(3);
-        request.set_type(::rtidb::api::GetType::kSubKeyLt);
+        request.set_type(::fedb::api::GetType::kSubKeyLt);
 
-        ::rtidb::api::GetResponse response;
+        ::fedb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2843,13 +2853,13 @@ TEST_F(TabletImplTest, TestGetType) {
     }
     // gt
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(2);
-        request.set_type(::rtidb::api::GetType::kSubKeyGt);
-        ::rtidb::api::GetResponse response;
+        request.set_type(::fedb::api::GetType::kSubKeyGt);
+        ::fedb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2858,13 +2868,13 @@ TEST_F(TabletImplTest, TestGetType) {
     }
     // ge
     {
-        ::rtidb::api::GetRequest request;
+        ::fedb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(1);
-        request.set_type(::rtidb::api::GetType::kSubKeyGe);
-        ::rtidb::api::GetResponse response;
+        request.set_type(::fedb::api::GetType::kSubKeyGe);
+        ::fedb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2877,24 +2887,24 @@ TEST_F(TabletImplTest, Snapshot) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
-    ::rtidb::api::CreateTableResponse response;
+    ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
 
-    ::rtidb::api::PutRequest prequest;
+    ::fedb::api::PutRequest prequest;
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
     prequest.set_tid(id);
     prequest.set_pid(2);
-    ::rtidb::api::PutResponse presponse;
+    ::fedb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse, &closure);
     ASSERT_EQ(100, presponse.code());
     prequest.set_tid(id);
@@ -2902,8 +2912,8 @@ TEST_F(TabletImplTest, Snapshot) {
     tablet.Put(NULL, &prequest, &presponse, &closure);
     ASSERT_EQ(0, presponse.code());
 
-    ::rtidb::api::GeneralRequest grequest;
-    ::rtidb::api::GeneralResponse gresponse;
+    ::fedb::api::GeneralRequest grequest;
+    ::fedb::api::GeneralResponse gresponse;
     grequest.set_tid(id);
     grequest.set_pid(1);
     tablet.PauseSnapshot(NULL, &grequest, &gresponse, &closure);
@@ -2926,23 +2936,23 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Default) {
     tablet.Init("");
     // no height specify
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(0);
-        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::rtidb::api::GetTableStatusRequest request;
-        ::rtidb::api::GetTableStatusResponse response;
+        ::fedb::api::GetTableStatusRequest request;
+        ::fedb::api::GetTableStatusResponse response;
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
@@ -2956,24 +2966,24 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Specify) {
     TabletImpl tablet;
     tablet.Init("");
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(0);
-        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
         table_meta->set_key_entry_max_height(2);
-        ::rtidb::api::CreateTableResponse response;
+        ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::rtidb::api::GetTableStatusRequest request;
-        ::rtidb::api::GetTableStatusResponse response;
+        ::fedb::api::GetTableStatusRequest request;
+        ::fedb::api::GetTableStatusResponse response;
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
@@ -2987,23 +2997,23 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Default) {
     TabletImpl tablet;
     tablet.Init("");
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(0);
-        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
+        ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::rtidb::api::GetTableStatusRequest request;
-        ::rtidb::api::GetTableStatusResponse response;
+        ::fedb::api::GetTableStatusRequest request;
+        ::fedb::api::GetTableStatusResponse response;
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
@@ -3017,24 +3027,24 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Specify) {
     TabletImpl tablet;
     tablet.Init("");
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(0);
-        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
         table_meta->set_key_entry_max_height(8);
-        ::rtidb::api::CreateTableResponse response;
+        ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::rtidb::api::GetTableStatusRequest request;
-        ::rtidb::api::GetTableStatusResponse response;
+        ::fedb::api::GetTableStatusRequest request;
+        ::fedb::api::GetTableStatusResponse response;
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
@@ -3048,30 +3058,30 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_TTlDesc) {
     TabletImpl tablet;
     tablet.Init("");
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
-        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
         ttl_desc->set_abs_ttl(10);
-        ::rtidb::api::CreateTableResponse response;
+        ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::rtidb::api::GetTableStatusRequest request;
-        ::rtidb::api::GetTableStatusResponse response;
+        ::fedb::api::GetTableStatusRequest request;
+        ::fedb::api::GetTableStatusResponse response;
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
         ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
         ASSERT_EQ(0, (signed)ts.ttl_desc().lat_ttl());
-        ASSERT_EQ(::rtidb::api::TTLType::kAbsoluteTime,
+        ASSERT_EQ(::fedb::api::TTLType::kAbsoluteTime,
                   ts.ttl_desc().ttl_type());
     }
 }
@@ -3082,30 +3092,30 @@ TEST_F(TabletImplTest, CreateTableLatestTest_TTlDesc) {
     TabletImpl tablet;
     tablet.Init("");
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
-        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kLatestTime);
         ttl_desc->set_lat_ttl(10);
-        ::rtidb::api::CreateTableResponse response;
+        ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::rtidb::api::GetTableStatusRequest request;
-        ::rtidb::api::GetTableStatusResponse response;
+        ::fedb::api::GetTableStatusRequest request;
+        ::fedb::api::GetTableStatusResponse response;
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
         ASSERT_EQ(0, (signed)ts.ttl_desc().abs_ttl());
         ASSERT_EQ(10, (signed)ts.ttl_desc().lat_ttl());
-        ASSERT_EQ(::rtidb::api::TTLType::kLatestTime, ts.ttl_desc().ttl_type());
+        ASSERT_EQ(::fedb::api::TTLType::kLatestTime, ts.ttl_desc().ttl_type());
     }
 }
 
@@ -3115,31 +3125,31 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest) {
     TabletImpl tablet;
     tablet.Init("");
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
-        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(20);
-        ::rtidb::api::CreateTableResponse response;
+        ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::rtidb::api::GetTableStatusRequest request;
-        ::rtidb::api::GetTableStatusResponse response;
+        ::fedb::api::GetTableStatusRequest request;
+        ::fedb::api::GetTableStatusResponse response;
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
         ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
         ASSERT_EQ(20, (signed)ts.ttl_desc().lat_ttl());
-        ASSERT_EQ(::rtidb::api::TTLType::kAbsAndLat, ts.ttl_desc().ttl_type());
+        ASSERT_EQ(::fedb::api::TTLType::kAbsAndLat, ts.ttl_desc().ttl_type());
     }
 }
 
@@ -3149,31 +3159,31 @@ TEST_F(TabletImplTest, CreateTableAbsAndOrTest) {
     TabletImpl tablet;
     tablet.Init("");
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
-        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(20);
-        ::rtidb::api::CreateTableResponse response;
+        ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::rtidb::api::GetTableStatusRequest request;
-        ::rtidb::api::GetTableStatusResponse response;
+        ::fedb::api::GetTableStatusRequest request;
+        ::fedb::api::GetTableStatusResponse response;
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
         ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
         ASSERT_EQ(20, (signed)ts.ttl_desc().lat_ttl());
-        ASSERT_EQ(::rtidb::api::TTLType::kAbsOrLat, ts.ttl_desc().ttl_type());
+        ASSERT_EQ(::fedb::api::TTLType::kAbsOrLat, ts.ttl_desc().ttl_type());
     }
 }
 
@@ -3183,24 +3193,24 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest_Specify) {
     TabletImpl tablet;
     tablet.Init("");
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(0);
-        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
         table_meta->set_key_entry_max_height(8);
-        ::rtidb::api::CreateTableResponse response;
+        ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::rtidb::api::GetTableStatusRequest request;
-        ::rtidb::api::GetTableStatusResponse response;
+        ::fedb::api::GetTableStatusRequest request;
+        ::fedb::api::GetTableStatusResponse response;
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
@@ -3218,20 +3228,20 @@ TEST_F(TabletImplTest, GetTermPair) {
     {
         TabletImpl tablet;
         tablet.Init("");
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(0);
-        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
-        ::rtidb::api::CreateTableResponse response;
+        ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
-        ::rtidb::api::PutRequest prequest;
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutRequest prequest;
+        ::fedb::api::PutResponse presponse;
         prequest.set_pk("test1");
         prequest.set_time(9527);
         prequest.set_value("test0");
@@ -3240,16 +3250,16 @@ TEST_F(TabletImplTest, GetTermPair) {
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
 
-        ::rtidb::api::GeneralRequest grequest;
-        ::rtidb::api::GeneralResponse gresponse;
+        ::fedb::api::GeneralRequest grequest;
+        ::fedb::api::GeneralResponse gresponse;
         grequest.set_tid(id);
         grequest.set_pid(1);
         tablet.MakeSnapshot(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(0, gresponse.code());
         sleep(1);
 
-        ::rtidb::api::GetTermPairRequest pair_request;
-        ::rtidb::api::GetTermPairResponse pair_response;
+        ::fedb::api::GetTermPairRequest pair_request;
+        ::fedb::api::GetTermPairResponse pair_response;
         pair_request.set_tid(id);
         pair_request.set_pid(1);
         tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
@@ -3259,8 +3269,8 @@ TEST_F(TabletImplTest, GetTermPair) {
     }
     TabletImpl tablet;
     tablet.Init("");
-    ::rtidb::api::GetTermPairRequest pair_request;
-    ::rtidb::api::GetTermPairResponse pair_response;
+    ::fedb::api::GetTermPairRequest pair_request;
+    ::fedb::api::GetTermPairResponse pair_response;
     pair_request.set_tid(id);
     pair_request.set_pid(1);
     tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
@@ -3274,7 +3284,7 @@ TEST_F(TabletImplTest, GetTermPair) {
     ASSERT_GT(fd, 0);
     google::protobuf::io::FileInputStream fileInput(fd);
     fileInput.SetCloseOnDelete(true);
-    ::rtidb::api::Manifest manifest;
+    ::fedb::api::Manifest manifest;
     google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     std::string snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) +
                                 "_1/snapshot/" + manifest.name();
@@ -3295,34 +3305,34 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
     // create table
     uint32_t id = counter++;
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_wal(true);
         table_meta->set_ttl(1);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9527);
         prequest.set_value("test0");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
 
     {
-        ::rtidb::api::GeneralRequest grq;
+        ::fedb::api::GeneralRequest grq;
         grq.set_tid(id);
         grq.set_pid(1);
-        ::rtidb::api::GeneralResponse grp;
+        ::fedb::api::GeneralResponse grp;
         grp.set_code(-1);
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
         ASSERT_EQ(0, grp.code());
@@ -3333,19 +3343,19 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
         fileInput.SetCloseOnDelete(true);
-        ::rtidb::api::Manifest manifest;
+        ::fedb::api::Manifest manifest;
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
         ASSERT_EQ(1, (signed)manifest.offset());
     }
     FLAGS_make_snapshot_threshold_offset = 5;
     {
-        ::rtidb::api::PutRequest prequest;
+        ::fedb::api::PutRequest prequest;
         prequest.set_pk("test2");
         prequest.set_time(9527);
         prequest.set_value("test1");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
+        ::fedb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
 
@@ -3357,10 +3367,10 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
 
-        ::rtidb::api::GeneralRequest grq;
+        ::fedb::api::GeneralRequest grq;
         grq.set_tid(id);
         grq.set_pid(1);
-        ::rtidb::api::GeneralResponse grp;
+        ::fedb::api::GeneralResponse grp;
         grp.set_code(-1);
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
         ASSERT_EQ(0, grp.code());
@@ -3371,7 +3381,7 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
         fileInput.SetCloseOnDelete(true);
-        ::rtidb::api::Manifest manifest;
+        ::fedb::api::Manifest manifest;
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
         ASSERT_EQ(1, (signed)manifest.offset());
         std::string snapshot_file = FLAGS_db_root_path + "/" +
@@ -3391,82 +3401,82 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
     // create table
     uint32_t id = counter++;
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_wal(true);
-        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(100);
         ttl_desc->set_lat_ttl(50);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // table not exist
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(0);
         request.set_pid(0);
-        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(5);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(100, response.code());
     }
     // bigger than max ttl
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(60 * 24 * 365 * 30 * 2);
         ttl_desc->set_lat_ttl(5);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(132, response.code());
     }
     // bigger than max ttl
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(30);
         ttl_desc->set_lat_ttl(20000);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(132, response.code());
     }
     // ttl type mismatch
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kLatestTime);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(5);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(112, response.code());
     }
     // normal case
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
-    ::rtidb::api::PutResponse presponse;
-    ::rtidb::api::PutRequest prequest;
+    ::fedb::api::PutResponse presponse;
+    ::fedb::api::PutRequest prequest;
     {
         prequest.set_pk("test");
         prequest.set_time(now - 60 * 60 * 1000);
@@ -3489,35 +3499,35 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(0, presponse.code());
     }
     MockClosure closure;
-    ::rtidb::api::GetRequest grequest;
+    ::fedb::api::GetRequest grequest;
     grequest.set_tid(id);
     grequest.set_pid(0);
     grequest.set_key("test");
     grequest.set_ts(0);
-    ::rtidb::api::GetResponse gresponse;
+    ::fedb::api::GetResponse gresponse;
     tablet.Get(NULL, &grequest, &gresponse, &closure);
     ASSERT_EQ(0, gresponse.code());
     ASSERT_EQ("test9", gresponse.value());
     // UpdateTTLRequest
 
     // ExecuteGcRequest
-    ::rtidb::api::ExecuteGcRequest request_execute;
-    ::rtidb::api::GeneralResponse response_execute;
+    ::fedb::api::ExecuteGcRequest request_execute;
+    ::fedb::api::GeneralResponse response_execute;
     request_execute.set_tid(id);
     request_execute.set_pid(0);
     // etTableStatusRequest
-    ::rtidb::api::GetTableStatusRequest gr;
-    ::rtidb::api::GetTableStatusResponse gres;
+    ::fedb::api::GetTableStatusRequest gr;
+    ::fedb::api::GetTableStatusResponse gres;
     // ttl update to zero
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(0);
         ttl_desc->set_lat_ttl(0);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -3530,7 +3540,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(0, gres.code());
         bool checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(100, (signed)ts.ttl_desc().abs_ttl());
                 ASSERT_EQ(50, (signed)ts.ttl_desc().lat_ttl());
@@ -3550,7 +3560,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(0, gres.code());
         checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(0, (signed)ts.ttl_desc().abs_ttl());
                 ASSERT_EQ(0, (signed)ts.ttl_desc().lat_ttl());
@@ -3561,14 +3571,14 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
     }
     // ttl update from zero to no zero
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(50);
         ttl_desc->set_lat_ttl(1);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -3581,7 +3591,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(0, gres.code());
         bool checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(0, (signed)ts.ttl_desc().abs_ttl());
                 ASSERT_EQ(0, (signed)ts.ttl_desc().lat_ttl());
@@ -3602,7 +3612,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(0, gres.code());
         checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(50, (signed)ts.ttl_desc().abs_ttl());
                 ASSERT_EQ(1, (signed)ts.ttl_desc().lat_ttl());
@@ -3613,14 +3623,14 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
     }
     // update from 50 to 100
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(100);
         ttl_desc->set_lat_ttl(2);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -3633,7 +3643,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(0, gres.code());
         bool checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(50, (signed)ts.ttl_desc().abs_ttl());
                 ASSERT_EQ(1, (signed)ts.ttl_desc().lat_ttl());
@@ -3657,7 +3667,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(0, gres.code());
         checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(100, (signed)ts.ttl_desc().abs_ttl());
                 ASSERT_EQ(2, (signed)ts.ttl_desc().lat_ttl());
@@ -3678,82 +3688,82 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
     // create table
     uint32_t id = counter++;
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_wal(true);
-        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(100);
         ttl_desc->set_lat_ttl(50);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // table not exist
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(0);
         request.set_pid(0);
-        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(5);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(100, response.code());
     }
     // bigger than max ttl
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(60 * 24 * 365 * 30 * 2);
         ttl_desc->set_lat_ttl(5);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(132, response.code());
     }
     // bigger than max ttl
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(30);
         ttl_desc->set_lat_ttl(20000);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(132, response.code());
     }
     // ttl type mismatch
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kLatestTime);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(5);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(112, response.code());
     }
     // normal case
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
-    ::rtidb::api::PutRequest prequest;
-    ::rtidb::api::PutResponse presponse;
+    ::fedb::api::PutRequest prequest;
+    ::fedb::api::PutResponse presponse;
     {
         prequest.set_pk("test");
         prequest.set_time(now - 60 * 60 * 1000);
@@ -3775,35 +3785,35 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(0, presponse.code());
     }
 
-    ::rtidb::api::GetRequest grequest;
+    ::fedb::api::GetRequest grequest;
     grequest.set_tid(id);
     grequest.set_pid(0);
     grequest.set_key("test");
     grequest.set_ts(0);
-    ::rtidb::api::GetResponse gresponse;
+    ::fedb::api::GetResponse gresponse;
     MockClosure closure;
     tablet.Get(NULL, &grequest, &gresponse, &closure);
     ASSERT_EQ(0, gresponse.code());
     ASSERT_EQ("test9", gresponse.value());
 
     // ExecuteGcRequest
-    ::rtidb::api::ExecuteGcRequest request_execute;
-    ::rtidb::api::GeneralResponse response_execute;
+    ::fedb::api::ExecuteGcRequest request_execute;
+    ::fedb::api::GeneralResponse response_execute;
     request_execute.set_tid(id);
     request_execute.set_pid(0);
     // etTableStatusRequest
-    ::rtidb::api::GetTableStatusRequest gr;
-    ::rtidb::api::GetTableStatusResponse gres;
+    ::fedb::api::GetTableStatusRequest gr;
+    ::fedb::api::GetTableStatusResponse gres;
     // ttl update to zero
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(0);
         ttl_desc->set_lat_ttl(0);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -3816,7 +3826,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(0, gres.code());
         bool checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(100, (signed)ts.ttl_desc().abs_ttl());
                 ASSERT_EQ(50, (signed)ts.ttl_desc().lat_ttl());
@@ -3836,7 +3846,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(0, gres.code());
         checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(0, (signed)ts.ttl_desc().abs_ttl());
                 ASSERT_EQ(0, (signed)ts.ttl_desc().lat_ttl());
@@ -3847,14 +3857,14 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
     }
     // ttl update from zero to no zero
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(1);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -3867,7 +3877,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(0, gres.code());
         bool checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(0, (signed)ts.ttl_desc().abs_ttl());
                 ASSERT_EQ(0, (signed)ts.ttl_desc().lat_ttl());
@@ -3887,7 +3897,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(0, gres.code());
         checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
                 ASSERT_EQ(1, (signed)ts.ttl_desc().lat_ttl());
@@ -3898,14 +3908,14 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
     }
     // update from 10 to 100
     {
-        ::rtidb::api::UpdateTTLRequest request;
+        ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(100);
         ttl_desc->set_lat_ttl(2);
-        ::rtidb::api::UpdateTTLResponse response;
+        ::fedb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -3917,7 +3927,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(0, gres.code());
         bool checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
                 ASSERT_EQ(1, (signed)ts.ttl_desc().lat_ttl());
@@ -3941,7 +3951,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(0, gres.code());
         checked = false;
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
                 ASSERT_EQ(100, (signed)ts.ttl_desc().abs_ttl());
                 ASSERT_EQ(2, (signed)ts.ttl_desc().lat_ttl());
@@ -3959,24 +3969,24 @@ TEST_F(TabletImplTest, ScanAtLeast) {
     MockClosure closure;
     uint32_t id = 100;
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_wal(true);
-        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(0);
         ttl_desc->set_lat_ttl(0);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
-    ::rtidb::api::PutResponse presponse;
-    ::rtidb::api::PutRequest prequest;
+    ::fedb::api::PutResponse presponse;
+    ::fedb::api::PutRequest prequest;
     for (int i = 0; i < 1000; ++i) {
         prequest.set_pk("test" + std::to_string(i % 10));
         prequest.set_time(now - i * 60 * 1000);
@@ -3986,8 +3996,8 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    ::rtidb::api::ScanRequest sr;
-    ::rtidb::api::ScanResponse srp;
+    ::fedb::api::ScanRequest sr;
+    ::fedb::api::ScanResponse srp;
     // test atleast more than et
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -3996,7 +4006,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         sr.set_st(now);
         sr.set_et(now - 500 * 60 * 1000);
         sr.set_atleast(80);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(80, (signed)srp.count());
@@ -4009,7 +4019,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         sr.set_st(now);
         sr.set_et(now - 700 * 60 * 1000 + 1000);
         sr.set_atleast(50);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(70, (signed)srp.count());
@@ -4023,7 +4033,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         sr.set_et(now - 700 * 60 * 1000 + 1000);
         sr.set_atleast(50);
         sr.set_limit(60);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(60, (signed)srp.count());
@@ -4036,7 +4046,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
     sr.set_et(now - 700 * 60 * 1000 + 1000);
     sr.set_atleast(70);
     sr.set_limit(60);
-    sr.set_et_type(::rtidb::api::kSubKeyGe);
+    sr.set_et_type(::fedb::api::kSubKeyGe);
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(307, srp.code());
     // test atleast more than count
@@ -4048,7 +4058,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         sr.set_et(now - 1100 * 60 * 1000);
         sr.set_atleast(120);
         sr.set_limit(0);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(100, (signed)srp.count());
@@ -4061,16 +4071,16 @@ TEST_F(TabletImplTest, AbsAndLat) {
     MockClosure closure;
     uint32_t id = 101;
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(100);
         ttl_desc->set_lat_ttl(10);
-        ::rtidb::common::ColumnDesc* desc = table_meta->add_column_desc();
+        ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
         desc->set_name("test");
         desc->set_type("string");
         desc->set_add_ts_idx(true);
@@ -4115,7 +4125,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         desc->set_is_ts_col(true);
         desc->set_abs_ttl(0);
         desc->set_lat_ttl(0);
-        ::rtidb::common::ColumnKey* column_key = table_meta->add_column_key();
+        ::fedb::common::ColumnKey* column_key = table_meta->add_column_key();
         column_key->set_index_name("test");
         column_key->add_ts_name("ts1");
         column_key->add_ts_name("ts2");
@@ -4123,19 +4133,19 @@ TEST_F(TabletImplTest, AbsAndLat) {
         column_key->add_ts_name("ts4");
         column_key->add_ts_name("ts5");
         column_key->add_ts_name("ts6");
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     for (int i = 0; i < 100; ++i) {
-        ::rtidb::api::PutResponse presponse;
-        ::rtidb::api::PutRequest prequest;
-        ::rtidb::api::Dimension* dim = prequest.add_dimensions();
+        ::fedb::api::PutResponse presponse;
+        ::fedb::api::PutRequest prequest;
+        ::fedb::api::Dimension* dim = prequest.add_dimensions();
         dim->set_idx(0);
         dim->set_key("test" + std::to_string(i % 10));
-        ::rtidb::api::TSDimension* ts = prequest.add_ts_dimensions();
+        ::fedb::api::TSDimension* ts = prequest.add_ts_dimensions();
         ts->set_idx(0);
         ts->set_ts(now - (99 - i) * 60 * 1000);
         ts = prequest.add_ts_dimensions();
@@ -4162,87 +4172,87 @@ TEST_F(TabletImplTest, AbsAndLat) {
     //// Traverse test
     // ts1 has no expire data traverse return 100
     {
-        ::rtidb::api::TraverseRequest sr;
+        ::fedb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_ts_name("ts1");
-        ::rtidb::api::TraverseResponse* srp =
-            new ::rtidb::api::TraverseResponse();
+        ::fedb::api::TraverseResponse* srp =
+            new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
     // ts2 has 20 expire
     {
-        ::rtidb::api::TraverseRequest sr;
+        ::fedb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_ts_name("ts2");
-        ::rtidb::api::TraverseResponse* srp =
-            new ::rtidb::api::TraverseResponse();
+        ::fedb::api::TraverseResponse* srp =
+            new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(80, (signed)srp->count());
     }
     // ts3 has 30 expire
     {
-        ::rtidb::api::TraverseRequest sr;
+        ::fedb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_ts_name("ts3");
-        ::rtidb::api::TraverseResponse* srp =
-            new ::rtidb::api::TraverseResponse();
+        ::fedb::api::TraverseResponse* srp =
+            new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(70, (signed)srp->count());
     }
     // ts4 has no expire
     {
-        ::rtidb::api::TraverseRequest sr;
+        ::fedb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_ts_name("ts4");
-        ::rtidb::api::TraverseResponse* srp =
-            new ::rtidb::api::TraverseResponse();
+        ::fedb::api::TraverseResponse* srp =
+            new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
     // ts5 has no expire
     {
-        ::rtidb::api::TraverseRequest sr;
+        ::fedb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_ts_name("ts5");
-        ::rtidb::api::TraverseResponse* srp =
-            new ::rtidb::api::TraverseResponse();
+        ::fedb::api::TraverseResponse* srp =
+            new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
     // ts6 has no expire
     {
-        ::rtidb::api::TraverseRequest sr;
+        ::fedb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_ts_name("ts6");
-        ::rtidb::api::TraverseResponse* srp =
-            new ::rtidb::api::TraverseResponse();
+        ::fedb::api::TraverseResponse* srp =
+            new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
     // //// Scan Count test
-    ::rtidb::api::ScanRequest sr;
-    ::rtidb::api::ScanResponse srp;
-    ::rtidb::api::CountRequest cr;
-    ::rtidb::api::CountResponse crp;
+    ::fedb::api::ScanRequest sr;
+    ::fedb::api::ScanResponse srp;
+    ::fedb::api::CountRequest cr;
+    ::fedb::api::CountResponse crp;
     cr.set_filter_expired_data(true);
     //     time    cnt
     // st  valid   valid
@@ -4254,7 +4264,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000 + 100);
         sr.set_ts_name("ts1");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -4264,7 +4274,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now);
         cr.set_et(now - 100 * 60 * 1000 + 100);
         cr.set_ts_name("ts1");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(10, (signed)crp.count());
@@ -4279,7 +4289,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 60 * 60 * 1000 + 100);
         sr.set_ts_name("ts2");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -4289,7 +4299,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now);
         cr.set_et(now - 60 * 60 * 1000 + 100);
         cr.set_ts_name("ts2");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(6, (signed)crp.count());
@@ -4304,7 +4314,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 60 * 60 * 1000 + 100);
         sr.set_ts_name("ts3");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -4314,7 +4324,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now);
         cr.set_et(now - 60 * 60 * 1000 + 100);
         cr.set_ts_name("ts3");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(6, (signed)crp.count());
@@ -4329,7 +4339,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_ts_name("ts3");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(7, (signed)srp.count());
@@ -4339,7 +4349,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_ts_name("ts3");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(7, (signed)crp.count());
@@ -4354,7 +4364,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 50 * 60 * 1000 + 100);
         sr.set_et(now - 70 * 60 * 1000 + 100);
         sr.set_ts_name("ts2");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -4364,7 +4374,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now - 50 * 60 * 1000 + 100);
         cr.set_et(now - 70 * 60 * 1000 + 100);
         cr.set_ts_name("ts2");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(2, (signed)crp.count());
@@ -4379,7 +4389,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 50 * 60 * 1000 + 100);
         sr.set_et(now - 70 * 60 * 1000 + 100);
         sr.set_ts_name("ts3");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -4389,7 +4399,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now - 50 * 60 * 1000 + 100);
         cr.set_et(now - 70 * 60 * 1000 + 100);
         cr.set_ts_name("ts3");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(2, (signed)crp.count());
@@ -4404,7 +4414,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 90 * 60 * 1000 + 100);
         sr.set_ts_name("ts2");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -4414,7 +4424,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 90 * 60 * 1000 + 100);
         cr.set_ts_name("ts2");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(2, (signed)crp.count());
@@ -4429,7 +4439,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_ts_name("ts3");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(1, (signed)srp.count());
@@ -4439,7 +4449,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_ts_name("ts3");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(1, (signed)crp.count());
@@ -4454,7 +4464,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 80 * 60 * 1000 + 100);
         sr.set_et(now - 100 * 60 * 1000 + 100);
         sr.set_ts_name("ts3");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -4464,7 +4474,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now - 80 * 60 * 1000 + 100);
         cr.set_et(now - 100 * 60 * 1000 + 100);
         cr.set_ts_name("ts3");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(0, (signed)crp.count());
@@ -4480,7 +4490,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000 + 100);
         sr.set_ts_name("ts4");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -4490,7 +4500,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now);
         cr.set_et(now - 40 * 60 * 1000 + 100);
         cr.set_ts_name("ts4");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(4, (signed)crp.count());
@@ -4506,7 +4516,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_ts_name("ts4");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(8, (signed)srp.count());
@@ -4516,7 +4526,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_ts_name("ts4");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(8, (signed)crp.count());
@@ -4532,7 +4542,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_ts_name("ts4");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -4542,7 +4552,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_ts_name("ts4");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(2, (signed)crp.count());
@@ -4558,7 +4568,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000 + 100);
         sr.set_ts_name("ts5");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -4568,7 +4578,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now);
         cr.set_et(now - 40 * 60 * 1000 + 100);
         cr.set_ts_name("ts5");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(4, (signed)crp.count());
@@ -4584,7 +4594,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_ts_name("ts5");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(8, (signed)srp.count());
@@ -4594,7 +4604,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_ts_name("ts5");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(8, (signed)crp.count());
@@ -4610,7 +4620,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_ts_name("ts5");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -4620,7 +4630,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_ts_name("ts5");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(2, (signed)crp.count());
@@ -4636,7 +4646,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_ts_name("ts6");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -4646,15 +4656,15 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_ts_name("ts6");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(2, (signed)crp.count());
     }
     //// Get test
-    ::rtidb::api::GetRequest gr;
-    ::rtidb::api::GetResponse grp;
-    gr.set_type(::rtidb::api::kSubKeyLe);
+    ::fedb::api::GetRequest gr;
+    ::fedb::api::GetResponse grp;
+    gr.set_type(::fedb::api::kSubKeyLe);
     //     time    cnt
     // ts  valid   valid
     for (int i = 0; i < 10; ++i) {
@@ -4768,7 +4778,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 50 * 60 * 1000);
         sr.set_ts_name("ts1");
         sr.set_atleast(10);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -4782,7 +4792,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 50 * 60 * 1000);
         sr.set_ts_name("ts2");
         sr.set_atleast(10);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(8, (signed)srp.count());
@@ -4795,7 +4805,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 50 * 60 * 1000);
         sr.set_ts_name("ts3");
         sr.set_atleast(10);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(7, (signed)srp.count());
@@ -4809,7 +4819,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_ts_name("ts1");
         sr.set_atleast(5);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -4822,7 +4832,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_ts_name("ts2");
         sr.set_atleast(10);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(8, (signed)srp.count());
@@ -4835,7 +4845,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_ts_name("ts3");
         sr.set_atleast(10);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(7, (signed)srp.count());
@@ -4849,7 +4859,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_ts_name("ts1");
         sr.set_atleast(5);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -4862,7 +4872,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_ts_name("ts2");
         sr.set_atleast(5);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(8, (signed)srp.count());
@@ -4875,7 +4885,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_ts_name("ts3");
         sr.set_atleast(5);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(7, (signed)srp.count());
@@ -4890,7 +4900,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_ts_name("ts1");
         sr.set_atleast(5);
         sr.set_limit(6);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -4904,7 +4914,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_ts_name("ts2");
         sr.set_atleast(5);
         sr.set_limit(6);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -4918,7 +4928,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_ts_name("ts3");
         sr.set_atleast(5);
         sr.set_limit(6);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -4933,7 +4943,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_ts_name("ts1");
         sr.set_atleast(9);
         sr.set_limit(9);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(9, (signed)srp.count());
@@ -4947,7 +4957,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_ts_name("ts2");
         sr.set_atleast(9);
         sr.set_limit(9);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(8, (signed)srp.count());
@@ -4961,7 +4971,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_ts_name("ts3");
         sr.set_atleast(9);
         sr.set_limit(9);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(7, (signed)srp.count());
@@ -4975,7 +4985,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_ts_name("ts1");
         sr.set_limit(7);
         sr.set_atleast(5);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -4988,16 +4998,16 @@ TEST_F(TabletImplTest, AbsOrLat) {
     MockClosure closure;
     uint32_t id = 102;
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(100);
         ttl_desc->set_lat_ttl(10);
-        ::rtidb::common::ColumnDesc* desc = table_meta->add_column_desc();
+        ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
         desc->set_name("test");
         desc->set_type("string");
         desc->set_add_ts_idx(true);
@@ -5043,7 +5053,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         desc->set_abs_ttl(0);
         desc->set_lat_ttl(0);
 
-        ::rtidb::common::ColumnKey* column_key = table_meta->add_column_key();
+        ::fedb::common::ColumnKey* column_key = table_meta->add_column_key();
         column_key->set_index_name("test");
         column_key->add_ts_name("ts1");
         column_key->add_ts_name("ts2");
@@ -5051,19 +5061,19 @@ TEST_F(TabletImplTest, AbsOrLat) {
         column_key->add_ts_name("ts4");
         column_key->add_ts_name("ts5");
         column_key->add_ts_name("ts6");
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     for (int i = 0; i < 100; ++i) {
-        ::rtidb::api::PutResponse presponse;
-        ::rtidb::api::PutRequest prequest;
-        ::rtidb::api::Dimension* dim = prequest.add_dimensions();
+        ::fedb::api::PutResponse presponse;
+        ::fedb::api::PutRequest prequest;
+        ::fedb::api::Dimension* dim = prequest.add_dimensions();
         dim->set_idx(0);
         dim->set_key("test" + std::to_string(i % 10));
-        ::rtidb::api::TSDimension* ts = prequest.add_ts_dimensions();
+        ::fedb::api::TSDimension* ts = prequest.add_ts_dimensions();
         ts->set_idx(0);
         ts->set_ts(now - (99 - i) * 60 * 1000);
         ts = prequest.add_ts_dimensions();
@@ -5088,86 +5098,86 @@ TEST_F(TabletImplTest, AbsOrLat) {
     }
 
     {
-        ::rtidb::api::TraverseRequest sr;
+        ::fedb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_ts_name("ts1");
-        ::rtidb::api::TraverseResponse* srp =
-            new ::rtidb::api::TraverseResponse();
+        ::fedb::api::TraverseResponse* srp =
+            new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
     {
-        ::rtidb::api::TraverseRequest sr;
+        ::fedb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_ts_name("ts2");
-        ::rtidb::api::TraverseResponse* srp =
-            new ::rtidb::api::TraverseResponse();
+        ::fedb::api::TraverseResponse* srp =
+            new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(50, (signed)srp->count());
     }
     {
-        ::rtidb::api::TraverseRequest sr;
+        ::fedb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_ts_name("ts3");
-        ::rtidb::api::TraverseResponse* srp =
-            new ::rtidb::api::TraverseResponse();
+        ::fedb::api::TraverseResponse* srp =
+            new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(60, (signed)srp->count());
     }
     // ts4 has 50 expire
     {
-        ::rtidb::api::TraverseRequest sr;
+        ::fedb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_ts_name("ts4");
-        ::rtidb::api::TraverseResponse* srp =
-            new ::rtidb::api::TraverseResponse();
+        ::fedb::api::TraverseResponse* srp =
+            new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(50, (signed)srp->count());
     }
     // ts5 has 50 expire
     {
-        ::rtidb::api::TraverseRequest sr;
+        ::fedb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_ts_name("ts5");
-        ::rtidb::api::TraverseResponse* srp =
-            new ::rtidb::api::TraverseResponse();
+        ::fedb::api::TraverseResponse* srp =
+            new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(50, (signed)srp->count());
     }
     // ts6 has no expire
     {
-        ::rtidb::api::TraverseRequest sr;
+        ::fedb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_ts_name("ts6");
-        ::rtidb::api::TraverseResponse* srp =
-            new ::rtidb::api::TraverseResponse();
+        ::fedb::api::TraverseResponse* srp =
+            new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
 
     // //// Scan Count test
-    ::rtidb::api::ScanRequest sr;
-    ::rtidb::api::ScanResponse srp;
-    ::rtidb::api::CountRequest cr;
-    ::rtidb::api::CountResponse crp;
+    ::fedb::api::ScanRequest sr;
+    ::fedb::api::ScanResponse srp;
+    ::fedb::api::CountRequest cr;
+    ::fedb::api::CountResponse crp;
     cr.set_filter_expired_data(true);
     //     time    cnt
     // st  valid   valid
@@ -5179,7 +5189,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000 + 100);
         sr.set_ts_name("ts1");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -5189,7 +5199,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now);
         cr.set_et(now - 100 * 60 * 1000 + 100);
         cr.set_ts_name("ts1");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(10, (signed)crp.count());
@@ -5204,7 +5214,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 60 * 60 * 1000 + 100);
         sr.set_ts_name("ts2");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5214,7 +5224,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now);
         cr.set_et(now - 60 * 60 * 1000 + 100);
         cr.set_ts_name("ts2");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(5, (signed)crp.count());
@@ -5229,7 +5239,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 70 * 60 * 1000 + 100);
         sr.set_ts_name("ts3");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -5239,7 +5249,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now);
         cr.set_et(now - 70 * 60 * 1000 + 100);
         cr.set_ts_name("ts3");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(6, (signed)crp.count());
@@ -5254,7 +5264,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_ts_name("ts3");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -5264,7 +5274,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_ts_name("ts3");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(6, (signed)crp.count());
@@ -5279,7 +5289,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_ts_name("ts2");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -5289,7 +5299,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_ts_name("ts2");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(307, crp.code());
         ASSERT_EQ(0, (signed)crp.count());
@@ -5304,7 +5314,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 70 * 60 * 1000 + 100);
         sr.set_ts_name("ts3");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -5314,7 +5324,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 70 * 60 * 1000 + 100);
         cr.set_ts_name("ts3");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(0, (signed)crp.count());
@@ -5329,7 +5339,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 90 * 60 * 1000 + 100);
         sr.set_ts_name("ts2");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -5339,7 +5349,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 90 * 60 * 1000 + 100);
         cr.set_ts_name("ts2");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(307, crp.code());
         ASSERT_EQ(0, (signed)crp.count());
@@ -5354,7 +5364,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_ts_name("ts3");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -5364,7 +5374,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_ts_name("ts3");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(0, (signed)crp.count());
@@ -5379,7 +5389,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 80 * 60 * 1000 + 100);
         sr.set_et(now - 100 * 60 * 1000 + 100);
         sr.set_ts_name("ts3");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -5389,7 +5399,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now - 80 * 60 * 1000 + 100);
         cr.set_et(now - 100 * 60 * 1000 + 100);
         cr.set_ts_name("ts3");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(307, crp.code());
         ASSERT_EQ(0, (signed)crp.count());
@@ -5405,7 +5415,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000 + 100);
         sr.set_ts_name("ts4");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -5415,7 +5425,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now);
         cr.set_et(now - 40 * 60 * 1000 + 100);
         cr.set_ts_name("ts4");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(4, (signed)crp.count());
@@ -5431,7 +5441,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_ts_name("ts4");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5441,7 +5451,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_ts_name("ts4");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(5, (signed)crp.count());
@@ -5457,7 +5467,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_ts_name("ts4");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -5467,7 +5477,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_ts_name("ts4");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(0, (signed)crp.count());
@@ -5483,7 +5493,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000 + 100);
         sr.set_ts_name("ts5");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -5493,7 +5503,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now);
         cr.set_et(now - 40 * 60 * 1000 + 100);
         cr.set_ts_name("ts5");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(4, (signed)crp.count());
@@ -5509,7 +5519,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_ts_name("ts5");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5519,7 +5529,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_ts_name("ts5");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(5, (signed)crp.count());
@@ -5535,7 +5545,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_ts_name("ts5");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -5545,7 +5555,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_ts_name("ts5");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(307, crp.code());
         ASSERT_EQ(0, (signed)crp.count());
@@ -5561,7 +5571,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_ts_name("ts6");
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -5571,15 +5581,15 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_ts_name("ts6");
-        cr.set_et_type(::rtidb::api::kSubKeyGe);
+        cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(2, (signed)crp.count());
     }
     //// Get test
-    ::rtidb::api::GetRequest gr;
-    ::rtidb::api::GetResponse grp;
-    gr.set_type(::rtidb::api::kSubKeyLe);
+    ::fedb::api::GetRequest gr;
+    ::fedb::api::GetResponse grp;
+    gr.set_type(::fedb::api::kSubKeyLe);
     //     time    cnt
     // ts  valid   valid
     for (int i = 0; i < 10; ++i) {
@@ -5693,7 +5703,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 40 * 60 * 1000);
         sr.set_ts_name("ts1");
         sr.set_atleast(10);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -5707,7 +5717,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 40 * 60 * 1000);
         sr.set_ts_name("ts2");
         sr.set_atleast(10);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5720,7 +5730,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 40 * 60 * 1000);
         sr.set_ts_name("ts3");
         sr.set_atleast(10);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -5734,7 +5744,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_ts_name("ts1");
         sr.set_atleast(5);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -5747,7 +5757,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_ts_name("ts2");
         sr.set_atleast(10);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5760,7 +5770,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_ts_name("ts3");
         sr.set_atleast(10);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -5774,7 +5784,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_ts_name("ts1");
         sr.set_atleast(5);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -5787,7 +5797,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_ts_name("ts2");
         sr.set_atleast(5);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5800,7 +5810,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_ts_name("ts3");
         sr.set_atleast(5);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -5815,7 +5825,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_ts_name("ts1");
         sr.set_atleast(3);
         sr.set_limit(4);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -5829,7 +5839,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_ts_name("ts2");
         sr.set_atleast(3);
         sr.set_limit(4);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -5843,7 +5853,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_ts_name("ts3");
         sr.set_atleast(3);
         sr.set_limit(4);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -5858,7 +5868,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_ts_name("ts1");
         sr.set_atleast(9);
         sr.set_limit(9);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(9, (signed)srp.count());
@@ -5872,7 +5882,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_ts_name("ts2");
         sr.set_atleast(9);
         sr.set_limit(9);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5886,7 +5896,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_ts_name("ts3");
         sr.set_atleast(9);
         sr.set_limit(9);
-        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -5899,44 +5909,44 @@ TEST_F(TabletImplTest, DelRecycle) {
     FLAGS_recycle_ttl = 1;
     FLAGS_recycle_bin_root_path = "/tmp/gtest/recycle";
     std::string tmp_recycle_path = "/tmp/gtest/recycle";
-    ::rtidb::base::RemoveDirRecursive(FLAGS_recycle_bin_root_path);
-    ::rtidb::base::MkdirRecur(
+    ::fedb::base::RemoveDirRecursive(FLAGS_recycle_bin_root_path);
+    ::fedb::base::MkdirRecur(
         "/tmp/gtest/recycle/99_1_binlog_20191111070955/binlog/");
-    ::rtidb::base::MkdirRecur(
+    ::fedb::base::MkdirRecur(
         "/tmp/gtest/recycle/100_2_20191111115149/binlog/");
     TabletImpl tablet;
     tablet.Init("");
 
     std::vector<std::string> file_vec;
-    ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ::fedb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_EQ(2, (signed)file_vec.size());
     std::cout << "sleep for 30s" << std::endl;
     sleep(30);
 
-    std::string now_time = ::rtidb::base::GetNowTime();
-    ::rtidb::base::MkdirRecur("/tmp/gtest/recycle/99_3_" + now_time +
+    std::string now_time = ::fedb::base::GetNowTime();
+    ::fedb::base::MkdirRecur("/tmp/gtest/recycle/99_3_" + now_time +
                               "/binlog/");
-    ::rtidb::base::MkdirRecur("/tmp/gtest/recycle/100_4_binlog_" + now_time +
+    ::fedb::base::MkdirRecur("/tmp/gtest/recycle/100_4_binlog_" + now_time +
                               "/binlog/");
     file_vec.clear();
-    ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ::fedb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_EQ(4, (signed)file_vec.size());
 
     std::cout << "sleep for 35s" << std::endl;
     sleep(35);
 
     file_vec.clear();
-    ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ::fedb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_EQ(2, (signed)file_vec.size());
 
     std::cout << "sleep for 65s" << std::endl;
     sleep(65);
 
     file_vec.clear();
-    ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ::fedb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_EQ(0, (signed)file_vec.size());
 
-    ::rtidb::base::RemoveDirRecursive("/tmp/gtest");
+    ::fedb::base::RemoveDirRecursive("/tmp/gtest");
     FLAGS_recycle_ttl = tmp_recycle_ttl;
     FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
 }
@@ -5948,9 +5958,9 @@ TEST_F(TabletImplTest, DumpIndex) {
     MockClosure closure;
     TabletImpl tablet;
     tablet.Init("");
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
-    ::rtidb::common::ColumnDesc* desc = table_meta->add_column_desc();
+    ::fedb::api::CreateTableRequest request;
+    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
     desc->set_name("card");
     desc->set_type("string");
     desc->set_add_ts_idx(true);
@@ -5972,23 +5982,23 @@ TEST_F(TabletImplTest, DumpIndex) {
     desc->set_type("int64");
     desc->set_add_ts_idx(false);
     desc->set_is_ts_col(true);
-    ::rtidb::common::ColumnKey* column_key = table_meta->add_column_key();
+    ::fedb::common::ColumnKey* column_key = table_meta->add_column_key();
     column_key->set_index_name("card");
     column_key->add_col_name("card");
     column_key->add_ts_name("ts1");
     column_key->add_ts_name("ts2");
 
-    std::vector<::rtidb::codec::ColumnDesc> columns;
-    ::rtidb::codec::SchemaCodec::ConvertColumnDesc(table_meta->column_desc(),
+    std::vector<::fedb::codec::ColumnDesc> columns;
+    ::fedb::codec::SchemaCodec::ConvertColumnDesc(table_meta->column_desc(),
                                                    columns);
-    ::rtidb::codec::SchemaCodec codec;
+    ::fedb::codec::SchemaCodec codec;
     std::string buffer;
     codec.Encode(columns, buffer);
     table_meta->set_schema(buffer);
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    ::rtidb::api::CreateTableResponse response;
+    ::fedb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
 
@@ -6002,29 +6012,29 @@ TEST_F(TabletImplTest, DumpIndex) {
         std::string value;
         std::vector<std::pair<std::string, uint32_t>> dimensions;
         MultiDimensionEncode(columns, input, dimensions, value);
-        ::rtidb::api::PutRequest request;
+        ::fedb::api::PutRequest request;
         request.set_value(value);
         request.set_tid(id);
         request.set_pid(1);
 
-        ::rtidb::api::Dimension* d = request.add_dimensions();
+        ::fedb::api::Dimension* d = request.add_dimensions();
         d->set_key(input[0]);
         d->set_idx(0);
-        ::rtidb::api::TSDimension* tsd = request.add_ts_dimensions();
+        ::fedb::api::TSDimension* tsd = request.add_ts_dimensions();
         tsd->set_ts(i + 100);
         tsd->set_idx(0);
         tsd = request.add_ts_dimensions();
         tsd->set_ts(i + 10000);
         tsd->set_idx(1);
-        ::rtidb::api::PutResponse response;
+        ::fedb::api::PutResponse response;
         MockClosure closure;
         tablet.Put(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
-    ::rtidb::api::GeneralRequest grq;
+    ::fedb::api::GeneralRequest grq;
     grq.set_tid(id);
     grq.set_pid(1);
-    ::rtidb::api::GeneralResponse grp;
+    ::fedb::api::GeneralResponse grp;
     grp.set_code(-1);
     tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
     sleep(2);
@@ -6038,20 +6048,20 @@ TEST_F(TabletImplTest, DumpIndex) {
         std::string value;
         std::vector<std::pair<std::string, uint32_t>> dimensions;
         MultiDimensionEncode(columns, input, dimensions, value);
-        ::rtidb::api::PutRequest request;
+        ::fedb::api::PutRequest request;
         request.set_value(value);
         request.set_tid(id);
         request.set_pid(1);
-        ::rtidb::api::Dimension* d = request.add_dimensions();
+        ::fedb::api::Dimension* d = request.add_dimensions();
         d->set_key(input[0]);
         d->set_idx(0);
-        ::rtidb::api::TSDimension* tsd = request.add_ts_dimensions();
+        ::fedb::api::TSDimension* tsd = request.add_ts_dimensions();
         tsd->set_ts(i + 100);
         tsd->set_idx(0);
         tsd = request.add_ts_dimensions();
         tsd->set_ts(i + 10000);
         tsd->set_idx(1);
-        ::rtidb::api::PutResponse response;
+        ::fedb::api::PutResponse response;
         MockClosure closure;
         tablet.Put(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -6062,13 +6072,13 @@ TEST_F(TabletImplTest, DumpIndex) {
         column_key->add_col_name("card");
         column_key->add_col_name("mcc");
         column_key->add_ts_name("ts2");
-        ::rtidb::api::DumpIndexDataRequest dump_request;
+        ::fedb::api::DumpIndexDataRequest dump_request;
         dump_request.set_tid(id);
         dump_request.set_pid(1);
         dump_request.set_partition_num(8);
         dump_request.set_idx(1);
         dump_request.mutable_column_key()->CopyFrom(*column_key);
-        ::rtidb::api::GeneralResponse dump_response;
+        ::fedb::api::GeneralResponse dump_response;
         tablet.DumpIndexData(NULL, &dump_request, &dump_response, &closure);
         ASSERT_EQ(0, dump_response.code());
     }
@@ -6081,36 +6091,36 @@ TEST_F(TabletImplTest, SendIndexData) {
     MockClosure closure;
     uint32_t id = counter++;
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_ttl(0);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     {
-        ::rtidb::api::CreateTableRequest request;
-        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(0);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        ::rtidb::api::CreateTableResponse response;
+        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     std::string index_file_path =
         FLAGS_db_root_path + "/" + std::to_string(id) + "_0/index/";
-    ::rtidb::base::MkdirRecur(index_file_path);
+    ::fedb::base::MkdirRecur(index_file_path);
     std::string index_file = index_file_path + "0_1_index.data";
     FILE* f = fopen(index_file.c_str(), "w+");
     ASSERT_TRUE(f != NULL);
@@ -6119,34 +6129,34 @@ TEST_F(TabletImplTest, SendIndexData) {
     }
     fclose(f);
     uint64_t src_size = 0;
-    ::rtidb::base::GetFileSize(index_file, src_size);
-    ::rtidb::api::SendIndexDataRequest request;
+    ::fedb::base::GetFileSize(index_file, src_size);
+    ::fedb::api::SendIndexDataRequest request;
     request.set_tid(id);
     request.set_pid(0);
-    ::rtidb::api::SendIndexDataRequest_EndpointPair* pair = request.add_pairs();
+    ::fedb::api::SendIndexDataRequest_EndpointPair* pair = request.add_pairs();
     pair->set_pid(1);
     pair->set_endpoint(FLAGS_endpoint);
-    ::rtidb::api::GeneralResponse response;
+    ::fedb::api::GeneralResponse response;
     tablet.SendIndexData(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     sleep(2);
     std::string des_index_file = FLAGS_db_root_path + "/" + std::to_string(id) +
                                  "_1/index/0_1_index.data";
     uint64_t des_size = 0;
-    ::rtidb::base::GetFileSize(des_index_file, des_size);
-    ASSERT_TRUE(::rtidb::base::IsExists(des_index_file));
+    ::fedb::base::GetFileSize(des_index_file, des_size);
+    ASSERT_TRUE(::fedb::base::IsExists(des_index_file));
     ASSERT_EQ(src_size, des_size);
-    ::rtidb::base::RemoveDirRecursive(FLAGS_db_root_path);
+    ::fedb::base::RemoveDirRecursive(FLAGS_db_root_path);
 }
 
 }  // namespace tablet
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::rtidb::base::SetLogLevel(INFO);
+    ::fedb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::fedb::tablet::GenRand();
     return RUN_ALL_TESTS();
 }

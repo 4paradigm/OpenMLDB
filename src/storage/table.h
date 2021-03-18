@@ -1,9 +1,19 @@
-//
-// table.h
-// Copyright (C) 2017 4paradigm.com
-// Author denglong
-// Date 2019-07-24
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #pragma once
 
@@ -19,12 +29,12 @@
 #include "storage/ticket.h"
 #include "vm/catalog.h"
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
-typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
-typedef google::protobuf::RepeatedPtrField<::rtidb::api::TSDimension> TSDimensions;
-using Schema = google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>;
+typedef google::protobuf::RepeatedPtrField<::fedb::api::Dimension> Dimensions;
+typedef google::protobuf::RepeatedPtrField<::fedb::api::TSDimension> TSDimensions;
+using Schema = google::protobuf::RepeatedPtrField<fedb::common::ColumnDesc>;
 
 enum TableStat {
     kUndefined = 0,
@@ -40,8 +50,8 @@ class Table {
     Table(const std::string& name,
           uint32_t id, uint32_t pid, uint64_t ttl, bool is_leader,
           uint64_t ttl_offset, const std::map<std::string, uint32_t>& mapping,
-          ::rtidb::api::TTLType ttl_type,
-          ::rtidb::api::CompressType compress_type);
+          ::fedb::api::TTLType ttl_type,
+          ::fedb::api::CompressType compress_type);
     virtual ~Table() {}
     virtual bool Init() = 0;
 
@@ -57,7 +67,7 @@ class Table {
                      const TSDimensions& ts_dimemsions,
                      const std::string& value) = 0;
 
-    bool Put(const ::rtidb::api::LogEntry& entry) {
+    bool Put(const ::fedb::api::LogEntry& entry) {
         if (entry.dimensions_size() > 0) {
             return entry.ts_dimensions_size() > 0
                        ? Put(entry.dimensions(), entry.ts_dimensions(),
@@ -93,7 +103,7 @@ class Table {
 
     virtual uint64_t GetRecordCnt() const = 0;
 
-    virtual bool IsExpire(const ::rtidb::api::LogEntry& entry) = 0;
+    virtual bool IsExpire(const ::fedb::api::LogEntry& entry) = 0;
 
     virtual uint64_t GetExpireTime(const TTLSt& ttl_st) = 0;
 
@@ -135,15 +145,15 @@ class Table {
 
     inline const std::string& GetSchema() { return schema_; }
 
-    inline const ::rtidb::api::CompressType GetCompressType() {
+    inline const ::fedb::api::CompressType GetCompressType() {
         return compress_type_;
     }
 
     void AddVersionSchema();
 
-    const ::rtidb::api::TableMeta& GetTableMeta() const { return table_meta_; }
+    const ::fedb::api::TableMeta& GetTableMeta() const { return table_meta_; }
 
-    void SetTableMeta(::rtidb::api::TableMeta& table_meta); // NOLINT
+    void SetTableMeta(::fedb::api::TableMeta& table_meta); // NOLINT
 
     std::shared_ptr<Schema> GetVersionSchema(int32_t ver) {
         auto versions = std::atomic_load_explicit(&version_schema_, std::memory_order_relaxed);
@@ -194,7 +204,7 @@ class Table {
         return TTLSt(table_meta_.ttl_desc());
     }
 
-    void SetTTL(const ::rtidb::storage::UpdateTTLMeta& ttl_meta);
+    void SetTTL(const ::fedb::storage::UpdateTTLMeta& ttl_meta);
 
     inline void SetMakeSnapshotTime(int64_t time) {
         last_make_snapshot_time_ = time;
@@ -218,12 +228,12 @@ class Table {
     std::string schema_;
     std::map<std::string, uint8_t> ts_mapping_;
     TableIndex table_index_;
-    ::rtidb::api::CompressType compress_type_;
-    ::rtidb::api::TableMeta table_meta_;
+    ::fedb::api::CompressType compress_type_;
+    ::fedb::api::TableMeta table_meta_;
     int64_t last_make_snapshot_time_;
     std::shared_ptr<std::map<int32_t, std::shared_ptr<Schema>>> version_schema_;
-    std::shared_ptr<std::vector<::rtidb::storage::UpdateTTLMeta>> update_ttl_;
+    std::shared_ptr<std::vector<::fedb::storage::UpdateTTLMeta>> update_ttl_;
 };
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb

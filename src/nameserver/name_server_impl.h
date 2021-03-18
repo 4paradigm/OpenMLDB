@@ -1,8 +1,19 @@
-//
-// name_server_impl.h
-// Copyright (C) 2017 4paradigm.com
-// Author denglong
-// Date 2017-09-05
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #ifndef SRC_NAMESERVER_NAME_SERVER_IMPL_H_
 #define SRC_NAMESERVER_NAME_SERVER_IMPL_H_
@@ -35,19 +46,19 @@ DECLARE_uint32(name_server_task_concurrency);
 DECLARE_uint32(name_server_task_concurrency_for_replica_cluster);
 DECLARE_int32(zk_keep_alive_check_interval);
 
-namespace rtidb {
+namespace fedb {
 namespace nameserver {
 
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
-using ::rtidb::api::TabletState;
-using ::rtidb::client::NsClient;
-using ::rtidb::client::TabletClient;
-using ::rtidb::zk::DistLock;
-using ::rtidb::zk::ZkClient;
-using ::rtidb::api::ProcedureInfo;
-using ::rtidb::api::CreateProcedureRequest;
-using ::rtidb::api::DropProcedureRequest;
+using ::fedb::api::TabletState;
+using ::fedb::client::NsClient;
+using ::fedb::client::TabletClient;
+using ::fedb::zk::DistLock;
+using ::fedb::zk::ZkClient;
+using ::fedb::api::ProcedureInfo;
+using ::fedb::api::CreateProcedureRequest;
+using ::fedb::api::DropProcedureRequest;
 
 const uint64_t INVALID_PARENT_ID = UINT64_MAX;
 const uint32_t INVALID_PID = UINT32_MAX;
@@ -62,13 +73,13 @@ struct TabletInfo {
     uint64_t ctime_;
 
     bool Health() {
-        return state_ == ::rtidb::api::TabletState::kTabletHealthy;
+        return state_ == ::fedb::api::TabletState::kTabletHealthy;
     }
 };
 
 class ClusterInfo {
  public:
-    explicit ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cdp);
+    explicit ClusterInfo(const ::fedb::nameserver::ClusterAddress& cdp);
 
     void CheckZkClient();
 
@@ -76,13 +87,13 @@ class ClusterInfo {
 
     int Init(std::string& msg);  // NOLINT
 
-    bool CreateTableRemote(const ::rtidb::api::TaskInfo& task_info,
-                           const ::rtidb::nameserver::TableInfo& table_info,
-                           const ::rtidb::nameserver::ZoneInfo& zone_info);
+    bool CreateTableRemote(const ::fedb::api::TaskInfo& task_info,
+                           const ::fedb::nameserver::TableInfo& table_info,
+                           const ::fedb::nameserver::ZoneInfo& zone_info);
 
-    bool DropTableRemote(const ::rtidb::api::TaskInfo& task_info,
+    bool DropTableRemote(const ::fedb::api::TaskInfo& task_info,
                          const std::string& name, const std::string& db,
-                         const ::rtidb::nameserver::ZoneInfo& zone_info);
+                         const ::fedb::nameserver::ZoneInfo& zone_info);
 
     bool AddReplicaClusterByNs(const std::string& alias,
                                const std::string& zone_name,
@@ -96,10 +107,10 @@ class ClusterInfo {
 
     bool UpdateRemoteRealEpMap();
 
-    std::shared_ptr<::rtidb::client::NsClient> client_;
+    std::shared_ptr<::fedb::client::NsClient> client_;
     std::map<std::string, std::map<std::string, std::vector<TablePartition>>>
         last_status;
-    ::rtidb::nameserver::ClusterAddress cluster_add_;
+    ::fedb::nameserver::ClusterAddress cluster_add_;
     uint64_t ctime_;
     std::atomic<ClusterStatus> state_;
     std::shared_ptr<std::map<std::string, std::string>> remote_real_ep_map_;
@@ -112,23 +123,23 @@ class ClusterInfo {
 
 // the container of tablet
 typedef std::map<std::string, std::shared_ptr<TabletInfo>> Tablets;
-typedef std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> TableInfos;
+typedef std::map<std::string, std::shared_ptr<::fedb::nameserver::TableInfo>> TableInfos;
 
 typedef boost::function<void()> TaskFun;
 
 struct Task {
     Task(const std::string& endpoint,
-         std::shared_ptr<::rtidb::api::TaskInfo> task_info)
+         std::shared_ptr<::fedb::api::TaskInfo> task_info)
         : endpoint_(endpoint), task_info_(task_info) {}
     ~Task() {}
     std::string endpoint_;
-    std::shared_ptr<::rtidb::api::TaskInfo> task_info_;
+    std::shared_ptr<::fedb::api::TaskInfo> task_info_;
     std::vector<std::shared_ptr<Task>> sub_task_;
     TaskFun fun_;
 };
 
 struct OPData {
-    ::rtidb::api::OPInfo op_info_;
+    ::fedb::api::OPInfo op_info_;
     std::list<std::shared_ptr<Task>> task_list_;
 };
 
@@ -154,12 +165,12 @@ class NameServerImpl : public NameServer {
     NameServerImpl& operator=(const NameServerImpl&) = delete;
 
     void DeleteOPTask(RpcController* controller,
-                      const ::rtidb::api::DeleteTaskRequest* request,
-                      ::rtidb::api::GeneralResponse* response, Closure* done);
+                      const ::fedb::api::DeleteTaskRequest* request,
+                      ::fedb::api::GeneralResponse* response, Closure* done);
 
     void GetTaskStatus(RpcController* controller,
-                       const ::rtidb::api::TaskStatusRequest* request,
-                       ::rtidb::api::TaskStatusResponse* response,
+                       const ::fedb::api::TaskStatusRequest* request,
+                       ::fedb::api::TaskStatusResponse* response,
                        Closure* done);
 
     void LoadTable(RpcController* controller, const LoadTableRequest* request,
@@ -167,10 +178,10 @@ class NameServerImpl : public NameServer {
 
     void CreateTableInternel(
         GeneralResponse& response,  // NOLINT
-        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-        const std::vector<::rtidb::codec::ColumnDesc>& columns,
+        std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
+        const std::vector<::fedb::codec::ColumnDesc>& columns,
         uint64_t cur_term, uint32_t tid,
-        std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
+        std::shared_ptr<::fedb::api::TaskInfo> task_ptr);
 
     void CreateTableInfoSimply(RpcController* controller,
                                const CreateTableInfoRequest* request,
@@ -191,8 +202,8 @@ class NameServerImpl : public NameServer {
 
     void DropTableInternel(
         const DropTableRequest& request, GeneralResponse& response,  // NOLINT
-        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-        std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
+        std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
+        std::shared_ptr<::fedb::api::TaskInfo> task_ptr);
 
     void DropTable(RpcController* controller, const DropTableRequest* request,
                    GeneralResponse* response, Closure* done);
@@ -222,7 +233,7 @@ class NameServerImpl : public NameServer {
     int AddReplicaRemoteOP(
         const std::string& alias, const std::string& name,
         const std::string& db,
-        const ::rtidb::nameserver::TablePartition& table_partition,
+        const ::fedb::nameserver::TablePartition& table_partition,
         uint32_t remote_tid, uint32_t pid);
 
     void AddReplicaNS(RpcController* controller,
@@ -265,12 +276,12 @@ class NameServerImpl : public NameServer {
     void OfflineEndpointDBInternal(
         const std::string& endpoint, uint32_t concurrency,
         const std::map<std::string,
-                       std::shared_ptr<::rtidb::nameserver::TableInfo>>&
+                       std::shared_ptr<::fedb::nameserver::TableInfo>>&
             table_info);
 
     void UpdateTTL(RpcController* controller,
-                   const ::rtidb::nameserver::UpdateTTLRequest* request,
-                   ::rtidb::nameserver::UpdateTTLResponse* response,
+                   const ::fedb::nameserver::UpdateTTLRequest* request,
+                   ::fedb::nameserver::UpdateTTLResponse* response,
                    Closure* done);
 
     void Migrate(RpcController* controller, const MigrateRequest* request,
@@ -283,7 +294,7 @@ class NameServerImpl : public NameServer {
     void RecoverEndpointDBInternal(
         const std::string& endpoint, bool need_restore, uint32_t concurrency,
         const std::map<std::string,
-                       std::shared_ptr<::rtidb::nameserver::TableInfo>>&
+                       std::shared_ptr<::fedb::nameserver::TableInfo>>&
             table_info);
 
     void RecoverTable(RpcController* controller,
@@ -369,13 +380,13 @@ class NameServerImpl : public NameServer {
     int SyncExistTable(
         const std::string& alias, const std::string& name,
         const std::string& db,
-        const std::vector<::rtidb::nameserver::TableInfo> tables_remote,
-        const ::rtidb::nameserver::TableInfo& table_info_local, uint32_t pid,
+        const std::vector<::fedb::nameserver::TableInfo> tables_remote,
+        const ::fedb::nameserver::TableInfo& table_info_local, uint32_t pid,
         int& code, std::string& msg);  // NOLINT
 
     int CreateTableOnTablet(
-        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-        bool is_leader, const std::vector<::rtidb::codec::ColumnDesc>& columns,
+        std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
+        bool is_leader, const std::vector<::fedb::codec::ColumnDesc>& columns,
         std::map<uint32_t, std::vector<std::string>>& endpoint_map,  // NOLINT
         uint64_t term);
 
@@ -386,7 +397,7 @@ class NameServerImpl : public NameServer {
     int UpdateTask(const std::list<std::shared_ptr<OPData>>& op_list,
                    const std::string& endpoint, const std::string& msg,
                    bool is_recover_op,
-                   ::rtidb::api::TaskStatusResponse& response);  // NOLINT
+                   ::fedb::api::TaskStatusResponse& response);  // NOLINT
 
     int UpdateTaskStatus(bool is_recover_op);
 
@@ -394,7 +405,7 @@ class NameServerImpl : public NameServer {
                          bool& has_failed);  // NOLINT
 
     void UpdateTaskMapStatus(uint64_t remote_op_id, uint64_t op_id,
-                             const ::rtidb::api::TaskStatus& status);
+                             const ::fedb::api::TaskStatus& status);
 
     int DeleteTask();
 
@@ -407,18 +418,18 @@ class NameServerImpl : public NameServer {
     void CheckClusterInfo();
 
     bool CreateTableRemote(
-        const ::rtidb::api::TaskInfo& task_info,
-        const ::rtidb::nameserver::TableInfo& table_info,
-        const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info);
+        const ::fedb::api::TaskInfo& task_info,
+        const ::fedb::nameserver::TableInfo& table_info,
+        const std::shared_ptr<::fedb::nameserver::ClusterInfo> cluster_info);
 
     bool DropTableRemote(
-        const ::rtidb::api::TaskInfo& task_info, const std::string& name,
+        const ::fedb::api::TaskInfo& task_info, const std::string& name,
         const std::string& db,
-        const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info);
+        const std::shared_ptr<::fedb::nameserver::ClusterInfo> cluster_info);
 
     bool RegisterName();
 
-    bool CreateProcedureOnTablet(const ::rtidb::api::CreateProcedureRequest& sp_request, std::string& err_msg); // NOLINT
+    bool CreateProcedureOnTablet(const ::fedb::api::CreateProcedureRequest& sp_request, std::string& err_msg); // NOLINT
 
     void DropProcedure(RpcController* controller, const DropProcedureRequest* request,
             GeneralResponse* response, Closure* done);
@@ -511,17 +522,17 @@ class NameServerImpl : public NameServer {
 
     void DelTableInfo(const std::string& name, const std::string& db,
                       const std::string& endpoint, uint32_t pid,
-                      std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+                      std::shared_ptr<::fedb::api::TaskInfo> task_info);
 
     void DelTableInfo(const std::string& name, const std::string& db,
                       const std::string& endpoint, uint32_t pid,
-                      std::shared_ptr<::rtidb::api::TaskInfo> task_info,
+                      std::shared_ptr<::fedb::api::TaskInfo> task_info,
                       uint32_t flag);
 
     void UpdatePartitionStatus(
         const std::string& name, const std::string& db,
         const std::string& endpoint, uint32_t pid, bool is_leader,
-        bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+        bool is_alive, std::shared_ptr<::fedb::api::TaskInfo> task_info);
 
     int UpdateEndpointTableAliveHandle(const std::string& endpoint, TableInfos& table_infos, bool is_alive); //NOLINT
 
@@ -529,75 +540,75 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<Task> CreateMakeSnapshotTask(const std::string& endpoint,
                                                  uint64_t op_index,
-                                                 ::rtidb::api::OPType op_type,
+                                                 ::fedb::api::OPType op_type,
                                                  uint32_t tid, uint32_t pid,
                                                  uint64_t end_offset);
 
     std::shared_ptr<Task> CreatePauseSnapshotTask(const std::string& endpoint,
                                                   uint64_t op_index,
-                                                  ::rtidb::api::OPType op_type,
+                                                  ::fedb::api::OPType op_type,
                                                   uint32_t tid, uint32_t pid);
 
     std::shared_ptr<Task> CreateRecoverSnapshotTask(
         const std::string& endpoint, uint64_t op_index,
-        ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
+        ::fedb::api::OPType op_type, uint32_t tid, uint32_t pid);
 
     std::shared_ptr<Task> CreateSendSnapshotTask(
         const std::string& endpoint, uint64_t op_index,
-        ::rtidb::api::OPType op_type, uint32_t tid, uint32_t remote_tid,
+        ::fedb::api::OPType op_type, uint32_t tid, uint32_t remote_tid,
         uint32_t pid, const std::string& des_endpoint);
 
     std::shared_ptr<Task> CreateLoadTableTask(
         const std::string& endpoint, uint64_t op_index,
-        ::rtidb::api::OPType op_type, const std::string& name, uint32_t tid,
+        ::fedb::api::OPType op_type, const std::string& name, uint32_t tid,
         uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader);
 
     std::shared_ptr<Task> CreateLoadTableRemoteTask(
         const std::string& alias, const std::string& name,
         const std::string& db, const std::string& endpoint, uint32_t pid,
-        uint64_t op_index, ::rtidb::api::OPType op_type);
+        uint64_t op_index, ::fedb::api::OPType op_type);
 
     std::shared_ptr<Task> CreateAddReplicaRemoteTask(
         const std::string& endpoint, uint64_t op_index,
-        ::rtidb::api::OPType op_type, uint32_t tid, uint32_t remote_tid,
+        ::fedb::api::OPType op_type, uint32_t tid, uint32_t remote_tid,
         uint32_t pid, const std::string& des_endpoint,
         uint64_t task_id = INVALID_PARENT_ID);
 
     std::shared_ptr<Task> CreateAddReplicaNSRemoteTask(
         const std::string& alias, const std::string& name,
         const std::vector<std::string>& endpoint_vec, uint32_t pid,
-        uint64_t op_index, ::rtidb::api::OPType op_type);
+        uint64_t op_index, ::fedb::api::OPType op_type);
 
     std::shared_ptr<Task> CreateAddReplicaTask(const std::string& endpoint,
                                                uint64_t op_index,
-                                               ::rtidb::api::OPType op_type,
+                                               ::fedb::api::OPType op_type,
                                                uint32_t tid, uint32_t pid,
                                                const std::string& des_endpoint);
 
     std::shared_ptr<Task> CreateAddTableInfoTask(
         const std::string& alias, const std::string& endpoint,
         const std::string& name, const std::string& db, uint32_t remote_tid,
-        uint32_t pid, uint64_t op_index, ::rtidb::api::OPType op_type);
+        uint32_t pid, uint64_t op_index, ::fedb::api::OPType op_type);
 
     std::shared_ptr<Task> CreateAddTableInfoTask(const std::string& name,
                                                  const std::string& db,
                                                  uint32_t pid,
                                                  const std::string& endpoint,
                                                  uint64_t op_index,
-                                                 ::rtidb::api::OPType op_type);
+                                                 ::fedb::api::OPType op_type);
 
     void AddTableInfo(const std::string& alias, const std::string& endpoint,
                       const std::string& name, const std::string& db,
                       uint32_t pid, uint32_t remote_tid,
-                      std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+                      std::shared_ptr<::fedb::api::TaskInfo> task_info);
 
     void AddTableInfo(const std::string& name, const std::string& db,
                       const std::string& endpoint, uint32_t pid,
-                      std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+                      std::shared_ptr<::fedb::api::TaskInfo> task_info);
 
     std::shared_ptr<Task> CreateDelReplicaTask(
         const std::string& endpoint, uint64_t op_index,
-        ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
+        ::fedb::api::OPType op_type, uint32_t tid, uint32_t pid,
         const std::string& follower_endpoint);
 
     std::shared_ptr<Task> CreateDelTableInfoTask(const std::string& name,
@@ -605,99 +616,99 @@ class NameServerImpl : public NameServer {
                                                  uint32_t pid,
                                                  const std::string& endpoint,
                                                  uint64_t op_index,
-                                                 ::rtidb::api::OPType op_type);
+                                                 ::fedb::api::OPType op_type);
 
     std::shared_ptr<Task> CreateDelTableInfoTask(
         const std::string& name, const std::string& db, uint32_t pid,
         const std::string& endpoint, uint64_t op_index,
-        ::rtidb::api::OPType op_type, uint32_t flag);
+        ::fedb::api::OPType op_type, uint32_t flag);
 
     std::shared_ptr<Task> CreateUpdateTableInfoTask(
         const std::string& src_endpoint, const std::string& name,
         const std::string& db, uint32_t pid, const std::string& des_endpoint,
-        uint64_t op_index, ::rtidb::api::OPType op_type);
+        uint64_t op_index, ::fedb::api::OPType op_type);
 
     void UpdateTableInfo(const std::string& src_endpoint,
                          const std::string& name, const std::string& db,
                          uint32_t pid, const std::string& des_endpoint,
-                         std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+                         std::shared_ptr<::fedb::api::TaskInfo> task_info);
 
     std::shared_ptr<Task> CreateUpdatePartitionStatusTask(
         const std::string& name, const std::string& db, uint32_t pid,
         const std::string& endpoint, bool is_leader, bool is_alive,
-        uint64_t op_index, ::rtidb::api::OPType op_type);
+        uint64_t op_index, ::fedb::api::OPType op_type);
 
     std::shared_ptr<Task> CreateSelectLeaderTask(
-        uint64_t op_index, ::rtidb::api::OPType op_type,
+        uint64_t op_index, ::fedb::api::OPType op_type,
         const std::string& name, const std::string& db, uint32_t tid,
         uint32_t pid,
         std::vector<std::string>& follower_endpoint);  // NOLINT
 
     std::shared_ptr<Task> CreateChangeLeaderTask(uint64_t op_index,
-                                                 ::rtidb::api::OPType op_type,
+                                                 ::fedb::api::OPType op_type,
                                                  const std::string& name,
                                                  uint32_t pid);
 
     std::shared_ptr<Task> CreateUpdateLeaderInfoTask(
-        uint64_t op_index, ::rtidb::api::OPType op_type,
+        uint64_t op_index, ::fedb::api::OPType op_type,
         const std::string& name, uint32_t pid);
 
     std::shared_ptr<Task> CreateCheckBinlogSyncProgressTask(
-        uint64_t op_index, ::rtidb::api::OPType op_type,
+        uint64_t op_index, ::fedb::api::OPType op_type,
         const std::string& name, const std::string& db, uint32_t pid,
         const std::string& follower, uint64_t offset_delta);
 
     std::shared_ptr<Task> CreateDropTableTask(const std::string& endpoint,
                                               uint64_t op_index,
-                                              ::rtidb::api::OPType op_type,
+                                              ::fedb::api::OPType op_type,
                                               uint32_t tid, uint32_t pid);
 
     std::shared_ptr<Task> CreateRecoverTableTask(
-        uint64_t op_index, ::rtidb::api::OPType op_type,
+        uint64_t op_index, ::fedb::api::OPType op_type,
         const std::string& name, const std::string& db, uint32_t pid,
         const std::string& endpoint, uint64_t offset_delta,
         uint32_t concurrency);
 
     std::shared_ptr<Task> CreateTableRemoteTask(
-        const ::rtidb::nameserver::TableInfo& table_info,
+        const ::fedb::nameserver::TableInfo& table_info,
         const std::string& alias, uint64_t op_index,
-        ::rtidb::api::OPType op_type);
+        ::fedb::api::OPType op_type);
 
     std::shared_ptr<Task> DropTableRemoteTask(const std::string& name,
                                               const std::string& db,
                                               const std::string& alias,
                                               uint64_t op_index,
-                                              ::rtidb::api::OPType op_type);
+                                              ::fedb::api::OPType op_type);
 
     std::shared_ptr<Task> CreateDumpIndexDataTask(
-        uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid,
+        uint64_t op_index, ::fedb::api::OPType op_type, uint32_t tid,
         uint32_t pid, const std::string& endpoint, uint32_t partition_num,
-        const ::rtidb::common::ColumnKey& column_key, uint32_t idx);
+        const ::fedb::common::ColumnKey& column_key, uint32_t idx);
 
     std::shared_ptr<Task> CreateSendIndexDataTask(
-        uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid,
+        uint64_t op_index, ::fedb::api::OPType op_type, uint32_t tid,
         uint32_t pid, const std::string& endpoint,
         const std::map<uint32_t, std::string>& pid_endpoint_map);
 
     std::shared_ptr<Task> CreateLoadIndexDataTask(uint64_t op_index,
-                                                  ::rtidb::api::OPType op_type,
+                                                  ::fedb::api::OPType op_type,
                                                   uint32_t tid, uint32_t pid,
                                                   const std::string& endpoint,
                                                   uint32_t partition_num);
 
     std::shared_ptr<Task> CreateExtractIndexDataTask(
-        uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid,
+        uint64_t op_index, ::fedb::api::OPType op_type, uint32_t tid,
         uint32_t pid, const std::vector<std::string>& endpoints,
-        uint32_t partition_num, const ::rtidb::common::ColumnKey& column_key,
+        uint32_t partition_num, const ::fedb::common::ColumnKey& column_key,
         uint32_t idx);
 
     std::shared_ptr<Task> CreateAddIndexToTabletTask(
-        uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid,
+        uint64_t op_index, ::fedb::api::OPType op_type, uint32_t tid,
         uint32_t pid, const std::vector<std::string>& endpoints,
-        const ::rtidb::common::ColumnKey& column_key);
+        const ::fedb::common::ColumnKey& column_key);
 
     std::shared_ptr<Task> CreateTableSyncTask(
-        uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid,
+        uint64_t op_index, ::fedb::api::OPType op_type, uint32_t tid,
         const boost::function<bool()>& fun);
 
     bool GetTableInfo(const std::string& table_name, const std::string& db_name,
@@ -707,17 +718,17 @@ class NameServerImpl : public NameServer {
                             const std::string& db_name,
                             std::shared_ptr<TableInfo>* table_info);
 
-    int AddOPTask(const ::rtidb::api::TaskInfo& task_info,
-                  ::rtidb::api::TaskType task_type,
-                  std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr,  // NOLINT
+    int AddOPTask(const ::fedb::api::TaskInfo& task_info,
+                  ::fedb::api::TaskType task_type,
+                  std::shared_ptr<::fedb::api::TaskInfo>& task_ptr,  // NOLINT
                   std::vector<uint64_t> rep_cluster_op_id_vec);
 
-    std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
-        uint64_t op_id, ::rtidb::api::TaskType task_type);
+    std::shared_ptr<::fedb::api::TaskInfo> FindTask(
+        uint64_t op_id, ::fedb::api::TaskType task_type);
 
     bool SaveTableInfo(std::shared_ptr<TableInfo> table_info);
 
-    int CreateOPData(::rtidb::api::OPType op_type, const std::string& value,
+    int CreateOPData(::fedb::api::OPType op_type, const std::string& value,
                      std::shared_ptr<OPData>& op_data,  // NOLINT
                      const std::string& name, const std::string& db,
                      uint32_t pid, uint64_t parent_id = INVALID_PARENT_ID,
@@ -731,7 +742,7 @@ class NameServerImpl : public NameServer {
         const std::string& candidate_leader, bool need_restore,
         uint32_t concurrency = FLAGS_name_server_task_concurrency);
 
-    std::shared_ptr<rtidb::nameserver::ClusterInfo> GetHealthCluster(
+    std::shared_ptr<fedb::nameserver::ClusterInfo> GetHealthCluster(
         const std::string& alias);
 
     int CreateRecoverTableOP(const std::string& name, const std::string& db,
@@ -741,9 +752,9 @@ class NameServerImpl : public NameServer {
     void SelectLeader(const std::string& name, const std::string& db,
                       uint32_t tid, uint32_t pid,
                       std::vector<std::string>& follower_endpoint,  // NOLINT
-                      std::shared_ptr<::rtidb::api::TaskInfo> task_info);
-    void ChangeLeader(std::shared_ptr<::rtidb::api::TaskInfo> task_info);
-    void UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+                      std::shared_ptr<::fedb::api::TaskInfo> task_info);
+    void ChangeLeader(std::shared_ptr<::fedb::api::TaskInfo> task_info);
+    void UpdateLeaderInfo(std::shared_ptr<::fedb::api::TaskInfo> task_info);
     int CreateMigrateOP(const std::string& src_endpoint,
                         const std::string& name, const std::string& db,
                         uint32_t pid, const std::string& des_endpoint);
@@ -751,8 +762,8 @@ class NameServerImpl : public NameServer {
         const std::string& name, const std::string& db, uint32_t pid,
         std::string& endpoint,  // NOLINT
         uint64_t offset_delta, uint32_t concurrency,
-        std::shared_ptr<::rtidb::api::TaskInfo> task_info);
-    int GetLeader(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+        std::shared_ptr<::fedb::api::TaskInfo> task_info);
+    int GetLeader(std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
                   uint32_t pid, std::string& leader_endpoint);  // NOLINT
     int MatchTermOffset(const std::string& name, const std::string& db,
                         uint32_t pid, bool has_table, uint64_t term,
@@ -794,15 +805,15 @@ class NameServerImpl : public NameServer {
         const std::string& endpoint,
         uint32_t concurrency = FLAGS_name_server_task_concurrency);
     int CreateTableRemoteOP(
-        const ::rtidb::nameserver::TableInfo& table_info,
-        const ::rtidb::nameserver::TableInfo& remote_table_info,
+        const ::fedb::nameserver::TableInfo& table_info,
+        const ::fedb::nameserver::TableInfo& remote_table_info,
         const std::string& alias, uint64_t parent_id = INVALID_PARENT_ID,
         uint32_t concurrency =
             FLAGS_name_server_task_concurrency_for_replica_cluster);
 
     int CreateAddIndexOP(const std::string& name, const std::string& db,
-                         uint32_t pid, const std::vector<rtidb::common::ColumnDesc>& new_cols,
-                         const ::rtidb::common::ColumnKey& column_key, uint32_t idx);
+                         uint32_t pid, const std::vector<fedb::common::ColumnDesc>& new_cols,
+                         const ::fedb::common::ColumnKey& column_key, uint32_t idx);
 
     int CreateAddIndexOPTask(std::shared_ptr<OPData> op_data);
 
@@ -815,22 +826,22 @@ class NameServerImpl : public NameServer {
     void DeleteDoneOP();
     void UpdateTableStatus();
     int DropTableOnTablet(
-        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
+        std::shared_ptr<::fedb::nameserver::TableInfo> table_info);
 
     void CheckBinlogSyncProgress(
         const std::string& name, const std::string& db, uint32_t pid,
         const std::string& follower, uint64_t offset_delta,
-        std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+        std::shared_ptr<::fedb::api::TaskInfo> task_info);
 
     bool AddIndexToTableInfo(const std::string& name, const std::string& db,
-                             const ::rtidb::common::ColumnKey& column_key,
+                             const ::fedb::common::ColumnKey& column_key,
                              uint32_t index_pos);
 
     void WrapTaskFun(const boost::function<bool()>& fun,
-                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+                     std::shared_ptr<::fedb::api::TaskInfo> task_info);
 
     void RunSyncTaskFun(uint32_t tid, const boost::function<bool()>& fun,
-                        std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+                        std::shared_ptr<::fedb::api::TaskInfo> task_info);
 
     void RunSubTask(std::shared_ptr<Task> task);
 
@@ -845,27 +856,27 @@ class NameServerImpl : public NameServer {
 
     // update ttl for partition
     bool UpdateTTLOnTablet(const std::string& endpoint, int32_t tid,
-                           int32_t pid, const ::rtidb::api::TTLType& type,
+                           int32_t pid, const ::fedb::api::TTLType& type,
                            uint64_t abs_ttl, uint64_t lat_ttl,
                            const std::string& ts_name);
 
     void CheckSyncExistTable(
         const std::string& alias,
-        const std::vector<::rtidb::nameserver::TableInfo>& tables_remote,
-        const std::shared_ptr<::rtidb::client::NsClient> ns_client);
+        const std::vector<::fedb::nameserver::TableInfo>& tables_remote,
+        const std::shared_ptr<::fedb::client::NsClient> ns_client);
 
     void CheckSyncTable(
         const std::string& alias,
-        const std::vector<::rtidb::nameserver::TableInfo> tables,
-        const std::shared_ptr<::rtidb::client::NsClient> ns_client);
+        const std::vector<::fedb::nameserver::TableInfo> tables,
+        const std::shared_ptr<::fedb::client::NsClient> ns_client);
 
     bool CompareTableInfo(
-        const std::vector<::rtidb::nameserver::TableInfo>& tables,
+        const std::vector<::fedb::nameserver::TableInfo>& tables,
         bool period_check);
 
     void CheckTableInfo(
         std::shared_ptr<ClusterInfo>& ci,  // NOLINT
-        const std::vector<::rtidb::nameserver::TableInfo>& tables);
+        const std::vector<::fedb::nameserver::TableInfo>& tables);
 
     bool CompareSnapshotOffset(
         const std::vector<TableInfo>& tables, std::string& msg,  // NOLINT
@@ -879,20 +890,20 @@ class NameServerImpl : public NameServer {
 
     void MakeTablePartitionSnapshot(
         uint32_t pid, uint64_t end_offset,
-        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
+        std::shared_ptr<::fedb::nameserver::TableInfo> table_info);
 
     void DropTableFun(
         const DropTableRequest* request, GeneralResponse* response,
-        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
+        std::shared_ptr<::fedb::nameserver::TableInfo> table_info);
 
     bool SetTableInfo(
-        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
+        std::shared_ptr<::fedb::nameserver::TableInfo> table_info);
 
     void UpdateTableStatusFun(
         const std::map<std::string,
-                       std::shared_ptr<::rtidb::nameserver::TableInfo>>&
+                       std::shared_ptr<::fedb::nameserver::TableInfo>>&
             table_info_map,
-        const std::unordered_map<std::string, ::rtidb::api::TableStatus>&
+        const std::unordered_map<std::string, ::fedb::api::TableStatus>&
             pos_response);
 
     void UpdateRealEpMapToTablet();
@@ -900,7 +911,7 @@ class NameServerImpl : public NameServer {
     void UpdateRemoteRealEpMap();
 
     bool UpdateZkTableNode(
-        const std::shared_ptr<::rtidb::nameserver::TableInfo>&
+        const std::shared_ptr<::fedb::nameserver::TableInfo>&
             table_info);  // NOLINT
 
     bool UpdateZkTableNodeWithoutNotify(const TableInfo* table_info);
@@ -911,14 +922,14 @@ class NameServerImpl : public NameServer {
 
     void TableInfoToVec(
         const std::map<std::string,
-                       std::shared_ptr<::rtidb::nameserver::TableInfo>>&
+                       std::shared_ptr<::fedb::nameserver::TableInfo>>&
             table_infos,
         const std::vector<uint32_t>& table_tid_vec,
-        std::vector<::rtidb::nameserver::TableInfo>* local_table_info_vec);
+        std::vector<::fedb::nameserver::TableInfo>* local_table_info_vec);
 
-    bool AddFieldToTablet(const std::vector<rtidb::common::ColumnDesc>& cols,
+    bool AddFieldToTablet(const std::vector<fedb::common::ColumnDesc>& cols,
                           std::shared_ptr<TableInfo> table_info,
-                          rtidb::common::VersionPair* new_pair);
+                          fedb::common::VersionPair* new_pair);
 
     void DropProcedureOnTablet(const std::string& db_name, const std::string& sp_name);
 
@@ -926,9 +937,9 @@ class NameServerImpl : public NameServer {
  private:
     std::mutex mu_;
     Tablets tablets_;
-    ::rtidb::nameserver::TableInfos table_info_;
-    std::map<std::string, ::rtidb::nameserver::TableInfos> db_table_info_;
-    std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
+    ::fedb::nameserver::TableInfos table_info_;
+    std::map<std::string, ::fedb::nameserver::TableInfos> db_table_info_;
+    std::map<std::string, std::shared_ptr<::fedb::nameserver::ClusterInfo>> nsc_;
     ZoneInfo zone_info_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;
@@ -958,10 +969,10 @@ class NameServerImpl : public NameServer {
     std::atomic<bool> auto_failover_;
     std::atomic<uint32_t> mode_;
     std::map<std::string, uint64_t> offline_endpoint_map_;
-    ::rtidb::base::Random rand_;
+    ::fedb::base::Random rand_;
     uint64_t session_term_;
     std::atomic<uint64_t> task_rpc_version_;
-    std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>> task_map_;
+    std::map<uint64_t, std::list<std::shared_ptr<::fedb::api::TaskInfo>>> task_map_;
     std::set<std::string> databases_;
     std::string zk_root_path_;
     std::string endpoint_;
@@ -973,5 +984,5 @@ class NameServerImpl : public NameServer {
 };
 
 }  // namespace nameserver
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_NAMESERVER_NAME_SERVER_IMPL_H_

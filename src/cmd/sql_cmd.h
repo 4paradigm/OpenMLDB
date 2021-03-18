@@ -1,12 +1,11 @@
 /*
- * sql_cmd.h
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 
 #ifndef SRC_CMD_SQL_CMD_H_
 #define SRC_CMD_SQL_CMD_H_
@@ -41,9 +41,9 @@ DECLARE_string(zk_root_path);
 DECLARE_bool(interactive);
 DECLARE_string(cmd);
 
-using ::rtidb::catalog::TTL_TYPE_MAP;
+using ::fedb::catalog::TTL_TYPE_MAP;
 
-namespace rtidb {
+namespace fedb {
 namespace cmd {
 
 const std::string LOGO =  // NOLINT
@@ -55,15 +55,14 @@ const std::string LOGO =  // NOLINT
     " | | |  __ / |__| | |_) |\n"
     " |_|  \\___||_____/|____/\n";
 
-const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) + "." +  // NOLINT
-                            std::to_string(RTIDB_VERSION_MEDIUM) + "." +
-                            std::to_string(RTIDB_VERSION_MINOR) + "." +
-                            std::to_string(RTIDB_VERSION_BUG) + "." +
-                            RTIDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
+const std::string VERSION = std::to_string(FEDB_VERSION_MAJOR) + "." +  // NOLINT
+                            std::to_string(FEDB_VERSION_MEDIUM) + "." +
+                            std::to_string(FEDB_VERSION_MINOR) + "." +
+                            FEDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
 
 std::string db = "";  // NOLINT
-::rtidb::sdk::ClusterSDK *cs = NULL;
-::rtidb::sdk::SQLClusterRouter *sr = NULL;
+::fedb::sdk::ClusterSDK *cs = NULL;
+::fedb::sdk::SQLClusterRouter *sr = NULL;
 
 void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     if (!result_set || result_set->Size() == 0) {
@@ -76,7 +75,7 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
         t.add(schema->GetColumnName(i));
     }
-    t.endOfRow();
+    t.end_of_row();
     while (result_set->Next()) {
         for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
             if (result_set->IsNULL(i)) {
@@ -148,7 +147,7 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
                 }
             }
         }
-        t.endOfRow();
+        t.end_of_row();
     }
     stream << t << std::endl;
     stream << result_set->Size() << " rows in set" << std::endl;
@@ -163,7 +162,7 @@ void PrintTableIndex(std::ostream &stream,
     t.add("ts");
     t.add("ttl");
     t.add("ttl_type");
-    t.endOfRow();
+    t.end_of_row();
     for (int i = 0; i < index_list.size(); i++) {
         const ::fesql::type::IndexDef &index = index_list.Get(i);
         t.add(std::to_string(i + 1));
@@ -192,7 +191,7 @@ void PrintTableIndex(std::ostream &stream,
         } else {
             t.add("kAbsOrLat");
         }
-        t.endOfRow();
+        t.end_of_row();
     }
     stream << t;
 }
@@ -208,7 +207,7 @@ void PrintTableSchema(std::ostream &stream, const ::fesql::vm::Schema &schema) {
     t.add("Field");
     t.add("Type");
     t.add("Null");
-    t.endOfRow();
+    t.end_of_row();
 
     for (uint32_t i = 0; i < items_size; i++) {
         auto column = schema.Get(i);
@@ -216,7 +215,7 @@ void PrintTableSchema(std::ostream &stream, const ::fesql::vm::Schema &schema) {
         t.add(column.name());
         t.add(::fesql::type::Type_Name(column.type()));
         t.add(column.is_not_null() ? "NO" : "YES");
-        t.endOfRow();
+        t.end_of_row();
     }
     stream << t;
 }
@@ -230,10 +229,10 @@ void PrintItems(std::ostream &stream, const std::string &head,
 
     ::fesql::base::TextTable t('-', ' ', ' ');
     t.add(head);
-    t.endOfRow();
+    t.end_of_row();
     for (auto item : items) {
         t.add(item);
-        t.endOfRow();
+        t.end_of_row();
     }
     stream << t;
     auto items_size = items.size();
@@ -254,11 +253,11 @@ void PrintItems(const std::vector<std::pair<std::string, std::string>> &items,
     ::fesql::base::TextTable t('-', ' ', ' ');
     t.add("DB");
     t.add("SP");
-    t.endOfRow();
+    t.end_of_row();
     for (auto item : items) {
         t.add(item.first);
         t.add(item.second);
-        t.endOfRow();
+        t.end_of_row();
     }
     stream << t;
     auto items_size = items.size();
@@ -285,7 +284,7 @@ void PrintProcedureSchema(const std::string& head,
         t.add("Field");
         t.add("Type");
         t.add("IsConstant");
-        t.endOfRow();
+        t.end_of_row();
 
         for (uint32_t i = 0; i < items_size; i++) {
             auto column = schema.Get(i);
@@ -293,7 +292,7 @@ void PrintProcedureSchema(const std::string& head,
             t.add(column.name());
             t.add(::fesql::type::Type_Name(column.type()));
             t.add(column.is_constant() ? "YES" : "NO");
-            t.endOfRow();
+            t.end_of_row();
         }
         stream << t << std::endl;
     } catch(std::bad_cast) {
@@ -352,11 +351,11 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
                 return;
             }
             ::fesql::vm::Schema output_schema;
-            ::rtidb::catalog::SchemaAdapter::ConvertSchema(
+            ::fedb::catalog::SchemaAdapter::ConvertSchema(
                 table->column_desc_v1(), &output_schema);
             PrintTableSchema(std::cout, output_schema);
             ::fesql::vm::IndexList index_list;
-            ::rtidb::catalog::SchemaAdapter::ConvertIndex(table->column_key(), &index_list);
+            ::fedb::catalog::SchemaAdapter::ConvertIndex(table->column_key(), &index_list);
             PrintTableIndex(std::cout, index_list);
             break;
         }
@@ -519,7 +518,7 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
 }
 
 void HandleCreateIndex(const fesql::node::CreateIndexNode *create_index_node) {
-    ::rtidb::common::ColumnKey column_key;
+    ::fedb::common::ColumnKey column_key;
     column_key.set_index_name(create_index_node->index_name_);
     for (const auto &key : create_index_node->index_->GetKey()) {
         column_key.add_col_name(key);
@@ -631,16 +630,16 @@ void HandleCli() {
         std::cout << LOGO << std::endl;
         std::cout << "v" << VERSION << std::endl;
     }
-    ::rtidb::sdk::ClusterOptions copt;
+    ::fedb::sdk::ClusterOptions copt;
     copt.zk_cluster = FLAGS_zk_cluster;
     copt.zk_path = FLAGS_zk_root_path;
-    cs = new ::rtidb::sdk::ClusterSDK(copt);
+    cs = new ::fedb::sdk::ClusterSDK(copt);
     bool ok = cs->Init();
     if (!ok) {
         std::cout << "Fail to connect to db" << std::endl;
         return;
     }
-    sr = new ::rtidb::sdk::SQLClusterRouter(cs);
+    sr = new ::fedb::sdk::SQLClusterRouter(cs);
     if (!sr->Init()) {
         std::cout << "Fail to connect to db" << std::endl;
         return;
@@ -657,7 +656,7 @@ void HandleCli() {
             buffer = FLAGS_cmd;
             db = FLAGS_database;
         } else {
-            char *line = ::rtidb::base::linenoise(
+            char *line = ::fedb::base::linenoise(
                 multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
             if (line == NULL) {
                 return;
@@ -665,10 +664,10 @@ void HandleCli() {
             if (line[0] != '\0' && line[0] != '/') {
                 buffer.assign(line);
                 if (!buffer.empty()) {
-                    ::rtidb::base::linenoiseHistoryAdd(line);
+                    ::fedb::base::linenoiseHistoryAdd(line);
                 }
             }
-            ::rtidb::base::linenoiseFree(line);
+            ::fedb::base::linenoiseFree(line);
             if (buffer.empty()) {
                 continue;
             }
@@ -692,6 +691,6 @@ void HandleCli() {
 }
 
 }  // namespace cmd
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_CMD_SQL_CMD_H_

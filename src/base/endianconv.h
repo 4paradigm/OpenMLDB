@@ -1,3 +1,19 @@
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 /* See endianconv.c top comments for more information
  *
  * ----------------------------------------------------------------------------
@@ -100,7 +116,7 @@
  */
 #error "Undefined or invalid BYTE_ORDER"
 #endif
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 void memrev16(void *p);
@@ -139,6 +155,6 @@ uint64_t intrev64(uint64_t v);
 #endif
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_BASE_ENDIANCONV_H_

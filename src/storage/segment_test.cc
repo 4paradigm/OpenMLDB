@@ -1,9 +1,19 @@
-//
-// segment_test.cc
-// Copyright (C) 2017 4paradigm.com
-// Author wangtaize
-// Date 2017-03-31
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #include <iostream>
 #include <string>
@@ -13,9 +23,9 @@
 #include "gtest/gtest.h"
 #include "base/glog_wapper.h" // NOLINT
 
-using ::rtidb::base::Slice;
+using ::fedb::base::Slice;
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 class SegmentTest : public ::testing::Test {
@@ -69,7 +79,7 @@ TEST_F(SegmentTest, PutAndScan) {
     it->Seek(9530);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9529, (int64_t)it->GetKey());
-    ::rtidb::base::Slice val = it->GetValue();
+    ::fedb::base::Slice val = it->GetValue();
     std::string result(val.data(), val.size());
     ASSERT_EQ("test0", result);
     it->Next();
@@ -138,9 +148,9 @@ TEST_F(SegmentTest, GetCount) {
     std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
     Segment segment1(8, ts_idx_vec);
     Slice pk1("pk");
-    ::rtidb::api::LogEntry logEntry;
+    ::fedb::api::LogEntry logEntry;
     for (int i = 0; i < 6; i++) {
-        ::rtidb::api::TSDimension* ts = logEntry.add_ts_dimensions();
+        ::fedb::api::TSDimension* ts = logEntry.add_ts_dimensions();
         ts->set_ts(1100 + i);
         ts->set_idx(i);
     }
@@ -157,7 +167,7 @@ TEST_F(SegmentTest, GetCount) {
         if (i == 3) {
             continue;
         }
-        ::rtidb::api::TSDimension* ts = logEntry.add_ts_dimensions();
+        ::fedb::api::TSDimension* ts = logEntry.add_ts_dimensions();
         ts->set_ts(1200 + i);
         ts->set_idx(i);
     }
@@ -187,7 +197,7 @@ TEST_F(SegmentTest, Iterator) {
     ASSERT_EQ(4, size);
     it->Seek(9769);
     ASSERT_EQ(9769, (int64_t)it->GetKey());
-    ::rtidb::base::Slice value = it->GetValue();
+    ::fedb::base::Slice value = it->GetValue();
     std::string result(value.data(), value.size());
     ASSERT_EQ("test2", result);
     it->Next();
@@ -215,7 +225,7 @@ TEST_F(SegmentTest, TestGc4Head) {
     it->Seek(9769);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9769, (int64_t)it->GetKey());
-    ::rtidb::base::Slice value = it->GetValue();
+    ::fedb::base::Slice value = it->GetValue();
     std::string result(value.data(), value.size());
     ASSERT_EQ("test2", result);
     it->Next();
@@ -390,9 +400,9 @@ TEST_F(SegmentTest, PutAndGetTS) {
     std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
     Segment segment(8, ts_idx_vec);
     Slice pk("pk");
-    ::rtidb::api::LogEntry logEntry;
+    ::fedb::api::LogEntry logEntry;
     for (int i = 0; i < 6; i++) {
-        ::rtidb::api::TSDimension* ts = logEntry.add_ts_dimensions();
+        ::fedb::api::TSDimension* ts = logEntry.add_ts_dimensions();
         ts->set_ts(1100 + i);
         ts->set_idx(i);
     }
@@ -411,10 +421,10 @@ TEST_F(SegmentTest, PutAndGetTS) {
 }
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
-    ::rtidb::base::SetLogLevel(INFO);
+    ::fedb::base::SetLogLevel(INFO);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

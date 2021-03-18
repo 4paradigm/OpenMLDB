@@ -1,9 +1,18 @@
-//
-// tools/parse_log.cc
-// Copyright (C) 2020 4paradigm.com
-// Author wangbao
-// Date 2020-07-06
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <gflags/gflags.h>
 #include <sched.h>
@@ -17,14 +26,14 @@
 #include "log/log_writer.h"
 #include "proto/tablet.pb.h"
 
-using ::rtidb::log::SequentialFile;
-using ::rtidb::log::Reader;
-using ::rtidb::base::Slice;
-using ::rtidb::base::Status;
-using ::rtidb::log::NewSeqFile;
-using ::rtidb::base::ParseFileNameFromPath;
+using ::fedb::log::SequentialFile;
+using ::fedb::log::Reader;
+using ::fedb::base::Slice;
+using ::fedb::base::Status;
+using ::fedb::log::NewSeqFile;
+using ::fedb::base::ParseFileNameFromPath;
 
-namespace rtidb {
+namespace fedb {
 namespace tools {
 
 void ReadLog(const std::string& full_path) {
@@ -38,8 +47,8 @@ void ReadLog(const std::string& full_path) {
     SequentialFile* rf = NewSeqFile(full_path, fd_r);
     std::string scratch;
     bool for_snapshot = false;
-    if (full_path.find(rtidb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos
-            || full_path.find(rtidb::log::SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
+    if (full_path.find(fedb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos
+            || full_path.find(fedb::log::SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
         for_snapshot = true;
     }
     Reader reader(rf, NULL, true, 0, for_snapshot);
@@ -51,7 +60,7 @@ void ReadLog(const std::string& full_path) {
         if (!status.ok()) {
             break;
         }
-        ::rtidb::api::LogEntry entry;
+        ::fedb::api::LogEntry entry;
         entry.ParseFromString(value.ToString());
         if (entry.ts_dimensions_size() == 0) {
             my_cout << entry.ts() << std::endl;
@@ -76,13 +85,13 @@ void ReadLog(const std::string& full_path) {
 }
 
 }  // namespace tools
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     printf("--------start readlog--------\n");
     printf("--------full_path: %s\n", argv[1]);
-    rtidb::tools::ReadLog(argv[1]);
+    fedb::tools::ReadLog(argv[1]);
     printf("--------end readlog--------\n");
     return 0;
 }

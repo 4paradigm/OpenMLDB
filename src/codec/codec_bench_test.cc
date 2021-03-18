@@ -1,9 +1,19 @@
-//
-// codec_bench_test.cc
-// Copyright (C) 2017 4paradigm.com
-// Author wangtaize
-// Date 2017-04-12
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #include <timer.h>
 #include <iostream>
@@ -15,7 +25,7 @@
 #include "proto/type.pb.h"
 #include "storage/segment.h"
 
-namespace rtidb {
+namespace fedb {
 namespace codec {
 
 class CodecBenchmarkTest : public ::testing::Test {
@@ -24,29 +34,29 @@ class CodecBenchmarkTest : public ::testing::Test {
     ~CodecBenchmarkTest() {}
 };
 
-void RunHasTs(::rtidb::storage::DataBlock* db) {
-    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>
+void RunHasTs(::fedb::storage::DataBlock* db) {
+    boost::container::deque<std::pair<uint64_t, ::fedb::base::Slice>>
         datas;
     uint32_t total_block_size = 0;
     for (uint32_t i = 0; i < 1000; i++) {
         datas.emplace_back(
-            1000, std::move(::rtidb::base::Slice(db->data, db->size)));
+            1000, std::move(::fedb::base::Slice(db->data, db->size)));
         total_block_size += db->size;
     }
     std::string pairs;
-    ::rtidb::codec::EncodeRows(datas, total_block_size, &pairs);
+    ::fedb::codec::EncodeRows(datas, total_block_size, &pairs);
 }
 
-void RunNoneTs(::rtidb::storage::DataBlock* db) {
-    std::vector<::rtidb::base::Slice> datas;
+void RunNoneTs(::fedb::storage::DataBlock* db) {
+    std::vector<::fedb::base::Slice> datas;
     datas.reserve(1000);
     uint32_t total_block_size = 0;
     for (uint32_t i = 0; i < 1000; i++) {
-        datas.push_back(::rtidb::base::Slice(db->data, db->size));
+        datas.push_back(::fedb::base::Slice(db->data, db->size));
         total_block_size += db->size;
     }
     std::string pairs;
-    ::rtidb::codec::EncodeRows(datas, total_block_size, &pairs);
+    ::fedb::codec::EncodeRows(datas, total_block_size, &pairs);
 }
 
 TEST_F(CodecBenchmarkTest, ProjectTest) {
@@ -99,8 +109,8 @@ TEST_F(CodecBenchmarkTest, Encode_ts_vs_none_ts) {
     for (uint32_t i = 0; i < 128; i++) {
         bd[i] = 'a';
     }
-    ::rtidb::storage::DataBlock* block =
-        new ::rtidb::storage::DataBlock(1, bd, 128);
+    ::fedb::storage::DataBlock* block =
+        new ::fedb::storage::DataBlock(1, bd, 128);
     for (uint32_t i = 0; i < 10; i++) {
         RunHasTs(block);
         RunNoneTs(block);
@@ -125,15 +135,15 @@ TEST_F(CodecBenchmarkTest, Encode_ts_vs_none_ts) {
 }
 
 TEST_F(CodecBenchmarkTest, Encode) {
-    std::vector<::rtidb::storage::DataBlock*> data;
+    std::vector<::fedb::storage::DataBlock*> data;
     char* bd = new char[400];
     for (uint32_t i = 0; i < 400; i++) {
         bd[i] = 'a';
     }
 
     for (uint32_t i = 0; i < 1000; i++) {
-        ::rtidb::storage::DataBlock* block =
-            new ::rtidb::storage::DataBlock(1, bd, 400);
+        ::fedb::storage::DataBlock* block =
+            new ::fedb::storage::DataBlock(1, bd, 400);
         data.push_back(block);
     }
 
@@ -145,7 +155,7 @@ TEST_F(CodecBenchmarkTest, Encode) {
         char buffer[400 * 1000 + 1000 * 12];
         uint32_t offset = 0;
         for (uint32_t j = 0; j < 1000; j++) {
-            ::rtidb::codec::Encode(time, data[j], buffer, offset);
+            ::fedb::codec::Encode(time, data[j], buffer, offset);
             offset += (4 + 8 + 400);
         }
     }
@@ -154,9 +164,9 @@ TEST_F(CodecBenchmarkTest, Encode) {
     uint64_t pconsumed = ::baidu::common::timer::get_micros();
 
     for (uint32_t i = 0; i < 10000; i++) {
-        ::rtidb::common::KvList list;
+        ::fedb::common::KvList list;
         for (uint32_t j = 0; j < 1000; j++) {
-            ::rtidb::common::KvPair* pair = list.add_pairs();
+            ::fedb::common::KvPair* pair = list.add_pairs();
             pair->set_time(time);
             pair->set_value(bd, 400);
         }
@@ -170,7 +180,7 @@ TEST_F(CodecBenchmarkTest, Encode) {
 }
 
 TEST_F(CodecBenchmarkTest, Decode) {
-    std::vector<::rtidb::storage::DataBlock*> data;
+    std::vector<::fedb::storage::DataBlock*> data;
     char* bd = new char[400];
 
     for (uint32_t i = 0; i < 400; i++) {
@@ -178,24 +188,24 @@ TEST_F(CodecBenchmarkTest, Decode) {
     }
 
     for (uint32_t i = 0; i < 1000; i++) {
-        ::rtidb::storage::DataBlock* block =
-            new ::rtidb::storage::DataBlock(1, bd, 400);
+        ::fedb::storage::DataBlock* block =
+            new ::fedb::storage::DataBlock(1, bd, 400);
         data.push_back(block);
     }
     char buffer[400 * 1000 + 1000 * 12];
     uint32_t offset = 0;
     uint64_t time = 9527;
     for (uint32_t j = 0; j < 1000; j++) {
-        ::rtidb::codec::Encode(time, data[j], buffer, offset);
+        ::fedb::codec::Encode(time, data[j], buffer, offset);
         offset += (4 + 8 + 400);
     }
 
-    ::rtidb::api::ScanResponse response;
+    ::fedb::api::ScanResponse response;
     response.set_pairs(buffer, 412 * 1000);
 
     uint64_t consumed = ::baidu::common::timer::get_micros();
     for (uint32_t i = 0; i < 10000; i++) {
-        ::rtidb::base::KvIterator it(&response, false);
+        ::fedb::base::KvIterator it(&response, false);
         while (it.Valid()) {
             it.Next();
             std::string value = it.GetValue().ToString();
@@ -203,9 +213,9 @@ TEST_F(CodecBenchmarkTest, Decode) {
         }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
-    ::rtidb::common::KvList list;
+    ::fedb::common::KvList list;
     for (uint32_t j = 0; j < 1000; j++) {
-        ::rtidb::common::KvPair* pair = list.add_pairs();
+        ::fedb::common::KvPair* pair = list.add_pairs();
         pair->set_time(time);
         pair->set_value(bd, 400);
     }
@@ -213,7 +223,7 @@ TEST_F(CodecBenchmarkTest, Decode) {
     list.SerializeToString(&result);
     uint64_t pconsumed = ::baidu::common::timer::get_micros();
     for (uint32_t i = 0; i < 10000; i++) {
-        ::rtidb::common::KvList kv_list;
+        ::fedb::common::KvList kv_list;
         kv_list.ParseFromString(result);
     }
 
@@ -223,7 +233,7 @@ TEST_F(CodecBenchmarkTest, Decode) {
 }
 
 }  // namespace codec
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

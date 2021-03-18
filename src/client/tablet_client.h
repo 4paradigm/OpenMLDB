@@ -1,9 +1,19 @@
-//
-// tablet_client.h
-// Copyright (C) 2017 4paradigm.com
-// Author wangtaize
-// Date 2017-04-02
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #ifndef SRC_CLIENT_TABLET_CLIENT_H_
 #define SRC_CLIENT_TABLET_CLIENT_H_
@@ -20,10 +30,10 @@
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 
-using Schema = ::google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>;
-using Cond_Column = ::google::protobuf::RepeatedPtrField<rtidb::api::Columns>;
+using Schema = ::google::protobuf::RepeatedPtrField<fedb::common::ColumnDesc>;
+using Cond_Column = ::google::protobuf::RepeatedPtrField<fedb::api::Columns>;
 
-namespace rtidb {
+namespace fedb {
 
 // forward decl
 namespace sdk {
@@ -32,7 +42,7 @@ class SQLRequestRowBatch;
 
 const uint32_t INVALID_TID = UINT32_MAX;
 namespace client {
-using ::rtidb::api::TaskInfo;
+using ::fedb::api::TaskInfo;
 const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
 class TabletClient {
@@ -52,39 +62,39 @@ class TabletClient {
     bool CreateTable(const std::string& name, uint32_t tid, uint32_t pid,
                      uint64_t abs_ttl, uint64_t lat_ttl, bool leader,
                      const std::vector<std::string>& endpoints,
-                     const ::rtidb::api::TTLType& type, uint32_t seg_cnt,
+                     const ::fedb::api::TTLType& type, uint32_t seg_cnt,
                      uint64_t term,
-                     const ::rtidb::api::CompressType compress_type);
+                     const ::fedb::api::CompressType compress_type);
 
     bool CreateTable(const std::string& name, uint32_t tid, uint32_t pid,
                      uint64_t abs_ttl, uint64_t lat_ttl, uint32_t seg_cnt,
-                     const std::vector<::rtidb::codec::ColumnDesc>& columns,
-                     const ::rtidb::api::TTLType& type, bool leader,
+                     const std::vector<::fedb::codec::ColumnDesc>& columns,
+                     const ::fedb::api::TTLType& type, bool leader,
                      const std::vector<std::string>& endpoints,
                      uint64_t term = 0,
-                     const ::rtidb::api::CompressType compress_type =
-                         ::rtidb::api::CompressType::kNoCompress);
+                     const ::fedb::api::CompressType compress_type =
+                         ::fedb::api::CompressType::kNoCompress);
 
-    bool CreateTable(const ::rtidb::api::TableMeta& table_meta);
+    bool CreateTable(const ::fedb::api::TableMeta& table_meta);
 
     bool UpdateTableMetaForAddField(
-        uint32_t tid, const std::vector<rtidb::common::ColumnDesc>& cols,
-        const rtidb::common::VersionPair& pair, const std::string& schema,
+        uint32_t tid, const std::vector<fedb::common::ColumnDesc>& cols,
+        const fedb::common::VersionPair& pair, const std::string& schema,
         std::string& msg);  // NOLINT
 
     bool Query(const std::string& db, const std::string& sql,
-               brpc::Controller* cntl, ::rtidb::api::QueryResponse* response,
+               brpc::Controller* cntl, ::fedb::api::QueryResponse* response,
                const bool is_debug = false);
 
     bool Query(const std::string& db, const std::string& sql,
                const std::string& row, brpc::Controller* cntl,
-               ::rtidb::api::QueryResponse* response,
+               ::fedb::api::QueryResponse* response,
                const bool is_debug = false);
 
     bool SQLBatchRequestQuery(const std::string& db, const std::string& sql,
-                              std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch>,
+                              std::shared_ptr<::fedb::sdk::SQLRequestRowBatch>,
                               brpc::Controller* cntl,
-                              ::rtidb::api::SQLBatchRequestQueryResponse* response,
+                              ::fedb::api::SQLBatchRequestQueryResponse* response,
                               const bool is_debug = false);
 
     bool Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
@@ -136,39 +146,39 @@ class TabletClient {
                bool filter_expired_data, uint64_t& value,  // NOLINT
                std::string& msg);                          // NOLINT
 
-    ::rtidb::base::KvIterator* Scan(uint32_t tid, uint32_t pid,
+    ::fedb::base::KvIterator* Scan(uint32_t tid, uint32_t pid,
                                     const std::string& pk, uint64_t stime,
                                     uint64_t etime, uint32_t limit,
                                     uint32_t atleast,
                                     std::string& msg);  // NOLINT
 
-    ::rtidb::base::KvIterator* Scan(uint32_t tid, uint32_t pid,
+    ::fedb::base::KvIterator* Scan(uint32_t tid, uint32_t pid,
                                     const std::string& pk, uint64_t stime,
                                     uint64_t etime, const std::string& idx_name,
                                     const std::string& ts_name, uint32_t limit,
                                     uint32_t atleast,
                                     std::string& msg);  // NOLINT
 
-    ::rtidb::base::KvIterator* Scan(uint32_t tid, uint32_t pid,
+    ::fedb::base::KvIterator* Scan(uint32_t tid, uint32_t pid,
                                     const std::string& pk, uint64_t stime,
                                     uint64_t etime, const std::string& idx_name,
                                     uint32_t limit, uint32_t atleast,
                                     std::string& msg);  // NOLINT
 
-    ::rtidb::base::KvIterator* Scan(uint32_t tid, uint32_t pid, const char* pk,
+    ::fedb::base::KvIterator* Scan(uint32_t tid, uint32_t pid, const char* pk,
                                     uint64_t stime, uint64_t etime,
                                     std::string& msg,     // NOLINT
                                     bool showm = false);  // NOLINT
 
-    bool Scan(const ::rtidb::api::ScanRequest& request,
+    bool Scan(const ::fedb::api::ScanRequest& request,
              brpc::Controller* cntl,
-             ::rtidb::api::ScanResponse* response);
+             ::fedb::api::ScanResponse* response);
 
-    bool AsyncScan(const ::rtidb::api::ScanRequest& request,
-                   rtidb::RpcCallback<rtidb::api::ScanResponse>* callback);
+    bool AsyncScan(const ::fedb::api::ScanRequest& request,
+                   fedb::RpcCallback<fedb::api::ScanResponse>* callback);
 
     bool GetTableSchema(uint32_t tid, uint32_t pid,
-                        ::rtidb::api::TableMeta& table_meta);  // NOLINT
+                        ::fedb::api::TableMeta& table_meta);  // NOLINT
 
     bool DropTable(
         uint32_t id, uint32_t pid,
@@ -212,7 +222,7 @@ class TabletClient {
         bool leader, uint32_t seg_cnt,
         std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
-    bool LoadTable(const ::rtidb::api::TableMeta& table_meta,
+    bool LoadTable(const ::fedb::api::TableMeta& table_meta,
                    std::shared_ptr<TaskInfo> task_info);
 
     bool LoadTable(uint32_t tid, uint32_t pid, std::string* msg);
@@ -222,15 +232,16 @@ class TabletClient {
     bool ChangeRole(
         uint32_t tid, uint32_t pid, bool leader,
         const std::vector<std::string>& endpoints, uint64_t term,
-        const std::vector<::rtidb::common::EndpointAndTid>* et = nullptr);
+        const std::vector<::fedb::common::EndpointAndTid>* et = nullptr);
 
     bool UpdateTTL(uint32_t tid, uint32_t pid,
-                   const ::rtidb::api::TTLType& type, uint64_t abs_ttl,
+                   const ::fedb::api::TTLType& type, uint64_t abs_ttl,
                    uint64_t lat_ttl, const std::string& ts_name);
     bool SetMaxConcurrency(const std::string& key, int32_t max_concurrency);
+
     bool DeleteBinlog(uint32_t tid, uint32_t pid);
 
-    bool GetTaskStatus(::rtidb::api::TaskStatusResponse& response);  // NOLINT
+    bool GetTaskStatus(::fedb::api::TaskStatusResponse& response);  // NOLINT
 
     bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
 
@@ -240,14 +251,14 @@ class TabletClient {
                      bool& is_leader);                   // NOLINT
 
     bool GetManifest(uint32_t tid, uint32_t pid,
-                     ::rtidb::api::Manifest& manifest);  // NOLINT
+                     ::fedb::api::Manifest& manifest);  // NOLINT
 
     bool GetTableStatus(
-        ::rtidb::api::GetTableStatusResponse& response);  // NOLINT
+        ::fedb::api::GetTableStatusResponse& response);  // NOLINT
     bool GetTableStatus(uint32_t tid, uint32_t pid,
-                        ::rtidb::api::TableStatus& table_status);  // NOLINT
+                        ::fedb::api::TableStatus& table_status);  // NOLINT
     bool GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
-                        ::rtidb::api::TableStatus& table_status);  // NOLINT
+                        ::fedb::api::TableStatus& table_status);  // NOLINT
 
     bool FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t term,
                        uint64_t& offset);  // NOLINT
@@ -264,7 +275,7 @@ class TabletClient {
     bool ConnectZK();
     bool DisConnectZK();
 
-    ::rtidb::base::KvIterator* Traverse(uint32_t tid, uint32_t pid,
+    ::fedb::base::KvIterator* Traverse(uint32_t tid, uint32_t pid,
                                         const std::string& idx_name,
                                         const std::string& pk, uint64_t ts,
                                         uint32_t limit,
@@ -278,11 +289,11 @@ class TabletClient {
                      std::string* msg);
 
     bool AddIndex(uint32_t tid, uint32_t pid,
-                  const ::rtidb::common::ColumnKey& column_key,
+                  const ::fedb::common::ColumnKey& column_key,
                   std::shared_ptr<TaskInfo> task_info);
 
     bool DumpIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
-                       const ::rtidb::common::ColumnKey& column_key,
+                       const ::fedb::common::ColumnKey& column_key,
                        uint32_t idx, std::shared_ptr<TaskInfo> task_info);
 
     bool GetCatalog(uint64_t* version);
@@ -295,52 +306,52 @@ class TabletClient {
                        std::shared_ptr<TaskInfo> task_info);
 
     bool ExtractIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
-                          const ::rtidb::common::ColumnKey& column_key,
+                          const ::fedb::common::ColumnKey& column_key,
                           uint32_t idx, std::shared_ptr<TaskInfo> task_info);
 
     bool CancelOP(const uint64_t op_id);
 
     bool UpdateRealEndpointMap(const std::map<std::string, std::string>& map);
 
-    bool CreateProcedure(const rtidb::api::CreateProcedureRequest& sp_request,
+    bool CreateProcedure(const fedb::api::CreateProcedureRequest& sp_request,
             std::string& msg); // NOLINT
 
     bool CallProcedure(const std::string& db, const std::string& sp_name,
             const std::string& row, brpc::Controller* cntl,
-            rtidb::api::QueryResponse* response,
+            fedb::api::QueryResponse* response,
             bool is_debug, uint64_t timeout_ms);
 
     bool CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
-            std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch>,
+            std::shared_ptr<::fedb::sdk::SQLRequestRowBatch>,
             brpc::Controller* cntl,
-            rtidb::api::SQLBatchRequestQueryResponse* response,
+            fedb::api::SQLBatchRequestQueryResponse* response,
             bool is_debug, uint64_t timeout_ms);
 
     bool DropProcedure(const std::string& db_name, const std::string& sp_name);
 
-    bool SubQuery(const ::rtidb::api::QueryRequest& request,
-            rtidb::RpcCallback<rtidb::api::QueryResponse>* callback);
+    bool SubQuery(const ::fedb::api::QueryRequest& request,
+            fedb::RpcCallback<fedb::api::QueryResponse>* callback);
 
-    bool SubBatchRequestQuery(const ::rtidb::api::SQLBatchRequestQueryRequest& request,
-                              rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback);
+    bool SubBatchRequestQuery(const ::fedb::api::SQLBatchRequestQueryRequest& request,
+                              fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback);
     bool CallProcedure(const std::string& db, const std::string& sp_name,
             const std::string& row, uint64_t timeout_ms, bool is_debug,
-            rtidb::RpcCallback<rtidb::api::QueryResponse>* callback);
+            fedb::RpcCallback<fedb::api::QueryResponse>* callback);
 
     bool CallSQLBatchRequestProcedure(
             const std::string& db, const std::string& sp_name,
-            std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
+            std::shared_ptr<::fedb::sdk::SQLRequestRowBatch> row_batch,
             bool is_debug, uint64_t timeout_ms,
-            rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback);
+            fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback);
 
  private:
     std::string endpoint_;
     std::string real_endpoint_;
-    ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> client_;
+    ::fedb::RpcClient<::fedb::api::TabletServer_Stub> client_;
     std::vector<uint64_t> percentile_;
 };
 
 }  // namespace client
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_CLIENT_TABLET_CLIENT_H_

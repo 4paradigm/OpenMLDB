@@ -1,12 +1,11 @@
 /*
- * client_manager_test.cc
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,17 +14,18 @@
  * limitations under the License.
  */
 
+
 #include "catalog/client_manager.h"
 
 #include "gtest/gtest.h"
 
-namespace rtidb {
+namespace fedb {
 namespace catalog {
 
 class ClientManagerTest : public ::testing::Test {};
 
 TEST_F(ClientManagerTest, client_manager_test) {
-    ::rtidb::nameserver::TableInfo table_info;
+    ::fedb::nameserver::TableInfo table_info;
     table_info.set_name("t1");
     table_info.set_db("db1");
     table_info.set_tid(1);
@@ -43,15 +43,15 @@ TEST_F(ClientManagerTest, client_manager_test) {
             meta->set_endpoint("name" + std::to_string(j));
         }
     }
-    ::rtidb::storage::TableSt table_st(table_info);
+    ::fedb::storage::TableSt table_st(table_info);
     ASSERT_EQ(8, table_st.GetPartitionNum());
     ASSERT_EQ("name0", table_st.GetPartition(1).GetLeader());
     ASSERT_EQ(2u, table_st.GetPartition(1).GetFollower().size());
 
-    std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>> tablet_clients;
-    auto client0 = std::make_shared<::rtidb::client::TabletClient>("name0", "endpoint0");
-    auto client1 = std::make_shared<::rtidb::client::TabletClient>("name1", "endpoint1");
-    auto client2 = std::make_shared<::rtidb::client::TabletClient>("name2", "endpoint2");
+    std::map<std::string, std::shared_ptr<::fedb::client::TabletClient>> tablet_clients;
+    auto client0 = std::make_shared<::fedb::client::TabletClient>("name0", "endpoint0");
+    auto client1 = std::make_shared<::fedb::client::TabletClient>("name1", "endpoint1");
+    auto client2 = std::make_shared<::fedb::client::TabletClient>("name2", "endpoint2");
     tablet_clients.emplace("name0", client0);
     tablet_clients.emplace("name1", client1);
     tablet_clients.emplace("name2", client2);
@@ -65,7 +65,7 @@ TEST_F(ClientManagerTest, client_manager_test) {
     ASSERT_EQ("endpoint0",
               table_client_manager.GetPartitionClientManager(0)->GetLeader()->GetClient()->GetRealEndpoint());
 
-    auto client3 = std::make_shared<::rtidb::client::TabletClient>("name0", "endpoint3");
+    auto client3 = std::make_shared<::fedb::client::TabletClient>("name0", "endpoint3");
     tablet_clients["name0"] = client3;
     manager.UpdateClient(tablet_clients);
     ASSERT_EQ("name0", table_client_manager.GetPartitionClientManager(0)->GetLeader()->GetClient()->GetEndpoint());
@@ -74,7 +74,7 @@ TEST_F(ClientManagerTest, client_manager_test) {
 }
 
 }  // namespace catalog
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

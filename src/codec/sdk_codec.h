@@ -1,8 +1,19 @@
-// sdk_codec.h
-// Copyright (C) 2017 4paradigm.com
-// Author denglong
-// Date 2020-06-10
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 
 #include <map>
@@ -15,19 +26,19 @@
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
 
-namespace rtidb {
+namespace fedb {
 namespace codec {
 
-using Index = google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>;
+using Index = google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>;
 using Dimension = std::vector<std::pair<std::string, uint32_t>>;
-using Schema = google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>;
-using VerSchema = google::protobuf::RepeatedPtrField<rtidb::common::VersionPair>;
+using Schema = google::protobuf::RepeatedPtrField<fedb::common::ColumnDesc>;
+using VerSchema = google::protobuf::RepeatedPtrField<fedb::common::VersionPair>;
 
 class SDKCodec {
  public:
-    explicit SDKCodec(const ::rtidb::nameserver::TableInfo& table_info);
+    explicit SDKCodec(const ::fedb::nameserver::TableInfo& table_info);
 
-    explicit SDKCodec(const ::rtidb::api::TableMeta& table_info);
+    explicit SDKCodec(const ::fedb::api::TableMeta& table_info);
 
     int EncodeDimension(const std::map<std::string, std::string>& raw_data,
                         uint32_t pid_num,
@@ -61,7 +72,7 @@ class SDKCodec {
  private:
     Schema schema_;
     Index index_;
-    std::vector<::rtidb::codec::ColumnDesc> old_schema_;
+    std::vector<::fedb::codec::ColumnDesc> old_schema_;
     std::map<std::string, uint32_t> schema_idx_map_;
     std::vector<uint32_t> ts_idx_;
     std::vector<uint32_t> partition_col_idx_;
@@ -73,4 +84,4 @@ class SDKCodec {
 };
 
 }  // namespace codec
-}  // namespace rtidb
+}  // namespace fedb

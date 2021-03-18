@@ -1,14 +1,11 @@
 /*
- * distribute_iterator.cc
- * Copyright (C) 4paradigm.com 2020
- * Author denglong
- * Date 2020-09-21
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,9 +14,10 @@
  * limitations under the License.
  */
 
+
 #include "catalog/distribute_iterator.h"
 
-namespace rtidb {
+namespace fedb {
 namespace catalog {
 
 FullTableIterator::FullTableIterator(std::shared_ptr<Tables> tables) :
@@ -84,7 +82,7 @@ void DistributeWindowIterator::Seek(const std::string& key) {
         return;
     }
     if (pid_num_ > 0) {
-        cur_pid_ = (uint32_t)(::rtidb::base::hash64(key) % pid_num_);
+        cur_pid_ = (uint32_t)(::fedb::base::hash64(key) % pid_num_);
     }
     auto iter = tables_->find(cur_pid_);
     if (iter != tables_->end()) {
@@ -150,4 +148,4 @@ std::unique_ptr<::fesql::codec::RowIterator> DistributeWindowIterator::GetValue(
 const ::fesql::codec::Row DistributeWindowIterator::GetKey() { return it_->GetKey(); }
 
 }  // namespace catalog
-}  // namespace rtidb
+}  // namespace fedb

@@ -1,12 +1,11 @@
 /*
- * table_reader_impl.cc
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 
 #include "sdk/table_reader_impl.h"
 
@@ -26,12 +26,12 @@
 #include "proto/tablet.pb.h"
 #include "sdk/result_set_sql.h"
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 class ScanFutureImpl : public ScanFuture {
  public:
-    explicit ScanFutureImpl(rtidb::RpcCallback<rtidb::api::ScanResponse>* callback,
+    explicit ScanFutureImpl(fedb::RpcCallback<fedb::api::ScanResponse>* callback,
                             const ::google::protobuf::RepeatedField<uint32_t>& projection,
                             std::shared_ptr<::fesql::vm::TableHandler> table_handler)
         : callback_(callback), schema_(), projection_(projection), table_handler_(table_handler) {
@@ -68,7 +68,7 @@ class ScanFutureImpl : public ScanFuture {
             status->msg = "request error, " + callback_->GetController()->ErrorText();
             return nullptr;
         }
-        if (callback_->GetResponse()->code() != ::rtidb::base::kOk) {
+        if (callback_->GetResponse()->code() != ::fedb::base::kOk) {
             status->code = callback_->GetResponse()->code();
             status->msg = "request error, " + callback_->GetResponse()->msg();
             return nullptr;
@@ -80,7 +80,7 @@ class ScanFutureImpl : public ScanFuture {
     }
 
  private:
-    rtidb::RpcCallback<rtidb::api::ScanResponse>* callback_;
+    fedb::RpcCallback<fedb::api::ScanResponse>* callback_;
     fesql::vm::Schema schema_;
     ::google::protobuf::RepeatedField<uint32_t> projection_;
     std::shared_ptr<::fesql::vm::TableHandler> table_handler_;
@@ -88,35 +88,35 @@ class ScanFutureImpl : public ScanFuture {
 
 TableReaderImpl::TableReaderImpl(ClusterSDK* cluster_sdk) : cluster_sdk_(cluster_sdk) {}
 
-std::shared_ptr<rtidb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std::string& db, const std::string& table,
+std::shared_ptr<fedb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std::string& db, const std::string& table,
                                                                    const std::string& key, int64_t st, int64_t et,
                                                                    const ScanOption& so, int64_t timeout_ms,
                                                                    ::fesql::sdk::Status* status) {
     auto table_handler = cluster_sdk_->GetCatalog()->GetTable(db, table);
     if (!table_handler) {
         LOG(WARNING) << "fail to get table " << table << "desc from catalog";
-        return std::shared_ptr<rtidb::sdk::ScanFuture>();
+        return std::shared_ptr<fedb::sdk::ScanFuture>();
     }
 
-    auto sdk_table_handler = dynamic_cast<::rtidb::catalog::SDKTableHandler*>(table_handler.get());
+    auto sdk_table_handler = dynamic_cast<::fedb::catalog::SDKTableHandler*>(table_handler.get());
     uint32_t pid_num = sdk_table_handler->GetPartitionNum();
     uint32_t pid = 0;
     if (pid_num > 0) {
-        pid = ::rtidb::base::hash64(key) % pid_num;
+        pid = ::fedb::base::hash64(key) % pid_num;
     }
     auto accessor = sdk_table_handler->GetTablet(pid);
     if (!accessor) {
         LOG(WARNING) << "fail to get tablet for db " << db << " table " << table;
-        return std::shared_ptr<rtidb::sdk::ScanFuture>();
+        return std::shared_ptr<fedb::sdk::ScanFuture>();
     }
     auto client = accessor->GetClient();
-    std::shared_ptr<rtidb::api::ScanResponse> response = std::make_shared<rtidb::api::ScanResponse>();
+    std::shared_ptr<fedb::api::ScanResponse> response = std::make_shared<fedb::api::ScanResponse>();
     std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
     cntl->set_timeout_ms(timeout_ms);
-    rtidb::RpcCallback<rtidb::api::ScanResponse>* callback =
-        new rtidb::RpcCallback<rtidb::api::ScanResponse>(response, cntl);
+    fedb::RpcCallback<fedb::api::ScanResponse>* callback =
+        new fedb::RpcCallback<fedb::api::ScanResponse>(response, cntl);
 
-    ::rtidb::api::ScanRequest request;
+    ::fedb::api::ScanRequest request;
     request.set_pk(key);
     request.set_tid(sdk_table_handler->GetTid());
     request.set_pid(pid);
@@ -128,7 +128,7 @@ std::shared_ptr<rtidb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std::st
         int32_t col_idx = sdk_table_handler->GetColumnIndex(col);
         if (col_idx < 0) {
             LOG(WARNING) << "fail to get col " << col << " from table " << table;
-            return std::shared_ptr<rtidb::sdk::ScanFuture>();
+            return std::shared_ptr<fedb::sdk::ScanFuture>();
         }
         request.add_projection(static_cast<uint32_t>(col_idx));
     }
@@ -158,11 +158,11 @@ std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& 
         return std::shared_ptr<fesql::sdk::ResultSet>();
     }
 
-    auto sdk_table_handler = dynamic_cast<::rtidb::catalog::SDKTableHandler*>(table_handler.get());
+    auto sdk_table_handler = dynamic_cast<::fedb::catalog::SDKTableHandler*>(table_handler.get());
     uint32_t pid_num = sdk_table_handler->GetPartitionNum();
     uint32_t pid = 0;
     if (pid_num > 0) {
-        pid = ::rtidb::base::hash64(key) % pid_num;
+        pid = ::fedb::base::hash64(key) % pid_num;
     }
     auto accessor = sdk_table_handler->GetTablet(pid);
     if (!accessor) {
@@ -170,7 +170,7 @@ std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& 
         return std::shared_ptr<fesql::sdk::ResultSet>();
     }
     auto client = accessor->GetClient();
-    ::rtidb::api::ScanRequest request;
+    ::fedb::api::ScanRequest request;
     request.set_pk(key);
     request.set_tid(sdk_table_handler->GetTid());
     request.set_pid(pid);
@@ -198,7 +198,7 @@ std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& 
     if (so.at_least > 0) {
         request.set_atleast(so.at_least);
     }
-    auto response = std::make_shared<::rtidb::api::ScanResponse>();
+    auto response = std::make_shared<::fedb::api::ScanResponse>();
     auto cntl = std::make_shared<::brpc::Controller>();
     client->Scan(request, cntl.get(), response.get());
     if (response->code() != 0) {
@@ -211,4 +211,4 @@ std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& 
 }
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb

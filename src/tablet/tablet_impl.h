@@ -1,9 +1,19 @@
-//
-// tablet_impl.h
-// Copyright (C) 2017 4paradigm.com
-// Author wangtaize
-// Date 2017-04-01
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #ifndef SRC_TABLET_TABLET_IMPL_H_
 #define SRC_TABLET_TABLET_IMPL_H_
@@ -35,19 +45,19 @@
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
-using ::rtidb::base::SpinMutex;
-using ::rtidb::replica::LogReplicator;
-using ::rtidb::replica::ReplicatorRole;
-using ::rtidb::storage::IndexDef;
-using ::rtidb::storage::MemTable;
-using ::rtidb::storage::Snapshot;
-using ::rtidb::storage::Table;
-using ::rtidb::zk::ZkClient;
-using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using ::fedb::base::SpinMutex;
+using ::fedb::replica::LogReplicator;
+using ::fedb::replica::ReplicatorRole;
+using ::fedb::storage::IndexDef;
+using ::fedb::storage::MemTable;
+using ::fedb::storage::Snapshot;
+using ::fedb::storage::Table;
+using ::fedb::zk::ZkClient;
+using Schema = ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>;
 
 const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
-namespace rtidb {
+namespace fedb {
 namespace tablet {
 
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table>>> Tables;
@@ -142,7 +152,7 @@ class SpCache : public fesql::vm::CompileInfoCache {
     std::map<std::string, std::map<std::string, SQLProcedureCacheEntry>> db_sp_map_;
     SpinMutex spin_mutex_;
 };
-class TabletImpl : public ::rtidb::api::TabletServer {
+class TabletImpl : public ::fedb::api::TabletServer {
  public:
     TabletImpl();
 
@@ -154,254 +164,254 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     bool RegisterZK();
 
-    void Put(RpcController* controller, const ::rtidb::api::PutRequest* request,
-             ::rtidb::api::PutResponse* response, Closure* done);
+    void Put(RpcController* controller, const ::fedb::api::PutRequest* request,
+             ::fedb::api::PutResponse* response, Closure* done);
 
-    void Get(RpcController* controller, const ::rtidb::api::GetRequest* request,
-             ::rtidb::api::GetResponse* response, Closure* done);
+    void Get(RpcController* controller, const ::fedb::api::GetRequest* request,
+             ::fedb::api::GetResponse* response, Closure* done);
 
     void Scan(RpcController* controller,
-              const ::rtidb::api::ScanRequest* request,
-              ::rtidb::api::ScanResponse* response, Closure* done);
+              const ::fedb::api::ScanRequest* request,
+              ::fedb::api::ScanResponse* response, Closure* done);
 
     void Delete(RpcController* controller,
-                const ::rtidb::api::DeleteRequest* request,
-                ::rtidb::api::GeneralResponse* response, Closure* done);
+                const ::fedb::api::DeleteRequest* request,
+                ::fedb::api::GeneralResponse* response, Closure* done);
 
     void Count(RpcController* controller,
-               const ::rtidb::api::CountRequest* request,
-               ::rtidb::api::CountResponse* response, Closure* done);
+               const ::fedb::api::CountRequest* request,
+               ::fedb::api::CountResponse* response, Closure* done);
 
     void Traverse(RpcController* controller,
-                  const ::rtidb::api::TraverseRequest* request,
-                  ::rtidb::api::TraverseResponse* response, Closure* done);
+                  const ::fedb::api::TraverseRequest* request,
+                  ::fedb::api::TraverseResponse* response, Closure* done);
 
     void CreateTable(RpcController* controller,
-                     const ::rtidb::api::CreateTableRequest* request,
-                     ::rtidb::api::CreateTableResponse* response,
+                     const ::fedb::api::CreateTableRequest* request,
+                     ::fedb::api::CreateTableResponse* response,
                      Closure* done);
 
     void LoadTable(RpcController* controller,
-                   const ::rtidb::api::LoadTableRequest* request,
-                   ::rtidb::api::GeneralResponse* response, Closure* done);
+                   const ::fedb::api::LoadTableRequest* request,
+                   ::fedb::api::GeneralResponse* response, Closure* done);
 
     void DropTable(RpcController* controller,
-                   const ::rtidb::api::DropTableRequest* request,
-                   ::rtidb::api::DropTableResponse* response, Closure* done);
+                   const ::fedb::api::DropTableRequest* request,
+                   ::fedb::api::DropTableResponse* response, Closure* done);
 
     void AddReplica(RpcController* controller,
-                    const ::rtidb::api::ReplicaRequest* request,
-                    ::rtidb::api::AddReplicaResponse* response, Closure* done);
+                    const ::fedb::api::ReplicaRequest* request,
+                    ::fedb::api::AddReplicaResponse* response, Closure* done);
 
     void SetConcurrency(RpcController* ctrl,
-                        const ::rtidb::api::SetConcurrencyRequest* request,
-                        ::rtidb::api::SetConcurrencyResponse* response,
+                        const ::fedb::api::SetConcurrencyRequest* request,
+                        ::fedb::api::SetConcurrencyResponse* response,
                         Closure* done);
 
     void DelReplica(RpcController* controller,
-                    const ::rtidb::api::ReplicaRequest* request,
-                    ::rtidb::api::GeneralResponse* response, Closure* done);
+                    const ::fedb::api::ReplicaRequest* request,
+                    ::fedb::api::GeneralResponse* response, Closure* done);
 
     void AppendEntries(RpcController* controller,
-                       const ::rtidb::api::AppendEntriesRequest* request,
-                       ::rtidb::api::AppendEntriesResponse* response,
+                       const ::fedb::api::AppendEntriesRequest* request,
+                       ::fedb::api::AppendEntriesResponse* response,
                        Closure* done);
 
     void UpdateTableMetaForAddField(
         RpcController* controller,
-        const ::rtidb::api::UpdateTableMetaForAddFieldRequest* request,
-        ::rtidb::api::GeneralResponse* response, Closure* done);
+        const ::fedb::api::UpdateTableMetaForAddFieldRequest* request,
+        ::fedb::api::GeneralResponse* response, Closure* done);
 
     void GetTableStatus(RpcController* controller,
-                        const ::rtidb::api::GetTableStatusRequest* request,
-                        ::rtidb::api::GetTableStatusResponse* response,
+                        const ::fedb::api::GetTableStatusRequest* request,
+                        ::fedb::api::GetTableStatusResponse* response,
                         Closure* done);
 
     void ChangeRole(RpcController* controller,
-                    const ::rtidb::api::ChangeRoleRequest* request,
-                    ::rtidb::api::ChangeRoleResponse* response, Closure* done);
+                    const ::fedb::api::ChangeRoleRequest* request,
+                    ::fedb::api::ChangeRoleResponse* response, Closure* done);
 
     void MakeSnapshot(RpcController* controller,
-                      const ::rtidb::api::GeneralRequest* request,
-                      ::rtidb::api::GeneralResponse* response, Closure* done);
+                      const ::fedb::api::GeneralRequest* request,
+                      ::fedb::api::GeneralResponse* response, Closure* done);
 
     void PauseSnapshot(RpcController* controller,
-                       const ::rtidb::api::GeneralRequest* request,
-                       ::rtidb::api::GeneralResponse* response, Closure* done);
+                       const ::fedb::api::GeneralRequest* request,
+                       ::fedb::api::GeneralResponse* response, Closure* done);
 
     void RecoverSnapshot(RpcController* controller,
-                         const ::rtidb::api::GeneralRequest* request,
-                         ::rtidb::api::GeneralResponse* response,
+                         const ::fedb::api::GeneralRequest* request,
+                         ::fedb::api::GeneralResponse* response,
                          Closure* done);
 
     void SendSnapshot(RpcController* controller,
-                      const ::rtidb::api::SendSnapshotRequest* request,
-                      ::rtidb::api::GeneralResponse* response, Closure* done);
+                      const ::fedb::api::SendSnapshotRequest* request,
+                      ::fedb::api::GeneralResponse* response, Closure* done);
 
     void SendData(RpcController* controller,
-                  const ::rtidb::api::SendDataRequest* request,
-                  ::rtidb::api::GeneralResponse* response, Closure* done);
+                  const ::fedb::api::SendDataRequest* request,
+                  ::fedb::api::GeneralResponse* response, Closure* done);
 
     void GetTaskStatus(RpcController* controller,
-                       const ::rtidb::api::TaskStatusRequest* request,
-                       ::rtidb::api::TaskStatusResponse* response,
+                       const ::fedb::api::TaskStatusRequest* request,
+                       ::fedb::api::TaskStatusResponse* response,
                        Closure* done);
 
     void GetTableSchema(RpcController* controller,
-                        const ::rtidb::api::GetTableSchemaRequest* request,
-                        ::rtidb::api::GetTableSchemaResponse* response,
+                        const ::fedb::api::GetTableSchemaRequest* request,
+                        ::fedb::api::GetTableSchemaResponse* response,
                         Closure* done);
 
     void DeleteOPTask(RpcController* controller,
-                      const ::rtidb::api::DeleteTaskRequest* request,
-                      ::rtidb::api::GeneralResponse* response, Closure* done);
+                      const ::fedb::api::DeleteTaskRequest* request,
+                      ::fedb::api::GeneralResponse* response, Closure* done);
 
     void SetExpire(RpcController* controller,
-                   const ::rtidb::api::SetExpireRequest* request,
-                   ::rtidb::api::GeneralResponse* response, Closure* done);
+                   const ::fedb::api::SetExpireRequest* request,
+                   ::fedb::api::GeneralResponse* response, Closure* done);
 
     void UpdateTTL(RpcController* controller,
-                   const ::rtidb::api::UpdateTTLRequest* request,
-                   ::rtidb::api::UpdateTTLResponse* response, Closure* done);
+                   const ::fedb::api::UpdateTTLRequest* request,
+                   ::fedb::api::UpdateTTLResponse* response, Closure* done);
 
     void ExecuteGc(RpcController* controller,
-                   const ::rtidb::api::ExecuteGcRequest* request,
-                   ::rtidb::api::GeneralResponse* response, Closure* done);
+                   const ::fedb::api::ExecuteGcRequest* request,
+                   ::fedb::api::GeneralResponse* response, Closure* done);
 
     void ShowMemPool(RpcController* controller,
-                     const ::rtidb::api::HttpRequest* request,
-                     ::rtidb::api::HttpResponse* response, Closure* done);
+                     const ::fedb::api::HttpRequest* request,
+                     ::fedb::api::HttpResponse* response, Closure* done);
 
     void GetAllSnapshotOffset(
-        RpcController* controller, const ::rtidb::api::EmptyRequest* request,
-        ::rtidb::api::TableSnapshotOffsetResponse* response, Closure* done);
+        RpcController* controller, const ::fedb::api::EmptyRequest* request,
+        ::fedb::api::TableSnapshotOffsetResponse* response, Closure* done);
 
     void GetTermPair(RpcController* controller,
-                     const ::rtidb::api::GetTermPairRequest* request,
-                     ::rtidb::api::GetTermPairResponse* response,
+                     const ::fedb::api::GetTermPairRequest* request,
+                     ::fedb::api::GetTermPairResponse* response,
                      Closure* done);
 
     void GetCatalog(RpcController* controller,
-                     const ::rtidb::api::GetCatalogRequest* request,
-                     ::rtidb::api::GetCatalogResponse* response,
+                     const ::fedb::api::GetCatalogRequest* request,
+                     ::fedb::api::GetCatalogResponse* response,
                      Closure* done);
 
     void GetTableFollower(RpcController* controller,
-                          const ::rtidb::api::GetTableFollowerRequest* request,
-                          ::rtidb::api::GetTableFollowerResponse* response,
+                          const ::fedb::api::GetTableFollowerRequest* request,
+                          ::fedb::api::GetTableFollowerResponse* response,
                           Closure* done);
 
     void GetManifest(RpcController* controller,
-                     const ::rtidb::api::GetManifestRequest* request,
-                     ::rtidb::api::GetManifestResponse* response,
+                     const ::fedb::api::GetManifestRequest* request,
+                     ::fedb::api::GetManifestResponse* response,
                      Closure* done);
 
     void ConnectZK(RpcController* controller,
-                   const ::rtidb::api::ConnectZKRequest* request,
-                   ::rtidb::api::GeneralResponse* response, Closure* done);
+                   const ::fedb::api::ConnectZKRequest* request,
+                   ::fedb::api::GeneralResponse* response, Closure* done);
 
     void DisConnectZK(RpcController* controller,
-                      const ::rtidb::api::DisConnectZKRequest* request,
-                      ::rtidb::api::GeneralResponse* response, Closure* done);
+                      const ::fedb::api::DisConnectZKRequest* request,
+                      ::fedb::api::GeneralResponse* response, Closure* done);
 
     void DeleteBinlog(RpcController* controller,
-                      const ::rtidb::api::GeneralRequest* request,
-                      ::rtidb::api::GeneralResponse* response, Closure* done);
+                      const ::fedb::api::GeneralRequest* request,
+                      ::fedb::api::GeneralResponse* response, Closure* done);
 
     void CheckFile(RpcController* controller,
-                   const ::rtidb::api::CheckFileRequest* request,
-                   ::rtidb::api::GeneralResponse* response, Closure* done);
+                   const ::fedb::api::CheckFileRequest* request,
+                   ::fedb::api::GeneralResponse* response, Closure* done);
 
     void SetMode(RpcController* controller,
-                 const ::rtidb::api::SetModeRequest* request,
-                 ::rtidb::api::GeneralResponse* response, Closure* done);
+                 const ::fedb::api::SetModeRequest* request,
+                 ::fedb::api::GeneralResponse* response, Closure* done);
 
     void DeleteIndex(RpcController* controller,
-                     const ::rtidb::api::DeleteIndexRequest* request,
-                     ::rtidb::api::GeneralResponse* response, Closure* done);
+                     const ::fedb::api::DeleteIndexRequest* request,
+                     ::fedb::api::GeneralResponse* response, Closure* done);
 
     void DumpIndexData(RpcController* controller,
-                       const ::rtidb::api::DumpIndexDataRequest* request,
-                       ::rtidb::api::GeneralResponse* response, Closure* done);
+                       const ::fedb::api::DumpIndexDataRequest* request,
+                       ::fedb::api::GeneralResponse* response, Closure* done);
 
     void LoadIndexData(RpcController* controller,
-                       const ::rtidb::api::LoadIndexDataRequest* request,
-                       ::rtidb::api::GeneralResponse* response, Closure* done);
+                       const ::fedb::api::LoadIndexDataRequest* request,
+                       ::fedb::api::GeneralResponse* response, Closure* done);
 
     void ExtractIndexData(RpcController* controller,
-                          const ::rtidb::api::ExtractIndexDataRequest* request,
-                          ::rtidb::api::GeneralResponse* response,
+                          const ::fedb::api::ExtractIndexDataRequest* request,
+                          ::fedb::api::GeneralResponse* response,
                           Closure* done);
 
     void AddIndex(RpcController* controller,
-                  const ::rtidb::api::AddIndexRequest* request,
-                  ::rtidb::api::GeneralResponse* response, Closure* done);
+                  const ::fedb::api::AddIndexRequest* request,
+                  ::fedb::api::GeneralResponse* response, Closure* done);
 
     void SendIndexData(RpcController* controller,
-                       const ::rtidb::api::SendIndexDataRequest* request,
-                       ::rtidb::api::GeneralResponse* response, Closure* done);
+                       const ::fedb::api::SendIndexDataRequest* request,
+                       ::fedb::api::GeneralResponse* response, Closure* done);
 
     void Query(RpcController* controller,
-               const rtidb::api::QueryRequest* request,
-               rtidb::api::QueryResponse* response, Closure* done);
+               const fedb::api::QueryRequest* request,
+               fedb::api::QueryResponse* response, Closure* done);
 
     void SubQuery(RpcController* controller,
-               const rtidb::api::QueryRequest* request,
-               rtidb::api::QueryResponse* response, Closure* done);
+               const fedb::api::QueryRequest* request,
+               fedb::api::QueryResponse* response, Closure* done);
 
     void SQLBatchRequestQuery(RpcController* controller,
-                              const rtidb::api::SQLBatchRequestQueryRequest* request,
-                              rtidb::api::SQLBatchRequestQueryResponse* response,
+                              const fedb::api::SQLBatchRequestQueryRequest* request,
+                              fedb::api::SQLBatchRequestQueryResponse* response,
                               Closure* done);
     void SubBatchRequestQuery(RpcController* controller,
-                              const rtidb::api::SQLBatchRequestQueryRequest* request,
-                              rtidb::api::SQLBatchRequestQueryResponse* response,
+                              const fedb::api::SQLBatchRequestQueryRequest* request,
+                              fedb::api::SQLBatchRequestQueryResponse* response,
                               Closure* done);
     void CancelOP(RpcController* controller,
-                  const rtidb::api::CancelOPRequest* request,
-                  rtidb::api::GeneralResponse* response, Closure* done);
+                  const fedb::api::CancelOPRequest* request,
+                  fedb::api::GeneralResponse* response, Closure* done);
 
     void UpdateRealEndpointMap(RpcController* controller,
-            const rtidb::api::UpdateRealEndpointMapRequest* request,
-            rtidb::api::GeneralResponse* response, Closure* done);
+            const fedb::api::UpdateRealEndpointMapRequest* request,
+            fedb::api::GeneralResponse* response, Closure* done);
 
     inline void SetServer(brpc::Server* server) { server_ = server; }
 
     // get on value from specified ttl type index
-    int32_t GetIndex(const ::rtidb::api::GetRequest* request,
-                     const ::rtidb::api::TableMeta& meta,
+    int32_t GetIndex(const ::fedb::api::GetRequest* request,
+                     const ::fedb::api::TableMeta& meta,
                      const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
                      CombineIterator* combine_it, std::string* value,
                      uint64_t* ts);
 
     // scan specified ttl type index
-    int32_t ScanIndex(const ::rtidb::api::ScanRequest* request,
-                      const ::rtidb::api::TableMeta& meta,
+    int32_t ScanIndex(const ::fedb::api::ScanRequest* request,
+                      const ::fedb::api::TableMeta& meta,
                       const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
                       CombineIterator* combine_it, std::string* pairs,
                       uint32_t* count);
 
-    int32_t ScanIndex(const ::rtidb::api::ScanRequest* request,
-                      const ::rtidb::api::TableMeta& meta,
+    int32_t ScanIndex(const ::fedb::api::ScanRequest* request,
+                      const ::fedb::api::TableMeta& meta,
                       const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
                       CombineIterator* combine_it, butil::IOBuf* buf,
                       uint32_t* count);
 
     int32_t CountIndex(uint64_t expire_time, uint64_t expire_cnt,
-                       ::rtidb::storage::TTLType ttl_type,
-                       ::rtidb::storage::TableIterator* it,
-                       const ::rtidb::api::CountRequest* request,
+                       ::fedb::storage::TTLType ttl_type,
+                       ::fedb::storage::TableIterator* it,
+                       const ::fedb::api::CountRequest* request,
                        uint32_t* count);
 
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
 
     void CreateProcedure(RpcController* controller,
-            const rtidb::api::CreateProcedureRequest* request,
-            rtidb::api::GeneralResponse* response, Closure* done);
+            const fedb::api::CreateProcedureRequest* request,
+            fedb::api::GeneralResponse* response, Closure* done);
 
     void DropProcedure(RpcController* controller,
-            const ::rtidb::api::DropProcedureRequest* request,
-            ::rtidb::api::GeneralResponse* response,
+            const ::fedb::api::DropProcedureRequest* request,
+            ::fedb::api::GeneralResponse* response,
             Closure* done);
 
  private:
@@ -422,40 +432,40 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     void GcTableSnapshot(uint32_t tid, uint32_t pid);
 
-    int CheckTableMeta(const rtidb::api::TableMeta* table_meta,
+    int CheckTableMeta(const fedb::api::TableMeta* table_meta,
                        std::string& msg);  // NOLINT
 
-    int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
+    int CreateTableInternal(const ::fedb::api::TableMeta* table_meta,
                             std::string& msg);  // NOLINT
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
-                              std::shared_ptr<::rtidb::api::TaskInfo> task);
+                              std::shared_ptr<::fedb::api::TaskInfo> task);
 
     void SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
                               uint32_t pid, uint32_t remote_tid,
-                              std::shared_ptr<::rtidb::api::TaskInfo> task);
+                              std::shared_ptr<::fedb::api::TaskInfo> task);
 
     void DumpIndexDataInternal(
-        std::shared_ptr<::rtidb::storage::Table> table,
-        std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot,
+        std::shared_ptr<::fedb::storage::Table> table,
+        std::shared_ptr<::fedb::storage::MemTableSnapshot> memtable_snapshot,
         uint32_t partition_num,
-        ::rtidb::common::ColumnKey& column_key,  // NOLINT
-        uint32_t idx, std::shared_ptr<::rtidb::api::TaskInfo> task);
+        ::fedb::common::ColumnKey& column_key,  // NOLINT
+        uint32_t idx, std::shared_ptr<::fedb::api::TaskInfo> task);
 
     void SendIndexDataInternal(
-        std::shared_ptr<::rtidb::storage::Table> table,
+        std::shared_ptr<::fedb::storage::Table> table,
         const std::map<uint32_t, std::string>& pid_endpoint_map,
-        std::shared_ptr<::rtidb::api::TaskInfo> task);
+        std::shared_ptr<::fedb::api::TaskInfo> task);
 
     void LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_pid,
                                uint32_t partition_num, uint64_t last_time,
-                               std::shared_ptr<::rtidb::api::TaskInfo> task);
+                               std::shared_ptr<::fedb::api::TaskInfo> task);
 
     void ExtractIndexDataInternal(
-        std::shared_ptr<::rtidb::storage::Table> table,
-        std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot,
-        ::rtidb::common::ColumnKey& column_key, uint32_t idx,  // NOLINT
-        uint32_t partition_num, std::shared_ptr<::rtidb::api::TaskInfo> task);
+        std::shared_ptr<::fedb::storage::Table> table,
+        std::shared_ptr<::fedb::storage::MemTableSnapshot> memtable_snapshot,
+        ::fedb::common::ColumnKey& column_key, uint32_t idx,  // NOLINT
+        uint32_t partition_num, std::shared_ptr<::fedb::api::TaskInfo> task);
 
     void SchedMakeSnapshot();
 
@@ -467,44 +477,44 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     int32_t DeleteTableInternal(
         uint32_t tid, uint32_t pid,
-        std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
+        std::shared_ptr<::fedb::api::TaskInfo> task_ptr);
 
     int LoadTableInternal(uint32_t tid, uint32_t pid,
-                          std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
+                          std::shared_ptr<::fedb::api::TaskInfo> task_ptr);
     int WriteTableMeta(const std::string& path,
-                       const ::rtidb::api::TableMeta* table_meta);
+                       const ::fedb::api::TableMeta* table_meta);
 
     int UpdateTableMeta(const std::string& path,
-                        ::rtidb::api::TableMeta* table_meta,
+                        ::fedb::api::TableMeta* table_meta,
                         bool for_add_column);
 
     int UpdateTableMeta(const std::string& path,
-                        ::rtidb::api::TableMeta* table_meta);
+                        ::fedb::api::TableMeta* table_meta);
 
-    int AddOPTask(const ::rtidb::api::TaskInfo& task_info,
-                  ::rtidb::api::TaskType task_type,
-                  std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr);  // NOLINT
+    int AddOPTask(const ::fedb::api::TaskInfo& task_info,
+                  ::fedb::api::TaskType task_type,
+                  std::shared_ptr<::fedb::api::TaskInfo>& task_ptr);  // NOLINT
 
     void SetTaskStatus(
-        std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr,  // NOLINT
-        ::rtidb::api::TaskStatus status);
+        std::shared_ptr<::fedb::api::TaskInfo>& task_ptr,  // NOLINT
+        ::fedb::api::TaskStatus status);
 
     int GetTaskStatus(
-        std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr,  // NOLINT
-        ::rtidb::api::TaskStatus* status);
+        std::shared_ptr<::fedb::api::TaskInfo>& task_ptr,  // NOLINT
+        ::fedb::api::TaskStatus* status);
 
-    std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
-        uint64_t op_id, ::rtidb::api::TaskType task_type);
+    std::shared_ptr<::fedb::api::TaskInfo> FindTask(
+        uint64_t op_id, ::fedb::api::TaskType task_type);
 
     int AddOPMultiTask(
-        const ::rtidb::api::TaskInfo& task_info,
-        ::rtidb::api::TaskType task_type,
-        std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr);  // NOLINT
+        const ::fedb::api::TaskInfo& task_info,
+        ::fedb::api::TaskType task_type,
+        std::shared_ptr<::fedb::api::TaskInfo>& task_ptr);  // NOLINT
 
-    std::shared_ptr<::rtidb::api::TaskInfo> FindMultiTask(
-        const ::rtidb::api::TaskInfo& task_info);
+    std::shared_ptr<::fedb::api::TaskInfo> FindMultiTask(
+        const ::fedb::api::TaskInfo& task_info);
 
-    int CheckDimessionPut(const ::rtidb::api::PutRequest* request,
+    int CheckDimessionPut(const ::fedb::api::PutRequest* request,
                           uint32_t idx_cnt);
 
     // sync log data from page cache to disk
@@ -513,7 +523,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     // sched replicator to delete binlog
     void SchedDelBinlog(uint32_t tid, uint32_t pid);
 
-    bool CheckGetDone(::rtidb::api::GetType type, uint64_t ts,
+    bool CheckGetDone(::fedb::api::GetType type, uint64_t ts,
                       uint64_t target_ts);
 
     bool ChooseDBRootPath(uint32_t tid, uint32_t pid,
@@ -540,19 +550,19 @@ class TabletImpl : public ::rtidb::api::TabletServer {
             std::map<std::string, std::string>* real_ep_map);
 
     void ProcessQuery(RpcController* controller,
-                      const rtidb::api::QueryRequest* request,
-                      ::rtidb::api::QueryResponse* response,
+                      const fedb::api::QueryRequest* request,
+                      ::fedb::api::QueryResponse* response,
                       butil::IOBuf* buf);
     void ProcessBatchRequestQuery(RpcController* controller,
-        const rtidb::api::SQLBatchRequestQueryRequest* request,
-                                  rtidb::api::SQLBatchRequestQueryResponse* response,
+        const fedb::api::SQLBatchRequestQueryRequest* request,
+                                  fedb::api::SQLBatchRequestQueryResponse* response,
                                   butil::IOBuf& buf);  // NOLINT
 
  private:
     void RunRequestQuery(RpcController* controller,
-        const rtidb::api::QueryRequest& request,
+        const fedb::api::QueryRequest& request,
         ::fesql::vm::RequestRunSession& session, // NOLINT 
-        rtidb::api::QueryResponse& response, butil::IOBuf& buf); // NOLINT
+        fedb::api::QueryResponse& response, butil::IOBuf& buf); // NOLINT
 
     void CreateProcedure(const std::shared_ptr<fesql::sdk::ProcedureInfo> sp_info);
 
@@ -567,7 +577,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     ThreadPool task_pool_;
     ThreadPool io_pool_;
     ThreadPool snapshot_pool_;
-    std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>>
+    std::map<uint64_t, std::list<std::shared_ptr<::fedb::api::TaskInfo>>>
         task_map_;
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
@@ -577,7 +587,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     std::atomic<bool> follower_;
     std::shared_ptr<std::map<std::string, std::string>> real_ep_map_;
     // thread safe
-    std::shared_ptr<::rtidb::catalog::TabletCatalog> catalog_;
+    std::shared_ptr<::fedb::catalog::TabletCatalog> catalog_;
     // thread safe
     ::fesql::vm::Engine engine_;
     std::shared_ptr<::fesql::vm::LocalTablet> local_tablet_;
@@ -590,6 +600,6 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 };
 
 }  // namespace tablet
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_TABLET_TABLET_IMPL_H_

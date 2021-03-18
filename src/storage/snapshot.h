@@ -1,10 +1,19 @@
-//
-//// snapshot.h
-//// Copyright (C) 2017 4paradigm.com
-//// Author denglong
-//// Date 2019-08-06
-////
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 
 #include <memory>
@@ -13,7 +22,7 @@
 #include "proto/tablet.pb.h"
 #include "storage/table.h"
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 class Snapshot {
@@ -31,7 +40,7 @@ class Snapshot {
     int GenManifest(const std::string& snapshot_name, uint64_t key_count,
                     uint64_t offset, uint64_t term);
     static int GetLocalManifest(const std::string& full_path,
-                                ::rtidb::api::Manifest& manifest);  // NOLINT
+                                ::fedb::api::Manifest& manifest);  // NOLINT
 
  protected:
     uint32_t tid_;
@@ -42,4 +51,4 @@ class Snapshot {
 };
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb

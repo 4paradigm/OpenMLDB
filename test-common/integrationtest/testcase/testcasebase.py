@@ -1,3 +1,19 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # -*- coding: utf-8 -*-
 import unittest
 import commands
@@ -28,7 +44,7 @@ class TestCaseBase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         infoLogger.info('\n' + '|' * 50 + ' TEST {} STARTED '.format(cls) + '|' * 50 + '\n')
-        cls.welcome = 'Welcome to rtidb with version {}\n'.format(os.getenv('rtidbver'))
+        cls.welcome = 'Welcome to fedb with version {}\n'.format(os.getenv('rtidbver'))
         cls.testpath = os.getenv('testpath')
         cls.rtidb_path = os.getenv('rtidbpath')
         cls.conf_path = os.getenv('confpath')
@@ -149,13 +165,13 @@ class TestCaseBase(unittest.TestCase):
             conf = role
         else:
             pass
-        cmd = '{}/rtidb --flagfile={}/conf/{}.flags'.format(self.testpath, client_path, conf)
+        cmd = '{}/fedb --flagfile={}/conf/{}.flags'.format(self.testpath, client_path, conf)
         infoLogger.info(cmd)
         args = shlex.split(cmd)
         need_start = False
         for _ in range(20):
             rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(endpoint.split(':')[1]))
-            if 'rtidb' not in rs:
+            if 'fedb' not in rs:
                 need_start = True
                 time.sleep(1)
                 subprocess.Popen(args, stdout=open('{}/info.log'.format(client_path), 'a'),
@@ -163,7 +179,7 @@ class TestCaseBase(unittest.TestCase):
             else:
                 time.sleep(1)
                 rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(endpoint.split(':')[1]))
-                if 'rtidb' in rs:
+                if 'fedb' in rs:
                     return True, need_start
         return False, need_start
 

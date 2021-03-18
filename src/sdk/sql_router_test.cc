@@ -1,12 +1,11 @@
 /*
- * sql_router_test.cc
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 
 #include "sdk/sql_router.h"
 
@@ -35,15 +35,15 @@
 #include "vm/catalog.h"
 #include "case/sql_case.h"
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
-typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
+typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>
     RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>
+typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>
     RtiDBIndex;
 
-::rtidb::sdk::MiniCluster* mc_;
+::fedb::sdk::MiniCluster* mc_;
 
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
@@ -1036,19 +1036,19 @@ TEST_F(SQLRouterTest, smoketest_on_muti_partitions) {
 }
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::fesql::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_zk_session_timeout = 100000;
-    ::rtidb::sdk::MiniCluster mc(6181);
-    ::rtidb::sdk::mc_ = &mc;
-    int ok = ::rtidb::sdk::mc_->SetUp(1);
+    ::fedb::sdk::MiniCluster mc(6181);
+    ::fedb::sdk::mc_ = &mc;
+    int ok = ::fedb::sdk::mc_->SetUp(1);
     sleep(1);
     srand(time(NULL));
     ok = RUN_ALL_TESTS();
-    ::rtidb::sdk::mc_->Close();
+    ::fedb::sdk::mc_->Close();
     return ok;
 }

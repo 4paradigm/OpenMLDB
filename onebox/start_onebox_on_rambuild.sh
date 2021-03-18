@@ -1,3 +1,17 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 #! /bin/sh
 #
 ulimit -c unlimited
@@ -42,7 +56,7 @@ BLOB1=$IP:9720
                    --zk_root_path=/onebox > tablet2.log 2>&1 &
 
 # start ns1
-../build/bin/rtidb --endpoint=${NS1} --role=nameserver \
+../build/bin/fedb --endpoint=${NS1} --role=nameserver \
                    --zk_cluster=${ZK_CLUSTER}\
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
@@ -51,7 +65,7 @@ BLOB1=$IP:9720
 sleep 2
 
 # start ns2
-../build/bin/rtidb --endpoint=${NS2} --role=nameserver \
+../build/bin/fedb --endpoint=${NS2} --role=nameserver \
                    --zk_cluster=${ZK_CLUSTER}\
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
@@ -60,7 +74,7 @@ sleep 2
 sleep 2
 
 # start ns3
-../build/bin/rtidb --endpoint=${NS3} --role=nameserver \
+../build/bin/fedb --endpoint=${NS3} --role=nameserver \
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
                    --request_timeout_ms=100000\

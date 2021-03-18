@@ -1,24 +1,34 @@
-//
-// record.h
-// Copyright (C) 2017 4paradigm.com
-// Author wangtaize
-// Date 2017-11-24
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #ifndef SRC_STORAGE_RECORD_H_
 #define SRC_STORAGE_RECORD_H_
 
 #include "storage/segment.h"
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 static const uint32_t DATA_BLOCK_BYTE_SIZE = sizeof(DataBlock);
 static const uint32_t KEY_ENTRY_BYTE_SIZE = sizeof(KeyEntry);
 static const uint32_t ENTRY_NODE_SIZE =
-    sizeof(::rtidb::base::Node<::rtidb::base::Slice, void*>);
+    sizeof(::fedb::base::Node<::fedb::base::Slice, void*>);
 static const uint32_t DATA_NODE_SIZE =
-    sizeof(::rtidb::base::Node<uint64_t, void*>);
+    sizeof(::fedb::base::Node<uint64_t, void*>);
 static const uint32_t KEY_ENTRY_PTR_SIZE = sizeof(KeyEntry*);
 
 static inline uint32_t GetRecordSize(uint32_t value_size) {
@@ -47,5 +57,5 @@ static inline uint32_t GetRecordTsIdxSize(uint8_t height) {
 }
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_STORAGE_RECORD_H_

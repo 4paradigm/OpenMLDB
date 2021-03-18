@@ -1,12 +1,11 @@
 /*
- * base.h
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,6 +14,7 @@
  * limitations under the License.
  */
 
+
 #pragma once
 
 #include <string>
@@ -22,7 +22,7 @@
 #include "sdk/base.h"
 #include "sdk/base_impl.h"
 
-namespace rtidb {
+namespace fedb {
 namespace catalog {
 
 class ProcedureInfoImpl : public fesql::sdk::ProcedureInfo {
@@ -68,4 +68,4 @@ class ProcedureInfoImpl : public fesql::sdk::ProcedureInfo {
 };
 
 }  // namespace catalog
-}  // namespace rtidb
+}  // namespace fedb

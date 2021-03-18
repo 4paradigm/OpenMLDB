@@ -1,12 +1,11 @@
 /*
- * result_set_base.cc
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,11 +14,12 @@
  * limitations under the License.
  */
 
+
 #include "sdk/result_set_base.h"
 
 #include <utility>
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 ResultSetBase::ResultSetBase(const std::shared_ptr<brpc::Controller>& cntl, uint32_t count, uint32_t buf_size,
@@ -163,4 +163,4 @@ bool ResultSetBase::GetTime(uint32_t index, int64_t* mills) {
 }
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb

@@ -1,12 +1,11 @@
 /*
- * sdk_catalog.h
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 
 #ifndef SRC_CATALOG_SDK_CATALOG_H_
 #define SRC_CATALOG_SDK_CATALOG_H_
@@ -31,12 +31,12 @@
 #include "vm/catalog.h"
 #include "catalog/base.h"
 
-namespace rtidb {
+namespace fedb {
 namespace catalog {
 
 class SDKTableHandler : public ::fesql::vm::TableHandler {
  public:
-    SDKTableHandler(const ::rtidb::nameserver::TableInfo& meta,
+    SDKTableHandler(const ::fedb::nameserver::TableInfo& meta,
             const ClientManager& client_manager);
 
     bool Init();
@@ -98,7 +98,7 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
     }
 
  private:
-    ::rtidb::nameserver::TableInfo meta_;
+    ::fedb::nameserver::TableInfo meta_;
     ::fesql::vm::Schema schema_;
     std::string name_;
     std::string db_;
@@ -123,7 +123,7 @@ class SDKCatalog : public ::fesql::vm::Catalog {
 
     ~SDKCatalog() {}
 
-    bool Init(const std::vector<::rtidb::nameserver::TableInfo>& tables,
+    bool Init(const std::vector<::fedb::nameserver::TableInfo>& tables,
             const Procedures& db_sp_map);
 
     std::shared_ptr<::fesql::type::Database> GetDatabase(const std::string& db) override {
@@ -150,5 +150,5 @@ class SDKCatalog : public ::fesql::vm::Catalog {
 };
 
 }  // namespace catalog
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_CATALOG_SDK_CATALOG_H_

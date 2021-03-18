@@ -1,12 +1,11 @@
 /*
- * tablet_catalog_test.cc
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 
 #include "catalog/sdk_catalog.h"
 
@@ -24,13 +24,13 @@
 #include "proto/fe_common.pb.h"
 #include "vm/engine.h"
 
-namespace rtidb {
+namespace fedb {
 namespace catalog {
 
 class SDKCatalogTest : public ::testing::Test {};
 
 struct TestArgs {
-    ::rtidb::nameserver::TableInfo meta;
+    ::fedb::nameserver::TableInfo meta;
 };
 
 TestArgs* PrepareTable(const std::string& tname, const std::string& db) {
@@ -41,10 +41,10 @@ TestArgs* PrepareTable(const std::string& tname, const std::string& db) {
     RtiDBSchema* schema = args->meta.mutable_column_desc_v1();
     auto col1 = schema->Add();
     col1->set_name("col1");
-    col1->set_data_type(::rtidb::type::kVarchar);
+    col1->set_data_type(::fedb::type::kVarchar);
     auto col2 = schema->Add();
     col2->set_name("col2");
-    col2->set_data_type(::rtidb::type::kBigInt);
+    col2->set_data_type(::fedb::type::kBigInt);
     RtiDBIndex* index = args->meta.mutable_column_key();
     auto key1 = index->Add();
     key1->set_index_name("index0");
@@ -55,7 +55,7 @@ TestArgs* PrepareTable(const std::string& tname, const std::string& db) {
 
 TEST_F(SDKCatalogTest, sdk_smoke_test) {
     TestArgs* args = PrepareTable("t1", "db1");
-    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::vector<::fedb::nameserver::TableInfo> tables;
     tables.push_back(args->meta);
     auto client_manager = std::make_shared<ClientManager>();
     std::shared_ptr<SDKCatalog> catalog(new SDKCatalog(client_manager));
@@ -75,7 +75,7 @@ TEST_F(SDKCatalogTest, sdk_smoke_test) {
 
 TEST_F(SDKCatalogTest, sdk_window_smoke_test) {
     TestArgs* args = PrepareTable("t1", "db1");
-    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::vector<::fedb::nameserver::TableInfo> tables;
     tables.push_back(args->meta);
     auto client_manager = std::make_shared<ClientManager>();
     std::shared_ptr<SDKCatalog> catalog(new SDKCatalog(client_manager));
@@ -99,7 +99,7 @@ TEST_F(SDKCatalogTest, sdk_window_smoke_test) {
 TEST_F(SDKCatalogTest, sdk_lastjoin_smoke_test) {
     TestArgs* args = PrepareTable("t1", "db1");
     TestArgs* args2 = PrepareTable("t2", "db1");
-    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::vector<::fedb::nameserver::TableInfo> tables;
     tables.push_back(args->meta);
     tables.push_back(args2->meta);
     auto client_manager = std::make_shared<ClientManager>();
@@ -122,7 +122,7 @@ TEST_F(SDKCatalogTest, sdk_lastjoin_smoke_test) {
 }
 
 }  // namespace catalog
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

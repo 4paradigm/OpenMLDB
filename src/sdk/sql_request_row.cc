@@ -1,12 +1,11 @@
 /*
- * sql_request_row.cc
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 
 #include "sdk/sql_request_row.h"
 
@@ -25,7 +25,7 @@
 #include "base/fe_strings.h"
 #include "glog/logging.h"
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 #define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
@@ -474,4 +474,4 @@ bool SQLRequestRowBatch::AddRow(std::shared_ptr<SQLRequestRow> row) {
 }
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb

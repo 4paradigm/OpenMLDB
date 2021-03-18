@@ -1,9 +1,19 @@
-//
-// tablet_impl_projection_test.cc
-// Copyright (C) 2017 4paradigm.com
-// Author wangtaize
-// Date 2017-04-05
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #include <fcntl.h>
 #include <gflags/gflags.h>
@@ -39,7 +49,7 @@ DECLARE_int32(gc_safe_offset);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_int32(binlog_delete_interval);
 
-namespace rtidb {
+namespace fedb {
 namespace tablet {
 
 class MockClosure : public ::google::protobuf::Closure {
@@ -49,7 +59,7 @@ class MockClosure : public ::google::protobuf::Closure {
     void Run() {}
 };
 
-using ::rtidb::api::TableStatus;
+using ::fedb::api::TableStatus;
 
 struct TestArgs {
     Schema schema;
@@ -81,7 +91,7 @@ class TabletProjectTest : public ::testing::TestWithParam<TestArgs*> {
     void SetUp() { tablet_.Init(""); }
 
  public:
-    ::rtidb::tablet::TabletImpl tablet_;
+    ::fedb::tablet::TabletImpl tablet_;
 };
 
 std::vector<TestArgs*> GenCommonCase() {
@@ -402,7 +412,7 @@ void CompareRow(codec::RowView* left, codec::RowView* right,
         if (left->IsNULL(idx)) continue;
         int32_t ret = 0;
         switch (column.data_type()) {
-            case ::rtidb::type::kBool: {
+            case ::fedb::type::kBool: {
                 bool left_val = false;
                 bool right_val = false;
                 ret = left->GetBool(idx, &left_val);
@@ -413,7 +423,7 @@ void CompareRow(codec::RowView* left, codec::RowView* right,
                 break;
             }
 
-            case ::rtidb::type::kSmallInt: {
+            case ::fedb::type::kSmallInt: {
                 int16_t left_val = 0;
                 int16_t right_val = 0;
                 ret = left->GetInt16(idx, &left_val);
@@ -424,7 +434,7 @@ void CompareRow(codec::RowView* left, codec::RowView* right,
                 break;
             }
 
-            case ::rtidb::type::kInt: {
+            case ::fedb::type::kInt: {
                 int32_t left_val = 0;
                 int32_t right_val = 0;
                 ret = left->GetInt32(idx, &left_val);
@@ -434,8 +444,8 @@ void CompareRow(codec::RowView* left, codec::RowView* right,
                 ASSERT_EQ(left_val, right_val);
                 break;
             }
-            case ::rtidb::type::kTimestamp:
-            case ::rtidb::type::kBigInt: {
+            case ::fedb::type::kTimestamp:
+            case ::fedb::type::kBigInt: {
                 int64_t left_val = 0;
                 int64_t right_val = 0;
                 ret = left->GetInt64(idx, &left_val);
@@ -445,7 +455,7 @@ void CompareRow(codec::RowView* left, codec::RowView* right,
                 ASSERT_EQ(left_val, right_val);
                 break;
             }
-            case ::rtidb::type::kFloat: {
+            case ::fedb::type::kFloat: {
                 float left_val = 0;
                 float right_val = 0;
                 ret = left->GetFloat(idx, &left_val);
@@ -455,7 +465,7 @@ void CompareRow(codec::RowView* left, codec::RowView* right,
                 ASSERT_EQ(left_val, right_val);
                 break;
             }
-            case ::rtidb::type::kDouble: {
+            case ::fedb::type::kDouble: {
                 double left_val = 0;
                 double right_val = 0;
                 ret = left->GetDouble(idx, &left_val);
@@ -465,7 +475,7 @@ void CompareRow(codec::RowView* left, codec::RowView* right,
                 ASSERT_EQ(left_val, right_val);
                 break;
             }
-            case ::rtidb::type::kVarchar: {
+            case ::fedb::type::kVarchar: {
                 char* left_val = NULL;
                 uint32_t left_size = 0;
                 char* right_val = NULL;
@@ -490,58 +500,58 @@ void CompareRow(codec::RowView* left, codec::RowView* right,
 TEST_P(TabletProjectTest, get_case) {
     auto args = GetParam();
     // create table
-    std::string name = ::rtidb::tablet::GenRand();
+    std::string name = ::fedb::tablet::GenRand();
     int tid = rand() % 100000;  // NOLINT
     MockClosure closure;
     // create a table
     {
-        ::rtidb::api::CreateTableRequest crequest;
-        ::rtidb::api::TableMeta* table_meta = crequest.mutable_table_meta();
+        ::fedb::api::CreateTableRequest crequest;
+        ::fedb::api::TableMeta* table_meta = crequest.mutable_table_meta();
         table_meta->set_name(name);
         table_meta->set_tid(tid);
         table_meta->set_pid(0);
         table_meta->set_ttl(0);
         table_meta->set_seg_cnt(8);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         table_meta->set_key_entry_max_height(8);
         table_meta->set_format_version(1);
         Schema* schema = table_meta->mutable_column_desc();
         schema->CopyFrom(args->schema);
-        ::rtidb::common::ColumnKey* ck = table_meta->add_column_key();
+        ::fedb::common::ColumnKey* ck = table_meta->add_column_key();
         ck->CopyFrom(args->ckey);
-        ::rtidb::api::CreateTableResponse cresponse;
+        ::fedb::api::CreateTableResponse cresponse;
         tablet_.CreateTable(NULL, &crequest, &cresponse, &closure);
         ASSERT_EQ(0, cresponse.code());
     }
     // put a record
     {
-        ::rtidb::api::PutRequest request;
+        ::fedb::api::PutRequest request;
         request.set_tid(tid);
         request.set_pid(0);
         request.set_format_version(1);
-        ::rtidb::api::Dimension* dim = request.add_dimensions();
+        ::fedb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
         std::string key = args->pk;
         dim->set_key(key);
-        ::rtidb::api::TSDimension* ts = request.add_ts_dimensions();
+        ::fedb::api::TSDimension* ts = request.add_ts_dimensions();
         ts->set_idx(0);
         ts->set_ts(args->ts);
         request.set_value(reinterpret_cast<char*>(args->row_ptr),
                           args->row_size);
-        ::rtidb::api::PutResponse response;
+        ::fedb::api::PutResponse response;
         tablet_.Put(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get with projectlist
     {
-        ::rtidb::api::GetRequest sr;
+        ::fedb::api::GetRequest sr;
         sr.set_tid(tid);
         sr.set_pid(0);
         sr.set_key(args->pk);
         sr.set_ts(args->ts);
         sr.set_et(0);
         sr.mutable_projection()->CopyFrom(args->plist);
-        ::rtidb::api::GetResponse srp;
+        ::fedb::api::GetResponse srp;
         tablet_.Get(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(srp.value().size(), args->out_size);
@@ -556,59 +566,59 @@ TEST_P(TabletProjectTest, get_case) {
 TEST_P(TabletProjectTest, sql_case) {
     auto args = GetParam();
     // create table
-    std::string name = "t" + ::rtidb::tablet::GenRand();
+    std::string name = "t" + ::fedb::tablet::GenRand();
     std::string db = "db" + name;
     int tid = rand() % 10000000;  // NOLINT
     MockClosure closure;
     // create a table
     {
-        ::rtidb::api::CreateTableRequest crequest;
-        ::rtidb::api::TableMeta* table_meta = crequest.mutable_table_meta();
+        ::fedb::api::CreateTableRequest crequest;
+        ::fedb::api::TableMeta* table_meta = crequest.mutable_table_meta();
         table_meta->set_db(db);
         table_meta->set_name(name);
         table_meta->set_tid(tid);
         table_meta->set_pid(0);
         table_meta->set_ttl(0);
         table_meta->set_seg_cnt(8);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         table_meta->set_key_entry_max_height(8);
         table_meta->set_format_version(1);
         Schema* schema = table_meta->mutable_column_desc();
         schema->CopyFrom(args->schema);
-        ::rtidb::common::ColumnKey* ck = table_meta->add_column_key();
+        ::fedb::common::ColumnKey* ck = table_meta->add_column_key();
         ck->CopyFrom(args->ckey);
-        ::rtidb::api::CreateTableResponse cresponse;
+        ::fedb::api::CreateTableResponse cresponse;
         tablet_.CreateTable(NULL, &crequest, &cresponse, &closure);
         ASSERT_EQ(0, cresponse.code());
     }
     // put a record
     {
-        ::rtidb::api::PutRequest request;
+        ::fedb::api::PutRequest request;
         request.set_tid(tid);
         request.set_pid(0);
         request.set_format_version(1);
-        ::rtidb::api::Dimension* dim = request.add_dimensions();
+        ::fedb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
         std::string key = args->pk;
         dim->set_key(key);
-        ::rtidb::api::TSDimension* ts = request.add_ts_dimensions();
+        ::fedb::api::TSDimension* ts = request.add_ts_dimensions();
         ts->set_idx(0);
         ts->set_ts(args->ts);
         request.set_value(reinterpret_cast<char*>(args->row_ptr),
                           args->row_size);
-        ::rtidb::api::PutResponse response;
+        ::fedb::api::PutResponse response;
         tablet_.Put(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
 
     {
-        ::rtidb::api::QueryRequest request;
+        ::fedb::api::QueryRequest request;
         request.set_db(db);
         std::string sql = "select col1 from " + name + ";";
         request.set_sql(sql);
         request.set_is_batch(true);
         brpc::Controller cntl;
-        ::rtidb::api::QueryResponse response;
+        ::fedb::api::QueryResponse response;
         tablet_.Query(&cntl, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, (int32_t)response.count());
@@ -618,63 +628,63 @@ TEST_P(TabletProjectTest, sql_case) {
 TEST_P(TabletProjectTest, scan_case) {
     auto args = GetParam();
     // create table
-    std::string name = ::rtidb::tablet::GenRand();
+    std::string name = ::fedb::tablet::GenRand();
     int tid = rand() % 10000000;  // NOLINT
     MockClosure closure;
     // create a table
     {
-        ::rtidb::api::CreateTableRequest crequest;
-        ::rtidb::api::TableMeta* table_meta = crequest.mutable_table_meta();
+        ::fedb::api::CreateTableRequest crequest;
+        ::fedb::api::TableMeta* table_meta = crequest.mutable_table_meta();
         table_meta->set_name(name);
         table_meta->set_tid(tid);
         table_meta->set_pid(0);
         table_meta->set_ttl(0);
         table_meta->set_seg_cnt(8);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         table_meta->set_key_entry_max_height(8);
         table_meta->set_format_version(1);
         Schema* schema = table_meta->mutable_column_desc();
         schema->CopyFrom(args->schema);
-        ::rtidb::common::ColumnKey* ck = table_meta->add_column_key();
+        ::fedb::common::ColumnKey* ck = table_meta->add_column_key();
         ck->CopyFrom(args->ckey);
-        ::rtidb::api::CreateTableResponse cresponse;
+        ::fedb::api::CreateTableResponse cresponse;
         tablet_.CreateTable(NULL, &crequest, &cresponse, &closure);
         ASSERT_EQ(0, cresponse.code());
     }
     // put a record
     {
-        ::rtidb::api::PutRequest request;
+        ::fedb::api::PutRequest request;
         request.set_tid(tid);
         request.set_pid(0);
         request.set_format_version(1);
-        ::rtidb::api::Dimension* dim = request.add_dimensions();
+        ::fedb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
         std::string key = args->pk;
         dim->set_key(key);
-        ::rtidb::api::TSDimension* ts = request.add_ts_dimensions();
+        ::fedb::api::TSDimension* ts = request.add_ts_dimensions();
         ts->set_idx(0);
         ts->set_ts(args->ts);
         request.set_value(reinterpret_cast<char*>(args->row_ptr),
                           args->row_size);
-        ::rtidb::api::PutResponse response;
+        ::fedb::api::PutResponse response;
         tablet_.Put(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
 
     // scan with projectlist
     {
-        ::rtidb::api::ScanRequest sr;
+        ::fedb::api::ScanRequest sr;
         sr.set_tid(tid);
         sr.set_pid(0);
         sr.set_pk(args->pk);
         sr.set_st(args->ts);
         sr.set_et(0);
         sr.mutable_projection()->CopyFrom(args->plist);
-        ::rtidb::api::ScanResponse srp;
+        ::fedb::api::ScanResponse srp;
         tablet_.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(1, (int64_t)srp.count());
-        ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(&srp);
+        ::fedb::base::KvIterator* kv_it = new ::fedb::base::KvIterator(&srp);
         ASSERT_TRUE(kv_it->Valid());
         ASSERT_EQ(kv_it->GetValue().size(), args->out_size);
         codec::RowView left(args->output_schema);
@@ -690,13 +700,13 @@ INSTANTIATE_TEST_SUITE_P(TabletProjectPrefix, TabletProjectTest,
                         testing::ValuesIn(GenCommonCase()));
 
 }  // namespace tablet
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    std::string k1 = ::rtidb::tablet::GenRand();
-    std::string k2 = ::rtidb::tablet::GenRand();
+    std::string k1 = ::fedb::tablet::GenRand();
+    std::string k2 = ::fedb::tablet::GenRand();
     FLAGS_db_root_path = "/tmp/db" + k1 + ",/tmp/db" + k2;
     FLAGS_recycle_bin_root_path = "/tmp/recycle" + k1 + ",/tmp/recycle" + k2;
     ::fesql::vm::Engine::InitializeGlobalLLVM();

@@ -1,9 +1,19 @@
-//
-// schema_codec.h
-// Copyright (C) 2017 4paradigm.com
-// Author vagrant
-// Date 2017-09-23
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #ifndef SRC_CODEC_SCHEMA_CODEC_H_
 #define SRC_CODEC_SCHEMA_CODEC_H_
@@ -23,7 +33,7 @@
 #include "codec/fe_row_codec.h"
 #include "codec/field_codec.h"
 
-namespace rtidb {
+namespace fedb {
 namespace codec {
 
 constexpr uint32_t MAX_ROW_BYTE_SIZE = 1024 * 1024;  // 1M
@@ -33,42 +43,42 @@ const std::string NONETOKEN = "!N@U#L$L%"; // NOLINT
 const std::string EMPTY_STRING = "!@#$%";  // NOLINT
 const std::string DEFAULT_LONG = "1";      // NOLINT
 
-static const std::unordered_map<std::string, ::rtidb::type::DataType>
-    DATA_TYPE_MAP = {{"bool", ::rtidb::type::kBool},
-                     {"smallint", ::rtidb::type::kSmallInt},
-                     {"uint16", ::rtidb::type::kSmallInt},
-                     {"int16", ::rtidb::type::kSmallInt},
-                     {"int", ::rtidb::type::kInt},
-                     {"int32", ::rtidb::type::kInt},
-                     {"uint32", ::rtidb::type::kInt},
-                     {"bigint", ::rtidb::type::kBigInt},
-                     {"int64", ::rtidb::type::kBigInt},
-                     {"uint64", ::rtidb::type::kBigInt},
-                     {"float", ::rtidb::type::kFloat},
-                     {"double", ::rtidb::type::kDouble},
-                     {"varchar", ::rtidb::type::kVarchar},
-                     {"string", rtidb::type::DataType::kString},
-                     {"date", ::rtidb::type::kDate},
-                     {"timestamp", ::rtidb::type::kTimestamp}};
+static const std::unordered_map<std::string, ::fedb::type::DataType>
+    DATA_TYPE_MAP = {{"bool", ::fedb::type::kBool},
+                     {"smallint", ::fedb::type::kSmallInt},
+                     {"uint16", ::fedb::type::kSmallInt},
+                     {"int16", ::fedb::type::kSmallInt},
+                     {"int", ::fedb::type::kInt},
+                     {"int32", ::fedb::type::kInt},
+                     {"uint32", ::fedb::type::kInt},
+                     {"bigint", ::fedb::type::kBigInt},
+                     {"int64", ::fedb::type::kBigInt},
+                     {"uint64", ::fedb::type::kBigInt},
+                     {"float", ::fedb::type::kFloat},
+                     {"double", ::fedb::type::kDouble},
+                     {"varchar", ::fedb::type::kVarchar},
+                     {"string", fedb::type::DataType::kString},
+                     {"date", ::fedb::type::kDate},
+                     {"timestamp", ::fedb::type::kTimestamp}};
 
-static const std::unordered_map<std::string, ::rtidb::type::IndexType>
-    INDEX_TYPE_MAP = {{"unique", ::rtidb::type::kUnique},
-                      {"nounique", ::rtidb::type::kNoUnique},
-                      {"primarykey", ::rtidb::type::kPrimaryKey},
-                      {"autogen", ::rtidb::type::kAutoGen},
-                      {"increment", ::rtidb::type::kIncrement}};
+static const std::unordered_map<std::string, ::fedb::type::IndexType>
+    INDEX_TYPE_MAP = {{"unique", ::fedb::type::kUnique},
+                      {"nounique", ::fedb::type::kNoUnique},
+                      {"primarykey", ::fedb::type::kPrimaryKey},
+                      {"autogen", ::fedb::type::kAutoGen},
+                      {"increment", ::fedb::type::kIncrement}};
 
-static const std::unordered_map<::rtidb::type::DataType, std::string>
-    DATA_TYPE_STR_MAP = {{::rtidb::type::kBool, "bool"},
-                         {::rtidb::type::kSmallInt, "smallInt"},
-                         {::rtidb::type::kInt, "int"},
-                         {::rtidb::type::kBigInt, "bigInt"},
-                         {::rtidb::type::kFloat, "float"},
-                         {::rtidb::type::kDouble, "double"},
-                         {::rtidb::type::kTimestamp, "timestamp"},
-                         {::rtidb::type::kDate, "date"},
-                         {::rtidb::type::kVarchar, "varchar"},
-                         {::rtidb::type::kString, "string"}};
+static const std::unordered_map<::fedb::type::DataType, std::string>
+    DATA_TYPE_STR_MAP = {{::fedb::type::kBool, "bool"},
+                         {::fedb::type::kSmallInt, "smallInt"},
+                         {::fedb::type::kInt, "int"},
+                         {::fedb::type::kBigInt, "bigInt"},
+                         {::fedb::type::kFloat, "float"},
+                         {::fedb::type::kDouble, "double"},
+                         {::fedb::type::kTimestamp, "timestamp"},
+                         {::fedb::type::kDate, "date"},
+                         {::fedb::type::kVarchar, "varchar"},
+                         {::fedb::type::kString, "string"}};
 
 enum ColType {
     kString = 0,
@@ -165,70 +175,70 @@ class SchemaCodec {
         }
     }
 
-    static ::rtidb::codec::ColType ConvertType(const std::string& raw_type) {
-        ::rtidb::codec::ColType type;
+    static ::fedb::codec::ColType ConvertType(const std::string& raw_type) {
+        ::fedb::codec::ColType type;
         if (raw_type == "int32") {
-            type = ::rtidb::codec::ColType::kInt32;
+            type = ::fedb::codec::ColType::kInt32;
         } else if (raw_type == "int64") {
-            type = ::rtidb::codec::ColType::kInt64;
+            type = ::fedb::codec::ColType::kInt64;
         } else if (raw_type == "uint32") {
-            type = ::rtidb::codec::ColType::kUInt32;
+            type = ::fedb::codec::ColType::kUInt32;
         } else if (raw_type == "uint64") {
-            type = ::rtidb::codec::ColType::kUInt64;
+            type = ::fedb::codec::ColType::kUInt64;
         } else if (raw_type == "float") {
-            type = ::rtidb::codec::ColType::kFloat;
+            type = ::fedb::codec::ColType::kFloat;
         } else if (raw_type == "double") {
-            type = ::rtidb::codec::ColType::kDouble;
+            type = ::fedb::codec::ColType::kDouble;
         } else if (raw_type == "string") {
-            type = ::rtidb::codec::ColType::kString;
+            type = ::fedb::codec::ColType::kString;
         } else if (raw_type == "timestamp") {
-            type = ::rtidb::codec::ColType::kTimestamp;
+            type = ::fedb::codec::ColType::kTimestamp;
         } else if (raw_type == "int16") {
-            type = ::rtidb::codec::ColType::kInt16;
+            type = ::fedb::codec::ColType::kInt16;
         } else if (raw_type == "uint16") {
-            type = ::rtidb::codec::ColType::kUInt16;
+            type = ::fedb::codec::ColType::kUInt16;
         } else if (raw_type == "bool") {
-            type = ::rtidb::codec::ColType::kBool;
+            type = ::fedb::codec::ColType::kBool;
         } else if (raw_type == "date") {
-            type = ::rtidb::codec::ColType::kDate;
+            type = ::fedb::codec::ColType::kDate;
         } else {
-            type = ::rtidb::codec::ColType::kUnknown;
+            type = ::fedb::codec::ColType::kUnknown;
         }
         return type;
     }
 
-    static rtidb::type::DataType ConvertStrType(const std::string& type) {
+    static fedb::type::DataType ConvertStrType(const std::string& type) {
         auto it = DATA_TYPE_MAP.find(type);
         if (it != DATA_TYPE_MAP.end()) {
             return it->second;
         }
-        return rtidb::type::kString;
+        return fedb::type::kString;
     }
 
-    static fesql::type::Type ConvertType(rtidb::type::DataType type) {
+    static fesql::type::Type ConvertType(fedb::type::DataType type) {
         switch (type) {
-            case rtidb::type::kBool: return fesql::type::kBool;
-            case rtidb::type::kSmallInt: return fesql::type::kInt16;
-            case rtidb::type::kInt: return fesql::type::kInt32;
-            case rtidb::type::kBigInt: return fesql::type::kInt64;
-            case rtidb::type::kFloat: return fesql::type::kFloat;
-            case rtidb::type::kDouble: return fesql::type::kDouble;
-            case rtidb::type::kDate: return fesql::type::kDate;
-            case rtidb::type::kTimestamp: return fesql::type::kTimestamp;
-            case rtidb::type::kVarchar: return fesql::type::kVarchar;
-            case rtidb::type::kString: return fesql::type::kVarchar;
+            case fedb::type::kBool: return fesql::type::kBool;
+            case fedb::type::kSmallInt: return fesql::type::kInt16;
+            case fedb::type::kInt: return fesql::type::kInt32;
+            case fedb::type::kBigInt: return fesql::type::kInt64;
+            case fedb::type::kFloat: return fesql::type::kFloat;
+            case fedb::type::kDouble: return fesql::type::kDouble;
+            case fedb::type::kDate: return fesql::type::kDate;
+            case fedb::type::kTimestamp: return fesql::type::kTimestamp;
+            case fedb::type::kVarchar: return fesql::type::kVarchar;
+            case fedb::type::kString: return fesql::type::kVarchar;
             default: return fesql::type::kNull;
         }
     }
 
     static int ConvertColumnDesc(
-        const ::rtidb::nameserver::TableInfo& table_info,
+        const ::fedb::nameserver::TableInfo& table_info,
         std::vector<ColumnDesc>& columns) {  // NOLINT
         return ConvertColumnDesc(table_info, columns, 0);
     }
 
     static int ConvertColumnDesc(
-        const ::rtidb::nameserver::TableInfo& table_info,
+        const ::fedb::nameserver::TableInfo& table_info,
         std::vector<ColumnDesc>& columns, int modify_index) {  // NOLINT
         columns.clear();
         if (table_info.column_desc_v1_size() > 0) {
@@ -239,9 +249,9 @@ class SchemaCodec {
             return ConvertColumnDesc(table_info.column_desc_v1(), columns);
         }
         for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
-            ::rtidb::codec::ColType type =
+            ::fedb::codec::ColType type =
                 ConvertType(table_info.column_desc(idx).type());
-            if (type == ::rtidb::codec::ColType::kUnknown) {
+            if (type == ::fedb::codec::ColType::kUnknown) {
                 return -1;
             }
             ColumnDesc column_desc;
@@ -253,9 +263,9 @@ class SchemaCodec {
         }
         if (modify_index > 0) {
             for (int idx = 0; idx < modify_index; idx++) {
-                ::rtidb::codec::ColType type =
+                ::fedb::codec::ColType type =
                     ConvertType(table_info.added_column_desc(idx).type());
-                if (type == ::rtidb::codec::ColType::kUnknown) {
+                if (type == ::fedb::codec::ColType::kUnknown) {
                     return -1;
                 }
                 ColumnDesc column_desc;
@@ -274,8 +284,8 @@ class SchemaCodec {
                                  const Schema& added_column_field) {
         columns.clear();
         for (const auto& cur_column_desc : column_desc_field) {
-            ::rtidb::codec::ColType type = ConvertType(cur_column_desc.type());
-            if (type == ::rtidb::codec::ColType::kUnknown) {
+            ::fedb::codec::ColType type = ConvertType(cur_column_desc.type());
+            if (type == ::fedb::codec::ColType::kUnknown) {
                 return -1;
             }
             ColumnDesc column_desc;
@@ -287,9 +297,9 @@ class SchemaCodec {
         }
         if (!added_column_field.empty()) {
             for (int idx = 0; idx < added_column_field.size(); idx++) {
-                ::rtidb::codec::ColType type =
+                ::fedb::codec::ColType type =
                     ConvertType(added_column_field.Get(idx).type());
-                if (type == ::rtidb::codec::ColType::kUnknown) {
+                if (type == ::fedb::codec::ColType::kUnknown) {
                     return -1;
                 }
                 ColumnDesc column_desc;
@@ -315,7 +325,7 @@ class SchemaCodec {
                                  const Schema& added_column_field) {
         columns.Clear();
         for (const auto& cur_column_desc : column_desc_field) {
-            rtidb::common::ColumnDesc* column_desc = columns.Add();
+            fedb::common::ColumnDesc* column_desc = columns.Add();
             column_desc->CopyFrom(cur_column_desc);
             if (!cur_column_desc.has_data_type()) {
                 auto iter = DATA_TYPE_MAP.find(cur_column_desc.type());
@@ -327,7 +337,7 @@ class SchemaCodec {
             }
         }
         for (const auto& cur_column_desc : added_column_field) {
-            rtidb::common::ColumnDesc* column_desc = columns.Add();
+            fedb::common::ColumnDesc* column_desc = columns.Add();
             column_desc->CopyFrom(cur_column_desc);
             if (!cur_column_desc.has_data_type()) {
                 auto iter = DATA_TYPE_MAP.find(cur_column_desc.type());
@@ -345,11 +355,11 @@ class SchemaCodec {
         const std::map<std::string, std::string>& columns_map,
         const Schema& schema, Schema& new_schema) {  // NOLINT
         for (int i = 0; i < schema.size(); i++) {
-            const ::rtidb::common::ColumnDesc& col = schema.Get(i);
+            const ::fedb::common::ColumnDesc& col = schema.Get(i);
             const std::string& col_name = col.name();
             auto iter = columns_map.find(col_name);
             if (iter != columns_map.end()) {
-                ::rtidb::common::ColumnDesc* tmp = new_schema.Add();
+                ::fedb::common::ColumnDesc* tmp = new_schema.Add();
                 tmp->CopyFrom(col);
             }
         }
@@ -363,12 +373,12 @@ class SchemaCodec {
         }
         return false;
     }
-    static rtidb::base::ResultMsg GetCdColumns(const Schema& schema,
+    static fedb::base::ResultMsg GetCdColumns(const Schema& schema,
             const std::map<std::string, std::string>& cd_columns_map,
-            ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>*
+            ::google::protobuf::RepeatedPtrField<::fedb::api::Columns>*
             cd_columns) {
-        rtidb::base::ResultMsg rm;
-        std::map<std::string, ::rtidb::type::DataType> name_type_map;
+        fedb::base::ResultMsg rm;
+        std::map<std::string, ::fedb::type::DataType> name_type_map;
         for (const auto& col_desc : schema) {
             name_type_map.insert(std::make_pair(
                         col_desc.name(), col_desc.data_type()));
@@ -380,14 +390,14 @@ class SchemaCodec {
                 rm.msg = "query failed! col_name " + kv.first + " not exist";
                 return rm;
             }
-            ::rtidb::api::Columns* index = cd_columns->Add();
+            ::fedb::api::Columns* index = cd_columns->Add();
             index->add_name(kv.first);
             if (kv.second == NONETOKEN || kv.second == "null") {
                 continue;
             }
-            ::rtidb::type::DataType type = iter->second;
+            ::fedb::type::DataType type = iter->second;
             std::string* val = index->mutable_value();
-            if (!::rtidb::codec::Convert(kv.second, type, val)) {
+            if (!::fedb::codec::Convert(kv.second, type, val)) {
                 rm.code = -1;
                 rm.msg = "convert str " + kv.second + "  failed!";
                 return rm;
@@ -399,46 +409,46 @@ class SchemaCodec {
     }
 
     static bool AddTypeToColumnDesc(
-            std::shared_ptr<::rtidb::nameserver::TableInfo> table_info) {
+            std::shared_ptr<::fedb::nameserver::TableInfo> table_info) {
         for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
-            ::rtidb::common::ColumnDesc* col_desc =
+            ::fedb::common::ColumnDesc* col_desc =
                 table_info->mutable_column_desc_v1(i);
-            ::rtidb::type::DataType data_type = col_desc->data_type();
+            ::fedb::type::DataType data_type = col_desc->data_type();
             switch (data_type) {
-                case rtidb::type::kBool: {
+                case fedb::type::kBool: {
                     col_desc->set_type("bool");
                     break;
                 }
-                case rtidb::type::kSmallInt: {
+                case fedb::type::kSmallInt: {
                     col_desc->set_type("int16");
                     break;
                 }
-                case rtidb::type::kInt: {
+                case fedb::type::kInt: {
                     col_desc->set_type("int32");
                     break;
                 }
-                case rtidb::type::kBigInt: {
+                case fedb::type::kBigInt: {
                     col_desc->set_type("int64");
                     break;
                 }
-                case rtidb::type::kDate: {
+                case fedb::type::kDate: {
                     col_desc->set_type("date");
                     break;
                 }
-                case rtidb::type::kTimestamp: {
+                case fedb::type::kTimestamp: {
                     col_desc->set_type("timestamp");
                     break;
                 }
-                case rtidb::type::kFloat: {
+                case fedb::type::kFloat: {
                     col_desc->set_type("float");
                     break;
                 }
-                case rtidb::type::kDouble: {
+                case fedb::type::kDouble: {
                     col_desc->set_type("double");
                     break;
                 }
-                case rtidb::type::kVarchar:
-                case rtidb::type::kString: {
+                case fedb::type::kVarchar:
+                case fedb::type::kString: {
                     col_desc->set_type("string");
                     break;
                 }
@@ -462,6 +472,6 @@ class SchemaCodec {
 };
 
 }  // namespace codec
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_CODEC_SCHEMA_CODEC_H_

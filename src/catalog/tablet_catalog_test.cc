@@ -1,12 +1,11 @@
 /*
- * tablet_catalog_test.cc
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 
 #include "catalog/tablet_catalog.h"
 
@@ -28,14 +28,14 @@
 #include "storage/table.h"
 #include "vm/engine.h"
 
-namespace rtidb {
+namespace fedb {
 namespace catalog {
 
 class TabletCatalogTest : public ::testing::Test {};
 
 struct TestArgs {
-    std::vector<std::shared_ptr<::rtidb::storage::Table>> tables;
-    std::vector<::rtidb::api::TableMeta> meta;
+    std::vector<std::shared_ptr<::fedb::storage::Table>> tables;
+    std::vector<::fedb::api::TableMeta> meta;
     std::string row;
     std::string idx_name;
     std::string pk;
@@ -44,21 +44,21 @@ struct TestArgs {
 
 TestArgs *PrepareTable(const std::string &tname) {
     TestArgs *args = new TestArgs();
-    ::rtidb::api::TableMeta meta;
+    ::fedb::api::TableMeta meta;
     meta.set_name(tname);
     meta.set_db("db1");
     meta.set_tid(1);
     meta.set_pid(0);
     meta.set_seg_cnt(8);
     meta.set_ttl(0);
-    meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+    meta.set_mode(::fedb::api::TableMode::kTableLeader);
     RtiDBSchema *schema = meta.mutable_column_desc();
     auto col1 = schema->Add();
     col1->set_name("col1");
-    col1->set_data_type(::rtidb::type::kVarchar);
+    col1->set_data_type(::fedb::type::kVarchar);
     auto col2 = schema->Add();
     col2->set_name("col2");
-    col2->set_data_type(::rtidb::type::kBigInt);
+    col2->set_data_type(::fedb::type::kBigInt);
 
     RtiDBIndex *index = meta.mutable_column_key();
     auto key1 = index->Add();
@@ -67,7 +67,7 @@ TestArgs *PrepareTable(const std::string &tname) {
     key1->add_ts_name("col2");
     args->idx_name = "index0";
 
-    ::rtidb::storage::MemTable *table = new ::rtidb::storage::MemTable(meta);
+    ::fedb::storage::MemTable *table = new ::fedb::storage::MemTable(meta);
     table->Init();
     ::fesql::vm::Schema fe_schema;
     SchemaAdapter::ConvertSchema(meta.column_desc(), &fe_schema);
@@ -82,7 +82,7 @@ TestArgs *PrepareTable(const std::string &tname) {
     rb.AppendInt64(1589780888000l);
     table->Put(pk, 1589780888000l, value.c_str(), value.size());
     args->ts = 1589780888000l;
-    std::shared_ptr<::rtidb::storage::MemTable> mtable(table);
+    std::shared_ptr<::fedb::storage::MemTable> mtable(table);
     args->tables.push_back(mtable);
     args->meta.push_back(meta);
     args->row = value;
@@ -92,21 +92,21 @@ TestArgs *PrepareTable(const std::string &tname) {
 TestArgs *PrepareMultiPartitionTable(const std::string &tname,
                                      int partition_num) {
     TestArgs *args = new TestArgs();
-    ::rtidb::api::TableMeta meta;
+    ::fedb::api::TableMeta meta;
     meta.set_name(tname);
     meta.set_db("db1");
     meta.set_tid(1);
     meta.set_pid(0);
     meta.set_seg_cnt(8);
     meta.set_ttl(0);
-    meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+    meta.set_mode(::fedb::api::TableMode::kTableLeader);
     RtiDBSchema *schema = meta.mutable_column_desc();
     auto col1 = schema->Add();
     col1->set_name("col1");
-    col1->set_data_type(::rtidb::type::kVarchar);
+    col1->set_data_type(::fedb::type::kVarchar);
     auto col2 = schema->Add();
     col2->set_name("col2");
-    col2->set_data_type(::rtidb::type::kBigInt);
+    col2->set_data_type(::fedb::type::kBigInt);
 
     RtiDBIndex *index = meta.mutable_column_key();
     auto key1 = index->Add();
@@ -119,9 +119,9 @@ TestArgs *PrepareMultiPartitionTable(const std::string &tname,
     }
 
     for (int i = 0; i < partition_num; i++) {
-        ::rtidb::api::TableMeta cur_meta(meta);
+        ::fedb::api::TableMeta cur_meta(meta);
         cur_meta.set_pid(i);
-        auto table = std::make_shared<::rtidb::storage::MemTable>(cur_meta);
+        auto table = std::make_shared<::fedb::storage::MemTable>(cur_meta);
         table->Init();
         args->tables.push_back(table);
         args->meta.push_back(cur_meta);
@@ -135,7 +135,7 @@ TestArgs *PrepareMultiPartitionTable(const std::string &tname,
         uint32_t size = rb.CalTotalLength(pk.size());
         uint32_t pid = 0;
         if (partition_num > 0) {
-            pid = (uint32_t)(::rtidb::base::hash64(pk) % partition_num);
+            pid = (uint32_t)(::fedb::base::hash64(pk) % partition_num);
         }
         uint64_t ts = 1589780888000l;
         for (int j = 0; j < 5; j++) {
@@ -574,13 +574,13 @@ TEST_F(TabletCatalogTest, get_tablet) {
     handler->AddTable(args->tables[3]);
     handler->AddTable(args->tables[7]);
     std::string pk = "key0";
-    int pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);
+    int pid = (uint32_t)(::fedb::base::hash64(pk) % pid_num);
     ASSERT_EQ(pid, 7);
     auto tablet = handler->GetTablet("", pk);
     auto real_tablet = std::dynamic_pointer_cast<fesql::vm::LocalTablet>(tablet);
     ASSERT_TRUE(real_tablet != nullptr);
     pk = "key1";
-    pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);
+    pid = (uint32_t)(::fedb::base::hash64(pk) % pid_num);
     ASSERT_EQ(pid, 6);
     tablet = handler->GetTablet("", pk);
     real_tablet = std::dynamic_pointer_cast<fesql::vm::LocalTablet>(tablet);
@@ -589,7 +589,7 @@ TEST_F(TabletCatalogTest, get_tablet) {
 }
 
 }  // namespace catalog
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

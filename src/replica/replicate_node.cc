@@ -1,10 +1,19 @@
 /*
- * replicate_node.cc
- * Copyright (C) 2017 4paradigm.com
- * Author denglong
- * Date 2017-08-11
+ * Copyright 2021 4Paradigm
  *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
+
 #include "replica/replicate_node.h"
 #include <gflags/gflags.h>
 #include <algorithm>
@@ -20,7 +29,7 @@ DECLARE_int32(request_timeout_ms);
 DECLARE_string(zk_cluster);
 DECLARE_uint32(go_back_max_try_cnt);
 
-namespace rtidb {
+namespace fedb {
 namespace replica {
 
 
@@ -30,8 +39,8 @@ static void* RunSyncTask(void* args) {
         PDLOG(WARNING, "input args is null");
         return NULL;
     }
-    ::rtidb::replica::ReplicateNode* rn =
-        static_cast<::rtidb::replica::ReplicateNode*>(args);
+    ::fedb::replica::ReplicateNode* rn =
+        static_cast<::fedb::replica::ReplicateNode*>(args);
     rn->MatchLogOffset();
     rn->SyncData();
     return NULL;
@@ -63,7 +72,7 @@ ReplicateNode::ReplicateNode(const std::string& point, LogParts* logs,
       rep_node_(rep_follower),
       follower_offset_(follower_offset) {
           if (!real_point.empty()) {
-              rpc_client_ = rtidb::RpcClient<::rtidb::api::TabletServer_Stub>(real_point);
+              rpc_client_ = fedb::RpcClient<::fedb::api::TabletServer_Stub>(real_point);
           }
       }
 
@@ -154,14 +163,14 @@ void ReplicateNode::SetLastSyncOffset(uint64_t offset) {
 }
 
 int ReplicateNode::MatchLogOffsetFromNode() {
-    ::rtidb::api::AppendEntriesRequest request;
+    ::fedb::api::AppendEntriesRequest request;
     request.set_tid(tid_);
     request.set_pid(pid_);
     request.set_term(term_->load(std::memory_order_relaxed));
     request.set_pre_log_index(0);
-    ::rtidb::api::AppendEntriesResponse response;
+    ::fedb::api::AppendEntriesResponse response;
     bool ret = rpc_client_.SendRequest(
-        &::rtidb::api::TabletServer_Stub::AppendEntries, &request, &response,
+        &::fedb::api::TabletServer_Stub::AppendEntries, &request, &response,
         FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (ret && response.code() == 0) {
         last_sync_offset_ = response.log_offset();
@@ -184,8 +193,8 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
               log_offset, last_sync_offset_);
         return 1;
     }
-    ::rtidb::api::AppendEntriesRequest request;
-    ::rtidb::api::AppendEntriesResponse response;
+    ::fedb::api::AppendEntriesRequest request;
+    ::fedb::api::AppendEntriesResponse response;
     uint64_t sync_log_offset = last_sync_offset_;
     bool request_from_cache = false;
     bool need_wait = false;
@@ -198,7 +207,7 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
                   endpoint_.c_str());
             return -1;
         }
-        const ::rtidb::api::LogEntry& entry =
+        const ::fedb::api::LogEntry& entry =
             request.entries(request.entries_size() - 1);
         if (entry.log_index() <= last_sync_offset_) {
             DEBUGLOG("duplicate log index from node %s cache",
@@ -220,15 +229,15 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
         batchSize = std::min(batchSize, (uint32_t)FLAGS_binlog_sync_batch_size);
         for (uint64_t i = 0; i < batchSize;) {
             std::string buffer;
-            ::rtidb::base::Slice record;
-            ::rtidb::base::Status status =
+            ::fedb::base::Slice record;
+            ::fedb::base::Status status =
                 log_reader_.ReadNextRecord(&record, &buffer);
             if (status.ok()) {
-                ::rtidb::api::LogEntry* entry = request.add_entries();
+                ::fedb::api::LogEntry* entry = request.add_entries();
                 if (!entry->ParseFromString(record.ToString())) {
                     PDLOG(WARNING,
                           "bad protobuf format %s size %ld. tid %u pid %u",
-                          ::rtidb::base::DebugString(record.ToString()).c_str(),
+                          ::fedb::base::DebugString(record.ToString()).c_str(),
                           record.ToString().size(), tid_, pid_);
                     request.mutable_entries()->RemoveLast();
                     break;
@@ -293,7 +302,7 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
     }
     if (request.entries_size() > 0) {
         bool ret = rpc_client_.SendRequest(
-            &::rtidb::api::TabletServer_Stub::AppendEntries, &request,
+            &::fedb::api::TabletServer_Stub::AppendEntries, &request,
             &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
         if (ret && response.code() == 0) {
             DEBUGLOG("sync log to node[%s] to offset %lld",
@@ -341,4 +350,4 @@ void ReplicateNode::Stop() {
 }
 
 }  // namespace replica
-}  // namespace rtidb
+}  // namespace fedb

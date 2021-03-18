@@ -1,3 +1,17 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src)
 
 function(compile_proto proto_name project_dir)
@@ -18,11 +32,11 @@ function(compile_lib LIB_NAME DIR DEPEND_FILE_LIST)
     endforeach()
     set(FILE_STR_LIST "${FILE_STR_LIST} ${DEPEND_FILE_LIST}")
     string(REPLACE " " ";" FILE_LIST ${FILE_STR_LIST})
-    add_library(${LIB_NAME} STATIC ${FILE_LIST} $<TARGET_OBJECTS:rtidb_proto>)
+    add_library(${LIB_NAME} STATIC ${FILE_LIST} $<TARGET_OBJECTS:fedb_proto>)
 endfunction(compile_lib)
 
 function(compile_test DIR)
-    set(TEST_LIBS nameserver tablet rtidb_sdk rtidb_catalog client zk_client replica base storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
+    set(TEST_LIBS nameserver tablet fedb_sdk fedb_catalog client zk_client replica base storage fedb_codec fedb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${BRPC_LIBS})
@@ -33,11 +47,9 @@ function(compile_test DIR)
             file(RELATIVE_PATH RELATIVE_TEST_PATH ${TEST_CPP_SOURCE_DIR} ${SRC_FILE})
             get_filename_component(TEST_TARGET_DIR ${RELATIVE_TEST_PATH} DIRECTORY)
             get_filename_component(TEST_TARGET_NAME ${RELATIVE_TEST_PATH} NAME_WE)
-            add_executable(${TEST_TARGET_NAME} ${SRC_FILE} $<TARGET_OBJECTS:rtidb_proto>)
+            add_executable(${TEST_TARGET_NAME} ${SRC_FILE} $<TARGET_OBJECTS:fedb_proto>)
             if (${TEST_TARGET_NAME} STREQUAL "tablet_impl_mem_test")
                 target_link_libraries(${TEST_TARGET_NAME} tcmalloc ${TEST_LIBS} gtest)
-            elseif (${TEST_TARGET_NAME} STREQUAL "tablet_engine_test")
-                target_link_libraries(${TEST_TARGET_NAME} base_test ${TEST_LIBS} yaml-cpp boost_filesystem gtest)
             else()
                 target_link_libraries(${TEST_TARGET_NAME} ${TEST_LIBS} gtest)
             endif()
@@ -52,8 +64,8 @@ compile_proto(tablet ${PROJECT_SOURCE_DIR})
 compile_proto(name_server ${PROJECT_SOURCE_DIR})
 compile_proto(sql_procedure ${PROJECT_SOURCE_DIR})
 
-compile_lib(rtidb_codec codec "")
-compile_lib(rtidb_catalog catalog "")
+compile_lib(fedb_codec codec "")
+compile_lib(fedb_catalog catalog "")
 compile_lib(client client "")
 compile_lib(base base "")
 compile_lib(zk_client zk "")
@@ -62,13 +74,13 @@ compile_lib(nameserver nameserver "")
 compile_lib(storage storage "")
 compile_lib(replica replica "")
 compile_lib(log log "flags.cc")
-compile_lib(rtidb_sdk sdk "")
+compile_lib(fedb_sdk sdk "")
 
-add_library(rtidb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc)
+add_library(fedb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc)
 
-add_library(rtidb_flags flags.cc)
+add_library(fedb_flags flags.cc)
 
-set(BIN_LIBS nameserver tablet rtidb_sdk rtidb_catalog client zk_client replica base storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
+set(BIN_LIBS nameserver tablet fedb_sdk fedb_catalog client zk_client replica base storage fedb_codec fedb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
 ${VM_LIBS}
 ${LLVM_LIBS}
 ${BRPC_LIBS})
@@ -85,10 +97,10 @@ if(TESTING_ENABLE)
     compile_test(log)
 endif()
 
-add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:rtidb_proto>)
-target_link_libraries(parse_log log rtidb_proto base protobuf glog gflags unwind lzma ssl crypto z snappy dl pthread)
+add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:fedb_proto>)
+target_link_libraries(parse_log log fedb_proto base protobuf glog gflags unwind lzma ssl crypto z snappy dl pthread)
 
-add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
-target_link_libraries(rtidb ${BIN_LIBS})
+add_executable(fedb cmd/fedb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
+target_link_libraries(fedb ${BIN_LIBS})
 
 add_subdirectory(sdk)

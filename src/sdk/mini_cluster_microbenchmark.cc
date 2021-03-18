@@ -1,12 +1,11 @@
 /*
- * mini_cluster_microbenchmark.cc
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
+ * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <gflags/gflags.h>
 #include <stdio.h>
 
@@ -32,13 +32,13 @@
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
 
-typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> RtiDBIndex;
+typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey> RtiDBIndex;
 
-::rtidb::sdk::MiniCluster* mc;
+::fedb::sdk::MiniCluster* mc;
 
 static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
-    ::rtidb::nameserver::TableInfo table_info;
+    ::fedb::nameserver::TableInfo table_info;
     table_info.set_format_version(1);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
@@ -51,26 +51,26 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     RtiDBSchema* schema = table_info.mutable_column_desc_v1();
     auto col1 = schema->Add();
     col1->set_name("col1");
-    col1->set_data_type(::rtidb::type::kVarchar);
+    col1->set_data_type(::fedb::type::kVarchar);
     col1->set_type("string");
     auto col2 = schema->Add();
     col2->set_name("col2");
-    col2->set_data_type(::rtidb::type::kBigInt);
+    col2->set_data_type(::fedb::type::kBigInt);
     col2->set_type("int64");
     col2->set_is_ts_col(true);
     auto col3 = schema->Add();
     col3->set_name("col3");
-    col3->set_data_type(::rtidb::type::kBigInt);
+    col3->set_data_type(::fedb::type::kBigInt);
     col3->set_type("int64");
     col3->set_is_ts_col(false);
     auto col4 = schema->Add();
     col4->set_name("col4");
-    col4->set_data_type(::rtidb::type::kBigInt);
+    col4->set_data_type(::fedb::type::kBigInt);
     col4->set_type("int64");
     col4->set_is_ts_col(false);
     auto col5 = schema->Add();
     col5->set_name("col5");
-    col5->set_data_type(::rtidb::type::kBigInt);
+    col5->set_data_type(::fedb::type::kBigInt);
     col5->set_type("int64");
     col5->set_is_ts_col(false);
 
@@ -82,7 +82,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     ok = ns_client->CreateTable(table_info, error);
 
     ::fesql::vm::Schema fe_schema;
-    ::rtidb::catalog::SchemaAdapter::ConvertSchema(table_info.column_desc_v1(), &fe_schema);
+    ::fedb::catalog::SchemaAdapter::ConvertSchema(table_info.column_desc_v1(), &fe_schema);
     ::fesql::codec::RowBuilder rb(fe_schema);
     std::string pk = "pk1";
     uint64_t ts = 1589780888000l;
@@ -95,12 +95,12 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     rb.AppendInt64(ts);
     rb.AppendInt64(ts);
     rb.AppendInt64(ts);
-    ::rtidb::sdk::ClusterOptions option;
+    ::fedb::sdk::ClusterOptions option;
     option.zk_cluster = mc->GetZkCluster();
     option.zk_path = mc->GetZkPath();
-    ::rtidb::sdk::ClusterSDK sdk(option);
+    ::fedb::sdk::ClusterSDK sdk(option);
     sdk.Init();
-    std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>> tablet;
+    std::vector<std::shared_ptr<::fedb::catalog::TabletAccessor>> tablet;
     ok = sdk.GetTablet(db, name, &tablet);
     if (!ok || tablet.size() <= 0) return;
     uint32_t tid = sdk.GetTableId(db, name);
@@ -111,7 +111,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     }
     std::string sql = "select col1, col2 + 1, col3, col4, col5 from " + name + " ;";
     ::fesql::sdk::Status status;
-    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
@@ -126,9 +126,9 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
 }
 
 static bool Async3Times(const std::string& db, const std::string& table, const std::string& key, int64_t st, int64_t et,
-                        std::shared_ptr<rtidb::sdk::TableReader> reader, fesql::sdk::Status* status) {
-    ::rtidb::sdk::ScanOption so;
-    std::vector<std::shared_ptr<::rtidb::sdk::ScanFuture>> tasks;
+                        std::shared_ptr<fedb::sdk::TableReader> reader, fesql::sdk::Status* status) {
+    ::fedb::sdk::ScanOption so;
+    std::vector<std::shared_ptr<::fedb::sdk::ScanFuture>> tasks;
     for (int i = 0; i < 3; i++) {
         auto f = reader->AsyncScan(db, table, key, st, et, so, 100, status);
         if (!f) {
@@ -143,7 +143,7 @@ static bool Async3Times(const std::string& db, const std::string& table, const s
     return true;
 }
 static void BM_SimpleTableReaderAsyncMulti(benchmark::State& state) {  // NOLINT
-    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
@@ -171,7 +171,7 @@ static void BM_SimpleTableReaderAsyncMulti(benchmark::State& state) {  // NOLINT
     }
     auto reader = router->GetTableReader();
 
-    ::rtidb::sdk::ScanOption so;
+    ::fedb::sdk::ScanOption so;
     auto rs = reader->Scan(db, "t1", key, st, et, so, &status);
     if (!rs || rs->Size() < 300) {
         LOG(WARNING) << "result count is mismatch";
@@ -183,7 +183,7 @@ static void BM_SimpleTableReaderAsyncMulti(benchmark::State& state) {  // NOLINT
 }
 
 static void BM_SimpleTableReaderAsync(benchmark::State& state) {  // NOLINT
-    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
@@ -211,7 +211,7 @@ static void BM_SimpleTableReaderAsync(benchmark::State& state) {  // NOLINT
     }
     auto reader = router->GetTableReader();
 
-    ::rtidb::sdk::ScanOption so;
+    ::fedb::sdk::ScanOption so;
     auto rs = reader->Scan(db, "t1", key, st, et, so, &status);
     if (!rs || rs->Size() < 300) {
         LOG(WARNING) << "result count is mismatch";
@@ -223,7 +223,7 @@ static void BM_SimpleTableReaderAsync(benchmark::State& state) {  // NOLINT
 }
 
 static void BM_SimpleTableReaderSync(benchmark::State& state) {  // NOLINT
-    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
@@ -251,7 +251,7 @@ static void BM_SimpleTableReaderSync(benchmark::State& state) {  // NOLINT
     }
     auto reader = router->GetTableReader();
 
-    ::rtidb::sdk::ScanOption so;
+    ::fedb::sdk::ScanOption so;
     auto rs = reader->Scan(db, "t1", key, st, et, so, &status);
     if (!rs || rs->Size() < 300) {
         LOG(WARNING) << "result count is mismatch";
@@ -273,7 +273,7 @@ static void GenerateInsertSQLSample(uint32_t size, std::string name, std::vector
 }
 
 static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
-    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
@@ -309,7 +309,7 @@ static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
 }
 
 static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
-    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
@@ -335,7 +335,7 @@ static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
     for (auto _ : state) {
         std::string insert = "insert into " + name + " values(?, ?, ?, ?, ?);";
         for (int i = 0; i < state.range(0); ++i) {
-            std::shared_ptr<::rtidb::sdk::SQLInsertRow> row = router->GetInsertRow(db, insert, &status);
+            std::shared_ptr<::fedb::sdk::SQLInsertRow> row = router->GetInsertRow(db, insert, &status);
             if (row != nullptr) {
                 row->Init(5);
                 row->AppendString("hello");
@@ -356,7 +356,7 @@ static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
 }
 
 static void BM_InsertPlaceHolderBatchFunction(benchmark::State& state) {  // NOLINT
-    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
@@ -381,10 +381,10 @@ static void BM_InsertPlaceHolderBatchFunction(benchmark::State& state) {  // NOL
     uint64_t time = 1589780888000l;
     for (auto _ : state) {
         std::string insert = "insert into " + name + " values(?, ?, ?, ?, ?);";
-        std::shared_ptr<::rtidb::sdk::SQLInsertRows> rows = router->GetInsertRows(db, insert, &status);
+        std::shared_ptr<::fedb::sdk::SQLInsertRows> rows = router->GetInsertRows(db, insert, &status);
         if (rows != nullptr) {
             for (int i = 0; i < state.range(0); ++i) {
-                std::shared_ptr<::rtidb::sdk::SQLInsertRow> row = rows->NewRow();
+                std::shared_ptr<::fedb::sdk::SQLInsertRow> row = rows->NewRow();
                 row->Init(5);
                 row->AppendString("hello");
                 row->AppendInt64(i + time);
@@ -404,7 +404,7 @@ static void BM_InsertPlaceHolderBatchFunction(benchmark::State& state) {  // NOL
 }
 
 static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
-    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
@@ -485,7 +485,7 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     }
 }
 static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
-    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
@@ -907,7 +907,7 @@ int main(int argc, char** argv) {
     FLAGS_enable_localtablet = !fesql::sqlcase::SQLCase::IS_DISABLE_LOCALTABLET();
     ::benchmark::Initialize(&argc, argv);
     if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
-    ::rtidb::sdk::MiniCluster mini_cluster(6181);
+    ::fedb::sdk::MiniCluster mini_cluster(6181);
     mc = &mini_cluster;
     if (!fesql::sqlcase::SQLCase::IS_CLUSTER()) {
         mini_cluster.SetUp(1);

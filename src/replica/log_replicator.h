@@ -1,9 +1,19 @@
-//
-// log_appender.h
-// Copyright (C) 2017 4paradigm.com
-// Author wangtaize
-// Date 2017-06-07
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 #ifndef SRC_REPLICA_LOG_REPLICATOR_H_
 #define SRC_REPLICA_LOG_REPLICATOR_H_
@@ -26,15 +36,15 @@
 #include "storage/table.h"
 #include "thread_pool.h" // NOLINT
 
-namespace rtidb {
+namespace fedb {
 namespace replica {
 
 using ::baidu::common::ThreadPool;
-using ::rtidb::api::LogEntry;
-using ::rtidb::log::Reader;
-using ::rtidb::log::SequentialFile;
-using ::rtidb::log::WriteHandle;
-using ::rtidb::storage::Table;
+using ::fedb::api::LogEntry;
+using ::fedb::log::Reader;
+using ::fedb::log::SequentialFile;
+using ::fedb::log::WriteHandle;
+using ::fedb::storage::Table;
 
 enum ReplicatorRole { kLeaderNode = 1, kFollowerNode };
 
@@ -52,11 +62,11 @@ class LogReplicator {
     bool StartSyncing();
 
     // the slave node receives master log entries
-    bool AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
-                       ::rtidb::api::AppendEntriesResponse* response);
+    bool AppendEntries(const ::fedb::api::AppendEntriesRequest* request,
+                       ::fedb::api::AppendEntriesResponse* response);
 
     // the master node append entry
-    bool AppendEntry(::rtidb::api::LogEntry& entry); // NOLINT
+    bool AppendEntry(::fedb::api::LogEntry& entry); // NOLINT
 
     //  data to slave nodes
     void Notify();
@@ -140,6 +150,6 @@ class LogReplicator {
 };
 
 }  // namespace replica
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_REPLICA_LOG_REPLICATOR_H_

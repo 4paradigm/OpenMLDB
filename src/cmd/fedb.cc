@@ -1,9 +1,19 @@
-//
-// rtidb.cc
-// Copyright (C) 2017 4paradigm.com
-// Author wangtaize
-// Date 2017-03-31
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <fcntl.h>
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -49,8 +59,8 @@
 #include "config.h" // NOLINT
 #include "vm/engine.h"
 
-using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
-using TabletClient = rtidb::client::TabletClient;
+using Schema = ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>;
+using TabletClient = fedb::client::TabletClient;
 
 DECLARE_string(endpoint);
 DECLARE_int32(port);
@@ -61,14 +71,14 @@ DECLARE_int32(put_concurrency_limit);
 DECLARE_int32(scan_concurrency_limit);
 DECLARE_int32(get_concurrency_limit);
 DEFINE_string(role, "tablet | nameserver | client | ns_client | sql_client",
-              "Set the rtidb role for start");
+              "Set the fedb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
 
 DECLARE_string(log_dir);
 DEFINE_int32(log_file_size, 1024, "Config the log size in MB");
 DEFINE_int32(log_file_count, 24, "Config the log count");
-DEFINE_string(log_level, "debug", "Set the rtidb log level, eg: debug or info");
+DEFINE_string(log_level, "debug", "Set the fedb log level, eg: debug or info");
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(skiplist_max_height);
@@ -79,11 +89,10 @@ DECLARE_bool(version);
 DECLARE_bool(use_name);
 DECLARE_string(data_dir);
 
-const std::string RTIDB_VERSION = std::to_string(RTIDB_VERSION_MAJOR) + "." + // NOLINT
-                            std::to_string(RTIDB_VERSION_MEDIUM) + "." +
-                            std::to_string(RTIDB_VERSION_MINOR) + "." +
-                            std::to_string(RTIDB_VERSION_BUG) + "." +
-                            RTIDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
+const std::string FEDB_VERSION = std::to_string(FEDB_VERSION_MAJOR) + "." + // NOLINT
+                            std::to_string(FEDB_VERSION_MEDIUM) + "." +
+                            std::to_string(FEDB_VERSION_MINOR) + "." +
+                            FEDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
 
 static std::map<std::string, std::string> real_ep_map;
 
@@ -95,14 +104,14 @@ void shutdown_signal_handler(int signal) {
 void SetupLog() {
     // Config log
     if (FLAGS_log_level == "debug") {
-        ::rtidb::base::SetLogLevel(DEBUG);
+        ::fedb::base::SetLogLevel(DEBUG);
     } else {
-        ::rtidb::base::SetLogLevel(INFO);
+        ::fedb::base::SetLogLevel(INFO);
     }
     if (!FLAGS_log_dir.empty()) {
-        ::rtidb::base::Mkdir(FLAGS_log_dir);
+        ::fedb::base::Mkdir(FLAGS_log_dir);
         std::string file = FLAGS_log_dir + "/" + FLAGS_role;
-        rtidb::base::SetLogFile(file);
+        fedb::base::SetLogFile(file);
     }
 }
 
@@ -112,7 +121,7 @@ void GetRealEndpoint(std::string *real_endpoint) {
     }
     if (FLAGS_endpoint.empty() && FLAGS_port > 0) {
         std::string ip;
-        if (::rtidb::base::GetLocalIp(&ip)) {
+        if (::fedb::base::GetLocalIp(&ip)) {
             PDLOG(INFO, "local ip is: %s", ip.c_str());
         } else {
             PDLOG(WARNING, "fail to get local ip: %s", ip.c_str());
@@ -123,7 +132,7 @@ void GetRealEndpoint(std::string *real_endpoint) {
         *real_endpoint = oss.str();
         if (FLAGS_use_name) {
             std::string server_name;
-            if (!::rtidb::base::GetNameFromTxt(FLAGS_data_dir,
+            if (!::fedb::base::GetNameFromTxt(FLAGS_data_dir,
                         &server_name)) {
                 PDLOG(WARNING, "GetNameFromTxt failed");
                 exit(1);
@@ -140,8 +149,8 @@ void StartNameServer() {
     SetupLog();
     std::string real_endpoint;
     GetRealEndpoint(&real_endpoint);
-    ::rtidb::nameserver::NameServerImpl* name_server =
-        new ::rtidb::nameserver::NameServerImpl();
+    ::fedb::nameserver::NameServerImpl* name_server =
+        new ::fedb::nameserver::NameServerImpl();
     if (!name_server->Init(real_endpoint)) {
         PDLOG(WARNING, "Fail to init");
         exit(1);
@@ -164,8 +173,8 @@ void StartNameServer() {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    PDLOG(INFO, "start nameserver on endpoint %s with version %s", real_endpoint.c_str(), RTIDB_VERSION.c_str());
-    server.set_version(RTIDB_VERSION.c_str());
+    PDLOG(INFO, "start nameserver on endpoint %s with version %s", real_endpoint.c_str(), FEDB_VERSION.c_str());
+    server.set_version(FEDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
 
@@ -225,7 +234,7 @@ void StartTablet() {
     if (THPIsEnabled()) {
         PDLOG(WARNING,
               "THP is enabled in your kernel. This will create latency and "
-              "memory usage issues with RTIDB."
+              "memory usage issues with FEDB."
               "To fix this issue run the command 'echo never > "
               "/sys/kernel/mm/transparent_hugepage/enabled' and "
               "'echo never > /sys/kernel/mm/transparent_hugepage/defrag' as "
@@ -234,14 +243,14 @@ void StartTablet() {
     if (SwapIsEnabled()) {
         PDLOG(WARNING,
               "Swap is enabled in your kernel. This will create latency and "
-              "memory usage issues with RTIDB."
+              "memory usage issues with FEDB."
               "To fix this issue run the command 'swapoff -a' as root");
     }
     SetupLog();
     ::fesql::vm::Engine::InitializeGlobalLLVM();
     std::string real_endpoint;
     GetRealEndpoint(&real_endpoint);
-    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+    ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
     bool ok = tablet->Init(real_endpoint);
     if (!ok) {
         PDLOG(WARNING, "fail to init tablet");
@@ -266,15 +275,15 @@ void StartTablet() {
         exit(1);
     }
 #ifdef PZFPGA_ENABLE
-    PDLOG(INFO, "start tablet on endpoint %s with version %s with fpga", real_endpoint.c_str(), RTIDB_VERSION.c_str());
+    PDLOG(INFO, "start tablet on endpoint %s with version %s with fpga", real_endpoint.c_str(), FEDB_VERSION.c_str());
 #else
-    PDLOG(INFO, "start tablet on endpoint %s with version %s", real_endpoint.c_str(), RTIDB_VERSION.c_str());
+    PDLOG(INFO, "start tablet on endpoint %s with version %s", real_endpoint.c_str(), FEDB_VERSION.c_str());
 #endif
     if (!tablet->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
     }
-    server.set_version(RTIDB_VERSION.c_str());
+    server.set_version(FEDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
 #endif
@@ -286,9 +295,9 @@ int PutData(
     const std::vector<uint64_t>& ts_dimensions, uint64_t ts,
     const std::string& value,
     const google::protobuf::RepeatedPtrField<
-        ::rtidb::nameserver::TablePartition>& table_partition,
+        ::fedb::nameserver::TablePartition>& table_partition,
     uint32_t format_version) {
-    std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>
+    std::map<std::string, std::shared_ptr<::fedb::client::TabletClient>>
         clients;
     for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
         uint32_t pid = iter->first;
@@ -322,7 +331,7 @@ int PutData(
                 }
             }
             clients.insert(std::make_pair(endpoint,
-                    std::make_shared<::rtidb::client::TabletClient>(endpoint, real_endpoint)));
+                    std::make_shared<::fedb::client::TabletClient>(endpoint, real_endpoint)));
             if (clients[endpoint]->Init() < 0) {
                 printf("tablet client init failed, endpoint is %s\n",
                        endpoint.c_str());
@@ -349,40 +358,40 @@ int PutData(
     return 0;
 }
 
-::rtidb::base::ResultMsg PutSchemaData(
-    const ::rtidb::nameserver::TableInfo& table_info, uint64_t ts,
+::fedb::base::ResultMsg PutSchemaData(
+    const ::fedb::nameserver::TableInfo& table_info, uint64_t ts,
     const std::vector<std::string>& input_value) {
     std::string value;
-    ::rtidb::codec::SDKCodec codec(table_info);
-    std::map<uint32_t, ::rtidb::codec::Dimension> dimensions;
+    ::fedb::codec::SDKCodec codec(table_info);
+    std::map<uint32_t, ::fedb::codec::Dimension> dimensions;
     const int part_size = table_info.table_partition_size();
     if (table_info.partition_key_size() > 0) {
         if (codec.EncodeDimension(input_value, 0, &dimensions) < 0) {
-            return ::rtidb::base::ResultMsg(-1, "Encode dimension error");
+            return ::fedb::base::ResultMsg(-1, "Encode dimension error");
         }
         std::string key;
         if (codec.CombinePartitionKey(input_value, &key) < 0) {
-            return ::rtidb::base::ResultMsg(-1, "combine partition key error");
+            return ::fedb::base::ResultMsg(-1, "combine partition key error");
         }
-        uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) % part_size);
+        uint32_t pid = (uint32_t)(::fedb::base::hash64(key) % part_size);
         if (pid != 0) {
-            auto pair = dimensions.emplace(pid, ::rtidb::codec::Dimension());
+            auto pair = dimensions.emplace(pid, ::fedb::codec::Dimension());
             dimensions[0].swap(pair.first->second);
             dimensions.erase(0);
         }
     } else {
         if (codec.EncodeDimension(input_value, part_size, &dimensions) < 0) {
-            return ::rtidb::base::ResultMsg(-1, "Encode dimension error");
+            return ::fedb::base::ResultMsg(-1, "Encode dimension error");
         }
     }
     if (codec.EncodeRow(input_value, &value) < 0) {
-        return ::rtidb::base::ResultMsg(-1, "Encode data error");
+        return ::fedb::base::ResultMsg(-1, "Encode data error");
     }
     std::vector<uint64_t> ts_dimensions;
     if (codec.EncodeTsDimension(input_value, &ts_dimensions) < 0) {
-        return ::rtidb::base::ResultMsg(-1, "Encode ts dimension error");
+        return ::fedb::base::ResultMsg(-1, "Encode ts dimension error");
     }
-    if (table_info.compress_type() == ::rtidb::nameserver::kSnappy) {
+    if (table_info.compress_type() == ::fedb::nameserver::kSnappy) {
         std::string compressed;
         ::snappy::Compress(value.c_str(), value.length(), &compressed);
         value = compressed;
@@ -391,19 +400,19 @@ int PutData(
     const uint32_t fmt_ver = table_info.format_version();
     PutData(tid, dimensions, ts_dimensions, ts, value, table_info.table_partition(), fmt_ver);
 
-    return ::rtidb::base::ResultMsg(0, "ok");
+    return ::fedb::base::ResultMsg(0, "ok");
 }
 
 int SplitPidGroup(const std::string& pid_group,
                   std::set<uint32_t>& pid_set) {  // NOLINT
     try {
-        if (::rtidb::base::IsNumber(pid_group)) {
+        if (::fedb::base::IsNumber(pid_group)) {
             pid_set.insert(boost::lexical_cast<uint32_t>(pid_group));
         } else if (pid_group.find('-') != std::string::npos) {
             std::vector<std::string> vec;
             boost::split(vec, pid_group, boost::is_any_of("-"));
-            if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) ||
-                !::rtidb::base::IsNumber(vec[1])) {
+            if (vec.size() != 2 || !::fedb::base::IsNumber(vec[0]) ||
+                !::fedb::base::IsNumber(vec[1])) {
                 return -1;
             }
             uint32_t start_index = boost::lexical_cast<uint32_t>(vec[0]);
@@ -416,7 +425,7 @@ int SplitPidGroup(const std::string& pid_group,
             std::vector<std::string> vec;
             boost::split(vec, pid_group, boost::is_any_of(","));
             for (const auto& pid_str : vec) {
-                if (!::rtidb::base::IsNumber(pid_str)) {
+                if (!::fedb::base::IsNumber(pid_str)) {
                     return -1;
                 }
                 pid_set.insert(boost::lexical_cast<uint32_t>(pid_str));
@@ -436,11 +445,11 @@ bool GetParameterMap(
     const std::string& delimiter,
     std::map<std::string, std::string>& parameter_map) {  // NOLINT
     std::vector<std::string> temp_vec;
-    ::rtidb::base::SplitString(parts[1], delimiter, temp_vec);
+    ::fedb::base::SplitString(parts[1], delimiter, temp_vec);
     if (temp_vec.size() == 2 && temp_vec[0] == first && !temp_vec[1].empty()) {
         parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
         for (uint32_t i = 2; i < parts.size(); i++) {
-            ::rtidb::base::SplitString(parts[i], delimiter, temp_vec);
+            ::fedb::base::SplitString(parts[i], delimiter, temp_vec);
             if (temp_vec.size() < 2 || temp_vec[1].empty()) {
                 return false;
             }
@@ -450,8 +459,8 @@ bool GetParameterMap(
     return true;
 }
 
-std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
-        const ::rtidb::nameserver::TableInfo& table_info, uint32_t pid,
+std::shared_ptr<::fedb::client::TabletClient> GetTabletClient(
+        const ::fedb::nameserver::TableInfo& table_info, uint32_t pid,
         std::string& msg) {  // NOLINT
     std::string endpoint;
     for (int idx = 0; idx < table_info.table_partition_size(); idx++) {
@@ -477,7 +486,7 @@ std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
     }
     if (endpoint.empty()) {
         msg = "cannot find healthy endpoint. pid is " + std::to_string(pid);
-        return std::shared_ptr<::rtidb::client::TabletClient>();
+        return std::shared_ptr<::fedb::client::TabletClient>();
     }
     std::string real_endpoint;
     if (!real_ep_map.empty()) {
@@ -486,7 +495,7 @@ std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
             real_endpoint = rit->second;
         }
     }
-    auto tablet_client = std::make_shared<::rtidb::client::TabletClient>(endpoint, real_endpoint);
+    auto tablet_client = std::make_shared<::fedb::client::TabletClient>(endpoint, real_endpoint);
     if (tablet_client->Init() < 0) {
         msg = "tablet client init failed, endpoint is " + endpoint;
         tablet_client.reset();
@@ -495,7 +504,7 @@ std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
 }
 
 void HandleNSClientSetTTL(const std::vector<std::string>& parts,
-                          ::rtidb::client::NsClient* client) {
+                          ::fedb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "bad setttl format, eg settl t1 absolute 10" << std::endl;
         return;
@@ -505,22 +514,22 @@ void HandleNSClientSetTTL(const std::vector<std::string>& parts,
         std::string err;
         uint64_t abs_ttl = 0;
         uint64_t lat_ttl = 0;
-        ::rtidb::api::TTLType type = ::rtidb::api::kLatestTime;
+        ::fedb::api::TTLType type = ::fedb::api::kLatestTime;
         if (parts[2] == "absolute") {
-            type = ::rtidb::api::TTLType::kAbsoluteTime;
+            type = ::fedb::api::TTLType::kAbsoluteTime;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[3]);
             if (parts.size() == 5) {
                 ts_name = parts[4];
             }
         } else if (parts[2] == "absandlat") {
-            type = ::rtidb::api::TTLType::kAbsAndLat;
+            type = ::fedb::api::TTLType::kAbsAndLat;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[3]);
             lat_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             if (parts.size() == 6) {
                 ts_name = parts[5];
             }
         } else if (parts[2] == "absorlat") {
-            type = ::rtidb::api::TTLType::kAbsOrLat;
+            type = ::fedb::api::TTLType::kAbsOrLat;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[3]);
             lat_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             if (parts.size() == 6) {
@@ -545,7 +554,7 @@ void HandleNSClientSetTTL(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientCancelOP(const std::vector<std::string>& parts,
-                            ::rtidb::client::NsClient* client) {
+                            ::fedb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "bad cancelop format, eg cancelop 1002" << std::endl;
         return;
@@ -570,7 +579,7 @@ void HandleNSClientCancelOP(const std::vector<std::string>& parts,
 }
 
 void HandleNSShowTablet(const std::vector<std::string>& parts,
-                        ::rtidb::client::NsClient* client) {
+                        ::fedb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("endpoint");
     row.push_back("real_endpoint");
@@ -578,7 +587,7 @@ void HandleNSShowTablet(const std::vector<std::string>& parts,
     row.push_back("age");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
-    std::vector<::rtidb::client::TabletInfo> tablets;
+    std::vector<::fedb::client::TabletInfo> tablets;
     std::string msg;
     bool ok = client->ShowTablet(tablets, msg);
     if (!ok) {
@@ -590,20 +599,20 @@ void HandleNSShowTablet(const std::vector<std::string>& parts,
         row.push_back(tablets[i].endpoint);
         row.push_back(tablets[i].real_endpoint);
         row.push_back(tablets[i].state);
-        row.push_back(::rtidb::base::HumanReadableTime(tablets[i].age));
+        row.push_back(::fedb::base::HumanReadableTime(tablets[i].age));
         tp.AddRow(row);
     }
     tp.Print(true);
 }
 
 void HandleNSShowSdkEndpoint(const std::vector<std::string>& parts,
-                        ::rtidb::client::NsClient* client) {
+                        ::fedb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("endpoint");
     row.push_back("sdk_endpoint");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
-    std::vector<::rtidb::client::TabletInfo> tablets;
+    std::vector<::fedb::client::TabletInfo> tablets;
     std::string msg;
     bool ok = client->ShowSdkEndpoint(tablets, msg);
     if (!ok) {
@@ -621,7 +630,7 @@ void HandleNSShowSdkEndpoint(const std::vector<std::string>& parts,
 }
 
 void HandleNSRemoveReplicaCluster(const std::vector<std::string>& parts,
-                                  ::rtidb::client::NsClient* client) {
+                                  ::fedb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "Bad format. eg removerepcluster dc2" << std::endl;
         return;
@@ -647,7 +656,7 @@ void HandleNSRemoveReplicaCluster(const std::vector<std::string>& parts,
 }
 
 void HandleNSSwitchMode(const std::vector<std::string>& parts,
-                        ::rtidb::client::NsClient* client) {
+                        ::fedb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -660,9 +669,9 @@ void HandleNSSwitchMode(const std::vector<std::string>& parts,
     std::string msg;
     bool ok = false;
     if (parts[1] == "normal") {
-        ok = client->SwitchMode(::rtidb::nameserver::kNORMAL, msg);
+        ok = client->SwitchMode(::fedb::nameserver::kNORMAL, msg);
     } else if (parts[1] == "leader") {
-        ok = client->SwitchMode(::rtidb::nameserver::kLEADER, msg);
+        ok = client->SwitchMode(::fedb::nameserver::kLEADER, msg);
     }
     if (!ok) {
         std::cout << "Fail to swith mode. error msg: " << msg << std::endl;
@@ -672,8 +681,8 @@ void HandleNSSwitchMode(const std::vector<std::string>& parts,
 }
 
 void HandleNSShowNameServer(const std::vector<std::string>& parts,
-                            ::rtidb::client::NsClient* client,
-                            std::shared_ptr<::rtidb::zk::ZkClient> zk_client) {
+                            ::fedb::client::NsClient* client,
+                            std::shared_ptr<::fedb::zk::ZkClient> zk_client) {
     if (FLAGS_zk_cluster.empty() || !zk_client) {
         std::cout << "Show nameserver failed. zk_cluster is empty" << std::endl;
         return;
@@ -729,7 +738,7 @@ void HandleNSShowNameServer(const std::vector<std::string>& parts,
 }
 
 void HandleNSMakeSnapshot(const std::vector<std::string>& parts,
-                          ::rtidb::client::NsClient* client) {
+                          ::fedb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -749,7 +758,7 @@ void HandleNSMakeSnapshot(const std::vector<std::string>& parts,
 }
 
 void HandleNSAddReplica(const std::vector<std::string>& parts,
-                        ::rtidb::client::NsClient* client) {
+                        ::fedb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -773,7 +782,7 @@ void HandleNSAddReplica(const std::vector<std::string>& parts,
 }
 
 void HandleNSDelReplica(const std::vector<std::string>& parts,
-                        ::rtidb::client::NsClient* client) {
+                        ::fedb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -797,7 +806,7 @@ void HandleNSDelReplica(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientDropTable(const std::vector<std::string>& parts,
-                             ::rtidb::client::NsClient* client) {
+                             ::fedb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -822,7 +831,7 @@ void HandleNSClientDropTable(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientSyncTable(const std::vector<std::string>& parts,
-                             ::rtidb::client::NsClient* client) {
+                             ::fedb::client::NsClient* client) {
     if (parts.size() != 3 && parts.size() != 4) {
         std::cout << "Bad format for synctable! eg. synctable table_name "
                      "cluster_alias [pid]"
@@ -847,7 +856,7 @@ void HandleNSClientSyncTable(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientSetSdkEndpoint(const std::vector<std::string>& parts,
-                             ::rtidb::client::NsClient* client) {
+                             ::fedb::client::NsClient* client) {
     if (parts.size() != 3) {
         std::cout << "Bad format for setsdkendpoint!"
             "eg. setsdkendpoint server_name sdkendpoint" << std::endl;
@@ -863,32 +872,32 @@ void HandleNSClientSetSdkEndpoint(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientAddIndex(const std::vector<std::string>& parts,
-                            ::rtidb::client::NsClient* client) {
+                            ::fedb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format for addindex! eg. addindex table_name "
                      "index_name [col_name] [ts_name]"
                   << std::endl;
         return;
     }
-    ::rtidb::common::ColumnKey column_key;
+    ::fedb::common::ColumnKey column_key;
     column_key.set_index_name(parts[2]);
-    std::vector<rtidb::common::ColumnDesc> cols;
+    std::vector<fedb::common::ColumnDesc> cols;
     if (parts.size() > 3) {
         std::vector<std::string> col_vec;
-        ::rtidb::base::SplitString(parts[3], ",", col_vec);
+        ::fedb::base::SplitString(parts[3], ",", col_vec);
         for (const auto& col_name : col_vec) {
             std::vector<std::string> type_pair;
-            rtidb::base::SplitString(col_name, ":", type_pair);
+            fedb::base::SplitString(col_name, ":", type_pair);
             if (type_pair.size() > 1) {
                 column_key.add_col_name(type_pair[0]);
-                rtidb::common::ColumnDesc col_desc;
+                fedb::common::ColumnDesc col_desc;
                 col_desc.set_name(type_pair[0]);
-                auto type = rtidb::codec::SchemaCodec::ConvertType(type_pair[1]);
-                if (type == rtidb::codec::ColType::kUnknown) {
+                auto type = fedb::codec::SchemaCodec::ConvertType(type_pair[1]);
+                if (type == fedb::codec::ColType::kUnknown) {
                     std::cerr << col_name << " type " << type_pair[0] << " invalid\n";
                     return;
                 }
-                auto it = rtidb::codec::DATA_TYPE_MAP.find(type_pair[1]);
+                auto it = fedb::codec::DATA_TYPE_MAP.find(type_pair[1]);
                 col_desc.set_type(type_pair[1]);
                 col_desc.set_data_type(it->second);
                 cols.push_back(std::move(col_desc));
@@ -901,7 +910,7 @@ void HandleNSClientAddIndex(const std::vector<std::string>& parts,
     }
     if (parts.size() > 4) {
         std::vector<std::string> ts_vec;
-        ::rtidb::base::SplitString(parts[4], ",", ts_vec);
+        ::fedb::base::SplitString(parts[4], ",", ts_vec);
         for (const auto& ts_name : ts_vec) {
             column_key.add_ts_name(ts_name);
         }
@@ -921,7 +930,7 @@ void HandleNSClientAddIndex(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientConfSet(const std::vector<std::string>& parts,
-                           ::rtidb::client::NsClient* client) {
+                           ::fedb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -937,7 +946,7 @@ void HandleNSClientConfSet(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientConfGet(const std::vector<std::string>& parts,
-                           ::rtidb::client::NsClient* client) {
+                           ::fedb::client::NsClient* client) {
     if (parts.size() < 1) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -969,7 +978,7 @@ void HandleNSClientConfGet(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientChangeLeader(const std::vector<std::string>& parts,
-                                ::rtidb::client::NsClient* client) {
+                                ::fedb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -995,7 +1004,7 @@ void HandleNSClientChangeLeader(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientOfflineEndpoint(const std::vector<std::string>& parts,
-                                   ::rtidb::client::NsClient* client) {
+                                   ::fedb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -1027,7 +1036,7 @@ void HandleNSClientOfflineEndpoint(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientMigrate(const std::vector<std::string>& parts,
-                           ::rtidb::client::NsClient* client) {
+                           ::fedb::client::NsClient* client) {
     if (parts.size() < 5) {
         std::cout << "Bad format. eg, migrate 127.0.0.1:9991 table1 1-10 "
                      "127.0.0.1:9992"
@@ -1059,7 +1068,7 @@ void HandleNSClientMigrate(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientRecoverEndpoint(const std::vector<std::string>& parts,
-                                   ::rtidb::client::NsClient* client) {
+                                   ::fedb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -1106,7 +1115,7 @@ void HandleNSClientRecoverEndpoint(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientRecoverTable(const std::vector<std::string>& parts,
-                                ::rtidb::client::NsClient* client) {
+                                ::fedb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -1127,7 +1136,7 @@ void HandleNSClientRecoverTable(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientConnectZK(const std::vector<std::string> parts,
-                             ::rtidb::client::NsClient* client) {
+                             ::fedb::client::NsClient* client) {
     std::string msg;
     bool ok = client->ConnectZK(msg);
     if (ok) {
@@ -1138,7 +1147,7 @@ void HandleNSClientConnectZK(const std::vector<std::string> parts,
 }
 
 void HandleNSClientDisConnectZK(const std::vector<std::string> parts,
-                                ::rtidb::client::NsClient* client) {
+                                ::fedb::client::NsClient* client) {
     std::string msg;
     bool ok = client->DisConnectZK(msg);
     if (ok) {
@@ -1149,30 +1158,30 @@ void HandleNSClientDisConnectZK(const std::vector<std::string> parts,
 }
 
 void HandleNSClientShowTable(const std::vector<std::string>& parts,
-                             ::rtidb::client::NsClient* client) {
+                             ::fedb::client::NsClient* client) {
     std::string name;
     if (parts.size() >= 2) {
         name = parts[1];
     }
-    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::vector<::fedb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(name, tables, msg);
     if (!ret) {
         std::cout << "failed to showtable. error msg: " << msg << std::endl;
         return;
     }
-    ::rtidb::cmd::PrintTableInfo(tables);
+    ::fedb::cmd::PrintTableInfo(tables);
 }
 
 void HandleNSClientShowSchema(const std::vector<std::string>& parts,
-                              ::rtidb::client::NsClient* client) {
+                              ::fedb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "showschema format error. eg: showschema tablename"
                   << std::endl;
         return;
     }
     std::string name = parts[1];
-    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::vector<::fedb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(name, tables, msg);
     if (!ret) {
@@ -1185,12 +1194,12 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts,
     }
     if (tables[0].column_desc_v1_size() > 0) {
         if (tables[0].added_column_desc_size() == 0) {
-            ::rtidb::cmd::PrintSchema(tables[0].column_desc_v1());
+            ::fedb::cmd::PrintSchema(tables[0].column_desc_v1());
         } else {
-            ::rtidb::cmd::PrintSchema(tables[0]);
+            ::fedb::cmd::PrintSchema(tables[0]);
         }
         printf("\n#ColumnKey\n");
-        ::rtidb::api::TTLType ttl_type;
+        ::fedb::api::TTLType ttl_type;
         uint64_t abs_ttl = 0;
         uint64_t lat_ttl = 0;
         if (tables[0].has_ttl_desc()) {
@@ -1199,21 +1208,21 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts,
             lat_ttl = tables[0].ttl_desc().lat_ttl();
         } else {
             if (tables[0].ttl_type() == "kAbsoluteTime") {
-                ttl_type = ::rtidb::api::kAbsoluteTime;
+                ttl_type = ::fedb::api::kAbsoluteTime;
                 abs_ttl = tables[0].ttl();
             } else {
-                ttl_type = ::rtidb::api::kLatestTime;
+                ttl_type = ::fedb::api::kLatestTime;
                 lat_ttl = tables[0].ttl();
             }
         }
-        ::rtidb::storage::TTLSt ttl_st(abs_ttl, lat_ttl, ::rtidb::storage::TTLSt::ConvertTTLType(ttl_type));
-        ::rtidb::cmd::PrintColumnKey(ttl_st, tables[0].column_desc_v1(), tables[0].column_key());
+        ::fedb::storage::TTLSt ttl_st(abs_ttl, lat_ttl, ::fedb::storage::TTLSt::ConvertTTLType(ttl_type));
+        ::fedb::cmd::PrintColumnKey(ttl_st, tables[0].column_desc_v1(), tables[0].column_key());
 
     } else if (tables[0].column_desc_size() > 0) {
         if (tables[0].added_column_desc_size() == 0) {
-            ::rtidb::cmd::PrintSchema(tables[0].column_desc());
+            ::fedb::cmd::PrintSchema(tables[0].column_desc());
         } else {
-            ::rtidb::cmd::PrintSchema(tables[0]);
+            ::fedb::cmd::PrintSchema(tables[0]);
         }
     } else {
         printf("table %s has not schema\n", name.c_str());
@@ -1221,9 +1230,9 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts,
 }
 
 void HandleNSDelete(const std::vector<std::string>& parts,
-                    ::rtidb::client::NsClient* client) {
+                    ::fedb::client::NsClient* client) {
     std::vector<std::string> vec;
-    ::rtidb::base::SplitString(parts[1], "=", vec);
+    ::fedb::base::SplitString(parts[1], "=", vec);
     if (vec.size() < 2 || vec.at(0) != "table_name") {
         if (parts.size() < 3) {
             std::cout
@@ -1232,7 +1241,7 @@ void HandleNSDelete(const std::vector<std::string>& parts,
                 << std::endl;
             return;
         }
-        std::vector<::rtidb::nameserver::TableInfo> tables;
+        std::vector<::fedb::nameserver::TableInfo> tables;
         std::string msg;
         bool ret = client->ShowTable(parts[1], tables, msg);
         if (!ret) {
@@ -1246,9 +1255,9 @@ void HandleNSDelete(const std::vector<std::string>& parts,
         }
         uint32_t tid = tables[0].tid();
         std::string key = parts[2];
-        uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) %
+        uint32_t pid = (uint32_t)(::fedb::base::hash64(key) %
                                   tables[0].table_partition_size());
-        std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
+        std::shared_ptr<::fedb::client::TabletClient> tablet_client =
             GetTabletClient(tables[0], pid, msg);
         if (!tablet_client) {
             std::cout << "failed to delete. error msg: " << msg << std::endl;
@@ -1264,8 +1273,8 @@ void HandleNSDelete(const std::vector<std::string>& parts,
                     }
                 }
             } else {
-                std::vector<::rtidb::codec::ColumnDesc> columns;
-                if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(
+                std::vector<::fedb::codec::ColumnDesc> columns;
+                if (::fedb::codec::SchemaCodec::ConvertColumnDesc(
                         tables[0], columns) < 0) {
                     std::cout << "convert table column desc failed"
                               << std::endl;
@@ -1326,7 +1335,7 @@ bool GetColumnMap(
             is_condition_columns_map = true;
             continue;
         }
-        ::rtidb::base::SplitString(parts[i], delimiter, temp_vec);
+        ::fedb::base::SplitString(parts[i], delimiter, temp_vec);
         if (temp_vec.size() < 2 || temp_vec[1].empty()) {
             return false;
         }
@@ -1341,7 +1350,7 @@ bool GetColumnMap(
 }
 
 void HandleNsUseDb(const std::vector<std::string>& parts,
-                   ::rtidb::client::NsClient* client) {
+                   ::fedb::client::NsClient* client) {
     std::string msg;
     if (parts.size() == 1) {
         client->ClearDb();
@@ -1356,7 +1365,7 @@ void HandleNsUseDb(const std::vector<std::string>& parts,
 }
 
 void HandleNsCreateDb(const std::vector<std::string>& parts,
-                      ::rtidb::client::NsClient* client) {
+                      ::fedb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "createdb format error. eg: createdb database_name"
                   << std::endl;
@@ -1371,7 +1380,7 @@ void HandleNsCreateDb(const std::vector<std::string>& parts,
 }
 
 void HandleNsDropDb(const std::vector<std::string>& parts,
-                    ::rtidb::client::NsClient* client) {
+                    ::fedb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "dropdb format error. eg: dropdb database_name"
                   << std::endl;
@@ -1403,26 +1412,26 @@ bool ParseCondAndOp(const std::string& source, uint64_t& first_end,  // NOLINT
             case '=':
                 first_end = i;
                 value_begin = i + 1;
-                get_type = rtidb::api::kSubKeyEq;
+                get_type = fedb::api::kSubKeyEq;
                 return true;
             case '<':
                 first_end = i;
                 if (source[i + 1] == '=') {
                     value_begin = i + 2;
-                    get_type = rtidb::api::kSubKeyLe;
+                    get_type = fedb::api::kSubKeyLe;
                 } else {
                     value_begin = i + 1;
-                    get_type = rtidb::api::kSubKeyLt;
+                    get_type = fedb::api::kSubKeyLt;
                 }
                 return true;
             case '>':
                 first_end = i;
                 if (source[i + 1] == '=') {
                     value_begin = i + 2;
-                    get_type = rtidb::api::kSubKeyGe;
+                    get_type = fedb::api::kSubKeyGe;
                 } else {
                     value_begin = i + 1;
-                    get_type = rtidb::api::kSubKeyGt;
+                    get_type = fedb::api::kSubKeyGt;
                 }
                 return true;
             default:
@@ -1436,7 +1445,7 @@ bool GetCondAndPrintColumns(
     const std::vector<std::string>& parts,
     std::map<std::string, std::string>& condition_columns_map,  // NOLINT
     std::vector<std::string>& print_column,                     // NOLINT
-    rtidb::api::GetType& get_type) {                            // NOLINT
+    fedb::api::GetType& get_type) {                            // NOLINT
     uint64_t size = parts.size();
     uint64_t i = 2;
     if (parts[i] == "*") {
@@ -1476,11 +1485,11 @@ bool GetCondAndPrintColumns(
         std::string val = parts[i].substr(value_begin);
         condition_columns_map.insert(std::make_pair(col, val));
     }
-    get_type = static_cast<rtidb::api::GetType>(first_type);
+    get_type = static_cast<fedb::api::GetType>(first_type);
     return true;
 }
 
-void HandleNSShowCatalogVersion(::rtidb::client::NsClient* client) {
+void HandleNSShowCatalogVersion(::fedb::client::NsClient* client) {
     std::map<std::string, uint64_t> catalog_version;
     std::string error;
     client->ShowCatalogVersion(&catalog_version, &error);
@@ -1504,7 +1513,7 @@ void HandleNSShowCatalogVersion(::rtidb::client::NsClient* client) {
     tp->Print(true);
 }
 
-void HandleNSShowDB(::rtidb::client::NsClient* client) {
+void HandleNSShowDB(::fedb::client::NsClient* client) {
     std::vector<std::string> dbs;
     std::string error;
     client->ShowDatabase(&dbs, error);
@@ -1526,7 +1535,7 @@ void HandleNSShowDB(::rtidb::client::NsClient* client) {
 }
 
 void HandleNSGet(const std::vector<std::string>& parts,
-                 ::rtidb::client::NsClient* client) {
+                 ::fedb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "get format error. eg: get table_name key ts | get "
                      "table_name key idx_name ts | get table_name=xxx key=xxx "
@@ -1594,7 +1603,7 @@ void HandleNSGet(const std::vector<std::string>& parts,
         printf("Invalid args. ts should be unsigned int\n");
         return;
     }
-    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::vector<::fedb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(table_name, tables, msg);
     if (!ret) {
@@ -1607,13 +1616,13 @@ void HandleNSGet(const std::vector<std::string>& parts,
         return;
     }
     uint32_t tid = tables[0].tid();
-    uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) % tables[0].table_partition_size());
+    uint32_t pid = (uint32_t)(::fedb::base::hash64(key) % tables[0].table_partition_size());
     std::shared_ptr<TabletClient> tb_client = GetTabletClient(tables[0], pid, msg);
     if (!tb_client) {
         std::cout << "failed to get. error msg: " << msg << std::endl;
         return;
     }
-    ::rtidb::codec::SDKCodec codec(tables[0]);
+    ::fedb::codec::SDKCodec codec(tables[0]);
     bool no_schema = tables[0].column_desc_v1_size() == 0 && tables[0].column_desc_size() == 0;
     if (no_schema) {
         std::string value;
@@ -1622,7 +1631,7 @@ void HandleNSGet(const std::vector<std::string>& parts,
             std::string msg;
             bool ok = tb_client->Get(tid, pid, key, timestamp, value, ts, msg);
             if (ok) {
-                if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
+                if (tables[0].compress_type() == ::fedb::nameserver::kSnappy) {
                     std::string uncompressed;
                     ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
                     value = uncompressed;
@@ -1675,14 +1684,14 @@ void HandleNSGet(const std::vector<std::string>& parts,
                 return;
             }
         }
-        if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
+        if (tables[0].compress_type() == ::fedb::nameserver::kSnappy) {
             std::string uncompressed;
             ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
             value.swap(uncompressed);
         }
         row.clear();
         codec.DecodeRow(value, &row);
-        ::rtidb::cmd::TransferString(&row);
+        ::fedb::cmd::TransferString(&row);
         row.insert(row.begin(), std::to_string(ts));
         row.insert(row.begin(), "1");
         uint64_t row_size = row.size();
@@ -1695,7 +1704,7 @@ void HandleNSGet(const std::vector<std::string>& parts,
 }
 
 void HandleNSScan(const std::vector<std::string>& parts,
-                  ::rtidb::client::NsClient* client) {
+                  ::fedb::client::NsClient* client) {
     if (parts.size() < 5) {
         std::cout
             << "scan format error. eg: scan table_name pk start_time end_time "
@@ -1783,7 +1792,7 @@ void HandleNSScan(const std::vector<std::string>& parts,
         return;
     }
 
-    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::vector<::fedb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(table_name, tables, msg);
     if (!ret) {
@@ -1795,7 +1804,7 @@ void HandleNSScan(const std::vector<std::string>& parts,
         return;
     }
     uint32_t tid = tables[0].tid();
-    uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) % tables[0].table_partition_size());
+    uint32_t pid = (uint32_t)(::fedb::base::hash64(key) % tables[0].table_partition_size());
     std::shared_ptr<TabletClient> tb_client = GetTabletClient(tables[0], pid, msg);
     if (!tb_client) {
         std::cout << "failed to scan. error msg: " << msg << std::endl;
@@ -1803,7 +1812,7 @@ void HandleNSScan(const std::vector<std::string>& parts,
     }
     bool no_schema = tables[0].column_desc_v1_size() == 0 && tables[0].column_desc_size() == 0;
     if (no_schema) {
-        std::shared_ptr<::rtidb::base::KvIterator> it;
+        std::shared_ptr<::fedb::base::KvIterator> it;
         if (is_pair_format) {
             it.reset(tb_client->Scan(tid, pid, key, st, et, limit, atleast, msg));
         } else {
@@ -1824,10 +1833,10 @@ void HandleNSScan(const std::vector<std::string>& parts,
             std::cout << "Fail to scan table. error msg: " << msg << std::endl;
             return;
         } else {
-            std::vector<std::shared_ptr<::rtidb::base::KvIterator>> iter_vec;
+            std::vector<std::shared_ptr<::fedb::base::KvIterator>> iter_vec;
             iter_vec.push_back(std::move(it));
-            ::rtidb::cmd::SDKIterator sdk_it(iter_vec, limit);
-            ::rtidb::cmd::ShowTableRows(key, &sdk_it,
+            ::fedb::cmd::SDKIterator sdk_it(iter_vec, limit);
+            ::fedb::cmd::ShowTableRows(key, &sdk_it,
                                         tables[0].compress_type());
         }
     } else {
@@ -1852,7 +1861,7 @@ void HandleNSScan(const std::vector<std::string>& parts,
                 return;
             }
         }
-        std::vector<std::shared_ptr<::rtidb::base::KvIterator>> iter_vec;
+        std::vector<std::shared_ptr<::fedb::base::KvIterator>> iter_vec;
         if (tables[0].partition_key_size() > 0) {
             for (uint32_t cur_pid = 0;
                  cur_pid < (uint32_t)tables[0].table_partition_size();
@@ -1863,7 +1872,7 @@ void HandleNSScan(const std::vector<std::string>& parts,
                               << std::endl;
                     return;
                 }
-                std::shared_ptr<::rtidb::base::KvIterator> it(
+                std::shared_ptr<::fedb::base::KvIterator> it(
                     tb_client->Scan(tid, cur_pid, key, st, et, index_name,
                                         ts_name, limit, atleast, msg));
                 if (!it) {
@@ -1874,7 +1883,7 @@ void HandleNSScan(const std::vector<std::string>& parts,
                 iter_vec.push_back(std::move(it));
             }
         } else {
-            std::shared_ptr<::rtidb::base::KvIterator> it(
+            std::shared_ptr<::fedb::base::KvIterator> it(
                 tb_client->Scan(tid, pid, key, st, et, index_name, ts_name,
                                     limit, atleast, msg));
             if (!it) {
@@ -1884,13 +1893,13 @@ void HandleNSScan(const std::vector<std::string>& parts,
             }
             iter_vec.push_back(std::move(it));
         }
-        ::rtidb::cmd::SDKIterator sdk_it(iter_vec, limit);
-        ::rtidb::cmd::ShowTableRows(tables[0], &sdk_it);
+        ::fedb::cmd::SDKIterator sdk_it(iter_vec, limit);
+        ::fedb::cmd::ShowTableRows(tables[0], &sdk_it);
     }
 }
 
 void HandleNSCount(const std::vector<std::string>& parts,
-                   ::rtidb::client::NsClient* client) {
+                   ::fedb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "count format error | count table_name key [col_name] "
                      "[filter_expired_data] | count table_name=xxx key=xxx "
@@ -1976,7 +1985,7 @@ void HandleNSCount(const std::vector<std::string>& parts,
             return;
         }
     }
-    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::vector<::fedb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(table_name, tables, msg);
     if (!ret) {
@@ -1989,9 +1998,9 @@ void HandleNSCount(const std::vector<std::string>& parts,
         return;
     }
     uint32_t tid = tables[0].tid();
-    uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) %
+    uint32_t pid = (uint32_t)(::fedb::base::hash64(key) %
                               tables[0].table_partition_size());
-    std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
+    std::shared_ptr<::fedb::client::TabletClient> tablet_client =
         GetTabletClient(tables[0], pid, msg);
     if (!tablet_client) {
         std::cout << "failed to count. cannot not found tablet client, pid is "
@@ -2027,7 +2036,7 @@ void HandleNSCount(const std::vector<std::string>& parts,
 }
 
 void HandleNSPreview(const std::vector<std::string>& parts,
-                     ::rtidb::client::NsClient* client) {
+                     ::fedb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "preview format error. eg: preview table_name [limit]"
                   << std::endl;
@@ -2055,7 +2064,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
             return;
         }
     }
-    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::vector<::fedb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(parts[1], tables, msg);
     if (!ret) {
@@ -2068,7 +2077,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
         return;
     }
     uint32_t tid = tables[0].tid();
-    ::rtidb::codec::SDKCodec codec(tables[0]);
+    ::fedb::codec::SDKCodec codec(tables[0]);
     bool has_ts_col = codec.HasTSCol();
     bool no_schema = tables[0].column_desc_v1_size() == 0 && tables[0].column_desc_size() == 0;
     std::vector<std::string> row;
@@ -2099,7 +2108,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
             return;
         }
         uint32_t count = 0;
-        ::rtidb::base::KvIterator* it = tb_client->Traverse(tid, pid, "", "", 0, limit, count);
+        ::fedb::base::KvIterator* it = tb_client->Traverse(tid, pid, "", "", 0, limit, count);
         if (it == NULL) {
             std::cout << "Fail to preview table" << std::endl;
             return;
@@ -2111,7 +2120,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
 
             if (no_schema) {
                 std::string value = it->GetValue().ToString();
-                if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
+                if (tables[0].compress_type() == ::fedb::nameserver::kSnappy) {
                     std::string uncompressed;
                     ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
                     value = uncompressed;
@@ -2124,13 +2133,13 @@ void HandleNSPreview(const std::vector<std::string>& parts,
                     row.push_back(std::to_string(it->GetKey()));
                 }
                 std::string value;
-                if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
+                if (tables[0].compress_type() == ::fedb::nameserver::kSnappy) {
                     ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(), &value);
                 } else {
                     value.assign(it->GetValue().data(), it->GetValue().size());
                 }
                 codec.DecodeRow(value, &row);
-                ::rtidb::cmd::TransferString(&row);
+                ::fedb::cmd::TransferString(&row);
                 uint64_t row_size = row.size();
                 for (uint64_t i = 0; i < max_size - row_size; i++) {
                     row.push_back("");
@@ -2146,7 +2155,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
 }
 
 void HandleNSAddTableField(const std::vector<std::string>& parts,
-                           ::rtidb::client::NsClient* client) {
+                           ::fedb::client::NsClient* client) {
     if (parts.size() != 4) {
         std::cout << "addtablefield format error. eg: addtablefield tablename "
                      "column_name column_type"
@@ -2170,7 +2179,7 @@ void HandleNSAddTableField(const std::vector<std::string>& parts,
         printf("type %s is invalid\n", parts[3].c_str());
         return;
     }
-    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::vector<::fedb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(parts[1], tables, msg);
     if (!ret) {
@@ -2183,7 +2192,7 @@ void HandleNSAddTableField(const std::vector<std::string>& parts,
                parts[1].c_str());
         return;
     }
-    ::rtidb::common::ColumnDesc column_desc;
+    ::fedb::common::ColumnDesc column_desc;
     column_desc.set_name(parts[2]);
     column_desc.set_type(parts[3]);
     if (!client->AddTableField(parts[1], column_desc, msg)) {
@@ -2194,13 +2203,13 @@ void HandleNSAddTableField(const std::vector<std::string>& parts,
 }
 
 void HandleNSInfo(const std::vector<std::string>& parts,
-                  ::rtidb::client::NsClient* client) {
+                  ::fedb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "info format error. eg: info tablename" << std::endl;
         return;
     }
     std::string name = parts[1];
-    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::vector<::fedb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(name, tables, msg);
     if (!ret) {
@@ -2208,11 +2217,11 @@ void HandleNSInfo(const std::vector<std::string>& parts,
                   << std::endl;
         return;
     }
-    ::rtidb::cmd::PrintTableInformation(tables);
+    ::fedb::cmd::PrintTableInformation(tables);
 }
 
 void HandleNSAddReplicaCluster(const std::vector<std::string>& parts,
-                               ::rtidb::client::NsClient* client) {
+                               ::fedb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "addrepcluster format error. eg: addrepcluster "
                      "zk_endpoints zk_path alias_name"
@@ -2231,13 +2240,13 @@ void HandleNSAddReplicaCluster(const std::vector<std::string>& parts,
 }
 
 void HandleShowReplicaCluster(const std::vector<std::string>& parts,
-                              ::rtidb::client::NsClient* client) {
+                              ::fedb::client::NsClient* client) {
     std::vector<std::string> row = {"zk_endpoints", "zk_path", "alias", "state",
                                     "age"};
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
 
-    std::vector<::rtidb::nameserver::ClusterAddAge> cluster_info;
+    std::vector<::fedb::nameserver::ClusterAddAge> cluster_info;
     std::string msg;
     bool ok = client->ShowReplicaCluster(cluster_info, msg);
     if (!ok) {
@@ -2250,13 +2259,13 @@ void HandleShowReplicaCluster(const std::vector<std::string>& parts,
         row.push_back(i.replica().zk_path());
         row.push_back(i.replica().alias());
         row.push_back(i.state());
-        row.push_back(::rtidb::base::HumanReadableTime(i.age()));
+        row.push_back(::fedb::base::HumanReadableTime(i.age()));
         tp.AddRow(row);
     }
     tp.Print(true);
 }
 bool HasIsTsCol(
-    const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
+    const google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>&
         list) {
     if (list.empty()) {
         return false;
@@ -2269,7 +2278,7 @@ bool HasIsTsCol(
     return false;
 }
 
-void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+void HandleNSPut(const std::vector<std::string>& parts, ::fedb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "put format error. eg: put table_name pk ts value | put table_name [ts] field1 field2 ...\n";
         return;
@@ -2292,7 +2301,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
     } else {
         table_name = parts[1];
     }
-    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::vector<::fedb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(table_name, tables, msg);
     if (!ret) {
@@ -2361,16 +2370,16 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
                    parts[3].c_str());
             return;
         }
-        uint32_t pid = (uint32_t)(::rtidb::base::hash64(pk) %
+        uint32_t pid = (uint32_t)(::fedb::base::hash64(pk) %
                                   tables[0].table_partition_size());
-        std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
+        std::shared_ptr<::fedb::client::TabletClient> tablet_client =
             GetTabletClient(tables[0], pid, msg);
         if (!tablet_client) {
             std::cout << "Failed to put. error msg: " << msg << std::endl;
             return;
         }
         std::string value = parts[4];
-        if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
+        if (tables[0].compress_type() == ::fedb::nameserver::kSnappy) {
             std::string compressed;
             ::snappy::Compress(value.c_str(), value.length(), &compressed);
             value = compressed;
@@ -2384,8 +2393,8 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
 }
 
 int SetTablePartition(
-    const ::rtidb::client::TableInfo& table_info,
-    ::rtidb::nameserver::TableInfo& ns_table_info) {  // NOLINT
+    const ::fedb::client::TableInfo& table_info,
+    ::fedb::nameserver::TableInfo& ns_table_info) {  // NOLINT
     if (table_info.table_partition_size() > 0) {
         std::map<uint32_t, std::string> leader_map;
         std::map<uint32_t, std::set<std::string>> follower_map;
@@ -2393,14 +2402,14 @@ int SetTablePartition(
             std::string pid_group = table_info.table_partition(idx).pid_group();
             uint32_t start_index = 0;
             uint32_t end_index = 0;
-            if (::rtidb::base::IsNumber(pid_group)) {
+            if (::fedb::base::IsNumber(pid_group)) {
                 start_index = boost::lexical_cast<uint32_t>(pid_group);
                 end_index = start_index;
             } else {
                 std::vector<std::string> vec;
                 boost::split(vec, pid_group, boost::is_any_of("-"));
-                if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) ||
-                    !::rtidb::base::IsNumber(vec[1])) {
+                if (vec.size() != 2 || !::fedb::base::IsNumber(vec[0]) ||
+                    !::fedb::base::IsNumber(vec[1])) {
                     printf(
                         "Fail to create table. pid_group[%s] format error.\n",
                         pid_group.c_str());
@@ -2466,10 +2475,10 @@ int SetTablePartition(
         }
 
         for (const auto& kv : leader_map) {
-            ::rtidb::nameserver::TablePartition* table_partition =
+            ::fedb::nameserver::TablePartition* table_partition =
                 ns_table_info.add_table_partition();
             table_partition->set_pid(kv.first);
-            ::rtidb::nameserver::PartitionMeta* partition_meta =
+            ::fedb::nameserver::PartitionMeta* partition_meta =
                 table_partition->add_partition_meta();
             partition_meta->set_endpoint(kv.second);
             partition_meta->set_is_leader(true);
@@ -2479,7 +2488,7 @@ int SetTablePartition(
             }
             // add follower
             for (const auto& endpoint : iter->second) {
-                ::rtidb::nameserver::PartitionMeta* partition_meta =
+                ::fedb::nameserver::PartitionMeta* partition_meta =
                     table_partition->add_partition_meta();
                 partition_meta->set_endpoint(endpoint);
                 partition_meta->set_is_leader(false);
@@ -2499,9 +2508,9 @@ int SetTablePartition(
     return 0;
 }
 
-int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
+int SetColumnDesc(const ::fedb::client::TableInfo& table_info,
                   const std::set<std::string>& type_set,
-                  ::rtidb::nameserver::TableInfo& ns_table_info) {  // NOLINT
+                  ::fedb::nameserver::TableInfo& ns_table_info) {  // NOLINT
     std::map<std::string, std::string> name_map;
     std::set<std::string> index_set;
     std::set<std::string> ts_col_set;
@@ -2559,11 +2568,11 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
         }
         name_map.insert(
             std::make_pair(table_info.column_desc(idx).name(), cur_type));
-        ::rtidb::common::ColumnDesc* column_desc =
+        ::fedb::common::ColumnDesc* column_desc =
             ns_table_info.add_column_desc_v1();
         column_desc->CopyFrom(table_info.column_desc(idx));
-        const auto& tp_iter = ::rtidb::codec::DATA_TYPE_MAP.find(cur_type);
-        if (tp_iter == ::rtidb::codec::DATA_TYPE_MAP.end()) {
+        const auto& tp_iter = ::fedb::codec::DATA_TYPE_MAP.find(cur_type);
+        if (tp_iter == ::fedb::codec::DATA_TYPE_MAP.end()) {
             printf("fail to find data type with type %s \n", cur_type.c_str());
             return -1;
         }
@@ -2578,7 +2587,7 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
         } else if (ts_col_set.empty()) {
             // convert to old version
             for (const auto& column_desc : ns_table_info.column_desc_v1()) {
-                ::rtidb::nameserver::ColumnDesc* cur_column_desc =
+                ::fedb::nameserver::ColumnDesc* cur_column_desc =
                     ns_table_info.add_column_desc();
                 cur_column_desc->set_name(column_desc.name());
                 cur_column_desc->set_type(column_desc.type());
@@ -2636,7 +2645,7 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
                     return -1;
                 }
             }
-            ::rtidb::common::ColumnKey* column_key =
+            ::fedb::common::ColumnKey* column_key =
                 ns_table_info.add_column_key();
             column_key->CopyFrom(table_info.column_key(idx));
         }
@@ -2649,8 +2658,8 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
 }
 
 int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
-                 ::rtidb::nameserver::TableInfo& ns_table_info) {  // NOLINT
-    ::rtidb::client::TableInfo table_info;
+                 ::fedb::nameserver::TableInfo& ns_table_info) {  // NOLINT
+    ::fedb::client::TableInfo table_info;
     int fd = open(path.c_str(), O_RDONLY);
     if (fd < 0) {
         std::cout << "can not open file " << path << std::endl;
@@ -2673,22 +2682,22 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     uint64_t lat_ttl = table_info.has_ttl_desc()
                            ? table_info.ttl_desc().lat_ttl()
                            : table_info.ttl();
-    ::rtidb::api::TTLDesc* ttl_desc = ns_table_info.mutable_ttl_desc();
+    ::fedb::api::TTLDesc* ttl_desc = ns_table_info.mutable_ttl_desc();
     ttl_desc->set_abs_ttl(abs_ttl);
     ttl_desc->set_lat_ttl(lat_ttl);
     if (table_info.has_ttl_desc()) {
         if (ttl_type == "kabsolutetime") {
             ns_table_info.set_ttl_type("kAbsoluteTime");
-            ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+            ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
         } else if (ttl_type == "klatesttime" || ttl_type == "latest") {
             ns_table_info.set_ttl_type("kLatestTime");
-            ttl_desc->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+            ttl_desc->set_ttl_type(::fedb::api::TTLType::kLatestTime);
         } else if (ttl_type == "kabsandlat") {
             ns_table_info.set_ttl_type("kAbsAndlLat");
-            ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+            ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
         } else if (ttl_type == "kabsorlat") {
             ns_table_info.set_ttl_type("kAbsOrLat");
-            ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+            ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
         } else {
             printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
             return -1;
@@ -2696,18 +2705,18 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     } else {
         if (ttl_type == "kabsolutetime") {
             ns_table_info.set_ttl_type("kAbsoluteTime");
-            ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+            ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
         } else if (ttl_type == "klatesttime" || ttl_type == "latest") {
             ns_table_info.set_ttl_type("kLatestTime");
-            ttl_desc->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+            ttl_desc->set_ttl_type(::fedb::api::TTLType::kLatestTime);
         } else {
             printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
             return -1;
         }
     }
-    if (ttl_desc->ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime) {
+    if (ttl_desc->ttl_type() == ::fedb::api::TTLType::kAbsoluteTime) {
         ttl_desc->set_lat_ttl(0);
-    } else if (ttl_desc->ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
+    } else if (ttl_desc->ttl_type() == ::fedb::api::TTLType::kLatestTime) {
         ttl_desc->set_abs_ttl(0);
     }
     ns_table_info.set_ttl(table_info.ttl());
@@ -2716,9 +2725,9 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
                    compress_type.begin(), ::tolower);
     if (compress_type == "knocompress" || compress_type == "nocompress" ||
         compress_type == "no") {
-        ns_table_info.set_compress_type(::rtidb::nameserver::kNoCompress);
+        ns_table_info.set_compress_type(::fedb::nameserver::kNoCompress);
     } else if (compress_type == "ksnappy" || compress_type == "snappy") {
-        ns_table_info.set_compress_type(::rtidb::nameserver::kSnappy);
+        ns_table_info.set_compress_type(::fedb::nameserver::kSnappy);
     } else {
         printf("compress type %s is invalid\n",
                table_info.compress_type().c_str());
@@ -2757,7 +2766,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
 }
 
 void HandleNSCreateTable(const std::vector<std::string>& parts,
-                         ::rtidb::client::NsClient* client) {
+                         ::fedb::client::NsClient* client) {
     std::set<std::string> type_set;
     type_set.insert("int32");
     type_set.insert("uint32");
@@ -2771,20 +2780,20 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
     type_set.insert("date");
     type_set.insert("int16");
     type_set.insert("uint16");
-    ::rtidb::nameserver::TableInfo ns_table_info;
+    ::fedb::nameserver::TableInfo ns_table_info;
     if (parts.size() == 2) {
         if (GenTableInfo(parts[1], type_set, ns_table_info) < 0) {
             return;
         }
     } else if (parts.size() > 4) {
         ns_table_info.set_name(parts[1]);
-        ::rtidb::api::TTLDesc* ttl_desc = ns_table_info.mutable_ttl_desc();
+        ::fedb::api::TTLDesc* ttl_desc = ns_table_info.mutable_ttl_desc();
         try {
             std::vector<std::string> vec;
-            ::rtidb::base::SplitString(parts[2], ":", vec);
+            ::fedb::base::SplitString(parts[2], ":", vec);
             if (vec.size() == 2) {
                 if ((vec[0] == "latest" || vec[0] == "kLatestTime")) {
-                    ttl_desc->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+                    ttl_desc->set_ttl_type(::fedb::api::TTLType::kLatestTime);
                     ttl_desc->set_lat_ttl(
                         boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
                     ttl_desc->set_abs_ttl(0);
@@ -2792,7 +2801,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
                 } else if ((vec[0] == "absolute" ||
                             vec[0] == "kAbsoluteTime")) {
                     ttl_desc->set_ttl_type(
-                        ::rtidb::api::TTLType::kAbsoluteTime);
+                        ::fedb::api::TTLType::kAbsoluteTime);
                     ttl_desc->set_lat_ttl(0);
                     ttl_desc->set_abs_ttl(
                         boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
@@ -2803,14 +2812,14 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
                 }
             } else if (vec.size() == 3) {
                 if ((vec[0] == "absandlat" || vec[0] == "kAbsAndLat")) {
-                    ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+                    ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
                     ttl_desc->set_abs_ttl(
                         boost::lexical_cast<uint64_t>(vec[vec.size() - 2]));
                     ttl_desc->set_lat_ttl(
                         boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
                     ns_table_info.set_ttl_type("kAbsAndLat");
                 } else if ((vec[0] == "absorlat" || vec[0] == "kAbsOrLat")) {
-                    ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+                    ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
                     ttl_desc->set_abs_ttl(
                         boost::lexical_cast<uint64_t>(vec[vec.size() - 2]));
                     ttl_desc->set_lat_ttl(
@@ -2821,7 +2830,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
                     return;
                 }
             } else {
-                ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+                ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
                 ttl_desc->set_lat_ttl(0);
                 ttl_desc->set_abs_ttl(
                     boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
@@ -2850,7 +2859,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
         std::set<std::string> name_set;
         for (uint32_t i = 5; i < parts.size(); i++) {
             std::vector<std::string> kv;
-            ::rtidb::base::SplitString(parts[i], ":", kv);
+            ::fedb::base::SplitString(parts[i], ":", kv);
             if (kv.size() < 2) {
                 std::cout << "create failed! schema format is illegal"
                           << std::endl;
@@ -2868,7 +2877,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
                 return;
             }
             name_set.insert(kv[0]);
-            ::rtidb::nameserver::ColumnDesc* column_desc =
+            ::fedb::nameserver::ColumnDesc* column_desc =
                 ns_table_info.add_column_desc();
             column_desc->set_name(kv[0]);
             column_desc->set_add_ts_idx(false);
@@ -2931,7 +2940,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientHelp(const std::vector<std::string>& parts,
-                        ::rtidb::client::NsClient* client) {
+                        ::fedb::client::NsClient* client) {
     if (parts.size() == 1) {
         printf("addindex - add index to table \n");
         printf("addtablefield - add field to the schema table \n");
@@ -3189,7 +3198,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("desc: add remote replica cluster\n");
             printf("usage: addrepcluster zk_endpoints zk_path cluster_alias\n");
             printf(
-                "ex: addrepcluster 10.1.1.1:2181,10.1.1.2:2181 /rtidb_cluster "
+                "ex: addrepcluster 10.1.1.1:2181,10.1.1.2:2181 /fedb_cluster "
                 "prod_dc01\n");
         } else if (parts[1] == "showrepcluster") {
             printf("desc: show remote replica cluster\n");
@@ -3253,7 +3262,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientSetTablePartition(const std::vector<std::string>& parts,
-                                     ::rtidb::client::NsClient* client) {
+                                     ::fedb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -3264,7 +3273,7 @@ void HandleNSClientSetTablePartition(const std::vector<std::string>& parts,
         std::cout << "can not open file " << parts[2] << std::endl;
         return;
     }
-    ::rtidb::nameserver::TablePartition table_partition;
+    ::fedb::nameserver::TablePartition table_partition;
     google::protobuf::io::FileInputStream fileInput(fd);
     fileInput.SetCloseOnDelete(true);
     if (!google::protobuf::TextFormat::Parse(&fileInput, &table_partition)) {
@@ -3304,7 +3313,7 @@ void HandleNSClientSetTablePartition(const std::vector<std::string>& parts,
 }
 
 void HandleNsClientSQL(const std::string sql,
-                       ::rtidb::client::NsClient* client) {
+                       ::fedb::client::NsClient* client) {
     std::string msg;
     if (!client->ExecuteSQL(sql, msg)) {
         std::cout << "execute sql failed, sql:" << sql << " , msg: " << msg << std::endl;
@@ -3312,7 +3321,7 @@ void HandleNsClientSQL(const std::string sql,
 }
 
 void HandleNSClientGetTablePartition(const std::vector<std::string>& parts,
-                                     ::rtidb::client::NsClient* client) {
+                                     ::fedb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -3325,7 +3334,7 @@ void HandleNSClientGetTablePartition(const std::vector<std::string>& parts,
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
         return;
     }
-    ::rtidb::nameserver::TablePartition table_partition;
+    ::fedb::nameserver::TablePartition table_partition;
     std::string msg;
     if (!client->GetTablePartition(name, pid, table_partition, msg)) {
         std::cout << "Fail to get table partition. error msg: " << msg
@@ -3358,7 +3367,7 @@ void HandleNSClientGetTablePartition(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientUpdateTableAlive(const std::vector<std::string>& parts,
-                                    ::rtidb::client::NsClient* client) {
+                                    ::fedb::client::NsClient* client) {
     if (parts.size() < 5) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -3399,7 +3408,7 @@ void HandleNSClientUpdateTableAlive(const std::vector<std::string>& parts,
 }
 
 void HandleNSShowOPStatus(const std::vector<std::string>& parts,
-                          ::rtidb::client::NsClient* client) {
+                          ::fedb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("op_id");
     row.push_back("op_type");
@@ -3413,10 +3422,10 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts,
     row.push_back("for_replica_cluster");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
-    ::rtidb::nameserver::ShowOPStatusResponse response;
+    ::fedb::nameserver::ShowOPStatusResponse response;
     std::string msg;
     std::string name;
-    uint32_t pid = ::rtidb::client::INVALID_PID;
+    uint32_t pid = ::fedb::client::INVALID_PID;
     if (parts.size() > 1) {
         name = parts[1];
     }
@@ -3443,7 +3452,7 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts,
             row.push_back("-");
         }
         if (response.op_status(idx).has_pid() &&
-            (response.op_status(idx).pid() != ::rtidb::client::INVALID_PID)) {
+            (response.op_status(idx).pid() != ::fedb::client::INVALID_PID)) {
             row.push_back(std::to_string(response.op_status(idx).pid()));
         } else {
             row.push_back("-");
@@ -3490,8 +3499,8 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts,
 }
 
 void HandleNSClientDeleteIndex(const std::vector<std::string>& parts,
-                               ::rtidb::client::NsClient* client) {
-    ::rtidb::nameserver::GeneralResponse response;
+                               ::fedb::client::NsClient* client) {
+    ::fedb::nameserver::GeneralResponse response;
     if (parts.size() != 3) {
         std::cout << "Bad format" << std::endl;
         std::cout << "usage: deleteindex table_name index_name" << std::endl;
@@ -3506,8 +3515,8 @@ void HandleNSClientDeleteIndex(const std::vector<std::string>& parts,
 }
 
 void HandleClientDeleteIndex(const std::vector<std::string>& parts,
-                             ::rtidb::client::TabletClient* client) {
-    ::rtidb::nameserver::GeneralResponse response;
+                             ::fedb::client::TabletClient* client) {
+    ::fedb::nameserver::GeneralResponse response;
     if (parts.size() < 4) {
         std::cout << "Bad format" << std::endl;
         std::cout << "usage: deleteindex tid pid index_name" << std::endl;
@@ -3529,7 +3538,7 @@ void HandleClientDeleteIndex(const std::vector<std::string>& parts,
 }
 
 void HandleClientSetTTL(const std::vector<std::string>& parts,
-                        ::rtidb::client::TabletClient* client) {
+                        ::fedb::client::TabletClient* client) {
     if (parts.size() < 5) {
         std::cout << "Bad setttl format, eg setttl tid pid type ttl [ts_name]"
                   << std::endl;
@@ -3539,9 +3548,9 @@ void HandleClientSetTTL(const std::vector<std::string>& parts,
     try {
         uint64_t abs_ttl = 0;
         uint64_t lat_ttl = 0;
-        ::rtidb::api::TTLType type = ::rtidb::api::kLatestTime;
+        ::fedb::api::TTLType type = ::fedb::api::kLatestTime;
         if (parts[3] == "absolute") {
-            type = ::rtidb::api::TTLType::kAbsoluteTime;
+            type = ::fedb::api::TTLType::kAbsoluteTime;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             if (parts.size() == 6) {
                 ts_name = parts[5];
@@ -3552,14 +3561,14 @@ void HandleClientSetTTL(const std::vector<std::string>& parts,
                 return;
             }
         } else if (parts[3] == "absandlat") {
-            type = ::rtidb::api::TTLType::kAbsAndLat;
+            type = ::fedb::api::TTLType::kAbsAndLat;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             lat_ttl = boost::lexical_cast<uint64_t>(parts[5]);
             if (parts.size() == 7) {
                 ts_name = parts[6];
             }
         } else if (parts[3] == "absorlat") {
-            type = ::rtidb::api::TTLType::kAbsOrLat;
+            type = ::fedb::api::TTLType::kAbsOrLat;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             lat_ttl = boost::lexical_cast<uint64_t>(parts[5]);
             if (parts.size() == 7) {
@@ -3590,7 +3599,7 @@ void HandleClientSetTTL(const std::vector<std::string>& parts,
 }
 
 void HandleClientGet(const std::vector<std::string>& parts,
-                     ::rtidb::client::TabletClient* client) {
+                     ::fedb::client::TabletClient* client) {
     if (parts.size() < 5) {
         std::cout << "Bad get format, eg get tid pid key time" << std::endl;
         return;
@@ -3603,20 +3612,20 @@ void HandleClientGet(const std::vector<std::string>& parts,
                               boost::lexical_cast<uint32_t>(parts[2]), parts[3],
                               boost::lexical_cast<uint64_t>(parts[4]), value,
                               ts, msg);
-        ::rtidb::api::TableStatus table_status;
+        ::fedb::api::TableStatus table_status;
         if (!client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]),
                                     boost::lexical_cast<uint32_t>(parts[2]),
                                     table_status)) {
             std::cout << "Fail to get table status" << std::endl;
             return;
         }
-        ::rtidb::nameserver::CompressType compress_type =
-            ::rtidb::nameserver::kNoCompress;
+        ::fedb::nameserver::CompressType compress_type =
+            ::fedb::nameserver::kNoCompress;
         if (table_status.compress_type() ==
-            ::rtidb::api::CompressType::kSnappy) {
-            compress_type = ::rtidb::nameserver::kSnappy;
+            ::fedb::api::CompressType::kSnappy) {
+            compress_type = ::fedb::nameserver::kSnappy;
         }
-        if (compress_type == ::rtidb::nameserver::kSnappy) {
+        if (compress_type == ::fedb::nameserver::kSnappy) {
             std::string uncompressed;
             ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
             value = uncompressed;
@@ -3634,7 +3643,7 @@ void HandleClientGet(const std::vector<std::string>& parts,
 }
 
 void HandleClientBenGet(std::vector<std::string>& parts,  // NOLINT
-                        ::rtidb::client::TabletClient* client) {
+                        ::fedb::client::TabletClient* client) {
     try {
         uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
@@ -3672,7 +3681,7 @@ void HandleClientBenGet(std::vector<std::string>& parts,  // NOLINT
 
 // the input format like put 1 1 key time value
 void HandleClientPut(const std::vector<std::string>& parts,
-                     ::rtidb::client::TabletClient* client) {
+                     ::fedb::client::TabletClient* client) {
     if (parts.size() < 6) {
         std::cout << "Bad put format, eg put tid pid key time value"
                   << std::endl;
@@ -3694,7 +3703,7 @@ void HandleClientPut(const std::vector<std::string>& parts,
 }
 
 void HandleClientBenPut(std::vector<std::string>& parts,  // NOLINT
-                        ::rtidb::client::TabletClient* client) {
+                        ::fedb::client::TabletClient* client) {
     try {
         uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
@@ -3731,7 +3740,7 @@ void HandleClientBenPut(std::vector<std::string>& parts,  // NOLINT
 
 // the input format like create name tid pid ttl leader endpoints
 void HandleClientCreateTable(const std::vector<std::string>& parts,
-                             ::rtidb::client::TabletClient* client) {
+                             ::fedb::client::TabletClient* client) {
     if (parts.size() < 6) {
         std::cout << "Bad create format, input like create <name> <tid> <pid> "
                      "<ttl> <seg_cnt>"
@@ -3742,14 +3751,14 @@ void HandleClientCreateTable(const std::vector<std::string>& parts,
     try {
         int64_t abs_ttl = 0;
         int64_t lat_ttl = 0;
-        ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
+        ::fedb::api::TTLType type = ::fedb::api::TTLType::kAbsoluteTime;
         if (parts.size() > 4) {
             std::vector<std::string> vec;
-            ::rtidb::base::SplitString(parts[4], ":", vec);
+            ::fedb::base::SplitString(parts[4], ":", vec);
             abs_ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
             if (vec.size() > 1) {
                 if (vec[0] == "latest") {
-                    type = ::rtidb::api::TTLType::kLatestTime;
+                    type = ::fedb::api::TTLType::kLatestTime;
                     lat_ttl = abs_ttl;
                     abs_ttl = 0;
                     if (lat_ttl > FLAGS_latest_ttl_max) {
@@ -3784,18 +3793,18 @@ void HandleClientCreateTable(const std::vector<std::string>& parts,
             is_leader = false;
         }
         std::vector<std::string> endpoints;
-        ::rtidb::api::CompressType compress_type =
-            ::rtidb::api::CompressType::kNoCompress;
+        ::fedb::api::CompressType compress_type =
+            ::fedb::api::CompressType::kNoCompress;
         if (parts.size() > 7) {
             std::string raw_compress_type = parts[7];
             std::transform(raw_compress_type.begin(), raw_compress_type.end(),
                            raw_compress_type.begin(), ::tolower);
             if (raw_compress_type == "knocompress" ||
                 raw_compress_type == "nocompress") {
-                compress_type = ::rtidb::api::CompressType::kNoCompress;
+                compress_type = ::fedb::api::CompressType::kNoCompress;
             } else if (raw_compress_type == "ksnappy" ||
                        raw_compress_type == "snappy") {
-                compress_type = ::rtidb::api::CompressType::kSnappy;
+                compress_type = ::fedb::api::CompressType::kSnappy;
             } else {
                 printf("compress type %s is invalid\n", parts[7].c_str());
                 return;
@@ -3817,7 +3826,7 @@ void HandleClientCreateTable(const std::vector<std::string>& parts,
 }
 
 void HandleClientDropTable(const std::vector<std::string>& parts,
-                           ::rtidb::client::TabletClient* client) {
+                           ::fedb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad drop command, you should input like 'drop tid pid' "
                   << std::endl;
@@ -3837,7 +3846,7 @@ void HandleClientDropTable(const std::vector<std::string>& parts,
 }
 
 void HandleClientAddReplica(const std::vector<std::string> parts,
-                            ::rtidb::client::TabletClient* client) {
+                            ::fedb::client::TabletClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad addreplica format" << std::endl;
         return;
@@ -3857,7 +3866,7 @@ void HandleClientAddReplica(const std::vector<std::string> parts,
 }
 
 void HandleClientDelReplica(const std::vector<std::string> parts,
-                            ::rtidb::client::TabletClient* client) {
+                            ::fedb::client::TabletClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad delreplica format" << std::endl;
         return;
@@ -3877,7 +3886,7 @@ void HandleClientDelReplica(const std::vector<std::string> parts,
 }
 
 void HandleClientSetExpire(const std::vector<std::string> parts,
-                           ::rtidb::client::TabletClient* client) {
+                           ::fedb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -3897,7 +3906,7 @@ void HandleClientSetExpire(const std::vector<std::string> parts,
 }
 
 void HandleClientConnectZK(const std::vector<std::string> parts,
-                           ::rtidb::client::TabletClient* client) {
+                           ::fedb::client::TabletClient* client) {
     bool ok = client->ConnectZK();
     if (ok) {
         std::cout << "connect zk ok" << std::endl;
@@ -3907,7 +3916,7 @@ void HandleClientConnectZK(const std::vector<std::string> parts,
 }
 
 void HandleClientDisConnectZK(const std::vector<std::string> parts,
-                              ::rtidb::client::TabletClient* client) {
+                              ::fedb::client::TabletClient* client) {
     bool ok = client->DisConnectZK();
     if (ok) {
         std::cout << "disconnect zk ok" << std::endl;
@@ -3917,7 +3926,7 @@ void HandleClientDisConnectZK(const std::vector<std::string> parts,
 }
 
 void HandleClientHelp(const std::vector<std::string> parts,
-                      ::rtidb::client::TabletClient* client) {
+                      ::fedb::client::TabletClient* client) {
     if (parts.size() < 2) {
         printf("addreplica - add replica to leader\n");
         printf("changerole - change role\n");
@@ -4126,10 +4135,10 @@ void HandleClientHelp(const std::vector<std::string> parts,
 }
 
 void HandleClientGetTableStatus(const std::vector<std::string> parts,
-                                ::rtidb::client::TabletClient* client) {
-    std::vector<::rtidb::api::TableStatus> status_vec;
+                                ::fedb::client::TabletClient* client) {
+    std::vector<::fedb::api::TableStatus> status_vec;
     if (parts.size() == 3) {
-        ::rtidb::api::TableStatus table_status;
+        ::fedb::api::TableStatus table_status;
         try {
             if (client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]),
                                        boost::lexical_cast<uint32_t>(parts[2]),
@@ -4142,7 +4151,7 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts,
             std::cout << "Bad gettablestatus format" << std::endl;
         }
     } else if (parts.size() == 1) {
-        ::rtidb::api::GetTableStatusResponse response;
+        ::fedb::api::GetTableStatusResponse response;
         if (!client->GetTableStatus(response)) {
             std::cout << "gettablestatus failed" << std::endl;
             return;
@@ -4154,11 +4163,11 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts,
         std::cout << "Bad gettablestatus format" << std::endl;
         return;
     }
-    ::rtidb::cmd::PrintTableStatus(status_vec);
+    ::fedb::cmd::PrintTableStatus(status_vec);
 }
 
 void HandleClientMakeSnapshot(const std::vector<std::string> parts,
-                              ::rtidb::client::TabletClient* client) {
+                              ::fedb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad MakeSnapshot format" << std::endl;
         return;
@@ -4173,7 +4182,7 @@ void HandleClientMakeSnapshot(const std::vector<std::string> parts,
 }
 
 void HandleClientPauseSnapshot(const std::vector<std::string> parts,
-                               ::rtidb::client::TabletClient* client) {
+                               ::fedb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad PauseSnapshot format" << std::endl;
         return;
@@ -4193,7 +4202,7 @@ void HandleClientPauseSnapshot(const std::vector<std::string> parts,
 }
 
 void HandleClientRecoverSnapshot(const std::vector<std::string> parts,
-                                 ::rtidb::client::TabletClient* client) {
+                                 ::fedb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad RecoverSnapshot format" << std::endl;
         return;
@@ -4213,7 +4222,7 @@ void HandleClientRecoverSnapshot(const std::vector<std::string> parts,
 }
 
 void HandleClientSendSnapshot(const std::vector<std::string> parts,
-                              ::rtidb::client::TabletClient* client) {
+                              ::fedb::client::TabletClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad SendSnapshot format" << std::endl;
         return;
@@ -4234,7 +4243,7 @@ void HandleClientSendSnapshot(const std::vector<std::string> parts,
 }
 
 void HandleClientLoadTable(const std::vector<std::string> parts,
-                           ::rtidb::client::TabletClient* client) {
+                           ::fedb::client::TabletClient* client) {
     if (parts.size() < 6) {
         std::cout << "Bad LoadTable format eg loadtable <name> <tid> <pid> "
                      "<ttl> <seg_cnt> [<is_leader>]"
@@ -4275,7 +4284,7 @@ void HandleClientLoadTable(const std::vector<std::string> parts,
 }
 
 void HandleClientSetLimit(const std::vector<std::string> parts,
-                          ::rtidb::client::TabletClient* client) {
+                          ::fedb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad set limit format" << std::endl;
         return;
@@ -4311,7 +4320,7 @@ void HandleClientSetLimit(const std::vector<std::string> parts,
 }
 
 void HandleClientChangeRole(const std::vector<std::string> parts,
-                            ::rtidb::client::TabletClient* client) {
+                            ::fedb::client::TabletClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad changerole format" << std::endl;
         return;
@@ -4348,7 +4357,7 @@ void HandleClientChangeRole(const std::vector<std::string> parts,
 }
 
 void HandleClientPreview(const std::vector<std::string>& parts,
-                         ::rtidb::client::TabletClient* client) {
+                         ::fedb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "preview format error. eg: preview tid pid [limit]"
                   << std::endl;
@@ -4379,15 +4388,15 @@ void HandleClientPreview(const std::vector<std::string>& parts,
         printf("Invalid args. tid, pid and limit should be unsigned int\n");
         return;
     }
-    ::rtidb::api::TableStatus table_status;
+    ::fedb::api::TableStatus table_status;
     if (!client->GetTableStatus(tid, pid, true, table_status)) {
         std::cout << "Fail to get table status" << std::endl;
         return;
     }
     std::string schema = table_status.schema();
-    std::vector<::rtidb::codec::ColumnDesc> columns;
+    std::vector<::fedb::codec::ColumnDesc> columns;
     if (!schema.empty()) {
-        ::rtidb::codec::SchemaCodec codec;
+        ::fedb::codec::SchemaCodec codec;
         codec.Decode(schema, columns);
     }
     uint32_t column_num = columns.empty() ? 4 : columns.size() + 2;
@@ -4408,7 +4417,7 @@ void HandleClientPreview(const std::vector<std::string>& parts,
     tp.AddRow(row);
     uint32_t index = 1;
     uint32_t count = 0;
-    ::rtidb::base::KvIterator* it =
+    ::fedb::base::KvIterator* it =
         client->Traverse(tid, pid, "", "", 0, limit, count);
     if (it == NULL) {
         std::cout << "Fail to preview table" << std::endl;
@@ -4420,7 +4429,7 @@ void HandleClientPreview(const std::vector<std::string>& parts,
         if (schema.empty()) {
             std::string value = it->GetValue().ToString();
             if (table_status.compress_type() ==
-                ::rtidb::api::CompressType::kSnappy) {
+                ::fedb::api::CompressType::kSnappy) {
                 std::string uncompressed;
                 ::snappy::Uncompress(value.c_str(), value.length(),
                                      &uncompressed);
@@ -4431,7 +4440,7 @@ void HandleClientPreview(const std::vector<std::string>& parts,
             row.push_back(value);
         } else {
             row.push_back(std::to_string(it->GetKey()));
-            ::rtidb::api::TableMeta table_meta;
+            ::fedb::api::TableMeta table_meta;
             bool ok = client->GetTableSchema(tid, pid, table_meta);
             if (!ok) {
                 std::cout << "No schema for table, please use command scan"
@@ -4440,19 +4449,19 @@ void HandleClientPreview(const std::vector<std::string>& parts,
                 return;
             }
             std::string value;
-            if (table_meta.compress_type() == ::rtidb::api::kSnappy) {
+            if (table_meta.compress_type() == ::fedb::api::kSnappy) {
                 ::snappy::Uncompress(it->GetValue().data(),
                                      it->GetValue().size(), &value);
             } else {
                 value.assign(it->GetValue().data(), it->GetValue().size());
             }
             if (table_meta.added_column_desc_size() == 0) {
-                ::rtidb::codec::RowCodec::DecodeRow(
-                    columns.size(), ::rtidb::base::Slice(value), &row);
+                ::fedb::codec::RowCodec::DecodeRow(
+                    columns.size(), ::fedb::base::Slice(value), &row);
             } else {
-                ::rtidb::codec::RowCodec::DecodeRow(
+                ::fedb::codec::RowCodec::DecodeRow(
                     columns.size() - table_meta.added_column_desc_size(),
-                    columns.size(), ::rtidb::base::Slice(value), &row);
+                    columns.size(), ::fedb::base::Slice(value), &row);
             }
         }
         tp.AddRow(row);
@@ -4465,7 +4474,7 @@ void HandleClientPreview(const std::vector<std::string>& parts,
 
 // the input format like scan tid pid pk st et
 void HandleClientScan(const std::vector<std::string>& parts,
-                      ::rtidb::client::TabletClient* client) {
+                      ::fedb::client::TabletClient* client) {
     if (parts.size() < 6) {
         std::cout << "Bad scan format! eg. scan tid pid pk start_time end_time "
                      "[limit]"
@@ -4478,7 +4487,7 @@ void HandleClientScan(const std::vector<std::string>& parts,
             limit = boost::lexical_cast<uint32_t>(parts[6]);
         }
         std::string msg;
-        ::rtidb::base::KvIterator* it = client->Scan(
+        ::fedb::base::KvIterator* it = client->Scan(
             boost::lexical_cast<uint32_t>(parts[1]),
             boost::lexical_cast<uint32_t>(parts[2]), parts[3],
             boost::lexical_cast<uint64_t>(parts[4]),
@@ -4513,7 +4522,7 @@ void HandleClientScan(const std::vector<std::string>& parts,
 
 void HandleClientBenchmarkPut(uint32_t tid, uint32_t pid, uint32_t val_size,
                               uint32_t run_times, uint32_t ns,
-                              ::rtidb::client::TabletClient* client) {
+                              ::fedb::client::TabletClient* client) {
     char val[val_size];  // NOLINT
     for (uint32_t i = 0; i < val_size; i++) {
         val[i] = '0';
@@ -4531,7 +4540,7 @@ void HandleClientBenchmarkPut(uint32_t tid, uint32_t pid, uint32_t val_size,
 
 void HandleClientBenchmarkScan(uint32_t tid, uint32_t pid, uint32_t run_times,
                                uint32_t ns,
-                               ::rtidb::client::TabletClient* client) {
+                               ::fedb::client::TabletClient* client) {
     uint64_t st = 999;
     uint64_t et = 0;
     std::string msg;
@@ -4539,7 +4548,7 @@ void HandleClientBenchmarkScan(uint32_t tid, uint32_t pid, uint32_t run_times,
         for (uint32_t i = 0; i < 500 * 4; i++) {
             std::string key = boost::lexical_cast<std::string>(ns) + "test" +
                               boost::lexical_cast<std::string>(i);
-            ::rtidb::base::KvIterator* it =
+            ::fedb::base::KvIterator* it =
                 client->Scan(tid, pid, key, st, et, 0, 0, msg);
             delete it;
         }
@@ -4547,7 +4556,7 @@ void HandleClientBenchmarkScan(uint32_t tid, uint32_t pid, uint32_t run_times,
     }
 }
 
-void HandleClientBenchmark(::rtidb::client::TabletClient* client) {
+void HandleClientBenchmark(::fedb::client::TabletClient* client) {
     uint32_t size = 40;
     uint32_t times = 10;
     std::cout << "Percentile:Start benchmark put size:40" << std::endl;
@@ -4587,7 +4596,7 @@ void HandleClientBenchmark(::rtidb::client::TabletClient* client) {
 }
 
 void HandleClientSCreateTable(const std::vector<std::string>& parts,
-                              ::rtidb::client::TabletClient* client) {
+                              ::fedb::client::TabletClient* client) {
     if (parts.size() < 8) {
         std::cout << "Bad create format, input like screate <name> <tid> <pid> "
                      "<ttl> <seg_cnt> <is_leader> <schema>"
@@ -4610,13 +4619,13 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts,
     try {
         int64_t abs_ttl = 0;
         int64_t lat_ttl = 0;
-        ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
+        ::fedb::api::TTLType type = ::fedb::api::TTLType::kAbsoluteTime;
         std::vector<std::string> vec;
-        ::rtidb::base::SplitString(parts[4], ":", vec);
+        ::fedb::base::SplitString(parts[4], ":", vec);
         abs_ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
         if (vec.size() > 1) {
             if (vec[0] == "latest") {
-                type = ::rtidb::api::TTLType::kLatestTime;
+                type = ::fedb::api::TTLType::kLatestTime;
                 lat_ttl = abs_ttl;
                 abs_ttl = 0;
                 if (lat_ttl > FLAGS_latest_ttl_max) {
@@ -4653,13 +4662,13 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts,
         if (parts[6].compare("false") == 0) {
             leader = false;
         }
-        std::vector<::rtidb::codec::ColumnDesc> columns;
+        std::vector<::fedb::codec::ColumnDesc> columns;
         // check duplicate column
         std::set<std::string> used_column_names;
         bool has_index = false;
         for (uint32_t i = 7; i < parts.size(); i++) {
             std::vector<std::string> kv;
-            ::rtidb::base::SplitString(parts[i], ":", kv);
+            ::fedb::base::SplitString(parts[i], ":", kv);
             if (kv.size() < 2) {
                 std::cout << "create failed! schema format is illegal"
                           << std::endl;
@@ -4677,7 +4686,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts,
                 return;
             }
             used_column_names.insert(kv[0]);
-            ::rtidb::codec::ColumnDesc desc;
+            ::fedb::codec::ColumnDesc desc;
             desc.add_ts_idx = false;
             if (kv.size() > 2 && kv[2] == "index") {
                 if ((cur_type == "float") || (cur_type == "double")) {
@@ -4687,7 +4696,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts,
                 desc.add_ts_idx = true;
                 has_index = true;
             }
-            desc.type = rtidb::codec::SchemaCodec::ConvertType(cur_type);
+            desc.type = fedb::codec::SchemaCodec::ConvertType(cur_type);
             desc.name = kv[0];
             columns.push_back(desc);
         }
@@ -4710,7 +4719,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts,
 }
 
 void HandleClientGetFollower(const std::vector<std::string>& parts,
-                             ::rtidb::client::TabletClient* client) {
+                             ::fedb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad get follower format" << std::endl;
         return;
@@ -4757,7 +4766,7 @@ void HandleClientGetFollower(const std::vector<std::string>& parts,
 }
 
 void HandleClientCount(const std::vector<std::string>& parts,
-                       ::rtidb::client::TabletClient* client) {
+                       ::fedb::client::TabletClient* client) {
     if (parts.size() < 4) {
         std::cout << "count format error! eg. count tid pid key [col_name] "
                      "[filter_expired_data] | count tid=xxx pid=xxx key=xxx "
@@ -4870,12 +4879,12 @@ void HandleClientCount(const std::vector<std::string>& parts,
 }
 
 void HandleClientShowSchema(const std::vector<std::string>& parts,
-                            ::rtidb::client::TabletClient* client) {
+                            ::fedb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad show schema format" << std::endl;
         return;
     }
-    ::rtidb::api::TableMeta table_meta;
+    ::fedb::api::TableMeta table_meta;
     std::string schema;
     try {
         bool ok = client->GetTableSchema(
@@ -4892,12 +4901,12 @@ void HandleClientShowSchema(const std::vector<std::string>& parts,
     }
     if (table_meta.column_desc_size() > 0) {
         if (table_meta.added_column_desc_size() == 0) {
-            ::rtidb::cmd::PrintSchema(table_meta.column_desc());
+            ::fedb::cmd::PrintSchema(table_meta.column_desc());
         } else {
-            ::rtidb::cmd::PrintSchema(schema, true);
+            ::fedb::cmd::PrintSchema(schema, true);
         }
         printf("\n#ColumnKey\n");
-        ::rtidb::api::TTLType ttl_type;
+        ::fedb::api::TTLType ttl_type;
         uint64_t abs_ttl = 0;
         uint64_t lat_ttl = 0;
         if (table_meta.has_ttl_desc()) {
@@ -4905,25 +4914,25 @@ void HandleClientShowSchema(const std::vector<std::string>& parts,
             abs_ttl = table_meta.ttl_desc().abs_ttl();
             lat_ttl = table_meta.ttl_desc().lat_ttl();
         } else {
-            if (table_meta.ttl_type() == ::rtidb::api::kAbsoluteTime) {
-                ttl_type = ::rtidb::api::kAbsoluteTime;
+            if (table_meta.ttl_type() == ::fedb::api::kAbsoluteTime) {
+                ttl_type = ::fedb::api::kAbsoluteTime;
                 abs_ttl = table_meta.ttl();
             } else {
-                ttl_type = ::rtidb::api::kLatestTime;
+                ttl_type = ::fedb::api::kLatestTime;
                 lat_ttl = table_meta.ttl();
             }
         }
-        ::rtidb::storage::TTLSt ttl_st(abs_ttl, lat_ttl, ::rtidb::storage::TTLSt::ConvertTTLType(ttl_type));
-        ::rtidb::cmd::PrintColumnKey(ttl_st, table_meta.column_desc(), table_meta.column_key());
+        ::fedb::storage::TTLSt ttl_st(abs_ttl, lat_ttl, ::fedb::storage::TTLSt::ConvertTTLType(ttl_type));
+        ::fedb::cmd::PrintColumnKey(ttl_st, table_meta.column_desc(), table_meta.column_key());
     } else if (!schema.empty()) {
-        ::rtidb::cmd::PrintSchema(schema);
+        ::fedb::cmd::PrintSchema(schema);
     } else {
         std::cout << "No schema for table" << std::endl;
     }
 }
 
 uint32_t GetDimensionIndex(
-    const std::vector<::rtidb::codec::ColumnDesc>& columns,
+    const std::vector<::fedb::codec::ColumnDesc>& columns,
     const std::string& dname) {
     uint32_t dindex = 0;
     for (uint32_t i = 0; i < columns.size(); i++) {
@@ -4938,7 +4947,7 @@ uint32_t GetDimensionIndex(
 }
 
 void HandleClientSGet(const std::vector<std::string>& parts,
-                      ::rtidb::client::TabletClient* client) {
+                      ::fedb::client::TabletClient* client) {
     if (parts.size() < 5) {
         std::cout
             << "Bad sget format, eg. sget tid pid key index_name ts | sget "
@@ -5014,7 +5023,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
                   << std::endl;
         return;
     }
-    ::rtidb::api::TableMeta table_meta;
+    ::fedb::api::TableMeta table_meta;
     bool ok = client->GetTableSchema(tid, pid, table_meta);
     if (!ok) {
         std::cout << "No schema for table ,please use command get" << std::endl;
@@ -5029,24 +5038,24 @@ void HandleClientSGet(const std::vector<std::string>& parts,
         std::cout << "Fail to sget value! error msg: " << msg << std::endl;
         return;
     }
-    ::rtidb::api::TableStatus table_status;
+    ::fedb::api::TableStatus table_status;
     if (!client->GetTableStatus(tid, pid, table_status)) {
         std::cout << "Fail to get table status" << std::endl;
         return;
     }
-    ::rtidb::nameserver::CompressType compress_type =
-        ::rtidb::nameserver::kNoCompress;
-    if (table_status.compress_type() == ::rtidb::api::CompressType::kSnappy) {
-        compress_type = ::rtidb::nameserver::kSnappy;
+    ::fedb::nameserver::CompressType compress_type =
+        ::fedb::nameserver::kNoCompress;
+    if (table_status.compress_type() == ::fedb::api::CompressType::kSnappy) {
+        compress_type = ::fedb::nameserver::kSnappy;
     }
-    if (compress_type == ::rtidb::nameserver::kSnappy) {
+    if (compress_type == ::fedb::nameserver::kSnappy) {
         std::string uncompressed;
         ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
         value = uncompressed;
     }
     std::string schema = table_meta.schema();
-    std::vector<::rtidb::codec::ColumnDesc> raw;
-    ::rtidb::codec::SchemaCodec codec;
+    std::vector<::fedb::codec::ColumnDesc> raw;
+    ::fedb::codec::SchemaCodec codec;
     codec.Decode(schema, raw);
     ::baidu::common::TPrinter tp(raw.size() + 2, FLAGS_max_col_display_length);
     std::vector<std::string> row;
@@ -5060,19 +5069,19 @@ void HandleClientSGet(const std::vector<std::string>& parts,
     row.push_back("1");
     row.push_back(std::to_string(ts));
     if (table_meta.added_column_desc_size() == 0) {
-        ::rtidb::codec::RowCodec::DecodeRow(raw.size(),
-                                            ::rtidb::base::Slice(value), &row);
+        ::fedb::codec::RowCodec::DecodeRow(raw.size(),
+                                            ::fedb::base::Slice(value), &row);
     } else {
-        ::rtidb::codec::RowCodec::DecodeRow(
+        ::fedb::codec::RowCodec::DecodeRow(
             raw.size() - table_meta.added_column_desc_size(), raw.size(),
-            ::rtidb::base::Slice(value), &row);
+            ::fedb::base::Slice(value), &row);
     }
     tp.AddRow(row);
     tp.Print(true);
 }
 
 void HandleClientSScan(const std::vector<std::string>& parts,
-                       ::rtidb::client::TabletClient* client) {
+                       ::fedb::client::TabletClient* client) {
     if (parts.size() < 7) {
         std::cout
             << "Bad scan format! eg.sscan tid pid key col_name start_time "
@@ -5170,26 +5179,26 @@ void HandleClientSScan(const std::vector<std::string>& parts,
         return;
     }
     std::string msg;
-    std::shared_ptr<::rtidb::base::KvIterator> it(client->Scan(
+    std::shared_ptr<::fedb::base::KvIterator> it(client->Scan(
         tid, pid, key, st, et, index_name, ts_name, limit, 0, msg));
     if (!it) {
         std::cout << "Fail to scan table. error msg: " << msg << std::endl;
         return;
     }
-    ::rtidb::api::TableMeta table_meta;
+    ::fedb::api::TableMeta table_meta;
     bool ok = client->GetTableSchema(tid, pid, table_meta);
     if (!ok) {
         std::cout << "table is not exist" << std::endl;
         return;
     }
-    std::vector<std::shared_ptr<::rtidb::base::KvIterator>> iter_vec;
+    std::vector<std::shared_ptr<::fedb::base::KvIterator>> iter_vec;
     iter_vec.push_back(std::move(it));
-    ::rtidb::cmd::SDKIterator sdk_it(iter_vec, limit);
-    ::rtidb::cmd::ShowTableRows(table_meta, &sdk_it);
+    ::fedb::cmd::SDKIterator sdk_it(iter_vec, limit);
+    ::fedb::cmd::ShowTableRows(table_meta, &sdk_it);
 }
 
 void HandleClientSPut(const std::vector<std::string>& parts,
-                      ::rtidb::client::TabletClient* client) {
+                      ::fedb::client::TabletClient* client) {
     if (parts.size() < 5) {
         std::cout << "Bad put format, eg put tid pid time value" << std::endl;
         return;
@@ -5197,15 +5206,15 @@ void HandleClientSPut(const std::vector<std::string>& parts,
     try {
         uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        ::rtidb::api::TableMeta table_meta;
+        ::fedb::api::TableMeta table_meta;
         bool ok = client->GetTableSchema(tid, pid, table_meta);
         if (!ok) {
             std::cout << "Fail to get table schema" << std::endl;
             return;
         }
-        ::rtidb::codec::SDKCodec codec(table_meta);
+        ::fedb::codec::SDKCodec codec(table_meta);
         std::vector<std::string> input_value(parts.begin() + 4, parts.end());
-        std::map<uint32_t, ::rtidb::codec::Dimension> dimensions;
+        std::map<uint32_t, ::fedb::codec::Dimension> dimensions;
         if (codec.EncodeDimension(input_value, 0, &dimensions) < 0) {
             std::cout << "Encode dimension error" << std::endl;
             return;
@@ -5216,7 +5225,7 @@ void HandleClientSPut(const std::vector<std::string>& parts,
             return;
         }
 
-        if (table_meta.compress_type() == ::rtidb::api::CompressType::kSnappy) {
+        if (table_meta.compress_type() == ::fedb::api::CompressType::kSnappy) {
             std::string compressed;
             ::snappy::Compress(value.c_str(), value.length(), &compressed);
             value.swap(compressed);
@@ -5236,7 +5245,7 @@ void HandleClientSPut(const std::vector<std::string>& parts,
 }
 
 void HandleClientDelete(const std::vector<std::string>& parts,
-                        ::rtidb::client::TabletClient* client) {
+                        ::fedb::client::TabletClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad delete format" << std::endl;
         return;
@@ -5260,7 +5269,7 @@ void HandleClientDelete(const std::vector<std::string>& parts,
 }
 
 void HandleClientBenScan(const std::vector<std::string>& parts,
-                         ::rtidb::client::TabletClient* client) {
+                         ::fedb::client::TabletClient* client) {
     uint64_t et = 0;
     uint32_t tid = 1;
     uint32_t pid = 1;
@@ -5299,9 +5308,9 @@ void HandleClientBenScan(const std::vector<std::string>& parts,
             std::string key = std::to_string(base + dis(engine));
             uint64_t st = ::baidu::common::timer::get_micros() / 1000;
             msg.clear();
-            // ::rtidb::base::KvIterator* it = client->Scan(tid, pid,
+            // ::fedb::base::KvIterator* it = client->Scan(tid, pid,
             // key.c_str(), st, et, msg, false);
-            ::rtidb::base::KvIterator* it =
+            ::fedb::base::KvIterator* it =
                 client->Scan(tid, pid, key.c_str(), st, et, limit, 0, msg);
             delete it;
         }
@@ -5316,9 +5325,9 @@ void StartClient() {
         return;
     }
     if (FLAGS_interactive) {
-        std::cout << "Welcome to rtidb with version " << RTIDB_VERSION << std::endl;
+        std::cout << "Welcome to fedb with version " << FEDB_VERSION << std::endl;
     }
-    ::rtidb::client::TabletClient client(FLAGS_endpoint, "");
+    ::fedb::client::TabletClient client(FLAGS_endpoint, "");
     client.Init();
     std::string display_prefix = FLAGS_endpoint + "> ";
     while (true) {
@@ -5326,7 +5335,7 @@ void StartClient() {
         if (!FLAGS_interactive) {
             buffer = FLAGS_cmd;
         } else {
-            char* line = ::rtidb::base::linenoise(display_prefix.c_str());
+            char* line = ::fedb::base::linenoise(display_prefix.c_str());
             if (line == NULL) {
                 return;
             }
@@ -5334,16 +5343,16 @@ void StartClient() {
                 buffer.assign(line);
                 boost::trim(buffer);
                 if (!buffer.empty()) {
-                    ::rtidb::base::linenoiseHistoryAdd(line);
+                    ::fedb::base::linenoiseHistoryAdd(line);
                 }
             }
-            ::rtidb::base::linenoiseFree(line);
+            ::fedb::base::linenoiseFree(line);
             if (buffer.empty()) {
                 continue;
             }
         }
         std::vector<std::string> parts;
-        ::rtidb::base::SplitString(buffer, " ", parts);
+        ::fedb::base::SplitString(buffer, " ", parts);
         if (parts.empty()) {
             continue;
         } else if (parts[0] == "put") {
@@ -5430,11 +5439,11 @@ void StartNsClient() {
     std::string endpoint;
     std::string real_endpoint;
     if (FLAGS_interactive) {
-        std::cout << "Welcome to rtidb with version " << RTIDB_VERSION << std::endl;
+        std::cout << "Welcome to fedb with version " << FEDB_VERSION << std::endl;
     }
-    std::shared_ptr<::rtidb::zk::ZkClient> zk_client;
+    std::shared_ptr<::fedb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
-        zk_client = std::make_shared<::rtidb::zk::ZkClient>(
+        zk_client = std::make_shared<::fedb::zk::ZkClient>(
                 FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
         if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;
@@ -5483,7 +5492,7 @@ void StartNsClient() {
                   << std::endl;
         return;
     }
-    ::rtidb::client::NsClient client(endpoint, real_endpoint);
+    ::fedb::client::NsClient client(endpoint, real_endpoint);
     if (client.Init() < 0) {
         std::cout << "client init failed" << std::endl;
         return;
@@ -5503,7 +5512,7 @@ void StartNsClient() {
             buffer = FLAGS_cmd;
         } else {
             char* line =
-                ::rtidb::base::linenoise(multi_line ? multi_line_perfix.c_str()
+                ::fedb::base::linenoise(multi_line ? multi_line_perfix.c_str()
                                                     : display_prefix.c_str());
             if (line == NULL) {
                 return;
@@ -5513,10 +5522,10 @@ void StartNsClient() {
                 buffer.assign(line);
                 boost::trim(buffer);
                 if (!buffer.empty()) {
-                    ::rtidb::base::linenoiseHistoryAdd(line);
+                    ::fedb::base::linenoiseHistoryAdd(line);
                 }
             }
-            ::rtidb::base::linenoiseFree(line);
+            ::fedb::base::linenoiseFree(line);
             if (buffer.empty()) {
                 continue;
             }
@@ -5528,7 +5537,7 @@ void StartNsClient() {
                 display_prefix = endpoint + " " + client.GetDb() + "> ";
                 multi_line_perfix =
                     std::string(display_prefix.length() - 3, ' ') + "-> ";
-                ::rtidb::base::linenoiseSetMultiLine(0);
+                ::fedb::base::linenoiseSetMultiLine(0);
             } else if (sql.back() == ';') {
                 HandleNsClientSQL(sql, &client);
                 multi_line = false;
@@ -5540,7 +5549,7 @@ void StartNsClient() {
             continue;
         }
         std::vector<std::string> parts;
-        ::rtidb::base::SplitString(buffer, " ", parts);
+        ::fedb::base::SplitString(buffer, " ", parts);
         if (parts.empty()) {
             continue;
         } else if (parts[0] == "showtablet") {
@@ -5638,7 +5647,7 @@ void StartNsClient() {
             display_prefix = endpoint + " " + client.GetDb() + " sql> ";
             multi_line_perfix =
                 std::string(display_prefix.length() - 3, ' ') + "-> ";
-            ::rtidb::base::linenoiseSetMultiLine(1);
+            ::fedb::base::linenoiseSetMultiLine(1);
             sql.clear();
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
@@ -5655,12 +5664,12 @@ void StartNsClient() {
 }
 
 int main(int argc, char* argv[]) {
-    ::google::SetVersionString(RTIDB_VERSION.c_str());
+    ::google::SetVersionString(FEDB_VERSION.c_str());
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "ns_client") {
         StartNsClient();
     } else if (FLAGS_role == "sql_client") {
-        ::rtidb::cmd::HandleCli();
+        ::fedb::cmd::HandleCli();
 #if defined(__linux__) || defined(__mac_tablet__)
     } else if (FLAGS_role == "tablet") {
         StartTablet();

@@ -1,9 +1,19 @@
-//
-// display.h
-// Copyright (C) 2019 4paradigm.com
-// Author denglong
-// Date 2019-05-10
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 
 #include <gflags/gflags.h>
@@ -29,21 +39,21 @@
 
 DECLARE_uint32(max_col_display_length);
 
-namespace rtidb {
+namespace fedb {
 namespace cmd {
 
 static void TransferString(std::vector<std::string>* vec) {
     std::for_each(vec->begin(), vec->end(), [](std::string& str) {
-        if (str == ::rtidb::codec::NONETOKEN) {
+        if (str == ::fedb::codec::NONETOKEN) {
             str = "-";
-        } else if (str == ::rtidb::codec::EMPTY_STRING) {
+        } else if (str == ::fedb::codec::EMPTY_STRING) {
             str = "";
         }
     });
 }
 
 __attribute__((unused)) static void PrintSchema(
-    const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
+    const google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>&
         column_desc_field) {
     std::vector<std::string> row;
     row.push_back("#");
@@ -64,7 +74,7 @@ __attribute__((unused)) static void PrintSchema(
 }
 
 __attribute__((unused)) static void PrintSchema(
-    const ::rtidb::nameserver::TableInfo& table_info) {
+    const ::fedb::nameserver::TableInfo& table_info) {
     std::vector<std::string> row;
     row.push_back("#");
     row.push_back("name");
@@ -111,7 +121,7 @@ __attribute__((unused)) static void PrintSchema(
 }
 
 __attribute__((unused)) static void PrintSchema(
-    const google::protobuf::RepeatedPtrField<::rtidb::nameserver::ColumnDesc>&
+    const google::protobuf::RepeatedPtrField<::fedb::nameserver::ColumnDesc>&
         column_desc_field) {
     std::vector<std::string> row;
     row.push_back("#");
@@ -135,8 +145,8 @@ __attribute__((unused)) static void PrintSchema(
 
 __attribute__((unused)) static void PrintSchema(const std::string& schema,
                                                 bool has_column_key) {
-    std::vector<::rtidb::codec::ColumnDesc> raw;
-    ::rtidb::codec::SchemaCodec codec;
+    std::vector<::fedb::codec::ColumnDesc> raw;
+    ::fedb::codec::SchemaCodec codec;
     codec.Decode(schema, raw);
     std::vector<std::string> header;
     header.push_back("#");
@@ -152,40 +162,40 @@ __attribute__((unused)) static void PrintSchema(const std::string& schema,
         row.push_back(boost::lexical_cast<std::string>(i));
         row.push_back(raw[i].name);
         switch (raw[i].type) {
-            case ::rtidb::codec::ColType::kInt32:
+            case ::fedb::codec::ColType::kInt32:
                 row.push_back("int32");
                 break;
-            case ::rtidb::codec::ColType::kInt64:
+            case ::fedb::codec::ColType::kInt64:
                 row.push_back("int64");
                 break;
-            case ::rtidb::codec::ColType::kUInt32:
+            case ::fedb::codec::ColType::kUInt32:
                 row.push_back("uint32");
                 break;
-            case ::rtidb::codec::ColType::kUInt64:
+            case ::fedb::codec::ColType::kUInt64:
                 row.push_back("uint64");
                 break;
-            case ::rtidb::codec::ColType::kDouble:
+            case ::fedb::codec::ColType::kDouble:
                 row.push_back("double");
                 break;
-            case ::rtidb::codec::ColType::kFloat:
+            case ::fedb::codec::ColType::kFloat:
                 row.push_back("float");
                 break;
-            case ::rtidb::codec::ColType::kString:
+            case ::fedb::codec::ColType::kString:
                 row.push_back("string");
                 break;
-            case ::rtidb::codec::ColType::kTimestamp:
+            case ::fedb::codec::ColType::kTimestamp:
                 row.push_back("timestamp");
                 break;
-            case ::rtidb::codec::ColType::kDate:
+            case ::fedb::codec::ColType::kDate:
                 row.push_back("date");
                 break;
-            case ::rtidb::codec::ColType::kInt16:
+            case ::fedb::codec::ColType::kInt16:
                 row.push_back("int16");
                 break;
-            case ::rtidb::codec::ColType::kUInt16:
+            case ::fedb::codec::ColType::kUInt16:
                 row.push_back("uint16");
                 break;
-            case ::rtidb::codec::ColType::kBool:
+            case ::fedb::codec::ColType::kBool:
                 row.push_back("bool");
                 break;
             default:
@@ -208,10 +218,10 @@ __attribute__((unused)) static void PrintSchema(const std::string& schema) {
 }
 
 __attribute__((unused)) static void PrintColumnKey(
-    const ::rtidb::storage::TTLSt& ttl_st,
-    const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
+    const ::fedb::storage::TTLSt& ttl_st,
+    const google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>&
         column_desc_field,
-    const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>&
+    const google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>&
         column_key_field) {
     std::vector<std::string> row;
     row.push_back("#");
@@ -221,19 +231,19 @@ __attribute__((unused)) static void PrintColumnKey(
     row.push_back("ttl");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
-    std::map<std::string, ::rtidb::storage::TTLSt> ttl_map;
+    std::map<std::string, ::fedb::storage::TTLSt> ttl_map;
     for (const auto& column_desc : column_desc_field) {
         if (column_desc.is_ts_col()) {
             if (column_desc.has_abs_ttl() || column_desc.has_lat_ttl()) {
                 ttl_map.emplace(column_desc.name(),
-                    ::rtidb::storage::TTLSt(column_desc.abs_ttl(), column_desc.lat_ttl(), ttl_st.ttl_type));
+                    ::fedb::storage::TTLSt(column_desc.abs_ttl(), column_desc.lat_ttl(), ttl_st.ttl_type));
             } else if (column_desc.has_ttl()) {
-                if (ttl_st.ttl_type == ::rtidb::storage::kAbsoluteTime) {
+                if (ttl_st.ttl_type == ::fedb::storage::kAbsoluteTime) {
                     ttl_map.emplace(column_desc.name(),
-                            ::rtidb::storage::TTLSt(column_desc.ttl(), 0, ttl_st.ttl_type));
+                            ::fedb::storage::TTLSt(column_desc.ttl(), 0, ttl_st.ttl_type));
                 } else {
                     ttl_map.emplace(column_desc.name(),
-                        ::rtidb::storage::TTLSt(0, column_desc.ttl(), ttl_st.ttl_type));
+                        ::fedb::storage::TTLSt(0, column_desc.ttl(), ttl_st.ttl_type));
                 }
             } else {
                 ttl_map.emplace(column_desc.name(), ttl_st);
@@ -267,7 +277,7 @@ __attribute__((unused)) static void PrintColumnKey(
                     row_copy[0] = std::to_string(idx);
                     row_copy.push_back(ts_name);
                     if (column_key.has_ttl()) {
-                        ::rtidb::storage::TTLSt cur_ttl_st(column_key.ttl());
+                        ::fedb::storage::TTLSt cur_ttl_st(column_key.ttl());
                         cur_ttl_st.abs_ttl = cur_ttl_st.abs_ttl / (60 * 1000);
                         row_copy.push_back(cur_ttl_st.ToString());
                     } else {
@@ -283,7 +293,7 @@ __attribute__((unused)) static void PrintColumnKey(
             } else {
                 row.push_back("-");
                 if (column_key.has_ttl()) {
-                    ::rtidb::storage::TTLSt cur_ttl_st(column_key.ttl());
+                    ::fedb::storage::TTLSt cur_ttl_st(column_key.ttl());
                     cur_ttl_st.abs_ttl = cur_ttl_st.abs_ttl / (60 * 1000);
                     row.push_back(cur_ttl_st.ToString());
                 } else {
@@ -317,8 +327,8 @@ __attribute__((unused)) static void PrintColumnKey(
 }
 
 __attribute__((unused)) static void ShowTableRows(
-    bool is_compress, ::rtidb::codec::SDKCodec* codec,
-    ::rtidb::cmd::SDKIterator* it) {
+    bool is_compress, ::fedb::codec::SDKCodec* codec,
+    ::fedb::cmd::SDKIterator* it) {
     std::vector<std::string> row = codec->GetColNames();
     if (!codec->HasTSCol()) {
         row.insert(row.begin(), "ts");
@@ -330,7 +340,7 @@ __attribute__((unused)) static void ShowTableRows(
     uint32_t index = 1;
     while (it->Valid()) {
         std::vector<std::string> vrow;
-        rtidb::base::Slice data = it->GetValue();
+        fedb::base::Slice data = it->GetValue();
         std::string value;
         if (is_compress) {
             ::snappy::Uncompress(data.data(), data.size(), &value);
@@ -355,26 +365,26 @@ __attribute__((unused)) static void ShowTableRows(
 }
 
 __attribute__((unused)) static void ShowTableRows(
-    const ::rtidb::api::TableMeta& table_info, ::rtidb::cmd::SDKIterator* it) {
-    ::rtidb::codec::SDKCodec codec(table_info);
+    const ::fedb::api::TableMeta& table_info, ::fedb::cmd::SDKIterator* it) {
+    ::fedb::codec::SDKCodec codec(table_info);
     bool is_compress =
-        table_info.compress_type() == ::rtidb::api::CompressType::kSnappy
+        table_info.compress_type() == ::fedb::api::CompressType::kSnappy
             ? true
             : false;
     ShowTableRows(is_compress, &codec, it);
 }
 
 __attribute__((unused)) static void ShowTableRows(
-    const ::rtidb::nameserver::TableInfo& table_info,
-    ::rtidb::cmd::SDKIterator* it) {
-    ::rtidb::codec::SDKCodec codec(table_info);
-    bool is_compress = table_info.compress_type() == ::rtidb::nameserver::kSnappy ? true : false;
+    const ::fedb::nameserver::TableInfo& table_info,
+    ::fedb::cmd::SDKIterator* it) {
+    ::fedb::codec::SDKCodec codec(table_info);
+    bool is_compress = table_info.compress_type() == ::fedb::nameserver::kSnappy ? true : false;
     ShowTableRows(is_compress, &codec, it);
 }
 
 __attribute__((unused)) static void ShowTableRows(
-    const std::string& key, ::rtidb::cmd::SDKIterator* it,
-    const ::rtidb::nameserver::CompressType compress_type) {
+    const std::string& key, ::fedb::cmd::SDKIterator* it,
+    const ::fedb::nameserver::CompressType compress_type) {
     ::baidu::common::TPrinter tp(4, FLAGS_max_col_display_length);
     std::vector<std::string> row;
     row.push_back("#");
@@ -385,7 +395,7 @@ __attribute__((unused)) static void ShowTableRows(
     uint32_t index = 1;
     while (it->Valid()) {
         std::string value = it->GetValue().ToString();
-        if (compress_type == ::rtidb::nameserver::kSnappy) {
+        if (compress_type == ::fedb::nameserver::kSnappy) {
             std::string uncompressed;
             ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
             value = uncompressed;
@@ -403,7 +413,7 @@ __attribute__((unused)) static void ShowTableRows(
 }
 
 __attribute__((unused)) static void PrintTableInfo(
-    const std::vector<::rtidb::nameserver::TableInfo>& tables) {
+    const std::vector<::fedb::nameserver::TableInfo>& tables) {
     std::vector<std::string> row;
     row.push_back("name");
     row.push_back("tid");
@@ -462,17 +472,17 @@ __attribute__((unused)) static void PrintTableInfo(
                 }
                 if (value.has_ttl_desc()) {
                     if (value.ttl_desc().ttl_type() ==
-                        ::rtidb::api::TTLType::kLatestTime) {
+                        ::fedb::api::TTLType::kLatestTime) {
                         row.push_back(
                             std::to_string(value.ttl_desc().lat_ttl()));
                     } else if (value.ttl_desc().ttl_type() ==
-                               ::rtidb::api::TTLType::kAbsAndLat) {
+                               ::fedb::api::TTLType::kAbsAndLat) {
                         row.push_back(
                             std::to_string(value.ttl_desc().abs_ttl()) +
                             "min&&" +
                             std::to_string(value.ttl_desc().lat_ttl()));
                     } else if (value.ttl_desc().ttl_type() ==
-                               ::rtidb::api::TTLType::kAbsOrLat) {
+                               ::fedb::api::TTLType::kAbsOrLat) {
                         row.push_back(
                             std::to_string(value.ttl_desc().abs_ttl()) +
                             "min||" +
@@ -496,7 +506,7 @@ __attribute__((unused)) static void PrintTableInfo(
                     row.push_back("no");
                 }
                 if (value.has_compress_type()) {
-                    row.push_back(::rtidb::nameserver::CompressType_Name(
+                    row.push_back(::fedb::nameserver::CompressType_Name(
                         value.compress_type()));
                 } else {
                     row.push_back("kNoCompress");
@@ -522,14 +532,14 @@ __attribute__((unused)) static void PrintTableInfo(
                 if (value.table_partition(idx)
                         .partition_meta(meta_idx)
                         .has_record_byte_size()) {
-                    row.push_back(::rtidb::base::HumanReadableString(
+                    row.push_back(::fedb::base::HumanReadableString(
                         value.table_partition(idx)
                             .partition_meta(meta_idx)
                             .record_byte_size()));
                 } else {
                     row.push_back("-");
                 }
-                row.push_back(::rtidb::base::HumanReadableString(
+                row.push_back(::fedb::base::HumanReadableString(
                     value.table_partition(idx)
                         .partition_meta(meta_idx)
                         .diskused()));
@@ -541,7 +551,7 @@ __attribute__((unused)) static void PrintTableInfo(
 }
 
 __attribute__((unused)) static void PrintTableStatus(
-    const std::vector<::rtidb::api::TableStatus>& status_vec) {
+    const std::vector<::fedb::api::TableStatus>& status_vec) {
     std::vector<std::string> row;
     row.push_back("tid");
     row.push_back("pid");
@@ -562,8 +572,8 @@ __attribute__((unused)) static void PrintTableStatus(
         row.push_back(std::to_string(table_status.tid()));
         row.push_back(std::to_string(table_status.pid()));
         row.push_back(std::to_string(table_status.offset()));
-        row.push_back(::rtidb::api::TableMode_Name(table_status.mode()));
-        row.push_back(::rtidb::api::TableState_Name(table_status.state()));
+        row.push_back(::fedb::api::TableMode_Name(table_status.mode()));
+        row.push_back(::fedb::api::TableState_Name(table_status.state()));
         if (table_status.is_expire()) {
             row.push_back("true");
         } else {
@@ -571,17 +581,17 @@ __attribute__((unused)) static void PrintTableStatus(
         }
         if (table_status.has_ttl_desc()) {
             if (table_status.ttl_desc().ttl_type() ==
-                ::rtidb::api::TTLType::kLatestTime) {
+                ::fedb::api::TTLType::kLatestTime) {
                 row.push_back(
                     std::to_string(table_status.ttl_desc().lat_ttl()));
             } else if (table_status.ttl_desc().ttl_type() ==
-                       ::rtidb::api::TTLType::kAbsAndLat) {
+                       ::fedb::api::TTLType::kAbsAndLat) {
                 row.push_back(
                     std::to_string(table_status.ttl_desc().abs_ttl()) +
                     "min&&" +
                     std::to_string(table_status.ttl_desc().lat_ttl()));
             } else if (table_status.ttl_desc().ttl_type() ==
-                       ::rtidb::api::TTLType::kAbsOrLat) {
+                       ::fedb::api::TTLType::kAbsOrLat) {
                 row.push_back(
                     std::to_string(table_status.ttl_desc().abs_ttl()) +
                     "min||" +
@@ -591,18 +601,18 @@ __attribute__((unused)) static void PrintTableStatus(
                     std::to_string(table_status.ttl_desc().abs_ttl()) + "min");
             }
         } else {
-            if (table_status.ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
+            if (table_status.ttl_type() == ::fedb::api::TTLType::kLatestTime) {
                 row.push_back(std::to_string(table_status.ttl()));
             } else {
                 row.push_back(std::to_string(table_status.ttl()) + "min");
             }
         }
         row.push_back(std::to_string(table_status.time_offset()) + "s");
-        row.push_back(::rtidb::base::HumanReadableString(
+        row.push_back(::fedb::base::HumanReadableString(
                     table_status.record_byte_size() +
                     table_status.record_idx_byte_size()));
         row.push_back(
-            ::rtidb::api::CompressType_Name(table_status.compress_type()));
+            ::fedb::api::CompressType_Name(table_status.compress_type()));
         row.push_back(std::to_string(table_status.skiplist_height()));
         tp.AddRow(row);
     }
@@ -610,11 +620,11 @@ __attribute__((unused)) static void PrintTableStatus(
 }
 
 __attribute__((unused)) static void PrintTableInformation(
-    std::vector<::rtidb::nameserver::TableInfo>& tables) {  // NOLINT
+    std::vector<::fedb::nameserver::TableInfo>& tables) {  // NOLINT
     if (tables.empty()) {
         return;
     }
-    ::rtidb::nameserver::TableInfo table = tables[0];
+    ::fedb::nameserver::TableInfo table = tables[0];
     std::vector<std::string> row;
     row.push_back("attribute");
     row.push_back("value");
@@ -622,22 +632,22 @@ __attribute__((unused)) static void PrintTableInformation(
     tp.AddRow(row);
     uint64_t abs_ttl = table.ttl();
     uint64_t lat_ttl = 0;
-    ::rtidb::api::TTLType ttl_type = ::rtidb::api::kAbsoluteTime;
+    ::fedb::api::TTLType ttl_type = ::fedb::api::kAbsoluteTime;
     if (table.has_ttl_desc()) {
         ttl_type = table.ttl_desc().ttl_type();
         abs_ttl = table.ttl_desc().abs_ttl();
         lat_ttl = table.ttl_desc().lat_ttl();
     } else if (table.ttl_type() == "kLatestTime") {
-        ttl_type = ::rtidb::api::kLatestTime;
+        ttl_type = ::fedb::api::kLatestTime;
         abs_ttl = 0;
         lat_ttl = table.ttl();
     }
-    ::rtidb::storage::TTLSt ttl_st(abs_ttl, lat_ttl, ::rtidb::storage::TTLSt::ConvertTTLType(ttl_type));
+    ::fedb::storage::TTLSt ttl_st(abs_ttl, lat_ttl, ::fedb::storage::TTLSt::ConvertTTLType(ttl_type));
     std::string name = table.name();
     std::string replica_num = std::to_string(table.replica_num());
     std::string partition_num = std::to_string(table.partition_num());
     std::string compress_type =
-        ::rtidb::nameserver::CompressType_Name(table.compress_type());
+        ::fedb::nameserver::CompressType_Name(table.compress_type());
     uint64_t record_cnt = 0;
     uint64_t memused = 0;
     uint64_t diskused = 0;
@@ -664,7 +674,7 @@ __attribute__((unused)) static void PrintTableInformation(
     tp.AddRow(row);
     row.clear();
     row.push_back("ttl_type");
-    row.push_back(::rtidb::api::TTLType_Name(ttl_type));
+    row.push_back(::fedb::api::TTLType_Name(ttl_type));
     tp.AddRow(row);
     row.clear();
     row.push_back("compress_type");
@@ -678,11 +688,11 @@ __attribute__((unused)) static void PrintTableInformation(
     tp.AddRow(row);
     row.clear();
     row.push_back("memused");
-    row.push_back(::rtidb::base::HumanReadableString(memused));
+    row.push_back(::fedb::base::HumanReadableString(memused));
     tp.AddRow(row);
     row.clear();
     row.push_back("diskused");
-    row.push_back(::rtidb::base::HumanReadableString(diskused));
+    row.push_back(::fedb::base::HumanReadableString(diskused));
     tp.AddRow(row);
     row.clear();
     row.push_back("format_version");
@@ -719,4 +729,4 @@ __attribute__((unused)) static void PrintDatabase(
 }
 
 }  // namespace cmd
-}  // namespace rtidb
+}  // namespace fedb

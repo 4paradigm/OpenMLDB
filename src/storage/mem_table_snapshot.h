@@ -1,9 +1,19 @@
-//
-// snapshot.h
-// Copyright (C) 2017 4paradigm.com
-// Author vagrant
-// Date 2017-07-24
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 
 #include <atomic>
@@ -20,17 +30,17 @@
 #include "proto/tablet.pb.h"
 #include "storage/snapshot.h"
 
-using ::rtidb::api::LogEntry;
-namespace rtidb {
+using ::fedb::api::LogEntry;
+namespace fedb {
 namespace base {
 class Status;
 }
 namespace storage {
 
-using ::rtidb::log::WriteHandle;
+using ::fedb::log::WriteHandle;
 
-typedef ::rtidb::base::Skiplist<uint32_t, uint64_t,
-                                ::rtidb::base::DefaultComparator>
+typedef ::fedb::base::Skiplist<uint32_t, uint64_t,
+                                ::fedb::base::DefaultComparator>
     LogParts;
 
 // table snapshot
@@ -54,7 +64,7 @@ class MemTableSnapshot : public Snapshot {
                      uint64_t end_offset) override;
 
     int TTLSnapshot(std::shared_ptr<Table> table,
-                    const ::rtidb::api::Manifest& manifest, WriteHandle* wh,
+                    const ::fedb::api::Manifest& manifest, WriteHandle* wh,
                     uint64_t& count, uint64_t& expired_key_num,  // NOLINT
                     uint64_t& deleted_key_num);                  // NOLINT
 
@@ -64,11 +74,11 @@ class MemTableSnapshot : public Snapshot {
              std::atomic<uint64_t>* failed_cnt);
 
     int ExtractIndexFromSnapshot(
-        std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest,
+        std::shared_ptr<Table> table, const ::fedb::api::Manifest& manifest,
         WriteHandle* wh,
-        const ::rtidb::common::ColumnKey& column_key,  // NOLINT
+        const ::fedb::common::ColumnKey& column_key,  // NOLINT
         uint32_t idx, uint32_t partition_num,
-        const std::vector<::rtidb::codec::ColumnDesc>& columns,
+        const std::vector<::fedb::codec::ColumnDesc>& columns,
         uint32_t max_idx, const std::vector<uint32_t>& index_cols,
         uint64_t& count,                                        // NOLINT
         uint64_t& expired_key_num, uint64_t& deleted_key_num);  // NOLINT
@@ -76,37 +86,37 @@ class MemTableSnapshot : public Snapshot {
     bool DumpSnapshotIndexData(
         std::shared_ptr<Table> table,
         const std::vector<std::vector<uint32_t>>& index_cols,
-        const std::vector<::rtidb::codec::ColumnDesc>& columns,
+        const std::vector<::fedb::codec::ColumnDesc>& columns,
         uint32_t max_idx, uint32_t idx,
-        const std::vector<::rtidb::log::WriteHandle*>& whs,
+        const std::vector<::fedb::log::WriteHandle*>& whs,
         uint64_t* snapshot_offset);
 
     bool DumpBinlogIndexData(
         std::shared_ptr<Table> table,
         const std::vector<std::vector<uint32_t>>& index_cols,
-        const std::vector<::rtidb::codec::ColumnDesc>& columns,
+        const std::vector<::fedb::codec::ColumnDesc>& columns,
         uint32_t max_idx, uint32_t idx,
-        const std::vector<::rtidb::log::WriteHandle*>& whs,
+        const std::vector<::fedb::log::WriteHandle*>& whs,
         uint64_t snapshot_offset, uint64_t collected_offset);
 
     int ExtractIndexData(std::shared_ptr<Table> table,
-                         const ::rtidb::common::ColumnKey& column_key,
+                         const ::fedb::common::ColumnKey& column_key,
                          uint32_t idx, uint32_t partition_num,
                          uint64_t& out_offset);  // NOLINT
 
     bool DumpIndexData(std::shared_ptr<Table> table,
-                       const ::rtidb::common::ColumnKey& column_key,
+                       const ::fedb::common::ColumnKey& column_key,
                        uint32_t idx,
-                       const std::vector<::rtidb::log::WriteHandle*>& whs);
+                       const std::vector<::fedb::log::WriteHandle*>& whs);
 
     bool PackNewIndexEntry(
         std::shared_ptr<Table> table,
         const std::vector<std::vector<uint32_t>>& index_cols,
-        const std::vector<::rtidb::codec::ColumnDesc>& columns,
+        const std::vector<::fedb::codec::ColumnDesc>& columns,
         uint32_t max_idx, uint32_t idx, uint32_t partition_num,
-        ::rtidb::api::LogEntry* entry, uint32_t* index_pid);
+        ::fedb::api::LogEntry* entry, uint32_t* index_pid);
 
-    int RemoveDeletedKey(const ::rtidb::api::LogEntry& entry,
+    int RemoveDeletedKey(const ::fedb::api::LogEntry& entry,
                          const std::set<uint32_t>& deleted_index,
                          std::string* buffer);
 
@@ -119,8 +129,8 @@ class MemTableSnapshot : public Snapshot {
 
     uint64_t CollectDeletedKey(uint64_t end_offset);
 
-    int DecodeData(std::shared_ptr<Table> table, const std::vector<::rtidb::codec::ColumnDesc>& columns,
-                    const rtidb::api::LogEntry& entry, uint32_t maxIdx, std::vector<std::string>& row); // NOLINT
+    int DecodeData(std::shared_ptr<Table> table, const std::vector<::fedb::codec::ColumnDesc>& columns,
+                    const fedb::api::LogEntry& entry, uint32_t maxIdx, std::vector<std::string>& row); // NOLINT
 
     inline bool IsCompressed(const std::string& path);
 
@@ -132,4 +142,4 @@ class MemTableSnapshot : public Snapshot {
 };
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb

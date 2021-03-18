@@ -1,10 +1,19 @@
 /*
- * replicate_node.h
- * Copyright (C) 2017 4paradigm.com
- * Author denglong
- * Date 2017-08-11
+ * Copyright 2021 4Paradigm
  *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
+
 #ifndef SRC_REPLICA_REPLICATE_NODE_H_
 #define SRC_REPLICA_REPLICATE_NODE_H_
 
@@ -20,12 +29,12 @@
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 
-namespace rtidb {
+namespace fedb {
 namespace replica {
 
-using ::rtidb::log::LogReader;
-typedef ::rtidb::base::Skiplist<uint32_t, uint64_t,
-                                ::rtidb::base::DefaultComparator>
+using ::fedb::log::LogReader;
+typedef ::fedb::base::Skiplist<uint32_t, uint64_t,
+                                ::fedb::base::DefaultComparator>
     LogParts;
 
 class ReplicateNode {
@@ -69,14 +78,14 @@ class ReplicateNode {
 
  private:
     LogReader log_reader_;
-    std::vector<::rtidb::api::AppendEntriesRequest> cache_;
+    std::vector<::fedb::api::AppendEntriesRequest> cache_;
     std::string endpoint_;
     uint64_t last_sync_offset_;
     bool log_matched_;
     uint32_t tid_;
     uint32_t pid_;
     std::atomic<uint64_t>* term_;
-    ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> rpc_client_;
+    ::fedb::RpcClient<::fedb::api::TabletServer_Stub> rpc_client_;
     bthread_t worker_;
     std::atomic<uint64_t>* leader_log_offset_;
     std::atomic<bool> is_running_;
@@ -89,6 +98,6 @@ class ReplicateNode {
 };
 
 }  // namespace replica
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_REPLICA_REPLICATE_NODE_H_
