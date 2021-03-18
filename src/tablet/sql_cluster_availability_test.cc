@@ -246,6 +246,7 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     ASSERT_EQ(rs->GetInt64Unsafe(2), 67);
     ASSERT_FALSE(rs->Next());
     // stop
+    tb_server1.Stop(10);
     delete tablet1;
     sleep(3);
     rs = router->CallProcedure(db, sp_name, request_row, &status);
@@ -274,6 +275,7 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     DropTable(name_server_client, db, "trans", true);
     ShowTable(name_server_client, db, 0);
 
+    tb_server2.Stop(10);
     delete tablet2;
 }
 
@@ -385,6 +387,7 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     ASSERT_EQ(rs->GetInt64Unsafe(2), 67);
     ASSERT_FALSE(rs->Next());
     // stop
+    tb_server1.Stop(10);
     delete tablet1;
     sleep(3);
     rs = router->CallProcedure(db, sp_name, request_row, &status);
@@ -430,7 +433,7 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     DropTable(name_server_client, db, "trans1", true);
     ShowTable(name_server_client, db, 0);
 
-
+    tb_server2.Stop(10);
     delete tablet2;
 }
 
