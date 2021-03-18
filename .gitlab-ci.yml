@@ -369,40 +369,6 @@ deploy-fedb:
     variables:
       - $ENV_BUILD == "daily"
 
-deploy-package:
-  stage: deploy
-  script:
-    - source /root/.bashrc && sh tools/install_fesql.sh
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && bash steps/deploy_package.sh
-  only:
-    - tags
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
-  dependencies: []
-
-docker-image:
-  stage: deploy
-  script:
-    - source /root/.bashrc && sh tools/install_fesql.sh
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - sh docker/copy_file.sh
-    - make blob_proxy
-    - bash docker/push_meta.sh
-  only:
-    - tags
-    - develop
-    - release/*
-    - feat/335-fix-blob-proxy-startup-script-in-docker
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
-  dependencies:
-    - build
-
 fesql_auto_gen_case:
   stage: slow
   before_script:

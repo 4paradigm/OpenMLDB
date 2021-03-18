@@ -34,3 +34,4 @@
 
 #--replica_num=3
 #--partition_num=8
+--enable_distsql=true

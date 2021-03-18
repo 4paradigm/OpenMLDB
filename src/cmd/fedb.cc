@@ -92,7 +92,6 @@ DECLARE_string(data_dir);
 const std::string FEDB_VERSION = std::to_string(FEDB_VERSION_MAJOR) + "." + // NOLINT
                             std::to_string(FEDB_VERSION_MEDIUM) + "." +
                             std::to_string(FEDB_VERSION_MINOR) + "." +
-                            std::to_string(FEDB_VERSION_BUG) + "." +
                             FEDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
 
 static std::map<std::string, std::string> real_ep_map;

@@ -203,6 +203,7 @@ endif()
 
 if(SQL_JAVASDK_ENABLE)
 	set(JAVA_HOME ${PROJECT_SOURCE_DIR}/thirdparty/jdk1.8.0_141)
+	set_property(SOURCE sql_router_sdk.i PROPERTY CPLUSPLUS ON)
 	find_package(Java COMPONENTS Development REQUIRED)
 	message(STATUS "Found Java: ${Java_JAVA_EXECUTABLE} (found version \"${Java_VERSION_STRING}\")")
 	find_package(JNI REQUIRED)
