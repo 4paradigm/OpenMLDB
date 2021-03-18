@@ -60,16 +60,33 @@ jobs:
           ls -al build/bin
           ls -al build/bin/fedb
           ls -al build/src/sdk/
-          ls -al build/sql_pysdk/
+          ls -al build/sql_pysdk/dist
           ls -al build/python/dist/
       - uses: actions/upload-artifact@v1
         with:
-          name: build-artifact
+          name: build-fedb
           path: build/bin/fedb
-#            /__w/fedb/fedb/build/src/sdk
-#            build/sql_pysdk/dist
-#            build/python/dist
-#          retention-days: 1
+      - uses: actions/upload-artifact@v1
+        with:
+          name: build-sql_sdk_test
+          path: build/bin/sql_sdk_test
+      - uses: actions/upload-artifact@v1
+        with:
+          name: build-sql_cluster_test
+          path: build/bin/sql_cluster_test
+      - uses: actions/upload-artifact@v1
+        with:
+          name: libsql_jsdk
+          path: build/src/sdk/libsql_jsdk.so
+      - uses: actions/upload-artifact@v1
+        with:
+          name: sql_pysdk
+          path: build/sql_pysdk/dist/*.whl
+      - uses: actions/upload-artifact@v1
+        with:
+          name: python-whl
+          path: build/python/dist/*.whl
+
 #  c++_ut:
 #    needs: [build]
 #    runs-on: ubuntu-latest

@@ -1,7 +1,7 @@
 name: FEDB-Dailybuild
-on:
-  schedule:
-    - cron: '*/1 * * * *'
+on: [push, pull_request]
+#  schedule:
+#    - cron: '*/1 * * * *'
 env:
   GIT_SUBMODULE_STRATEGY: recursive
 jobs:
