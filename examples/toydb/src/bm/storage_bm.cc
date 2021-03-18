@@ -18,7 +18,7 @@
 #include "llvm/Transforms/Scalar.h"
 #include "bm/storage_bm_case.h"
 
-namespace fesql {
+namespace hybridse {
 namespace bm {
 using namespace ::llvm;  // NOLINT
 
@@ -76,6 +76,6 @@ BENCHMARK(BM_MemSegmentIterate)
 BENCHMARK(BM_ArrayListIterate)->Args({100})->Args({1000})->Args({10000});
 
 }  // namespace bm
-}  // namespace fesql
+}  // namespace hybridse
 
 BENCHMARK_MAIN();

@@ -21,7 +21,7 @@
 #include <string>
 #include "sdk/base.h"
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 struct Date {
     int32_t year;
@@ -219,5 +219,5 @@ class ResultSet {
 };
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_SDK_RESULT_SET_H_

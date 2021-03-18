@@ -33,7 +33,7 @@
 #include "vm/core_api.h"
 #include "vm/mem_catalog.h"
 #include "vm/physical_op.h"
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 using base::Status;
@@ -1385,10 +1385,10 @@ class RunnerBuilder {
     int32_t id_;
     ClusterJob cluster_job_;
 
-    std::unordered_map<::fesql::vm::PhysicalOpNode*, ::fesql::vm::ClusterTask>
+    std::unordered_map<::hybridse::vm::PhysicalOpNode*, ::hybridse::vm::ClusterTask>
         task_map_;
     std::shared_ptr<ClusterTask> request_task_;
-    std::unordered_map<fesql::vm::Runner*, ::fesql::vm::Runner*>
+    std::unordered_map<hybridse::vm::Runner*, ::hybridse::vm::Runner*>
         proxy_runner_map_;
     std::set<size_t> batch_common_node_set_;
     ClusterTask BinaryInherit(const ClusterTask& left, const ClusterTask& right,
@@ -1414,7 +1414,7 @@ class RunnerBuilder {
 
 class RunnerContext {
  public:
-    explicit RunnerContext(fesql::vm::ClusterJob* cluster_job,
+    explicit RunnerContext(hybridse::vm::ClusterJob* cluster_job,
                            const bool is_debug = false)
         : cluster_job_(cluster_job),
           sp_name_(""),
@@ -1422,8 +1422,8 @@ class RunnerContext {
           requests_(),
           is_debug_(is_debug),
           batch_cache_() {}
-    explicit RunnerContext(fesql::vm::ClusterJob* cluster_job,
-                           const fesql::codec::Row& request,
+    explicit RunnerContext(hybridse::vm::ClusterJob* cluster_job,
+                           const hybridse::codec::Row& request,
                            const std::string& sp_name = "",
                            const bool is_debug = false)
         : cluster_job_(cluster_job),
@@ -1432,7 +1432,7 @@ class RunnerContext {
           requests_(),
           is_debug_(is_debug),
           batch_cache_() {}
-    explicit RunnerContext(fesql::vm::ClusterJob* cluster_job,
+    explicit RunnerContext(hybridse::vm::ClusterJob* cluster_job,
                            const std::vector<Row>& request_batch,
                            const std::string& sp_name = "",
                            const bool is_debug = false)
@@ -1444,13 +1444,13 @@ class RunnerContext {
           batch_cache_() {}
 
     const size_t GetRequestSize() const { return requests_.size(); }
-    const fesql::codec::Row& GetRequest() const { return request_; }
-    const fesql::codec::Row& GetRequest(size_t idx) const {
+    const hybridse::codec::Row& GetRequest() const { return request_; }
+    const hybridse::codec::Row& GetRequest(size_t idx) const {
         return requests_[idx];
     }
-    fesql::vm::ClusterJob* cluster_job() { return cluster_job_; }
-    void SetRequest(const fesql::codec::Row& request);
-    void SetRequests(const std::vector<fesql::codec::Row>& requests);
+    hybridse::vm::ClusterJob* cluster_job() { return cluster_job_; }
+    void SetRequest(const hybridse::codec::Row& request);
+    void SetRequests(const std::vector<hybridse::codec::Row>& requests);
     bool is_debug() const { return is_debug_; }
 
     const std::string& sp_name() { return sp_name_; }
@@ -1461,10 +1461,10 @@ class RunnerContext {
     void SetBatchCache(int64_t id, std::shared_ptr<DataHandlerList> data);
 
  private:
-    fesql::vm::ClusterJob* cluster_job_;
+    hybridse::vm::ClusterJob* cluster_job_;
     const std::string sp_name_;
-    fesql::codec::Row request_;
-    std::vector<fesql::codec::Row> requests_;
+    hybridse::codec::Row request_;
+    std::vector<hybridse::codec::Row> requests_;
     size_t idx_;
     const bool is_debug_;
     // TODO(chenjing): optimize
@@ -1472,5 +1472,5 @@ class RunnerContext {
     std::map<int64_t, std::shared_ptr<DataHandlerList>> batch_cache_;
 };
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_VM_RUNNER_H_

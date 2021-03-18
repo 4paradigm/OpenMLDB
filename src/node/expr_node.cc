@@ -26,9 +26,9 @@
 #include "vm/schemas_context.h"
 #include "vm/transform.h"
 
-using ::fesql::common::kTypeError;
+using ::hybridse::common::kTypeError;
 
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 Status ColumnRefNode::InferAttr(ExprAnalysisContext* ctx) {
@@ -841,4 +841,4 @@ ExprNode* ExprNode::DeepCopy(NodeManager* nm) const {
 }
 
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse

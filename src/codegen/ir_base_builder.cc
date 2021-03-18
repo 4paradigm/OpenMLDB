@@ -26,14 +26,14 @@
 #include "glog/logging.h"
 #include "node/node_manager.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 using base::Status;
-using ::fesql::common::kCodegenError;
+using ::hybridse::common::kCodegenError;
 
 bool GetLLVMType(::llvm::BasicBlock* block,
-                 const ::fesql::node::DataType& type,  // NOLINT
+                 const ::hybridse::node::DataType& type,  // NOLINT
                  ::llvm::Type** output) {
     if (output == NULL || block == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
@@ -43,7 +43,7 @@ bool GetLLVMType(::llvm::BasicBlock* block,
 }
 
 bool GetLLVMType(::llvm::BasicBlock* block,
-                 const ::fesql::node::TypeNode* type,  // NOLINT
+                 const ::hybridse::node::TypeNode* type,  // NOLINT
                  ::llvm::Type** output) {
     if (output == NULL || block == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
@@ -51,7 +51,7 @@ bool GetLLVMType(::llvm::BasicBlock* block,
     }
     return GetLLVMType(block->getModule(), type, output);
 }
-bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
+bool GetLLVMType(::llvm::Module* m, const ::hybridse::node::DataType& type,
                  ::llvm::Type** llvm_type) {
     if (nullptr == m) {
         LOG(WARNING) << "fail to convert data type to llvm type";
@@ -111,54 +111,54 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
             return true;
         }
         default: {
-            LOG(WARNING) << "fail to convert fesql datatype to llvm type: ";
+            LOG(WARNING) << "fail to convert hybridse datatype to llvm type: ";
             return false;
         }
     }
     return true;
 }
 
-bool GetLLVMColumnSize(::fesql::node::TypeNode* v_type, uint32_t* size) {
+bool GetLLVMColumnSize(::hybridse::node::TypeNode* v_type, uint32_t* size) {
     if (nullptr == size) {
         LOG(WARNING) << "the size ptr is NULL ";
         return false;
     }
 
     switch (v_type->base_) {
-        case ::fesql::node::kInt16: {
-            *size = sizeof(::fesql::codec::ColumnImpl<int16_t>);
+        case ::hybridse::node::kInt16: {
+            *size = sizeof(::hybridse::codec::ColumnImpl<int16_t>);
             break;
         }
-        case ::fesql::node::kInt32: {
-            *size = sizeof(::fesql::codec::ColumnImpl<int32_t>);
+        case ::hybridse::node::kInt32: {
+            *size = sizeof(::hybridse::codec::ColumnImpl<int32_t>);
             break;
         }
-        case ::fesql::node::kInt64: {
-            *size = sizeof(::fesql::codec::ColumnImpl<int64_t>);
+        case ::hybridse::node::kInt64: {
+            *size = sizeof(::hybridse::codec::ColumnImpl<int64_t>);
             break;
         }
-        case ::fesql::node::kDouble: {
-            *size = sizeof(::fesql::codec::ColumnImpl<double>);
+        case ::hybridse::node::kDouble: {
+            *size = sizeof(::hybridse::codec::ColumnImpl<double>);
             break;
         }
-        case ::fesql::node::kFloat: {
-            *size = sizeof(::fesql::codec::ColumnImpl<float>);
+        case ::hybridse::node::kFloat: {
+            *size = sizeof(::hybridse::codec::ColumnImpl<float>);
             break;
         }
-        case ::fesql::node::kVarchar: {
-            *size = sizeof(::fesql::codec::StringColumnImpl);
+        case ::hybridse::node::kVarchar: {
+            *size = sizeof(::hybridse::codec::StringColumnImpl);
             break;
         }
-        case ::fesql::node::kTimestamp: {
-            *size = sizeof(::fesql::codec::ColumnImpl<codec::Timestamp>);
+        case ::hybridse::node::kTimestamp: {
+            *size = sizeof(::hybridse::codec::ColumnImpl<codec::Timestamp>);
             break;
         }
-        case ::fesql::node::kDate: {
-            *size = sizeof(::fesql::codec::ColumnImpl<codec::Date>);
+        case ::hybridse::node::kDate: {
+            *size = sizeof(::hybridse::codec::ColumnImpl<codec::Date>);
             break;
         }
-        case ::fesql::node::kBool: {
-            *size = sizeof(::fesql::codec::ColumnImpl<bool>);
+        case ::hybridse::node::kBool: {
+            *size = sizeof(::hybridse::codec::ColumnImpl<bool>);
             break;
         }
         default: {
@@ -169,7 +169,7 @@ bool GetLLVMColumnSize(::fesql::node::TypeNode* v_type, uint32_t* size) {
     return true;
 }  // namespace codegen
 
-bool GetLLVMListType(::llvm::Module* m, const ::fesql::node::TypeNode* v_type,
+bool GetLLVMListType(::llvm::Module* m, const ::hybridse::node::TypeNode* v_type,
                      ::llvm::Type** output) {
     if (output == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
@@ -177,43 +177,43 @@ bool GetLLVMListType(::llvm::Module* m, const ::fesql::node::TypeNode* v_type,
     }
     std::string name;
     switch (v_type->base_) {
-        case ::fesql::node::kInt16: {
+        case ::hybridse::node::kInt16: {
             name = "fe.list_ref_int16";
             break;
         }
-        case ::fesql::node::kInt32: {
+        case ::hybridse::node::kInt32: {
             name = "fe.list_ref_int32";
             break;
         }
-        case ::fesql::node::kInt64: {
+        case ::hybridse::node::kInt64: {
             name = "fe.list_ref_int64";
             break;
         }
-        case ::fesql::node::kBool: {
+        case ::hybridse::node::kBool: {
             name = "fe.list_ref_bool";
             break;
         };
-        case ::fesql::node::kTimestamp: {
+        case ::hybridse::node::kTimestamp: {
             name = "fe.list_ref_timestamp";
             break;
         }
-        case ::fesql::node::kDate: {
+        case ::hybridse::node::kDate: {
             name = "fe.list_ref_date";
             break;
         }
-        case ::fesql::node::kFloat: {
+        case ::hybridse::node::kFloat: {
             name = "fe.list_ref_float";
             break;
         }
-        case ::fesql::node::kDouble: {
+        case ::hybridse::node::kDouble: {
             name = "fe.list_ref_double";
             break;
         }
-        case ::fesql::node::kVarchar: {
+        case ::hybridse::node::kVarchar: {
             name = "fe.list_ref_string";
             break;
         }
-        case ::fesql::node::kRow: {
+        case ::hybridse::node::kRow: {
             name = "fe.list_ref_row";
             break;
         }
@@ -240,7 +240,7 @@ bool GetLLVMListType(::llvm::Module* m, const ::fesql::node::TypeNode* v_type,
 }
 
 bool GetLLVMIteratorType(::llvm::Module* m,
-                         const ::fesql::node::TypeNode* v_type,
+                         const ::hybridse::node::TypeNode* v_type,
                          ::llvm::Type** output) {
     if (output == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
@@ -248,43 +248,43 @@ bool GetLLVMIteratorType(::llvm::Module* m,
     }
     std::string name;
     switch (v_type->base_) {
-        case ::fesql::node::kInt16: {
+        case ::hybridse::node::kInt16: {
             name = "fe.iterator_ref_int16";
             break;
         }
-        case ::fesql::node::kInt32: {
+        case ::hybridse::node::kInt32: {
             name = "fe.iterator_ref_int32";
             break;
         }
-        case ::fesql::node::kInt64: {
+        case ::hybridse::node::kInt64: {
             name = "fe.iterator_ref_int64";
             break;
         }
-        case ::fesql::node::kBool: {
+        case ::hybridse::node::kBool: {
             name = "fe.iterator_ref_bool";
             break;
         }
-        case ::fesql::node::kFloat: {
+        case ::hybridse::node::kFloat: {
             name = "fe.iterator_ref_float";
             break;
         }
-        case ::fesql::node::kDouble: {
+        case ::hybridse::node::kDouble: {
             name = "fe.iterator_ref_double";
             break;
         }
-        case ::fesql::node::kVarchar: {
+        case ::hybridse::node::kVarchar: {
             name = "fe.iterator_ref_string";
             break;
         }
-        case ::fesql::node::kTimestamp: {
+        case ::hybridse::node::kTimestamp: {
             name = "fe.iterator_ref_timestamp";
             break;
         }
-        case ::fesql::node::kDate: {
+        case ::hybridse::node::kDate: {
             name = "fe.iterator_ref_date";
             break;
         }
-        case ::fesql::node::kRow: {
+        case ::hybridse::node::kRow: {
             name = "fe.iterator_ref_row";
             break;
         }
@@ -310,14 +310,14 @@ bool GetLLVMIteratorType(::llvm::Module* m,
     return true;
 }
 
-bool GetLLVMType(::llvm::Module* m, const fesql::node::TypeNode* data_type,
+bool GetLLVMType(::llvm::Module* m, const hybridse::node::TypeNode* data_type,
                  ::llvm::Type** llvm_type) {
     if (nullptr == data_type) {
         LOG(WARNING) << "fail to convert data type to llvm type";
         return false;
     }
     switch (data_type->base_) {
-        case fesql::node::kList: {
+        case hybridse::node::kList: {
             if (data_type->generics_.size() != 1) {
                 LOG(WARNING) << "fail to convert data type: list generic types "
                                 "number is "
@@ -332,7 +332,7 @@ bool GetLLVMType(::llvm::Module* m, const fesql::node::TypeNode* data_type,
             *llvm_type = list_type->getPointerTo();
             return true;
         }
-        case fesql::node::kIterator: {
+        case hybridse::node::kIterator: {
             if (data_type->generics_.size() != 1) {
                 LOG(WARNING)
                     << "fail to convert data type: iterator generic types "
@@ -348,7 +348,7 @@ bool GetLLVMType(::llvm::Module* m, const fesql::node::TypeNode* data_type,
             *llvm_type = list_type->getPointerTo();
             return true;
         }
-        case fesql::node::kMap: {
+        case hybridse::node::kMap: {
             LOG(WARNING) << "fail to codegen map type, currently not support";
         }
         default: {
@@ -401,7 +401,7 @@ bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,  // NOLINT
 }
 
 bool GetFullType(node::NodeManager* nm, ::llvm::Type* type,
-                 const ::fesql::node::TypeNode** type_node) {
+                 const ::hybridse::node::TypeNode** type_node) {
     if (nm == NULL || type == NULL || type_node == NULL) {
         LOG(WARNING) << "type or output is null";
         return false;
@@ -414,106 +414,106 @@ bool GetFullType(node::NodeManager* nm, ::llvm::Type* type,
     }
 
     switch (base) {
-        case fesql::node::kList: {
+        case hybridse::node::kList: {
             if (type->getTypeID() == ::llvm::Type::PointerTyID) {
                 type = reinterpret_cast<::llvm::PointerType*>(type)
                            ->getElementType();
             }
             if (type->getStructName().equals("fe.list_ref_int16")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kInt16));
+                    base, nm->MakeTypeNode(hybridse::node::kInt16));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_int32")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kInt32));
+                    base, nm->MakeTypeNode(hybridse::node::kInt32));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_int64")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kInt64));
+                    base, nm->MakeTypeNode(hybridse::node::kInt64));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_bool")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kBool));
+                    base, nm->MakeTypeNode(hybridse::node::kBool));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_float")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kFloat));
+                    base, nm->MakeTypeNode(hybridse::node::kFloat));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_double")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kDouble));
+                    base, nm->MakeTypeNode(hybridse::node::kDouble));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_string")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kVarchar));
+                    base, nm->MakeTypeNode(hybridse::node::kVarchar));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_timestamp")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kTimestamp));
+                    base, nm->MakeTypeNode(hybridse::node::kTimestamp));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_date")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kDate));
+                    base, nm->MakeTypeNode(hybridse::node::kDate));
                 return true;
             }
             LOG(WARNING) << "fail to get type of llvm type for "
                          << type->getStructName().str();
             return false;
         }
-        case fesql::node::kIterator: {
+        case hybridse::node::kIterator: {
             if (type->getTypeID() == ::llvm::Type::PointerTyID) {
                 type = reinterpret_cast<::llvm::PointerType*>(type)
                            ->getElementType();
             }
             if (type->getStructName().equals("fe.iterator_ref_int16")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kInt16));
+                    base, nm->MakeTypeNode(hybridse::node::kInt16));
                 return true;
 
             } else if (type->getStructName().equals("fe.iterator_ref_bool")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kBool));
+                    base, nm->MakeTypeNode(hybridse::node::kBool));
                 return true;
 
             } else if (type->getStructName().equals("fe.iterator_ref_int32")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kInt32));
+                    base, nm->MakeTypeNode(hybridse::node::kInt32));
                 return true;
 
             } else if (type->getStructName().equals("fe.iterator_ref_int64")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kInt64));
+                    base, nm->MakeTypeNode(hybridse::node::kInt64));
                 return true;
 
             } else if (type->getStructName().equals("fe.iterator_ref_float")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kFloat));
+                    base, nm->MakeTypeNode(hybridse::node::kFloat));
                 return true;
 
             } else if (type->getStructName().equals("fe.iterator_ref_double")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kDouble));
+                    base, nm->MakeTypeNode(hybridse::node::kDouble));
                 return true;
 
             } else if (type->getStructName().equals("fe.iterator_ref_string")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kVarchar));
+                    base, nm->MakeTypeNode(hybridse::node::kVarchar));
                 return true;
             } else if (type->getStructName().equals(
                            "fe.iterator_ref_timestamp")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kTimestamp));
+                    base, nm->MakeTypeNode(hybridse::node::kTimestamp));
                 return true;
             } else if (type->getStructName().equals("fe.iterator_ref_date")) {
                 *type_node = nm->MakeTypeNode(
-                    base, nm->MakeTypeNode(fesql::node::kDate));
+                    base, nm->MakeTypeNode(hybridse::node::kDate));
                 return true;
             }
             LOG(WARNING) << "fail to get type of llvm type for "
                          << type->getStructName().str();
             return false;
         }
-        case fesql::node::kMap: {
+        case hybridse::node::kMap: {
             LOG(WARNING) << "fail to get type for map";
             return false;
         }
@@ -525,46 +525,46 @@ bool GetFullType(node::NodeManager* nm, ::llvm::Type* type,
 }
 
 bool IsStringType(::llvm::Type* type) {
-    ::fesql::node::DataType data_type;
+    ::hybridse::node::DataType data_type;
     if (!GetBaseType(type, &data_type)) {
         return false;
     }
     return data_type == node::kVarchar;
 }
-bool GetBaseType(::llvm::Type* type, ::fesql::node::DataType* output) {
+bool GetBaseType(::llvm::Type* type, ::hybridse::node::DataType* output) {
     if (type == NULL || output == NULL) {
         LOG(WARNING) << "type or output is null";
         return false;
     }
     switch (type->getTypeID()) {
         case ::llvm::Type::TokenTyID: {
-            *output = ::fesql::node::kNull;
+            *output = ::hybridse::node::kNull;
             return true;
         }
         case ::llvm::Type::FloatTyID: {
-            *output = ::fesql::node::kFloat;
+            *output = ::hybridse::node::kFloat;
             return true;
         }
         case ::llvm::Type::DoubleTyID: {
-            *output = ::fesql::node::kDouble;
+            *output = ::hybridse::node::kDouble;
             return true;
         }
         case ::llvm::Type::IntegerTyID: {
             switch (type->getIntegerBitWidth()) {
                 case 1: {
-                    *output = ::fesql::node::kBool;
+                    *output = ::hybridse::node::kBool;
                     return true;
                 }
                 case 16: {
-                    *output = ::fesql::node::kInt16;
+                    *output = ::hybridse::node::kInt16;
                     return true;
                 }
                 case 32: {
-                    *output = ::fesql::node::kInt32;
+                    *output = ::hybridse::node::kInt32;
                     return true;
                 }
                 case 64: {
-                    *output = ::fesql::node::kInt64;
+                    *output = ::hybridse::node::kInt64;
                     return true;
                 }
                 default: {
@@ -585,19 +585,19 @@ bool GetBaseType(::llvm::Type* type, ::fesql::node::DataType* output) {
             }
 
             if (type->getStructName().startswith("fe.list_ref_")) {
-                *output = fesql::node::kList;
+                *output = hybridse::node::kList;
                 return true;
             } else if (type->getStructName().startswith("fe.iterator_ref_")) {
-                *output = fesql::node::kIterator;
+                *output = hybridse::node::kIterator;
                 return true;
             } else if (type->getStructName().equals("fe.string_ref")) {
-                *output = fesql::node::kVarchar;
+                *output = hybridse::node::kVarchar;
                 return true;
             } else if (type->getStructName().equals("fe.timestamp")) {
-                *output = fesql::node::kTimestamp;
+                *output = hybridse::node::kTimestamp;
                 return true;
             } else if (type->getStructName().equals("fe.date")) {
-                *output = fesql::node::kDate;
+                *output = hybridse::node::kDate;
                 return true;
             }
             LOG(WARNING) << "no mapping type for llvm type "
@@ -661,48 +661,48 @@ bool BuildStoreOffset(::llvm::IRBuilder<>& builder,  // NOLINT
     builder.CreateStore(value, ptr_with_offset, false);
     return true;
 }
-bool DataType2SchemaType(const ::fesql::node::TypeNode& type,
-                         ::fesql::type::Type* output) {
+bool DataType2SchemaType(const ::hybridse::node::TypeNode& type,
+                         ::hybridse::type::Type* output) {
     switch (type.base_) {
-        case ::fesql::node::kBool: {
-            *output = ::fesql::type::kBool;
+        case ::hybridse::node::kBool: {
+            *output = ::hybridse::type::kBool;
             break;
         }
-        case ::fesql::node::kInt16: {
-            *output = ::fesql::type::kInt16;
+        case ::hybridse::node::kInt16: {
+            *output = ::hybridse::type::kInt16;
             break;
         }
-        case ::fesql::node::kInt32: {
-            *output = ::fesql::type::kInt32;
+        case ::hybridse::node::kInt32: {
+            *output = ::hybridse::type::kInt32;
             break;
         }
-        case ::fesql::node::kInt64: {
-            *output = ::fesql::type::kInt64;
+        case ::hybridse::node::kInt64: {
+            *output = ::hybridse::type::kInt64;
             break;
         }
-        case ::fesql::node::kFloat: {
-            *output = ::fesql::type::kFloat;
+        case ::hybridse::node::kFloat: {
+            *output = ::hybridse::type::kFloat;
             break;
         }
-        case ::fesql::node::kDouble: {
-            *output = ::fesql::type::kDouble;
+        case ::hybridse::node::kDouble: {
+            *output = ::hybridse::type::kDouble;
             break;
         }
-        case ::fesql::node::kVarchar: {
-            *output = ::fesql::type::kVarchar;
+        case ::hybridse::node::kVarchar: {
+            *output = ::hybridse::type::kVarchar;
             break;
         }
-        case ::fesql::node::kTimestamp: {
-            *output = ::fesql::type::kTimestamp;
+        case ::hybridse::node::kTimestamp: {
+            *output = ::hybridse::type::kTimestamp;
             break;
         }
-        case ::fesql::node::kDate: {
-            *output = ::fesql::type::kDate;
+        case ::hybridse::node::kDate: {
+            *output = ::hybridse::type::kDate;
             break;
         }
-        case ::fesql::node::kNull: {
+        case ::hybridse::node::kNull: {
             // Encode的时候, kNull 就是 kBool
-            *output = ::fesql::type::kBool;
+            *output = ::hybridse::type::kBool;
             break;
         }
         default: {
@@ -713,67 +713,67 @@ bool DataType2SchemaType(const ::fesql::node::TypeNode& type,
     }
     return true;
 }
-bool SchemaType2DataType(const ::fesql::type::Type type,
-                         ::fesql::node::TypeNode* output) {
+bool SchemaType2DataType(const ::hybridse::type::Type type,
+                         ::hybridse::node::TypeNode* output) {
     if (nullptr == output) {
         LOG(WARNING) << "Fail convert type: input is null";
         return false;
     }
     return SchemaType2DataType(type, &output->base_);
 }
-bool SchemaType2DataType(const ::fesql::type::Type type,
-                         ::fesql::node::DataType* output) {
+bool SchemaType2DataType(const ::hybridse::type::Type type,
+                         ::hybridse::node::DataType* output) {
     if (nullptr == output) {
         LOG(WARNING) << "Fail convert type: input is null";
         return false;
     }
     switch (type) {
-        case ::fesql::type::kBool: {
-            *output = ::fesql::node::kBool;
+        case ::hybridse::type::kBool: {
+            *output = ::hybridse::node::kBool;
             break;
         }
-        case ::fesql::type::kInt16: {
-            *output = ::fesql::node::kInt16;
+        case ::hybridse::type::kInt16: {
+            *output = ::hybridse::node::kInt16;
             break;
         }
-        case ::fesql::type::kInt32: {
-            *output = ::fesql::node::kInt32;
+        case ::hybridse::type::kInt32: {
+            *output = ::hybridse::node::kInt32;
             break;
         }
-        case ::fesql::type::kInt64: {
-            *output = ::fesql::node::kInt64;
+        case ::hybridse::type::kInt64: {
+            *output = ::hybridse::node::kInt64;
             break;
         }
-        case ::fesql::type::kFloat: {
-            *output = ::fesql::node::kFloat;
+        case ::hybridse::type::kFloat: {
+            *output = ::hybridse::node::kFloat;
             break;
         }
-        case ::fesql::type::kDouble: {
-            *output = ::fesql::node::kDouble;
+        case ::hybridse::type::kDouble: {
+            *output = ::hybridse::node::kDouble;
             break;
         }
-        case ::fesql::type::kVarchar: {
-            *output = ::fesql::node::kVarchar;
+        case ::hybridse::type::kVarchar: {
+            *output = ::hybridse::node::kVarchar;
             break;
         }
-        case ::fesql::type::kTimestamp: {
-            *output = ::fesql::node::kTimestamp;
+        case ::hybridse::type::kTimestamp: {
+            *output = ::hybridse::node::kTimestamp;
             break;
         }
-        case ::fesql::type::kDate: {
-            *output = ::fesql::node::kDate;
+        case ::hybridse::type::kDate: {
+            *output = ::hybridse::node::kDate;
             break;
         }
         default: {
             LOG(WARNING) << "unrecognized schema type "
-                         << ::fesql::type::Type_Name(type);
+                         << ::hybridse::type::Type_Name(type);
             return false;
         }
     }
     return true;
 }
 bool TypeIRBuilder::IsTimestampPtr(::llvm::Type* type) {
-    ::fesql::node::DataType data_type;
+    ::hybridse::node::DataType data_type;
     if (!IsStructPtr(type)) {
         return false;
     }
@@ -784,14 +784,14 @@ bool TypeIRBuilder::IsTimestampPtr(::llvm::Type* type) {
     return data_type == node::kTimestamp;
 }
 bool TypeIRBuilder::IsInt64(::llvm::Type* type) {
-    ::fesql::node::DataType data_type;
+    ::hybridse::node::DataType data_type;
     if (!GetBaseType(type, &data_type)) {
         return false;
     }
     return data_type == node::kInt64;
 }
 bool TypeIRBuilder::IsBool(::llvm::Type* type) {
-    ::fesql::node::DataType data_type;
+    ::hybridse::node::DataType data_type;
     if (!GetBaseType(type, &data_type)) {
         return false;
     }
@@ -818,7 +818,7 @@ const std::string TypeIRBuilder::TypeName(::llvm::Type* type) {
 }
 
 bool TypeIRBuilder::IsDatePtr(::llvm::Type* type) {
-    ::fesql::node::DataType data_type;
+    ::hybridse::node::DataType data_type;
     if (!IsStructPtr(type)) {
         return false;
     }
@@ -829,7 +829,7 @@ bool TypeIRBuilder::IsDatePtr(::llvm::Type* type) {
     return data_type == node::kDate;
 }
 bool TypeIRBuilder::IsStringPtr(::llvm::Type* type) {
-    ::fesql::node::DataType data_type;
+    ::hybridse::node::DataType data_type;
     if (!type->isPointerTy()) {
         return false;
     }
@@ -1010,4 +1010,4 @@ llvm::Value* CreateAllocaAtHead(llvm::IRBuilder<>* builder, llvm::Type* dtype,
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

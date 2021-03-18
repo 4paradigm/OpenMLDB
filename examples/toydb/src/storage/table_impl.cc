@@ -22,7 +22,7 @@
 #include "base/fe_slice.h"
 #include "glog/logging.h"
 
-namespace fesql {
+namespace hybridse {
 namespace storage {
 
 static constexpr uint32_t SEED = 0xe17a1465;
@@ -58,7 +58,7 @@ bool Table::Init() {
         }
         IndexSt st;
         st.name = table_def_.indexes(idx).name();
-        st.ts_pos = fesql::vm::INVALID_POS;
+        st.ts_pos = hybridse::vm::INVALID_POS;
         if (!table_def_.indexes(idx).second_key().empty()) {
             if (col_map.find(table_def_.indexes(idx).second_key()) ==
                 col_map.end()) {
@@ -72,7 +72,7 @@ bool Table::Init() {
                 }
                 default: {
                     LOG(WARNING) << "Invalid index ts type: "
-                                 << fesql::type::Type_Name(
+                                 << hybridse::type::Type_Name(
                                         table_def_.columns(st.ts_pos).type());
                     return false;
                 }
@@ -80,7 +80,7 @@ bool Table::Init() {
         }
 
         st.index = idx;
-        std::vector<std::pair<fesql::type::Type, size_t>> col_vec;
+        std::vector<std::pair<hybridse::type::Type, size_t>> col_vec;
         for (int i = 0; i < table_def_.indexes(idx).first_keys_size(); i++) {
             std::string name = table_def_.indexes(idx).first_keys(i);
             auto iter = col_map.find(name);
@@ -103,7 +103,7 @@ bool Table::Init() {
                 default: {
                     LOG(WARNING)
                         << "Invalid index key type: "
-                        << fesql::type::Type_Name(
+                        << hybridse::type::Type_Name(
                                table_def_.columns(iter->second).type());
                     return false;
                 }
@@ -143,7 +143,7 @@ bool Table::DecodeKeysAndTs(const IndexSt& index, const char* row,
             if (row_view_.IsNULL(reinterpret_cast<const int8_t*>(row),
                                  col.second)) {
                 key.append(codec::NONETOKEN);
-            } else if (col.first == ::fesql::type::kVarchar) {
+            } else if (col.first == ::hybridse::type::kVarchar) {
                 const char* val = NULL;
                 uint32_t length = 0;
                 row_view_.GetValue(reinterpret_cast<const int8_t*>(row),
@@ -164,7 +164,7 @@ bool Table::DecodeKeysAndTs(const IndexSt& index, const char* row,
         if (row_view_.IsNULL(reinterpret_cast<const int8_t*>(row),
                              index.keys[0].second)) {
             key = codec::NONETOKEN;
-        } else if (index.keys[0].first == ::fesql::type::kVarchar) {
+        } else if (index.keys[0].first == ::hybridse::type::kVarchar) {
             const char* buf = nullptr;
             uint32_t size = 0;
             key = row_view_.GetValue(reinterpret_cast<const int8_t*>(row),
@@ -181,7 +181,7 @@ bool Table::DecodeKeysAndTs(const IndexSt& index, const char* row,
             key = std::to_string(value);
         }
     }
-    if (fesql::vm::INVALID_POS == index.ts_pos ||
+    if (hybridse::vm::INVALID_POS == index.ts_pos ||
         row_view_.IsNULL(reinterpret_cast<const int8_t*>(row), index.ts_pos)) {
         struct timeval cur_time;
         gettimeofday(&cur_time, NULL);
@@ -209,7 +209,7 @@ bool Table::Put(const char* row, uint32_t size) {
         }
         if (seg_cnt_ > 1) {
             seg_index =
-                ::fesql::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
+                ::hybridse::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
         }
         Segment* segment = segments_[kv.second.index][seg_index];
         Slice spk(key);
@@ -222,7 +222,7 @@ std::unique_ptr<TableIterator> Table::NewIndexIterator(const std::string& pk,
                                                        const uint32_t index) {
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
-        seg_idx = ::fesql::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+        seg_idx = ::hybridse::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
     }
     base::Slice spk(pk);
     Segment* segment = segments_[index][seg_idx];
@@ -301,7 +301,7 @@ void TableIterator::Seek(const std::string& key, uint64_t ts) {
     }
     if (seg_cnt_ > 1) {
         seg_idx_ =
-            ::fesql::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
+            ::hybridse::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
         delete pk_it_;
         pk_it_ = segments_[seg_idx_]->GetEntries()->NewIterator();
     }
@@ -441,4 +441,4 @@ void TableIterator::SeekToFirst() {
 bool TableIterator::IsSeekable() const { return true; }
 
 }  // namespace storage
-}  // namespace fesql
+}  // namespace hybridse

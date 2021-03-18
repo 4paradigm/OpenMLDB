@@ -18,22 +18,22 @@
 #include <string>
 #include <vector>
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
-using fesql::vm::ColumnProjects;
-using fesql::vm::Join;
-using fesql::vm::PhysicalJoinNode;
-using fesql::vm::PhysicalOpType;
-using fesql::vm::PhysicalRequestJoinNode;
-using fesql::vm::PhysicalSimpleProjectNode;
-using fesql::vm::SchemasContext;
+using hybridse::vm::ColumnProjects;
+using hybridse::vm::Join;
+using hybridse::vm::PhysicalJoinNode;
+using hybridse::vm::PhysicalOpType;
+using hybridse::vm::PhysicalRequestJoinNode;
+using hybridse::vm::PhysicalSimpleProjectNode;
+using hybridse::vm::SchemasContext;
 
 bool ClusterOptimized::SimplifyJoinLeftInput(
     PhysicalOpNode* join_op, const Join& join,
     const SchemasContext* joined_schema_ctx, PhysicalOpNode** output) {
     auto left = join_op->GetProducer(0);
-    std::vector<const fesql::node::ExprNode*> columns;
+    std::vector<const hybridse::node::ExprNode*> columns;
     std::vector<std::string> column_names;
     join.ResolvedRelatedColumns(&columns);
 
@@ -166,7 +166,7 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     PhysicalRequestJoinNode* concat_op = nullptr;
                     status = plan_ctx_->CreateOp<PhysicalRequestJoinNode>(
                         &concat_op, left, request_join_right_only,
-                        fesql::node::kJoinTypeConcat);
+                        hybridse::node::kJoinTypeConcat);
                     if (!status.isOK()) {
                         return false;
                     }
@@ -211,7 +211,7 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     vm::PhysicalJoinNode* concat_op = nullptr;
                     status = plan_ctx_->CreateOp<vm::PhysicalJoinNode>(
                         &concat_op, left, join_right_only,
-                        fesql::node::kJoinTypeConcat);
+                        hybridse::node::kJoinTypeConcat);
                     if (!status.isOK()) {
                         return false;
                     }
@@ -231,4 +231,4 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     return false;
 }
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse

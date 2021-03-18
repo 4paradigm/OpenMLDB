@@ -24,24 +24,24 @@
 #include "node/sql_node.h"
 #include "vm/schemas_context.h"
 
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 class NodeManager;
 
 class TypeNode : public SQLNode {
  public:
-    TypeNode() : SQLNode(node::kType, 0, 0), base_(fesql::node::kNull) {}
-    explicit TypeNode(fesql::node::DataType base)
+    TypeNode() : SQLNode(node::kType, 0, 0), base_(hybridse::node::kNull) {}
+    explicit TypeNode(hybridse::node::DataType base)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({}) {}
-    explicit TypeNode(fesql::node::DataType base, const TypeNode *v1)
+    explicit TypeNode(hybridse::node::DataType base, const TypeNode *v1)
         : SQLNode(node::kType, 0, 0),
           base_(base),
           generics_({v1}),
           generics_nullable_({false}) {}
-    explicit TypeNode(fesql::node::DataType base,
-                      const fesql::node::TypeNode *v1,
-                      const fesql::node::TypeNode *v2)
+    explicit TypeNode(hybridse::node::DataType base,
+                      const hybridse::node::TypeNode *v1,
+                      const hybridse::node::TypeNode *v2)
         : SQLNode(node::kType, 0, 0),
           base_(base),
           generics_({v1, v2}),
@@ -58,7 +58,7 @@ class TypeNode : public SQLNode {
         return type_name;
     }
 
-    const fesql::node::TypeNode *GetGenericType(size_t idx) const {
+    const hybridse::node::TypeNode *GetGenericType(size_t idx) const {
         return generics_[idx];
     }
 
@@ -66,8 +66,8 @@ class TypeNode : public SQLNode {
 
     size_t GetGenericSize() const { return generics_.size(); }
 
-    fesql::node::DataType base() const { return base_; }
-    const std::vector<const fesql::node::TypeNode *> &generics() const {
+    hybridse::node::DataType base() const { return base_; }
+    const std::vector<const hybridse::node::TypeNode *> &generics() const {
         return generics_;
     }
 
@@ -76,8 +76,8 @@ class TypeNode : public SQLNode {
         generics_nullable_.push_back(nullable);
     }
 
-    fesql::node::DataType base_;
-    std::vector<const fesql::node::TypeNode *> generics_;
+    hybridse::node::DataType base_;
+    std::vector<const hybridse::node::TypeNode *> generics_;
     std::vector<int> generics_nullable_;
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual bool Equals(const SQLNode *node) const;
@@ -141,5 +141,5 @@ class RowTypeNode : public TypeNode {
 };
 
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_NODE_TYPE_NODE_H_

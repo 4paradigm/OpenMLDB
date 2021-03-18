@@ -22,7 +22,7 @@
 #include <list>
 #include <thread>  //NOLINT
 #include "glog/logging.h"
-namespace fesql {
+namespace hybridse {
 namespace base {
 class MemoryChunk {
  public:
@@ -98,6 +98,6 @@ class ByteMemoryPool {
     MemoryChunk* chucks_;
 };
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_INCLUDE_BASE_MEM_POOL_H_

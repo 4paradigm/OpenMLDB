@@ -21,13 +21,13 @@
 #include <vector>
 #include "sdk/base.h"
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 
 class RequestRow {
  public:
     RequestRow() {}
-    explicit RequestRow(const fesql::sdk::Schema* schema);
+    explicit RequestRow(const hybridse::sdk::Schema* schema);
     ~RequestRow() = default;
     bool Init(int str_length);
     bool AppendBool(bool val);
@@ -44,10 +44,10 @@ class RequestRow {
     inline const Schema* GetSchema() { return schema_; }
 
  private:
-    bool Check(fesql::sdk::DataType type);
+    bool Check(hybridse::sdk::DataType type);
 
  private:
-    const fesql::sdk::Schema* schema_;
+    const hybridse::sdk::Schema* schema_;
     uint32_t cnt_;
     uint32_t size_;
     uint32_t str_field_cnt_;
@@ -60,5 +60,5 @@ class RequestRow {
 };
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_SDK_REQUEST_ROW_H_

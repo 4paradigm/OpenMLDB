@@ -18,7 +18,7 @@
 #include "bm/engine_bm_case.h"
 #include "llvm/Transforms/Scalar.h"
 
-namespace fesql {
+namespace hybridse {
 namespace bm {
 using namespace ::llvm;  // NOLINT
 
@@ -316,6 +316,6 @@ BENCHMARK(BM_EngineWindowSumFeature5ExcludeCurrentTime)
     ->Args({10000, 10000});
 
 }  // namespace bm
-}  // namespace fesql
+}  // namespace hybridse
 
 BENCHMARK_MAIN();

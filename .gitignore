@@ -1,4 +1,4 @@
-java/fesql-spark/src/main/scala/com/_4paradigm/fesql/spark/nodes/LastJoinPlan.scala
+java/hybridse-spark/src/main/scala/com/_4paradigm/hybridse/spark/nodes/LastJoinPlan.scala
 build
 build_mac
 thirdparty
@@ -21,8 +21,8 @@ src/fe_version.h
 java/*/target
 
 # ignore codegen files
-java/fesql-proto/src/main/java/com/*
-java/fesql-native/src/main/java/com/*
+java/hybridse-proto/src/main/java/com/*
+java/hybridse-native/src/main/java/com/*
 
 # ignore docgen
 tools/documentation/udf_doxygen/html

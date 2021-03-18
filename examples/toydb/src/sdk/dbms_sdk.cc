@@ -30,7 +30,7 @@
 #include "sdk/result_set_impl.h"
 #include "sdk/tablet_sdk.h"
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 
 class DBMSSdkImpl : public DBMSSdk {
@@ -150,9 +150,9 @@ const Schema &DBMSSdkImpl::GetInputSchema(const std::string &catalog,
 }
 
 bool DBMSSdkImpl::InitTabletSdk() {
-    ::fesql::dbms::DBMSServer_Stub stub(channel_);
-    ::fesql::dbms::GetTabletRequest request;
-    ::fesql::dbms::GetTabletResponse response;
+    ::hybridse::dbms::DBMSServer_Stub stub(channel_);
+    ::hybridse::dbms::GetTabletRequest request;
+    ::hybridse::dbms::GetTabletResponse response;
     brpc::Controller cntl;
     stub.GetTablet(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
@@ -171,9 +171,9 @@ std::shared_ptr<TableSet> DBMSSdkImpl::GetTables(const std::string &catalog,
     if (status == NULL) {
         return std::shared_ptr<TableSetImpl>();
     }
-    ::fesql::dbms::DBMSServer_Stub stub(channel_);
-    ::fesql::dbms::GetTablesRequest request;
-    ::fesql::dbms::GetTablesResponse response;
+    ::hybridse::dbms::DBMSServer_Stub stub(channel_);
+    ::hybridse::dbms::GetTablesRequest request;
+    ::hybridse::dbms::GetTablesResponse response;
     brpc::Controller cntl;
     request.set_db_name(catalog);
     stub.GetTables(&cntl, &request, &response, NULL);
@@ -194,9 +194,9 @@ std::vector<std::string> DBMSSdkImpl::GetDatabases(sdk::Status *status) {
     if (status == NULL) {
         return std::vector<std::string>();
     }
-    ::fesql::dbms::DBMSServer_Stub stub(channel_);
-    ::fesql::dbms::GetDatabasesRequest request;
-    ::fesql::dbms::GetDatabasesResponse response;
+    ::hybridse::dbms::DBMSServer_Stub stub(channel_);
+    ::hybridse::dbms::GetDatabasesRequest request;
+    ::hybridse::dbms::GetDatabasesResponse response;
     std::vector<std::string> names;
     brpc::Controller cntl;
     stub.GetDatabases(&cntl, &request, &response, NULL);
@@ -261,13 +261,13 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
         case node::kPlanTypeCreate: {
             node::CreatePlanNode *create =
                 dynamic_cast<node::CreatePlanNode *>(plan);
-            ::fesql::dbms::DBMSServer_Stub stub(channel_);
-            ::fesql::dbms::AddTableRequest add_table_request;
-            ::fesql::dbms::AddTableResponse response;
+            ::hybridse::dbms::DBMSServer_Stub stub(channel_);
+            ::hybridse::dbms::AddTableRequest add_table_request;
+            ::hybridse::dbms::AddTableResponse response;
             add_table_request.set_db_name(catalog);
-            ::fesql::type::TableDef *table = add_table_request.mutable_table();
+            ::hybridse::type::TableDef *table = add_table_request.mutable_table();
             table->set_catalog(catalog);
-            fesql::plan::Planner::TransformTableDef(create->GetTableName(),
+            hybridse::plan::Planner::TransformTableDef(create->GetTableName(),
                                     create->GetColumnDescList(), table,
                                     sql_status);
             if (0 != sql_status.code) {
@@ -291,7 +291,7 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
         default: {
             status->msg = "fail to execute script with unSuppurt type" +
                           node::NameOfPlanNodeType(plan->GetType());
-            status->code = fesql::common::kUnSupport;
+            status->code = hybridse::common::kUnSupport;
             LOG(WARNING) << status->msg;
             return empty;
         }
@@ -300,10 +300,10 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
 void DBMSSdkImpl::CreateDatabase(const std::string &catalog,
                                  sdk::Status *status) {
     if (status == NULL) return;
-    ::fesql::dbms::DBMSServer_Stub stub(channel_);
-    ::fesql::dbms::AddDatabaseRequest request;
+    ::hybridse::dbms::DBMSServer_Stub stub(channel_);
+    ::hybridse::dbms::AddDatabaseRequest request;
     request.set_name(catalog);
-    ::fesql::dbms::AddDatabaseResponse response;
+    ::hybridse::dbms::AddDatabaseResponse response;
     brpc::Controller cntl;
     stub.AddDatabase(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
@@ -325,4 +325,4 @@ std::shared_ptr<DBMSSdk> CreateDBMSSdk(const std::string &endpoint) {
 }
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse

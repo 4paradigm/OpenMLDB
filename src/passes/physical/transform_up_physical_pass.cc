@@ -16,7 +16,7 @@
 #include "passes/physical/transform_up_physical_pass.h"
 #include <set>
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 /// Transform every node with a optimization strategy in a post-DFS order
@@ -78,4 +78,4 @@ Status CheckExprDependOnChildOnly(const node::ExprNode* expr,
 }
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse

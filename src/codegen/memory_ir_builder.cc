@@ -17,7 +17,7 @@
 #include "codegen/cast_expr_ir_builder.h"
 #include "codegen/memery_ir_builder.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 using common::kCodegenError;
@@ -35,13 +35,13 @@ base::Status MemoryIRBuilder::Alloc(::llvm::BasicBlock* block,
     auto ptr_ty = builder.getInt8PtrTy();
     auto int32_ty = builder.getInt32Ty();
     auto alloc_func = m_->getOrInsertFunction(
-        "fesql_memery_pool_alloc",
+        "hybridse_memery_pool_alloc",
         ::llvm::FunctionType::get(ptr_ty, {int32_ty}, false));
     ::llvm::Value* addr =
         builder.CreateCall(alloc_func, {request_size.GetRaw()});
     CHECK_TRUE(
         nullptr != addr, kCodegenError,
-        "fail to alloc memory, invoke fesql_memery_pool_alloc function fail");
+        "fail to alloc memory, invoke hybridse_memery_pool_alloc function fail");
     *output = NativeValue::Create(addr);
     return base::Status();
 }
@@ -102,4 +102,4 @@ base::Status MemoryIRBuilder::MemoryAddrAdd(::llvm::BasicBlock* block,
     return base::Status();
 }
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

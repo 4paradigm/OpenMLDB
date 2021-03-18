@@ -35,7 +35,7 @@ DECLARE_bool(logtostderr);
 DECLARE_string(log_dir);
 DECLARE_bool(enable_spark_unsaferow_format);
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 static bool LLVM_IS_INITIALIZED = false;
@@ -78,8 +78,8 @@ bool Engine::GetDependentTables(const std::string& sql, const std::string& db,
                                 EngineMode engine_mode,
                                 std::set<std::string>* tables,
                                 base::Status& status) {
-    std::shared_ptr<fesql::vm::SQLCompileInfo> info =
-        std::make_shared<fesql::vm::SQLCompileInfo>();
+    std::shared_ptr<hybridse::vm::SQLCompileInfo> info =
+        std::make_shared<hybridse::vm::SQLCompileInfo>();
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
     info->get_sql_context().engine_mode = engine_mode;
@@ -282,7 +282,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     explain_output->physical_plan = ctx.physical_plan_str;
     explain_output->ir = ctx.ir;
     explain_output->request_name = ctx.request_name;
-    if (engine_mode == ::fesql::vm::kBatchMode) {
+    if (engine_mode == ::hybridse::vm::kBatchMode) {
         std::set<std::string> tables;
         base::Status status;
         for (auto iter = ctx.logical_plan.cbegin();
@@ -300,7 +300,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
         explain_output->router.SetMainTable(ctx.request_name);
         explain_output->router.Parse(ctx.physical_plan);
     }
-    if (engine_mode == ::fesql::vm::kBatchRequestMode) {
+    if (engine_mode == ::hybridse::vm::kBatchRequestMode) {
         // fill common output column info
         auto& output_common_indices =
             ctx.batch_request_info.output_common_column_indices;
@@ -615,4 +615,4 @@ std::shared_ptr<TableHandler> LocalTablet::SubQuery(
                                                      request_is_common);
 }
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

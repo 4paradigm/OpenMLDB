@@ -20,11 +20,11 @@ import numpy as np
 import time
 import datetime
 
-from fesql_const import current_time
-from fesql_window import WindowDesc
+from hybridse_const import current_time
+from hybridse_window import WindowDesc
 from gen_const_data import random_literal_string
 
-from fesql_param import sample_integer_config
+from hybridse_param import sample_integer_config
 
 
 def sample_bool(nullable=True):

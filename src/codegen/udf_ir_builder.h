@@ -27,7 +27,7 @@
 #include "llvm/IR/Module.h"
 
 #include "node/sql_node.h"
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 using base::Status;
@@ -107,5 +107,5 @@ class UDFIRBuilder {
 };
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_UDF_IR_BUILDER_H_

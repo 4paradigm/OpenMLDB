@@ -19,10 +19,10 @@
 #include <unordered_map>
 #include <vector>
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
-using ::fesql::common::kCodegenError;
+using ::hybridse::common::kCodegenError;
 
 Status WindowIterAnalysis::VisitFunctionLet(const node::ExprIdNode* row_arg,
                                             const node::ExprIdNode* window_arg,
@@ -199,4 +199,4 @@ void WindowIterAnalysis::SetRank(const node::ExprNode* expr,
 }
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse

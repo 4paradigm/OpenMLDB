@@ -23,7 +23,7 @@
 
 #include "glog/logging.h"
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 struct RawBuffer {
@@ -44,4 +44,4 @@ struct RawBuffer {
 };
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse

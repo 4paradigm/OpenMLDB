@@ -16,7 +16,7 @@
 #include "llvm_ext/symbol_resolve.h"
 #include "llvm/IR/Mangler.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 FeSQLSymbolResolver::FeSQLSymbolResolver(const ::llvm::DataLayout& data_layout)
@@ -45,4 +45,4 @@ void FeSQLSymbolResolver::addSymbol(const std::string& name, void* addr) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

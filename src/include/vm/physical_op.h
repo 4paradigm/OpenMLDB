@@ -27,11 +27,11 @@
 #include "passes/expression/expr_pass.h"
 #include "vm/catalog.h"
 #include "vm/schemas_context.h"
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
-using fesql::base::Status;
-using fesql::vm::SchemasContext;
+using hybridse::base::Status;
+using hybridse::vm::SchemasContext;
 
 // new and delete physical node managef
 enum PhysicalOpType {
@@ -434,7 +434,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
         return producers_[index];
     }
 
-    const fesql::codec::Schema *GetOutputSchema() const {
+    const hybridse::codec::Schema *GetOutputSchema() const {
         return schemas_ctx_.GetOutputSchema();
     }
 
@@ -449,7 +449,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
         return schemas_ctx_.GetSchemaSourceSize();
     }
 
-    const fesql::vm::SchemaSource *GetOutputSchemaSource(size_t idx) const {
+    const hybridse::vm::SchemaSource *GetOutputSchemaSource(size_t idx) const {
         return idx < schemas_ctx_.GetSchemaSourceSize()
                    ? schemas_ctx_.GetSchemaSource(idx)
                    : nullptr;
@@ -1619,5 +1619,5 @@ static Status ReplaceComponentExpr(const Component &component,
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_VM_PHYSICAL_OP_H_

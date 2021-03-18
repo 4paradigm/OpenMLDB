@@ -37,7 +37,7 @@
 #include "udf/udf.h"
 #include "vm/sql_compiler.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 using udf::DataTypeTrait;
@@ -654,5 +654,5 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_IR_BASE_BUILDER_TEST_H_

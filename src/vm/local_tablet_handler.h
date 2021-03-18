@@ -20,7 +20,7 @@
 #include <vector>
 #include "vm/engine.h"
 #include "vm/mem_catalog.h"
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 class LocalTabletRowHandler : public RowHandler {
@@ -120,5 +120,5 @@ class LocalTabletTableHandler : public MemTableHandler {
     const bool request_is_common_;
 };
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_VM_LOCAL_TABLET_HANDLER_H_

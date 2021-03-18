@@ -25,7 +25,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 class CodeGenContext;
@@ -97,5 +97,5 @@ class NativeValue {
 };
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_NATIVE_VALUE_H_

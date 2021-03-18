@@ -2,7 +2,7 @@
 
 ### 基础使用
 ```
-# 构建fesql成功后，从fesql core导出udf信息
+# 构建hybridse成功后，从hybridse core导出udf信息
 ./build/src/export_udf_info --output_file=./udf_defs.yaml
  
 # 运行随机udf测试脚本

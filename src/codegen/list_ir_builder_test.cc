@@ -55,27 +55,27 @@ using namespace llvm::orc;  // NOLINT
 
 ExitOnError ExitOnErr;
 
-using fesql::base::ConstIterator;
-using fesql::sqlcase::SQLCase;
+using hybridse::base::ConstIterator;
+using hybridse::sqlcase::SQLCase;
 struct TestString {
     int32_t size;
     char* data = nullptr;
 };
 
 void AssertStrEq(std::string exp, int8_t* ptr) {
-    ::fesql::codec::StringRef* ts =
-        reinterpret_cast<::fesql::codec::StringRef*>(ptr);
+    ::hybridse::codec::StringRef* ts =
+        reinterpret_cast<::hybridse::codec::StringRef*>(ptr);
     ASSERT_EQ(exp.size(), ts->size_);
     std::string str(ts->data_, ts->size_);
     ASSERT_EQ(str, exp);
 }
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
-using fesql::codec::ListRef;
-using fesql::codec::ListV;
-using fesql::codec::Row;
+using hybridse::codec::ListRef;
+using hybridse::codec::ListV;
+using hybridse::codec::Row;
 
 class ListIRBuilderTest : public ::testing::Test {
  public:
@@ -91,8 +91,8 @@ V IteratorSum(int8_t* input) {
         std::cout << "iter ptr is ok" << std::endl;
     }
     V result = 0;
-    ::fesql::codec::IteratorRef* iter_ref =
-        (::fesql::codec::IteratorRef*)(input);
+    ::hybridse::codec::IteratorRef* iter_ref =
+        (::hybridse::codec::IteratorRef*)(input);
     ConstIterator<uint64_t, V>* iter =
         (ConstIterator<uint64_t, V>*)(iter_ref->iterator);
     while (iter->Valid()) {
@@ -709,30 +709,30 @@ TEST_F(ListIRBuilderTest, list_double_inner_rows_test) {
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 
 extern "C" {
 int16_t iterator_sum_int16(int8_t* input) {
-    return fesql::codegen::IteratorSum<int16_t>(input);
+    return hybridse::codegen::IteratorSum<int16_t>(input);
 }
 int32_t iterator_sum_int32(int8_t* input) {
-    return fesql::codegen::IteratorSum<int32_t>(input);
+    return hybridse::codegen::IteratorSum<int32_t>(input);
 }
 int64_t iterator_sum_int64(int8_t* input) {
-    return fesql::codegen::IteratorSum<int64_t>(input);
+    return hybridse::codegen::IteratorSum<int64_t>(input);
 }
 float iterator_sum_float(int8_t* input) {
-    return fesql::codegen::IteratorSum<float>(input);
+    return hybridse::codegen::IteratorSum<float>(input);
 }
 double iterator_sum_double(int8_t* input) {
-    return fesql::codegen::IteratorSum<double>(input);
+    return hybridse::codegen::IteratorSum<double>(input);
 }
 double iterator_sum_row(int8_t* input, int32_t offset) {
     double result = 0;
-    ::fesql::codec::IteratorRef* iter_ref =
-        (::fesql::codec::IteratorRef*)(input);
+    ::hybridse::codec::IteratorRef* iter_ref =
+        (::hybridse::codec::IteratorRef*)(input);
     auto iter =
-        (ConstIterator<uint64_t, fesql::codec::Row>*)(iter_ref->iterator);
+        (ConstIterator<uint64_t, hybridse::codec::Row>*)(iter_ref->iterator);
     while (iter->Valid()) {
         auto& row = iter->GetValue();
         auto buf = row.buf(0);

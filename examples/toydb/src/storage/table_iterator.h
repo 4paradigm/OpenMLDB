@@ -27,10 +27,10 @@
 #include "storage/table_impl.h"
 #include "vm/catalog.h"
 
-namespace fesql {
+namespace hybridse {
 namespace storage {
-using fesql::codec::Row;
-using fesql::codec::WindowIterator;
+using hybridse::codec::Row;
+using hybridse::codec::WindowIterator;
 class WindowTableIterator;
 class FullTableIterator;
 class WindowInternalIterator;
@@ -153,6 +153,6 @@ class FullTableIterator : public ConstIterator<uint64_t, Row> {
 };
 
 }  // namespace storage
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // EXAMPLES_TOYDB_SRC_STORAGE_TABLE_ITERATOR_H_

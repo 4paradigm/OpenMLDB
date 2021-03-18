@@ -20,7 +20,7 @@
 #include <utility>
 #include "node/sql_node.h"
 #include "proto/fe_common.pb.h"
-namespace fesql {
+namespace hybridse {
 namespace parser {
 
 int FeSQLParser::parse(
@@ -322,4 +322,4 @@ bool FeSQLParser::SSAOptimized(
 }
 
 }  // namespace parser
-}  // namespace fesql
+}  // namespace hybridse

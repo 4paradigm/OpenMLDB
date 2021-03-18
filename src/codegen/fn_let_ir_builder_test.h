@@ -54,10 +54,10 @@
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
-using fesql::codec::ArrayListV;
-using fesql::codec::Row;
+using hybridse::codec::ArrayListV;
+using hybridse::codec::Row;
 
 /// Check E. If it's in a success state then return the contained value. If
 /// it's in a failure state log the error(s) and exit.
@@ -69,30 +69,30 @@ T FeCheck(::llvm::Expected<T>&& E) {
     return std::move(*E);
 }
 node::ProjectListNode* GetPlanNodeList(node::PlanNodeList trees) {
-    ::fesql::node::ProjectPlanNode* plan_node = nullptr;
+    ::hybridse::node::ProjectPlanNode* plan_node = nullptr;
     auto node = trees[0]->GetChildren();
     while (!node.empty()) {
         if (node[0]->GetType() == node::kPlanTypeProject) {
-            plan_node = dynamic_cast<fesql::node::ProjectPlanNode*>(node[0]);
+            plan_node = dynamic_cast<hybridse::node::ProjectPlanNode*>(node[0]);
             break;
         }
         node = node[0]->GetChildren();
     }
 
-    ::fesql::node::ProjectListNode* pp_node_ptr =
-        dynamic_cast<fesql::node::ProjectListNode*>(
+    ::hybridse::node::ProjectListNode* pp_node_ptr =
+        dynamic_cast<hybridse::node::ProjectListNode*>(
             plan_node->project_list_vec_[0]);
     return pp_node_ptr;
 }
 
-void AddFunc(const std::string& fn, ::fesql::node::NodeManager* manager,
+void AddFunc(const std::string& fn, ::hybridse::node::NodeManager* manager,
              ::llvm::Module* m) {
     if (fn.empty()) {
         return;
     }
-    ::fesql::node::NodePointVector trees;
-    ::fesql::parser::FeSQLParser parser;
-    ::fesql::base::Status status;
+    ::hybridse::node::NodePointVector trees;
+    ::hybridse::parser::FeSQLParser parser;
+    ::hybridse::base::Status status;
     int ret = parser.parse(fn, trees, manager, status);
     ASSERT_EQ(0, ret);
     FnIRBuilder fn_ir_builder(m);
@@ -105,7 +105,7 @@ void AddFunc(const std::string& fn, ::fesql::node::NodeManager* manager,
     }
 }
 
-void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
+void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
                        vm::SchemasContext* schemas_ctx, std::string udf_str,
                        std::string sql, int8_t* row_ptr, int8_t* window_ptr,
                        vm::Schema* output_schema, int8_t** output) {
@@ -114,20 +114,20 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     auto m = make_unique<Module>("test_project", *ctx);
 
     // Parse SQL
-    ::fesql::node::NodePointVector list;
-    ::fesql::parser::FeSQLParser parser;
-    ::fesql::base::Status status;
+    ::hybridse::node::NodePointVector list;
+    ::hybridse::parser::FeSQLParser parser;
+    ::hybridse::base::Status status;
     auto lib = udf::DefaultUDFLibrary::get();
     AddFunc(udf_str, manager, m.get());
     m->print(::llvm::errs(), NULL);
     int ret = parser.parse(sql, list, manager, status);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, list.size());
-    ::fesql::plan::SimplePlanner planner(manager);
-    ::fesql::node::PlanNodeList plan;
+    ::hybridse::plan::SimplePlanner planner(manager);
+    ::hybridse::node::PlanNodeList plan;
     ret = planner.CreatePlanTree(list, plan, status);
     ASSERT_EQ(0, ret);
-    fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
+    hybridse::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
 
     // Create physical function def
     schemas_ctx->Build();
@@ -174,7 +174,7 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     ASSERT_EQ(0, ret2);
 }
 
-void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
+void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
                        type::TableDef& table, std::string udf_str,  // NOLINT
                        std::string sql, int8_t* row_ptr, int8_t* window_ptr,
                        vm::Schema* output_schema, int8_t** output) {
@@ -191,6 +191,6 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_CODEGEN_FN_LET_IR_BUILDER_TEST_H_

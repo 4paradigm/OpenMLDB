@@ -17,7 +17,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_BINARY_DIR}/src
 		${PROJECT_SOURCE_DIR}/examples/toydb/src)
 
-set(SDK_DEPS_LIBS fesql_core fesql_flags fesql_sdk
+set(SDK_DEPS_LIBS hybridse_core hybridse_flags hybridse_sdk
 	${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
 # split sdk test and bm

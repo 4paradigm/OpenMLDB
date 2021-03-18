@@ -19,7 +19,7 @@
 #include <glog/logging.h>
 #include "gtest/gtest.h"
 
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 class NodeManagerTest : public ::testing::Test {
@@ -396,7 +396,7 @@ TEST_F(NodeManagerTest, RowMergeRowsRangeTest) {
 }
 
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

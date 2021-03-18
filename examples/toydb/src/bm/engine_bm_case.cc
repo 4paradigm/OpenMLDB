@@ -39,7 +39,7 @@
 #include "parser/parser.h"
 #include "tablet/tablet_catalog.h"
 
-namespace fesql {
+namespace hybridse {
 namespace bm {
 using codec::Row;
 using sqlcase::SQLCase;
@@ -109,7 +109,7 @@ static void EngineRequestMode(const std::string sql, MODE mode,
     // prepare data into table
     auto catalog = vm::BuildOnePkTableStorage(size);
     vm::EngineOptions options;
-    if (fesql::sqlcase::SQLCase::IS_CLUSTER()) {
+    if (hybridse::sqlcase::SQLCase::IS_CLUSTER()) {
         options.set_cluster_optimized(true);
     }
     Engine engine(catalog, options);
@@ -165,7 +165,7 @@ static void EngineBatchMode(const std::string sql, MODE mode, int64_t limit_cnt,
         case BENCHMARK: {
             for (auto _ : *state) {
                 benchmark::DoNotOptimize(
-                    static_cast<const std::shared_ptr<fesql::vm::DataHandler>>(
+                    static_cast<const std::shared_ptr<hybridse::vm::DataHandler>>(
                         session.Run()));
             }
             break;
@@ -667,8 +667,8 @@ void EngineRequestModeSimpleQueryBM(const std::string& db,
     size = static_cast<uint32_t>(rows[0].size());
     table_def.set_catalog(db);
 
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
+    std::shared_ptr<::hybridse::storage::Table> table(
+        new ::hybridse::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
@@ -710,13 +710,13 @@ void EngineBatchModeSimpleQueryBM(const std::string& db, const std::string& sql,
     int8_t* ptr = NULL;
     uint32_t size = 0;
     std::vector<Row> rows;
-    fesql::sqlcase::CaseDataMock::LoadResource(resource_path, table_def, rows);
+    hybridse::sqlcase::CaseDataMock::LoadResource(resource_path, table_def, rows);
     ptr = rows[0].buf();
     size = static_cast<uint32_t>(rows[0].size());
     table_def.set_catalog(db);
 
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
+    std::shared_ptr<::hybridse::storage::Table> table(
+        new ::hybridse::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
@@ -735,7 +735,7 @@ void EngineBatchModeSimpleQueryBM(const std::string& db, const std::string& sql,
             for (auto _ : *state) {
                 // use const value to avoid compiler bug for some version
                 benchmark::DoNotOptimize(
-                    static_cast<const std::shared_ptr<fesql::vm::DataHandler>>(
+                    static_cast<const std::shared_ptr<hybridse::vm::DataHandler>>(
                         session.Run()));
             }
             break;
@@ -797,17 +797,17 @@ void EngineRequestSimpleSelectDate(benchmark::State* state,
         "cases/resource/benchmark_t1_with_time_one_row.yaml";
     EngineRequestModeSimpleQueryBM("db", "t1", sql, 1, resource, state, mode);
 }
-fesql::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml,
+hybridse::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml,
                                           const std::string& case_id) {
-    return fesql::sqlcase::SQLCase::LoadSQLCaseWithID(
-        fesql::sqlcase::FindFesqlDirPath(), yaml, case_id);
+    return hybridse::sqlcase::SQLCase::LoadSQLCaseWithID(
+        hybridse::sqlcase::FindFesqlDirPath(), yaml, case_id);
 }
 void EngineBenchmarkOnCase(const std::string& yaml_path,
                            const std::string& case_id,
                            vm::EngineMode engine_mode,
                            benchmark::State* state) {
-    SQLCase target_case = fesql::sqlcase::SQLCase::LoadSQLCaseWithID(
-        fesql::sqlcase::FindFesqlDirPath(), yaml_path, case_id);
+    SQLCase target_case = hybridse::sqlcase::SQLCase::LoadSQLCaseWithID(
+        hybridse::sqlcase::FindFesqlDirPath(), yaml_path, case_id);
     if (target_case.id() != case_id) {
         LOG(WARNING) << "Fail to find case #" << case_id << " in " << yaml_path;
         state->SkipWithError("BENCHMARK CASE LOAD FAIL: fail to find case");
@@ -815,7 +815,7 @@ void EngineBenchmarkOnCase(const std::string& yaml_path,
     }
     EngineBenchmarkOnCase(target_case, engine_mode, state);
 }
-void EngineBenchmarkOnCase(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
+void EngineBenchmarkOnCase(hybridse::sqlcase::SQLCase& sql_case,  // NOLINT
                            vm::EngineMode engine_mode,
                            benchmark::State* state) {
     InitializeNativeTarget();
@@ -828,12 +828,12 @@ void EngineBenchmarkOnCase(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         engine_options.set_batch_request_optimized(
             sql_case.batch_request_optimized_);
     }
-    if (fesql::sqlcase::SQLCase::IS_CLUSTER()) {
+    if (hybridse::sqlcase::SQLCase::IS_CLUSTER()) {
         engine_options.set_cluster_optimized(true);
     } else {
         engine_options.set_cluster_optimized(false);
     }
-    if (fesql::sqlcase::SQLCase::IS_DISABLE_EXPR_OPT()) {
+    if (hybridse::sqlcase::SQLCase::IS_DISABLE_EXPR_OPT()) {
         engine_options.set_enable_expr_optimize(false);
     } else {
         engine_options.set_enable_expr_optimize(true);
@@ -888,4 +888,4 @@ void EngineBenchmarkOnCase(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
 }
 
 }  // namespace bm
-}  // namespace fesql
+}  // namespace hybridse

@@ -25,7 +25,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
 #include "proto/fe_type.pb.h"
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 using base::Status;
@@ -56,5 +56,5 @@ class ListIRBuilder {
 };
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_LIST_IR_BUILDER_H_

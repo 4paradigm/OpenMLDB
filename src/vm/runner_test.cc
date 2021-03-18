@@ -42,9 +42,9 @@ using namespace llvm::orc;  // NOLINT
 
 ExitOnError ExitOnErr;
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
-using fesql::sqlcase::SQLCase;
+using hybridse::sqlcase::SQLCase;
 Runner* GetFirstRunnerOfType(Runner* root, const RunnerType type);
 
 std::vector<SQLCase> InitCases(std::string yaml_path);
@@ -52,7 +52,7 @@ void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
-            fesql::sqlcase::FindFesqlDirPath(), yaml_path, cases,
+            hybridse::sqlcase::FindFesqlDirPath(), yaml_path, cases,
             std::vector<std::string>({"runner-unsupport",
                                       "physical-plan-unsupport",
                                       "logical-plan-unsupport"}))) {
@@ -119,16 +119,16 @@ TEST_P(RunnerTest, request_mode_test) {
         return;
     }
     std::string sqlstr = GetParam().sql_str();
-    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
+    const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
     boost::to_lower(sqlstr);
     LOG(INFO) << sqlstr;
 
-    fesql::type::TableDef table_def;
-    fesql::type::TableDef table_def2;
-    fesql::type::TableDef table_def3;
-    fesql::type::TableDef table_def4;
-    fesql::type::TableDef table_def5;
-    fesql::type::TableDef table_def6;
+    hybridse::type::TableDef table_def;
+    hybridse::type::TableDef table_def2;
+    hybridse::type::TableDef table_def3;
+    hybridse::type::TableDef table_def4;
+    hybridse::type::TableDef table_def5;
+    hybridse::type::TableDef table_def6;
 
     BuildTableDef(table_def);
     BuildTableDef(table_def2);
@@ -143,13 +143,13 @@ TEST_P(RunnerTest, request_mode_test) {
     table_def4.set_name("t4");
     table_def5.set_name("t5");
     table_def6.set_name("t6");
-    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    ::hybridse::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
     index->set_second_key("col5");
 
-    fesql::type::Database db;
+    hybridse::type::Database db;
     db.set_name("db");
     AddTable(db, table_def);
     AddTable(db, table_def2);
@@ -158,13 +158,13 @@ TEST_P(RunnerTest, request_mode_test) {
     AddTable(db, table_def5);
     AddTable(db, table_def6);
     {
-        fesql::type::TableDef table_def;
+        hybridse::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tb");
         AddTable(db, table_def);
     }
     {
-        fesql::type::TableDef table_def;
+        hybridse::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tc");
         AddTable(db, table_def);
@@ -179,16 +179,16 @@ TEST_P(RunnerTest, batch_mode_test) {
         return;
     }
     std::string sqlstr = GetParam().sql_str();
-    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
+    const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
     boost::to_lower(sqlstr);
     LOG(INFO) << sqlstr;
 
-    fesql::type::TableDef table_def;
-    fesql::type::TableDef table_def2;
-    fesql::type::TableDef table_def3;
-    fesql::type::TableDef table_def4;
-    fesql::type::TableDef table_def5;
-    fesql::type::TableDef table_def6;
+    hybridse::type::TableDef table_def;
+    hybridse::type::TableDef table_def2;
+    hybridse::type::TableDef table_def3;
+    hybridse::type::TableDef table_def4;
+    hybridse::type::TableDef table_def5;
+    hybridse::type::TableDef table_def6;
 
     BuildTableDef(table_def);
     BuildTableDef(table_def2);
@@ -203,12 +203,12 @@ TEST_P(RunnerTest, batch_mode_test) {
     table_def4.set_name("t4");
     table_def5.set_name("t5");
     table_def6.set_name("t6");
-    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    ::hybridse::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
     index->set_second_key("col5");
-    fesql::type::Database db;
+    hybridse::type::Database db;
     db.set_name("db");
     AddTable(db, table_def);
     AddTable(db, table_def2);
@@ -217,13 +217,13 @@ TEST_P(RunnerTest, batch_mode_test) {
     AddTable(db, table_def5);
     AddTable(db, table_def6);
     {
-        fesql::type::TableDef table_def;
+        hybridse::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tb");
         AddTable(db, table_def);
     }
     {
-        fesql::type::TableDef table_def;
+        hybridse::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tc");
         AddTable(db, table_def);
@@ -252,18 +252,18 @@ Runner* GetFirstRunnerOfType(Runner* root, const RunnerType type) {
 TEST_F(RunnerTest, KeyGeneratorTest) {
     std::string sqlstr =
         "select avg(col1), avg(col2) from t1 group by col1, col2 limit 1;";
-    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
+    const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
     boost::to_lower(sqlstr);
     LOG(INFO) << sqlstr;
-    fesql::type::TableDef table_def;
+    hybridse::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");
-    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    ::hybridse::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col3");
     index->add_first_keys("col4");
     index->set_second_key("col5");
-    fesql::type::Database db;
+    hybridse::type::Database db;
     db.set_name("db");
     AddTable(db, table_def);
     auto catalog = BuildSimpleCatalog(db);
@@ -285,7 +285,7 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
         sql_context.cluster_job.GetTask(0).GetRoot(), kRunnerGroup);
     auto group_runner = dynamic_cast<GroupRunner*>(root);
     std::vector<Row> rows;
-    fesql::type::TableDef temp_table;
+    hybridse::type::TableDef temp_table;
     BuildRows(temp_table, rows);
     ASSERT_EQ("1|5", group_runner->partition_gen_.GetKey(rows[0]));
     ASSERT_EQ("2|5", group_runner->partition_gen_.GetKey(rows[1]));
@@ -295,20 +295,20 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
 }
 
 TEST_F(RunnerTest, RunnerPrintDataTest) {
-    fesql::type::TableDef table_def;
+    hybridse::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");
-    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    ::hybridse::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col3");
     index->add_first_keys("col4");
     index->set_second_key("col5");
-    fesql::type::Database db;
+    hybridse::type::Database db;
     db.set_name("db");
     AddTable(db, table_def);
     auto catalog = BuildSimpleCatalog(db);
     std::vector<Row> rows;
-    fesql::type::TableDef temp_table;
+    hybridse::type::TableDef temp_table;
     BuildRows(temp_table, rows);
 
     SchemasContext schemas_ctx;
@@ -358,20 +358,20 @@ TEST_F(RunnerTest, RunnerPrintDataTest) {
     }
 }
 TEST_F(RunnerTest, RunnerPrintDataMemTimeTableTest) {
-    fesql::type::TableDef table_def;
+    hybridse::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");
-    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    ::hybridse::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col3");
     index->add_first_keys("col4");
     index->set_second_key("col5");
-    fesql::type::Database db;
+    hybridse::type::Database db;
     db.set_name("db");
     AddTable(db, table_def);
     auto catalog = BuildSimpleCatalog(db);
     std::vector<Row> rows;
-    fesql::type::TableDef temp_table;
+    hybridse::type::TableDef temp_table;
     BuildRows(temp_table, rows);
 
     SchemasContext schemas_ctx;
@@ -422,7 +422,7 @@ TEST_F(RunnerTest, RunnerPrintDataMemTimeTableTest) {
     }
 }
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::GTEST_FLAG(color) = "yes";

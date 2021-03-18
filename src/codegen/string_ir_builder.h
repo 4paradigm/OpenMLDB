@@ -26,7 +26,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "proto/fe_type.pb.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 class StringIRBuilder : public StructTypeIRBuilder {
@@ -68,5 +68,5 @@ class StringIRBuilder : public StructTypeIRBuilder {
                               ::llvm::Type* type, NativeValue* output);
 };
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_STRING_IR_BUILDER_H_

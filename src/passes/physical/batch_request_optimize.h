@@ -28,18 +28,18 @@
 #ifndef SRC_PASSES_PHYSICAL_BATCH_REQUEST_OPTIMIZE_H_
 #define SRC_PASSES_PHYSICAL_BATCH_REQUEST_OPTIMIZE_H_
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
-using fesql::base::Status;
-using fesql::vm::PhysicalRequestProviderNode;
-using fesql::vm::PhysicalDataProviderNode;
-using fesql::vm::PhysicalSimpleProjectNode;
-using fesql::vm::PhysicalProjectNode;
-using fesql::vm::PhysicalAggrerationNode;
-using fesql::vm::PhysicalRenameNode;
-using fesql::vm::PhysicalRequestJoinNode;
-using fesql::vm::PhysicalRequestUnionNode;
+using hybridse::base::Status;
+using hybridse::vm::PhysicalRequestProviderNode;
+using hybridse::vm::PhysicalDataProviderNode;
+using hybridse::vm::PhysicalSimpleProjectNode;
+using hybridse::vm::PhysicalProjectNode;
+using hybridse::vm::PhysicalAggrerationNode;
+using hybridse::vm::PhysicalRenameNode;
+using hybridse::vm::PhysicalRequestJoinNode;
+using hybridse::vm::PhysicalRequestUnionNode;
 
 /**
  * Split op with common columns to common and non-common parts.
@@ -150,5 +150,5 @@ class CommonColumnOptimize : public PhysicalPass {
 };
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_PASSES_PHYSICAL_BATCH_REQUEST_OPTIMIZE_H_

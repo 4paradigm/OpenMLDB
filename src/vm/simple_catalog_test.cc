@@ -17,30 +17,30 @@
 #include "vm/simple_catalog.h"
 #include "gtest/gtest.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 class SimpleCatalogTest : public ::testing::Test {};
 
 TEST_F(SimpleCatalogTest, test) {
-    fesql::type::Database db;
+    hybridse::type::Database db;
     db.set_name("db");
-    ::fesql::type::TableDef *table = db.add_tables();
+    ::hybridse::type::TableDef *table = db.add_tables();
     table->set_name("t");
     table->set_catalog("db");
     {
-        ::fesql::type::ColumnDef *column = table->add_columns();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef *column = table->add_columns();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col0");
     }
     {
-        ::fesql::type::ColumnDef *column = table->add_columns();
-        column->set_type(::fesql::type::kInt32);
+        ::hybridse::type::ColumnDef *column = table->add_columns();
+        column->set_type(::hybridse::type::kInt32);
         column->set_name("col1");
     }
     {
-        ::fesql::type::ColumnDef *column = table->add_columns();
-        column->set_type(::fesql::type::kInt64);
+        ::hybridse::type::ColumnDef *column = table->add_columns();
+        column->set_type(::hybridse::type::kInt64);
         column->set_name("col2");
     }
     {
@@ -69,7 +69,7 @@ TEST_F(SimpleCatalogTest, test) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

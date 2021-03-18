@@ -20,7 +20,7 @@
 #include "benchmark/benchmark.h"
 #include "testing/toydb_engine_test_base.h"
 #include "vm/mem_catalog.h"
-namespace fesql {
+namespace hybridse {
 namespace bm {
 enum MODE { BENCHMARK, TEST };
 void MemTableIterate(benchmark::State* state, MODE mode, int64_t data_size);
@@ -31,5 +31,5 @@ void TabletFullIterate(benchmark::State* state, MODE mode, int64_t data_size);
 void TabletWindowIterate(benchmark::State* state, MODE mode, int64_t data_size);
 void ArrayListIterate(benchmark::State* state, MODE mode, int64_t data_size);
 }  // namespace bm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // EXAMPLES_TOYDB_SRC_BM_STORAGE_BM_CASE_H_

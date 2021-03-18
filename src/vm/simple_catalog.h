@@ -27,13 +27,13 @@
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 class SimpleCatalogTableHandler : public TableHandler {
  public:
     explicit SimpleCatalogTableHandler(const std::string &db_name,
-                                       const fesql::type::TableDef &);
+                                       const hybridse::type::TableDef &);
 
     const Schema *GetSchema() override;
 
@@ -45,12 +45,12 @@ class SimpleCatalogTableHandler : public TableHandler {
 
     const IndexHint &GetIndex() override;
 
-    std::unique_ptr<fesql::codec::WindowIterator> GetWindowIterator(
+    std::unique_ptr<hybridse::codec::WindowIterator> GetWindowIterator(
         const std::string &) override;
 
     const uint64_t GetCount() override;
 
-    fesql::codec::Row At(uint64_t pos) override;
+    hybridse::codec::Row At(uint64_t pos) override;
 
     std::shared_ptr<PartitionHandler> GetPartition(
         const std::string &index_name) override;
@@ -72,7 +72,7 @@ class SimpleCatalogTableHandler : public TableHandler {
         return -1;
     }
     std::string db_name_;
-    fesql::type::TableDef table_def_;
+    hybridse::type::TableDef table_def_;
     Types types_dict_;
     IndexHint index_hint_;
     codec::RowView row_view_;
@@ -89,7 +89,7 @@ class SimpleCatalog : public Catalog {
     SimpleCatalog(const SimpleCatalog &) = delete;
     ~SimpleCatalog();
 
-    void AddDatabase(const fesql::type::Database &db);
+    void AddDatabase(const hybridse::type::Database &db);
     std::shared_ptr<type::Database> GetDatabase(const std::string &db) override;
     std::shared_ptr<TableHandler> GetTable(
         const std::string &db, const std::string &table_name) override;
@@ -108,5 +108,5 @@ class SimpleCatalog : public Catalog {
 };
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_VM_SIMPLE_CATALOG_H_

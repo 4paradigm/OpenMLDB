@@ -44,7 +44,7 @@ extern "C" {
 #include "llvm_ext/symbol_resolve.h"
 #endif
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 using ::llvm::orc::LLJIT;
 
@@ -149,7 +149,7 @@ bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd,
 }
 
 bool FeSQLLLJITWrapper::Init() {
-    DLOG(INFO) << "Start to initialize fesql jit";
+    DLOG(INFO) << "Start to initialize hybridse jit";
     auto jit =
         ::llvm::Expected<std::unique_ptr<FeSQLJIT>>(FeSQLJITBuilder().create());
     {
@@ -199,7 +199,7 @@ RawPtrHandle FeSQLLLJITWrapper::FindFunction(const std::string& funcname) {
 
 bool FeSQLLLJITWrapper::AddExternalFunction(const std::string& name,
                                             void* addr) {
-    return fesql::vm::FeSQLJIT::AddSymbol(jit_->getMainJITDylib(), *mi_, name,
+    return hybridse::vm::FeSQLJIT::AddSymbol(jit_->getMainJITDylib(), *mi_, name,
                                           addr);
 }
 
@@ -298,7 +298,7 @@ bool FeSQLMCJITWrapper::AddExternalFunction(const std::string& name,
     return true;
 }
 
-fesql::vm::RawPtrHandle FeSQLMCJITWrapper::FindFunction(
+hybridse::vm::RawPtrHandle FeSQLMCJITWrapper::FindFunction(
     const std::string& funcname) {
     if (!CheckInitialized()) {
         return nullptr;
@@ -329,4 +329,4 @@ bool FeSQLMCJITWrapper::CheckInitialized() const {
 #endif
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

@@ -23,7 +23,7 @@
 #include "passes/expression/simplify.h"
 #include "passes/resolve_fn_and_attrs.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 void AddDefaultExprOptPasses(node::ExprAnalysisContext* ctx,
@@ -34,5 +34,5 @@ void AddDefaultExprOptPasses(node::ExprAnalysisContext* ctx,
 }
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_PASSES_EXPRESSION_DEFAULT_PASSES_H_

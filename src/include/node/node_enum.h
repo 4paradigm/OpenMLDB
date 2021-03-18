@@ -21,7 +21,7 @@
 #include <string>
 #include "proto/fe_common.pb.h"
 #include "proto/fe_type.pb.h"
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 const char SPACE_ST[] = "+-";
@@ -123,7 +123,7 @@ enum ExprType {
     kExprCond,
     kExprUnknow = 9999
 };
-// typedef fesql::type::Type DataType;
+// typedef hybridse::type::Type DataType;
 enum DataType {
     kBool,
     kInt16,
@@ -274,6 +274,6 @@ enum BatchPlanNodeType { kBatchDataset, kBatchPartition, kBatchMap };
 enum RoleType { kLeader, kFollower };
 
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_INCLUDE_NODE_NODE_ENUM_H_

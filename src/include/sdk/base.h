@@ -23,7 +23,7 @@
 #include <string>
 #include <vector>
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 
 struct Status {
@@ -123,12 +123,12 @@ class ProcedureInfo {
     virtual const std::string& GetDbName() const = 0;
     virtual const std::string& GetSpName() const = 0;
     virtual const std::string& GetSql() const = 0;
-    virtual const fesql::sdk::Schema& GetInputSchema() const = 0;
-    virtual const fesql::sdk::Schema& GetOutputSchema() const = 0;
+    virtual const hybridse::sdk::Schema& GetInputSchema() const = 0;
+    virtual const hybridse::sdk::Schema& GetOutputSchema() const = 0;
     virtual const std::vector<std::string>& GetTables() const = 0;
     virtual const std::string& GetMainTable() const = 0;
 };
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_SDK_BASE_H_

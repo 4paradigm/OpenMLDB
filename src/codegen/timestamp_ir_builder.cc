@@ -24,9 +24,9 @@
 #include "glog/logging.h"
 #include "node/sql_node.h"
 
-using fesql::common::kCodegenError;
+using hybridse::common::kCodegenError;
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 int32_t TimestampIRBuilder::TIME_ZONE = 8;
 TimestampIRBuilder::TimestampIRBuilder(::llvm::Module* m)
@@ -365,4 +365,4 @@ base::Status TimestampIRBuilder::TimestampAdd(::llvm::BasicBlock* block,
     return Status::OK();
 }
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

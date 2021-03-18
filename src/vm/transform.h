@@ -38,10 +38,10 @@
 #include "vm/schemas_context.h"
 #include "vm/sql_compiler.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
-using fesql::passes::PhysicalPlanPassType;
+using hybridse::passes::PhysicalPlanPassType;
 
 class LogicalOp {
  public:
@@ -93,9 +93,9 @@ struct EqualPhysicalOp {
     }
 };
 
-using fesql::base::Status;
+using hybridse::base::Status;
 
-typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
+typedef hybridse::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
     LogicalGraph;
 
 class BatchModeTransformer {
@@ -113,15 +113,15 @@ class BatchModeTransformer {
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
     virtual Status TransformPhysicalPlan(
-        const ::fesql::node::PlanNodeList& trees,
-        ::fesql::vm::PhysicalOpNode** output);
-    virtual Status TransformQueryPlan(const ::fesql::node::PlanNode* node,
-                                      ::fesql::vm::PhysicalOpNode** output);
+        const ::hybridse::node::PlanNodeList& trees,
+        ::hybridse::vm::PhysicalOpNode** output);
+    virtual Status TransformQueryPlan(const ::hybridse::node::PlanNode* node,
+                                      ::hybridse::vm::PhysicalOpNode** output);
     virtual Status ValidatePlan(PhysicalOpNode* in);
 
     bool AddPass(PhysicalPlanPassType type);
 
-    typedef std::unordered_map<LogicalOp, ::fesql::vm::PhysicalOpNode*,
+    typedef std::unordered_map<LogicalOp, ::hybridse::vm::PhysicalOpNode*,
                                HashLogicalOp, EqualLogicalOp>
         LogicalOpMap;
 
@@ -154,8 +154,8 @@ class BatchModeTransformer {
     PhysicalPlanContext* GetPlanContext() { return &plan_ctx_; }
 
  protected:
-    virtual Status TransformPlanOp(const ::fesql::node::PlanNode* node,
-                                   ::fesql::vm::PhysicalOpNode** ouput);
+    virtual Status TransformPlanOp(const ::hybridse::node::PlanNode* node,
+                                   ::hybridse::vm::PhysicalOpNode** ouput);
     virtual Status TransformLimitOp(const node::LimitPlanNode* node,
                                     PhysicalOpNode** output);
     virtual Status TransformProjectPlanOp(const node::ProjectPlanNode* node,
@@ -289,57 +289,57 @@ class RequestModeTransformer : public BatchModeTransformer {
     BatchRequestInfo batch_request_info_;
 };
 
-inline bool SchemaType2DataType(const ::fesql::type::Type type,
-                                ::fesql::node::DataType* output) {
+inline bool SchemaType2DataType(const ::hybridse::type::Type type,
+                                ::hybridse::node::DataType* output) {
     switch (type) {
-        case ::fesql::type::kBool: {
-            *output = ::fesql::node::kBool;
+        case ::hybridse::type::kBool: {
+            *output = ::hybridse::node::kBool;
             break;
         }
-        case ::fesql::type::kInt16: {
-            *output = ::fesql::node::kInt16;
+        case ::hybridse::type::kInt16: {
+            *output = ::hybridse::node::kInt16;
             break;
         }
-        case ::fesql::type::kInt32: {
-            *output = ::fesql::node::kInt32;
+        case ::hybridse::type::kInt32: {
+            *output = ::hybridse::node::kInt32;
             break;
         }
-        case ::fesql::type::kInt64: {
-            *output = ::fesql::node::kInt64;
+        case ::hybridse::type::kInt64: {
+            *output = ::hybridse::node::kInt64;
             break;
         }
-        case ::fesql::type::kFloat: {
-            *output = ::fesql::node::kFloat;
+        case ::hybridse::type::kFloat: {
+            *output = ::hybridse::node::kFloat;
             break;
         }
-        case ::fesql::type::kDouble: {
-            *output = ::fesql::node::kDouble;
+        case ::hybridse::type::kDouble: {
+            *output = ::hybridse::node::kDouble;
             break;
         }
-        case ::fesql::type::kVarchar: {
-            *output = ::fesql::node::kVarchar;
+        case ::hybridse::type::kVarchar: {
+            *output = ::hybridse::node::kVarchar;
             break;
         }
-        case ::fesql::type::kTimestamp: {
-            *output = ::fesql::node::kTimestamp;
+        case ::hybridse::type::kTimestamp: {
+            *output = ::hybridse::node::kTimestamp;
             break;
         }
-        case ::fesql::type::kDate: {
-            *output = ::fesql::node::kDate;
+        case ::hybridse::type::kDate: {
+            *output = ::hybridse::node::kDate;
             break;
         }
         default: {
             LOG(WARNING) << "unrecognized schema type "
-                         << ::fesql::type::Type_Name(type);
+                         << ::hybridse::type::Type_Name(type);
             return false;
         }
     }
     return true;
 }
 
-bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
+bool TransformLogicalTreeToLogicalGraph(const ::hybridse::node::PlanNode* node,
                                         LogicalGraph* graph,
-                                        fesql::base::Status& status);  // NOLINT
+                                        hybridse::base::Status& status);  // NOLINT
 
 Status ExtractProjectInfos(const node::PlanNodeList& projects,
                            const node::FrameNode* primary_frame,
@@ -347,5 +347,5 @@ Status ExtractProjectInfos(const node::PlanNodeList& projects,
                            node::NodeManager* node_manager,
                            ColumnProjects* output);
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_VM_TRANSFORM_H_

@@ -25,9 +25,9 @@
 #include "codegen/type_ir_builder.h"
 #include "node/node_manager.h"
 
-using fesql::common::kCodegenError;
+using hybridse::common::kCodegenError;
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 ArithmeticIRBuilder::ArithmeticIRBuilder(::llvm::BasicBlock* block)
@@ -36,7 +36,7 @@ ArithmeticIRBuilder::~ArithmeticIRBuilder() {}
 bool ArithmeticIRBuilder::InferAndCastedNumberTypes(
     ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
     ::llvm::Value** casted_left, ::llvm::Value** casted_right,
-    ::fesql::base::Status& status) {
+    ::hybridse::base::Status& status) {
     if (NULL == left || NULL == right) {
         status.msg = "left or right value is null";
         status.code = common::kCodegenError;
@@ -106,7 +106,7 @@ bool ArithmeticIRBuilder::InferAndCastedNumberTypes(
 bool ArithmeticIRBuilder::InferAndCastIntegerTypes(
     ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
     ::llvm::Value** casted_left, ::llvm::Value** casted_right,
-    ::fesql::base::Status& status) {
+    ::hybridse::base::Status& status) {
     if (NULL == left || NULL == right) {
         status.msg = "left or right value is null";
         status.code = common::kCodegenError;
@@ -155,7 +155,7 @@ bool ArithmeticIRBuilder::InferAndCastIntegerTypes(
 bool ArithmeticIRBuilder::InferAndCastDoubleTypes(
     ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
     ::llvm::Value** casted_left, ::llvm::Value** casted_right,
-    ::fesql::base::Status& status) {
+    ::hybridse::base::Status& status) {
     if (NULL == left || NULL == right) {
         status.msg = "left or right value is null";
         status.code = common::kCodegenError;
@@ -249,7 +249,7 @@ bool ArithmeticIRBuilder::BuildLShiftRight(::llvm::BasicBlock* block,
 bool ArithmeticIRBuilder::BuildAddExpr(
     ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
     ::llvm::Value** output,
-    ::fesql::base::Status& status) {  // NOLINT
+    ::hybridse::base::Status& status) {  // NOLINT
     // Process timestamp add
     TimestampIRBuilder ts_builder(block->getModule());
     if (TypeIRBuilder::IsTimestampPtr(left->getType()) &&
@@ -445,7 +445,7 @@ Status ArithmeticIRBuilder::BuildModExpr(const NativeValue& left,
 bool ArithmeticIRBuilder::BuildSubExpr(
     ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
     ::llvm::Value** output,
-    ::fesql::base::Status& status) {  // NOLINT
+    ::hybridse::base::Status& status) {  // NOLINT
 
     ::llvm::IRBuilder<> builder(block);
     // Process timestamp add
@@ -484,7 +484,7 @@ bool ArithmeticIRBuilder::BuildSubExpr(
 bool ArithmeticIRBuilder::BuildMultiExpr(
     ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
     ::llvm::Value** output,
-    ::fesql::base::Status& status) {  // NOLINT
+    ::hybridse::base::Status& status) {  // NOLINT
 
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
@@ -604,4 +604,4 @@ bool ArithmeticIRBuilder::BuildModExpr(::llvm::BasicBlock* block,
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

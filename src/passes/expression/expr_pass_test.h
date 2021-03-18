@@ -29,7 +29,7 @@
 #include "udf/default_udf_library.h"
 #include "vm/schemas_context.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 void InitFunctionLet(const std::string& sql, node::ExprAnalysisContext* ctx,
@@ -86,7 +86,7 @@ class ExprPassTestBase : public ::testing::Test {
     const vm::SchemasContext* schemas_ctx() const { return &schemas_ctx_; }
 
     void InitFunctionLet(const std::string& sql, node::LambdaNode** result) {
-        fesql::passes::InitFunctionLet(sql, &ctx_, result);
+        hybridse::passes::InitFunctionLet(sql, &ctx_, result);
     }
 
     Status ApplyPass(ExprPass* pass, node::LambdaNode* function_let,
@@ -104,5 +104,5 @@ class ExprPassTestBase : public ::testing::Test {
 };
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_PASSES_EXPRESSION_EXPR_PASS_TEST_H_

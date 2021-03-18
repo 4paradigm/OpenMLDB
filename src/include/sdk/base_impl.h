@@ -22,10 +22,10 @@
 #include "sdk/base.h"
 #include "vm/catalog.h"
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 
-typedef ::google::protobuf::RepeatedPtrField< ::fesql::type::TableDef> Tables;
+typedef ::google::protobuf::RepeatedPtrField< ::hybridse::type::TableDef> Tables;
 
 class SchemaImpl : public Schema {
  public:
@@ -75,5 +75,5 @@ class TableSetImpl : public TableSet {
 };
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_SDK_BASE_IMPL_H_

@@ -17,7 +17,7 @@
 #include "tablet/tablet_internal_sdk.h"
 #include "glog/logging.h"
 
-namespace fesql {
+namespace hybridse {
 namespace tablet {
 
 TabletInternalSDK::TabletInternalSDK(const std::string& endpoint)
@@ -42,8 +42,8 @@ bool TabletInternalSDK::Init() {
 
 void TabletInternalSDK::CreateTable(CreateTableRequest* request,
                                     common::Status& status) {
-    ::fesql::tablet::TabletServer_Stub stub(channel_);
-    ::fesql::tablet::CreateTableResponse response;
+    ::hybridse::tablet::TabletServer_Stub stub(channel_);
+    ::hybridse::tablet::CreateTableResponse response;
     brpc::Controller cntl;
     stub.CreateTable(&cntl, request, &response, NULL);
     if (cntl.Failed()) {
@@ -55,4 +55,4 @@ void TabletInternalSDK::CreateTable(CreateTableRequest* request,
 }
 
 }  // namespace tablet
-}  // namespace fesql
+}  // namespace hybridse

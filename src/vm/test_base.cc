@@ -15,134 +15,134 @@
  */
 #include "vm/test_base.h"
 #include "plan/plan_api.h"
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
-void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
+void BuildTableDef(::hybridse::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
     table.set_catalog("db");
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col0");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt32);
         column->set_name("col1");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt16);
         column->set_name("col2");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kFloat);
         column->set_name("col3");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kDouble);
         column->set_name("col4");
     }
 
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt64);
         column->set_name("col5");
     }
 
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col6");
     }
 }
 
-void BuildTableA(::fesql::type::TableDef& table) {  // NOLINT
+void BuildTableA(::hybridse::type::TableDef& table) {  // NOLINT
     table.set_name("ta");
     table.set_catalog("db");
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("c0");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt32);
         column->set_name("c1");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt16);
         column->set_name("c2");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kFloat);
         column->set_name("c3");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kDouble);
         column->set_name("c4");
     }
 
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt64);
         column->set_name("c5");
     }
 
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("c6");
     }
 }
-void BuildTableT2Def(::fesql::type::TableDef& table) {  // NOLINT
+void BuildTableT2Def(::hybridse::type::TableDef& table) {  // NOLINT
     table.set_name("t2");
     table.set_catalog("db");
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("str0");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("str1");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kFloat);
         column->set_name("col3");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kDouble);
         column->set_name("col4");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt16);
         column->set_name("col2");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt32);
         column->set_name("col1");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt64);
         column->set_name("col5");
     }
 }
 
 void BuildBuf(int8_t** buf, uint32_t* size) {
-    ::fesql::type::TableDef table;
+    ::hybridse::type::TableDef table;
     BuildTableDef(table);
     codec::RowBuilder builder(table.columns());
     uint32_t total_size = builder.CalTotalLength(2);
@@ -160,7 +160,7 @@ void BuildBuf(int8_t** buf, uint32_t* size) {
 }
 
 void BuildT2Buf(int8_t** buf, uint32_t* size) {
-    ::fesql::type::TableDef table;
+    ::hybridse::type::TableDef table;
     BuildTableT2Def(table);
     codec::RowBuilder builder(table.columns());
     uint32_t total_size = builder.CalTotalLength(2);
@@ -176,7 +176,7 @@ void BuildT2Buf(int8_t** buf, uint32_t* size) {
     *buf = ptr;
     *size = total_size;
 }
-void BuildRows(::fesql::type::TableDef& table,  // NOLINT
+void BuildRows(::hybridse::type::TableDef& table,  // NOLINT
                std::vector<Row>& rows) {        // NOLINT
     BuildTableDef(table);
     {
@@ -263,7 +263,7 @@ void BuildRows(::fesql::type::TableDef& table,  // NOLINT
         rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
 }
-void BuildT2Rows(::fesql::type::TableDef& table,  // NOLINT
+void BuildT2Rows(::hybridse::type::TableDef& table,  // NOLINT
                  std::vector<Row>& rows) {        // NOLINT
     BuildTableT2Def(table);
     {
@@ -348,13 +348,13 @@ void BuildT2Rows(::fesql::type::TableDef& table,  // NOLINT
         rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
 }
-void ExtractExprListFromSimpleSQL(::fesql::node::NodeManager* nm,
+void ExtractExprListFromSimpleSQL(::hybridse::node::NodeManager* nm,
                                   const std::string& sql,
                                   node::ExprListNode* output) {
     std::cout << sql << std::endl;
-    ::fesql::node::PlanNodeList plan_trees;
-    ::fesql::base::Status base_status;
-    if (::fesql::plan::PlanAPI::CreatePlanTreeFromScript(
+    ::hybridse::node::PlanNodeList plan_trees;
+    ::hybridse::base::Status base_status;
+    if (::hybridse::plan::PlanAPI::CreatePlanTreeFromScript(
             sql, plan_trees, nm, base_status) == 0) {
         std::cout << base_status.str();
         std::cout << *(plan_trees[0]) << std::endl;
@@ -376,13 +376,13 @@ void ExtractExprListFromSimpleSQL(::fesql::node::NodeManager* nm,
             dynamic_cast<node::ProjectNode*>(project)->GetExpression());
     }
 }
-void ExtractExprFromSimpleSQL(::fesql::node::NodeManager* nm,
+void ExtractExprFromSimpleSQL(::hybridse::node::NodeManager* nm,
                               const std::string& sql, node::ExprNode** output) {
     std::cout << sql << std::endl;
-    ::fesql::node::PlanNodeList plan_trees;
-    ::fesql::base::Status base_status;
+    ::hybridse::node::PlanNodeList plan_trees;
+    ::hybridse::base::Status base_status;
     ASSERT_EQ(0, base_status.code);
-    if (::fesql::plan::PlanAPI::CreatePlanTreeFromScript(
+    if (::hybridse::plan::PlanAPI::CreatePlanTreeFromScript(
             sql, plan_trees, nm, base_status) == 0) {
         std::cout << base_status.str();
         std::cout << *(plan_trees[0]) << std::endl;
@@ -403,13 +403,13 @@ void ExtractExprFromSimpleSQL(::fesql::node::NodeManager* nm,
         dynamic_cast<node::ProjectNode*>(project_list->GetProjects()[0]);
     *output = project->GetExpression();
 }
-bool AddTable(fesql::type::Database& db,  // NOLINT
-              const fesql::type::TableDef& table_def) {
+bool AddTable(hybridse::type::Database& db,  // NOLINT
+              const hybridse::type::TableDef& table_def) {
     *(db.add_tables()) = table_def;
     return true;
 }
 std::shared_ptr<SimpleCatalog> BuildSimpleCatalog(
-    const fesql::type::Database& database) {
+    const hybridse::type::Database& database) {
     std::shared_ptr<SimpleCatalog> catalog(new SimpleCatalog(true));
     catalog->AddDatabase(database);
     return catalog;
@@ -419,7 +419,7 @@ std::shared_ptr<SimpleCatalog> BuildSimpleCatalog() {
 }
 bool InitSimpleCataLogFromSQLCase(SQLCase& sql_case,  // NOLINT
                                   std::shared_ptr<SimpleCatalog> catalog) {
-    fesql::type::Database db;
+    hybridse::type::Database db;
     db.set_name(sql_case.db());
     for (int32_t i = 0; i < sql_case.CountInputs(); i++) {
         sql_case.inputs_[i].name_ = sql_case.inputs()[i].name_;
@@ -456,4 +456,4 @@ void PrintSchema(const Schema& schema) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

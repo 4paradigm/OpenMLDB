@@ -34,7 +34,7 @@
 #include "node/type_node.h"
 #include "vm/physical_op.h"
 
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 class NodeManager {
@@ -164,13 +164,13 @@ class NodeManager {
 
     SQLNode *MakeResTargetNode(ExprNode *node_ptr, const std::string &name);
 
-    TypeNode *MakeTypeNode(fesql::node::DataType base);
-    TypeNode *MakeTypeNode(fesql::node::DataType base,
-                           const fesql::node::TypeNode *v1);
-    TypeNode *MakeTypeNode(fesql::node::DataType base,
-                           fesql::node::DataType v1);
-    TypeNode *MakeTypeNode(fesql::node::DataType base, fesql::node::DataType v1,
-                           fesql::node::DataType v2);
+    TypeNode *MakeTypeNode(hybridse::node::DataType base);
+    TypeNode *MakeTypeNode(hybridse::node::DataType base,
+                           const hybridse::node::TypeNode *v1);
+    TypeNode *MakeTypeNode(hybridse::node::DataType base,
+                           hybridse::node::DataType v1);
+    TypeNode *MakeTypeNode(hybridse::node::DataType base, hybridse::node::DataType v1,
+                           hybridse::node::DataType v2);
     OpaqueTypeNode *MakeOpaqueType(size_t bytes);
     RowTypeNode *MakeRowType(const std::vector<const vm::Schema *> &schema);
     RowTypeNode *MakeRowType(const vm::SchemasContext *schemas_ctx);
@@ -387,5 +387,5 @@ class NodeManager {
 };
 
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_NODE_NODE_MANAGER_H_

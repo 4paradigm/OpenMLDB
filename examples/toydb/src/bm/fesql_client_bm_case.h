@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include "benchmark/benchmark.h"
 #include "testing/toydb_engine_test_base.h"
-namespace fesql {
+namespace hybridse {
 namespace bm {
 enum MODE { BENCHMARK, TEST };
 void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
@@ -44,5 +44,5 @@ void GROUPBY_CASE0_QUERY(benchmark::State *state_ptr, MODE mode,
                          int64_t max_window_size);
 
 }  // namespace bm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // EXAMPLES_TOYDB_SRC_BM_FESQL_CLIENT_BM_CASE_H_

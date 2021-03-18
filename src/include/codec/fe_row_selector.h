@@ -22,14 +22,14 @@
 #include "codec/fe_row_codec.h"
 #include "codec/row.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codec {
 
 class RowSelector {
  public:
-    RowSelector(const fesql::codec::Schema* schema,
+    RowSelector(const hybridse::codec::Schema* schema,
                 const std::vector<size_t>& indices);
-    RowSelector(const std::vector<const fesql::codec::Schema*>& schemas,
+    RowSelector(const std::vector<const hybridse::codec::Schema*>& schemas,
                 const std::vector<std::pair<size_t, size_t>>& indices);
 
     bool Select(const int8_t* slice, size_t size, int8_t** out_slice,
@@ -37,16 +37,16 @@ class RowSelector {
     bool Select(const Row& row, int8_t** out_slice, size_t* out_size);
 
  private:
-    fesql::codec::Schema CreateTargetSchema();
+    hybridse::codec::Schema CreateTargetSchema();
 
-    std::vector<const fesql::codec::Schema*> schemas_;
+    std::vector<const hybridse::codec::Schema*> schemas_;
     std::vector<std::pair<size_t, size_t>> indices_;
 
-    fesql::codec::Schema target_schema_;
+    hybridse::codec::Schema target_schema_;
     std::vector<RowView> row_views_;
     RowBuilder target_row_builder_;
 };
 
 }  // namespace codec
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_CODEC_FE_ROW_SELECTOR_H_

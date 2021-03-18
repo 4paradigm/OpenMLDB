@@ -32,7 +32,7 @@ DECLARE_string(toydb_endpoint);
 DECLARE_int32(toydb_port);
 DECLARE_bool(enable_keep_alive);
 
-namespace fesql {
+namespace hybridse {
 namespace tablet {
 
 TabletServerImpl::TabletServerImpl()
@@ -76,7 +76,7 @@ void TabletServerImpl::CreateTable(RpcController* ctrl,
                                    CreateTableResponse* response,
                                    Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    ::fesql::common::Status* status = response->mutable_status();
+    ::hybridse::common::Status* status = response->mutable_status();
     if (request->pids_size() == 0) {
         status->set_code(common::kBadRequest);
         status->set_msg("create table without pid");
@@ -119,7 +119,7 @@ void TabletServerImpl::CreateTable(RpcController* ctrl,
 void TabletServerImpl::Insert(RpcController* ctrl, const InsertRequest* request,
                               InsertResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    ::fesql::common::Status* status = response->mutable_status();
+    ::hybridse::common::Status* status = response->mutable_status();
     if (request->db().empty() || request->table().empty()) {
         status->set_code(common::kBadRequest);
         status->set_msg("db or table name is empty");
@@ -273,7 +273,7 @@ void TabletServerImpl::GetTableSchema(RpcController* ctrl,
                                       GetTableSchemaReponse* response,
                                       Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    ::fesql::common::Status* status = response->mutable_status();
+    ::hybridse::common::Status* status = response->mutable_status();
     std::shared_ptr<TabletTableHandler> handler =
         GetTableLocked(request->db(), request->name());
     if (!handler) {
@@ -285,4 +285,4 @@ void TabletServerImpl::GetTableSchema(RpcController* ctrl,
 }
 
 }  // namespace tablet
-}  // namespace fesql
+}  // namespace hybridse

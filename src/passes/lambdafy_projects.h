@@ -28,7 +28,7 @@
 #include "udf/udf_library.h"
 #include "vm/schemas_context.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 using base::Status;
@@ -88,5 +88,5 @@ class LambdafyProjects {
 };
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_PASSES_LAMBDAFY_PROJECTS_H_

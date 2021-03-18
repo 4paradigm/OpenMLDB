@@ -30,12 +30,12 @@
 #include "glog/logging.h"
 #include "vm/catalog.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
-using fesql::codec::Row;
-using fesql::codec::RowIterator;
-using fesql::codec::WindowIterator;
+using hybridse::codec::Row;
+using hybridse::codec::RowIterator;
+using hybridse::codec::WindowIterator;
 
 struct AscKeyComparor {
     bool operator()(std::pair<std::string, Row> i,
@@ -774,5 +774,5 @@ void RowIterDelete(int8_t* iter);
 int8_t* RowGetSlice(int8_t* row_ptr, size_t idx);
 size_t RowGetSliceSize(int8_t* row_ptr, size_t idx);
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_VM_MEM_CATALOG_H_

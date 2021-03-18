@@ -30,15 +30,15 @@
 #include "proto/fe_type.pb.h"
 #include "sdk/base.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
-using fesql::codec::ColInfo;
-using fesql::codec::ListV;
-using fesql::codec::Row;
-using fesql::codec::RowIterator;
-using fesql::codec::Schema;
-using fesql::codec::WindowIterator;
+using hybridse::codec::ColInfo;
+using hybridse::codec::ListV;
+using hybridse::codec::Row;
+using hybridse::codec::RowIterator;
+using hybridse::codec::Schema;
+using hybridse::codec::WindowIterator;
 
 constexpr uint32_t INVALID_POS = UINT32_MAX;
 struct IndexSt {
@@ -48,7 +48,7 @@ struct IndexSt {
     std::vector<ColInfo> keys;
 };
 
-typedef ::google::protobuf::RepeatedPtrField<::fesql::type::IndexDef> IndexList;
+typedef ::google::protobuf::RepeatedPtrField<::hybridse::type::IndexDef> IndexList;
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
 
@@ -281,7 +281,7 @@ class AysncRowHandler : public RowHandler {
           aysnc_table_handler_(aysnc_table_handler),
           value_() {
         if (!aysnc_table_handler_) {
-            status_ = base::Status(fesql::common::kNullPointer,
+            status_ = base::Status(hybridse::common::kNullPointer,
                                    "async table handler is null");
         }
     }
@@ -314,7 +314,7 @@ class Tablet {
     virtual std::shared_ptr<RowHandler> SubQuery(uint32_t task_id,
                                                  const std::string& db,
                                                  const std::string& sql,
-                                                 const fesql::codec::Row& row,
+                                                 const hybridse::codec::Row& row,
                                                  const bool is_procedure,
                                                  const bool is_debug) = 0;
     virtual std::shared_ptr<TableHandler> SubQuery(
@@ -340,13 +340,13 @@ class Catalog {
     virtual std::shared_ptr<TableHandler> GetTable(
         const std::string& db, const std::string& table_name) = 0;
 
-    virtual std::shared_ptr<fesql::sdk::ProcedureInfo> GetProcedureInfo(
+    virtual std::shared_ptr<hybridse::sdk::ProcedureInfo> GetProcedureInfo(
         const std::string& db, const std::string& sp_name) {
         return nullptr;
     }
 };
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_INCLUDE_VM_CATALOG_H_

@@ -32,14 +32,14 @@
 #include "vm/runner.h"
 #include "vm/physical_op.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
-using fesql::base::Status;
+using hybridse::base::Status;
 
 struct SQLContext {
     // mode: batch|request|batch request
-    ::fesql::vm::EngineMode engine_mode;
+    ::hybridse::vm::EngineMode engine_mode;
     bool is_performance_sensitive = false;
     bool is_cluster_optimized = false;
     bool is_batch_request_optimized = false;
@@ -51,13 +51,13 @@ struct SQLContext {
     // the database
     std::string db;
     // the logical plan
-    ::fesql::node::PlanNodeList logical_plan;
-    ::fesql::vm::PhysicalOpNode* physical_plan = nullptr;
-    fesql::vm::ClusterJob cluster_job;
+    ::hybridse::node::PlanNodeList logical_plan;
+    ::hybridse::vm::PhysicalOpNode* physical_plan = nullptr;
+    hybridse::vm::ClusterJob cluster_job;
     // TODO(wangtaize) add a light jit engine
     // eg using bthead to compile ir
-    fesql::vm::JITOptions jit_options;
-    std::shared_ptr<fesql::vm::FeSQLJITWrapper> jit = nullptr;
+    hybridse::vm::JITOptions jit_options;
+    std::shared_ptr<hybridse::vm::FeSQLJITWrapper> jit = nullptr;
     Schema schema;
     Schema request_schema;
     std::string request_name;
@@ -67,10 +67,10 @@ struct SQLContext {
     std::string physical_plan_str;
     std::string encoded_schema;
     std::string encoded_request_schema;
-    ::fesql::node::NodeManager nm;
-    ::fesql::udf::UDFLibrary* udf_library = nullptr;
+    ::hybridse::node::NodeManager nm;
+    ::hybridse::udf::UDFLibrary* udf_library = nullptr;
 
-    ::fesql::vm::BatchRequestInfo batch_request_info;
+    ::hybridse::vm::BatchRequestInfo batch_request_info;
 
     SQLContext() {}
     ~SQLContext() {}
@@ -88,7 +88,7 @@ class SQLCompileInfo : public CompileInfo {
  public:
     SQLCompileInfo() {}
     ~SQLCompileInfo() {}
-    fesql::vm::SQLContext& get_sql_context() { return this->sql_ctx; }
+    hybridse::vm::SQLContext& get_sql_context() { return this->sql_ctx; }
 
     bool GetIRBuffer(const base::RawBuffer& buf) {
         auto& str = this->sql_ctx.ir;
@@ -96,12 +96,12 @@ class SQLCompileInfo : public CompileInfo {
     }
     size_t GetIRSize() { return this->sql_ctx.ir.size(); }
 
-    const fesql::vm::Schema& GetSchema() const { return sql_ctx.schema; }
+    const hybridse::vm::Schema& GetSchema() const { return sql_ctx.schema; }
 
-    const fesql::vm::ComileType GetCompileType() const {
+    const hybridse::vm::ComileType GetCompileType() const {
         return ComileType::kCompileSQL;
     }
-    const fesql::vm::EngineMode GetEngineMode() const {
+    const hybridse::vm::EngineMode GetEngineMode() const {
         return sql_ctx.engine_mode;
     }
     const std::string& GetEncodedSchema() const {
@@ -116,16 +116,16 @@ class SQLCompileInfo : public CompileInfo {
     virtual const std::string& GetRequestName() const {
         return sql_ctx.request_name;
     }
-    virtual const fesql::vm::BatchRequestInfo& GetBatchRequestInfo() const {
+    virtual const hybridse::vm::BatchRequestInfo& GetBatchRequestInfo() const {
         return sql_ctx.batch_request_info;
     }
-    virtual const fesql::vm::PhysicalOpNode* GetPhysicalPlan() const {
+    virtual const hybridse::vm::PhysicalOpNode* GetPhysicalPlan() const {
         return sql_ctx.physical_plan;
     }
-    virtual fesql::vm::Runner* GetMainTask() {
+    virtual hybridse::vm::Runner* GetMainTask() {
         return sql_ctx.cluster_job.GetMainTask().GetRoot();
     }
-    virtual fesql::vm::ClusterJob& GetClusterJob() {
+    virtual hybridse::vm::ClusterJob& GetClusterJob() {
         return sql_ctx.cluster_job;
     }
     virtual void DumpPhysicalPlan(std::ostream& output,
@@ -140,7 +140,7 @@ class SQLCompileInfo : public CompileInfo {
     }
 
  private:
-    fesql::vm::SQLContext sql_ctx;
+    hybridse::vm::SQLContext sql_ctx;
 };
 
 class SQLCompiler {
@@ -164,19 +164,19 @@ class SQLCompiler {
                               Status& status);                        // NOLINT
 
     Status BuildPhysicalPlan(SQLContext* ctx,
-                             const ::fesql::node::PlanNodeList& plan_list,
+                             const ::hybridse::node::PlanNodeList& plan_list,
                              ::llvm::Module* llvm_module,
                              PhysicalOpNode** output);
     Status BuildBatchModePhysicalPlan(
-        SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+        SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
         ::llvm::Module* llvm_module, udf::UDFLibrary* library,
         PhysicalOpNode** output);
     Status BuildRequestModePhysicalPlan(
-        SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+        SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
         ::llvm::Module* llvm_module, udf::UDFLibrary* library,
         PhysicalOpNode** output);
     Status BuildBatchRequestModePhysicalPlan(
-        SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+        SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
         ::llvm::Module* llvm_module, udf::UDFLibrary* library,
         PhysicalOpNode** output);
 
@@ -188,5 +188,5 @@ class SQLCompiler {
 };
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_VM_SQL_COMPILER_H_

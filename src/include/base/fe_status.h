@@ -22,7 +22,7 @@
 #include "proto/fe_common.pb.h"
 #include "proto/fe_type.pb.h"
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 template <typename STREAM, typename... Args>
@@ -39,9 +39,9 @@ static inline std::initializer_list<int> __output_literal_args(
         auto _status = (call);                                               \
         if (!_status.isOK()) {                                               \
             std::stringstream _msg;                                          \
-            fesql::base::__output_literal_args(_msg, ##__VA_ARGS__);         \
+            hybridse::base::__output_literal_args(_msg, ##__VA_ARGS__);         \
             std::stringstream _trace;                                        \
-            fesql::base::__output_literal_args(_trace, "    (At ", __FILE__, \
+            hybridse::base::__output_literal_args(_trace, "    (At ", __FILE__, \
                                                ":", __LINE__, ")");          \
             if (_status.trace.size() >= MAX_STATUS_TRACE_SIZE) {             \
                 LOG(WARNING) << "Internal error: " << _status.msg << "\n"    \
@@ -53,7 +53,7 @@ static inline std::initializer_list<int> __output_literal_args(
                 }                                                            \
                 _trace << "\n" << _status.trace;                             \
             }                                                                \
-            return fesql::base::Status(_status.code, _msg.str(),             \
+            return hybridse::base::Status(_status.code, _msg.str(),             \
                                        _trace.str());                        \
         }                                                                    \
         break;                                                               \
@@ -63,11 +63,11 @@ static inline std::initializer_list<int> __output_literal_args(
     while (true) {                                                           \
         if (!(call)) {                                                       \
             std::stringstream _msg;                                          \
-            fesql::base::__output_literal_args(_msg, ##__VA_ARGS__);         \
+            hybridse::base::__output_literal_args(_msg, ##__VA_ARGS__);         \
             std::stringstream _trace;                                        \
-            fesql::base::__output_literal_args(_trace, "    (At ", __FILE__, \
+            hybridse::base::__output_literal_args(_trace, "    (At ", __FILE__, \
                                                ":", __LINE__, ")");          \
-            fesql::base::Status _status(errcode, _msg.str(), _trace.str());  \
+            hybridse::base::Status _status(errcode, _msg.str(), _trace.str());  \
             return _status;                                                  \
         }                                                                    \
         break;                                                               \
@@ -103,5 +103,5 @@ struct Status {
 std::ostream& operator<<(std::ostream& os, const Status& status);  // NOLINT
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_BASE_FE_STATUS_H_

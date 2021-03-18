@@ -27,5 +27,5 @@ fi
 export PATH=${PWD}/thirdparty/bin:$PATH
 mkdir -p build && cd build
 cmake .. -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON
-make fesql_proto && make fesql_parser && make -j"$(nproc)"
+make hybridse_proto && make hybridse_parser && make -j"$(nproc)"
 make coverage -j"$(nproc)"

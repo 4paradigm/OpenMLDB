@@ -16,7 +16,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-add_library(fesql_codegen STATIC
+add_library(hybridse_codegen STATIC
         scope_var.cc
         expr_ir_builder.cc
         fn_ir_builder.cc
@@ -42,7 +42,7 @@ add_library(fesql_codegen STATIC
         context.cc memery_ir_builder.h memory_ir_builder.cc)
 if (TESTING_ENABLE)
 set(vm_deps_libs
-        fesql_case boost_date_time boost_filesystem ${yaml_libs} ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
+        hybridse_case boost_date_time boost_filesystem ${yaml_libs} ${VM_LIBS} hybridse_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
 add_executable(ir_base_builder_test ir_base_builder_test.cc)
 target_link_libraries(ir_base_builder_test gtest ${vm_deps_libs})
@@ -78,7 +78,7 @@ list(APPEND test_list cast_expr_ir_builder_test)
 
 add_executable(arithmetic_expr_ir_builder_test arithmetic_expr_ir_builder_test.cc)
 target_link_libraries(arithmetic_expr_ir_builder_test  gtest
-        fesql_udf ${vm_deps_libs})
+        hybridse_udf ${vm_deps_libs})
 add_test(arithmetic_expr_ir_builder_test arithmetic_expr_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/arithmetic_expr_ir_builder_test.xml)
 list(APPEND test_list arithmetic_expr_ir_builder_test)
 
@@ -90,13 +90,13 @@ list(APPEND test_list predicate_expr_ir_builder_test)
 
 
 add_executable(expr_ir_builder_test expr_ir_builder_test.cc)
-target_link_libraries(expr_ir_builder_test gtest ${vm_deps_libs} fesql_vm)
+target_link_libraries(expr_ir_builder_test gtest ${vm_deps_libs} hybridse_vm)
 add_test(expr_ir_builder_test expr_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/expr_ir_builder_test.xml)
 list(APPEND test_list expr_ir_builder_test)
 
 
 add_executable(block_ir_builder_test block_ir_builder_test.cc)
-target_link_libraries(block_ir_builder_test gtest ${vm_deps_libs} fesql_vm)
+target_link_libraries(block_ir_builder_test gtest ${vm_deps_libs} hybridse_vm)
 add_test(block_ir_builder_test block_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/block_ir_builder_test.xml)
 list(APPEND test_list block_ir_builder_test)
 

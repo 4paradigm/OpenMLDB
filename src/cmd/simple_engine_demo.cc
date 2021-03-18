@@ -46,7 +46,7 @@
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
-namespace fesql {
+namespace hybridse {
 namespace cmd {
 
 static const int SIMPLE_ENGINE_RET_SUCCESS = 0;
@@ -56,17 +56,17 @@ static const int SIMPLE_ENGINE_COMPILE_ERROR = 3;
 static const int SIMPLE_ENGINE_RUN_ERROR = 3;
 static const int MAX_DEBUG_COLUMN_CNT = 20;
 static const int MAX_DEBUG_LINES_CNT = 20;
-using fesql::codec::Row;
-using fesql::codec::RowView;
-using fesql::vm::BatchRunSession;
-using fesql::vm::Engine;
-using fesql::vm::EngineOptions;
-using fesql::vm::SimpleCatalog;
+using hybridse::codec::Row;
+using hybridse::codec::RowView;
+using hybridse::vm::BatchRunSession;
+using hybridse::vm::Engine;
+using hybridse::vm::EngineOptions;
+using hybridse::vm::SimpleCatalog;
 
 static void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
     std::ostringstream oss;
     RowView row_view(schema);
-    ::fesql::base::TextTable t('-', '|', '+');
+    ::hybridse::base::TextTable t('-', '|', '+');
     // Add Header
     for (int i = 0; i < schema.size(); i++) {
         t.add(schema.Get(i).name());
@@ -107,27 +107,27 @@ int run() {
     // build Simple Catalog
     auto catalog = std::make_shared<SimpleCatalog>(true);
     // database simple_db
-    fesql::type::Database db;
+    hybridse::type::Database db;
     db.set_name("simple_db");
 
     // prepare table t1 schema and data
-    fesql::type::TableDef table_def;
+    hybridse::type::TableDef table_def;
     {
         table_def.set_name("t1");
         table_def.set_catalog("db");
         {
-            ::fesql::type::ColumnDef* column = table_def.add_columns();
-            column->set_type(::fesql::type::kVarchar);
+            ::hybridse::type::ColumnDef* column = table_def.add_columns();
+            column->set_type(::hybridse::type::kVarchar);
             column->set_name("col0");
         }
         {
-            ::fesql::type::ColumnDef* column = table_def.add_columns();
-            column->set_type(::fesql::type::kInt32);
+            ::hybridse::type::ColumnDef* column = table_def.add_columns();
+            column->set_type(::hybridse::type::kInt32);
             column->set_name("col1");
         }
         {
-            ::fesql::type::ColumnDef* column = table_def.add_columns();
-            column->set_type(::fesql::type::kInt64);
+            ::hybridse::type::ColumnDef* column = table_def.add_columns();
+            column->set_type(::hybridse::type::kInt64);
             column->set_name("col2");
         }
     }
@@ -174,10 +174,10 @@ int run() {
 }
 
 }  // namespace cmd
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    return fesql::cmd::run();
+    return hybridse::cmd::run();
 }

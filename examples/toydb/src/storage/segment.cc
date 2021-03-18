@@ -17,7 +17,7 @@
 #include "storage/segment.h"
 #include <mutex>  //NOLINT
 
-namespace fesql {
+namespace hybridse {
 namespace storage {
 
 Segment::Segment() : entries_(NULL), mu_() {
@@ -41,4 +41,4 @@ void Segment::Put(const base::Slice& key, uint64_t time, DataBlock* row) {
 }
 
 }  // namespace storage
-}  // namespace fesql
+}  // namespace hybridse

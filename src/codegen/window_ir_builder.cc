@@ -22,7 +22,7 @@
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 MemoryWindowDecodeIRBuilder::MemoryWindowDecodeIRBuilder(
@@ -50,7 +50,7 @@ bool MemoryWindowDecodeIRBuilder::BuildInnerRowsList(::llvm::Value* list_ptr,
     ::llvm::Type* i32_ty = builder.getInt32Ty();
     ::llvm::Type* i64_ty = builder.getInt64Ty();
     uint32_t inner_list_size =
-        sizeof(::fesql::codec::InnerRowsList<fesql::codec::Row>);
+        sizeof(::hybridse::codec::InnerRowsList<hybridse::codec::Row>);
     // alloca memory on stack for col iterator
     ::llvm::ArrayType* array_type =
         ::llvm::ArrayType::get(i8_ty, inner_list_size);
@@ -61,7 +61,7 @@ bool MemoryWindowDecodeIRBuilder::BuildInnerRowsList(::llvm::Value* list_ptr,
     ::llvm::Value* val_start_offset = builder.getInt64(start_offset);
     ::llvm::Value* val_end_offset = builder.getInt64(end_offset);
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
-        "fesql_storage_get_inner_rows_list", i32_ty, i8_ptr_ty, i64_ty, i64_ty,
+        "hybridse_storage_get_inner_rows_list", i32_ty, i8_ptr_ty, i64_ty, i64_ty,
         i8_ptr_ty);
     builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
                                    list_ptr, val_start_offset, val_end_offset,
@@ -88,7 +88,7 @@ bool MemoryWindowDecodeIRBuilder::BuildInnerRangeList(::llvm::Value* list_ptr,
     ::llvm::Type* i32_ty = builder.getInt32Ty();
     ::llvm::Type* i64_ty = builder.getInt64Ty();
     uint32_t inner_list_size =
-        sizeof(::fesql::codec::InnerRangeList<fesql::codec::Row>);
+        sizeof(::hybridse::codec::InnerRangeList<hybridse::codec::Row>);
     // alloca memory on stack for col iterator
     ::llvm::ArrayType* array_type =
         ::llvm::ArrayType::get(i8_ty, inner_list_size);
@@ -99,7 +99,7 @@ bool MemoryWindowDecodeIRBuilder::BuildInnerRangeList(::llvm::Value* list_ptr,
     ::llvm::Value* val_start_offset = builder.getInt64(start_offset);
     ::llvm::Value* val_end_offset = builder.getInt64(end_offset);
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
-        "fesql_storage_get_inner_range_list", i32_ty, i8_ptr_ty, i64_ty, i64_ty,
+        "hybridse_storage_get_inner_range_list", i32_ty, i8_ptr_ty, i64_ty, i64_ty,
         i64_ty, i8_ptr_ty);
     builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
                                    list_ptr, row_key, val_start_offset,
@@ -115,7 +115,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(size_t schema_idx, size_t col_idx,
         LOG(WARNING) << "input args have null";
         return false;
     }
-    ::fesql::node::TypeNode data_type;
+    ::hybridse::node::TypeNode data_type;
     auto row_format = schemas_context_->GetRowFormat(schema_idx);
     if (row_format == nullptr) {
         LOG(WARNING) << "fail to get row format at " << schema_idx;
@@ -129,24 +129,24 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(size_t schema_idx, size_t col_idx,
     }
     if (!SchemaType2DataType(col_info->type, &data_type)) {
         LOG(WARNING) << "unrecognized data type " +
-                            fesql::type::Type_Name(col_info->type);
+                            hybridse::type::Type_Name(col_info->type);
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
     switch (data_type.base_) {
-        case ::fesql::node::kBool:
-        case ::fesql::node::kInt16:
-        case ::fesql::node::kInt32:
-        case ::fesql::node::kInt64:
-        case ::fesql::node::kFloat:
-        case ::fesql::node::kDouble:
-        case ::fesql::node::kTimestamp:
-        case ::fesql::node::kDate: {
-            return BuildGetPrimaryCol("fesql_storage_get_col", window_ptr,
+        case ::hybridse::node::kBool:
+        case ::hybridse::node::kInt16:
+        case ::hybridse::node::kInt32:
+        case ::hybridse::node::kInt64:
+        case ::hybridse::node::kFloat:
+        case ::hybridse::node::kDouble:
+        case ::hybridse::node::kTimestamp:
+        case ::hybridse::node::kDate: {
+            return BuildGetPrimaryCol("hybridse_storage_get_col", window_ptr,
                                       schema_idx, col_idx, col_info->offset,
                                       &data_type, output);
         }
-        case ::fesql::node::kVarchar: {
+        case ::hybridse::node::kVarchar: {
             codec::StringColInfo str_col_info;
             if (!schemas_context_->GetRowFormat(schema_idx)
                      ->GetStringColumnInfo(col_idx, &str_col_info)) {
@@ -172,7 +172,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(size_t schema_idx, size_t col_idx,
 
 bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(
     const std::string& fn_name, ::llvm::Value* row_ptr, size_t schema_idx,
-    size_t col_idx, uint32_t offset, fesql::node::TypeNode* type,
+    size_t col_idx, uint32_t offset, hybridse::node::TypeNode* type,
     ::llvm::Value** output) {
     if (row_ptr == NULL || output == NULL) {
         LOG(WARNING) << "input args have null ptr";
@@ -213,7 +213,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(
     ::llvm::Value* val_schema_idx = builder.getInt32(schema_idx);
     ::llvm::Value* val_col_idx = builder.getInt32(col_idx);
     ::llvm::Value* val_offset = builder.getInt32(offset);
-    ::fesql::type::Type schema_type;
+    ::hybridse::type::Type schema_type;
     if (!DataType2SchemaType(*type, &schema_type)) {
         LOG(WARNING) << "fail to convert data type to schema type: "
                      << type->GetName();
@@ -233,7 +233,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(
 bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
     size_t schema_idx, size_t col_idx, uint32_t offset,
     uint32_t next_str_field_offset, uint32_t str_start_offset,
-    fesql::node::TypeNode* type, ::llvm::Value* window_ptr,
+    hybridse::node::TypeNode* type, ::llvm::Value* window_ptr,
     ::llvm::Value** output) {
     if (window_ptr == NULL || output == NULL) {
         LOG(WARNING) << "input args have null ptr";
@@ -274,14 +274,14 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
 
     // get str field declear
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
-        "fesql_storage_get_str_col", i32_ty, i8_ptr_ty, i32_ty, i32_ty, i32_ty,
+        "hybridse_storage_get_str_col", i32_ty, i8_ptr_ty, i32_ty, i32_ty, i32_ty,
         i32_ty, i32_ty, i32_ty, i8_ptr_ty);
 
     ::llvm::Value* val_schema_idx = builder.getInt32(schema_idx);
     ::llvm::Value* val_col_idx = builder.getInt32(col_idx);
     ::llvm::Value* str_offset = builder.getInt32(offset);
     ::llvm::Value* next_str_offset = builder.getInt32(next_str_field_offset);
-    ::fesql::type::Type schema_type;
+    ::hybridse::type::Type schema_type;
     if (!DataType2SchemaType(*type, &schema_type)) {
         LOG(WARNING) << "fail to convert data type to schema type: "
                      << type->GetName();
@@ -298,4 +298,4 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

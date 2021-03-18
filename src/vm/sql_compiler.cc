@@ -34,10 +34,10 @@
 #include "vm/runner.h"
 #include "vm/transform.h"
 
-using ::fesql::base::Status;
-using fesql::common::kPlanError;
+using ::hybridse::base::Status;
+using hybridse::common::kPlanError;
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir,
@@ -76,16 +76,16 @@ bool GetLibsFiles(const std::string& dir_path,
 
 const std::string FindFesqlDirPath() {
     boost::filesystem::path current_path(boost::filesystem::current_path());
-    boost::filesystem::path fesql_path;
+    boost::filesystem::path hybridse_path;
 
     while (current_path.has_parent_path()) {
         current_path = current_path.parent_path();
-        if (current_path.filename().string() == "fesql") {
+        if (current_path.filename().string() == "hybridse") {
             break;
         }
     }
 
-    if (current_path.filename().string() == "fesql") {
+    if (current_path.filename().string() == "hybridse") {
         LOG(INFO) << "Fesql Dir Path is : " << current_path.string()
                   << std::endl;
         return current_path.string();
@@ -96,19 +96,19 @@ bool RegisterFeLibs(udf::UDFLibrary* library, Status& status,  // NOLINT
                     const std::string& libs_home,
                     const std::string& libs_name) {
     if (libs_name.empty()) {
-        LOG(WARNING) << "fail register fe libs: No fesql libs config exist";
+        LOG(WARNING) << "fail register fe libs: No hybridse libs config exist";
         return true;
     }
     std::vector<std::string> filepaths;
-    std::string fesql_libs_path = "";
+    std::string hybridse_libs_path = "";
     if (libs_home.empty()) {
-        fesql_libs_path = FindFesqlDirPath();
+        hybridse_libs_path = FindFesqlDirPath();
     } else {
-        fesql_libs_path = libs_home;
+        hybridse_libs_path = libs_home;
     }
-    fesql_libs_path.append("/").append(libs_name);
-    if (!GetLibsFiles(fesql_libs_path, filepaths, status)) {
-        status.msg = "fail to get libs file " + fesql_libs_path;
+    hybridse_libs_path.append("/").append(libs_name);
+    if (!GetLibsFiles(hybridse_libs_path, filepaths, status)) {
+        status.msg = "fail to get libs file " + hybridse_libs_path;
         LOG(WARNING) << status;
         return false;
     }
@@ -237,7 +237,7 @@ std::string EngineModeName(EngineMode mode) {
 }
 
 Status SQLCompiler::BuildBatchModePhysicalPlan(
-    SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+    SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
     ::llvm::Module* llvm_module, udf::UDFLibrary* library,
     PhysicalOpNode** output) {
     vm::BatchModeTransformer transformer(
@@ -252,7 +252,7 @@ Status SQLCompiler::BuildBatchModePhysicalPlan(
 }
 
 Status SQLCompiler::BuildRequestModePhysicalPlan(
-    SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+    SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
     ::llvm::Module* llvm_module, udf::UDFLibrary* library,
     PhysicalOpNode** output) {
     vm::RequestModeTransformer transformer(
@@ -272,7 +272,7 @@ Status SQLCompiler::BuildRequestModePhysicalPlan(
 }
 
 Status SQLCompiler::BuildBatchRequestModePhysicalPlan(
-    SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+    SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
     ::llvm::Module* llvm_module, udf::UDFLibrary* library,
     PhysicalOpNode** output) {
     vm::RequestModeTransformer transformer(
@@ -333,7 +333,7 @@ Status SQLCompiler::BuildBatchRequestModePhysicalPlan(
 }
 
 Status SQLCompiler::BuildPhysicalPlan(
-    SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+    SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
     ::llvm::Module* llvm_module, PhysicalOpNode** output) {
     Status status;
     CHECK_TRUE(ctx != nullptr, kPlanError, "Null sql context");
@@ -384,12 +384,12 @@ bool SQLCompiler::BuildClusterJob(SQLContext& ctx, Status& status) {  // NOLINT
  *         plan into SQLContext
  */
 bool SQLCompiler::Parse(SQLContext& ctx,
-                        ::fesql::base::Status& status) {  // NOLINT
-    ::fesql::node::NodePointVector parser_trees;
-    ::fesql::parser::FeSQLParser parser;
+                        ::hybridse::base::Status& status) {  // NOLINT
+    ::hybridse::node::NodePointVector parser_trees;
+    ::hybridse::parser::FeSQLParser parser;
 
     bool is_batch_mode = ctx.engine_mode == kBatchMode;
-    ::fesql::plan::SimplePlanner planer(
+    ::hybridse::plan::SimplePlanner planer(
         &ctx.nm, is_batch_mode, ctx.is_cluster_optimized,
         ctx.enable_batch_window_parallelization);
 
@@ -488,4 +488,4 @@ bool SQLCompiler::ResolvePlanFnAddress(vm::PhysicalOpNode* node,
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

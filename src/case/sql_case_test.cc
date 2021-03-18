@@ -20,7 +20,7 @@
 #include "boost/filesystem/operations.hpp"
 #include "gtest/gtest.h"
 #include "yaml-cpp/yaml.h"
-namespace fesql {
+namespace hybridse {
 namespace sqlcase {
 
 class SQLCaseTest : public ::testing::Test {};
@@ -30,46 +30,46 @@ TEST_F(SQLCaseTest, ExtractTableDefTest) {
     table.set_name("t1");
     table.set_catalog("db");
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col0");
         column->set_is_not_null(false);
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt32);
         column->set_name("col1");
         column->set_is_not_null(false);
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt16);
         column->set_name("col2");
         column->set_is_not_null(false);
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kFloat);
         column->set_name("col3");
         column->set_is_not_null(false);
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kDouble);
         column->set_name("col4");
         column->set_is_not_null(false);
     }
 
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt64);
         column->set_name("col5");
         column->set_is_not_null(false);
     }
 
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col6");
         column->set_is_not_null(false);
     }
@@ -141,20 +141,20 @@ TEST_F(SQLCaseTest, ExtractTableDefTest) {
     table2.set_name("t1");
     table2.set_catalog("db");
     {
-        ::fesql::type::ColumnDef* column = table2.add_columns();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = table2.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col0");
         column->set_is_not_null(false);
     }
     {
-        ::fesql::type::ColumnDef* column = table2.add_columns();
-        column->set_type(::fesql::type::kInt32);
+        ::hybridse::type::ColumnDef* column = table2.add_columns();
+        column->set_type(::hybridse::type::kInt32);
         column->set_name("col1");
         column->set_is_not_null(false);
     }
     {
-        ::fesql::type::ColumnDef* column = table2.add_columns();
-        column->set_type(::fesql::type::kTimestamp);
+        ::hybridse::type::ColumnDef* column = table2.add_columns();
+        column->set_type(::hybridse::type::kTimestamp);
         column->set_name("coltime");
         column->set_is_not_null(false);
     }
@@ -206,11 +206,11 @@ TEST_F(SQLCaseTest, ExtractDataTest) {
             "a";
         type::TableDef output_table;
         ASSERT_TRUE(SQLCase::ExtractSchema(data_schema_str, output_table));
-        std::vector<fesql::codec::Row> rows;
+        std::vector<hybridse::codec::Row> rows;
         ASSERT_TRUE(
             SQLCase::ExtractRows(output_table.columns(), data_str, rows));
         ASSERT_EQ(5u, rows.size());
-        fesql::codec::RowView row_view(output_table.columns());
+        hybridse::codec::RowView row_view(output_table.columns());
 
         {
             row_view.Reset(rows[0].buf());
@@ -312,12 +312,12 @@ TEST_F(SQLCaseTest, ExtractRowTest) {
         "0, 1, 5, 1.1, 11.1, 1, 1, 1587647803000, 2020-05-28\n";
     type::TableDef output_table;
     ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
-    std::vector<fesql::codec::Row> rows;
+    std::vector<hybridse::codec::Row> rows;
     int8_t* row_ptr = nullptr;
     int32_t row_size = 0;
     ASSERT_TRUE(SQLCase::ExtractRow(output_table.columns(), row_str, &row_ptr,
                                     &row_size));
-    fesql::codec::RowView row_view(output_table.columns());
+    hybridse::codec::RowView row_view(output_table.columns());
 
     {
         row_view.Reset(row_ptr);
@@ -349,12 +349,12 @@ TEST_F(SQLCaseTest, ExtractRowFromStringListTest) {
         "0", "1", "5", "1.1", "11.1", "1", "1", "1587647803000", "2020-05-28"};
     type::TableDef output_table;
     ASSERT_TRUE(SQLCase::ExtractSchema(columns, output_table));
-    std::vector<fesql::codec::Row> rows;
+    std::vector<hybridse::codec::Row> rows;
     int8_t* row_ptr = nullptr;
     int32_t row_size = 0;
     ASSERT_TRUE(SQLCase::ExtractRow(output_table.columns(), str_list, &row_ptr,
                                     &row_size));
-    fesql::codec::RowView row_view(output_table.columns());
+    hybridse::codec::RowView row_view(output_table.columns());
 
     {
         row_view.Reset(row_ptr);
@@ -381,21 +381,21 @@ TEST_F(SQLCaseTest, ExtractColumnsTest) {
     ASSERT_TRUE(SQLCase::ExtractSchema(columns, output_table));
     ASSERT_EQ(2, output_table.columns_size());
     ASSERT_EQ("col0", output_table.columns(0).name());
-    ASSERT_EQ(fesql::type::kVarchar, output_table.columns(0).type());
+    ASSERT_EQ(hybridse::type::kVarchar, output_table.columns(0).type());
     ASSERT_EQ("col1", output_table.columns(1).name());
-    ASSERT_EQ(fesql::type::kInt32, output_table.columns(1).type());
+    ASSERT_EQ(hybridse::type::kInt32, output_table.columns(1).type());
 }
 TEST_F(SQLCaseTest, ExtractRowWithNullTest) {
     const std::string schema_str = "col0:string, col1:int32";
     std::string row_str = "0, NULL\n";
     type::TableDef output_table;
     ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
-    std::vector<fesql::codec::Row> rows;
+    std::vector<hybridse::codec::Row> rows;
     int8_t* row_ptr = nullptr;
     int32_t row_size = 0;
     ASSERT_TRUE(SQLCase::ExtractRow(output_table.columns(), row_str, &row_ptr,
                                     &row_size));
-    fesql::codec::RowView row_view(output_table.columns());
+    hybridse::codec::RowView row_view(output_table.columns());
 
     {
         row_view.Reset(row_ptr);
@@ -447,46 +447,46 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
         table.set_name("t1");
         table.set_catalog("db");
         {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kVarchar);
+            ::hybridse::type::ColumnDef* column = table.add_columns();
+            column->set_type(::hybridse::type::kVarchar);
             column->set_name("col0");
             column->set_is_not_null(false);
         }
         {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kInt32);
+            ::hybridse::type::ColumnDef* column = table.add_columns();
+            column->set_type(::hybridse::type::kInt32);
             column->set_name("col1");
             column->set_is_not_null(false);
         }
         {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kInt16);
+            ::hybridse::type::ColumnDef* column = table.add_columns();
+            column->set_type(::hybridse::type::kInt16);
             column->set_name("col2");
             column->set_is_not_null(false);
         }
         {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kFloat);
+            ::hybridse::type::ColumnDef* column = table.add_columns();
+            column->set_type(::hybridse::type::kFloat);
             column->set_name("col3");
             column->set_is_not_null(false);
         }
         {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kDouble);
+            ::hybridse::type::ColumnDef* column = table.add_columns();
+            column->set_type(::hybridse::type::kDouble);
             column->set_name("col4");
             column->set_is_not_null(false);
         }
 
         {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kInt64);
+            ::hybridse::type::ColumnDef* column = table.add_columns();
+            column->set_type(::hybridse::type::kInt64);
             column->set_name("col5");
             column->set_is_not_null(false);
         }
 
         {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kVarchar);
+            ::hybridse::type::ColumnDef* column = table.add_columns();
+            column->set_type(::hybridse::type::kVarchar);
             column->set_name("col6");
             column->set_is_not_null(false);
         }
@@ -522,11 +522,11 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
     // Check Data
     {
         type::TableDef output_table;
-        std::vector<fesql::codec::Row> rows;
+        std::vector<hybridse::codec::Row> rows;
         ASSERT_TRUE(sql_case.ExtractInputData(rows));
         ASSERT_EQ(5u, rows.size());
         sql_case.ExtractInputTableDef(output_table);
-        fesql::codec::RowView row_view(output_table.columns());
+        hybridse::codec::RowView row_view(output_table.columns());
 
         {
             row_view.Reset(rows[0].buf());
@@ -612,45 +612,45 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
         table.set_name("t1");
         table.set_catalog("db");
         {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kVarchar);
+            ::hybridse::type::ColumnDef* column = table.add_columns();
+            column->set_type(::hybridse::type::kVarchar);
             column->set_name("f0");
             column->set_is_not_null(false);
         }
         {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kFloat);
+            ::hybridse::type::ColumnDef* column = table.add_columns();
+            column->set_type(::hybridse::type::kFloat);
             column->set_name("f1");
             column->set_is_not_null(false);
         }
         {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kDouble);
+            ::hybridse::type::ColumnDef* column = table.add_columns();
+            column->set_type(::hybridse::type::kDouble);
             column->set_name("f2");
             column->set_is_not_null(false);
         }
         {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kInt16);
+            ::hybridse::type::ColumnDef* column = table.add_columns();
+            column->set_type(::hybridse::type::kInt16);
             column->set_name("f3");
             column->set_is_not_null(false);
         }
         {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kInt32);
+            ::hybridse::type::ColumnDef* column = table.add_columns();
+            column->set_type(::hybridse::type::kInt32);
             column->set_name("f4");
             column->set_is_not_null(false);
         }
         {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kInt64);
+            ::hybridse::type::ColumnDef* column = table.add_columns();
+            column->set_type(::hybridse::type::kInt64);
             column->set_name("f5");
             column->set_is_not_null(false);
         }
 
         {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kTimestamp);
+            ::hybridse::type::ColumnDef* column = table.add_columns();
+            column->set_type(::hybridse::type::kTimestamp);
             column->set_name("f6");
             column->set_is_not_null(false);
         }
@@ -662,11 +662,11 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
     // Check Data
     {
         type::TableDef output_table;
-        std::vector<fesql::codec::Row> rows;
+        std::vector<hybridse::codec::Row> rows;
         ASSERT_TRUE(sql_case.ExtractOutputData(rows));
         ASSERT_EQ(2u, rows.size());
         sql_case.ExtractOutputSchema(output_table);
-        fesql::codec::RowView row_view(output_table.columns());
+        hybridse::codec::RowView row_view(output_table.columns());
 
         {
             row_view.Reset(rows[0].buf());
@@ -692,12 +692,12 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
 }
 
 TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
-    std::string fesql_dir = fesql::sqlcase::FindFesqlDirPath();
+    std::string hybridse_dir = hybridse::sqlcase::FindFesqlDirPath();
     std::string case_path = "/cases/yaml/demo.yaml";
     std::vector<SQLCase> cases;
 
-    ASSERT_TRUE(fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(
-        fesql_dir, case_path, cases));
+    ASSERT_TRUE(hybridse::sqlcase::SQLCase::CreateSQLCasesFromYaml(
+        hybridse_dir, case_path, cases));
     ASSERT_EQ(5, cases.size());
     {
         SQLCase& sql_case = cases[0];
@@ -870,12 +870,12 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
 }
 
 TEST_F(SQLCaseTest, ExtractRtidbYamlSQLCase) {
-    std::string fesql_dir = fesql::sqlcase::FindFesqlDirPath();
+    std::string hybridse_dir = hybridse::sqlcase::FindFesqlDirPath();
     std::string case_path = "/cases/yaml/rtidb_demo.yaml";
     std::vector<SQLCase> cases;
 
-    ASSERT_TRUE(fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(
-        fesql_dir, case_path, cases));
+    ASSERT_TRUE(hybridse::sqlcase::SQLCase::CreateSQLCasesFromYaml(
+        hybridse_dir, case_path, cases));
     ASSERT_EQ(3, cases.size());
     {
         SQLCase& sql_case = cases[0];
@@ -994,12 +994,12 @@ TEST_F(SQLCaseTest, ExtractRtidbYamlSQLCase) {
 }
 
 TEST_F(SQLCaseTest, ExtractRtidbYamlWithDebugSQLCase) {
-    std::string fesql_dir = fesql::sqlcase::FindFesqlDirPath();
+    std::string hybridse_dir = hybridse::sqlcase::FindFesqlDirPath();
     std::string case_path = "/cases/yaml/rtidb_demo_debug.yaml";
     std::vector<SQLCase> cases;
 
-    ASSERT_TRUE(fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(
-        fesql_dir, case_path, cases));
+    ASSERT_TRUE(hybridse::sqlcase::SQLCase::CreateSQLCasesFromYaml(
+        hybridse_dir, case_path, cases));
     ASSERT_EQ(1, cases.size());
     {
         SQLCase& sql_case = cases[0];
@@ -1010,7 +1010,7 @@ TEST_F(SQLCaseTest, ExtractRtidbYamlWithDebugSQLCase) {
     }
 }
 }  // namespace sqlcase
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

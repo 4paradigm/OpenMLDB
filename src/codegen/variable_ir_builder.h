@@ -25,7 +25,7 @@
 #include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/fe_type.pb.h"
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 class VariableIRBuilder {
  public:
@@ -76,5 +76,5 @@ class VariableIRBuilder {
     ScopeVar* sv_;
 };
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_VARIABLE_IR_BUILDER_H_

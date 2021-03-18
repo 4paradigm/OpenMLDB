@@ -17,7 +17,7 @@
 #ifndef SRC_INCLUDE_BASE_FE_OBJECT_H_
 #define SRC_INCLUDE_BASE_FE_OBJECT_H_
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 class FeBaseObject {
@@ -26,5 +26,5 @@ class FeBaseObject {
 };
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_BASE_FE_OBJECT_H_

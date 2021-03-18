@@ -24,7 +24,7 @@
 #include <vector>
 #include "vm/catalog.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codec {
 
 const uint32_t MAX_ROW_BYTE_SIZE = 1024 * 1024;
@@ -88,7 +88,7 @@ class SchemaCodec {
             buffer += 1;
             uint8_t type = 0;
             memcpy(static_cast<void*>(&type), buffer, 1);
-            if (!::fesql::type::Type_IsValid(type)) {
+            if (!::hybridse::type::Type_IsValid(type)) {
                 return false;
             }
             buffer += 1;
@@ -99,11 +99,11 @@ class SchemaCodec {
             if (buf_size - read_size < total_size) {
                 return false;
             }
-            ::fesql::type::ColumnDef* column = schema->Add();
+            ::hybridse::type::ColumnDef* column = schema->Add();
             column->set_name(buffer, name_size);
             buffer += name_size;
             read_size += total_size;
-            column->set_type(static_cast<::fesql::type::Type>(type));
+            column->set_type(static_cast<::hybridse::type::Type>(type));
             column->set_is_constant(is_constant == 1);
         }
         return true;
@@ -121,5 +121,5 @@ class SchemaCodec {
 };
 
 }  // namespace codec
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_CODEC_FE_SCHEMA_CODEC_H_

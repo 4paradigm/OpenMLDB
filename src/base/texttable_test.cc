@@ -16,7 +16,7 @@
 
 #include "base/texttable.h"
 #include "gtest/gtest.h"
-namespace fesql {
+namespace hybridse {
 namespace base {
 class TextTableTest : public ::testing::Test {
  public:
@@ -57,7 +57,7 @@ TEST_F(TextTableTest, TextTableFormatTest) {
         "+---------+------------+------+\n", oss.str());
 }
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

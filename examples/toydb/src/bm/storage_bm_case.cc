@@ -21,15 +21,15 @@
 #include "gtest/gtest.h"
 #include "storage/list.h"
 
-namespace fesql {
+namespace hybridse {
 namespace bm {
 
 using codec::Row;
 using codec::RowView;
-using ::fesql::base::DefaultComparator;
+using ::hybridse::base::DefaultComparator;
 using storage::ArrayList;
-using fesql::sqlcase::CaseDataMock;
-using fesql::sqlcase::CaseSchemaMock;
+using hybridse::sqlcase::CaseDataMock;
+using hybridse::sqlcase::CaseSchemaMock;
 DefaultComparator cmp;
 
 int64_t RunIterate(storage::BaseList<uint64_t, int64_t>* list);
@@ -252,4 +252,4 @@ void TabletWindowIterate(benchmark::State* state, MODE mode,
     }
 }
 }  // namespace bm
-}  // namespace fesql
+}  // namespace hybridse

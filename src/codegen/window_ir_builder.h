@@ -28,7 +28,7 @@
 #include "vm/catalog.h"
 #include "vm/schemas_context.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 class WindowDecodeIRBuilder {
@@ -64,13 +64,13 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
  private:
     bool BuildGetPrimaryCol(const std::string& fn_name, ::llvm::Value* row_ptr,
                             size_t schema_idx, size_t col_idx, uint32_t offset,
-                            fesql::node::TypeNode* type,
+                            hybridse::node::TypeNode* type,
                             ::llvm::Value** output);
 
     bool BuildGetStringCol(size_t schema_idx, size_t col_idx, uint32_t offset,
                            uint32_t next_str_field_offset,
                            uint32_t str_start_offset,
-                           fesql::node::TypeNode* type,
+                           hybridse::node::TypeNode* type,
                            ::llvm::Value* window_ptr, ::llvm::Value** output);
 
  private:
@@ -79,5 +79,5 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
 };
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_WINDOW_IR_BUILDER_H_

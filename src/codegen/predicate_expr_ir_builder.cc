@@ -22,9 +22,9 @@
 #include "codegen/timestamp_ir_builder.h"
 #include "codegen/type_ir_builder.h"
 
-using fesql::common::kCodegenError;
+using hybridse::common::kCodegenError;
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 PredicateIRBuilder::PredicateIRBuilder(::llvm::BasicBlock* block)
@@ -584,13 +584,13 @@ bool PredicateIRBuilder::IsAcceptType(::llvm::Type* type) {
         return false;
     }
 
-    ::fesql::node::DataType fesql_type;
-    if (false == GetBaseType(type, &fesql_type)) {
+    ::hybridse::node::DataType hybridse_type;
+    if (false == GetBaseType(type, &hybridse_type)) {
         return false;
     }
-    switch (fesql_type) {
-        case ::fesql::node::kVoid:
-        case ::fesql::node::kList:
+    switch (hybridse_type) {
+        case ::hybridse::node::kVoid:
+        case ::hybridse::node::kList:
             return false;
         default: {
             return true;
@@ -607,7 +607,7 @@ Status PredicateIRBuilder::CompareTypeAccept(::llvm::Type* lhs,
 bool PredicateIRBuilder::InferAndCastBoolTypes(::llvm::BasicBlock* block,
                                                ::llvm::Value* value,
                                                ::llvm::Value** casted_value,
-                                               ::fesql::base::Status& status) {
+                                               ::hybridse::base::Status& status) {
     if (NULL == value) {
         status.msg = "value is null";
         status.code = common::kCodegenError;
@@ -637,7 +637,7 @@ bool PredicateIRBuilder::InferAndCastTypes(::llvm::BasicBlock* block,
                                            ::llvm::Value* right,
                                            ::llvm::Value** casted_left,
                                            ::llvm::Value** casted_right,
-                                           ::fesql::base::Status& status) {
+                                           ::hybridse::base::Status& status) {
     if (NULL == left || NULL == right) {
         status.msg = "left or right value is null";
         status.code = common::kCodegenError;
@@ -744,4 +744,4 @@ Status PredicateIRBuilder::BuildIsNullExpr(NativeValue input,
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

@@ -17,9 +17,9 @@
 import "fe_common.proto";
 import "fe_type.proto";
 
-package fesql.dbms;
+package hybridse.dbms;
 option cc_generic_services = true;
-option java_package = "com._4paradigm.fesql.dbms";
+option java_package = "com._4paradigm.hybridse.dbms";
 option java_outer_classname = "DBMS";
 
 message AddGroupRequest {

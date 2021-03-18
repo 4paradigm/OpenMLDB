@@ -23,9 +23,9 @@
 #include "glog/logging.h"
 #include "vm/transform.h"
 
-using ::fesql::base::Status;
+using ::hybridse::base::Status;
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 RowFnLetIRBuilder::RowFnLetIRBuilder(CodeGenContext* ctx) : ctx_(ctx) {}
@@ -98,12 +98,12 @@ Status RowFnLetIRBuilder::Build(
                "Frame num should match expr num");
 
     for (size_t i = 0; i < expr_list->GetChildNum(); ++i) {
-        const ::fesql::node::ExprNode* expr = expr_list->GetChild(i);
+        const ::hybridse::node::ExprNode* expr = expr_list->GetChild(i);
         auto frame = project_frames[i];
         const std::string frame_str =
             frame == nullptr ? "" : frame->GetExprString();
 
-        ::fesql::type::Type col_agg_type;
+        ::hybridse::type::Type col_agg_type;
 
         auto agg_iter = window_agg_builder.find(frame_str);
 
@@ -217,7 +217,7 @@ Status RowFnLetIRBuilder::BuildProject(
     CHECK_STATUS(expr_ir_builder->Build(expr, &expr_out_val),
                  "Fail to codegen project expression: ", expr->GetExprString());
 
-    const ::fesql::node::TypeNode* data_type = nullptr;
+    const ::hybridse::node::TypeNode* data_type = nullptr;
     CHECK_TRUE(!expr_out_val.IsTuple(), kCodegenError,
                "Output do not support tuple");
     ::llvm::Type* llvm_ty = expr_out_val.GetType();
@@ -226,7 +226,7 @@ Status RowFnLetIRBuilder::BuildProject(
                kCodegenError, "Fail to get output type at ", index, ", expect ",
                expr->GetOutputType()->GetName());
 
-    ::fesql::type::Type ctype;
+    ::hybridse::type::Type ctype;
     CHECK_TRUE(DataType2SchemaType(*data_type, &ctype), kCodegenError);
 
     outputs->insert(std::make_pair(index, expr_out_val));
@@ -266,4 +266,4 @@ Status RowFnLetIRBuilder::BindProjectFrame(ExprIRBuilder* expr_ir_builder,
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

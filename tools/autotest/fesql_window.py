@@ -15,11 +15,11 @@
 # limitations under the License.
 
 import random
-from fesql_param import sample_integer_config, sample_string_config
+from hybridse_param import sample_integer_config, sample_string_config
 
-from fesql_const import WINDOW_SQL
+from hybridse_const import WINDOW_SQL
 
-from fesql_const import WINDOW_UNION_SQL
+from hybridse_const import WINDOW_UNION_SQL
 
 
 class WindowDesc:

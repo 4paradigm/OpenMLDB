@@ -27,7 +27,7 @@
 #include "sdk/codec_sdk.h"
 #include "sdk/result_set.h"
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 
 class ResultSetImpl : public ResultSet {
@@ -86,5 +86,5 @@ class ResultSetImpl : public ResultSet {
 };
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // EXAMPLES_TOYDB_SRC_SDK_RESULT_SET_IMPL_H_

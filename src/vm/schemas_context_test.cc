@@ -26,13 +26,13 @@
 #include "vm/test_base.h"
 #include "yaml-cpp/yaml.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
+    if (!SQLCase::CreateSQLCasesFromYaml(hybridse::sqlcase::FindFesqlDirPath(),
                                          yaml_path, cases)) {
         FAIL();
     }
@@ -261,7 +261,7 @@ TEST_F(SchemasContextTest, NewSchemasContextTest) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::GTEST_FLAG(color) = "yes";

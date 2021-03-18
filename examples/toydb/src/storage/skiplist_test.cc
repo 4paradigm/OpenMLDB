@@ -20,9 +20,9 @@
 #include "base/fe_slice.h"
 #include "gtest/gtest.h"
 
-namespace fesql {
+namespace hybridse {
 namespace storage {
-using ::fesql::base::Slice;
+using ::hybridse::base::Slice;
 
 class NodeTest : public ::testing::Test {
  public:
@@ -486,7 +486,7 @@ TEST_F(SkipListTest, Duplicate) {
 }
 
 }  // namespace storage
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

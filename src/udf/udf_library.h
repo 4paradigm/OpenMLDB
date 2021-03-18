@@ -28,7 +28,7 @@
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 
-namespace fesql {
+namespace hybridse {
 
 namespace vm {
 class FeSQLJITWrapper;
@@ -36,10 +36,10 @@ class FeSQLJITWrapper;
 
 namespace udf {
 
-using fesql::base::Status;
-using fesql::node::ExprListNode;
-using fesql::node::ExprNode;
-using fesql::node::SQLNode;
+using hybridse::base::Status;
+using hybridse::node::ExprListNode;
+using hybridse::node::ExprNode;
+using hybridse::node::SQLNode;
 
 // Forward declarations
 class ExprUDFRegistryHelper;
@@ -163,6 +163,6 @@ class UDFLibrary {
 const std::string GetArgSignature(const std::vector<node::ExprNode*>& args);
 
 }  // namespace udf
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_UDF_UDF_LIBRARY_H_

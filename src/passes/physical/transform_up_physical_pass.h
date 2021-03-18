@@ -20,13 +20,13 @@
 #include <string>
 #include "passes/physical/physical_pass.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
-using fesql::base::Status;
-using fesql::vm::Catalog;
-using fesql::vm::PhysicalOpNode;
-using fesql::vm::PhysicalPlanContext;
+using hybridse::base::Status;
+using hybridse::vm::Catalog;
+using hybridse::vm::PhysicalOpNode;
+using hybridse::vm::PhysicalPlanContext;
 
 enum PhysicalPlanPassType {
     kPassColumnProjectsOptimized,
@@ -112,6 +112,6 @@ class TransformUpPysicalPass : public PhysicalPass {
 };
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_PASSES_PHYSICAL_TRANSFORM_UP_PHYSICAL_PASS_H_

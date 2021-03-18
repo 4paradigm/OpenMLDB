@@ -23,11 +23,11 @@
 
 #include "passes/expression/expr_pass.h"
 
-using fesql::base::Status;
-using fesql::node::ExprAnalysisContext;
-using fesql::node::ExprNode;
+using hybridse::base::Status;
+using hybridse::node::ExprAnalysisContext;
+using hybridse::node::ExprNode;
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 class ExprInplaceTransformUp : public ExprPass {
@@ -68,5 +68,5 @@ class ExprSimplifier : public ExprInplaceTransformUp {
 };
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_PASSES_EXPRESSION_SIMPLIFY_H_

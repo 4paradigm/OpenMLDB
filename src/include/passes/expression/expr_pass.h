@@ -27,7 +27,7 @@
 #include "node/sql_node.h"
 #include "passes/pass_base.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 class ExprPass
@@ -68,11 +68,11 @@ class ExprReplacer {
     void AddReplacement(const std::string& relation_name,
                         const std::string& column_name, node::ExprNode* repl);
 
-    fesql::base::Status Replace(node::ExprNode* root,
+    hybridse::base::Status Replace(node::ExprNode* root,
                                 node::ExprNode** output) const;
 
  private:
-    fesql::base::Status DoReplace(node::ExprNode* root,
+    hybridse::base::Status DoReplace(node::ExprNode* root,
                                   std::unordered_set<size_t>* visited,
                                   node::ExprNode** output) const;
 
@@ -83,5 +83,5 @@ class ExprReplacer {
 };
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_PASSES_EXPRESSION_EXPR_PASS_H_

@@ -18,7 +18,7 @@
 #pragma once
 #include <stdint.h>
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 struct DefaultComparator {
@@ -52,6 +52,6 @@ template <class K, class V>
 class Iterator : public AbstractIterator<K, V, V&> {};
 
 template <class K, class V>
-class ConstIterator : public fesql::base::AbstractIterator<K, V, const V&> {};
+class ConstIterator : public hybridse::base::AbstractIterator<K, V, const V&> {};
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse

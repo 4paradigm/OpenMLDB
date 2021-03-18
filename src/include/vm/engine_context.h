@@ -21,7 +21,7 @@
 #include <string>
 #include "boost/compute/detail/lru_cache.hpp"
 #include "vm/physical_op.h"
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 enum EngineMode { kBatchMode, kRequestMode, kBatchRequestMode };
@@ -52,8 +52,8 @@ class CompileInfo {
     virtual const std::string& GetEncodedSchema() const = 0;
     virtual const Schema& GetRequestSchema() const = 0;
     virtual const std::string& GetRequestName() const = 0;
-    virtual const fesql::vm::BatchRequestInfo& GetBatchRequestInfo() const = 0;
-    virtual const fesql::vm::PhysicalOpNode* GetPhysicalPlan() const = 0;
+    virtual const hybridse::vm::BatchRequestInfo& GetBatchRequestInfo() const = 0;
+    virtual const hybridse::vm::PhysicalOpNode* GetPhysicalPlan() const = 0;
     virtual void DumpPhysicalPlan(std::ostream& output,
                                   const std::string& tab) = 0;
     virtual void DumpClusterJob(std::ostream& output,
@@ -68,10 +68,10 @@ typedef std::map<
 
 class CompileInfoCache {
  public:
-    virtual std::shared_ptr<fesql::vm::CompileInfo> GetRequestInfo(
+    virtual std::shared_ptr<hybridse::vm::CompileInfo> GetRequestInfo(
         const std::string& db, const std::string& sp_name,
         base::Status& status) = 0;  // NOLINT
-    virtual std::shared_ptr<fesql::vm::CompileInfo> GetBatchRequestInfo(
+    virtual std::shared_ptr<hybridse::vm::CompileInfo> GetBatchRequestInfo(
         const std::string& db, const std::string& sp_name,
         base::Status& status) = 0;  // NOLINT
 };
@@ -97,5 +97,5 @@ class JITOptions {
     bool enable_perf_ = false;
 };
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_VM_ENGINE_CONTEXT_H_

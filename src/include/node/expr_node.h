@@ -24,21 +24,21 @@
 #include "base/fe_status.h"
 
 // fwd
-namespace fesql::vm {
+namespace hybridse::vm {
 class SchemasContext;
 }
-namespace fesql::udf {
+namespace hybridse::udf {
 class UDFLibrary;
 }
 
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 class NodeManager;
 class ExprNode;
 class TypeNode;
 
-using fesql::base::Status;
+using hybridse::base::Status;
 
 /**
  * Summarize runtime attribute of expression
@@ -82,5 +82,5 @@ class ExprAnalysisContext {
 };
 
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_NODE_EXPR_NODE_H_

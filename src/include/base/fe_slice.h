@@ -24,7 +24,7 @@
 #include "base/raw_buffer.h"
 #include "boost/smart_ptr/local_shared_ptr.hpp"
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 class Slice {
@@ -56,7 +56,7 @@ class Slice {
     explicit Slice(const std::string &s) : size_(s.size()), data_(s.data()) {}
 
     // Create slice from buffer
-    explicit Slice(const fesql::base::RawBuffer &buf)
+    explicit Slice(const hybridse::base::RawBuffer &buf)
         : size_(buf.size), data_(buf.addr) {}
 
     // Create slice from c string
@@ -164,4 +164,4 @@ class RefCountedSlice : public Slice {
 };
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse

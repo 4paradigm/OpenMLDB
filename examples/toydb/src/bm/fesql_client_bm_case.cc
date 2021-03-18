@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "bm/fesql_client_bm_case.h"
+#include "bm/hybridse_client_bm_case.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -32,11 +32,11 @@ DECLARE_string(endpoint);
 DECLARE_int32(port);
 DECLARE_bool(enable_keep_alive);
 
-namespace fesql {
+namespace hybridse {
 namespace bm {
-using fesql::sqlcase::Repeater;
-using fesql::sqlcase::IntRepeater;
-using fesql::sqlcase::RealRepeater;
+using hybridse::sqlcase::Repeater;
+using hybridse::sqlcase::IntRepeater;
+using hybridse::sqlcase::RealRepeater;
 class MockClosure : public ::google::protobuf::Closure {
  public:
     MockClosure() {}
@@ -47,16 +47,16 @@ const std::string host = "127.0.0.1";    // NOLINT
 const static size_t dbms_port = 6603;    // NOLINT
 const static size_t tablet_port = 7703;  // NOLINT
 
-static std::shared_ptr<fesql::sdk::DBMSSdk> feql_dbms_sdk_init() {
+static std::shared_ptr<hybridse::sdk::DBMSSdk> feql_dbms_sdk_init() {
     DLOG(INFO) << "Connect to Tablet dbms sdk... ";
     const std::string endpoint = host + ":" + std::to_string(dbms_port);
-    return fesql::sdk::CreateDBMSSdk(endpoint);
+    return hybridse::sdk::CreateDBMSSdk(endpoint);
 }
 
 static bool FeSqlServerInit(brpc::Server &tablet_server,  // NOLINT
                             brpc::Server &dbms_server,    // NOLINT
-                            ::fesql::tablet::TabletServerImpl *tablet,
-                            ::fesql::dbms::DBMSServerImpl *dbms) {
+                            ::hybridse::tablet::TabletServerImpl *tablet,
+                            ::hybridse::dbms::DBMSServerImpl *dbms) {
     FLAGS_enable_keep_alive = false;
     DLOG(INFO) << ("Start FeSQL tablet server...");
     if (!tablet->Init()) {
@@ -90,11 +90,11 @@ static bool FeSqlServerInit(brpc::Server &tablet_server,  // NOLINT
     return true;
 }
 
-static bool InitDB(std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk,
+static bool InitDB(std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk,
                    std::string db_name) {
     LOG(INFO) << "Creating database " << db_name;
     // create database
-    fesql::sdk::Status status;
+    hybridse::sdk::Status status;
     dbms_sdk->CreateDatabase(db_name, &status);
     if (0 != status.code) {
         LOG(WARNING) << "create database faled " << db_name << " with error "
@@ -104,11 +104,11 @@ static bool InitDB(std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk,
     return true;
 }
 
-static bool InitTBL(std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk,
+static bool InitTBL(std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk,
                     const std::string &db_name, const std::string &schema_sql) {
     DLOG(INFO) << ("Creating table 'tbl' in database 'test'...\n");
     // create table db1
-    fesql::sdk::Status status;
+    hybridse::sdk::Status status;
     dbms_sdk->ExecuteQuery(db_name, schema_sql, &status);
     if (0 != status.code) {
         LOG(WARNING)
@@ -141,8 +141,8 @@ static void SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
 
     brpc::Server tablet_server;
     brpc::Server dbms_server;
-    ::fesql::tablet::TabletServerImpl table_server_impl;
-    ::fesql::dbms::DBMSServerImpl dbms_server_impl;
+    ::hybridse::tablet::TabletServerImpl table_server_impl;
+    ::hybridse::dbms::DBMSServerImpl dbms_server_impl;
 
     if (!FeSqlServerInit(tablet_server, dbms_server, &table_server_impl,
                          &dbms_server_impl)) {
@@ -152,7 +152,7 @@ static void SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
         }
         return;
     }
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = feql_dbms_sdk_init();
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk = feql_dbms_sdk_init();
     if (!dbms_sdk) {
         LOG(WARNING) << "Fail to create to dbms sdk";
         if (TEST == mode) {
@@ -161,8 +161,8 @@ static void SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
         return;
     }
 
-    std::shared_ptr<::fesql::sdk::TabletSdk> sdk =
-        ::fesql::sdk::CreateTabletSdk(host + ":" + std::to_string(tablet_port));
+    std::shared_ptr<::hybridse::sdk::TabletSdk> sdk =
+        ::hybridse::sdk::CreateTabletSdk(host + ":" + std::to_string(tablet_port));
     if (!sdk) {
         LOG(WARNING) << "Fail to create to tablet sdk";
         failure_flag = true;
@@ -180,7 +180,7 @@ static void SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
         goto failure;
     }
     {
-        ::fesql::sdk::Status insert_status;
+        ::hybridse::sdk::Status insert_status;
         int32_t fail = 0;
         for (int i = 0; i < record_size; ++i) {
             sdk->Insert("test", schema_insert_sql, &insert_status);
@@ -219,7 +219,7 @@ static void SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
             sdk::Status query_status;
             const std::string db = "test";
             const std::string sql = select_sql;
-            std::shared_ptr<::fesql::sdk::ResultSet> rs =
+            std::shared_ptr<::hybridse::sdk::ResultSet> rs =
                 sdk->Query(db, sql, &query_status);
             ASSERT_TRUE(0 != rs);  // NOLINT
             ASSERT_EQ(0, query_status.code);
@@ -251,8 +251,8 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
 
     brpc::Server tablet_server;
     brpc::Server dbms_server;
-    ::fesql::tablet::TabletServerImpl table_server_impl;
-    ::fesql::dbms::DBMSServerImpl dbms_server_impl;
+    ::hybridse::tablet::TabletServerImpl table_server_impl;
+    ::hybridse::dbms::DBMSServerImpl dbms_server_impl;
 
     if (!FeSqlServerInit(tablet_server, dbms_server, &table_server_impl,
                          &dbms_server_impl)) {
@@ -262,7 +262,7 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
         }
         return;
     }
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = feql_dbms_sdk_init();
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk = feql_dbms_sdk_init();
     if (!dbms_sdk) {
         LOG(WARNING) << "Fail to create to dbms sdk";
         if (TEST == mode) {
@@ -271,8 +271,8 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
         return;
     }
 
-    std::shared_ptr<::fesql::sdk::TabletSdk> sdk =
-        ::fesql::sdk::CreateTabletSdk(host + ":" + std::to_string(tablet_port));
+    std::shared_ptr<::hybridse::sdk::TabletSdk> sdk =
+        ::hybridse::sdk::CreateTabletSdk(host + ":" + std::to_string(tablet_port));
     if (!sdk) {
         LOG(WARNING) << "Fail to create to tablet sdk";
         failure_flag = true;
@@ -320,7 +320,7 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
                 << "\"" << col_str255.GetValue() << "\""
                 << ");";
             //            LOG(INFO) << oss.str();
-            ::fesql::sdk::Status insert_status;
+            ::hybridse::sdk::Status insert_status;
             int32_t fail = 0;
             sdk->Insert("test", oss.str().c_str(), &insert_status);
             if (0 != insert_status.code) {
@@ -354,7 +354,7 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
             sdk::Status query_status;
             const std::string db = "test";
             const std::string sql = select_sql;
-            std::shared_ptr<::fesql::sdk::ResultSet> rs =
+            std::shared_ptr<::hybridse::sdk::ResultSet> rs =
                 sdk->Query(db, sql, &query_status);
             ASSERT_TRUE(0 != rs);  // NOLINT
             ASSERT_EQ(0, query_status.code);
@@ -510,4 +510,4 @@ void WINDOW_CASE3_QUERY(benchmark::State *state_ptr, MODE mode,
 }
 
 }  // namespace bm
-}  // namespace fesql
+}  // namespace hybridse

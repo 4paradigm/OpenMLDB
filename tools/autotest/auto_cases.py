@@ -23,10 +23,10 @@ import subprocess
 import multiprocessing
 import traceback
 
-from fesql_case import gen_single_window_test
-from fesql_const import SQL_ENGINE_CASE_ERROR, SQL_ENGINE_COMPILE_ERROR, SQL_ENGINE_RUN_ERROR
-from fesql_function import UDFPool
-from fesql_param import parse_args
+from hybridse_case import gen_single_window_test
+from hybridse_const import SQL_ENGINE_CASE_ERROR, SQL_ENGINE_COMPILE_ERROR, SQL_ENGINE_RUN_ERROR
+from hybridse_function import UDFPool
+from hybridse_param import parse_args
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s: %(message)s')
@@ -50,7 +50,7 @@ def worker_run(udf_pool, args, shared_states):
             with open(os.path.join(case_dir, "case.yaml"), "w") as yaml_file:
                 yaml_file.write(yaml.dump(case))
 
-            test_bin = os.path.abspath(os.path.join(args.bin_path, "src/fesql_run_engine"))
+            test_bin = os.path.abspath(os.path.join(args.bin_path, "src/hybridse_run_engine"))
             log_file = open(os.path.join(case_dir, "case.log"), "w")
             exitcode = subprocess.call([test_bin, "--yaml_path=case.yaml"],
                                        cwd=case_dir, stdout=log_file, stderr=log_file)

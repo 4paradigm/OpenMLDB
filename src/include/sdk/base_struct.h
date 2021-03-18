@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 #include "proto/fe_type.pb.h"
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 
 struct Status {
@@ -231,23 +231,23 @@ struct Insert {
 
 inline DataType DataTypeFromProtoType(const type::Type& type) {
     switch (type) {
-        case fesql::type::kBool:
+        case hybridse::type::kBool:
             return kTypeBool;
-        case fesql::type::kInt16:
+        case hybridse::type::kInt16:
             return kTypeInt16;
-        case fesql::type::kInt32:
+        case hybridse::type::kInt32:
             return kTypeInt32;
-        case fesql::type::kInt64:
+        case hybridse::type::kInt64:
             return kTypeInt64;
-        case fesql::type::kFloat:
+        case hybridse::type::kFloat:
             return kTypeFloat;
-        case fesql::type::kDouble:
+        case hybridse::type::kDouble:
             return kTypeDouble;
-        case fesql::type::kVarchar:
+        case hybridse::type::kVarchar:
             return kTypeString;
-        case fesql::type::kDate:
+        case hybridse::type::kDate:
             return kTypeDate;
-        case fesql::type::kTimestamp:
+        case hybridse::type::kTimestamp:
             return kTypeTimestamp;
         default:
             return kTypeUnknow;
@@ -277,5 +277,5 @@ inline const std::string DataTypeName(const DataType& type) {
 }
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_SDK_BASE_STRUCT_H_

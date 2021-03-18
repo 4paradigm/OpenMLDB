@@ -22,7 +22,7 @@
 #include <string>
 #include <vector>
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 class TextTable {
  public:
@@ -75,5 +75,5 @@ class TextTable {
 };
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_BASE_TEXTTABLE_H_

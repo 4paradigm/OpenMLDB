@@ -44,7 +44,7 @@ extern "C" {
 #include <cstddef>
 #endif
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 typedef struct linenoiseCompletions {
@@ -71,7 +71,7 @@ void linenoiseSetMultiLine(int ml);
 void linenoisePrintKeyCodes(void);
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse
 
 #ifdef __cplusplus
 }

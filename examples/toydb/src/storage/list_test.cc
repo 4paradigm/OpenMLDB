@@ -22,10 +22,10 @@
 #include "gtest/gtest.h"
 #include "storage/skiplist.h"
 
-namespace fesql {
+namespace hybridse {
 namespace storage {
 
-using ::fesql::base::DefaultComparator;
+using ::hybridse::base::DefaultComparator;
 DefaultComparator cmp;
 
 class ListTest : public ::testing::Test {
@@ -241,11 +241,11 @@ TEST_F(ListTest, ArrayListEqualItem) {
 
 /*TEST_F(ListTest, SkipListPerform) {
     {
-        std::vector<::fesql::base::Skiplist<uint64_t, uint64_t,
+        std::vector<::hybridse::base::Skiplist<uint64_t, uint64_t,
 DefaultComparator>*> vec; uint64_t value = 1; for (uint64_t idx = 0; idx <
 loop_time; idx++) {
-            ::fesql::base::Skiplist<uint64_t, uint64_t, DefaultComparator>* list
-= new ::fesql::base::Skiplist<uint64_t, uint64_t, DefaultComparator>(12, 4,
+            ::hybridse::base::Skiplist<uint64_t, uint64_t, DefaultComparator>* list
+= new ::hybridse::base::Skiplist<uint64_t, uint64_t, DefaultComparator>(12, 4,
 cmp); for (uint64_t i = 0; i < record_cnt; i++) { list->Insert(i, value);
             }
             vec.push_back(list);
@@ -366,7 +366,7 @@ loop_time);
 }*/
 
 }  // namespace storage
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

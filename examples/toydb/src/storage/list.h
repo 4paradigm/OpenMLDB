@@ -24,10 +24,10 @@
 #include <type_traits>
 #include "base/iterator.h"
 
-namespace fesql {
+namespace hybridse {
 namespace storage {
 
-using ::fesql::base::Iterator;
+using ::hybridse::base::Iterator;
 
 constexpr uint16_t MAX_ARRAY_LIST_LEN = 400;
 
@@ -538,4 +538,4 @@ class List {
 };
 
 }  // namespace storage
-}  // namespace fesql
+}  // namespace hybridse

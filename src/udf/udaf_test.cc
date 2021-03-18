@@ -16,7 +16,7 @@
 
 #include "udf/udf_test.h"
 
-namespace fesql {
+namespace hybridse {
 namespace udf {
 
 using codec::Date;
@@ -762,7 +762,7 @@ TEST_F(UDAFTest, top_n_key_avg_cate_where_test) {
 }
 
 }  // namespace udf
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

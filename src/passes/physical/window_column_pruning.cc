@@ -21,15 +21,15 @@
 #include <string>
 #include <vector>
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
-using fesql::common::kPlanError;
-using fesql::vm::kPhysicalOpProject;
-using fesql::vm::kWindowAggregation;
-using fesql::vm::ColumnProjects;
-using fesql::vm::PhysicalProjectNode;
-using fesql::vm::PhysicalSimpleProjectNode;
+using hybridse::common::kPlanError;
+using hybridse::vm::kPhysicalOpProject;
+using hybridse::vm::kWindowAggregation;
+using hybridse::vm::ColumnProjects;
+using hybridse::vm::PhysicalProjectNode;
+using hybridse::vm::PhysicalSimpleProjectNode;
 
 Status WindowColumnPruning::Apply(PhysicalPlanContext* ctx,
                                   PhysicalOpNode* input, PhysicalOpNode** out) {
@@ -199,4 +199,4 @@ Status WindowColumnPruning::ProcessWindow(PhysicalPlanContext* ctx,
 }
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse

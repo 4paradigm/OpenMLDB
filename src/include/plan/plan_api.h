@@ -17,13 +17,13 @@
 #define SRC_INCLUDE_PLAN_PLAN_API_H_
 #include <string>
 #include "node/node_manager.h"
-namespace fesql {
+namespace hybridse {
 namespace plan {
 
-using fesql::base::Status;
-using fesql::node::NodeManager;
-using fesql::node::NodePointVector;
-using fesql::node::PlanNodeList;
+using hybridse::base::Status;
+using hybridse::node::NodeManager;
+using hybridse::node::NodePointVector;
+using hybridse::node::PlanNodeList;
 class PlanAPI {
  public:
     static bool CreateSyntaxTreeFromScript(
@@ -45,5 +45,5 @@ class PlanAPI {
 };
 
 }  // namespace plan
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_PLAN_PLAN_API_H_

@@ -26,7 +26,7 @@
 #include "llvm/IR/Module.h"
 #include "node/sql_node.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 // FnIRBuilder
@@ -41,18 +41,18 @@ class BlockIRBuilder {
                     base::Status& status);  // NOLINT
 
  private:
-    bool BuildAssignStmt(const ::fesql::node::FnAssignNode* node,
+    bool BuildAssignStmt(const ::hybridse::node::FnAssignNode* node,
                          base::Status& status);  // NOLINT
 
-    bool BuildReturnStmt(const ::fesql::node::FnReturnStmt* node,
+    bool BuildReturnStmt(const ::hybridse::node::FnReturnStmt* node,
                          base::Status& status);  // NOLINT
 
-    bool BuildIfElseBlock(const ::fesql::node::FnIfElseBlock* node,
+    bool BuildIfElseBlock(const ::hybridse::node::FnIfElseBlock* node,
                           base::Status& status);  // NOLINT
-    bool BuildForInBlock(const ::fesql::node::FnForInBlock* node,
+    bool BuildForInBlock(const ::hybridse::node::FnForInBlock* node,
                          base::Status& status);  // NOLINT
 
-    bool DoBuildBranchBlock(const ::fesql::node::FnIfElseBlock* if_else_block,
+    bool DoBuildBranchBlock(const ::hybridse::node::FnIfElseBlock* if_else_block,
                             size_t branch_idx, CodeGenContext* ctx,
                             Status& status);  // NOLINT
 
@@ -60,5 +60,5 @@ class BlockIRBuilder {
 };
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_BLOCK_IR_BUILDER_H_

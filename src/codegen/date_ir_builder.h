@@ -25,7 +25,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "proto/fe_type.pb.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 class DateIRBuilder : public StructTypeIRBuilder {
@@ -55,5 +55,5 @@ class DateIRBuilder : public StructTypeIRBuilder {
               ::llvm::Value** output, base::Status& status);  // NOLINT
 };
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_DATE_IR_BUILDER_H_

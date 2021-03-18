@@ -25,7 +25,7 @@
 #include "base/fe_object.h"
 #include "node/node_enum.h"
 
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 class NodeManager;
@@ -99,5 +99,5 @@ class NodeBase : public base::FeBaseObject {
 };
 
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_NODE_NODE_BASE_H_

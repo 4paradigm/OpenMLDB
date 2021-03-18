@@ -21,7 +21,7 @@
 #include "base/fe_object.h"
 #include "base/mem_pool.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 class JITRuntime {
@@ -64,5 +64,5 @@ class JITRuntime {
 };
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_VM_JIT_RUNTIME_H_

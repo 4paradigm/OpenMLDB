@@ -22,7 +22,7 @@
 #include "node/node_enum.h"
 #include "node/sql_node.h"
 
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 const std::string NameOfPlanNodeType(BatchPlanNodeType type);
@@ -107,6 +107,6 @@ class BatchPlanTree {
 };
 
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_INCLUDE_NODE_BATCH_PLAN_NODE_H_

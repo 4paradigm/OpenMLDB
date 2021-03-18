@@ -18,10 +18,10 @@
 #include <utility>
 #include "passes/resolve_udf_def.h"
 
-using ::fesql::common::kCodegenError;
-using ::fesql::node::TypeEquals;
+using ::hybridse::common::kCodegenError;
+using ::hybridse::node::TypeEquals;
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 Status ResolveFnAndAttrs::CheckSignature(
@@ -271,4 +271,4 @@ Status ResolveFnAndAttrs::VisitExpr(node::ExprNode* expr,
 }
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse

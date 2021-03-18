@@ -40,7 +40,7 @@
 #include "udf/udf.h"
 #include "vm/jit.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 bool FeSQLJITWrapper::AddModuleFromBuffer(const base::RawBuffer& buf) {
@@ -98,109 +98,109 @@ void InitBuiltinJITSymbols(FeSQLJITWrapper* jit) {
     jit->AddExternalFunction("__bzero", (reinterpret_cast<void*>(&bzero)));
 
     jit->AddExternalFunction(
-        "fesql_storage_get_bool_field",
+        "hybridse_storage_get_bool_field",
         reinterpret_cast<void*>(
             static_cast<int8_t (*)(const int8_t*, uint32_t, uint32_t, int8_t*)>(
                 &codec::v1::GetBoolField)));
     jit->AddExternalFunction(
-        "fesql_storage_get_int16_field",
+        "hybridse_storage_get_int16_field",
         reinterpret_cast<void*>(
             static_cast<int16_t (*)(const int8_t*, uint32_t, uint32_t,
                                     int8_t*)>(&codec::v1::GetInt16Field)));
     jit->AddExternalFunction(
-        "fesql_storage_get_int32_field",
+        "hybridse_storage_get_int32_field",
         reinterpret_cast<void*>(
             static_cast<int32_t (*)(const int8_t*, uint32_t, uint32_t,
                                     int8_t*)>(&codec::v1::GetInt32Field)));
     jit->AddExternalFunction(
-        "fesql_storage_get_int64_field",
+        "hybridse_storage_get_int64_field",
         reinterpret_cast<void*>(
             static_cast<int64_t (*)(const int8_t*, uint32_t, uint32_t,
                                     int8_t*)>(&codec::v1::GetInt64Field)));
     jit->AddExternalFunction(
-        "fesql_storage_get_float_field",
+        "hybridse_storage_get_float_field",
         reinterpret_cast<void*>(
             static_cast<float (*)(const int8_t*, uint32_t, uint32_t, int8_t*)>(
                 &codec::v1::GetFloatField)));
     jit->AddExternalFunction(
-        "fesql_storage_get_double_field",
+        "hybridse_storage_get_double_field",
         reinterpret_cast<void*>(
             static_cast<double (*)(const int8_t*, uint32_t, uint32_t, int8_t*)>(
                 &codec::v1::GetDoubleField)));
     jit->AddExternalFunction(
-        "fesql_storage_get_timestamp_field",
+        "hybridse_storage_get_timestamp_field",
         reinterpret_cast<void*>(&codec::v1::GetTimestampField));
-    jit->AddExternalFunction("fesql_storage_get_str_addr_space",
+    jit->AddExternalFunction("hybridse_storage_get_str_addr_space",
                              reinterpret_cast<void*>(&codec::v1::GetAddrSpace));
     jit->AddExternalFunction(
-        "fesql_storage_get_str_field",
+        "hybridse_storage_get_str_field",
         reinterpret_cast<void*>(
             static_cast<int32_t (*)(const int8_t*, uint32_t, uint32_t, uint32_t,
                                     uint32_t, uint32_t, const char**, uint32_t*,
                                     int8_t*)>(&codec::v1::GetStrField)));
-    jit->AddExternalFunction("fesql_storage_get_col",
+    jit->AddExternalFunction("hybridse_storage_get_col",
                              reinterpret_cast<void*>(&codec::v1::GetCol));
-    jit->AddExternalFunction("fesql_storage_get_str_col",
+    jit->AddExternalFunction("hybridse_storage_get_str_col",
                              reinterpret_cast<void*>(&codec::v1::GetStrCol));
 
     jit->AddExternalFunction(
-        "fesql_storage_get_inner_range_list",
+        "hybridse_storage_get_inner_range_list",
         reinterpret_cast<void*>(&codec::v1::GetInnerRangeList));
     jit->AddExternalFunction(
-        "fesql_storage_get_inner_rows_list",
+        "hybridse_storage_get_inner_rows_list",
         reinterpret_cast<void*>(&codec::v1::GetInnerRowsList));
 
     // encode
-    jit->AddExternalFunction("fesql_storage_encode_int16_field",
+    jit->AddExternalFunction("hybridse_storage_encode_int16_field",
                              reinterpret_cast<void*>(&codec::v1::AppendInt16));
 
-    jit->AddExternalFunction("fesql_storage_encode_int32_field",
+    jit->AddExternalFunction("hybridse_storage_encode_int32_field",
                              reinterpret_cast<void*>(&codec::v1::AppendInt32));
 
-    jit->AddExternalFunction("fesql_storage_encode_int64_field",
+    jit->AddExternalFunction("hybridse_storage_encode_int64_field",
                              reinterpret_cast<void*>(&codec::v1::AppendInt64));
 
-    jit->AddExternalFunction("fesql_storage_encode_float_field",
+    jit->AddExternalFunction("hybridse_storage_encode_float_field",
                              reinterpret_cast<void*>(&codec::v1::AppendFloat));
 
-    jit->AddExternalFunction("fesql_storage_encode_double_field",
+    jit->AddExternalFunction("hybridse_storage_encode_double_field",
                              reinterpret_cast<void*>(&codec::v1::AppendDouble));
 
-    jit->AddExternalFunction("fesql_storage_encode_string_field",
+    jit->AddExternalFunction("hybridse_storage_encode_string_field",
                              reinterpret_cast<void*>(&codec::v1::AppendString));
     jit->AddExternalFunction(
-        "fesql_storage_encode_calc_size",
+        "hybridse_storage_encode_calc_size",
         reinterpret_cast<void*>(&codec::v1::CalcTotalLength));
     jit->AddExternalFunction(
-        "fesql_storage_encode_nullbit",
+        "hybridse_storage_encode_nullbit",
         reinterpret_cast<void*>(&codec::v1::AppendNullBit));
 
     // row iteration
-    jit->AddExternalFunction("fesql_storage_get_row_iter",
-                             reinterpret_cast<void*>(&fesql::vm::GetRowIter));
+    jit->AddExternalFunction("hybridse_storage_get_row_iter",
+                             reinterpret_cast<void*>(&hybridse::vm::GetRowIter));
     jit->AddExternalFunction(
-        "fesql_storage_row_iter_has_next",
-        reinterpret_cast<void*>(&fesql::vm::RowIterHasNext));
-    jit->AddExternalFunction("fesql_storage_row_iter_next",
-                             reinterpret_cast<void*>(&fesql::vm::RowIterNext));
+        "hybridse_storage_row_iter_has_next",
+        reinterpret_cast<void*>(&hybridse::vm::RowIterHasNext));
+    jit->AddExternalFunction("hybridse_storage_row_iter_next",
+                             reinterpret_cast<void*>(&hybridse::vm::RowIterNext));
     jit->AddExternalFunction(
-        "fesql_storage_row_iter_get_cur_slice",
-        reinterpret_cast<void*>(&fesql::vm::RowIterGetCurSlice));
+        "hybridse_storage_row_iter_get_cur_slice",
+        reinterpret_cast<void*>(&hybridse::vm::RowIterGetCurSlice));
     jit->AddExternalFunction(
-        "fesql_storage_row_iter_get_cur_slice_size",
-        reinterpret_cast<void*>(&fesql::vm::RowIterGetCurSliceSize));
+        "hybridse_storage_row_iter_get_cur_slice_size",
+        reinterpret_cast<void*>(&hybridse::vm::RowIterGetCurSliceSize));
 
     jit->AddExternalFunction(
-        "fesql_storage_row_iter_delete",
-        reinterpret_cast<void*>(&fesql::vm::RowIterDelete));
-    jit->AddExternalFunction("fesql_storage_get_row_slice",
-                             reinterpret_cast<void*>(&fesql::vm::RowGetSlice));
+        "hybridse_storage_row_iter_delete",
+        reinterpret_cast<void*>(&hybridse::vm::RowIterDelete));
+    jit->AddExternalFunction("hybridse_storage_get_row_slice",
+                             reinterpret_cast<void*>(&hybridse::vm::RowGetSlice));
     jit->AddExternalFunction(
-        "fesql_storage_get_row_slice_size",
-        reinterpret_cast<void*>(&fesql::vm::RowGetSliceSize));
+        "hybridse_storage_get_row_slice_size",
+        reinterpret_cast<void*>(&hybridse::vm::RowGetSliceSize));
 
     jit->AddExternalFunction(
-        "fesql_memery_pool_alloc",
+        "hybridse_memery_pool_alloc",
         reinterpret_cast<void*>(&udf::v1::AllocManagedStringBuf));
 
     jit->AddExternalFunction(
@@ -210,4 +210,4 @@ void InitBuiltinJITSymbols(FeSQLJITWrapper* jit) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

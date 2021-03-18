@@ -35,10 +35,10 @@
 #include "vm/engine_context.h"
 #include "vm/router.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
-using ::fesql::codec::Row;
+using ::hybridse::codec::Row;
 
 class Engine;
 
@@ -99,7 +99,7 @@ class EngineOptions {
         return enable_spark_unsaferow_format_;
     }
 
-    fesql::vm::JITOptions& jit_options() { return jit_options_; }
+    hybridse::vm::JITOptions& jit_options() { return jit_options_; }
 
  private:
     bool keep_ir_;
@@ -129,11 +129,11 @@ class RunSession {
         return compile_info_->GetEncodedSchema();
     }
 
-    virtual std::shared_ptr<fesql::vm::CompileInfo> GetCompileInfo() {
+    virtual std::shared_ptr<hybridse::vm::CompileInfo> GetCompileInfo() {
         return compile_info_;
     }
     bool SetCompileInfo(
-        const std::shared_ptr<fesql::vm::CompileInfo>& compile_info);
+        const std::shared_ptr<hybridse::vm::CompileInfo>& compile_info);
 
     void EnableDebug() { is_debug_ = true; }
     void DisableDebug() { is_debug_ = false; }
@@ -143,8 +143,8 @@ class RunSession {
     EngineMode engine_mode() const { return engine_mode_; }
 
  protected:
-    std::shared_ptr<fesql::vm::CompileInfo> compile_info_;
-    fesql::vm::EngineMode engine_mode_;
+    std::shared_ptr<hybridse::vm::CompileInfo> compile_info_;
+    hybridse::vm::EngineMode engine_mode_;
     bool is_debug_;
     std::string sp_name_;
     friend Engine;
@@ -268,8 +268,8 @@ class Engine {
 
 class LocalTablet : public Tablet {
  public:
-    explicit LocalTablet(fesql::vm::Engine* engine,
-                         std::shared_ptr<fesql::vm::CompileInfoCache> sp_cache)
+    explicit LocalTablet(hybridse::vm::Engine* engine,
+                         std::shared_ptr<hybridse::vm::CompileInfoCache> sp_cache)
         : Tablet(),
           name_("LocalTablet"),
           engine_(engine),
@@ -290,9 +290,9 @@ class LocalTablet : public Tablet {
  private:
     const std::string name_;
     vm::Engine* engine_;
-    std::shared_ptr<fesql::vm::CompileInfoCache> sp_cache_;
+    std::shared_ptr<hybridse::vm::CompileInfoCache> sp_cache_;
 };
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_VM_ENGINE_H_

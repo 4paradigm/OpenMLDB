@@ -36,8 +36,8 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(BENCHMARK_LIBS ${ABSL_LIBS} ${yaml_libs} ${g_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB} benchmark gtest)
 endif ()
 # bm lib
-add_library(fesql_bm_lib STATIC ${BENCHMARK_LIB_FILE_LIST})
-target_link_libraries(fesql_bm_lib fesql_sdk fesql_flags ${BENCHMARK_LIIBS})
+add_library(hybridse_bm_lib STATIC ${BENCHMARK_LIB_FILE_LIST})
+target_link_libraries(hybridse_bm_lib hybridse_sdk hybridse_flags ${BENCHMARK_LIIBS})
 # bm executables
 set(BENCHMARK_TARGET_LIST)
 foreach(BENCHMARK_SCRIPT ${BENCHMARK_EXEC_FILE_LIST})
@@ -48,11 +48,11 @@ foreach(BENCHMARK_SCRIPT ${BENCHMARK_EXEC_FILE_LIST})
         add_executable(${BENCHMARK_TARGET_NAME} ${BENCHMARK_SCRIPT})
 
         target_link_libraries(${BENCHMARK_TARGET_NAME}
-            fesql_sdk fesql_flags fesql_bm_lib ${BENCHMARK_LIBS} benchmark)
+            hybridse_sdk hybridse_flags hybridse_bm_lib ${BENCHMARK_LIBS} benchmark)
         list(APPEND BENCHMARK_TARGET_LIST ${BENCHMARK_TARGET_NAME})
 endforeach()
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-add_custom_target(fesql_bm DEPENDS ${BENCHMARK_TARGET_LIST})
+add_custom_target(hybridse_bm DEPENDS ${BENCHMARK_TARGET_LIST})
 
 # bm unittests
 if (TESTING_ENABLE)
@@ -69,7 +69,7 @@ if (TESTING_ENABLE)
             --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
 
         target_link_libraries(${TEST_TARGET_NAME}
-            fesql_bm_lib fesql_sdk fesql_flags
+            hybridse_bm_lib hybridse_sdk hybridse_flags
             gtest benchmark ${yaml_libs} ${BRPC_LIBS} ${OS_LIBS} ${g_libs})
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach()

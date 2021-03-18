@@ -47,7 +47,7 @@ using namespace llvm::orc;  // NOLINT (build/namespaces)
 
 ExitOnError ExitOnErr;
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 using codec::Date;
@@ -834,7 +834,7 @@ TEST_F(UDFIRBuilderTest, string_to_float_2) {
                                                    codec::StringRef("abc"));
 }
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

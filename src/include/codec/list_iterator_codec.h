@@ -29,10 +29,10 @@
 #include "codec/row.h"
 #include "codec/type_codec.h"
 #include "glog/logging.h"
-namespace fesql {
+namespace hybridse {
 namespace codec {
 
-using fesql::base::ConstIterator;
+using hybridse::base::ConstIterator;
 template <class V>
 class ArrayListIterator;
 
@@ -530,6 +530,6 @@ class ColumnIterator : public ConstIterator<uint64_t, V> {
 };
 
 }  // namespace codec
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_INCLUDE_CODEC_LIST_ITERATOR_CODEC_H_

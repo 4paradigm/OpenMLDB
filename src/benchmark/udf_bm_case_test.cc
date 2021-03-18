@@ -16,7 +16,7 @@
 
 #include "benchmark/udf_bm_case.h"
 #include "gtest/gtest.h"
-namespace fesql {
+namespace hybridse {
 namespace bm {
 class UDFBMCaseTest : public ::testing::Test {
  public:
@@ -81,7 +81,7 @@ TEST_F(UDFBMCaseTest, DateToString_TEST) { DateToString(nullptr, TEST); }
 TEST_F(UDFBMCaseTest, DateFormat_TEST) { DateFormat(nullptr, TEST); }
 
 }  // namespace bm
-}  // namespace fesql
+}  // namespace hybridse
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

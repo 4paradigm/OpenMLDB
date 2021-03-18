@@ -27,7 +27,7 @@
 #include "vm/mem_catalog.h"
 #include "vm/physical_op.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 class CoreAPI;
@@ -46,7 +46,7 @@ class WindowInterface {
 
     bool BufferData(uint64_t key, const Row& row);
 
-    fesql::codec::Row Get(uint64_t idx) const { return window_impl_->At(idx); }
+    hybridse::codec::Row Get(uint64_t idx) const { return window_impl_->At(idx); }
 
     size_t size() const { return window_impl_->GetCount(); }
 
@@ -61,24 +61,24 @@ class WindowInterface {
 
 class GroupbyInterface {
  public:
-    explicit GroupbyInterface(const fesql::codec::Schema& schema);
-    void AddRow(fesql::codec::Row* row);
-    fesql::vm::TableHandler* GetTableHandler();
+    explicit GroupbyInterface(const hybridse::codec::Schema& schema);
+    void AddRow(hybridse::codec::Row* row);
+    hybridse::vm::TableHandler* GetTableHandler();
 
  private:
     friend CoreAPI;
-    fesql::vm::MemTableHandler* mem_table_handler_;
+    hybridse::vm::MemTableHandler* mem_table_handler_;
 };
 
 class ColumnSourceInfo {
  public:
-    fesql::base::Status GetStatus() const { return status_; }
+    hybridse::base::Status GetStatus() const { return status_; }
     size_t GetColumnID() const { return column_id_; }
     int GetChildPathIndex() const { return child_path_idx_; }
     size_t GetChildColumnID() const { return child_column_id_; }
     size_t GetSourceColumnID() const { return source_column_id_; }
     const std::string& GetSourceColumnName() const { return source_col_name_; }
-    const fesql::vm::PhysicalOpNode* GetSourceNode() const {
+    const hybridse::vm::PhysicalOpNode* GetSourceNode() const {
         return source_node_;
     }
     int GetColumnIndex() const { return total_col_idx_; }
@@ -89,8 +89,8 @@ class ColumnSourceInfo {
     int GetSourceSchemaIndex() const { return source_schema_idx_; }
 
  private:
-    friend class fesql::vm::CoreAPI;
-    fesql::base::Status status_;
+    friend class hybridse::vm::CoreAPI;
+    hybridse::base::Status status_;
     size_t column_id_ = 0;
     int total_col_idx_ = -1;
     int col_idx_ = -1;
@@ -107,67 +107,67 @@ class ColumnSourceInfo {
 
 class CoreAPI {
  public:
-    static fesql::codec::Row NewRow(size_t bytes);
-    static RawPtrHandle GetRowBuf(fesql::codec::Row*, size_t idx);
-    static RawPtrHandle AppendRow(fesql::codec::Row*, size_t bytes);
+    static hybridse::codec::Row NewRow(size_t bytes);
+    static RawPtrHandle GetRowBuf(hybridse::codec::Row*, size_t idx);
+    static RawPtrHandle AppendRow(hybridse::codec::Row*, size_t bytes);
 
-    static int ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
-                                  fesql::node::ExprNode* expr);
+    static int ResolveColumnIndex(hybridse::vm::PhysicalOpNode* node,
+                                  hybridse::node::ExprNode* expr);
 
     static std::string ResolveSourceColumnName(
-        fesql::vm::PhysicalOpNode* node, fesql::node::ColumnRefNode* expr);
+        hybridse::vm::PhysicalOpNode* node, hybridse::node::ColumnRefNode* expr);
 
     static ColumnSourceInfo ResolveSourceColumn(
-        fesql::vm::PhysicalOpNode* node, const std::string& relation_name,
+        hybridse::vm::PhysicalOpNode* node, const std::string& relation_name,
         const std::string& column_name);
 
-    static size_t GetUniqueID(const fesql::vm::PhysicalOpNode* node);
+    static size_t GetUniqueID(const hybridse::vm::PhysicalOpNode* node);
 
-    static fesql::codec::Row RowProject(const fesql::vm::RawPtrHandle fn,
-                                        const fesql::codec::Row row,
+    static hybridse::codec::Row RowProject(const hybridse::vm::RawPtrHandle fn,
+                                        const hybridse::codec::Row row,
                                         const bool need_free = false);
-    static fesql::codec::Row RowConstProject(const fesql::vm::RawPtrHandle fn,
+    static hybridse::codec::Row RowConstProject(const hybridse::vm::RawPtrHandle fn,
                                              const bool need_free = false);
 
     // Row project API with Spark UnsafeRow optimization
-    static fesql::codec::Row UnsafeRowProject(
-        const fesql::vm::RawPtrHandle fn,
-        fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
+    static hybridse::codec::Row UnsafeRowProject(
+        const hybridse::vm::RawPtrHandle fn,
+        hybridse::vm::ByteArrayPtr inputUnsafeRowBytes,
         const int inputRowSizeInBytes, const bool need_free = false);
 
-    static void CopyRowToUnsafeRowBytes(const fesql::codec::Row inputRow,
-                                        fesql::vm::ByteArrayPtr outputBytes,
+    static void CopyRowToUnsafeRowBytes(const hybridse::codec::Row inputRow,
+                                        hybridse::vm::ByteArrayPtr outputBytes,
                                         const int length);
 
-    static fesql::codec::Row WindowProject(const fesql::vm::RawPtrHandle fn,
+    static hybridse::codec::Row WindowProject(const hybridse::vm::RawPtrHandle fn,
                                            const uint64_t key, const Row row,
                                            const bool is_instance,
                                            size_t append_slices,
                                            WindowInterface* window);
 
     // Window project API with Spark UnsafeRow optimization
-    static fesql::codec::Row UnsafeWindowProject(
-        const fesql::vm::RawPtrHandle fn, const uint64_t key,
-        fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
+    static hybridse::codec::Row UnsafeWindowProject(
+        const hybridse::vm::RawPtrHandle fn, const uint64_t key,
+        hybridse::vm::ByteArrayPtr inputUnsafeRowBytes,
         const int inputRowSizeInBytes, const bool is_instance,
         size_t append_slices, WindowInterface* window);
 
-    static fesql::codec::Row WindowProject(const fesql::vm::RawPtrHandle fn,
+    static hybridse::codec::Row WindowProject(const hybridse::vm::RawPtrHandle fn,
                                            const uint64_t key, const Row row,
                                            WindowInterface* window);
 
-    static fesql::codec::Row GroupbyProject(
-        const fesql::vm::RawPtrHandle fn,
-        fesql::vm::GroupbyInterface* groupby_interface);
+    static hybridse::codec::Row GroupbyProject(
+        const hybridse::vm::RawPtrHandle fn,
+        hybridse::vm::GroupbyInterface* groupby_interface);
 
-    static bool ComputeCondition(const fesql::vm::RawPtrHandle fn,
+    static bool ComputeCondition(const hybridse::vm::RawPtrHandle fn,
                                  const Row& row,
-                                 const fesql::codec::RowView* row_view,
+                                 const hybridse::codec::RowView* row_view,
                                  size_t out_idx);
 
     static bool EnableSignalTraceback();
 };
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_VM_CORE_API_H_

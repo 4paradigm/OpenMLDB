@@ -26,7 +26,7 @@
 #include "codec/fe_row_codec.h"
 #include "node/sql_node.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 // Forward decls
@@ -35,10 +35,10 @@ class PhysicalPlanContext;
 
 class SchemaSource {
  public:
-    const fesql::codec::Schema* GetSchema() const { return schema_; }
+    const hybridse::codec::Schema* GetSchema() const { return schema_; }
     size_t GetColumnID(size_t idx) const;
     const std::string& GetColumnName(size_t idx) const;
-    const fesql::type::Type GetColumnType(size_t idx) const;
+    const hybridse::type::Type GetColumnType(size_t idx) const;
     const std::string& GetSourceName() const;
 
     // build utility
@@ -247,6 +247,6 @@ class SchemasContext {
     codec::Schema owned_concat_output_schema_;
 };
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_INCLUDE_VM_SCHEMAS_CONTEXT_H_

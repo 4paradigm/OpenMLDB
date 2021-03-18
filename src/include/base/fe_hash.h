@@ -18,7 +18,7 @@
 
 #include <stdint.h>
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 static inline uint32_t hash(const void *key, uint32_t len, uint32_t seed) {
@@ -101,5 +101,5 @@ __attribute__((unused)) static uint64_t MurmurHash64A(const void *key, int len,
 }
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_BASE_FE_HASH_H_

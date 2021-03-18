@@ -25,7 +25,7 @@
 #include "sdk/base.h"
 #include "sdk/tablet_sdk.h"
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 
 static const Schema EMPTY;
@@ -84,5 +84,5 @@ class DBMSSdk {
 std::shared_ptr<DBMSSdk> CreateDBMSSdk(const std::string &endpoint);
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_SDK_DBMS_SDK_H_

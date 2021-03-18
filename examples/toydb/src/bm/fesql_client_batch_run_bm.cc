@@ -15,12 +15,12 @@
  */
 
 #include "benchmark/benchmark.h"
-#include "bm/fesql_client_bm_case.h"
+#include "bm/hybridse_client_bm_case.h"
 #include "glog/logging.h"
 #include "llvm/Support/TargetSelect.h"
 
 using namespace ::llvm;  // NOLINT
-namespace fesql {
+namespace hybridse {
 namespace bm {
 
 static void BM_SIMPLE_QUERY(benchmark::State &state) {  // NOLINT
@@ -32,33 +32,33 @@ static void BM_SIMPLE_QUERY(benchmark::State &state) {  // NOLINT
 static void BM_WINDOW_CASE0_QUERY(benchmark::State &state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    ::fesql::bm::WINDOW_CASE0_QUERY(&state, BENCHMARK, true, state.range(0),
+    ::hybridse::bm::WINDOW_CASE0_QUERY(&state, BENCHMARK, true, state.range(0),
                                     state.range(1));
 }
 static void BM_WINDOW_CASE1_QUERY(benchmark::State &state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    ::fesql::bm::WINDOW_CASE1_QUERY(&state, BENCHMARK, true, state.range(0),
+    ::hybridse::bm::WINDOW_CASE1_QUERY(&state, BENCHMARK, true, state.range(0),
                                     state.range(1));
 }
 
 static void BM_WINDOW_CASE2_QUERY(benchmark::State &state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    ::fesql::bm::WINDOW_CASE2_QUERY(&state, BENCHMARK, true, state.range(0),
+    ::hybridse::bm::WINDOW_CASE2_QUERY(&state, BENCHMARK, true, state.range(0),
                                     state.range(1));
 }
 static void BM_WINDOW_CASE3_QUERY(benchmark::State &state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    ::fesql::bm::WINDOW_CASE3_QUERY(&state, BENCHMARK, true, state.range(0),
+    ::hybridse::bm::WINDOW_CASE3_QUERY(&state, BENCHMARK, true, state.range(0),
                                     state.range(1));
 }
 
 static void BM_GROUPBY_CASE0_QUERY(benchmark::State &state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    ::fesql::bm::GROUPBY_CASE0_QUERY(&state, BENCHMARK, true, state.range(0),
+    ::hybridse::bm::GROUPBY_CASE0_QUERY(&state, BENCHMARK, true, state.range(0),
                                      state.range(1));
 }
 
@@ -105,6 +105,6 @@ BENCHMARK(BM_WINDOW_CASE3_QUERY)
     ->Args({10, 1000});
 
 }  // namespace bm
-};  // namespace fesql
+};  // namespace hybridse
 
 BENCHMARK_MAIN();

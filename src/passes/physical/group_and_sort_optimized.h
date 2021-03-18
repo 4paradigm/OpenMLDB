@@ -20,17 +20,17 @@
 #include <string>
 #include "passes/physical/transform_up_physical_pass.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 using codec::Schema;
-using fesql::vm::Filter;
-using fesql::vm::IndexSt;
-using fesql::vm::Join;
-using fesql::vm::Key;
-using fesql::vm::SchemasContext;
-using fesql::vm::Sort;
-using fesql::vm::TableHandler;
+using hybridse::vm::Filter;
+using hybridse::vm::IndexSt;
+using hybridse::vm::Join;
+using hybridse::vm::Key;
+using hybridse::vm::SchemasContext;
+using hybridse::vm::Sort;
+using hybridse::vm::TableHandler;
 
 class GroupAndSortOptimized : public TransformUpPysicalPass {
  public:
@@ -94,5 +94,5 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                         std::vector<bool>* best_bitmap);  // NOLINT
 };
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_PASSES_PHYSICAL_GROUP_AND_SORT_OPTIMIZED_H_

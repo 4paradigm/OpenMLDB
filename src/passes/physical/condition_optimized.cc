@@ -19,13 +19,13 @@
 #include <vector>
 #include <utility>
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
-using fesql::vm::PhysicalJoinNode;
-using fesql::vm::PhysicalRequestJoinNode;
-using fesql::vm::PhysicalFilterNode;
-using fesql::vm::PhysicalOpType;
+using hybridse::vm::PhysicalJoinNode;
+using hybridse::vm::PhysicalRequestJoinNode;
+using hybridse::vm::PhysicalFilterNode;
+using hybridse::vm::PhysicalOpType;
 
 bool ConditionOptimized::JoinConditionOptimized(PhysicalBinaryNode* in,
                                                 Join* join) {
@@ -299,4 +299,4 @@ void ConditionOptimized::SkipConstExpression(node::ExprListNode input,
     }
 }
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse

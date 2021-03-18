@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-%module fesql_interface
+%module hybridse_interface
 
 // Enable public interfaces for Java
 #ifdef SWIGJAVA
@@ -35,35 +35,35 @@ namespace std {
     %template(StringVector) vector<string>;
 }
 
-%shared_ptr(fesql::vm::Catalog);
-%shared_ptr(fesql::vm::SimpleCatalog);
-%shared_ptr(fesql::vm::CompileInfo);
-%shared_ptr(fesql::vm::SQLCompileInfo);
+%shared_ptr(hybridse::vm::Catalog);
+%shared_ptr(hybridse::vm::SimpleCatalog);
+%shared_ptr(hybridse::vm::CompileInfo);
+%shared_ptr(hybridse::vm::SQLCompileInfo);
 
-%typemap(jni) fesql::vm::RawPtrHandle "jlong"
-%typemap(jtype) fesql::vm::RawPtrHandle "long"
-%typemap(jstype) fesql::vm::RawPtrHandle "long"
-%typemap(javain) fesql::vm::RawPtrHandle "$javainput"
-%typemap(javaout) fesql::vm::RawPtrHandle "{ return $jnicall; }"
-%typemap(in) fesql::vm::RawPtrHandle %{ $1 = reinterpret_cast<fesql::vm::RawPtrHandle>($input); %}
+%typemap(jni) hybridse::vm::RawPtrHandle "jlong"
+%typemap(jtype) hybridse::vm::RawPtrHandle "long"
+%typemap(jstype) hybridse::vm::RawPtrHandle "long"
+%typemap(javain) hybridse::vm::RawPtrHandle "$javainput"
+%typemap(javaout) hybridse::vm::RawPtrHandle "{ return $jnicall; }"
+%typemap(in) hybridse::vm::RawPtrHandle %{ $1 = reinterpret_cast<hybridse::vm::RawPtrHandle>($input); %}
 
 #ifdef SWIGJAVA
 // typemap from https://github.com/swig/swig/blob/master/Lib/java/various.i
-%typemap(jni) fesql::vm::ByteArrayPtr "jbyteArray"
-%typemap(jtype) fesql::vm::ByteArrayPtr "byte[]"
-%typemap(jstype) fesql::vm::ByteArrayPtr "byte[]"
-%typemap(in) fesql::vm::ByteArrayPtr {
-    $1 = (fesql::vm::ByteArrayPtr) JCALL2(GetByteArrayElements, jenv, $input, 0);
+%typemap(jni) hybridse::vm::ByteArrayPtr "jbyteArray"
+%typemap(jtype) hybridse::vm::ByteArrayPtr "byte[]"
+%typemap(jstype) hybridse::vm::ByteArrayPtr "byte[]"
+%typemap(in) hybridse::vm::ByteArrayPtr {
+    $1 = (hybridse::vm::ByteArrayPtr) JCALL2(GetByteArrayElements, jenv, $input, 0);
 }
-%typemap(argout) fesql::vm::ByteArrayPtr {
+%typemap(argout) hybridse::vm::ByteArrayPtr {
     JCALL3(ReleaseByteArrayElements, jenv, $input, (jbyte *) $1, JNI_COMMIT);
 }
-%typemap(javain) fesql::vm::ByteArrayPtr "$javainput"
-%typemap(javaout) fesql::vm::ByteArrayPtr "{ return $jnicall; }"
+%typemap(javain) hybridse::vm::ByteArrayPtr "$javainput"
+%typemap(javaout) hybridse::vm::ByteArrayPtr "{ return $jnicall; }"
 #endif
 
 // Fix for Java shared_ptr unref
-// %feature("unref") fesql::vm::Catalog "delete $this;"
+// %feature("unref") hybridse::vm::Catalog "delete $this;"
 
 
 #ifdef SWIGJAVA
@@ -75,14 +75,14 @@ namespace std {
 
 // Enable protobuf interfaces
 %include "swig_library/java/protobuf.i"
-%protobuf_enum(fesql::type::Type, com._4paradigm.fesql.type.TypeOuterClass.Type);
-%protobuf(fesql::type::Database, com._4paradigm.fesql.type.TypeOuterClass.Database);
-%protobuf(fesql::type::TableDef, com._4paradigm.fesql.type.TypeOuterClass.TableDef);
-%protobuf_repeated_typedef(fesql::codec::Schema, com._4paradigm.fesql.type.TypeOuterClass.ColumnDef);
+%protobuf_enum(hybridse::type::Type, com._4paradigm.hybridse.type.TypeOuterClass.Type);
+%protobuf(hybridse::type::Database, com._4paradigm.hybridse.type.TypeOuterClass.Database);
+%protobuf(hybridse::type::TableDef, com._4paradigm.hybridse.type.TypeOuterClass.TableDef);
+%protobuf_repeated_typedef(hybridse::codec::Schema, com._4paradigm.hybridse.type.TypeOuterClass.ColumnDef);
 
 // Enable direct buffer interfaces
 %include "swig_library/java/buffer.i"
-%as_direct_buffer(fesql::base::RawBuffer);
+%as_direct_buffer(hybridse::base::RawBuffer);
 
 // Enable common numeric types
 %include "swig_library/java/numerics.i"
@@ -100,67 +100,67 @@ namespace std {
 #include "vm/physical_op.h"
 #include "vm/simple_catalog.h"
 
-using namespace fesql;
-using namespace fesql::node;
-using fesql::vm::Catalog;
-using fesql::vm::PhysicalOpNode;
-using fesql::vm::PhysicalSimpleProjectNode;
-using fesql::codec::RowView;
-using fesql::vm::FnInfo;
-using fesql::vm::Sort;
-using fesql::vm::Range;
-using fesql::vm::ConditionFilter;
-using fesql::vm::ColumnProjects;
-using fesql::vm::Key;
-using fesql::vm::WindowOp;
-using fesql::vm::EngineMode;
-using fesql::vm::EngineOptions;
-using fesql::base::Iterator;
-using fesql::base::ConstIterator;
-using fesql::codec::RowIterator;
-using fesql::codec::Row;
-using fesql::vm::SchemasContext;
-using fesql::vm::SchemaSource;
-using fesql::node::PlanType;
-using fesql::codec::WindowIterator;
-using fesql::node::DataType;
+using namespace hybridse;
+using namespace hybridse::node;
+using hybridse::vm::Catalog;
+using hybridse::vm::PhysicalOpNode;
+using hybridse::vm::PhysicalSimpleProjectNode;
+using hybridse::codec::RowView;
+using hybridse::vm::FnInfo;
+using hybridse::vm::Sort;
+using hybridse::vm::Range;
+using hybridse::vm::ConditionFilter;
+using hybridse::vm::ColumnProjects;
+using hybridse::vm::Key;
+using hybridse::vm::WindowOp;
+using hybridse::vm::EngineMode;
+using hybridse::vm::EngineOptions;
+using hybridse::base::Iterator;
+using hybridse::base::ConstIterator;
+using hybridse::codec::RowIterator;
+using hybridse::codec::Row;
+using hybridse::vm::SchemasContext;
+using hybridse::vm::SchemaSource;
+using hybridse::node::PlanType;
+using hybridse::codec::WindowIterator;
+using hybridse::node::DataType;
 %}
 
-%rename(BaseStatus) fesql::base::Status;
+%rename(BaseStatus) hybridse::base::Status;
 %ignore MakeExprWithTable; // TODO: avoid return object with share pointer
 %ignore WindowIterator;
-%ignore fesql::vm::SchemasContext;
-%ignore fesql::vm::RowHandler;
-%ignore fesql::vm::TableHandler;
-%ignore fesql::vm::PartitionHandler;
-%ignore fesql::vm::ErrorRowHandler;
-%ignore fesql::vm::ErrorTableHandler;
-%ignore fesql::vm::RequestUnionTableHandler;
-%ignore fesql::vm::SimpleCatalogTableHandler;
-%ignore fesql::vm::DataHandlerList;
-%ignore fesql::vm::DataHandlerVector;
-%ignore fesql::vm::DataHandlerRepeater;
-%ignore fesql::vm::LocalTabletTableHandler;
-%ignore fesql::vm::AysncRowHandler;
+%ignore hybridse::vm::SchemasContext;
+%ignore hybridse::vm::RowHandler;
+%ignore hybridse::vm::TableHandler;
+%ignore hybridse::vm::PartitionHandler;
+%ignore hybridse::vm::ErrorRowHandler;
+%ignore hybridse::vm::ErrorTableHandler;
+%ignore hybridse::vm::RequestUnionTableHandler;
+%ignore hybridse::vm::SimpleCatalogTableHandler;
+%ignore hybridse::vm::DataHandlerList;
+%ignore hybridse::vm::DataHandlerVector;
+%ignore hybridse::vm::DataHandlerRepeater;
+%ignore hybridse::vm::LocalTabletTableHandler;
+%ignore hybridse::vm::AysncRowHandler;
 %ignore DataTypeName; // TODO: Geneerate duplicated class
-%ignore fesql::vm::FeSQLJITWrapper::AddModule;
+%ignore hybridse::vm::FeSQLJITWrapper::AddModule;
 
 // Ignore the unique_ptr functions
-%ignore fesql::vm::MemTableHandler::GetWindowIterator;
-%ignore fesql::vm::MemTableHandler::GetIterator;
-%ignore fesql::vm::MemTimeTableHandler::GetWindowIterator;
-%ignore fesql::vm::MemTimeTableHandler::GetIterator;
-%ignore fesql::vm::MemSegmentHandler::GetWindowIterator;
-%ignore fesql::vm::MemSegmentHandler::GetIterator;
-%ignore fesql::vm::MemPartitionHandler::GetWindowIterator;
-%ignore fesql::vm::MemPartitionHandler::GetIterator;
-%ignore fesql::vm::MemWindowIterator::GetValue;
-%ignore fesql::vm::RequestUnionTableHandler::GetWindowIterator;
-%ignore fesql::vm::RequestUnionTableHandler::GetIterator;
-%ignore fesql::vm::MemCatalog;
-%ignore fesql::vm::MemCatalog::~MemCatalog;
-%ignore fesql::vm::AscComparor::operator();
-%ignore fesql::vm::DescComparor::operator();
+%ignore hybridse::vm::MemTableHandler::GetWindowIterator;
+%ignore hybridse::vm::MemTableHandler::GetIterator;
+%ignore hybridse::vm::MemTimeTableHandler::GetWindowIterator;
+%ignore hybridse::vm::MemTimeTableHandler::GetIterator;
+%ignore hybridse::vm::MemSegmentHandler::GetWindowIterator;
+%ignore hybridse::vm::MemSegmentHandler::GetIterator;
+%ignore hybridse::vm::MemPartitionHandler::GetWindowIterator;
+%ignore hybridse::vm::MemPartitionHandler::GetIterator;
+%ignore hybridse::vm::MemWindowIterator::GetValue;
+%ignore hybridse::vm::RequestUnionTableHandler::GetWindowIterator;
+%ignore hybridse::vm::RequestUnionTableHandler::GetIterator;
+%ignore hybridse::vm::MemCatalog;
+%ignore hybridse::vm::MemCatalog::~MemCatalog;
+%ignore hybridse::vm::AscComparor::operator();
+%ignore hybridse::vm::DescComparor::operator();
 
 %include "base/fe_status.h"
 %include "codec/row.h"

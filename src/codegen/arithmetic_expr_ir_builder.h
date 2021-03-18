@@ -22,8 +22,8 @@
 #include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/fe_type.pb.h"
-using fesql::base::Status;
-namespace fesql {
+using hybridse::base::Status;
+namespace hybridse {
 namespace codegen {
 class ArithmeticIRBuilder {
  public:
@@ -60,7 +60,7 @@ class ArithmeticIRBuilder {
 
     static bool BuildAddExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
                              ::llvm::Value* right, ::llvm::Value** output,
-                             ::fesql::base::Status& status);  // NOLINT
+                             ::hybridse::base::Status& status);  // NOLINT
     static bool BuildSubExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
                              ::llvm::Value* right, ::llvm::Value** output,
                              base::Status& status);  // NOLINT
@@ -84,19 +84,19 @@ class ArithmeticIRBuilder {
     static bool InferAndCastedNumberTypes(
         ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
         ::llvm::Value** casted_left, ::llvm::Value** casted_right,
-        ::fesql::base::Status& status);  // NOLINT
+        ::hybridse::base::Status& status);  // NOLINT
 
     static bool InferAndCastIntegerTypes(
         ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
         ::llvm::Value** casted_left, ::llvm::Value** casted_right,
-        ::fesql::base::Status& status);  // NOLINT
+        ::hybridse::base::Status& status);  // NOLINT
     static bool InferAndCastDoubleTypes(
         ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
         ::llvm::Value** casted_left, ::llvm::Value** casted_right,
-        ::fesql::base::Status& status);  // NOLINT
+        ::hybridse::base::Status& status);  // NOLINT
     ::llvm::BasicBlock* block_;
     CastExprIRBuilder cast_expr_ir_builder_;
 };
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_ARITHMETIC_EXPR_IR_BUILDER_H_

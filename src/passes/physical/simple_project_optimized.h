@@ -18,7 +18,7 @@
 
 #include "passes/physical/transform_up_physical_pass.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 class SimpleProjectOptimized : public TransformUpPysicalPass {
@@ -32,6 +32,6 @@ class SimpleProjectOptimized : public TransformUpPysicalPass {
 };
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_PASSES_PHYSICAL_SIMPLE_PROJECT_OPTIMIZED_H_

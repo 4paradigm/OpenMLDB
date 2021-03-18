@@ -20,7 +20,7 @@
 #include "butil/iobuf.h"
 #include "codec/fe_row_codec.h"
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 
 class RowBaseView {
@@ -41,7 +41,7 @@ class RowBaseView {
 
 class RowIOBufView : public RowBaseView {
  public:
-    explicit RowIOBufView(const fesql::codec::Schema& schema);
+    explicit RowIOBufView(const hybridse::codec::Schema& schema);
     ~RowIOBufView();
     bool Reset(const butil::IOBuf& buf);
     int32_t GetInt16(uint32_t idx, int16_t* val);
@@ -73,7 +73,7 @@ class RowIOBufView : public RowBaseView {
     uint32_t string_field_cnt_;
     uint32_t str_field_start_offset_;
     uint32_t size_;
-    const fesql::codec::Schema schema_;
+    const hybridse::codec::Schema schema_;
     std::vector<uint32_t> offset_vec_;
 };
 
@@ -122,5 +122,5 @@ int32_t GetStrField(const butil::IOBuf& row, uint32_t str_field_offset,
 }  // namespace v1
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_SDK_CODEC_SDK_H_

@@ -25,7 +25,7 @@
 #include <vector>
 #include "node/node_enum.h"
 #include "node/sql_node.h"
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 std::string NameOfPlanNodeType(const PlanType &type);
@@ -552,6 +552,6 @@ void PrintPlanNode(std::ostream &output, const std::string &org_tab,
                    bool last_child);
 
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_INCLUDE_NODE_PLAN_NODE_H_

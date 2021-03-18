@@ -21,9 +21,9 @@
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
-using fesql::sqlcase::CaseDataMock;
+using hybridse::sqlcase::CaseDataMock;
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
     EngineOptions options;
@@ -112,12 +112,12 @@ TEST_P(BatchRequestEngineTest, test_cluster_batch_request_engine) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     ::testing::InitGoogleTest(&argc, argv);
-    // ::fesql::vm::CoreAPI::EnableSignalTraceback();
+    // ::hybridse::vm::CoreAPI::EnableSignalTraceback();
     return RUN_ALL_TESTS();
 }

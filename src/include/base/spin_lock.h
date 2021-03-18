@@ -19,7 +19,7 @@
 #include <memory>
 #include <thread>  //NOLINT
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 inline void AsmVolatilePause() {
@@ -65,6 +65,6 @@ class SpinMutex {
 };
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_INCLUDE_BASE_SPIN_LOCK_H_

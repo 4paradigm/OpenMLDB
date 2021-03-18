@@ -16,7 +16,7 @@
 
 #include "bm/storage_bm_case.h"
 #include "gtest/gtest.h"
-namespace fesql {
+namespace hybridse {
 namespace bm {
 class StorageBMCaseTest : public ::testing::Test {
  public:
@@ -61,7 +61,7 @@ TEST_F(StorageBMCaseTest, RequestUnionTableIterate_TEST) {
 }
 
 }  // namespace bm
-}  // namespace fesql
+}  // namespace hybridse
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

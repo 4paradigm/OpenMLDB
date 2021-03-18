@@ -25,7 +25,7 @@
 #include "codec/type_codec.h"
 #include "proto/fe_type.pb.h"
 
-namespace fesql {
+namespace hybridse {
 namespace udf {
 
 namespace v1 {
@@ -198,52 +198,52 @@ struct IncOne {
 };
 
 int32_t month(int64_t ts);
-int32_t month(fesql::codec::Timestamp *ts);
+int32_t month(hybridse::codec::Timestamp *ts);
 
 int32_t year(int64_t ts);
-int32_t year(fesql::codec::Timestamp *ts);
+int32_t year(hybridse::codec::Timestamp *ts);
 
 int32_t dayofmonth(int64_t ts);
-int32_t dayofmonth(fesql::codec::Timestamp *ts);
+int32_t dayofmonth(hybridse::codec::Timestamp *ts);
 
 int32_t dayofweek(int64_t ts);
-int32_t dayofweek(fesql::codec::Timestamp *ts);
-int32_t dayofweek(fesql::codec::Date *ts);
+int32_t dayofweek(hybridse::codec::Timestamp *ts);
+int32_t dayofweek(hybridse::codec::Date *ts);
 
 int32_t weekofyear(int64_t ts);
-int32_t weekofyear(fesql::codec::Timestamp *ts);
-int32_t weekofyear(fesql::codec::Date *ts);
+int32_t weekofyear(hybridse::codec::Timestamp *ts);
+int32_t weekofyear(hybridse::codec::Date *ts);
 
 float Cotf(float x);
 
 void date_format(codec::Date *date, const std::string &format,
-                 fesql::codec::StringRef *output);
+                 hybridse::codec::StringRef *output);
 void date_format(codec::Timestamp *timestamp, const std::string &format,
-                 fesql::codec::StringRef *output);
+                 hybridse::codec::StringRef *output);
 
-void date_format(codec::Timestamp *timestamp, fesql::codec::StringRef *format,
-                 fesql::codec::StringRef *output);
-void date_format(codec::Date *date, fesql::codec::StringRef *format,
-                 fesql::codec::StringRef *output);
+void date_format(codec::Timestamp *timestamp, hybridse::codec::StringRef *format,
+                 hybridse::codec::StringRef *output);
+void date_format(codec::Date *date, hybridse::codec::StringRef *format,
+                 hybridse::codec::StringRef *output);
 
 void timestamp_to_string(codec::Timestamp *timestamp,
-                         fesql::codec::StringRef *output);
-void timestamp_to_date(codec::Timestamp *timestamp, fesql::codec::Date *output,
+                         hybridse::codec::StringRef *output);
+void timestamp_to_date(codec::Timestamp *timestamp, hybridse::codec::Date *output,
                        bool *is_null);
 
-void date_to_string(codec::Date *date, fesql::codec::StringRef *output);
-void date_to_timestamp(codec::Date *date, fesql::codec::Timestamp *output,
+void date_to_string(codec::Date *date, hybridse::codec::StringRef *output);
+void date_to_timestamp(codec::Date *date, hybridse::codec::Timestamp *output,
                        bool *is_null);
-void string_to_date(codec::StringRef *str, fesql::codec::Date *output,
+void string_to_date(codec::StringRef *str, hybridse::codec::Date *output,
                     bool *is_null);
-void string_to_timestamp(codec::StringRef *str, fesql::codec::Timestamp *output,
+void string_to_timestamp(codec::StringRef *str, hybridse::codec::Timestamp *output,
                          bool *is_null);
-void sub_string(fesql::codec::StringRef *str, int32_t pos,
-                fesql::codec::StringRef *output);
-void sub_string(fesql::codec::StringRef *str, int32_t pos, int32_t len,
-                fesql::codec::StringRef *output);
-int32_t strcmp(fesql::codec::StringRef *s1, fesql::codec::StringRef *s2);
-void bool_to_string(bool v, fesql::codec::StringRef *output);
+void sub_string(hybridse::codec::StringRef *str, int32_t pos,
+                hybridse::codec::StringRef *output);
+void sub_string(hybridse::codec::StringRef *str, int32_t pos, int32_t len,
+                hybridse::codec::StringRef *output);
+int32_t strcmp(hybridse::codec::StringRef *s1, hybridse::codec::StringRef *s2);
+void bool_to_string(bool v, hybridse::codec::StringRef *output);
 void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr);
 void string_to_int(codec::StringRef *str, int32_t *v, bool *is_null_ptr);
 void string_to_smallint(codec::StringRef *str, int16_t *v, bool *is_null_ptr);
@@ -279,6 +279,6 @@ uint32_t to_string_len(const V &v);
 
 void RegisterNativeUDFToModule();
 }  // namespace udf
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_UDF_UDF_H_

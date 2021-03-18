@@ -23,7 +23,7 @@
 #include "sdk/base.h"
 #include "sdk/result_set.h"
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 
 class ExplainInfo {
@@ -62,5 +62,5 @@ class TabletSdk {
 std::shared_ptr<TabletSdk> CreateTabletSdk(const std::string& endpoint);
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_SDK_TABLET_SDK_H_

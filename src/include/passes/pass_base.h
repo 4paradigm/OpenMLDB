@@ -20,7 +20,7 @@
 #ifndef SRC_INCLUDE_PASSES_PASS_BASE_H_
 #define SRC_INCLUDE_PASSES_PASS_BASE_H_
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 template <typename T, typename CTX>
@@ -33,5 +33,5 @@ class PassBase : public base::FeBaseObject {
 };
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_PASSES_PASS_BASE_H_

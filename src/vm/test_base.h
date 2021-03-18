@@ -29,30 +29,30 @@
 #include "vm/engine.h"
 #include "vm/simple_catalog.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
-using fesql::base::Status;
-using fesql::codec::Row;
-using fesql::common::kSQLError;
-using fesql::sqlcase::SQLCase;
-void BuildTableDef(::fesql::type::TableDef& table); // NOLINT
-void BuildTableA(::fesql::type::TableDef& table); // NOLINT
-void BuildTableT2Def(::fesql::type::TableDef& table); // NOLINT
+using hybridse::base::Status;
+using hybridse::codec::Row;
+using hybridse::common::kSQLError;
+using hybridse::sqlcase::SQLCase;
+void BuildTableDef(::hybridse::type::TableDef& table); // NOLINT
+void BuildTableA(::hybridse::type::TableDef& table); // NOLINT
+void BuildTableT2Def(::hybridse::type::TableDef& table); // NOLINT
 void BuildBuf(int8_t** buf, uint32_t* size);
 void BuildT2Buf(int8_t** buf, uint32_t* size);
-void BuildRows(::fesql::type::TableDef& table,    // NOLINT
+void BuildRows(::hybridse::type::TableDef& table,    // NOLINT
                std::vector<Row>& rows);           // NOLINT
-void BuildT2Rows(::fesql::type::TableDef& table,  // NOLINT
+void BuildT2Rows(::hybridse::type::TableDef& table,  // NOLINT
                  std::vector<Row>& rows); // NOLINT
-void ExtractExprListFromSimpleSQL(::fesql::node::NodeManager* nm,
+void ExtractExprListFromSimpleSQL(::hybridse::node::NodeManager* nm,
                                   const std::string& sql,
                                   node::ExprListNode* output);
-void ExtractExprFromSimpleSQL(::fesql::node::NodeManager* nm,
+void ExtractExprFromSimpleSQL(::hybridse::node::NodeManager* nm,
                               const std::string& sql, node::ExprNode** output);
-bool AddTable(fesql::type::Database& db,  // NOLINT
-              const fesql::type::TableDef& table_def);
+bool AddTable(hybridse::type::Database& db,  // NOLINT
+              const hybridse::type::TableDef& table_def);
 std::shared_ptr<SimpleCatalog> BuildSimpleCatalog(
-    const fesql::type::Database& database);
+    const hybridse::type::Database& database);
 
 std::shared_ptr<SimpleCatalog> BuildSimpleCatalog();
 bool InitSimpleCataLogFromSQLCase(SQLCase& sql_case,  // NOLINT
@@ -61,6 +61,6 @@ bool InitSimpleCataLogFromSQLCase(SQLCase& sql_case,  // NOLINT
 void PrintSchema(std::ostringstream& ss, const Schema& schema);
 void PrintSchema(const Schema& schema);
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_VM_TEST_BASE_H_

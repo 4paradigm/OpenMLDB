@@ -24,9 +24,9 @@
 #include "llvm/IR/IRBuilder.h"
 #include "proto/fe_type.pb.h"
 
-using fesql::base::Status;
+using hybridse::base::Status;
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 class PredicateIRBuilder {
@@ -84,17 +84,17 @@ class PredicateIRBuilder {
     static bool InferAndCastBoolTypes(::llvm::BasicBlock* block,
                                       ::llvm::Value* value,
                                       ::llvm::Value** casted_value,
-                                      ::fesql::base::Status& status);  // NOLINT
+                                      ::hybridse::base::Status& status);  // NOLINT
     static bool InferAndCastTypes(::llvm::BasicBlock* block,
                                   ::llvm::Value* left, ::llvm::Value* right,
                                   ::llvm::Value** casted_left,
                                   ::llvm::Value** casted_right,
-                                  ::fesql::base::Status& status);  // NOLINT
+                                  ::hybridse::base::Status& status);  // NOLINT
 
  private:
     ::llvm::BasicBlock* block_;
     CastExprIRBuilder cast_expr_ir_builder_;
 };
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_PREDICATE_EXPR_IR_BUILDER_H_

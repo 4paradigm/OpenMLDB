@@ -16,21 +16,21 @@
 #include "vm/simple_catalog.h"
 #include <utility>
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 SimpleCatalog::SimpleCatalog(const bool enable_index)
     : enable_index_(enable_index) {}
 SimpleCatalog::~SimpleCatalog() {}
 
-void SimpleCatalog::AddDatabase(const fesql::type::Database &db) {
+void SimpleCatalog::AddDatabase(const hybridse::type::Database &db) {
     auto &dict = table_handlers_[db.name()];
     for (int k = 0; k < db.tables_size(); ++k) {
         auto tbl = db.tables(k);
         dict[tbl.name()] =
             std::make_shared<SimpleCatalogTableHandler>(db.name(), tbl);
     }
-    databases_[db.name()] = std::make_shared<fesql::type::Database>(db);
+    databases_[db.name()] = std::make_shared<hybridse::type::Database>(db);
 }
 
 std::shared_ptr<type::Database> SimpleCatalog::GetDatabase(
@@ -62,7 +62,7 @@ bool SimpleCatalog::InsertRows(const std::string &db_name,
     return true;
 }
 SimpleCatalogTableHandler::SimpleCatalogTableHandler(
-    const std::string &db_name, const fesql::type::TableDef &table_def)
+    const std::string &db_name, const hybridse::type::TableDef &table_def)
     : db_name_(db_name),
       table_def_(table_def),
       row_view_(table_def_.columns()) {
@@ -79,7 +79,7 @@ SimpleCatalogTableHandler::SimpleCatalogTableHandler(
         const type::IndexDef &index_def = table_def.indexes().Get(i);
         vm::IndexSt index_st;
         index_st.index = i;
-        index_st.ts_pos = ::fesql::vm::INVALID_POS;
+        index_st.ts_pos = ::hybridse::vm::INVALID_POS;
         if (!index_def.second_key().empty()) {
             int32_t pos = GetColumnIndex(index_def.second_key());
             if (pos < 0) {
@@ -138,9 +138,9 @@ std::unique_ptr<WindowIterator> SimpleCatalogTableHandler::GetWindowIterator(
 
 const uint64_t SimpleCatalogTableHandler::GetCount() { return 0; }
 
-fesql::codec::Row SimpleCatalogTableHandler::At(uint64_t pos) {
+hybridse::codec::Row SimpleCatalogTableHandler::At(uint64_t pos) {
     LOG(ERROR) << "Unsupported operation: At()";
-    return fesql::codec::Row();
+    return hybridse::codec::Row();
 }
 
 std::shared_ptr<PartitionHandler> SimpleCatalogTableHandler::GetPartition(
@@ -170,7 +170,7 @@ bool SimpleCatalogTableHandler::DecodeKeysAndTs(const IndexSt &index,
         }
         if (row_view_.IsNULL(buf, col.idx)) {
             key.append(codec::NONETOKEN);
-        } else if (col.type == ::fesql::type::kVarchar) {
+        } else if (col.type == ::hybridse::type::kVarchar) {
             const char *val = NULL;
             uint32_t length = 0;
             row_view_.GetValue(buf, col.idx, &val, &length);
@@ -186,7 +186,7 @@ bool SimpleCatalogTableHandler::DecodeKeysAndTs(const IndexSt &index,
         }
     }
 
-    if (fesql::vm::INVALID_POS == index.ts_pos ||
+    if (hybridse::vm::INVALID_POS == index.ts_pos ||
         row_view_.IsNULL(buf, index.ts_pos)) {
         *time_ptr = 0;
         return true;
@@ -218,4 +218,4 @@ bool SimpleCatalogTableHandler::AddRow(const Row row) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

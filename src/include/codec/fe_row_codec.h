@@ -27,12 +27,12 @@
 #include "proto/fe_type.pb.h"
 #include "gflags/gflags.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codec {
 
 const uint32_t BitMapSize(uint32_t size);
 
-typedef ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef> Schema;
+typedef ::google::protobuf::RepeatedPtrField<::hybridse::type::ColumnDef> Schema;
 
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
@@ -42,7 +42,7 @@ const std::string NONETOKEN = "!N@U#L$L%";  // NOLINT
 const std::string EMPTY_STRING = "!@#$%";   // NOLINT
 
 // TODO(chendihao): Change to inline function if do not depend on gflags
-const std::unordered_map<::fesql::type::Type, uint8_t>& GetTypeSizeMap();
+const std::unordered_map<::hybridse::type::Type, uint8_t>& GetTypeSizeMap();
 
 inline uint8_t GetAddrLength(uint32_t size) {
     if (size <= UINT8_MAX) {
@@ -67,12 +67,12 @@ void FillNullStringOffset(int8_t* buf, uint32_t start, uint32_t addr_length,
 
 class RowBuilder {
  public:
-    explicit RowBuilder(const fesql::codec::Schema& schema);
+    explicit RowBuilder(const hybridse::codec::Schema& schema);
     ~RowBuilder() = default;
     uint32_t CalTotalLength(uint32_t string_length);
     bool SetBuffer(int8_t* buf, uint32_t size);
     bool SetBuffer(int64_t buf_handle, uint32_t size);
-    bool SetBuffer(const fesql::base::RawBuffer& buf);
+    bool SetBuffer(const hybridse::base::RawBuffer& buf);
     bool AppendBool(bool val);
     bool AppendInt32(int32_t val);
     bool AppendInt16(int16_t val);
@@ -85,7 +85,7 @@ class RowBuilder {
     bool AppendNULL();
 
  private:
-    bool Check(::fesql::type::Type type);
+    bool Check(::hybridse::type::Type type);
 
  private:
     const Schema schema_;
@@ -101,14 +101,14 @@ class RowBuilder {
 
 class RowView {
  public:
-    RowView(const fesql::codec::Schema& schema, const int8_t* row,
+    RowView(const hybridse::codec::Schema& schema, const int8_t* row,
             uint32_t size);
-    explicit RowView(const fesql::codec::Schema& schema);
+    explicit RowView(const hybridse::codec::Schema& schema);
     RowView(const RowView& row_view);
     ~RowView() = default;
     bool Reset(const int8_t* row, uint32_t size);
     bool Reset(const int8_t* row);
-    bool Reset(const fesql::base::RawBuffer& buf);
+    bool Reset(const hybridse::base::RawBuffer& buf);
     int32_t GetBool(uint32_t idx, bool* val);
     int32_t GetInt32(uint32_t idx, int32_t* val);
     int32_t GetInt64(uint32_t idx, int64_t* val);
@@ -139,11 +139,11 @@ class RowView {
     static inline uint32_t GetSize(const int8_t* row) {
         return *(reinterpret_cast<const uint32_t*>(row + VERSION_LENGTH));
     }
-    int32_t GetValue(const int8_t* row, uint32_t idx, ::fesql::type::Type type,
+    int32_t GetValue(const int8_t* row, uint32_t idx, ::hybridse::type::Type type,
                      void* val) const;
 
     int32_t GetInteger(const int8_t* row, uint32_t idx,
-                       ::fesql::type::Type type, int64_t* val);
+                       ::hybridse::type::Type type, int64_t* val);
 
     int32_t GetValue(const int8_t* row, uint32_t idx, const char** val,
                      uint32_t* length) const;
@@ -160,7 +160,7 @@ class RowView {
 
  private:
     bool Init();
-    bool CheckValid(uint32_t idx, ::fesql::type::Type type);
+    bool CheckValid(uint32_t idx, ::hybridse::type::Type type);
 
  private:
     uint8_t str_addr_length_;
@@ -174,13 +174,13 @@ class RowView {
 };
 
 struct ColInfo {
-    ::fesql::type::Type type;
+    ::hybridse::type::Type type;
     uint32_t idx;
     uint32_t offset;
     std::string name;
 
     ColInfo() {}
-    ColInfo(const std::string& name, ::fesql::type::Type type, uint32_t idx,
+    ColInfo(const std::string& name, ::hybridse::type::Type type, uint32_t idx,
             uint32_t offset)
         : type(type), idx(idx), offset(offset), name(name) {}
 };
@@ -190,7 +190,7 @@ struct StringColInfo : public ColInfo {
     uint32_t str_start_offset;
 
     StringColInfo() {}
-    StringColInfo(const std::string& name, ::fesql::type::Type type,
+    StringColInfo(const std::string& name, ::hybridse::type::Type type,
                   uint32_t idx, uint32_t offset, uint32_t str_next_offset,
                   uint32_t str_start_offset)
         : ColInfo(name, type, idx, offset),
@@ -200,7 +200,7 @@ struct StringColInfo : public ColInfo {
 
 class RowFormat {
  public:
-    explicit RowFormat(const fesql::codec::Schema* schema);
+    explicit RowFormat(const hybridse::codec::Schema* schema);
     virtual ~RowFormat() {}
 
     bool GetStringColumnInfo(size_t idx, StringColInfo* res) const;
@@ -208,7 +208,7 @@ class RowFormat {
     const ColInfo* GetColumnInfo(size_t idx) const;
 
  private:
-    const fesql::codec::Schema* schema_;
+    const hybridse::codec::Schema* schema_;
     std::vector<ColInfo> infos_;
     std::map<std::string, size_t> infos_dict_;
     std::map<uint32_t, uint32_t> next_str_pos_;
@@ -216,5 +216,5 @@ class RowFormat {
 };
 
 }  // namespace codec
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_CODEC_FE_ROW_CODEC_H_

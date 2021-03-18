@@ -27,11 +27,11 @@
 #include "base/raw_buffer.h"
 #include "proto/fe_type.pb.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codec {
 
-using fesql::base::RefCountedSlice;
-using fesql::base::Slice;
+using hybridse::base::RefCountedSlice;
+using hybridse::base::Slice;
 
 class Row {
  public:
@@ -40,10 +40,10 @@ class Row {
     Row(const Row &s);
     Row(size_t major_slices, const Row &major, size_t secondary_slices,
         const Row &secondary);
-    Row(const fesql::base::RefCountedSlice &s, size_t secondary_slices,
+    Row(const hybridse::base::RefCountedSlice &s, size_t secondary_slices,
         const Row &secondary);
 
-    explicit Row(const fesql::base::RefCountedSlice &s);
+    explicit Row(const hybridse::base::RefCountedSlice &s);
 
     virtual ~Row();
 
@@ -71,13 +71,13 @@ class Row {
     int32_t GetRowPtrCnt() const;
     int32_t *GetRowSizes() const;
 
-    fesql::base::RefCountedSlice GetSlice(uint32_t slice_index) const {
+    hybridse::base::RefCountedSlice GetSlice(uint32_t slice_index) const {
         if (slice_index >= slices_.size() + 1) {
             return RefCountedSlice();
         }
         return 0 == slice_index ? slice_ : slices_[slice_index - 1];
     }
-    inline void Append(const fesql::base::RefCountedSlice &slice) {
+    inline void Append(const hybridse::base::RefCountedSlice &slice) {
         slices_.emplace_back(slice);
     }
     // Return a string that contains the copy of the referenced data.
@@ -88,7 +88,7 @@ class Row {
     }
 
  private:
-    void Append(const std::vector<fesql::base::RefCountedSlice> &slices);
+    void Append(const std::vector<hybridse::base::RefCountedSlice> &slices);
     void Append(const Row &b);
 
     RefCountedSlice slice_;
@@ -96,5 +96,5 @@ class Row {
 };
 
 }  // namespace codec
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_CODEC_ROW_H_

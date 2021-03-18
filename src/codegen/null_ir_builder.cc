@@ -16,9 +16,9 @@
 
 #include "codegen/null_ir_builder.h"
 
-using ::fesql::common::kCodegenError;
+using ::hybridse::common::kCodegenError;
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 NullIRBuilder::NullIRBuilder() {}
@@ -155,4 +155,4 @@ base::Status NullIRBuilder::CheckAllNull(::llvm::BasicBlock* block,
     return base::Status::OK();
 }
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

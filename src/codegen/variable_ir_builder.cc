@@ -19,15 +19,15 @@
 #include "codegen/ir_base_builder.h"
 #include "codegen/struct_ir_builder.h"
 
-using ::fesql::common::kCodegenError;
+using ::hybridse::common::kCodegenError;
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
-fesql::codegen::VariableIRBuilder::VariableIRBuilder(::llvm::BasicBlock* block,
+hybridse::codegen::VariableIRBuilder::VariableIRBuilder(::llvm::BasicBlock* block,
                                                      ScopeVar* scope_var)
     : block_(block), sv_(scope_var) {}
-fesql::codegen::VariableIRBuilder::~VariableIRBuilder() {}
+hybridse::codegen::VariableIRBuilder::~VariableIRBuilder() {}
 bool VariableIRBuilder::StoreStruct(const std::string& name,
                                     const NativeValue& value,
                                     base::Status& status) {
@@ -63,9 +63,9 @@ bool VariableIRBuilder::StoreStruct(const std::string& name,
     }
     return true;
 }
-bool fesql::codegen::VariableIRBuilder::StoreValue(
+bool hybridse::codegen::VariableIRBuilder::StoreValue(
     const std::string& name, const NativeValue& value, bool is_register,
-    fesql::base::Status& status) {
+    hybridse::base::Status& status) {
     if (is_register) {
         // store value into register
         NativeValue exist;
@@ -122,9 +122,9 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
     }
 }
 
-bool fesql::codegen::VariableIRBuilder::LoadValue(std::string name,
+bool hybridse::codegen::VariableIRBuilder::LoadValue(std::string name,
                                                   NativeValue* output,
-                                                  fesql::base::Status& status) {
+                                                  hybridse::base::Status& status) {
     NativeValue value;
     if (!sv_->FindVar(name, &value)) {
         status.msg = "fail to get value " + name + ": value is null";
@@ -134,9 +134,9 @@ bool fesql::codegen::VariableIRBuilder::LoadValue(std::string name,
     *output = value;
     return true;
 }
-bool fesql::codegen::VariableIRBuilder::StoreValue(
+bool hybridse::codegen::VariableIRBuilder::StoreValue(
     const std::string& name, const NativeValue& value,
-    fesql::base::Status& status) {
+    hybridse::base::Status& status) {
     return StoreValue(name, value, true, status);
 }
 
@@ -157,18 +157,18 @@ base::Status VariableIRBuilder::LoadMemoryPool(NativeValue* output) {
                "fail to load memory pool", status.str());
     return status;
 }
-bool fesql::codegen::VariableIRBuilder::LoadWindow(
+bool hybridse::codegen::VariableIRBuilder::LoadWindow(
     const std::string& frame_str, NativeValue* output,
-    fesql::base::Status& status) {
+    hybridse::base::Status& status) {
     bool ok =
         LoadValue("@window" + (frame_str.empty() ? "" : ("." + frame_str)),
                   output, status);
     return ok;
 }
-bool fesql::codegen::VariableIRBuilder::LoadColumnRef(
+bool hybridse::codegen::VariableIRBuilder::LoadColumnRef(
     const std::string& relation_name, const std::string& name,
     const std::string& frame_str, ::llvm::Value** output,
-    fesql::base::Status& status) {
+    hybridse::base::Status& status) {
     NativeValue col_ref;
     bool ok = LoadValue("@col." + relation_name + "." + name +
                             (frame_str.empty() ? "" : ("." + frame_str)),
@@ -176,32 +176,32 @@ bool fesql::codegen::VariableIRBuilder::LoadColumnRef(
     *output = col_ref.GetRaw();
     return ok;
 }
-bool fesql::codegen::VariableIRBuilder::LoadColumnItem(
+bool hybridse::codegen::VariableIRBuilder::LoadColumnItem(
     const std::string& relation_name, const std::string& name,
-    NativeValue* output, fesql::base::Status& status) {
+    NativeValue* output, hybridse::base::Status& status) {
     return LoadValue("@item." + relation_name + "." + name, output, status);
 }
-bool fesql::codegen::VariableIRBuilder::StoreWindow(
+bool hybridse::codegen::VariableIRBuilder::StoreWindow(
     const std::string& frame_str, ::llvm::Value* value,
-    fesql::base::Status& status) {
+    hybridse::base::Status& status) {
     return StoreValue("@window" + (frame_str.empty() ? "" : ("." + frame_str)),
                       NativeValue::Create(value), status);
 }
-bool fesql::codegen::VariableIRBuilder::StoreColumnRef(
+bool hybridse::codegen::VariableIRBuilder::StoreColumnRef(
     const std::string& relation_name, const std::string& name,
     const std::string& frame_str, ::llvm::Value* value,
-    fesql::base::Status& status) {
+    hybridse::base::Status& status) {
     return StoreValue("@col." + relation_name + "." + name +
                           (frame_str.empty() ? "" : ("." + frame_str)),
                       NativeValue::Create(value), status);
 }
-bool fesql::codegen::VariableIRBuilder::StoreColumnItem(
+bool hybridse::codegen::VariableIRBuilder::StoreColumnItem(
     const std::string& relation_name, const std::string& name,
-    const NativeValue& value, fesql::base::Status& status) {
+    const NativeValue& value, hybridse::base::Status& status) {
     ::llvm::IRBuilder<> builder(block_);
     return StoreValue("@item." + relation_name + "." + name, value, status);
 }
-bool fesql::codegen::VariableIRBuilder::LoadArrayIndex(
+bool hybridse::codegen::VariableIRBuilder::LoadArrayIndex(
     std::string array_ptr_name, int32_t index, ::llvm::Value** output,
     base::Status& status) {
     std::string array_index_name = array_ptr_name;
@@ -243,4 +243,4 @@ bool fesql::codegen::VariableIRBuilder::LoadArrayIndex(
     return true;
 }
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

@@ -38,7 +38,7 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Utils.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 class FeSQLSymbolResolver : public ::llvm::LegacyJITSymbolResolver {
@@ -54,6 +54,6 @@ class FeSQLSymbolResolver : public ::llvm::LegacyJITSymbolResolver {
 };
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_LLVM_EXT_SYMBOL_RESOLVE_H_

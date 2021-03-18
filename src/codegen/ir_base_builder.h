@@ -25,37 +25,37 @@
 #include "node/type_node.h"
 #include "proto/fe_type.pb.h"
 
-using ::fesql::common::kCodegenError;
+using ::hybridse::common::kCodegenError;
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
-bool GetLLVMType(::llvm::Module* m, const ::fesql::node::TypeNode* type,
+bool GetLLVMType(::llvm::Module* m, const ::hybridse::node::TypeNode* type,
                  ::llvm::Type** output);
-bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::node::DataType& type,
+bool GetLLVMType(::llvm::BasicBlock* block, const ::hybridse::node::DataType& type,
                  ::llvm::Type** output);
-bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::node::TypeNode* type,
+bool GetLLVMType(::llvm::BasicBlock* block, const ::hybridse::node::TypeNode* type,
                  ::llvm::Type** output);
-bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
+bool GetLLVMType(::llvm::Module* m, const ::hybridse::node::DataType& type,
                  ::llvm::Type** output);
-bool GetLLVMListType(::llvm::Module* m, const ::fesql::node::TypeNode* type,
+bool GetLLVMListType(::llvm::Module* m, const ::hybridse::node::TypeNode* type,
                      ::llvm::Type** output);
-bool GetLLVMIteratorType(::llvm::Module* m, const ::fesql::node::TypeNode* type,
+bool GetLLVMIteratorType(::llvm::Module* m, const ::hybridse::node::TypeNode* type,
                          ::llvm::Type** output);
-bool GetLLVMColumnSize(::fesql::node::TypeNode* v_type, uint32_t* size);
+bool GetLLVMColumnSize(::hybridse::node::TypeNode* v_type, uint32_t* size);
 
-bool GetBaseType(::llvm::Type* type, ::fesql::node::DataType* output);
+bool GetBaseType(::llvm::Type* type, ::hybridse::node::DataType* output);
 bool IsStringType(::llvm::Type* type);
 
 bool GetFullType(node::NodeManager* nm, ::llvm::Type* type,
-                 const ::fesql::node::TypeNode** type_node);
+                 const ::hybridse::node::TypeNode** type_node);
 
-bool SchemaType2DataType(const ::fesql::type::Type type,
-                         ::fesql::node::DataType* output);
-bool SchemaType2DataType(const ::fesql::type::Type type,
-                         ::fesql::node::TypeNode* output);
-bool DataType2SchemaType(const ::fesql::node::TypeNode& type,
-                         ::fesql::type::Type* output);
+bool SchemaType2DataType(const ::hybridse::type::Type type,
+                         ::hybridse::node::DataType* output);
+bool SchemaType2DataType(const ::hybridse::type::Type type,
+                         ::hybridse::node::TypeNode* output);
+bool DataType2SchemaType(const ::hybridse::node::TypeNode& type,
+                         ::hybridse::type::Type* output);
 
 bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
                       ::llvm::Value** output);
@@ -107,5 +107,5 @@ llvm::Value* CreateAllocaAtHead(llvm::IRBuilder<>* builder, llvm::Type* dtype,
                                 llvm::Value* size = nullptr);
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_IR_BASE_BUILDER_H_

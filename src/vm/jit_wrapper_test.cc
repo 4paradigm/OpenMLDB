@@ -22,25 +22,25 @@
 #include "vm/sql_compiler.h"
 #include "vm/simple_catalog.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 class JITWrapperTest : public ::testing::Test {};
 
 std::shared_ptr<SimpleCatalog> GetTestCatalog() {
-    fesql::type::Database db;
+    hybridse::type::Database db;
     db.set_name("db");
-    ::fesql::type::TableDef *table = db.add_tables();
+    ::hybridse::type::TableDef *table = db.add_tables();
     table->set_name("t1");
     table->set_catalog("db");
     {
-        ::fesql::type::ColumnDef *column = table->add_columns();
-        column->set_type(::fesql::type::kDouble);
+        ::hybridse::type::ColumnDef *column = table->add_columns();
+        column->set_type(::hybridse::type::kDouble);
         column->set_name("col_1");
     }
     {
-        ::fesql::type::ColumnDef *column = table->add_columns();
-        column->set_type(::fesql::type::kInt64);
+        ::hybridse::type::ColumnDef *column = table->add_columns();
+        column->set_type(::hybridse::type::kInt64);
         column->set_name("col_2");
     }
     auto catalog = std::make_shared<SimpleCatalog>();
@@ -86,8 +86,8 @@ void simple_test(const EngineOptions &options) {
     row_builder.AppendDouble(3.14);
     row_builder.AppendInt64(42);
 
-    fesql::codec::Row row(base::RefCountedSlice::Create(buf, 1024));
-    fesql::codec::Row output = CoreAPI::RowProject(fn, row);
+    hybridse::codec::Row row(base::RefCountedSlice::Create(buf, 1024));
+    hybridse::codec::Row output = CoreAPI::RowProject(fn, row);
     codec::RowView row_view(*schema, output.buf(), output.size());
     double c1;
     int64_t c2;
@@ -150,10 +150,10 @@ TEST_F(JITWrapperTest, test_window) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    fesql::vm::Engine::InitializeGlobalLLVM();
+    hybridse::vm::Engine::InitializeGlobalLLVM();
     return RUN_ALL_TESTS();
 }

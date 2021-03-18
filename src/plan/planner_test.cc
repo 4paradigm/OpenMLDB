@@ -21,21 +21,21 @@
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "parser/parser.h"
-namespace fesql {
+namespace hybridse {
 namespace plan {
 
-using fesql::node::NodeManager;
-using fesql::node::PlanNode;
-using fesql::node::SQLNode;
-using fesql::node::SQLNodeList;
-using fesql::sqlcase::SQLCase;
+using hybridse::node::NodeManager;
+using hybridse::node::PlanNode;
+using hybridse::node::SQLNode;
+using hybridse::node::SQLNodeList;
+using hybridse::sqlcase::SQLCase;
 
 std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
-            fesql::sqlcase::FindFesqlDirPath(), yaml_path, cases,
+            hybridse::sqlcase::FindFesqlDirPath(), yaml_path, cases,
             std::vector<std::string>(
                 {"logical-plan-unsupport", "parser-unsupport"}))) {
         FAIL();
@@ -1790,7 +1790,7 @@ TEST_P(PlannerErrorTest, BatchModePlanErrorTest) {
 }
 
 }  // namespace plan
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::GTEST_FLAG(color) = "yes";

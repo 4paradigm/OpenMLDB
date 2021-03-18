@@ -24,7 +24,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 void FeSignalBacktraceHandler(int sig) {
@@ -56,5 +56,5 @@ void FeSignalBacktraceHandler(int sig) {
 }
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_BASE_SIG_TRACE_H_

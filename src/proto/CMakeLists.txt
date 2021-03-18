@@ -77,12 +77,12 @@ set(FESQL_PROTO_SRC_FILES
 
 ADD_CUSTOM_TARGET(run_gen_proto DEPENDS ${FESQL_PROTO_SRC_FILES})
 
-add_library(fesql_proto OBJECT ${FESQL_PROTO_SRC_FILES})
-add_dependencies(fesql_proto run_gen_proto)
+add_library(hybridse_proto OBJECT ${FESQL_PROTO_SRC_FILES})
+add_dependencies(hybridse_proto run_gen_proto)
 
-add_custom_target(fesql_proto_java
+add_custom_target(hybridse_proto_java
     COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc
         -I ${PROJECT_SOURCE_DIR}/src/proto
-        --java_out=${PROJECT_SOURCE_DIR}/java/fesql-proto/src/main/java
+        --java_out=${PROJECT_SOURCE_DIR}/java/hybridse-proto/src/main/java
         ${PROJECT_SOURCE_DIR}/src/proto/*.proto)
 

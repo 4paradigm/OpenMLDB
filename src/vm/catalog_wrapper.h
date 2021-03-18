@@ -21,7 +21,7 @@
 #include <string>
 #include <utility>
 #include "vm/catalog.h"
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 class ProjectFun {
@@ -460,6 +460,6 @@ class RowCombineWrapper : public RowHandler {
 };
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_VM_CATALOG_WRAPPER_H_

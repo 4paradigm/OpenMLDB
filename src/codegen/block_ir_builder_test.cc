@@ -34,7 +34,7 @@ using namespace llvm::orc;  // NOLINT (build/namespaces)
 
 ExitOnError ExitOnErr;
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 class BlockIRBuilderTest : public ::testing::Test {
@@ -183,7 +183,7 @@ TEST_F(BlockIRBuilderTest, test_if_else_mutable_var_block) {
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

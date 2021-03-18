@@ -17,14 +17,14 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 
-namespace fesql {
+namespace hybridse {
 namespace plan {
-using fesql::plan::SimplePlanner;
+using hybridse::plan::SimplePlanner;
 bool PlanAPI::CreatePlanTreeFromScript(const std::string &sql,
                                            PlanNodeList &plan_trees,
                                            NodeManager *node_manager,
                                            Status &status) {
-    fesql::node::NodePointVector parser_trees;
+    hybridse::node::NodePointVector parser_trees;
     if (!CreateSyntaxTreeFromScript(sql, parser_trees, node_manager, status)) {
         return false;
     }
@@ -50,7 +50,7 @@ bool PlanAPI::CreateSyntaxTreeFromScript(const std::string &sql,
                                              NodePointVector &parser_trees,
                                              NodeManager *node_manager,
                                              Status &status) {
-    fesql::parser::FeSQLParser parser;
+    hybridse::parser::FeSQLParser parser;
     parser.parse(sql, parser_trees, node_manager, status);
     if (common::kOk != status.code) {
         LOG(WARNING) << "Fail to create syntax tree: " << status;
@@ -68,4 +68,4 @@ const std::string PlanAPI::GenerateName(const std::string prefix, int id) {
 }
 
 }  // namespace plan
-}  // namespace fesql
+}  // namespace hybridse

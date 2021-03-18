@@ -20,7 +20,7 @@
 #include "node/node_enum.h"
 #include "node/sql_node.h"
 
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 bool DatasetNode::Equals(const BatchPlanNode *other) const {
@@ -80,4 +80,4 @@ const std::string NameOfPlanNodeType(BatchPlanNodeType type) {
 }
 
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse

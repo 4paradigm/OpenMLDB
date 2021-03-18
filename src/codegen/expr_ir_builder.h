@@ -36,17 +36,17 @@
 #include "passes/resolve_fn_and_attrs.h"
 #include "vm/schemas_context.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
-using fesql::base::Status;
+using hybridse::base::Status;
 
 class ExprIRBuilder {
  public:
     explicit ExprIRBuilder(CodeGenContext* ctx);
     ~ExprIRBuilder();
 
-    Status Build(const ::fesql::node::ExprNode* node, NativeValue* output);
+    Status Build(const ::hybridse::node::ExprNode* node, NativeValue* output);
 
     Status BuildAsUDF(const node::ExprNode* expr, const std::string& name,
                       const std::vector<NativeValue>& args,
@@ -61,38 +61,38 @@ class ExprIRBuilder {
     }
 
  private:
-    Status BuildConstExpr(const ::fesql::node::ConstNode* node,
+    Status BuildConstExpr(const ::hybridse::node::ConstNode* node,
                           NativeValue* output);
 
-    Status BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
+    Status BuildColumnRef(const ::hybridse::node::ColumnRefNode* node,
                           NativeValue* output);
 
-    Status BuildCallFn(const ::fesql::node::CallExprNode* fn,
+    Status BuildCallFn(const ::hybridse::node::CallExprNode* fn,
                        NativeValue* output);
 
-    bool BuildCallFnLegacy(const ::fesql::node::CallExprNode* call_fn,
+    bool BuildCallFnLegacy(const ::hybridse::node::CallExprNode* call_fn,
                            NativeValue* output,
-                           ::fesql::base::Status& status);  // NOLINT
+                           ::hybridse::base::Status& status);  // NOLINT
 
-    Status BuildCastExpr(const ::fesql::node::CastExprNode* node,
+    Status BuildCastExpr(const ::hybridse::node::CastExprNode* node,
                          NativeValue* output);
 
-    Status BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
+    Status BuildBinaryExpr(const ::hybridse::node::BinaryExpr* node,
                            NativeValue* output);
 
-    Status BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
+    Status BuildUnaryExpr(const ::hybridse::node::UnaryExpr* node,
                           NativeValue* output);
 
-    Status BuildStructExpr(const ::fesql::node::StructExpr* node,
+    Status BuildStructExpr(const ::hybridse::node::StructExpr* node,
                            NativeValue* output);
 
-    Status BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
+    Status BuildGetFieldExpr(const ::hybridse::node::GetFieldExpr* node,
                              NativeValue* output);
 
-    Status BuildCaseExpr(const ::fesql::node::CaseWhenExprNode* node,
+    Status BuildCaseExpr(const ::hybridse::node::CaseWhenExprNode* node,
                          NativeValue* output);
 
-    Status BuildCondExpr(const ::fesql::node::CondExpr* node,
+    Status BuildCondExpr(const ::hybridse::node::CondExpr* node,
                          NativeValue* output);
 
     ::llvm::Function* GetFuncion(
@@ -106,5 +106,5 @@ class ExprIRBuilder {
     node::ExprNode* frame_arg_ = nullptr;
 };
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_EXPR_IR_BUILDER_H_

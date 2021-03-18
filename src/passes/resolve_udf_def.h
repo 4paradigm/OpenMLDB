@@ -24,7 +24,7 @@
 #include "base/fe_status.h"
 #include "node/sql_node.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 using base::Status;
@@ -96,5 +96,5 @@ class FnScopeInfoGuard {
 };
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_PASSES_RESOLVE_UDF_DEF_H_

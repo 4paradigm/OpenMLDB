@@ -20,7 +20,7 @@
 #include <string>
 #include "vm/physical_op.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 class Router {
@@ -44,5 +44,5 @@ class Router {
 };
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_VM_ROUTER_H_

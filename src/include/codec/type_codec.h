@@ -24,7 +24,7 @@
 #include "base/fe_hash.h"
 #include "base/mem_pool.h"
 #include "glog/logging.h"
-namespace fesql {
+namespace hybridse {
 namespace codec {
 static const uint32_t SEED = 0xe17a1465;
 struct StringRef {
@@ -456,28 +456,28 @@ int32_t GetStrCol(int8_t* input, int32_t row_idx, uint32_t col_idx,
 
 }  // namespace v1
 }  // namespace codec
-}  // namespace fesql
+}  // namespace hybridse
 
 // custom specialization of std::hash for timestamp, date and string
 namespace std {
 template <>
-struct hash<fesql::codec::Timestamp> {
-    std::size_t operator()(const fesql::codec::Timestamp& t) const {
+struct hash<hybridse::codec::Timestamp> {
+    std::size_t operator()(const hybridse::codec::Timestamp& t) const {
         return std::hash<int64_t>()(t.ts_);
     }
 };
 
 template <>
-struct hash<fesql::codec::Date> {
-    std::size_t operator()(const fesql::codec::Date& t) const {
+struct hash<hybridse::codec::Date> {
+    std::size_t operator()(const hybridse::codec::Date& t) const {
         return std::hash<int32_t>()(t.date_);
     }
 };
 
 template <>
-struct hash<fesql::codec::StringRef> {
-    std::size_t operator()(const fesql::codec::StringRef& t) const {
-        return fesql::base::hash(t.data_, t.size_, fesql::codec::SEED);
+struct hash<hybridse::codec::StringRef> {
+    std::size_t operator()(const hybridse::codec::StringRef& t) const {
+        return hybridse::base::hash(t.data_, t.size_, hybridse::codec::SEED);
     }
 };
 

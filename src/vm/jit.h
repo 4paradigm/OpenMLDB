@@ -29,7 +29,7 @@
 #include "llvm/ExecutionEngine/MCJIT.h"
 #endif
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 struct JITString {
@@ -99,7 +99,7 @@ class FeSQLLLJITWrapper : public FeSQLJITWrapper {
 
     bool AddExternalFunction(const std::string& name, void* addr) override;
 
-    fesql::vm::RawPtrHandle FindFunction(const std::string& funcname) override;
+    hybridse::vm::RawPtrHandle FindFunction(const std::string& funcname) override;
 
  private:
     std::unique_ptr<FeSQLJIT> jit_;
@@ -122,7 +122,7 @@ class FeSQLMCJITWrapper : public FeSQLJITWrapper {
 
     bool AddExternalFunction(const std::string& name, void* addr) override;
 
-    fesql::vm::RawPtrHandle FindFunction(const std::string& funcname) override;
+    hybridse::vm::RawPtrHandle FindFunction(const std::string& funcname) override;
 
  private:
     bool CheckInitialized() const;
@@ -136,5 +136,5 @@ class FeSQLMCJITWrapper : public FeSQLJITWrapper {
 #endif
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_VM_JIT_H_

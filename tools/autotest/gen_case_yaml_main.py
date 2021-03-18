@@ -19,14 +19,14 @@ import time
 import uuid
 import yaml
 
-from fesql_case import gen_single_window_test
-from fesql_function import UDFPool
-from fesql_param import parse_args
+from hybridse_case import gen_single_window_test
+from hybridse_function import UDFPool
+from hybridse_param import parse_args
 
-from fesql_case import gen_window_union_test
-from fesql_param import sample_integer_config
+from hybridse_case import gen_window_union_test
+from hybridse_param import sample_integer_config
 
-from fesql_case import gen_window_lastjoin_test, gen_window_subselect_test
+from hybridse_case import gen_window_lastjoin_test, gen_window_subselect_test
 
 gen_sql = {
     0: gen_single_window_test,
@@ -59,12 +59,12 @@ if __name__ == "__main__":
     生成yaml的入口
     '''
     currentPath = os.getcwd()
-    index = currentPath.rfind('fesql')
+    index = currentPath.rfind('hybridse')
     if index == -1:
         prePath = currentPath+"/"
     else:
         prePath = currentPath[0:index]
     print("prePath:"+prePath)
-    casePath = prePath+"fesql/cases/auto_gen_cases"
+    casePath = prePath+"hybridse/cases/auto_gen_cases"
     print("casePath:"+casePath)
     gen_case_yaml(casePath)

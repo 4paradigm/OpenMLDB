@@ -27,7 +27,7 @@
 #include "node/plan_node.h"
 #include "node/sql_node.h"
 #include "proto/fe_type.pb.h"
-namespace fesql {
+namespace hybridse {
 namespace plan {
 
 using base::Status;
@@ -127,6 +127,6 @@ class SimplePlanner : public Planner {
 };
 
 }  // namespace plan
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_PLAN_PLANNER_H_

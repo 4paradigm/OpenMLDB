@@ -21,7 +21,7 @@
 #include "brpc/channel.h"
 #include "proto/fe_tablet.pb.h"
 
-namespace fesql {
+namespace hybridse {
 namespace tablet {
 
 class TabletInternalSDK {
@@ -38,5 +38,5 @@ class TabletInternalSDK {
 };
 
 }  // namespace tablet
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // EXAMPLES_TOYDB_SRC_TABLET_TABLET_INTERNAL_SDK_H_

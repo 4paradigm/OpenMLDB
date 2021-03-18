@@ -24,7 +24,7 @@
 #include <vector>
 #include "codec/fe_row_codec.h"
 #include "proto/fe_type.pb.h"
-namespace fesql {
+namespace hybridse {
 namespace sqlcase {
 class SQLCaseBuilder;
 class SQLCase {
@@ -98,22 +98,22 @@ class SQLCase {
     bool BuildInsertSQLListFromInput(int32_t input_idx,
                                      std::vector<std::string>* sql_list) const;
     bool ExtractOutputSchema(type::TableDef& table) const;       // NOLINT
-    bool ExtractInputData(std::vector<fesql::codec::Row>& rows,  // NOLINT
+    bool ExtractInputData(std::vector<hybridse::codec::Row>& rows,  // NOLINT
                           int32_t input_idx = 0) const;
     bool ExtractInputData(
         const TableInfo& info,
-        std::vector<fesql::codec::Row>& rows) const;  // NOLINT
+        std::vector<hybridse::codec::Row>& rows) const;  // NOLINT
     bool ExtractOutputData(
-        std::vector<fesql::codec::Row>& rows) const;  // NOLINT
+        std::vector<hybridse::codec::Row>& rows) const;  // NOLINT
 
     bool AddInput(const TableInfo& table_data);
-    static bool TypeParse(const std::string& row_str, fesql::type::Type* type);
+    static bool TypeParse(const std::string& row_str, hybridse::type::Type* type);
     static bool TTLTypeParse(const std::string& type_str,
-                             ::fesql::type::TTLType* type);
+                             ::hybridse::type::TTLType* type);
     static bool TTLParse(const std::string& type_str,
                          std::vector<int64_t>& ttls);  // NOLINT
 
-    static const std::string TypeString(fesql::type::Type type);
+    static const std::string TypeString(hybridse::type::Type type);
     static bool ExtractSchema(const std::vector<std::string>& columns,
                               type::TableDef& table);  // NOLINT
     static bool ExtractSchema(const std::string& schema_str,
@@ -134,11 +134,11 @@ class SQLCase {
                                 type::TableDef& table);  // NOLINT
     static bool ExtractRows(const vm::Schema& schema,
                             const std::string& data_str,
-                            std::vector<fesql::codec::Row>& rows);  // NOLINT
+                            std::vector<hybridse::codec::Row>& rows);  // NOLINT
     static bool ExtractRows(
         const vm::Schema& schema,
         const std::vector<std::vector<std::string>>& row_vec,
-        std::vector<fesql::codec::Row>& rows);  // NOLINT
+        std::vector<hybridse::codec::Row>& rows);  // NOLINT
     static bool BuildInsertSQLFromData(const type::TableDef& table,
                                        std::string data,
                                        std::string* insert_sql);
@@ -162,7 +162,7 @@ class SQLCase {
     static bool LoadSchemaAndRowsFromYaml(
         const std::string& cases_dir, const std::string& resource_path,
         type::TableDef& table,                  // NOLINT
-        std::vector<fesql::codec::Row>& rows);  // NOLINT
+        std::vector<hybridse::codec::Row>& rows);  // NOLINT
     static bool CreateSQLCasesFromYaml(
         const std::string& cases_dir, const std::string& yaml_path,
         std::vector<SQLCase>& sql_case_ptr,  // NOLINT
@@ -260,7 +260,7 @@ class SQLCase {
         return false;
     }
 
-    static fesql::sqlcase::SQLCase LoadSQLCaseWithID(
+    static hybridse::sqlcase::SQLCase LoadSQLCaseWithID(
         const std::string& dir_path, const std::string& yaml_path,
         const std::string& case_id);
     void SQLCaseRepeatConfig(const std::string& tag, const int value) {
@@ -302,5 +302,5 @@ class SQLCase {
 std::string FindFesqlDirPath();
 
 }  // namespace sqlcase
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_CASE_SQL_CASE_H_

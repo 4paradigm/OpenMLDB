@@ -18,8 +18,8 @@ import "fe_type.proto";
 import "fe_common.proto";
 import "plan.proto";
 
-package fesql.batch;
-option java_package = "com._4paradigm.fesql.batch";
+package hybridse.batch;
+option java_package = "com._4paradigm.hybridse.batch";
 option cc_generic_services = true;
 
 message DataSet {

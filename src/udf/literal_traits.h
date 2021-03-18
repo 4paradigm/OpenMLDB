@@ -31,14 +31,14 @@
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 
-namespace fesql {
+namespace hybridse {
 namespace udf {
 
-using fesql::base::Status;
-using fesql::codec::StringRef;
-using fesql::node::ExprListNode;
-using fesql::node::ExprNode;
-using fesql::node::SQLNode;
+using hybridse::base::Status;
+using hybridse::codec::StringRef;
+using hybridse::node::ExprListNode;
+using hybridse::node::ExprNode;
+using hybridse::node::SQLNode;
 
 template <typename T>
 struct DataTypeTrait {
@@ -160,7 +160,7 @@ struct DataTypeTrait<int16_t> {
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
         return nm->MakeTypeNode(node::kInt16);
     }
-    static int32_t codec_type_enum() { return fesql::type::kInt16; }
+    static int32_t codec_type_enum() { return hybridse::type::kInt16; }
     static node::ExprNode* to_const(node::NodeManager* nm, const int16_t& v) {
         return nm->MakeConstNode(v);
     }
@@ -181,7 +181,7 @@ struct DataTypeTrait<int32_t> {
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
         return nm->MakeTypeNode(node::kInt32);
     }
-    static int32_t codec_type_enum() { return fesql::type::kInt32; }
+    static int32_t codec_type_enum() { return hybridse::type::kInt32; }
     static node::ExprNode* to_const(node::NodeManager* nm, const int32_t& v) {
         return nm->MakeConstNode(v);
     }
@@ -202,7 +202,7 @@ struct DataTypeTrait<int64_t> {
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
         return nm->MakeTypeNode(node::kInt64);
     }
-    static int32_t codec_type_enum() { return fesql::type::kInt64; }
+    static int32_t codec_type_enum() { return hybridse::type::kInt64; }
     static node::ExprNode* to_const(node::NodeManager* nm, const int64_t& v) {
         return nm->MakeConstNode(v);
     }
@@ -223,7 +223,7 @@ struct DataTypeTrait<float> {
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
         return nm->MakeTypeNode(node::kFloat);
     }
-    static int32_t codec_type_enum() { return fesql::type::kFloat; }
+    static int32_t codec_type_enum() { return hybridse::type::kFloat; }
     static node::ExprNode* to_const(node::NodeManager* nm, const float& v) {
         return nm->MakeConstNode(v);
     }
@@ -242,7 +242,7 @@ struct DataTypeTrait<double> {
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
         return nm->MakeTypeNode(node::kDouble);
     }
-    static int32_t codec_type_enum() { return fesql::type::kDouble; }
+    static int32_t codec_type_enum() { return hybridse::type::kDouble; }
     static node::ExprNode* to_const(node::NodeManager* nm, const double& v) {
         return nm->MakeConstNode(v);
     }
@@ -265,7 +265,7 @@ struct DataTypeTrait<codec::Timestamp> {
                                     const codec::Timestamp& v) {
         return nm->MakeConstNode(v.ts_, node::kTimestamp);
     }
-    static int32_t codec_type_enum() { return fesql::type::kTimestamp; }
+    static int32_t codec_type_enum() { return hybridse::type::kTimestamp; }
     static codec::Timestamp minimum_value() { return codec::Timestamp(0); }
     static codec::Timestamp maximum_value() {
         return codec::Timestamp(std::numeric_limits<int64_t>::max());
@@ -281,7 +281,7 @@ struct DataTypeTrait<codec::Date> {
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
         return nm->MakeTypeNode(node::kDate);
     }
-    static int32_t codec_type_enum() { return fesql::type::kDate; }
+    static int32_t codec_type_enum() { return hybridse::type::kDate; }
     static node::ExprNode* to_const(node::NodeManager* nm,
                                     const codec::Date& v) {
         return nm->MakeConstNode(v.date_, node::kDate);
@@ -301,7 +301,7 @@ struct DataTypeTrait<codec::StringRef> {
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
         return nm->MakeTypeNode(node::kVarchar);
     }
-    static int32_t codec_type_enum() { return fesql::type::kVarchar; }
+    static int32_t codec_type_enum() { return hybridse::type::kVarchar; }
     using CCallArgType = codec::StringRef*;
 
     static node::ExprNode* to_const(node::NodeManager* nm,
@@ -453,9 +453,9 @@ codec::Schema MakeLiteralSchema() {
     std::vector<int32_t> types = {
         DataTypeTrait<LiteralArgTypes>::codec_type_enum()...};
     for (size_t i = 0; i < types.size(); ++i) {
-        ::fesql::type::ColumnDef* col = schema.Add();
+        ::hybridse::type::ColumnDef* col = schema.Add();
         col->set_name("col_" + std::to_string(i));
-        col->set_type(static_cast<::fesql::type::Type>(types[i]));
+        col->set_type(static_cast<::hybridse::type::Type>(types[i]));
     }
     return schema;
 }
@@ -483,6 +483,6 @@ codec::Schema DataTypeTrait<LiteralTypedRow<LiteralArgTypes...>>::schema =
     MakeLiteralSchema<LiteralArgTypes...>();
 
 }  // namespace udf
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_UDF_LITERAL_TRAITS_H_

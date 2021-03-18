@@ -28,17 +28,17 @@
 #include "node/node_manager.h"
 #include "passes/resolve_udf_def.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 FnIRBuilder::FnIRBuilder(::llvm::Module *module) : module_(module) {}
 
 FnIRBuilder::~FnIRBuilder() {}
 
-bool FnIRBuilder::Build(::fesql::node::FnNodeFnDef *root,
+bool FnIRBuilder::Build(::hybridse::node::FnNodeFnDef *root,
                         ::llvm::Function **result,
                         base::Status &status) {  // NOLINT
-    if (root == NULL || root->GetType() != ::fesql::node::kFnDef) {
+    if (root == NULL || root->GetType() != ::hybridse::node::kFnDef) {
         status.code = common::kCodegenError;
         status.msg = "node is null";
         LOG(WARNING) << status;
@@ -57,7 +57,7 @@ bool FnIRBuilder::Build(::fesql::node::FnNodeFnDef *root,
     CodeGenContext ctx(module_, &empty_schema, &nm);
 
     ::llvm::Function *fn = NULL;
-    const ::fesql::node::FnNodeFnHeander *fn_def = root->header_;
+    const ::hybridse::node::FnNodeFnHeander *fn_def = root->header_;
 
     bool ok = BuildFnHead(fn_def, &ctx, &fn, status);
     if (!ok) {
@@ -79,7 +79,7 @@ bool FnIRBuilder::Build(::fesql::node::FnNodeFnDef *root,
     return true;
 }
 
-bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnHeander *header,
+bool FnIRBuilder::BuildFnHead(const ::hybridse::node::FnNodeFnHeander *header,
                               CodeGenContext *ctx, ::llvm::Function **fn,
                               base::Status &status) {  // NOLINE
     ::llvm::Type *ret_type = NULL;
@@ -108,7 +108,7 @@ bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnHeander *header,
     return true;
 }
 
-bool FnIRBuilder::CreateFunction(const ::fesql::node::FnNodeFnHeander *fn_def,
+bool FnIRBuilder::CreateFunction(const ::hybridse::node::FnNodeFnHeander *fn_def,
                                  bool return_by_arg, ::llvm::Function **fn,
                                  base::Status &status) {  // NOLINE
     if (fn_def == NULL || fn == NULL) {
@@ -146,7 +146,7 @@ bool FnIRBuilder::CreateFunction(const ::fesql::node::FnNodeFnHeander *fn_def,
     return true;
 }
 
-bool FnIRBuilder::FillArgs(const ::fesql::node::FnNodeList *node, ScopeVar *sv,
+bool FnIRBuilder::FillArgs(const ::hybridse::node::FnNodeList *node, ScopeVar *sv,
                            bool return_by_arg, ::llvm::Function *fn,
                            base::Status &status) {  // NOLINE
     if (node == NULL) {
@@ -159,8 +159,8 @@ bool FnIRBuilder::FillArgs(const ::fesql::node::FnNodeList *node, ScopeVar *sv,
     ::llvm::Function::arg_iterator it = fn->arg_begin();
     uint32_t index = 0;
     for (; it != fn->arg_end() && index < node->children.size(); ++it) {
-        ::fesql::node::FnParaNode *pnode =
-            (::fesql::node::FnParaNode *)node->children[index];
+        ::hybridse::node::FnParaNode *pnode =
+            (::hybridse::node::FnParaNode *)node->children[index];
         ::llvm::Argument *argu = &*it;
 
         bool ok = sv->AddVar(pnode->GetExprId()->GetExprString(),
@@ -186,7 +186,7 @@ bool FnIRBuilder::FillArgs(const ::fesql::node::FnNodeList *node, ScopeVar *sv,
     return true;
 }
 
-bool FnIRBuilder::BuildParas(const ::fesql::node::FnNodeList *node,
+bool FnIRBuilder::BuildParas(const ::hybridse::node::FnNodeList *node,
                              std::vector<::llvm::Type *> &paras,
                              base::Status &status) {  // NOLINE
     if (node == NULL) {
@@ -197,8 +197,8 @@ bool FnIRBuilder::BuildParas(const ::fesql::node::FnNodeList *node,
     }
 
     for (uint32_t i = 0; i < node->children.size(); i++) {
-        ::fesql::node::FnParaNode *pnode =
-            (::fesql::node::FnParaNode *)node->children[i];
+        ::hybridse::node::FnParaNode *pnode =
+            (::hybridse::node::FnParaNode *)node->children[i];
         ::llvm::Type *type = NULL;
         bool ok = GetLLVMType(module_, pnode->GetParaType(), &type);
         if (!ok) {
@@ -214,4 +214,4 @@ bool FnIRBuilder::BuildParas(const ::fesql::node::FnNodeList *node,
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

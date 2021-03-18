@@ -32,11 +32,11 @@
 #include "node/node_enum.h"
 
 // fwd
-namespace fesql::udf {
+namespace hybridse::udf {
 class LLVMUDFGenBase;
 }
 
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 // Global methods
@@ -249,13 +249,13 @@ inline const std::string TimeUnitName(const TimeUnit &time_unit) {
 }
 inline const std::string FrameTypeName(const FrameType &type) {
     switch (type) {
-        case fesql::node::kFrameRange:
+        case hybridse::node::kFrameRange:
             return "RANGE";
-        case fesql::node::kFrameRows:
+        case hybridse::node::kFrameRows:
             return "ROWS";
-        case fesql::node::kFrameRowsRange:
+        case hybridse::node::kFrameRowsRange:
             return "ROWS_RANGE";
-        case fesql::node::kFrameRowsMergeRowsRange:
+        case hybridse::node::kFrameRowsMergeRowsRange:
             return "ROWS_MERGE_ROWS_RANGE";
     }
     return "";
@@ -263,19 +263,19 @@ inline const std::string FrameTypeName(const FrameType &type) {
 
 inline const std::string BoundTypeName(const BoundType &type) {
     switch (type) {
-        case fesql::node::kPrecedingUnbound:
+        case hybridse::node::kPrecedingUnbound:
             return "PRECEDING UNBOUND";
-        case fesql::node::kOpenPreceding:
+        case hybridse::node::kOpenPreceding:
             return "OPEN PRECEDING";
-        case fesql::node::kPreceding:
+        case hybridse::node::kPreceding:
             return "PRECEDING";
-        case fesql::node::kCurrent:
+        case hybridse::node::kCurrent:
             return "CURRENT";
-        case fesql::node::kOpenFollowing:
+        case hybridse::node::kOpenFollowing:
             return "OPEN FOLLOWING";
-        case fesql::node::kFollowing:
+        case hybridse::node::kFollowing:
             return "FOLLOWING";
-        case fesql::node::kFollowingUnbound:
+        case hybridse::node::kFollowingUnbound:
             return "FOLLOWING UNBOUND";
         default:
             return "UNKNOW";
@@ -284,47 +284,47 @@ inline const std::string BoundTypeName(const BoundType &type) {
 }
 inline const std::string DataTypeName(const DataType &type) {
     switch (type) {
-        case fesql::node::kBool:
+        case hybridse::node::kBool:
             return "bool";
-        case fesql::node::kInt16:
+        case hybridse::node::kInt16:
             return "int16";
-        case fesql::node::kInt32:
+        case hybridse::node::kInt32:
             return "int32";
-        case fesql::node::kInt64:
+        case hybridse::node::kInt64:
             return "int64";
-        case fesql::node::kFloat:
+        case hybridse::node::kFloat:
             return "float";
-        case fesql::node::kDouble:
+        case hybridse::node::kDouble:
             return "double";
-        case fesql::node::kVarchar:
+        case hybridse::node::kVarchar:
             return "string";
-        case fesql::node::kTimestamp:
+        case hybridse::node::kTimestamp:
             return "timestamp";
-        case fesql::node::kDate:
+        case hybridse::node::kDate:
             return "date";
-        case fesql::node::kList:
+        case hybridse::node::kList:
             return "list";
-        case fesql::node::kMap:
+        case hybridse::node::kMap:
             return "map";
-        case fesql::node::kIterator:
+        case hybridse::node::kIterator:
             return "iterator";
-        case fesql::node::kRow:
+        case hybridse::node::kRow:
             return "row";
-        case fesql::node::kSecond:
+        case hybridse::node::kSecond:
             return "second";
-        case fesql::node::kMinute:
+        case hybridse::node::kMinute:
             return "minute";
-        case fesql::node::kHour:
+        case hybridse::node::kHour:
             return "hour";
-        case fesql::node::kNull:
+        case hybridse::node::kNull:
             return "null";
-        case fesql::node::kVoid:
+        case hybridse::node::kVoid:
             return "void";
-        case fesql::node::kPlaceholder:
+        case hybridse::node::kPlaceholder:
             return "placeholder";
-        case fesql::node::kOpaque:
+        case hybridse::node::kOpaque:
             return "opaque";
-        case fesql::node::kTuple:
+        case hybridse::node::kTuple:
             return "tuple";
         default:
             return "unknown";
@@ -724,54 +724,54 @@ class ConstNode : public ExprNode {
     };
 
  public:
-    ConstNode() : ExprNode(kExprPrimary), data_type_(fesql::node::kNull) {}
+    ConstNode() : ExprNode(kExprPrimary), data_type_(hybridse::node::kNull) {}
     explicit ConstNode(DataType data_type)
         : ExprNode(kExprPrimary), data_type_(data_type) {}
     explicit ConstNode(int16_t val)
-        : ExprNode(kExprPrimary), data_type_(fesql::node::kInt16) {
+        : ExprNode(kExprPrimary), data_type_(hybridse::node::kInt16) {
         val_.vsmallint = val;
     }
     explicit ConstNode(bool val)
-        : ExprNode(kExprPrimary), data_type_(fesql::node::kBool) {
+        : ExprNode(kExprPrimary), data_type_(hybridse::node::kBool) {
         val_.vint = val ? 1 : 0;
     }
     explicit ConstNode(int val)
-        : ExprNode(kExprPrimary), data_type_(fesql::node::kInt32) {
+        : ExprNode(kExprPrimary), data_type_(hybridse::node::kInt32) {
         val_.vint = val;
     }
     explicit ConstNode(int64_t val)
-        : ExprNode(kExprPrimary), data_type_(fesql::node::kInt64) {
+        : ExprNode(kExprPrimary), data_type_(hybridse::node::kInt64) {
         val_.vlong = val;
     }
     explicit ConstNode(int val, TTLType ttl_type)
         : ExprNode(kExprPrimary),
-          data_type_(fesql::node::kInt32),
+          data_type_(hybridse::node::kInt32),
           ttl_type_(ttl_type) {
         val_.vint = val;
     }
     explicit ConstNode(int64_t val, TTLType ttl_type)
         : ExprNode(kExprPrimary),
-          data_type_(fesql::node::kInt64),
+          data_type_(hybridse::node::kInt64),
           ttl_type_(ttl_type) {
         val_.vlong = val;
     }
     explicit ConstNode(float val)
-        : ExprNode(kExprPrimary), data_type_(fesql::node::kFloat) {
+        : ExprNode(kExprPrimary), data_type_(hybridse::node::kFloat) {
         val_.vfloat = val;
     }
 
     explicit ConstNode(double val)
-        : ExprNode(kExprPrimary), data_type_(fesql::node::kDouble) {
+        : ExprNode(kExprPrimary), data_type_(hybridse::node::kDouble) {
         val_.vdouble = val;
     }
 
     explicit ConstNode(const char *val)
-        : ExprNode(kExprPrimary), data_type_(fesql::node::kVarchar) {
+        : ExprNode(kExprPrimary), data_type_(hybridse::node::kVarchar) {
         val_.vstr = strdup(val);
     }
 
     explicit ConstNode(const std::string &val)
-        : ExprNode(kExprPrimary), data_type_(fesql::node::kVarchar) {
+        : ExprNode(kExprPrimary), data_type_(hybridse::node::kVarchar) {
         val_.vstr = strdup(val.c_str());
     }
 
@@ -790,7 +790,7 @@ class ConstNode : public ExprNode {
     }
 
     ~ConstNode() {
-        if (data_type_ == fesql::node::kVarchar) {
+        if (data_type_ == hybridse::node::kVarchar) {
             free(const_cast<char *>(val_.vstr));
         }
     }
@@ -823,13 +823,13 @@ class ConstNode : public ExprNode {
 
     int64_t GetMillis() const {
         switch (data_type_) {
-            case fesql::node::kDay:
+            case hybridse::node::kDay:
                 return 86400000 * val_.vlong;
-            case fesql::node::kHour:
+            case hybridse::node::kHour:
                 return 3600000 * val_.vlong;
-            case fesql::node::kMinute:
+            case hybridse::node::kMinute:
                 return 60000 * val_.vlong;
-            case fesql::node::kSecond:
+            case hybridse::node::kSecond:
                 return 1000 * val_.vlong;
             default: {
                 LOG(WARNING)
@@ -985,7 +985,7 @@ class ConstNode : public ExprNode {
         float vfloat;
         double vdouble;
     } val_;
-    TTLType ttl_type_ = fesql::node::kAbsolute;
+    TTLType ttl_type_ = hybridse::node::kAbsolute;
 };
 class LimitNode : public SQLNode {
  public:
@@ -1903,9 +1903,9 @@ class ColumnIndexNode : public SQLNode {
                         const ConstNode *ttl =
                             dynamic_cast<ConstNode *>(ttl_node);
                         switch (ttl->GetDataType()) {
-                            case fesql::node::kInt32:
+                            case hybridse::node::kInt32:
                                 if (ttl->GetTTLType() ==
-                                    fesql::node::kAbsolute) {
+                                    hybridse::node::kAbsolute) {
                                     abs_ttl_ = -1;
                                     lat_ttl_ = -1;
                                     return;
@@ -1913,9 +1913,9 @@ class ColumnIndexNode : public SQLNode {
                                     lat_ttl_ = ttl->GetInt();
                                 }
                                 break;
-                            case fesql::node::kInt64:
+                            case hybridse::node::kInt64:
                                 if (ttl->GetTTLType() ==
-                                    fesql::node::kAbsolute) {
+                                    hybridse::node::kAbsolute) {
                                     abs_ttl_ = -1;
                                     lat_ttl_ = -1;
                                     return;
@@ -1923,12 +1923,12 @@ class ColumnIndexNode : public SQLNode {
                                     lat_ttl_ = ttl->GetLong();
                                 }
                                 break;
-                            case fesql::node::kDay:
-                            case fesql::node::kHour:
-                            case fesql::node::kMinute:
-                            case fesql::node::kSecond:
+                            case hybridse::node::kDay:
+                            case hybridse::node::kHour:
+                            case hybridse::node::kMinute:
+                            case hybridse::node::kSecond:
                                 if (ttl->GetTTLType() ==
-                                    fesql::node::kAbsolute) {
+                                    hybridse::node::kAbsolute) {
                                     abs_ttl_ = ttl->GetMillis();
                                 } else {
                                     abs_ttl_ = -1;
@@ -2601,5 +2601,5 @@ void PrintValue(std::ostream &output, const std::string &org_tab,
                 const std::string &value, const std::string &item_name,
                 bool last_child);
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_INCLUDE_NODE_SQL_NODE_H_
