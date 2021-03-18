@@ -48,7 +48,7 @@ env:
         with:
           name: build-artifact
           path: |
-            build/bin/
-            build/src/sdk/
-            build/sql_pysdk/dist/
-            build/python/dist/
+            build/bin
+            build/src/sdk
+            build/sql_pysdk/dist
+            build/python/dist
