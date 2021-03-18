@@ -33,7 +33,7 @@ jobs:
       # We'll use this as our working directory for all subsequent commands
       run: cmake -E make_directory build
 
-    - name: Configure CMake
+    - name: Build
       # Use a bash shell so we can use the same syntax for environment variable
       # access regardless of the host operating system
       shell: bash
@@ -42,20 +42,8 @@ jobs:
       # and build directories, but this is only available with CMake 3.13 and higher.
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
       run: |
+        source /etc/profile
         cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBENCHMARK_ENABLE_LTO=true -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=ON -DJAVASDK_ENABLE=OFF -DPYSDK_ENABLE=OFF
-
-    - name: Build
-      shell: bash
-      working-directory: build
-      # Execute the build.  You can specify a specific target with "--target <NAME>"
-      run: |
         make fesql_proto && make fesql_parser
         make -j$(nproc)
-
-    - name: Test
-      shell: bash
-      working-directory: build
-      # Execute tests defined by the CMake configuration.
-      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: |
         make test -j$(nproc)
