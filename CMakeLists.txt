@@ -54,26 +54,26 @@ option(LLVM_EXT_ENABLE "Enable llvm ext sources" OFF)
 if (CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif ()
-message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # llvm dependency
-if (NOT DEFINED LLVM_DIR) 
+if (NOT DEFINED LLVM_DIR)
     set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
-endif()
+endif ()
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 if (LLVM_EXT_ENABLE)
     llvm_map_components_to_libnames(LLVM_LIBS
-        support core orcjit nativecodegen
-        mcjit executionengine IntelJITEvents PerfJITEvents object)
-else() 
+            support core orcjit nativecodegen
+            mcjit executionengine IntelJITEvents PerfJITEvents object)
+else ()
     llvm_map_components_to_libnames(LLVM_LIBS
-        support core orcjit nativecodegen)
-endif()
+            support core orcjit nativecodegen)
+endif ()
 
 find_package(Threads)
 
@@ -186,16 +186,12 @@ endif ()
 if (CMAKE_INSTALL_PREFIX STREQUAL "")
     set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
 endif ()
-message (STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
-
-
+message(STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
 install(TARGETS fesql_core fesql_sdk
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 FILE(GLOB header_files "${CMAKE_CURRENT_SOURCE_DIR}/src/include/*")
-message("CMAKE_BINARY_DIR ${CMAKE_BINARY_DIR}")
 INSTALL(DIRECTORY ${header_files} DESTINATION include)
-
-INSTALL(FILES "${CMAKE_BINARY_DIR}/src/proto/*.pb.h" DESTINATION include/proto/)
+INSTALL(DIRECTORY "${CMAKE_BINARY_DIR}/src/proto" DESTINATION include/proto/ FILES_MATCHING PATTERN "*.h")
