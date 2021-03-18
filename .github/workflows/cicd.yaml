@@ -13,19 +13,19 @@ jobs:
   style_check:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_fesql:legacy
+      image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT_ZW }}
     steps:
       - uses: actions/checkout@v1
-#        with:
-#          submodules: true
-      - name: update submodule
-        run: |
-          ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
-          git submodule init
-          git submodule update
+        with:
+          submodules: true
+#      - name: update submodule
+#        run: |
+#          ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
+#          git submodule init
+#          git submodule update
       -
         run: |
           ls -al fesql
@@ -33,7 +33,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_fesql:legacy
+      image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT_ZW }}
@@ -43,22 +43,24 @@ jobs:
       - uses: actions/checkout@v1
 #        with:
 #          submodules: true
-      -
-        name: clone fesql
+      - name: update nss
+        run: yum update -y nss curl libcurl
+      - name: update submodule
         run: |
-          ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
-          git clone https://wuyou10206:zw%401020688@github.com/4paradigm/HybridSE.git fesql
-      - name: tar thirdparty
-        run: |
-           tar -zxvf /depends/thirdparty.tar.gz -C /depends/
-           mv /depends/depends/thirdparty /depends/
+          git submodule init
+          git submodule update
+#      - name: clone fesql
+#        run: |
+#          ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
+#          git clone https://wuyou10206:zw%401020688@github.com/4paradigm/HybridSE.git fesql
+#      - name: tar thirdparty
+#        run: |
+#           tar -zxvf /depends/thirdparty.tar.gz -C /depends/
+#           mv /depends/depends/thirdparty /depends/
       - name: build fesql
-        run: |
-          ls -al /depends/thirdparty
-          source /root/.bashrc && sh tools/install_fesql.sh
+        run: source /root/.bashrc && sh tools/install_fesql.sh
       - name: build fedb
         run: |
-          ls -al
           ln -sf /depends/thirdparty thirdparty
           ln -sf /depends/thirdsrc thirdsrc
           source /root/.bashrc && bash steps/simple_compile.sh
