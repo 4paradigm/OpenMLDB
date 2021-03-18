@@ -57,8 +57,9 @@ class Planner {
         type::TableDef *table,
         Status &status);  // NOLINT (runtime/references)
     bool MergeWindows(const std::map<const node::WindowDefNode *,
-        node::ProjectListNode *> &map,
+                                     node::ProjectListNode *> &map,
                       std::vector<const node::WindowDefNode *> *windows);
+
  protected:
     const bool is_batch_mode_;
     const bool is_cluster_optimized_;
