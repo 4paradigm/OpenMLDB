@@ -17,14 +17,14 @@
 
 #include "sdk/cluster_sdk.h"
 
-#include <algorithm>
-#include <map>
-#include <memory>
-#include <set>
 #ifdef DISALLOW_COPY_AND_ASSIGN
 #undef DISALLOW_COPY_AND_ASSIGN
 #endif
 #include <snappy.h>
+#include <algorithm>
+#include <map>
+#include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
