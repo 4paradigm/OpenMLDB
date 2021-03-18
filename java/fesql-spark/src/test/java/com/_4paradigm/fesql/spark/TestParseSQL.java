@@ -63,7 +63,6 @@ public class TestParseSQL {
         Engine engine = new Engine(catalog, options);
         assertTrue(engine.Get("select col_1, col_2 from t1;", "db", sess, status));
 
-        assertTrue(sess.GetCompileInfo().GetCompileType().swigValue() != ComileType.kCompileSQL.swigValue());
         CompileInfo compileInfo = sess.GetCompileInfo();
         long size = compileInfo.GetIRSize();
         ByteBuffer buffer = ByteBuffer.allocateDirect(Long.valueOf(size).intValue());
