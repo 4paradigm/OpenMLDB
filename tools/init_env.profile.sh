@@ -21,7 +21,8 @@ echo "Third party packages path: ${CICD_RUNNER_THIRDPARTY_PATH}"
 if [[ "$OSTYPE" == "linux-gnu"* ]]
 then
     ln -sf /depends/thirdparty thirdparty
-    [ -r /etc/profile.d/enable-rh.sh ] && source /etc/profile.d/enable-rh.sh
+    source /opt/rh/devtoolset-7/enable
+    source /opt/rh/sclo-git25/enable
     [ -r /etc/profile.d/enable-thirdparty.sh ] && source /etc/profile.d/enable-thirdparty.sh
 else
     source ~/.bash_profile
