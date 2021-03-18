@@ -800,14 +800,14 @@ void EngineRequestSimpleSelectDate(benchmark::State* state,
 hybridse::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml,
                                           const std::string& case_id) {
     return hybridse::sqlcase::SQLCase::LoadSQLCaseWithID(
-        hybridse::sqlcase::FindFesqlDirPath(), yaml, case_id);
+        hybridse::sqlcase::FindHybridSEDirPath(), yaml, case_id);
 }
 void EngineBenchmarkOnCase(const std::string& yaml_path,
                            const std::string& case_id,
                            vm::EngineMode engine_mode,
                            benchmark::State* state) {
     SQLCase target_case = hybridse::sqlcase::SQLCase::LoadSQLCaseWithID(
-        hybridse::sqlcase::FindFesqlDirPath(), yaml_path, case_id);
+        hybridse::sqlcase::FindHybridSEDirPath(), yaml_path, case_id);
     if (target_case.id() != case_id) {
         LOG(WARNING) << "Fail to find case #" << case_id << " in " << yaml_path;
         state->SkipWithError("BENCHMARK CASE LOAD FAIL: fail to find case");

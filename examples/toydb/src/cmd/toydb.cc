@@ -125,7 +125,7 @@ void StartDBMS(char *argv[]) {
 
 void StartClient(char *argv[]) {
     SetupLogging(argv);
-    std::cout << "Welcome to FeSQL " << FESQL_VERSION_MAJOR << "."
+    std::cout << "Welcome to HybridSE " << FESQL_VERSION_MAJOR << "."
               << FESQL_VERSION_MEDIUM << "." << FESQL_VERSION_MINOR << "."
               << FESQL_VERSION_BUG << std::endl;
     cmd_client_db.name = "";

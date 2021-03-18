@@ -18,7 +18,7 @@
 namespace hybridse {
 namespace vm {
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(hybridse::sqlcase::FindFesqlDirPath(),
+    if (!SQLCase::CreateSQLCasesFromYaml(hybridse::sqlcase::FindHybridSEDirPath(),
                                          yaml_path, cases)) {
         FAIL();
     }
@@ -368,7 +368,7 @@ Status EngineTestRunner::ExtractTableInfoFromCreateString(
                "Fail extract with empty create string");
 
     node::NodeManager manager;
-    parser::FeSQLParser parser;
+    parser::HybridSEParser parser;
     hybridse::plan::NodePointVector trees;
     base::Status status;
     int ret = parser.parse(create, trees, &manager, status);

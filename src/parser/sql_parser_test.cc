@@ -31,7 +31,7 @@ std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(hybridse::sqlcase::FindFesqlDirPath(),
+    if (!SQLCase::CreateSQLCasesFromYaml(hybridse::sqlcase::FindHybridSEDirPath(),
                                          yaml_path, cases)) {
         FAIL();
     }
@@ -45,7 +45,7 @@ class SqlParserTest : public ::testing::TestWithParam<SQLCase> {
  public:
     SqlParserTest() {
         manager_ = new NodeManager();
-        parser_ = new FeSQLParser();
+        parser_ = new HybridSEParser();
     }
 
     ~SqlParserTest() {
@@ -66,7 +66,7 @@ class SqlParserTest : public ::testing::TestWithParam<SQLCase> {
 
  protected:
     NodeManager *manager_;
-    FeSQLParser *parser_;
+    HybridSEParser *parser_;
 };
 
 INSTANTIATE_TEST_SUITE_P(
@@ -566,7 +566,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ(60 * 86400000L, index_node->GetAbsTTL());
 }
 
-void CheckTTL(FeSQLParser *parser, NodeManager *manager, const std::string &sql,
+void CheckTTL(HybridSEParser *parser, NodeManager *manager, const std::string &sql,
               int expect) {
     NodePointVector trees;
     base::Status status;
@@ -659,7 +659,7 @@ class SqlParserErrorTest : public ::testing::TestWithParam<
  public:
     SqlParserErrorTest() {
         manager_ = new NodeManager();
-        parser_ = new FeSQLParser();
+        parser_ = new HybridSEParser();
     }
 
     ~SqlParserErrorTest() {
@@ -669,7 +669,7 @@ class SqlParserErrorTest : public ::testing::TestWithParam<
 
  protected:
     NodeManager *manager_;
-    FeSQLParser *parser_;
+    HybridSEParser *parser_;
 };
 
 // TODO(chenjing): line and column check

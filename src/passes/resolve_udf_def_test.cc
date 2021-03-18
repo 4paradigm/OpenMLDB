@@ -25,7 +25,7 @@ namespace passes {
 class ResolveUdfDefTest : public ::testing::Test {};
 
 TEST_F(ResolveUdfDefTest, TestResolve) {
-    parser::FeSQLParser parser;
+    parser::HybridSEParser parser;
     Status status;
     node::NodeManager nm;
     plan::SimplePlanner planner(&nm);
@@ -52,7 +52,7 @@ TEST_F(ResolveUdfDefTest, TestResolve) {
 }
 
 TEST_F(ResolveUdfDefTest, TestResolveFailed) {
-    parser::FeSQLParser parser;
+    parser::HybridSEParser parser;
     Status status;
     node::NodeManager nm;
     plan::SimplePlanner planner(&nm);

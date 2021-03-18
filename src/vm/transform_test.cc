@@ -64,7 +64,7 @@ void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
-            hybridse::sqlcase::FindFesqlDirPath(), yaml_path, cases,
+            hybridse::sqlcase::FindHybridSEDirPath(), yaml_path, cases,
             std::vector<std::string>({"physical-plan-unsupport",
                                       "logical-plan-unsupport",
                                       "parser-unsupport"}))) {
@@ -185,7 +185,7 @@ TEST_P(TransformTest, transform_physical_plan) {
     ::hybridse::base::Status base_status;
     {
         ::hybridse::plan::SimplePlanner planner(&manager);
-        ::hybridse::parser::FeSQLParser parser;
+        ::hybridse::parser::HybridSEParser parser;
         ::hybridse::node::NodePointVector parser_trees;
         parser.parse(sqlstr, parser_trees, &manager, base_status);
         LOG(INFO) << *(parser_trees[0]) << std::endl;
@@ -280,7 +280,7 @@ TEST_P(TransformTest, transform_physical_plan_enable_window_paralled) {
     ::hybridse::base::Status base_status;
     {
         ::hybridse::plan::SimplePlanner planner(&manager);
-        ::hybridse::parser::FeSQLParser parser;
+        ::hybridse::parser::HybridSEParser parser;
         ::hybridse::node::NodePointVector parser_trees;
         parser.parse(sqlstr, parser_trees, &manager, base_status);
         LOG(INFO) << *(parser_trees[0]) << std::endl;
@@ -324,7 +324,7 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     ::hybridse::base::Status base_status;
     {
         ::hybridse::plan::SimplePlanner planner(&manager);
-        ::hybridse::parser::FeSQLParser parser;
+        ::hybridse::parser::HybridSEParser parser;
         ::hybridse::node::NodePointVector parser_trees;
         parser.parse(sql, parser_trees, &manager, base_status);
         ASSERT_EQ(0, base_status.code);
@@ -549,7 +549,7 @@ TEST_P(TransformTest, window_merge_opt_test) {
     ::hybridse::base::Status base_status;
     {
         ::hybridse::plan::SimplePlanner planner(&manager);
-        ::hybridse::parser::FeSQLParser parser;
+        ::hybridse::parser::HybridSEParser parser;
         ::hybridse::node::NodePointVector parser_trees;
         parser.parse(sqlstr, parser_trees, &manager, base_status);
         LOG(INFO) << *(parser_trees[0]) << std::endl;

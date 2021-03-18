@@ -19,10 +19,10 @@
 namespace hybridse {
 namespace vm {
 
-FeSQLSymbolResolver::FeSQLSymbolResolver(const ::llvm::DataLayout& data_layout)
+HybridSESymbolResolver::HybridSESymbolResolver(const ::llvm::DataLayout& data_layout)
     : data_layout_(data_layout) {}
 
-::llvm::JITSymbol FeSQLSymbolResolver::findSymbol(const std::string& name) {
+::llvm::JITSymbol HybridSESymbolResolver::findSymbol(const std::string& name) {
     auto iter = symbol_dict_.find(name);
     if (iter != symbol_dict_.end()) {
         DLOG(INFO) << "Find " << name << ": " << (uint64_t)iter->second;
@@ -32,12 +32,12 @@ FeSQLSymbolResolver::FeSQLSymbolResolver(const ::llvm::DataLayout& data_layout)
     return nullptr;
 }
 
-::llvm::JITSymbol FeSQLSymbolResolver::findSymbolInLogicalDylib(
+::llvm::JITSymbol HybridSESymbolResolver::findSymbolInLogicalDylib(
     const std::string& name) {
     return nullptr;
 }
 
-void FeSQLSymbolResolver::addSymbol(const std::string& name, void* addr) {
+void HybridSESymbolResolver::addSymbol(const std::string& name, void* addr) {
     ::llvm::SmallString<128> mangle_name;
     ::llvm::Mangler::getNameWithPrefix(mangle_name, name, data_layout_);
     DLOG(INFO) << "Add symbol " << name << " -> " << mangle_name.str().str();

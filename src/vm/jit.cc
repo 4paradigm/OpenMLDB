@@ -48,9 +48,9 @@ namespace hybridse {
 namespace vm {
 using ::llvm::orc::LLJIT;
 
-FeSQLJIT::FeSQLJIT(::llvm::orc::LLJITBuilderState& s, ::llvm::Error& e)
+HybridSEJIT::HybridSEJIT(::llvm::orc::LLJITBuilderState& s, ::llvm::Error& e)
     : LLJIT(s, e) {}
-FeSQLJIT::~FeSQLJIT() {}
+HybridSEJIT::~HybridSEJIT() {}
 
 static void RunDefaultOptPasses(::llvm::Module* m) {
     ::llvm::legacy::FunctionPassManager fpm(m);
@@ -66,7 +66,7 @@ static void RunDefaultOptPasses(::llvm::Module* m) {
     }
 }
 
-::llvm::Error FeSQLJIT::AddIRModule(::llvm::orc::JITDylib& jd,  // NOLINT
+::llvm::Error HybridSEJIT::AddIRModule(::llvm::orc::JITDylib& jd,  // NOLINT
                                     ::llvm::orc::ThreadSafeModule tsm,
                                     ::llvm::orc::VModuleKey key) {
     if (auto err = applyDataLayout(*tsm.getModule())) return err;
@@ -78,7 +78,7 @@ static void RunDefaultOptPasses(::llvm::Module* m) {
     return CompileLayer->add(jd, std::move(tsm), key);
 }
 
-bool FeSQLJIT::OptModule(::llvm::Module* m) {
+bool HybridSEJIT::OptModule(::llvm::Module* m) {
     if (auto err = applyDataLayout(*m)) {
         return false;
     }
@@ -88,28 +88,28 @@ bool FeSQLJIT::OptModule(::llvm::Module* m) {
     return true;
 }
 
-::llvm::orc::VModuleKey FeSQLJIT::CreateVModule() {
+::llvm::orc::VModuleKey HybridSEJIT::CreateVModule() {
     ::llvm::orc::VModuleKey key = ES->allocateVModule();
     DLOG(INFO) << "allocate a new module key " << key;
     return key;
 }
 
-void FeSQLJIT::ReleaseVModule(::llvm::orc::VModuleKey key) {
+void HybridSEJIT::ReleaseVModule(::llvm::orc::VModuleKey key) {
     DLOG(INFO) << "release module with key " << key;
     ES->releaseVModule(key);
 }
 
-bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd, const std::string& name,
+bool HybridSEJIT::AddSymbol(::llvm::orc::JITDylib& jd, const std::string& name,
                          void* fn_ptr) {
     if (fn_ptr == NULL) {
         LOG(WARNING) << "fn ptr is null";
         return false;
     }
     ::llvm::orc::MangleAndInterner mi(getExecutionSession(), getDataLayout());
-    return FeSQLJIT::AddSymbol(jd, mi, name, fn_ptr);
+    return HybridSEJIT::AddSymbol(jd, mi, name, fn_ptr);
 }
 
-bool FeSQLJIT::AddSymbol(const std::string& name, void* fn_ptr) {
+bool HybridSEJIT::AddSymbol(const std::string& name, void* fn_ptr) {
     if (fn_ptr == NULL) {
         LOG(WARNING) << "fn ptr is null";
         return false;
@@ -118,7 +118,7 @@ bool FeSQLJIT::AddSymbol(const std::string& name, void* fn_ptr) {
     return AddSymbol(jd, name, fn_ptr);
 }
 
-void FeSQLJIT::Init() {
+void HybridSEJIT::Init() {
     auto& jd = getMainJITDylib();
     auto gen = llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
         getDataLayout().getGlobalPrefix());
@@ -131,7 +131,7 @@ void FeSQLJIT::Init() {
     jd.setGenerator(gen.get());
 }
 
-bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd,
+bool HybridSEJIT::AddSymbol(::llvm::orc::JITDylib& jd,
                          ::llvm::orc::MangleAndInterner& mi,
                          const std::string& fn_name, void* fn_ptr) {
     ::llvm::StringRef symbol(fn_name);
@@ -148,10 +148,10 @@ bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd,
     }
 }
 
-bool FeSQLLLJITWrapper::Init() {
+bool HybridSELLJITWrapper::Init() {
     DLOG(INFO) << "Start to initialize hybridse jit";
     auto jit =
-        ::llvm::Expected<std::unique_ptr<FeSQLJIT>>(FeSQLJITBuilder().create());
+        ::llvm::Expected<std::unique_ptr<HybridSEJIT>>(HybridSEJITBuilder().create());
     {
         ::llvm::Error e = jit.takeError();
         if (e) {
@@ -168,11 +168,11 @@ bool FeSQLLLJITWrapper::Init() {
     return true;
 }
 
-bool FeSQLLLJITWrapper::OptModule(::llvm::Module* module) {
+bool HybridSELLJITWrapper::OptModule(::llvm::Module* module) {
     return jit_->OptModule(module);
 }
 
-bool FeSQLLLJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
+bool HybridSELLJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
                                   std::unique_ptr<llvm::LLVMContext> llvm_ctx) {
     ::llvm::Error e = jit_->addIRModule(
         ::llvm::orc::ThreadSafeModule(std::move(module), std::move(llvm_ctx)));
@@ -183,7 +183,7 @@ bool FeSQLLLJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
     return true;
 }
 
-RawPtrHandle FeSQLLLJITWrapper::FindFunction(const std::string& funcname) {
+RawPtrHandle HybridSELLJITWrapper::FindFunction(const std::string& funcname) {
     if (funcname == "") {
         return 0;
     }
@@ -197,23 +197,23 @@ RawPtrHandle FeSQLLLJITWrapper::FindFunction(const std::string& funcname) {
     return reinterpret_cast<const int8_t*>(symbol->getAddress());
 }
 
-bool FeSQLLLJITWrapper::AddExternalFunction(const std::string& name,
+bool HybridSELLJITWrapper::AddExternalFunction(const std::string& name,
                                             void* addr) {
-    return hybridse::vm::FeSQLJIT::AddSymbol(jit_->getMainJITDylib(), *mi_, name,
+    return hybridse::vm::HybridSEJIT::AddSymbol(jit_->getMainJITDylib(), *mi_, name,
                                           addr);
 }
 
 #ifdef LLVM_EXT_ENABLE
-bool FeSQLMCJITWrapper::Init() { return true; }
+bool HybridSEMCJITWrapper::Init() { return true; }
 
-bool FeSQLMCJITWrapper::OptModule(::llvm::Module* module) {
+bool HybridSEMCJITWrapper::OptModule(::llvm::Module* module) {
     DLOG(INFO) << "Module before opt:\n" << LLVMToString(*module);
     RunDefaultOptPasses(module);
     DLOG(INFO) << "Module after opt:\n" << LLVMToString(*module);
     return true;
 }
 
-bool FeSQLMCJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
+bool HybridSEMCJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
                                   std::unique_ptr<llvm::LLVMContext> llvm_ctx) {
     if (llvm::verifyModule(*module, &llvm::errs(), nullptr)) {
         // note: destruct module before ctx
@@ -225,7 +225,7 @@ bool FeSQLMCJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
         const ::llvm::DataLayout& module_layout = module->getDataLayout();
         llvm::EngineBuilder engine_builder(std::move(module));
 
-        auto resolver = new FeSQLSymbolResolver(
+        auto resolver = new HybridSESymbolResolver(
             module_layout.isDefault()
                 ? engine_builder.selectTarget()->createDataLayout()
                 : module_layout);
@@ -286,7 +286,7 @@ bool FeSQLMCJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
     return CheckError();
 }
 
-bool FeSQLMCJITWrapper::AddExternalFunction(const std::string& name,
+bool HybridSEMCJITWrapper::AddExternalFunction(const std::string& name,
                                             void* addr) {
     if (execution_engine_ != nullptr) {
         LOG(WARNING)
@@ -298,7 +298,7 @@ bool FeSQLMCJITWrapper::AddExternalFunction(const std::string& name,
     return true;
 }
 
-hybridse::vm::RawPtrHandle FeSQLMCJITWrapper::FindFunction(
+hybridse::vm::RawPtrHandle HybridSEMCJITWrapper::FindFunction(
     const std::string& funcname) {
     if (!CheckInitialized()) {
         return nullptr;
@@ -310,7 +310,7 @@ hybridse::vm::RawPtrHandle FeSQLMCJITWrapper::FindFunction(
     return reinterpret_cast<int8_t*>(addr);
 }
 
-bool FeSQLMCJITWrapper::CheckError() {
+bool HybridSEMCJITWrapper::CheckError() {
     if (!err_str_.empty()) {
         LOG(WARNING) << "Detect jit error: " << err_str_;
         err_str_.clear();
@@ -319,7 +319,7 @@ bool FeSQLMCJITWrapper::CheckError() {
     return true;
 }
 
-bool FeSQLMCJITWrapper::CheckInitialized() const {
+bool HybridSEMCJITWrapper::CheckInitialized() const {
     if (execution_engine_ == nullptr) {
         LOG(WARNING) << "JIT engine is not initialized";
         return false;

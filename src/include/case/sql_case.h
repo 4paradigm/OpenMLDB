@@ -195,28 +195,28 @@ class SQLCase {
     friend SQLCaseBuilder;
     friend std::ostream& operator<<(std::ostream& output, const SQLCase& thiz);
     static bool IS_PERF() {
-        const char* env_name = "FESQL_PERF";
+        const char* env_name = "HYBRIDSE_PERF";
         char* value = getenv(env_name);
         if (value != nullptr && strcmp(value, "true") == 0) {
             return true;
         }
         return false;
     }
-    static std::set<std::string> FESQL_LEVEL();
+    static std::set<std::string> HYBRIDSE_LEVEL();
     static bool IS_DEBUG() {
-        const char* env_name = "FESQL_DEV";
+        const char* env_name = "HYBRIDSE_DEV";
         char* value = getenv(env_name);
         if (value != nullptr && strcmp(value, "true") == 0) {
             return true;
         }
-        value = getenv("FESQL_DEBUG");
+        value = getenv("HYBRIDSE_DEBUG");
         if (value != nullptr && strcmp(value, "true") == 0) {
             return true;
         }
         return false;
     }
     static bool IS_CLUSTER() {
-        const char* env_name = "FESQL_CLUSTER";
+        const char* env_name = "HYBRIDSE_CLUSTER";
         char* value = getenv(env_name);
         if (value != nullptr && strcmp(value, "true") == 0) {
             return true;
@@ -225,7 +225,7 @@ class SQLCase {
     }
 
     static bool IS_DISABLE_EXPR_OPT() {
-        const char* env_name = "FESQL_DISABLE_EXPR_OPT";
+        const char* env_name = "HYBRIDSE_DISABLE_EXPR_OPT";
         char* value = getenv(env_name);
         if (value != nullptr && strcmp(value, "true") == 0) {
             return true;
@@ -234,7 +234,7 @@ class SQLCase {
     }
 
     static bool IS_BATCH_REQUEST_OPT() {
-        const char* env_name = "FESQL_BATCH_REQUEST_OPT";
+        const char* env_name = "HYBRIDSE_BATCH_REQUEST_OPT";
         char* value = getenv(env_name);
         if (value != nullptr && strcmp(value, "true") == 0) {
             return true;
@@ -243,7 +243,7 @@ class SQLCase {
     }
 
     static bool IS_DISABLE_LOCALTABLET() {
-        const char* env_name = "FESQL_DISTABLE_LOCALTABLET";
+        const char* env_name = "HYBRIDSE_DISTABLE_LOCALTABLET";
         char* value = getenv(env_name);
         if (value != nullptr && strcmp(value, "true") == 0) {
             return true;
@@ -252,7 +252,7 @@ class SQLCase {
     }
 
     static bool IS_PROCEDURE() {
-        const char* env_name = "FESQL_PROCEDURE";
+        const char* env_name = "HYBRIDSE_PROCEDURE";
         char* value = getenv(env_name);
         if (value != nullptr && strcmp(value, "true") == 0) {
             return true;
@@ -299,7 +299,7 @@ class SQLCase {
     std::string sp_name_;
     int level_ = 0;
 };
-std::string FindFesqlDirPath();
+std::string FindHybridSEDirPath();
 
 }  // namespace sqlcase
 }  // namespace hybridse

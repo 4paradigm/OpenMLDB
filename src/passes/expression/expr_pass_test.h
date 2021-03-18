@@ -34,7 +34,7 @@ namespace passes {
 
 void InitFunctionLet(const std::string& sql, node::ExprAnalysisContext* ctx,
                      node::LambdaNode** result) {
-    parser::FeSQLParser parser;
+    parser::HybridSEParser parser;
     Status status;
     plan::SimplePlanner planner(ctx->node_manager());
     node::NodePointVector list1;

@@ -74,7 +74,7 @@ bool GetLibsFiles(const std::string& dir_path,
     return true;
 }
 
-const std::string FindFesqlDirPath() {
+const std::string FindHybridSEDirPath() {
     boost::filesystem::path current_path(boost::filesystem::current_path());
     boost::filesystem::path hybridse_path;
 
@@ -86,7 +86,7 @@ const std::string FindFesqlDirPath() {
     }
 
     if (current_path.filename().string() == "hybridse") {
-        LOG(INFO) << "Fesql Dir Path is : " << current_path.string()
+        LOG(INFO) << "HybridSE Dir Path is : " << current_path.string()
                   << std::endl;
         return current_path.string();
     }
@@ -102,7 +102,7 @@ bool RegisterFeLibs(udf::UDFLibrary* library, Status& status,  // NOLINT
     std::vector<std::string> filepaths;
     std::string hybridse_libs_path = "";
     if (libs_home.empty()) {
-        hybridse_libs_path = FindFesqlDirPath();
+        hybridse_libs_path = FindHybridSEDirPath();
     } else {
         hybridse_libs_path = libs_home;
     }
@@ -194,8 +194,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
     // ::llvm::errs() << *(m.get());
-    auto jit = std::shared_ptr<FeSQLJITWrapper>(
-        FeSQLJITWrapper::Create(ctx.jit_options));
+    auto jit = std::shared_ptr<HybridSEJITWrapper>(
+        HybridSEJITWrapper::Create(ctx.jit_options));
     if (jit == nullptr || !jit->Init()) {
         status.msg = "fail to init jit let";
         status.code = common::kJitError;
@@ -386,7 +386,7 @@ bool SQLCompiler::BuildClusterJob(SQLContext& ctx, Status& status) {  // NOLINT
 bool SQLCompiler::Parse(SQLContext& ctx,
                         ::hybridse::base::Status& status) {  // NOLINT
     ::hybridse::node::NodePointVector parser_trees;
-    ::hybridse::parser::FeSQLParser parser;
+    ::hybridse::parser::HybridSEParser parser;
 
     bool is_batch_mode = ctx.engine_mode == kBatchMode;
     ::hybridse::plan::SimplePlanner planer(
@@ -407,7 +407,7 @@ bool SQLCompiler::Parse(SQLContext& ctx,
     return true;
 }
 bool SQLCompiler::ResolvePlanFnAddress(vm::PhysicalOpNode* node,
-                                       std::shared_ptr<FeSQLJITWrapper>& jit,
+                                       std::shared_ptr<HybridSEJITWrapper>& jit,
                                        Status& status) {
     if (nullptr == node) {
         status.msg = "fail to resolve project fn address: node is null";

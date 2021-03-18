@@ -59,7 +59,7 @@ void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
-            hybridse::sqlcase::FindFesqlDirPath(), yaml_path, cases,
+            hybridse::sqlcase::FindHybridSEDirPath(), yaml_path, cases,
             std::vector<std::string>({"physical-plan-unsupport",
                                       "plan-unsupport", "parser-unsupport",
                                       "request-unsupport"}))) {
@@ -91,7 +91,7 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     ::hybridse::base::Status base_status;
     {
         ::hybridse::plan::SimplePlanner planner(&manager, false);
-        ::hybridse::parser::FeSQLParser parser;
+        ::hybridse::parser::HybridSEParser parser;
         ::hybridse::node::NodePointVector parser_trees;
         parser.parse(sql, parser_trees, &manager, base_status);
         ASSERT_EQ(0, base_status.code);
@@ -225,7 +225,7 @@ void CheckTransformPhysicalPlan(const SQLCase& sql_case,
     ::hybridse::base::Status base_status;
     {
         ::hybridse::plan::SimplePlanner planner(nm, false);
-        ::hybridse::parser::FeSQLParser parser;
+        ::hybridse::parser::HybridSEParser parser;
         ::hybridse::node::NodePointVector parser_trees;
         parser.parse(sqlstr, parser_trees, nm, base_status);
         ASSERT_EQ(0, base_status.code);

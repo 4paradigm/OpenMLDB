@@ -32,7 +32,7 @@ namespace vm {
 
 class CoreAPI;
 class Window;
-class FeSQLJITWrapper;
+class HybridSEJITWrapper;
 
 typedef const int8_t* RawPtrHandle;
 typedef int8_t* ByteArrayPtr;

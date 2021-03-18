@@ -67,7 +67,7 @@ add_custom_command(OUTPUT ${PLAN_PB_CC}
         DEPENDS ${PROJECT_SOURCE_DIR}/src/proto/plan.proto 
         )
 
-set(FESQL_PROTO_SRC_FILES 
+set(HYBRIDSE_PROTO_SRC_FILES 
     ${TABLET_PB_CC}
     ${DBMS_PB_CC}
     ${COMMON_PB_CC}
@@ -75,9 +75,9 @@ set(FESQL_PROTO_SRC_FILES
     ${BATCH_PB_CC}
     ${PLAN_PB_CC})
 
-ADD_CUSTOM_TARGET(run_gen_proto DEPENDS ${FESQL_PROTO_SRC_FILES})
+ADD_CUSTOM_TARGET(run_gen_proto DEPENDS ${HYBRIDSE_PROTO_SRC_FILES})
 
-add_library(hybridse_proto OBJECT ${FESQL_PROTO_SRC_FILES})
+add_library(hybridse_proto OBJECT ${HYBRIDSE_PROTO_SRC_FILES})
 add_dependencies(hybridse_proto run_gen_proto)
 
 add_custom_target(hybridse_proto_java

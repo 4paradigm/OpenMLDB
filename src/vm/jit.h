@@ -37,7 +37,7 @@ struct JITString {
     int8_t* data;
 };
 
-class FeSQLJIT : public ::llvm::orc::LLJIT {
+class HybridSEJIT : public ::llvm::orc::LLJIT {
     template <typename, typename, typename>
     friend class ::llvm::orc::LLJITBuilderSetters;
 
@@ -64,15 +64,15 @@ class FeSQLJIT : public ::llvm::orc::LLJIT {
     static bool AddSymbol(::llvm::orc::JITDylib& jd,           // NOLINT
                           ::llvm::orc::MangleAndInterner& mi,  // NOLINT
                           const std::string& fn_name, void* fn_ptr);
-    ~FeSQLJIT();
+    ~HybridSEJIT();
 
  protected:
-    FeSQLJIT(::llvm::orc::LLJITBuilderState& s, ::llvm::Error& e);  // NOLINT
+    HybridSEJIT(::llvm::orc::LLJITBuilderState& s, ::llvm::Error& e);  // NOLINT
 };
 
-class FeSQLJITBuilder
+class HybridSEJITBuilder
     : public ::llvm::orc::LLJITBuilderState,
-      public ::llvm::orc::LLJITBuilderSetters<FeSQLJIT, FeSQLJITBuilder,
+      public ::llvm::orc::LLJITBuilderSetters<HybridSEJIT, HybridSEJITBuilder,
                                               ::llvm::orc::LLJITBuilderState> {
 };
 
@@ -85,10 +85,10 @@ std::string LLVMToString(const T& value) {
     return str;
 }
 
-class FeSQLLLJITWrapper : public FeSQLJITWrapper {
+class HybridSELLJITWrapper : public HybridSEJITWrapper {
  public:
-    FeSQLLLJITWrapper() {}
-    ~FeSQLLLJITWrapper() {}
+    HybridSELLJITWrapper() {}
+    ~HybridSELLJITWrapper() {}
 
     bool Init() override;
 
@@ -102,16 +102,16 @@ class FeSQLLLJITWrapper : public FeSQLJITWrapper {
     hybridse::vm::RawPtrHandle FindFunction(const std::string& funcname) override;
 
  private:
-    std::unique_ptr<FeSQLJIT> jit_;
+    std::unique_ptr<HybridSEJIT> jit_;
     std::unique_ptr<::llvm::orc::MangleAndInterner> mi_;
 };
 
 #ifdef LLVM_EXT_ENABLE
-class FeSQLMCJITWrapper : public FeSQLJITWrapper {
+class HybridSEMCJITWrapper : public HybridSEJITWrapper {
  public:
-    explicit FeSQLMCJITWrapper(const JITOptions& jit_options)
+    explicit HybridSEMCJITWrapper(const JITOptions& jit_options)
         : jit_options_(jit_options) {}
-    ~FeSQLMCJITWrapper() {}
+    ~HybridSEMCJITWrapper() {}
 
     bool Init() override;
 

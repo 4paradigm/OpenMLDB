@@ -140,7 +140,7 @@ class BufIRBuilderTest : public ::testing::Test {
 void RunEncode(::hybridse::type::TableDef& table, int8_t** output_ptr) {  // NOLINT
     SQLCase::TableInfo table_info;
     ASSERT_TRUE(SQLCase::CreateTableInfoFromYaml(
-        hybridse::sqlcase::FindFesqlDirPath(),
+        hybridse::sqlcase::FindHybridSEDirPath(),
         "cases/resource/codegen_t1_one_row.yaml", &table_info));
     ASSERT_TRUE(
         SQLCase::ExtractTableDef(table_info.schema_, table_info.index_, table));
@@ -187,9 +187,9 @@ void RunEncode(::hybridse::type::TableDef& table, int8_t** output_ptr) {  // NOL
     m->print(::llvm::errs(), NULL);
 
     auto jit =
-        std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
+        std::unique_ptr<vm::HybridSEJITWrapper>(vm::HybridSEJITWrapper::Create());
     jit->Init();
-    vm::FeSQLJITWrapper::InitJITSymbols(jit.get());
+    vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto load_fn_jit = jit->FindFunction("fn");
     void (*decode)(int8_t**) =
@@ -309,9 +309,9 @@ void LoadValue(T* result, bool* is_null,
     m->print(::llvm::errs(), NULL);
 
     auto jit =
-        std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
+        std::unique_ptr<vm::HybridSEJITWrapper>(vm::HybridSEJITWrapper::Create());
     jit->Init();
-    vm::FeSQLJITWrapper::InitJITSymbols(jit.get());
+    vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto load_fn_jit = jit->FindFunction("fn");
 
@@ -440,9 +440,9 @@ void RunColCase(T expected, type::TableDef& table,  // NOLINT
     m->print(::llvm::errs(), NULL);
 
     auto jit =
-        std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
+        std::unique_ptr<vm::HybridSEJITWrapper>(vm::HybridSEJITWrapper::Create());
     jit->Init();
-    vm::FeSQLJITWrapper::InitJITSymbols(jit.get());
+    vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     jit->AddExternalFunction("print_list_i16",
                              reinterpret_cast<void*>(&PrintListInt16));

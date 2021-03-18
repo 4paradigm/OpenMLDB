@@ -412,7 +412,7 @@ Status ExprIRBuilder::BuildStructExpr(const ::hybridse::node::StructExpr* node,
         for (auto each : node->GetFileds()->children) {
             node::FnParaNode* field = dynamic_cast<node::FnParaNode*>(each);
             ::llvm::Type* type = nullptr;
-            CHECK_TRUE(ConvertFeSQLType2LLVMType(field->GetParaType(),
+            CHECK_TRUE(ConvertHybridSEType2LLVMType(field->GetParaType(),
                                                  ctx_->GetModule(), &type),
                        kCodegenError,
                        "Invalid struct with unacceptable field type: " +

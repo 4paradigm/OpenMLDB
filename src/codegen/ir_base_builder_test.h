@@ -199,7 +199,7 @@ class ModuleTestFunction {
         llvm::InitializeNativeTarget();
         llvm::InitializeNativeTargetAsmPrinter();
         jit =
-            std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
+            std::unique_ptr<vm::HybridSEJITWrapper>(vm::HybridSEJITWrapper::Create());
         jit->Init();
         InitBuiltinJITSymbols(jit.get());
         if (library != nullptr) {
@@ -219,7 +219,7 @@ class ModuleTestFunction {
             const_cast<int8_t*>(jit->FindFunction(proxy_fn_name));
     }
 
-    std::unique_ptr<vm::FeSQLJITWrapper> jit = nullptr;
+    std::unique_ptr<vm::HybridSEJITWrapper> jit = nullptr;
     void* fn_ptr = nullptr;
     void* proxy_fn_ptr = nullptr;
 };

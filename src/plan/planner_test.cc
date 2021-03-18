@@ -35,7 +35,7 @@ void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
-            hybridse::sqlcase::FindFesqlDirPath(), yaml_path, cases,
+            hybridse::sqlcase::FindHybridSEDirPath(), yaml_path, cases,
             std::vector<std::string>(
                 {"logical-plan-unsupport", "parser-unsupport"}))) {
         FAIL();
@@ -50,7 +50,7 @@ class PlannerTest : public ::testing::TestWithParam<SQLCase> {
  public:
     PlannerTest() {
         manager_ = new NodeManager();
-        parser_ = new parser::FeSQLParser();
+        parser_ = new parser::HybridSEParser();
     }
 
     ~PlannerTest() {
@@ -59,7 +59,7 @@ class PlannerTest : public ::testing::TestWithParam<SQLCase> {
     }
 
  protected:
-    parser::FeSQLParser *parser_;
+    parser::HybridSEParser *parser_;
     NodeManager *manager_;
 };
 
@@ -1656,7 +1656,7 @@ TEST_F(PlannerTest, CreatePlanLeakTest) {
     while (true) {
         base::Status status;
         NodeManager nm;
-        parser::FeSQLParser parser;
+        parser::HybridSEParser parser;
         node::NodePointVector parser_trees;
         int ret = parser.parse(sql, parser_trees, &nm, status);
         ASSERT_EQ(0, ret);
@@ -1715,7 +1715,7 @@ class PlannerErrorTest : public ::testing::TestWithParam<SQLCase> {
  public:
     PlannerErrorTest() {
         manager_ = new NodeManager();
-        parser_ = new parser::FeSQLParser();
+        parser_ = new parser::HybridSEParser();
     }
 
     ~PlannerErrorTest() {
@@ -1724,7 +1724,7 @@ class PlannerErrorTest : public ::testing::TestWithParam<SQLCase> {
     }
 
  protected:
-    parser::FeSQLParser *parser_;
+    parser::HybridSEParser *parser_;
     NodeManager *manager_;
 };
 INSTANTIATE_TEST_CASE_P(

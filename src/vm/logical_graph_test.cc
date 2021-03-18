@@ -69,7 +69,7 @@ TEST_P(LogicalGraphTest, transform_logical_graph_test) {
     ::hybridse::base::Status base_status;
     {
         ::hybridse::plan::SimplePlanner planner(&manager);
-        ::hybridse::parser::FeSQLParser parser;
+        ::hybridse::parser::HybridSEParser parser;
         ::hybridse::node::NodePointVector parser_trees;
         parser.parse(sql, parser_trees, &manager, base_status);
         ASSERT_EQ(0, base_status.code);

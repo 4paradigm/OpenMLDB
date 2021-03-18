@@ -50,7 +50,7 @@ bool PlanAPI::CreateSyntaxTreeFromScript(const std::string &sql,
                                              NodePointVector &parser_trees,
                                              NodeManager *node_manager,
                                              Status &status) {
-    hybridse::parser::FeSQLParser parser;
+    hybridse::parser::HybridSEParser parser;
     parser.parse(sql, parser_trees, node_manager, status);
     if (common::kOk != status.code) {
         LOG(WARNING) << "Fail to create syntax tree: " << status;

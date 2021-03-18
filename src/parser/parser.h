@@ -39,9 +39,9 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 namespace hybridse {
 namespace parser {
 
-class FeSQLParser {
+class HybridSEParser {
  public:
-    FeSQLParser() {}
+    HybridSEParser() {}
 
     int parse(const std::string &sqlstr,
               node::NodePointVector &trees,  // NOLINT (runtime/references)

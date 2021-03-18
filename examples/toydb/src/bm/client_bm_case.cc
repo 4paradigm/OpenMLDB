@@ -58,9 +58,9 @@ static bool FeSqlServerInit(brpc::Server &tablet_server,  // NOLINT
                             ::hybridse::tablet::TabletServerImpl *tablet,
                             ::hybridse::dbms::DBMSServerImpl *dbms) {
     FLAGS_enable_keep_alive = false;
-    DLOG(INFO) << ("Start FeSQL tablet server...");
+    DLOG(INFO) << ("Start HybridSE tablet server...");
     if (!tablet->Init()) {
-        LOG(WARNING) << "Fail to start FeSQL server";
+        LOG(WARNING) << "Fail to start HybridSE server";
     }
 
     brpc::ServerOptions options;
@@ -71,7 +71,7 @@ static bool FeSqlServerInit(brpc::Server &tablet_server,  // NOLINT
     }
     tablet_server.Start(tablet_port, &options);
 
-    DLOG(INFO) << ("Start FeSQL dbms server...");
+    DLOG(INFO) << ("Start HybridSE dbms server...");
     if (dbms_server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         LOG(WARNING) << "Fail to add dbms service";
         return false;

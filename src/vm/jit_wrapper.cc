@@ -43,7 +43,7 @@
 namespace hybridse {
 namespace vm {
 
-bool FeSQLJITWrapper::AddModuleFromBuffer(const base::RawBuffer& buf) {
+bool HybridSEJITWrapper::AddModuleFromBuffer(const base::RawBuffer& buf) {
     std::string buf_str(buf.addr, buf.size);
     ::llvm::SMDiagnostic diagnostic;
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
@@ -59,39 +59,39 @@ bool FeSQLJITWrapper::AddModuleFromBuffer(const base::RawBuffer& buf) {
     return this->AddModule(std::move(llvm_module), std::move(llvm_ctx));
 }
 
-bool FeSQLJITWrapper::InitJITSymbols(FeSQLJITWrapper* jit) {
+bool HybridSEJITWrapper::InitJITSymbols(HybridSEJITWrapper* jit) {
     InitBuiltinJITSymbols(jit);
     udf::DefaultUDFLibrary::get()->InitJITSymbols(jit);
     return true;
 }
 
-FeSQLJITWrapper* FeSQLJITWrapper::Create() { return Create(JITOptions()); }
+HybridSEJITWrapper* HybridSEJITWrapper::Create() { return Create(JITOptions()); }
 
-FeSQLJITWrapper* FeSQLJITWrapper::Create(const JITOptions& jit_options) {
+HybridSEJITWrapper* HybridSEJITWrapper::Create(const JITOptions& jit_options) {
     if (jit_options.is_enable_mcjit()) {
 #ifdef LLVM_EXT_ENABLE
         LOG(INFO) << "Create MCJIT engine";
-        return new FeSQLMCJITWrapper(jit_options);
+        return new HybridSEMCJITWrapper(jit_options);
 #else
         LOG(WARNING) << "MCJIT support is not enabled";
-        return new FeSQLLLJITWrapper();
+        return new HybridSELLJITWrapper();
 #endif
     } else {
         if (jit_options.is_enable_vtune() || jit_options.is_enable_perf() ||
             jit_options.is_enable_gdb()) {
             LOG(WARNING) << "LLJIT do not support jit events";
         }
-        return new FeSQLLLJITWrapper();
+        return new HybridSELLJITWrapper();
     }
 }
 
-void FeSQLJITWrapper::DeleteJIT(FeSQLJITWrapper* jit) {
+void HybridSEJITWrapper::DeleteJIT(HybridSEJITWrapper* jit) {
     if (jit != nullptr) {
         delete jit;
     }
 }
 
-void InitBuiltinJITSymbols(FeSQLJITWrapper* jit) {
+void InitBuiltinJITSymbols(HybridSEJITWrapper* jit) {
     jit->AddExternalFunction("malloc", (reinterpret_cast<void*>(&malloc)));
     jit->AddExternalFunction("memset", (reinterpret_cast<void*>(&memset)));
     jit->AddExternalFunction("memcpy", (reinterpret_cast<void*>(&memcpy)));

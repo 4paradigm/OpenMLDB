@@ -91,7 +91,7 @@ void AddFunc(const std::string& fn, ::hybridse::node::NodeManager* manager,
         return;
     }
     ::hybridse::node::NodePointVector trees;
-    ::hybridse::parser::FeSQLParser parser;
+    ::hybridse::parser::HybridSEParser parser;
     ::hybridse::base::Status status;
     int ret = parser.parse(fn, trees, manager, status);
     ASSERT_EQ(0, ret);
@@ -115,7 +115,7 @@ void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
 
     // Parse SQL
     ::hybridse::node::NodePointVector list;
-    ::hybridse::parser::FeSQLParser parser;
+    ::hybridse::parser::HybridSEParser parser;
     ::hybridse::base::Status status;
     auto lib = udf::DefaultUDFLibrary::get();
     AddFunc(udf_str, manager, m.get());
@@ -161,9 +161,9 @@ void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
 
     m->print(::llvm::errs(), NULL);
     auto jit =
-        std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
+        std::unique_ptr<vm::HybridSEJITWrapper>(vm::HybridSEJITWrapper::Create());
     jit->Init();
-    vm::FeSQLJITWrapper::InitJITSymbols(jit.get());
+    vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
 
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto address = jit->FindFunction("test_at_fn");

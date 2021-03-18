@@ -1479,7 +1479,7 @@ hybridse::sqlcase::SQLCase SQLCase::LoadSQLCaseWithID(const std::string& dir_pat
     }
     return SQLCase();
 }
-std::string FindFesqlDirPath() {
+std::string FindHybridSEDirPath() {
     boost::filesystem::path current_path(boost::filesystem::current_path());
     boost::filesystem::path hybridse_path;
     bool find_hybridse_dir = false;
@@ -1552,8 +1552,8 @@ bool SQLCase::BuildCreateSpSQLFromSchema(const type::TableDef& table,
     *create_sql = sql;
     return true;
 }
-std::set<std::string> SQLCase::FESQL_LEVEL() {
-    const char* env_name = "FESQL_LEVEL";
+std::set<std::string> SQLCase::HYBRIDSE_LEVEL() {
+    const char* env_name = "HYBRIDSE_LEVEL";
     char* value = getenv(env_name);
     if (value != nullptr) {
         try {

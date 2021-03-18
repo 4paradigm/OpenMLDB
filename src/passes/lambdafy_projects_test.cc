@@ -31,7 +31,7 @@ TEST_F(LambdafyProjectsTest, Test) {
     vm::SchemasContext schemas_ctx;
     schemas_ctx.BuildTrivial({&schema});
 
-    parser::FeSQLParser parser;
+    parser::HybridSEParser parser;
     Status status;
     node::NodeManager nm;
     plan::SimplePlanner planner(&nm);

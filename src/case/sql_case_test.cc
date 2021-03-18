@@ -692,7 +692,7 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
 }
 
 TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
-    std::string hybridse_dir = hybridse::sqlcase::FindFesqlDirPath();
+    std::string hybridse_dir = hybridse::sqlcase::FindHybridSEDirPath();
     std::string case_path = "/cases/yaml/demo.yaml";
     std::vector<SQLCase> cases;
 
@@ -870,7 +870,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
 }
 
 TEST_F(SQLCaseTest, ExtractRtidbYamlSQLCase) {
-    std::string hybridse_dir = hybridse::sqlcase::FindFesqlDirPath();
+    std::string hybridse_dir = hybridse::sqlcase::FindHybridSEDirPath();
     std::string case_path = "/cases/yaml/rtidb_demo.yaml";
     std::vector<SQLCase> cases;
 
@@ -994,7 +994,7 @@ TEST_F(SQLCaseTest, ExtractRtidbYamlSQLCase) {
 }
 
 TEST_F(SQLCaseTest, ExtractRtidbYamlWithDebugSQLCase) {
-    std::string hybridse_dir = hybridse::sqlcase::FindFesqlDirPath();
+    std::string hybridse_dir = hybridse::sqlcase::FindHybridSEDirPath();
     std::string case_path = "/cases/yaml/rtidb_demo_debug.yaml";
     std::vector<SQLCase> cases;
 

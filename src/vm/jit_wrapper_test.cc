@@ -68,9 +68,9 @@ void simple_test(const EngineOptions &options) {
     auto &sql_context = compile_info->get_sql_context();
     std::string ir_str = sql_context.ir;
     ASSERT_FALSE(ir_str.empty());
-    FeSQLJITWrapper *jit = FeSQLJITWrapper::Create();
+    HybridSEJITWrapper *jit = HybridSEJITWrapper::Create();
     ASSERT_TRUE(jit->Init());
-    FeSQLJITWrapper::InitJITSymbols(jit);
+    HybridSEJITWrapper::InitJITSymbols(jit);
 
     base::RawBuffer ir_buf(const_cast<char *>(ir_str.data()), ir_str.size());
     ASSERT_TRUE(jit->AddModuleFromBuffer(ir_buf));
@@ -136,9 +136,9 @@ TEST_F(JITWrapperTest, test_window) {
     // this should be removed by better symbol init utility
 
     ASSERT_FALSE(ir_str.empty());
-    FeSQLJITWrapper *jit = FeSQLJITWrapper::Create();
+    HybridSEJITWrapper *jit = HybridSEJITWrapper::Create();
     ASSERT_TRUE(jit->Init());
-    FeSQLJITWrapper::InitJITSymbols(jit);
+    HybridSEJITWrapper::InitJITSymbols(jit);
 
     base::RawBuffer ir_buf(const_cast<char *>(ir_str.data()), ir_str.size());
     ASSERT_TRUE(jit->AddModuleFromBuffer(ir_buf));

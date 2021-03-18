@@ -57,7 +57,7 @@ struct SQLContext {
     // TODO(wangtaize) add a light jit engine
     // eg using bthead to compile ir
     hybridse::vm::JITOptions jit_options;
-    std::shared_ptr<hybridse::vm::FeSQLJITWrapper> jit = nullptr;
+    std::shared_ptr<hybridse::vm::HybridSEJITWrapper> jit = nullptr;
     Schema schema;
     Schema request_schema;
     std::string request_name;
@@ -82,7 +82,7 @@ bool RegisterFeLibs(udf::UDFLibrary* lib, base::Status& status,  // NOLINT
 bool GetLibsFiles(const std::string& dir_path,
                   std::vector<std::string>& filenames,  // NOLINT
                   base::Status& status);                // NOLINT
-const std::string FindFesqlDirPath();
+const std::string FindHybridSEDirPath();
 
 class SQLCompileInfo : public CompileInfo {
  public:
@@ -160,7 +160,7 @@ class SQLCompiler {
     void KeepIR(SQLContext& ctx, llvm::Module* m);  // NOLINT
 
     bool ResolvePlanFnAddress(PhysicalOpNode* node,
-                              std::shared_ptr<FeSQLJITWrapper>& jit,  // NOLINT
+                              std::shared_ptr<HybridSEJITWrapper>& jit,  // NOLINT
                               Status& status);                        // NOLINT
 
     Status BuildPhysicalPlan(SQLContext* ctx,

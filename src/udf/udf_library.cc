@@ -197,7 +197,7 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
     DLOG(INFO) << "Script file : " << script << "\n" << script;
 
     ::hybridse::node::NodePointVector parser_trees;
-    ::hybridse::parser::FeSQLParser parser;
+    ::hybridse::parser::HybridSEParser parser;
     ::hybridse::plan::SimplePlanner planer(node_manager());
     ::hybridse::node::PlanNodeList plan_trees;
 
@@ -311,7 +311,7 @@ void UDFLibrary::AddExternalFunction(const std::string& name, void* addr) {
     external_symbols_.insert(std::make_pair(name, addr));
 }
 
-void UDFLibrary::InitJITSymbols(vm::FeSQLJITWrapper* jit_ptr) {
+void UDFLibrary::InitJITSymbols(vm::HybridSEJITWrapper* jit_ptr) {
     for (auto& pair : external_symbols_) {
         jit_ptr->AddExternalFunction(pair.first, pair.second);
     }

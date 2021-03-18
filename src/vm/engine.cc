@@ -192,7 +192,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
         LOG(WARNING) << status;
         status = base::Status::OK();
     }
-    DLOG(INFO) << "Compile FESQL ...";
+    DLOG(INFO) << "Compile HYBRIDSE ...";
     status = base::Status::OK();
     std::shared_ptr<SQLCompileInfo> info = std::make_shared<SQLCompileInfo>();
     auto& sql_context =

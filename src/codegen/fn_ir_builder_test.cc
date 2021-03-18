@@ -52,13 +52,13 @@ class FnIRBuilderTest : public ::testing::Test {
  public:
     FnIRBuilderTest() {
         manager_ = new node::NodeManager();
-        parser_ = new parser::FeSQLParser();
+        parser_ = new parser::HybridSEParser();
     }
     ~FnIRBuilderTest() { delete manager_; }
 
  protected:
     node::NodeManager *manager_;
-    parser::FeSQLParser *parser_;
+    parser::HybridSEParser *parser_;
 };
 
 template <class R, class V1, class V2>
@@ -66,7 +66,7 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     node::NodePointVector trees;
     node::PlanNodeList plan_trees;
     base::Status status;
-    parser::FeSQLParser parser;
+    parser::HybridSEParser parser;
     node::NodeManager manager;
     int ret = parser.parse(test, trees, &manager, status);
     ASSERT_EQ(0, ret);
@@ -92,9 +92,9 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     LOG(INFO) << "after opt with ins cnt " << m->getInstructionCount();
     m->print(::llvm::errs(), NULL, true, true);
     auto jit =
-        std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
+        std::unique_ptr<vm::HybridSEJITWrapper>(vm::HybridSEJITWrapper::Create());
     jit->Init();
-    vm::FeSQLJITWrapper::InitJITSymbols(jit.get());
+    vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto test_fn =
         (R(*)(V1, V2))jit->FindFunction(fn_def->header_->GeIRFunctionName());

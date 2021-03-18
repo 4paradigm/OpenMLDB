@@ -31,7 +31,7 @@
 namespace hybridse {
 
 namespace vm {
-class FeSQLJITWrapper;
+class HybridSEJITWrapper;
 }
 
 namespace udf {
@@ -134,7 +134,7 @@ class UDFLibrary {
     }
 
     void AddExternalFunction(const std::string& name, void* addr);
-    void InitJITSymbols(vm::FeSQLJITWrapper* jit_ptr);
+    void InitJITSymbols(vm::HybridSEJITWrapper* jit_ptr);
 
     node::NodeManager* node_manager() { return &nm_; }
 
