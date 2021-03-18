@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "vm/test_base.h"
+#include "plan/plan_api.h"
 namespace fesql {
 namespace vm {
 
@@ -353,12 +354,8 @@ void ExtractExprListFromSimpleSQL(::fesql::node::NodeManager* nm,
     std::cout << sql << std::endl;
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
-    ::fesql::plan::SimplePlanner planner(nm);
-    ::fesql::parser::FeSQLParser parser;
-    ::fesql::node::NodePointVector parser_trees;
-    parser.parse(sql, parser_trees, nm, base_status);
-    ASSERT_EQ(0, base_status.code);
-    if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) == 0) {
+    if (::fesql::plan::PlanAPI::CreatePlanTreeFromScript(
+            sql, plan_trees, nm, base_status) == 0) {
         std::cout << base_status.str();
         std::cout << *(plan_trees[0]) << std::endl;
     } else {
@@ -384,12 +381,9 @@ void ExtractExprFromSimpleSQL(::fesql::node::NodeManager* nm,
     std::cout << sql << std::endl;
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
-    ::fesql::plan::SimplePlanner planner(nm);
-    ::fesql::parser::FeSQLParser parser;
-    ::fesql::node::NodePointVector parser_trees;
-    parser.parse(sql, parser_trees, nm, base_status);
     ASSERT_EQ(0, base_status.code);
-    if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) == 0) {
+    if (::fesql::plan::PlanAPI::CreatePlanTreeFromScript(
+            sql, plan_trees, nm, base_status) == 0) {
         std::cout << base_status.str();
         std::cout << *(plan_trees[0]) << std::endl;
     } else {

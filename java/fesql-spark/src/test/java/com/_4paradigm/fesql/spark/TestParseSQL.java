@@ -65,9 +65,9 @@ public class TestParseSQL {
 
         assertTrue(sess.GetCompileInfo().GetCompileType().swigValue() != ComileType.kCompileSQL.swigValue());
         SQLCompileInfo compileInfo = SQLCompileInfo.CastFrom(sess.GetCompileInfo());
-        long size = compileInfo.get_ir_size();
+        long size = compileInfo.GetIRSize();
         ByteBuffer buffer = ByteBuffer.allocateDirect(Long.valueOf(size).intValue());
-        compileInfo.get_ir_buffer(buffer);
+        compileInfo.GetIRBuffer(buffer);
         System.err.println("Dumped module string: len=" + size);
 
         PhysicalOpNode root = compileInfo.GetPhysicalPlan();

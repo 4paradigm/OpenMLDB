@@ -36,17 +36,6 @@ namespace vm {
 
 using fesql::base::Status;
 
-struct BatchRequestInfo {
-    // common column indices in batch request mode
-    std::set<size_t> common_column_indices;
-
-    // common physical node ids during batch request
-    std::set<size_t> common_node_set;
-
-    // common output column indices
-    std::set<size_t> output_common_column_indices;
-};
-
 struct SQLContext {
     // mode: batch|request|batch request
     ::fesql::vm::EngineMode engine_mode;
@@ -100,11 +89,11 @@ class SQLCompileInfo : public CompileInfo {
     ~SQLCompileInfo() {}
     fesql::vm::SQLContext& get_sql_context() { return this->sql_ctx; }
 
-    bool get_ir_buffer(const base::RawBuffer& buf) {
+    bool GetIRBuffer(const base::RawBuffer& buf) {
         auto& str = this->sql_ctx.ir;
         return buf.CopyFrom(str.data(), str.size());
     }
-    size_t get_ir_size() { return this->sql_ctx.ir.size(); }
+    size_t GetIRSize() { return this->sql_ctx.ir.size(); }
 
     const fesql::vm::Schema& GetSchema() const { return sql_ctx.schema; }
 
@@ -118,13 +107,17 @@ class SQLCompileInfo : public CompileInfo {
         return sql_ctx.encoded_schema;
     }
 
+    const std::string& GetSQL() const { return sql_ctx.sql; }
+
     virtual const Schema& GetRequestSchema() const {
         return sql_ctx.request_schema;
     }
     virtual const std::string& GetRequestName() const {
         return sql_ctx.request_name;
     }
-
+    virtual const fesql::vm::BatchRequestInfo& GetBatchRequestInfo() const {
+        return sql_ctx.batch_request_info;
+    }
     fesql::vm::PhysicalOpNode* GetPhysicalPlan() {
         return sql_ctx.physical_plan;
     }
@@ -141,9 +134,10 @@ class SQLCompileInfo : public CompileInfo {
     virtual void DumpClusterJob(std::ostream& output, const std::string& tab) {
         sql_ctx.cluster_job.Print(output, tab);
     }
-    static SQLCompileInfo *CastFrom(CompileInfo *node) {
+    static SQLCompileInfo* CastFrom(CompileInfo* node) {
         return dynamic_cast<SQLCompileInfo*>(node);
     }
+
  private:
     fesql::vm::SQLContext sql_ctx;
 };

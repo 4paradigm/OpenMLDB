@@ -40,6 +40,11 @@ enum TTLType {
     kTTLNone = 5;
 }
 
+enum RoleType {
+    kRoleLeader = 1;
+    kRoleFollower = 2;
+}
+
 message ColumnDef {
     optional string name = 1;
     optional Type type = 2;
@@ -92,4 +97,14 @@ message Database {
     optional uint64 ctime = 2;
     optional uint64 utime = 3;
     repeated TableDef tables = 4;
+}
+
+message PartitionMeta {
+    required RoleType role_type = 1;
+    required string endpoint = 2;
+}
+message DistributeTableInfo {
+    required TableDef table = 1;
+    optional uint32 replica_num = 2 [default = 0];
+    repeated PartitionMeta table_partitions = 3;
 }

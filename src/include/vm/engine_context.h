@@ -22,19 +22,32 @@ namespace vm {
 enum EngineMode { kBatchMode, kRequestMode, kBatchRequestMode };
 std::string EngineModeName(EngineMode mode);
 
+struct BatchRequestInfo {
+    // common column indices in batch request mode
+    std::set<size_t> common_column_indices;
+
+    // common physical node ids during batch request
+    std::set<size_t> common_node_set;
+
+    // common output column indices
+    std::set<size_t> output_common_column_indices;
+};
+
 enum ComileType {
     kCompileSQL,
 };
 class CompileInfo {
  public:
-    virtual bool get_ir_buffer(const base::RawBuffer& buf) = 0;
-    virtual size_t get_ir_size() = 0;
+    virtual bool GetIRBuffer(const base::RawBuffer& buf) = 0;
+    virtual size_t GetIRSize() = 0;
     virtual const EngineMode GetEngineMode() const = 0;
+    virtual const std::string& GetSQL() const = 0;
     virtual const Schema& GetSchema() const = 0;
     virtual const ComileType GetCompileType() const = 0;
     virtual const std::string& GetEncodedSchema() const = 0;
     virtual const Schema& GetRequestSchema() const = 0;
     virtual const std::string& GetRequestName() const = 0;
+    virtual const fesql::vm::BatchRequestInfo& GetBatchRequestInfo() const = 0;
     virtual void DumpPhysicalPlan(std::ostream& output,
                                   const std::string& tab) = 0;
     virtual void DumpClusterJob(std::ostream& output,

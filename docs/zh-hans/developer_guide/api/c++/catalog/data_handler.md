@@ -2,26 +2,21 @@
 
 `include <vm/catalog.h>`
 
-
-
 ## Summary
 
-`DataHandler`定义了HybridSE的标准数据处理，定义了一系列数据集的访问接口
+`DataHandler`继承自` ListV<Row>`定义了HybridSE的标准行编码数据处理接口，定义了一系列数据集的访问接口
 
 | Constructors and Destructors |
 | :--------------------------- |
-| [Catalog](#Catalog)          |
+| [DataHandler](#DataHandler)  |
 
-| Public functions                      | Return type                                |
-| :------------------------------------ | ------------------------------------------ |
-| [IndexSupport](#IndexSupport)         | `Bool`                                     |
-| [GetDatabase](#GetDatabase)           | `std::shared_ptr<type::Database`>          |
-| [GetTable](#GetTable)                 | `std::shared_ptr<TableHandler>`            |
-| [GetProcedureInfo](#GetProcedureInfo) | std::shared_ptr<fesql::sdk::ProcedureInfo> |
-
-```
-
-```
+| Public functions                          | Return type          |
+| :---------------------------------------- | -------------------- |
+| [GetSchema](#GetSchema)                   | `const Schema*`      |
+| [GetName](#GetName)                       | `const std::string&` |
+| [GetDatabase](#GetDatabase)               | `const std::string&` |
+| [GetHanlderType](#GetHanlderType)         | `const HandlerType`  |
+| [GetHandlerTypeName](#GetHandlerTypeName) | `const std::string`  |
 
 ```
 class DataHandler : public ListV<Row> {
@@ -60,7 +55,9 @@ virtual HandlerType GetHanlderType() = 0;
 
 返回数据集的类型
 
-
+```c++
+enum HandlerType { kRowHandler, kTableHandler, kPartitionHandler };
+```
 
 #### GetHandlerTypeName
 
@@ -70,22 +67,3 @@ virtual const std::string GetHandlerTypeName() = 0;
 ```
 
 返回数据集的类型名字
-
-#### GetTable
-
-```c++
-// get table handler
-virtual std::shared_ptr<TableHandler> GetTable(
-    const std::string& db, const std::string& table_name) = 0;
-```
-
-返回Catalog中`db.table_name`所对应的表
-
-#### GetProcedureInfo
-
-```c++
-virtual std::shared_ptr<fesql::sdk::ProcedureInfo> GetProcedureInfo(
-    const std::string& db, const std::string& sp_name) = 0;
-```
-
-根据给定数据库名`db`以及存储过程名`sp_name`，搜索并返回相应的存储过程信息。

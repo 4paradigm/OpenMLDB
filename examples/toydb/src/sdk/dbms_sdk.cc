@@ -267,7 +267,7 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
             add_table_request.set_db_name(catalog);
             ::fesql::type::TableDef *table = add_table_request.mutable_table();
             table->set_catalog(catalog);
-            plan::TransformTableDef(create->GetTableName(),
+            fesql::plan::Planner::TransformTableDef(create->GetTableName(),
                                     create->GetColumnDescList(), table,
                                     sql_status);
             if (0 != sql_status.code) {

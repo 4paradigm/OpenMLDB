@@ -26,7 +26,6 @@
 #include "node/node_manager.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
-#include "parser/parser.h"
 #include "proto/fe_type.pb.h"
 namespace fesql {
 namespace plan {
@@ -53,17 +52,20 @@ class Planner {
         const NodePointVector &parser_trees,
         PlanNodeList &plan_trees,  // NOLINT (runtime/references)
         Status &status) = 0;       // NOLINT (runtime/references)
+    static bool TransformTableDef(const std::string &table_name,
+                                  const NodePointVector &column_desc_list,
+                                  type::TableDef *table,
+                                  Status &status);  // NOLINT (runtime/references)
+ protected:
+    const bool is_batch_mode_;
+    const bool is_cluster_optimized_;
+    const bool enable_window_maxsize_merged_;
+    const bool enable_batch_window_parallelization_;
     bool MergeWindows(const std::map<const node::WindowDefNode *,
                                      node::ProjectListNode *> &map,
                       std::vector<const node::WindowDefNode *> *windows);
     bool ExpandCurrentHistoryWindow(
         std::vector<const node::WindowDefNode *> *windows);
-    const bool is_batch_mode_;
-    const bool is_cluster_optimized_;
-    const bool enable_window_maxsize_merged_;
-    const bool enable_batch_window_parallelization_;
-
- protected:
     bool IsTable(node::PlanNode *node);
     bool ValidatePrimaryPath(
         node::PlanNode *node, node::PlanNode **output,
@@ -107,6 +109,7 @@ class Planner {
             &map,
         std::map<const node::WindowDefNode *, node::ProjectListNode *> *output,
         Status &status);  // NOLINT (runtime/references)
+
 };
 
 class SimplePlanner : public Planner {
@@ -123,12 +126,7 @@ class SimplePlanner : public Planner {
                        Status &status);           // NOLINT (runtime/references)
 };
 
-// TODO(chenjing): move to executor module
-bool TransformTableDef(const std::string &table_name,
-                       const NodePointVector &column_desc_list,
-                       type::TableDef *table,
-                       Status &status);  // NOLINT (runtime/references)
-std::string GenerateName(const std::string prefix, int id);
+
 
 }  // namespace plan
 }  // namespace fesql

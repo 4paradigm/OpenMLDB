@@ -23,7 +23,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "base/graph.h"
 #include "node/plan_node.h"
 #include "passes/expression/expr_pass.h"
 #include "vm/catalog.h"
