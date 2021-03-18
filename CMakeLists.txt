@@ -194,4 +194,4 @@ install(TARGETS fesql_core fesql_sdk
 
 FILE(GLOB header_files "${CMAKE_CURRENT_SOURCE_DIR}/src/include/*")
 INSTALL(DIRECTORY ${header_files} DESTINATION include)
-INSTALL(DIRECTORY "${CMAKE_BINARY_DIR}/src/proto" DESTINATION include/proto/ FILES_MATCHING PATTERN "*.h")
+INSTALL(DIRECTORY "${CMAKE_BINARY_DIR}/src/proto" DESTINATION include/ FILES_MATCHING PATTERN "*.h")
