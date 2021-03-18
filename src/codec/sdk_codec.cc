@@ -23,10 +23,10 @@
 #include "base/hash.h"
 #include "codec/row_codec.h"
 
-namespace rtidb {
+namespace fedb {
 namespace codec {
 
-SDKCodec::SDKCodec(const ::rtidb::nameserver::TableInfo& table_info)
+SDKCodec::SDKCodec(const ::fedb::nameserver::TableInfo& table_info)
     : format_version_(table_info.format_version()),
       base_schema_size_(0),
       modify_times_(0),
@@ -47,8 +47,8 @@ SDKCodec::SDKCodec(const ::rtidb::nameserver::TableInfo& table_info)
                 }
             }
             schema_idx_map_.emplace(cur_column_desc.name(), idx);
-            ::rtidb::codec::ColumnDesc column_desc;
-            ::rtidb::codec::ColType type = SchemaCodec::ConvertType(cur_column_desc.type());
+            ::fedb::codec::ColumnDesc column_desc;
+            ::fedb::codec::ColType type = SchemaCodec::ConvertType(cur_column_desc.type());
             column_desc.type = type;
             column_desc.name = cur_column_desc.name();
             column_desc.add_ts_idx = cur_column_desc.add_ts_idx();
@@ -75,7 +75,7 @@ SDKCodec::SDKCodec(const ::rtidb::nameserver::TableInfo& table_info)
     }
 }
 
-SDKCodec::SDKCodec(const ::rtidb::api::TableMeta& table_info)
+SDKCodec::SDKCodec(const ::fedb::api::TableMeta& table_info)
     : format_version_(table_info.format_version()),
       base_schema_size_(0),
       modify_times_(0),
@@ -83,7 +83,7 @@ SDKCodec::SDKCodec(const ::rtidb::api::TableMeta& table_info)
     if (table_info.column_desc_size() > 0) {
         ParseColumnDesc(table_info.column_desc());
     } else if (!table_info.schema().empty()) {
-        ::rtidb::codec::SchemaCodec scodec;
+        ::fedb::codec::SchemaCodec scodec;
         scodec.Decode(table_info.schema(), old_schema_);
         for (uint32_t idx = 0; idx < old_schema_.size(); idx++) {
             schema_idx_map_.emplace(old_schema_[idx].name, idx);
@@ -119,8 +119,8 @@ void SDKCodec::ParseColumnDesc(const Schema& column_desc) {
             ts_idx_.push_back(idx);
         }
         if (format_version_ == 0) {
-            ::rtidb::codec::ColumnDesc column_desc;
-            ::rtidb::codec::ColType type = SchemaCodec::ConvertType(cur_column_desc.type());
+            ::fedb::codec::ColumnDesc column_desc;
+            ::fedb::codec::ColType type = SchemaCodec::ConvertType(cur_column_desc.type());
             column_desc.type = type;
             column_desc.name = cur_column_desc.name();
             column_desc.add_ts_idx = cur_column_desc.add_ts_idx();
@@ -139,7 +139,7 @@ void SDKCodec::ParseAddedColumnDesc(const Schema& column_desc) {
     if (format_version_ == 1) {
         uint32_t idx = schema_.size();
         for (const auto& col : column_desc) {
-            rtidb::common::ColumnDesc* new_col = schema_.Add();
+            fedb::common::ColumnDesc* new_col = schema_.Add();
             new_col->CopyFrom(col);
             schema_idx_map_.emplace(col.name(), idx);
             idx++;
@@ -150,8 +150,8 @@ void SDKCodec::ParseAddedColumnDesc(const Schema& column_desc) {
     for (const auto& cur_column_desc : column_desc) {
         schema_idx_map_.emplace(cur_column_desc.name(), idx);
         idx++;
-        ::rtidb::codec::ColumnDesc column_desc;
-        ::rtidb::codec::ColType type = SchemaCodec::ConvertType(cur_column_desc.type());
+        ::fedb::codec::ColumnDesc column_desc;
+        ::fedb::codec::ColType type = SchemaCodec::ConvertType(cur_column_desc.type());
         column_desc.type = type;
         column_desc.name = cur_column_desc.name();
         column_desc.add_ts_idx = cur_column_desc.add_ts_idx();
@@ -176,7 +176,7 @@ void SDKCodec::ParseSchemaVer(const VerSchema& ver_schema, const Schema& add_sch
             continue;
         }
         for (int i = 0; i < remain_size; i++) {
-            rtidb::common::ColumnDesc* col = base_schema->Add();
+            fedb::common::ColumnDesc* col = base_schema->Add();
             col->CopyFrom(add_schema.Get(i));
         }
         version_schema_.insert(std::make_pair(ver, base_schema));
@@ -214,7 +214,7 @@ int SDKCodec::EncodeDimension(
         }
         uint32_t pid = 0;
         if (pid_num > 0) {
-            pid = (uint32_t)(::rtidb::base::hash64(key) % pid_num);
+            pid = (uint32_t)(::fedb::base::hash64(key) % pid_num);
         }
         auto pair = dimensions->emplace(pid, Dimension());
         pair.first->second.emplace_back(std::move(key), dimension_idx);
@@ -255,7 +255,7 @@ int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data,
         }
         uint32_t pid = 0;
         if (pid_num > 0) {
-            pid = (uint32_t)(::rtidb::base::hash64(key) % pid_num);
+            pid = (uint32_t)(::fedb::base::hash64(key) % pid_num);
         }
         auto pair = dimensions->emplace(pid, Dimension());
         pair.first->second.emplace_back(std::move(key), dimension_idx);
@@ -269,7 +269,7 @@ int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data,
         if (idx >= raw_data.size()) {
             return -1;
         }
-        if (rtidb::codec::NONETOKEN == raw_data[idx]) {
+        if (fedb::codec::NONETOKEN == raw_data[idx]) {
             ts_dimensions->push_back(default_ts);
             continue;
         }
@@ -312,7 +312,7 @@ int SDKCodec::EncodeRow(const std::vector<std::string>& raw_data,
 int SDKCodec::DecodeRow(const std::string& row, std::vector<std::string>* value) {
     if (format_version_ == 1) {
         const int8_t* data = reinterpret_cast<const int8_t*>(row.data());
-        int32_t ver = rtidb::codec::RowView::GetSchemaVersion(data);
+        int32_t ver = fedb::codec::RowView::GetSchemaVersion(data);
         auto it = version_schema_.find(ver);
         if (it == version_schema_.end()) {
             return -1;
@@ -322,7 +322,7 @@ int SDKCodec::DecodeRow(const std::string& row, std::vector<std::string>* value)
             return -1;
         }
     } else {
-        rtidb::base::Slice data(row);
+        fedb::base::Slice data(row);
         if (!RowCodec::DecodeRow(base_schema_size_, base_schema_size_ + modify_times_, data, value)) {
             return -1;
         }
@@ -361,4 +361,4 @@ int SDKCodec::CombinePartitionKey(const std::vector<std::string>& raw_data,
 }
 
 }  // namespace codec
-}  // namespace rtidb
+}  // namespace fedb

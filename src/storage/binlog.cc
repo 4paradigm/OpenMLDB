@@ -33,7 +33,7 @@
 DECLARE_uint64(gc_on_table_recover_count);
 DECLARE_int32(binlog_name_length);
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 Binlog::Binlog(LogParts* log_part, const std::string& binlog_path)
@@ -47,9 +47,9 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
         INFO,
         "start recover table tid %u, pid %u from binlog with start offset %lu",
         tid, pid, offset);
-    ::rtidb::log::LogReader log_reader(log_part_, log_path_, false);
+    ::fedb::log::LogReader log_reader(log_part_, log_path_, false);
     log_reader.SetOffset(offset);
-    ::rtidb::api::LogEntry entry;
+    ::fedb::api::LogEntry entry;
     uint64_t cur_offset = offset;
     std::string buffer;
     uint64_t succ_cnt = 0;
@@ -59,8 +59,8 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
     bool reach_end_log = true;
     while (true) {
         buffer.clear();
-        ::rtidb::base::Slice record;
-        ::rtidb::base::Status status =
+        ::fedb::base::Slice record;
+        ::fedb::base::Status status =
             log_reader.ReadNextRecord(&record, &buffer);
         if (status.IsWaitRecord()) {
             int end_log_index = log_reader.GetEndLogIndex();
@@ -97,7 +97,7 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
         if (!ok) {
             PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s",
                   tid, pid,
-                  ::rtidb::base::DebugString(record.ToString()).c_str());
+                  ::fedb::base::DebugString(record.ToString()).c_str());
             failed_cnt++;
             continue;
         }
@@ -116,7 +116,7 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
         }
 
         if (entry.has_method_type() &&
-            entry.method_type() == ::rtidb::api::MethodType::kDelete) {
+            entry.method_type() == ::fedb::api::MethodType::kDelete) {
             if (entry.dimensions_size() == 0) {
                 PDLOG(WARNING, "no dimesion. tid %u pid %u offset %lu", tid,
                       pid, entry.log_index());
@@ -151,7 +151,7 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
               pid);
         std::string full_path =
             log_path_ + "/" +
-            ::rtidb::base::FormatToString(log_index, FLAGS_binlog_name_length) +
+            ::fedb::base::FormatToString(log_index, FLAGS_binlog_name_length) +
             ".log";
         FILE* fd = fopen(full_path.c_str(), "rb+");
         if (fd == NULL) {
@@ -163,7 +163,7 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
                   pos);
             return false;
         }
-        ::rtidb::log::WriteHandle wh("off", full_path, fd, pos);
+        ::fedb::log::WriteHandle wh("off", full_path, fd, pos);
         wh.EndLog();
         PDLOG(INFO, "append endlog record ok. file[%s]", full_path.c_str());
     }
@@ -171,4 +171,4 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
 }
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb

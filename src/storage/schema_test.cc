@@ -24,13 +24,13 @@
 #include "base/slice.h"
 #include "gtest/gtest.h"
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 class SchemaTest : public ::testing::Test {};
 
-void AddIndex(::rtidb::api::TableMeta* table_meta, const std::string& index_name, const std::string& col,
-              const std::string& ts_col, uint64_t abs_ttl, uint64_t lat_ttl, ::rtidb::type::TTLType ttl_type) {
+void AddIndex(::fedb::api::TableMeta* table_meta, const std::string& index_name, const std::string& col,
+              const std::string& ts_col, uint64_t abs_ttl, uint64_t lat_ttl, ::fedb::type::TTLType ttl_type) {
     auto key = table_meta->add_column_key();
     key->set_index_name(index_name);
     key->add_col_name(col);
@@ -43,9 +43,9 @@ void AddIndex(::rtidb::api::TableMeta* table_meta, const std::string& index_name
     ttl->set_lat_ttl(lat_ttl);
 }
 
-void AssertIndex(const ::rtidb::storage::IndexDef& index, const std::string& name, const std::string& col,
+void AssertIndex(const ::fedb::storage::IndexDef& index, const std::string& name, const std::string& col,
                  const std::string& ts_col_name, uint32_t ts_index, uint64_t abs_ttl, uint64_t lat_ttl,
-                 ::rtidb::storage::TTLType ttl_type) {
+                 ::fedb::storage::TTLType ttl_type) {
     if (!name.empty()) {
         ASSERT_EQ(index.GetName(), name);
     }
@@ -59,7 +59,7 @@ void AssertIndex(const ::rtidb::storage::IndexDef& index, const std::string& nam
     }
 }
 
-void AssertInnerIndex(const ::rtidb::storage::InnerIndexSt& inner_index, uint32_t id,
+void AssertInnerIndex(const ::fedb::storage::InnerIndexSt& inner_index, uint32_t id,
                       const std::vector<std::string>& index_vec, const std::vector<uint32_t> ts_vec) {
     ASSERT_EQ(inner_index.GetId(), id);
     const auto& indexs = inner_index.GetIndex();
@@ -75,86 +75,86 @@ void AssertInnerIndex(const ::rtidb::storage::InnerIndexSt& inner_index, uint32_
 }
 
 TEST_F(SchemaTest, TestNeedGc) {
-    ::rtidb::storage::TTLSt ttl_st(0, 0, ::rtidb::storage::kAbsoluteTime);
+    ::fedb::storage::TTLSt ttl_st(0, 0, ::fedb::storage::kAbsoluteTime);
     ASSERT_FALSE(ttl_st.NeedGc());
-    ttl_st = ::rtidb::storage::TTLSt(0, 1, ::rtidb::storage::kAbsoluteTime);
+    ttl_st = ::fedb::storage::TTLSt(0, 1, ::fedb::storage::kAbsoluteTime);
     ASSERT_FALSE(ttl_st.NeedGc());
-    ttl_st = ::rtidb::storage::TTLSt(1, 1, ::rtidb::storage::kAbsoluteTime);
+    ttl_st = ::fedb::storage::TTLSt(1, 1, ::fedb::storage::kAbsoluteTime);
     ASSERT_TRUE(ttl_st.NeedGc());
-    ttl_st = ::rtidb::storage::TTLSt(0, 0, ::rtidb::storage::kLatestTime);
+    ttl_st = ::fedb::storage::TTLSt(0, 0, ::fedb::storage::kLatestTime);
     ASSERT_FALSE(ttl_st.NeedGc());
-    ttl_st = ::rtidb::storage::TTLSt(1, 0, ::rtidb::storage::kLatestTime);
+    ttl_st = ::fedb::storage::TTLSt(1, 0, ::fedb::storage::kLatestTime);
     ASSERT_FALSE(ttl_st.NeedGc());
-    ttl_st = ::rtidb::storage::TTLSt(0, 1, ::rtidb::storage::kLatestTime);
+    ttl_st = ::fedb::storage::TTLSt(0, 1, ::fedb::storage::kLatestTime);
     ASSERT_TRUE(ttl_st.NeedGc());
-    ttl_st = ::rtidb::storage::TTLSt(0, 0, ::rtidb::storage::kAbsAndLat);
+    ttl_st = ::fedb::storage::TTLSt(0, 0, ::fedb::storage::kAbsAndLat);
     ASSERT_FALSE(ttl_st.NeedGc());
-    ttl_st = ::rtidb::storage::TTLSt(1, 0, ::rtidb::storage::kAbsAndLat);
+    ttl_st = ::fedb::storage::TTLSt(1, 0, ::fedb::storage::kAbsAndLat);
     ASSERT_FALSE(ttl_st.NeedGc());
-    ttl_st = ::rtidb::storage::TTLSt(0, 1, ::rtidb::storage::kAbsAndLat);
+    ttl_st = ::fedb::storage::TTLSt(0, 1, ::fedb::storage::kAbsAndLat);
     ASSERT_FALSE(ttl_st.NeedGc());
-    ttl_st = ::rtidb::storage::TTLSt(1, 1, ::rtidb::storage::kAbsAndLat);
+    ttl_st = ::fedb::storage::TTLSt(1, 1, ::fedb::storage::kAbsAndLat);
     ASSERT_TRUE(ttl_st.NeedGc());
-    ttl_st = ::rtidb::storage::TTLSt(0, 0, ::rtidb::storage::kAbsOrLat);
+    ttl_st = ::fedb::storage::TTLSt(0, 0, ::fedb::storage::kAbsOrLat);
     ASSERT_FALSE(ttl_st.NeedGc());
-    ttl_st = ::rtidb::storage::TTLSt(1, 0, ::rtidb::storage::kAbsOrLat);
+    ttl_st = ::fedb::storage::TTLSt(1, 0, ::fedb::storage::kAbsOrLat);
     ASSERT_TRUE(ttl_st.NeedGc());
-    ttl_st = ::rtidb::storage::TTLSt(0, 1, ::rtidb::storage::kAbsOrLat);
+    ttl_st = ::fedb::storage::TTLSt(0, 1, ::fedb::storage::kAbsOrLat);
     ASSERT_TRUE(ttl_st.NeedGc());
-    ttl_st = ::rtidb::storage::TTLSt(1, 1, ::rtidb::storage::kAbsOrLat);
+    ttl_st = ::fedb::storage::TTLSt(1, 1, ::fedb::storage::kAbsOrLat);
     ASSERT_TRUE(ttl_st.NeedGc());
 }
 
 TEST_F(SchemaTest, TestIsExpired) {
-    ::rtidb::storage::TTLSt ttl_st(0, 0, ::rtidb::storage::kAbsoluteTime);
+    ::fedb::storage::TTLSt ttl_st(0, 0, ::fedb::storage::kAbsoluteTime);
     ASSERT_FALSE(ttl_st.IsExpired(100, 1));
-    ttl_st = ::rtidb::storage::TTLSt(0, 1, ::rtidb::storage::kAbsoluteTime);
+    ttl_st = ::fedb::storage::TTLSt(0, 1, ::fedb::storage::kAbsoluteTime);
     ASSERT_FALSE(ttl_st.IsExpired(100, 1));
-    ttl_st = ::rtidb::storage::TTLSt(100, 2, ::rtidb::storage::kAbsoluteTime);
+    ttl_st = ::fedb::storage::TTLSt(100, 2, ::fedb::storage::kAbsoluteTime);
     ASSERT_FALSE(ttl_st.IsExpired(200, 3));
     ASSERT_TRUE(ttl_st.IsExpired(50, 3));
-    ttl_st = ::rtidb::storage::TTLSt(0, 0, ::rtidb::storage::kLatestTime);
+    ttl_st = ::fedb::storage::TTLSt(0, 0, ::fedb::storage::kLatestTime);
     ASSERT_FALSE(ttl_st.IsExpired(200, 1));
-    ttl_st = ::rtidb::storage::TTLSt(100, 2, ::rtidb::storage::kLatestTime);
+    ttl_st = ::fedb::storage::TTLSt(100, 2, ::fedb::storage::kLatestTime);
     ASSERT_FALSE(ttl_st.IsExpired(50, 1));
     ASSERT_FALSE(ttl_st.IsExpired(50, 0));
     ASSERT_TRUE(ttl_st.IsExpired(200, 3));
-    ttl_st = ::rtidb::storage::TTLSt(0, 0, ::rtidb::storage::kAbsAndLat);
+    ttl_st = ::fedb::storage::TTLSt(0, 0, ::fedb::storage::kAbsAndLat);
     ASSERT_FALSE(ttl_st.IsExpired(50, 3));
     ASSERT_FALSE(ttl_st.IsExpired(0, 0));
     ASSERT_FALSE(ttl_st.IsExpired(50, 0));
-    ttl_st = ::rtidb::storage::TTLSt(0, 2, ::rtidb::storage::kAbsAndLat);
+    ttl_st = ::fedb::storage::TTLSt(0, 2, ::fedb::storage::kAbsAndLat);
     ASSERT_FALSE(ttl_st.IsExpired(50, 3));
     ASSERT_FALSE(ttl_st.IsExpired(0, 0));
     ASSERT_FALSE(ttl_st.IsExpired(50, 1));
-    ttl_st = ::rtidb::storage::TTLSt(100, 0, ::rtidb::storage::kAbsAndLat);
+    ttl_st = ::fedb::storage::TTLSt(100, 0, ::fedb::storage::kAbsAndLat);
     ASSERT_FALSE(ttl_st.IsExpired(200, 3));
     ASSERT_FALSE(ttl_st.IsExpired(50, 3));
     ASSERT_FALSE(ttl_st.IsExpired(0, 0));
     ASSERT_FALSE(ttl_st.IsExpired(50, 0));
-    ttl_st = ::rtidb::storage::TTLSt(100, 2, ::rtidb::storage::kAbsAndLat);
+    ttl_st = ::fedb::storage::TTLSt(100, 2, ::fedb::storage::kAbsAndLat);
     ASSERT_FALSE(ttl_st.IsExpired(200, 3));
     ASSERT_TRUE(ttl_st.IsExpired(50, 3));
     ASSERT_FALSE(ttl_st.IsExpired(50, 1));
     ASSERT_FALSE(ttl_st.IsExpired(50, 0));
     ASSERT_FALSE(ttl_st.IsExpired(200, 1));
     ASSERT_FALSE(ttl_st.IsExpired(200, 0));
-    ttl_st = ::rtidb::storage::TTLSt(0, 0, ::rtidb::storage::kAbsOrLat);
+    ttl_st = ::fedb::storage::TTLSt(0, 0, ::fedb::storage::kAbsOrLat);
     ASSERT_FALSE(ttl_st.IsExpired(50, 3));
     ASSERT_FALSE(ttl_st.IsExpired(0, 0));
     ASSERT_FALSE(ttl_st.IsExpired(50, 0));
-    ttl_st = ::rtidb::storage::TTLSt(0, 2, ::rtidb::storage::kAbsOrLat);
+    ttl_st = ::fedb::storage::TTLSt(0, 2, ::fedb::storage::kAbsOrLat);
     ASSERT_TRUE(ttl_st.IsExpired(50, 3));
     ASSERT_FALSE(ttl_st.IsExpired(0, 0));
     ASSERT_FALSE(ttl_st.IsExpired(50, 1));
     ASSERT_TRUE(ttl_st.IsExpired(0, 3));
-    ttl_st = ::rtidb::storage::TTLSt(100, 0, ::rtidb::storage::kAbsOrLat);
+    ttl_st = ::fedb::storage::TTLSt(100, 0, ::fedb::storage::kAbsOrLat);
     ASSERT_FALSE(ttl_st.IsExpired(200, 3));
     ASSERT_FALSE(ttl_st.IsExpired(200, 0));
     ASSERT_TRUE(ttl_st.IsExpired(50, 3));
     ASSERT_TRUE(ttl_st.IsExpired(0, 0));
     ASSERT_TRUE(ttl_st.IsExpired(50, 0));
-    ttl_st = ::rtidb::storage::TTLSt(100, 2, ::rtidb::storage::kAbsOrLat);
+    ttl_st = ::fedb::storage::TTLSt(100, 2, ::fedb::storage::kAbsOrLat);
     ASSERT_TRUE(ttl_st.IsExpired(50, 3));
     ASSERT_TRUE(ttl_st.IsExpired(50, 1));
     ASSERT_TRUE(ttl_st.IsExpired(50, 0));
@@ -164,7 +164,7 @@ TEST_F(SchemaTest, TestIsExpired) {
 }
 
 TEST_F(SchemaTest, ParseEmpty) {
-    ::rtidb::api::TableMeta table_meta;
+    ::fedb::api::TableMeta table_meta;
     std::map<std::string, uint8_t> ts_mapping;
     TableIndex table_index;
     ASSERT_GE(table_index.ParseFromMeta(table_meta, &ts_mapping), 0);
@@ -176,7 +176,7 @@ TEST_F(SchemaTest, ParseEmpty) {
 }
 
 TEST_F(SchemaTest, ParseOld) {
-    ::rtidb::api::TableMeta table_meta;
+    ::fedb::api::TableMeta table_meta;
     table_meta.set_ttl(10);
     table_meta.add_dimensions("index0");
     table_meta.add_dimensions("index1");
@@ -195,11 +195,11 @@ TEST_F(SchemaTest, ParseOld) {
     ASSERT_STREQ(index->GetName().c_str(), "index2");
     auto ttl = index->GetTTL();
     ASSERT_EQ(ttl->abs_ttl / (60 * 1000), 10);
-    ASSERT_EQ(ttl->ttl_type, ::rtidb::storage::kAbsoluteTime);
+    ASSERT_EQ(ttl->ttl_type, ::fedb::storage::kAbsoluteTime);
 }
 
 TEST_F(SchemaTest, ParseColumnDesc) {
-    ::rtidb::api::TableMeta table_meta;
+    ::fedb::api::TableMeta table_meta;
     table_meta.set_ttl(10);
     for (int i = 0; i < 10; i++) {
         auto column_desc = table_meta.add_column_desc();
@@ -223,12 +223,12 @@ TEST_F(SchemaTest, ParseColumnDesc) {
         ASSERT_STREQ(index->GetName().c_str(), index_name.c_str());
         auto ttl = index->GetTTL();
         ASSERT_EQ(ttl->abs_ttl / (60 * 1000), 10);
-        ASSERT_EQ(ttl->ttl_type, ::rtidb::storage::kAbsoluteTime);
+        ASSERT_EQ(ttl->ttl_type, ::fedb::storage::kAbsoluteTime);
     }
 }
 
 TEST_F(SchemaTest, ParseColumnDescMulTs) {
-    ::rtidb::api::TableMeta table_meta;
+    ::fedb::api::TableMeta table_meta;
     table_meta.set_ttl(10);
     for (int i = 0; i < 10; i++) {
         auto column_desc = table_meta.add_column_desc();
@@ -247,7 +247,7 @@ TEST_F(SchemaTest, ParseColumnDescMulTs) {
 }
 
 TEST_F(SchemaTest, ParseColumnDescTs) {
-    ::rtidb::api::TableMeta table_meta;
+    ::fedb::api::TableMeta table_meta;
     table_meta.set_ttl(10);
     for (int i = 0; i < 10; i++) {
         auto column_desc = table_meta.add_column_desc();
@@ -274,14 +274,14 @@ TEST_F(SchemaTest, ParseColumnDescTs) {
         ASSERT_STREQ(index->GetName().c_str(), index_name.c_str());
         auto ttl = index->GetTTL();
         ASSERT_EQ(ttl->abs_ttl / (60 * 1000), 10);
-        ASSERT_EQ(ttl->ttl_type, ::rtidb::storage::kAbsoluteTime);
+        ASSERT_EQ(ttl->ttl_type, ::fedb::storage::kAbsoluteTime);
         auto ts_col = index->GetTsColumn();
         ASSERT_EQ(ts_col->GetTsIdx(), 0);
     }
 }
 
 TEST_F(SchemaTest, ColumnKey) {
-    ::rtidb::api::TableMeta table_meta;
+    ::fedb::api::TableMeta table_meta;
     table_meta.set_ttl(10);
     for (int i = 0; i < 10; i++) {
         auto column_desc = table_meta.add_column_desc();
@@ -313,10 +313,10 @@ TEST_F(SchemaTest, ColumnKey) {
     auto index = table_index.GetPkIndex();
     ASSERT_STREQ(index->GetName().c_str(), "key1");
 
-    AssertIndex(*(table_index.GetIndex("key1")), "key1", "col1", "col6", 0, 10, 0, ::rtidb::storage::kAbsoluteTime);
-    AssertIndex(*(table_index.GetIndex("key1", 0)), "key1", "col1", "col6", 0, 10, 0, ::rtidb::storage::kAbsoluteTime);
-    AssertIndex(*(table_index.GetIndex("key1", 1)), "key1", "col1", "col7", 1, 10, 0, ::rtidb::storage::kAbsoluteTime);
-    AssertIndex(*(table_index.GetIndex("key2")), "key2", "col2", "col6", 0, 10, 0, ::rtidb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key1")), "key1", "col1", "col6", 0, 10, 0, ::fedb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key1", 0)), "key1", "col1", "col6", 0, 10, 0, ::fedb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key1", 1)), "key1", "col1", "col7", 1, 10, 0, ::fedb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key2")), "key2", "col2", "col6", 0, 10, 0, ::fedb::storage::kAbsoluteTime);
     auto inner_index = table_index.GetAllInnerIndex();
     ASSERT_EQ(inner_index->size(), 2);
     std::vector<std::string> index0 = {"key1", "key1"};
@@ -328,7 +328,7 @@ TEST_F(SchemaTest, ColumnKey) {
 }
 
 TEST_F(SchemaTest, ParseMultiTTL) {
-    ::rtidb::api::TableMeta table_meta;
+    ::fedb::api::TableMeta table_meta;
     table_meta.set_ttl(10);
     for (int i = 0; i < 10; i++) {
         auto column_desc = table_meta.add_column_desc();
@@ -338,13 +338,13 @@ TEST_F(SchemaTest, ParseMultiTTL) {
             column_desc->set_type("uint64");
         }
     }
-    AddIndex(&table_meta, "key1", "col0", "col7", 100, 0, ::rtidb::type::kAbsoluteTime);
-    AddIndex(&table_meta, "key2", "col0", "col8", 0, 1, ::rtidb::type::kLatestTime);
-    AddIndex(&table_meta, "key3", "col1", "col9", 100, 1, ::rtidb::type::kAbsAndLat);
-    AddIndex(&table_meta, "key4", "col2", "col9", 200, 1, ::rtidb::type::kAbsOrLat);
-    AddIndex(&table_meta, "key5", "col3", "col7", 300, 0, ::rtidb::type::kAbsoluteTime);
-    AddIndex(&table_meta, "key6", "col1", "col8", 0, 1, ::rtidb::type::kAbsoluteTime);
-    AddIndex(&table_meta, "key7", "col5", "col8", 400, 2, ::rtidb::type::kAbsOrLat);
+    AddIndex(&table_meta, "key1", "col0", "col7", 100, 0, ::fedb::type::kAbsoluteTime);
+    AddIndex(&table_meta, "key2", "col0", "col8", 0, 1, ::fedb::type::kLatestTime);
+    AddIndex(&table_meta, "key3", "col1", "col9", 100, 1, ::fedb::type::kAbsAndLat);
+    AddIndex(&table_meta, "key4", "col2", "col9", 200, 1, ::fedb::type::kAbsOrLat);
+    AddIndex(&table_meta, "key5", "col3", "col7", 300, 0, ::fedb::type::kAbsoluteTime);
+    AddIndex(&table_meta, "key6", "col1", "col8", 0, 1, ::fedb::type::kAbsoluteTime);
+    AddIndex(&table_meta, "key7", "col5", "col8", 400, 2, ::fedb::type::kAbsOrLat);
     std::map<std::string, uint8_t> ts_mapping;
     TableIndex table_index;
     ASSERT_GE(table_index.ParseFromMeta(table_meta, &ts_mapping), 0);
@@ -352,14 +352,14 @@ TEST_F(SchemaTest, ParseMultiTTL) {
     ASSERT_EQ(indexs.size(), 7);
     ASSERT_EQ(ts_mapping.size(), 3);
     auto index = table_index.GetPkIndex();
-    AssertIndex(*index, "key1", "col0", "col7", 0, 100, 0, ::rtidb::storage::kAbsoluteTime);
-    AssertIndex(*(table_index.GetIndex("key1")), "key1", "col0", "col7", 0, 100, 0, ::rtidb::storage::kAbsoluteTime);
-    AssertIndex(*(table_index.GetIndex("key2")), "key2", "col0", "col8", 1, 0, 1, ::rtidb::storage::kLatestTime);
-    AssertIndex(*(table_index.GetIndex("key3")), "key3", "col1", "col9", 2, 100, 1, ::rtidb::storage::kAbsAndLat);
-    AssertIndex(*(table_index.GetIndex("key4")), "key4", "col2", "col9", 2, 200, 0, ::rtidb::storage::kAbsOrLat);
-    AssertIndex(*(table_index.GetIndex("key5")), "key5", "col3", "col7", 0, 300, 0, ::rtidb::storage::kAbsoluteTime);
-    AssertIndex(*(table_index.GetIndex("key6")), "key6", "col1", "col8", 1, 0, 1, ::rtidb::storage::kAbsoluteTime);
-    AssertIndex(*(table_index.GetIndex("key7")), "key7", "col5", "col8", 1, 400, 2, ::rtidb::storage::kAbsOrLat);
+    AssertIndex(*index, "key1", "col0", "col7", 0, 100, 0, ::fedb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key1")), "key1", "col0", "col7", 0, 100, 0, ::fedb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key2")), "key2", "col0", "col8", 1, 0, 1, ::fedb::storage::kLatestTime);
+    AssertIndex(*(table_index.GetIndex("key3")), "key3", "col1", "col9", 2, 100, 1, ::fedb::storage::kAbsAndLat);
+    AssertIndex(*(table_index.GetIndex("key4")), "key4", "col2", "col9", 2, 200, 0, ::fedb::storage::kAbsOrLat);
+    AssertIndex(*(table_index.GetIndex("key5")), "key5", "col3", "col7", 0, 300, 0, ::fedb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key6")), "key6", "col1", "col8", 1, 0, 1, ::fedb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key7")), "key7", "col5", "col8", 1, 400, 2, ::fedb::storage::kAbsOrLat);
     auto inner_index = table_index.GetAllInnerIndex();
     ASSERT_EQ(inner_index->size(), 5);
     std::vector<std::string> index0 = {"key1", "key2"};
@@ -387,10 +387,10 @@ TEST_F(SchemaTest, ParseMultiTTL) {
 }
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
-    ::rtidb::base::SetLogLevel(INFO);
+    ::fedb::base::SetLogLevel(INFO);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

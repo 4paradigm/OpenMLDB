@@ -3,7 +3,7 @@
 --endpoint=172.27.128.31:6527
 --role=nameserver
 --zk_cluster=172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181
---zk_root_path=/rtidb_cluster
+--zk_root_path=/fedb_cluster
 
 --log_dir=./logs
 --log_file_count=24
@@ -34,3 +34,4 @@
 
 #--replica_num=3
 #--partition_num=8
+--enable_distsql=true

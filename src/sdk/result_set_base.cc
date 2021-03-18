@@ -19,7 +19,7 @@
 
 #include <utility>
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
 ResultSetBase::ResultSetBase(const std::shared_ptr<brpc::Controller>& cntl, uint32_t count, uint32_t buf_size,
@@ -163,4 +163,4 @@ bool ResultSetBase::GetTime(uint32_t index, int64_t* mills) {
 }
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb

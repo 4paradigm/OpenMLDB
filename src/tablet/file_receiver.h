@@ -19,7 +19,7 @@
 
 #include <string>
 
-namespace rtidb {
+namespace fedb {
 namespace tablet {
 
 class FileReceiver {
@@ -44,4 +44,4 @@ class FileReceiver {
 };
 
 }  // namespace tablet
-}  // namespace rtidb
+}  // namespace fedb

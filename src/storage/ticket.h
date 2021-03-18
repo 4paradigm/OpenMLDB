@@ -21,7 +21,7 @@
 #include <vector>
 #include "storage/segment.h"
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 class KeyEntry;
@@ -41,6 +41,6 @@ class Ticket {
 };
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_STORAGE_TICKET_H_

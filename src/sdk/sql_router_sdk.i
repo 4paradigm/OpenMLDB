@@ -28,16 +28,16 @@
 
 %shared_ptr(fesql::sdk::ResultSet);
 %shared_ptr(fesql::sdk::Schema);
-%shared_ptr(rtidb::sdk::SQLRouter);
-%shared_ptr(rtidb::sdk::SQLRequestRow);
-%shared_ptr(rtidb::sdk::SQLRequestRowBatch);
-%shared_ptr(rtidb::sdk::ColumnIndicesSet);
-%shared_ptr(rtidb::sdk::SQLInsertRow);
-%shared_ptr(rtidb::sdk::SQLInsertRows);
-%shared_ptr(rtidb::sdk::ExplainInfo);
+%shared_ptr(fedb::sdk::SQLRouter);
+%shared_ptr(fedb::sdk::SQLRequestRow);
+%shared_ptr(fedb::sdk::SQLRequestRowBatch);
+%shared_ptr(fedb::sdk::ColumnIndicesSet);
+%shared_ptr(fedb::sdk::SQLInsertRow);
+%shared_ptr(fedb::sdk::SQLInsertRows);
+%shared_ptr(fedb::sdk::ExplainInfo);
 %shared_ptr(fesql::sdk::ProcedureInfo);
-%shared_ptr(rtidb::sdk::QueryFuture);
-%shared_ptr(rtidb::sdk::TableReader);
+%shared_ptr(fedb::sdk::QueryFuture);
+%shared_ptr(fedb::sdk::TableReader);
 %template(VectorUint32) std::vector<uint32_t>;
 %template(VectorString) std::vector<std::string>;
 
@@ -51,17 +51,17 @@
 
 using fesql::sdk::Schema;
 using fesql::sdk::ResultSet;
-using rtidb::sdk::SQLRouter;
-using rtidb::sdk::SQLRouterOptions;
-using rtidb::sdk::SQLRequestRow;
-using rtidb::sdk::SQLRequestRowBatch;
-using rtidb::sdk::ColumnIndicesSet;
-using rtidb::sdk::SQLInsertRow;
-using rtidb::sdk::SQLInsertRows;
-using rtidb::sdk::ExplainInfo;
+using fedb::sdk::SQLRouter;
+using fedb::sdk::SQLRouterOptions;
+using fedb::sdk::SQLRequestRow;
+using fedb::sdk::SQLRequestRowBatch;
+using fedb::sdk::ColumnIndicesSet;
+using fedb::sdk::SQLInsertRow;
+using fedb::sdk::SQLInsertRows;
+using fedb::sdk::ExplainInfo;
 using fesql::sdk::ProcedureInfo;
-using rtidb::sdk::QueryFuture;
-using rtidb::sdk::TableReader;
+using fedb::sdk::QueryFuture;
+using fedb::sdk::TableReader;
 %}
 
 %include "sdk/sql_router.h"

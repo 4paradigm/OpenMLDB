@@ -116,7 +116,7 @@
  */
 #error "Undefined or invalid BYTE_ORDER"
 #endif
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 void memrev16(void *p);
@@ -155,6 +155,6 @@ uint64_t intrev64(uint64_t v);
 #endif
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_BASE_ENDIANCONV_H_

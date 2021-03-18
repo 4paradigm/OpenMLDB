@@ -27,7 +27,7 @@ DECLARE_int32(gc_safe_offset);
 DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(gc_deleted_pk_version_delta);
 
-namespace rtidb {
+namespace fedb {
 namespace storage {
 
 static const SliceComparator scmp;
@@ -110,7 +110,7 @@ uint64_t Segment::Release() {
     KeyEntryNodeList::Iterator* f_it = entry_free_list_->NewIterator();
     f_it->SeekToFirst();
     while (f_it->Valid()) {
-        ::rtidb::base::Node<Slice, void*>* node = f_it->GetValue();
+        ::fedb::base::Node<Slice, void*>* node = f_it->GetValue();
         delete[] node->GetKey().data();
         if (ts_cnt_ > 1) {
             KeyEntry** entry_arr = (KeyEntry**)node->GetValue();  // NOLINT
@@ -139,7 +139,7 @@ void Segment::ReleaseAndCount(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
     it->SeekToFirst();
     while (it->Valid()) {
         Slice key = it->GetKey();
-        ::rtidb::base::Node<Slice, void*>* entry_node = NULL;
+        ::fedb::base::Node<Slice, void*>* entry_node = NULL;
         {
             std::lock_guard<std::mutex> lock(mu_);
             entry_node = entries_->Remove(key);
@@ -283,7 +283,7 @@ bool Segment::Get(const Slice& key, uint32_t idx, const uint64_t time,
 }
 
 bool Segment::Delete(const Slice& key) {
-    ::rtidb::base::Node<Slice, void*>* entry_node = NULL;
+    ::fedb::base::Node<Slice, void*>* entry_node = NULL;
     {
         std::lock_guard<std::mutex> lock(mu_);
         entry_node = entries_->Remove(key);
@@ -299,12 +299,12 @@ bool Segment::Delete(const Slice& key) {
     return true;
 }
 
-void Segment::FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node,
+void Segment::FreeList(::fedb::base::Node<uint64_t, DataBlock*>* node,
                        uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
                        uint64_t& gc_record_byte_size) {
     while (node != NULL) {
         gc_idx_cnt++;
-        ::rtidb::base::Node<uint64_t, DataBlock*>* tmp = node;
+        ::fedb::base::Node<uint64_t, DataBlock*>* tmp = node;
         idx_byte_size_.fetch_sub(GetRecordTsIdxSize(tmp->Height()));
         node = node->GetNextNoBarrier(0);
         DEBUGLOG("delete key %lu with height %u", tmp->GetKey(),
@@ -321,7 +321,7 @@ void Segment::FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node,
     }
 }
 
-void Segment::FreeEntry(::rtidb::base::Node<Slice, void*>* entry_node,
+void Segment::FreeEntry(::fedb::base::Node<Slice, void*>* entry_node,
                         uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
                         uint64_t& gc_record_byte_size) {
     if (entry_node == NULL) {
@@ -338,7 +338,7 @@ void Segment::FreeEntry(::rtidb::base::Node<Slice, void*>* entry_node,
             it->SeekToFirst();
             if (it->Valid()) {
                 uint64_t ts = it->GetKey();
-                ::rtidb::base::Node<uint64_t, DataBlock*>* data_node =
+                ::fedb::base::Node<uint64_t, DataBlock*>* data_node =
                     entry->entries.Split(ts);
                 FreeList(data_node, gc_idx_cnt, gc_record_cnt,
                          gc_record_byte_size);
@@ -360,7 +360,7 @@ void Segment::FreeEntry(::rtidb::base::Node<Slice, void*>* entry_node,
         it->SeekToFirst();
         if (it->Valid()) {
             uint64_t ts = it->GetKey();
-            ::rtidb::base::Node<uint64_t, DataBlock*>* data_node =
+            ::fedb::base::Node<uint64_t, DataBlock*>* data_node =
                 entry->entries.Split(ts);
             FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         }
@@ -377,17 +377,17 @@ void Segment::FreeEntry(::rtidb::base::Node<Slice, void*>* entry_node,
 void Segment::GcEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt,
                               uint64_t& gc_record_cnt,
                               uint64_t& gc_record_byte_size) {
-    ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, void*>*>* node =
+    ::fedb::base::Node<uint64_t, ::fedb::base::Node<Slice, void*>*>* node =
         NULL;
     {
         std::lock_guard<std::mutex> lock(gc_mu_);
         node = entry_free_list_->Split(version);
     }
     while (node != NULL) {
-        ::rtidb::base::Node<Slice, void*>* entry_node = node->GetValue();
+        ::fedb::base::Node<Slice, void*>* entry_node = node->GetValue();
         FreeEntry(entry_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         delete entry_node;
-        ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, void*>*>* tmp =
+        ::fedb::base::Node<uint64_t, ::fedb::base::Node<Slice, void*>*>* tmp =
             node;
         node = node->GetNextNoBarrier(0);
         delete tmp;
@@ -411,7 +411,7 @@ void Segment::ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt,
                         uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     switch (ttl_st.ttl_type) {
-        case ::rtidb::storage::TTLType::kAbsoluteTime: {
+        case ::fedb::storage::TTLType::kAbsoluteTime: {
             if (ttl_st.abs_ttl == 0) {
                 return;
             }
@@ -419,14 +419,14 @@ void Segment::ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt,
             Gc4TTL(expire_time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             break;
         }
-        case ::rtidb::storage::TTLType::kLatestTime: {
+        case ::fedb::storage::TTLType::kLatestTime: {
             if (ttl_st.lat_ttl == 0) {
                 return;
             }
             Gc4Head(ttl_st.lat_ttl, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             break;
         }
-        case ::rtidb::storage::TTLType::kAbsAndLat: {
+        case ::fedb::storage::TTLType::kAbsAndLat: {
             if (ttl_st.abs_ttl == 0 || ttl_st.lat_ttl == 0) {
                 return;
             }
@@ -434,7 +434,7 @@ void Segment::ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt,
             Gc4TTLAndHead(expire_time, ttl_st.lat_ttl, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             break;
         }
-        case ::rtidb::storage::TTLType::kAbsOrLat: {
+        case ::fedb::storage::TTLType::kAbsOrLat: {
             if (ttl_st.abs_ttl == 0 && ttl_st.lat_ttl == 0) {
                 return;
             }
@@ -484,7 +484,7 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt,
     it->SeekToFirst();
     while (it->Valid()) {
         KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
-        ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
+        ::fedb::base::Node<uint64_t, DataBlock*>* node = NULL;
         {
             std::lock_guard<std::mutex> lock(mu_);
             if (entry->refs_.load(std::memory_order_acquire) <= 0) {
@@ -525,10 +525,10 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map,
                 continue;
             }
             KeyEntry* entry = entry_arr[pos->second];
-            ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
+            ::fedb::base::Node<uint64_t, DataBlock*>* node = NULL;
             bool continue_flag = false;
             switch (kv.second.ttl_type) {
-                case ::rtidb::storage::TTLType::kAbsoluteTime: {
+                case ::fedb::storage::TTLType::kAbsoluteTime: {
                     node = entry->entries.GetLast();
                     if (node == NULL || node->GetKey() > kv.second.abs_ttl) {
                         continue_flag = true;
@@ -542,14 +542,14 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map,
                     }
                     break;
                 }
-                case ::rtidb::storage::TTLType::kLatestTime: {
+                case ::fedb::storage::TTLType::kLatestTime: {
                     std::lock_guard<std::mutex> lock(mu_);
                     if (entry->refs_.load(std::memory_order_acquire) <= 0) {
                         node = entry->entries.SplitByPos(kv.second.lat_ttl);
                     }
                     break;
                 }
-                case ::rtidb::storage::TTLType::kAbsAndLat: {
+                case ::fedb::storage::TTLType::kAbsAndLat: {
                     node = entry->entries.GetLast();
                     if (node == NULL || node->GetKey() > kv.second.abs_ttl) {
                         continue_flag = true;
@@ -562,7 +562,7 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map,
                     }
                     break;
                 }
-                case ::rtidb::storage::TTLType::kAbsOrLat: {
+                case ::fedb::storage::TTLType::kAbsOrLat: {
                     node = entry->entries.GetLast();
                     if (node == NULL) {
                         continue_flag = true;
@@ -598,7 +598,7 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map,
         }
         if (empty_cnt == ts_cnt_) {
             bool is_empty = true;
-            ::rtidb::base::Node<Slice, void*>* entry_node = NULL;
+            ::fedb::base::Node<Slice, void*>* entry_node = NULL;
             {
                 std::lock_guard<std::mutex> lock(mu_);
                 for (uint32_t i = 0; i < ts_cnt_; i++) {
@@ -623,7 +623,7 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map,
 }
 
 void Segment::SplitList(KeyEntry* entry, uint64_t ts,
-                        ::rtidb::base::Node<uint64_t, DataBlock*>** node) {
+                        ::fedb::base::Node<uint64_t, DataBlock*>** node) {
     // skip entry that ocupied by reader
     if (entry->refs_.load(std::memory_order_acquire) <= 0) {
         *node = entry->entries.Split(ts);
@@ -641,7 +641,7 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt,
         KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
         Slice key = it->GetKey();
         it->Next();
-        ::rtidb::base::Node<uint64_t, DataBlock*>* node =
+        ::fedb::base::Node<uint64_t, DataBlock*>* node =
             entry->entries.GetLast();
         if (node == NULL) {
             continue;
@@ -653,7 +653,7 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt,
             continue;
         }
         node = NULL;
-        ::rtidb::base::Node<Slice, void*>* entry_node = NULL;
+        ::fedb::base::Node<Slice, void*>* entry_node = NULL;
         {
             std::lock_guard<std::mutex> lock(mu_);
             SplitList(entry, time, &node);
@@ -691,7 +691,7 @@ void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt,
     it->SeekToFirst();
     while (it->Valid()) {
         KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
-        ::rtidb::base::Node<uint64_t, DataBlock*>* node =
+        ::fedb::base::Node<uint64_t, DataBlock*>* node =
             entry->entries.GetLast();
         it->Next();
         if (node == NULL) {
@@ -746,13 +746,13 @@ void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt,
         KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
         Slice key = it->GetKey();
         it->Next();
-        ::rtidb::base::Node<uint64_t, DataBlock*>* node =
+        ::fedb::base::Node<uint64_t, DataBlock*>* node =
             entry->entries.GetLast();
         if (node == NULL) {
             continue;
         }
         node = NULL;
-        ::rtidb::base::Node<Slice, void*>* entry_node = NULL;
+        ::fedb::base::Node<Slice, void*>* entry_node = NULL;
         {
             std::lock_guard<std::mutex> lock(mu_);
             if (entry->refs_.load(std::memory_order_acquire) <= 0) {
@@ -873,8 +873,8 @@ void MemTableIterator::Next() {
     it_->Next();
 }
 
-::rtidb::base::Slice MemTableIterator::GetValue() const {
-    return ::rtidb::base::Slice(it_->GetValue()->data, it_->GetValue()->size);
+::fedb::base::Slice MemTableIterator::GetValue() const {
+    return ::fedb::base::Slice(it_->GetValue()->data, it_->GetValue()->size);
 }
 
 uint64_t MemTableIterator::GetKey() const { return it_->GetKey(); }
@@ -894,4 +894,4 @@ void MemTableIterator::SeekToLast() {
 }
 
 }  // namespace storage
-}  // namespace rtidb
+}  // namespace fedb

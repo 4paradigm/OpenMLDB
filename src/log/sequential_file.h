@@ -21,7 +21,7 @@
 #include <stdint.h>
 #include <string>
 
-namespace rtidb {
+namespace fedb {
 
 namespace base {
 class Status;
@@ -67,5 +67,5 @@ class SequentialFile {
 SequentialFile* NewSeqFile(const std::string& fname, FILE* f);
 
 }  // namespace log
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_LOG_SEQUENTIAL_FILE_H_

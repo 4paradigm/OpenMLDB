@@ -1,8 +1,0 @@
-- nameserver:
-    enable: true
-  module: rtidb
-
-- tablet:
-    enable: true
-  module: rtidb
-

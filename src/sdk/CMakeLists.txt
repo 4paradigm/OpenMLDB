@@ -43,7 +43,7 @@ if(TESTING_ENABLE)
     target_link_libraries(mini_cluster_bm_request mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
 endif()
 
-set(SDK_LIBS rtidb_sdk rtidb_catalog client zk_client rtidb_flags rtidb_codec rtidb_proto base fesql_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS})
+set(SDK_LIBS fedb_sdk fedb_catalog client zk_client fedb_flags fedb_codec fedb_proto base fesql_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS})
 
 if(SQL_PYSDK_ENABLE)
 	find_package(Python3 COMPONENTS Interpreter Development)
@@ -203,6 +203,7 @@ endif()
 
 if(SQL_JAVASDK_ENABLE)
 	set(JAVA_HOME ${PROJECT_SOURCE_DIR}/thirdparty/jdk1.8.0_141)
+	set_property(SOURCE sql_router_sdk.i PROPERTY CPLUSPLUS ON)
 	find_package(Java COMPONENTS Development REQUIRED)
 	message(STATUS "Found Java: ${Java_JAVA_EXECUTABLE} (found version \"${Java_VERSION_STRING}\")")
 	find_package(JNI REQUIRED)

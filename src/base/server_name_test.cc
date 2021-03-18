@@ -20,7 +20,7 @@
 
 DECLARE_string(data_dir);
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 class ServerNameTest : public ::testing::Test {
@@ -39,12 +39,12 @@ TEST_F(ServerNameTest, GetName) {
 }
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    ::rtidb::base::SetLogLevel(INFO);
-    ::rtidb::base::RemoveDirRecursive("/tmp/data");
+    ::fedb::base::SetLogLevel(INFO);
+    ::fedb::base::RemoveDirRecursive("/tmp/data");
     int ret = RUN_ALL_TESTS();
     return ret;
 }

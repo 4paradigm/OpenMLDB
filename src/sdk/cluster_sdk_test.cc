@@ -39,12 +39,12 @@
 #include "tablet/tablet_impl.h"
 #include "timer.h"  // NOLINT
 
-namespace rtidb {
+namespace fedb {
 namespace sdk {
 
-typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
+typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>
     RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>
+typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>
     RtiDBIndex;
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
@@ -85,7 +85,7 @@ TEST_F(ClusterSDKTest, smoketest) {
     option.zk_path = mc_.GetZkPath();
     ClusterSDK sdk(option);
     ASSERT_TRUE(sdk.Init());
-    ::rtidb::nameserver::TableInfo table_info;
+    ::fedb::nameserver::TableInfo table_info;
     table_info.set_format_version(1);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
@@ -98,11 +98,11 @@ TEST_F(ClusterSDKTest, smoketest) {
     RtiDBSchema* schema = table_info.mutable_column_desc_v1();
     auto col1 = schema->Add();
     col1->set_name("col1");
-    col1->set_data_type(::rtidb::type::kVarchar);
+    col1->set_data_type(::fedb::type::kVarchar);
     col1->set_type("string");
     auto col2 = schema->Add();
     col2->set_name("col2");
-    col2->set_data_type(::rtidb::type::kBigInt);
+    col2->set_data_type(::fedb::type::kBigInt);
     col2->set_type("int64");
     col2->set_is_ts_col(true);
     RtiDBIndex* index = table_info.mutable_column_key();
@@ -113,7 +113,7 @@ TEST_F(ClusterSDKTest, smoketest) {
     ok = ns_client->CreateTable(table_info, error);
     ASSERT_TRUE(ok);
     sleep(5);
-    std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>> tablet;
+    std::vector<std::shared_ptr<::fedb::catalog::TabletAccessor>> tablet;
     ok = sdk.GetTablet(db, name, &tablet);
     ASSERT_TRUE(ok);
     ASSERT_EQ(8u, tablet.size());
@@ -131,7 +131,7 @@ TEST_F(ClusterSDKTest, smoketest) {
 }
 
 }  // namespace sdk
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;

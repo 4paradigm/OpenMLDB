@@ -36,15 +36,15 @@
 #include "storage/table.h"
 #include "thread_pool.h" // NOLINT
 
-namespace rtidb {
+namespace fedb {
 namespace replica {
 
 using ::baidu::common::ThreadPool;
-using ::rtidb::api::LogEntry;
-using ::rtidb::log::Reader;
-using ::rtidb::log::SequentialFile;
-using ::rtidb::log::WriteHandle;
-using ::rtidb::storage::Table;
+using ::fedb::api::LogEntry;
+using ::fedb::log::Reader;
+using ::fedb::log::SequentialFile;
+using ::fedb::log::WriteHandle;
+using ::fedb::storage::Table;
 
 enum ReplicatorRole { kLeaderNode = 1, kFollowerNode };
 
@@ -62,11 +62,11 @@ class LogReplicator {
     bool StartSyncing();
 
     // the slave node receives master log entries
-    bool AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
-                       ::rtidb::api::AppendEntriesResponse* response);
+    bool AppendEntries(const ::fedb::api::AppendEntriesRequest* request,
+                       ::fedb::api::AppendEntriesResponse* response);
 
     // the master node append entry
-    bool AppendEntry(::rtidb::api::LogEntry& entry); // NOLINT
+    bool AppendEntry(::fedb::api::LogEntry& entry); // NOLINT
 
     //  data to slave nodes
     void Notify();
@@ -150,6 +150,6 @@ class LogReplicator {
 };
 
 }  // namespace replica
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_REPLICA_LOG_REPLICATOR_H_

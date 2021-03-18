@@ -23,7 +23,7 @@
 
 #include <stdint.h>
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 // A very simple random number generator.  Not especially good at
@@ -76,7 +76,7 @@ class Random {
 };
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
 #endif  // SRC_BASE_RANDOM_H_
 

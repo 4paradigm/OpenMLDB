@@ -20,36 +20,36 @@
 #include <vector>
 #include "storage/table.h"
 
-namespace rtidb {
+namespace fedb {
 namespace tablet {
 
 __attribute__((unused)) static bool SeekWithCount(
-    ::rtidb::storage::TableIterator* it, const uint64_t time,
-    const ::rtidb::api::GetType& type, uint32_t max_cnt, uint32_t* cnt) {
+    ::fedb::storage::TableIterator* it, const uint64_t time,
+    const ::fedb::api::GetType& type, uint32_t max_cnt, uint32_t* cnt) {
     if (it == NULL) {
         return false;
     }
     it->SeekToFirst();
     while (it->Valid() && (*cnt < max_cnt || max_cnt == 0)) {
         switch (type) {
-            case ::rtidb::api::GetType::kSubKeyEq:
+            case ::fedb::api::GetType::kSubKeyEq:
                 if (it->GetKey() <= time) {
                     return it->GetKey() == time;
                 }
                 break;
-            case ::rtidb::api::GetType::kSubKeyLe:
+            case ::fedb::api::GetType::kSubKeyLe:
                 if (it->GetKey() <= time) {
                     return true;
                 }
                 break;
-            case ::rtidb::api::GetType::kSubKeyLt:
+            case ::fedb::api::GetType::kSubKeyLt:
                 if (it->GetKey() < time) {
                     return true;
                 }
                 break;
-            case ::rtidb::api::GetType::kSubKeyGe:
+            case ::fedb::api::GetType::kSubKeyGe:
                 return it->GetKey() >= time;
-            case ::rtidb::api::GetType::kSubKeyGt:
+            case ::fedb::api::GetType::kSubKeyGt:
                 return it->GetKey() > time;
             default:
                 return false;
@@ -60,26 +60,26 @@ __attribute__((unused)) static bool SeekWithCount(
     return false;
 }
 
-__attribute__((unused)) static bool Seek(::rtidb::storage::TableIterator* it,
+__attribute__((unused)) static bool Seek(::fedb::storage::TableIterator* it,
                                          const uint64_t time,
-                                         const ::rtidb::api::GetType& type) {
+                                         const ::fedb::api::GetType& type) {
     if (it == NULL) {
         return false;
     }
     switch (type) {
-        case ::rtidb::api::GetType::kSubKeyEq:
+        case ::fedb::api::GetType::kSubKeyEq:
             it->Seek(time);
             return it->Valid() && it->GetKey() == time;
-        case ::rtidb::api::GetType::kSubKeyLe:
+        case ::fedb::api::GetType::kSubKeyLe:
             it->Seek(time);
             return it->Valid();
-        case ::rtidb::api::GetType::kSubKeyLt:
+        case ::fedb::api::GetType::kSubKeyLt:
             it->Seek(time - 1);
             return it->Valid();
-        case ::rtidb::api::GetType::kSubKeyGe:
+        case ::fedb::api::GetType::kSubKeyGe:
             it->SeekToFirst();
             return it->Valid() && it->GetKey() >= time;
-        case ::rtidb::api::GetType::kSubKeyGt:
+        case ::fedb::api::GetType::kSubKeyGt:
             it->SeekToFirst();
             return it->Valid() && it->GetKey() > time;
         default:
@@ -89,17 +89,17 @@ __attribute__((unused)) static bool Seek(::rtidb::storage::TableIterator* it,
 }
 
 __attribute__((unused)) static int GetIterator(
-    std::shared_ptr<::rtidb::storage::Table> table, const std::string& pk,
+    std::shared_ptr<::fedb::storage::Table> table, const std::string& pk,
     int index, int ts_index,
-    std::shared_ptr<::rtidb::storage::TableIterator>* it,
-    std::shared_ptr<::rtidb::storage::Ticket>* ticket) {
+    std::shared_ptr<::fedb::storage::TableIterator>* it,
+    std::shared_ptr<::fedb::storage::Ticket>* ticket) {
     if (it == NULL || ticket == NULL) {
         return -1;
     }
     if (!(*ticket)) {
-        *ticket = std::make_shared<::rtidb::storage::Ticket>();
+        *ticket = std::make_shared<::fedb::storage::Ticket>();
     }
-    ::rtidb::storage::TableIterator* cur_it = NULL;
+    ::fedb::storage::TableIterator* cur_it = NULL;
     if (ts_index >= 0) {
         cur_it = table->NewIterator(index, ts_index, pk, *(ticket->get()));
     } else {
@@ -113,23 +113,23 @@ __attribute__((unused)) static int GetIterator(
 }
 
 struct QueryIt {
-    std::shared_ptr<::rtidb::storage::Table> table;
-    std::shared_ptr<::rtidb::storage::TableIterator> it;
-    std::shared_ptr<::rtidb::storage::Ticket> ticket;
+    std::shared_ptr<::fedb::storage::Table> table;
+    std::shared_ptr<::fedb::storage::TableIterator> it;
+    std::shared_ptr<::fedb::storage::Ticket> ticket;
     uint32_t iter_pos = 0;
 };
 
 class CombineIterator {
  public:
     CombineIterator(std::vector<QueryIt> q_its, uint64_t start_time,
-                    ::rtidb::api::GetType st_type, const ::rtidb::storage::TTLSt& expired_value);
+                    ::fedb::api::GetType st_type, const ::fedb::storage::TTLSt& expired_value);
     void SeekToFirst();
     void Next();
     bool Valid();
     uint64_t GetTs();
-    rtidb::base::Slice GetValue();
+    fedb::base::Slice GetValue();
     inline uint64_t GetExpireTime() const { return expire_time_; }
-    inline ::rtidb::storage::TTLType GetTTLType() const { return ttl_type_; }
+    inline ::fedb::storage::TTLType GetTTLType() const { return ttl_type_; }
 
  private:
     void SelectIterator();
@@ -137,12 +137,12 @@ class CombineIterator {
  private:
     std::vector<QueryIt> q_its_;
     const uint64_t st_;
-    ::rtidb::api::GetType st_type_;
-    ::rtidb::storage::TTLType ttl_type_;
+    ::fedb::api::GetType st_type_;
+    ::fedb::storage::TTLType ttl_type_;
     uint64_t expire_time_;
     const uint32_t expire_cnt_;
     QueryIt* cur_qit_;
 };
 
 }  // namespace tablet
-}  // namespace rtidb
+}  // namespace fedb

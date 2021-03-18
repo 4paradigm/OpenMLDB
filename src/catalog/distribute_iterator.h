@@ -26,10 +26,10 @@
 #include "storage/table.h"
 #include "vm/catalog.h"
 
-namespace rtidb {
+namespace fedb {
 namespace catalog {
 
-using Tables = std::map<uint32_t, std::shared_ptr<::rtidb::storage::Table>>;
+using Tables = std::map<uint32_t, std::shared_ptr<::fedb::storage::Table>>;
 
 class FullTableIterator
     : public ::fesql::codec::ConstIterator<uint64_t, ::fesql::codec::Row> {
@@ -47,7 +47,7 @@ class FullTableIterator
  private:
     std::shared_ptr<Tables> tables_;
     uint32_t cur_pid_;
-    std::unique_ptr<::rtidb::storage::TableIterator> it_;
+    std::unique_ptr<::fedb::storage::TableIterator> it_;
     uint64_t key_;
     ::fesql::codec::Row value_;
 };
@@ -72,5 +72,5 @@ class DistributeWindowIterator : public ::fesql::codec::WindowIterator {
 };
 
 }  // namespace catalog
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_CATALOG_DISTRIBUTE_ITERATOR_H_

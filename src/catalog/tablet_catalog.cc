@@ -29,10 +29,10 @@
 #include "glog/logging.h"
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
-namespace rtidb {
+namespace fedb {
 namespace catalog {
 
-TabletTableHandler::TabletTableHandler(const ::rtidb::api::TableMeta& meta,
+TabletTableHandler::TabletTableHandler(const ::fedb::api::TableMeta& meta,
                                        std::shared_ptr<fesql::vm::Tablet> local_tablet)
     : schema_(),
       table_st_(meta),
@@ -43,7 +43,7 @@ TabletTableHandler::TabletTableHandler(const ::rtidb::api::TableMeta& meta,
       table_client_manager_(),
       local_tablet_(local_tablet) {}
 
-TabletTableHandler::TabletTableHandler(const ::rtidb::nameserver::TableInfo& meta,
+TabletTableHandler::TabletTableHandler(const ::fedb::nameserver::TableInfo& meta,
                                        std::shared_ptr<fesql::vm::Tablet> local_tablet)
     : schema_(),
       table_st_(meta),
@@ -174,7 +174,7 @@ std::shared_ptr<::fesql::vm::PartitionHandler> TabletTableHandler::GetPartition(
     return std::make_shared<TabletPartitionHandler>(shared_from_this(), index_name);
 }
 
-void TabletTableHandler::AddTable(std::shared_ptr<::rtidb::storage::Table> table) {
+void TabletTableHandler::AddTable(std::shared_ptr<::fedb::storage::Table> table) {
     std::shared_ptr<Tables> old_tables;
     std::shared_ptr<Tables> new_tables;
     do {
@@ -195,8 +195,8 @@ int TabletTableHandler::DeleteTable(uint32_t pid) {
     return new_tables->size();
 }
 
-void TabletTableHandler::Update(const ::rtidb::nameserver::TableInfo& meta, const ClientManager& client_manager) {
-    ::rtidb::storage::TableSt new_table_st(meta);
+void TabletTableHandler::Update(const ::fedb::nameserver::TableInfo& meta, const ClientManager& client_manager) {
+    ::fedb::storage::TableSt new_table_st(meta);
     for (const auto& partition_st : *(new_table_st.GetPartitions())) {
         uint32_t pid = partition_st.GetPid();
         if (partition_st == table_st_.GetPartition(pid)) {
@@ -212,7 +212,7 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
     uint32_t pid_num = table_st_.GetPartitionNum();
     uint32_t pid = 0;
     if (pid_num > 0) {
-        pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);
+        pid = (uint32_t)(::fedb::base::hash64(pk) % pid_num);
     }
     DLOG(INFO) << "pid num " << pid_num << " get tablet with pid = " << pid;
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
@@ -254,7 +254,7 @@ TabletCatalog::~TabletCatalog() {}
 bool TabletCatalog::Init() { return true; }
 
 std::shared_ptr<::fesql::type::Database> TabletCatalog::GetDatabase(const std::string& db) {
-    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
     auto it = db_.find(db);
     if (it == db_.end()) {
         return std::shared_ptr<::fesql::type::Database>();
@@ -264,7 +264,7 @@ std::shared_ptr<::fesql::type::Database> TabletCatalog::GetDatabase(const std::s
 
 std::shared_ptr<::fesql::vm::TableHandler> TabletCatalog::GetTable(const std::string& db,
                                                                    const std::string& table_name) {
-    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
     auto db_it = tables_.find(db);
     if (db_it == tables_.end()) {
         return std::shared_ptr<::fesql::vm::TableHandler>();
@@ -276,14 +276,14 @@ std::shared_ptr<::fesql::vm::TableHandler> TabletCatalog::GetTable(const std::st
     return it->second;
 }
 
-bool TabletCatalog::AddTable(const ::rtidb::api::TableMeta& meta, std::shared_ptr<::rtidb::storage::Table> table) {
+bool TabletCatalog::AddTable(const ::fedb::api::TableMeta& meta, std::shared_ptr<::fedb::storage::Table> table) {
     if (!table) {
         LOG(WARNING) << "input table is null";
         return false;
     }
     const std::string& db_name = meta.db();
     std::shared_ptr<TabletTableHandler> handler;
-    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
     auto db_it = tables_.find(db_name);
     if (db_it == tables_.end()) {
         auto result = tables_.emplace(db_name, std::map<std::string, std::shared_ptr<TabletTableHandler>>());
@@ -306,7 +306,7 @@ bool TabletCatalog::AddTable(const ::rtidb::api::TableMeta& meta, std::shared_pt
 }
 
 bool TabletCatalog::AddDB(const ::fesql::type::Database& db) {
-    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
     TabletDB::iterator it = db_.find(db.name());
     if (it != db_.end()) {
         return false;
@@ -316,7 +316,7 @@ bool TabletCatalog::AddDB(const ::fesql::type::Database& db) {
 }
 
 bool TabletCatalog::DeleteTable(const std::string& db, const std::string& table_name, uint32_t pid) {
-    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
     auto db_it = tables_.find(db);
     if (db_it == tables_.end()) {
         return false;
@@ -333,7 +333,7 @@ bool TabletCatalog::DeleteTable(const std::string& db, const std::string& table_
 }
 
 bool TabletCatalog::DeleteDB(const std::string& db) {
-    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
     return db_.erase(db) > 0;
 }
 
@@ -341,7 +341,7 @@ bool TabletCatalog::IndexSupport() { return true; }
 
 bool TabletCatalog::AddProcedure(const std::string& db, const std::string& sp_name,
         const std::shared_ptr<fesql::sdk::ProcedureInfo>& sp_info) {
-    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
     auto& sp_map = db_sp_map_[db];
     if (sp_map.find(sp_name) != sp_map.end()) {
         LOG(WARNING) << "procedure " << sp_name << " already exist in db " << db;
@@ -352,7 +352,7 @@ bool TabletCatalog::AddProcedure(const std::string& db, const std::string& sp_na
 }
 
 bool TabletCatalog::DropProcedure(const std::string& db, const std::string& sp_name) {
-    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
     auto db_it = db_sp_map_.find(db);
     if (db_it == db_sp_map_.end()) {
         LOG(WARNING) << "db " << db << " not exist";
@@ -368,7 +368,7 @@ bool TabletCatalog::DropProcedure(const std::string& db, const std::string& sp_n
     return true;
 }
 
-void TabletCatalog::Refresh(const std::vector<::rtidb::nameserver::TableInfo>& table_info_vec,
+void TabletCatalog::Refresh(const std::vector<::fedb::nameserver::TableInfo>& table_info_vec,
         uint64_t version, const Procedures& db_sp_map) {
     std::map<std::string, std::set<std::string>> table_map;
     for (const auto& table_info : table_info_vec) {
@@ -379,7 +379,7 @@ void TabletCatalog::Refresh(const std::vector<::rtidb::nameserver::TableInfo>& t
         }
         std::shared_ptr<TabletTableHandler> handler;
         {
-            std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+            std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
             auto db_it = tables_.find(db_name);
             if (db_it == tables_.end()) {
                 auto result = tables_.emplace(db_name, std::map<std::string, std::shared_ptr<TabletTableHandler>>());
@@ -406,7 +406,7 @@ void TabletCatalog::Refresh(const std::vector<::rtidb::nameserver::TableInfo>& t
         cur_db_it->second.insert(table_name);
     }
 
-    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
     for (auto db_it = tables_.begin(); db_it != tables_.end();) {
         auto cur_db_it = table_map.find(db_it->first);
         if (cur_db_it == table_map.end()) {
@@ -437,7 +437,7 @@ uint64_t TabletCatalog::GetVersion() const { return version_.load(std::memory_or
 
 std::shared_ptr<::fesql::sdk::ProcedureInfo> TabletCatalog::GetProcedureInfo(
         const std::string& db, const std::string& sp_name) {
-    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
     auto db_sp_it = db_sp_map_.find(db);
     if (db_sp_it == db_sp_map_.end()) {
         return nullptr;
@@ -451,9 +451,9 @@ std::shared_ptr<::fesql::sdk::ProcedureInfo> TabletCatalog::GetProcedureInfo(
 }
 
 const Procedures& TabletCatalog::GetProcedures() {
-    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
     return db_sp_map_;
 }
 
 }  // namespace catalog
-}  // namespace rtidb
+}  // namespace fedb

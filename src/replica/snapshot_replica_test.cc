@@ -39,17 +39,17 @@
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
-using ::rtidb::storage::DataBlock;
-using ::rtidb::storage::Table;
-using ::rtidb::storage::Ticket;
-using ::rtidb::tablet::TabletImpl;
+using ::fedb::storage::DataBlock;
+using ::fedb::storage::Table;
+using ::fedb::storage::Ticket;
+using ::fedb::tablet::TabletImpl;
 
 DECLARE_string(db_root_path);
 DECLARE_string(endpoint);
 
 inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
 
-namespace rtidb {
+namespace fedb {
 namespace replica {
 
 class MockClosure : public ::google::protobuf::Closure {
@@ -67,7 +67,7 @@ class SnapshotReplicaTest : public ::testing::Test {
 };
 
 TEST_F(SnapshotReplicaTest, AddReplicate) {
-    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+    ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
     tablet->Init("");
     brpc::Server server;
     if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -84,13 +84,13 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
     uint32_t tid = 2;
     uint32_t pid = 123;
 
-    ::rtidb::client::TabletClient client(leader_point, "");
+    ::fedb::client::TabletClient client(leader_point, "");
     client.Init();
     std::vector<std::string> endpoints;
     bool ret =
         client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
-                           ::rtidb::api::TTLType::kAbsoluteTime, 16, 0,
-                           ::rtidb::api::CompressType::kNoCompress);
+                           ::fedb::api::TTLType::kAbsoluteTime, 16, 0,
+                           ::fedb::api::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
 
     std::string end_point = "127.0.0.1:18530";
@@ -98,16 +98,16 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
     ASSERT_TRUE(ret);
     sleep(1);
 
-    ::rtidb::api::TableStatus table_status;
+    ::fedb::api::TableStatus table_status;
     ASSERT_TRUE(client.GetTableStatus(tid, pid, table_status));
-    ASSERT_EQ(::rtidb::api::kTableNormal, table_status.state());
+    ASSERT_EQ(::fedb::api::kTableNormal, table_status.state());
 
     ret = client.DelReplica(tid, pid, end_point);
     ASSERT_TRUE(ret);
 }
 
 TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
-    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+    ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
     tablet->Init("");
     brpc::Server server;
     if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -125,13 +125,13 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     uint32_t tid = 1;
     uint32_t pid = 123;
 
-    ::rtidb::client::TabletClient client(leader_point, "");
+    ::fedb::client::TabletClient client(leader_point, "");
     client.Init();
     std::vector<std::string> endpoints;
     bool ret =
         client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
-                           ::rtidb::api::TTLType::kAbsoluteTime, 16, 0,
-                           ::rtidb::api::CompressType::kNoCompress);
+                           ::fedb::api::TTLType::kAbsoluteTime, 16, 0,
+                           ::fedb::api::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     ret = client.Put(tid, pid, "testkey", cur_time, "value1");
@@ -147,7 +147,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
 
     FLAGS_db_root_path = "/tmp/" + ::GenRand();
     FLAGS_endpoint = "127.0.0.1:18530";
-    ::rtidb::tablet::TabletImpl* tablet1 = new ::rtidb::tablet::TabletImpl();
+    ::fedb::tablet::TabletImpl* tablet1 = new ::fedb::tablet::TabletImpl();
     tablet1->Init("");
     brpc::Server server1;
     if (server1.AddService(tablet1, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -160,16 +160,16 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
         exit(1);
     }
     // server.RunUntilAskedToQuit();
-    ::rtidb::client::TabletClient client1(follower_point, "");
+    ::fedb::client::TabletClient client1(follower_point, "");
     client1.Init();
     ret = client1.CreateTable("table1", tid, pid, 14400, 0, false, endpoints,
-                              ::rtidb::api::TTLType::kAbsoluteTime, 16, 0,
-                              ::rtidb::api::CompressType::kNoCompress);
+                              ::fedb::api::TTLType::kAbsoluteTime, 16, 0,
+                              ::fedb::api::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
     client.AddReplica(tid, pid, follower_point);
     sleep(3);
 
-    ::rtidb::api::ScanRequest sr;
+    ::fedb::api::ScanRequest sr;
     MockClosure closure;
     sr.set_tid(tid);
     sr.set_pid(pid);
@@ -177,7 +177,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     sr.set_st(cur_time + 1);
     sr.set_et(cur_time - 1);
     sr.set_limit(10);
-    ::rtidb::api::ScanResponse srp;
+    ::fedb::api::ScanResponse srp;
     tablet1->Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(1, (int64_t)srp.count());
     ASSERT_EQ(0, srp.code());
@@ -190,8 +190,8 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     ASSERT_EQ(1, (int64_t)srp.count());
     ASSERT_EQ(0, srp.code());
     {
-        ::rtidb::api::GetTableFollowerRequest gr;
-        ::rtidb::api::GetTableFollowerResponse grs;
+        ::fedb::api::GetTableFollowerRequest gr;
+        ::fedb::api::GetTableFollowerResponse grs;
         gr.set_tid(tid);
         gr.set_pid(pid);
         tablet->GetTableFollower(NULL, &gr, &grs, &closure);
@@ -202,16 +202,16 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
                      grs.follower_info(0).endpoint().c_str());
         ASSERT_EQ(12, (int64_t)grs.follower_info(0).offset());
     }
-    ::rtidb::api::DropTableRequest dr;
+    ::fedb::api::DropTableRequest dr;
     dr.set_tid(tid);
     dr.set_pid(pid);
-    ::rtidb::api::DropTableResponse drs;
+    ::fedb::api::DropTableResponse drs;
     tablet->DropTable(NULL, &dr, &drs, &closure);
     sleep(2);
 }
 
 TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
-    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+    ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
     tablet->Init("");
     brpc::Server server;
     if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -226,39 +226,39 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
     }
     uint32_t tid = 1;
     uint32_t pid = 123;
-    ::rtidb::client::TabletClient client(leader_point, "");
+    ::fedb::client::TabletClient client(leader_point, "");
     client.Init();
-    ::rtidb::api::TableMeta table_meta;
+    ::fedb::api::TableMeta table_meta;
     table_meta.set_name("test");
     table_meta.set_tid(tid);
     table_meta.set_pid(pid);
     table_meta.set_ttl(0);
     table_meta.set_seg_cnt(8);
-    ::rtidb::common::ColumnDesc* column_desc1 = table_meta.add_column_desc();
+    ::fedb::common::ColumnDesc* column_desc1 = table_meta.add_column_desc();
     column_desc1->set_name("card");
     column_desc1->set_type("string");
-    ::rtidb::common::ColumnDesc* column_desc2 = table_meta.add_column_desc();
+    ::fedb::common::ColumnDesc* column_desc2 = table_meta.add_column_desc();
     column_desc2->set_name("mcc");
     column_desc2->set_type("string");
-    ::rtidb::common::ColumnDesc* column_desc3 = table_meta.add_column_desc();
+    ::fedb::common::ColumnDesc* column_desc3 = table_meta.add_column_desc();
     column_desc3->set_name("amt");
     column_desc3->set_type("double");
-    ::rtidb::common::ColumnDesc* column_desc4 = table_meta.add_column_desc();
+    ::fedb::common::ColumnDesc* column_desc4 = table_meta.add_column_desc();
     column_desc4->set_name("ts1");
     column_desc4->set_type("int64");
     column_desc4->set_is_ts_col(true);
-    ::rtidb::common::ColumnDesc* column_desc5 = table_meta.add_column_desc();
+    ::fedb::common::ColumnDesc* column_desc5 = table_meta.add_column_desc();
     column_desc5->set_name("ts2");
     column_desc5->set_type("int64");
     column_desc5->set_is_ts_col(true);
-    ::rtidb::common::ColumnKey* column_key1 = table_meta.add_column_key();
+    ::fedb::common::ColumnKey* column_key1 = table_meta.add_column_key();
     column_key1->set_index_name("card");
     column_key1->add_ts_name("ts1");
     column_key1->add_ts_name("ts2");
-    ::rtidb::common::ColumnKey* column_key2 = table_meta.add_column_key();
+    ::fedb::common::ColumnKey* column_key2 = table_meta.add_column_key();
     column_key2->set_index_name("mcc");
     column_key2->add_ts_name("ts1");
-    table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+    table_meta.set_mode(::fedb::api::TableMode::kTableLeader);
     bool ret = client.CreateTable(table_meta);
     ASSERT_TRUE(ret);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
@@ -271,7 +271,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
 
     FLAGS_db_root_path = "/tmp/" + ::GenRand();
     FLAGS_endpoint = "127.0.0.1:18530";
-    ::rtidb::tablet::TabletImpl* tablet1 = new ::rtidb::tablet::TabletImpl();
+    ::fedb::tablet::TabletImpl* tablet1 = new ::fedb::tablet::TabletImpl();
     tablet1->Init("");
     brpc::Server server1;
     if (server1.AddService(tablet1, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -283,15 +283,15 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
         PDLOG(WARNING, "fail to start server %s", follower_point.c_str());
         exit(1);
     }
-    ::rtidb::client::TabletClient client1(follower_point, "");
+    ::fedb::client::TabletClient client1(follower_point, "");
     client1.Init();
-    table_meta.set_mode(::rtidb::api::TableMode::kTableFollower);
+    table_meta.set_mode(::fedb::api::TableMode::kTableFollower);
     ret = client1.CreateTable(table_meta);
     ASSERT_TRUE(ret);
     client.AddReplica(tid, pid, follower_point);
     sleep(3);
 
-    ::rtidb::api::ScanRequest sr;
+    ::fedb::api::ScanRequest sr;
     MockClosure closure;
     sr.set_tid(tid);
     sr.set_pid(pid);
@@ -300,27 +300,27 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
     sr.set_ts_name("ts2");
     sr.set_st(cur_time + 1);
     sr.set_et(0);
-    ::rtidb::api::ScanResponse srp;
+    ::fedb::api::ScanResponse srp;
     tablet1->Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(1, (int64_t)srp.count());
     ASSERT_EQ(0, srp.code());
 
-    ::rtidb::api::DropTableRequest dr;
+    ::fedb::api::DropTableRequest dr;
     dr.set_tid(tid);
     dr.set_pid(pid);
-    ::rtidb::api::DropTableResponse drs;
+    ::fedb::api::DropTableResponse drs;
     tablet->DropTable(NULL, &dr, &drs, &closure);
     tablet1->DropTable(NULL, &dr, &drs, &closure);
     sleep(1);
 }
 
 }  // namespace replica
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::rtidb::base::SetLogLevel(INFO);
+    ::fedb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::GenRand();
     return RUN_ALL_TESTS();

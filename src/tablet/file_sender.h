@@ -22,13 +22,13 @@
 #include <string>
 #include "proto/tablet.pb.h"
 
-namespace rtidb {
+namespace fedb {
 namespace tablet {
 
 class FileSender {
  public:
     FileSender(uint32_t tid, uint32_t pid,
-               ::rtidb::common::StorageMode storage_mode,
+               ::fedb::common::StorageMode storage_mode,
                const std::string& endpoint);
     ~FileSender();
     bool Init();
@@ -47,14 +47,14 @@ class FileSender {
  private:
     uint32_t tid_;
     uint32_t pid_;
-    ::rtidb::common::StorageMode storage_mode_;
+    ::fedb::common::StorageMode storage_mode_;
     std::string endpoint_;
     uint32_t cur_try_time_;
     uint32_t max_try_time_;
     uint64_t limit_time_;
     brpc::Channel* channel_;
-    ::rtidb::api::TabletServer_Stub* stub_;
+    ::fedb::api::TabletServer_Stub* stub_;
 };
 
 }  // namespace tablet
-}  // namespace rtidb
+}  // namespace fedb

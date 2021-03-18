@@ -36,7 +36,7 @@ class TestSelect(unittest.TestCase):
     def testSampleSelect(self, *testCases):
         executor.fesql_executor.build(self.connection,testCases[0]).run()
 
-    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/expression/test_arithmetic.yamll'), 'testExpression'))
+    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/expression/test_arithmetic.yaml'), 'testExpression'))
     def testExpression(self, *testCases):
         executor.fesql_executor.build(self.connection,testCases[0]).run()
 

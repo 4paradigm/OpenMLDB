@@ -20,7 +20,7 @@
 #include <condition_variable> // NOLINT
 #include <mutex> // NOLINT
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 
 class CountDownLatch {
@@ -64,5 +64,5 @@ class CountDownLatch {
 };
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 #endif  // SRC_BASE_COUNT_DOWN_LATCH_H_

@@ -21,7 +21,7 @@
 #include "sdk/result_set.h"
 #define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_CNT 20
-namespace rtidb {
+namespace fedb {
 namespace test {
 std::string SQLCaseTest::GenRand(const std::string &prefix) {
     return prefix + std::to_string(rand() % 10000000 + 1);  // NOLINT
@@ -85,7 +85,7 @@ void SQLCaseTest::PrintSchema(const fesql::vm::Schema &schema) {
         }
     }
     // Add ColumnType
-    t.endOfRow();
+    t.end_of_row();
     for (int i = 0; i < schema.size(); i++) {
         t.add(fesql::sqlcase::SQLCase::TypeString(schema.Get(i).type()));
         if (t.current_columns_size() >= MAX_DEBUG_COLUMN_CNT) {
@@ -93,7 +93,7 @@ void SQLCaseTest::PrintSchema(const fesql::vm::Schema &schema) {
             break;
         }
     }
-    t.endOfRow();
+    t.end_of_row();
     oss << t << std::endl;
     LOG(INFO) << "\n" << oss.str() << "\n";
 }
@@ -109,7 +109,7 @@ void SQLCaseTest::PrintSdkSchema(const fesql::sdk::Schema &schema) {
             break;
         }
     }
-    t.endOfRow();
+    t.end_of_row();
 }
 
 void SQLCaseTest::CheckSchema(const fesql::vm::Schema &schema, const fesql::vm::Schema &exp_schema) {
@@ -189,10 +189,10 @@ void SQLCaseTest::PrintRows(const fesql::vm::Schema &schema, const std::vector<f
             break;
         }
     }
-    t.endOfRow();
+    t.end_of_row();
     if (rows.empty()) {
         t.add("Empty set");
-        t.endOfRow();
+        t.end_of_row();
         return;
     }
 
@@ -206,7 +206,7 @@ void SQLCaseTest::PrintRows(const fesql::vm::Schema &schema, const std::vector<f
                 break;
             }
         }
-        t.endOfRow();
+        t.end_of_row();
         if (t.rows().size() >= MAX_DEBUG_LINES_CNT) {
             break;
         }
@@ -327,10 +327,10 @@ void SQLCaseTest::PrintResultSet(std::shared_ptr<fesql::sdk::ResultSet> rs) {
             break;
         }
     }
-    t.endOfRow();
+    t.end_of_row();
     if (0 == rs->Size()) {
         t.add("Empty set");
-        t.endOfRow();
+        t.end_of_row();
         return;
     }
     rs->Reset();
@@ -343,7 +343,7 @@ void SQLCaseTest::PrintResultSet(std::shared_ptr<fesql::sdk::ResultSet> rs) {
                 break;
             }
         }
-        t.endOfRow();
+        t.end_of_row();
         if (t.rows().size() > 10) {
             break;
         }
@@ -368,10 +368,10 @@ void SQLCaseTest::PrintResultSet(std::vector<std::shared_ptr<fesql::sdk::ResultS
             break;
         }
     }
-    t.endOfRow();
+    t.end_of_row();
     if (0 == rs->Size()) {
         t.add("Empty set");
-        t.endOfRow();
+        t.end_of_row();
         return;
     }
 
@@ -385,7 +385,7 @@ void SQLCaseTest::PrintResultSet(std::vector<std::shared_ptr<fesql::sdk::ResultS
                     break;
                 }
             }
-            t.endOfRow();
+            t.end_of_row();
             if (t.rows().size() > 10) {
                 break;
             }
@@ -631,4 +631,4 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::string &
 }
 
 }  // namespace test
-}  // namespace rtidb
+}  // namespace fedb

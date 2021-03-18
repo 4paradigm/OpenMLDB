@@ -21,7 +21,7 @@
 
 #include "gtest/gtest.h"
 
-namespace rtidb {
+namespace fedb {
 namespace base {
 class FileUtilTest : public ::testing::Test {
  public:
@@ -128,13 +128,13 @@ TEST_F(FileUtilTest, CopyFile) {
 }
 
 }  // namespace base
-}  // namespace rtidb
+}  // namespace fedb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    ::rtidb::base::SetLogLevel(INFO);
-    ::rtidb::base::RemoveDirRecursive("/tmp/gtest");
+    ::fedb::base::SetLogLevel(INFO);
+    ::fedb::base::RemoveDirRecursive("/tmp/gtest");
     int ret = RUN_ALL_TESTS();
-    ::rtidb::base::RemoveDirRecursive("/tmp/gtest");
+    ::fedb::base::RemoveDirRecursive("/tmp/gtest");
     return ret;
 }
