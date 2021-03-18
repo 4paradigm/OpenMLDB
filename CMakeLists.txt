@@ -198,3 +198,4 @@ FILE(GLOB header_files "${CMAKE_CURRENT_SOURCE_DIR}/src/include/*")
 message("CMAKE_BINARY_DIR ${CMAKE_BINARY_DIR}")
 INSTALL(DIRECTORY ${header_files} DESTINATION include)
 
+INSTALL(FILES "${CMAKE_BINARY_DIR}/src/proto/*.pb.h" DESTINATION include/proto/)
