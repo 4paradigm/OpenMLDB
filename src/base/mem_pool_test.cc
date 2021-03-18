@@ -47,8 +47,8 @@ TEST_F(MemPoolTest, ByteMemoryPoolTest) {
         memcpy(s3, s1, 10);
         memcpy(s3 + 10, s2, 5);
         ASSERT_EQ("helloworld", std::string(s1, 10));
-        ASSERT_EQ("hybridse", std::string(s2, 5));
-        ASSERT_EQ("helloworldhybridse", std::string(s3, 15));
+        ASSERT_EQ("hybri", std::string(s2, 5));
+        ASSERT_EQ("helloworldhybri", std::string(s3, 15));
     }
 }
 }  // namespace base
