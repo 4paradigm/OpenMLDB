@@ -16,8 +16,8 @@
 
 import java.io.File
 
-import com._4paradigm.fesql.spark.api.FesqlSession
-import com._4paradigm.fesql.spark.utils.ArgumentParser
+import com._4paradigm.hybridse.spark.api.FesqlSession
+import com._4paradigm.hybridse.spark.utils.ArgumentParser
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
 
