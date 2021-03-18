@@ -14,7 +14,6 @@
 # limitations under the License.
 
 set -eE
-set -o nounset
 
 cd "$(dirname "$0")"
 
