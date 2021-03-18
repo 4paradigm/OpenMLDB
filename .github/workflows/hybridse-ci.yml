@@ -28,7 +28,15 @@ jobs:
     steps:
     - uses: actions/checkout@v1
 
+    - name: lint
+      run: |
+        python tools/style_check.sh
+
     - name: Build
-      shell: bash
       run: |
         ./tools/compile_and_test.sh
+
+    - name: benchmark
+      run: |
+        bash tools/micro_bench.sh | tee micro_bench_report.txt
+        bash tools/gen_micro_bench_compare.sh

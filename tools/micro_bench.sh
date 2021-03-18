@@ -21,7 +21,7 @@ export PATH=${PWD}/thirdparty/bin:$JAVA_HOME/bin:${PWD}/thirdparty/apache-maven-
 
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=OFF -DBENCHMARK_ENABLE=ON
-make -j16 fesql_bm toydb_bm
+make -j"$(nproc)" fesql_bm toydb_bm
 
 echo "udf benchmark:"
 src/bm/udf_bm 2>/dev/null
