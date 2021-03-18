@@ -1,5 +1,5 @@
 name: FEDB-Dailybuild
-on: [push, pull_request]
+on: [push]
 #  schedule:
 #    - cron: '*/1 * * * *'
 env:
@@ -28,10 +28,6 @@ jobs:
           git checkout main
           git pull
           cd ..
-#      - name: tar thirdparty
-#        run: |
-#           tar -zxvf /depends/thirdparty.tar.gz -C /depends/
-#           mv /depends/depends/thirdparty /depends/
       - name: build fesql
         run: source /root/.bashrc && bash tools/install_fesql.sh
       - name: build fedb
@@ -39,12 +35,6 @@ jobs:
           ln -sf /depends/thirdparty thirdparty
           ln -sf /depends/thirdsrc thirdsrc
           source /root/.bashrc && bash steps/simple_compile.sh
-      - run: |
-          ls -al build
-          ls -al build/bin
-          ls -al build/src/sdk/
-          ls -al build/sql_pysdk/
-          ls -al build/python/dist/
       - uses: actions/upload-artifact@v1
         with:
           name: build-artifact
