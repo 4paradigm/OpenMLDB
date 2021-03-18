@@ -17,7 +17,10 @@ set -eE
 
 source /opt/rh/devtoolset-7/enable
 source /opt/rh/sclo-git25/enable
-[ -r /etc/profile.d/enable-thirdparty.sh ] && source /etc/profile.d/enable-thirdparty.sh
+source /opt/rh/python27/enable
+if [ -r /etc/profile.d/enable-thirdparty.sh ] ; then
+    source /etc/profile.d/enable-thirdparty.sh
+fi
 
 cd "$(dirname "$0")"
 cd "$(git rev-parse --show-toplevel)"

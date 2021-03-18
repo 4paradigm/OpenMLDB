@@ -30,7 +30,8 @@ jobs:
 
     - name: lint
       run: |
-        python tools/style_check.sh
+        yum install -y python27
+        ./tools/style_check.sh
 
     - name: Build
       run: |

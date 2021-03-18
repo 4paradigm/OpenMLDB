@@ -15,4 +15,5 @@
 
 set -eE
 
+source /opt/rh/python27/enable
 python tools/cpplint.py --output=junit --root=. --recursive src/* examples/toydb/src/* 2> ./style.xml
