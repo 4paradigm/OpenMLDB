@@ -181,7 +181,7 @@ jobs:
           path: reports/
 
 
-  fesql_sdk_c++_sql_sdk_test_level_0:
+  fesql_sdk_cpp_sql_sdk_test_level_0:
     needs: [build]
     runs-on: ubuntu-latest
     container:
@@ -215,7 +215,44 @@ jobs:
           bash steps/fesql_c_ut.sh 0 sql_sdk_test
       - uses: actions/upload-artifact@v1
         with:
-          name: fesql_sdk_c++_sql_sdk_test_level_0-report
+          name: fesql_sdk_cpp_sql_sdk_test_level_0-report
+          path: reports/
+
+  fesql_sdk_cpp_sql_cluster_test_level_0:
+    needs: [build]
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
+      credentials:
+        username: $USER_NAME
+        password: ${{ secrets.CR_PAT_ZW }}
+    steps:
+      - uses: actions/checkout@v1
+      - name: update nss
+        run: yum update -y nss curl libcurl
+      - name: update submodule
+        run: |
+          ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
+          git submodule init
+          git submodule update
+
+      - name: set_up
+        run: |
+          mkdir /rambuild
+          mkdir -p build/bin
+      - uses: actions/download-artifact@v1
+        with:
+          name: sql_cluster_test
+          path: build/bin
+      - name: run case
+        run: |
+          ln -sf /depends/thirdparty thirdparty
+          ln -sf /depends/thirdsrc thirdsrc
+          source /root/.bashrc
+          bash steps/fesql_c_ut.sh 0 sql_cluster_test
+      - uses: actions/upload-artifact@v1
+        with:
+          name: fesql_sdk_cpp_sql_cluster_test_level_0-report
           path: reports/
 
   fesql_test_python:
