@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_INCLUDE_NODE_NODE_ENUM_H_
 #define SRC_INCLUDE_NODE_NODE_ENUM_H_
 

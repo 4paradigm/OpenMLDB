@@ -63,8 +63,9 @@ bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
 bool InitToydbEngineCatalog(
     SQLCase& sql_case,  // NOLINT
     const EngineOptions& engine_options,
-    std::map<std::string, std::shared_ptr<::hybridse::storage::Table>>&  // NOLINT
-    name_table_map,                                               // NOLINT
+    std::map<std::string,
+             std::shared_ptr<::hybridse::storage::Table>>&  // NOLINT
+        name_table_map,                                     // NOLINT
     std::shared_ptr<vm::Engine> engine,
     std::shared_ptr<tablet::TabletCatalog> catalog) {
     LOG(INFO) << "Init Toy DB Engine & Catalog";
@@ -98,7 +99,6 @@ bool InitToydbEngineCatalog(
     }
     return true;
 }
-
 
 std::shared_ptr<tablet::TabletCatalog> BuildToydbCatalog() {
     std::shared_ptr<tablet::TabletCatalog> catalog(new tablet::TabletCatalog());
@@ -210,7 +210,6 @@ void EngineCheck(const SQLCase& sql_case, const EngineOptions& options,
         BatchRequestEngineCheck(sql_case, options);
     }
 }
-
 
 int GenerateSqliteTestStringCallback(void* s, int argc, char** argv,
                                      char** azColName) {

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CODEGEN_PREDICATE_EXPR_IR_BUILDER_H_
 #define SRC_CODEGEN_PREDICATE_EXPR_IR_BUILDER_H_
 
@@ -81,10 +80,10 @@ class PredicateIRBuilder {
  private:
     static bool IsAcceptType(::llvm::Type* type);
     static Status CompareTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
-    static bool InferAndCastBoolTypes(::llvm::BasicBlock* block,
-                                      ::llvm::Value* value,
-                                      ::llvm::Value** casted_value,
-                                      ::hybridse::base::Status& status);  // NOLINT
+    static bool InferAndCastBoolTypes(
+        ::llvm::BasicBlock* block, ::llvm::Value* value,
+        ::llvm::Value** casted_value,
+        ::hybridse::base::Status& status);  // NOLINT
     static bool InferAndCastTypes(::llvm::BasicBlock* block,
                                   ::llvm::Value* left, ::llvm::Value* right,
                                   ::llvm::Value** casted_left,

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CODEGEN_CODEGEN_BASE_TEST_H_
 #define SRC_CODEGEN_CODEGEN_BASE_TEST_H_
 
@@ -31,10 +30,11 @@ using hybridse::sqlcase::SQLCase;
 
 bool BuildWindowFromResource(const std::string& resource_path,
                              ::hybridse::type::TableDef& table_def,  // NOLINT
-                             std::vector<Row>& rows,              // NOLINT
+                             std::vector<Row>& rows,                 // NOLINT
                              int8_t** buf) {
-    if (!SQLCase::LoadSchemaAndRowsFromYaml(hybridse::sqlcase::FindHybridSEDirPath(),
-                                            resource_path, table_def, rows)) {
+    if (!SQLCase::LoadSchemaAndRowsFromYaml(
+            hybridse::sqlcase::FindHybridSEDirPath(), resource_path, table_def,
+            rows)) {
         return false;
     }
     ArrayListV<Row>* w = new ArrayListV<Row>(&rows);
@@ -42,7 +42,7 @@ bool BuildWindowFromResource(const std::string& resource_path,
     return true;
 }
 bool BuildWindow(::hybridse::type::TableDef& table_def,  // NOLINT
-                 std::vector<Row>& rows,              // NOLINT
+                 std::vector<Row>& rows,                 // NOLINT
                  int8_t** buf) {
     if (!SQLCase::LoadSchemaAndRowsFromYaml(
             hybridse::sqlcase::FindHybridSEDirPath(),
@@ -54,7 +54,7 @@ bool BuildWindow(::hybridse::type::TableDef& table_def,  // NOLINT
     return true;
 }
 bool BuildWindow2(::hybridse::type::TableDef& table_def,  // NOLINT
-                  std::vector<Row>& rows,              // NOLINT
+                  std::vector<Row>& rows,                 // NOLINT
                   int8_t** buf) {
     if (!SQLCase::LoadSchemaAndRowsFromYaml(
             hybridse::sqlcase::FindHybridSEDirPath(),

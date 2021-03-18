@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_INCLUDE_SDK_BASE_H_
 #define SRC_INCLUDE_SDK_BASE_H_
 

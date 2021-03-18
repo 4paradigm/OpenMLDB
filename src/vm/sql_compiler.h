@@ -86,7 +86,7 @@ const std::string FindHybridSEDirPath();
 
 class SQLCompileInfo : public CompileInfo {
  public:
-    SQLCompileInfo(): sql_ctx() {}
+    SQLCompileInfo() : sql_ctx() {}
     ~SQLCompileInfo() {}
     hybridse::vm::SQLContext& get_sql_context() { return this->sql_ctx; }
 
@@ -159,9 +159,10 @@ class SQLCompiler {
  private:
     void KeepIR(SQLContext& ctx, llvm::Module* m);  // NOLINT
 
-    bool ResolvePlanFnAddress(PhysicalOpNode* node,
-                              std::shared_ptr<HybridSEJITWrapper>& jit,  // NOLINT
-                              Status& status);                        // NOLINT
+    bool ResolvePlanFnAddress(
+        PhysicalOpNode* node,
+        std::shared_ptr<HybridSEJITWrapper>& jit,  // NOLINT
+        Status& status);                           // NOLINT
 
     Status BuildPhysicalPlan(SQLContext* ctx,
                              const ::hybridse::node::PlanNodeList& plan_list,

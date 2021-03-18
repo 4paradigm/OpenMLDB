@@ -137,7 +137,8 @@ class BufIRBuilderTest : public ::testing::Test {
     ~BufIRBuilderTest() {}
 };
 
-void RunEncode(::hybridse::type::TableDef& table, int8_t** output_ptr) {  // NOLINT
+void RunEncode(::hybridse::type::TableDef& table, // NOLINT
+               int8_t** output_ptr) {
     SQLCase::TableInfo table_info;
     ASSERT_TRUE(SQLCase::CreateTableInfoFromYaml(
         hybridse::sqlcase::FindHybridSEDirPath(),
@@ -186,8 +187,8 @@ void RunEncode(::hybridse::type::TableDef& table, int8_t** output_ptr) {  // NOL
     builder.CreateRetVoid();
     m->print(::llvm::errs(), NULL);
 
-    auto jit =
-        std::unique_ptr<vm::HybridSEJITWrapper>(vm::HybridSEJITWrapper::Create());
+    auto jit = std::unique_ptr<vm::HybridSEJITWrapper>(
+        vm::HybridSEJITWrapper::Create());
     jit->Init();
     vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
@@ -308,8 +309,8 @@ void LoadValue(T* result, bool* is_null,
     builder.CreateRet(llvm::ConstantInt::getFalse(*ctx));
     m->print(::llvm::errs(), NULL);
 
-    auto jit =
-        std::unique_ptr<vm::HybridSEJITWrapper>(vm::HybridSEJITWrapper::Create());
+    auto jit = std::unique_ptr<vm::HybridSEJITWrapper>(
+        vm::HybridSEJITWrapper::Create());
     jit->Init();
     vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
@@ -439,8 +440,8 @@ void RunColCase(T expected, type::TableDef& table,  // NOLINT
     }
     m->print(::llvm::errs(), NULL);
 
-    auto jit =
-        std::unique_ptr<vm::HybridSEJITWrapper>(vm::HybridSEJITWrapper::Create());
+    auto jit = std::unique_ptr<vm::HybridSEJITWrapper>(
+        vm::HybridSEJITWrapper::Create());
     jit->Init();
     vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));

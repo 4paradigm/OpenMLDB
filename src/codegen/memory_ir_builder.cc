@@ -39,9 +39,9 @@ base::Status MemoryIRBuilder::Alloc(::llvm::BasicBlock* block,
         ::llvm::FunctionType::get(ptr_ty, {int32_ty}, false));
     ::llvm::Value* addr =
         builder.CreateCall(alloc_func, {request_size.GetRaw()});
-    CHECK_TRUE(
-        nullptr != addr, kCodegenError,
-        "fail to alloc memory, invoke hybridse_memery_pool_alloc function fail");
+    CHECK_TRUE(nullptr != addr, kCodegenError,
+               "fail to alloc memory, invoke hybridse_memery_pool_alloc "
+               "function fail");
     *output = NativeValue::Create(addr);
     return base::Status();
 }

@@ -215,7 +215,8 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
         switch (node->GetType()) {
             case ::hybridse::node::kPlanTypeFuncDef: {
                 auto func_def_plan =
-                    dynamic_cast<const ::hybridse::node::FuncDefPlanNode*>(node);
+                    dynamic_cast<const ::hybridse::node::FuncDefPlanNode*>(
+                        node);
                 CHECK_TRUE(func_def_plan->fn_def_ != nullptr, kCodegenError,
                            "fn_def node is null");
 

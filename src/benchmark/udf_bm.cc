@@ -15,8 +15,8 @@
  */
 
 #include "benchmark/benchmark.h"
-#include "llvm/Transforms/Scalar.h"
 #include "benchmark/udf_bm_case.h"
+#include "llvm/Transforms/Scalar.h"
 
 namespace hybridse {
 namespace bm {

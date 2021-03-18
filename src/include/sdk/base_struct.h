@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_INCLUDE_SDK_BASE_STRUCT_H_
 #define SRC_INCLUDE_SDK_BASE_STRUCT_H_
 

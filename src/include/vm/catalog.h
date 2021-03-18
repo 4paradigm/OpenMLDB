@@ -48,7 +48,8 @@ struct IndexSt {
     std::vector<ColInfo> keys;
 };
 
-typedef ::google::protobuf::RepeatedPtrField<::hybridse::type::IndexDef> IndexList;
+typedef ::google::protobuf::RepeatedPtrField<::hybridse::type::IndexDef>
+    IndexList;
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
 
@@ -311,12 +312,10 @@ class Tablet {
     Tablet() {}
     virtual ~Tablet() {}
     virtual const std::string& GetName() const = 0;
-    virtual std::shared_ptr<RowHandler> SubQuery(uint32_t task_id,
-                                                 const std::string& db,
-                                                 const std::string& sql,
-                                                 const hybridse::codec::Row& row,
-                                                 const bool is_procedure,
-                                                 const bool is_debug) = 0;
+    virtual std::shared_ptr<RowHandler> SubQuery(
+        uint32_t task_id, const std::string& db, const std::string& sql,
+        const hybridse::codec::Row& row, const bool is_procedure,
+        const bool is_debug) = 0;
     virtual std::shared_ptr<TableHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
         const std::set<size_t>& common_column_indices,

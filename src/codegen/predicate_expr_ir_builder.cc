@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "codegen/predicate_expr_ir_builder.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/ir_base_builder.h"
@@ -604,10 +603,9 @@ Status PredicateIRBuilder::CompareTypeAccept(::llvm::Type* lhs,
         node::ExprNode::CompareTypeAccept, lhs, rhs));
     return Status::OK();
 }
-bool PredicateIRBuilder::InferAndCastBoolTypes(::llvm::BasicBlock* block,
-                                               ::llvm::Value* value,
-                                               ::llvm::Value** casted_value,
-                                               ::hybridse::base::Status& status) {
+bool PredicateIRBuilder::InferAndCastBoolTypes(
+    ::llvm::BasicBlock* block, ::llvm::Value* value,
+    ::llvm::Value** casted_value, ::hybridse::base::Status& status) {
     if (NULL == value) {
         status.msg = "value is null";
         status.code = common::kCodegenError;

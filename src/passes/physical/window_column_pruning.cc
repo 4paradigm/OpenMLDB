@@ -25,9 +25,9 @@ namespace hybridse {
 namespace passes {
 
 using hybridse::common::kPlanError;
+using hybridse::vm::ColumnProjects;
 using hybridse::vm::kPhysicalOpProject;
 using hybridse::vm::kWindowAggregation;
-using hybridse::vm::ColumnProjects;
 using hybridse::vm::PhysicalProjectNode;
 using hybridse::vm::PhysicalSimpleProjectNode;
 

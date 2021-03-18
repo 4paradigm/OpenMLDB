@@ -1101,10 +1101,9 @@ bool SQLCase::CreateTableInfoFromYaml(const std::string& cases_dir,
     return true;
 }
 
-bool SQLCase::LoadSchemaAndRowsFromYaml(const std::string& cases_dir,
-                                        const std::string& resource_path,
-                                        type::TableDef& table,
-                                        std::vector<hybridse::codec::Row>& rows) {
+bool SQLCase::LoadSchemaAndRowsFromYaml(
+    const std::string& cases_dir, const std::string& resource_path,
+    type::TableDef& table, std::vector<hybridse::codec::Row>& rows) {
     TableInfo table_info;
     if (!CreateTableInfoFromYaml(cases_dir, resource_path, &table_info)) {
         return false;
@@ -1465,9 +1464,9 @@ bool SQLCase::CreateSQLCasesFromYaml(
     return true;
 }
 
-hybridse::sqlcase::SQLCase SQLCase::LoadSQLCaseWithID(const std::string& dir_path,
-                                                   const std::string& yaml_path,
-                                                   const std::string& case_id) {
+hybridse::sqlcase::SQLCase SQLCase::LoadSQLCaseWithID(
+    const std::string& dir_path, const std::string& yaml_path,
+    const std::string& case_id) {
     std::vector<SQLCase> cases;
     LOG(INFO) << "BENCHMARK LOAD SQL CASE";
     SQLCase::CreateSQLCasesFromYaml(dir_path, yaml_path, cases);

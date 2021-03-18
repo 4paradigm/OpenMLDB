@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "plan/planner.h"
 #include <utility>
 #include <vector>
@@ -712,8 +711,8 @@ TEST_F(PlannerTest, CreateStmtPlanTest) {
 
     type::TableDef table_def;
     ASSERT_TRUE(Planner::TransformTableDef(createStmt->GetTableName(),
-                                  createStmt->GetColumnDescList(), &table_def,
-                                  status));
+                                           createStmt->GetColumnDescList(),
+                                           &table_def, status));
 
     type::TableDef *table = &table_def;
     ASSERT_EQ("test", table->name());

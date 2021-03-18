@@ -268,8 +268,9 @@ class Engine {
 
 class LocalTablet : public Tablet {
  public:
-    explicit LocalTablet(hybridse::vm::Engine* engine,
-                         std::shared_ptr<hybridse::vm::CompileInfoCache> sp_cache)
+    explicit LocalTablet(
+        hybridse::vm::Engine* engine,
+        std::shared_ptr<hybridse::vm::CompileInfoCache> sp_cache)
         : Tablet(),
           name_("LocalTablet"),
           engine_(engine),

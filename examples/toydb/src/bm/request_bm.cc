@@ -29,9 +29,9 @@ using namespace ::llvm;  // NOLINT
 
 #define DEFINE_REQUEST_WINDOW_CASE(NAME, PATH, CASE_ID)                   \
     static void BM_Request_##NAME(benchmark::State& state) {              \
-        auto sql_case = hybridse::sqlcase::SQLCase::LoadSQLCaseWithID(       \
-            hybridse::sqlcase::FindHybridSEDirPath(), PATH, CASE_ID);           \
-        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {                       \
+        auto sql_case = hybridse::sqlcase::SQLCase::LoadSQLCaseWithID(    \
+            hybridse::sqlcase::FindHybridSEDirPath(), PATH, CASE_ID);     \
+        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {                    \
             sql_case.SQLCaseRepeatConfig("window_scale", state.range(0)); \
         }                                                                 \
         EngineBenchmarkOnCase(sql_case, vm::kRequestMode, &state);        \

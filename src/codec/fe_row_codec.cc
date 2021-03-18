@@ -33,15 +33,15 @@ const uint32_t BitMapSize(uint32_t size) {
     }
 }
 
-const std::unordered_map<::hybridse::type::Type, uint8_t>& DEFAULT_TYPE_SIZE_MAP =
-    {{::hybridse::type::kBool, sizeof(bool)},
-     {::hybridse::type::kInt16, sizeof(int16_t)},
-     {::hybridse::type::kInt32, sizeof(int32_t)},
-     {::hybridse::type::kFloat, sizeof(float)},
-     {::hybridse::type::kInt64, sizeof(int64_t)},
-     {::hybridse::type::kTimestamp, sizeof(int64_t)},
-     {::hybridse::type::kDate, sizeof(int32_t)},
-     {::hybridse::type::kDouble, sizeof(double)}};
+const std::unordered_map<::hybridse::type::Type, uint8_t>&
+    DEFAULT_TYPE_SIZE_MAP = {{::hybridse::type::kBool, sizeof(bool)},
+                             {::hybridse::type::kInt16, sizeof(int16_t)},
+                             {::hybridse::type::kInt32, sizeof(int32_t)},
+                             {::hybridse::type::kFloat, sizeof(float)},
+                             {::hybridse::type::kInt64, sizeof(int64_t)},
+                             {::hybridse::type::kTimestamp, sizeof(int64_t)},
+                             {::hybridse::type::kDate, sizeof(int32_t)},
+                             {::hybridse::type::kDouble, sizeof(double)}};
 
 const std::unordered_map<::hybridse::type::Type, uint8_t>&
     SPARK_UNSAFEROW_TYPE_SIZE_MAP = {

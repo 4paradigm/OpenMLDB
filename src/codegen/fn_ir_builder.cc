@@ -108,9 +108,10 @@ bool FnIRBuilder::BuildFnHead(const ::hybridse::node::FnNodeFnHeander *header,
     return true;
 }
 
-bool FnIRBuilder::CreateFunction(const ::hybridse::node::FnNodeFnHeander *fn_def,
-                                 bool return_by_arg, ::llvm::Function **fn,
-                                 base::Status &status) {  // NOLINE
+bool FnIRBuilder::CreateFunction(
+    const ::hybridse::node::FnNodeFnHeander *fn_def, bool return_by_arg,
+    ::llvm::Function **fn,
+    base::Status &status) {  // NOLINE
     if (fn_def == NULL || fn == NULL) {
         status.code = common::kCodegenError;
         status.msg = "input is null";
@@ -146,8 +147,9 @@ bool FnIRBuilder::CreateFunction(const ::hybridse::node::FnNodeFnHeander *fn_def
     return true;
 }
 
-bool FnIRBuilder::FillArgs(const ::hybridse::node::FnNodeList *node, ScopeVar *sv,
-                           bool return_by_arg, ::llvm::Function *fn,
+bool FnIRBuilder::FillArgs(const ::hybridse::node::FnNodeList *node,
+                           ScopeVar *sv, bool return_by_arg,
+                           ::llvm::Function *fn,
                            base::Status &status) {  // NOLINE
     if (node == NULL) {
         status.code = common::kCodegenError;

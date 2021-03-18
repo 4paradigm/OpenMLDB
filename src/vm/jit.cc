@@ -67,8 +67,8 @@ static void RunDefaultOptPasses(::llvm::Module* m) {
 }
 
 ::llvm::Error HybridSEJIT::AddIRModule(::llvm::orc::JITDylib& jd,  // NOLINT
-                                    ::llvm::orc::ThreadSafeModule tsm,
-                                    ::llvm::orc::VModuleKey key) {
+                                       ::llvm::orc::ThreadSafeModule tsm,
+                                       ::llvm::orc::VModuleKey key) {
     if (auto err = applyDataLayout(*tsm.getModule())) return err;
     DLOG(INFO) << "add a module with key " << key << " with ins cnt "
                << tsm.getModule()->getInstructionCount();
@@ -100,7 +100,7 @@ void HybridSEJIT::ReleaseVModule(::llvm::orc::VModuleKey key) {
 }
 
 bool HybridSEJIT::AddSymbol(::llvm::orc::JITDylib& jd, const std::string& name,
-                         void* fn_ptr) {
+                            void* fn_ptr) {
     if (fn_ptr == NULL) {
         LOG(WARNING) << "fn ptr is null";
         return false;
@@ -132,8 +132,8 @@ void HybridSEJIT::Init() {
 }
 
 bool HybridSEJIT::AddSymbol(::llvm::orc::JITDylib& jd,
-                         ::llvm::orc::MangleAndInterner& mi,
-                         const std::string& fn_name, void* fn_ptr) {
+                            ::llvm::orc::MangleAndInterner& mi,
+                            const std::string& fn_name, void* fn_ptr) {
     ::llvm::StringRef symbol(fn_name);
     ::llvm::JITEvaluatedSymbol jit_symbol(
         ::llvm::pointerToJITTargetAddress(fn_ptr), ::llvm::JITSymbolFlags());
@@ -150,8 +150,8 @@ bool HybridSEJIT::AddSymbol(::llvm::orc::JITDylib& jd,
 
 bool HybridSELLJITWrapper::Init() {
     DLOG(INFO) << "Start to initialize hybridse jit";
-    auto jit =
-        ::llvm::Expected<std::unique_ptr<HybridSEJIT>>(HybridSEJITBuilder().create());
+    auto jit = ::llvm::Expected<std::unique_ptr<HybridSEJIT>>(
+        HybridSEJITBuilder().create());
     {
         ::llvm::Error e = jit.takeError();
         if (e) {
@@ -172,8 +172,9 @@ bool HybridSELLJITWrapper::OptModule(::llvm::Module* module) {
     return jit_->OptModule(module);
 }
 
-bool HybridSELLJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
-                                  std::unique_ptr<llvm::LLVMContext> llvm_ctx) {
+bool HybridSELLJITWrapper::AddModule(
+    std::unique_ptr<llvm::Module> module,
+    std::unique_ptr<llvm::LLVMContext> llvm_ctx) {
     ::llvm::Error e = jit_->addIRModule(
         ::llvm::orc::ThreadSafeModule(std::move(module), std::move(llvm_ctx)));
     if (e) {
@@ -198,9 +199,9 @@ RawPtrHandle HybridSELLJITWrapper::FindFunction(const std::string& funcname) {
 }
 
 bool HybridSELLJITWrapper::AddExternalFunction(const std::string& name,
-                                            void* addr) {
-    return hybridse::vm::HybridSEJIT::AddSymbol(jit_->getMainJITDylib(), *mi_, name,
-                                          addr);
+                                               void* addr) {
+    return hybridse::vm::HybridSEJIT::AddSymbol(jit_->getMainJITDylib(), *mi_,
+                                                name, addr);
 }
 
 #ifdef LLVM_EXT_ENABLE
@@ -213,8 +214,9 @@ bool HybridSEMCJITWrapper::OptModule(::llvm::Module* module) {
     return true;
 }
 
-bool HybridSEMCJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
-                                  std::unique_ptr<llvm::LLVMContext> llvm_ctx) {
+bool HybridSEMCJITWrapper::AddModule(
+    std::unique_ptr<llvm::Module> module,
+    std::unique_ptr<llvm::LLVMContext> llvm_ctx) {
     if (llvm::verifyModule(*module, &llvm::errs(), nullptr)) {
         // note: destruct module before ctx
         module = nullptr;
@@ -287,7 +289,7 @@ bool HybridSEMCJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
 }
 
 bool HybridSEMCJITWrapper::AddExternalFunction(const std::string& name,
-                                            void* addr) {
+                                               void* addr) {
     if (execution_engine_ != nullptr) {
         LOG(WARNING)
             << "Can not register external symbol after engine initialized: "

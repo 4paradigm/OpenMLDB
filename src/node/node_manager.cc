@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "node/node_manager.h"
 #include <string>
 #include <utility>
@@ -798,8 +797,9 @@ FnNode *NodeManager::MakeAssignNode(const std::string &name,
                                     ExprNode *expression, const FnOperator op) {
     auto lhs_var = MakeExprIdNode(name);
     auto rhs_var = MakeUnresolvedExprId(name);
-    ::hybridse::node::FnAssignNode *fn_assign = new hybridse::node::FnAssignNode(
-        lhs_var, MakeBinaryExprNode(rhs_var, expression, op));
+    ::hybridse::node::FnAssignNode *fn_assign =
+        new hybridse::node::FnAssignNode(
+            lhs_var, MakeBinaryExprNode(rhs_var, expression, op));
     return RegisterNode(fn_assign);
 }
 FnNode *NodeManager::MakeReturnStmtNode(ExprNode *value) {

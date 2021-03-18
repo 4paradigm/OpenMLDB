@@ -42,11 +42,11 @@
 namespace hybridse {
 namespace bm {
 using codec::Row;
+using sqlcase::CaseDataMock;
 using sqlcase::SQLCase;
 using vm::BatchRunSession;
 using vm::Engine;
 using vm::RequestRunSession;
-using sqlcase::CaseDataMock;
 
 using namespace ::llvm;  // NOLINT
 
@@ -165,7 +165,8 @@ static void EngineBatchMode(const std::string sql, MODE mode, int64_t limit_cnt,
         case BENCHMARK: {
             for (auto _ : *state) {
                 benchmark::DoNotOptimize(
-                    static_cast<const std::shared_ptr<hybridse::vm::DataHandler>>(
+                    static_cast<
+                        const std::shared_ptr<hybridse::vm::DataHandler>>(
                         session.Run()));
             }
             break;
@@ -710,7 +711,8 @@ void EngineBatchModeSimpleQueryBM(const std::string& db, const std::string& sql,
     int8_t* ptr = NULL;
     uint32_t size = 0;
     std::vector<Row> rows;
-    hybridse::sqlcase::CaseDataMock::LoadResource(resource_path, table_def, rows);
+    hybridse::sqlcase::CaseDataMock::LoadResource(resource_path, table_def,
+                                                  rows);
     ptr = rows[0].buf();
     size = static_cast<uint32_t>(rows[0].size());
     table_def.set_catalog(db);
@@ -735,7 +737,8 @@ void EngineBatchModeSimpleQueryBM(const std::string& db, const std::string& sql,
             for (auto _ : *state) {
                 // use const value to avoid compiler bug for some version
                 benchmark::DoNotOptimize(
-                    static_cast<const std::shared_ptr<hybridse::vm::DataHandler>>(
+                    static_cast<
+                        const std::shared_ptr<hybridse::vm::DataHandler>>(
                         session.Run()));
             }
             break;
@@ -798,7 +801,7 @@ void EngineRequestSimpleSelectDate(benchmark::State* state,
     EngineRequestModeSimpleQueryBM("db", "t1", sql, 1, resource, state, mode);
 }
 hybridse::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml,
-                                          const std::string& case_id) {
+                                             const std::string& case_id) {
     return hybridse::sqlcase::SQLCase::LoadSQLCaseWithID(
         hybridse::sqlcase::FindHybridSEDirPath(), yaml, case_id);
 }

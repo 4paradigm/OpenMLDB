@@ -169,7 +169,8 @@ bool GetLLVMColumnSize(::hybridse::node::TypeNode* v_type, uint32_t* size) {
     return true;
 }  // namespace codegen
 
-bool GetLLVMListType(::llvm::Module* m, const ::hybridse::node::TypeNode* v_type,
+bool GetLLVMListType(::llvm::Module* m,
+                     const ::hybridse::node::TypeNode* v_type,
                      ::llvm::Type** output) {
     if (output == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";

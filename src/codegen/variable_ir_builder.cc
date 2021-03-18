@@ -24,8 +24,8 @@ using ::hybridse::common::kCodegenError;
 namespace hybridse {
 namespace codegen {
 
-hybridse::codegen::VariableIRBuilder::VariableIRBuilder(::llvm::BasicBlock* block,
-                                                     ScopeVar* scope_var)
+hybridse::codegen::VariableIRBuilder::VariableIRBuilder(
+    ::llvm::BasicBlock* block, ScopeVar* scope_var)
     : block_(block), sv_(scope_var) {}
 hybridse::codegen::VariableIRBuilder::~VariableIRBuilder() {}
 bool VariableIRBuilder::StoreStruct(const std::string& name,
@@ -122,9 +122,8 @@ bool hybridse::codegen::VariableIRBuilder::StoreValue(
     }
 }
 
-bool hybridse::codegen::VariableIRBuilder::LoadValue(std::string name,
-                                                  NativeValue* output,
-                                                  hybridse::base::Status& status) {
+bool hybridse::codegen::VariableIRBuilder::LoadValue(
+    std::string name, NativeValue* output, hybridse::base::Status& status) {
     NativeValue value;
     if (!sv_->FindVar(name, &value)) {
         status.msg = "fail to get value " + name + ": value is null";

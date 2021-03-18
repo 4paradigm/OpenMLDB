@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "case/sql_case.h"
 #include <vector>
 #include "boost/filesystem/operations.hpp"

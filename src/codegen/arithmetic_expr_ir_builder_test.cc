@@ -198,23 +198,23 @@ TEST_F(ArithmeticIRBuilderTest, test_sub_null) {
 }
 TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_null_0) {
     BinaryArithmeticExprCheck<Nullable<Timestamp>, Nullable<int32_t>,
-                              Nullable<Timestamp>>(nullptr, 1, nullptr,
-                                                   ::hybridse::node::kFnOpMinus);
+                              Nullable<Timestamp>>(
+        nullptr, 1, nullptr, ::hybridse::node::kFnOpMinus);
 }
 TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_null_1) {
     BinaryArithmeticExprCheck<Nullable<Timestamp>, Nullable<int64_t>,
-                              Nullable<Timestamp>>(nullptr, 1, nullptr,
-                                                   ::hybridse::node::kFnOpMinus);
+                              Nullable<Timestamp>>(
+        nullptr, 1, nullptr, ::hybridse::node::kFnOpMinus);
 }
 TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_null_2) {
     BinaryArithmeticExprCheck<Nullable<Timestamp>, Nullable<int16_t>,
-                              Nullable<Timestamp>>(nullptr, 1, nullptr,
-                                                   ::hybridse::node::kFnOpMinus);
+                              Nullable<Timestamp>>(
+        nullptr, 1, nullptr, ::hybridse::node::kFnOpMinus);
 }
 TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_null_3) {
     BinaryArithmeticExprCheck<Nullable<Timestamp>, Nullable<bool>,
-                              Nullable<Timestamp>>(nullptr, true, nullptr,
-                                                   ::hybridse::node::kFnOpMinus);
+                              Nullable<Timestamp>>(
+        nullptr, true, nullptr, ::hybridse::node::kFnOpMinus);
 }
 TEST_F(ArithmeticIRBuilderTest, test_multi_null) {
     BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
@@ -461,7 +461,8 @@ TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_2) {
 }
 TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_3) {
     BinaryArithmeticErrorCheck<Nullable<Timestamp>, Nullable<Timestamp>,
-                               Nullable<Timestamp>>(::hybridse::node::kFnOpMinus);
+                               Nullable<Timestamp>>(
+        ::hybridse::node::kFnOpMinus);
 }
 TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_4) {
     BinaryArithmeticErrorCheck<Nullable<codec::StringRef>,
@@ -476,7 +477,8 @@ TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_5) {
 }
 TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_6) {
     BinaryArithmeticErrorCheck<Nullable<Timestamp>, Nullable<Timestamp>,
-                               Nullable<Timestamp>>(::hybridse::node::kFnOpMulti);
+                               Nullable<Timestamp>>(
+        ::hybridse::node::kFnOpMulti);
 }
 TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_7) {
     BinaryArithmeticErrorCheck<Nullable<codec::StringRef>,
@@ -491,7 +493,8 @@ TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_8) {
 }
 TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_9) {
     BinaryArithmeticErrorCheck<Nullable<Timestamp>, Nullable<Timestamp>,
-                               Nullable<Timestamp>>(::hybridse::node::kFnOpFDiv);
+                               Nullable<Timestamp>>(
+        ::hybridse::node::kFnOpFDiv);
 }
 TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_10) {
     BinaryArithmeticErrorCheck<Nullable<codec::StringRef>,
@@ -501,7 +504,8 @@ TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_10) {
 }
 TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_11) {
     BinaryArithmeticErrorCheck<Nullable<codec::Date>, Nullable<codec::Date>,
-                               Nullable<codec::Date>>(::hybridse::node::kFnOpFDiv);
+                               Nullable<codec::Date>>(
+        ::hybridse::node::kFnOpFDiv);
 }
 TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_12) {
     BinaryArithmeticErrorCheck<Nullable<Timestamp>, Nullable<Timestamp>,
@@ -515,7 +519,8 @@ TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_13) {
 }
 TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_14) {
     BinaryArithmeticErrorCheck<Nullable<codec::Date>, Nullable<codec::Date>,
-                               Nullable<codec::Date>>(::hybridse::node::kFnOpDiv);
+                               Nullable<codec::Date>>(
+        ::hybridse::node::kFnOpDiv);
 }
 TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_15) {
     BinaryArithmeticErrorCheck<Nullable<int16_t>, Nullable<float>,
@@ -542,11 +547,11 @@ TEST_F(ArithmeticIRBuilderTest, test_add_int16_x_expr) {
         1, 12345678.5, 12345678.5 + 1.0, ::hybridse::node::kFnOpAdd);
 }
 TEST_F(ArithmeticIRBuilderTest, test_add_bool_x_expr) {
-    BinaryArithmeticExprCheck<bool, int16_t, int16_t>(true, 1, 2,
-                                                      ::hybridse::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<bool, int16_t, int16_t>(
+        true, 1, 2, ::hybridse::node::kFnOpAdd);
 
-    BinaryArithmeticExprCheck<bool, int32_t, int32_t>(true, 1, 2,
-                                                      ::hybridse::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<bool, int32_t, int32_t>(
+        true, 1, 2, ::hybridse::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<bool, int64_t, int64_t>(
         true, 8000000000L, 8000000001L, ::hybridse::node::kFnOpAdd);
@@ -558,44 +563,52 @@ TEST_F(ArithmeticIRBuilderTest, test_add_bool_x_expr) {
 }
 TEST_F(ArithmeticIRBuilderTest, test_add_int32_x_expr) {
     BinaryArithmeticExprCheck<int32_t, int16_t, int32_t>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt16, ::hybridse::node::kInt32, 1,
-        1, 2, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt16,
+        ::hybridse::node::kInt32, 1, 1, 2, ::hybridse::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<int32_t, int32_t, int32_t>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt32, ::hybridse::node::kInt32, 1,
-        1, 2, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt32,
+        ::hybridse::node::kInt32, 1, 1, 2, ::hybridse::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<int32_t, int64_t, int64_t>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt64, ::hybridse::node::kInt64, 1,
-        8000000000L, 8000000001L, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt64,
+        ::hybridse::node::kInt64, 1, 8000000000L, 8000000001L,
+        ::hybridse::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<int32_t, float, float>(
-        ::hybridse::node::kInt32, ::hybridse::node::kFloat, ::hybridse::node::kFloat, 1,
-        12345678.5f, 12345678.5f + 1.0f, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kInt32, ::hybridse::node::kFloat,
+        ::hybridse::node::kFloat, 1, 12345678.5f, 12345678.5f + 1.0f,
+        ::hybridse::node::kFnOpAdd);
     BinaryArithmeticExprCheck<int32_t, double, double>(
-        ::hybridse::node::kInt32, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        1, 12345678.5, 12345678.5 + 1.0, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kInt32, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 1, 12345678.5, 12345678.5 + 1.0,
+        ::hybridse::node::kFnOpAdd);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_add_int64_x_expr) {
     BinaryArithmeticExprCheck<int64_t, int16_t, int64_t>(
-        ::hybridse::node::kInt64, ::hybridse::node::kInt16, ::hybridse::node::kInt64,
-        8000000000L, 1, 8000000001L, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kInt64, ::hybridse::node::kInt16,
+        ::hybridse::node::kInt64, 8000000000L, 1, 8000000001L,
+        ::hybridse::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<int64_t, int32_t, int64_t>(
-        ::hybridse::node::kInt64, ::hybridse::node::kInt32, ::hybridse::node::kInt64,
-        8000000000L, 1, 8000000001L, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kInt64, ::hybridse::node::kInt32,
+        ::hybridse::node::kInt64, 8000000000L, 1, 8000000001L,
+        ::hybridse::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<int64_t, int64_t, int64_t>(
-        ::hybridse::node::kInt64, ::hybridse::node::kInt64, ::hybridse::node::kInt64, 1L,
-        8000000000L, 8000000001L, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kInt64, ::hybridse::node::kInt64,
+        ::hybridse::node::kInt64, 1L, 8000000000L, 8000000001L,
+        ::hybridse::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<int64_t, float, float>(
-        ::hybridse::node::kInt64, ::hybridse::node::kFloat, ::hybridse::node::kFloat, 1L,
-        12345678.5f, 12345678.5f + 1.0f, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kInt64, ::hybridse::node::kFloat,
+        ::hybridse::node::kFloat, 1L, 12345678.5f, 12345678.5f + 1.0f,
+        ::hybridse::node::kFnOpAdd);
     BinaryArithmeticExprCheck<int64_t, double, double>(
-        ::hybridse::node::kInt64, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        1, 12345678.5, 12345678.5 + 1.0, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kInt64, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 1, 12345678.5, 12345678.5 + 1.0,
+        ::hybridse::node::kFnOpAdd);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_add_timestamp_expr_0) {
@@ -631,355 +644,421 @@ TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_expr_2) {
 
 TEST_F(ArithmeticIRBuilderTest, test_add_float_x_expr) {
     BinaryArithmeticExprCheck<float, int16_t, float>(
-        ::hybridse::node::kFloat, ::hybridse::node::kInt16, ::hybridse::node::kFloat,
-        1.0f, 1, 2.0f, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kFloat, ::hybridse::node::kInt16,
+        ::hybridse::node::kFloat, 1.0f, 1, 2.0f, ::hybridse::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<float, int32_t, float>(
-        ::hybridse::node::kFloat, ::hybridse::node::kInt32, ::hybridse::node::kFloat,
-        8000000000L, 1, 8000000001L, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kFloat, ::hybridse::node::kInt32,
+        ::hybridse::node::kFloat, 8000000000L, 1, 8000000001L,
+        ::hybridse::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<float, int64_t, float>(
-        ::hybridse::node::kFloat, ::hybridse::node::kInt64, ::hybridse::node::kFloat,
-        1.0f, 200000L, 1.0f + 200000.0f, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kFloat, ::hybridse::node::kInt64,
+        ::hybridse::node::kFloat, 1.0f, 200000L, 1.0f + 200000.0f,
+        ::hybridse::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<float, float, float>(
-        ::hybridse::node::kFloat, ::hybridse::node::kFloat, ::hybridse::node::kFloat,
-        1.0f, 12345678.5f, 12345678.5f + 1.0f, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kFloat, ::hybridse::node::kFloat,
+        ::hybridse::node::kFloat, 1.0f, 12345678.5f, 12345678.5f + 1.0f,
+        ::hybridse::node::kFnOpAdd);
     BinaryArithmeticExprCheck<float, double, double>(
-        ::hybridse::node::kFloat, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        1.0f, 12345678.5, 12345678.5 + 1.0, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kFloat, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 1.0f, 12345678.5, 12345678.5 + 1.0,
+        ::hybridse::node::kFnOpAdd);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_add_double_x_expr) {
     BinaryArithmeticExprCheck<double, int16_t, double>(
-        ::hybridse::node::kDouble, ::hybridse::node::kInt16, ::hybridse::node::kDouble,
-        1.0, 1, 2.0, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kDouble, ::hybridse::node::kInt16,
+        ::hybridse::node::kDouble, 1.0, 1, 2.0, ::hybridse::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<double, int32_t, double>(
-        ::hybridse::node::kDouble, ::hybridse::node::kInt32, ::hybridse::node::kDouble,
-        8000000000L, 1, 8000000001.0, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kDouble, ::hybridse::node::kInt32,
+        ::hybridse::node::kDouble, 8000000000L, 1, 8000000001.0,
+        ::hybridse::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<double, int64_t, double>(
-        ::hybridse::node::kDouble, ::hybridse::node::kInt64, ::hybridse::node::kDouble,
-        1.0f, 200000L, 200001.0, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kDouble, ::hybridse::node::kInt64,
+        ::hybridse::node::kDouble, 1.0f, 200000L, 200001.0,
+        ::hybridse::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<double, float, double>(
-        ::hybridse::node::kDouble, ::hybridse::node::kFloat, ::hybridse::node::kDouble,
-        1.0, 12345678.5f, static_cast<double>(12345678.5f) + 1.0,
-        ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kDouble, ::hybridse::node::kFloat,
+        ::hybridse::node::kDouble, 1.0, 12345678.5f,
+        static_cast<double>(12345678.5f) + 1.0, ::hybridse::node::kFnOpAdd);
     BinaryArithmeticExprCheck<double, double, double>(
-        ::hybridse::node::kDouble, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        1.0, 12345678.5, 12345678.5 + 1.0, ::hybridse::node::kFnOpAdd);
+        ::hybridse::node::kDouble, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 1.0, 12345678.5, 12345678.5 + 1.0,
+        ::hybridse::node::kFnOpAdd);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_sub_int16_x_expr) {
     BinaryArithmeticExprCheck<int16_t, int16_t, int16_t>(
-        ::hybridse::node::kInt16, ::hybridse::node::kInt16, ::hybridse::node::kInt16, 2,
-        1, 1, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kInt16, ::hybridse::node::kInt16,
+        ::hybridse::node::kInt16, 2, 1, 1, ::hybridse::node::kFnOpMinus);
 
     BinaryArithmeticExprCheck<int16_t, int32_t, int32_t>(
-        ::hybridse::node::kInt16, ::hybridse::node::kInt32, ::hybridse::node::kInt32, 2,
-        1, 1, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kInt16, ::hybridse::node::kInt32,
+        ::hybridse::node::kInt32, 2, 1, 1, ::hybridse::node::kFnOpMinus);
 
     BinaryArithmeticExprCheck<int16_t, int64_t, int64_t>(
-        ::hybridse::node::kInt16, ::hybridse::node::kInt64, ::hybridse::node::kInt64, 1,
-        8000000000L, 1L - 8000000000L, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kInt16, ::hybridse::node::kInt64,
+        ::hybridse::node::kInt64, 1, 8000000000L, 1L - 8000000000L,
+        ::hybridse::node::kFnOpMinus);
 
     BinaryArithmeticExprCheck<int16_t, float, float>(
-        ::hybridse::node::kInt16, ::hybridse::node::kFloat, ::hybridse::node::kFloat, 1,
-        12345678.5f, 1.0f - 12345678.5f, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kInt16, ::hybridse::node::kFloat,
+        ::hybridse::node::kFloat, 1, 12345678.5f, 1.0f - 12345678.5f,
+        ::hybridse::node::kFnOpMinus);
     BinaryArithmeticExprCheck<int16_t, double, double>(
-        ::hybridse::node::kInt16, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        1, 12345678.5, 1.0 - 12345678.5, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kInt16, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 1, 12345678.5, 1.0 - 12345678.5,
+        ::hybridse::node::kFnOpMinus);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_sub_int32_x_expr) {
     BinaryArithmeticExprCheck<int32_t, int16_t, int32_t>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt16, ::hybridse::node::kInt32, 2,
-        1, 1, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt16,
+        ::hybridse::node::kInt32, 2, 1, 1, ::hybridse::node::kFnOpMinus);
 
     BinaryArithmeticExprCheck<int32_t, int32_t, int32_t>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt32, ::hybridse::node::kInt32, 2,
-        1, 1, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt32,
+        ::hybridse::node::kInt32, 2, 1, 1, ::hybridse::node::kFnOpMinus);
 
     BinaryArithmeticExprCheck<int32_t, int64_t, int64_t>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt64, ::hybridse::node::kInt64, 1,
-        8000000000L, 1L - 8000000000L, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt64,
+        ::hybridse::node::kInt64, 1, 8000000000L, 1L - 8000000000L,
+        ::hybridse::node::kFnOpMinus);
 
     BinaryArithmeticExprCheck<int32_t, float, float>(
-        ::hybridse::node::kInt32, ::hybridse::node::kFloat, ::hybridse::node::kFloat, 1,
-        12345678.5f, 1.0f - 12345678.5f, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kInt32, ::hybridse::node::kFloat,
+        ::hybridse::node::kFloat, 1, 12345678.5f, 1.0f - 12345678.5f,
+        ::hybridse::node::kFnOpMinus);
     BinaryArithmeticExprCheck<int32_t, double, double>(
-        ::hybridse::node::kInt32, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        1, 12345678.5, 1.0 - 12345678.5, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kInt32, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 1, 12345678.5, 1.0 - 12345678.5,
+        ::hybridse::node::kFnOpMinus);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_sub_int64_x_expr) {
     BinaryArithmeticExprCheck<int64_t, int16_t, int64_t>(
-        ::hybridse::node::kInt64, ::hybridse::node::kInt16, ::hybridse::node::kInt64,
-        8000000000L, 1, 8000000000L - 1L, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kInt64, ::hybridse::node::kInt16,
+        ::hybridse::node::kInt64, 8000000000L, 1, 8000000000L - 1L,
+        ::hybridse::node::kFnOpMinus);
 
     BinaryArithmeticExprCheck<int64_t, int32_t, int64_t>(
-        ::hybridse::node::kInt64, ::hybridse::node::kInt32, ::hybridse::node::kInt64,
-        8000000000L, 1, 8000000000L - 1L, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kInt64, ::hybridse::node::kInt32,
+        ::hybridse::node::kInt64, 8000000000L, 1, 8000000000L - 1L,
+        ::hybridse::node::kFnOpMinus);
 
     BinaryArithmeticExprCheck<int64_t, int64_t, int64_t>(
-        ::hybridse::node::kInt64, ::hybridse::node::kInt64, ::hybridse::node::kInt64, 1L,
-        8000000000L, 1L - 8000000000L, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kInt64, ::hybridse::node::kInt64,
+        ::hybridse::node::kInt64, 1L, 8000000000L, 1L - 8000000000L,
+        ::hybridse::node::kFnOpMinus);
 
     BinaryArithmeticExprCheck<int64_t, float, float>(
-        ::hybridse::node::kInt64, ::hybridse::node::kFloat, ::hybridse::node::kFloat, 1L,
-        12345678.5f, 1.0f - 12345678.5f, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kInt64, ::hybridse::node::kFloat,
+        ::hybridse::node::kFloat, 1L, 12345678.5f, 1.0f - 12345678.5f,
+        ::hybridse::node::kFnOpMinus);
     BinaryArithmeticExprCheck<int64_t, double, double>(
-        ::hybridse::node::kInt64, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        1, 12345678.5, 1.0 - 12345678.5, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kInt64, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 1, 12345678.5, 1.0 - 12345678.5,
+        ::hybridse::node::kFnOpMinus);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_sub_float_x_expr) {
     BinaryArithmeticExprCheck<float, int16_t, float>(
-        ::hybridse::node::kFloat, ::hybridse::node::kInt16, ::hybridse::node::kFloat,
-        2.0f, 1, 1.0f, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kFloat, ::hybridse::node::kInt16,
+        ::hybridse::node::kFloat, 2.0f, 1, 1.0f, ::hybridse::node::kFnOpMinus);
 
     BinaryArithmeticExprCheck<float, int32_t, float>(
-        ::hybridse::node::kFloat, ::hybridse::node::kInt32, ::hybridse::node::kFloat,
-        8000000000L, 1, 8000000000.0f - 1.0f, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kFloat, ::hybridse::node::kInt32,
+        ::hybridse::node::kFloat, 8000000000L, 1, 8000000000.0f - 1.0f,
+        ::hybridse::node::kFnOpMinus);
 
     BinaryArithmeticExprCheck<float, int64_t, float>(
-        ::hybridse::node::kFloat, ::hybridse::node::kInt64, ::hybridse::node::kFloat,
-        1.0f, 200000L, 1.0f - 200000.0f, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kFloat, ::hybridse::node::kInt64,
+        ::hybridse::node::kFloat, 1.0f, 200000L, 1.0f - 200000.0f,
+        ::hybridse::node::kFnOpMinus);
 
     BinaryArithmeticExprCheck<float, float, float>(
-        ::hybridse::node::kFloat, ::hybridse::node::kFloat, ::hybridse::node::kFloat,
-        1.0f, 12345678.5f, 1.0f - 12345678.5f, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kFloat, ::hybridse::node::kFloat,
+        ::hybridse::node::kFloat, 1.0f, 12345678.5f, 1.0f - 12345678.5f,
+        ::hybridse::node::kFnOpMinus);
     BinaryArithmeticExprCheck<float, double, double>(
-        ::hybridse::node::kFloat, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        1.0f, 12345678.5, 1.0 - 12345678.5, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kFloat, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 1.0f, 12345678.5, 1.0 - 12345678.5,
+        ::hybridse::node::kFnOpMinus);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_sub_double_x_expr) {
     BinaryArithmeticExprCheck<double, int16_t, double>(
-        ::hybridse::node::kDouble, ::hybridse::node::kInt16, ::hybridse::node::kDouble,
-        2.0, 1, 1.0, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kDouble, ::hybridse::node::kInt16,
+        ::hybridse::node::kDouble, 2.0, 1, 1.0, ::hybridse::node::kFnOpMinus);
 
     BinaryArithmeticExprCheck<double, int32_t, double>(
-        ::hybridse::node::kDouble, ::hybridse::node::kInt32, ::hybridse::node::kDouble,
-        8000000000L, 1, 8000000000.0 - 1.0, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kDouble, ::hybridse::node::kInt32,
+        ::hybridse::node::kDouble, 8000000000L, 1, 8000000000.0 - 1.0,
+        ::hybridse::node::kFnOpMinus);
 
     BinaryArithmeticExprCheck<double, int64_t, double>(
-        ::hybridse::node::kDouble, ::hybridse::node::kInt64, ::hybridse::node::kDouble,
-        1.0f, 200000L, 1.0 - 200000.0, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kDouble, ::hybridse::node::kInt64,
+        ::hybridse::node::kDouble, 1.0f, 200000L, 1.0 - 200000.0,
+        ::hybridse::node::kFnOpMinus);
 
     BinaryArithmeticExprCheck<double, float, double>(
-        ::hybridse::node::kDouble, ::hybridse::node::kFloat, ::hybridse::node::kDouble,
-        1.0, 12345678.5f, 1.0 - static_cast<double>(12345678.5f),
-        ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kDouble, ::hybridse::node::kFloat,
+        ::hybridse::node::kDouble, 1.0, 12345678.5f,
+        1.0 - static_cast<double>(12345678.5f), ::hybridse::node::kFnOpMinus);
     BinaryArithmeticExprCheck<double, double, double>(
-        ::hybridse::node::kDouble, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        1.0, 12345678.5, 1.0 - 12345678.5, ::hybridse::node::kFnOpMinus);
+        ::hybridse::node::kDouble, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 1.0, 12345678.5, 1.0 - 12345678.5,
+        ::hybridse::node::kFnOpMinus);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_mul_int16_x_expr) {
     BinaryArithmeticExprCheck<int16_t, int16_t, int16_t>(
-        ::hybridse::node::kInt16, ::hybridse::node::kInt16, ::hybridse::node::kInt16, 2,
-        3, 2 * 3, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kInt16, ::hybridse::node::kInt16,
+        ::hybridse::node::kInt16, 2, 3, 2 * 3, ::hybridse::node::kFnOpMulti);
 
     BinaryArithmeticExprCheck<int16_t, int32_t, int32_t>(
-        ::hybridse::node::kInt16, ::hybridse::node::kInt32, ::hybridse::node::kInt32, 2,
-        3, 2 * 3, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kInt16, ::hybridse::node::kInt32,
+        ::hybridse::node::kInt32, 2, 3, 2 * 3, ::hybridse::node::kFnOpMulti);
 
     BinaryArithmeticExprCheck<int16_t, int64_t, int64_t>(
-        ::hybridse::node::kInt16, ::hybridse::node::kInt64, ::hybridse::node::kInt64, 2,
-        8000000000L, 2L * 8000000000L, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kInt16, ::hybridse::node::kInt64,
+        ::hybridse::node::kInt64, 2, 8000000000L, 2L * 8000000000L,
+        ::hybridse::node::kFnOpMulti);
 
     BinaryArithmeticExprCheck<int16_t, float, float>(
-        ::hybridse::node::kInt16, ::hybridse::node::kFloat, ::hybridse::node::kFloat, 2,
-        12345678.5f, 2.0f * 12345678.5f, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kInt16, ::hybridse::node::kFloat,
+        ::hybridse::node::kFloat, 2, 12345678.5f, 2.0f * 12345678.5f,
+        ::hybridse::node::kFnOpMulti);
     BinaryArithmeticExprCheck<int16_t, double, double>(
-        ::hybridse::node::kInt16, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        2, 12345678.5, 2.0 * 12345678.5, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kInt16, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 2, 12345678.5, 2.0 * 12345678.5,
+        ::hybridse::node::kFnOpMulti);
 }
 TEST_F(ArithmeticIRBuilderTest, test_multi_int32_x_expr) {
     BinaryArithmeticExprCheck<int32_t, int16_t, int32_t>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt16, ::hybridse::node::kInt32, 2,
-        3, 2 * 3, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt16,
+        ::hybridse::node::kInt32, 2, 3, 2 * 3, ::hybridse::node::kFnOpMulti);
 
     BinaryArithmeticExprCheck<int32_t, int32_t, int32_t>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt32, ::hybridse::node::kInt32, 2,
-        3, 2 * 3, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt32,
+        ::hybridse::node::kInt32, 2, 3, 2 * 3, ::hybridse::node::kFnOpMulti);
 
     BinaryArithmeticExprCheck<int32_t, int64_t, int64_t>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt64, ::hybridse::node::kInt64, 2,
-        8000000000L, 2L * 8000000000L, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt64,
+        ::hybridse::node::kInt64, 2, 8000000000L, 2L * 8000000000L,
+        ::hybridse::node::kFnOpMulti);
 
     BinaryArithmeticExprCheck<int32_t, float, float>(
-        ::hybridse::node::kInt32, ::hybridse::node::kFloat, ::hybridse::node::kFloat, 2,
-        12345678.5f, 2.0f * 12345678.5f, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kInt32, ::hybridse::node::kFloat,
+        ::hybridse::node::kFloat, 2, 12345678.5f, 2.0f * 12345678.5f,
+        ::hybridse::node::kFnOpMulti);
     BinaryArithmeticExprCheck<int32_t, double, double>(
-        ::hybridse::node::kInt32, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        2, 12345678.5, 2.0 * 12345678.5, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kInt32, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 2, 12345678.5, 2.0 * 12345678.5,
+        ::hybridse::node::kFnOpMulti);
 }
 TEST_F(ArithmeticIRBuilderTest, test_multi_int64_x_expr) {
     BinaryArithmeticExprCheck<int64_t, int16_t, int64_t>(
-        ::hybridse::node::kInt64, ::hybridse::node::kInt16, ::hybridse::node::kInt64,
-        8000000000L, 2L, 8000000000L * 2L, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kInt64, ::hybridse::node::kInt16,
+        ::hybridse::node::kInt64, 8000000000L, 2L, 8000000000L * 2L,
+        ::hybridse::node::kFnOpMulti);
 
     BinaryArithmeticExprCheck<int64_t, int32_t, int64_t>(
-        ::hybridse::node::kInt64, ::hybridse::node::kInt32, ::hybridse::node::kInt64,
-        8000000000L, 2, 8000000000L * 2L, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kInt64, ::hybridse::node::kInt32,
+        ::hybridse::node::kInt64, 8000000000L, 2, 8000000000L * 2L,
+        ::hybridse::node::kFnOpMulti);
 
     BinaryArithmeticExprCheck<int64_t, int64_t, int64_t>(
-        ::hybridse::node::kInt64, ::hybridse::node::kInt64, ::hybridse::node::kInt64, 2L,
-        8000000000L, 2L * 8000000000L, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kInt64, ::hybridse::node::kInt64,
+        ::hybridse::node::kInt64, 2L, 8000000000L, 2L * 8000000000L,
+        ::hybridse::node::kFnOpMulti);
 
     BinaryArithmeticExprCheck<int64_t, float, float>(
-        ::hybridse::node::kInt64, ::hybridse::node::kFloat, ::hybridse::node::kFloat, 2L,
-        12345678.5f, 2.0f * 12345678.5f, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kInt64, ::hybridse::node::kFloat,
+        ::hybridse::node::kFloat, 2L, 12345678.5f, 2.0f * 12345678.5f,
+        ::hybridse::node::kFnOpMulti);
     BinaryArithmeticExprCheck<int64_t, double, double>(
-        ::hybridse::node::kInt64, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        2, 12345678.5, 2.0 * 12345678.5, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kInt64, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 2, 12345678.5, 2.0 * 12345678.5,
+        ::hybridse::node::kFnOpMulti);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_multi_float_x_expr) {
     BinaryArithmeticExprCheck<float, int16_t, float>(
-        ::hybridse::node::kFloat, ::hybridse::node::kInt16, ::hybridse::node::kFloat,
-        2.0f, 3.0f, 2.0f * 3.0f, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kFloat, ::hybridse::node::kInt16,
+        ::hybridse::node::kFloat, 2.0f, 3.0f, 2.0f * 3.0f,
+        ::hybridse::node::kFnOpMulti);
 
     BinaryArithmeticExprCheck<float, int32_t, float>(
-        ::hybridse::node::kFloat, ::hybridse::node::kInt32, ::hybridse::node::kFloat,
-        8000000000L, 2, 8000000000.0f * 2.0f, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kFloat, ::hybridse::node::kInt32,
+        ::hybridse::node::kFloat, 8000000000L, 2, 8000000000.0f * 2.0f,
+        ::hybridse::node::kFnOpMulti);
 
     BinaryArithmeticExprCheck<float, int64_t, float>(
-        ::hybridse::node::kFloat, ::hybridse::node::kInt64, ::hybridse::node::kFloat,
-        2.0f, 200000L, 2.0f * 200000.0f, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kFloat, ::hybridse::node::kInt64,
+        ::hybridse::node::kFloat, 2.0f, 200000L, 2.0f * 200000.0f,
+        ::hybridse::node::kFnOpMulti);
 
     BinaryArithmeticExprCheck<float, float, float>(
-        ::hybridse::node::kFloat, ::hybridse::node::kFloat, ::hybridse::node::kFloat,
-        2.0f, 12345678.5f, 2.0f * 12345678.5f, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kFloat, ::hybridse::node::kFloat,
+        ::hybridse::node::kFloat, 2.0f, 12345678.5f, 2.0f * 12345678.5f,
+        ::hybridse::node::kFnOpMulti);
     BinaryArithmeticExprCheck<float, double, double>(
-        ::hybridse::node::kFloat, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        2.0f, 12345678.5, 2.0 * 12345678.5, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kFloat, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 2.0f, 12345678.5, 2.0 * 12345678.5,
+        ::hybridse::node::kFnOpMulti);
 }
 TEST_F(ArithmeticIRBuilderTest, test_multi_double_x_expr) {
     BinaryArithmeticExprCheck<double, int16_t, double>(
-        ::hybridse::node::kDouble, ::hybridse::node::kInt16, ::hybridse::node::kDouble,
-        2.0, 3, 2.0 * 3.0, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kDouble, ::hybridse::node::kInt16,
+        ::hybridse::node::kDouble, 2.0, 3, 2.0 * 3.0,
+        ::hybridse::node::kFnOpMulti);
 
     BinaryArithmeticExprCheck<double, int32_t, double>(
-        ::hybridse::node::kDouble, ::hybridse::node::kInt32, ::hybridse::node::kDouble,
-        8000000000L, 2, 8000000000.0 * 2.0, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kDouble, ::hybridse::node::kInt32,
+        ::hybridse::node::kDouble, 8000000000L, 2, 8000000000.0 * 2.0,
+        ::hybridse::node::kFnOpMulti);
 
     BinaryArithmeticExprCheck<double, int64_t, double>(
-        ::hybridse::node::kDouble, ::hybridse::node::kInt64, ::hybridse::node::kDouble,
-        2.0f, 200000L, 2.0 * 200000.0, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kDouble, ::hybridse::node::kInt64,
+        ::hybridse::node::kDouble, 2.0f, 200000L, 2.0 * 200000.0,
+        ::hybridse::node::kFnOpMulti);
 
     BinaryArithmeticExprCheck<double, float, double>(
-        ::hybridse::node::kDouble, ::hybridse::node::kFloat, ::hybridse::node::kDouble,
-        2.0, 12345678.5f, 2.0 * static_cast<double>(12345678.5f),
-        ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kDouble, ::hybridse::node::kFloat,
+        ::hybridse::node::kDouble, 2.0, 12345678.5f,
+        2.0 * static_cast<double>(12345678.5f), ::hybridse::node::kFnOpMulti);
     BinaryArithmeticExprCheck<double, double, double>(
-        ::hybridse::node::kDouble, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        2.0, 12345678.5, 2.0 * 12345678.5, ::hybridse::node::kFnOpMulti);
+        ::hybridse::node::kDouble, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 2.0, 12345678.5, 2.0 * 12345678.5,
+        ::hybridse::node::kFnOpMulti);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_fdiv_zero) {
     BinaryArithmeticExprCheck<int32_t, int16_t, double>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt16, ::hybridse::node::kDouble, 2,
-        0, 2.0 / 0.0, ::hybridse::node::kFnOpFDiv);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt16,
+        ::hybridse::node::kDouble, 2, 0, 2.0 / 0.0,
+        ::hybridse::node::kFnOpFDiv);
     BinaryArithmeticExprCheck<int32_t, int16_t, double>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt32, ::hybridse::node::kDouble, 2,
-        0, 2.0 / 0.0, ::hybridse::node::kFnOpFDiv);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt32,
+        ::hybridse::node::kDouble, 2, 0, 2.0 / 0.0,
+        ::hybridse::node::kFnOpFDiv);
 
     BinaryArithmeticExprCheck<int64_t, int16_t, double>(
-        ::hybridse::node::kInt64, ::hybridse::node::kInt32, ::hybridse::node::kDouble,
-        99999999L, 0, 99999999.0 / 0.0, ::hybridse::node::kFnOpFDiv);
+        ::hybridse::node::kInt64, ::hybridse::node::kInt32,
+        ::hybridse::node::kDouble, 99999999L, 0, 99999999.0 / 0.0,
+        ::hybridse::node::kFnOpFDiv);
     BinaryArithmeticExprCheck<int32_t, float, double>(
-        ::hybridse::node::kInt32, ::hybridse::node::kFloat, ::hybridse::node::kDouble, 2,
-        0.0f, 2.0 / 0.0, ::hybridse::node::kFnOpFDiv);
+        ::hybridse::node::kInt32, ::hybridse::node::kFloat,
+        ::hybridse::node::kDouble, 2, 0.0f, 2.0 / 0.0,
+        ::hybridse::node::kFnOpFDiv);
     BinaryArithmeticExprCheck<int32_t, double, double>(
-        ::hybridse::node::kInt32, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        2, 0.0, 2.0 / 0.0, ::hybridse::node::kFnOpFDiv);
+        ::hybridse::node::kInt32, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 2, 0.0, 2.0 / 0.0,
+        ::hybridse::node::kFnOpFDiv);
     std::cout << std::to_string(1 / 0.0) << std::endl;
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_fdiv_int32_x_expr) {
     BinaryArithmeticExprCheck<int32_t, int16_t, double>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt16, ::hybridse::node::kDouble, 2,
-        3, 2.0 / 3.0, ::hybridse::node::kFnOpFDiv);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt16,
+        ::hybridse::node::kDouble, 2, 3, 2.0 / 3.0,
+        ::hybridse::node::kFnOpFDiv);
 
     BinaryArithmeticExprCheck<int32_t, int32_t, double>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt32, ::hybridse::node::kDouble, 2,
-        3, 2.0 / 3.0, ::hybridse::node::kFnOpFDiv);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt32,
+        ::hybridse::node::kDouble, 2, 3, 2.0 / 3.0,
+        ::hybridse::node::kFnOpFDiv);
 
     BinaryArithmeticExprCheck<int32_t, int64_t, double>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt64, ::hybridse::node::kDouble, 2,
-        8000000000L, 2.0 / 8000000000.0, ::hybridse::node::kFnOpFDiv);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt64,
+        ::hybridse::node::kDouble, 2, 8000000000L, 2.0 / 8000000000.0,
+        ::hybridse::node::kFnOpFDiv);
     //
     BinaryArithmeticExprCheck<int32_t, float, double>(
-        ::hybridse::node::kInt32, ::hybridse::node::kFloat, ::hybridse::node::kDouble, 2,
-        3.0f, 2.0 / 3.0, ::hybridse::node::kFnOpFDiv);
+        ::hybridse::node::kInt32, ::hybridse::node::kFloat,
+        ::hybridse::node::kDouble, 2, 3.0f, 2.0 / 3.0,
+        ::hybridse::node::kFnOpFDiv);
     BinaryArithmeticExprCheck<int32_t, double, double>(
-        ::hybridse::node::kInt32, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        2, 12345678.5, 2.0 / 12345678.5, ::hybridse::node::kFnOpFDiv);
+        ::hybridse::node::kInt32, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 2, 12345678.5, 2.0 / 12345678.5,
+        ::hybridse::node::kFnOpFDiv);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_mod_int32_x_expr) {
     BinaryArithmeticExprCheck<int32_t, int16_t, int32_t>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt16, ::hybridse::node::kInt32, 12,
-        5, 2, ::hybridse::node::kFnOpMod);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt16,
+        ::hybridse::node::kInt32, 12, 5, 2, ::hybridse::node::kFnOpMod);
 
     BinaryArithmeticExprCheck<int32_t, int32_t, int32_t>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt32, ::hybridse::node::kInt32, 12,
-        5, 2, ::hybridse::node::kFnOpMod);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt32,
+        ::hybridse::node::kInt32, 12, 5, 2, ::hybridse::node::kFnOpMod);
 
     BinaryArithmeticExprCheck<int32_t, int64_t, int64_t>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt64, ::hybridse::node::kInt64, 12,
-        50000L, 12L, ::hybridse::node::kFnOpMod);
+        ::hybridse::node::kInt32, ::hybridse::node::kInt64,
+        ::hybridse::node::kInt64, 12, 50000L, 12L, ::hybridse::node::kFnOpMod);
 
     BinaryArithmeticExprCheck<int32_t, float, float>(
-        ::hybridse::node::kInt32, ::hybridse::node::kFloat, ::hybridse::node::kFloat, 12,
-        5.1f, fmod(12.0f, 5.1f), ::hybridse::node::kFnOpMod);
+        ::hybridse::node::kInt32, ::hybridse::node::kFloat,
+        ::hybridse::node::kFloat, 12, 5.1f, fmod(12.0f, 5.1f),
+        ::hybridse::node::kFnOpMod);
     BinaryArithmeticExprCheck<int32_t, double, double>(
-        ::hybridse::node::kInt32, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        12, 5.1, fmod(12.0, 5.1), ::hybridse::node::kFnOpMod);
+        ::hybridse::node::kInt32, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 12, 5.1, fmod(12.0, 5.1),
+        ::hybridse::node::kFnOpMod);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_mod_float_x_expr) {
     BinaryArithmeticExprCheck<int16_t, float, float>(
-        ::hybridse::node::kInt16, ::hybridse::node::kFloat, ::hybridse::node::kFloat, 12,
-        5.1f, fmod(12.0f, 5.1f), ::hybridse::node::kFnOpMod);
+        ::hybridse::node::kInt16, ::hybridse::node::kFloat,
+        ::hybridse::node::kFloat, 12, 5.1f, fmod(12.0f, 5.1f),
+        ::hybridse::node::kFnOpMod);
 
     BinaryArithmeticExprCheck<int32_t, float, float>(
-        ::hybridse::node::kInt32, ::hybridse::node::kFloat, ::hybridse::node::kFloat, 12,
-        5.1f, fmod(12.0f, 5.1f), ::hybridse::node::kFnOpMod);
+        ::hybridse::node::kInt32, ::hybridse::node::kFloat,
+        ::hybridse::node::kFloat, 12, 5.1f, fmod(12.0f, 5.1f),
+        ::hybridse::node::kFnOpMod);
 
     BinaryArithmeticExprCheck<int64_t, float, float>(
-        ::hybridse::node::kInt64, ::hybridse::node::kFloat, ::hybridse::node::kFloat,
-        12L, 5.1f, fmod(12.0f, 5.1f), ::hybridse::node::kFnOpMod);
+        ::hybridse::node::kInt64, ::hybridse::node::kFloat,
+        ::hybridse::node::kFloat, 12L, 5.1f, fmod(12.0f, 5.1f),
+        ::hybridse::node::kFnOpMod);
 
     BinaryArithmeticExprCheck<float, float, float>(
-        ::hybridse::node::kFloat, ::hybridse::node::kFloat, ::hybridse::node::kFloat,
-        12.0f, 5.1f, fmod(12.0f, 5.1f), ::hybridse::node::kFnOpMod);
+        ::hybridse::node::kFloat, ::hybridse::node::kFloat,
+        ::hybridse::node::kFloat, 12.0f, 5.1f, fmod(12.0f, 5.1f),
+        ::hybridse::node::kFnOpMod);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_mod_double_x_expr) {
     BinaryArithmeticExprCheck<int16_t, double, double>(
-        ::hybridse::node::kInt16, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        12, 5.1, fmod(12.0, 5.1), ::hybridse::node::kFnOpMod);
+        ::hybridse::node::kInt16, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 12, 5.1, fmod(12.0, 5.1),
+        ::hybridse::node::kFnOpMod);
 
     BinaryArithmeticExprCheck<int32_t, double, double>(
-        ::hybridse::node::kInt32, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        12, 5.1, fmod(12.0, 5.1), ::hybridse::node::kFnOpMod);
+        ::hybridse::node::kInt32, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 12, 5.1, fmod(12.0, 5.1),
+        ::hybridse::node::kFnOpMod);
 
     BinaryArithmeticExprCheck<int64_t, double, double>(
-        ::hybridse::node::kInt64, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        12L, 5.1, fmod(12.0, 5.1), ::hybridse::node::kFnOpMod);
+        ::hybridse::node::kInt64, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 12L, 5.1, fmod(12.0, 5.1),
+        ::hybridse::node::kFnOpMod);
 
     BinaryArithmeticExprCheck<float, double, double>(
-        ::hybridse::node::kFloat, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        12.0f, 5.1, fmod(12.0, 5.1), ::hybridse::node::kFnOpMod);
+        ::hybridse::node::kFloat, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 12.0f, 5.1, fmod(12.0, 5.1),
+        ::hybridse::node::kFnOpMod);
     BinaryArithmeticExprCheck<double, double, double>(
-        ::hybridse::node::kDouble, ::hybridse::node::kDouble, ::hybridse::node::kDouble,
-        12.0, 5.1, fmod(12.0, 5.1), ::hybridse::node::kFnOpMod);
+        ::hybridse::node::kDouble, ::hybridse::node::kDouble,
+        ::hybridse::node::kDouble, 12.0, 5.1, fmod(12.0, 5.1),
+        ::hybridse::node::kFnOpMod);
 }
 }  // namespace codegen
 }  // namespace hybridse

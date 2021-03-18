@@ -15,8 +15,8 @@
  */
 
 #include "benchmark/benchmark.h"
-#include "llvm/Transforms/Scalar.h"
 #include "bm/storage_bm_case.h"
+#include "llvm/Transforms/Scalar.h"
 
 namespace hybridse {
 namespace bm {
@@ -44,31 +44,31 @@ static void BM_MemSegmentIterate(benchmark::State& state) {  // NOLINT
     MemSegmentIterate(&state, BENCHMARK, state.range(0));
 }
 BENCHMARK(BM_TabletFullIterate)
-->Args({10})
+    ->Args({10})
     ->Args({100})
     ->Args({1000})
     ->Args({10000});
 
 BENCHMARK(BM_TabletWindowIterate)
-->Args({10})
+    ->Args({10})
     ->Args({100})
     ->Args({1000})
     ->Args({10000});
 
 BENCHMARK(BM_MemTableIterate)
-->Args({10})
+    ->Args({10})
     ->Args({100})
     ->Args({1000})
     ->Args({10000});
 
 BENCHMARK(BM_RequestUnionTableIterate)
-->Args({10})
+    ->Args({10})
     ->Args({100})
     ->Args({1000})
     ->Args({10000});
 
 BENCHMARK(BM_MemSegmentIterate)
-->Args({10})
+    ->Args({10})
     ->Args({100})
     ->Args({1000})
     ->Args({10000});

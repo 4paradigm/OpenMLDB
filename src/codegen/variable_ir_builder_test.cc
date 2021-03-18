@@ -40,7 +40,8 @@ class VariableIRBuilderTest : public ::testing::Test {
 };
 
 template <class V1>
-void MutableVariableCheck(::hybridse::node::DataType type, V1 value1, V1 result) {
+void MutableVariableCheck(::hybridse::node::DataType type, V1 value1,
+                          V1 result) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("predicate_func", *ctx);
     llvm::Type *llvm_type = NULL;
@@ -133,8 +134,10 @@ TEST_F(VariableIRBuilderTest, test_int32_array_variable) {
     for (int j = 0; j < len; ++j) {
         int_num[j] = j + 1;
     }
-    ArrayVariableCheck<int32_t>(::hybridse::node::DataType::kInt32, int_num, 0, 1);
-    ArrayVariableCheck<int32_t>(::hybridse::node::DataType::kInt32, int_num, 1, 2);
+    ArrayVariableCheck<int32_t>(::hybridse::node::DataType::kInt32, int_num, 0,
+                                1);
+    ArrayVariableCheck<int32_t>(::hybridse::node::DataType::kInt32, int_num, 1,
+                                2);
     ArrayVariableCheck<int32_t>(::hybridse::node::DataType::kInt32, int_num, 9,
                                 10);
 }
@@ -146,12 +149,12 @@ TEST_F(VariableIRBuilderTest, test_int8ptr_array_variable) {
     for (size_t j = 0; j < strs.size(); ++j) {
         int_num[j] = reinterpret_cast<int8_t *>(&(strs[j]));
     }
-    ArrayVariableCheck<int8_t *>(::hybridse::node::DataType::kInt8Ptr, int_num, 0,
-                                 reinterpret_cast<int8_t *>(&strs[0]));
-    ArrayVariableCheck<int8_t *>(::hybridse::node::DataType::kInt8Ptr, int_num, 1,
-                                 reinterpret_cast<int8_t *>(&strs[1]));
-    ArrayVariableCheck<int8_t *>(::hybridse::node::DataType::kInt8Ptr, int_num, 7,
-                                 reinterpret_cast<int8_t *>(&strs[7]));
+    ArrayVariableCheck<int8_t *>(::hybridse::node::DataType::kInt8Ptr, int_num,
+                                 0, reinterpret_cast<int8_t *>(&strs[0]));
+    ArrayVariableCheck<int8_t *>(::hybridse::node::DataType::kInt8Ptr, int_num,
+                                 1, reinterpret_cast<int8_t *>(&strs[1]));
+    ArrayVariableCheck<int8_t *>(::hybridse::node::DataType::kInt8Ptr, int_num,
+                                 7, reinterpret_cast<int8_t *>(&strs[7]));
 }
 
 }  // namespace codegen

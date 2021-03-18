@@ -209,7 +209,8 @@ bool Table::Put(const char* row, uint32_t size) {
         }
         if (seg_cnt_ > 1) {
             seg_index =
-                ::hybridse::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
+                ::hybridse::base::hash(key.c_str(), key.length(), SEED) %
+                seg_cnt_;
         }
         Segment* segment = segments_[kv.second.index][seg_index];
         Slice spk(key);
@@ -222,7 +223,8 @@ std::unique_ptr<TableIterator> Table::NewIndexIterator(const std::string& pk,
                                                        const uint32_t index) {
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
-        seg_idx = ::hybridse::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+        seg_idx =
+            ::hybridse::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
     }
     base::Slice spk(pk);
     Segment* segment = segments_[index][seg_idx];

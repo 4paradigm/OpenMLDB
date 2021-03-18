@@ -13,6 +13,7 @@ thirdsrc
 *.a
 
 src/fe_version.h
+src/hyhridse_version.h
 
 # java ignore
 *.iml

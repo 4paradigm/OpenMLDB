@@ -35,15 +35,15 @@ using hybridse::base::Status;
 using hybridse::codec::Row;
 using hybridse::common::kSQLError;
 using hybridse::sqlcase::SQLCase;
-void BuildTableDef(::hybridse::type::TableDef& table); // NOLINT
-void BuildTableA(::hybridse::type::TableDef& table); // NOLINT
-void BuildTableT2Def(::hybridse::type::TableDef& table); // NOLINT
+void BuildTableDef(::hybridse::type::TableDef& table);    // NOLINT
+void BuildTableA(::hybridse::type::TableDef& table);      // NOLINT
+void BuildTableT2Def(::hybridse::type::TableDef& table);  // NOLINT
 void BuildBuf(int8_t** buf, uint32_t* size);
 void BuildT2Buf(int8_t** buf, uint32_t* size);
 void BuildRows(::hybridse::type::TableDef& table,    // NOLINT
-               std::vector<Row>& rows);           // NOLINT
+               std::vector<Row>& rows);              // NOLINT
 void BuildT2Rows(::hybridse::type::TableDef& table,  // NOLINT
-                 std::vector<Row>& rows); // NOLINT
+                 std::vector<Row>& rows);            // NOLINT
 void ExtractExprListFromSimpleSQL(::hybridse::node::NodeManager* nm,
                                   const std::string& sql,
                                   node::ExprListNode* output);

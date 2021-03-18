@@ -92,8 +92,8 @@ int CoreAPI::ResolveColumnIndex(hybridse::vm::PhysicalOpNode* node,
     return total_offset;
 }
 
-std::string CoreAPI::ResolveSourceColumnName(hybridse::vm::PhysicalOpNode* node,
-                                             hybridse::node::ColumnRefNode* expr) {
+std::string CoreAPI::ResolveSourceColumnName(
+    hybridse::vm::PhysicalOpNode* node, hybridse::node::ColumnRefNode* expr) {
     const SchemasContext* schemas_ctx = node->schemas_ctx();
     auto column_expr = dynamic_cast<const node::ColumnRefNode*>(expr);
     size_t column_id;
@@ -119,9 +119,9 @@ std::string CoreAPI::ResolveSourceColumnName(hybridse::vm::PhysicalOpNode* node,
         ->GetColumnName(col_idx);
 }
 
-ColumnSourceInfo CoreAPI::ResolveSourceColumn(hybridse::vm::PhysicalOpNode* node,
-                                              const std::string& relation_name,
-                                              const std::string& column_name) {
+ColumnSourceInfo CoreAPI::ResolveSourceColumn(
+    hybridse::vm::PhysicalOpNode* node, const std::string& relation_name,
+    const std::string& column_name) {
     ColumnSourceInfo result;
     if (node == nullptr) {
         return result;
@@ -186,7 +186,7 @@ hybridse::vm::TableHandler* GroupbyInterface::GetTableHandler() {
 }
 
 hybridse::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
-                                           const bool need_free) {
+                                              const bool need_free) {
     // Init current run step runtime
     JITRuntime::get()->InitRunStep();
 
@@ -208,8 +208,8 @@ hybridse::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
 }
 
 hybridse::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
-                                      const hybridse::codec::Row row,
-                                      const bool need_free) {
+                                         const hybridse::codec::Row row,
+                                         const bool need_free) {
     if (row.empty()) {
         return hybridse::codec::Row();
     }
@@ -235,10 +235,10 @@ hybridse::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
         buf, hybridse::codec::RowView::GetSize(buf)));
 }
 
-hybridse::codec::Row CoreAPI::UnsafeRowProject(const hybridse::vm::RawPtrHandle fn,
+hybridse::codec::Row CoreAPI::UnsafeRowProject(
+    const hybridse::vm::RawPtrHandle fn,
     hybridse::vm::ByteArrayPtr inputUnsafeRowBytes,
-    const int inputRowSizeInBytes,
-    const bool need_free) {
+    const int inputRowSizeInBytes, const bool need_free) {
     // Create Row from input UnsafeRow bytes
     auto inputRow = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes,
                                                       inputRowSizeInBytes));
@@ -273,8 +273,9 @@ void CoreAPI::CopyRowToUnsafeRowBytes(const hybridse::codec::Row inputRow,
 }
 
 hybridse::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
-                                         const uint64_t row_key, const Row row,
-                                         WindowInterface* window) {
+                                            const uint64_t row_key,
+                                            const Row row,
+                                            WindowInterface* window) {
     if (row.empty()) {
         return row;
     }
@@ -306,25 +307,23 @@ hybridse::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
 }
 
 hybridse::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
-                                         const uint64_t key, const Row row,
-                                         const bool is_instance,
-                                         size_t append_slices,
-                                         WindowInterface* window) {
+                                            const uint64_t key, const Row row,
+                                            const bool is_instance,
+                                            size_t append_slices,
+                                            WindowInterface* window) {
     return Runner::WindowProject(fn, key, row, is_instance, append_slices,
                                  window->GetWindow());
 }
 
-hybridse::codec::Row CoreAPI::UnsafeWindowProject(const RawPtrHandle fn,
-    const uint64_t key,
+hybridse::codec::Row CoreAPI::UnsafeWindowProject(
+    const RawPtrHandle fn, const uint64_t key,
     hybridse::vm::ByteArrayPtr inputUnsafeRowBytes,
-    const int inputRowSizeInBytes,
-    const bool is_instance,
-    size_t append_slices,
+    const int inputRowSizeInBytes, const bool is_instance, size_t append_slices,
     WindowInterface* window) {
     // tobe
     // Create Row from input UnsafeRow bytes
     auto row = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes,
-                                                      inputRowSizeInBytes));
+                                                 inputRowSizeInBytes));
     return Runner::WindowProject(fn, key, row, is_instance, append_slices,
                                  window->GetWindow());
 }
@@ -334,7 +333,8 @@ hybridse::codec::Row CoreAPI::GroupbyProject(
     return Runner::GroupbyProject(fn, groupby_interface->GetTableHandler());
 }
 
-bool CoreAPI::ComputeCondition(const hybridse::vm::RawPtrHandle fn, const Row& row,
+bool CoreAPI::ComputeCondition(const hybridse::vm::RawPtrHandle fn,
+                               const Row& row,
                                const hybridse::codec::RowView* row_view,
                                size_t out_idx) {
     Row cond_row = CoreAPI::RowProject(fn, row, true);

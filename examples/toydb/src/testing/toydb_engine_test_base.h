@@ -37,8 +37,9 @@ std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
 bool InitToydbEngineCatalog(
     SQLCase& sql_case,  // NOLINT
     const EngineOptions& engine_options,
-    std::map<std::string, std::shared_ptr<::hybridse::storage::Table>>&  // NOLINT
-    name_table_map,                                               // NOLINT
+    std::map<std::string,
+             std::shared_ptr<::hybridse::storage::Table>>&  // NOLINT
+        name_table_map,                                     // NOLINT
     std::shared_ptr<vm::Engine> engine,
     std::shared_ptr<tablet::TabletCatalog> catalog);
 std::shared_ptr<tablet::TabletCatalog> BuildOnePkTableStorage(

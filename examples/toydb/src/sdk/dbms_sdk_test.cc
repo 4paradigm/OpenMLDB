@@ -33,7 +33,6 @@ DECLARE_string(endpoint);
 DECLARE_int32(port);
 DECLARE_bool(enable_keep_alive);
 
-
 namespace hybridse {
 namespace sdk {
 using hybridse::sqlcase::SQLCase;
@@ -41,8 +40,8 @@ std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(hybridse::sqlcase::FindHybridSEDirPath(),
-                                         yaml_path, cases)) {
+    if (!SQLCase::CreateSQLCasesFromYaml(
+            hybridse::sqlcase::FindHybridSEDirPath(), yaml_path, cases)) {
         FAIL();
     }
 }

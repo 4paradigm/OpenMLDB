@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <string>
 #include "codegen/fn_ir_builder.h"
 #include "gtest/gtest.h"

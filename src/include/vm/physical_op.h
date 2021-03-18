@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_INCLUDE_VM_PHYSICAL_OP_H_
 #define SRC_INCLUDE_VM_PHYSICAL_OP_H_
 #include <list>

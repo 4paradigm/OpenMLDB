@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 // memory_manager.h
 //     负责HybridSE的基础元件（SQLNode, PlanNode)的创建和销毁
 //     SQL的语法解析树、查询计划里面维护的只是这些节点的指针或者引用
@@ -169,7 +168,8 @@ class NodeManager {
                            const hybridse::node::TypeNode *v1);
     TypeNode *MakeTypeNode(hybridse::node::DataType base,
                            hybridse::node::DataType v1);
-    TypeNode *MakeTypeNode(hybridse::node::DataType base, hybridse::node::DataType v1,
+    TypeNode *MakeTypeNode(hybridse::node::DataType base,
+                           hybridse::node::DataType v1,
                            hybridse::node::DataType v2);
     OpaqueTypeNode *MakeOpaqueType(size_t bytes);
     RowTypeNode *MakeRowType(const std::vector<const vm::Schema *> &schema);

@@ -91,8 +91,8 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     }
     LOG(INFO) << "after opt with ins cnt " << m->getInstructionCount();
     m->print(::llvm::errs(), NULL, true, true);
-    auto jit =
-        std::unique_ptr<vm::HybridSEJITWrapper>(vm::HybridSEJITWrapper::Create());
+    auto jit = std::unique_ptr<vm::HybridSEJITWrapper>(
+        vm::HybridSEJITWrapper::Create());
     jit->Init();
     vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
@@ -235,16 +235,12 @@ TEST_F(FnIRBuilderTest, test_if_else_mutable_var_block) {
     hybridse::codec::ArrayListV<int32_t> list(&vec);
     hybridse::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(test, 1, &list_ref,
-                                                             0);
-    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(test, 3, &list_ref,
-                                                             1);
-    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(test, 5, &list_ref,
-                                                             2);
-    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(test, 7, &list_ref,
-                                                             3);
-    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(test, 9, &list_ref,
-                                                             4);
+    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(test, 1,
+&list_ref, 0); CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(test,
+3, &list_ref, 1); CheckResult<int32_t, hybridse::codec::ListRef<> *,
+int32_t>(test, 5, &list_ref, 2); CheckResult<int32_t, hybridse::codec::ListRef<>
+*, int32_t>(test, 7, &list_ref, 3); CheckResult<int32_t,
+hybridse::codec::ListRef<> *, int32_t>(test, 9, &list_ref, 4);
 }*/
 
 TEST_F(FnIRBuilderTest, test_for_in_sum) {
@@ -308,7 +304,7 @@ TEST_F(FnIRBuilderTest, test_for_in_condition_sum) {
     CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(
         test, 3 + 5 + 7 + 9, &list_ref, 2);
     CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(test, 5 + 7 + 9,
-                                                             &list_ref, 3);
+                                                                &list_ref, 3);
 }
 
 TEST_F(FnIRBuilderTest, test_for_in_condition2_sum) {

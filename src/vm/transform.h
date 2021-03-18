@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_VM_TRANSFORM_H_
 #define SRC_VM_TRANSFORM_H_
 
@@ -337,9 +336,9 @@ inline bool SchemaType2DataType(const ::hybridse::type::Type type,
     return true;
 }
 
-bool TransformLogicalTreeToLogicalGraph(const ::hybridse::node::PlanNode* node,
-                                        LogicalGraph* graph,
-                                        hybridse::base::Status& status);  // NOLINT
+bool TransformLogicalTreeToLogicalGraph(
+    const ::hybridse::node::PlanNode* node, LogicalGraph* graph,
+    hybridse::base::Status& status);  // NOLINT
 
 Status ExtractProjectInfos(const node::PlanNodeList& projects,
                            const node::FrameNode* primary_frame,

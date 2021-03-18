@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_VM_CORE_API_H_
 #define SRC_VM_CORE_API_H_
 
@@ -46,7 +45,9 @@ class WindowInterface {
 
     bool BufferData(uint64_t key, const Row& row);
 
-    hybridse::codec::Row Get(uint64_t idx) const { return window_impl_->At(idx); }
+    hybridse::codec::Row Get(uint64_t idx) const {
+        return window_impl_->At(idx);
+    }
 
     size_t size() const { return window_impl_->GetCount(); }
 
@@ -115,7 +116,8 @@ class CoreAPI {
                                   hybridse::node::ExprNode* expr);
 
     static std::string ResolveSourceColumnName(
-        hybridse::vm::PhysicalOpNode* node, hybridse::node::ColumnRefNode* expr);
+        hybridse::vm::PhysicalOpNode* node,
+        hybridse::node::ColumnRefNode* expr);
 
     static ColumnSourceInfo ResolveSourceColumn(
         hybridse::vm::PhysicalOpNode* node, const std::string& relation_name,
@@ -124,10 +126,10 @@ class CoreAPI {
     static size_t GetUniqueID(const hybridse::vm::PhysicalOpNode* node);
 
     static hybridse::codec::Row RowProject(const hybridse::vm::RawPtrHandle fn,
-                                        const hybridse::codec::Row row,
-                                        const bool need_free = false);
-    static hybridse::codec::Row RowConstProject(const hybridse::vm::RawPtrHandle fn,
-                                             const bool need_free = false);
+                                           const hybridse::codec::Row row,
+                                           const bool need_free = false);
+    static hybridse::codec::Row RowConstProject(
+        const hybridse::vm::RawPtrHandle fn, const bool need_free = false);
 
     // Row project API with Spark UnsafeRow optimization
     static hybridse::codec::Row UnsafeRowProject(
@@ -139,11 +141,9 @@ class CoreAPI {
                                         hybridse::vm::ByteArrayPtr outputBytes,
                                         const int length);
 
-    static hybridse::codec::Row WindowProject(const hybridse::vm::RawPtrHandle fn,
-                                           const uint64_t key, const Row row,
-                                           const bool is_instance,
-                                           size_t append_slices,
-                                           WindowInterface* window);
+    static hybridse::codec::Row WindowProject(
+        const hybridse::vm::RawPtrHandle fn, const uint64_t key, const Row row,
+        const bool is_instance, size_t append_slices, WindowInterface* window);
 
     // Window project API with Spark UnsafeRow optimization
     static hybridse::codec::Row UnsafeWindowProject(
@@ -152,9 +152,9 @@ class CoreAPI {
         const int inputRowSizeInBytes, const bool is_instance,
         size_t append_slices, WindowInterface* window);
 
-    static hybridse::codec::Row WindowProject(const hybridse::vm::RawPtrHandle fn,
-                                           const uint64_t key, const Row row,
-                                           WindowInterface* window);
+    static hybridse::codec::Row WindowProject(
+        const hybridse::vm::RawPtrHandle fn, const uint64_t key, const Row row,
+        WindowInterface* window);
 
     static hybridse::codec::Row GroupbyProject(
         const hybridse::vm::RawPtrHandle fn,

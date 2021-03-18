@@ -265,11 +265,12 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
             ::hybridse::dbms::AddTableRequest add_table_request;
             ::hybridse::dbms::AddTableResponse response;
             add_table_request.set_db_name(catalog);
-            ::hybridse::type::TableDef *table = add_table_request.mutable_table();
+            ::hybridse::type::TableDef *table =
+                add_table_request.mutable_table();
             table->set_catalog(catalog);
-            hybridse::plan::Planner::TransformTableDef(create->GetTableName(),
-                                    create->GetColumnDescList(), table,
-                                    sql_status);
+            hybridse::plan::Planner::TransformTableDef(
+                create->GetTableName(), create->GetColumnDescList(), table,
+                sql_status);
             if (0 != sql_status.code) {
                 status->code = sql_status.code;
                 status->msg = sql_status.str();

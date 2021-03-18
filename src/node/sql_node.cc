@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "node/sql_node.h"
 #include <numeric>
 #include <utility>
@@ -1095,7 +1094,8 @@ std::string ExprString(const ExprNode *expr) {
     return nullptr == expr ? std::string() : expr->GetExprString();
 }
 const bool IsNullPrimary(const ExprNode *expr) {
-    return nullptr != expr && expr->expr_type_ == hybridse::node::kExprPrimary &&
+    return nullptr != expr &&
+           expr->expr_type_ == hybridse::node::kExprPrimary &&
            dynamic_cast<const node::ConstNode *>(expr)->IsNull();
 }
 

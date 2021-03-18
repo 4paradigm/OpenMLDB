@@ -97,7 +97,7 @@ class SQLCase {
     bool BuildInsertSQLFromInput(int32_t input_idx, std::string* sql) const;
     bool BuildInsertSQLListFromInput(int32_t input_idx,
                                      std::vector<std::string>* sql_list) const;
-    bool ExtractOutputSchema(type::TableDef& table) const;       // NOLINT
+    bool ExtractOutputSchema(type::TableDef& table) const;          // NOLINT
     bool ExtractInputData(std::vector<hybridse::codec::Row>& rows,  // NOLINT
                           int32_t input_idx = 0) const;
     bool ExtractInputData(
@@ -107,7 +107,8 @@ class SQLCase {
         std::vector<hybridse::codec::Row>& rows) const;  // NOLINT
 
     bool AddInput(const TableInfo& table_data);
-    static bool TypeParse(const std::string& row_str, hybridse::type::Type* type);
+    static bool TypeParse(const std::string& row_str,
+                          hybridse::type::Type* type);
     static bool TTLTypeParse(const std::string& type_str,
                              ::hybridse::type::TTLType* type);
     static bool TTLParse(const std::string& type_str,
@@ -161,7 +162,7 @@ class SQLCase {
                                          SQLCase::ExpectInfo* table);
     static bool LoadSchemaAndRowsFromYaml(
         const std::string& cases_dir, const std::string& resource_path,
-        type::TableDef& table,                  // NOLINT
+        type::TableDef& table,                     // NOLINT
         std::vector<hybridse::codec::Row>& rows);  // NOLINT
     static bool CreateSQLCasesFromYaml(
         const std::string& cases_dir, const std::string& yaml_path,

@@ -21,8 +21,9 @@ using hybridse::codec::Row;
 bool CaseDataMock::LoadResource(const std::string& resource_path,
                                 type::TableDef& table_def,  // NOLINT
                                 std::vector<Row>& rows) {   // NOLINT
-    if (!SQLCase::LoadSchemaAndRowsFromYaml(hybridse::sqlcase::FindHybridSEDirPath(),
-                                            resource_path, table_def, rows)) {
+    if (!SQLCase::LoadSchemaAndRowsFromYaml(
+            hybridse::sqlcase::FindHybridSEDirPath(), resource_path, table_def,
+            rows)) {
         return false;
     }
     return true;
@@ -65,8 +66,8 @@ void CaseDataMock::BuildOnePkTableData(type::TableDef& table_def,  // NOLINT
 }
 
 void CaseDataMock::BuildTableAndData(type::TableDef& table_def,  // NOLINT
-                                  std::vector<Row>& buffer,   // NOLINT
-                                  int64_t data_size) {
+                                     std::vector<Row>& buffer,   // NOLINT
+                                     int64_t data_size) {
     CaseSchemaMock::BuildTableDef(table_def);
     for (int i = 0; i < data_size; ++i) {
         std::string str1 = "hello";
@@ -80,12 +81,13 @@ void CaseDataMock::BuildTableAndData(type::TableDef& table_def,  // NOLINT
         builder.AppendInt16(2);
         builder.AppendFloat(3.0);
         builder.AppendDouble(4.0);
-        builder.AppendInt64(1576571615000-i);
+        builder.AppendInt64(1576571615000 - i);
         builder.AppendString(str2.c_str(), str2.size());
         buffer.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
 }
-void CaseSchemaMock::BuildTableDef(::hybridse::type::TableDef& table) {  // NOLINT
+void CaseSchemaMock::BuildTableDef(
+    ::hybridse::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
     table.set_catalog("db");
     {

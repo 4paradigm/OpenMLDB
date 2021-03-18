@@ -37,9 +37,9 @@ TEST_F(StorageBMCaseTest, TabletTableIterate_TEST) {
 }
 
 TEST_F(StorageBMCaseTest, TabletWindowIterate_TEST) {
-//    TabletWindowIterate(nullptr, TEST, 10L);
+    //    TabletWindowIterate(nullptr, TEST, 10L);
     TabletWindowIterate(nullptr, TEST, 100L);
-//    TabletWindowIterate(nullptr, TEST, 1000L);
+    //    TabletWindowIterate(nullptr, TEST, 1000L);
 }
 
 TEST_F(StorageBMCaseTest, MemSegmentIterate_TEST) {

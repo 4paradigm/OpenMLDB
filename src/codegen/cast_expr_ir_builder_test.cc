@@ -149,13 +149,15 @@ void CastCheck(::hybridse::node::DataType src_type,
 
 template <class S, class D>
 void UnSafeCastCheck(::hybridse::node::DataType src_type,
-                     ::hybridse::node::DataType dist_type, S value, D cast_value) {
+                     ::hybridse::node::DataType dist_type, S value,
+                     D cast_value) {
     CastCheck<S, D>(src_type, dist_type, value, cast_value, false);
 }
 
 template <class S, class D>
 void SafeCastCheck(::hybridse::node::DataType src_type,
-                   ::hybridse::node::DataType dist_type, S value, D cast_value) {
+                   ::hybridse::node::DataType dist_type, S value,
+                   D cast_value) {
     CastCheck<S, D>(src_type, dist_type, value, cast_value, true);
 }
 
@@ -171,7 +173,8 @@ void BoolCastCheck(::hybridse::node::DataType type, V value, bool result) {
 
     llvm::Type *left_llvm_type = NULL;
     llvm::Type *dist_llvm_type = NULL;
-    ASSERT_TRUE(::hybridse::codegen::GetLLVMType(m.get(), type, &left_llvm_type));
+    ASSERT_TRUE(
+        ::hybridse::codegen::GetLLVMType(m.get(), type, &left_llvm_type));
     ASSERT_TRUE(GetLLVMType(m.get(), ::hybridse::node::kBool, &dist_llvm_type));
 
     // Create the add1 function entry and insert this entry into module M.  The
@@ -219,8 +222,8 @@ TEST_F(CastExprIrBuilderTest, unsafe_cast_test_4) {
                                     ::hybridse::node::kFloat, 10000u, 40000.0f);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_5) {
-    UnSafeCastCheck<int16_t, double>(::hybridse::node::kInt16,
-                                     ::hybridse::node::kDouble, 10000u, 40000.0);
+    UnSafeCastCheck<int16_t, double>(
+        ::hybridse::node::kInt16, ::hybridse::node::kDouble, 10000u, 40000.0);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_6) {
     UnSafeCastCheck<int32_t, int16_t>(::hybridse::node::kInt32,
@@ -231,8 +234,9 @@ TEST_F(CastExprIrBuilderTest, unsafe_cast_test_7) {
                                       ::hybridse::node::kInt32, 1, 4);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_8) {
-    UnSafeCastCheck<int32_t, int64_t>(
-        ::hybridse::node::kInt32, ::hybridse::node::kInt64, 2000000000, 8000000000L);
+    UnSafeCastCheck<int32_t, int64_t>(::hybridse::node::kInt32,
+                                      ::hybridse::node::kInt64, 2000000000,
+                                      8000000000L);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_9) {
     UnSafeCastCheck<int32_t, float>(::hybridse::node::kInt32,
@@ -263,7 +267,8 @@ TEST_F(CastExprIrBuilderTest, unsafe_cast_test_14) {
 }
 
 TEST_F(CastExprIrBuilderTest, safe_cast_error_test_0) {
-    SafeCastErrorCheck(::hybridse::node::kInt32, ::hybridse::node::kInt16, "unsafe");
+    SafeCastErrorCheck(::hybridse::node::kInt32, ::hybridse::node::kInt16,
+                       "unsafe");
 }
 TEST_F(CastExprIrBuilderTest, safe_cast_error_test_1) {
     SafeCastErrorCheck(::hybridse::node::kInt64, ::hybridse::node::kInt16,
@@ -488,7 +493,8 @@ void CastExprCheck(CASTTYPE exp_value, std::string src_type_str,
 void CastExprCheck(std::string cast_type_str, std::string cast_value_str,
                    std::string src_type_str, std::string src_value_str) {
     hybridse::type::Type cast_type;
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::TypeParse(cast_type_str, &cast_type));
+    ASSERT_TRUE(
+        hybridse::sqlcase::SQLCase::TypeParse(cast_type_str, &cast_type));
     switch (cast_type) {
         case type::kBool: {
             if ("null" == cast_value_str) {
@@ -944,7 +950,8 @@ void CastErrorExprCheck(std::string src_type_str) {
 
 void CastErrorExprCheck(std::string cast_type_str, std::string src_type_str) {
     hybridse::type::Type cast_type;
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::TypeParse(cast_type_str, &cast_type));
+    ASSERT_TRUE(
+        hybridse::sqlcase::SQLCase::TypeParse(cast_type_str, &cast_type));
     switch (cast_type) {
         case type::kBool: {
             CastErrorExprCheck<bool>(src_type_str);

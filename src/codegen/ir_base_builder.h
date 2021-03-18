@@ -32,15 +32,16 @@ namespace codegen {
 
 bool GetLLVMType(::llvm::Module* m, const ::hybridse::node::TypeNode* type,
                  ::llvm::Type** output);
-bool GetLLVMType(::llvm::BasicBlock* block, const ::hybridse::node::DataType& type,
-                 ::llvm::Type** output);
-bool GetLLVMType(::llvm::BasicBlock* block, const ::hybridse::node::TypeNode* type,
-                 ::llvm::Type** output);
+bool GetLLVMType(::llvm::BasicBlock* block,
+                 const ::hybridse::node::DataType& type, ::llvm::Type** output);
+bool GetLLVMType(::llvm::BasicBlock* block,
+                 const ::hybridse::node::TypeNode* type, ::llvm::Type** output);
 bool GetLLVMType(::llvm::Module* m, const ::hybridse::node::DataType& type,
                  ::llvm::Type** output);
 bool GetLLVMListType(::llvm::Module* m, const ::hybridse::node::TypeNode* type,
                      ::llvm::Type** output);
-bool GetLLVMIteratorType(::llvm::Module* m, const ::hybridse::node::TypeNode* type,
+bool GetLLVMIteratorType(::llvm::Module* m,
+                         const ::hybridse::node::TypeNode* type,
                          ::llvm::Type** output);
 bool GetLLVMColumnSize(::hybridse::node::TypeNode* v_type, uint32_t* size);
 

@@ -54,7 +54,8 @@ TEST_F(TextTableTest, TextTableFormatTest) {
         "| column1 | kInt32     | No   |\n"
         "| column2 | kInt64     | YES  |\n"
         "| ts      | kTimestamp | YES  |\n"
-        "+---------+------------+------+\n", oss.str());
+        "+---------+------------+------+\n",
+        oss.str());
 }
 }  // namespace base
 }  // namespace hybridse

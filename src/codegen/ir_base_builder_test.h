@@ -198,8 +198,8 @@ class ModuleTestFunction {
                        std::unique_ptr<::llvm::LLVMContext> llvm_ctx) {
         llvm::InitializeNativeTarget();
         llvm::InitializeNativeTargetAsmPrinter();
-        jit =
-            std::unique_ptr<vm::HybridSEJITWrapper>(vm::HybridSEJITWrapper::Create());
+        jit = std::unique_ptr<vm::HybridSEJITWrapper>(
+            vm::HybridSEJITWrapper::Create());
         jit->Init();
         InitBuiltinJITSymbols(jit.get());
         if (library != nullptr) {

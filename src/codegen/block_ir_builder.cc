@@ -33,7 +33,8 @@ BlockIRBuilder::BlockIRBuilder(CodeGenContext *ctx) : ctx_(ctx) {}
 BlockIRBuilder::~BlockIRBuilder() {}
 
 bool hybridse::codegen::BlockIRBuilder::BuildBlock(
-    const hybridse::node::FnNodeList *statements, hybridse::base::Status &status) {
+    const hybridse::node::FnNodeList *statements,
+    hybridse::base::Status &status) {
     if (statements == NULL) {
         status.code = common::kCodegenError;
         status.msg = "node or block is null";
@@ -49,7 +50,8 @@ bool hybridse::codegen::BlockIRBuilder::BuildBlock(
         switch (node->GetType()) {
             case node::kFnAssignStmt: {
                 if (!BuildAssignStmt(
-                        dynamic_cast<const ::hybridse::node::FnAssignNode *>(node),
+                        dynamic_cast<const ::hybridse::node::FnAssignNode *>(
+                            node),
                         status)) {
                     return false;
                 }
@@ -74,7 +76,8 @@ bool hybridse::codegen::BlockIRBuilder::BuildBlock(
             }
             case node::kFnForInBlock: {
                 if (!BuildForInBlock(
-                        dynamic_cast<const ::hybridse::node::FnForInBlock *>(node),
+                        dynamic_cast<const ::hybridse::node::FnForInBlock *>(
+                            node),
                         status)) {
                     return false;
                 }

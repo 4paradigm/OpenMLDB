@@ -61,7 +61,7 @@ class SimpleCatalogTableHandler : public TableHandler {
 
     bool AddRow(const Row row);
     bool DecodeKeysAndTs(const IndexSt &index, const int8_t *buf, uint32_t size,
-                         std::string &key, int64_t *time_ptr); //NOLINT
+                         std::string &key, int64_t *time_ptr);  // NOLINT
 
  private:
     inline int32_t GetColumnIndex(const std::string &column) {

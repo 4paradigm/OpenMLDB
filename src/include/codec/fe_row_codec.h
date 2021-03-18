@@ -24,15 +24,16 @@
 #include <vector>
 #include "base/raw_buffer.h"
 #include "butil/iobuf.h"
-#include "proto/fe_type.pb.h"
 #include "gflags/gflags.h"
+#include "proto/fe_type.pb.h"
 
 namespace hybridse {
 namespace codec {
 
 const uint32_t BitMapSize(uint32_t size);
 
-typedef ::google::protobuf::RepeatedPtrField<::hybridse::type::ColumnDef> Schema;
+typedef ::google::protobuf::RepeatedPtrField<::hybridse::type::ColumnDef>
+    Schema;
 
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
@@ -139,8 +140,8 @@ class RowView {
     static inline uint32_t GetSize(const int8_t* row) {
         return *(reinterpret_cast<const uint32_t*>(row + VERSION_LENGTH));
     }
-    int32_t GetValue(const int8_t* row, uint32_t idx, ::hybridse::type::Type type,
-                     void* val) const;
+    int32_t GetValue(const int8_t* row, uint32_t idx,
+                     ::hybridse::type::Type type, void* val) const;
 
     int32_t GetInteger(const int8_t* row, uint32_t idx,
                        ::hybridse::type::Type type, int64_t* val);

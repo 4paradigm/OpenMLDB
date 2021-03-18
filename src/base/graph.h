@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_BASE_GRAPH_H_
 #define SRC_BASE_GRAPH_H_
 #include <iostream>

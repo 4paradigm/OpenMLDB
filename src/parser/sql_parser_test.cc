@@ -31,8 +31,8 @@ std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(hybridse::sqlcase::FindHybridSEDirPath(),
-                                         yaml_path, cases)) {
+    if (!SQLCase::CreateSQLCasesFromYaml(
+            hybridse::sqlcase::FindHybridSEDirPath(), yaml_path, cases)) {
         FAIL();
     }
 }
@@ -275,9 +275,11 @@ TEST_F(SqlParserTest, Assign_Op_Test) {
         hybridse::node::FnAssignNode *assign =
             dynamic_cast<hybridse::node::FnAssignNode *>(
                 fn_def->block_->children[1]);
-        ASSERT_EQ(hybridse::node::kExprBinary, assign->expression_->GetExprType());
+        ASSERT_EQ(hybridse::node::kExprBinary,
+                  assign->expression_->GetExprType());
         const hybridse::node::BinaryExpr *expr =
-            dynamic_cast<const hybridse::node::BinaryExpr *>(assign->expression_);
+            dynamic_cast<const hybridse::node::BinaryExpr *>(
+                assign->expression_);
         ASSERT_EQ(hybridse::node::kFnOpAdd, expr->GetOp());
     }
     {
@@ -286,9 +288,11 @@ TEST_F(SqlParserTest, Assign_Op_Test) {
         hybridse::node::FnAssignNode *assign =
             dynamic_cast<hybridse::node::FnAssignNode *>(
                 fn_def->block_->children[2]);
-        ASSERT_EQ(hybridse::node::kExprBinary, assign->expression_->GetExprType());
+        ASSERT_EQ(hybridse::node::kExprBinary,
+                  assign->expression_->GetExprType());
         const hybridse::node::BinaryExpr *expr =
-            dynamic_cast<const hybridse::node::BinaryExpr *>(assign->expression_);
+            dynamic_cast<const hybridse::node::BinaryExpr *>(
+                assign->expression_);
         ASSERT_EQ(hybridse::node::kFnOpMinus, expr->GetOp());
     }
     {
@@ -297,9 +301,11 @@ TEST_F(SqlParserTest, Assign_Op_Test) {
         hybridse::node::FnAssignNode *assign =
             dynamic_cast<hybridse::node::FnAssignNode *>(
                 fn_def->block_->children[3]);
-        ASSERT_EQ(hybridse::node::kExprBinary, assign->expression_->GetExprType());
+        ASSERT_EQ(hybridse::node::kExprBinary,
+                  assign->expression_->GetExprType());
         const hybridse::node::BinaryExpr *expr =
-            dynamic_cast<const hybridse::node::BinaryExpr *>(assign->expression_);
+            dynamic_cast<const hybridse::node::BinaryExpr *>(
+                assign->expression_);
         ASSERT_EQ(hybridse::node::kFnOpMulti, expr->GetOp());
     }
     {
@@ -308,9 +314,11 @@ TEST_F(SqlParserTest, Assign_Op_Test) {
         hybridse::node::FnAssignNode *assign =
             dynamic_cast<hybridse::node::FnAssignNode *>(
                 fn_def->block_->children[4]);
-        ASSERT_EQ(hybridse::node::kExprBinary, assign->expression_->GetExprType());
+        ASSERT_EQ(hybridse::node::kExprBinary,
+                  assign->expression_->GetExprType());
         const hybridse::node::BinaryExpr *expr =
-            dynamic_cast<const hybridse::node::BinaryExpr *>(assign->expression_);
+            dynamic_cast<const hybridse::node::BinaryExpr *>(
+                assign->expression_);
         ASSERT_EQ(hybridse::node::kFnOpFDiv, expr->GetOp());
     }
 }
@@ -566,8 +574,8 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ(60 * 86400000L, index_node->GetAbsTTL());
 }
 
-void CheckTTL(HybridSEParser *parser, NodeManager *manager, const std::string &sql,
-              int expect) {
+void CheckTTL(HybridSEParser *parser, NodeManager *manager,
+              const std::string &sql, int expect) {
     NodePointVector trees;
     base::Status status;
     int ret = parser->parse(sql.c_str(), trees, manager, status);

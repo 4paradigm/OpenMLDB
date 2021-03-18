@@ -31,7 +31,6 @@ class TextTable {
                        char corner = '+')
         : horizontal_(horizontal), vertical_(vertical), corner_(corner) {}
 
-
     char vertical() const { return vertical_; }
 
     char horizontal() const { return horizontal_; }

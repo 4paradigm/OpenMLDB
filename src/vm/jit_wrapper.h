@@ -61,7 +61,6 @@ class HybridSEJITWrapper {
 
 void InitBuiltinJITSymbols(HybridSEJITWrapper* jit_ptr);
 
-
 }  // namespace vm
 }  // namespace hybridse
 #endif  // SRC_VM_JIT_WRAPPER_H_

@@ -85,11 +85,11 @@ class RealRepeater : public NumberRepeater<T> {
 class CaseDataMock {
  public:
     static void BuildOnePkTableData(type::TableDef& table_def,  // NOLINT
-                             std::vector<Row>& buffer,   // NOLINT
-                             int64_t data_size);
-    static void BuildTableAndData(type::TableDef& table_def,  // NOLINT
                                     std::vector<Row>& buffer,   // NOLINT
                                     int64_t data_size);
+    static void BuildTableAndData(type::TableDef& table_def,  // NOLINT
+                                  std::vector<Row>& buffer,   // NOLINT
+                                  int64_t data_size);
     static bool LoadResource(const std::string& resource_path,
                              type::TableDef& table_def,  // NOLINT
                              std::vector<Row>& rows);    // NOLINT
@@ -97,11 +97,8 @@ class CaseDataMock {
 
 class CaseSchemaMock {
  public:
-    static void BuildTableDef(::hybridse::type::TableDef& table); // NOLINT
+    static void BuildTableDef(::hybridse::type::TableDef& table);  // NOLINT
 };
-
-
-
 
 }  // namespace sqlcase
 }  // namespace hybridse

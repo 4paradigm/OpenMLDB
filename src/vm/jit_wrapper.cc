@@ -65,7 +65,9 @@ bool HybridSEJITWrapper::InitJITSymbols(HybridSEJITWrapper* jit) {
     return true;
 }
 
-HybridSEJITWrapper* HybridSEJITWrapper::Create() { return Create(JITOptions()); }
+HybridSEJITWrapper* HybridSEJITWrapper::Create() {
+    return Create(JITOptions());
+}
 
 HybridSEJITWrapper* HybridSEJITWrapper::Create(const JITOptions& jit_options) {
     if (jit_options.is_enable_mcjit()) {
@@ -176,13 +178,15 @@ void InitBuiltinJITSymbols(HybridSEJITWrapper* jit) {
         reinterpret_cast<void*>(&codec::v1::AppendNullBit));
 
     // row iteration
-    jit->AddExternalFunction("hybridse_storage_get_row_iter",
-                             reinterpret_cast<void*>(&hybridse::vm::GetRowIter));
+    jit->AddExternalFunction(
+        "hybridse_storage_get_row_iter",
+        reinterpret_cast<void*>(&hybridse::vm::GetRowIter));
     jit->AddExternalFunction(
         "hybridse_storage_row_iter_has_next",
         reinterpret_cast<void*>(&hybridse::vm::RowIterHasNext));
-    jit->AddExternalFunction("hybridse_storage_row_iter_next",
-                             reinterpret_cast<void*>(&hybridse::vm::RowIterNext));
+    jit->AddExternalFunction(
+        "hybridse_storage_row_iter_next",
+        reinterpret_cast<void*>(&hybridse::vm::RowIterNext));
     jit->AddExternalFunction(
         "hybridse_storage_row_iter_get_cur_slice",
         reinterpret_cast<void*>(&hybridse::vm::RowIterGetCurSlice));
@@ -193,8 +197,9 @@ void InitBuiltinJITSymbols(HybridSEJITWrapper* jit) {
     jit->AddExternalFunction(
         "hybridse_storage_row_iter_delete",
         reinterpret_cast<void*>(&hybridse::vm::RowIterDelete));
-    jit->AddExternalFunction("hybridse_storage_get_row_slice",
-                             reinterpret_cast<void*>(&hybridse::vm::RowGetSlice));
+    jit->AddExternalFunction(
+        "hybridse_storage_get_row_slice",
+        reinterpret_cast<void*>(&hybridse::vm::RowGetSlice));
     jit->AddExternalFunction(
         "hybridse_storage_get_row_slice_size",
         reinterpret_cast<void*>(&hybridse::vm::RowGetSliceSize));

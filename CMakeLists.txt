@@ -38,10 +38,10 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
 
 project(hybridse)
 
-set(FESQL_VERSION_MAJOR 0)
-set(FESQL_VERSION_MEDIUM 1)
-set(FESQL_VERSION_MINOR 0)
-set(FESQL_VERSION_BUG 0)
+set(HYBRIDSE_VERSION_MAJOR 0)
+set(HYBRIDSE_VERSION_MEDIUM 1)
+set(HYBRIDSE_VERSION_MINOR 0)
+set(HYBRIDSE_VERSION_BUG 0)
 
 option(TESTING_ENABLE "Enable Test" ON)
 option(BENCHMARK_ENABLE "Enable Benchmark" ON)
@@ -101,7 +101,7 @@ set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
 set(abseil-cpp_DIR "${PROJECT_SOURCE_DIR}/thirdparty/")
 configure_file(
         "${PROJECT_SOURCE_DIR}/src/version.h.in"
-        "${PROJECT_SOURCE_DIR}/src/fe_version.h"
+        "${PROJECT_SOURCE_DIR}/src/hybridse_version.h"
 )
 
 if (TESTING_ENABLE)

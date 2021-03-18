@@ -350,14 +350,14 @@ TEST_F(PredicateIRBuilderTest, test_ge_null) {
     PredicateNullCheck(node::kFnOpGe);
 }
 TEST_F(PredicateIRBuilderTest, test_neq_expr_true) {
-    BinaryPredicateExprCheck<int16_t, int16_t, bool>(1, 2, true,
-                                                     ::hybridse::node::kFnOpNeq);
+    BinaryPredicateExprCheck<int16_t, int16_t, bool>(
+        1, 2, true, ::hybridse::node::kFnOpNeq);
 
-    BinaryPredicateExprCheck<int32_t, int32_t, bool>(1, 2, true,
-                                                     ::hybridse::node::kFnOpNeq);
+    BinaryPredicateExprCheck<int32_t, int32_t, bool>(
+        1, 2, true, ::hybridse::node::kFnOpNeq);
 
-    BinaryPredicateExprCheck<int64_t, int64_t, bool>(1, 2, true,
-                                                     ::hybridse::node::kFnOpNeq);
+    BinaryPredicateExprCheck<int64_t, int64_t, bool>(
+        1, 2, true, ::hybridse::node::kFnOpNeq);
 
     BinaryPredicateExprCheck<float, float, bool>(
 
@@ -369,14 +369,14 @@ TEST_F(PredicateIRBuilderTest, test_neq_expr_true) {
 }
 
 TEST_F(PredicateIRBuilderTest, test_neq_expr_false) {
-    BinaryPredicateExprCheck<int16_t, int16_t, bool>(1, 1, false,
-                                                     ::hybridse::node::kFnOpNeq);
+    BinaryPredicateExprCheck<int16_t, int16_t, bool>(
+        1, 1, false, ::hybridse::node::kFnOpNeq);
 
-    BinaryPredicateExprCheck<int32_t, int32_t, bool>(1, 1, false,
-                                                     ::hybridse::node::kFnOpNeq);
+    BinaryPredicateExprCheck<int32_t, int32_t, bool>(
+        1, 1, false, ::hybridse::node::kFnOpNeq);
 
-    BinaryPredicateExprCheck<int64_t, int64_t, bool>(1, 1, false,
-                                                     ::hybridse::node::kFnOpNeq);
+    BinaryPredicateExprCheck<int64_t, int64_t, bool>(
+        1, 1, false, ::hybridse::node::kFnOpNeq);
 
     BinaryPredicateExprCheck<float, float, bool>(
 
@@ -581,7 +581,8 @@ TEST_F(PredicateIRBuilderTest, test_lt_expr_false) {
 TEST_F(PredicateIRBuilderTest, test_and_expr) {
     auto AndExprCheck = [](Nullable<bool> left, Nullable<bool> right,
                            Nullable<bool> expect) {
-        BinaryPredicateExprCheck(left, right, expect, ::hybridse::node::kFnOpAnd);
+        BinaryPredicateExprCheck(left, right, expect,
+                                 ::hybridse::node::kFnOpAnd);
     };
     AndExprCheck(true, true, true);
     AndExprCheck(true, false, false);
@@ -597,7 +598,8 @@ TEST_F(PredicateIRBuilderTest, test_and_expr) {
 TEST_F(PredicateIRBuilderTest, test_or_expr) {
     auto OrExprCheck = [](Nullable<bool> left, Nullable<bool> right,
                           Nullable<bool> expect) {
-        BinaryPredicateExprCheck(left, right, expect, ::hybridse::node::kFnOpOr);
+        BinaryPredicateExprCheck(left, right, expect,
+                                 ::hybridse::node::kFnOpOr);
     };
     OrExprCheck(true, true, true);
     OrExprCheck(true, false, true);
@@ -613,7 +615,8 @@ TEST_F(PredicateIRBuilderTest, test_or_expr) {
 TEST_F(PredicateIRBuilderTest, test_xor_expr) {
     auto XorExprCheck = [](Nullable<bool> left, Nullable<bool> right,
                            Nullable<bool> expect) {
-        BinaryPredicateExprCheck(left, right, expect, ::hybridse::node::kFnOpXor);
+        BinaryPredicateExprCheck(left, right, expect,
+                                 ::hybridse::node::kFnOpXor);
     };
     XorExprCheck(true, true, false);
     XorExprCheck(true, false, true);
@@ -627,14 +630,19 @@ TEST_F(PredicateIRBuilderTest, test_xor_expr) {
 }
 
 TEST_F(PredicateIRBuilderTest, test_not_expr_false) {
-    UnaryPredicateExprCheck<bool, bool>(true, false, ::hybridse::node::kFnOpNot);
+    UnaryPredicateExprCheck<bool, bool>(true, false,
+                                        ::hybridse::node::kFnOpNot);
 
-    UnaryPredicateExprCheck<int32_t, bool>(1, false, ::hybridse::node::kFnOpNot);
-    UnaryPredicateExprCheck<float, bool>(1.0, false, ::hybridse::node::kFnOpNot);
+    UnaryPredicateExprCheck<int32_t, bool>(1, false,
+                                           ::hybridse::node::kFnOpNot);
+    UnaryPredicateExprCheck<float, bool>(1.0, false,
+                                         ::hybridse::node::kFnOpNot);
 
-    UnaryPredicateExprCheck<double, bool>(1.0, false, ::hybridse::node::kFnOpNot);
+    UnaryPredicateExprCheck<double, bool>(1.0, false,
+                                          ::hybridse::node::kFnOpNot);
 
-    UnaryPredicateExprCheck<bool, bool>(false, true, ::hybridse::node::kFnOpNot);
+    UnaryPredicateExprCheck<bool, bool>(false, true,
+                                        ::hybridse::node::kFnOpNot);
 
     UnaryPredicateExprCheck<int32_t, bool>(0, true, ::hybridse::node::kFnOpNot);
     UnaryPredicateExprCheck<float, bool>(0, true, ::hybridse::node::kFnOpNot);

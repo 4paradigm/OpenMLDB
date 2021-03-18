@@ -73,7 +73,8 @@ void DBMSServerImpl::AddTable(RpcController* ctr,
             LOG(WARNING) << status->msg();
             return;
         }
-        tablet_sdk = new hybridse::tablet::TabletInternalSDK(*(tablets_.begin()));
+        tablet_sdk =
+            new hybridse::tablet::TabletInternalSDK(*(tablets_.begin()));
         if (tablet_sdk == NULL) {
             ::hybridse::common::Status* status = response->mutable_status();
             status->set_code(::hybridse::common::kConnError);

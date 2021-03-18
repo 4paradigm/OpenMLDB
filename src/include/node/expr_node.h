@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_INCLUDE_NODE_EXPR_NODE_H_
 #define SRC_INCLUDE_NODE_EXPR_NODE_H_
 

@@ -89,8 +89,9 @@ bool FetchColList(vm::ListV<Row>* table, size_t col_idx, size_t offset,
     codec::ListRef<Row> table_ref;
     table_ref.list = reinterpret_cast<int8_t*>(table);
 
-    if (0 != ::hybridse::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table_ref),
-                                        0, col_idx, offset, datatype, buf)) {
+    if (0 !=
+        ::hybridse::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table_ref), 0,
+                                      col_idx, offset, datatype, buf)) {
         return false;
     }
     res->list = buf;
@@ -234,9 +235,9 @@ TEST_F(UDFTest, GetColTest) {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
         ::hybridse::codec::ListRef<> list_ref;
         list_ref.list = buf;
-        ASSERT_EQ(
-            0, ::hybridse::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl_ref),
-                                          0, 0, 2, hybridse::type::kInt32, buf));
+        ASSERT_EQ(0, ::hybridse::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&impl_ref), 0, 0, 2,
+                         hybridse::type::kInt32, buf));
         ::hybridse::codec::ColumnImpl<int16_t>* col =
             reinterpret_cast<::hybridse::codec::ColumnImpl<int16_t>*>(
                 list_ref.list);
@@ -272,8 +273,8 @@ TEST_F(UDFTest, GetWindowColRangeTest) {
     type::TableDef table_def;
     std::vector<Row> rows;
     ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractSchema(schema, table_def));
-    ASSERT_TRUE(
-        hybridse::sqlcase::SQLCase::ExtractRows(table_def.columns(), data, rows));
+    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRows(table_def.columns(),
+                                                        data, rows));
     codec::RowView row_view(table_def.columns());
     for (auto row : rows) {
         row_view.Reset(row.buf());
@@ -332,8 +333,8 @@ TEST_F(UDFTest, GetWindowColRowsTest) {
     type::TableDef table_def;
     std::vector<Row> rows;
     ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractSchema(schema, table_def));
-    ASSERT_TRUE(
-        hybridse::sqlcase::SQLCase::ExtractRows(table_def.columns(), data, rows));
+    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRows(table_def.columns(),
+                                                        data, rows));
     codec::RowView row_view(table_def.columns());
     for (auto row : rows) {
         row_view.Reset(row.buf());
@@ -390,9 +391,9 @@ TEST_F(UDFTest, GetWindowColTest) {
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
     for (int i = 0; i < 100000; ++i) {
-        ASSERT_EQ(
-            0, ::hybridse::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table_ref),
-                                          0, 0, 2, hybridse::type::kInt32, buf));
+        ASSERT_EQ(0, ::hybridse::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&table_ref), 0, 0, 2,
+                         hybridse::type::kInt32, buf));
         ::hybridse::codec::ColumnImpl<int32_t>* col =
             reinterpret_cast<::hybridse::codec::ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
@@ -419,9 +420,9 @@ TEST_F(UDFTest, GetTimeMemColTest) {
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
     for (int i = 0; i < 1000000; ++i) {
-        ASSERT_EQ(
-            0, ::hybridse::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table_ref),
-                                          0, 0, 2, hybridse::type::kInt32, buf));
+        ASSERT_EQ(0, ::hybridse::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&table_ref), 0, 0, 2,
+                         hybridse::type::kInt32, buf));
         ColumnImpl<int32_t>* col = reinterpret_cast<ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
         ASSERT_TRUE(col_iterator->Valid());
@@ -446,9 +447,9 @@ TEST_F(UDFTest, GetColHeapTest) {
         int8_t buf[size];  // NOLINT
         ::hybridse::codec::ListRef<> list_ref;
         list_ref.list = buf;
-        ASSERT_EQ(
-            0, ::hybridse::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl_ref),
-                                          0, 0, 2, hybridse::type::kInt32, buf));
+        ASSERT_EQ(0, ::hybridse::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&impl_ref), 0, 0, 2,
+                         hybridse::type::kInt32, buf));
         ::hybridse::codec::ColumnImpl<int16_t>* impl =
             reinterpret_cast<::hybridse::codec::ColumnImpl<int16_t>*>(
                 list_ref.list);

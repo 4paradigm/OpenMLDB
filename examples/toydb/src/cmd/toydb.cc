@@ -29,7 +29,7 @@
 #include "base/fe_strings.h"
 #include "brpc/server.h"
 #include "dbms/dbms_server_impl.h"
-#include "fe_version.h"  //NOLINT
+#include "hybridse_version.h"  //NOLINT
 #include "glog/logging.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
@@ -99,7 +99,8 @@ void StartTablet(int argc, char *argv[]) {
 
 void StartDBMS(char *argv[]) {
     SetupLogging(argv);
-    ::hybridse::dbms::DBMSServerImpl *dbms = new ::hybridse::dbms::DBMSServerImpl();
+    ::hybridse::dbms::DBMSServerImpl *dbms =
+        new ::hybridse::dbms::DBMSServerImpl();
     brpc::ServerOptions options;
     options.num_threads = FLAGS_toydb_thread_pool_size;
     brpc::Server server;
@@ -176,7 +177,8 @@ void StartClient(char *argv[]) {
     }
 }
 
-void PrintResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set) {
+void PrintResultSet(std::ostream &stream,
+                    ::hybridse::sdk::ResultSet *result_set) {
     if (!result_set || result_set->Size() == 0) {
         stream << "Empty set" << std::endl;
         return;

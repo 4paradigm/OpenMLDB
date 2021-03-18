@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "vm/core_api.h"
 #include "gtest/gtest.h"
 

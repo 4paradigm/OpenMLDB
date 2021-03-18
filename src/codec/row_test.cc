@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <string>
 #include <vector>
 #include "case/sql_case.h"
@@ -44,27 +43,30 @@ TEST_F(RowTest, NewRowTest) {
     const std::string data3 = "5.500000, 55.500000, 3, EEEEE";
 
     type::TableDef table1;
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractTableDef(schema1, "", table1));
+    ASSERT_TRUE(
+        hybridse::sqlcase::SQLCase::ExtractTableDef(schema1, "", table1));
     type::TableDef table2;
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractTableDef(schema2, "", table2));
+    ASSERT_TRUE(
+        hybridse::sqlcase::SQLCase::ExtractTableDef(schema2, "", table2));
     type::TableDef table3;
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractTableDef(schema3, "", table3));
+    ASSERT_TRUE(
+        hybridse::sqlcase::SQLCase::ExtractTableDef(schema3, "", table3));
     {
         int8_t* ptr1;
         int32_t ptr_size1;
-        ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRow(table1.columns(), data1,
-                                                        &ptr1, &ptr_size1));
+        ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRow(
+            table1.columns(), data1, &ptr1, &ptr_size1));
         Row row1(base::RefCountedSlice::Create(ptr1, ptr_size1));
         int8_t* ptr2;
         int32_t ptr_size2;
-        ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRow(table2.columns(), data2,
-                                                        &ptr2, &ptr_size2));
+        ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRow(
+            table2.columns(), data2, &ptr2, &ptr_size2));
         Row row2(base::RefCountedSlice::Create(ptr2, ptr_size2));
 
         int8_t* ptr3;
         int32_t ptr_size3;
-        ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRow(table3.columns(), data3,
-                                                        &ptr3, &ptr_size3));
+        ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRow(
+            table3.columns(), data3, &ptr3, &ptr_size3));
         Row row3(base::RefCountedSlice::Create(ptr3, ptr_size3));
 
         Row row12(1, row1, 1, row2);

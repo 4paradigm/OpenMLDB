@@ -33,33 +33,33 @@ static void BM_WINDOW_CASE0_QUERY(benchmark::State &state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     ::hybridse::bm::WINDOW_CASE0_QUERY(&state, BENCHMARK, true, state.range(0),
-                                    state.range(1));
+                                       state.range(1));
 }
 static void BM_WINDOW_CASE1_QUERY(benchmark::State &state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     ::hybridse::bm::WINDOW_CASE1_QUERY(&state, BENCHMARK, true, state.range(0),
-                                    state.range(1));
+                                       state.range(1));
 }
 
 static void BM_WINDOW_CASE2_QUERY(benchmark::State &state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     ::hybridse::bm::WINDOW_CASE2_QUERY(&state, BENCHMARK, true, state.range(0),
-                                    state.range(1));
+                                       state.range(1));
 }
 static void BM_WINDOW_CASE3_QUERY(benchmark::State &state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     ::hybridse::bm::WINDOW_CASE3_QUERY(&state, BENCHMARK, true, state.range(0),
-                                    state.range(1));
+                                       state.range(1));
 }
 
 static void BM_GROUPBY_CASE0_QUERY(benchmark::State &state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     ::hybridse::bm::GROUPBY_CASE0_QUERY(&state, BENCHMARK, true, state.range(0),
-                                     state.range(1));
+                                        state.range(1));
 }
 
 BENCHMARK(BM_GROUPBY_CASE0_QUERY)

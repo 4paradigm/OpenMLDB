@@ -177,7 +177,7 @@ void BuildT2Buf(int8_t** buf, uint32_t* size) {
     *size = total_size;
 }
 void BuildRows(::hybridse::type::TableDef& table,  // NOLINT
-               std::vector<Row>& rows) {        // NOLINT
+               std::vector<Row>& rows) {           // NOLINT
     BuildTableDef(table);
     {
         codec::RowBuilder builder(table.columns());
@@ -264,7 +264,7 @@ void BuildRows(::hybridse::type::TableDef& table,  // NOLINT
     }
 }
 void BuildT2Rows(::hybridse::type::TableDef& table,  // NOLINT
-                 std::vector<Row>& rows) {        // NOLINT
+                 std::vector<Row>& rows) {           // NOLINT
     BuildTableT2Def(table);
     {
         codec::RowBuilder builder(table.columns());
@@ -354,8 +354,8 @@ void ExtractExprListFromSimpleSQL(::hybridse::node::NodeManager* nm,
     std::cout << sql << std::endl;
     ::hybridse::node::PlanNodeList plan_trees;
     ::hybridse::base::Status base_status;
-    if (::hybridse::plan::PlanAPI::CreatePlanTreeFromScript(
-            sql, plan_trees, nm, base_status) == 0) {
+    if (::hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, nm,
+                                                            base_status) == 0) {
         std::cout << base_status.str();
         std::cout << *(plan_trees[0]) << std::endl;
     } else {
@@ -382,8 +382,8 @@ void ExtractExprFromSimpleSQL(::hybridse::node::NodeManager* nm,
     ::hybridse::node::PlanNodeList plan_trees;
     ::hybridse::base::Status base_status;
     ASSERT_EQ(0, base_status.code);
-    if (::hybridse::plan::PlanAPI::CreatePlanTreeFromScript(
-            sql, plan_trees, nm, base_status) == 0) {
+    if (::hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, nm,
+                                                            base_status) == 0) {
         std::cout << base_status.str();
         std::cout << *(plan_trees[0]) << std::endl;
     } else {

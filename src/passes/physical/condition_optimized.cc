@@ -16,16 +16,16 @@
 #include "passes/physical/condition_optimized.h"
 
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 
 namespace hybridse {
 namespace passes {
 
-using hybridse::vm::PhysicalJoinNode;
-using hybridse::vm::PhysicalRequestJoinNode;
 using hybridse::vm::PhysicalFilterNode;
+using hybridse::vm::PhysicalJoinNode;
 using hybridse::vm::PhysicalOpType;
+using hybridse::vm::PhysicalRequestJoinNode;
 
 bool ConditionOptimized::JoinConditionOptimized(PhysicalBinaryNode* in,
                                                 Join* join) {

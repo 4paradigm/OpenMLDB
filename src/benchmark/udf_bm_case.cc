@@ -30,23 +30,23 @@
 #include "vm/mem_catalog.h"
 namespace hybridse {
 namespace bm {
-using sqlcase::CaseDataMock;
 using codec::ColumnImpl;
 using codec::Row;
+using sqlcase::CaseDataMock;
 using vm::MemTableHandler;
 using vm::MemTimeTableHandler;
 static void BuildData(type::TableDef& table_def,        // NOLINT
                       vm::MemTimeTableHandler& window,  // NOLINT
                       int64_t data_size);
 
-int64_t RunCopyToArrayList(MemTimeTableHandler& window,           // NOLINT
-                           type::TableDef& table_def);            // NOLINT
-int32_t RunCopyToTable(vm::TableHandler* table,                   // NOLINT
-                       const vm::Schema* schema);                 // NOLINT
-int32_t RunCopyToTimeTable(MemTimeTableHandler& segment,          // NOLINT
-                           type::TableDef& table_def);            // NOLINT
-static void BuildData(type::TableDef& table_def,         // NOLINT
-                      vm::MemTimeTableHandler& segment,  // NOLINT
+int64_t RunCopyToArrayList(MemTimeTableHandler& window,   // NOLINT
+                           type::TableDef& table_def);    // NOLINT
+int32_t RunCopyToTable(vm::TableHandler* table,           // NOLINT
+                       const vm::Schema* schema);         // NOLINT
+int32_t RunCopyToTimeTable(MemTimeTableHandler& segment,  // NOLINT
+                           type::TableDef& table_def);    // NOLINT
+static void BuildData(type::TableDef& table_def,          // NOLINT
+                      vm::MemTimeTableHandler& segment,   // NOLINT
                       int64_t data_size) {
     std::vector<Row> buffer;
     CaseDataMock::BuildOnePkTableData(table_def, buffer, data_size);
@@ -146,7 +146,6 @@ int32_t RunCopyToTimeTable(MemTimeTableHandler& segment,  // NOLINT
     }
     return window_table->GetCount();
 }
-
 
 template <typename V>
 auto CreateSumFunc() {

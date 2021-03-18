@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-#include "bm/hybridse_client_bm_case.h"
 #include <memory>
 #include <string>
 #include <vector>
+#include "bm/client_bm_case.h"
 #include "brpc/server.h"
+#include "case/case_data_mock.h"
 #include "dbms/dbms_server_impl.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "sdk/dbms_sdk.h"
 #include "sdk/tablet_sdk.h"
-#include "case/case_data_mock.h"
 #include "tablet/tablet_server_impl.h"
 DECLARE_string(dbms_endpoint);
 DECLARE_string(endpoint);
@@ -34,9 +34,9 @@ DECLARE_bool(enable_keep_alive);
 
 namespace hybridse {
 namespace bm {
-using hybridse::sqlcase::Repeater;
 using hybridse::sqlcase::IntRepeater;
 using hybridse::sqlcase::RealRepeater;
+using hybridse::sqlcase::Repeater;
 class MockClosure : public ::google::protobuf::Closure {
  public:
     MockClosure() {}
@@ -162,7 +162,8 @@ static void SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
     }
 
     std::shared_ptr<::hybridse::sdk::TabletSdk> sdk =
-        ::hybridse::sdk::CreateTabletSdk(host + ":" + std::to_string(tablet_port));
+        ::hybridse::sdk::CreateTabletSdk(host + ":" +
+                                         std::to_string(tablet_port));
     if (!sdk) {
         LOG(WARNING) << "Fail to create to tablet sdk";
         failure_flag = true;
@@ -272,7 +273,8 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
     }
 
     std::shared_ptr<::hybridse::sdk::TabletSdk> sdk =
-        ::hybridse::sdk::CreateTabletSdk(host + ":" + std::to_string(tablet_port));
+        ::hybridse::sdk::CreateTabletSdk(host + ":" +
+                                         std::to_string(tablet_port));
     if (!sdk) {
         LOG(WARNING) << "Fail to create to tablet sdk";
         failure_flag = true;

@@ -32,14 +32,14 @@ namespace hybridse {
 namespace passes {
 
 using hybridse::base::Status;
-using hybridse::vm::PhysicalRequestProviderNode;
-using hybridse::vm::PhysicalDataProviderNode;
-using hybridse::vm::PhysicalSimpleProjectNode;
-using hybridse::vm::PhysicalProjectNode;
 using hybridse::vm::PhysicalAggrerationNode;
+using hybridse::vm::PhysicalDataProviderNode;
+using hybridse::vm::PhysicalProjectNode;
 using hybridse::vm::PhysicalRenameNode;
 using hybridse::vm::PhysicalRequestJoinNode;
+using hybridse::vm::PhysicalRequestProviderNode;
 using hybridse::vm::PhysicalRequestUnionNode;
+using hybridse::vm::PhysicalSimpleProjectNode;
 
 /**
  * Split op with common columns to common and non-common parts.

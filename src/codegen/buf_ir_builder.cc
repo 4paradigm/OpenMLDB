@@ -65,8 +65,9 @@ bool BufNativeIRBuilder::BuildGetField(size_t col_idx, ::llvm::Value* row_ptr,
     switch (data_type.base_) {
         case ::hybridse::node::kBool: {
             llvm::Type* bool_ty = builder.getInt1Ty();
-            return BuildGetPrimaryField("hybridse_storage_get_bool_field", row_ptr,
-                                        col_idx, offset, bool_ty, output);
+            return BuildGetPrimaryField("hybridse_storage_get_bool_field",
+                                        row_ptr, col_idx, offset, bool_ty,
+                                        output);
         }
         case ::hybridse::node::kInt16: {
             llvm::Type* i16_ty = builder.getInt16Ty();
@@ -100,9 +101,9 @@ bool BufNativeIRBuilder::BuildGetField(size_t col_idx, ::llvm::Value* row_ptr,
         }
         case ::hybridse::node::kTimestamp: {
             NativeValue int64_val;
-            if (!BuildGetPrimaryField("hybridse_storage_get_int64_field", row_ptr,
-                                      col_idx, offset, builder.getInt64Ty(),
-                                      &int64_val)) {
+            if (!BuildGetPrimaryField("hybridse_storage_get_int64_field",
+                                      row_ptr, col_idx, offset,
+                                      builder.getInt64Ty(), &int64_val)) {
                 return false;
             }
             codegen::TimestampIRBuilder timestamp_builder(block_->getModule());
@@ -116,9 +117,9 @@ bool BufNativeIRBuilder::BuildGetField(size_t col_idx, ::llvm::Value* row_ptr,
         }
         case ::hybridse::node::kDate: {
             NativeValue int32_val;
-            if (!BuildGetPrimaryField("hybridse_storage_get_int32_field", row_ptr,
-                                      col_idx, offset, builder.getInt32Ty(),
-                                      &int32_val)) {
+            if (!BuildGetPrimaryField("hybridse_storage_get_int32_field",
+                                      row_ptr, col_idx, offset,
+                                      builder.getInt32Ty(), &int32_val)) {
                 return false;
             }
             codegen::DateIRBuilder date_ir_builder(block_->getModule());
@@ -533,7 +534,8 @@ bool BufNativeEncoderIRBuilder::AppendPrimary(::llvm::Value* i8_ptr,
         ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
         ::llvm::Type* void_ty = builder.getVoidTy();
         auto callee = block_->getModule()->getOrInsertFunction(
-            "hybridse_storage_encode_nullbit", void_ty, i8_ptr_ty, size_ty, i8_ty);
+            "hybridse_storage_encode_nullbit", void_ty, i8_ptr_ty, size_ty,
+            i8_ty);
         builder.CreateCall(callee, {i8_ptr, builder.getInt32(field_idx),
                                     builder.CreateIntCast(
                                         val.GetIsNull(&builder), i8_ty, true)});

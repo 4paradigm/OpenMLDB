@@ -99,7 +99,8 @@ class HybridSELLJITWrapper : public HybridSEJITWrapper {
 
     bool AddExternalFunction(const std::string& name, void* addr) override;
 
-    hybridse::vm::RawPtrHandle FindFunction(const std::string& funcname) override;
+    hybridse::vm::RawPtrHandle FindFunction(
+        const std::string& funcname) override;
 
  private:
     std::unique_ptr<HybridSEJIT> jit_;
@@ -122,7 +123,8 @@ class HybridSEMCJITWrapper : public HybridSEJITWrapper {
 
     bool AddExternalFunction(const std::string& name, void* addr) override;
 
-    hybridse::vm::RawPtrHandle FindFunction(const std::string& funcname) override;
+    hybridse::vm::RawPtrHandle FindFunction(
+        const std::string& funcname) override;
 
  private:
     bool CheckInitialized() const;

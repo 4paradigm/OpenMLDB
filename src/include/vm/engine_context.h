@@ -15,9 +15,9 @@
  */
 #ifndef SRC_INCLUDE_VM_ENGINE_CONTEXT_H_
 #define SRC_INCLUDE_VM_ENGINE_CONTEXT_H_
-#include <set>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include "boost/compute/detail/lru_cache.hpp"
 #include "vm/physical_op.h"
@@ -52,7 +52,8 @@ class CompileInfo {
     virtual const std::string& GetEncodedSchema() const = 0;
     virtual const Schema& GetRequestSchema() const = 0;
     virtual const std::string& GetRequestName() const = 0;
-    virtual const hybridse::vm::BatchRequestInfo& GetBatchRequestInfo() const = 0;
+    virtual const hybridse::vm::BatchRequestInfo& GetBatchRequestInfo()
+        const = 0;
     virtual const hybridse::vm::PhysicalOpNode* GetPhysicalPlan() const = 0;
     virtual void DumpPhysicalPlan(std::ostream& output,
                                   const std::string& tab) = 0;

@@ -32,8 +32,8 @@ std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(hybridse::sqlcase::FindHybridSEDirPath(),
-                                         yaml_path, cases)) {
+    if (!SQLCase::CreateSQLCasesFromYaml(
+            hybridse::sqlcase::FindHybridSEDirPath(), yaml_path, cases)) {
         FAIL();
     }
 }
@@ -195,7 +195,8 @@ PhysicalOpNode* GetTestSQLPlan(SQLCase& sql_case,  // NOLINT
         return nullptr;
     }
     return std::dynamic_pointer_cast<SQLCompileInfo>(session->GetCompileInfo())
-        ->get_sql_context().physical_plan;
+        ->get_sql_context()
+        .physical_plan;
 }
 
 INSTANTIATE_TEST_CASE_P(

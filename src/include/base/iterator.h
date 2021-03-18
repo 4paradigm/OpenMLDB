@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #pragma once
 #include <stdint.h>
 
@@ -52,6 +51,7 @@ template <class K, class V>
 class Iterator : public AbstractIterator<K, V, V&> {};
 
 template <class K, class V>
-class ConstIterator : public hybridse::base::AbstractIterator<K, V, const V&> {};
+class ConstIterator : public hybridse::base::AbstractIterator<K, V, const V&> {
+};
 }  // namespace base
 }  // namespace hybridse

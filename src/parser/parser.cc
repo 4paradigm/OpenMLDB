@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 // HybridSE Parser
 #include "parser/parser.h"
 #include <utility>
@@ -64,8 +63,8 @@ int HybridSEParser::parse(
 }
 
 int HybridSEParser::ReflectFnDefNode(node::FnNodeFnDef *fn_def,
-                                  node::NodeManager *node_manager,
-                                  base::Status &status) {  // NOLINT
+                                     node::NodeManager *node_manager,
+                                     base::Status &status) {  // NOLINT
     if (nullptr == fn_def->header_) {
         status.code = common::kFunError;
         status.msg = "fail to create function def plan, first fn node is null";
@@ -95,10 +94,10 @@ int HybridSEParser::ReflectFnDefNode(node::FnNodeFnDef *fn_def,
 }
 
 int HybridSEParser::CreateFnBlock(std::vector<node::FnNode *> statements,
-                               int start, int end, int32_t indent,
-                               node::FnNodeList *block,
-                               node::NodeManager *node_manager,
-                               base::Status &status) {
+                                  int start, int end, int32_t indent,
+                                  node::FnNodeList *block,
+                                  node::NodeManager *node_manager,
+                                  base::Status &status) {
     if (nullptr == block) {
         status.msg = "fail to create fn block node: block null";
         status.code = common::kSQLError;

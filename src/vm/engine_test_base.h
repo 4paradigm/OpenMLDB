@@ -74,7 +74,7 @@ using hybridse::sqlcase::SQLCase;
 enum EngineRunMode { RUNBATCH, RUNONE };
 
 std::vector<SQLCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);   // NOLINT
+void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
 bool IsNaN(float x);
 bool IsNaN(double x);

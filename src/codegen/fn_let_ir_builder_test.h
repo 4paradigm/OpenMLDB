@@ -160,8 +160,8 @@ void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
     *output_schema = *fn_info.fn_schema();
 
     m->print(::llvm::errs(), NULL);
-    auto jit =
-        std::unique_ptr<vm::HybridSEJITWrapper>(vm::HybridSEJITWrapper::Create());
+    auto jit = std::unique_ptr<vm::HybridSEJITWrapper>(
+        vm::HybridSEJITWrapper::Create());
     jit->Init();
     vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
 

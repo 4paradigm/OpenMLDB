@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_INCLUDE_BASE_FE_STATUS_H_
 #define SRC_INCLUDE_BASE_FE_STATUS_H_
 #include <string>
@@ -34,43 +33,43 @@ static inline std::initializer_list<int> __output_literal_args(
 
 #define MAX_STATUS_TRACE_SIZE 4096
 
-#define CHECK_STATUS(call, ...)                                              \
-    while (true) {                                                           \
-        auto _status = (call);                                               \
-        if (!_status.isOK()) {                                               \
-            std::stringstream _msg;                                          \
-            hybridse::base::__output_literal_args(_msg, ##__VA_ARGS__);         \
-            std::stringstream _trace;                                        \
-            hybridse::base::__output_literal_args(_trace, "    (At ", __FILE__, \
-                                               ":", __LINE__, ")");          \
-            if (_status.trace.size() >= MAX_STATUS_TRACE_SIZE) {             \
-                LOG(WARNING) << "Internal error: " << _status.msg << "\n"    \
-                             << _status.trace;                               \
-            } else {                                                         \
-                if (!_status.msg.empty()) {                                  \
-                    _trace << "\n"                                           \
-                           << "(Caused by) " << _status.msg;                 \
-                }                                                            \
-                _trace << "\n" << _status.trace;                             \
-            }                                                                \
-            return hybridse::base::Status(_status.code, _msg.str(),             \
-                                       _trace.str());                        \
-        }                                                                    \
-        break;                                                               \
+#define CHECK_STATUS(call, ...)                                           \
+    while (true) {                                                        \
+        auto _status = (call);                                            \
+        if (!_status.isOK()) {                                            \
+            std::stringstream _msg;                                       \
+            hybridse::base::__output_literal_args(_msg, ##__VA_ARGS__);   \
+            std::stringstream _trace;                                     \
+            hybridse::base::__output_literal_args(                        \
+                _trace, "    (At ", __FILE__, ":", __LINE__, ")");        \
+            if (_status.trace.size() >= MAX_STATUS_TRACE_SIZE) {          \
+                LOG(WARNING) << "Internal error: " << _status.msg << "\n" \
+                             << _status.trace;                            \
+            } else {                                                      \
+                if (!_status.msg.empty()) {                               \
+                    _trace << "\n"                                        \
+                           << "(Caused by) " << _status.msg;              \
+                }                                                         \
+                _trace << "\n" << _status.trace;                          \
+            }                                                             \
+            return hybridse::base::Status(_status.code, _msg.str(),       \
+                                          _trace.str());                  \
+        }                                                                 \
+        break;                                                            \
     }
 
-#define CHECK_TRUE(call, errcode, ...)                                       \
-    while (true) {                                                           \
-        if (!(call)) {                                                       \
-            std::stringstream _msg;                                          \
-            hybridse::base::__output_literal_args(_msg, ##__VA_ARGS__);         \
-            std::stringstream _trace;                                        \
-            hybridse::base::__output_literal_args(_trace, "    (At ", __FILE__, \
-                                               ":", __LINE__, ")");          \
-            hybridse::base::Status _status(errcode, _msg.str(), _trace.str());  \
-            return _status;                                                  \
-        }                                                                    \
-        break;                                                               \
+#define CHECK_TRUE(call, errcode, ...)                                         \
+    while (true) {                                                             \
+        if (!(call)) {                                                         \
+            std::stringstream _msg;                                            \
+            hybridse::base::__output_literal_args(_msg, ##__VA_ARGS__);        \
+            std::stringstream _trace;                                          \
+            hybridse::base::__output_literal_args(                             \
+                _trace, "    (At ", __FILE__, ":", __LINE__, ")");             \
+            hybridse::base::Status _status(errcode, _msg.str(), _trace.str()); \
+            return _status;                                                    \
+        }                                                                      \
+        break;                                                                 \
     }
 
 struct Status {

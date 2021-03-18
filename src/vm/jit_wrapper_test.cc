@@ -19,8 +19,8 @@
 #include "gtest/gtest.h"
 #include "udf/udf.h"
 #include "vm/engine.h"
-#include "vm/sql_compiler.h"
 #include "vm/simple_catalog.h"
+#include "vm/sql_compiler.h"
 
 namespace hybridse {
 namespace vm {
@@ -48,9 +48,9 @@ std::shared_ptr<SimpleCatalog> GetTestCatalog() {
     return catalog;
 }
 
-std::shared_ptr<SQLCompileInfo> Compile(const std::string &sql,
-                                     const EngineOptions &options,
-                                     std::shared_ptr<SimpleCatalog> catalog) {
+std::shared_ptr<SQLCompileInfo> Compile(
+    const std::string &sql, const EngineOptions &options,
+    std::shared_ptr<SimpleCatalog> catalog) {
     base::Status status;
     BatchRunSession session;
     Engine engine(catalog, options);

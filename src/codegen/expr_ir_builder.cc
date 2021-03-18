@@ -145,7 +145,8 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
         }
         case ::hybridse::node::kExprUnary: {
             CHECK_STATUS(BuildUnaryExpr(
-                dynamic_cast<const ::hybridse::node::UnaryExpr*>(node), output));
+                dynamic_cast<const ::hybridse::node::UnaryExpr*>(node),
+                output));
             break;
         }
         case ::hybridse::node::kExprStruct: {
@@ -181,8 +182,8 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
     return Status::OK();
 }
 
-Status ExprIRBuilder::BuildConstExpr(const ::hybridse::node::ConstNode* const_node,
-                                     NativeValue* output) {
+Status ExprIRBuilder::BuildConstExpr(
+    const ::hybridse::node::ConstNode* const_node, NativeValue* output) {
     ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
     switch (const_node->GetDataType()) {
         case ::hybridse::node::kNull: {
@@ -319,7 +320,8 @@ bool ExprIRBuilder::BuildCallFnLegacy(
     std::vector<const ::hybridse::node::TypeNode*> args_types;
 
     for (; it != call_fn->children_.cend(); ++it) {
-        const ::hybridse::node::ExprNode* arg = dynamic_cast<node::ExprNode*>(*it);
+        const ::hybridse::node::ExprNode* arg =
+            dynamic_cast<node::ExprNode*>(*it);
         NativeValue llvm_arg_wrapper;
         // TODO(chenjing): remove out_name
         status = Build(arg, &llvm_arg_wrapper);
@@ -413,7 +415,7 @@ Status ExprIRBuilder::BuildStructExpr(const ::hybridse::node::StructExpr* node,
             node::FnParaNode* field = dynamic_cast<node::FnParaNode*>(each);
             ::llvm::Type* type = nullptr;
             CHECK_TRUE(ConvertHybridSEType2LLVMType(field->GetParaType(),
-                                                 ctx_->GetModule(), &type),
+                                                    ctx_->GetModule(), &type),
                        kCodegenError,
                        "Invalid struct with unacceptable field type: " +
                            field->GetParaType()->GetName());
@@ -506,8 +508,8 @@ Status ExprIRBuilder::BuildWindow(NativeValue* output) {  // NOLINT
 // param col
 // param output
 // return
-Status ExprIRBuilder::BuildColumnRef(const ::hybridse::node::ColumnRefNode* node,
-                                     NativeValue* output) {
+Status ExprIRBuilder::BuildColumnRef(
+    const ::hybridse::node::ColumnRefNode* node, NativeValue* output) {
     const std::string relation_name = node->GetRelationName();
     const std::string col = node->GetColumnName();
 
@@ -789,8 +791,8 @@ Status ExprIRBuilder::BuildAsUDF(const node::ExprNode* expr,
     return status;
 }
 
-Status ExprIRBuilder::BuildGetFieldExpr(const ::hybridse::node::GetFieldExpr* node,
-                                        NativeValue* output) {
+Status ExprIRBuilder::BuildGetFieldExpr(
+    const ::hybridse::node::GetFieldExpr* node, NativeValue* output) {
     // build input
     Status status;
     NativeValue input_value;
@@ -858,8 +860,8 @@ Status ExprIRBuilder::BuildGetFieldExpr(const ::hybridse::node::GetFieldExpr* no
     return Status::OK();
 }
 
-Status ExprIRBuilder::BuildCaseExpr(const ::hybridse::node::CaseWhenExprNode* node,
-                                    NativeValue* output) {
+Status ExprIRBuilder::BuildCaseExpr(
+    const ::hybridse::node::CaseWhenExprNode* node, NativeValue* output) {
     CHECK_TRUE(nullptr != node && nullptr != node->when_expr_list() &&
                    node->when_expr_list()->GetChildNum() > 0,
                kCodegenError);
@@ -872,7 +874,8 @@ Status ExprIRBuilder::BuildCaseExpr(const ::hybridse::node::CaseWhenExprNode* no
         expr = nm->MakeCondExpr(when_expr->when_expr(), when_expr->then_expr(),
                                 expr);
     }
-    return BuildCondExpr(dynamic_cast<::hybridse::node::CondExpr*>(expr), output);
+    return BuildCondExpr(dynamic_cast<::hybridse::node::CondExpr*>(expr),
+                         output);
 }
 
 Status ExprIRBuilder::BuildCondExpr(const ::hybridse::node::CondExpr* node,

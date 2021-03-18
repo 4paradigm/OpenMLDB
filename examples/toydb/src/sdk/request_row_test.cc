@@ -15,10 +15,10 @@
  */
 
 #include "sdk/request_row.h"
-#include "sdk/base_impl.h"
 #include "codec/fe_row_codec.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "sdk/base_impl.h"
 #include "vm/catalog.h"
 
 namespace hybridse {

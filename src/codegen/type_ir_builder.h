@@ -91,8 +91,8 @@ class BoolIRBuilder : public TypeIRBuilder {
     }
 };
 inline const bool ConvertHybridSEType2LLVMType(const node::TypeNode* data_type,
-                                            ::llvm::Module* m,  // NOLINT
-                                            ::llvm::Type** llvm_type) {
+                                               ::llvm::Module* m,  // NOLINT
+                                               ::llvm::Type** llvm_type) {
     if (nullptr == data_type) {
         LOG(WARNING) << "fail to convert data type to llvm type";
         return false;

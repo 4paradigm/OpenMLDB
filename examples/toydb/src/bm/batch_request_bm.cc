@@ -25,10 +25,10 @@ using namespace ::llvm;  // NOLINT
     static void BM_BatchRequest_##NAME(benchmark::State& state) {              \
         auto sql_case = LoadSQLCaseWithID(PATH, CASE_ID);                      \
         sql_case.batch_request_optimized_ = state.range(0) == 1;               \
-        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {                            \
+        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {                         \
             sql_case.SQLCaseRepeatConfig("window_scale", state.range(1));      \
         }                                                                      \
-        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {                            \
+        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {                         \
             sql_case.SQLCaseRepeatConfig("batch_scale", state.range(2));       \
         }                                                                      \
                                                                                \

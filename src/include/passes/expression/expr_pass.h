@@ -69,12 +69,12 @@ class ExprReplacer {
                         const std::string& column_name, node::ExprNode* repl);
 
     hybridse::base::Status Replace(node::ExprNode* root,
-                                node::ExprNode** output) const;
+                                   node::ExprNode** output) const;
 
  private:
     hybridse::base::Status DoReplace(node::ExprNode* root,
-                                  std::unordered_set<size_t>* visited,
-                                  node::ExprNode** output) const;
+                                     std::unordered_set<size_t>* visited,
+                                     node::ExprNode** output) const;
 
     std::unordered_map<size_t, node::ExprNode*> arg_id_map_;
     std::unordered_map<size_t, node::ExprNode*> node_id_map_;

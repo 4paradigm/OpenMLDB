@@ -19,7 +19,8 @@
 namespace hybridse {
 namespace vm {
 
-HybridSESymbolResolver::HybridSESymbolResolver(const ::llvm::DataLayout& data_layout)
+HybridSESymbolResolver::HybridSESymbolResolver(
+    const ::llvm::DataLayout& data_layout)
     : data_layout_(data_layout) {}
 
 ::llvm::JITSymbol HybridSESymbolResolver::findSymbol(const std::string& name) {

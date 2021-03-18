@@ -144,12 +144,14 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node,
     switch (node->type_) {
         case node::kPlanTypeLimit: {
             status = TransformLimitOp(
-                dynamic_cast<const ::hybridse::node::LimitPlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::LimitPlanNode*>(node),
+                &op);
             break;
         }
         case node::kPlanTypeProject: {
             status = TransformProjectPlanOp(
-                dynamic_cast<const ::hybridse::node::ProjectPlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::ProjectPlanNode*>(node),
+                &op);
             break;
         }
         case node::kPlanTypeJoin: {
@@ -159,12 +161,14 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node,
         }
         case node::kPlanTypeUnion: {
             status = TransformUnionOp(
-                dynamic_cast<const ::hybridse::node::UnionPlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::UnionPlanNode*>(node),
+                &op);
             break;
         }
         case node::kPlanTypeGroup: {
             status = TransformGroupOp(
-                dynamic_cast<const ::hybridse::node::GroupPlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::GroupPlanNode*>(node),
+                &op);
             break;
         }
         case node::kPlanTypeSort: {
@@ -174,22 +178,26 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node,
         }
         case node::kPlanTypeFilter: {
             status = TransformFilterOp(
-                dynamic_cast<const ::hybridse::node::FilterPlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::FilterPlanNode*>(node),
+                &op);
             break;
         }
         case node::kPlanTypeTable: {
             status = TransformScanOp(
-                dynamic_cast<const ::hybridse::node::TablePlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::TablePlanNode*>(node),
+                &op);
             break;
         }
         case node::kPlanTypeQuery: {
             status = TransformQueryPlan(
-                dynamic_cast<const ::hybridse::node::QueryPlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::QueryPlanNode*>(node),
+                &op);
             break;
         }
         case node::kPlanTypeRename: {
             status = TransformRenameOp(
-                dynamic_cast<const ::hybridse::node::RenamePlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::RenamePlanNode*>(node),
+                &op);
             break;
         }
         case node::kPlanTypeDistinct: {
@@ -361,9 +369,10 @@ Status BatchModeTransformer::TransformProjectPlanOpWithWindowParallel(
     CHECK_TRUE(!node->project_list_vec_.empty(), kPlanError,
                "Fail transform project op: empty projects");
     if (1 == node->project_list_vec_.size()) {
-        return TransformProjectOp(dynamic_cast<hybridse::node::ProjectListNode*>(
-                                      node->project_list_vec_[0]),
-                                  depend, false, output);
+        return TransformProjectOp(
+            dynamic_cast<hybridse::node::ProjectListNode*>(
+                node->project_list_vec_[0]),
+            depend, false, output);
     }
 
     std::vector<PhysicalOpNode*> ops;
@@ -438,9 +447,10 @@ Status BatchModeTransformer::TransformProjectPlanOpWindowSerial(
     CHECK_TRUE(!node->project_list_vec_.empty(), kPlanError,
                "Fail transform project op: empty projects");
     if (1 == node->project_list_vec_.size()) {
-        return TransformProjectOp(dynamic_cast<hybridse::node::ProjectListNode*>(
-                                      node->project_list_vec_[0]),
-                                  depend, false, output);
+        return TransformProjectOp(
+            dynamic_cast<hybridse::node::ProjectListNode*>(
+                node->project_list_vec_[0]),
+            depend, false, output);
     }
     // 处理project_list_vec_[1...N-1], 串联执行windowAggWithAppendInput
     std::vector<PhysicalOpNode*> ops;
@@ -459,7 +469,8 @@ Status BatchModeTransformer::TransformProjectPlanOpWindowSerial(
     // 第一个Project节点除了计算投影表达式之外，还需要筛选出前面窗口的表达式结果
     // TODO(chenjing): 这部分代码可读性还是太差
     hybridse::node::ProjectListNode* first_project_list =
-        dynamic_cast<hybridse::node::ProjectListNode*>(node->project_list_vec_[0]);
+        dynamic_cast<hybridse::node::ProjectListNode*>(
+            node->project_list_vec_[0]);
     auto project_list = node_manager_->MakeProjectListPlanNode(
         first_project_list->w_ptr_, first_project_list->is_window_agg_);
     uint32_t pos = 0;
@@ -885,7 +896,8 @@ Status BatchModeTransformer::TransformDistinctOp(
 }
 
 Status BatchModeTransformer::TransformQueryPlan(
-    const ::hybridse::node::PlanNode* node, ::hybridse::vm::PhysicalOpNode** output) {
+    const ::hybridse::node::PlanNode* node,
+    ::hybridse::vm::PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
                "Input node or output node is null");
     return TransformPlanOp(node->GetChildren()[0], output);
@@ -1422,7 +1434,8 @@ Status BatchModeTransformer::TransformPhysicalPlan(
         switch (node->GetType()) {
             case ::hybridse::node::kPlanTypeFuncDef: {
                 const ::hybridse::node::FuncDefPlanNode* func_def_plan =
-                    dynamic_cast<const ::hybridse::node::FuncDefPlanNode*>(node);
+                    dynamic_cast<const ::hybridse::node::FuncDefPlanNode*>(
+                        node);
                 CHECK_STATUS(GenFnDef(func_def_plan),
                              "Fail to compile user function def");
                 *output = nullptr;
@@ -1452,8 +1465,8 @@ Status BatchModeTransformer::TransformPhysicalPlan(
             }
             case ::hybridse::node::kPlanTypeCreateSp: {
                 const ::hybridse::node::CreateProcedurePlanNode* sp_plan =
-                    dynamic_cast<const ::hybridse::node::CreateProcedurePlanNode*>(
-                        node);
+                    dynamic_cast<
+                        const ::hybridse::node::CreateProcedurePlanNode*>(node);
                 return TransformPhysicalPlan(sp_plan->GetInnerPlanNodeList(),
                                              output);
             }
@@ -1682,8 +1695,9 @@ Status BatchModeTransformer::CheckTimeOrIntegerOrderColumn(
                 return Status::OK();
             }
             default: {
-                return Status(kPlanError, "Invalid Order column type : " +
-                                              hybridse::type::Type_Name(col_type));
+                return Status(kPlanError,
+                              "Invalid Order column type : " +
+                                  hybridse::type::Type_Name(col_type));
             }
         }
     }

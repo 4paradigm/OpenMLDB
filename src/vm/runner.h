@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_VM_RUNNER_H_
 #define SRC_VM_RUNNER_H_
 
@@ -1385,7 +1384,8 @@ class RunnerBuilder {
     int32_t id_;
     ClusterJob cluster_job_;
 
-    std::unordered_map<::hybridse::vm::PhysicalOpNode*, ::hybridse::vm::ClusterTask>
+    std::unordered_map<::hybridse::vm::PhysicalOpNode*,
+                       ::hybridse::vm::ClusterTask>
         task_map_;
     std::shared_ptr<ClusterTask> request_task_;
     std::unordered_map<hybridse::vm::Runner*, ::hybridse::vm::Runner*>

@@ -21,9 +21,9 @@ namespace hybridse {
 namespace plan {
 using hybridse::plan::SimplePlanner;
 bool PlanAPI::CreatePlanTreeFromScript(const std::string &sql,
-                                           PlanNodeList &plan_trees,
-                                           NodeManager *node_manager,
-                                           Status &status) {
+                                       PlanNodeList &plan_trees,
+                                       NodeManager *node_manager,
+                                       Status &status) {
     hybridse::node::NodePointVector parser_trees;
     if (!CreateSyntaxTreeFromScript(sql, parser_trees, node_manager, status)) {
         return false;
@@ -33,9 +33,9 @@ bool PlanAPI::CreatePlanTreeFromScript(const std::string &sql,
 }
 
 bool PlanAPI::CreatePlanTreeFromSyntaxTree(const NodePointVector &parser_trees,
-                                               PlanNodeList &plan_trees,
-                                               NodeManager *node_manager,
-                                               Status &status) {
+                                           PlanNodeList &plan_trees,
+                                           NodeManager *node_manager,
+                                           Status &status) {
     SimplePlanner simplePlanner(node_manager);
     if (common::kOk !=
             simplePlanner.CreatePlanTree(parser_trees, plan_trees, status) ||
@@ -47,9 +47,9 @@ bool PlanAPI::CreatePlanTreeFromSyntaxTree(const NodePointVector &parser_trees,
 }
 
 bool PlanAPI::CreateSyntaxTreeFromScript(const std::string &sql,
-                                             NodePointVector &parser_trees,
-                                             NodeManager *node_manager,
-                                             Status &status) {
+                                         NodePointVector &parser_trees,
+                                         NodeManager *node_manager,
+                                         Status &status) {
     hybridse::parser::HybridSEParser parser;
     parser.parse(sql, parser_trees, node_manager, status);
     if (common::kOk != status.code) {

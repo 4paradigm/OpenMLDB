@@ -132,7 +132,8 @@ int32_t weekofyear(codec::Date *date) {
 
 float Cotf(float x) { return cosf(x) / sinf(x); }
 
-void date_format(codec::Timestamp *timestamp, hybridse::codec::StringRef *format,
+void date_format(codec::Timestamp *timestamp,
+                 hybridse::codec::StringRef *format,
                  hybridse::codec::StringRef *output) {
     if (nullptr == format) {
         return;
@@ -218,7 +219,8 @@ void date_format(codec::Date *date, const std::string &format,
     output->data_ = target;
 }
 
-void timestamp_to_string(codec::Timestamp *v, hybridse::codec::StringRef *output) {
+void timestamp_to_string(codec::Timestamp *v,
+                         hybridse::codec::StringRef *output) {
     date_format(v, "%Y-%m-%d %H:%M:%S", output);
 }
 void bool_to_string(bool v, hybridse::codec::StringRef *output) {
@@ -235,8 +237,8 @@ void bool_to_string(bool v, hybridse::codec::StringRef *output) {
     }
 }
 
-void timestamp_to_date(codec::Timestamp *timestamp, hybridse::codec::Date *output,
-                       bool *is_null) {
+void timestamp_to_date(codec::Timestamp *timestamp,
+                       hybridse::codec::Date *output, bool *is_null) {
     time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
     struct tm t;
     if (nullptr == gmtime_r(&time, &t)) {
@@ -466,8 +468,8 @@ void string_to_date(codec::StringRef *str, hybridse::codec::Date *output,
                 *is_null = true;
                 return;
             }
-            *output = hybridse::codec::Date(timeinfo.tm_year + 1900,
-                                         timeinfo.tm_mon + 1, timeinfo.tm_mday);
+            *output = hybridse::codec::Date(
+                timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday);
             *is_null = false;
             return;
         }
@@ -507,8 +509,8 @@ void string_to_date(codec::StringRef *str, hybridse::codec::Date *output,
     return;
 }
 // cast string to timestamp with yyyy-mm-dd or YYYY-mm-dd HH:MM:SS
-void string_to_timestamp(codec::StringRef *str, hybridse::codec::Timestamp *output,
-                         bool *is_null) {
+void string_to_timestamp(codec::StringRef *str,
+                         hybridse::codec::Timestamp *output, bool *is_null) {
     if (19 == str->size_) {
         struct tm timeinfo;
         if (nullptr ==
@@ -784,7 +786,8 @@ bool iterator_list(int8_t *input, int8_t *output) {
     if (nullptr == input || nullptr == output) {
         return false;
     }
-    ::hybridse::codec::ListRef<> *list_ref = (::hybridse::codec::ListRef<> *)(input);
+    ::hybridse::codec::ListRef<> *list_ref =
+        (::hybridse::codec::ListRef<> *)(input);
     ::hybridse::codec::IteratorRef *iterator_ref =
         (::hybridse::codec::IteratorRef *)(output);
     ListV<V> *col = (ListV<V> *)(list_ref->list);

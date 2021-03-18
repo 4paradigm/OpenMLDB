@@ -25,7 +25,8 @@
 namespace hybridse {
 namespace sdk {
 
-typedef ::google::protobuf::RepeatedPtrField< ::hybridse::type::TableDef> Tables;
+typedef ::google::protobuf::RepeatedPtrField< ::hybridse::type::TableDef>
+    Tables;
 
 class SchemaImpl : public Schema {
  public:

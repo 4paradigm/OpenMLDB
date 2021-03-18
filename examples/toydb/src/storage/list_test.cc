@@ -244,9 +244,9 @@ TEST_F(ListTest, ArrayListEqualItem) {
         std::vector<::hybridse::base::Skiplist<uint64_t, uint64_t,
 DefaultComparator>*> vec; uint64_t value = 1; for (uint64_t idx = 0; idx <
 loop_time; idx++) {
-            ::hybridse::base::Skiplist<uint64_t, uint64_t, DefaultComparator>* list
-= new ::hybridse::base::Skiplist<uint64_t, uint64_t, DefaultComparator>(12, 4,
-cmp); for (uint64_t i = 0; i < record_cnt; i++) { list->Insert(i, value);
+            ::hybridse::base::Skiplist<uint64_t, uint64_t, DefaultComparator>*
+list = new ::hybridse::base::Skiplist<uint64_t, uint64_t, DefaultComparator>(12,
+4, cmp); for (uint64_t i = 0; i < record_cnt; i++) { list->Insert(i, value);
             }
             vec.push_back(list);
         }

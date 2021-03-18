@@ -61,8 +61,8 @@ bool MemoryWindowDecodeIRBuilder::BuildInnerRowsList(::llvm::Value* list_ptr,
     ::llvm::Value* val_start_offset = builder.getInt64(start_offset);
     ::llvm::Value* val_end_offset = builder.getInt64(end_offset);
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
-        "hybridse_storage_get_inner_rows_list", i32_ty, i8_ptr_ty, i64_ty, i64_ty,
-        i8_ptr_ty);
+        "hybridse_storage_get_inner_rows_list", i32_ty, i8_ptr_ty, i64_ty,
+        i64_ty, i8_ptr_ty);
     builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
                                    list_ptr, val_start_offset, val_end_offset,
                                    inner_list_ptr});
@@ -99,8 +99,8 @@ bool MemoryWindowDecodeIRBuilder::BuildInnerRangeList(::llvm::Value* list_ptr,
     ::llvm::Value* val_start_offset = builder.getInt64(start_offset);
     ::llvm::Value* val_end_offset = builder.getInt64(end_offset);
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
-        "hybridse_storage_get_inner_range_list", i32_ty, i8_ptr_ty, i64_ty, i64_ty,
-        i64_ty, i8_ptr_ty);
+        "hybridse_storage_get_inner_range_list", i32_ty, i8_ptr_ty, i64_ty,
+        i64_ty, i64_ty, i8_ptr_ty);
     builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
                                    list_ptr, row_key, val_start_offset,
                                    val_end_offset, inner_list_ptr});
@@ -274,8 +274,8 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
 
     // get str field declear
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
-        "hybridse_storage_get_str_col", i32_ty, i8_ptr_ty, i32_ty, i32_ty, i32_ty,
-        i32_ty, i32_ty, i32_ty, i8_ptr_ty);
+        "hybridse_storage_get_str_col", i32_ty, i8_ptr_ty, i32_ty, i32_ty,
+        i32_ty, i32_ty, i32_ty, i32_ty, i8_ptr_ty);
 
     ::llvm::Value* val_schema_idx = builder.getInt32(schema_idx);
     ::llvm::Value* val_col_idx = builder.getInt32(col_idx);
