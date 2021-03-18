@@ -69,7 +69,7 @@ TEST_F(SDKCatalogTest, sdk_smoke_test) {
     ::fesql::base::Status status;
     ASSERT_TRUE(engine.Get(sql, "db1", session, status));
     std::stringstream ss;
-    session.GetPhysicalPlan()->Print(ss, "\t");
+    session.GetCompileInfo()->DumpPhysicalPlan(ss, "\t");
     std::cout << ss.str() << std::endl;
 }
 
@@ -92,7 +92,7 @@ TEST_F(SDKCatalogTest, sdk_window_smoke_test) {
     ::fesql::base::Status status;
     ASSERT_TRUE(engine.Get(sql, "db1", session, status));
     std::stringstream ss;
-    session.GetPhysicalPlan()->Print(ss, "\t");
+    session.GetCompileInfo()->DumpPhysicalPlan(ss, "\t");
     std::cout << ss.str() << std::endl;
 }
 
@@ -117,7 +117,7 @@ TEST_F(SDKCatalogTest, sdk_lastjoin_smoke_test) {
     ::fesql::base::Status status;
     ASSERT_TRUE(engine.Get(sql, "db1", session, status));
     std::stringstream ss;
-    session.GetPhysicalPlan()->Print(ss, "\t");
+    session.GetCompileInfo()->DumpPhysicalPlan(ss, "\t");
     std::cout << ss.str() << std::endl;
 }
 
