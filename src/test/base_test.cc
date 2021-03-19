@@ -50,7 +50,8 @@ std::string SQLCaseTest::FindRtidbDirPath(const std::string &dirname) {
 
 std::vector<hybridse::sqlcase::SQLCase> SQLCaseTest::InitCases(const std::string &yaml_path) {
     std::vector<hybridse::sqlcase::SQLCase> cases;
-    InitCases(FindRtidbDirPath("rtidb") + "/hybridse/", yaml_path, cases);
+    // TODO(denglong): fedb需要配置自己的cast路径，不依赖目录名推断
+    InitCases(FindRtidbDirPath("rtidb") + "/fesql/", yaml_path, cases);
     std::vector<hybridse::sqlcase::SQLCase> level_cases;
 
     int skip_case_cnt = 0;
