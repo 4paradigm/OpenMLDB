@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# install_fesql.sh
+# install_hybridse.sh
 ENABLE_JAVA=$1
 CMAKE_TYPE=$2
 

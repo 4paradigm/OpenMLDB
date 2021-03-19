@@ -23,7 +23,7 @@ git clone https://github.com/4paradigm/fedb.git
 docker run -v \`pwd\`/fedb:/fedb -it FEDB-docker bash
 cd /fedb
 git submodule init fesql && git submodule update fesql
-sh tools/install_fesql.sh
+sh tools/install_hybridse.sh
 mkdir -p build && cmake ../ && make -j5 fedb
 ```
 ### 示例

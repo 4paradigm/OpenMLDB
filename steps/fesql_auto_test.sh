@@ -23,7 +23,7 @@ ROOT_DIR=`pwd`
 ulimit -c unlimited
 
 echo "ROOT_DIR:${ROOT_DIR}"
-sh tools/install_fesql.sh ON
+sh tools/install_hybridse.sh ON
 cd ${ROOT_DIR}/fesql/java/hybridse-common; mvn install
 
 mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. 
