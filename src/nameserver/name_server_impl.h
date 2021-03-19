@@ -558,8 +558,7 @@ class NameServerImpl : public NameServer {
     std::shared_ptr<Task> CreateLoadTableTask(
         const std::string& endpoint, uint64_t op_index,
         ::fedb::api::OPType op_type, const std::string& name, uint32_t tid,
-        uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader,
-        ::fedb::common::StorageMode storage_mode);
+        uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader);
 
     std::shared_ptr<Task> CreateLoadTableRemoteTask(
         const std::string& alias, const std::string& name,

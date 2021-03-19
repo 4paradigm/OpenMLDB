@@ -33,8 +33,6 @@
 #include "catalog/tablet_catalog.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
-#include "storage/disk_table.h"
-#include "storage/disk_table_snapshot.h"
 #include "storage/mem_table.h"
 #include "storage/mem_table_snapshot.h"
 #include "tablet/combine_iterator.h"
@@ -50,7 +48,6 @@ using ::google::protobuf::RpcController;
 using ::fedb::base::SpinMutex;
 using ::fedb::replica::LogReplicator;
 using ::fedb::replica::ReplicatorRole;
-using ::fedb::storage::DiskTable;
 using ::fedb::storage::IndexDef;
 using ::fedb::storage::MemTable;
 using ::fedb::storage::Snapshot;
@@ -422,9 +419,6 @@ class TabletImpl : public ::fedb::api::TabletServer {
     // Get table by table id , no need external synchronization
     // Get table by table id , and Need external synchronization
     std::shared_ptr<Table> GetTableUnLock(uint32_t tid, uint32_t pid);
-    // std::shared_ptr<DiskTable> GetDiskTable(uint32_t tid, uint32_t pid);
-    // std::shared_ptr<DiskTable> GetDiskTableUnLock(uint32_t tid, uint32_t
-    // pid);
 
     std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);
 
@@ -443,9 +437,6 @@ class TabletImpl : public ::fedb::api::TabletServer {
 
     int CreateTableInternal(const ::fedb::api::TableMeta* table_meta,
                             std::string& msg);  // NOLINT
-
-    int CreateDiskTableInternal(const ::fedb::api::TableMeta* table_meta,
-                                bool is_load, std::string& msg);  // NOLINT
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
                               std::shared_ptr<::fedb::api::TaskInfo> task);
@@ -478,8 +469,6 @@ class TabletImpl : public ::fedb::api::TabletServer {
 
     void SchedMakeSnapshot();
 
-    void SchedMakeDiskTableSnapshot();
-
     void GetDiskused();
 
     void CheckZkClient();
@@ -492,9 +481,6 @@ class TabletImpl : public ::fedb::api::TabletServer {
 
     int LoadTableInternal(uint32_t tid, uint32_t pid,
                           std::shared_ptr<::fedb::api::TaskInfo> task_ptr);
-    int LoadDiskTableInternal(uint32_t tid, uint32_t pid,
-                              const ::fedb::api::TableMeta& table_meta,
-                              std::shared_ptr<::fedb::api::TaskInfo> task_ptr);
     int WriteTableMeta(const std::string& path,
                        const ::fedb::api::TableMeta* table_meta);
 
@@ -541,23 +527,18 @@ class TabletImpl : public ::fedb::api::TabletServer {
                       uint64_t target_ts);
 
     bool ChooseDBRootPath(uint32_t tid, uint32_t pid,
-                          const ::fedb::common::StorageMode& mode,
                           std::string& path);  // NOLINT
 
     bool ChooseRecycleBinRootPath(uint32_t tid, uint32_t pid,
-                                  const ::fedb::common::StorageMode& mode,
                                   std::string& path);  // NOLINT
 
     bool ChooseTableRootPath(uint32_t tid, uint32_t pid,
-                             const ::fedb::common::StorageMode& mode,
                              std::string& path);  // NOLINT
 
     bool GetTableRootSize(uint32_t tid, uint32_t pid,
-                          const ::fedb::common::StorageMode& mode,
                           uint64_t& size);  // NOLINT
 
     int32_t GetSnapshotOffset(uint32_t tid, uint32_t pid,
-                              common::StorageMode sm,
                               std::string& msg,                   // NOLINT
                               uint64_t& term, uint64_t& offset);  // NOLINT
 
@@ -601,10 +582,8 @@ class TabletImpl : public ::fedb::api::TabletServer {
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
     brpc::Server* server_;
-    std::map<::fedb::common::StorageMode, std::vector<std::string>>
-        mode_root_paths_;
-    std::map<::fedb::common::StorageMode, std::vector<std::string>>
-        mode_recycle_root_paths_;
+    std::vector<std::string> mode_root_paths_;
+    std::vector<std::string> mode_recycle_root_paths_;
     std::atomic<bool> follower_;
     std::shared_ptr<std::map<std::string, std::string>> real_ep_map_;
     // thread safe
