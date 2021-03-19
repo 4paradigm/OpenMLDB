@@ -144,7 +144,7 @@ find_package(SWIG REQUIRED)
 include(UseSWIG)
 
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
-include_directories(${PROJECT_SOURCE_DIR}/src/include)
+include_directories(${PROJECT_SOURCE_DIR}/include)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib64)
 
@@ -192,6 +192,6 @@ install(TARGETS hybridse_core hybridse_sdk
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-FILE(GLOB header_files "${CMAKE_CURRENT_SOURCE_DIR}/src/include/*")
+FILE(GLOB header_files "${CMAKE_CURRENT_SOURCE_DIR}/include/*")
 INSTALL(DIRECTORY ${header_files} DESTINATION include)
 INSTALL(DIRECTORY "${CMAKE_BINARY_DIR}/src/proto" DESTINATION include FILES_MATCHING PATTERN "*.h")
