@@ -36,12 +36,12 @@ typedef void *yyscan_t;
 typedef struct yy_buffer_state *YY_BUFFER_STATE;
 #endif
 
-namespace fesql {
+namespace hybridse {
 namespace parser {
 
-class FeSQLParser {
+class HybridSEParser {
  public:
-    FeSQLParser() {}
+    HybridSEParser() {}
 
     int parse(const std::string &sqlstr,
               node::NodePointVector &trees,  // NOLINT (runtime/references)
@@ -62,15 +62,15 @@ class FeSQLParser {
                       base::Status &status);  // NOLINT (runtime/references)
 };
 }  // namespace parser
-}  // namespace fesql
+}  // namespace hybridse
 
 extern YY_BUFFER_STATE yy_scan_string(const char *yy_str, yyscan_t yyscanner);
 extern int yylex_init(yyscan_t *scanner);
 extern int yyparse(
     yyscan_t scanner,
-    fesql::node::NodePointVector &trees,  // NOLINT (runtime/references)
-    ::fesql::node::NodeManager *node_manager,
-    ::fesql::base::Status &status);  // NOLINT (runtime/references)
+    hybridse::node::NodePointVector &trees,  // NOLINT (runtime/references)
+    ::hybridse::node::NodeManager *node_manager,
+    ::hybridse::base::Status &status);  // NOLINT (runtime/references)
 extern int yylex_destroy(yyscan_t yyscanner);
 extern void yyset_lineno(int line_number, yyscan_t scanner);
 extern void yyset_column(int line_number, yyscan_t scanner);

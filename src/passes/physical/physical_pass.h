@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <vector>
 
 #include "base/fe_object.h"
@@ -27,11 +26,11 @@
 #ifndef SRC_PASSES_PHYSICAL_PHYSICAL_PASS_H_
 #define SRC_PASSES_PHYSICAL_PHYSICAL_PASS_H_
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
-using fesql::vm::PhysicalOpNode;
-using fesql::vm::PhysicalPlanContext;
+using hybridse::vm::PhysicalOpNode;
+using hybridse::vm::PhysicalPlanContext;
 
 class PhysicalPass : public PassBase<PhysicalOpNode, PhysicalPlanContext> {
  public:
@@ -40,5 +39,5 @@ class PhysicalPass : public PassBase<PhysicalOpNode, PhysicalPlanContext> {
 };
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_PASSES_PHYSICAL_PHYSICAL_PASS_H_

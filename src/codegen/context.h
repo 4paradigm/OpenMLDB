@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CODEGEN_CONTEXT_H_
 #define SRC_CODEGEN_CONTEXT_H_
 
@@ -29,10 +28,10 @@
 #include "codegen/scope_var.h"
 #include "vm/schemas_context.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
-using ::fesql::base::Status;
+using ::hybridse::base::Status;
 
 class CodeGenContext;
 
@@ -176,5 +175,5 @@ class CodeGenContext {
 };
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_CONTEXT_H_

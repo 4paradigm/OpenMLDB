@@ -20,10 +20,10 @@
 #include "codec/type_codec.h"
 #include "glog/logging.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codec {
 
-fesql::codec::Schema RowSelector::CreateTargetSchema() {
+hybridse::codec::Schema RowSelector::CreateTargetSchema() {
     Schema target_schema;
     for (auto& pair : indices_) {
         size_t schema_idx = pair.first;
@@ -44,7 +44,7 @@ static auto RowSelectorMakeIndices(const std::vector<size_t>& indices) {
     return result;
 }
 
-RowSelector::RowSelector(const fesql::codec::Schema* schema,
+RowSelector::RowSelector(const hybridse::codec::Schema* schema,
                          const std::vector<size_t>& indices)
     : schemas_({schema}),
       indices_(RowSelectorMakeIndices(indices)),
@@ -54,7 +54,7 @@ RowSelector::RowSelector(const fesql::codec::Schema* schema,
 }
 
 RowSelector::RowSelector(
-    const std::vector<const fesql::codec::Schema*>& schemas,
+    const std::vector<const hybridse::codec::Schema*>& schemas,
     const std::vector<std::pair<size_t, size_t>>& indices)
     : schemas_(schemas),
       indices_(indices),
@@ -257,4 +257,4 @@ bool RowSelector::Select(const int8_t* slice, size_t size, int8_t** out_slice,
 }
 
 }  // namespace codec
-}  // namespace fesql
+}  // namespace hybridse

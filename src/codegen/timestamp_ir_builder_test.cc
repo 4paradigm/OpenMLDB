@@ -27,7 +27,7 @@
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 ExitOnError ExitOnErr;
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 class TimestampIRBuilderTest : public ::testing::Test {
  public:
@@ -255,7 +255,7 @@ TEST_F(TimestampIRBuilderTest, TimestampOp) {
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

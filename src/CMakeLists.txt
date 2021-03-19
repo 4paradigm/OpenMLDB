@@ -14,7 +14,7 @@
 set_property(GLOBAL PROPERTY PROP_SRC_FILE_LIST)
 set_property(GLOBAL PROPERTY PROP_TEST_SRC_FILE_LIST)
 
-function(fesql_add_src_and_tests DIR)
+function(hybridse_add_src_and_tests DIR)
 	message(STATUS "Add src and testcases from ${DIR}")
 	get_property(TMP_SRC_LIST GLOBAL PROPERTY PROP_SRC_FILE_LIST)
 	get_property(TMP_TEST_SRC_LIST GLOBAL PROPERTY PROP_TEST_SRC_FILE_LIST)
@@ -28,7 +28,7 @@ function(fesql_add_src_and_tests DIR)
 	endforeach()
 	set_property(GLOBAL PROPERTY PROP_SRC_FILE_LIST "${TMP_SRC_LIST}")
 	set_property(GLOBAL PROPERTY PROP_TEST_SRC_FILE_LIST "${TMP_TEST_SRC_LIST}")
-endfunction(fesql_add_src_and_tests)
+endfunction(hybridse_add_src_and_tests)
 
 include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
@@ -39,16 +39,16 @@ add_subdirectory(proto)
 add_subdirectory(parser)
 
 # general sub-directories
-fesql_add_src_and_tests(base)
-fesql_add_src_and_tests(udf)
-fesql_add_src_and_tests(node)
-fesql_add_src_and_tests(plan)
-fesql_add_src_and_tests(codegen)
-fesql_add_src_and_tests(vm)
-fesql_add_src_and_tests(codec)
-fesql_add_src_and_tests(case)
-fesql_add_src_and_tests(parser)
-fesql_add_src_and_tests(passes)
+hybridse_add_src_and_tests(base)
+hybridse_add_src_and_tests(udf)
+hybridse_add_src_and_tests(node)
+hybridse_add_src_and_tests(plan)
+hybridse_add_src_and_tests(codegen)
+hybridse_add_src_and_tests(vm)
+hybridse_add_src_and_tests(codec)
+hybridse_add_src_and_tests(case)
+hybridse_add_src_and_tests(parser)
+hybridse_add_src_and_tests(passes)
 
 get_property(SRC_FILE_LIST_STR GLOBAL PROPERTY PROP_SRC_FILE_LIST)
 string(REPLACE " " ";" SRC_FILE_LIST ${SRC_FILE_LIST_STR})
@@ -59,14 +59,14 @@ if (LLVM_EXT_ENABLE)
     add_definitions(-DLLVM_EXT_ENABLE)
 endif()
 
-add_library(fesql_flags STATIC ${CMAKE_SOURCE_DIR}/src/flags.cc)
+add_library(hybridse_flags STATIC ${CMAKE_SOURCE_DIR}/src/flags.cc)
 
-# fesql core library
-add_library(fesql_core STATIC ${SRC_FILE_LIST} ${PROJECT_SOURCE_DIR}/src/flags.cc  $<TARGET_OBJECTS:fesql_proto> $<TARGET_OBJECTS:fesql_parser> case/case_data_mock.cc vm/engine_test_base.cc vm/test_base.cc)
-target_link_libraries(fesql_core
-    ${yaml_libs} ${LLVM_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} fesql_flags)
+# hybridse core library
+add_library(hybridse_core STATIC ${SRC_FILE_LIST} ${PROJECT_SOURCE_DIR}/src/flags.cc  $<TARGET_OBJECTS:hybridse_proto> $<TARGET_OBJECTS:hybridse_parser> case/case_data_mock.cc vm/engine_test_base.cc vm/test_base.cc)
+target_link_libraries(hybridse_core
+    ${yaml_libs} ${LLVM_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} hybridse_flags)
 
-# fesql core unittests
+# hybridse core unittests
 if (TESTING_ENABLE)
 	get_property(TEST_FILE_LIST_STR GLOBAL PROPERTY PROP_TEST_SRC_FILE_LIST)
 	string(REPLACE " " ";" TEST_FILE_LIST ${TEST_FILE_LIST_STR})
@@ -83,20 +83,24 @@ if (TESTING_ENABLE)
 			--gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
 
             target_link_options(${TEST_TARGET_NAME} PRIVATE -rdynamic)
-	    target_link_libraries(${TEST_TARGET_NAME} gtest fesql_core fesql_flags
+	    target_link_libraries(${TEST_TARGET_NAME} gtest hybridse_core hybridse_flags
                 ${yaml_libs} ${BRPC_LIBS})
     	list(APPEND test_list ${TEST_TARGET_NAME})
 	endforeach()
 	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
-# fesql sdk
+# hybridse sdk
 add_subdirectory(sdk)
-# fesql bm
+# hybridse bm
 if (BENCHMARK_ENABLE)
 add_subdirectory(benchmark)
 endif()
 
 # udf exporter
 add_executable(export_udf_info cmd/export_udf_info.cc)
-target_link_libraries(export_udf_info fesql_core)
+target_link_libraries(export_udf_info hybridse_core)
+
+# simple engine demo
+add_executable(simple_engine_demo cmd/simple_engine_demo.cc)
+target_link_libraries(simple_engine_demo hybridse_core)

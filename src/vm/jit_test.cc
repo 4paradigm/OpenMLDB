@@ -39,7 +39,7 @@ using namespace ::llvm::orc;  // NOLINT
 
 int32_t test_fn(int32_t a) { return a + 1; }
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 class JITTest : public ::testing::Test {
@@ -59,7 +59,7 @@ T FeCheck(::llvm::Expected<T> &&E) {
 }
 
 TEST_F(JITTest, test_release_module) {
-    auto jit = FeCheck((FeSQLJITBuilder().create()));
+    auto jit = FeCheck((HybridSEJITBuilder().create()));
     ::llvm::orc::JITDylib &jd = jit->createJITDylib("test");
     ::llvm::orc::VModuleKey m1 = jit->CreateVModule();
     int (*Add1)(int) = NULL;
@@ -102,7 +102,7 @@ TEST_F(JITTest, test_release_module) {
 static int32_t inc_for_test(int32_t x) { return x + 1; }
 
 TEST_F(JITTest, test_udf_invoke_module) {
-    auto jit = FeCheck((FeSQLJITBuilder().create()));
+    auto jit = FeCheck((HybridSEJITBuilder().create()));
     ::llvm::orc::JITDylib &jd = jit->createJITDylib("test");
     ::llvm::orc::VModuleKey m1 = jit->CreateVModule();
     int (*Add1)(int) = NULL;
@@ -144,7 +144,7 @@ TEST_F(JITTest, test_udf_invoke_module) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

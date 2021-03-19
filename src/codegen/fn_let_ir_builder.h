@@ -29,10 +29,10 @@
 #include "vm/catalog.h"
 #include "vm/schemas_context.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
-using fesql::base::Status;
+using hybridse::base::Status;
 
 class RowFnLetIRBuilder {
  public:
@@ -72,5 +72,5 @@ class RowFnLetIRBuilder {
 };
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_FN_LET_IR_BUILDER_H_

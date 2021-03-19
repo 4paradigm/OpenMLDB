@@ -23,7 +23,7 @@
 #include "udf/default_udf_library.h"
 #include "udf/literal_traits.h"
 
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 using codec::Timestamp;
@@ -914,7 +914,7 @@ TEST_F(ExprNodeTest, InferUnaryMinusTypeTest) {
 }
 
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

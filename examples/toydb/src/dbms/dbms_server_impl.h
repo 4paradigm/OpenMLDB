@@ -25,15 +25,15 @@
 #include "proto/fe_type.pb.h"
 #include "tablet/tablet_internal_sdk.h"
 
-namespace fesql {
+namespace hybridse {
 namespace dbms {
 
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
 
-typedef std::map<std::string, ::fesql::type::Group> Groups;
-typedef std::map<std::string, ::fesql::type::Database> Databases;
-typedef std::map<std::string, ::fesql::type::TableDef*> Tables;
+typedef std::map<std::string, ::hybridse::type::Group> Groups;
+typedef std::map<std::string, ::hybridse::type::Database> Databases;
+typedef std::map<std::string, ::hybridse::type::TableDef*> Tables;
 
 class DBMSServerImpl : public DBMSServer {
  public:
@@ -66,7 +66,7 @@ class DBMSServerImpl : public DBMSServer {
     std::mutex mu_;
     Groups groups_;
     Databases databases_;
-    fesql::tablet::TabletInternalSDK* tablet_sdk;
+    hybridse::tablet::TabletInternalSDK* tablet_sdk;
     int32_t tid_;
     std::set<std::string> tablets_;
     void InitTable(type::Database* db,
@@ -77,5 +77,5 @@ class DBMSServerImpl : public DBMSServer {
 };
 
 }  // namespace dbms
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // EXAMPLES_TOYDB_SRC_DBMS_DBMS_SERVER_IMPL_H_

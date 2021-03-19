@@ -20,10 +20,10 @@
 #include "passes/lambdafy_projects.h"
 #include "passes/resolve_fn_and_attrs.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
-using fesql::common::kPlanError;
+using hybridse::common::kPlanError;
 
 Status OptimizeFunctionLet(const ColumnProjects& projects,
                            node::ExprAnalysisContext* ctx,
@@ -262,4 +262,4 @@ Status OptimizeFunctionLet(const ColumnProjects& projects,
     return base::Status::OK();
 }
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

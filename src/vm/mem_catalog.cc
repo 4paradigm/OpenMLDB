@@ -16,7 +16,7 @@
 
 #include "vm/mem_catalog.h"
 #include <algorithm>
-namespace fesql {
+namespace hybridse {
 namespace vm {
 MemTimeTableIterator::MemTimeTableIterator(const MemTimeTable* table,
                                            const vm::Schema* schema)
@@ -47,7 +47,9 @@ void MemTimeTableIterator::Seek(const uint64_t& ts) {
 }
 void MemTimeTableIterator::SeekToFirst() { iter_ = start_iter_; }
 const uint64_t& MemTimeTableIterator::GetKey() const { return iter_->first; }
-const Row& fesql::vm::MemTimeTableIterator::GetValue() { return iter_->second; }
+const Row& hybridse::vm::MemTimeTableIterator::GetValue() {
+    return iter_->second;
+}
 void MemTimeTableIterator::Next() { iter_++; }
 bool MemTimeTableIterator::Valid() const { return end_iter_ > iter_; }
 bool MemTimeTableIterator::IsSeekable() const { return true; }
@@ -424,4 +426,4 @@ size_t RowGetSliceSize(int8_t* row_ptr, size_t idx) {
     return row->size(idx);
 }
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

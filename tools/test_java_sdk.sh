@@ -18,10 +18,6 @@ set -eE
 cd "$(dirname "$0")"
 cd "$(git rev-parse --show-toplevel)"
 
-pushd examples/toydb/onebox/
-sh start_all.sh
-popd
-
 cd java
 mvn scoverage:report
 TEST_SUCCESS=$?

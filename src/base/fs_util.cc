@@ -23,7 +23,7 @@
 #include <unistd.h>
 #include "glog/logging.h"
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 bool ListDir(const std::string& path,
@@ -44,4 +44,4 @@ bool ListDir(const std::string& path,
 }
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse

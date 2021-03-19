@@ -21,7 +21,7 @@
 #include "case/sql_case.h"
 #include "testing/toydb_engine_test_base.h"
 
-namespace fesql {
+namespace hybridse {
 namespace bm {
 enum MODE { BENCHMARK, TEST };
 void EngineRequestModeSimpleQueryBM(const std::string& db,
@@ -107,14 +107,14 @@ void EngineRequestSimpleUDF(benchmark::State* state, MODE mode);
 void EngineRequestSimpleSelectTimestamp(benchmark::State* state, MODE mode);
 void EngineRequestSimpleSelectDate(benchmark::State* state, MODE mode);
 
-fesql::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml,
-                                          const std::string& case_id);
+hybridse::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml,
+                                             const std::string& case_id);
 void EngineBenchmarkOnCase(const std::string& yaml_path,
                            const std::string& case_id,
                            vm::EngineMode engine_mode, benchmark::State* state);
-void EngineBenchmarkOnCase(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
+void EngineBenchmarkOnCase(hybridse::sqlcase::SQLCase& sql_case,  // NOLINT
                            vm::EngineMode engine_mode, benchmark::State* state);
 
 }  // namespace bm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // EXAMPLES_TOYDB_SRC_BM_ENGINE_BM_CASE_H_

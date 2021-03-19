@@ -5,9 +5,9 @@
 %locations
 %lex-param   { yyscan_t scanner }
 %parse-param { yyscan_t scanner }
-%parse-param { ::fesql::node::NodePointVector &trees}
-%parse-param { ::fesql::node::NodeManager *node_manager}
-%parse-param { ::fesql::base::Status &status}
+%parse-param { ::hybridse::node::NodePointVector &trees}
+%parse-param { ::hybridse::node::NodeManager *node_manager}
+%parse-param { ::hybridse::base::Status &status}
 
 %{
 #include <stdlib.h>
@@ -23,9 +23,9 @@ extern int yylex(YYSTYPE* yylvalp,
                  YYLTYPE* yyllocp, 
                  yyscan_t scanner);
 void emit(const char *s, ...);
-void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fesql::node::NodePointVector &trees,
-	::fesql::node::NodeManager *node_manager, ::fesql::base::Status &status, const char* msg) {
-	status.code=::fesql::common::kSQLError;
+void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::hybridse::node::NodePointVector &trees,
+	::hybridse::node::NodeManager *node_manager, ::hybridse::base::Status &status, const char* msg) {
+	status.code=::hybridse::common::kSQLError;
 	std::ostringstream s;
         s << "line: "<< yyllocp->last_line << ", column: "
        	<< yyllocp->first_column << ": " <<
@@ -52,20 +52,20 @@ typedef void* yyscan_t;
 	char* strval;
 	int subtok;
 	bool flag;
-	::fesql::node::SQLNode* node;
-	::fesql::node::QueryNode* query_node;
-	::fesql::node::FnNode* fnnode;
-	::fesql::node::ExprNode* expr;
-	::fesql::node::TableRefNode* table_ref;
-	::fesql::node::JoinType join_type;
-	::fesql::node::FrameType frame_type;
-	::fesql::node::TimeUnit time_unit;
-	::fesql::node::DataType type;
-	::fesql::node::TypeNode* typenode;
-	::fesql::node::FnNodeList* fnlist;
-	::fesql::node::ExprListNode* exprlist;
-	::fesql::node::SQLNodeList* list;
-	::fesql::node::RoleType role_type;
+	::hybridse::node::SQLNode* node;
+	::hybridse::node::QueryNode* query_node;
+	::hybridse::node::FnNode* fnnode;
+	::hybridse::node::ExprNode* expr;
+	::hybridse::node::TableRefNode* table_ref;
+	::hybridse::node::JoinType join_type;
+	::hybridse::node::FrameType frame_type;
+	::hybridse::node::TimeUnit time_unit;
+	::hybridse::node::DataType type;
+	::hybridse::node::TypeNode* typenode;
+	::hybridse::node::FnNodeList* fnlist;
+	::hybridse::node::ExprListNode* exprlist;
+	::hybridse::node::SQLNodeList* list;
+	::hybridse::node::RoleType role_type;
 }
 
 /* names and literal values */
@@ -585,19 +585,19 @@ assign_stmt:
 			free($1);
         }
         |FUN_IDENTIFIER ADD_ASSIGN fun_expr {
-        	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpAdd);
+        	$$ = node_manager->MakeAssignNode($1, $3, ::hybridse::node::kFnOpAdd);
 			free($1);
         }
         |FUN_IDENTIFIER MINUS_ASSIGN fun_expr {
-        	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpMinus);
+        	$$ = node_manager->MakeAssignNode($1, $3, ::hybridse::node::kFnOpMinus);
 			free($1);
         }
         |FUN_IDENTIFIER MULTI_ASSIGN fun_expr {
-        	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpMulti);
+        	$$ = node_manager->MakeAssignNode($1, $3, ::hybridse::node::kFnOpMulti);
 			free($1);
         }
         |FUN_IDENTIFIER FDIV_ASSIGN fun_expr {
-        	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpFDiv);
+        	$$ = node_manager->MakeAssignNode($1, $3, ::hybridse::node::kFnOpFDiv);
 			free($1);
         }
         ;
@@ -632,68 +632,68 @@ for_in_stmt:
 
 types:  I16
         {
-            $$ = ::fesql::node::kInt16;
+            $$ = ::hybridse::node::kInt16;
         }
         |I32
         {
-        	$$ = ::fesql::node::kInt32;
+        	$$ = ::hybridse::node::kInt32;
         }
         |I64
         {
-            $$ = ::fesql::node::kInt64;
+            $$ = ::hybridse::node::kInt64;
         }
         |SMALLINT
         {
-        	$$ = ::fesql::node::kInt16;
+        	$$ = ::hybridse::node::kInt16;
         }
         |INTEGER
         {
-            $$ = ::fesql::node::kInt32;
+            $$ = ::hybridse::node::kInt32;
         }
         |BIGINT
         {
-            $$ = ::fesql::node::kInt64;
+            $$ = ::hybridse::node::kInt64;
         }
         |STRINGTYPE
         {
-            $$ = ::fesql::node::kVarchar;
+            $$ = ::hybridse::node::kVarchar;
         }
         |FLOAT
         {
-            $$ = ::fesql::node::kFloat;
+            $$ = ::hybridse::node::kFloat;
         }
         |DOUBLE
         {
-            $$ = ::fesql::node::kDouble;
+            $$ = ::hybridse::node::kDouble;
         }
         |TIMESTAMP
         {
-            $$ = ::fesql::node::kTimestamp;
+            $$ = ::hybridse::node::kTimestamp;
         }
         |DATE
         {
-        	$$ = ::fesql::node::kDate;
+        	$$ = ::hybridse::node::kDate;
         }
         |BOOL
         {
-        	$$ = ::fesql::node::kBool;
+        	$$ = ::hybridse::node::kBool;
         }
         ;
 
 role_type:  LEADER
             {
-                $$ = ::fesql::node::kLeader;
+                $$ = ::hybridse::node::kLeader;
             }
             |FOLLOWER
             {
-                $$ = ::fesql::node::kFollower;
+                $$ = ::hybridse::node::kFollower;
             }
             ;
 
 complex_types:
 		LIST '<' types '>'
 		{
-			$$ = node_manager->MakeTypeNode(::fesql::node::kList, $3);
+			$$ = node_manager->MakeTypeNode(::hybridse::node::kList, $3);
 		}
 		;
 plist:
@@ -719,16 +719,16 @@ para:
 
 primary_time:
     DAYNUM {
-        $$ = node_manager->MakeConstNode($1, fesql::node::kDay);
+        $$ = node_manager->MakeConstNode($1, hybridse::node::kDay);
     }
     |HOURNUM {
-        $$ = node_manager->MakeConstNode($1, fesql::node::kHour);
+        $$ = node_manager->MakeConstNode($1, hybridse::node::kHour);
     }
     |MINUTENUM {
-        $$ = node_manager->MakeConstNode($1, fesql::node::kMinute);
+        $$ = node_manager->MakeConstNode($1, hybridse::node::kMinute);
     }
     |SECONDNUM{
-        $$ = node_manager->MakeConstNode($1, fesql::node::kSecond);
+        $$ = node_manager->MakeConstNode($1, hybridse::node::kSecond);
     }
     |LONGNUM {
         $$ = node_manager->MakeConstNode($1);
@@ -737,16 +737,16 @@ primary_time:
         $$ = node_manager->MakeConstNode($1);
     }
 	|'-' DAYNUM {
-		$$ = node_manager->MakeConstNode(-1*$2, fesql::node::kDay);
+		$$ = node_manager->MakeConstNode(-1*$2, hybridse::node::kDay);
 	}
 	|'-' HOURNUM {
-		$$ = node_manager->MakeConstNode(-1*$2, fesql::node::kHour);
+		$$ = node_manager->MakeConstNode(-1*$2, hybridse::node::kHour);
 	}
 	|'-' MINUTENUM {
-		$$ = node_manager->MakeConstNode(-1*$2, fesql::node::kMinute);
+		$$ = node_manager->MakeConstNode(-1*$2, hybridse::node::kMinute);
 	}
 	|'-' SECONDNUM{
-		$$ = node_manager->MakeConstNode(-1*$2, fesql::node::kSecond);
+		$$ = node_manager->MakeConstNode(-1*$2, hybridse::node::kSecond);
 	}
 	|'-' LONGNUM {
 		$$ = node_manager->MakeConstNode(-1*$2);
@@ -770,21 +770,21 @@ ttl_list:   abs_ttl
 
 abs_ttl:
     DAYNUM {
-        $$ = node_manager->MakeConstNode($1, fesql::node::kDay);
+        $$ = node_manager->MakeConstNode($1, hybridse::node::kDay);
     }
     |HOURNUM {
-        $$ = node_manager->MakeConstNode($1, fesql::node::kHour);
+        $$ = node_manager->MakeConstNode($1, hybridse::node::kHour);
     }
     |MINUTENUM {
-        $$ = node_manager->MakeConstNode($1, fesql::node::kMinute);
+        $$ = node_manager->MakeConstNode($1, hybridse::node::kMinute);
     };
 
 lat_ttl:
     LONGNUM {
-        $$ = node_manager->MakeConstNode($1, fesql::node::kLatest);
+        $$ = node_manager->MakeConstNode($1, hybridse::node::kLatest);
     }
     |INTNUM {
-        $$ = node_manager->MakeConstNode($1, fesql::node::kLatest);
+        $$ = node_manager->MakeConstNode($1, hybridse::node::kLatest);
     };
 
 var: FUN_IDENTIFIER {
@@ -818,11 +818,11 @@ stmt:   query_clause
         }
         |EXPLAIN LOGICAL query_clause
         {
-        	$$ = node_manager->MakeExplainNode($3, fesql::node::kExplainLogical);
+        	$$ = node_manager->MakeExplainNode($3, hybridse::node::kExplainLogical);
         }
         |EXPLAIN query_clause
         {
-        	$$ = node_manager->MakeExplainNode($2, fesql::node::kExplainPhysical);
+        	$$ = node_manager->MakeExplainNode($2, hybridse::node::kExplainPhysical);
         }
         |create_sp_stmt
         {
@@ -868,7 +868,7 @@ create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list 
                 |CREATE INDEX column_name ON table_name '(' column_index_item_list ')'
                 {
                     $$ = node_manager->MakeCreateIndexNode($3, $5,
-                    dynamic_cast<fesql::node::ColumnIndexNode *>(node_manager->MakeColumnIndexNode($7)));
+                    dynamic_cast<hybridse::node::ColumnIndexNode *>(node_manager->MakeColumnIndexNode($7)));
                     free($3);
                     free($5);
                 }
@@ -933,76 +933,76 @@ insert_expr:	expr_const
 cmd_stmt:
 			CREATE GROUP group_name
 			{
-				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdCreateGroup, $3);
+				$$ = node_manager->MakeCmdNode(::hybridse::node::kCmdCreateGroup, $3);
 				free($3);
 			}
 			|CREATE DATABASE database_name
 			{
-				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdCreateDatabase, $3);
+				$$ = node_manager->MakeCmdNode(::hybridse::node::kCmdCreateDatabase, $3);
 				free($3);
 			}
 			|CREATE TABLE file_path
 			{
 
-				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdSource, $3);
+				$$ = node_manager->MakeCmdNode(::hybridse::node::kCmdSource, $3);
 				free($3);
 			}
 			|SHOW DATABASES
 			{
-				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdShowDatabases);
+				$$ = node_manager->MakeCmdNode(::hybridse::node::kCmdShowDatabases);
 			}
 			|SHOW TABLES
 			{
-				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdShowTables);
+				$$ = node_manager->MakeCmdNode(::hybridse::node::kCmdShowTables);
 			}
 			|DESC table_name
 			{
-				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdDescTable, $2);
+				$$ = node_manager->MakeCmdNode(::hybridse::node::kCmdDescTable, $2);
 				free($2);
 			}
             |USE database_name
             {
-                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdUseDatabase, $2);
+                $$ = node_manager->MakeCmdNode(::hybridse::node::kCmdUseDatabase, $2);
                 free($2);
             }
             |DROP DATABASE database_name
             {
-                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropDatabase, $3);
+                $$ = node_manager->MakeCmdNode(::hybridse::node::kCmdDropDatabase, $3);
                 free($3);
             }
             |DROP TABLE table_name
             {
-                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropTable, $3);
+                $$ = node_manager->MakeCmdNode(::hybridse::node::kCmdDropTable, $3);
                 free($3);
             }
             |DROP INDEX column_name ON table_name
             {
-                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropIndex, $3, $5);
+                $$ = node_manager->MakeCmdNode(::hybridse::node::kCmdDropIndex, $3, $5);
                 free($3);
                 free($5);
             }
             |SHOW CREATE PROCEDURE database_name '.' sp_name
             {
-                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdShowCreateSp, $4, $6);
+                $$ = node_manager->MakeCmdNode(::hybridse::node::kCmdShowCreateSp, $4, $6);
                 free($4);
                 free($6);
             }
             |SHOW CREATE PROCEDURE sp_name
             {
-                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdShowCreateSp, "", $4);
+                $$ = node_manager->MakeCmdNode(::hybridse::node::kCmdShowCreateSp, "", $4);
                 free($4);
             }
 			|SHOW PROCEDURE STATUS
 			{
-				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdShowProcedures);
+				$$ = node_manager->MakeCmdNode(::hybridse::node::kCmdShowProcedures);
 			}
             |DROP PROCEDURE sp_name
             {
-                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropSp, $3);
+                $$ = node_manager->MakeCmdNode(::hybridse::node::kCmdDropSp, $3);
                 free($3);
             }
             |EXIT {
-                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdExit);
+                $$ = node_manager->MakeCmdNode(::hybridse::node::kCmdExit);
             }
 			;
 
@@ -1092,7 +1092,7 @@ column_index_key:   column_name
             | column_index_key ',' column_name
             {
                 $$ = $1;
-                ((::fesql::node::IndexKeyNode*)$$)->AddKey($3);
+                ((::hybridse::node::IndexKeyNode*)$$)->AddKey($3);
                 free($3);
             }
             ;
@@ -1262,7 +1262,7 @@ projection:	sql_expr
     		}
     		| '*'
         	{
-            	::fesql::node::ExprNode* pNode = node_manager->MakeAllNode("");
+            	::hybridse::node::ExprNode* pNode = node_manager->MakeAllNode("");
             	$$ = node_manager->MakeResTargetNode(pNode, "");
         	}
     		;
@@ -1398,23 +1398,23 @@ union_stmt:
 join_type:
 		FULL join_outer
 		{
-			$$ = fesql::node::kJoinTypeFull;
+			$$ = hybridse::node::kJoinTypeFull;
 		}
 		|LAST join_outer
 		{
-			$$ = fesql::node::kJoinTypeLast;
+			$$ = hybridse::node::kJoinTypeLast;
 		}
 		|LEFT join_outer
 		{
-			$$ = fesql::node::kJoinTypeLeft;
+			$$ = hybridse::node::kJoinTypeLeft;
 		}
 		|RIGHT join_outer
 		{
-			$$ = fesql::node::kJoinTypeRight;
+			$$ = hybridse::node::kJoinTypeRight;
 		}
 		|INNER
 		{
-			$$ = fesql::node::kJoinTypeInner;
+			$$ = hybridse::node::kJoinTypeInner;
 		}
 		;
 
@@ -1498,87 +1498,87 @@ fun_expr:
      }
      | fun_expr '+' fun_expr
      {
-     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAdd);
+     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpAdd);
      }
      | fun_expr '-' fun_expr
      {
-     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMinus);
+     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpMinus);
      }
      | fun_expr '*' fun_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMulti);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpMulti);
      }
      | fun_expr '/' fun_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpFDiv);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpFDiv);
      }
      | fun_expr DIV fun_expr
      {
-     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpDiv);
+     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpDiv);
      }
      | fun_expr '%' fun_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMod);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpMod);
      }
      | fun_expr MOD fun_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMod);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpMod);
      }
      | fun_expr '>' fun_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpGt);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpGt);
      }
      | fun_expr '<' fun_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpLt);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpLt);
      }
      | fun_expr LESS_EQUALS fun_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpLe);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpLe);
      }
      | fun_expr EQUALS fun_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpEq);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpEq);
      }
      | fun_expr NOT_EQUALS fun_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpNeq);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpNeq);
      }
      | fun_expr GREATER_EQUALS fun_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpGe);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpGe);
      }
      | fun_expr ANDOP fun_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAnd);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpAnd);
      }
      | fun_expr OR fun_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpOr);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpOr);
      }
      | fun_expr XOR fun_expr
      {
-     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpXor);
+     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpXor);
      }
      | fun_expr '[' fun_expr ']'
 	 {
-	 	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAt);
+	 	$$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpAt);
 	 }
      | '!' fun_expr
      {
-        $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpNot);
+        $$ = node_manager->MakeUnaryExprNode($2, ::hybridse::node::kFnOpNot);
      }
      | '-' fun_expr
      {
-        $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpMinus);
+        $$ = node_manager->MakeUnaryExprNode($2, ::hybridse::node::kFnOpMinus);
      }
      | NOT fun_expr
      {
-        $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpNot);
+        $$ = node_manager->MakeUnaryExprNode($2, ::hybridse::node::kFnOpNot);
      }
      | '(' fun_expr ')'
      {
-        $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpBracket);
+        $$ = node_manager->MakeUnaryExprNode($2, ::hybridse::node::kFnOpBracket);
      }
      ;
 
@@ -1590,104 +1590,104 @@ sql_expr:
      | sql_cast_expr	{ $$ = $1; }
      | sql_expr '+' sql_expr
      {
-     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAdd);
+     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpAdd);
      }
      | sql_expr '-' sql_expr
      {
-     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMinus);
+     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpMinus);
      }
      | sql_expr '*' sql_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMulti);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpMulti);
      }
      | sql_expr '/' sql_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpFDiv);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpFDiv);
      }
      | sql_expr DIV sql_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpDiv);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpDiv);
      }
      | sql_expr '%' sql_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMod);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpMod);
      }
      | sql_expr MOD sql_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMod);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpMod);
      }
      | sql_expr '>' sql_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpGt);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpGt);
      }
      | sql_expr '<' sql_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpLt);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpLt);
      }
      | sql_expr LESS_EQUALS sql_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpLe);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpLe);
      }
      | sql_expr EQUALS sql_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpEq);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpEq);
      }
      | sql_expr NOT_EQUALS sql_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpNeq);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpNeq);
      }
      | sql_expr GREATER_EQUALS sql_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpGe);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpGe);
      }
      | sql_expr ANDOP sql_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAnd);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpAnd);
      }
      | sql_expr OR sql_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpOr);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpOr);
      }
      | sql_expr XOR sql_expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpXor);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpXor);
      }
      | sql_expr '[' sql_expr ']'
 	 {
-	 	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAt);
+	 	$$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpAt);
 	 }
      | '!' sql_expr
      {
-        $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpNot);
+        $$ = node_manager->MakeUnaryExprNode($2, ::hybridse::node::kFnOpNot);
      }
      | NOT sql_expr
      {
-        $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpNot);
+        $$ = node_manager->MakeUnaryExprNode($2, ::hybridse::node::kFnOpNot);
      }
      | '-' sql_expr
      {
-        $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpMinus);
+        $$ = node_manager->MakeUnaryExprNode($2, ::hybridse::node::kFnOpMinus);
      }
      | sql_expr LIKE sql_expr
      {
-     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpLike);
+     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::hybridse::node::kFnOpLike);
      }
      | sql_expr NOT LIKE sql_expr
      {
      	$$ = node_manager->MakeUnaryExprNode(
-     		node_manager->MakeBinaryExprNode($1, $4, ::fesql::node::kFnOpLike),
-     		::fesql::node::kFnOpNot);
+     		node_manager->MakeBinaryExprNode($1, $4, ::hybridse::node::kFnOpLike),
+     		::hybridse::node::kFnOpNot);
 
      }
      | sql_expr IN '(' sql_expr_list ')'
      {
-     	$$ = node_manager->MakeBinaryExprNode($1, $4, ::fesql::node::kFnOpIn);
+     	$$ = node_manager->MakeBinaryExprNode($1, $4, ::hybridse::node::kFnOpIn);
      }
      | sql_expr NOT IN '(' sql_expr_list ')'
      {
      	$$ = node_manager->MakeUnaryExprNode(
-     		node_manager->MakeBinaryExprNode($1, $5, ::fesql::node::kFnOpIn),
-     		::fesql::node::kFnOpNot);
+     		node_manager->MakeBinaryExprNode($1, $5, ::hybridse::node::kFnOpIn),
+     		::hybridse::node::kFnOpNot);
      }
      | sql_expr BETWEEN sql_expr AND sql_expr
      {
@@ -1699,7 +1699,7 @@ sql_expr:
      }
      | '(' sql_expr ')'
      {
-        $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpBracket);
+        $$ = node_manager->MakeUnaryExprNode($2, ::hybridse::node::kFnOpBracket);
      }
      | '(' query_clause ')' {
      	$$ = node_manager->MakeQueryExprNode($2);
@@ -1885,7 +1885,7 @@ window_definition_list:
 window_definition:
 		SQL_IDENTIFIER AS window_specification
 		{
-		    ((::fesql::node::WindowDefNode*)$3)->SetName($1);
+		    ((::hybridse::node::WindowDefNode*)$3)->SetName($1);
 			free($1);
 		    $$ = $3;
 		}
@@ -1981,54 +1981,54 @@ opt_frame_clause:
 frame_unit:
 			RANGE
 			{
-				$$ = fesql::node::kFrameRange;
+				$$ = hybridse::node::kFrameRange;
 			}
 			|ROWS
 			{
-				$$ = fesql::node::kFrameRows;
+				$$ = hybridse::node::kFrameRows;
 			}
 			|ROWS_RANGE
 			{
-				$$ = fesql::node::kFrameRowsRange;
+				$$ = hybridse::node::kFrameRowsRange;
 			}
 			;
 
 time_unit:
 			YEAR
 			{
-				$$ = fesql::node::kTimeUnitYear;
+				$$ = hybridse::node::kTimeUnitYear;
 			}
 			|MONTH
 			{
-				$$ = fesql::node::kTimeUnitMonth;
+				$$ = hybridse::node::kTimeUnitMonth;
 			}
 			|WEEK
 			{
-				$$ = fesql::node::kTimeUnitWeek;
+				$$ = hybridse::node::kTimeUnitWeek;
 			}
 			|DAY
 			{
-				$$ = fesql::node::kTimeUnitDay;
+				$$ = hybridse::node::kTimeUnitDay;
 			}
 			|HOUR
 			{
-				$$ = fesql::node::kTimeUnitHour;
+				$$ = hybridse::node::kTimeUnitHour;
 			}
 			|MINUTE
 			{
-				$$ = fesql::node::kTimeUnitMinute;
+				$$ = hybridse::node::kTimeUnitMinute;
 			}
 			|SECOND
 			{
-				$$ = fesql::node::kTimeUnitSecond;
+				$$ = hybridse::node::kTimeUnitSecond;
 			}
 			|MILLISECOND
 			{
-				$$ = fesql::node::kTimeUnitMilliSecond;
+				$$ = hybridse::node::kTimeUnitMilliSecond;
 			}
 			|MICROSECOND
 			{
-				$$ = fesql::node::kTimeUnitMicroSecond;
+				$$ = hybridse::node::kTimeUnitMicroSecond;
 			}
 
 opt_frame_size:
@@ -2057,31 +2057,31 @@ frame_extent:
 frame_bound:
 			UNBOUNDED PRECEDING
 				{
-				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kPrecedingUnbound));
+				    $$ = (hybridse::node::SQLNode*)(node_manager->MakeFrameBound(hybridse::node::kPrecedingUnbound));
 				}
 			| UNBOUNDED FOLLOWING
 				{
-				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kFollowingUnbound));
+				    $$ = (hybridse::node::SQLNode*)(node_manager->MakeFrameBound(hybridse::node::kFollowingUnbound));
 				}
 			| CURRENT ROW
 				{
-				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kCurrent));
+				    $$ = (hybridse::node::SQLNode*)(node_manager->MakeFrameBound(hybridse::node::kCurrent));
 				}
 			| frame_expr PRECEDING
 				{
-				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kPreceding, $1));
+				    $$ = (hybridse::node::SQLNode*)(node_manager->MakeFrameBound(hybridse::node::kPreceding, $1));
 				}
 			| frame_expr FOLLOWING
 				{
-				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kFollowing, $1));
+				    $$ = (hybridse::node::SQLNode*)(node_manager->MakeFrameBound(hybridse::node::kFollowing, $1));
 				}
 		    | frame_expr OPEN PRECEDING
                 {
-                    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kOpenPreceding, $1));
+                    $$ = (hybridse::node::SQLNode*)(node_manager->MakeFrameBound(hybridse::node::kOpenPreceding, $1));
                 }
             | frame_expr OPEN FOLLOWING
                 {
-                    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kOpenFollowing, $1));
+                    $$ = (hybridse::node::SQLNode*)(node_manager->MakeFrameBound(hybridse::node::kOpenFollowing, $1));
                 }
 		    ;
 

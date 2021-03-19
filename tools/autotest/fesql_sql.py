@@ -16,11 +16,11 @@
 
 import random
 
-from fesql_param import sample_integer_config
-from fesql_table import ColumnInfo, TypedExpr, ColumnKey, sample_expr, ColumnsPool, SubTable
+from hybridse_param import sample_integer_config
+from hybridse_table import ColumnInfo, TypedExpr, ColumnKey, sample_expr, ColumnsPool, SubTable
 
 from auto_case_tool import getRandomName
-from fesql_const import SELECT_WINDOW_SQL, SELECT_JOIN_SQL, SIMPLE_SUB_SELECT
+from hybridse_const import SELECT_WINDOW_SQL, SELECT_JOIN_SQL, SIMPLE_SUB_SELECT
 
 
 class QueryDesc:

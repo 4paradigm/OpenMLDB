@@ -19,7 +19,7 @@
 #include <string>
 #include "benchmark/benchmark.h"
 #include "vm/mem_catalog.h"
-namespace fesql {
+namespace hybridse {
 namespace bm {
 enum MODE { BENCHMARK, TEST };
 void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
@@ -44,7 +44,7 @@ void ByteMemPoolAlloc1000(benchmark::State* state, MODE mode,
                           size_t request_size);
 void NewFree1000(benchmark::State* state, MODE mode, size_t request_size);
 
-int64_t RunHistoryWindowBuffer(const fesql::vm::WindowRange& window_range,
+int64_t RunHistoryWindowBuffer(const hybridse::vm::WindowRange& window_range,
                                uint64_t data_size,
                                const bool exclude_current_time);
 void HistoryWindowBuffer(benchmark::State* state, MODE mode, int64_t data_size);
@@ -54,5 +54,5 @@ void RequestUnionWindow(benchmark::State* state, MODE mode, int64_t data_size);
 void RequestUnionWindowExcludeCurrentTime(benchmark::State* state, MODE mode,
                                           int64_t data_size);
 }  // namespace bm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_BENCHMARK_UDF_BM_CASE_H_

@@ -28,9 +28,9 @@
 #include "udf/udf_registry.h"
 #include "vm/jit_wrapper.h"
 
-using ::fesql::common::kCodegenError;
+using ::hybridse::common::kCodegenError;
 
-namespace fesql {
+namespace hybridse {
 namespace udf {
 
 std::string UDFLibrary::GetCanonicalName(const std::string& name) const {
@@ -196,10 +196,10 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
     boost::filesystem::load_string_file(path, script);
     DLOG(INFO) << "Script file : " << script << "\n" << script;
 
-    ::fesql::node::NodePointVector parser_trees;
-    ::fesql::parser::FeSQLParser parser;
-    ::fesql::plan::SimplePlanner planer(node_manager());
-    ::fesql::node::PlanNodeList plan_trees;
+    ::hybridse::node::NodePointVector parser_trees;
+    ::hybridse::parser::HybridSEParser parser;
+    ::hybridse::plan::SimplePlanner planer(node_manager());
+    ::hybridse::node::PlanNodeList plan_trees;
 
     Status status;
     CHECK_TRUE(0 == parser.parse(script, parser_trees, node_manager(), status),
@@ -210,12 +210,13 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
     std::unordered_map<std::string, std::shared_ptr<SimpleUDFRegistry>> dict;
     auto it = plan_trees.begin();
     for (; it != plan_trees.end(); ++it) {
-        const ::fesql::node::PlanNode* node = *it;
+        const ::hybridse::node::PlanNode* node = *it;
         CHECK_TRUE(node != nullptr, kCodegenError, "Compile null plan");
         switch (node->GetType()) {
-            case ::fesql::node::kPlanTypeFuncDef: {
+            case ::hybridse::node::kPlanTypeFuncDef: {
                 auto func_def_plan =
-                    dynamic_cast<const ::fesql::node::FuncDefPlanNode*>(node);
+                    dynamic_cast<const ::hybridse::node::FuncDefPlanNode*>(
+                        node);
                 CHECK_TRUE(func_def_plan->fn_def_ != nullptr, kCodegenError,
                            "fn_def node is null");
 
@@ -311,7 +312,7 @@ void UDFLibrary::AddExternalFunction(const std::string& name, void* addr) {
     external_symbols_.insert(std::make_pair(name, addr));
 }
 
-void UDFLibrary::InitJITSymbols(vm::FeSQLJITWrapper* jit_ptr) {
+void UDFLibrary::InitJITSymbols(vm::HybridSEJITWrapper* jit_ptr) {
     for (auto& pair : external_symbols_) {
         jit_ptr->AddExternalFunction(pair.first, pair.second);
     }
@@ -341,4 +342,4 @@ const std::string GetArgSignature(const std::vector<node::ExprNode*>& args) {
 }
 
 }  // namespace udf
-}  // namespace fesql
+}  // namespace hybridse

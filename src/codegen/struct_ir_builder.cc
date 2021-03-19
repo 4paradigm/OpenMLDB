@@ -19,7 +19,7 @@
 #include "codegen/ir_base_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 StructTypeIRBuilder::StructTypeIRBuilder(::llvm::Module* m)
     : TypeIRBuilder(), m_(m), struct_type_(nullptr) {}
@@ -124,4 +124,4 @@ bool StructTypeIRBuilder::Set(::llvm::BasicBlock* block,
     return true;
 }
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

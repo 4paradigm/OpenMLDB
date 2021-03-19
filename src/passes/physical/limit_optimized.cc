@@ -15,7 +15,7 @@
  */
 #include "passes/physical/limit_optimized.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 bool LimitOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
@@ -71,4 +71,4 @@ bool LimitOptimized::ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt) {
     return false;
 }
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse

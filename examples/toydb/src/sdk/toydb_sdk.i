@@ -26,14 +26,14 @@
 %apply char *BYTE { char *string_buffer_var_name };
 #endif
 
-%shared_ptr(fesql::sdk::DBMSSdk);
-%shared_ptr(fesql::sdk::TabletSdk);
-%shared_ptr(fesql::sdk::Schema);
-%shared_ptr(fesql::sdk::Table);
-%shared_ptr(fesql::sdk::TableSet);
-%shared_ptr(fesql::sdk::ResultSet);
-%shared_ptr(fesql::sdk::Date);
-%shared_ptr(fesql::sdk::RequestRow);
+%shared_ptr(hybridse::sdk::DBMSSdk);
+%shared_ptr(hybridse::sdk::TabletSdk);
+%shared_ptr(hybridse::sdk::Schema);
+%shared_ptr(hybridse::sdk::Table);
+%shared_ptr(hybridse::sdk::TableSet);
+%shared_ptr(hybridse::sdk::ResultSet);
+%shared_ptr(hybridse::sdk::Date);
+%shared_ptr(hybridse::sdk::RequestRow);
 
 %{
 #include "sdk/base.h"
@@ -42,15 +42,15 @@
 #include "sdk/tablet_sdk.h"
 #include "sdk/dbms_sdk.h"
 
-using namespace fesql;
-using fesql::sdk::Schema;
-using fesql::sdk::ResultSet;
-using fesql::sdk::Table;
-using fesql::sdk::TableSet;
-using fesql::sdk::RequestRow;
-using fesql::sdk::DBMSSdk;
-using fesql::sdk::TabletSdk;
-using fesql::sdk::ExplainInfo;
+using namespace hybridse;
+using hybridse::sdk::Schema;
+using hybridse::sdk::ResultSet;
+using hybridse::sdk::Table;
+using hybridse::sdk::TableSet;
+using hybridse::sdk::RequestRow;
+using hybridse::sdk::DBMSSdk;
+using hybridse::sdk::TabletSdk;
+using hybridse::sdk::ExplainInfo;
 %}
 
 %include "sdk/base.h"

@@ -46,10 +46,10 @@
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
-using fesql::codec::ArrayListV;
-using fesql::codec::Row;
+using hybridse::codec::ArrayListV;
+using hybridse::codec::Row;
 
 class FnLetIRBuilderTest : public ::testing::Test {
  public:
@@ -64,7 +64,7 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
 
     int8_t* buf = NULL;
     uint32_t size = 0;
-    fesql::type::TableDef table1;
+    hybridse::type::TableDef table1;
     BuildT1Buf(table1, &buf, &size);
     Row row(base::RefCountedSlice::Create(buf, size));
 
@@ -98,7 +98,7 @@ TEST_F(FnLetIRBuilderTest, test_column_cast_and_const_cast) {
 
     int8_t* buf = NULL;
     uint32_t size = 0;
-    fesql::type::TableDef table1;
+    hybridse::type::TableDef table1;
     BuildT1Buf(table1, &buf, &size);
     Row row(base::RefCountedSlice::Create(buf, size));
 
@@ -108,7 +108,7 @@ TEST_F(FnLetIRBuilderTest, test_column_cast_and_const_cast) {
     vm::Schema schema;
     CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
                       &output);
-    fesql::codec::RowView row_view(schema);
+    hybridse::codec::RowView row_view(schema);
     row_view.Reset(output);
     ASSERT_EQ(5, schema.size());
 
@@ -138,8 +138,8 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
 
     // Create the add1 function entry and insert this entry into module M. The
     // function will have a return type of "int" and take an argument of "int".
-    fesql::type::TableDef table1;
-    fesql::type::TableDef table2;
+    hybridse::type::TableDef table1;
+    hybridse::type::TableDef table2;
 
     int8_t* buf = NULL;
     int8_t* buf2 = NULL;
@@ -156,7 +156,7 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
 
     vm::SchemasContext schemas_ctx;
     schemas_ctx.BuildTrivial(
-        std::vector<const fesql::type::TableDef*>({&table1, &table2}));
+        std::vector<const hybridse::type::TableDef*>({&table1, &table2}));
 
     vm::Schema schema;
     CheckFnLetBuilder(&manager, &schemas_ctx, "", sql, row_ptr, window_ptr,
@@ -501,7 +501,7 @@ AND " "3 " "FOLLOWING) limit 10;";
 } */
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

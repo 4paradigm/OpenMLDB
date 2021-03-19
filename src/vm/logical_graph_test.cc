@@ -23,7 +23,7 @@
 #include "plan/planner.h"
 #include "vm/transform.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 class LogicalGraphTest
     : public ::testing::TestWithParam<std::pair<std::string, int>> {
@@ -62,15 +62,15 @@ INSTANTIATE_TEST_CASE_P(
 TEST_P(LogicalGraphTest, transform_logical_graph_test) {
     auto param = GetParam();
     const std::string sql = param.first;
-    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
+    const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
     std::cout << sql << std::endl;
-    ::fesql::node::NodeManager manager;
-    ::fesql::node::PlanNodeList plan_trees;
-    ::fesql::base::Status base_status;
+    ::hybridse::node::NodeManager manager;
+    ::hybridse::node::PlanNodeList plan_trees;
+    ::hybridse::base::Status base_status;
     {
-        ::fesql::plan::SimplePlanner planner(&manager);
-        ::fesql::parser::FeSQLParser parser;
-        ::fesql::node::NodePointVector parser_trees;
+        ::hybridse::plan::SimplePlanner planner(&manager);
+        ::hybridse::parser::HybridSEParser parser;
+        ::hybridse::node::NodePointVector parser_trees;
         parser.parse(sql, parser_trees, &manager, base_status);
         ASSERT_EQ(0, base_status.code);
         if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) ==
@@ -91,7 +91,7 @@ TEST_P(LogicalGraphTest, transform_logical_graph_test) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

@@ -40,7 +40,7 @@ DEFINE_bool(enable_vtune, false, "Enable llvm jit vtune events");
 DEFINE_bool(enable_gdb, false, "Enable llvm jit gdb events");
 DEFINE_bool(enable_perf, false, "Enable llvm jit perf events");
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 int DoRunEngine(const SQLCase& sql_case, const EngineOptions& options,
@@ -106,14 +106,14 @@ int RunSingle(const std::string& yaml_path) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, false);
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     if (FLAGS_yaml_path != "") {
-        return ::fesql::vm::RunSingle(FLAGS_yaml_path);
+        return ::hybridse::vm::RunSingle(FLAGS_yaml_path);
     } else {
         LOG(WARNING) << "No --yaml_path specified";
         return -1;

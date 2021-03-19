@@ -29,11 +29,11 @@
 #include "vm/catalog.h"
 #include "vm/schemas_context.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 struct AggColumnInfo {
-    ::fesql::node::ColumnRefNode* col;
+    ::hybridse::node::ColumnRefNode* col;
     node::DataType col_type;
     size_t schema_idx;
     size_t col_idx;
@@ -44,7 +44,7 @@ struct AggColumnInfo {
 
     AggColumnInfo() : col(nullptr) {}
 
-    AggColumnInfo(::fesql::node::ColumnRefNode* col,
+    AggColumnInfo(::hybridse::node::ColumnRefNode* col,
                   const node::DataType& col_type, size_t schema_idx,
                   size_t col_idx, size_t offset)
         : col(col),
@@ -86,7 +86,7 @@ class AggregateIRBuilder {
     static bool EnableColumnAggOpt();
 
     bool CollectAggColumn(const node::ExprNode* expr, size_t output_idx,
-                          ::fesql::type::Type* col_type);
+                          ::hybridse::type::Type* col_type);
 
     bool IsAggFuncName(const std::string& fname);
 
@@ -113,5 +113,5 @@ class AggregateIRBuilder {
 };
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_AGGREGATE_IR_BUILDER_H_

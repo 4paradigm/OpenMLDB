@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CODEGEN_TIMESTAMP_IR_BUILDER_H_
 #define SRC_CODEGEN_TIMESTAMP_IR_BUILDER_H_
 #include "base/fe_status.h"
@@ -24,7 +23,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "proto/fe_type.pb.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 class TimestampIRBuilder : public StructTypeIRBuilder {
@@ -59,5 +58,5 @@ class TimestampIRBuilder : public StructTypeIRBuilder {
     static int32_t TIME_ZONE;
 };
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_TIMESTAMP_IR_BUILDER_H_

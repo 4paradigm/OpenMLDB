@@ -16,7 +16,7 @@
 
 #include "base/texttable.h"
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 std::ostream& operator<<(std::ostream& stream, const TextTable& table) {
     if (0 == table.rows().size()) {
@@ -69,4 +69,4 @@ std::string TextTable::ruler() const {
 }
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse

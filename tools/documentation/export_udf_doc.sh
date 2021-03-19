@@ -24,7 +24,7 @@ if [[ "$?" -ne 0 ]]; then
 fi
 
 # CI_PROJECT_NAMESPAC=ai-native-db
-# CI_PROJECT_NAME=fesql
+# CI_PROJECT_NAME=hybridse
 # CI_COMMIT_REF_NAME=feat/ExportUDFDoc
 
 HOST_PATH="https://nexus.4pd.io/repository/raw-hosted/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/${CI_COMMIT_REF_NAME}"

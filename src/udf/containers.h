@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_UDF_CONTAINERS_H_
 #define SRC_UDF_CONTAINERS_H_
 
@@ -28,7 +27,7 @@
 #include "udf/literal_traits.h"
 #include "udf/udf.h"
 
-namespace fesql {
+namespace hybridse {
 namespace udf {
 namespace container {
 
@@ -304,6 +303,6 @@ class BoundedGroupByDict {
 
 }  // namespace container
 }  // namespace udf
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_UDF_CONTAINERS_H_

@@ -24,7 +24,7 @@
 #include "codegen/native_value.h"
 #include "llvm/IR/IRBuilder.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 class ScopeVar {
@@ -53,5 +53,5 @@ class ScopeVar {
 };
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_SCOPE_VAR_H_

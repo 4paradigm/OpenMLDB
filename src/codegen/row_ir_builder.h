@@ -22,7 +22,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "node/node_enum.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 class Decoder {
@@ -56,5 +56,5 @@ class RowEncodeIRBuilder {
 };
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_ROW_IR_BUILDER_H_

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "node/sql_node.h"
 #include <numeric>
 #include <utility>
@@ -22,7 +21,7 @@
 #include "node/node_manager.h"
 #include "udf/udf_library.h"
 
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 using base::Status;
@@ -246,36 +245,36 @@ void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
 
 const std::string ConstNode::GetExprString() const {
     switch (data_type_) {
-        case fesql::node::kInt16:
+        case hybridse::node::kInt16:
             return std::to_string(val_.vsmallint);
-        case fesql::node::kInt32:
+        case hybridse::node::kInt32:
             return std::to_string(val_.vint);
-        case fesql::node::kInt64:
+        case hybridse::node::kInt64:
             return std::to_string(val_.vlong);
-        case fesql::node::kVarchar:
+        case hybridse::node::kVarchar:
             return val_.vstr;
-        case fesql::node::kFloat:
+        case hybridse::node::kFloat:
             return std::to_string(val_.vfloat);
-        case fesql::node::kDouble:
+        case hybridse::node::kDouble:
             return std::to_string(val_.vdouble);
-        case fesql::node::kDay:
+        case hybridse::node::kDay:
             return std::to_string(val_.vlong).append("d");
-        case fesql::node::kHour:
+        case hybridse::node::kHour:
             return std::to_string(val_.vlong).append("h");
-        case fesql::node::kMinute:
+        case hybridse::node::kMinute:
             return std::to_string(val_.vlong).append("m");
-        case fesql::node::kSecond:
+        case hybridse::node::kSecond:
             return std::to_string(val_.vlong).append("s");
-        case fesql::node::kDate:
+        case hybridse::node::kDate:
             return "Date(" + std::to_string(val_.vlong) + ")";
-        case fesql::node::kTimestamp:
+        case hybridse::node::kTimestamp:
             return "Timestamp(" + std::to_string(val_.vlong) + ")";
-        case fesql::node::kNull:
+        case hybridse::node::kNull:
             return "null";
             break;
-        case fesql::node::kVoid:
+        case hybridse::node::kVoid:
             return "void";
-        case fesql::node::kPlaceholder:
+        case hybridse::node::kPlaceholder:
             return "placeholder";
         default:
             return "unknow";
@@ -1095,7 +1094,8 @@ std::string ExprString(const ExprNode *expr) {
     return nullptr == expr ? std::string() : expr->GetExprString();
 }
 const bool IsNullPrimary(const ExprNode *expr) {
-    return nullptr != expr && expr->expr_type_ == fesql::node::kExprPrimary &&
+    return nullptr != expr &&
+           expr->expr_type_ == hybridse::node::kExprPrimary &&
            dynamic_cast<const node::ConstNode *>(expr)->IsNull();
 }
 
@@ -1434,9 +1434,9 @@ const std::string FnNodeFnHeander::GeIRFunctionName() const {
                 dynamic_cast<node::FnParaNode *>(node);
 
             switch (para_node->GetParaType()->base_) {
-                case fesql::node::kList:
-                case fesql::node::kIterator:
-                case fesql::node::kMap:
+                case hybridse::node::kList:
+                case hybridse::node::kIterator:
+                case hybridse::node::kMap:
                     fn_name.append(".").append(
                         para_node->GetParaType()->GetName());
                     break;
@@ -1581,8 +1581,8 @@ bool TypeNode::Equals(const SQLNode *node) const {
            std::equal(
                this->generics_.cbegin(), this->generics_.cend(),
                that->generics_.cbegin(),
-               [&](const fesql::node::TypeNode *a,
-                   const fesql::node::TypeNode *b) { return a->Equals(b); });
+               [&](const hybridse::node::TypeNode *a,
+                   const hybridse::node::TypeNode *b) { return a->Equals(b); });
 }
 
 void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -2178,4 +2178,4 @@ void InputParameterNode::Print(std::ostream &output,
 }
 
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse

@@ -19,11 +19,11 @@
 #include "passes/physical/physical_pass.h"
 #include "vm/physical_op.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
-using fesql::base::Status;
-using fesql::common::kColumnNotFound;
+using hybridse::base::Status;
+using hybridse::common::kColumnNotFound;
 
 size_t SchemaSource::GetColumnID(size_t idx) const { return column_ids_[idx]; }
 
@@ -31,7 +31,7 @@ const std::string& SchemaSource::GetColumnName(size_t idx) const {
     return schema_->Get(idx).name();
 }
 
-const fesql::type::Type SchemaSource::GetColumnType(size_t idx) const {
+const hybridse::type::Type SchemaSource::GetColumnType(size_t idx) const {
     return schema_->Get(idx).type();
 }
 
@@ -674,4 +674,4 @@ void SchemasContext::BuildTrivial(
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

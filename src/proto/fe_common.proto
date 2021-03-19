@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package fesql.common;
+package hybridse.common;
 option cc_generic_services = false;
-option java_package = "com._4paradigm.fesql.common";
+option java_package = "com._4paradigm.hybridse.common";
 option java_outer_classname = "Common";
 
 enum StatusCode {

@@ -23,7 +23,7 @@
 #include "codec/fe_schema_codec.h"
 #include "glog/logging.h"
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 
 ResultSetImpl::ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response,
@@ -178,4 +178,4 @@ bool ResultSetImpl::GetTime(uint32_t index, int64_t* mills) {
 }
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse

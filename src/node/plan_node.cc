@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-
 #include "node/plan_node.h"
 #include <string>
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 bool PlanListEquals(const std::vector<PlanNode *> &list1,
@@ -643,4 +642,4 @@ bool QueryPlanNode::Equals(const PlanNode *node) const {
     return UnaryPlanNode::Equals(node);
 }
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse

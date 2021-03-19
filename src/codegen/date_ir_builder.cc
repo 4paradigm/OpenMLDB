@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-
 #include "codegen/date_ir_builder.h"
 #include <string>
 #include <vector>
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 DateIRBuilder::DateIRBuilder(::llvm::Module* m) : StructTypeIRBuilder(m) {
     InitStructType();
@@ -230,4 +229,4 @@ bool DateIRBuilder::Year(::llvm::BasicBlock* block, ::llvm::Value* date,
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

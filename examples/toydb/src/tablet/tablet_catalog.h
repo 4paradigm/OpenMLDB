@@ -25,7 +25,7 @@
 #include "storage/table_impl.h"
 #include "vm/catalog.h"
 
-namespace fesql {
+namespace hybridse {
 namespace tablet {
 
 using codec::Row;
@@ -134,7 +134,7 @@ class TabletTableHandler
     TabletTableHandler(const vm::Schema schema, const std::string& name,
                        const std::string& db, const vm::IndexList& index_list,
                        std::shared_ptr<storage::Table> table,
-                       std::shared_ptr<fesql::vm::Tablet> tablet);
+                       std::shared_ptr<hybridse::vm::Tablet> tablet);
 
     ~TabletTableHandler();
 
@@ -174,11 +174,11 @@ class TabletTableHandler
     const std::string GetHandlerTypeName() override {
         return "TabletTableHandler";
     }
-    virtual std::shared_ptr<fesql::vm::Tablet> GetTablet(
+    virtual std::shared_ptr<hybridse::vm::Tablet> GetTablet(
         const std::string& index_name, const std::string& pk) {
         return tablet_;
     }
-    virtual std::shared_ptr<fesql::vm::Tablet> GetTablet(
+    virtual std::shared_ptr<hybridse::vm::Tablet> GetTablet(
         const std::string& index_name, const std::vector<std::string>& pks) {
         return tablet_;
     }
@@ -201,7 +201,7 @@ class TabletTableHandler
     vm::Types types_;
     vm::IndexList index_list_;
     vm::IndexHint index_hint_;
-    std::shared_ptr<fesql::vm::Tablet> tablet_;
+    std::shared_ptr<hybridse::vm::Tablet> tablet_;
 };
 
 typedef std::map<std::string,
@@ -233,5 +233,5 @@ class TabletCatalog : public vm::Catalog {
 };
 
 }  // namespace tablet
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // EXAMPLES_TOYDB_SRC_TABLET_TABLET_CATALOG_H_

@@ -35,7 +35,7 @@
 #include "udf/default_udf_library.h"
 #include "vm/schemas_context.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 ExprIRBuilder::ExprIRBuilder(CodeGenContext* ctx) : ctx_(ctx) {}
@@ -83,7 +83,7 @@ ExprIRBuilder::~ExprIRBuilder() {}
     return fn;
 }
 
-Status ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
+Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
                             NativeValue* output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kCodegenError,
                "Node or output is null");
@@ -98,27 +98,27 @@ Status ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
         LOG(WARNING) << node->GetExprString() << " not fully resolved";
     }
     switch (node->GetExprType()) {
-        case ::fesql::node::kExprColumnRef: {
-            const ::fesql::node::ColumnRefNode* n =
-                (const ::fesql::node::ColumnRefNode*)node;
+        case ::hybridse::node::kExprColumnRef: {
+            const ::hybridse::node::ColumnRefNode* n =
+                (const ::hybridse::node::ColumnRefNode*)node;
             CHECK_STATUS(BuildColumnRef(n, output));
             break;
         }
-        case ::fesql::node::kExprCall: {
-            const ::fesql::node::CallExprNode* fn =
-                (const ::fesql::node::CallExprNode*)node;
+        case ::hybridse::node::kExprCall: {
+            const ::hybridse::node::CallExprNode* fn =
+                (const ::hybridse::node::CallExprNode*)node;
             CHECK_STATUS(BuildCallFn(fn, output));
             break;
         }
-        case ::fesql::node::kExprPrimary: {
+        case ::hybridse::node::kExprPrimary: {
             auto const_node =
-                dynamic_cast<const ::fesql::node::ConstNode*>(node);
+                dynamic_cast<const ::hybridse::node::ConstNode*>(node);
             CHECK_STATUS(BuildConstExpr(const_node, output));
             break;
         }
-        case ::fesql::node::kExprId: {
-            ::fesql::node::ExprIdNode* id_node =
-                (::fesql::node::ExprIdNode*)node;
+        case ::hybridse::node::kExprId: {
+            ::hybridse::node::ExprIdNode* id_node =
+                (::hybridse::node::ExprIdNode*)node;
             DLOG(INFO) << "id node spec " << id_node->GetExprString();
             CHECK_TRUE(id_node->IsResolved(), kCodegenError,
                        "Detect unresolved expr id: " + id_node->GetName());
@@ -133,40 +133,41 @@ Status ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
             *output = val;
             break;
         }
-        case ::fesql::node::kExprCast: {
+        case ::hybridse::node::kExprCast: {
             CHECK_STATUS(
-                BuildCastExpr((::fesql::node::CastExprNode*)node, output));
+                BuildCastExpr((::hybridse::node::CastExprNode*)node, output));
             break;
         }
-        case ::fesql::node::kExprBinary: {
+        case ::hybridse::node::kExprBinary: {
             CHECK_STATUS(
-                BuildBinaryExpr((::fesql::node::BinaryExpr*)node, output));
+                BuildBinaryExpr((::hybridse::node::BinaryExpr*)node, output));
             break;
         }
-        case ::fesql::node::kExprUnary: {
+        case ::hybridse::node::kExprUnary: {
             CHECK_STATUS(BuildUnaryExpr(
-                dynamic_cast<const ::fesql::node::UnaryExpr*>(node), output));
-            break;
-        }
-        case ::fesql::node::kExprStruct: {
-            CHECK_STATUS(
-                BuildStructExpr((fesql::node::StructExpr*)node, output));
-            break;
-        }
-        case ::fesql::node::kExprGetField: {
-            CHECK_STATUS(BuildGetFieldExpr(
-                dynamic_cast<const ::fesql::node::GetFieldExpr*>(node),
+                dynamic_cast<const ::hybridse::node::UnaryExpr*>(node),
                 output));
             break;
         }
-        case ::fesql::node::kExprCond: {
-            CHECK_STATUS(BuildCondExpr(
-                dynamic_cast<const ::fesql::node::CondExpr*>(node), output));
+        case ::hybridse::node::kExprStruct: {
+            CHECK_STATUS(
+                BuildStructExpr((hybridse::node::StructExpr*)node, output));
             break;
         }
-        case ::fesql::node::kExprCase: {
+        case ::hybridse::node::kExprGetField: {
+            CHECK_STATUS(BuildGetFieldExpr(
+                dynamic_cast<const ::hybridse::node::GetFieldExpr*>(node),
+                output));
+            break;
+        }
+        case ::hybridse::node::kExprCond: {
+            CHECK_STATUS(BuildCondExpr(
+                dynamic_cast<const ::hybridse::node::CondExpr*>(node), output));
+            break;
+        }
+        case ::hybridse::node::kExprCase: {
             CHECK_STATUS(BuildCaseExpr(
-                dynamic_cast<const ::fesql::node::CaseWhenExprNode*>(node),
+                dynamic_cast<const ::hybridse::node::CaseWhenExprNode*>(node),
                 output));
             break;
         }
@@ -181,36 +182,36 @@ Status ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
     return Status::OK();
 }
 
-Status ExprIRBuilder::BuildConstExpr(const ::fesql::node::ConstNode* const_node,
-                                     NativeValue* output) {
+Status ExprIRBuilder::BuildConstExpr(
+    const ::hybridse::node::ConstNode* const_node, NativeValue* output) {
     ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
     switch (const_node->GetDataType()) {
-        case ::fesql::node::kNull: {
+        case ::hybridse::node::kNull: {
             *output = NativeValue::CreateNull(
                 llvm::Type::getTokenTy(builder.getContext()));
             break;
         }
-        case ::fesql::node::kBool: {
+        case ::hybridse::node::kBool: {
             *output = NativeValue::Create(
                 builder.getInt1(const_node->GetBool() ? 1 : 0));
             break;
         }
-        case ::fesql::node::kInt16: {
+        case ::hybridse::node::kInt16: {
             *output = NativeValue::Create(
                 builder.getInt16(const_node->GetSmallInt()));
             break;
         }
-        case ::fesql::node::kInt32: {
+        case ::hybridse::node::kInt32: {
             *output =
                 NativeValue::Create(builder.getInt32(const_node->GetInt()));
             break;
         }
-        case ::fesql::node::kInt64: {
+        case ::hybridse::node::kInt64: {
             *output =
                 NativeValue::Create(builder.getInt64(const_node->GetLong()));
             break;
         }
-        case ::fesql::node::kFloat: {
+        case ::hybridse::node::kFloat: {
             llvm::Value* raw_float = nullptr;
             CHECK_TRUE(GetConstFloat(ctx_->GetLLVMContext(),
                                      const_node->GetFloat(), &raw_float),
@@ -219,7 +220,7 @@ Status ExprIRBuilder::BuildConstExpr(const ::fesql::node::ConstNode* const_node,
             *output = NativeValue::Create(raw_float);
             break;
         }
-        case ::fesql::node::kDouble: {
+        case ::hybridse::node::kDouble: {
             llvm::Value* raw_double = nullptr;
             CHECK_TRUE(GetConstDouble(ctx_->GetLLVMContext(),
                                       const_node->GetDouble(), &raw_double),
@@ -228,7 +229,7 @@ Status ExprIRBuilder::BuildConstExpr(const ::fesql::node::ConstNode* const_node,
             *output = NativeValue::Create(raw_double);
             break;
         }
-        case ::fesql::node::kVarchar: {
+        case ::hybridse::node::kVarchar: {
             std::string val(const_node->GetStr(), strlen(const_node->GetStr()));
             llvm::Value* raw_str = nullptr;
             CHECK_TRUE(GetConstFeString(val, ctx_->GetCurrentBlock(), &raw_str),
@@ -236,7 +237,7 @@ Status ExprIRBuilder::BuildConstExpr(const ::fesql::node::ConstNode* const_node,
             *output = NativeValue::Create(raw_str);
             break;
         }
-        case ::fesql::node::kDate: {
+        case ::hybridse::node::kDate: {
             auto date_int = builder.getInt32(const_node->GetLong());
             DateIRBuilder date_builder(ctx_->GetModule());
             ::llvm::Value* date = nullptr;
@@ -246,7 +247,7 @@ Status ExprIRBuilder::BuildConstExpr(const ::fesql::node::ConstNode* const_node,
             *output = NativeValue::Create(date);
             break;
         }
-        case ::fesql::node::kTimestamp: {
+        case ::hybridse::node::kTimestamp: {
             auto ts_int = builder.getInt64(const_node->GetLong());
             TimestampIRBuilder date_builder(ctx_->GetModule());
             ::llvm::Value* ts = nullptr;
@@ -265,7 +266,7 @@ Status ExprIRBuilder::BuildConstExpr(const ::fesql::node::ConstNode* const_node,
     return Status::OK();
 }
 
-Status ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call,
+Status ExprIRBuilder::BuildCallFn(const ::hybridse::node::CallExprNode* call,
                                   NativeValue* output) {
     const node::FnDefNode* fn_def = call->GetFnDef();
     if (fn_def->GetType() == node::kExternalFnDef) {
@@ -294,8 +295,8 @@ Status ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call,
 }
 
 bool ExprIRBuilder::BuildCallFnLegacy(
-    const ::fesql::node::CallExprNode* call_fn, NativeValue* output,
-    ::fesql::base::Status& status) {  // NOLINT
+    const ::hybridse::node::CallExprNode* call_fn, NativeValue* output,
+    ::hybridse::base::Status& status) {  // NOLINT
 
     // TODO(chenjing): return status;
     if (call_fn == NULL || output == NULL) {
@@ -313,18 +314,19 @@ bool ExprIRBuilder::BuildCallFnLegacy(
     ::llvm::StringRef name(function_name);
 
     std::vector<::llvm::Value*> llvm_args;
-    std::vector<::fesql::node::ExprNode*>::const_iterator it =
+    std::vector<::hybridse::node::ExprNode*>::const_iterator it =
         call_fn->children_.cbegin();
-    std::vector<const ::fesql::node::TypeNode*> generics_types;
-    std::vector<const ::fesql::node::TypeNode*> args_types;
+    std::vector<const ::hybridse::node::TypeNode*> generics_types;
+    std::vector<const ::hybridse::node::TypeNode*> args_types;
 
     for (; it != call_fn->children_.cend(); ++it) {
-        const ::fesql::node::ExprNode* arg = dynamic_cast<node::ExprNode*>(*it);
+        const ::hybridse::node::ExprNode* arg =
+            dynamic_cast<node::ExprNode*>(*it);
         NativeValue llvm_arg_wrapper;
         // TODO(chenjing): remove out_name
         status = Build(arg, &llvm_arg_wrapper);
         if (status.isOK()) {
-            const ::fesql::node::TypeNode* value_type = nullptr;
+            const ::hybridse::node::TypeNode* value_type = nullptr;
             if (false == GetFullType(ctx_->node_manager(),
                                      llvm_arg_wrapper.GetType(), &value_type)) {
                 status.msg = "fail to handle arg type ";
@@ -336,8 +338,8 @@ bool ExprIRBuilder::BuildCallFnLegacy(
             // handle list type
             // 泛型类型还需要优化，目前是hard
             // code识别list或者迭代器类型，然后取generic type
-            if (fesql::node::kList == value_type->base() ||
-                fesql::node::kIterator == value_type->base()) {
+            if (hybridse::node::kList == value_type->base() ||
+                hybridse::node::kIterator == value_type->base()) {
                 generics_types.push_back(value_type);
             }
             ::llvm::Value* llvm_arg = llvm_arg_wrapper.GetValue(&builder);
@@ -405,15 +407,15 @@ bool ExprIRBuilder::BuildCallFnLegacy(
 // @param node
 // @param output
 // @return
-Status ExprIRBuilder::BuildStructExpr(const ::fesql::node::StructExpr* node,
+Status ExprIRBuilder::BuildStructExpr(const ::hybridse::node::StructExpr* node,
                                       NativeValue* output) {
     std::vector<::llvm::Type*> members;
     if (nullptr != node->GetFileds() && !node->GetFileds()->children.empty()) {
         for (auto each : node->GetFileds()->children) {
             node::FnParaNode* field = dynamic_cast<node::FnParaNode*>(each);
             ::llvm::Type* type = nullptr;
-            CHECK_TRUE(ConvertFeSQLType2LLVMType(field->GetParaType(),
-                                                 ctx_->GetModule(), &type),
+            CHECK_TRUE(ConvertHybridSEType2LLVMType(field->GetParaType(),
+                                                    ctx_->GetModule(), &type),
                        kCodegenError,
                        "Invalid struct with unacceptable field type: " +
                            field->GetParaType()->GetName());
@@ -506,8 +508,8 @@ Status ExprIRBuilder::BuildWindow(NativeValue* output) {  // NOLINT
 // param col
 // param output
 // return
-Status ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
-                                     NativeValue* output) {
+Status ExprIRBuilder::BuildColumnRef(
+    const ::hybridse::node::ColumnRefNode* node, NativeValue* output) {
     const std::string relation_name = node->GetRelationName();
     const std::string col = node->GetColumnName();
 
@@ -551,7 +553,7 @@ Status ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
     return Status::OK();
 }
 
-Status ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
+Status ExprIRBuilder::BuildUnaryExpr(const ::hybridse::node::UnaryExpr* node,
                                      NativeValue* output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kCodegenError,
                "Input node or output is null");
@@ -559,18 +561,18 @@ Status ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
                "Invalid unary expr node");
 
     DLOG(INFO) << "build unary "
-               << ::fesql::node::ExprOpTypeName(node->GetOp());
+               << ::hybridse::node::ExprOpTypeName(node->GetOp());
     NativeValue left;
     CHECK_STATUS(Build(node->GetChild(0), &left), "Fail to build left node");
 
     PredicateIRBuilder predicate_ir_builder(ctx_->GetCurrentBlock());
     ArithmeticIRBuilder arithmetic_ir_builder(ctx_->GetCurrentBlock());
     switch (node->GetOp()) {
-        case ::fesql::node::kFnOpNot: {
+        case ::hybridse::node::kFnOpNot: {
             CHECK_STATUS(predicate_ir_builder.BuildNotExpr(left, output));
             break;
         }
-        case ::fesql::node::kFnOpMinus: {
+        case ::hybridse::node::kFnOpMinus: {
             ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
             if (node->GetOutputType()->base() == node::kBool) {
                 *output = left;
@@ -580,15 +582,15 @@ Status ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
             }
             break;
         }
-        case ::fesql::node::kFnOpBracket: {
+        case ::hybridse::node::kFnOpBracket: {
             *output = left;
             break;
         }
-        case ::fesql::node::kFnOpIsNull: {
+        case ::hybridse::node::kFnOpIsNull: {
             CHECK_STATUS(predicate_ir_builder.BuildIsNullExpr(left, output));
             break;
         }
-        case ::fesql::node::kFnOpNonNull: {
+        case ::hybridse::node::kFnOpNonNull: {
             // just ignore any null flag
             *output = NativeValue::Create(left.GetValue(ctx_));
             break;
@@ -614,7 +616,7 @@ Status ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
     return Status::OK();
 }
 
-Status ExprIRBuilder::BuildCastExpr(const ::fesql::node::CastExprNode* node,
+Status ExprIRBuilder::BuildCastExpr(const ::hybridse::node::CastExprNode* node,
                                     NativeValue* output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kCodegenError,
                "Input node or output is null");
@@ -635,7 +637,7 @@ Status ExprIRBuilder::BuildCastExpr(const ::fesql::node::CastExprNode* node,
     }
 }
 
-Status ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
+Status ExprIRBuilder::BuildBinaryExpr(const ::hybridse::node::BinaryExpr* node,
                                       NativeValue* output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kCodegenError,
                "Input node or output is null");
@@ -643,7 +645,7 @@ Status ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                "Invalid binary expr node");
 
     DLOG(INFO) << "build binary "
-               << ::fesql::node::ExprOpTypeName(node->GetOp());
+               << ::hybridse::node::ExprOpTypeName(node->GetOp());
     NativeValue left;
     CHECK_STATUS(Build(node->children_[0], &left), "Fail to build left node");
 
@@ -654,76 +656,76 @@ Status ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
     PredicateIRBuilder predicate_ir_builder(ctx_->GetCurrentBlock());
 
     switch (node->GetOp()) {
-        case ::fesql::node::kFnOpAdd: {
+        case ::hybridse::node::kFnOpAdd: {
             CHECK_STATUS(
                 arithmetic_ir_builder.BuildAddExpr(left, right, output));
             break;
         }
-        case ::fesql::node::kFnOpMulti: {
+        case ::hybridse::node::kFnOpMulti: {
             CHECK_STATUS(
                 arithmetic_ir_builder.BuildMultiExpr(left, right, output));
             break;
         }
-        case ::fesql::node::kFnOpFDiv: {
+        case ::hybridse::node::kFnOpFDiv: {
             CHECK_STATUS(
                 arithmetic_ir_builder.BuildFDivExpr(left, right, output));
             break;
         }
-        case ::fesql::node::kFnOpDiv: {
+        case ::hybridse::node::kFnOpDiv: {
             CHECK_STATUS(
                 arithmetic_ir_builder.BuildSDivExpr(left, right, output));
             break;
         }
-        case ::fesql::node::kFnOpMinus: {
+        case ::hybridse::node::kFnOpMinus: {
             CHECK_STATUS(
                 arithmetic_ir_builder.BuildSubExpr(left, right, output));
             break;
         }
-        case ::fesql::node::kFnOpMod: {
+        case ::hybridse::node::kFnOpMod: {
             CHECK_STATUS(
                 arithmetic_ir_builder.BuildModExpr(left, right, output));
             break;
         }
-        case ::fesql::node::kFnOpAnd: {
+        case ::hybridse::node::kFnOpAnd: {
             CHECK_STATUS(
                 predicate_ir_builder.BuildAndExpr(left, right, output));
             break;
         }
-        case ::fesql::node::kFnOpOr: {
+        case ::hybridse::node::kFnOpOr: {
             CHECK_STATUS(predicate_ir_builder.BuildOrExpr(left, right, output));
             break;
         }
-        case ::fesql::node::kFnOpXor: {
+        case ::hybridse::node::kFnOpXor: {
             CHECK_STATUS(
                 predicate_ir_builder.BuildXorExpr(left, right, output));
             break;
         }
-        case ::fesql::node::kFnOpEq: {
+        case ::hybridse::node::kFnOpEq: {
             CHECK_STATUS(predicate_ir_builder.BuildEqExpr(left, right, output));
             break;
         }
-        case ::fesql::node::kFnOpNeq: {
+        case ::hybridse::node::kFnOpNeq: {
             CHECK_STATUS(
                 predicate_ir_builder.BuildNeqExpr(left, right, output));
             break;
         }
-        case ::fesql::node::kFnOpGt: {
+        case ::hybridse::node::kFnOpGt: {
             CHECK_STATUS(predicate_ir_builder.BuildGtExpr(left, right, output));
             break;
         }
-        case ::fesql::node::kFnOpGe: {
+        case ::hybridse::node::kFnOpGe: {
             CHECK_STATUS(predicate_ir_builder.BuildGeExpr(left, right, output));
             break;
         }
-        case ::fesql::node::kFnOpLt: {
+        case ::hybridse::node::kFnOpLt: {
             CHECK_STATUS(predicate_ir_builder.BuildLtExpr(left, right, output));
             break;
         }
-        case ::fesql::node::kFnOpLe: {
+        case ::hybridse::node::kFnOpLe: {
             CHECK_STATUS(predicate_ir_builder.BuildLeExpr(left, right, output));
             break;
         }
-        case ::fesql::node::kFnOpAt: {
+        case ::hybridse::node::kFnOpAt: {
             CHECK_STATUS(BuildAsUDF(node, "at", {left, right}, output));
             break;
         }
@@ -789,8 +791,8 @@ Status ExprIRBuilder::BuildAsUDF(const node::ExprNode* expr,
     return status;
 }
 
-Status ExprIRBuilder::BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
-                                        NativeValue* output) {
+Status ExprIRBuilder::BuildGetFieldExpr(
+    const ::hybridse::node::GetFieldExpr* node, NativeValue* output) {
     // build input
     Status status;
     NativeValue input_value;
@@ -834,10 +836,10 @@ Status ExprIRBuilder::BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
         ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
         auto slice_idx_value = builder.getInt64(schema_idx);
         auto get_slice_func = module->getOrInsertFunction(
-            "fesql_storage_get_row_slice",
+            "hybridse_storage_get_row_slice",
             ::llvm::FunctionType::get(ptr_ty, {ptr_ty, int64_ty}, false));
         auto get_slice_size_func = module->getOrInsertFunction(
-            "fesql_storage_get_row_slice_size",
+            "hybridse_storage_get_row_slice_size",
             ::llvm::FunctionType::get(int64_ty, {ptr_ty, int64_ty}, false));
         ::llvm::Value* slice_ptr =
             builder.CreateCall(get_slice_func, {row_ptr, slice_idx_value});
@@ -858,8 +860,8 @@ Status ExprIRBuilder::BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
     return Status::OK();
 }
 
-Status ExprIRBuilder::BuildCaseExpr(const ::fesql::node::CaseWhenExprNode* node,
-                                    NativeValue* output) {
+Status ExprIRBuilder::BuildCaseExpr(
+    const ::hybridse::node::CaseWhenExprNode* node, NativeValue* output) {
     CHECK_TRUE(nullptr != node && nullptr != node->when_expr_list() &&
                    node->when_expr_list()->GetChildNum() > 0,
                kCodegenError);
@@ -868,14 +870,15 @@ Status ExprIRBuilder::BuildCaseExpr(const ::fesql::node::CaseWhenExprNode* node,
         nullptr == node->else_expr() ? nm->MakeConstNode() : node->else_expr();
     for (auto iter = node->when_expr_list()->children_.rbegin();
          iter != node->when_expr_list()->children_.rend(); iter++) {
-        auto when_expr = dynamic_cast<::fesql::node::WhenExprNode*>(*iter);
+        auto when_expr = dynamic_cast<::hybridse::node::WhenExprNode*>(*iter);
         expr = nm->MakeCondExpr(when_expr->when_expr(), when_expr->then_expr(),
                                 expr);
     }
-    return BuildCondExpr(dynamic_cast<::fesql::node::CondExpr*>(expr), output);
+    return BuildCondExpr(dynamic_cast<::hybridse::node::CondExpr*>(expr),
+                         output);
 }
 
-Status ExprIRBuilder::BuildCondExpr(const ::fesql::node::CondExpr* node,
+Status ExprIRBuilder::BuildCondExpr(const ::hybridse::node::CondExpr* node,
                                     NativeValue* output) {
     // build condition
     Status status;
@@ -896,4 +899,4 @@ Status ExprIRBuilder::BuildCondExpr(const ::fesql::node::CondExpr* node,
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

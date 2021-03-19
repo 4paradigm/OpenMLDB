@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CODEGEN_MEMERY_IR_BUILDER_H_
 #define SRC_CODEGEN_MEMERY_IR_BUILDER_H_
 #include <string>
 #include "base/fe_status.h"
 #include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 class MemoryIRBuilder {
@@ -44,5 +43,5 @@ class MemoryIRBuilder {
 };
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_MEMERY_IR_BUILDER_H_

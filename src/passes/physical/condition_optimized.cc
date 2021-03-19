@@ -16,16 +16,16 @@
 #include "passes/physical/condition_optimized.h"
 
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
-using fesql::vm::PhysicalJoinNode;
-using fesql::vm::PhysicalRequestJoinNode;
-using fesql::vm::PhysicalFilterNode;
-using fesql::vm::PhysicalOpType;
+using hybridse::vm::PhysicalFilterNode;
+using hybridse::vm::PhysicalJoinNode;
+using hybridse::vm::PhysicalOpType;
+using hybridse::vm::PhysicalRequestJoinNode;
 
 bool ConditionOptimized::JoinConditionOptimized(PhysicalBinaryNode* in,
                                                 Join* join) {
@@ -299,4 +299,4 @@ void ConditionOptimized::SkipConstExpression(node::ExprListNode input,
     }
 }
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse

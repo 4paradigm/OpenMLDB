@@ -20,9 +20,9 @@
 #include "node/type_node.h"
 #include "passes/resolve_fn_and_attrs.h"
 
-using fesql::node::ExprAttrNode;
+using hybridse::node::ExprAttrNode;
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 Status ExprInplaceTransformUp::Apply(ExprAnalysisContext* ctx, ExprNode* expr,
@@ -288,4 +288,4 @@ Status ExprSimplifier::VisitCall(node::CallExprNode* call, ExprNode** out) {
 }
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse

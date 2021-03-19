@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-
 #include "vm/core_api.h"
 #include "gtest/gtest.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 class CoreAPITest : public ::testing::Test {
@@ -29,16 +28,16 @@ class CoreAPITest : public ::testing::Test {
 
 TEST_F(CoreAPITest, test_create_new_row) {
     Schema schema;
-    ::fesql::type::ColumnDef* col = schema.Add();
+    ::hybridse::type::ColumnDef* col = schema.Add();
     col->set_name("col1");
-    col->set_type(::fesql::type::kInt16);
+    col->set_type(::hybridse::type::kInt16);
     col = schema.Add();
     col->set_name("col2");
-    col->set_type(::fesql::type::kBool);
+    col->set_type(::hybridse::type::kBool);
     codec::RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(0);
 
-    fesql::codec::Row rowPtr = CoreAPI::NewRow(size);
+    hybridse::codec::Row rowPtr = CoreAPI::NewRow(size);
     int8_t* buf = rowPtr.buf(0);
     builder.SetBuffer(buf, size);
 
@@ -47,7 +46,7 @@ TEST_F(CoreAPITest, test_create_new_row) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

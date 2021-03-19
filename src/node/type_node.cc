@@ -18,7 +18,7 @@
 #include "node/node_manager.h"
 #include "vm/physical_op.h"
 
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 bool TypeNode::IsBaseType() const {
@@ -100,4 +100,4 @@ OpaqueTypeNode *OpaqueTypeNode::ShadowCopy(NodeManager *nm) const {
 }
 
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse

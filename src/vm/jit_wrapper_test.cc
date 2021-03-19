@@ -20,26 +20,27 @@
 #include "udf/udf.h"
 #include "vm/engine.h"
 #include "vm/simple_catalog.h"
+#include "vm/sql_compiler.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 class JITWrapperTest : public ::testing::Test {};
 
 std::shared_ptr<SimpleCatalog> GetTestCatalog() {
-    fesql::type::Database db;
+    hybridse::type::Database db;
     db.set_name("db");
-    ::fesql::type::TableDef *table = db.add_tables();
+    ::hybridse::type::TableDef *table = db.add_tables();
     table->set_name("t1");
     table->set_catalog("db");
     {
-        ::fesql::type::ColumnDef *column = table->add_columns();
-        column->set_type(::fesql::type::kDouble);
+        ::hybridse::type::ColumnDef *column = table->add_columns();
+        column->set_type(::hybridse::type::kDouble);
         column->set_name("col_1");
     }
     {
-        ::fesql::type::ColumnDef *column = table->add_columns();
-        column->set_type(::fesql::type::kInt64);
+        ::hybridse::type::ColumnDef *column = table->add_columns();
+        column->set_type(::hybridse::type::kInt64);
         column->set_name("col_2");
     }
     auto catalog = std::make_shared<SimpleCatalog>();
@@ -47,9 +48,9 @@ std::shared_ptr<SimpleCatalog> GetTestCatalog() {
     return catalog;
 }
 
-std::shared_ptr<CompileInfo> Compile(const std::string &sql,
-                                     const EngineOptions &options,
-                                     std::shared_ptr<SimpleCatalog> catalog) {
+std::shared_ptr<SQLCompileInfo> Compile(
+    const std::string &sql, const EngineOptions &options,
+    std::shared_ptr<SimpleCatalog> catalog) {
     base::Status status;
     BatchRunSession session;
     Engine engine(catalog, options);
@@ -57,7 +58,7 @@ std::shared_ptr<CompileInfo> Compile(const std::string &sql,
         LOG(WARNING) << "Fail to compile sql";
         return nullptr;
     }
-    return session.GetCompileInfo();
+    return std::dynamic_pointer_cast<SQLCompileInfo>(session.GetCompileInfo());
 }
 
 void simple_test(const EngineOptions &options) {
@@ -67,9 +68,9 @@ void simple_test(const EngineOptions &options) {
     auto &sql_context = compile_info->get_sql_context();
     std::string ir_str = sql_context.ir;
     ASSERT_FALSE(ir_str.empty());
-    FeSQLJITWrapper *jit = FeSQLJITWrapper::Create();
+    HybridSEJITWrapper *jit = HybridSEJITWrapper::Create();
     ASSERT_TRUE(jit->Init());
-    FeSQLJITWrapper::InitJITSymbols(jit);
+    HybridSEJITWrapper::InitJITSymbols(jit);
 
     base::RawBuffer ir_buf(const_cast<char *>(ir_str.data()), ir_str.size());
     ASSERT_TRUE(jit->AddModuleFromBuffer(ir_buf));
@@ -85,8 +86,8 @@ void simple_test(const EngineOptions &options) {
     row_builder.AppendDouble(3.14);
     row_builder.AppendInt64(42);
 
-    fesql::codec::Row row(base::RefCountedSlice::Create(buf, 1024));
-    fesql::codec::Row output = CoreAPI::RowProject(fn, row);
+    hybridse::codec::Row row(base::RefCountedSlice::Create(buf, 1024));
+    hybridse::codec::Row output = CoreAPI::RowProject(fn, row);
     codec::RowView row_view(*schema, output.buf(), output.size());
     double c1;
     int64_t c2;
@@ -135,9 +136,9 @@ TEST_F(JITWrapperTest, test_window) {
     // this should be removed by better symbol init utility
 
     ASSERT_FALSE(ir_str.empty());
-    FeSQLJITWrapper *jit = FeSQLJITWrapper::Create();
+    HybridSEJITWrapper *jit = HybridSEJITWrapper::Create();
     ASSERT_TRUE(jit->Init());
-    FeSQLJITWrapper::InitJITSymbols(jit);
+    HybridSEJITWrapper::InitJITSymbols(jit);
 
     base::RawBuffer ir_buf(const_cast<char *>(ir_str.data()), ir_str.size());
     ASSERT_TRUE(jit->AddModuleFromBuffer(ir_buf));
@@ -149,10 +150,10 @@ TEST_F(JITWrapperTest, test_window) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    fesql::vm::Engine::InitializeGlobalLLVM();
+    hybridse::vm::Engine::InitializeGlobalLLVM();
     return RUN_ALL_TESTS();
 }

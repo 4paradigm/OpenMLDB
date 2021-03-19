@@ -28,13 +28,13 @@
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
 #include "vm/mem_catalog.h"
-namespace fesql {
+namespace hybridse {
 namespace udf {
-using fesql::codec::ArrayListV;
-using fesql::codec::ColumnImpl;
-using fesql::codec::ListRef;
-using fesql::codec::Row;
-using fesql::sqlcase::SQLCase;
+using hybridse::codec::ArrayListV;
+using hybridse::codec::ColumnImpl;
+using hybridse::codec::ListRef;
+using hybridse::codec::Row;
+using hybridse::sqlcase::SQLCase;
 
 class UDFTest : public ::testing::Test {
  public:
@@ -89,8 +89,9 @@ bool FetchColList(vm::ListV<Row>* table, size_t col_idx, size_t offset,
     codec::ListRef<Row> table_ref;
     table_ref.list = reinterpret_cast<int8_t*>(table);
 
-    if (0 != ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table_ref),
-                                        0, col_idx, offset, datatype, buf)) {
+    if (0 !=
+        ::hybridse::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table_ref), 0,
+                                      col_idx, offset, datatype, buf)) {
         return false;
     }
     res->list = buf;
@@ -232,13 +233,13 @@ TEST_F(UDFTest, GetColTest) {
 
     for (int i = 0; i < 10; ++i) {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef<> list_ref;
+        ::hybridse::codec::ListRef<> list_ref;
         list_ref.list = buf;
-        ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl_ref),
-                                          0, 0, 2, fesql::type::kInt32, buf));
-        ::fesql::codec::ColumnImpl<int16_t>* col =
-            reinterpret_cast<::fesql::codec::ColumnImpl<int16_t>*>(
+        ASSERT_EQ(0, ::hybridse::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&impl_ref), 0, 0, 2,
+                         hybridse::type::kInt32, buf));
+        ::hybridse::codec::ColumnImpl<int16_t>* col =
+            reinterpret_cast<::hybridse::codec::ColumnImpl<int16_t>*>(
                 list_ref.list);
         auto col_iterator = col->GetIterator();
         ASSERT_TRUE(col_iterator->Valid());
@@ -271,9 +272,9 @@ TEST_F(UDFTest, GetWindowColRangeTest) {
         "9, 1590115500000";
     type::TableDef table_def;
     std::vector<Row> rows;
-    ASSERT_TRUE(fesql::sqlcase::SQLCase::ExtractSchema(schema, table_def));
-    ASSERT_TRUE(
-        fesql::sqlcase::SQLCase::ExtractRows(table_def.columns(), data, rows));
+    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractSchema(schema, table_def));
+    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRows(table_def.columns(),
+                                                        data, rows));
     codec::RowView row_view(table_def.columns());
     for (auto row : rows) {
         row_view.Reset(row.buf());
@@ -282,22 +283,22 @@ TEST_F(UDFTest, GetWindowColRangeTest) {
 
     const uint32_t inner_list_size = sizeof(codec::InnerRangeList<Row>);
     int8_t* inner_list_buf = reinterpret_cast<int8_t*>(alloca(inner_list_size));
-    ASSERT_EQ(0, ::fesql::codec::v1::GetInnerRangeList(
+    ASSERT_EQ(0, ::hybridse::codec::v1::GetInnerRangeList(
                      reinterpret_cast<int8_t*>(&table), 1590115500000, -20000,
                      -50000, inner_list_buf));
     int32_t offset = row_view.GetPrimaryFieldOffset(0);
-    fesql::type::Type type = fesql::type::kInt32;
+    hybridse::type::Type type = hybridse::type::kInt32;
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
     ListRef<> inner_list_ref;
     inner_list_ref.list = inner_list_buf;
 
     for (int i = 0; i < 100000; ++i) {
-        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+        ASSERT_EQ(0, ::hybridse::codec::v1::GetCol(
                          reinterpret_cast<int8_t*>(&inner_list_ref), 0, 0,
                          offset, type, buf));
-        ::fesql::codec::ColumnImpl<int32_t>* col =
-            reinterpret_cast<::fesql::codec::ColumnImpl<int32_t>*>(buf);
+        ::hybridse::codec::ColumnImpl<int32_t>* col =
+            reinterpret_cast<::hybridse::codec::ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
         col_iterator->SeekToFirst();
         ASSERT_TRUE(col_iterator->Valid());
@@ -331,9 +332,9 @@ TEST_F(UDFTest, GetWindowColRowsTest) {
         "9, 1590115500000";
     type::TableDef table_def;
     std::vector<Row> rows;
-    ASSERT_TRUE(fesql::sqlcase::SQLCase::ExtractSchema(schema, table_def));
-    ASSERT_TRUE(
-        fesql::sqlcase::SQLCase::ExtractRows(table_def.columns(), data, rows));
+    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractSchema(schema, table_def));
+    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRows(table_def.columns(),
+                                                        data, rows));
     codec::RowView row_view(table_def.columns());
     for (auto row : rows) {
         row_view.Reset(row.buf());
@@ -342,10 +343,10 @@ TEST_F(UDFTest, GetWindowColRowsTest) {
 
     const uint32_t inner_list_size = sizeof(codec::InnerRowsList<Row>);
     int8_t* inner_list_buf = reinterpret_cast<int8_t*>(alloca(inner_list_size));
-    ASSERT_EQ(0, ::fesql::codec::v1::GetInnerRowsList(
+    ASSERT_EQ(0, ::hybridse::codec::v1::GetInnerRowsList(
                      reinterpret_cast<int8_t*>(&table), 3, 8, inner_list_buf));
     int32_t offset = row_view.GetPrimaryFieldOffset(0);
-    fesql::type::Type type = fesql::type::kInt32;
+    hybridse::type::Type type = hybridse::type::kInt32;
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
 
@@ -353,11 +354,11 @@ TEST_F(UDFTest, GetWindowColRowsTest) {
     inner_list_ref.list = inner_list_buf;
 
     for (int i = 0; i < 100000; ++i) {
-        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+        ASSERT_EQ(0, ::hybridse::codec::v1::GetCol(
                          reinterpret_cast<int8_t*>(&inner_list_ref), 0, 0,
                          offset, type, buf));
-        ::fesql::codec::ColumnImpl<int32_t>* col =
-            reinterpret_cast<::fesql::codec::ColumnImpl<int32_t>*>(buf);
+        ::hybridse::codec::ColumnImpl<int32_t>* col =
+            reinterpret_cast<::hybridse::codec::ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
         ASSERT_TRUE(col_iterator->Valid());
         ASSERT_EQ(6, col_iterator->GetValue());
@@ -390,11 +391,11 @@ TEST_F(UDFTest, GetWindowColTest) {
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
     for (int i = 0; i < 100000; ++i) {
-        ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table_ref),
-                                          0, 0, 2, fesql::type::kInt32, buf));
-        ::fesql::codec::ColumnImpl<int32_t>* col =
-            reinterpret_cast<::fesql::codec::ColumnImpl<int32_t>*>(buf);
+        ASSERT_EQ(0, ::hybridse::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&table_ref), 0, 0, 2,
+                         hybridse::type::kInt32, buf));
+        ::hybridse::codec::ColumnImpl<int32_t>* col =
+            reinterpret_cast<::hybridse::codec::ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
         ASSERT_TRUE(col_iterator->Valid());
         ASSERT_EQ(111, col_iterator->GetValue());
@@ -419,9 +420,9 @@ TEST_F(UDFTest, GetTimeMemColTest) {
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
     for (int i = 0; i < 1000000; ++i) {
-        ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table_ref),
-                                          0, 0, 2, fesql::type::kInt32, buf));
+        ASSERT_EQ(0, ::hybridse::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&table_ref), 0, 0, 2,
+                         hybridse::type::kInt32, buf));
         ColumnImpl<int32_t>* col = reinterpret_cast<ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
         ASSERT_TRUE(col_iterator->Valid());
@@ -444,13 +445,13 @@ TEST_F(UDFTest, GetColHeapTest) {
     const uint32_t size = sizeof(ColumnImpl<int16_t>);
     for (int i = 0; i < 1000; ++i) {
         int8_t buf[size];  // NOLINT
-        ::fesql::codec::ListRef<> list_ref;
+        ::hybridse::codec::ListRef<> list_ref;
         list_ref.list = buf;
-        ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl_ref),
-                                          0, 0, 2, fesql::type::kInt32, buf));
-        ::fesql::codec::ColumnImpl<int16_t>* impl =
-            reinterpret_cast<::fesql::codec::ColumnImpl<int16_t>*>(
+        ASSERT_EQ(0, ::hybridse::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&impl_ref), 0, 0, 2,
+                         hybridse::type::kInt32, buf));
+        ::hybridse::codec::ColumnImpl<int16_t>* impl =
+            reinterpret_cast<::hybridse::codec::ColumnImpl<int16_t>*>(
                 list_ref.list);
         auto iter = impl->GetIterator();
         ASSERT_TRUE(iter->Valid());
@@ -664,7 +665,7 @@ TEST_F(ExternUDFTest, TestCompoundTypedExternalCall) {
 }
 
 }  // namespace udf
-}  // namespace fesql
+}  // namespace hybridse
 int main(int argc, char** argv) {
     ::testing::GTEST_FLAG(color) = "yes";
     ::testing::InitGoogleTest(&argc, argv);

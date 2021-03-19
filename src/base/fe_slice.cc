@@ -16,7 +16,7 @@
 
 #include "base/fe_slice.h"
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 RefCountedSlice::~RefCountedSlice() { Release(); }
@@ -67,4 +67,4 @@ RefCountedSlice& RefCountedSlice::operator=(RefCountedSlice&& slice) {
 }
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse

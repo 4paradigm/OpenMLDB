@@ -19,9 +19,9 @@
 #include "vm/catalog_wrapper.h"
 #include "vm/test_base.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
-using fesql::codec::Row;
+using hybridse::codec::Row;
 class MemCataLogTest : public ::testing::Test {
  public:
     MemCataLogTest() {}
@@ -30,7 +30,7 @@ class MemCataLogTest : public ::testing::Test {
 
 TEST_F(MemCataLogTest, row_test) {
     std::vector<Row> rows;
-    ::fesql::type::TableDef table;
+    ::hybridse::type::TableDef table;
     BuildRows(table, rows);
 
     codec::RowView row_view(table.columns());
@@ -77,7 +77,7 @@ TEST_F(MemCataLogTest, row_test) {
 }
 TEST_F(MemCataLogTest, mem_table_handler_test) {
     std::vector<Row> rows;
-    ::fesql::type::TableDef table;
+    ::hybridse::type::TableDef table;
     BuildRows(table, rows);
     vm::MemTableHandler table_handler("t1", "temp", &(table.columns()));
     for (auto row : rows) {
@@ -94,13 +94,13 @@ Row project(const Row& row) {
     type::TableDef table2;
     {
         {
-            ::fesql::type::ColumnDef* column = table2.add_columns();
-            column->set_type(::fesql::type::kInt32);
+            ::hybridse::type::ColumnDef* column = table2.add_columns();
+            column->set_type(::hybridse::type::kInt32);
             column->set_name("c1");
         }
         {
-            ::fesql::type::ColumnDef* column = table2.add_columns();
-            column->set_type(::fesql::type::kFloat);
+            ::hybridse::type::ColumnDef* column = table2.add_columns();
+            column->set_type(::hybridse::type::kFloat);
             column->set_name("c3");
         }
     }
@@ -122,13 +122,13 @@ const bool predicate(const Row& row) {
     type::TableDef table2;
     {
         {
-            ::fesql::type::ColumnDef* column = table2.add_columns();
-            column->set_type(::fesql::type::kInt32);
+            ::hybridse::type::ColumnDef* column = table2.add_columns();
+            column->set_type(::hybridse::type::kInt32);
             column->set_name("c1");
         }
         {
-            ::fesql::type::ColumnDef* column = table2.add_columns();
-            column->set_type(::fesql::type::kFloat);
+            ::hybridse::type::ColumnDef* column = table2.add_columns();
+            column->set_type(::hybridse::type::kFloat);
             column->set_name("c3");
         }
     }
@@ -144,7 +144,7 @@ class SimpleWrapperFun : public ProjectFun {
 
 TEST_F(MemCataLogTest, table_hander_wrapper_test) {
     std::vector<Row> rows;
-    ::fesql::type::TableDef table;
+    ::hybridse::type::TableDef table;
     BuildRows(table, rows);
     std::shared_ptr<MemTableHandler> table_handler =
         std::shared_ptr<MemTableHandler>(
@@ -159,13 +159,13 @@ TEST_F(MemCataLogTest, table_hander_wrapper_test) {
     type::TableDef table2;
     {
         {
-            ::fesql::type::ColumnDef* column = table2.add_columns();
-            column->set_type(::fesql::type::kInt32);
+            ::hybridse::type::ColumnDef* column = table2.add_columns();
+            column->set_type(::hybridse::type::kInt32);
             column->set_name("c1");
         }
         {
-            ::fesql::type::ColumnDef* column = table2.add_columns();
-            column->set_type(::fesql::type::kFloat);
+            ::hybridse::type::ColumnDef* column = table2.add_columns();
+            column->set_type(::hybridse::type::kFloat);
             column->set_name("c3");
         }
     }
@@ -180,7 +180,7 @@ TEST_F(MemCataLogTest, table_hander_wrapper_test) {
 
 TEST_F(MemCataLogTest, partition_hander_wrapper_test) {
     std::vector<Row> rows;
-    ::fesql::type::TableDef table;
+    ::hybridse::type::TableDef table;
     BuildRows(table, rows);
     std::shared_ptr<vm::MemPartitionHandler> partition_handler =
         std::shared_ptr<vm::MemPartitionHandler>(
@@ -203,13 +203,13 @@ TEST_F(MemCataLogTest, partition_hander_wrapper_test) {
     type::TableDef table2;
     {
         {
-            ::fesql::type::ColumnDef* column = table2.add_columns();
-            column->set_type(::fesql::type::kInt32);
+            ::hybridse::type::ColumnDef* column = table2.add_columns();
+            column->set_type(::hybridse::type::kInt32);
             column->set_name("c1");
         }
         {
-            ::fesql::type::ColumnDef* column = table2.add_columns();
-            column->set_type(::fesql::type::kFloat);
+            ::hybridse::type::ColumnDef* column = table2.add_columns();
+            column->set_type(::hybridse::type::kFloat);
             column->set_name("c3");
         }
     }
@@ -247,7 +247,7 @@ TEST_F(MemCataLogTest, partition_hander_wrapper_test) {
 }
 TEST_F(MemCataLogTest, mem_time_table_handler_test) {
     std::vector<Row> rows;
-    ::fesql::type::TableDef table;
+    ::hybridse::type::TableDef table;
     BuildRows(table, rows);
     vm::MemTimeTableHandler table_handler("t1", "temp", &(table.columns()));
     for (size_t i = 0; i < rows.size(); i++) {
@@ -285,7 +285,7 @@ TEST_F(MemCataLogTest, mem_time_table_handler_test) {
 
 TEST_F(MemCataLogTest, mem_table_iterator_test) {
     std::vector<Row> rows;
-    ::fesql::type::TableDef table;
+    ::hybridse::type::TableDef table;
     BuildRows(table, rows);
     vm::MemTimeTableHandler table_handler("t1", "temp", &(table.columns()));
     uint64_t ts = 1;
@@ -337,7 +337,7 @@ TEST_F(MemCataLogTest, mem_table_iterator_test) {
 
 TEST_F(MemCataLogTest, mem_partition_test) {
     std::vector<Row> rows;
-    ::fesql::type::TableDef table;
+    ::hybridse::type::TableDef table;
     BuildRows(table, rows);
     vm::MemPartitionHandler partition_handler("t1", "temp", &(table.columns()));
 
@@ -421,7 +421,7 @@ TEST_F(MemCataLogTest, mem_partition_test) {
 
 TEST_F(MemCataLogTest, mem_row_handler_test) {
     std::vector<Row> rows;
-    ::fesql::type::TableDef table;
+    ::hybridse::type::TableDef table;
     BuildRows(table, rows);
 
     // construct test
@@ -432,11 +432,11 @@ TEST_F(MemCataLogTest, mem_row_handler_test) {
 }
 TEST_F(MemCataLogTest, mem_row_comcat_test) {
     std::vector<Row> rows;
-    ::fesql::type::TableDef table;
+    ::hybridse::type::TableDef table;
     BuildRows(table, rows);
 
     std::vector<Row> rows_right;
-    ::fesql::type::TableDef table_right;
+    ::hybridse::type::TableDef table_right;
     BuildT2Rows(table_right, rows_right);
     // construct test
     for (size_t i = 0; i < rows.size(); i++) {
@@ -464,7 +464,7 @@ TEST_F(MemCataLogTest, mem_row_comcat_test) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 int main(int argc, char** argv) {
     ::testing::GTEST_FLAG(color) = "yes";
     ::testing::InitGoogleTest(&argc, argv);

@@ -26,14 +26,15 @@
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/IRBuilder.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 BlockIRBuilder::BlockIRBuilder(CodeGenContext *ctx) : ctx_(ctx) {}
 BlockIRBuilder::~BlockIRBuilder() {}
 
-bool fesql::codegen::BlockIRBuilder::BuildBlock(
-    const fesql::node::FnNodeList *statements, fesql::base::Status &status) {
+bool hybridse::codegen::BlockIRBuilder::BuildBlock(
+    const hybridse::node::FnNodeList *statements,
+    hybridse::base::Status &status) {
     if (statements == NULL) {
         status.code = common::kCodegenError;
         status.msg = "node or block is null";
@@ -49,7 +50,8 @@ bool fesql::codegen::BlockIRBuilder::BuildBlock(
         switch (node->GetType()) {
             case node::kFnAssignStmt: {
                 if (!BuildAssignStmt(
-                        dynamic_cast<const ::fesql::node::FnAssignNode *>(node),
+                        dynamic_cast<const ::hybridse::node::FnAssignNode *>(
+                            node),
                         status)) {
                     return false;
                 }
@@ -65,7 +67,7 @@ bool fesql::codegen::BlockIRBuilder::BuildBlock(
             }
             case node::kFnIfElseBlock: {
                 if (!BuildIfElseBlock(
-                        dynamic_cast<const ::fesql::node::FnIfElseBlock *>(
+                        dynamic_cast<const ::hybridse::node::FnIfElseBlock *>(
                             node),
                         status)) {
                     return false;
@@ -74,7 +76,8 @@ bool fesql::codegen::BlockIRBuilder::BuildBlock(
             }
             case node::kFnForInBlock: {
                 if (!BuildForInBlock(
-                        dynamic_cast<const ::fesql::node::FnForInBlock *>(node),
+                        dynamic_cast<const ::hybridse::node::FnForInBlock *>(
+                            node),
                         status)) {
                     return false;
                 }
@@ -93,7 +96,7 @@ bool fesql::codegen::BlockIRBuilder::BuildBlock(
 }
 
 bool BlockIRBuilder::DoBuildBranchBlock(
-    const ::fesql::node::FnIfElseBlock *if_else_block, size_t branch_idx,
+    const ::hybridse::node::FnIfElseBlock *if_else_block, size_t branch_idx,
     CodeGenContext *ctx, Status &status) {
     if (branch_idx == 0) {
         // if () {}
@@ -102,7 +105,7 @@ bool BlockIRBuilder::DoBuildBranchBlock(
     } else if (branch_idx <= if_else_block->elif_blocks_.size()) {
         // else if () {}
         auto node = if_else_block->elif_blocks_[branch_idx - 1];
-        auto elif_block = dynamic_cast<fesql::node::FnElifBlock *>(node);
+        auto elif_block = dynamic_cast<hybridse::node::FnElifBlock *>(node);
 
         NativeValue elif_condition;
         ExprIRBuilder expr_builder(ctx_);
@@ -144,7 +147,7 @@ bool BlockIRBuilder::DoBuildBranchBlock(
 }
 
 bool BlockIRBuilder::BuildIfElseBlock(
-    const ::fesql::node::FnIfElseBlock *if_else_block,
+    const ::hybridse::node::FnIfElseBlock *if_else_block,
     base::Status &status) {  // NOLINE
     if (if_else_block == nullptr) {
         status.code = common::kCodegenError;
@@ -183,7 +186,7 @@ bool BlockIRBuilder::BuildIfElseBlock(
     return true;
 }
 
-bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
+bool BlockIRBuilder::BuildForInBlock(const ::hybridse::node::FnForInBlock *node,
                                      base::Status &status) {
     if (node == nullptr) {
         status.code = common::kCodegenError;
@@ -206,16 +209,16 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
     }
     llvm::Value *container_value = container_value_wrapper.GetValue(ctx_);
 
-    const fesql::node::TypeNode *container_type_node = nullptr;
+    const hybridse::node::TypeNode *container_type_node = nullptr;
     if (false == GetFullType(ctx_->node_manager(), container_value->getType(),
                              &container_type_node) ||
-        fesql::node::kList != container_type_node->base()) {
+        hybridse::node::kList != container_type_node->base()) {
         status.msg = "fail to codegen list[pos]: invalid list type";
         status.code = common::kCodegenError;
         LOG(WARNING) << status;
         return false;
     }
-    const fesql::node::TypeNode *elem_type_node =
+    const hybridse::node::TypeNode *elem_type_node =
         container_type_node->generics_[0];
     const bool elem_nullable = false;
 
@@ -264,7 +267,7 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
     return status.isOK();
 }
 
-bool BlockIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
+bool BlockIRBuilder::BuildReturnStmt(const ::hybridse::node::FnReturnStmt *node,
                                      base::Status &status) {  // NOLINE
     if (node == nullptr || node->return_expr_ == nullptr) {
         status.code = common::kCodegenError;
@@ -303,7 +306,7 @@ bool BlockIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
     return true;
 }
 
-bool BlockIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
+bool BlockIRBuilder::BuildAssignStmt(const ::hybridse::node::FnAssignNode *node,
                                      base::Status &status) {  // NOLINE
     if (node == NULL || node->expression_ == nullptr) {
         status.code = common::kCodegenError;
@@ -325,4 +328,4 @@ bool BlockIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

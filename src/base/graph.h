@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_BASE_GRAPH_H_
 #define SRC_BASE_GRAPH_H_
 #include <iostream>
@@ -29,7 +28,7 @@
 #include "glog/logging.h"
 #undef BOOST_ALLOW_DEPRECATED_HEADERS
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 template <class V>
@@ -140,6 +139,6 @@ int Graph<V, H, E>::VertexSize() {
 }
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_BASE_GRAPH_H_

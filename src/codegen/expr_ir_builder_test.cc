@@ -39,13 +39,13 @@
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 
-using fesql::codec::Date;
-using fesql::codec::StringRef;
-using fesql::codec::Timestamp;
-using fesql::node::ExprNode;
+using hybridse::codec::Date;
+using hybridse::codec::StringRef;
+using hybridse::codec::Timestamp;
+using hybridse::node::ExprNode;
 ExitOnError ExitOnErr;
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 class ExprIRBuilderTest : public ::testing::Test {
@@ -82,14 +82,14 @@ void ExprErrorCheck(
     ASSERT_FALSE(compiled_func.valid());
 }
 
-void GenAddExpr(node::NodeManager *manager, ::fesql::node::ExprNode **expr) {
+void GenAddExpr(node::NodeManager *manager, ::hybridse::node::ExprNode **expr) {
     // TODO(wangtaize) free
-    new ::fesql::node::BinaryExpr(::fesql::node::kFnOpAdd);
+    new ::hybridse::node::BinaryExpr(::hybridse::node::kFnOpAdd);
 
-    ::fesql::node::ExprNode *i32_node = (manager->MakeConstNode(1));
-    ::fesql::node::ExprNode *id_node = (manager->MakeExprIdNode("a"));
-    ::fesql::node::ExprNode *bexpr =
-        (manager->MakeBinaryExprNode(i32_node, id_node, fesql::node::kFnOpAdd));
+    ::hybridse::node::ExprNode *i32_node = (manager->MakeConstNode(1));
+    ::hybridse::node::ExprNode *id_node = (manager->MakeExprIdNode("a"));
+    ::hybridse::node::ExprNode *bexpr = (manager->MakeBinaryExprNode(
+        i32_node, id_node, hybridse::node::kFnOpAdd));
     *expr = bexpr;
 }
 
@@ -103,7 +103,7 @@ TEST_F(ExprIRBuilderTest, test_add_int32) {
 }
 
 template <class V1, class V2, class R>
-void BinaryExprCheck(V1 v1, V2 v2, R r, ::fesql::node::FnOperator op) {
+void BinaryExprCheck(V1 v1, V2 v2, R r, ::hybridse::node::FnOperator op) {
     ExprCheck(
         [=](node::NodeManager *nm, node::ExprNode *l, node::ExprNode *r) {
             return nm->MakeBinaryExprNode(nm->MakeConstNode(v1),
@@ -114,561 +114,577 @@ void BinaryExprCheck(V1 v1, V2 v2, R r, ::fesql::node::FnOperator op) {
 
 TEST_F(ExprIRBuilderTest, test_add_int16_x_expr) {
     BinaryExprCheck<int16_t, int16_t, int16_t>(1, 1, 2,
-                                               ::fesql::node::kFnOpAdd);
+                                               ::hybridse::node::kFnOpAdd);
 
     BinaryExprCheck<int16_t, int32_t, int32_t>(1, 1, 2,
-                                               ::fesql::node::kFnOpAdd);
+                                               ::hybridse::node::kFnOpAdd);
 
     BinaryExprCheck<int16_t, int64_t, int64_t>(1, 8000000000L, 8000000001L,
-                                               ::fesql::node::kFnOpAdd);
+                                               ::hybridse::node::kFnOpAdd);
 
     BinaryExprCheck<int16_t, float, float>(1, 12345678.5f, 12345678.5f + 1.0f,
-                                           ::fesql::node::kFnOpAdd);
+                                           ::hybridse::node::kFnOpAdd);
     BinaryExprCheck<int16_t, double, double>(1, 12345678.5, 12345678.5 + 1.0,
-                                             ::fesql::node::kFnOpAdd);
+                                             ::hybridse::node::kFnOpAdd);
 }
 
 TEST_F(ExprIRBuilderTest, test_add_int32_x_expr) {
     BinaryExprCheck<int32_t, int16_t, int32_t>(1, 1, 2,
-                                               ::fesql::node::kFnOpAdd);
+                                               ::hybridse::node::kFnOpAdd);
 
     BinaryExprCheck<int32_t, int32_t, int32_t>(1, 1, 2,
-                                               ::fesql::node::kFnOpAdd);
+                                               ::hybridse::node::kFnOpAdd);
 
     BinaryExprCheck<int32_t, int64_t, int64_t>(1, 8000000000L, 8000000001L,
-                                               ::fesql::node::kFnOpAdd);
+                                               ::hybridse::node::kFnOpAdd);
 
     BinaryExprCheck<int32_t, float, float>(1, 12345678.5f, 12345678.5f + 1.0f,
-                                           ::fesql::node::kFnOpAdd);
+                                           ::hybridse::node::kFnOpAdd);
     BinaryExprCheck<int32_t, double, double>(1, 12345678.5, 12345678.5 + 1.0,
-                                             ::fesql::node::kFnOpAdd);
+                                             ::hybridse::node::kFnOpAdd);
 }
 
 TEST_F(ExprIRBuilderTest, test_add_int64_x_expr) {
     BinaryExprCheck<int64_t, int16_t, int64_t>(8000000000L, 1, 8000000001L,
-                                               ::fesql::node::kFnOpAdd);
+                                               ::hybridse::node::kFnOpAdd);
 
     BinaryExprCheck<int64_t, int32_t, int64_t>(8000000000L, 1, 8000000001L,
-                                               ::fesql::node::kFnOpAdd);
+                                               ::hybridse::node::kFnOpAdd);
 
     BinaryExprCheck<int64_t, int64_t, int64_t>(1L, 8000000000L, 8000000001L,
-                                               ::fesql::node::kFnOpAdd);
+                                               ::hybridse::node::kFnOpAdd);
 
     BinaryExprCheck<int64_t, float, float>(1L, 12345678.5f, 12345678.5f + 1.0f,
-                                           ::fesql::node::kFnOpAdd);
+                                           ::hybridse::node::kFnOpAdd);
     BinaryExprCheck<int64_t, double, double>(1, 12345678.5, 12345678.5 + 1.0,
-                                             ::fesql::node::kFnOpAdd);
+                                             ::hybridse::node::kFnOpAdd);
 }
 
 TEST_F(ExprIRBuilderTest, test_add_float_x_expr) {
     BinaryExprCheck<float, int16_t, float>(1.0f, 1, 2.0f,
-                                           ::fesql::node::kFnOpAdd);
+                                           ::hybridse::node::kFnOpAdd);
 
     BinaryExprCheck<float, int32_t, float>(8000000000L, 1, 8000000001L,
-                                           ::fesql::node::kFnOpAdd);
+                                           ::hybridse::node::kFnOpAdd);
 
     BinaryExprCheck<float, int64_t, float>(1.0f, 200000L, 1.0f + 200000.0f,
-                                           ::fesql::node::kFnOpAdd);
+                                           ::hybridse::node::kFnOpAdd);
 
     BinaryExprCheck<float, float, float>(1.0f, 12345678.5f, 12345678.5f + 1.0f,
-                                         ::fesql::node::kFnOpAdd);
+                                         ::hybridse::node::kFnOpAdd);
     BinaryExprCheck<float, double, double>(1.0f, 12345678.5, 12345678.5 + 1.0,
-                                           ::fesql::node::kFnOpAdd);
+                                           ::hybridse::node::kFnOpAdd);
 }
 
 TEST_F(ExprIRBuilderTest, test_add_double_x_expr) {
     BinaryExprCheck<double, int16_t, double>(1.0, 1, 2.0,
-                                             ::fesql::node::kFnOpAdd);
+                                             ::hybridse::node::kFnOpAdd);
 
     BinaryExprCheck<double, int32_t, double>(8000000000L, 1, 8000000001.0,
-                                             ::fesql::node::kFnOpAdd);
+                                             ::hybridse::node::kFnOpAdd);
 
     BinaryExprCheck<double, int64_t, double>(1.0f, 200000L, 200001.0,
-                                             ::fesql::node::kFnOpAdd);
+                                             ::hybridse::node::kFnOpAdd);
 
     BinaryExprCheck<double, float, double>(
         1.0, 12345678.5f, static_cast<double>(12345678.5f) + 1.0,
-        ::fesql::node::kFnOpAdd);
+        ::hybridse::node::kFnOpAdd);
     BinaryExprCheck<double, double, double>(1.0, 12345678.5, 12345678.5 + 1.0,
-                                            ::fesql::node::kFnOpAdd);
+                                            ::hybridse::node::kFnOpAdd);
 }
 
 TEST_F(ExprIRBuilderTest, test_sub_int16_x_expr) {
     BinaryExprCheck<int16_t, int16_t, int16_t>(2, 1, 1,
-                                               ::fesql::node::kFnOpMinus);
+                                               ::hybridse::node::kFnOpMinus);
 
     BinaryExprCheck<int16_t, int32_t, int32_t>(2, 1, 1,
-                                               ::fesql::node::kFnOpMinus);
+                                               ::hybridse::node::kFnOpMinus);
 
     BinaryExprCheck<int16_t, int64_t, int64_t>(1, 8000000000L, 1L - 8000000000L,
-                                               ::fesql::node::kFnOpMinus);
+                                               ::hybridse::node::kFnOpMinus);
 
     BinaryExprCheck<int16_t, float, float>(1, 12345678.5f, 1.0f - 12345678.5f,
-                                           ::fesql::node::kFnOpMinus);
+                                           ::hybridse::node::kFnOpMinus);
     BinaryExprCheck<int16_t, double, double>(1, 12345678.5, 1.0 - 12345678.5,
-                                             ::fesql::node::kFnOpMinus);
+                                             ::hybridse::node::kFnOpMinus);
 }
 
 TEST_F(ExprIRBuilderTest, test_sub_int32_x_expr) {
     BinaryExprCheck<int32_t, int16_t, int32_t>(2, 1, 1,
-                                               ::fesql::node::kFnOpMinus);
+                                               ::hybridse::node::kFnOpMinus);
 
     BinaryExprCheck<int32_t, int32_t, int32_t>(2, 1, 1,
-                                               ::fesql::node::kFnOpMinus);
+                                               ::hybridse::node::kFnOpMinus);
 
     BinaryExprCheck<int32_t, int64_t, int64_t>(1, 8000000000L, 1L - 8000000000L,
-                                               ::fesql::node::kFnOpMinus);
+                                               ::hybridse::node::kFnOpMinus);
 
     BinaryExprCheck<int32_t, float, float>(1, 12345678.5f, 1.0f - 12345678.5f,
-                                           ::fesql::node::kFnOpMinus);
+                                           ::hybridse::node::kFnOpMinus);
     BinaryExprCheck<int32_t, double, double>(1, 12345678.5, 1.0 - 12345678.5,
-                                             ::fesql::node::kFnOpMinus);
+                                             ::hybridse::node::kFnOpMinus);
 }
 
 TEST_F(ExprIRBuilderTest, test_sub_int64_x_expr) {
     BinaryExprCheck<int64_t, int16_t, int64_t>(8000000000L, 1, 8000000000L - 1L,
-                                               ::fesql::node::kFnOpMinus);
+                                               ::hybridse::node::kFnOpMinus);
 
     BinaryExprCheck<int64_t, int32_t, int64_t>(8000000000L, 1, 8000000000L - 1L,
-                                               ::fesql::node::kFnOpMinus);
+                                               ::hybridse::node::kFnOpMinus);
 
     BinaryExprCheck<int64_t, int64_t, int64_t>(
-        1L, 8000000000L, 1L - 8000000000L, ::fesql::node::kFnOpMinus);
+        1L, 8000000000L, 1L - 8000000000L, ::hybridse::node::kFnOpMinus);
 
     BinaryExprCheck<int64_t, float, float>(1L, 12345678.5f, 1.0f - 12345678.5f,
-                                           ::fesql::node::kFnOpMinus);
+                                           ::hybridse::node::kFnOpMinus);
     BinaryExprCheck<int64_t, double, double>(1, 12345678.5, 1.0 - 12345678.5,
-                                             ::fesql::node::kFnOpMinus);
+                                             ::hybridse::node::kFnOpMinus);
 }
 
 TEST_F(ExprIRBuilderTest, test_sub_float_x_expr) {
     BinaryExprCheck<float, int16_t, float>(2.0f, 1, 1.0f,
-                                           ::fesql::node::kFnOpMinus);
+                                           ::hybridse::node::kFnOpMinus);
 
     BinaryExprCheck<float, int32_t, float>(8000000000L, 1, 8000000000.0f - 1.0f,
-                                           ::fesql::node::kFnOpMinus);
+                                           ::hybridse::node::kFnOpMinus);
 
     BinaryExprCheck<float, int64_t, float>(1.0f, 200000L, 1.0f - 200000.0f,
-                                           ::fesql::node::kFnOpMinus);
+                                           ::hybridse::node::kFnOpMinus);
 
     BinaryExprCheck<float, float, float>(1.0f, 12345678.5f, 1.0f - 12345678.5f,
-                                         ::fesql::node::kFnOpMinus);
+                                         ::hybridse::node::kFnOpMinus);
     BinaryExprCheck<float, double, double>(1.0f, 12345678.5, 1.0 - 12345678.5,
-                                           ::fesql::node::kFnOpMinus);
+                                           ::hybridse::node::kFnOpMinus);
 }
 
 TEST_F(ExprIRBuilderTest, test_sub_double_x_expr) {
     BinaryExprCheck<double, int16_t, double>(2.0, 1, 1.0,
-                                             ::fesql::node::kFnOpMinus);
+                                             ::hybridse::node::kFnOpMinus);
 
     BinaryExprCheck<double, int32_t, double>(8000000000L, 1, 8000000000.0 - 1.0,
-                                             ::fesql::node::kFnOpMinus);
+                                             ::hybridse::node::kFnOpMinus);
 
     BinaryExprCheck<double, int64_t, double>(1.0f, 200000L, 1.0 - 200000.0,
-                                             ::fesql::node::kFnOpMinus);
+                                             ::hybridse::node::kFnOpMinus);
 
     BinaryExprCheck<double, float, double>(
         1.0, 12345678.5f, 1.0 - static_cast<double>(12345678.5f),
-        ::fesql::node::kFnOpMinus);
+        ::hybridse::node::kFnOpMinus);
     BinaryExprCheck<double, double, double>(1.0, 12345678.5, 1.0 - 12345678.5,
-                                            ::fesql::node::kFnOpMinus);
+                                            ::hybridse::node::kFnOpMinus);
 }
 
 TEST_F(ExprIRBuilderTest, test_mul_int16_x_expr) {
     BinaryExprCheck<int16_t, int16_t, int16_t>(2, 3, 2 * 3,
-                                               ::fesql::node::kFnOpMulti);
+                                               ::hybridse::node::kFnOpMulti);
 
     BinaryExprCheck<int16_t, int32_t, int32_t>(2, 3, 2 * 3,
-                                               ::fesql::node::kFnOpMulti);
+                                               ::hybridse::node::kFnOpMulti);
 
     BinaryExprCheck<int16_t, int64_t, int64_t>(2, 8000000000L, 2L * 8000000000L,
-                                               ::fesql::node::kFnOpMulti);
+                                               ::hybridse::node::kFnOpMulti);
 
     BinaryExprCheck<int16_t, float, float>(2, 12345678.5f, 2.0f * 12345678.5f,
-                                           ::fesql::node::kFnOpMulti);
+                                           ::hybridse::node::kFnOpMulti);
     BinaryExprCheck<int16_t, double, double>(2, 12345678.5, 2.0 * 12345678.5,
-                                             ::fesql::node::kFnOpMulti);
+                                             ::hybridse::node::kFnOpMulti);
 }
 TEST_F(ExprIRBuilderTest, test_multi_int32_x_expr) {
     BinaryExprCheck<int32_t, int16_t, int32_t>(2, 3, 2 * 3,
-                                               ::fesql::node::kFnOpMulti);
+                                               ::hybridse::node::kFnOpMulti);
 
     BinaryExprCheck<int32_t, int32_t, int32_t>(2, 3, 2 * 3,
-                                               ::fesql::node::kFnOpMulti);
+                                               ::hybridse::node::kFnOpMulti);
 
     BinaryExprCheck<int32_t, int64_t, int64_t>(2, 8000000000L, 2L * 8000000000L,
-                                               ::fesql::node::kFnOpMulti);
+                                               ::hybridse::node::kFnOpMulti);
 
     BinaryExprCheck<int32_t, float, float>(2, 12345678.5f, 2.0f * 12345678.5f,
-                                           ::fesql::node::kFnOpMulti);
+                                           ::hybridse::node::kFnOpMulti);
     BinaryExprCheck<int32_t, double, double>(2, 12345678.5, 2.0 * 12345678.5,
-                                             ::fesql::node::kFnOpMulti);
+                                             ::hybridse::node::kFnOpMulti);
 }
 TEST_F(ExprIRBuilderTest, test_multi_int64_x_expr) {
     BinaryExprCheck<int64_t, int16_t, int64_t>(
-        8000000000L, 2L, 8000000000L * 2L, ::fesql::node::kFnOpMulti);
+        8000000000L, 2L, 8000000000L * 2L, ::hybridse::node::kFnOpMulti);
 
     BinaryExprCheck<int64_t, int32_t, int64_t>(8000000000L, 2, 8000000000L * 2L,
-                                               ::fesql::node::kFnOpMulti);
+                                               ::hybridse::node::kFnOpMulti);
 
     BinaryExprCheck<int64_t, int64_t, int64_t>(
-        2L, 8000000000L, 2L * 8000000000L, ::fesql::node::kFnOpMulti);
+        2L, 8000000000L, 2L * 8000000000L, ::hybridse::node::kFnOpMulti);
 
     BinaryExprCheck<int64_t, float, float>(2L, 12345678.5f, 2.0f * 12345678.5f,
-                                           ::fesql::node::kFnOpMulti);
+                                           ::hybridse::node::kFnOpMulti);
     BinaryExprCheck<int64_t, double, double>(2, 12345678.5, 2.0 * 12345678.5,
-                                             ::fesql::node::kFnOpMulti);
+                                             ::hybridse::node::kFnOpMulti);
 }
 
 TEST_F(ExprIRBuilderTest, test_multi_float_x_expr) {
     BinaryExprCheck<float, int16_t, float>(2.0f, 3.0f, 2.0f * 3.0f,
-                                           ::fesql::node::kFnOpMulti);
+                                           ::hybridse::node::kFnOpMulti);
 
     BinaryExprCheck<float, int32_t, float>(8000000000L, 2, 8000000000.0f * 2.0f,
-                                           ::fesql::node::kFnOpMulti);
+                                           ::hybridse::node::kFnOpMulti);
 
     BinaryExprCheck<float, int64_t, float>(2.0f, 200000L, 2.0f * 200000.0f,
-                                           ::fesql::node::kFnOpMulti);
+                                           ::hybridse::node::kFnOpMulti);
 
     BinaryExprCheck<float, float, float>(2.0f, 12345678.5f, 2.0f * 12345678.5f,
-                                         ::fesql::node::kFnOpMulti);
+                                         ::hybridse::node::kFnOpMulti);
     BinaryExprCheck<float, double, double>(2.0f, 12345678.5, 2.0 * 12345678.5,
-                                           ::fesql::node::kFnOpMulti);
+                                           ::hybridse::node::kFnOpMulti);
 }
 TEST_F(ExprIRBuilderTest, test_multi_double_x_expr) {
     BinaryExprCheck<double, int16_t, double>(2.0, 3, 2.0 * 3.0,
-                                             ::fesql::node::kFnOpMulti);
+                                             ::hybridse::node::kFnOpMulti);
 
     BinaryExprCheck<double, int32_t, double>(8000000000L, 2, 8000000000.0 * 2.0,
-                                             ::fesql::node::kFnOpMulti);
+                                             ::hybridse::node::kFnOpMulti);
 
     BinaryExprCheck<double, int64_t, double>(2.0f, 200000L, 2.0 * 200000.0,
-                                             ::fesql::node::kFnOpMulti);
+                                             ::hybridse::node::kFnOpMulti);
 
     BinaryExprCheck<double, float, double>(
         2.0, 12345678.5f, 2.0 * static_cast<double>(12345678.5f),
-        ::fesql::node::kFnOpMulti);
+        ::hybridse::node::kFnOpMulti);
     BinaryExprCheck<double, double, double>(2.0, 12345678.5, 2.0 * 12345678.5,
-                                            ::fesql::node::kFnOpMulti);
+                                            ::hybridse::node::kFnOpMulti);
 }
 
 TEST_F(ExprIRBuilderTest, test_fdiv_int32_x_expr) {
     BinaryExprCheck<int32_t, int16_t, double>(2, 3, 2.0 / 3.0,
-                                              ::fesql::node::kFnOpFDiv);
+                                              ::hybridse::node::kFnOpFDiv);
 
     BinaryExprCheck<int32_t, int32_t, double>(2, 3, 2.0 / 3.0,
-                                              ::fesql::node::kFnOpFDiv);
+                                              ::hybridse::node::kFnOpFDiv);
 
     BinaryExprCheck<int32_t, int64_t, double>(
-        2, 8000000000L, 2.0 / 8000000000.0, ::fesql::node::kFnOpFDiv);
+        2, 8000000000L, 2.0 / 8000000000.0, ::hybridse::node::kFnOpFDiv);
 
     BinaryExprCheck<int32_t, float, double>(2, 3.0f, 2.0 / 3.0,
-                                            ::fesql::node::kFnOpFDiv);
+                                            ::hybridse::node::kFnOpFDiv);
     BinaryExprCheck<int32_t, double, double>(2, 12345678.5, 2.0 / 12345678.5,
-                                             ::fesql::node::kFnOpFDiv);
+                                             ::hybridse::node::kFnOpFDiv);
 }
 
 TEST_F(ExprIRBuilderTest, test_mod_int32_x_expr) {
     BinaryExprCheck<int32_t, int16_t, int32_t>(12, 5, 2,
-                                               ::fesql::node::kFnOpMod);
+                                               ::hybridse::node::kFnOpMod);
 
     BinaryExprCheck<int32_t, int32_t, int32_t>(12, 5, 2,
-                                               ::fesql::node::kFnOpMod);
+                                               ::hybridse::node::kFnOpMod);
 
     BinaryExprCheck<int32_t, int64_t, int64_t>(12, 50000L, 12L,
-                                               ::fesql::node::kFnOpMod);
+                                               ::hybridse::node::kFnOpMod);
 
     BinaryExprCheck<int32_t, float, float>(12, 5.1f, fmod(12.0f, 5.1f),
-                                           ::fesql::node::kFnOpMod);
+                                           ::hybridse::node::kFnOpMod);
     BinaryExprCheck<int32_t, double, double>(12, 5.1, fmod(12.0, 5.1),
-                                             ::fesql::node::kFnOpMod);
+                                             ::hybridse::node::kFnOpMod);
 }
 
 TEST_F(ExprIRBuilderTest, test_mod_float_x_expr) {
     BinaryExprCheck<int16_t, float, float>(12, 5.1f, fmod(12.0f, 5.1f),
-                                           ::fesql::node::kFnOpMod);
+                                           ::hybridse::node::kFnOpMod);
 
     BinaryExprCheck<int32_t, float, float>(12, 5.1f, fmod(12.0f, 5.1f),
-                                           ::fesql::node::kFnOpMod);
+                                           ::hybridse::node::kFnOpMod);
 
     BinaryExprCheck<int64_t, float, float>(12L, 5.1f, fmod(12.0f, 5.1f),
-                                           ::fesql::node::kFnOpMod);
+                                           ::hybridse::node::kFnOpMod);
 
     BinaryExprCheck<float, float, float>(12.0f, 5.1f, fmod(12.0f, 5.1f),
-                                         ::fesql::node::kFnOpMod);
+                                         ::hybridse::node::kFnOpMod);
 }
 
 TEST_F(ExprIRBuilderTest, test_mod_double_x_expr) {
     BinaryExprCheck<int16_t, double, double>(12, 5.1, fmod(12.0, 5.1),
-                                             ::fesql::node::kFnOpMod);
+                                             ::hybridse::node::kFnOpMod);
 
     BinaryExprCheck<int32_t, double, double>(12, 5.1, fmod(12.0, 5.1),
-                                             ::fesql::node::kFnOpMod);
+                                             ::hybridse::node::kFnOpMod);
 
     BinaryExprCheck<int64_t, double, double>(12L, 5.1, fmod(12.0, 5.1),
-                                             ::fesql::node::kFnOpMod);
+                                             ::hybridse::node::kFnOpMod);
 
     BinaryExprCheck<float, double, double>(12.0f, 5.1, fmod(12.0, 5.1),
-                                           ::fesql::node::kFnOpMod);
+                                           ::hybridse::node::kFnOpMod);
     BinaryExprCheck<double, double, double>(12.0, 5.1, fmod(12.0, 5.1),
-                                            ::fesql::node::kFnOpMod);
+                                            ::hybridse::node::kFnOpMod);
 }
 
 TEST_F(ExprIRBuilderTest, test_eq_expr_true) {
-    BinaryExprCheck<int16_t, int16_t, bool>(1, 1, true, ::fesql::node::kFnOpEq);
+    BinaryExprCheck<int16_t, int16_t, bool>(1, 1, true,
+                                            ::hybridse::node::kFnOpEq);
 
-    BinaryExprCheck<int32_t, int32_t, bool>(1, 1, true, ::fesql::node::kFnOpEq);
+    BinaryExprCheck<int32_t, int32_t, bool>(1, 1, true,
+                                            ::hybridse::node::kFnOpEq);
 
-    BinaryExprCheck<int64_t, int64_t, bool>(1, 1, true, ::fesql::node::kFnOpEq);
+    BinaryExprCheck<int64_t, int64_t, bool>(1, 1, true,
+                                            ::hybridse::node::kFnOpEq);
 
     BinaryExprCheck<float, float, bool>(1.0f, 1.0f, true,
-                                        ::fesql::node::kFnOpEq);
+                                        ::hybridse::node::kFnOpEq);
 
     BinaryExprCheck<double, double, bool>(1.0, 1.0, true,
-                                          ::fesql::node::kFnOpEq);
+                                          ::hybridse::node::kFnOpEq);
 
     BinaryExprCheck<int32_t, float, bool>(1, 1.0f, true,
-                                          ::fesql::node::kFnOpEq);
+                                          ::hybridse::node::kFnOpEq);
 
     BinaryExprCheck<int32_t, double, bool>(1, 1.0, true,
-                                           ::fesql::node::kFnOpEq);
+                                           ::hybridse::node::kFnOpEq);
 }
 
 TEST_F(ExprIRBuilderTest, test_eq_expr_false) {
     BinaryExprCheck<int16_t, int16_t, bool>(1, 2, false,
-                                            ::fesql::node::kFnOpEq);
+                                            ::hybridse::node::kFnOpEq);
 
     BinaryExprCheck<int32_t, int32_t, bool>(1, 2, false,
-                                            ::fesql::node::kFnOpEq);
+                                            ::hybridse::node::kFnOpEq);
 
     BinaryExprCheck<int64_t, int64_t, bool>(1, 2, false,
-                                            ::fesql::node::kFnOpEq);
+                                            ::hybridse::node::kFnOpEq);
 
     BinaryExprCheck<float, float, bool>(1.0f, 1.1f, false,
-                                        ::fesql::node::kFnOpEq);
+                                        ::hybridse::node::kFnOpEq);
 
     BinaryExprCheck<double, double, bool>(1.0, 1.1, false,
-                                          ::fesql::node::kFnOpEq);
+                                          ::hybridse::node::kFnOpEq);
 }
 
 TEST_F(ExprIRBuilderTest, test_neq_expr_true) {
     BinaryExprCheck<int16_t, int16_t, bool>(1, 2, true,
-                                            ::fesql::node::kFnOpNeq);
+                                            ::hybridse::node::kFnOpNeq);
 
     BinaryExprCheck<int32_t, int32_t, bool>(1, 2, true,
-                                            ::fesql::node::kFnOpNeq);
+                                            ::hybridse::node::kFnOpNeq);
 
     BinaryExprCheck<int64_t, int64_t, bool>(1, 2, true,
-                                            ::fesql::node::kFnOpNeq);
+                                            ::hybridse::node::kFnOpNeq);
 
     BinaryExprCheck<float, float, bool>(1.0f, 1.1f, true,
-                                        ::fesql::node::kFnOpNeq);
+                                        ::hybridse::node::kFnOpNeq);
 
     BinaryExprCheck<double, double, bool>(1.0, 1.1, true,
-                                          ::fesql::node::kFnOpNeq);
+                                          ::hybridse::node::kFnOpNeq);
 }
 
 TEST_F(ExprIRBuilderTest, test_neq_expr_false) {
     BinaryExprCheck<int16_t, int16_t, bool>(1, 1, false,
-                                            ::fesql::node::kFnOpNeq);
+                                            ::hybridse::node::kFnOpNeq);
 
     BinaryExprCheck<int32_t, int32_t, bool>(1, 1, false,
-                                            ::fesql::node::kFnOpNeq);
+                                            ::hybridse::node::kFnOpNeq);
 
     BinaryExprCheck<int64_t, int64_t, bool>(1, 1, false,
-                                            ::fesql::node::kFnOpNeq);
+                                            ::hybridse::node::kFnOpNeq);
 
     BinaryExprCheck<float, float, bool>(1.0f, 1.0f, false,
-                                        ::fesql::node::kFnOpNeq);
+                                        ::hybridse::node::kFnOpNeq);
 
     BinaryExprCheck<double, double, bool>(1.0, 1.0, false,
-                                          ::fesql::node::kFnOpNeq);
+                                          ::hybridse::node::kFnOpNeq);
 
     BinaryExprCheck<int32_t, float, bool>(1, 1.0f, false,
-                                          ::fesql::node::kFnOpNeq);
+                                          ::hybridse::node::kFnOpNeq);
 
     BinaryExprCheck<int32_t, double, bool>(1, 1.0, false,
-                                           ::fesql::node::kFnOpNeq);
+                                           ::hybridse::node::kFnOpNeq);
 }
 
 TEST_F(ExprIRBuilderTest, test_gt_expr_true) {
-    BinaryExprCheck<int16_t, int16_t, bool>(2, 1, true, ::fesql::node::kFnOpGt);
+    BinaryExprCheck<int16_t, int16_t, bool>(2, 1, true,
+                                            ::hybridse::node::kFnOpGt);
 
-    BinaryExprCheck<int32_t, int32_t, bool>(2, 1, true, ::fesql::node::kFnOpGt);
+    BinaryExprCheck<int32_t, int32_t, bool>(2, 1, true,
+                                            ::hybridse::node::kFnOpGt);
 
-    BinaryExprCheck<int64_t, int64_t, bool>(2, 1, true, ::fesql::node::kFnOpGt);
+    BinaryExprCheck<int64_t, int64_t, bool>(2, 1, true,
+                                            ::hybridse::node::kFnOpGt);
 
     BinaryExprCheck<float, float, bool>(1.1f, 1.0f, true,
-                                        ::fesql::node::kFnOpGt);
+                                        ::hybridse::node::kFnOpGt);
 
     BinaryExprCheck<double, double, bool>(1.1, 1.0, true,
-                                          ::fesql::node::kFnOpGt);
+                                          ::hybridse::node::kFnOpGt);
 
     BinaryExprCheck<int32_t, float, bool>(2, 1.9f, true,
-                                          ::fesql::node::kFnOpGt);
+                                          ::hybridse::node::kFnOpGt);
 
     BinaryExprCheck<int32_t, double, bool>(2, 1.9, true,
-                                           ::fesql::node::kFnOpGt);
+                                           ::hybridse::node::kFnOpGt);
 }
 
 TEST_F(ExprIRBuilderTest, test_gt_expr_false) {
     BinaryExprCheck<int16_t, int16_t, bool>(2, 2, false,
-                                            ::fesql::node::kFnOpGt);
+                                            ::hybridse::node::kFnOpGt);
     BinaryExprCheck<int16_t, int16_t, bool>(2, 3, false,
-                                            ::fesql::node::kFnOpGt);
+                                            ::hybridse::node::kFnOpGt);
 
     BinaryExprCheck<int32_t, int32_t, bool>(2, 2, false,
-                                            ::fesql::node::kFnOpGt);
+                                            ::hybridse::node::kFnOpGt);
     BinaryExprCheck<int32_t, int32_t, bool>(2, 3, false,
-                                            ::fesql::node::kFnOpGt);
+                                            ::hybridse::node::kFnOpGt);
 
     BinaryExprCheck<int64_t, int64_t, bool>(2, 2, false,
-                                            ::fesql::node::kFnOpGt);
+                                            ::hybridse::node::kFnOpGt);
     BinaryExprCheck<int64_t, int64_t, bool>(2, 3, false,
-                                            ::fesql::node::kFnOpGt);
+                                            ::hybridse::node::kFnOpGt);
 
     BinaryExprCheck<float, float, bool>(1.1f, 1.2f, false,
-                                        ::fesql::node::kFnOpGt);
+                                        ::hybridse::node::kFnOpGt);
 
     BinaryExprCheck<double, double, bool>(1.1, 1.2, false,
-                                          ::fesql::node::kFnOpGt);
+                                          ::hybridse::node::kFnOpGt);
 
     BinaryExprCheck<int32_t, float, bool>(2, 2.1f, false,
-                                          ::fesql::node::kFnOpGt);
+                                          ::hybridse::node::kFnOpGt);
 
     BinaryExprCheck<int32_t, double, bool>(2, 2.1, false,
-                                           ::fesql::node::kFnOpGt);
+                                           ::hybridse::node::kFnOpGt);
 }
 TEST_F(ExprIRBuilderTest, test_ge_expr_true) {
-    BinaryExprCheck<int16_t, int16_t, bool>(2, 1, true, ::fesql::node::kFnOpGe);
-    BinaryExprCheck<int16_t, int16_t, bool>(2, 2, true, ::fesql::node::kFnOpGe);
+    BinaryExprCheck<int16_t, int16_t, bool>(2, 1, true,
+                                            ::hybridse::node::kFnOpGe);
+    BinaryExprCheck<int16_t, int16_t, bool>(2, 2, true,
+                                            ::hybridse::node::kFnOpGe);
 
-    BinaryExprCheck<int32_t, int32_t, bool>(2, 1, true, ::fesql::node::kFnOpGe);
-    BinaryExprCheck<int32_t, int32_t, bool>(2, 2, true, ::fesql::node::kFnOpGe);
+    BinaryExprCheck<int32_t, int32_t, bool>(2, 1, true,
+                                            ::hybridse::node::kFnOpGe);
+    BinaryExprCheck<int32_t, int32_t, bool>(2, 2, true,
+                                            ::hybridse::node::kFnOpGe);
 
-    BinaryExprCheck<int64_t, int64_t, bool>(2, 1, true, ::fesql::node::kFnOpGe);
-    BinaryExprCheck<int64_t, int64_t, bool>(2, 2, true, ::fesql::node::kFnOpGe);
+    BinaryExprCheck<int64_t, int64_t, bool>(2, 1, true,
+                                            ::hybridse::node::kFnOpGe);
+    BinaryExprCheck<int64_t, int64_t, bool>(2, 2, true,
+                                            ::hybridse::node::kFnOpGe);
 
     BinaryExprCheck<float, float, bool>(1.1f, 1.0f, true,
-                                        ::fesql::node::kFnOpGe);
+                                        ::hybridse::node::kFnOpGe);
     BinaryExprCheck<float, float, bool>(1.1f, 1.1f, true,
-                                        ::fesql::node::kFnOpGe);
+                                        ::hybridse::node::kFnOpGe);
 
     BinaryExprCheck<double, double, bool>(1.1, 1.0, true,
-                                          ::fesql::node::kFnOpGe);
+                                          ::hybridse::node::kFnOpGe);
 
     BinaryExprCheck<double, double, bool>(1.1, 1.1, true,
-                                          ::fesql::node::kFnOpGe);
+                                          ::hybridse::node::kFnOpGe);
     BinaryExprCheck<int32_t, float, bool>(2, 1.9f, true,
-                                          ::fesql::node::kFnOpGe);
+                                          ::hybridse::node::kFnOpGe);
     BinaryExprCheck<int32_t, float, bool>(2, 2.0f, true,
-                                          ::fesql::node::kFnOpGe);
+                                          ::hybridse::node::kFnOpGe);
 
     BinaryExprCheck<int32_t, double, bool>(2, 1.9, true,
-                                           ::fesql::node::kFnOpGe);
+                                           ::hybridse::node::kFnOpGe);
     BinaryExprCheck<int32_t, double, bool>(2, 2.0, true,
-                                           ::fesql::node::kFnOpGe);
+                                           ::hybridse::node::kFnOpGe);
 }
 
 TEST_F(ExprIRBuilderTest, test_ge_expr_false) {
     BinaryExprCheck<int16_t, int16_t, bool>(2, 3, false,
-                                            ::fesql::node::kFnOpGe);
+                                            ::hybridse::node::kFnOpGe);
 
     BinaryExprCheck<int32_t, int32_t, bool>(2, 3, false,
-                                            ::fesql::node::kFnOpGe);
+                                            ::hybridse::node::kFnOpGe);
 
     BinaryExprCheck<int64_t, int64_t, bool>(2, 3, false,
-                                            ::fesql::node::kFnOpGe);
+                                            ::hybridse::node::kFnOpGe);
 
     BinaryExprCheck<float, float, bool>(1.1f, 1.2f, false,
-                                        ::fesql::node::kFnOpGe);
+                                        ::hybridse::node::kFnOpGe);
 
     BinaryExprCheck<double, double, bool>(1.1, 1.2, false,
-                                          ::fesql::node::kFnOpGe);
+                                          ::hybridse::node::kFnOpGe);
 
     BinaryExprCheck<int32_t, float, bool>(2, 2.1f, false,
-                                          ::fesql::node::kFnOpGe);
+                                          ::hybridse::node::kFnOpGe);
 }
 
 TEST_F(ExprIRBuilderTest, test_lt_expr_true) {
-    BinaryExprCheck<int16_t, int16_t, bool>(2, 3, true, ::fesql::node::kFnOpLt);
+    BinaryExprCheck<int16_t, int16_t, bool>(2, 3, true,
+                                            ::hybridse::node::kFnOpLt);
 
-    BinaryExprCheck<int32_t, int32_t, bool>(2, 3, true, ::fesql::node::kFnOpLt);
+    BinaryExprCheck<int32_t, int32_t, bool>(2, 3, true,
+                                            ::hybridse::node::kFnOpLt);
 
-    BinaryExprCheck<int64_t, int64_t, bool>(2, 3, true, ::fesql::node::kFnOpLt);
+    BinaryExprCheck<int64_t, int64_t, bool>(2, 3, true,
+                                            ::hybridse::node::kFnOpLt);
 
     BinaryExprCheck<float, float, bool>(1.1f, 1.2f, true,
-                                        ::fesql::node::kFnOpLt);
+                                        ::hybridse::node::kFnOpLt);
 
     BinaryExprCheck<double, double, bool>(1.1, 1.2, true,
-                                          ::fesql::node::kFnOpLt);
+                                          ::hybridse::node::kFnOpLt);
 
     BinaryExprCheck<int32_t, float, bool>(2, 2.1f, true,
-                                          ::fesql::node::kFnOpLt);
+                                          ::hybridse::node::kFnOpLt);
 }
 
 TEST_F(ExprIRBuilderTest, test_lt_expr_false) {
     BinaryExprCheck<int16_t, int16_t, bool>(2, 1, false,
-                                            ::fesql::node::kFnOpLt);
+                                            ::hybridse::node::kFnOpLt);
     BinaryExprCheck<int16_t, int16_t, bool>(2, 2, false,
-                                            ::fesql::node::kFnOpLt);
+                                            ::hybridse::node::kFnOpLt);
 
     BinaryExprCheck<int32_t, int32_t, bool>(2, 1, false,
-                                            ::fesql::node::kFnOpLt);
+                                            ::hybridse::node::kFnOpLt);
     BinaryExprCheck<int32_t, int32_t, bool>(2, 2, false,
-                                            ::fesql::node::kFnOpLt);
+                                            ::hybridse::node::kFnOpLt);
 
     BinaryExprCheck<int64_t, int64_t, bool>(2, 1, false,
-                                            ::fesql::node::kFnOpLt);
+                                            ::hybridse::node::kFnOpLt);
     BinaryExprCheck<int64_t, int64_t, bool>(2, 2, false,
-                                            ::fesql::node::kFnOpLt);
+                                            ::hybridse::node::kFnOpLt);
 
     BinaryExprCheck<float, float, bool>(1.1f, 1.0f, false,
-                                        ::fesql::node::kFnOpLt);
+                                        ::hybridse::node::kFnOpLt);
     BinaryExprCheck<float, float, bool>(1.1f, 1.1f, false,
-                                        ::fesql::node::kFnOpLt);
+                                        ::hybridse::node::kFnOpLt);
 
     BinaryExprCheck<double, double, bool>(1.1, 1.0, false,
-                                          ::fesql::node::kFnOpLt);
+                                          ::hybridse::node::kFnOpLt);
 
     BinaryExprCheck<double, double, bool>(1.1, 1.1, false,
-                                          ::fesql::node::kFnOpLt);
+                                          ::hybridse::node::kFnOpLt);
     BinaryExprCheck<int32_t, float, bool>(2, 1.9f, false,
-                                          ::fesql::node::kFnOpLt);
+                                          ::hybridse::node::kFnOpLt);
     BinaryExprCheck<int32_t, float, bool>(2, 2.0f, false,
-                                          ::fesql::node::kFnOpLt);
+                                          ::hybridse::node::kFnOpLt);
 
     BinaryExprCheck<int32_t, double, bool>(2, 1.9, false,
-                                           ::fesql::node::kFnOpLt);
+                                           ::hybridse::node::kFnOpLt);
     BinaryExprCheck<int32_t, double, bool>(2, 2.0, false,
-                                           ::fesql::node::kFnOpLt);
+                                           ::hybridse::node::kFnOpLt);
 }
 
 TEST_F(ExprIRBuilderTest, test_and_expr_true) {
     BinaryExprCheck<bool, bool, bool>(true, true, true,
-                                      ::fesql::node::kFnOpAnd);
+                                      ::hybridse::node::kFnOpAnd);
 }
 
 TEST_F(ExprIRBuilderTest, test_and_expr_false) {
     BinaryExprCheck<bool, bool, bool>(false, true, false,
-                                      ::fesql::node::kFnOpAnd);
+                                      ::hybridse::node::kFnOpAnd);
     BinaryExprCheck<bool, bool, bool>(false, false, false,
-                                      ::fesql::node::kFnOpAnd);
+                                      ::hybridse::node::kFnOpAnd);
     BinaryExprCheck<bool, bool, bool>(true, false, false,
-                                      ::fesql::node::kFnOpAnd);
+                                      ::hybridse::node::kFnOpAnd);
 }
 
 TEST_F(ExprIRBuilderTest, test_or_expr_true) {
-    BinaryExprCheck<bool, bool, bool>(true, true, true, ::fesql::node::kFnOpOr);
+    BinaryExprCheck<bool, bool, bool>(true, true, true,
+                                      ::hybridse::node::kFnOpOr);
     BinaryExprCheck<bool, bool, bool>(true, false, true,
-                                      ::fesql::node::kFnOpOr);
+                                      ::hybridse::node::kFnOpOr);
     BinaryExprCheck<bool, bool, bool>(false, true, true,
-                                      ::fesql::node::kFnOpOr);
+                                      ::hybridse::node::kFnOpOr);
 }
 
 TEST_F(ExprIRBuilderTest, test_or_expr_false) {
     BinaryExprCheck<bool, bool, bool>(false, false, false,
-                                      ::fesql::node::kFnOpOr);
+                                      ::hybridse::node::kFnOpOr);
 }
 
 TEST_F(ExprIRBuilderTest, test_get_field) {
@@ -691,7 +707,7 @@ TEST_F(ExprIRBuilderTest, test_get_field) {
         new codec::Row(base::RefCountedSlice::Create(buf, row_size));
     udf::LiteralTypedRow<int16_t, int32_t, int64_t, float, double,
                          codec::Timestamp, codec::Date, codec::StringRef>
-    typed_row(reinterpret_cast<int8_t *>(row));
+        typed_row(reinterpret_cast<int8_t *>(row));
 
     auto make_get_field = [](node::NodeManager *nm, node::ExprNode *input,
                              size_t idx) {
@@ -820,7 +836,7 @@ TEST_F(ExprIRBuilderTest, test_is_null_expr) {
     ExprCheck<bool, udf::Nullable<int32_t>>(make_if_null, true, nullptr);
 }
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

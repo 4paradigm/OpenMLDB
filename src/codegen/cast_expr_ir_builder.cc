@@ -22,9 +22,9 @@
 #include "glog/logging.h"
 #include "node/node_manager.h"
 
-using fesql::common::kCodegenError;
+using hybridse::common::kCodegenError;
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 CastExprIRBuilder::CastExprIRBuilder(::llvm::BasicBlock* block)
     : block_(block) {}
@@ -317,4 +317,4 @@ bool CastExprIRBuilder::BoolCast(llvm::Value* value, llvm::Value** casted_value,
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

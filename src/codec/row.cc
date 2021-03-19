@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-
 #include "codec/row.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codec {
 
 Row::Row() : slice_() {}
@@ -44,7 +43,7 @@ Row::Row(size_t major_slices, const Row &major, size_t secondary_slices,
         }
     }
 }
-Row::Row(const fesql::base::RefCountedSlice &s, size_t secondary_slices,
+Row::Row(const hybridse::base::RefCountedSlice &s, size_t secondary_slices,
          const Row &secondary)
     : slice_(s), slices_(secondary_slices) {
     slices_[0] = secondary.slice_;
@@ -120,4 +119,4 @@ int32_t *Row::GetRowSizes() const {
 }
 
 }  // namespace codec
-}  // namespace fesql
+}  // namespace hybridse

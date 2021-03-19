@@ -15,31 +15,31 @@
  */
 
 #include "sdk/request_row.h"
-#include "sdk/base_impl.h"
 #include "codec/fe_row_codec.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "sdk/base_impl.h"
 #include "vm/catalog.h"
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 class RequestRowTest : public ::testing::Test {};
 
 TEST_F(RequestRowTest, normal_test) {
     vm::Schema schema;
     {
-        ::fesql::type::ColumnDef* column = schema.Add();
-        column->set_type(::fesql::type::kInt32);
+        ::hybridse::type::ColumnDef* column = schema.Add();
+        column->set_type(::hybridse::type::kInt32);
         column->set_name("col0");
     }
     {
-        ::fesql::type::ColumnDef* column = schema.Add();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = schema.Add();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col1");
     }
     {
-        ::fesql::type::ColumnDef* column = schema.Add();
-        column->set_type(::fesql::type::kInt64);
+        ::hybridse::type::ColumnDef* column = schema.Add();
+        column->set_type(::hybridse::type::kInt64);
         column->set_name("col2");
     }
     SchemaImpl schema_impl(schema);
@@ -60,7 +60,7 @@ TEST_F(RequestRowTest, normal_test) {
 }
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char* argv[]) {
     ::testing::InitGoogleTest(&argc, argv);

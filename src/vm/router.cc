@@ -17,7 +17,7 @@
 #include "vm/router.h"
 #include "glog/logging.h"
 #include "node/sql_node.h"
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 bool Router::IsWindowNode(const PhysicalOpNode* physical_node) {
@@ -56,7 +56,7 @@ int Router::Parse(const PhysicalOpNode* physical_plan) {
             if (keys != nullptr && keys->GetChildNum() > 0) {
                 auto exp_node = keys->GetChild(0);
                 auto columnNode =
-                    dynamic_cast<fesql::node::ColumnRefNode*>(exp_node);
+                    dynamic_cast<hybridse::node::ColumnRefNode*>(exp_node);
                 if (columnNode != nullptr) {
                     router_col_ = columnNode->GetColumnName();
                     return 0;
@@ -73,4 +73,4 @@ int Router::Parse(const PhysicalOpNode* physical_plan) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

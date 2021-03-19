@@ -21,7 +21,7 @@
 #include "parquet/schema.h"
 #include "proto/fe_type.pb.h"
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 inline bool MapParquetType(const parquet::ColumnDescriptor* column_desc,
@@ -33,26 +33,26 @@ inline bool MapParquetType(const parquet::ColumnDescriptor* column_desc,
 
     switch (column_desc->physical_type()) {
         case ::parquet::Type::BOOLEAN: {
-            *type = ::fesql::type::kBool;
+            *type = ::hybridse::type::kBool;
             return true;
         }
 
         case ::parquet::Type::FLOAT: {
-            *type = ::fesql::type::kFloat;
+            *type = ::hybridse::type::kFloat;
             return true;
         }
         case ::parquet::Type::DOUBLE: {
-            *type = ::fesql::type::kDouble;
+            *type = ::hybridse::type::kDouble;
             return true;
         }
 
         case ::parquet::Type::INT32: {
-            *type = ::fesql::type::kInt32;
+            *type = ::hybridse::type::kInt32;
             return true;
         }
 
         case ::parquet::Type::INT64: {
-            *type = ::fesql::type::kInt64;
+            *type = ::hybridse::type::kInt64;
             return true;
         }
         default: {
@@ -61,17 +61,17 @@ inline bool MapParquetType(const parquet::ColumnDescriptor* column_desc,
 
     switch (column_desc->logical_type()->type()) {
         case ::parquet::LogicalType::Type::STRING: {
-            *type = ::fesql::type::kVarchar;
+            *type = ::hybridse::type::kVarchar;
             return true;
         }
         case ::parquet::LogicalType::Type::DECIMAL: {
             switch (column_desc->physical_type()) {
                 case ::parquet::Type::FLOAT: {
-                    *type = ::fesql::type::kFloat;
+                    *type = ::hybridse::type::kFloat;
                     return true;
                 }
                 case ::parquet::Type::DOUBLE: {
-                    *type = ::fesql::type::kDouble;
+                    *type = ::hybridse::type::kDouble;
                     return true;
                 }
                 default: {
@@ -84,11 +84,11 @@ inline bool MapParquetType(const parquet::ColumnDescriptor* column_desc,
         case ::parquet::LogicalType::Type::INT: {
             switch (column_desc->physical_type()) {
                 case ::parquet::Type::INT32: {
-                    *type = ::fesql::type::kInt32;
+                    *type = ::hybridse::type::kInt32;
                     return true;
                 }
                 case ::parquet::Type::INT64: {
-                    *type = ::fesql::type::kInt64;
+                    *type = ::hybridse::type::kInt64;
                     return true;
                 }
                 default: {
@@ -99,12 +99,12 @@ inline bool MapParquetType(const parquet::ColumnDescriptor* column_desc,
             }
         }
         case ::parquet::LogicalType::Type::DATE: {
-            *type = ::fesql::type::kDate;
+            *type = ::hybridse::type::kDate;
             return true;
         }
         case ::parquet::LogicalType::Type::TIMESTAMP:
         case ::parquet::LogicalType::Type::TIME: {
-            *type = ::fesql::type::kTimestamp;
+            *type = ::hybridse::type::kTimestamp;
             return true;
         }
         default: {
@@ -115,5 +115,5 @@ inline bool MapParquetType(const parquet::ColumnDescriptor* column_desc,
 }
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_BASE_PARQUET_UTIL_H_

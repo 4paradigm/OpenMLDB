@@ -26,8 +26,6 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "llvm/Support/InitLLVM.h"
-#include "llvm/Support/TargetSelect.h"
 #include "tablet/tablet_server_impl.h"
 
 DECLARE_string(dbms_endpoint);
@@ -35,18 +33,15 @@ DECLARE_string(endpoint);
 DECLARE_int32(port);
 DECLARE_bool(enable_keep_alive);
 
-using namespace llvm;       // NOLINT
-using namespace llvm::orc;  // NOLINT
-
-namespace fesql {
+namespace hybridse {
 namespace sdk {
-using fesql::sqlcase::SQLCase;
+using hybridse::sqlcase::SQLCase;
 std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
-                                         yaml_path, cases)) {
+    if (!SQLCase::CreateSQLCasesFromYaml(
+            hybridse::sqlcase::FindHybridSEDirPath(), yaml_path, cases)) {
         FAIL();
     }
 }
@@ -72,7 +67,7 @@ class DBMSSdkTest : public ::testing::TestWithParam<SQLCase> {
         tablet_->Init();
         tablet_server_.AddService(tablet_, brpc::SERVER_DOESNT_OWN_SERVICE);
         tablet_server_.Start(tablet_port, &options);
-        dbms_ = new ::fesql::dbms::DBMSServerImpl();
+        dbms_ = new ::hybridse::dbms::DBMSServerImpl();
         dbms_server_.AddService(dbms_, brpc::SERVER_DOESNT_OWN_SERVICE);
         dbms_server_.Start(dbms_port, &options);
         {
@@ -105,8 +100,8 @@ class DBMSSdkTest : public ::testing::TestWithParam<SQLCase> {
 TEST_F(DBMSSdkTest, DatabasesAPITest) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
     {
         Status status;
         std::vector<std::string> names = dbms_sdk->GetDatabases(&status);
@@ -149,8 +144,8 @@ TEST_F(DBMSSdkTest, DatabasesAPITest) {
 TEST_F(DBMSSdkTest, TableAPITest) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
     // create database db1
     {
         Status status;
@@ -239,8 +234,8 @@ TEST_F(DBMSSdkTest, TableAPITest) {
 TEST_F(DBMSSdkTest, GetInputSchema_ns_not_exist) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
     std::string name = "db_x123";
     {
         Status status;
@@ -254,8 +249,8 @@ TEST_F(DBMSSdkTest, GetInputSchema_ns_not_exist) {
 TEST_F(DBMSSdkTest, request_mode) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
     std::string name = "db_x123";
     {
         Status status;
@@ -313,8 +308,8 @@ TEST_F(DBMSSdkTest, request_mode) {
 TEST_F(DBMSSdkTest, GetInputSchema_table_not_exist) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
 
     std::string name = "db_x12";
     {
@@ -334,8 +329,8 @@ TEST_F(DBMSSdkTest, GetInputSchema_table_not_exist) {
 TEST_F(DBMSSdkTest, GetInputSchema1) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
 
     std::string name = "db_x11";
     {
@@ -371,8 +366,8 @@ TEST_F(DBMSSdkTest, GetInputSchema1) {
 TEST_F(DBMSSdkTest, ExecuteSQLTest) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
     std::string name = "db_2";
     {
         Status status;
@@ -461,8 +456,8 @@ TEST_F(DBMSSdkTest, ExecuteSQLTest) {
 TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
 
     {
         Status status;
@@ -508,7 +503,7 @@ TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
 void PrintRows(const vm::Schema &schema, const std::vector<codec::Row> &rows) {
     std::ostringstream oss;
     codec::RowView row_view(schema);
-    ::fesql::base::TextTable t('-', '|', '+');
+    ::hybridse::base::TextTable t('-', '|', '+');
     // Add Header
     for (int i = 0; i < schema.size(); i++) {
         t.add(schema.Get(i).name());
@@ -545,7 +540,7 @@ void PrintRows(const vm::Schema &schema, const std::vector<codec::Row> &rows) {
 
 void PrintResultSet(std::shared_ptr<ResultSet> rs) {
     std::ostringstream oss;
-    ::fesql::base::TextTable t('-', '|', '+');
+    ::hybridse::base::TextTable t('-', '|', '+');
     auto schema = rs->GetSchema();
     // Add Header
     for (int i = 0; i < schema->GetColumnCnt(); i++) {
@@ -623,51 +618,51 @@ void CheckRows(const vm::Schema &schema, const std::string &order_col,
                 continue;
             }
             switch (schema.Get(i).type()) {
-                case fesql::type::kInt32: {
+                case hybridse::type::kInt32: {
                     ASSERT_EQ(row_view.GetInt32Unsafe(i), rs->GetInt32Unsafe(i))
                         << " At " << i;
                     break;
                 }
-                case fesql::type::kInt64: {
+                case hybridse::type::kInt64: {
                     ASSERT_EQ(row_view.GetInt64Unsafe(i), rs->GetInt64Unsafe(i))
                         << " At " << i;
                     break;
                 }
-                case fesql::type::kInt16: {
+                case hybridse::type::kInt16: {
                     ASSERT_EQ(row_view.GetInt16Unsafe(i), rs->GetInt16Unsafe(i))
                         << " At " << i;
                     break;
                 }
-                case fesql::type::kFloat: {
+                case hybridse::type::kFloat: {
                     ASSERT_FLOAT_EQ(row_view.GetFloatUnsafe(i),
                                     rs->GetFloatUnsafe(i))
                         << " At " << i;
                     break;
                 }
-                case fesql::type::kDouble: {
+                case hybridse::type::kDouble: {
                     ASSERT_DOUBLE_EQ(row_view.GetDoubleUnsafe(i),
                                      rs->GetDoubleUnsafe(i))
                         << " At " << i;
                     break;
                 }
-                case fesql::type::kVarchar: {
+                case hybridse::type::kVarchar: {
                     ASSERT_EQ(row_view.GetStringUnsafe(i),
                               rs->GetStringUnsafe(i))
                         << " At " << i;
                     break;
                 }
-                case fesql::type::kTimestamp: {
+                case hybridse::type::kTimestamp: {
                     ASSERT_EQ(row_view.GetTimestampUnsafe(i),
                               rs->GetTimeUnsafe(i))
                         << " At " << i;
                     break;
                 }
-                case fesql::type::kDate: {
+                case hybridse::type::kDate: {
                     ASSERT_EQ(row_view.GetDateUnsafe(i), rs->GetDateUnsafe(i))
                         << " At " << i;
                     break;
                 }
-                case fesql::type::kBool: {
+                case hybridse::type::kBool: {
                     ASSERT_EQ(row_view.GetBoolUnsafe(i), rs->GetBoolUnsafe(i))
                         << " At " << i;
                     break;
@@ -688,8 +683,8 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
     auto sql_case = GetParam();
     usleep(1000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
 
     std::string db = sql_case.db();
     {
@@ -740,12 +735,10 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
 }
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse
 int main(int argc, char *argv[]) {
     ::testing::InitGoogleTest(&argc, argv);
-    InitLLVM X(argc, argv);
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
+    hybridse::vm::Engine::InitializeGlobalLLVM();
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_enable_keep_alive = false;
     return RUN_ALL_TESTS();

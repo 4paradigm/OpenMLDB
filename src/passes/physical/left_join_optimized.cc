@@ -17,7 +17,7 @@
 
 #include <string>
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
@@ -186,4 +186,4 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
     return true;
 }
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse

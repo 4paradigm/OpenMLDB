@@ -19,7 +19,7 @@ import time
 
 import numpy as np
 
-from fesql_const import current_time
+from hybridse_const import current_time
 
 
 def random_literal_bool(nullable=True):

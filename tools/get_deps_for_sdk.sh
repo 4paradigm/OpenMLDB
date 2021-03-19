@@ -242,7 +242,7 @@ else
             echo "incubator-brpc.tar.gz exists"
             tar -zxvf incubator-brpc.0304.tar.gz
         else
-            wget http://pkg.4paradigm.com/fesql/incubator-brpc.0304.tar.gz
+            wget http://pkg.4paradigm.com/hybridse/incubator-brpc.0304.tar.gz
         fi
     fi
 
@@ -264,7 +264,7 @@ else
     then
         echo "boost exist"
     else
-        wget --no-check-certificate -O boost_1_69_0.tar.gz http://pkg.4paradigm.com/fesql/boost_1_69_0.tar.gz
+        wget --no-check-certificate -O boost_1_69_0.tar.gz http://pkg.4paradigm.com/hybridse/boost_1_69_0.tar.gz
     fi
     tar -zxvf boost_1_69_0.tar.gz
     cd boost_1_69_0 && ./bootstrap.sh --with-toolset=clang  && ./b2 install --prefix=${DEPS_PREFIX}
@@ -318,7 +318,7 @@ else
     then
         echo "lz4 tar exist"
     else
-        wget --no-check-certificate -O lz4-1.7.5.tar.gz http://pkg.4paradigm.com/fesql/lz4-1.7.5.tar.gz
+        wget --no-check-certificate -O lz4-1.7.5.tar.gz http://pkg.4paradigm.com/hybridse/lz4-1.7.5.tar.gz
     fi
     tar -zxvf lz4-1.7.5.tar.gz
     cd lz4-1.7.5 && make -j4 && make install PREFIX=${DEPS_PREFIX}
@@ -333,7 +333,7 @@ else
     then
         echo "zstd-1.4.4.tar.gz  downloaded"
     else
-        wget --no-check-certificate -O zstd-1.4.4.tar.gz http://pkg.4paradigm.com/fesql/zstd-1.4.4.tar.gz
+        wget --no-check-certificate -O zstd-1.4.4.tar.gz http://pkg.4paradigm.com/hybridse/zstd-1.4.4.tar.gz
     fi
     tar -zxvf zstd-1.4.4.tar.gz
     cd zstd-1.4.4 && make -j4 && make install PREFIX=${DEPS_PREFIX}
@@ -348,7 +348,7 @@ else
     then
         echo "thrift-0.12.0.tar.gz  downloaded"
     else
-        wget --no-check-certificate -O thrift-0.12.0.tar.gz  http://pkg.4paradigm.com/fesql/thrift-0.12.0.tar.gz
+        wget --no-check-certificate -O thrift-0.12.0.tar.gz  http://pkg.4paradigm.com/hybridse/thrift-0.12.0.tar.gz
     fi
     tar -zxvf thrift-0.12.0.tar.gz
     cd thrift-0.12.0 && ./configure --with-python=no --with-nodejs=no --prefix=${DEPS_PREFIX} --with-boost=${DEPS_PREFIX} && make -j10 && make install
@@ -375,7 +375,7 @@ else
     then
         echo "flatbuffers-1.11.0.tar.gz downloaded"
     else
-        wget --no-check-certificate -O flatbuffers-1.11.0.tar.gz http://pkg.4paradigm.com/fesql/flatbuffers-1.11.0.tar.gz
+        wget --no-check-certificate -O flatbuffers-1.11.0.tar.gz http://pkg.4paradigm.com/hybridse/flatbuffers-1.11.0.tar.gz
     fi
     tar -zxvf flatbuffers-1.11.0.tar.gz
     cd flatbuffers-1.11.0 && mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC ..
@@ -429,7 +429,7 @@ else
     then
         echo "apache-arrow-0.15.1.tar.gz   downloaded"
     else
-        wget --no-check-certificate -O apache-arrow-0.15.1.tar.gz http://pkg.4paradigm.com/fesql/apache-arrow-0.15.1.tar.gz
+        wget --no-check-certificate -O apache-arrow-0.15.1.tar.gz http://pkg.4paradigm.com/hybridse/apache-arrow-0.15.1.tar.gz
     fi
     tar -zxvf apache-arrow-0.15.1.tar.gz
     ##########

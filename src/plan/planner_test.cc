@@ -14,28 +14,27 @@
  * limitations under the License.
  */
 
-
 #include "plan/planner.h"
 #include <utility>
 #include <vector>
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "parser/parser.h"
-namespace fesql {
+namespace hybridse {
 namespace plan {
 
-using fesql::node::NodeManager;
-using fesql::node::PlanNode;
-using fesql::node::SQLNode;
-using fesql::node::SQLNodeList;
-using fesql::sqlcase::SQLCase;
+using hybridse::node::NodeManager;
+using hybridse::node::PlanNode;
+using hybridse::node::SQLNode;
+using hybridse::node::SQLNodeList;
+using hybridse::sqlcase::SQLCase;
 
 std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
-            fesql::sqlcase::FindFesqlDirPath(), yaml_path, cases,
+            hybridse::sqlcase::FindHybridSEDirPath(), yaml_path, cases,
             std::vector<std::string>(
                 {"logical-plan-unsupport", "parser-unsupport"}))) {
         FAIL();
@@ -50,7 +49,7 @@ class PlannerTest : public ::testing::TestWithParam<SQLCase> {
  public:
     PlannerTest() {
         manager_ = new NodeManager();
-        parser_ = new parser::FeSQLParser();
+        parser_ = new parser::HybridSEParser();
     }
 
     ~PlannerTest() {
@@ -59,7 +58,7 @@ class PlannerTest : public ::testing::TestWithParam<SQLCase> {
     }
 
  protected:
-    parser::FeSQLParser *parser_;
+    parser::HybridSEParser *parser_;
     NodeManager *manager_;
 };
 
@@ -711,9 +710,9 @@ TEST_F(PlannerTest, CreateStmtPlanTest) {
     node::CreatePlanNode *createStmt = (node::CreatePlanNode *)plan_ptr;
 
     type::TableDef table_def;
-    ASSERT_TRUE(TransformTableDef(createStmt->GetTableName(),
-                                  createStmt->GetColumnDescList(), &table_def,
-                                  status));
+    ASSERT_TRUE(Planner::TransformTableDef(createStmt->GetTableName(),
+                                           createStmt->GetColumnDescList(),
+                                           &table_def, status));
 
     type::TableDef *table = &table_def;
     ASSERT_EQ("test", table->name());
@@ -1656,7 +1655,7 @@ TEST_F(PlannerTest, CreatePlanLeakTest) {
     while (true) {
         base::Status status;
         NodeManager nm;
-        parser::FeSQLParser parser;
+        parser::HybridSEParser parser;
         node::NodePointVector parser_trees;
         int ret = parser.parse(sql, parser_trees, &nm, status);
         ASSERT_EQ(0, ret);
@@ -1715,7 +1714,7 @@ class PlannerErrorTest : public ::testing::TestWithParam<SQLCase> {
  public:
     PlannerErrorTest() {
         manager_ = new NodeManager();
-        parser_ = new parser::FeSQLParser();
+        parser_ = new parser::HybridSEParser();
     }
 
     ~PlannerErrorTest() {
@@ -1724,7 +1723,7 @@ class PlannerErrorTest : public ::testing::TestWithParam<SQLCase> {
     }
 
  protected:
-    parser::FeSQLParser *parser_;
+    parser::HybridSEParser *parser_;
     NodeManager *manager_;
 };
 INSTANTIATE_TEST_CASE_P(
@@ -1790,7 +1789,7 @@ TEST_P(PlannerErrorTest, BatchModePlanErrorTest) {
 }
 
 }  // namespace plan
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::GTEST_FLAG(color) = "yes";

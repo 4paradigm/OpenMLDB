@@ -23,7 +23,7 @@
 #include "llvm/IR/Module.h"
 #include "node/sql_node.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 // FnIRBuilder
@@ -32,27 +32,27 @@ class FnIRBuilder {
     // TODO(wangtaize) provide a module manager
     explicit FnIRBuilder(::llvm::Module* module);
     ~FnIRBuilder();
-    bool Build(::fesql::node::FnNodeFnDef* node, ::llvm::Function** result,
+    bool Build(::hybridse::node::FnNodeFnDef* node, ::llvm::Function** result,
                base::Status& status);  // NOLINT
 
-    bool CreateFunction(const ::fesql::node::FnNodeFnHeander* fn_def,
+    bool CreateFunction(const ::hybridse::node::FnNodeFnHeander* fn_def,
                         bool return_by_arg, ::llvm::Function** fn,
                         base::Status& status);  // NOLINT
-    bool BuildFnHead(const ::fesql::node::FnNodeFnHeander* fn_def,
+    bool BuildFnHead(const ::hybridse::node::FnNodeFnHeander* fn_def,
                      CodeGenContext* ctx, ::llvm::Function** fn,
                      base::Status& status);  // NOLINT
 
  private:
-    bool BuildParas(const ::fesql::node::FnNodeList* node,
+    bool BuildParas(const ::hybridse::node::FnNodeList* node,
                     std::vector<::llvm::Type*>& paras,  // NOLINT
                     base::Status& status);              // NOLINT
 
-    bool FillArgs(const ::fesql::node::FnNodeList* node, ScopeVar* sv,
+    bool FillArgs(const ::hybridse::node::FnNodeList* node, ScopeVar* sv,
                   bool return_by_arg, ::llvm::Function* fn,
                   base::Status& status);  // NOLINT
     ::llvm::Module* module_;
 };
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_FN_IR_BUILDER_H_

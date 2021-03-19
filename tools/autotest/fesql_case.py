@@ -14,16 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from fesql_sql import sample_window_project
-from fesql_table import ColumnsPool
-from fesql_window import sample_window_def
+from hybridse_sql import sample_window_project
+from hybridse_table import ColumnsPool
+from hybridse_window import sample_window_def
 from gen_sample_data import gen_simple_data
-from fesql_param import sample_integer_config
+from hybridse_param import sample_integer_config
 
-from fesql_sql import sample_window_union_project
+from hybridse_sql import sample_window_union_project
 
-from fesql_const import PRIMITIVE_TYPES
-from fesql_sql import sample_last_join_project, sample_subselect_project
+from hybridse_const import PRIMITIVE_TYPES
+from hybridse_sql import sample_last_join_project, sample_subselect_project
 from gen_sample_data import gen_pk_groups
 
 import random

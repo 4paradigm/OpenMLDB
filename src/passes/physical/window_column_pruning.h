@@ -22,11 +22,11 @@
 #ifndef SRC_PASSES_PHYSICAL_WINDOW_COLUMN_PRUNING_H_
 #define SRC_PASSES_PHYSICAL_WINDOW_COLUMN_PRUNING_H_
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
-using fesql::base::Status;
-using fesql::vm::PhysicalWindowAggrerationNode;
+using hybridse::base::Status;
+using hybridse::vm::PhysicalWindowAggrerationNode;
 
 class WindowColumnPruning : public PhysicalPass {
  public:
@@ -44,5 +44,5 @@ class WindowColumnPruning : public PhysicalPass {
 };
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_PASSES_PHYSICAL_WINDOW_COLUMN_PRUNING_H_

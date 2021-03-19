@@ -17,7 +17,7 @@
 #include "benchmark/benchmark.h"
 #include "bm/engine_bm_case.h"
 
-namespace fesql {
+namespace hybridse {
 namespace bm {
 using namespace ::llvm;  // NOLINT
 
@@ -25,10 +25,10 @@ using namespace ::llvm;  // NOLINT
     static void BM_BatchRequest_##NAME(benchmark::State& state) {              \
         auto sql_case = LoadSQLCaseWithID(PATH, CASE_ID);                      \
         sql_case.batch_request_optimized_ = state.range(0) == 1;               \
-        if (!fesql::sqlcase::SQLCase::IS_DEBUG()) {                            \
+        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {                         \
             sql_case.SQLCaseRepeatConfig("window_scale", state.range(1));      \
         }                                                                      \
-        if (!fesql::sqlcase::SQLCase::IS_DEBUG()) {                            \
+        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {                         \
             sql_case.SQLCaseRepeatConfig("batch_scale", state.range(2));       \
         }                                                                      \
                                                                                \
@@ -54,6 +54,6 @@ DEFINE_BATCH_REQUEST_CASE(SimpleSelectFromNonCommonJoin, DEFAULT_YAML_PATH,
                           "3");
 
 }  // namespace bm
-}  // namespace fesql
+}  // namespace hybridse
 
 BENCHMARK_MAIN();

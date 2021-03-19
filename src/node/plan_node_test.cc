@@ -18,7 +18,7 @@
 #include "gtest/gtest.h"
 #include "node/node_manager.h"
 
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 class PlanNodeTest : public ::testing::Test {
@@ -188,7 +188,7 @@ TEST_F(PlanNodeTest, MultiPlanNodeTest) {
 }
 
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

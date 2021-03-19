@@ -50,16 +50,16 @@ using namespace llvm::orc;  // NOLINT
 
 ExitOnError ExitOnErr;
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
-using fesql::sqlcase::SQLCase;
+using hybridse::sqlcase::SQLCase;
 std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
-            fesql::sqlcase::FindFesqlDirPath(), yaml_path, cases,
+            hybridse::sqlcase::FindHybridSEDirPath(), yaml_path, cases,
             std::vector<std::string>({"physical-plan-unsupport",
                                       "plan-unsupport", "parser-unsupport",
                                       "request-unsupport"}))) {
@@ -76,23 +76,23 @@ class TransformRequestModeTest : public ::testing::TestWithParam<SQLCase> {
  public:
     TransformRequestModeTest() {}
     ~TransformRequestModeTest() {}
-    ::fesql::node::NodeManager manager;
+    ::hybridse::node::NodeManager manager;
 };
 
 void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
                        std::string exp) {
-    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
+    const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
 
     boost::to_lower(sql);
     std::cout << sql << std::endl;
 
-    ::fesql::node::NodeManager manager;
-    ::fesql::node::PlanNodeList plan_trees;
-    ::fesql::base::Status base_status;
+    ::hybridse::node::NodeManager manager;
+    ::hybridse::node::PlanNodeList plan_trees;
+    ::hybridse::base::Status base_status;
     {
-        ::fesql::plan::SimplePlanner planner(&manager, false);
-        ::fesql::parser::FeSQLParser parser;
-        ::fesql::node::NodePointVector parser_trees;
+        ::hybridse::plan::SimplePlanner planner(&manager, false);
+        ::hybridse::parser::HybridSEParser parser;
+        ::hybridse::node::NodePointVector parser_trees;
         parser.parse(sql, parser_trees, &manager, base_status);
         ASSERT_EQ(0, base_status.code);
         if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) ==
@@ -110,7 +110,7 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
-    auto lib = ::fesql::udf::DefaultUDFLibrary::get();
+    auto lib = ::hybridse::udf::DefaultUDFLibrary::get();
     RequestModeTransformer transform(&manager, "db", catalog, m.get(), lib, {},
                                      false, false, false, false);
 
@@ -167,17 +167,17 @@ void CheckTransformPhysicalPlan(const SQLCase& sql_case,
                                 node::NodeManager* nm) {
     std::string sqlstr = sql_case.sql_str();
     LOG(INFO) << sqlstr;
-    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
+    const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
     boost::to_lower(sqlstr);
     LOG(INFO) << sqlstr;
     std::cout << sqlstr << std::endl;
 
-    fesql::type::TableDef table_def;
-    fesql::type::TableDef table_def2;
-    fesql::type::TableDef table_def3;
-    fesql::type::TableDef table_def4;
-    fesql::type::TableDef table_def5;
-    fesql::type::TableDef table_def6;
+    hybridse::type::TableDef table_def;
+    hybridse::type::TableDef table_def2;
+    hybridse::type::TableDef table_def3;
+    hybridse::type::TableDef table_def4;
+    hybridse::type::TableDef table_def5;
+    hybridse::type::TableDef table_def6;
 
     BuildTableDef(table_def);
     BuildTableDef(table_def2);
@@ -193,13 +193,13 @@ void CheckTransformPhysicalPlan(const SQLCase& sql_case,
     table_def5.set_name("t5");
     table_def6.set_name("t6");
 
-    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    ::hybridse::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
     index->set_second_key("col5");
 
-    fesql::type::Database db;
+    hybridse::type::Database db;
     db.set_name("db");
     AddTable(db, table_def);
     AddTable(db, table_def2);
@@ -209,24 +209,24 @@ void CheckTransformPhysicalPlan(const SQLCase& sql_case,
     AddTable(db, table_def6);
 
     {
-        fesql::type::TableDef table_def;
+        hybridse::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tb");
         AddTable(db, table_def);
     }
     {
-        fesql::type::TableDef table_def;
+        hybridse::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tc");
         AddTable(db, table_def);
     }
     auto catalog = BuildSimpleCatalog(db);
-    ::fesql::node::PlanNodeList plan_trees;
-    ::fesql::base::Status base_status;
+    ::hybridse::node::PlanNodeList plan_trees;
+    ::hybridse::base::Status base_status;
     {
-        ::fesql::plan::SimplePlanner planner(nm, false);
-        ::fesql::parser::FeSQLParser parser;
-        ::fesql::node::NodePointVector parser_trees;
+        ::hybridse::plan::SimplePlanner planner(nm, false);
+        ::hybridse::parser::HybridSEParser parser;
+        ::hybridse::node::NodePointVector parser_trees;
         parser.parse(sqlstr, parser_trees, nm, base_status);
         ASSERT_EQ(0, base_status.code);
         if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) ==
@@ -244,7 +244,7 @@ void CheckTransformPhysicalPlan(const SQLCase& sql_case,
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
-    auto lib = ::fesql::udf::DefaultUDFLibrary::get();
+    auto lib = ::hybridse::udf::DefaultUDFLibrary::get();
     RequestModeTransformer transform(nm, "db", catalog, m.get(), lib, {}, false,
                                      false, false, false);
     PhysicalOpNode* physical_plan = nullptr;
@@ -480,30 +480,30 @@ INSTANTIATE_TEST_CASE_P(
             "index=index1)")));
 TEST_P(TransformRequestModePassOptimizedTest, pass_pass_optimized_test) {
     auto in_out = GetParam();
-    fesql::type::TableDef table_def;
+    hybridse::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");
     {
-        ::fesql::type::IndexDef* index = table_def.add_indexes();
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
         index->set_name("index12");
         index->add_first_keys("col1");
         index->add_first_keys("col2");
         index->set_second_key("col5");
     }
     {
-        ::fesql::type::IndexDef* index = table_def.add_indexes();
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
         index->set_name("index1");
         index->add_first_keys("col1");
         index->set_second_key("col5");
     }
-    fesql::type::Database db;
+    hybridse::type::Database db;
     db.set_name("db");
     AddTable(db, table_def);
     {
-        fesql::type::TableDef table_def2;
+        hybridse::type::TableDef table_def2;
         BuildTableDef(table_def2);
         table_def2.set_name("t2");
-        ::fesql::type::IndexDef* index = table_def2.add_indexes();
+        ::hybridse::type::IndexDef* index = table_def2.add_indexes();
         index->set_name("index1_t2");
         index->add_first_keys("col1");
         index->set_second_key("col5");
@@ -511,10 +511,10 @@ TEST_P(TransformRequestModePassOptimizedTest, pass_pass_optimized_test) {
     }
 
     {
-        fesql::type::TableDef table_def;
+        hybridse::type::TableDef table_def;
         BuildTableDef(table_def);
         table_def.set_name("t3");
-        ::fesql::type::IndexDef* index = table_def.add_indexes();
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
         index->set_name("index2_t3");
         index->add_first_keys("col2");
         index->set_second_key("col5");
@@ -525,7 +525,7 @@ TEST_P(TransformRequestModePassOptimizedTest, pass_pass_optimized_test) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     //    google::InitGoogleLogging(argv[0]);

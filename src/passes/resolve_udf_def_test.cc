@@ -19,13 +19,13 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 class ResolveUdfDefTest : public ::testing::Test {};
 
 TEST_F(ResolveUdfDefTest, TestResolve) {
-    parser::FeSQLParser parser;
+    parser::HybridSEParser parser;
     Status status;
     node::NodeManager nm;
     plan::SimplePlanner planner(&nm);
@@ -52,7 +52,7 @@ TEST_F(ResolveUdfDefTest, TestResolve) {
 }
 
 TEST_F(ResolveUdfDefTest, TestResolveFailed) {
-    parser::FeSQLParser parser;
+    parser::HybridSEParser parser;
     Status status;
     node::NodeManager nm;
     plan::SimplePlanner planner(&nm);
@@ -79,7 +79,7 @@ TEST_F(ResolveUdfDefTest, TestResolveFailed) {
 }
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::GTEST_FLAG(color) = "yes";
