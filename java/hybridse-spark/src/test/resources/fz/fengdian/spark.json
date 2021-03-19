@@ -10,7 +10,7 @@
         "inputPath":"src/test/resources/fz/fengdian/flattenRequest"
        }
     ],
-    "outputPath": "/mnt/disk0/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-spark/src/test/resources/output/fesql/fengdian",
+    "outputPath": "/mnt/disk0/home/wangzixian/ferrari/idea/docker-code/fesql/java/hybridse-spark/src/test/resources/output/fesql/fengdian",
     "instanceFormat": "parquet",
     "sparkConfig": "spark.master=local spark.fesql.skew.watershed=10000 spark.fesql.test.tiny=1 spark.fesql.mode=normal spark.fesql.skew.level=2 spark.fesql.group.partitions=20 spark.sql.shuffle.partitions=8"
   }

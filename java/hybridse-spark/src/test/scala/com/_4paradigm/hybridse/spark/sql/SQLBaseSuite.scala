@@ -44,7 +44,7 @@ class SQLBaseSuite extends SparkTestSuite {
 
   final private val rootDir = {
     val pwd = new File(System.getProperty("user.dir"))
-    if (pwd.getAbsolutePath.endsWith("fesql-spark")) {
+    if (pwd.getAbsolutePath.endsWith("hybridse-spark")) {
       pwd.getParentFile.getParentFile // ../../
     } else {
       pwd.getParentFile // ../
