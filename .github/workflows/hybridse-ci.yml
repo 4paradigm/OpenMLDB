@@ -30,7 +30,7 @@ jobs:
 
     - name: lint
       run: |
-        # requires python3, marked temporary
+        # requires python27 or later, marked temporary
         # ./tools/style_check.sh
 
     - name: Build
