@@ -19,7 +19,6 @@ cd "$(dirname "$0")"
 cd "$(git rev-parse --show-toplevel)"
 
 cd java
-mvn compile
 mvn scoverage:report
 TEST_SUCCESS=$?
 if [[ -x "$(command -v pages)" ]]; then
