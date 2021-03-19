@@ -30,7 +30,7 @@ TABLET3=$IP:9522
 BLOB1=$IP:9720
 
 RAMBUILD_PREFIX=/tmp/rambuild
-../build/bin/rtidb --db_root_path=${RAMBUILD_PREFIX}/tablet0-binlogs \
+../build/bin/fedb --db_root_path=${RAMBUILD_PREFIX}/tablet0-binlogs \
                    --recycle_bin_root_path=${RAMBUILD_PREFIX}/recycle_bin0 \
                    --endpoint=${TABLET1} --role=tablet \
                    --binlog_notify_on_put=true\
@@ -40,7 +40,7 @@ RAMBUILD_PREFIX=/tmp/rambuild
                    --zk_root_path=/cluster> tablet0.log 2>&1 &
 
 # start tablet1
-../build/bin/rtidb --db_root_path=${RAMBUILD_PREFIX}/tablet1-binlogs \
+../build/bin/fedb --db_root_path=${RAMBUILD_PREFIX}/tablet1-binlogs \
                    --recycle_bin_root_path=${RAMBUILD_PREFIX}/recycle_bin1 \
                    --endpoint=${TABLET2} --role=tablet \
                    --zk_cluster=${ZK_CLUSTER}\
@@ -50,7 +50,7 @@ RAMBUILD_PREFIX=/tmp/rambuild
                    --zk_root_path=/cluster > tablet1.log 2>&1 &
 
 # start tablet2
-../build/bin/rtidb --db_root_path=${RAMBUILD_PREFIX}/tablet2-binlogs \
+../build/bin/fedb --db_root_path=${RAMBUILD_PREFIX}/tablet2-binlogs \
                    --recycle_bin_root_path=${RAMBUILD_PREFIX}/recycle_bin2 \
                    --endpoint=${TABLET3} --role=tablet \
                    --binlog_notify_on_put=true\
