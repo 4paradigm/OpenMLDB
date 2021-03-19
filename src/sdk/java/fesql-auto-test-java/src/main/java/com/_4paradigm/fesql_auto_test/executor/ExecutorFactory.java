@@ -19,7 +19,7 @@ package com._4paradigm.fesql_auto_test.executor;
 
 import com._4paradigm.hybridse.sqlcase.model.SQLCase;
 import com._4paradigm.hybridse.sqlcase.model.SQLCaseType;
-import com._4paradigm.fesql_auto_test.common.HybridSEConfig;
+import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
 import com._4paradigm.fesql_auto_test.util.ReportLog;
 import com._4paradigm.sql.sdk.SqlExecutor;
@@ -85,7 +85,7 @@ public class ExecutorFactory {
         return executor;
     }
     private static BaseSQLExecutor getFeBatchQueryExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase, SQLCaseType type) {
-        if (HybridSEConfig.isCluster()) {
+        if (FesqlConfig.isCluster()) {
             log.info("cluster unsupport batch query mode");
             reportLog.info("cluster unsupport batch query mode");
             return new NullExecutor(sqlExecutor, fesqlCase, type);

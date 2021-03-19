@@ -17,9 +17,8 @@
 package com._4paradigm.fesql_auto_test.util;
 
 import com._4paradigm.fe.command.common.LinuxUtil;
-import com._4paradigm.fesql_auto_test.common.HybridSEConfig;
+import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.fesql_auto_test.common.FesqlGlobalVar;
-import org.apache.commons.lang3.StringUtils;
 
 /**
  * @author zhaowei
@@ -28,8 +27,8 @@ import org.apache.commons.lang3.StringUtils;
 public class DeployUtil {
     public static String getTestPath(String testPath,String version){
         String userHome = LinuxUtil.getHome();
-        if(HybridSEConfig.BASE_PATH!=null){
-            return userHome+HybridSEConfig.BASE_PATH;
+        if(FesqlConfig.BASE_PATH!=null){
+            return userHome+ FesqlConfig.BASE_PATH;
         }
         return userHome+"/"+testPath+"/"+ version;
     }

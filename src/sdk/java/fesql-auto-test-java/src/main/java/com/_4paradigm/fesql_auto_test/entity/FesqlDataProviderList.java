@@ -17,14 +17,12 @@
 package com._4paradigm.fesql_auto_test.entity;
 
 import com._4paradigm.hybridse.sqlcase.model.SQLCase;
-import com._4paradigm.fesql_auto_test.common.HybridSEConfig;
+import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.fesql_auto_test.common.FesqlTest;
 import com._4paradigm.fesql_auto_test.util.Tool;
 import org.apache.commons.lang3.StringUtils;
-import org.testng.Assert;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,17 +34,17 @@ public class FesqlDataProviderList {
         List<SQLCase> cases = new ArrayList<SQLCase>();
 
         for (FesqlDataProvider dataProvider : dataProviderList) {
-            for (SQLCase sqlCase : dataProvider.getCases(HybridSEConfig.FESQL_CASE_LEVELS)) {
-                if (!StringUtils.isEmpty(HybridSEConfig.FESQL_CASE_NAME) &&
-                        !HybridSEConfig.FESQL_CASE_NAME.equals(FesqlTest.CaseNameFormat(sqlCase))) {
+            for (SQLCase sqlCase : dataProvider.getCases(FesqlConfig.FESQL_CASE_LEVELS)) {
+                if (!StringUtils.isEmpty(FesqlConfig.FESQL_CASE_NAME) &&
+                        !FesqlConfig.FESQL_CASE_NAME.equals(FesqlTest.CaseNameFormat(sqlCase))) {
                     continue;
                 }
-                if (!StringUtils.isEmpty(HybridSEConfig.FESQL_CASE_ID)
-                        && !HybridSEConfig.FESQL_CASE_ID.equals(sqlCase.getId())) {
+                if (!StringUtils.isEmpty(FesqlConfig.FESQL_CASE_ID)
+                        && !FesqlConfig.FESQL_CASE_ID.equals(sqlCase.getId())) {
                     continue;
                 }
-                if (!StringUtils.isEmpty(HybridSEConfig.FESQL_CASE_DESC)
-                        && !HybridSEConfig.FESQL_CASE_DESC.equals(sqlCase.getDesc())) {
+                if (!StringUtils.isEmpty(FesqlConfig.FESQL_CASE_DESC)
+                        && !FesqlConfig.FESQL_CASE_DESC.equals(sqlCase.getDesc())) {
                     continue;
                 }
                 cases.add(sqlCase);
@@ -59,8 +57,8 @@ public class FesqlDataProviderList {
 
         FesqlDataProviderList fesqlDataProviderList = new FesqlDataProviderList();
         for (String caseFile : caseFiles) {
-            if (!StringUtils.isEmpty(HybridSEConfig.FESQL_CASE_PATH)
-                    && !HybridSEConfig.FESQL_CASE_PATH.equals(caseFile)) {
+            if (!StringUtils.isEmpty(FesqlConfig.FESQL_CASE_PATH)
+                    && !FesqlConfig.FESQL_CASE_PATH.equals(caseFile)) {
                 continue;
             }
             String casePath = Tool.getCasePath(caseFile);

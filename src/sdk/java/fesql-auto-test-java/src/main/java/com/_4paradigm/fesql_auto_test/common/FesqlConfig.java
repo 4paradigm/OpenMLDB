@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  * @date 2020/6/11 11:34 AM
  */
 @Slf4j
-public class HybridSEConfig {
+public class FesqlConfig {
     public static final String ZK_CLUSTER;
     public static final String ZK_ROOT_PATH;
     public static final List<String> VERSIONS;

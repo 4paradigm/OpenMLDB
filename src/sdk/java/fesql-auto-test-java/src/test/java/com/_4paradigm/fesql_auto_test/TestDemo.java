@@ -16,7 +16,7 @@
 
 package com._4paradigm.fesql_auto_test;
 
-import com._4paradigm.fesql_auto_test.common.HybridSEConfig;
+import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlException;
@@ -32,8 +32,8 @@ public class TestDemo {
     @Test
     public void demo() throws SqlException {
         SdkOption option = new SdkOption();
-        option.setZkPath(HybridSEConfig.ZK_ROOT_PATH);
-        option.setZkCluster(HybridSEConfig.ZK_CLUSTER);
+        option.setZkPath(FesqlConfig.ZK_ROOT_PATH);
+        option.setZkCluster(FesqlConfig.ZK_CLUSTER);
         option.setSessionTimeout(200000);
         SqlExecutor router = new SqlClusterExecutor(option);
         System.out.println(">>:" + router);

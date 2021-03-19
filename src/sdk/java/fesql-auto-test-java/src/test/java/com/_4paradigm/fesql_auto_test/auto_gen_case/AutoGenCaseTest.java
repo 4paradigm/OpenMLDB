@@ -19,7 +19,7 @@ package com._4paradigm.fesql_auto_test.auto_gen_case;
 import com._4paradigm.hybridse.sqlcase.model.SQLCase;
 import com._4paradigm.hybridse.sqlcase.model.SQLCaseType;
 import com._4paradigm.fesql_auto_test.common.FesqlClient;
-import com._4paradigm.fesql_auto_test.common.HybridSEConfig;
+import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.fesql_auto_test.common.FesqlTest;
 import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
 import com._4paradigm.fesql_auto_test.entity.FesqlDataProviderList;
@@ -51,15 +51,15 @@ public class AutoGenCaseTest extends FesqlTest {
 
     @BeforeClass
     public void beforeClass(){
-        if(HybridSEConfig.INIT_VERSION_ENV) {
-            HybridSEConfig.VERSIONS.forEach(version -> {
+        if(FesqlConfig.INIT_VERSION_ENV) {
+            FesqlConfig.VERSIONS.forEach(version -> {
                 FEDBDeploy fedbDeploy = new FEDBDeploy(version);
                 FEDBInfo fedbInfo = fedbDeploy.deployFEDB(2, 3);
                 FesqlClient fesqlClient = new FesqlClient(fedbInfo);
                 executorMap.put(version, fesqlClient.getExecutor());
                 fedbInfoMap.put(version, fedbInfo);
             });
-            fedbInfoMap.put("mainVersion", HybridSEConfig.mainInfo);
+            fedbInfoMap.put("mainVersion", FesqlConfig.mainInfo);
         }else{
             //测试调试用
             String verion = "2020-02-06";
@@ -70,7 +70,7 @@ public class AutoGenCaseTest extends FesqlTest {
                     .build();
             executorMap.put(verion, new FesqlClient(fedbInfo).getExecutor());
             fedbInfoMap.put(verion, fedbInfo);
-            fedbInfoMap.put("mainVersion", HybridSEConfig.mainInfo);
+            fedbInfoMap.put("mainVersion", FesqlConfig.mainInfo);
         }
     }
 
