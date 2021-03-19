@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_SDK_MINI_CLUSTER_H_
 #define SRC_SDK_MINI_CLUSTER_H_
 
@@ -54,17 +53,22 @@ DECLARE_bool(enable_distsql);
 namespace fedb {
 namespace sdk {
 
+constexpr int MAX_TABLET_NUM = 3;
+#pragma pack(8)
 class MiniCluster {
  public:
     explicit MiniCluster(int32_t zk_port)
         : zk_port_(zk_port),
-          ns_(NULL),
+          ns_(),
+          tablet_num_(2),
           zk_cluster_(),
           zk_path_(),
           ns_client_(NULL) {}
     ~MiniCluster() {}
     bool SetUp(int tablet_num = 2) {
-        ns_ = new brpc::Server();
+        if (tablet_num > MAX_TABLET_NUM) {
+            return false;
+        }
         srand(time(NULL));
         FLAGS_db_root_path = "/tmp/mini_cluster" + GenRand();
         zk_cluster_ = "127.0.0.1:" + std::to_string(zk_port_);
@@ -81,11 +85,11 @@ class MiniCluster {
             return false;
         }
         brpc::ServerOptions options;
-        if (ns_->AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        if (ns_.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
             LOG(WARNING) << "fail to start ns";
             return false;
         }
-        if (ns_->Start(ns_endpoint.c_str(), &options) != 0) {
+        if (ns_.Start(ns_endpoint.c_str(), &options) != 0) {
             return false;
         }
         sleep(2);
@@ -94,9 +98,9 @@ class MiniCluster {
             LOG(WARNING) << "fail to init ns client";
             return false;
         }
+        tablet_num_ = tablet_num;
         for (int i = 0; i < tablet_num; i++) {
-            brpc::Server* tb = new brpc::Server();
-            if (!StartTablet(tb)) {
+            if (!StartTablet(&tb_servers_[i])) {
                LOG(WARNING) << "fail to start tablet";
                return false;
             }
@@ -111,13 +115,9 @@ class MiniCluster {
     }
 
     void Close() {
-        ns_->Stop(10);
-        for (auto tb : tb_servers_) {
-            tb->Stop(10);
-        }
-        delete ns_;
-        for (auto tb : tb_servers_) {
-            delete tb;
+        ns_.Stop(10);
+        for (int i = 0; i < tablet_num_; i++) {
+            tb_servers_[i].Stop(10);
         }
         for (const auto& kv : tb_clients_) {
             delete kv.second;
@@ -175,7 +175,6 @@ class MiniCluster {
         if (!ok) {
             return false;
         }
-        tb_servers_.push_back(tb_server);
         tablets_.emplace(tb_endpoint, tablet);
         sleep(2);
         auto* client = new ::fedb::client::TabletClient(tb_endpoint, tb_endpoint);
@@ -188,8 +187,9 @@ class MiniCluster {
     }
 
     int32_t zk_port_;
-    brpc::Server* ns_;
-    std::vector<brpc::Server*> tb_servers_;
+    brpc::Server ns_;
+    int32_t tablet_num_;
+    brpc::Server tb_servers_[MAX_TABLET_NUM];
     std::vector<std::string> tb_endpoints_;
     std::string zk_cluster_;
     std::string zk_path_;

@@ -18,9 +18,6 @@
 #ifndef SRC_NAMESERVER_NAME_SERVER_IMPL_H_
 #define SRC_NAMESERVER_NAME_SERVER_IMPL_H_
 
-#include <snappy.h>
-#include <brpc/server.h>
-
 #include <atomic>
 #include <condition_variable>  // NOLINT
 #include <list>

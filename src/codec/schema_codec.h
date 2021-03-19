@@ -27,7 +27,6 @@
 #include <memory>
 
 #include "base/status.h"
-#include "boost/lexical_cast.hpp"
 #include "codec/codec.h"
 #include "proto/name_server.pb.h"
 #include "codec/fe_row_codec.h"
