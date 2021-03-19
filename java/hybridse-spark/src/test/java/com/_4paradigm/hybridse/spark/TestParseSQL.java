@@ -16,7 +16,7 @@
 
 package com._4paradigm.hybridse.spark;
 
-import com._4paradigm.hybridse.LibraryLoader;
+import com._4paradigm.hybridse.HybridSELibrary;
 import com._4paradigm.hybridse.base.BaseStatus;
 import com._4paradigm.hybridse.type.TypeOuterClass;
 import com._4paradigm.hybridse.type.TypeOuterClass.TableDef;
@@ -34,7 +34,7 @@ public class TestParseSQL {
 
     @Test
     public void testParseSQL() {
-        LibraryLoader.loadLibrary("fesql_jsdk_core");
+        HybridSELibrary.initCore();
         ColumnDef col1 = ColumnDef.newBuilder()
                 .setName("col_1").setType(TypeOuterClass.Type.kDouble).build();
         ColumnDef col2 = ColumnDef.newBuilder()
