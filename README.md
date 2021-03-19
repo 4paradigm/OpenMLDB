@@ -1,5 +1,7 @@
 # What is HybridSE 
 
+[![HybridSE CI](https://github.com/4paradigm/HybridSE/actions/workflows/hybridse-ci.yml/badge.svg)](https://github.com/4paradigm/HybridSE/actions/workflows/hybridse-ci.yml)
+
 HybridSE(Hybrid SQL Engine)是基于C++和LLVM实现的高性能混合SQL执行引擎，为AI应用、OLAD数据库、HTAP系统、SparkSQL、Flink Streaming SQL等提供一致性的SQL加速优化。
 
 <img src="./docs/img/HybridSE.png" alt="image-20210301164207172" style="width:600px" align="left"/>
