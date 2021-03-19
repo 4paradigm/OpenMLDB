@@ -35,7 +35,7 @@ sh tools/gen_auto_case.sh
 cd ..
 
 sh tools/install_fesql.sh ON
-cd ${ROOT_DIR}/fesql/java/fesql-common; mvn install
+cd ${ROOT_DIR}/fesql/java/hybridse-common; mvn install
 mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake ..
 if [ -z "${FEDEV}" ]; then
     make -j5 sql_javasdk_package || { echo "compile error"; exit 1; }
