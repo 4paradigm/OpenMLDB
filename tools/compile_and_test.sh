@@ -29,6 +29,6 @@ export PATH=${PWD}/thirdparty/bin:$PATH
 rm -rf build
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE=ON -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=ON -DEXAMPLES_ENABLE=ON
-make hybridse_proto && make hybridse_parser
+make hybridse_proto && make hybridse_parser -j"$(nproc)"
 make -j"$(nproc)"
 make test -j"$(nproc)"

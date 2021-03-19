@@ -16,7 +16,7 @@
 
 package com._4paradigm.hybridse.flink.common.planner;
 
-import com._4paradigm.hybridse.FeSqlLibrary;
+import com._4paradigm.hybridse.HybridSELibrary;
 import com._4paradigm.hybridse.common.SQLEngine;
 import com._4paradigm.hybridse.common.UnsupportedHybridSEException;
 import com._4paradigm.hybridse.flink.batch.FesqlBatchTableEnvironment;
@@ -47,7 +47,7 @@ public class FesqlFlinkPlanner {
 
     {
         // Ensure native initialized
-        FeSqlLibrary.initCore();
+        HybridSELibrary.initCore();
         Engine.InitializeGlobalLLVM();
     }
 

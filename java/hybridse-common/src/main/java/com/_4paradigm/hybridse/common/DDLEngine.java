@@ -15,7 +15,7 @@
  */
 
 package com._4paradigm.hybridse.common;
-import com._4paradigm.hybridse.FeSqlLibrary;
+import com._4paradigm.hybridse.HybridSELibrary;
 
 import com._4paradigm.hybridse.node.ColumnRefNode;
 import com._4paradigm.hybridse.node.ExprNode;
@@ -35,7 +35,7 @@ import java.util.*;
 public class DDLEngine {
     static {
         // Ensure native initialized
-        FeSqlLibrary.initCore();
+        HybridSELibrary.initCore();
         Engine.InitializeGlobalLLVM();
     }
 

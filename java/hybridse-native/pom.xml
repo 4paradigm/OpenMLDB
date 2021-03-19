@@ -22,7 +22,7 @@
 		<dependency>
 			<groupId>com._4paradigm.hybridse</groupId>
 			<artifactId>hybridse-proto</artifactId>
-			<version>0.1.0-SNAPSHOT</version>
+			<version>${project.version}</version>
 		</dependency>
 
 		<dependency>

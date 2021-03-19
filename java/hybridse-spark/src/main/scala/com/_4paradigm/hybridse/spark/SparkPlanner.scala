@@ -16,7 +16,7 @@
 
 package com._4paradigm.hybridse.spark
 
-import com._4paradigm.hybridse.FeSqlLibrary
+import com._4paradigm.hybridse.HybridSELibrary
 import com._4paradigm.hybridse.`type`.TypeOuterClass._
 import com._4paradigm.hybridse.common.{HybridSEException, SQLEngine, UnsupportedHybridSEException}
 import com._4paradigm.hybridse.node.JoinType
@@ -35,7 +35,7 @@ class SparkPlanner(session: SparkSession, config: FeSQLConfig) {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   // Ensure native initialized
-  FeSqlLibrary.initCore()
+  HybridSELibrary.initCore()
   Engine.InitializeGlobalLLVM()
 
   def this(session: SparkSession) = {

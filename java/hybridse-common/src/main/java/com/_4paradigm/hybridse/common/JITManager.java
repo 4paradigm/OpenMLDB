@@ -16,7 +16,7 @@
 
 package com._4paradigm.hybridse.common;
 
-import com._4paradigm.hybridse.FeSqlLibrary;
+import com._4paradigm.hybridse.HybridSELibrary;
 import com._4paradigm.hybridse.vm.Engine;
 import com._4paradigm.hybridse.vm.HybridSEJITWrapper;
 import com._4paradigm.hybridse.vm.JITOptions;
@@ -34,7 +34,7 @@ public class JITManager {
     static private Logger logger = LoggerFactory.getLogger(JITManager.class);
 
     static {
-        FeSqlLibrary.initCore();
+        HybridSELibrary.initCore();
         Engine.InitializeGlobalLLVM();
     }
 
@@ -108,7 +108,7 @@ public class JITManager {
     synchronized static public void initJITModule(String tag, ByteBuffer moduleBuffer) {
 
         // ensure worker native
-        FeSqlLibrary.initCore();
+        HybridSELibrary.initCore();
 
         // ensure worker side module
         if (!JITManager.hasModule(tag)) {

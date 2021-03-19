@@ -18,7 +18,7 @@ package com._4paradigm.hybridse.spark
 
 import java.sql.{Date, Timestamp}
 
-import com._4paradigm.hybridse.FeSqlLibrary
+import com._4paradigm.hybridse.HybridSELibrary
 import com._4paradigm.hybridse.codec.{Row => NativeRow}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
@@ -28,7 +28,7 @@ import scala.util.Random
 
 class TestSparkRowCodec extends FunSuite {
 
-  FeSqlLibrary.initCore()
+  HybridSELibrary.initCore()
 
   private val baseSchema = StructType(Seq(
     StructField("short", ShortType),

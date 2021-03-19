@@ -18,11 +18,8 @@ set -eE
 cd "$(dirname "$0")"
 cd "$(git rev-parse --show-toplevel)"
 
-pushd examples/toydb/onebox/
-sh start_all.sh
-popd
-
 cd java
+mvn compile
 mvn scoverage:report
 TEST_SUCCESS=$?
 if [[ -x "$(command -v pages)" ]]; then
