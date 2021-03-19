@@ -92,7 +92,7 @@ DECLARE_string(data_dir);
 const std::string FEDB_VERSION = std::to_string(FEDB_VERSION_MAJOR) + "." + // NOLINT
                             std::to_string(FEDB_VERSION_MEDIUM) + "." +
                             std::to_string(FEDB_VERSION_MINOR) + "." +
-                            FEDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
+                            FEDB_COMMIT_ID + "." + HYBRIDSE_COMMIT_ID;
 
 static std::map<std::string, std::string> real_ep_map;
 
@@ -247,7 +247,7 @@ void StartTablet() {
               "To fix this issue run the command 'swapoff -a' as root");
     }
     SetupLog();
-    ::fesql::vm::Engine::InitializeGlobalLLVM();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     std::string real_endpoint;
     GetRealEndpoint(&real_endpoint);
     ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();

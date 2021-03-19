@@ -23,7 +23,8 @@ namespace fedb {
 namespace sdk {
 
 ResultSetBase::ResultSetBase(const std::shared_ptr<brpc::Controller>& cntl, uint32_t count, uint32_t buf_size,
-                             std::unique_ptr<::fesql::sdk::RowIOBufView> row_view, const ::fesql::vm::Schema& schema)
+                             std::unique_ptr<::hybridse::sdk::RowIOBufView> row_view,
+                             const ::hybridse::vm::Schema& schema)
     : cntl_(cntl),
       count_(count),
       buf_size_(buf_size),

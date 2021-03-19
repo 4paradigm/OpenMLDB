@@ -61,8 +61,8 @@ bool SQLBatchRequestResultSet::Init() {
     DLOG(INFO) << "byte size " << byte_size_ << " count " << response_->count();
 
     // Decode schema
-    ::fesql::codec::Schema schema;
-    ::fesql::codec::SchemaCodec::Decode(response_->schema(), &schema);
+    ::hybridse::codec::Schema schema;
+    ::hybridse::codec::SchemaCodec::Decode(response_->schema(), &schema);
     external_schema_.SetSchema(schema);
 
     if (byte_size_ <= 0) return true;
@@ -83,10 +83,10 @@ bool SQLBatchRequestResultSet::Init() {
         }
     }
 
-    common_row_view_ = std::unique_ptr<::fesql::sdk::RowIOBufView>(
-        new ::fesql::sdk::RowIOBufView(common_schema_));
-    non_common_row_view_ = std::unique_ptr<::fesql::sdk::RowIOBufView>(
-        new ::fesql::sdk::RowIOBufView(non_common_schema_));
+    common_row_view_ = std::unique_ptr<::hybridse::sdk::RowIOBufView>(
+        new ::hybridse::sdk::RowIOBufView(common_schema_));
+    non_common_row_view_ = std::unique_ptr<::hybridse::sdk::RowIOBufView>(
+        new ::hybridse::sdk::RowIOBufView(non_common_schema_));
 
     if (!common_schema_.empty()) {
         uint32_t row_size = 0;

@@ -38,26 +38,26 @@ namespace catalog {
 
 using TablePartitions = ::google::protobuf::RepeatedPtrField<::fedb::nameserver::TablePartition>;
 
-class TabletRowHandler : public ::fesql::vm::RowHandler {
+class TabletRowHandler : public ::hybridse::vm::RowHandler {
  public:
     TabletRowHandler(const std::string& db, fedb::RpcCallback<fedb::api::QueryResponse>* callback);
     ~TabletRowHandler();
-    explicit TabletRowHandler(::fesql::base::Status status);
-    const ::fesql::vm::Schema* GetSchema() override { return nullptr; }
+    explicit TabletRowHandler(::hybridse::base::Status status);
+    const ::hybridse::vm::Schema* GetSchema() override { return nullptr; }
     const std::string& GetName() override { return name_; }
     const std::string& GetDatabase() override { return db_; }
 
-    ::fesql::base::Status GetStatus() override { return status_; }
-    const ::fesql::codec::Row& GetValue() override;
+    ::hybridse::base::Status GetStatus() override { return status_; }
+    const ::hybridse::codec::Row& GetValue() override;
 
  private:
     std::string db_;
     std::string name_;
-    ::fesql::base::Status status_;
-    ::fesql::codec::Row row_;
+    ::hybridse::base::Status status_;
+    ::hybridse::codec::Row row_;
     fedb::RpcCallback<fedb::api::QueryResponse>* callback_;
 };
-class AsyncTableHandler : public ::fesql::vm::MemTableHandler {
+class AsyncTableHandler : public ::hybridse::vm::MemTableHandler {
  public:
     explicit AsyncTableHandler(fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback,
                                const bool is_common);
@@ -70,29 +70,29 @@ class AsyncTableHandler : public ::fesql::vm::MemTableHandler {
         if (status_.isRunning()) {
             SyncRpcResponse();
         }
-        return fesql::vm::MemTableHandler::GetCount();
+        return hybridse::vm::MemTableHandler::GetCount();
     }
-    fesql::codec::Row At(uint64_t pos) override {
+    hybridse::codec::Row At(uint64_t pos) override {
         if (status_.isRunning()) {
             SyncRpcResponse();
         }
-        return fesql::vm::MemTableHandler::At(pos);
+        return hybridse::vm::MemTableHandler::At(pos);
     }
-    std::unique_ptr<fesql::vm::RowIterator> GetIterator();
-    fesql::vm::RowIterator* GetRawIterator();
-    std::unique_ptr<fesql::vm::WindowIterator> GetWindowIterator(const std::string& idx_name) {
-        return std::unique_ptr<fesql::vm::WindowIterator>();
+    std::unique_ptr<hybridse::vm::RowIterator> GetIterator();
+    hybridse::vm::RowIterator* GetRawIterator();
+    std::unique_ptr<hybridse::vm::WindowIterator> GetWindowIterator(const std::string& idx_name) {
+        return std::unique_ptr<hybridse::vm::WindowIterator>();
     }
     const std::string GetHandlerTypeName() override { return "AsyncTableHandler"; }
-    virtual fesql::base::Status GetStatus() { return status_; }
+    virtual hybridse::base::Status GetStatus() { return status_; }
 
  private:
     void SyncRpcResponse();
-    fesql::base::Status status_;
+    hybridse::base::Status status_;
     fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback_;
     bool request_is_common_;
 };
-class AsyncTablesHandler : public ::fesql::vm::MemTableHandler {
+class AsyncTablesHandler : public ::hybridse::vm::MemTableHandler {
  public:
     AsyncTablesHandler();
     ~AsyncTablesHandler() {}
@@ -105,31 +105,31 @@ class AsyncTablesHandler : public ::fesql::vm::MemTableHandler {
         if (status_.isRunning()) {
             SyncAllTableHandlers();
         }
-        return fesql::vm::MemTableHandler::GetCount();
+        return hybridse::vm::MemTableHandler::GetCount();
     }
-    fesql::codec::Row At(uint64_t pos) override {
+    hybridse::codec::Row At(uint64_t pos) override {
         if (status_.isRunning()) {
             SyncAllTableHandlers();
         }
-        return fesql::vm::MemTableHandler::At(pos);
+        return hybridse::vm::MemTableHandler::At(pos);
     }
-    std::unique_ptr<fesql::vm::RowIterator> GetIterator();
-    fesql::vm::RowIterator* GetRawIterator();
-    std::unique_ptr<fesql::vm::WindowIterator> GetWindowIterator(const std::string& idx_name) {
-        return std::unique_ptr<fesql::vm::WindowIterator>();
+    std::unique_ptr<hybridse::vm::RowIterator> GetIterator();
+    hybridse::vm::RowIterator* GetRawIterator();
+    std::unique_ptr<hybridse::vm::WindowIterator> GetWindowIterator(const std::string& idx_name) {
+        return std::unique_ptr<hybridse::vm::WindowIterator>();
     }
     const std::string GetHandlerTypeName() override { return "AsyncTableHandler"; }
-    virtual fesql::base::Status GetStatus() { return status_; }
+    virtual hybridse::base::Status GetStatus() { return status_; }
 
  private:
     bool SyncAllTableHandlers();
-    fesql::base::Status status_;
+    hybridse::base::Status status_;
     size_t rows_cnt_;
     std::vector<std::vector<size_t>> posinfos_;
     std::vector<std::shared_ptr<TableHandler>> handlers_;
 };
 
-class TabletAccessor : public ::fesql::vm::Tablet {
+class TabletAccessor : public ::hybridse::vm::Tablet {
  public:
     explicit TabletAccessor(const std::string& name) : name_(name), tablet_client_() {}
 
@@ -154,22 +154,23 @@ class TabletAccessor : public ::fesql::vm::Tablet {
         return true;
     }
 
-    std::shared_ptr<::fesql::vm::RowHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
-                                                      const ::fesql::codec::Row& row, const bool is_procedure,
-                                                      const bool is_debug) override;
+    std::shared_ptr<::hybridse::vm::RowHandler> SubQuery(uint32_t task_id, const std::string& db,
+                                                         const std::string& sql, const ::hybridse::codec::Row& row,
+                                                         const bool is_procedure, const bool is_debug) override;
 
-    std::shared_ptr<::fesql::vm::TableHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
-                                                        const std::set<size_t>& common_column_indices,
-                                                        const std::vector<::fesql::codec::Row>& row,
-                                                        const bool request_is_common, const bool is_procedure,
-                                                        const bool is_debug) override;
+    std::shared_ptr<::hybridse::vm::TableHandler> SubQuery(uint32_t task_id, const std::string& db,
+                                                           const std::string& sql,
+                                                           const std::set<size_t>& common_column_indices,
+                                                           const std::vector<::hybridse::codec::Row>& row,
+                                                           const bool request_is_common, const bool is_procedure,
+                                                           const bool is_debug) override;
     const std::string& GetName() const { return name_; }
 
  private:
     std::string name_;
     std::shared_ptr<::fedb::client::TabletClient> tablet_client_;
 };
-class TabletsAccessor : public ::fesql::vm::Tablet {
+class TabletsAccessor : public ::hybridse::vm::Tablet {
  public:
     TabletsAccessor() : name_("TabletsAccessor"), rows_cnt_(0) {}
     ~TabletsAccessor() {}
@@ -191,14 +192,15 @@ class TabletsAccessor : public ::fesql::vm::Tablet {
         }
         rows_cnt_++;
     }
-    std::shared_ptr<fesql::vm::RowHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
-                                                    const fesql::codec::Row& row, const bool is_procedure,
-                                                    const bool is_debug) override;
-    std::shared_ptr<fesql::vm::TableHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
-                                                      const std::set<size_t>& common_column_indices,
-                                                      const std::vector<fesql::codec::Row>& rows,
-                                                      const bool request_is_common, const bool is_procedure,
-                                                      const bool is_debug);
+    std::shared_ptr<hybridse::vm::RowHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
+                                                       const hybridse::codec::Row& row, const bool is_procedure,
+                                                       const bool is_debug) override;
+    std::shared_ptr<hybridse::vm::TableHandler> SubQuery(uint32_t task_id, const std::string& db,
+                                                         const std::string& sql,
+                                                         const std::set<size_t>& common_column_indices,
+                                                         const std::vector<hybridse::codec::Row>& rows,
+                                                         const bool request_is_common, const bool is_procedure,
+                                                         const bool is_debug);
 
  private:
     const std::string name_;

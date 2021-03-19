@@ -717,6 +717,6 @@ int main(int argc, char** argv) {
         "/tmp/ssd_recycle" + k1 + ",/tmp/ssd_recycle" + k2;
     FLAGS_recycle_hdd_bin_root_path =
         "/tmp/hdd_recycle" + k1 + ",/tmp/hdd_recycle" + k2;
-    ::fesql::vm::Engine::InitializeGlobalLLVM();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     return RUN_ALL_TESTS();
 }

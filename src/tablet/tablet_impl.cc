@@ -131,15 +131,15 @@ TabletImpl::TabletImpl()
       follower_(false),
       catalog_(new ::fedb::catalog::TabletCatalog()),
       engine_(catalog_,
-              fesql::vm::EngineOptions::NewEngineOptionWithClusterEnable(
+              hybridse::vm::EngineOptions::NewEngineOptionWithClusterEnable(
                   FLAGS_enable_distsql)),
       zk_cluster_(),
       zk_path_(),
       endpoint_(),
       sp_cache_(std::shared_ptr<SpCache>(new SpCache())),
       notify_path_() {
-    catalog_->SetLocalTablet(std::shared_ptr<::fesql::vm::Tablet>(
-        new ::fesql::vm::LocalTablet(&engine_, sp_cache_)));
+    catalog_->SetLocalTablet(std::shared_ptr<::hybridse::vm::Tablet>(
+        new ::hybridse::vm::LocalTablet(&engine_, sp_cache_)));
 }
 
 TabletImpl::~TabletImpl() {
@@ -1833,9 +1833,9 @@ void TabletImpl::ProcessQuery(RpcController* ctrl,
                               const fedb::api::QueryRequest* request,
                               ::fedb::api::QueryResponse* response,
                               butil::IOBuf* buf) {
-    ::fesql::base::Status status;
+    ::hybridse::base::Status status;
     if (request->is_batch()) {
-        ::fesql::vm::BatchRunSession session;
+        ::hybridse::vm::BatchRunSession session;
         if (request->is_debug()) {
             session.EnableDebug();
         }
@@ -1869,7 +1869,7 @@ void TabletImpl::ProcessQuery(RpcController* ctrl,
         uint32_t byte_size = 0;
         uint32_t count = 0;
         while (iter->Valid()) {
-            const ::fesql::codec::Row& row = iter->GetValue();
+            const ::hybridse::codec::Row& row = iter->GetValue();
             if (byte_size > FLAGS_scan_max_bytes_size) {
                 LOG(WARNING) << "reach the max byte size truncate result";
                 response->set_schema(session.GetEncodedSchema());
@@ -1891,16 +1891,16 @@ void TabletImpl::ProcessQuery(RpcController* ctrl,
                    << " with record cnt " << count << " byte size "
                    << byte_size;
     } else {
-        ::fesql::vm::RequestRunSession session;
+        ::hybridse::vm::RequestRunSession session;
         if (request->is_debug()) {
             session.EnableDebug();
         }
         if (request->is_procedure()) {
             const std::string& db_name = request->db();
             const std::string& sp_name = request->sp_name();
-            std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
+            std::shared_ptr<hybridse::vm::CompileInfo> request_compile_info;
             {
-                fesql::base::Status status;
+                hybridse::base::Status status;
                 request_compile_info = sp_cache_->GetRequestInfo(db_name, sp_name, status);
                 if (!status.isOK()) {
                     response->set_code(::fedb::base::ReturnCode::kProcedureNotFound);
@@ -1953,17 +1953,17 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl, const fedb::api::SQLB
 void TabletImpl::ProcessBatchRequestQuery(
     RpcController* ctrl, const fedb::api::SQLBatchRequestQueryRequest* request,
     fedb::api::SQLBatchRequestQueryResponse* response, butil::IOBuf& buf) {
-    ::fesql::base::Status status;
-    ::fesql::vm::BatchRequestRunSession session;
+    ::hybridse::base::Status status;
+    ::hybridse::vm::BatchRequestRunSession session;
     // run session
     if (request->is_debug()) {
         session.EnableDebug();
     }
     bool is_procedure = request->is_procedure();
     if (is_procedure) {
-        std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
+        std::shared_ptr<hybridse::vm::CompileInfo> request_compile_info;
         {
-            fesql::base::Status status;
+            hybridse::base::Status status;
             request_compile_info = sp_cache_->GetBatchRequestInfo(
                 request->db(), request->sp_name(), status);
             if (!status.isOK()) {
@@ -2017,10 +2017,10 @@ void TabletImpl::ProcessBatchRequestQuery(
 
     auto& io_buf = static_cast<brpc::Controller*>(ctrl)->request_attachment();
     size_t buf_offset = 0;
-    std::vector<::fesql::codec::Row> input_rows(input_row_num);
+    std::vector<::hybridse::codec::Row> input_rows(input_row_num);
     if (has_common_and_uncommon_row) {
         size_t common_size = request->row_sizes().Get(0);
-        ::fesql::codec::Row common_row;
+        ::hybridse::codec::Row common_row;
         if (!codec::DecodeRpcRow(io_buf, buf_offset, common_size,
                                  request->common_slices(), &common_row)) {
             response->set_msg("decode input common row failed");
@@ -2029,7 +2029,7 @@ void TabletImpl::ProcessBatchRequestQuery(
         }
         buf_offset += common_size;
         for (size_t i = 0; i < input_row_num; ++i) {
-            ::fesql::codec::Row non_common_row;
+            ::hybridse::codec::Row non_common_row;
             size_t non_common_size = request->row_sizes().Get(i + 1);
             if (!codec::DecodeRpcRow(io_buf, buf_offset, non_common_size,
                                      request->non_common_slices(), &non_common_row)) {
@@ -2038,7 +2038,7 @@ void TabletImpl::ProcessBatchRequestQuery(
                 return;
             }
             buf_offset += non_common_size;
-            input_rows[i] = ::fesql::codec::Row(
+            input_rows[i] = ::hybridse::codec::Row(
                 1, common_row, 1, non_common_row);
         }
     } else {
@@ -2053,7 +2053,7 @@ void TabletImpl::ProcessBatchRequestQuery(
             buf_offset += non_common_size;
         }
     }
-    std::vector<::fesql::codec::Row> output_rows;
+    std::vector<::hybridse::codec::Row> output_rows;
     int32_t run_ret = 0;
     if (request->has_task_id()) {
         session.Run(request->task_id(), input_rows, output_rows);
@@ -4836,7 +4836,7 @@ void TabletImpl::RefreshTableInfo() {
         auto it = db_sp_map.find(sp_info->GetDbName());
         if (it == db_sp_map.end()) {
             std::map<std::string,
-                std::shared_ptr<fesql::sdk::ProcedureInfo>>
+                std::shared_ptr<hybridse::sdk::ProcedureInfo>>
                     sp_in_db = {{sp_info->GetSpName(), sp_info}};
             db_sp_map.insert(std::make_pair(sp_info->GetDbName(), sp_in_db));
         } else {
@@ -5807,10 +5807,10 @@ void TabletImpl::CreateProcedure(RpcController* controller,
         PDLOG(WARNING, "store procedure[%s] already exists in db[%s]", sp_name.c_str(), db_name.c_str());
         return;
     }
-    ::fesql::base::Status status;
+    ::hybridse::base::Status status;
 
     // build for single request
-    ::fesql::vm::RequestRunSession session;
+    ::hybridse::vm::RequestRunSession session;
     bool ok = engine_.Get(sql, db_name, session, status);
     if (!ok || session.GetCompileInfo() == nullptr) {
         response->set_msg(status.str());
@@ -5820,7 +5820,7 @@ void TabletImpl::CreateProcedure(RpcController* controller,
     }
 
     // build for batch request
-    ::fesql::vm::BatchRequestRunSession batch_session;
+    ::hybridse::vm::BatchRequestRunSession batch_session;
     for (auto i = 0; i < sp_info.input_schema_size(); ++i) {
         bool is_constant = sp_info.input_schema().Get(i).is_constant();
         if (is_constant) {
@@ -5878,13 +5878,13 @@ void TabletImpl::DropProcedure(RpcController* controller,
 
 void TabletImpl::RunRequestQuery(RpcController* ctrl,
                                  const fedb::api::QueryRequest& request,
-                                 ::fesql::vm::RequestRunSession& session,
+                                 ::hybridse::vm::RequestRunSession& session,
                                  fedb::api::QueryResponse& response,
                                  butil::IOBuf& buf) {
     if (request.is_debug()) {
         session.EnableDebug();
     }
-    ::fesql::codec::Row row;
+    ::hybridse::codec::Row row;
     auto& request_buf = static_cast<brpc::Controller*>(ctrl)->request_attachment();
     size_t input_slices = request.row_slices();
     if (!codec::DecodeRpcRow(request_buf, 0, request.row_size(), input_slices, &row)) {
@@ -5892,7 +5892,7 @@ void TabletImpl::RunRequestQuery(RpcController* ctrl,
         response.set_msg("fail to decode input row");
         return;
     }
-    ::fesql::codec::Row output;
+    ::hybridse::codec::Row output;
     int32_t ret = 0;
     if (request.has_task_id()) {
         ret = session.Run(request.task_id(), row, &output);
@@ -5923,20 +5923,20 @@ void TabletImpl::RunRequestQuery(RpcController* ctrl,
     response.set_code(::fedb::base::kOk);
 }
 
-void TabletImpl::CreateProcedure(const std::shared_ptr<fesql::sdk::ProcedureInfo> sp_info) {
+void TabletImpl::CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info) {
     const std::string& db_name = sp_info->GetDbName();
     const std::string& sp_name = sp_info->GetSpName();
     const std::string& sql = sp_info->GetSql();
-    ::fesql::base::Status status;
+    ::hybridse::base::Status status;
     // build for single request
-    ::fesql::vm::RequestRunSession session;
+    ::hybridse::vm::RequestRunSession session;
     bool ok = engine_.Get(sql, db_name, session, status);
     if (!ok || session.GetCompileInfo() == nullptr) {
         LOG(WARNING) << "fail to compile sql " << sql;
         return;
     }
     // build for batch request
-    ::fesql::vm::BatchRequestRunSession batch_session;
+    ::hybridse::vm::BatchRequestRunSession batch_session;
     for (auto i = 0; i < sp_info->GetInputSchema().GetColumnCnt(); ++i) {
         bool is_constant = sp_info->GetInputSchema().IsConstant(i);
         if (is_constant) {

@@ -33,7 +33,7 @@
 namespace fedb {
 namespace sdk {
 
-class SQLBatchRequestResultSet : public ::fesql::sdk::ResultSet {
+class SQLBatchRequestResultSet : public ::hybridse::sdk::ResultSet {
  public:
     SQLBatchRequestResultSet(
         const std::shared_ptr<::fedb::api::SQLBatchRequestQueryResponse>& response,
@@ -71,7 +71,7 @@ class SQLBatchRequestResultSet : public ::fesql::sdk::ResultSet {
 
     bool GetTime(uint32_t index, int64_t* mills);
 
-    inline const ::fesql::sdk::Schema* GetSchema() { return &external_schema_; }
+    inline const ::hybridse::sdk::Schema* GetSchema() { return &external_schema_; }
 
     inline int32_t Size() { return response_->count(); }
 
@@ -91,12 +91,12 @@ class SQLBatchRequestResultSet : public ::fesql::sdk::ResultSet {
     std::set<size_t> common_column_indices_;
     std::vector<size_t> column_remap_;
 
-    std::unique_ptr<::fesql::sdk::RowIOBufView> common_row_view_;
-    std::unique_ptr<::fesql::sdk::RowIOBufView> non_common_row_view_;
+    std::unique_ptr<::hybridse::sdk::RowIOBufView> common_row_view_;
+    std::unique_ptr<::hybridse::sdk::RowIOBufView> non_common_row_view_;
 
-    ::fesql::sdk::SchemaImpl external_schema_;
-    ::fesql::codec::Schema common_schema_;
-    ::fesql::codec::Schema non_common_schema_;
+    ::hybridse::sdk::SchemaImpl external_schema_;
+    ::hybridse::codec::Schema common_schema_;
+    ::hybridse::codec::Schema non_common_schema_;
 
     size_t common_buf_size_ = 0;
     butil::IOBuf common_buf_;

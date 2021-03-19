@@ -30,27 +30,27 @@
 namespace fedb {
 namespace sdk {
 
-ResultSetSQL::ResultSetSQL(const ::fesql::vm::Schema& schema, uint32_t record_cnt, uint32_t buf_size,
+ResultSetSQL::ResultSetSQL(const ::hybridse::vm::Schema& schema, uint32_t record_cnt, uint32_t buf_size,
                            const std::shared_ptr<brpc::Controller>& cntl)
     : schema_(schema), record_cnt_(record_cnt), buf_size_(buf_size), cntl_(cntl), result_set_base_(nullptr) {}
 
 ResultSetSQL::~ResultSetSQL() { delete result_set_base_; }
 
 bool ResultSetSQL::Init() {
-    std::unique_ptr<::fesql::sdk::RowIOBufView> row_view(new ::fesql::sdk::RowIOBufView(schema_));
+    std::unique_ptr<::hybridse::sdk::RowIOBufView> row_view(new ::hybridse::sdk::RowIOBufView(schema_));
     DLOG(INFO) << "init result set sql with record cnt " << record_cnt_ << " buf size " << buf_size_;
     result_set_base_ = new ResultSetBase(cntl_, record_cnt_, buf_size_, std::move(row_view), schema_);
     return true;
 }
 
-std::shared_ptr<::fesql::sdk::ResultSet> ResultSetSQL::MakeResultSet(
+std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
     const std::shared_ptr<::fedb::api::QueryResponse>& response, const std::shared_ptr<brpc::Controller>& cntl,
-    fesql::sdk::Status* status) {
+    hybridse::sdk::Status* status) {
     if (!status || !response || !cntl) {
         return std::shared_ptr<ResultSet>();
     }
-    ::fesql::vm::Schema schema;
-    bool ok = ::fesql::codec::SchemaCodec::Decode(response->schema(), &schema);
+    ::hybridse::vm::Schema schema;
+    bool ok = ::hybridse::codec::SchemaCodec::Decode(response->schema(), &schema);
     if (!ok) {
         status->code = -1;
         status->msg = "request error, fail to decodec schema";
@@ -67,16 +67,16 @@ std::shared_ptr<::fesql::sdk::ResultSet> ResultSetSQL::MakeResultSet(
     return rs;
 }
 
-std::shared_ptr<::fesql::sdk::ResultSet> ResultSetSQL::MakeResultSet(
+std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
     const std::shared_ptr<::fedb::api::ScanResponse>& response,
     const ::google::protobuf::RepeatedField<uint32_t>& projection, const std::shared_ptr<brpc::Controller>& cntl,
-    std::shared_ptr<::fesql::vm::TableHandler> table_handler, ::fesql::sdk::Status* status) {
+    std::shared_ptr<::hybridse::vm::TableHandler> table_handler, ::hybridse::sdk::Status* status) {
     if (!status || !response || !cntl) {
         return std::shared_ptr<ResultSet>();
     }
     auto sdk_table_handler = dynamic_cast<::fedb::catalog::SDKTableHandler*>(table_handler.get());
     if (projection.size() > 0) {
-        ::fesql::vm::Schema schema;
+        ::hybridse::vm::Schema schema;
         bool ok = ::fedb::catalog::SchemaAdapter::SubSchema(sdk_table_handler->GetSchema(), projection, &schema);
         if (!ok) {
             status->code = -1;

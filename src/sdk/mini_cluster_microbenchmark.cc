@@ -81,9 +81,9 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     key1->add_ts_name("col2");
     ok = ns_client->CreateTable(table_info, error);
 
-    ::fesql::vm::Schema fe_schema;
+    ::hybridse::vm::Schema fe_schema;
     ::fedb::catalog::SchemaAdapter::ConvertSchema(table_info.column_desc_v1(), &fe_schema);
-    ::fesql::codec::RowBuilder rb(fe_schema);
+    ::hybridse::codec::RowBuilder rb(fe_schema);
     std::string pk = "pk1";
     uint64_t ts = 1589780888000l;
     uint32_t size = rb.CalTotalLength(pk.size());
@@ -110,7 +110,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
         }
     }
     std::string sql = "select col1, col2 + 1, col3, col4, col5 from " + name + " ;";
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
@@ -118,7 +118,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     if (!router) return;
     for (auto _ : state) {
         benchmark::DoNotOptimize(router->ExecuteSQL(db, sql, &status));
-        if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
             state.SkipWithError("benchmark case debug");
             break;
         }
@@ -126,7 +126,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
 }
 
 static bool Async3Times(const std::string& db, const std::string& table, const std::string& key, int64_t st, int64_t et,
-                        std::shared_ptr<fedb::sdk::TableReader> reader, fesql::sdk::Status* status) {
+                        std::shared_ptr<fedb::sdk::TableReader> reader, hybridse::sdk::Status* status) {
     ::fedb::sdk::ScanOption so;
     std::vector<std::shared_ptr<::fedb::sdk::ScanFuture>> tasks;
     for (int i = 0; i < 3; i++) {
@@ -152,7 +152,7 @@ static void BM_SimpleTableReaderAsyncMulti(benchmark::State& state) {  // NOLINT
         return;
     }
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     router->CreateDB(db, &status);
     std::string ddl =
         "create table t1"
@@ -192,7 +192,7 @@ static void BM_SimpleTableReaderAsync(benchmark::State& state) {  // NOLINT
         return;
     }
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     router->CreateDB(db, &status);
     std::string ddl =
         "create table t1"
@@ -232,7 +232,7 @@ static void BM_SimpleTableReaderSync(benchmark::State& state) {  // NOLINT
         return;
     }
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     router->CreateDB(db, &status);
     std::string ddl =
         "create table t1"
@@ -283,7 +283,7 @@ static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
     }
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     router->CreateDB(db, &status);
     std::string create = "create table " + name +
                          "(col1 string, col2 bigint, col3 int, col4 float, "
@@ -300,7 +300,7 @@ static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
     for (auto _ : state) {
         for (uint64_t i = 0; i < sample.size(); ++i) {
             benchmark::DoNotOptimize(router->ExecuteInsert(db, sample[i], &status));
-            if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+            if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
                 state.SkipWithError("benchmark case debug");
                 break;
             }
@@ -319,7 +319,7 @@ static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
     }
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     router->CreateDB(db, &status);
     std::string create = "create table " + name +
                          "(col1 string, col2 bigint, col3 int, col4 float, "
@@ -347,7 +347,7 @@ static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
             } else {
                 std::cout << "get insert row failed" << std::endl;
             }
-            if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+            if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
                 state.SkipWithError("benchmark case debug");
                 break;
             }
@@ -366,7 +366,7 @@ static void BM_InsertPlaceHolderBatchFunction(benchmark::State& state) {  // NOL
     }
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     router->CreateDB(db, &status);
     std::string create = "create table " + name +
                          "(col1 string, col2 bigint, col3 int, col4 float, "
@@ -396,7 +396,7 @@ static void BM_InsertPlaceHolderBatchFunction(benchmark::State& state) {  // NOL
         } else {
             std::cout << "get insert row failed" << std::endl;
         }
-        if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
             state.SkipWithError("benchmark case debug");
             break;
         }
@@ -407,7 +407,7 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
-    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+    if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
         sql_opt.enable_debug = true;
     } else {
         sql_opt.enable_debug = false;
@@ -419,7 +419,7 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     }
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     router->CreateDB(db, &status);
     std::string create = "create table " + name +
                          "(id int, c1 string, c2 string, c3 string, c4 string, "
@@ -472,7 +472,7 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
         router->ExecuteSQL(db, exe_sql, request_row, &status);
     }
     LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
-    if (fesql::sqlcase::SQLCase::IS_DEBUG() || fesql::sqlcase::SQLCase::IS_PERF()) {
+    if (hybridse::sqlcase::SQLCase::IS_DEBUG() || hybridse::sqlcase::SQLCase::IS_PERF()) {
         for (auto _ : state) {
             router->ExecuteSQL(db, exe_sql, request_row, &status);
             state.SkipWithError("benchmark case debug");
@@ -488,7 +488,7 @@ static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
     ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
-    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+    if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
         sql_opt.enable_debug = true;
     } else {
         sql_opt.enable_debug = false;
@@ -500,7 +500,7 @@ static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
     }
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     router->CreateDB(db, &status);
     std::string create = "create table " + name +
                          "(id int, c1 string, c2 string, c3 string, c4 string, "
@@ -563,7 +563,7 @@ static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
         router->ExecuteSQL(db, exe_sql, request_row, &status);
     }
     LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
-    if (fesql::sqlcase::SQLCase::IS_DEBUG() || fesql::sqlcase::SQLCase::IS_PERF()) {
+    if (hybridse::sqlcase::SQLCase::IS_DEBUG() || hybridse::sqlcase::SQLCase::IS_PERF()) {
         for (auto _ : state) {
             router->ExecuteSQL(db, exe_sql, request_row, &status);
             state.SkipWithError("benchmark case debug");
@@ -576,12 +576,12 @@ static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
     }
 }
 
-static void SimpleLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_case, int32_t window_size) {  // NOLINT
-    sql_case.db_ = fesql::sqlcase::SQLCase::GenRand("db");
+static void SimpleLastJoinNCaseData(hybridse::sqlcase::SQLCase& sql_case, int32_t window_size) {  // NOLINT
+    sql_case.db_ = hybridse::sqlcase::SQLCase::GenRand("db");
     // table {0}
     {
-        fesql::sqlcase::SQLCase::TableInfo input;
-        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        hybridse::sqlcase::SQLCase::TableInfo input;
+        input.name_ = hybridse::sqlcase::SQLCase::GenRand("table");
         input.columns_ = {"id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"};
         input.indexs_ = {"index1:c1:c7"};
         sql_case.inputs_.push_back(input);
@@ -589,8 +589,8 @@ static void SimpleLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_case, int32_t w
 
     // table {1}
     {
-        fesql::sqlcase::SQLCase::TableInfo input;
-        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        hybridse::sqlcase::SQLCase::TableInfo input;
+        input.name_ = hybridse::sqlcase::SQLCase::GenRand("table");
         input.columns_ = {"rid int", "x1 string", "x2 string", "x3 string", "x4 string", "x6 double", "x7 timestamp"};
         input.indexs_ = {"index1:x1:x7"};
         int id = 0;
@@ -609,29 +609,29 @@ static void SimpleLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_case, int32_t w
     }
     // table {2}
     {
-        fesql::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[1];
-        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        hybridse::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[1];
+        input.name_ = hybridse::sqlcase::SQLCase::GenRand("table");
         input.indexs_ = {"index2:x2:x7"};
         sql_case.inputs_.push_back(input);
     }
     // table {3}
     {
-        fesql::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[1];
-        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        hybridse::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[1];
+        input.name_ = hybridse::sqlcase::SQLCase::GenRand("table");
         input.indexs_ = {"index3:x3:x7"};
         sql_case.inputs_.push_back(input);
     }
     // table {4}
     {
-        fesql::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[1];
-        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        hybridse::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[1];
+        input.name_ = hybridse::sqlcase::SQLCase::GenRand("table");
         input.indexs_ = {"index4:x4:x7"};
         sql_case.inputs_.push_back(input);
     }
 
     // request table {0}
     {
-        fesql::sqlcase::SQLCase::TableInfo request;
+        hybridse::sqlcase::SQLCase::TableInfo request;
         request.columns_ = {"id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"};
         request.indexs_ = {"index1:c1:c7"};
         request.rows_.push_back(
@@ -640,15 +640,15 @@ static void SimpleLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_case, int32_t w
     }
 }
 
-static void SimpleWindowOutputLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_case, int32_t window_size) {  // NOLINT
-    sql_case.db_ = fesql::sqlcase::SQLCase::GenRand("db");
+static void SimpleWindowOutputLastJoinNCaseData(hybridse::sqlcase::SQLCase& sql_case, int32_t window_size) {  // NOLINT
+    sql_case.db_ = hybridse::sqlcase::SQLCase::GenRand("db");
     // table {0}
     {
         int id = 0;
-        fesql::sqlcase::SQLCase::TableInfo input;
+        hybridse::sqlcase::SQLCase::TableInfo input;
         input.columns_ = {"id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"};
         input.indexs_ = {"index1:c1:c7"};
-        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        input.name_ = hybridse::sqlcase::SQLCase::GenRand("table");
         int64_t ts = 1590738991000;
         for (int i = 1; i < window_size; i++) {
             ts -= 1000;
@@ -662,7 +662,7 @@ static void SimpleWindowOutputLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_cas
         }
         sql_case.inputs_.push_back(input);
         // request table {0}
-        fesql::sqlcase::SQLCase::TableInfo request;
+        hybridse::sqlcase::SQLCase::TableInfo request;
         request.columns_ = {"id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"};
         request.indexs_ = {"index1:c1:c7"};
         request.rows_.push_back({std::to_string(id), "a", "bb", "ccc", "aaaa", "1.0", std::to_string(1590738991000)});
@@ -671,8 +671,8 @@ static void SimpleWindowOutputLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_cas
     // table {1}
     {
         int id = 0;
-        fesql::sqlcase::SQLCase::TableInfo input;
-        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        hybridse::sqlcase::SQLCase::TableInfo input;
+        input.name_ = hybridse::sqlcase::SQLCase::GenRand("table");
         input.columns_ = {"rid int", "x1 string", "x2 string", "x3 string", "x4 string", "x6 double", "x7 timestamp"};
         input.indexs_ = {"index1:x1:x7", "index2:x2:x7", "index3:x3:x7", "index4:x4:x7"};
         int64_t ts = 1590738991000;
@@ -690,7 +690,7 @@ static void SimpleWindowOutputLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_cas
     }
 }
 static void BM_SimpleLastJoinTable2(benchmark::State& state) {  // NOLINT
-    fesql::sqlcase::SQLCase sql_case;
+    hybridse::sqlcase::SQLCase sql_case;
     sql_case.desc_ = "BM_SimpleLastJoin2Right";
     SimpleLastJoinNCaseData(sql_case, state.range(0));
 
@@ -704,7 +704,7 @@ last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - {ts_diff} >= {2}.x
     BM_RequestQuery(state, sql_case, mc);
 }
 static void BM_SimpleLastJoinTable4(benchmark::State& state) {  // NOLINT
-    fesql::sqlcase::SQLCase sql_case;
+    hybridse::sqlcase::SQLCase sql_case;
     sql_case.desc_ = "BM_SimpleLastJoin3Table";
     SimpleLastJoinNCaseData(sql_case, state.range(0));
     sql_case.sql_str_ = R"(
@@ -720,7 +720,7 @@ last join {4} order by {4}.x7 on {0}.c4 = {4}.x4 and {0}.c7 - {ts_diff} >= {4}.x
 }
 
 static void BM_SimpleWindowOutputLastJoinTable2(benchmark::State& state) {  // NOLINT
-    fesql::sqlcase::SQLCase sql_case;
+    hybridse::sqlcase::SQLCase sql_case;
     sql_case.desc_ = "BM_SimpleWindowOutputLastJoin4Table";
     SimpleWindowOutputLastJoinNCaseData(sql_case, state.range(0));
     sql_case.sql_str_ = R"(
@@ -745,7 +745,7 @@ last join {1} as t2 order by t2.x7 on c2 = t2.x2 and c7 - {ts_diff} >= t2.x7
     BM_RequestQuery(state, sql_case, mc);
 }
 static void BM_SimpleWindowOutputLastJoinTable4(benchmark::State& state) {  // NOLINT
-    fesql::sqlcase::SQLCase sql_case;
+    hybridse::sqlcase::SQLCase sql_case;
     sql_case.desc_ = "BM_SimpleWindowOutputLastJoin4Table";
     SimpleWindowOutputLastJoinNCaseData(sql_case, state.range(0));
     sql_case.sql_str_ = R"(
@@ -771,18 +771,18 @@ static void BM_SimpleWindowOutputLastJoinTable4(benchmark::State& state) {  // N
     BM_RequestQuery(state, sql_case, mc);
 }
 
-static void LastJoinNWindowOutputCase(fesql::sqlcase::SQLCase& sql_case, int32_t window_size) {  // NOLINT
-    sql_case.db_ = fesql::sqlcase::SQLCase::GenRand("db");
+static void LastJoinNWindowOutputCase(hybridse::sqlcase::SQLCase& sql_case, int32_t window_size) {  // NOLINT
+    sql_case.db_ = hybridse::sqlcase::SQLCase::GenRand("db");
     int request_id = 0;
     std::vector<std::string> columns = {"id int",    "c1 string", "c2 string",   "c3 string",
                                         "c4 string", "c6 double", "c7 timestamp"};
     std::vector<std::string> indexs = {"index1:c1:c7", "index2:c2:c7", "index3:c3:c7", "index4:c4:c7"};
     // table {0}
     {
-        fesql::sqlcase::SQLCase::TableInfo input;
+        hybridse::sqlcase::SQLCase::TableInfo input;
         input.columns_ = columns;
         input.indexs_ = indexs;
-        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        input.name_ = hybridse::sqlcase::SQLCase::GenRand("table");
         int id = 0;
         int64_t ts = 1590738991000;
         for (int i = 1; i < window_size; i++) {
@@ -800,7 +800,7 @@ static void LastJoinNWindowOutputCase(fesql::sqlcase::SQLCase& sql_case, int32_t
     }
     // request table {0}
     {
-        fesql::sqlcase::SQLCase::TableInfo request;
+        hybridse::sqlcase::SQLCase::TableInfo request;
         request.columns_ = columns;
         request.indexs_ = indexs;
         request.rows_.push_back(
@@ -809,7 +809,7 @@ static void LastJoinNWindowOutputCase(fesql::sqlcase::SQLCase& sql_case, int32_t
     }
 }
 static void BM_LastJoin4WindowOutput(benchmark::State& state) {  // NOLINT
-    fesql::sqlcase::SQLCase sql_case;
+    hybridse::sqlcase::SQLCase sql_case;
     LastJoinNWindowOutputCase(sql_case, state.range(0));
     sql_case.desc_ = "BM_LastJoin4WindowOutput";
     sql_case.sql_str_ = R"(
@@ -834,7 +834,7 @@ window w4 as (PARTITION BY {0}.c4 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDI
     BM_RequestQuery(state, sql_case, mc);
 }
 static void BM_LastJoin8WindowOutput(benchmark::State& state) {  // NOLINT
-    fesql::sqlcase::SQLCase sql_case;
+    hybridse::sqlcase::SQLCase sql_case;
     LastJoinNWindowOutputCase(sql_case, state.range(0));
     sql_case.desc_ = "BM_LastJoin4WindowOutput";
     sql_case.sql_str_ = R"(
@@ -902,14 +902,14 @@ BENCHMARK(BM_SimpleTableReaderAsyncMulti)
     ->Args({10000});
 
 int main(int argc, char** argv) {
-    ::fesql::vm::Engine::InitializeGlobalLLVM();
-    FLAGS_enable_distsql = fesql::sqlcase::SQLCase::IS_CLUSTER();
-    FLAGS_enable_localtablet = !fesql::sqlcase::SQLCase::IS_DISABLE_LOCALTABLET();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    FLAGS_enable_distsql = hybridse::sqlcase::SQLCase::IS_CLUSTER();
+    FLAGS_enable_localtablet = !hybridse::sqlcase::SQLCase::IS_DISABLE_LOCALTABLET();
     ::benchmark::Initialize(&argc, argv);
     if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
     ::fedb::sdk::MiniCluster mini_cluster(6181);
     mc = &mini_cluster;
-    if (!fesql::sqlcase::SQLCase::IS_CLUSTER()) {
+    if (!hybridse::sqlcase::SQLCase::IS_CLUSTER()) {
         mini_cluster.SetUp(1);
     } else {
         mini_cluster.SetUp();

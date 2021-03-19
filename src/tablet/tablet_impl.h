@@ -71,23 +71,23 @@ typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot>>>
 
 // tablet cache entry for sql procedure
 struct SQLProcedureCacheEntry {
-    std::shared_ptr<fesql::sdk::ProcedureInfo> procedure_info;
-    std::shared_ptr<fesql::vm::CompileInfo> request_info;
-    std::shared_ptr<fesql::vm::CompileInfo> batch_request_info;
+    std::shared_ptr<hybridse::sdk::ProcedureInfo> procedure_info;
+    std::shared_ptr<hybridse::vm::CompileInfo> request_info;
+    std::shared_ptr<hybridse::vm::CompileInfo> batch_request_info;
 
-    SQLProcedureCacheEntry(const std::shared_ptr<fesql::sdk::ProcedureInfo> pinfo,
-                           std::shared_ptr<fesql::vm::CompileInfo> rinfo,
-                           std::shared_ptr<fesql::vm::CompileInfo> brinfo)
+    SQLProcedureCacheEntry(const std::shared_ptr<hybridse::sdk::ProcedureInfo> pinfo,
+                           std::shared_ptr<hybridse::vm::CompileInfo> rinfo,
+                           std::shared_ptr<hybridse::vm::CompileInfo> brinfo)
       : procedure_info(pinfo), request_info(rinfo), batch_request_info(brinfo) {}
 };
-class SpCache : public fesql::vm::CompileInfoCache {
+class SpCache : public hybridse::vm::CompileInfoCache {
  public:
     SpCache() : db_sp_map_() {}
     ~SpCache() {}
     void InsertSQLProcedureCacheEntry(const std::string& db, const std::string& sp_name,
-                                      std::shared_ptr<fesql::sdk::ProcedureInfo> procedure_info,
-                                      std::shared_ptr<fesql::vm::CompileInfo> request_info,
-                                      std::shared_ptr<fesql::vm::CompileInfo> batch_request_info) {
+                                      std::shared_ptr<hybridse::sdk::ProcedureInfo> procedure_info,
+                                      std::shared_ptr<hybridse::vm::CompileInfo> request_info,
+                                      std::shared_ptr<hybridse::vm::CompileInfo> batch_request_info) {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         auto& sp_map_of_db = db_sp_map_[db];
         sp_map_of_db.insert(
@@ -105,48 +105,48 @@ class SpCache : public fesql::vm::CompileInfoCache {
         auto sp_it = sp_map_of_db.find(sp_name);
         return sp_it != sp_map_of_db.end();
     }
-    std::shared_ptr<fesql::vm::CompileInfo> GetRequestInfo(const std::string& db, const std::string& sp_name,
-                                                           fesql::base::Status& status) override {  // NOLINT
+    std::shared_ptr<hybridse::vm::CompileInfo> GetRequestInfo(const std::string& db, const std::string& sp_name,
+                                                           hybridse::base::Status& status) override {  // NOLINT
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         auto db_it = db_sp_map_.find(db);
         if (db_it == db_sp_map_.end()) {
-            status = fesql::base::Status(fesql::common::kProcedureNotFound,
+            status = hybridse::base::Status(hybridse::common::kProcedureNotFound,
                                          "store procedure[" + sp_name + "] not found in db[" + db + "]");
-            return std::shared_ptr<fesql::vm::CompileInfo>();
+            return std::shared_ptr<hybridse::vm::CompileInfo>();
         }
         auto sp_it = db_it->second.find(sp_name);
         if (sp_it == db_it->second.end()) {
-            status = fesql::base::Status(fesql::common::kProcedureNotFound,
+            status = hybridse::base::Status(hybridse::common::kProcedureNotFound,
                                          "store procedure[" + sp_name + "] not found in db[" + db + "]");
-            return std::shared_ptr<fesql::vm::CompileInfo>();
+            return std::shared_ptr<hybridse::vm::CompileInfo>();
         }
 
         if (!sp_it->second.request_info) {
-            status = fesql::base::Status(fesql::common::kProcedureNotFound,
+            status = hybridse::base::Status(hybridse::common::kProcedureNotFound,
                                          "store procedure[" + sp_name + "] not found in db[" + db + "]");
-            return std::shared_ptr<fesql::vm::CompileInfo>();
+            return std::shared_ptr<hybridse::vm::CompileInfo>();
         }
         return sp_it->second.request_info;
     }
-    std::shared_ptr<fesql::vm::CompileInfo> GetBatchRequestInfo(const std::string& db, const std::string& sp_name,
-                                                                fesql::base::Status& status) override {  // NOLINT
+    std::shared_ptr<hybridse::vm::CompileInfo> GetBatchRequestInfo(const std::string& db, const std::string& sp_name,
+                                                                hybridse::base::Status& status) override {  // NOLINT
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         auto db_it = db_sp_map_.find(db);
         if (db_it == db_sp_map_.end()) {
-            status = fesql::base::Status(fesql::common::kProcedureNotFound,
+            status = hybridse::base::Status(hybridse::common::kProcedureNotFound,
                                          "store procedure[" + sp_name + "] not found in db[" + db + "]");
-            return std::shared_ptr<fesql::vm::CompileInfo>();
+            return std::shared_ptr<hybridse::vm::CompileInfo>();
         }
         auto sp_it = db_it->second.find(sp_name);
         if (sp_it == db_it->second.end()) {
-            status = fesql::base::Status(fesql::common::kProcedureNotFound,
+            status = hybridse::base::Status(hybridse::common::kProcedureNotFound,
                                          "store procedure[" + sp_name + "] not found in db[" + db + "]");
-            return std::shared_ptr<fesql::vm::CompileInfo>();
+            return std::shared_ptr<hybridse::vm::CompileInfo>();
         }
         if (!sp_it->second.batch_request_info) {
-            status = fesql::base::Status(fesql::common::kProcedureNotFound,
+            status = hybridse::base::Status(hybridse::common::kProcedureNotFound,
                                          "store procedure[" + sp_name + "] not found in db[" + db + "]");
-            return std::shared_ptr<fesql::vm::CompileInfo>();
+            return std::shared_ptr<hybridse::vm::CompileInfo>();
         }
         return sp_it->second.batch_request_info;
     }
@@ -580,10 +580,10 @@ class TabletImpl : public ::fedb::api::TabletServer {
  private:
     void RunRequestQuery(RpcController* controller,
         const fedb::api::QueryRequest& request,
-        ::fesql::vm::RequestRunSession& session, // NOLINT 
+        ::hybridse::vm::RequestRunSession& session, // NOLINT 
         fedb::api::QueryResponse& response, butil::IOBuf& buf); // NOLINT
 
-    void CreateProcedure(const std::shared_ptr<fesql::sdk::ProcedureInfo> sp_info);
+    void CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info);
 
     Tables tables_;
     std::mutex mu_;
@@ -610,8 +610,8 @@ class TabletImpl : public ::fedb::api::TabletServer {
     // thread safe
     std::shared_ptr<::fedb::catalog::TabletCatalog> catalog_;
     // thread safe
-    ::fesql::vm::Engine engine_;
-    std::shared_ptr<::fesql::vm::LocalTablet> local_tablet_;
+    ::hybridse::vm::Engine engine_;
+    std::shared_ptr<::hybridse::vm::LocalTablet> local_tablet_;
     std::string zk_cluster_;
     std::string zk_path_;
     std::string endpoint_;

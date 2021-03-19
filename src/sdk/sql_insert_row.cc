@@ -28,7 +28,7 @@ namespace sdk {
 
 SQLInsertRows::SQLInsertRows(
     std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
-    std::shared_ptr<fesql::sdk::Schema> schema, DefaultValueMap default_map,
+    std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
     uint32_t default_str_length)
     : table_info_(table_info),
       schema_(schema),
@@ -47,7 +47,7 @@ std::shared_ptr<SQLInsertRow> SQLInsertRows::NewRow() {
 
 SQLInsertRow::SQLInsertRow(
     std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
-    std::shared_ptr<fesql::sdk::Schema> schema, DefaultValueMap default_map,
+    std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
     uint32_t default_string_length)
     : table_info_(table_info),
       schema_(schema),
@@ -62,7 +62,7 @@ SQLInsertRow::SQLInsertRow(
             ts_set_.insert(idx);
         } else if (table_info_->column_desc_v1(idx).add_ts_idx()) {
             index_map_[index_cnt++].push_back(idx);
-            raw_dimensions_[idx] = fesql::codec::NONETOKEN;
+            raw_dimensions_[idx] = hybridse::codec::NONETOKEN;
         }
         column_name_map.emplace(table_info_->column_desc_v1(idx).name(), idx);
     }
@@ -73,7 +73,7 @@ SQLInsertRow::SQLInsertRow(
             for (const auto& column : table_info_->column_key(idx).col_name()) {
                 index_map_[idx].push_back(column_name_map[column]);
                 raw_dimensions_[column_name_map[column]] =
-                    fesql::codec::NONETOKEN;
+                    hybridse::codec::NONETOKEN;
             }
             for (const auto& ts_col : table_info_->column_key(idx).ts_name()) {
                 ts_set_.insert(column_name_map[ts_col]);
@@ -237,7 +237,7 @@ bool SQLInsertRow::AppendDouble(double val) {
 bool SQLInsertRow::AppendString(const std::string& val) {
     if (IsDimension()) {
         if (val.empty()) {
-            PackDimension(fesql::codec::EMPTY_STRING);
+            PackDimension(hybridse::codec::EMPTY_STRING);
         } else {
             PackDimension(val);
         }
@@ -252,7 +252,7 @@ bool SQLInsertRow::AppendString(const std::string& val) {
 bool SQLInsertRow::AppendString(const char* string_buffer_var_name, uint32_t length) {
     if (IsDimension()) {
         if (0 == length) {
-            PackDimension(fesql::codec::EMPTY_STRING);
+            PackDimension(hybridse::codec::EMPTY_STRING);
         } else {
             PackDimension(std::string(string_buffer_var_name, length));
         }
@@ -292,7 +292,7 @@ bool SQLInsertRow::AppendDate(int32_t date) {
 
 bool SQLInsertRow::AppendNULL() {
     if (IsDimension()) {
-        PackDimension(fesql::codec::NONETOKEN);
+        PackDimension(hybridse::codec::NONETOKEN);
     }
     if (ts_set_.count(rb_.GetAppendPos())) {
         return false;

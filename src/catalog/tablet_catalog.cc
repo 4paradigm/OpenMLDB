@@ -33,7 +33,7 @@ namespace fedb {
 namespace catalog {
 
 TabletTableHandler::TabletTableHandler(const ::fedb::api::TableMeta& meta,
-                                       std::shared_ptr<fesql::vm::Tablet> local_tablet)
+                                       std::shared_ptr<hybridse::vm::Tablet> local_tablet)
     : schema_(),
       table_st_(meta),
       tables_(std::make_shared<Tables>()),
@@ -44,7 +44,7 @@ TabletTableHandler::TabletTableHandler(const ::fedb::api::TableMeta& meta,
       local_tablet_(local_tablet) {}
 
 TabletTableHandler::TabletTableHandler(const ::fedb::nameserver::TableInfo& meta,
-                                       std::shared_ptr<fesql::vm::Tablet> local_tablet)
+                                       std::shared_ptr<hybridse::vm::Tablet> local_tablet)
     : schema_(),
       table_st_(meta),
       tables_(std::make_shared<Tables>()),
@@ -69,8 +69,8 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
 
     // init types var
     for (int32_t i = 0; i < schema_.size(); i++) {
-        const ::fesql::type::ColumnDef& column = schema_.Get(i);
-        ::fesql::vm::ColInfo col_info;
+        const ::hybridse::type::ColumnDef& column = schema_.Get(i);
+        ::hybridse::vm::ColInfo col_info;
         col_info.type = column.type();
         col_info.idx = i;
         col_info.name = column.name();
@@ -79,10 +79,10 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
 
     // init index hint
     for (int32_t i = 0; i < index_list_.size(); i++) {
-        const ::fesql::type::IndexDef& index_def = index_list_.Get(i);
-        ::fesql::vm::IndexSt index_st;
+        const ::hybridse::type::IndexDef& index_def = index_list_.Get(i);
+        ::hybridse::vm::IndexSt index_st;
         index_st.index = i;
-        index_st.ts_pos = ::fesql::vm::INVALID_POS;
+        index_st.ts_pos = ::hybridse::vm::INVALID_POS;
         if (!index_def.second_key().empty()) {
             int32_t pos = GetColumnIndex(index_def.second_key());
             if (pos < 0) {
@@ -108,39 +108,39 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
     return true;
 }
 
-std::unique_ptr<::fesql::codec::RowIterator> TabletTableHandler::GetIterator() {
+std::unique_ptr<::hybridse::codec::RowIterator> TabletTableHandler::GetIterator() {
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
     if (!tables->empty()) {
         return std::unique_ptr<catalog::FullTableIterator>(new catalog::FullTableIterator(tables));
     }
-    return std::unique_ptr<::fesql::codec::RowIterator>();
+    return std::unique_ptr<::hybridse::codec::RowIterator>();
 }
 
-std::unique_ptr<::fesql::codec::WindowIterator> TabletTableHandler::GetWindowIterator(const std::string& idx_name) {
+std::unique_ptr<::hybridse::codec::WindowIterator> TabletTableHandler::GetWindowIterator(const std::string& idx_name) {
     auto iter = index_hint_.find(idx_name);
     if (iter == index_hint_.end()) {
         LOG(WARNING) << "index name " << idx_name << " not exist";
-        return std::unique_ptr<::fesql::codec::WindowIterator>();
+        return std::unique_ptr<::hybridse::codec::WindowIterator>();
     }
     DLOG(INFO) << "get window it with index " << idx_name;
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
     if (!tables->empty()) {
-        return std::unique_ptr<::fesql::codec::WindowIterator>(
+        return std::unique_ptr<::hybridse::codec::WindowIterator>(
             new DistributeWindowIterator(tables, iter->second.index));
     }
-    return std::unique_ptr<::fesql::codec::WindowIterator>();
+    return std::unique_ptr<::hybridse::codec::WindowIterator>();
 }
 
 // TODO(chenjing): 基于segment 优化Get(int pos) 操作
-const ::fesql::codec::Row TabletTableHandler::Get(int32_t pos) {
+const ::hybridse::codec::Row TabletTableHandler::Get(int32_t pos) {
     auto iter = GetIterator();
     while (pos-- > 0 && iter->Valid()) {
         iter->Next();
     }
-    return iter->Valid() ? iter->GetValue() : ::fesql::codec::Row();
+    return iter->Valid() ? iter->GetValue() : ::hybridse::codec::Row();
 }
 
-::fesql::codec::RowIterator* TabletTableHandler::GetRawIterator() {
+::hybridse::codec::RowIterator* TabletTableHandler::GetRawIterator() {
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
     if (!tables->empty()) {
         return new catalog::FullTableIterator(tables);
@@ -158,18 +158,18 @@ const uint64_t TabletTableHandler::GetCount() {
     return cnt;
 }
 
-::fesql::codec::Row TabletTableHandler::At(uint64_t pos) {
+::hybridse::codec::Row TabletTableHandler::At(uint64_t pos) {
     auto iter = GetIterator();
     while (pos-- > 0 && iter->Valid()) {
         iter->Next();
     }
-    return iter->Valid() ? iter->GetValue() : ::fesql::codec::Row();
+    return iter->Valid() ? iter->GetValue() : ::hybridse::codec::Row();
 }
 
-std::shared_ptr<::fesql::vm::PartitionHandler> TabletTableHandler::GetPartition(const std::string& index_name) {
+std::shared_ptr<::hybridse::vm::PartitionHandler> TabletTableHandler::GetPartition(const std::string& index_name) {
     if (index_hint_.find(index_name) == index_hint_.cend()) {
         LOG(WARNING) << "fail to get partition for tablet table handler, index name " << index_name;
-        return std::shared_ptr<::fesql::vm::PartitionHandler>();
+        return std::shared_ptr<::hybridse::vm::PartitionHandler>();
     }
     return std::make_shared<TabletPartitionHandler>(shared_from_this(), index_name);
 }
@@ -207,7 +207,7 @@ void TabletTableHandler::Update(const ::fedb::nameserver::TableInfo& meta, const
     }
 }
 
-std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::string& index_name,
+std::shared_ptr<::hybridse::vm::Tablet> TabletTableHandler::GetTablet(const std::string& index_name,
                                                                    const std::string& pk) {
     uint32_t pid_num = table_st_.GetPartitionNum();
     uint32_t pid = 0;
@@ -231,7 +231,7 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
     return client_tablet;
 }
 
-std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::string& index_name,
+std::shared_ptr<::hybridse::vm::Tablet> TabletTableHandler::GetTablet(const std::string& index_name,
                                                                    const std::vector<std::string>& pks) {
     std::shared_ptr<TabletsAccessor> tablets_accessor = std::shared_ptr<TabletsAccessor>(new TabletsAccessor());
     for (const auto &pk : pks) {
@@ -253,25 +253,25 @@ TabletCatalog::~TabletCatalog() {}
 
 bool TabletCatalog::Init() { return true; }
 
-std::shared_ptr<::fesql::type::Database> TabletCatalog::GetDatabase(const std::string& db) {
+std::shared_ptr<::hybridse::type::Database> TabletCatalog::GetDatabase(const std::string& db) {
     std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
     auto it = db_.find(db);
     if (it == db_.end()) {
-        return std::shared_ptr<::fesql::type::Database>();
+        return std::shared_ptr<::hybridse::type::Database>();
     }
     return it->second;
 }
 
-std::shared_ptr<::fesql::vm::TableHandler> TabletCatalog::GetTable(const std::string& db,
+std::shared_ptr<::hybridse::vm::TableHandler> TabletCatalog::GetTable(const std::string& db,
                                                                    const std::string& table_name) {
     std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
     auto db_it = tables_.find(db);
     if (db_it == tables_.end()) {
-        return std::shared_ptr<::fesql::vm::TableHandler>();
+        return std::shared_ptr<::hybridse::vm::TableHandler>();
     }
     auto it = db_it->second.find(table_name);
     if (it == db_it->second.end()) {
-        return std::shared_ptr<::fesql::vm::TableHandler>();
+        return std::shared_ptr<::hybridse::vm::TableHandler>();
     }
     return it->second;
 }
@@ -305,7 +305,7 @@ bool TabletCatalog::AddTable(const ::fedb::api::TableMeta& meta, std::shared_ptr
     return true;
 }
 
-bool TabletCatalog::AddDB(const ::fesql::type::Database& db) {
+bool TabletCatalog::AddDB(const ::hybridse::type::Database& db) {
     std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
     TabletDB::iterator it = db_.find(db.name());
     if (it != db_.end()) {
@@ -340,7 +340,7 @@ bool TabletCatalog::DeleteDB(const std::string& db) {
 bool TabletCatalog::IndexSupport() { return true; }
 
 bool TabletCatalog::AddProcedure(const std::string& db, const std::string& sp_name,
-        const std::shared_ptr<fesql::sdk::ProcedureInfo>& sp_info) {
+        const std::shared_ptr<hybridse::sdk::ProcedureInfo>& sp_info) {
     std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
     auto& sp_map = db_sp_map_[db];
     if (sp_map.find(sp_name) != sp_map.end()) {
@@ -435,7 +435,7 @@ bool TabletCatalog::UpdateClient(const std::map<std::string, std::string>& real_
 
 uint64_t TabletCatalog::GetVersion() const { return version_.load(std::memory_order_relaxed); }
 
-std::shared_ptr<::fesql::sdk::ProcedureInfo> TabletCatalog::GetProcedureInfo(
+std::shared_ptr<::hybridse::sdk::ProcedureInfo> TabletCatalog::GetProcedureInfo(
         const std::string& db, const std::string& sp_name) {
     std::lock_guard<::fedb::base::SpinMutex> spin_lock(mu_);
     auto db_sp_it = db_sp_map_.find(db);

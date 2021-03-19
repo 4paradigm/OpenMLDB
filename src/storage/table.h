@@ -95,8 +95,8 @@ class Table {
     virtual TableIterator* NewTraverseIterator(uint32_t index,
                                                uint32_t ts_idx) = 0;
 
-    virtual ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t index) = 0;
-    virtual ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t index,
+    virtual ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t index) = 0;
+    virtual ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t index,
                                                            uint32_t ts_idx) = 0;
 
     virtual void SchedGc() = 0;
