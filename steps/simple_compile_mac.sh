@@ -18,7 +18,7 @@
 
 WORK_DIR=`pwd`
 
-sh tools/install_fesql_mac.sh
+sh tools/install_hybridse_mac.sh
 ln -sf /opt/depends/thirdparty thirdparty
 ln -sf /opt/depends/thirdsrc thirdsrc
 mkdir -p $WORK_DIR/build

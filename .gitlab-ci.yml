@@ -26,7 +26,7 @@ style_check:
 build:
   stage: build
   script:
-    - source /root/.bashrc && sh tools/install_fesql.sh
+    - source /root/.bashrc && sh tools/install_hybridse.sh
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/simple_compile.sh
@@ -46,8 +46,8 @@ build:
 daily_build:
   stage: build
   script:
-    - source /root/.bashrc && sh steps/checkout_fesql_branch.sh $FESQL_BRANCH
-    - source /root/.bashrc && sh tools/install_fesql.sh
+    - source /root/.bashrc && sh steps/checkout_hybridse_branch.sh $HYBRIDSE_BRANCH
+    - source /root/.bashrc && sh tools/install_hybridse.sh
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/simple_compile.sh
@@ -125,12 +125,12 @@ fesql_auto_test_level_cluster_0:
   dependencies:
     - build
 
-fesql_sdk_c++_sql_cluster_test_level_0:
+sdk_c++_sql_cluster_test_level_0:
   stage: quick
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_c_ut.sh 0 sql_cluster_test
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/sql_sdk_c_ut.sh 0 sql_cluster_test
   artifacts:
     reports:
       junit:
@@ -141,12 +141,12 @@ fesql_sdk_c++_sql_cluster_test_level_0:
     variables:
       - $ENV_BUILD == "daily"
 
-fesql_sdk_c++_sql_sdk_test_level_0:
+sdk_c++_sql_sdk_test_level_0:
   stage: quick
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_c_ut.sh 0 sql_sdk_test
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/sql_sdk_c_ut.sh 0 sql_sdk_test
   artifacts:
     reports:
       junit:
@@ -201,12 +201,12 @@ fesql_auto_test_level_cluster_1+:
   dependencies:
     - build
 
-fesql_sdk_c++_level_1+:
+sdk_c++_sql_sdk_test_level_1+:
   stage: slow
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_c_ut.sh "1,2,3,4,5"
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/sql_sdk_c_ut.sh "1,2,3,4,5"
   artifacts:
     reports:
       junit:
@@ -222,7 +222,7 @@ c++_ut:
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && sh tools/install_fesql.sh
+    - source /root/.bashrc && sh tools/install_hybridse.sh
     - source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF .. && make -j5 && cd ../
     - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
   artifacts:

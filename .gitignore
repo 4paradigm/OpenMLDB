@@ -75,3 +75,4 @@ src/sdk/python/fesql-auto-test-python/report
 src/sdk/python/logs
 .vscode/settings.json
 rsync_src.sh
+install_hybridse_cj.sh
