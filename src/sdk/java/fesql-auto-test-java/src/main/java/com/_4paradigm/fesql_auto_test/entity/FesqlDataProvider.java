@@ -16,8 +16,8 @@
 
 package com._4paradigm.fesql_auto_test.entity;
 
-import com._4paradigm.fesql.sqlcase.model.CaseFile;
-import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.hyhridse.sqlcase.model.CaseFile;
+import com._4paradigm.hyhridse.sqlcase.model.SQLCase;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

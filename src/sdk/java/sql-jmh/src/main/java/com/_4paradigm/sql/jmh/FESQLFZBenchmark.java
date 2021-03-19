@@ -16,10 +16,10 @@
 
 package com._4paradigm.sql.jmh;
 
-import com._4paradigm.fesql.sqlcase.model.CaseFile;
-import com._4paradigm.fesql.sqlcase.model.ExpectDesc;
-import com._4paradigm.fesql.sqlcase.model.InputDesc;
-import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.hyhridse.sqlcase.model.CaseFile;
+import com._4paradigm.hyhridse.sqlcase.model.ExpectDesc;
+import com._4paradigm.hyhridse.sqlcase.model.InputDesc;
+import com._4paradigm.hyhridse.sqlcase.model.SQLCase;
 import com._4paradigm.sql.BenchmarkConfig;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.tools.Relation;

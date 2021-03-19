@@ -16,8 +16,8 @@
 
 package com._4paradigm.fesql_auto_test.auto_gen_case;
 
-import com._4paradigm.fesql.sqlcase.model.SQLCase;
-import com._4paradigm.fesql.sqlcase.model.SQLCaseType;
+import com._4paradigm.hyhridse.sqlcase.model.SQLCase;
+import com._4paradigm.hyhridse.sqlcase.model.SQLCaseType;
 import com._4paradigm.fesql_auto_test.common.FesqlClient;
 import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.fesql_auto_test.common.FesqlTest;
