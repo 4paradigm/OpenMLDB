@@ -16,8 +16,8 @@
 
 package com._4paradigm.fesql_auto_test.entity;
 
-import com._4paradigm.hyhridse.sqlcase.model.InputDesc;
-import com._4paradigm.hyhridse.sqlcase.model.SQLCase;
+import com._4paradigm.hybridse.sqlcase.model.InputDesc;
+import com._4paradigm.hybridse.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
 import org.testng.Assert;
 import org.testng.annotations.Test;

@@ -16,7 +16,7 @@
 
 package com._4paradigm.fesql_auto_test.report;
 
-import com._4paradigm.fesql_auto_test.common.FesqlConfig;
+import com._4paradigm.fesql_auto_test.common.HybridSEConfig;
 import com._4paradigm.fesql_auto_test.util.ReportLog;
 import io.qameta.allure.Attachment;
 import org.testng.IHookCallBack;
@@ -51,7 +51,7 @@ public class AddAttachmentListener implements IHookable {
     @Override
     public void run(IHookCallBack callBack, ITestResult testResult) {
         callBack.runTestMethod(testResult);
-        if(FesqlConfig.ADD_REPORT_LOG&&testResult.getThrowable()!=null) {
+        if(HybridSEConfig.ADD_REPORT_LOG&&testResult.getThrowable()!=null) {
             Object parameter = testResult.getParameters()[0];
             addCase(parameter);
             addLog();

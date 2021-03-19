@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  * @date 2020/6/11 11:34 AM
  */
 @Slf4j
-public class FesqlConfig {
+public class HybridSEConfig {
     public static final String ZK_CLUSTER;
     public static final String ZK_ROOT_PATH;
     public static final List<String> VERSIONS;
@@ -84,7 +84,7 @@ public class FesqlConfig {
         } else {
             VERSIONS = Lists.newArrayList();
         }
-        log.info("FesqlConfig: versions: {}", VERSIONS);
+        log.info("HybridSEConfig: versions: {}", VERSIONS);
         String reportLogStr = System.getProperty("reportLog");
         if(StringUtils.isNotEmpty(reportLogStr)){
             ADD_REPORT_LOG = Boolean.parseBoolean(reportLogStr);

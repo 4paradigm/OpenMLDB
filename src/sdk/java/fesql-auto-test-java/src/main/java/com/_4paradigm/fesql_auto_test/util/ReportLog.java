@@ -16,7 +16,7 @@
 
 package com._4paradigm.fesql_auto_test.util;
 
-import com._4paradigm.fesql_auto_test.common.FesqlConfig;
+import com._4paradigm.fesql_auto_test.common.HybridSEConfig;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
@@ -50,13 +50,13 @@ public final class ReportLog {
     }
 
     public void info(String log){
-        if(FesqlConfig.ADD_REPORT_LOG) {
+        if(HybridSEConfig.ADD_REPORT_LOG) {
             getLogs().add(log);
         }
     }
 
     public void info(String log,Object... objs){
-        if(FesqlConfig.ADD_REPORT_LOG) {
+        if(HybridSEConfig.ADD_REPORT_LOG) {
             for (Object obj : objs) {
                 log = StringUtils.replaceOnce(log, "{}", String.valueOf(obj));
             }

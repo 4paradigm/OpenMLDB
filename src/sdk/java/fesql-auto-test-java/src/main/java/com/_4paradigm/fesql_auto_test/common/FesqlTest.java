@@ -81,7 +81,7 @@ public class FesqlTest implements ITest {
             FesqlGlobalVar.env = caseEnv;
         }
         log.info("fesql global var env: {}", env);
-        FesqlClient fesqlClient = new FesqlClient(FesqlConfig.ZK_CLUSTER, FesqlConfig.ZK_ROOT_PATH);
+        FesqlClient fesqlClient = new FesqlClient(HybridSEConfig.ZK_CLUSTER, HybridSEConfig.ZK_ROOT_PATH);
         executor = fesqlClient.getExecutor();
     }
 }

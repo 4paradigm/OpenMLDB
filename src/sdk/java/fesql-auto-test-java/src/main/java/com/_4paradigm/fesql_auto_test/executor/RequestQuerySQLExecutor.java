@@ -16,10 +16,10 @@
 
 package com._4paradigm.fesql_auto_test.executor;
 
-import com._4paradigm.hyhridse.sqlcase.model.InputDesc;
-import com._4paradigm.hyhridse.sqlcase.model.SQLCase;
-import com._4paradigm.hyhridse.sqlcase.model.SQLCaseType;
-import com._4paradigm.fesql_auto_test.common.FesqlConfig;
+import com._4paradigm.hybridse.sqlcase.model.InputDesc;
+import com._4paradigm.hybridse.sqlcase.model.SQLCase;
+import com._4paradigm.hybridse.sqlcase.model.SQLCaseType;
+import com._4paradigm.fesql_auto_test.common.HybridSEConfig;
 import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
@@ -150,7 +150,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
             reportLog.info("skip case in rtidb request mode: {}", fesqlCase.getDesc());
             return false;
         }
-        if (FesqlConfig.isCluster() &&
+        if (HybridSEConfig.isCluster() &&
                 null != fesqlCase.getMode() && fesqlCase.getMode().contains("cluster-unsupport")) {
             log.info("cluster-unsupport, skip case in cluster request mode: {}", fesqlCase.getDesc());
             reportLog.info("cluster-unsupport, skip case in cluster request mode: {}", fesqlCase.getDesc());
