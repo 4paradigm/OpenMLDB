@@ -23,8 +23,7 @@
 
 #include "brpc/channel.h"
 #include "glog/logging.h"
-#include "parser/parser.h"
-#include "plan/planner.h"
+#include "plan/plan_api.h"
 #include "proto/tablet.pb.h"
 #include "sdk/base.h"
 #include "sdk/base_impl.h"
@@ -38,7 +37,7 @@ DECLARE_int32(request_timeout_ms);
 
 namespace fedb {
 namespace sdk {
-
+using fesql::plan::PlanAPI;
 class ExplainInfoImpl : public ExplainInfo {
  public:
     ExplainInfoImpl(const ::fesql::sdk::SchemaImpl& input_schema,
@@ -586,11 +585,10 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
 
     // parse sql to judge whether is create procedure case
     fesql::node::NodeManager node_manager;
-    fesql::parser::FeSQLParser parser;
     DLOG(INFO) << "start to execute script from dbms:\n" << sql;
     fesql::base::Status sql_status;
     fesql::node::NodePointVector parser_trees;
-    parser.parse(sql, parser_trees, &node_manager, sql_status);
+    PlanAPI::CreateSyntaxTreeFromScript(sql, parser_trees, &node_manager, sql_status);
     if (parser_trees.empty() || sql_status.code != 0) {
         status->code = -1;
         status->msg = sql_status.msg;
@@ -1026,16 +1024,8 @@ bool SQLClusterRouter::GetSQLPlan(const std::string& sql,
                                   ::fesql::node::NodeManager* nm,
                                   ::fesql::node::PlanNodeList* plan) {
     if (nm == NULL || plan == NULL) return false;
-    ::fesql::parser::FeSQLParser parser;
-    ::fesql::plan::SimplePlanner planner(nm);
     ::fesql::base::Status sql_status;
-    ::fesql::node::NodePointVector parser_trees;
-    parser.parse(sql, parser_trees, nm, sql_status);
-    if (0 != sql_status.code) {
-        LOG(WARNING) << sql_status.msg;
-        return false;
-    }
-    planner.CreatePlanTree(parser_trees, *plan, sql_status);
+    PlanAPI::CreatePlanTreeFromScript(sql, *plan, nm, sql_status);
     if (0 != sql_status.code) {
         LOG(WARNING) << sql_status.msg;
         return false;
@@ -1167,10 +1157,9 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVect
     if (node_manager == nullptr || msg == nullptr) {
         return false;
     }
-    fesql::plan::SimplePlanner planner(node_manager);
     fesql::node::PlanNodeList plan_trees;
     fesql::base::Status sql_status;
-    planner.CreatePlanTree(parser_trees, plan_trees, sql_status);
+    PlanAPI::CreatePlanTreeFromSyntaxTree(parser_trees, plan_trees, node_manager, sql_status);
     if (plan_trees.empty() || sql_status.code != 0) {
         *msg = sql_status.msg;
         return false;

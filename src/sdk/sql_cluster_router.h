@@ -29,7 +29,6 @@
 #include "base/spinlock.h"
 #include "catalog/schema_adapter.h"
 #include "client/tablet_client.h"
-#include "parser/parser.h"
 #include "sdk/cluster_sdk.h"
 #include "sdk/sql_router.h"
 #include "boost/compute/detail/lru_cache.hpp"

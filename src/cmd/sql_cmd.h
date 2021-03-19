@@ -29,7 +29,7 @@
 #include "catalog/schema_adapter.h"
 #include "gflags/gflags.h"
 #include "node/node_manager.h"
-#include "parser/parser.h"
+#include "plan/plan_api.h"
 #include "proto/fe_type.pb.h"
 #include "sdk/cluster_sdk.h"
 #include "sdk/sql_cluster_router.h"
@@ -45,7 +45,7 @@ using ::fedb::catalog::TTL_TYPE_MAP;
 
 namespace fedb {
 namespace cmd {
-
+using fesql::plan::PlanAPI;
 const std::string LOGO =  // NOLINT
     ""
     "  ______   _____  ___\n"
@@ -539,10 +539,10 @@ void HandleCreateIndex(const fesql::node::CreateIndexNode *create_index_node) {
 
 void HandleSQL(const std::string &sql) {
     fesql::node::NodeManager node_manager;
-    fesql::parser::FeSQLParser parser;
     fesql::base::Status sql_status;
     fesql::node::NodePointVector parser_trees;
-    parser.parse(sql, parser_trees, &node_manager, sql_status);
+    PlanAPI::CreateSyntaxTreeFromScript(sql, parser_trees, &node_manager, sql_status);
+
     if (0 != sql_status.code) {
         std::cout << sql_status.msg << std::endl;
         return;

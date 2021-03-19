@@ -1923,7 +1923,7 @@ void TabletImpl::ProcessQuery(RpcController* ctrl,
             }
             RunRequestQuery(ctrl, *request, session, *response, *buf);
         }
-        const std::string& sql = session.GetCompileInfo()->get_sql_context().sql;
+        const std::string& sql = session.GetCompileInfo()->GetSQL();
         if (response->code() != ::fedb::base::kOk) {
             DLOG(WARNING) << "fail to run sql " << sql << " error msg: " << response->msg();
         } else {
@@ -2000,7 +2000,7 @@ void TabletImpl::ProcessBatchRequestQuery(
         return;
     }
     const auto& batch_request_info =
-        compile_info->get_sql_context().batch_request_info;
+        compile_info->GetBatchRequestInfo();
     size_t common_column_num = batch_request_info.common_column_indices.size();
     bool has_common_and_uncommon_row =
         !request->has_task_id() && common_column_num > 0 &&

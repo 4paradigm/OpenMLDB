@@ -119,12 +119,12 @@ configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h.in"
     "${PROJECT_SOURCE_DIR}/src/config.h")
 
-include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include ${PROJECT_SOURCE_DIR}/fesql/src 
-    ${PROJECT_SOURCE_DIR}/fesql/build/src)
+include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include
+        ${PROJECT_SOURCE_DIR}/thirdparty/hybridse/include)
 
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib 
     ${PROJECT_SOURCE_DIR}/thirdparty/lib64
-    ${PROJECT_SOURCE_DIR}/fesql/build/release/lib)
+    ${PROJECT_SOURCE_DIR}/thirdparty/hybridse/lib)
 
 add_subdirectory(src)
 add_custom_target(rtidbpy

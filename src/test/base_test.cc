@@ -15,7 +15,9 @@
  */
 
 #include "test/base_test.h"
-
+#include "boost/filesystem.hpp"
+#include "boost/filesystem/string_file.hpp"
+#include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 #include "sdk/base.h"
 #include "sdk/result_set.h"
