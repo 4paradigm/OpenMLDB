@@ -18,6 +18,7 @@ package com._4paradigm.fesql.spark;
 
 import com._4paradigm.fesql.LibraryLoader;
 import com._4paradigm.fesql.base.BaseStatus;
+import com._4paradigm.fesql.common.UnsupportedFesqlException;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.type.TypeOuterClass.TableDef;
 import com._4paradigm.fesql.type.TypeOuterClass.ColumnDef;
@@ -61,14 +62,14 @@ public class TestParseSQL {
         BaseStatus status = new BaseStatus();
         Engine engine = new Engine(catalog, options);
         assertTrue(engine.Get("select col_1, col_2 from t1;", "db", sess, status));
-        CompileInfo compileInfo = sess.GetCompileInfo();
 
-        long size = compileInfo.get_ir_size();
+        CompileInfo compileInfo = sess.GetCompileInfo();
+        long size = compileInfo.GetIRSize();
         ByteBuffer buffer = ByteBuffer.allocateDirect(Long.valueOf(size).intValue());
-        compileInfo.get_ir_buffer(buffer);
+        compileInfo.GetIRBuffer(buffer);
         System.err.println("Dumped module string: len=" + size);
 
-        PhysicalOpNode root = sess.GetPhysicalPlan();
+        PhysicalOpNode root = compileInfo.GetPhysicalPlan();
         root.Print();
 
         FeSQLJITWrapper jit = FeSQLJITWrapper.Create();

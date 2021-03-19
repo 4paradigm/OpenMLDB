@@ -29,9 +29,6 @@ src/bm/udf_bm 2>/dev/null
 echo "toydb storage benchmark:"
 examples/toydb/src/bm/storage_bm 2>/dev/null
 
-echo "toydb runner benchmark:"
-examples/toydb/src/bm/runner_bm 2>/dev/null
-
 echo "toydb engine benchmark:"
 examples/toydb/src/bm/engine_bm 2>/dev/null
 

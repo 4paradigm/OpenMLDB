@@ -85,3 +85,4 @@ add_custom_target(fesql_proto_java
         -I ${PROJECT_SOURCE_DIR}/src/proto
         --java_out=${PROJECT_SOURCE_DIR}/java/fesql-proto/src/main/java
         ${PROJECT_SOURCE_DIR}/src/proto/*.proto)
+

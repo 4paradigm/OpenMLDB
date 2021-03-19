@@ -19,6 +19,7 @@
 #include "gtest/gtest.h"
 #include "udf/udf.h"
 #include "vm/engine.h"
+#include "vm/sql_compiler.h"
 #include "vm/simple_catalog.h"
 
 namespace fesql {
@@ -47,7 +48,7 @@ std::shared_ptr<SimpleCatalog> GetTestCatalog() {
     return catalog;
 }
 
-std::shared_ptr<CompileInfo> Compile(const std::string &sql,
+std::shared_ptr<SQLCompileInfo> Compile(const std::string &sql,
                                      const EngineOptions &options,
                                      std::shared_ptr<SimpleCatalog> catalog) {
     base::Status status;
@@ -57,7 +58,7 @@ std::shared_ptr<CompileInfo> Compile(const std::string &sql,
         LOG(WARNING) << "Fail to compile sql";
         return nullptr;
     }
-    return session.GetCompileInfo();
+    return std::dynamic_pointer_cast<SQLCompileInfo>(session.GetCompileInfo());
 }
 
 void simple_test(const EngineOptions &options) {

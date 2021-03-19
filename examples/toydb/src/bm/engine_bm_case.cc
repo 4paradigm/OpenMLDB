@@ -124,11 +124,11 @@ static void EngineRequestMode(const std::string sql, MODE mode,
     }
 
     std::ostringstream plan_oss;
-    session.GetPhysicalPlan()->Print(plan_oss, "");
+    session.GetCompileInfo()->DumpPhysicalPlan(plan_oss, "");
 
     LOG(INFO) << "physical plan:\n" << plan_oss.str() << std::endl;
     std::ostringstream runner_oss;
-    session.GetClusterJob().Print(runner_oss, "");
+    session.GetCompileInfo()->DumpClusterJob(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     std::unique_ptr<codec::RowView> row_view = std::unique_ptr<codec::RowView>(
         new codec::RowView(session.GetSchema()));
@@ -159,7 +159,7 @@ static void EngineBatchMode(const std::string sql, MODE mode, int64_t limit_cnt,
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     std::ostringstream runner_oss;
-    session.GetClusterJob().Print(runner_oss, "");
+    session.GetCompileInfo()->DumpClusterJob(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     switch (mode) {
         case BENCHMARK: {
@@ -681,7 +681,7 @@ void EngineRequestModeSimpleQueryBM(const std::string& db,
     engine.Get(sql, db, session, query_status);
     LOG(INFO) << query_status;
     std::ostringstream runner_oss;
-    session.GetClusterJob().Print(runner_oss, "");
+    session.GetCompileInfo()->DumpClusterJob(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     auto table_handler = catalog->GetTable(db, query_table);
     switch (mode) {
@@ -728,7 +728,7 @@ void EngineBatchModeSimpleQueryBM(const std::string& db, const std::string& sql,
     base::Status query_status;
     engine.Get(sql, db, session, query_status);
     std::ostringstream runner_oss;
-    session.GetClusterJob().Print(runner_oss, "");
+    session.GetCompileInfo()->DumpClusterJob(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     switch (mode) {
         case BENCHMARK: {

@@ -27,7 +27,9 @@
 #include "codegen/buf_ir_builder.h"
 #include "gflags/gflags.h"
 #include "llvm-c/Target.h"
+#include "vm/local_tablet_handler.h"
 #include "vm/mem_catalog.h"
+#include "vm/sql_compiler.h"
 
 DECLARE_bool(logtostderr);
 DECLARE_string(log_dir);
@@ -49,9 +51,9 @@ EngineOptions::EngineOptions()
       enable_batch_window_parallelization_(false),
       max_sql_cache_size_(50),
       enable_spark_unsaferow_format_(false) {
-        // TODO(chendihao): Pass the parameter to avoid global gflag
-        FLAGS_enable_spark_unsaferow_format = enable_spark_unsaferow_format_;
-      }
+    // TODO(chendihao): Pass the parameter to avoid global gflag
+    FLAGS_enable_spark_unsaferow_format = enable_spark_unsaferow_format_;
+}
 
 EngineOptions* EngineOptions::set_enable_spark_unsaferow_format(bool flag) {
     enable_spark_unsaferow_format_ = flag;
@@ -76,7 +78,8 @@ bool Engine::GetDependentTables(const std::string& sql, const std::string& db,
                                 EngineMode engine_mode,
                                 std::set<std::string>* tables,
                                 base::Status& status) {
-    std::shared_ptr<CompileInfo> info(new CompileInfo());
+    std::shared_ptr<fesql::vm::SQLCompileInfo> info =
+        std::make_shared<fesql::vm::SQLCompileInfo>();
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
     info->get_sql_context().engine_mode = engine_mode;
@@ -149,16 +152,17 @@ bool Engine::GetDependentTables(node::PlanNode* node,
 bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
                                std::shared_ptr<CompileInfo> info,
                                base::Status& status) {  // NOLINT
-    auto& cache_ctx = info->get_sql_context();
-    if (cache_ctx.engine_mode != session.engine_mode()) {
+    if (info->GetEngineMode() != session.engine_mode()) {
         status =
             Status(common::kSQLError,
                    "Inconsistent cache, mode expect " +
                        EngineModeName(session.engine_mode()) + " but get " +
-                       EngineModeName(cache_ctx.engine_mode));
+                       EngineModeName(info->GetEngineMode()));
         return false;
     }
     if (session.engine_mode() == kBatchRequestMode) {
+        auto& cache_ctx =
+            std::dynamic_pointer_cast<SQLCompileInfo>(info)->get_sql_context();
         auto batch_req_sess = dynamic_cast<BatchRequestRunSession*>(&session);
         if (batch_req_sess == nullptr) {
             return false;
@@ -178,10 +182,10 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
 bool Engine::Get(const std::string& sql, const std::string& db,
                  RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
-    std::shared_ptr<CompileInfo> info =
+    std::shared_ptr<CompileInfo> cached_info =
         GetCacheLocked(db, sql, session.engine_mode());
-    if (info && IsCompatibleCache(session, info, status)) {
-        session.SetCompileInfo(info);
+    if (cached_info && IsCompatibleCache(session, cached_info, status)) {
+        session.SetCompileInfo(cached_info);
         return true;
     }
     // TODO(baoxinqi): IsCompatibleCache fail, return false, or reset status.
@@ -191,8 +195,9 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     }
     DLOG(INFO) << "Compile FESQL ...";
     status = base::Status::OK();
-    info = std::shared_ptr<CompileInfo>(new CompileInfo());
-    auto& sql_context = info->get_sql_context();
+    std::shared_ptr<SQLCompileInfo> info = std::make_shared<SQLCompileInfo>();
+    auto& sql_context =
+        std::dynamic_pointer_cast<SQLCompileInfo>(info)->get_sql_context();
     sql_context.sql = sql;
     sql_context.db = db;
     sql_context.engine_mode = session.engine_mode();
@@ -388,21 +393,27 @@ bool RunSession::SetCompileInfo(
 
 int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
     DLOG(INFO) << "Request Row Run with main task";
-    return Run(compile_info_->get_sql_context().cluster_job.main_task_id(),
+    return Run(std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                   ->get_sql_context()
+                   .cluster_job.main_task_id(),
                in_row, out_row);
 }
 int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row,
                                Row* out_row) {
-    auto task =
-        compile_info_->get_sql_context().cluster_job.GetTask(task_id).GetRoot();
+    auto task = std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                    ->get_sql_context()
+                    .cluster_job.GetTask(task_id)
+                    .GetRoot();
     if (nullptr == task) {
         LOG(WARNING) << "fail to run request plan: taskid" << task_id
                      << " not exist!";
         return -2;
     }
     DLOG(INFO) << "Request Row Run with task_id " << task_id;
-    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, in_row,
-                      sp_name_, is_debug_);
+    RunnerContext ctx(&std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                           ->get_sql_context()
+                           .cluster_job,
+                      in_row, sp_name_, is_debug_);
     auto output = task->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run request plan output is null";
@@ -417,16 +428,22 @@ int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row,
 
 int32_t BatchRequestRunSession::Run(const std::vector<Row>& request_batch,
                                     std::vector<Row>& output) {
-    return Run(compile_info_->get_sql_context().cluster_job.main_task_id(),
+    return Run(std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                   ->get_sql_context()
+                   .cluster_job.main_task_id(),
                request_batch, output);
 }
 int32_t BatchRequestRunSession::Run(const uint32_t id,
                                     const std::vector<Row>& request_batch,
                                     std::vector<Row>& output) {
-    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job,
+    RunnerContext ctx(&std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                           ->get_sql_context()
+                           .cluster_job,
                       request_batch, sp_name_, is_debug_);
-    auto task =
-        compile_info_->get_sql_context().cluster_job.GetTask(id).GetRoot();
+    auto task = std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                    ->get_sql_context()
+                    .cluster_job.GetTask(id)
+                    .GetRoot();
     if (nullptr == task) {
         LOG(WARNING) << "fail to run request plan: taskid" << id
                      << " not exist!";
@@ -446,8 +463,12 @@ int32_t BatchRequestRunSession::Run(const uint32_t id,
 }
 
 std::shared_ptr<TableHandler> BatchRunSession::Run() {
-    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, is_debug_);
-    auto output = compile_info_->get_sql_context()
+    RunnerContext ctx(&std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                           ->get_sql_context()
+                           .cluster_job,
+                      is_debug_);
+    auto output = std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                      ->get_sql_context()
                       .cluster_job.GetMainTask()
                       .GetRoot()
                       ->RunWithCache(ctx);
@@ -475,11 +496,10 @@ std::shared_ptr<TableHandler> BatchRunSession::Run() {
 }
 
 int32_t BatchRunSession::Run(std::vector<Row>& rows, uint64_t limit) {
-    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, is_debug_);
-    auto output = compile_info_->get_sql_context()
-                      .cluster_job.GetTask(0)
-                      .GetRoot()
-                      ->RunWithCache(ctx);
+    auto& sql_ctx = std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+                        ->get_sql_context();
+    RunnerContext ctx(&sql_ctx.cluster_job, is_debug_);
+    auto output = sql_ctx.cluster_job.GetTask(0).GetRoot()->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
         return -1;
@@ -511,5 +531,88 @@ int32_t BatchRunSession::Run(std::vector<Row>& rows, uint64_t limit) {
     return 0;
 }
 
+std::shared_ptr<RowHandler> LocalTablet::SubQuery(
+    uint32_t task_id, const std::string& db, const std::string& sql,
+    const Row& row, const bool is_procedure, const bool is_debug) {
+    DLOG(INFO) << "Local tablet SubQuery request: task id " << task_id;
+    RequestRunSession session;
+    base::Status status;
+    if (is_debug) {
+        session.EnableDebug();
+    }
+    if (is_procedure) {
+        if (!sp_cache_) {
+            auto error = std::shared_ptr<RowHandler>(
+                new ErrorRowHandler(common::kProcedureNotFound,
+                                    "SubQuery Fail: procedure not found, "
+                                    "procedure cache not exist"));
+            LOG(WARNING) << error->GetStatus();
+            return error;
+        }
+        auto request_compile_info = sp_cache_->GetRequestInfo(db, sql, status);
+        if (!status.isOK()) {
+            auto error = std::shared_ptr<RowHandler>(new ErrorRowHandler(
+                status.code, "SubQuery Fail: " + status.msg));
+            LOG(WARNING) << error->GetStatus();
+            return error;
+        }
+        session.SetSpName(sql);
+        session.SetCompileInfo(request_compile_info);
+    } else {
+        if (!engine_->Get(sql, db, session, status)) {
+            auto error = std::shared_ptr<RowHandler>(new ErrorRowHandler(
+                status.code, "SubQuery Fail: " + status.msg));
+            LOG(WARNING) << error->GetStatus();
+            return error;
+        }
+    }
+
+    return std::shared_ptr<RowHandler>(
+        new LocalTabletRowHandler(task_id, session, row));
+}
+std::shared_ptr<TableHandler> LocalTablet::SubQuery(
+    uint32_t task_id, const std::string& db, const std::string& sql,
+    const std::set<size_t>& common_column_indices,
+    const std::vector<Row>& in_rows, const bool request_is_common,
+    const bool is_procedure, const bool is_debug) {
+    DLOG(INFO) << "Local tablet SubQuery batch request: task id " << task_id;
+    BatchRequestRunSession session;
+    for (size_t idx : common_column_indices) {
+        session.AddCommonColumnIdx(idx);
+    }
+    base::Status status;
+    if (is_debug) {
+        session.EnableDebug();
+    }
+    if (is_procedure) {
+        if (!sp_cache_) {
+            auto error = std::shared_ptr<TableHandler>(
+                new ErrorTableHandler(common::kProcedureNotFound,
+                                      "SubQuery Fail: procedure not found, "
+                                      "procedure cache not exist"));
+            LOG(WARNING) << error->GetStatus();
+            return error;
+        }
+        auto request_compile_info =
+            sp_cache_->GetBatchRequestInfo(db, sql, status);
+        if (!status.isOK()) {
+            auto error = std::shared_ptr<TableHandler>(new ErrorTableHandler(
+                status.code, "SubQuery Fail: " + status.msg));
+            LOG(WARNING) << error->GetStatus();
+            return error;
+        }
+        session.SetSpName(sql);
+        session.SetCompileInfo(request_compile_info);
+    } else {
+        if (!engine_->Get(sql, db, session, status)) {
+            auto error = std::shared_ptr<TableHandler>(new ErrorTableHandler(
+                status.code, "SubQuery Fail: " + status.msg));
+            LOG(WARNING) << error->GetStatus();
+            return error;
+        }
+    }
+    return std::make_shared<LocalTabletTableHandler>(task_id, session, in_rows,
+                                                     request_is_common);
+}
 }  // namespace vm
 }  // namespace fesql

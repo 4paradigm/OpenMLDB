@@ -22,6 +22,7 @@
 #include "passes/physical/physical_pass.h"
 #include "vm/engine.h"
 #include "vm/simple_catalog.h"
+#include "vm/sql_compiler.h"
 #include "vm/test_base.h"
 #include "yaml-cpp/yaml.h"
 
@@ -193,7 +194,8 @@ PhysicalOpNode* GetTestSQLPlan(SQLCase& sql_case,  // NOLINT
         LOG(WARNING) << status;
         return nullptr;
     }
-    return session->GetCompileInfo()->get_sql_context().physical_plan;
+    return std::dynamic_pointer_cast<SQLCompileInfo>(session->GetCompileInfo())
+        ->get_sql_context().physical_plan;
 }
 
 INSTANTIATE_TEST_CASE_P(

@@ -64,9 +64,8 @@ public class SQLEngine implements AutoCloseable {
             throw new UnsupportedFesqlException("SQL parse error: " + status.getMsg() + "\n" + status.getTrace());
         }
         status.delete();
-
         compileInfo = session.GetCompileInfo();
-        plan = session.GetPhysicalPlan();
+        plan = compileInfo.GetPhysicalPlan();
     }
 
     public PhysicalOpNode getPlan() {
@@ -74,9 +73,9 @@ public class SQLEngine implements AutoCloseable {
     }
 
     public ByteBuffer getIRBuffer() {
-        long size = compileInfo.get_ir_size();
+        long size = compileInfo.GetIRSize();
         ByteBuffer buffer = ByteBuffer.allocateDirect(Long.valueOf(size).intValue());
-        compileInfo.get_ir_buffer(buffer);
+        compileInfo.GetIRBuffer(buffer);
         logger.info("Dumped module size: {}", size);
         return buffer;
     }

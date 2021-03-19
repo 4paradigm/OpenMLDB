@@ -22,7 +22,7 @@
 #include <iostream>
 #include <string>
 #include "base/texttable.h"
-#include "plan/planner.h"
+#include "plan/plan_api.h"
 #include "sdk/tablet_sdk.h"
 
 #include "base/fe_linenoise.h"
@@ -305,12 +305,10 @@ void HandleSQLScript(
 
     {
         fesql::node::NodeManager node_manager;
-        fesql::parser::FeSQLParser parser;
         fesql::base::Status sql_status;
-
-        // TODO(chenjing): init with db
         fesql::node::NodePointVector parser_trees;
-        parser.parse(script, parser_trees, &node_manager, sql_status);
+        fesql::plan::PlanAPI::CreateSyntaxTreeFromScript(
+            script, parser_trees, &node_manager, sql_status);
         if (0 != sql_status.code) {
             status.code = sql_status.code;
             status.msg = sql_status.str();

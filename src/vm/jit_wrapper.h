@@ -25,6 +25,7 @@
 #include "llvm/ExecutionEngine/Orc/Core.h"
 #include "llvm/IR/Module.h"
 #include "vm/core_api.h"
+#include "vm/engine_context.h"
 
 namespace fesql {
 namespace vm {
@@ -60,26 +61,6 @@ class FeSQLJITWrapper {
 
 void InitBuiltinJITSymbols(FeSQLJITWrapper* jit_ptr);
 
-class JITOptions {
- public:
-    bool is_enable_mcjit() const { return enable_mcjit_; }
-    void set_enable_mcjit(bool flag) { enable_mcjit_ = flag; }
-
-    bool is_enable_vtune() const { return enable_vtune_; }
-    void set_enable_vtune(bool flag) { enable_vtune_ = flag; }
-
-    bool is_enable_gdb() const { return enable_gdb_; }
-    void set_enable_gdb(bool flag) { enable_gdb_ = flag; }
-
-    bool is_enable_perf() const { return enable_perf_; }
-    void set_enable_perf(bool flag) { enable_perf_ = flag; }
-
- private:
-    bool enable_mcjit_ = false;
-    bool enable_vtune_ = false;
-    bool enable_gdb_ = false;
-    bool enable_perf_ = false;
-};
 
 }  // namespace vm
 }  // namespace fesql
