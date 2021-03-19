@@ -15,7 +15,7 @@
  */
 
 #include "gtest/gtest.h"
-namespace fesql {
+namespace hybridse {
 namespace vm {
 class PhysicalOpTest : public ::testing::Test {
  public:
@@ -24,7 +24,7 @@ class PhysicalOpTest : public ::testing::Test {
 };
 TEST_F(PhysicalOpTest, test) {}
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

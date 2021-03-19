@@ -21,7 +21,7 @@
 #include "udf/default_udf_library.h"
 #include "udf/literal_traits.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 class LambdafyProjectsTest : public ::testing::Test {};
@@ -31,7 +31,7 @@ TEST_F(LambdafyProjectsTest, Test) {
     vm::SchemasContext schemas_ctx;
     schemas_ctx.BuildTrivial({&schema});
 
-    parser::FeSQLParser parser;
+    parser::HybridSEParser parser;
     Status status;
     node::NodeManager nm;
     plan::SimplePlanner planner(&nm);
@@ -91,7 +91,7 @@ TEST_F(LambdafyProjectsTest, Test) {
 }
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::GTEST_FLAG(color) = "yes";

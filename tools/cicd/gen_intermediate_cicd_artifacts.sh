@@ -14,16 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# fesql-proto, fesql-native
+# hybridse-proto, hybridse-native
 ROOT_DIR=$(cd $(dirname $0); pwd)/../..
 SUFFIX=$1
 
 cd ${ROOT_DIR}
-rm -r java/fesql-native/target/classes
+rm -r java/hybridse-native/target/classes
 
 tar cfz intermediate_cicd_artifact_${SUFFIX}.tar.gz \
-	./java/fesql-native \
-	./java/fesql-proto \
+	./java/hybridse-native \
+	./java/hybridse-proto \
 	build/python/dist/*.whl \
 	build/examples/toydb/src/toydb
 

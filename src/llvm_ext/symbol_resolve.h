@@ -38,12 +38,12 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Utils.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
-class FeSQLSymbolResolver : public ::llvm::LegacyJITSymbolResolver {
+class HybridSESymbolResolver : public ::llvm::LegacyJITSymbolResolver {
  public:
-    explicit FeSQLSymbolResolver(const ::llvm::DataLayout& data_layout);
+    explicit HybridSESymbolResolver(const ::llvm::DataLayout& data_layout);
     ::llvm::JITSymbol findSymbol(const std::string& Name) override;
     ::llvm::JITSymbol findSymbolInLogicalDylib(const std::string& Name);
     void addSymbol(const std::string& name, void* addr);
@@ -54,6 +54,6 @@ class FeSQLSymbolResolver : public ::llvm::LegacyJITSymbolResolver {
 };
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_LLVM_EXT_SYMBOL_RESOLVE_H_

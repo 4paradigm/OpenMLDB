@@ -19,22 +19,22 @@
 #include <vector>
 #include "gtest/gtest.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codec {
 
 class CodecTest : public ::testing::Test {};
 
 TEST_F(CodecTest, NULLTest) {
     Schema schema;
-    ::fesql::type::ColumnDef* col = schema.Add();
+    ::hybridse::type::ColumnDef* col = schema.Add();
     col->set_name("col1");
-    col->set_type(::fesql::type::kInt16);
+    col->set_type(::hybridse::type::kInt16);
     col = schema.Add();
     col->set_name("col2");
-    col->set_type(::fesql::type::kBool);
+    col->set_type(::hybridse::type::kBool);
     col = schema.Add();
     col->set_name("col3");
-    col->set_type(::fesql::type::kVarchar);
+    col->set_type(::hybridse::type::kVarchar);
     RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(1);
     std::string row;
@@ -58,21 +58,21 @@ TEST_F(CodecTest, NULLTest) {
 
 TEST_F(CodecTest, Normal) {
     Schema schema;
-    ::fesql::type::ColumnDef* col = schema.Add();
+    ::hybridse::type::ColumnDef* col = schema.Add();
     col->set_name("col1");
-    col->set_type(::fesql::type::kInt32);
+    col->set_type(::hybridse::type::kInt32);
     col = schema.Add();
     col->set_name("col2");
-    col->set_type(::fesql::type::kInt16);
+    col->set_type(::hybridse::type::kInt16);
     col = schema.Add();
     col->set_name("col3");
-    col->set_type(::fesql::type::kFloat);
+    col->set_type(::hybridse::type::kFloat);
     col = schema.Add();
     col->set_name("col4");
-    col->set_type(::fesql::type::kDouble);
+    col->set_type(::hybridse::type::kDouble);
     col = schema.Add();
     col->set_name("col5");
-    col->set_type(::fesql::type::kInt64);
+    col->set_type(::hybridse::type::kInt64);
     RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(0);
     std::string row;
@@ -96,12 +96,12 @@ TEST_F(CodecTest, Normal) {
 
 TEST_F(CodecTest, TimestampTest) {
     Schema schema;
-    ::fesql::type::ColumnDef* col = schema.Add();
+    ::hybridse::type::ColumnDef* col = schema.Add();
     col->set_name("col1");
-    col->set_type(::fesql::type::kInt32);
+    col->set_type(::hybridse::type::kInt32);
     col = schema.Add();
     col->set_name("std_ts");
-    col->set_type(::fesql::type::kTimestamp);
+    col->set_type(::hybridse::type::kTimestamp);
     RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(0);
     std::string row;
@@ -123,12 +123,12 @@ TEST_F(CodecTest, TimestampTest) {
 
 TEST_F(CodecTest, DateTest) {
     Schema schema;
-    ::fesql::type::ColumnDef* col = schema.Add();
+    ::hybridse::type::ColumnDef* col = schema.Add();
     col->set_name("col1");
-    col->set_type(::fesql::type::kInt32);
+    col->set_type(::hybridse::type::kInt32);
     col = schema.Add();
     col->set_name("std_date");
-    col->set_type(::fesql::type::kDate);
+    col->set_type(::hybridse::type::kDate);
     RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(0);
     std::string row;
@@ -161,14 +161,14 @@ TEST_F(CodecTest, DateTest) {
 TEST_F(CodecTest, Encode) {
     Schema schema;
     for (int i = 0; i < 10; i++) {
-        ::fesql::type::ColumnDef* col = schema.Add();
+        ::hybridse::type::ColumnDef* col = schema.Add();
         col->set_name("col" + std::to_string(i));
         if (i % 3 == 0) {
-            col->set_type(::fesql::type::kInt16);
+            col->set_type(::hybridse::type::kInt16);
         } else if (i % 3 == 1) {
-            col->set_type(::fesql::type::kDouble);
+            col->set_type(::hybridse::type::kDouble);
         } else {
-            col->set_type(::fesql::type::kVarchar);
+            col->set_type(::hybridse::type::kVarchar);
         }
     }
     RowBuilder builder(schema);
@@ -215,14 +215,14 @@ TEST_F(CodecTest, Encode) {
 TEST_F(CodecTest, AppendNULL) {
     Schema schema;
     for (int i = 0; i < 20; i++) {
-        ::fesql::type::ColumnDef* col = schema.Add();
+        ::hybridse::type::ColumnDef* col = schema.Add();
         col->set_name("col" + std::to_string(i));
         if (i % 3 == 0) {
-            col->set_type(::fesql::type::kInt16);
+            col->set_type(::hybridse::type::kInt16);
         } else if (i % 3 == 1) {
-            col->set_type(::fesql::type::kDouble);
+            col->set_type(::hybridse::type::kDouble);
         } else {
-            col->set_type(::fesql::type::kVarchar);
+            col->set_type(::hybridse::type::kVarchar);
         }
     }
     RowBuilder builder(schema);
@@ -288,12 +288,12 @@ TEST_F(CodecTest, AppendNULL) {
 TEST_F(CodecTest, AppendNULLAndEmpty) {
     Schema schema;
     for (int i = 0; i < 20; i++) {
-        ::fesql::type::ColumnDef* col = schema.Add();
+        ::hybridse::type::ColumnDef* col = schema.Add();
         col->set_name("col" + std::to_string(i));
         if (i % 2 == 0) {
-            col->set_type(::fesql::type::kInt16);
+            col->set_type(::hybridse::type::kInt16);
         } else {
-            col->set_type(::fesql::type::kVarchar);
+            col->set_type(::hybridse::type::kVarchar);
         }
     }
     RowBuilder builder(schema);
@@ -356,17 +356,17 @@ TEST_F(CodecTest, AppendNULLAndEmpty) {
 TEST_F(CodecTest, ManyCol) {
     std::vector<int> num_vec = {10, 20, 50, 100, 1000, 10000, 100000};
     for (auto col_num : num_vec) {
-        ::fesql::type::TableDef def;
+        ::hybridse::type::TableDef def;
         for (int i = 0; i < col_num; i++) {
-            ::fesql::type::ColumnDef* col = def.add_columns();
+            ::hybridse::type::ColumnDef* col = def.add_columns();
             col->set_name("col" + std::to_string(i + 1));
-            col->set_type(::fesql::type::kVarchar);
+            col->set_type(::hybridse::type::kVarchar);
             col = def.add_columns();
             col->set_name("col" + std::to_string(i + 2));
-            col->set_type(::fesql::type::kInt64);
+            col->set_type(::hybridse::type::kInt64);
             col = def.add_columns();
             col->set_name("col" + std::to_string(i + 3));
-            col->set_type(::fesql::type::kDouble);
+            col->set_type(::hybridse::type::kDouble);
         }
         RowBuilder builder(def.columns());
         uint32_t size = builder.CalTotalLength(10 * col_num);
@@ -406,16 +406,16 @@ TEST_F(CodecTest, ManyCol) {
 TEST_F(CodecTest, RowFormatTest) {
     std::vector<int> num_vec = {10, 20, 50, 100, 1000};
     for (auto col_num : num_vec) {
-        ::fesql::type::TableDef def;
+        ::hybridse::type::TableDef def;
         for (int i = 0; i < col_num; i++) {
-            ::fesql::type::ColumnDef* col = def.add_columns();
+            ::hybridse::type::ColumnDef* col = def.add_columns();
             col->set_name("col" + std::to_string(i));
             if (i % 3 == 0) {
-                col->set_type(::fesql::type::kVarchar);
+                col->set_type(::hybridse::type::kVarchar);
             } else if (i % 3 == 1) {
-                col->set_type(::fesql::type::kInt64);
+                col->set_type(::hybridse::type::kInt64);
             } else if (i % 3 == 2) {
-                col->set_type(::fesql::type::kDouble);
+                col->set_type(::hybridse::type::kDouble);
             }
         }
 
@@ -424,18 +424,18 @@ TEST_F(CodecTest, RowFormatTest) {
             if (i % 3 == 0) {
                 const codec::ColInfo* info = decoder.GetColumnInfo(i);
                 ASSERT_TRUE(info != nullptr);
-                ASSERT_EQ(::fesql::type::kVarchar, info->type);
+                ASSERT_EQ(::hybridse::type::kVarchar, info->type);
 
                 codec::StringColInfo str_info;
                 ASSERT_TRUE(decoder.GetStringColumnInfo(i, &str_info));
             } else if (i % 3 == 1) {
                 const codec::ColInfo* info = decoder.GetColumnInfo(i);
                 ASSERT_TRUE(info != nullptr);
-                ASSERT_EQ(::fesql::type::kInt64, info->type);
+                ASSERT_EQ(::hybridse::type::kInt64, info->type);
             } else if (i % 3 == 2) {
                 const codec::ColInfo* info = decoder.GetColumnInfo(i);
                 ASSERT_TRUE(info != nullptr);
-                ASSERT_EQ(::fesql::type::kDouble, info->type);
+                ASSERT_EQ(::hybridse::type::kDouble, info->type);
             }
         }
     }
@@ -445,77 +445,77 @@ TEST_F(CodecTest, RowFormatOffsetTest) {
     type::TableDef table;
     table.set_name("t1");
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt32);
         column->set_name("col1");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt16);
         column->set_name("col2");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kFloat);
         column->set_name("col3");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kDouble);
         column->set_name("col4");
     }
 
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt64);
         column->set_name("col5");
     }
 
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col6");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col7");
     }
 
     RowFormat decoder(&table.columns());
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(0);
-        ASSERT_EQ(::fesql::type::kInt32, info->type);
+        ASSERT_EQ(::hybridse::type::kInt32, info->type);
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(7u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(1);
-        ASSERT_EQ(::fesql::type::kInt16, info->type);
+        ASSERT_EQ(::hybridse::type::kInt16, info->type);
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(7u + 4u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(2);
-        ASSERT_EQ(::fesql::type::kFloat, info->type);
+        ASSERT_EQ(::hybridse::type::kFloat, info->type);
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(7u + 4u + 2u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(3);
-        ASSERT_EQ(::fesql::type::kDouble, info->type);
+        ASSERT_EQ(::hybridse::type::kDouble, info->type);
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(7u + 4u + 2u + 4u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(4);
-        ASSERT_EQ(::fesql::type::kInt64, info->type);
+        ASSERT_EQ(::hybridse::type::kInt64, info->type);
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(7u + 4u + 2u + 4u + 8u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(5);
-        ASSERT_EQ(::fesql::type::kVarchar, info->type);
+        ASSERT_EQ(::hybridse::type::kVarchar, info->type);
 
         codec::StringColInfo str_info;
         decoder.GetStringColumnInfo(5, &str_info);
@@ -528,7 +528,7 @@ TEST_F(CodecTest, RowFormatOffsetTest) {
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(6);
-        ASSERT_EQ(::fesql::type::kVarchar, info->type);
+        ASSERT_EQ(::hybridse::type::kVarchar, info->type);
 
         codec::StringColInfo str_info;
         decoder.GetStringColumnInfo(6, &str_info);
@@ -544,87 +544,87 @@ TEST_F(CodecTest, RowFormatOffsetLongHeaderTest) {
     type::TableDef table;
     table.set_name("t1");
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt32);
         column->set_name("col1");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt16);
         column->set_name("col2");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kFloat);
         column->set_name("col3");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kDouble);
         column->set_name("col4");
     }
 
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt64);
         column->set_name("col5");
     }
 
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col6");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col7");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt64);
         column->set_name("col8");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kDouble);
         column->set_name("col9");
     }
 
     RowFormat decoder(&table.columns());
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(0);
-        ASSERT_EQ(::fesql::type::kInt32, info->type);
+        ASSERT_EQ(::hybridse::type::kInt32, info->type);
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(8u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(1);
-        ASSERT_EQ(::fesql::type::kInt16, info->type);
+        ASSERT_EQ(::hybridse::type::kInt16, info->type);
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(8u + 4u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(2);
-        ASSERT_EQ(::fesql::type::kFloat, info->type);
+        ASSERT_EQ(::hybridse::type::kFloat, info->type);
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(8u + 4u + 2u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(3);
-        ASSERT_EQ(::fesql::type::kDouble, info->type);
+        ASSERT_EQ(::hybridse::type::kDouble, info->type);
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(8u + 4u + 2u + 4u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(4);
-        ASSERT_EQ(::fesql::type::kInt64, info->type);
+        ASSERT_EQ(::hybridse::type::kInt64, info->type);
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(8u + 4u + 2u + 4u + 8u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(5);
-        ASSERT_EQ(::fesql::type::kVarchar, info->type);
+        ASSERT_EQ(::hybridse::type::kVarchar, info->type);
 
         codec::StringColInfo str_info;
         decoder.GetStringColumnInfo(5, &str_info);
@@ -637,7 +637,7 @@ TEST_F(CodecTest, RowFormatOffsetLongHeaderTest) {
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(6);
-        ASSERT_EQ(::fesql::type::kVarchar, info->type);
+        ASSERT_EQ(::hybridse::type::kVarchar, info->type);
 
         codec::StringColInfo str_info;
         decoder.GetStringColumnInfo(6, &str_info);
@@ -650,7 +650,7 @@ TEST_F(CodecTest, RowFormatOffsetLongHeaderTest) {
     }
 }
 }  // namespace codec
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

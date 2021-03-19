@@ -30,9 +30,9 @@
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
 
-using ::fesql::common::kCodegenError;
+using ::hybridse::common::kCodegenError;
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 using TypeNodeVec = std::vector<const node::TypeNode*>;
@@ -699,4 +699,4 @@ Status UDFIRBuilder::BuildUDAFCall(
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

@@ -34,20 +34,20 @@
 #include "udf/udf_registry.h"
 #include "vm/jit_runtime.h"
 
-using fesql::codec::Date;
-using fesql::codec::ListRef;
-using fesql::codec::StringRef;
-using fesql::codec::Timestamp;
-using fesql::codegen::CodeGenContext;
-using fesql::codegen::NativeValue;
-using fesql::common::kCodegenError;
-using fesql::node::TypeNode;
+using hybridse::codec::Date;
+using hybridse::codec::ListRef;
+using hybridse::codec::StringRef;
+using hybridse::codec::Timestamp;
+using hybridse::codegen::CodeGenContext;
+using hybridse::codegen::NativeValue;
+using hybridse::common::kCodegenError;
+using hybridse::node::TypeNode;
 
-namespace fesql {
+namespace hybridse {
 namespace udf {
 
-using fesql::codec::ListRef;
-using fesql::codec::StringRef;
+using hybridse::codec::ListRef;
+using hybridse::codec::StringRef;
 
 /**
  * A mutable string ArrayListV
@@ -631,4 +631,4 @@ void DefaultUDFLibrary::InitFeatureZero() {
 }
 
 }  // namespace udf
-}  // namespace fesql
+}  // namespace hybridse

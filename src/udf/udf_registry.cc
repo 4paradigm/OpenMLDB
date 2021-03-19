@@ -21,13 +21,13 @@
 
 #include "passes/resolve_fn_and_attrs.h"
 
-using ::fesql::common::kCodegenError;
+using ::hybridse::common::kCodegenError;
 
-namespace fesql {
+namespace hybridse {
 namespace udf {
 
 const std::string UDFResolveContext::GetArgSignature() const {
-    return fesql::udf::GetArgSignature(args_);
+    return hybridse::udf::GetArgSignature(args_);
 }
 
 Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
@@ -175,4 +175,4 @@ Status UDAFRegistry::ResolveFunction(UDFResolveContext* ctx,
 }
 
 }  // namespace udf
-}  // namespace fesql
+}  // namespace hybridse

@@ -18,11 +18,11 @@
 #include <vector>
 #include "codegen/fn_let_ir_builder_test.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
-using fesql::codec::ArrayListV;
-using fesql::codec::Row;
+using hybridse::codec::ArrayListV;
+using hybridse::codec::Row;
 
 class AggregateIRBuilderTest : public ::testing::Test {
  public:
@@ -125,7 +125,7 @@ TEST_F(AggregateIRBuilderTest, test_mixed_multiple_agg) {
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

@@ -25,7 +25,7 @@
 #include "plan/plan_api.h"
 #include "proto/fe_common.pb.h"
 
-namespace fesql {
+namespace hybridse {
 namespace plan {
 
 bool Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
@@ -547,7 +547,7 @@ int SimplePlanner::CreatePlanTree(
 
                 if (!is_batch_mode_) {
                     // return false if Primary path check fail
-                    ::fesql::node::PlanNode *primary_node;
+                    ::hybridse::node::PlanNode *primary_node;
                     if (!ValidatePrimaryPath(query_plan, &primary_node,
                                              status)) {
                         DLOG(INFO) << "primay check fail, logical plan:\n"
@@ -604,7 +604,7 @@ int SimplePlanner::CreatePlanTree(
                 plan_trees.push_back(insert_plan);
                 break;
             }
-            case ::fesql::node::kFnDef: {
+            case ::hybridse::node::kFnDef: {
                 node::PlanNode *fn_plan = nullptr;
                 if (!CreateFuncDefPlan(parser_tree, &fn_plan, status)) {
                     return status.code;
@@ -1118,4 +1118,4 @@ bool Planner::TransformTableDef(
 }
 
 }  // namespace plan
-}  // namespace fesql
+}  // namespace hybridse

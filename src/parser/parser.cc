@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-
-// FeSQL Parser
+// HybridSE Parser
 #include "parser/parser.h"
 #include <utility>
 #include "node/sql_node.h"
 #include "proto/fe_common.pb.h"
-namespace fesql {
+namespace hybridse {
 namespace parser {
 
-int FeSQLParser::parse(
+int HybridSEParser::parse(
     const std::string &sqlstr,
     node::NodePointVector &trees,  // NOLINT (runtime/references)
     node::NodeManager *manager,
@@ -63,9 +62,9 @@ int FeSQLParser::parse(
     return ret;
 }
 
-int FeSQLParser::ReflectFnDefNode(node::FnNodeFnDef *fn_def,
-                                  node::NodeManager *node_manager,
-                                  base::Status &status) {  // NOLINT
+int HybridSEParser::ReflectFnDefNode(node::FnNodeFnDef *fn_def,
+                                     node::NodeManager *node_manager,
+                                     base::Status &status) {  // NOLINT
     if (nullptr == fn_def->header_) {
         status.code = common::kFunError;
         status.msg = "fail to create function def plan, first fn node is null";
@@ -94,11 +93,11 @@ int FeSQLParser::ReflectFnDefNode(node::FnNodeFnDef *fn_def,
     return 0;
 }
 
-int FeSQLParser::CreateFnBlock(std::vector<node::FnNode *> statements,
-                               int start, int end, int32_t indent,
-                               node::FnNodeList *block,
-                               node::NodeManager *node_manager,
-                               base::Status &status) {
+int HybridSEParser::CreateFnBlock(std::vector<node::FnNode *> statements,
+                                  int start, int end, int32_t indent,
+                                  node::FnNodeList *block,
+                                  node::NodeManager *node_manager,
+                                  base::Status &status) {
     if (nullptr == block) {
         status.msg = "fail to create fn block node: block null";
         status.code = common::kSQLError;
@@ -254,7 +253,7 @@ int FeSQLParser::CreateFnBlock(std::vector<node::FnNode *> statements,
     }
     return pos;
 }
-bool FeSQLParser::SSAOptimized(
+bool HybridSEParser::SSAOptimized(
     const node::FnNodeList *block,
     std::map<std::string, node::FnNode *> &assign_var_map,
     base::Status &status) {
@@ -322,4 +321,4 @@ bool FeSQLParser::SSAOptimized(
 }
 
 }  // namespace parser
-}  // namespace fesql
+}  // namespace hybridse

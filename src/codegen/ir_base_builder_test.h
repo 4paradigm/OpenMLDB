@@ -37,7 +37,7 @@
 #include "udf/udf.h"
 #include "vm/sql_compiler.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 using udf::DataTypeTrait;
@@ -198,8 +198,8 @@ class ModuleTestFunction {
                        std::unique_ptr<::llvm::LLVMContext> llvm_ctx) {
         llvm::InitializeNativeTarget();
         llvm::InitializeNativeTargetAsmPrinter();
-        jit =
-            std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
+        jit = std::unique_ptr<vm::HybridSEJITWrapper>(
+            vm::HybridSEJITWrapper::Create());
         jit->Init();
         InitBuiltinJITSymbols(jit.get());
         if (library != nullptr) {
@@ -219,7 +219,7 @@ class ModuleTestFunction {
             const_cast<int8_t*>(jit->FindFunction(proxy_fn_name));
     }
 
-    std::unique_ptr<vm::FeSQLJITWrapper> jit = nullptr;
+    std::unique_ptr<vm::HybridSEJITWrapper> jit = nullptr;
     void* fn_ptr = nullptr;
     void* proxy_fn_ptr = nullptr;
 };
@@ -654,5 +654,5 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_IR_BASE_BUILDER_TEST_H_

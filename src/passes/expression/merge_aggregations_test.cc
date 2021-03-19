@@ -20,7 +20,7 @@
 #include "passes/resolve_fn_and_attrs.h"
 #include "udf/literal_traits.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 class MergeAggregationsTest : public ExprPassTestBase {};
@@ -108,7 +108,7 @@ TEST_F(MergeAggregationsTest, Test) {
 }
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::GTEST_FLAG(color) = "yes";

@@ -22,9 +22,9 @@
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
-using fesql::sqlcase::CaseDataMock;
+using hybridse::sqlcase::CaseDataMock;
 class EngineCompileTest : public ::testing::TestWithParam<SQLCase> {
  public:
     EngineCompileTest() {}
@@ -35,14 +35,14 @@ TEST_F(EngineCompileTest, EngineLRUCacheTest) {
     auto catalog = BuildSimpleCatalog();
 
     // database simple_db
-    fesql::type::Database db;
+    hybridse::type::Database db;
     db.set_name("simple_db");
 
     // table t1
-    fesql::type::TableDef table_def;
+    hybridse::type::TableDef table_def;
     sqlcase::CaseSchemaMock::BuildTableDef(table_def);
     table_def.set_name("t1");
-    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    ::hybridse::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
@@ -50,7 +50,7 @@ TEST_F(EngineCompileTest, EngineLRUCacheTest) {
     AddTable(db, table_def);
 
     // table t2
-    fesql::type::TableDef table_def2;
+    hybridse::type::TableDef table_def2;
     sqlcase::CaseSchemaMock::BuildTableDef(table_def2);
     table_def2.set_name("t2");
     AddTable(db, table_def2);
@@ -90,14 +90,14 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
     auto catalog = BuildSimpleCatalog();
 
     // database simple_db
-    fesql::type::Database db;
+    hybridse::type::Database db;
     db.set_name("simple_db");
 
     // table t1
-    fesql::type::TableDef table_def;
+    hybridse::type::TableDef table_def;
     sqlcase::CaseSchemaMock::BuildTableDef(table_def);
     table_def.set_name("t1");
-    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    ::hybridse::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
@@ -105,7 +105,7 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
     AddTable(db, table_def);
 
     // table t2
-    fesql::type::TableDef table_def2;
+    hybridse::type::TableDef table_def2;
     sqlcase::CaseSchemaMock::BuildTableDef(table_def2);
     table_def2.set_name("t2");
     AddTable(db, table_def2);
@@ -246,15 +246,15 @@ TEST_F(EngineCompileTest, RouterTest) {
     auto catalog = BuildSimpleCatalog();
 
     // database simple_db
-    fesql::type::Database db;
+    hybridse::type::Database db;
     db.set_name("simple_db");
 
     // table t1
-    fesql::type::TableDef table_def;
+    hybridse::type::TableDef table_def;
     sqlcase::CaseSchemaMock::BuildTableDef(table_def);
     table_def.set_name("t1");
 
-    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    ::hybridse::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
@@ -288,15 +288,15 @@ TEST_F(EngineCompileTest, ExplainBatchRequestTest) {
     auto catalog = BuildSimpleCatalog();
 
     // database simple_db
-    fesql::type::Database db;
+    hybridse::type::Database db;
     db.set_name("simple_db");
 
     // table t1
-    fesql::type::TableDef table_def;
+    hybridse::type::TableDef table_def;
     sqlcase::CaseSchemaMock::BuildTableDef(table_def);
     table_def.set_name("t1");
 
-    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    ::hybridse::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
@@ -334,12 +334,12 @@ TEST_F(EngineCompileTest, ExplainBatchRequestTest) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     ::testing::InitGoogleTest(&argc, argv);
-    // ::fesql::vm::CoreAPI::EnableSignalTraceback();
+    // ::hybridse::vm::CoreAPI::EnableSignalTraceback();
     return RUN_ALL_TESTS();
 }

@@ -27,7 +27,7 @@
 
 DECLARE_bool(enable_keep_alive);
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 class MockClosure : public ::google::protobuf::Closure {
  public:
@@ -55,7 +55,7 @@ class TabletSdkTest : public ::testing::TestWithParam<EngineRunMode> {
         tablet_server_.AddService(tablet_, brpc::SERVER_DOESNT_OWN_SERVICE);
         tablet_server_.Start(base_tablet_port_, &options);
 
-        dbms_ = new ::fesql::dbms::DBMSServerImpl();
+        dbms_ = new ::hybridse::dbms::DBMSServerImpl();
         dbms_server_.AddService(dbms_, brpc::SERVER_DOESNT_OWN_SERVICE);
         dbms_server_.Start(base_dbms_port_, &options);
         {
@@ -101,31 +101,31 @@ TEST_P(TabletSdkTest, test_normal) {
     table_def->set_catalog("db1");
     table_def->set_name("t1");
     {
-        ::fesql::type::ColumnDef* column = table_def->add_columns();
-        column->set_type(::fesql::type::kInt32);
+        ::hybridse::type::ColumnDef* column = table_def->add_columns();
+        column->set_type(::hybridse::type::kInt32);
         column->set_name("col1");
     }
     {
-        ::fesql::type::ColumnDef* column = table_def->add_columns();
-        column->set_type(::fesql::type::kInt16);
+        ::hybridse::type::ColumnDef* column = table_def->add_columns();
+        column->set_type(::hybridse::type::kInt16);
         column->set_name("col2");
     }
     {
-        ::fesql::type::ColumnDef* column = table_def->add_columns();
-        column->set_type(::fesql::type::kFloat);
+        ::hybridse::type::ColumnDef* column = table_def->add_columns();
+        column->set_type(::hybridse::type::kFloat);
         column->set_name("col3");
     }
     {
-        ::fesql::type::ColumnDef* column = table_def->add_columns();
-        column->set_type(::fesql::type::kDouble);
+        ::hybridse::type::ColumnDef* column = table_def->add_columns();
+        column->set_type(::hybridse::type::kDouble);
         column->set_name("col4");
     }
     {
-        ::fesql::type::ColumnDef* column = table_def->add_columns();
-        column->set_type(::fesql::type::kInt64);
+        ::hybridse::type::ColumnDef* column = table_def->add_columns();
+        column->set_type(::hybridse::type::kInt64);
         column->set_name("col5");
     }
-    ::fesql::type::IndexDef* index = table_def->add_indexes();
+    ::hybridse::type::IndexDef* index = table_def->add_indexes();
     index->set_name("idx1");
     index->add_first_keys("col1");
     index->set_second_key("col5");
@@ -142,7 +142,7 @@ TEST_P(TabletSdkTest, test_normal) {
 
     std::string sql = "insert into t1 values(1, 2, 3.1, 4.1,5);";
     std::string db = "db1";
-    ::fesql::sdk::Status insert_status;
+    ::hybridse::sdk::Status insert_status;
     sdk->Insert(db, sql, &insert_status);
     ASSERT_EQ(0, static_cast<int>(insert_status.code));
     {
@@ -227,13 +227,13 @@ TEST_P(TabletSdkTest, test_normal) {
 TEST_P(TabletSdkTest, test_explain) {
     usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
 
     std::string name = "db_x";
     // create database db1
     {
-        fesql::sdk::Status status;
+        hybridse::sdk::Status status;
         dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
@@ -249,7 +249,7 @@ TEST_P(TabletSdkTest, test_explain) {
             "    index(key=column1, ts=column4)\n"
             ");";
 
-        fesql::sdk::Status status;
+        hybridse::sdk::Status status;
         dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
@@ -262,7 +262,7 @@ TEST_P(TabletSdkTest, test_explain) {
         ASSERT_FALSE(true);
     }
     {
-        ::fesql::sdk::Status status;
+        ::hybridse::sdk::Status status;
         std::string sql =
             "SELECT column1, column2, "
             "column1 + column5 + 1 as f1, column1 + column5 as f2 FROM t1 "
@@ -278,11 +278,11 @@ TEST_P(TabletSdkTest, test_explain) {
 TEST_P(TabletSdkTest, test_create_and_query) {
     usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
     // create database db1
     {
-        fesql::sdk::Status status;
+        hybridse::sdk::Status status;
         std::string name = "db_1";
         dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
@@ -301,7 +301,7 @@ TEST_P(TabletSdkTest, test_create_and_query) {
             ");";
 
         std::string name = "db_1";
-        fesql::sdk::Status status;
+        hybridse::sdk::Status status;
         dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
@@ -314,7 +314,7 @@ TEST_P(TabletSdkTest, test_create_and_query) {
         ASSERT_FALSE(true);
     }
 
-    ::fesql::sdk::Status insert_status;
+    ::hybridse::sdk::Status insert_status;
     sdk->Insert("db_1", "insert into t1 values(1, 2.2, 3.3, 4, 5);",
                 &insert_status);
     ASSERT_EQ(0, static_cast<int>(insert_status.code));
@@ -435,18 +435,18 @@ TEST_P(TabletSdkTest, test_create_and_query) {
 TEST_P(TabletSdkTest, test_udf_query) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
     std::string name = "db_2";
     // create database db1
     {
-        fesql::sdk::Status status;
+        hybridse::sdk::Status status;
         dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     {
-        fesql::sdk::Status status;
+        hybridse::sdk::Status status;
         // create table db1
         std::string sql =
             "create table t1(\n"
@@ -470,7 +470,7 @@ TEST_P(TabletSdkTest, test_udf_query) {
         ASSERT_FALSE(true);
     }
 
-    ::fesql::sdk::Status insert_status;
+    ::hybridse::sdk::Status insert_status;
     sdk->Insert(name, "insert into t1 values(1, 2, 3.3, 4, 5, \"hello\");",
                 &insert_status);
     if (0 != insert_status.code) {
@@ -564,12 +564,12 @@ TEST_P(TabletSdkTest, test_udf_query) {
 TEST_F(TabletSdkTest, test_window_udf_query) {
     usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
     std::string name = "db_3";
     // create database db1
     {
-        fesql::sdk::Status status;
+        hybridse::sdk::Status status;
         dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
@@ -586,7 +586,7 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
             "    column6 string,\n"
             "    index(key=column1, ts=column4)\n"
             ");";
-        fesql::sdk::Status status;
+        hybridse::sdk::Status status;
         dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
@@ -599,7 +599,7 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
         ASSERT_FALSE(true);
     }
 
-    ::fesql::sdk::Status insert_status;
+    ::hybridse::sdk::Status insert_status;
     {
         sdk->Insert(name,
                     "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
@@ -781,12 +781,12 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
 TEST_F(TabletSdkTest, test_window_udf_batch_query) {
     usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
     std::string name = "db_4";
     // create database db1
     {
-        fesql::sdk::Status status;
+        hybridse::sdk::Status status;
         dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
@@ -803,7 +803,7 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
             "    column6 string,\n"
             "    index(key=column1, ts=column4)\n"
             ");";
-        fesql::sdk::Status status;
+        hybridse::sdk::Status status;
         dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
@@ -816,7 +816,7 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
         ASSERT_FALSE(true);
     }
 
-    ::fesql::sdk::Status insert_status;
+    ::hybridse::sdk::Status insert_status;
     {
         sdk->Insert(name,
                     "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
@@ -973,13 +973,13 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
 TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
     usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
     std::string name = "db_5";
 
     // create database db1
     {
-        fesql::sdk::Status status;
+        hybridse::sdk::Status status;
         dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
@@ -996,7 +996,7 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
             "    column6 string,\n"
             "    index(key=column1, ts=column4)\n"
             ");";
-        fesql::sdk::Status status;
+        hybridse::sdk::Status status;
         dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
@@ -1009,7 +1009,7 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
         ASSERT_FALSE(true);
     }
 
-    ::fesql::sdk::Status insert_status;
+    ::hybridse::sdk::Status insert_status;
     {
         sdk->Insert(name,
                     "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
@@ -1208,12 +1208,12 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
 TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
     usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
     // create database db1
     std::string name = "db_6";
     {
-        fesql::sdk::Status status;
+        hybridse::sdk::Status status;
         dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
@@ -1230,7 +1230,7 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
             "    column6 string,\n"
             "    index(key=column1, ts=column4)\n"
             ");";
-        fesql::sdk::Status status;
+        hybridse::sdk::Status status;
         dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
@@ -1243,7 +1243,7 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
         ASSERT_FALSE(true);
     }
 
-    ::fesql::sdk::Status insert_status;
+    ::hybridse::sdk::Status insert_status;
     {
         sdk->Insert(name,
                     "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
@@ -1441,11 +1441,11 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
 }
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    fesql::vm::Engine::InitializeGlobalLLVM();
+    hybridse::vm::Engine::InitializeGlobalLLVM();
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_enable_keep_alive = false;
     return RUN_ALL_TESTS();

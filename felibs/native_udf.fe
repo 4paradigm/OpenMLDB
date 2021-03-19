@@ -1,4 +1,0 @@
-%%fun
-def timestampdiff(t1:timestamp, t2:timestamp):int64
-    return t1 - t2
-end

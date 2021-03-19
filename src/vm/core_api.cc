@@ -25,7 +25,7 @@
 #include "vm/runner.h"
 #include "vm/schemas_context.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 WindowInterface::WindowInterface(bool instance_not_in_window,
@@ -58,8 +58,8 @@ Window::WindowFrameType WindowInterface::ExtractFrameType(
     }
 }
 
-int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
-                                fesql::node::ExprNode* expr) {
+int CoreAPI::ResolveColumnIndex(hybridse::vm::PhysicalOpNode* node,
+                                hybridse::node::ExprNode* expr) {
     const SchemasContext* schemas_ctx = node->schemas_ctx();
     size_t schema_idx;
     size_t col_idx;
@@ -92,8 +92,8 @@ int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
     return total_offset;
 }
 
-std::string CoreAPI::ResolveSourceColumnName(fesql::vm::PhysicalOpNode* node,
-                                             fesql::node::ColumnRefNode* expr) {
+std::string CoreAPI::ResolveSourceColumnName(
+    hybridse::vm::PhysicalOpNode* node, hybridse::node::ColumnRefNode* expr) {
     const SchemasContext* schemas_ctx = node->schemas_ctx();
     auto column_expr = dynamic_cast<const node::ColumnRefNode*>(expr);
     size_t column_id;
@@ -119,9 +119,9 @@ std::string CoreAPI::ResolveSourceColumnName(fesql::vm::PhysicalOpNode* node,
         ->GetColumnName(col_idx);
 }
 
-ColumnSourceInfo CoreAPI::ResolveSourceColumn(fesql::vm::PhysicalOpNode* node,
-                                              const std::string& relation_name,
-                                              const std::string& column_name) {
+ColumnSourceInfo CoreAPI::ResolveSourceColumn(
+    hybridse::vm::PhysicalOpNode* node, const std::string& relation_name,
+    const std::string& column_name) {
     ColumnSourceInfo result;
     if (node == nullptr) {
         return result;
@@ -170,23 +170,23 @@ ColumnSourceInfo CoreAPI::ResolveSourceColumn(fesql::vm::PhysicalOpNode* node,
     return result;
 }
 
-size_t CoreAPI::GetUniqueID(const fesql::vm::PhysicalOpNode* node) {
+size_t CoreAPI::GetUniqueID(const hybridse::vm::PhysicalOpNode* node) {
     return node->node_id();
 }
 
-GroupbyInterface::GroupbyInterface(const fesql::codec::Schema& schema)
+GroupbyInterface::GroupbyInterface(const hybridse::codec::Schema& schema)
     : mem_table_handler_(new vm::MemTableHandler(&schema)) {}
 
-void GroupbyInterface::AddRow(fesql::codec::Row* row) {
+void GroupbyInterface::AddRow(hybridse::codec::Row* row) {
     mem_table_handler_->AddRow(*row);
 }
 
-fesql::vm::TableHandler* GroupbyInterface::GetTableHandler() {
+hybridse::vm::TableHandler* GroupbyInterface::GetTableHandler() {
     return mem_table_handler_;
 }
 
-fesql::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
-                                           const bool need_free) {
+hybridse::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
+                                              const bool need_free) {
     // Init current run step runtime
     JITRuntime::get()->InitRunStep();
 
@@ -201,17 +201,17 @@ fesql::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
 
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
-        return fesql::codec::Row();
+        return hybridse::codec::Row();
     }
     return Row(base::RefCountedSlice::CreateManaged(
-        buf, fesql::codec::RowView::GetSize(buf)));
+        buf, hybridse::codec::RowView::GetSize(buf)));
 }
 
-fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
-                                      const fesql::codec::Row row,
-                                      const bool need_free) {
+hybridse::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
+                                         const hybridse::codec::Row row,
+                                         const bool need_free) {
     if (row.empty()) {
-        return fesql::codec::Row();
+        return hybridse::codec::Row();
     }
     // Init current run step runtime
     JITRuntime::get()->InitRunStep();
@@ -229,16 +229,16 @@ fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
 
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
-        return fesql::codec::Row();
+        return hybridse::codec::Row();
     }
     return Row(base::RefCountedSlice::CreateManaged(
-        buf, fesql::codec::RowView::GetSize(buf)));
+        buf, hybridse::codec::RowView::GetSize(buf)));
 }
 
-fesql::codec::Row CoreAPI::UnsafeRowProject(const fesql::vm::RawPtrHandle fn,
-    fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
-    const int inputRowSizeInBytes,
-    const bool need_free) {
+hybridse::codec::Row CoreAPI::UnsafeRowProject(
+    const hybridse::vm::RawPtrHandle fn,
+    hybridse::vm::ByteArrayPtr inputUnsafeRowBytes,
+    const int inputRowSizeInBytes, const bool need_free) {
     // Create Row from input UnsafeRow bytes
     auto inputRow = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes,
                                                       inputRowSizeInBytes));
@@ -259,22 +259,23 @@ fesql::codec::Row CoreAPI::UnsafeRowProject(const fesql::vm::RawPtrHandle fn,
 
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
-        return fesql::codec::Row();
+        return hybridse::codec::Row();
     }
 
     return Row(base::RefCountedSlice::CreateManaged(
-        buf, fesql::codec::RowView::GetSize(buf)));
+        buf, hybridse::codec::RowView::GetSize(buf)));
 }
 
-void CoreAPI::CopyRowToUnsafeRowBytes(const fesql::codec::Row inputRow,
-                                      fesql::vm::ByteArrayPtr outputBytes,
+void CoreAPI::CopyRowToUnsafeRowBytes(const hybridse::codec::Row inputRow,
+                                      hybridse::vm::ByteArrayPtr outputBytes,
                                       const int length) {
     memcpy(outputBytes, inputRow.buf() + codec::HEADER_LENGTH, length);
 }
 
-fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
-                                         const uint64_t row_key, const Row row,
-                                         WindowInterface* window) {
+hybridse::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
+                                            const uint64_t row_key,
+                                            const Row row,
+                                            WindowInterface* window) {
     if (row.empty()) {
         return row;
     }
@@ -305,57 +306,56 @@ fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
                                                     RowView::GetSize(out_buf)));
 }
 
-fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
-                                         const uint64_t key, const Row row,
-                                         const bool is_instance,
-                                         size_t append_slices,
-                                         WindowInterface* window) {
+hybridse::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
+                                            const uint64_t key, const Row row,
+                                            const bool is_instance,
+                                            size_t append_slices,
+                                            WindowInterface* window) {
     return Runner::WindowProject(fn, key, row, is_instance, append_slices,
                                  window->GetWindow());
 }
 
-fesql::codec::Row CoreAPI::UnsafeWindowProject(const RawPtrHandle fn,
-    const uint64_t key,
-    fesql::vm::ByteArrayPtr inputUnsafeRowBytes,
-    const int inputRowSizeInBytes,
-    const bool is_instance,
-    size_t append_slices,
+hybridse::codec::Row CoreAPI::UnsafeWindowProject(
+    const RawPtrHandle fn, const uint64_t key,
+    hybridse::vm::ByteArrayPtr inputUnsafeRowBytes,
+    const int inputRowSizeInBytes, const bool is_instance, size_t append_slices,
     WindowInterface* window) {
     // tobe
     // Create Row from input UnsafeRow bytes
     auto row = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes,
-                                                      inputRowSizeInBytes));
+                                                 inputRowSizeInBytes));
     return Runner::WindowProject(fn, key, row, is_instance, append_slices,
                                  window->GetWindow());
 }
 
-fesql::codec::Row CoreAPI::GroupbyProject(
-    const RawPtrHandle fn, fesql::vm::GroupbyInterface* groupby_interface) {
+hybridse::codec::Row CoreAPI::GroupbyProject(
+    const RawPtrHandle fn, hybridse::vm::GroupbyInterface* groupby_interface) {
     return Runner::GroupbyProject(fn, groupby_interface->GetTableHandler());
 }
 
-bool CoreAPI::ComputeCondition(const fesql::vm::RawPtrHandle fn, const Row& row,
-                               const fesql::codec::RowView* row_view,
+bool CoreAPI::ComputeCondition(const hybridse::vm::RawPtrHandle fn,
+                               const Row& row,
+                               const hybridse::codec::RowView* row_view,
                                size_t out_idx) {
     Row cond_row = CoreAPI::RowProject(fn, row, true);
     return Runner::GetColumnBool(cond_row.buf(), row_view, out_idx,
                                  row_view->GetSchema()->Get(out_idx).type());
 }
 
-fesql::codec::Row CoreAPI::NewRow(size_t bytes) {
+hybridse::codec::Row CoreAPI::NewRow(size_t bytes) {
     auto buf = reinterpret_cast<int8_t*>(malloc(bytes));
     if (buf == nullptr) {
-        return fesql::codec::Row();
+        return hybridse::codec::Row();
     }
     auto slice = base::RefCountedSlice::CreateManaged(buf, bytes);
-    return fesql::codec::Row(slice);
+    return hybridse::codec::Row(slice);
 }
 
-RawPtrHandle CoreAPI::GetRowBuf(fesql::codec::Row* row, size_t idx) {
+RawPtrHandle CoreAPI::GetRowBuf(hybridse::codec::Row* row, size_t idx) {
     return row->buf(idx);
 }
 
-RawPtrHandle CoreAPI::AppendRow(fesql::codec::Row* row, size_t bytes) {
+RawPtrHandle CoreAPI::AppendRow(hybridse::codec::Row* row, size_t bytes) {
     auto buf = reinterpret_cast<int8_t*>(malloc(bytes));
     if (buf == nullptr) {
         return nullptr;
@@ -366,13 +366,13 @@ RawPtrHandle CoreAPI::AppendRow(fesql::codec::Row* row, size_t bytes) {
 }
 
 bool CoreAPI::EnableSignalTraceback() {
-    signal(SIGSEGV, fesql::base::FeSignalBacktraceHandler);
-    signal(SIGBUS, fesql::base::FeSignalBacktraceHandler);
-    signal(SIGFPE, fesql::base::FeSignalBacktraceHandler);
-    signal(SIGILL, fesql::base::FeSignalBacktraceHandler);
-    signal(SIGSYS, fesql::base::FeSignalBacktraceHandler);
+    signal(SIGSEGV, hybridse::base::FeSignalBacktraceHandler);
+    signal(SIGBUS, hybridse::base::FeSignalBacktraceHandler);
+    signal(SIGFPE, hybridse::base::FeSignalBacktraceHandler);
+    signal(SIGILL, hybridse::base::FeSignalBacktraceHandler);
+    signal(SIGSYS, hybridse::base::FeSignalBacktraceHandler);
     return true;
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

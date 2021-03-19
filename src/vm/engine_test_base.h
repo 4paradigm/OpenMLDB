@@ -64,17 +64,17 @@ static const int ENGINE_TEST_RET_COMPILE_ERROR = 2;
 static const int ENGINE_TEST_RET_EXECUTION_ERROR = 3;
 static const int ENGINE_TEST_INIT_CATALOG_ERROR = 4;
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
-using fesql::base::Status;
-using fesql::codec::Row;
-using fesql::codec::RowView;
-using fesql::common::kSQLError;
-using fesql::sqlcase::SQLCase;
+using hybridse::base::Status;
+using hybridse::codec::Row;
+using hybridse::codec::RowView;
+using hybridse::common::kSQLError;
+using hybridse::sqlcase::SQLCase;
 enum EngineRunMode { RUNBATCH, RUNONE };
 
 std::vector<SQLCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);   // NOLINT
+void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
 bool IsNaN(float x);
 bool IsNaN(double x);
@@ -430,5 +430,5 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
 };
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_VM_ENGINE_TEST_BASE_H_

@@ -73,10 +73,10 @@ T PrintList(int8_t* input) {
     } else {
         std::cout << "list ptr is ok" << std::endl;
     }
-    ::fesql::codec::ListRef<>* list_ref =
-        reinterpret_cast<::fesql::codec::ListRef<>*>(input);
-    ::fesql::codec::ColumnImpl<T>* column =
-        reinterpret_cast<::fesql::codec::ColumnImpl<T>*>(list_ref->list);
+    ::hybridse::codec::ListRef<>* list_ref =
+        reinterpret_cast<::hybridse::codec::ListRef<>*>(input);
+    ::hybridse::codec::ColumnImpl<T>* column =
+        reinterpret_cast<::hybridse::codec::ColumnImpl<T>*>(list_ref->list);
     auto col = column->GetIterator();
     std::cout << "[";
     while (col->Valid()) {
@@ -102,14 +102,14 @@ int32_t PrintListString(int8_t* input) {
     } else {
         std::cout << "list ptr is ok" << std::endl;
     }
-    ::fesql::codec::ListRef<>* list_ref =
-        reinterpret_cast<::fesql::codec::ListRef<>*>(input);
-    ::fesql::codec::StringColumnImpl* column =
-        reinterpret_cast<::fesql::codec::StringColumnImpl*>(list_ref->list);
+    ::hybridse::codec::ListRef<>* list_ref =
+        reinterpret_cast<::hybridse::codec::ListRef<>*>(input);
+    ::hybridse::codec::StringColumnImpl* column =
+        reinterpret_cast<::hybridse::codec::StringColumnImpl*>(list_ref->list);
     auto col = column->GetIterator();
     std::cout << "[";
     while (col->Valid()) {
-        ::fesql::codec::StringRef v = col->GetValue();
+        ::hybridse::codec::StringRef v = col->GetValue();
         col->Next();
         std::string str(v.data_, v.size_);
         std::cout << str << ", ";
@@ -126,21 +126,22 @@ void AssertStrEq(int8_t* ptr) {
     ASSERT_EQ(str, "1");
 }
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
-using fesql::codec::Row;
-using fesql::sqlcase::SQLCase;
+using hybridse::codec::Row;
+using hybridse::sqlcase::SQLCase;
 class BufIRBuilderTest : public ::testing::Test {
  public:
     BufIRBuilderTest() {}
     ~BufIRBuilderTest() {}
 };
 
-void RunEncode(::fesql::type::TableDef& table, int8_t** output_ptr) {  // NOLINT
+void RunEncode(::hybridse::type::TableDef& table, // NOLINT
+               int8_t** output_ptr) {
     SQLCase::TableInfo table_info;
     ASSERT_TRUE(SQLCase::CreateTableInfoFromYaml(
-        fesql::sqlcase::FindFesqlDirPath(),
+        hybridse::sqlcase::FindHybridSEDirPath(),
         "cases/resource/codegen_t1_one_row.yaml", &table_info));
     ASSERT_TRUE(
         SQLCase::ExtractTableDef(table_info.schema_, table_info.index_, table));
@@ -186,10 +187,10 @@ void RunEncode(::fesql::type::TableDef& table, int8_t** output_ptr) {  // NOLINT
     builder.CreateRetVoid();
     m->print(::llvm::errs(), NULL);
 
-    auto jit =
-        std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
+    auto jit = std::unique_ptr<vm::HybridSEJITWrapper>(
+        vm::HybridSEJITWrapper::Create());
     jit->Init();
-    vm::FeSQLJITWrapper::InitJITSymbols(jit.get());
+    vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto load_fn_jit = jit->FindFunction("fn");
     void (*decode)(int8_t**) =
@@ -198,8 +199,8 @@ void RunEncode(::fesql::type::TableDef& table, int8_t** output_ptr) {  // NOLINT
 }
 template <class T>
 void LoadValue(T* result, bool* is_null,
-               ::fesql::type::TableDef& table,  // NOLINT
-               const ::fesql::type::Type& type, const std::string& col,
+               ::hybridse::type::TableDef& table,  // NOLINT
+               const ::hybridse::type::Type& type, const std::string& col,
                int8_t* row, int32_t row_size) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_load_buf", *ctx);
@@ -207,28 +208,28 @@ void LoadValue(T* result, bool* is_null,
     // function will have a return type of "int" and take an argument of "int".
     ::llvm::Type* retTy = NULL;
     switch (type) {
-        case ::fesql::type::kInt16:
+        case ::hybridse::type::kInt16:
             retTy = Type::getInt16Ty(*ctx);
             break;
-        case ::fesql::type::kInt32:
+        case ::hybridse::type::kInt32:
             retTy = Type::getInt32Ty(*ctx);
             break;
-        case ::fesql::type::kInt64:
+        case ::hybridse::type::kInt64:
             retTy = Type::getInt64Ty(*ctx);
             break;
-        case ::fesql::type::kDouble:
+        case ::hybridse::type::kDouble:
             retTy = Type::getDoubleTy(*ctx);
             break;
-        case ::fesql::type::kFloat:
+        case ::hybridse::type::kFloat:
             retTy = Type::getFloatTy(*ctx);
             break;
-        case ::fesql::type::kVarchar: {
-            const node::TypeNode type_node(fesql::node::kVarchar);
+        case ::hybridse::type::kVarchar: {
+            const node::TypeNode type_node(hybridse::node::kVarchar);
             ASSERT_TRUE(codegen::GetLLVMType(m.get(), &type_node, &retTy));
             break;
         }
-        case ::fesql::type::kTimestamp: {
-            const node::TypeNode type_node(fesql::node::kTimestamp);
+        case ::hybridse::type::kTimestamp: {
+            const node::TypeNode type_node(hybridse::node::kTimestamp);
             ASSERT_TRUE(codegen::GetLLVMType(m.get(), &type_node, &retTy));
             break;
         }
@@ -286,13 +287,13 @@ void LoadValue(T* result, bool* is_null,
 
     llvm::Value* raw = val.GetValue(&builder);
     switch (type) {
-        case ::fesql::type::kVarchar: {
+        case ::hybridse::type::kVarchar: {
             codegen::StringIRBuilder string_builder(m.get());
             ASSERT_TRUE(
                 string_builder.CopyFrom(builder.GetInsertBlock(), raw, arg2));
             break;
         }
-        case ::fesql::type::kTimestamp: {
+        case ::hybridse::type::kTimestamp: {
             codegen::TimestampIRBuilder timestamp_builder(m.get());
             ::llvm::Value* ts_output;
             ASSERT_TRUE(timestamp_builder.GetTs(builder.GetInsertBlock(), raw,
@@ -308,10 +309,10 @@ void LoadValue(T* result, bool* is_null,
     builder.CreateRet(llvm::ConstantInt::getFalse(*ctx));
     m->print(::llvm::errs(), NULL);
 
-    auto jit =
-        std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
+    auto jit = std::unique_ptr<vm::HybridSEJITWrapper>(
+        vm::HybridSEJITWrapper::Create());
     jit->Init();
-    vm::FeSQLJITWrapper::InitJITSymbols(jit.get());
+    vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto load_fn_jit = jit->FindFunction("fn");
 
@@ -326,8 +327,8 @@ void LoadValue(T* result, bool* is_null,
 
 template <class T>
 void RunCaseV1(T expected,
-               ::fesql::type::TableDef& table,  // NOLINT
-               const ::fesql::type::Type& type, const std::string& col,
+               ::hybridse::type::TableDef& table,  // NOLINT
+               const ::hybridse::type::Type& type, const std::string& col,
                int8_t* row, int32_t row_size) {
     T result;
     bool is_null;
@@ -338,7 +339,7 @@ void RunCaseV1(T expected,
 
 template <class T>
 void RunColCase(T expected, type::TableDef& table,  // NOLINT
-                const ::fesql::type::Type& type, const std::string& col,
+                const ::hybridse::type::Type& type, const std::string& col,
                 int8_t* window) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_load_buf", *ctx);
@@ -347,25 +348,25 @@ void RunColCase(T expected, type::TableDef& table,  // NOLINT
     bool is_void = false;
     ::llvm::Type* retTy = NULL;
     switch (type) {
-        case ::fesql::type::kInt16:
+        case ::hybridse::type::kInt16:
             retTy = Type::getInt16Ty(*ctx);
             break;
-        case ::fesql::type::kInt32:
+        case ::hybridse::type::kInt32:
             retTy = Type::getInt32Ty(*ctx);
             break;
-        case ::fesql::type::kInt64:
+        case ::hybridse::type::kInt64:
             retTy = Type::getInt64Ty(*ctx);
             break;
-        case ::fesql::type::kDouble:
+        case ::hybridse::type::kDouble:
             retTy = Type::getDoubleTy(*ctx);
             break;
-        case ::fesql::type::kFloat:
+        case ::hybridse::type::kFloat:
             retTy = Type::getFloatTy(*ctx);
             break;
-        case ::fesql::type::kVarchar:
+        case ::hybridse::type::kVarchar:
             retTy = Type::getInt32Ty(*ctx);
             break;
-        case ::fesql::type::kTimestamp:
+        case ::hybridse::type::kTimestamp:
             retTy = Type::getInt64PtrTy(*ctx);
             break;
         default:
@@ -400,28 +401,28 @@ void RunColCase(T expected, type::TableDef& table,  // NOLINT
     ::llvm::Value* i8_ptr = builder.CreatePointerCast(val, i8_ptr_ty);
     llvm::FunctionCallee callee;
     switch (type) {
-        case fesql::type::kInt16:
+        case hybridse::type::kInt16:
             callee = m->getOrInsertFunction("print_list_i16", retTy, i8_ptr_ty);
             break;
-        case fesql::type::kInt32:
+        case hybridse::type::kInt32:
             callee = m->getOrInsertFunction("print_list_i32", retTy, i8_ptr_ty);
             break;
-        case fesql::type::kInt64:
+        case hybridse::type::kInt64:
             callee = m->getOrInsertFunction("print_list_i64", retTy, i8_ptr_ty);
             break;
-        case fesql::type::kTimestamp:
+        case hybridse::type::kTimestamp:
             callee = m->getOrInsertFunction("print_list_timestamp", retTy,
                                             i8_ptr_ty);
             break;
-        case fesql::type::kFloat:
+        case hybridse::type::kFloat:
             callee =
                 m->getOrInsertFunction("print_list_float", retTy, i8_ptr_ty);
             break;
-        case fesql::type::kDouble:
+        case hybridse::type::kDouble:
             callee =
                 m->getOrInsertFunction("print_list_double", retTy, i8_ptr_ty);
             break;
-        case fesql::type::kVarchar:
+        case hybridse::type::kVarchar:
             callee =
                 m->getOrInsertFunction("print_list_string", retTy, i8_ptr_ty);
             break;
@@ -439,10 +440,10 @@ void RunColCase(T expected, type::TableDef& table,  // NOLINT
     }
     m->print(::llvm::errs(), NULL);
 
-    auto jit =
-        std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
+    auto jit = std::unique_ptr<vm::HybridSEJITWrapper>(
+        vm::HybridSEJITWrapper::Create());
     jit->Init();
-    vm::FeSQLJITWrapper::InitJITSymbols(jit.get());
+    vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     jit->AddExternalFunction("print_list_i16",
                              reinterpret_cast<void*>(&PrintListInt16));
@@ -487,7 +488,7 @@ TEST_F(BufIRBuilderTest, native_test_load_int16) {
     uint32_t size = 0;
     type::TableDef table;
     BuildT1Buf(table, &ptr, &size);
-    RunCaseV1<int16_t>(16, table, ::fesql::type::kInt16, "col2", ptr, size);
+    RunCaseV1<int16_t>(16, table, ::hybridse::type::kInt16, "col2", ptr, size);
     free(ptr);
 }
 
@@ -497,7 +498,7 @@ TEST_F(BufIRBuilderTest, native_test_load_string) {
     type::TableDef table;
     BuildT1Buf(table, &ptr, &size);
     RunCaseV1<codec::StringRef>(codec::StringRef(strlen("1"), strdup("1")),
-                                table, ::fesql::type::kVarchar, "col6", ptr,
+                                table, ::hybridse::type::kVarchar, "col6", ptr,
                                 size);
     free(ptr);
 }
@@ -528,7 +529,7 @@ TEST_F(BufIRBuilderTest, native_test_load_int16_col) {
     type::TableDef table;
     BuildWindowFromResource("cases/resource/codegen_t1_five_row.yaml", table,
                             rows, &ptr);
-    RunColCase<int16_t>(16 * 5, table, ::fesql::type::kInt16, "col2", ptr);
+    RunColCase<int16_t>(16 * 5, table, ::hybridse::type::kInt16, "col2", ptr);
     free(ptr);
 }
 
@@ -538,7 +539,7 @@ TEST_F(BufIRBuilderTest, native_test_load_int32_col) {
     type::TableDef table;
     BuildWindowFromResource("cases/resource/codegen_t1_five_row.yaml", table,
                             rows, &ptr);
-    RunColCase<int32_t>(32 * 5, table, ::fesql::type::kInt32, "col1", ptr);
+    RunColCase<int32_t>(32 * 5, table, ::hybridse::type::kInt32, "col1", ptr);
     free(ptr);
 }
 
@@ -548,7 +549,7 @@ TEST_F(BufIRBuilderTest, native_test_load_int64_col) {
     type::TableDef table;
     BuildWindowFromResource("cases/resource/codegen_t1_five_row.yaml", table,
                             rows, &ptr);
-    RunColCase<int64_t>(64 * 5, table, ::fesql::type::kInt64, "col5", ptr);
+    RunColCase<int64_t>(64 * 5, table, ::hybridse::type::kInt64, "col5", ptr);
     free(ptr);
 }
 TEST_F(BufIRBuilderTest, native_test_load_timestamp_col) {
@@ -557,7 +558,7 @@ TEST_F(BufIRBuilderTest, native_test_load_timestamp_col) {
     type::TableDef table;
     BuildWindowFromResource("cases/resource/codegen_t1_five_row.yaml", table,
                             rows, &ptr);
-    RunColCase<int64_t>(1590115420000L * 5, table, ::fesql::type::kTimestamp,
+    RunColCase<int64_t>(1590115420000L * 5, table, ::hybridse::type::kTimestamp,
                         "std_ts", ptr);
     free(ptr);
 }
@@ -567,7 +568,7 @@ TEST_F(BufIRBuilderTest, native_test_load_float_col) {
     type::TableDef table;
     BuildWindowFromResource("cases/resource/codegen_t1_five_row.yaml", table,
                             rows, &ptr);
-    RunColCase<float>(2.1f * 5, table, ::fesql::type::kFloat, "col3", ptr);
+    RunColCase<float>(2.1f * 5, table, ::hybridse::type::kFloat, "col3", ptr);
     free(ptr);
 }
 
@@ -577,7 +578,7 @@ TEST_F(BufIRBuilderTest, native_test_load_double_col) {
     type::TableDef table;
     BuildWindowFromResource("cases/resource/codegen_t1_five_row.yaml", table,
                             rows, &ptr);
-    RunColCase<double>(3.1f * 5, table, ::fesql::type::kDouble, "col4", ptr);
+    RunColCase<double>(3.1f * 5, table, ::hybridse::type::kDouble, "col4", ptr);
     free(ptr);
 }
 
@@ -587,12 +588,12 @@ TEST_F(BufIRBuilderTest, native_test_load_string_col) {
     type::TableDef table;
     BuildWindowFromResource("cases/resource/codegen_t1_five_row.yaml", table,
                             rows, &ptr);
-    RunColCase<int32_t>(5, table, ::fesql::type::kVarchar, "col6", ptr);
+    RunColCase<int32_t>(5, table, ::hybridse::type::kVarchar, "col6", ptr);
     free(ptr);
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

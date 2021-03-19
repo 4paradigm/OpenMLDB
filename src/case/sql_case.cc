@@ -25,9 +25,9 @@
 #include "codec/fe_row_codec.h"
 #include "glog/logging.h"
 #include "yaml-cpp/yaml.h"
-namespace fesql {
+namespace hybridse {
 namespace sqlcase {
-using fesql::codec::Row;
+using hybridse::codec::Row;
 
 bool SQLCase::TTLParse(const std::string& org_type_str,
                        std::vector<int64_t>& ttls) {
@@ -63,7 +63,7 @@ bool SQLCase::TTLParse(const std::string& org_type_str,
     return true;
 }
 bool SQLCase::TTLTypeParse(const std::string& org_type_str,
-                           ::fesql::type::TTLType* type) {
+                           ::hybridse::type::TTLType* type) {
     if (nullptr == type) {
         LOG(WARNING) << "Null TTL Type Output";
         return false;
@@ -71,13 +71,13 @@ bool SQLCase::TTLTypeParse(const std::string& org_type_str,
     std::string type_str = org_type_str;
     boost::to_lower(type_str);
     if ("absolute" == type_str) {
-        *type = fesql::type::TTLType::kTTLTimeLive;
+        *type = hybridse::type::TTLType::kTTLTimeLive;
     } else if ("latest" == type_str) {
-        *type = fesql::type::TTLType::kTTLCountLive;
+        *type = hybridse::type::TTLType::kTTLCountLive;
     } else if ("absorlat" == type_str) {
-        *type = fesql::type::TTLType::kTTLTimeLiveOrCountLive;
+        *type = hybridse::type::TTLType::kTTLTimeLiveOrCountLive;
     } else if ("absandlat" == type_str) {
-        *type = fesql::type::TTLType::kTTLTimeLiveAndCountLive;
+        *type = hybridse::type::TTLType::kTTLTimeLiveAndCountLive;
     } else {
         LOG(WARNING) << "Invalid TTLType: " << type_str;
         return false;
@@ -85,7 +85,7 @@ bool SQLCase::TTLTypeParse(const std::string& org_type_str,
     return true;
 }
 bool SQLCase::TypeParse(const std::string& org_type_str,
-                        fesql::type::Type* type) {
+                        hybridse::type::Type* type) {
     if (nullptr == type) {
         LOG(WARNING) << "Null Type Output";
         return false;
@@ -118,7 +118,7 @@ bool SQLCase::TypeParse(const std::string& org_type_str,
     return true;
 }
 
-const std::string SQLCase::TypeString(fesql::type::Type type) {
+const std::string SQLCase::TypeString(hybridse::type::Type type) {
     switch (type) {
         case type::kInt16:
             return "smallint";
@@ -202,7 +202,7 @@ bool SQLCase::ExtractIndex(const std::vector<std::string>& indexs,
                 LOG(WARNING) << "Invalid Index Format:" << index;
                 return false;
             }
-            ::fesql::type::IndexDef* index_def = table.add_indexes();
+            ::hybridse::type::IndexDef* index_def = table.add_indexes();
             boost::trim(name_keys_order[0]);
             if (index_names.find(name_keys_order[0]) != index_names.end()) {
                 LOG(WARNING) << "Invalid Index: index name "
@@ -242,7 +242,7 @@ bool SQLCase::ExtractIndex(const std::vector<std::string>& indexs,
             }
             if (5 <= name_keys_order.size()) {
                 boost::trim(name_keys_order[4]);
-                ::fesql::type::TTLType ttl_type;
+                ::hybridse::type::TTLType ttl_type;
                 if (!TTLTypeParse(name_keys_order[4], &ttl_type)) {
                     return false;
                 }
@@ -290,12 +290,12 @@ bool SQLCase::ExtractSchema(const std::vector<std::string>& columns,
                              << " Invalid Column " << col;
                 return false;
             }
-            ::fesql::type::ColumnDef* column = table.add_columns();
+            ::hybridse::type::ColumnDef* column = table.add_columns();
             boost::trim(name_type_vec[0]);
             boost::trim(name_type_vec[1]);
 
             column->set_name(name_type_vec[0]);
-            fesql::type::Type type;
+            hybridse::type::Type type;
             if (!TypeParse(name_type_vec[1], &type)) {
                 LOG(WARNING) << "Invalid Column Type";
                 return false;
@@ -711,7 +711,7 @@ bool SQLCase::ExtractRow(const vm::Schema& schema,
 }
 bool SQLCase::ExtractRows(const vm::Schema& schema,
                           const std::vector<std::vector<std::string>>& row_vec,
-                          std::vector<fesql::codec::Row>& rows) {
+                          std::vector<hybridse::codec::Row>& rows) {
     if (row_vec.empty()) {
         LOG(WARNING) << "Invalid Data Format";
         return false;
@@ -728,7 +728,7 @@ bool SQLCase::ExtractRows(const vm::Schema& schema,
     return true;
 }
 bool SQLCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
-                          std::vector<fesql::codec::Row>& rows) {
+                          std::vector<hybridse::codec::Row>& rows) {
     std::vector<std::string> row_vec;
     boost::split(row_vec, data_str, boost::is_any_of("\n"),
                  boost::token_compress_on);
@@ -1101,10 +1101,9 @@ bool SQLCase::CreateTableInfoFromYaml(const std::string& cases_dir,
     return true;
 }
 
-bool SQLCase::LoadSchemaAndRowsFromYaml(const std::string& cases_dir,
-                                        const std::string& resource_path,
-                                        type::TableDef& table,
-                                        std::vector<fesql::codec::Row>& rows) {
+bool SQLCase::LoadSchemaAndRowsFromYaml(
+    const std::string& cases_dir, const std::string& resource_path,
+    type::TableDef& table, std::vector<hybridse::codec::Row>& rows) {
     TableInfo table_info;
     if (!CreateTableInfoFromYaml(cases_dir, resource_path, &table_info)) {
         return false;
@@ -1465,9 +1464,9 @@ bool SQLCase::CreateSQLCasesFromYaml(
     return true;
 }
 
-fesql::sqlcase::SQLCase SQLCase::LoadSQLCaseWithID(const std::string& dir_path,
-                                                   const std::string& yaml_path,
-                                                   const std::string& case_id) {
+hybridse::sqlcase::SQLCase SQLCase::LoadSQLCaseWithID(
+    const std::string& dir_path, const std::string& yaml_path,
+    const std::string& case_id) {
     std::vector<SQLCase> cases;
     LOG(INFO) << "BENCHMARK LOAD SQL CASE";
     SQLCase::CreateSQLCasesFromYaml(dir_path, yaml_path, cases);
@@ -1479,16 +1478,16 @@ fesql::sqlcase::SQLCase SQLCase::LoadSQLCaseWithID(const std::string& dir_path,
     }
     return SQLCase();
 }
-std::string FindFesqlDirPath() {
+std::string FindHybridSEDirPath() {
     boost::filesystem::path current_path(boost::filesystem::current_path());
-    boost::filesystem::path fesql_path;
-    bool find_fesql_dir = false;
+    boost::filesystem::path hybridse_path;
+    bool find_hybridse_dir = false;
 
     while (current_path.has_parent_path()) {
         current_path = current_path.parent_path();
         if (current_path.filename().string() == "fesql") {
-            fesql_path = current_path;
-            find_fesql_dir = true;
+            hybridse_path = current_path;
+            find_hybridse_dir = true;
             break;
         }
         boost::filesystem::directory_iterator endIter;
@@ -1496,18 +1495,18 @@ std::string FindFesqlDirPath() {
              iter != endIter; iter++) {
             if (boost::filesystem::is_directory(*iter) &&
                 iter->path().filename() == "fesql") {
-                fesql_path = iter->path();
-                find_fesql_dir = true;
+                hybridse_path = iter->path();
+                find_hybridse_dir = true;
                 break;
             }
         }
-        if (find_fesql_dir) {
+        if (find_hybridse_dir) {
             break;
         }
     }
 
-    if (find_fesql_dir) {
-        return fesql_path.string();
+    if (find_hybridse_dir) {
+        return hybridse_path.string();
     }
     return std::string();
 }
@@ -1552,8 +1551,8 @@ bool SQLCase::BuildCreateSpSQLFromSchema(const type::TableDef& table,
     *create_sql = sql;
     return true;
 }
-std::set<std::string> SQLCase::FESQL_LEVEL() {
-    const char* env_name = "FESQL_LEVEL";
+std::set<std::string> SQLCase::HYBRIDSE_LEVEL() {
+    const char* env_name = "HYBRIDSE_LEVEL";
     char* value = getenv(env_name);
     if (value != nullptr) {
         try {
@@ -1562,7 +1561,7 @@ std::set<std::string> SQLCase::FESQL_LEVEL() {
                          boost::token_compress_on);
             return item_vec;
         } catch (const std::exception& ex) {
-            LOG(WARNING) << "Fail to parser fesql level: " << ex.what();
+            LOG(WARNING) << "Fail to parser hybridse level: " << ex.what();
             return std::set<std::string>({"0"});
         }
     } else {
@@ -1570,4 +1569,4 @@ std::set<std::string> SQLCase::FESQL_LEVEL() {
     }
 }
 }  // namespace sqlcase
-}  // namespace fesql
+}  // namespace hybridse

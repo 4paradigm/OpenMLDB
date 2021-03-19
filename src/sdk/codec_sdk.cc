@@ -16,10 +16,10 @@
 
 #include "butil/iobuf.h"
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 
-RowIOBufView::RowIOBufView(const fesql::codec::Schema& schema)
+RowIOBufView::RowIOBufView(const hybridse::codec::Schema& schema)
     : row_(),
       str_addr_length_(0),
       is_valid_(true),
@@ -36,15 +36,15 @@ RowIOBufView::~RowIOBufView() {}
 bool RowIOBufView::Init() {
     uint32_t offset = codec::HEADER_LENGTH + codec::BitMapSize(schema_.size());
     for (int idx = 0; idx < schema_.size(); idx++) {
-        const ::fesql::type::ColumnDef& column = schema_.Get(idx);
-        if (column.type() == ::fesql::type::kVarchar) {
+        const ::hybridse::type::ColumnDef& column = schema_.Get(idx);
+        if (column.type() == ::hybridse::type::kVarchar) {
             offset_vec_.push_back(string_field_cnt_);
             string_field_cnt_++;
         } else {
             auto TYPE_SIZE_MAP = codec::GetTypeSizeMap();
             auto iter = TYPE_SIZE_MAP.find(column.type());
             if (iter == TYPE_SIZE_MAP.end()) {
-                LOG(WARNING) << ::fesql::type::Type_Name(column.type())
+                LOG(WARNING) << ::hybridse::type::Type_Name(column.type())
                              << " is not supported";
                 is_valid_ = false;
                 return false;
@@ -279,4 +279,4 @@ int32_t GetStrField(const butil::IOBuf& row, uint32_t field_offset,
 }  // namespace v1
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse

@@ -30,7 +30,7 @@
 #include "proto/fe_type.pb.h"
 #include "vm/catalog.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
@@ -99,5 +99,5 @@ class BufNativeIRBuilder : public RowDecodeIRBuilder {
 };
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_BUF_IR_BUILDER_H_

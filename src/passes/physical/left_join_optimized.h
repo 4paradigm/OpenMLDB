@@ -19,10 +19,10 @@
 #include <string>
 #include "passes/physical/transform_up_physical_pass.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
-using fesql::codec::Schema;
+using hybridse::codec::Schema;
 
 class LeftJoinOptimized : public TransformUpPysicalPass {
  public:
@@ -36,6 +36,6 @@ class LeftJoinOptimized : public TransformUpPysicalPass {
                                  const Schema* schema);
 };
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_PASSES_PHYSICAL_LEFT_JOIN_OPTIMIZED_H_

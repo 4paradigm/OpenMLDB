@@ -23,7 +23,7 @@
 
 #include "passes/expression/expr_pass.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 using base::Status;
@@ -37,5 +37,5 @@ class MergeAggregations : public passes::ExprPass {
 };
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_PASSES_EXPRESSION_MERGE_AGGREGATIONS_H_

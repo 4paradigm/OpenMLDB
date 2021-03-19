@@ -17,7 +17,7 @@
 set -eE
 
 curl -o baseline_report.txt \
-    https://nexus.4pd.io/repository/raw-hosted/ai-native-db/fesql/develop/micro_bench_report.txt
+    https://nexus.4pd.io/repository/raw-hosted/ai-native-db/hybridse/develop/micro_bench_report.txt
 
 python tools/benchmark_report/compare_report.py baseline_report.txt micro_bench_report.txt 
 

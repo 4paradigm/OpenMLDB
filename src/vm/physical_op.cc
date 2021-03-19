@@ -18,10 +18,10 @@
 #include <set>
 #include "passes/physical/physical_pass.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
-using fesql::base::Status;
+using hybridse::base::Status;
 
 const char INDENT[] = "  ";
 void PhysicalOpNode::Print(std::ostream& output, const std::string& tab) const {
@@ -1445,6 +1445,5 @@ Status BuildColumnReplacement(const node::ExprNode* expr,
     return Status::OK();
 }
 
-
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

@@ -26,7 +26,7 @@
 #include "gtest/gtest.h"
 #include "proto/fe_tablet.pb.h"
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 struct TestArgs {
     tablet::QueryResponse* response;
@@ -246,7 +246,7 @@ INSTANTIATE_TEST_CASE_P(ResultSetImplTestPrefix, ResultSetImplTest,
                         testing::ValuesIn(GetTestCase()));
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

@@ -22,7 +22,7 @@
 #include "codegen/udf_ir_builder.h"
 #include "glog/logging.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 ListIRBuilder::ListIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
     : block_(block), sv_(scope_var) {}
@@ -221,4 +221,4 @@ Status ListIRBuilder::BuildIteratorDelete(::llvm::Value* iterator,
     return Status::OK();
 }
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

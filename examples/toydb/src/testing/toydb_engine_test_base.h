@@ -28,17 +28,18 @@
 #include "glog/logging.h"
 #include "tablet/tablet_catalog.h"
 #include "vm/engine_test_base.h"
-namespace fesql {
+namespace hybridse {
 namespace vm {
 std::shared_ptr<tablet::TabletCatalog> BuildToydbCatalog();
 std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
-    const fesql::type::TableDef& table_def,
-    std::shared_ptr<fesql::storage::Table> table);
+    const hybridse::type::TableDef& table_def,
+    std::shared_ptr<hybridse::storage::Table> table);
 bool InitToydbEngineCatalog(
     SQLCase& sql_case,  // NOLINT
     const EngineOptions& engine_options,
-    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>&  // NOLINT
-    name_table_map,                                               // NOLINT
+    std::map<std::string,
+             std::shared_ptr<::hybridse::storage::Table>>&  // NOLINT
+        name_table_map,                                     // NOLINT
     std::shared_ptr<vm::Engine> engine,
     std::shared_ptr<tablet::TabletCatalog> catalog);
 std::shared_ptr<tablet::TabletCatalog> BuildOnePkTableStorage(
@@ -111,7 +112,7 @@ class ToydbBatchEngineTestRunner : public BatchEngineTestRunner {
 
  private:
     std::shared_ptr<tablet::TabletCatalog> catalog_;
-    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
+    std::map<std::string, std::shared_ptr<::hybridse::storage::Table>>
         name_table_map_;
 };
 
@@ -160,7 +161,7 @@ class ToydbRequestEngineTestRunner : public RequestEngineTestRunner {
 
  private:
     std::shared_ptr<tablet::TabletCatalog> catalog_;
-    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
+    std::map<std::string, std::shared_ptr<::hybridse::storage::Table>>
         name_table_map_;
 };
 
@@ -213,10 +214,10 @@ class ToydbBatchRequestEngineTestRunner : public BatchRequestEngineTestRunner {
 
  private:
     std::shared_ptr<tablet::TabletCatalog> catalog_;
-    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
+    std::map<std::string, std::shared_ptr<::hybridse::storage::Table>>
         name_table_map_;
 };
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // EXAMPLES_TOYDB_SRC_TESTING_TOYDB_ENGINE_TEST_BASE_H_

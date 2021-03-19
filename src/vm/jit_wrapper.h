@@ -27,16 +27,16 @@
 #include "vm/core_api.h"
 #include "vm/engine_context.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 class JITOptions;
 
-class FeSQLJITWrapper {
+class HybridSEJITWrapper {
  public:
-    FeSQLJITWrapper() {}
-    virtual ~FeSQLJITWrapper() {}
-    FeSQLJITWrapper(const FeSQLJITWrapper&) = delete;
+    HybridSEJITWrapper() {}
+    virtual ~HybridSEJITWrapper() {}
+    HybridSEJITWrapper(const HybridSEJITWrapper&) = delete;
 
     virtual bool Init() = 0;
 
@@ -49,19 +49,18 @@ class FeSQLJITWrapper {
 
     bool AddModuleFromBuffer(const base::RawBuffer&);
 
-    virtual fesql::vm::RawPtrHandle FindFunction(
+    virtual hybridse::vm::RawPtrHandle FindFunction(
         const std::string& funcname) = 0;
 
-    static FeSQLJITWrapper* Create(const JITOptions& jit_options);
-    static FeSQLJITWrapper* Create();
-    static void DeleteJIT(FeSQLJITWrapper* jit);
+    static HybridSEJITWrapper* Create(const JITOptions& jit_options);
+    static HybridSEJITWrapper* Create();
+    static void DeleteJIT(HybridSEJITWrapper* jit);
 
-    static bool InitJITSymbols(FeSQLJITWrapper* jit);
+    static bool InitJITSymbols(HybridSEJITWrapper* jit);
 };
 
-void InitBuiltinJITSymbols(FeSQLJITWrapper* jit_ptr);
-
+void InitBuiltinJITSymbols(HybridSEJITWrapper* jit_ptr);
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_VM_JIT_WRAPPER_H_

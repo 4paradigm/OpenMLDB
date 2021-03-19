@@ -23,10 +23,10 @@
 #include "codegen/memery_ir_builder.h"
 #include "codegen/null_ir_builder.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
-using ::fesql::common::kCodegenError;
+using ::hybridse::common::kCodegenError;
 
 StringIRBuilder::StringIRBuilder(::llvm::Module* m) : StructTypeIRBuilder(m) {
     InitStructType();
@@ -403,4 +403,4 @@ base::Status StringIRBuilder::ConcatWS(::llvm::BasicBlock* block,
     return base::Status();
 }
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

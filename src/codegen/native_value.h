@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CODEGEN_NATIVE_VALUE_H_
 #define SRC_CODEGEN_NATIVE_VALUE_H_
 
@@ -25,7 +24,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 class CodeGenContext;
@@ -97,5 +96,5 @@ class NativeValue {
 };
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_NATIVE_VALUE_H_

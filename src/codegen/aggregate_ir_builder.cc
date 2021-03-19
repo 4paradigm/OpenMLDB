@@ -26,7 +26,7 @@
 #include "codegen/variable_ir_builder.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 AggregateIRBuilder::AggregateIRBuilder(const vm::SchemasContext* sc,
@@ -45,9 +45,9 @@ bool AggregateIRBuilder::IsAggFuncName(const std::string& fname) {
     return available_agg_func_set_.find(fname) != available_agg_func_set_.end();
 }
 
-bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
+bool AggregateIRBuilder::CollectAggColumn(const hybridse::node::ExprNode* expr,
                                           size_t output_idx,
-                                          fesql::type::Type* res_agg_type) {
+                                          hybridse::type::Type* res_agg_type) {
     switch (expr->expr_type_) {
         case node::kExprCall: {
             auto call = dynamic_cast<const node::CallExprNode*>(expr);
@@ -103,7 +103,7 @@ bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
             node::DataType node_type;
             if (!SchemaType2DataType(col_type, &node_type)) {
                 LOG(ERROR) << "unrecognized data type "
-                           << fesql::type::Type_Name(col_type);
+                           << hybridse::type::Type_Name(col_type);
                 return false;
             }
             if (GetOutputLLVMType(module_->getContext(), agg_func_name,
@@ -111,9 +111,9 @@ bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
                 return false;
             }
             if (agg_func_name == "count") {
-                *res_agg_type = ::fesql::type::kInt64;
+                *res_agg_type = ::hybridse::type::kInt64;
             } else if (agg_func_name == "avg") {
-                *res_agg_type = ::fesql::type::kDouble;
+                *res_agg_type = ::hybridse::type::kDouble;
             } else {
                 *res_agg_type = col_type;
             }
@@ -240,7 +240,7 @@ class StatisticalAggGenerator {
                 sum_states_[i] = GenSumInitState(builder);
             }
             if (!avg_idxs_[i].empty()) {
-                if (col_type_ == ::fesql::node::kDouble) {
+                if (col_type_ == ::hybridse::node::kDouble) {
                     sum_states_[i] = GenSumInitState(builder);
                 } else {
                     avg_states_[i] = GenAvgInitState(builder);
@@ -466,19 +466,19 @@ llvm::Type* AggregateIRBuilder::GetOutputLLVMType(
     const node::DataType& node_type) {
     ::llvm::Type* llvm_ty = nullptr;
     switch (node_type) {
-        case ::fesql::node::kInt16:
+        case ::hybridse::node::kInt16:
             llvm_ty = ::llvm::Type::getInt16Ty(llvm_ctx);
             break;
-        case ::fesql::node::kInt32:
+        case ::hybridse::node::kInt32:
             llvm_ty = ::llvm::Type::getInt32Ty(llvm_ctx);
             break;
-        case ::fesql::node::kInt64:
+        case ::hybridse::node::kInt64:
             llvm_ty = ::llvm::Type::getInt64Ty(llvm_ctx);
             break;
-        case ::fesql::node::kFloat:
+        case ::hybridse::node::kFloat:
             llvm_ty = ::llvm::Type::getFloatTy(llvm_ctx);
             break;
-        case ::fesql::node::kDouble:
+        case ::hybridse::node::kDouble:
             llvm_ty = ::llvm::Type::getDoubleTy(llvm_ctx);
             break;
         default: {
@@ -496,15 +496,15 @@ llvm::Type* AggregateIRBuilder::GetOutputLLVMType(
 
 size_t GetTypeByteSize(node::DataType dtype) {
     switch (dtype) {
-        case ::fesql::node::kInt16:
+        case ::hybridse::node::kInt16:
             return 2;
-        case ::fesql::node::kInt32:
+        case ::hybridse::node::kInt32:
             return 4;
-        case ::fesql::node::kInt64:
+        case ::hybridse::node::kInt64:
             return 8;
-        case ::fesql::node::kFloat:
+        case ::hybridse::node::kFloat:
             return 4;
-        case ::fesql::node::kDouble:
+        case ::hybridse::node::kDouble:
             return 8;
         default:
             return 0;
@@ -659,7 +659,7 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
         &builder, ::llvm::Type::getInt8Ty(llvm_ctx), "row_iter",
         ::llvm::ConstantInt::get(int64_ty, iter_bytes, true));
     auto get_iter_func = module_->getOrInsertFunction(
-        "fesql_storage_get_row_iter", void_ty, ptr_ty, ptr_ty);
+        "hybridse_storage_get_row_iter", void_ty, ptr_ty, ptr_ty);
     builder.CreateCall(get_iter_func, {input_arg, iter_ptr});
     builder.CreateBr(enter_block);
 
@@ -667,7 +667,7 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
     builder.SetInsertPoint(enter_block);
     auto bool_ty = llvm::Type::getInt1Ty(llvm_ctx);
     auto has_next_func = module_->getOrInsertFunction(
-        "fesql_storage_row_iter_has_next",
+        "hybridse_storage_row_iter_has_next",
         ::llvm::FunctionType::get(bool_ty, {ptr_ty}, false));
     ::llvm::Value* has_next = builder.CreateCall(has_next_func, iter_ptr);
     builder.CreateCondBr(has_next, body_block, exit_block);
@@ -675,10 +675,10 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
     // gen iter body
     builder.SetInsertPoint(body_block);
     auto get_slice_func = module_->getOrInsertFunction(
-        "fesql_storage_row_iter_get_cur_slice",
+        "hybridse_storage_row_iter_get_cur_slice",
         ::llvm::FunctionType::get(ptr_ty, {ptr_ty, int64_ty}, false));
     auto get_slice_size_func = module_->getOrInsertFunction(
-        "fesql_storage_row_iter_get_cur_slice_size",
+        "hybridse_storage_row_iter_get_cur_slice_size",
         ::llvm::FunctionType::get(int64_ty, {ptr_ty, int64_ty}, false));
     std::unordered_map<size_t, std::pair<::llvm::Value*, ::llvm::Value*>>
         used_slices;
@@ -738,7 +738,7 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
         agg_generator.GenUpdate(&builder, fields, fields_is_null);
     }
     auto next_func = module_->getOrInsertFunction(
-        "fesql_storage_row_iter_next",
+        "hybridse_storage_row_iter_next",
         ::llvm::FunctionType::get(void_ty, {ptr_ty}, false));
     builder.CreateCall(next_func, {iter_ptr});
     builder.CreateBr(enter_block);
@@ -746,7 +746,7 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
     // gen iter end
     builder.SetInsertPoint(exit_block);
     auto delete_iter_func = module_->getOrInsertFunction(
-        "fesql_storage_row_iter_delete",
+        "hybridse_storage_row_iter_delete",
         ::llvm::FunctionType::get(void_ty, {ptr_ty}, false));
     builder.CreateCall(delete_iter_func, {iter_ptr});
 
@@ -767,4 +767,4 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

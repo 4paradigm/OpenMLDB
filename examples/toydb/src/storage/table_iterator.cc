@@ -21,11 +21,11 @@
 #include "base/fe_hash.h"
 #include "codec/row.h"
 
-namespace fesql {
+namespace hybridse {
 namespace storage {
 
-using fesql::codec::Row;
-using fesql::vm::RowIterator;
+using hybridse::codec::Row;
+using hybridse::vm::RowIterator;
 
 static constexpr uint32_t SEED = 0xe17a1465;
 
@@ -69,7 +69,7 @@ WindowTableIterator::~WindowTableIterator() {}
 
 void WindowTableIterator::Seek(const std::string& key) {
     uint32_t seg_idx =
-        ::fesql::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
+        ::hybridse::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
     base::Slice pk(key);
     Segment* segment = segments_[index_][seg_idx];
     if (segment->GetEntries() == NULL) {
@@ -257,4 +257,4 @@ const Row& FullTableIterator::GetValue() {
 bool FullTableIterator::IsSeekable() const { return false; }
 
 }  // namespace storage
-}  // namespace fesql
+}  // namespace hybridse

@@ -27,7 +27,7 @@
 DEFINE_string(output_dir, ".", "Output directory path");
 DEFINE_string(output_file, "udf_defs.yaml", "Output yaml filename");
 
-namespace fesql {
+namespace hybridse {
 namespace cmd {
 
 struct UDFTypeInfo {
@@ -176,10 +176,10 @@ int ExportUDFInfo(const std::string& dir, const std::string& filename) {
 }
 
 }  // namespace cmd
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    return fesql::cmd::ExportUDFInfo(FLAGS_output_dir, FLAGS_output_file);
+    return hybridse::cmd::ExportUDFInfo(FLAGS_output_dir, FLAGS_output_file);
     return 0;
 }

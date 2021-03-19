@@ -19,7 +19,7 @@
 #define SRC_CODEGEN_NULL_IR_BUILDER_H_
 #include "base/fe_status.h"
 #include "codegen/native_value.h"
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 class NullIRBuilder {
  public:
@@ -51,5 +51,5 @@ class NullIRBuilder {
         NativeValue* output);
 };
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_NULL_IR_BUILDER_H_

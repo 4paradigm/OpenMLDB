@@ -19,7 +19,7 @@
 #include "passes/expression/expr_pass_test.h"
 #include "udf/literal_traits.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 class WindowIterAnalysisTest : public ExprPassTestBase {};
@@ -71,7 +71,7 @@ TEST_F(WindowIterAnalysisTest, Test) {
 }
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::GTEST_FLAG(color) = "yes";

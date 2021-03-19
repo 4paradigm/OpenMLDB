@@ -18,7 +18,7 @@
 #include <string>
 #include "gtest/gtest.h"
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 class MemPoolTest : public ::testing::Test {
@@ -41,18 +41,18 @@ TEST_F(MemPoolTest, ByteMemoryPoolTest) {
         memcpy(s1, "helloworld", 10);
 
         char* s2 = mem_pool.Alloc(5);
-        memcpy(s2, "fesql", 10);
+        memcpy(s2, "hybridse", 10);
 
         char* s3 = mem_pool.Alloc(15);
         memcpy(s3, s1, 10);
         memcpy(s3 + 10, s2, 5);
         ASSERT_EQ("helloworld", std::string(s1, 10));
-        ASSERT_EQ("fesql", std::string(s2, 5));
-        ASSERT_EQ("helloworldfesql", std::string(s3, 15));
+        ASSERT_EQ("hybri", std::string(s2, 5));
+        ASSERT_EQ("helloworldhybri", std::string(s3, 15));
     }
 }
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

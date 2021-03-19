@@ -21,7 +21,7 @@
 #include "codegen/context.h"
 #include "codegen/ir_base_builder.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 ::llvm::Value* NativeValue::GetIsNull(::llvm::IRBuilder<>* builder) const {
@@ -162,4 +162,4 @@ NativeValue::NativeValue(::llvm::Value* raw, ::llvm::Value* flag,
     : raw_(raw), flag_(flag), type_(type) {}
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

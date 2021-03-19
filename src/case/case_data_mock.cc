@@ -14,15 +14,16 @@
  * limitations under the License.
  */
 #include "case/case_data_mock.h"
-namespace fesql {
+namespace hybridse {
 namespace sqlcase {
-using fesql::codec::Row;
+using hybridse::codec::Row;
 
 bool CaseDataMock::LoadResource(const std::string& resource_path,
                                 type::TableDef& table_def,  // NOLINT
                                 std::vector<Row>& rows) {   // NOLINT
-    if (!SQLCase::LoadSchemaAndRowsFromYaml(fesql::sqlcase::FindFesqlDirPath(),
-                                            resource_path, table_def, rows)) {
+    if (!SQLCase::LoadSchemaAndRowsFromYaml(
+            hybridse::sqlcase::FindHybridSEDirPath(), resource_path, table_def,
+            rows)) {
         return false;
     }
     return true;
@@ -30,7 +31,7 @@ bool CaseDataMock::LoadResource(const std::string& resource_path,
 void CaseDataMock::BuildOnePkTableData(type::TableDef& table_def,  // NOLINT
                                        std::vector<Row>& buffer,   // NOLINT
                                        int64_t data_size) {
-    ::fesql::sqlcase::Repeater<std::string> col0(
+    ::hybridse::sqlcase::Repeater<std::string> col0(
         std::vector<std::string>({"hello"}));
     IntRepeater<int32_t> col1;
     col1.Range(1, 100, 1);
@@ -65,8 +66,8 @@ void CaseDataMock::BuildOnePkTableData(type::TableDef& table_def,  // NOLINT
 }
 
 void CaseDataMock::BuildTableAndData(type::TableDef& table_def,  // NOLINT
-                                  std::vector<Row>& buffer,   // NOLINT
-                                  int64_t data_size) {
+                                     std::vector<Row>& buffer,   // NOLINT
+                                     int64_t data_size) {
     CaseSchemaMock::BuildTableDef(table_def);
     for (int i = 0; i < data_size; ++i) {
         std::string str1 = "hello";
@@ -80,51 +81,52 @@ void CaseDataMock::BuildTableAndData(type::TableDef& table_def,  // NOLINT
         builder.AppendInt16(2);
         builder.AppendFloat(3.0);
         builder.AppendDouble(4.0);
-        builder.AppendInt64(1576571615000-i);
+        builder.AppendInt64(1576571615000 - i);
         builder.AppendString(str2.c_str(), str2.size());
         buffer.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
 }
-void CaseSchemaMock::BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
+void CaseSchemaMock::BuildTableDef(
+    ::hybridse::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
     table.set_catalog("db");
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col0");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt32);
         column->set_name("col1");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt16);
         column->set_name("col2");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kFloat);
         column->set_name("col3");
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kDouble);
         column->set_name("col4");
     }
 
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt64);
         column->set_name("col5");
     }
 
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col6");
     }
 }
 }  // namespace sqlcase
-}  // namespace fesql
+}  // namespace hybridse

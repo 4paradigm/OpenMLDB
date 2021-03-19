@@ -19,21 +19,21 @@
 #include <vector>
 #include "vm/physical_op.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
-using fesql::common::kPlanError;
-using fesql::vm::ColumnProjects;
-using fesql::vm::DataProviderType;
-using fesql::vm::PhysicalJoinNode;
-using fesql::vm::PhysicalOpType;
-using fesql::vm::PhysicalPostRequestUnionNode;
-using fesql::vm::PhysicalRequestProviderNodeWithCommonColumn;
-using fesql::vm::PhysicalRowProjectNode;
-using fesql::vm::PhysicalSchemaType;
-using fesql::vm::PhysicalTableProjectNode;
-using fesql::vm::ProjectType;
-using fesql::vm::Range;
+using hybridse::common::kPlanError;
+using hybridse::vm::ColumnProjects;
+using hybridse::vm::DataProviderType;
+using hybridse::vm::PhysicalJoinNode;
+using hybridse::vm::PhysicalOpType;
+using hybridse::vm::PhysicalPostRequestUnionNode;
+using hybridse::vm::PhysicalRequestProviderNodeWithCommonColumn;
+using hybridse::vm::PhysicalRowProjectNode;
+using hybridse::vm::PhysicalSchemaType;
+using hybridse::vm::PhysicalTableProjectNode;
+using hybridse::vm::ProjectType;
+using hybridse::vm::Range;
 
 CommonColumnOptimize::CommonColumnOptimize(
     const std::set<size_t> common_column_indices)
@@ -211,7 +211,7 @@ static bool LeftDependOnlyOnPart(const Component& comp, PhysicalOpNode* part,
     if (part == nullptr) {
         return false;
     }
-    std::vector<const fesql::node::ExprNode*> related_columns;
+    std::vector<const hybridse::node::ExprNode*> related_columns;
     comp.ResolvedRelatedColumns(&related_columns);
     for (auto col : related_columns) {
         // Check used column depend on left
@@ -1166,4 +1166,4 @@ void CommonColumnOptimize::ExtractCommonNodeSet(std::set<size_t>* output) {
 }
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse

@@ -26,7 +26,7 @@
 #include "node/sql_node.h"
 #include "node/type_node.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 class TypeIRBuilder {
@@ -90,36 +90,36 @@ class BoolIRBuilder : public TypeIRBuilder {
         return ::llvm::Type::getInt1Ty(m->getContext());
     }
 };
-inline const bool ConvertFeSQLType2LLVMType(const node::TypeNode* data_type,
-                                            ::llvm::Module* m,  // NOLINT
-                                            ::llvm::Type** llvm_type) {
+inline const bool ConvertHybridSEType2LLVMType(const node::TypeNode* data_type,
+                                               ::llvm::Module* m,  // NOLINT
+                                               ::llvm::Type** llvm_type) {
     if (nullptr == data_type) {
         LOG(WARNING) << "fail to convert data type to llvm type";
         return false;
     }
     switch (data_type->base_) {
-        case fesql::node::kVoid:
+        case hybridse::node::kVoid:
             *llvm_type = (::llvm::Type::getVoidTy(m->getContext()));
             break;
-        case fesql::node::kInt16:
+        case hybridse::node::kInt16:
             *llvm_type = (::llvm::Type::getInt16Ty(m->getContext()));
             break;
-        case fesql::node::kInt32:
+        case hybridse::node::kInt32:
             *llvm_type = (::llvm::Type::getInt32Ty(m->getContext()));
             break;
-        case fesql::node::kInt64:
+        case hybridse::node::kInt64:
             *llvm_type = (::llvm::Type::getInt64Ty(m->getContext()));
             break;
-        case fesql::node::kFloat:
+        case hybridse::node::kFloat:
             *llvm_type = (::llvm::Type::getFloatTy(m->getContext()));
             break;
-        case fesql::node::kDouble:
+        case hybridse::node::kDouble:
             *llvm_type = (::llvm::Type::getDoubleTy(m->getContext()));
             break;
-        case fesql::node::kInt8Ptr:
+        case hybridse::node::kInt8Ptr:
             *llvm_type = (::llvm::Type::getInt8PtrTy(m->getContext()));
             break;
-        case fesql::node::kVarchar: {
+        case hybridse::node::kVarchar: {
             std::string name = "fe.string_ref";
             ::llvm::StringRef sr(name);
             ::llvm::StructType* stype = m->getTypeByName(sr);
@@ -138,7 +138,7 @@ inline const bool ConvertFeSQLType2LLVMType(const node::TypeNode* data_type,
             *llvm_type = stype;
             return true;
         }
-        case fesql::node::kList: {
+        case hybridse::node::kList: {
             if (data_type->generics_.size() != 1) {
                 LOG(WARNING) << "fail to convert data type: list generic types "
                                 "number is " +
@@ -148,7 +148,7 @@ inline const bool ConvertFeSQLType2LLVMType(const node::TypeNode* data_type,
             std::string name;
         }
         default: {
-            LOG(WARNING) << "fail to convert fesql datatype to llvm type: "
+            LOG(WARNING) << "fail to convert hybridse datatype to llvm type: "
                          << data_type;
             return false;
         }
@@ -157,5 +157,5 @@ inline const bool ConvertFeSQLType2LLVMType(const node::TypeNode* data_type,
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_CODEGEN_TYPE_IR_BUILDER_H_

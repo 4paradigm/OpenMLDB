@@ -28,10 +28,10 @@
 #include "storage/list.h"
 #include "storage/skiplist.h"
 
-namespace fesql {
+namespace hybridse {
 namespace storage {
-using ::fesql::base::Iterator;
-using ::fesql::base::Slice;
+using ::hybridse::base::Iterator;
+using ::hybridse::base::Slice;
 
 struct DataBlock {
     uint32_t ref_cnt;
@@ -77,4 +77,4 @@ class Segment {
 };
 
 }  // namespace storage
-}  // namespace fesql
+}  // namespace hybridse

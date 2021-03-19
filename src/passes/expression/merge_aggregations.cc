@@ -19,12 +19,12 @@
 #include <utility>
 #include "passes/expression/window_iter_analysis.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
-using fesql::common::kPlanError;
-using fesql::node::ExprIdNode;
-using fesql::node::ExprNode;
+using hybridse::common::kPlanError;
+using hybridse::node::ExprIdNode;
+using hybridse::node::ExprNode;
 
 bool IsCandidate(const WindowIterAnalysis& window_iter_analyzer,
                  const ExprIdNode* window, ExprNode* expr) {
@@ -327,4 +327,4 @@ Status MergeAggregations::Apply(ExprAnalysisContext* ctx, ExprNode* expr,
 }
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse

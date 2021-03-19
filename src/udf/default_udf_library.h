@@ -18,7 +18,7 @@
 #define SRC_UDF_DEFAULT_UDF_LIBRARY_H_
 #include "udf/udf_library.h"
 
-namespace fesql {
+namespace hybridse {
 namespace udf {
 
 class DefaultUDFLibrary : public UDFLibrary {
@@ -49,6 +49,6 @@ class DefaultUDFLibrary : public UDFLibrary {
 };
 
 }  // namespace udf
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_UDF_DEFAULT_UDF_LIBRARY_H_

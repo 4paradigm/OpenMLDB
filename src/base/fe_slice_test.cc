@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-
 #include "base/fe_slice.h"
 #include "gtest/gtest.h"
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 class SliceTest : public ::testing::Test {
@@ -48,7 +47,7 @@ TEST_F(SliceTest, ref_cnt_slice) {
 }
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

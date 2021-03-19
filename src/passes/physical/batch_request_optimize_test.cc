@@ -19,7 +19,7 @@
 #include "vm/engine_test_base.h"
 #include "vm/sql_compiler.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 class BatchRequestOptimizeTest : public ::testing::TestWithParam<SQLCase> {
@@ -227,7 +227,7 @@ TEST_P(BatchRequestOptimizeTest, test_with_common_columns) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::GTEST_FLAG(color) = "yes";

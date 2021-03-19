@@ -21,19 +21,19 @@
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
-using fesql::sqlcase::CaseDataMock;
+using hybridse::sqlcase::CaseDataMock;
 bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
-              const fesql::type::TableDef& table_def,
-              std::shared_ptr<fesql::storage::Table> table);
+              const hybridse::type::TableDef& table_def,
+              std::shared_ptr<hybridse::storage::Table> table);
 bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
-              const fesql::type::TableDef& table_def,
-              std::shared_ptr<fesql::storage::Table> table, Engine* engine);
+              const hybridse::type::TableDef& table_def,
+              std::shared_ptr<hybridse::storage::Table> table, Engine* engine);
 
 bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
-              const fesql::type::TableDef& table_def,
-              std::shared_ptr<fesql::storage::Table> table) {
+              const hybridse::type::TableDef& table_def,
+              std::shared_ptr<hybridse::storage::Table> table) {
     std::shared_ptr<tablet::TabletTableHandler> handler(
         new tablet::TabletTableHandler(table_def.columns(), table_def.name(),
                                        table_def.catalog(), table_def.indexes(),
@@ -46,8 +46,8 @@ bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
 }
 
 bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
-              const fesql::type::TableDef& table_def,
-              std::shared_ptr<fesql::storage::Table> table, Engine* engine) {
+              const hybridse::type::TableDef& table_def,
+              std::shared_ptr<hybridse::storage::Table> table, Engine* engine) {
     auto local_tablet = std::shared_ptr<vm::Tablet>(
         new vm::LocalTablet(engine, std::shared_ptr<CompileInfoCache>()));
     std::shared_ptr<tablet::TabletTableHandler> handler(
@@ -63,8 +63,9 @@ bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
 bool InitToydbEngineCatalog(
     SQLCase& sql_case,  // NOLINT
     const EngineOptions& engine_options,
-    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>&  // NOLINT
-    name_table_map,                                               // NOLINT
+    std::map<std::string,
+             std::shared_ptr<::hybridse::storage::Table>>&  // NOLINT
+        name_table_map,                                     // NOLINT
     std::shared_ptr<vm::Engine> engine,
     std::shared_ptr<tablet::TabletCatalog> catalog) {
     LOG(INFO) << "Init Toy DB Engine & Catalog";
@@ -78,8 +79,8 @@ bool InitToydbEngineCatalog(
         }
         table_def.set_name(sql_case.inputs_[i].name_);
 
-        std::shared_ptr<::fesql::storage::Table> table(
-            new ::fesql::storage::Table(i + 1, 1, table_def));
+        std::shared_ptr<::hybridse::storage::Table> table(
+            new ::hybridse::storage::Table(i + 1, 1, table_def));
         if (!table->Init()) {
             LOG(WARNING) << "Fail to init toydb storage table";
             return false;
@@ -99,14 +100,13 @@ bool InitToydbEngineCatalog(
     return true;
 }
 
-
 std::shared_ptr<tablet::TabletCatalog> BuildToydbCatalog() {
     std::shared_ptr<tablet::TabletCatalog> catalog(new tablet::TabletCatalog());
     return catalog;
 }
 std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
-    const fesql::type::TableDef& table_def,
-    std::shared_ptr<fesql::storage::Table> table) {
+    const hybridse::type::TableDef& table_def,
+    std::shared_ptr<hybridse::storage::Table> table) {
     std::shared_ptr<tablet::TabletCatalog> catalog(new tablet::TabletCatalog());
     bool ok = catalog->Init();
     if (!ok) {
@@ -125,13 +125,13 @@ std::shared_ptr<tablet::TabletCatalog> BuildOnePkTableStorage(
     std::vector<Row> buffer;
     CaseDataMock::BuildOnePkTableData(table_def, buffer, data_size);
     // Build index
-    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    ::hybridse::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col0");
     index->set_second_key("col5");
 
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
+    std::shared_ptr<::hybridse::storage::Table> table(
+        new ::hybridse::storage::Table(1, 1, table_def));
 
     table->Init();
 
@@ -211,7 +211,6 @@ void EngineCheck(const SQLCase& sql_case, const EngineOptions& options,
     }
 }
 
-
 int GenerateSqliteTestStringCallback(void* s, int argc, char** argv,
                                      char** azColName) {
     std::string& sqliteStr = *static_cast<std::string*>(s);
@@ -290,14 +289,14 @@ void CheckSQLiteCompatible(const SQLCase& sql_case, const vm::Schema& schema,
     sqlite3_close(db);
     sqliteStr.pop_back();
 
-    // Transfer Sqlite outcome to Fesql row
-    std::vector<fesql::codec::Row> sqliteRows;
+    // Transfer Sqlite outcome to HybridSE row
+    std::vector<hybridse::codec::Row> sqliteRows;
     SQLCase::ExtractRows(schema, sqliteStr, sqliteRows);
 
-    // Compare Fesql output with SQLite output.
+    // Compare HybridSE output with SQLite output.
     ASSERT_NO_FATAL_FAILURE(CheckRows(
         schema, SortRows(schema, sqliteRows, sql_case.expect().order_),
         SortRows(schema, output, sql_case.expect().order_)));
 }
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

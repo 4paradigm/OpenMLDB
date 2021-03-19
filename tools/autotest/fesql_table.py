@@ -17,16 +17,16 @@
 import random
 import numpy as np
 
-from fesql_const import PRIMITIVE_TYPES, VALID_PARTITION_TYPES, VALID_ORDER_TYPES, BUILTIN_OP_DICT, SQL_PRESERVED_NAMES
+from hybridse_const import PRIMITIVE_TYPES, VALID_PARTITION_TYPES, VALID_ORDER_TYPES, BUILTIN_OP_DICT, SQL_PRESERVED_NAMES
 
 from gen_const_data import random_literal_bool, random_literal_int32, random_literal_int64, \
     random_literal_float, random_literal_double, random_literal_string, random_literal_int16, \
     random_literal_date, random_literal_timestamp
 
-from fesql_param import sample_integer_config
+from hybridse_param import sample_integer_config
 
-from fesql_const import LAST_JOIN_SQL, LAST_JOIN_OP
-from fesql_param import sample_string_config
+from hybridse_const import LAST_JOIN_SQL, LAST_JOIN_OP
+from hybridse_param import sample_string_config
 
 
 class ColumnInfo:

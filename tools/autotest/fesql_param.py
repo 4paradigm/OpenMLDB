@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument("--udf_path", required=True,
                         help="UDF information yaml filepath")
     parser.add_argument("--bin_path", default="./build",
-                        help="FeSQL bin path, default to ./build")
+                        help="HybridSE bin path, default to ./build")
     parser.add_argument("--workers", default=1, type=int,
                         help="Num of sub-processes to run cases")
 

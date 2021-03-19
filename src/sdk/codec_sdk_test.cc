@@ -19,22 +19,22 @@
 #include <vector>
 #include "gtest/gtest.h"
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 
 class CodecSDKTest : public ::testing::Test {};
 
 TEST_F(CodecSDKTest, NULLTest) {
     codec::Schema schema;
-    ::fesql::type::ColumnDef* col = schema.Add();
+    ::hybridse::type::ColumnDef* col = schema.Add();
     col->set_name("col1");
-    col->set_type(::fesql::type::kInt16);
+    col->set_type(::hybridse::type::kInt16);
     col = schema.Add();
     col->set_name("col2");
-    col->set_type(::fesql::type::kBool);
+    col->set_type(::hybridse::type::kBool);
     col = schema.Add();
     col->set_name("col3");
-    col->set_type(::fesql::type::kVarchar);
+    col->set_type(::hybridse::type::kVarchar);
     codec::RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(1);
     std::string row;
@@ -60,21 +60,21 @@ TEST_F(CodecSDKTest, NULLTest) {
 
 TEST_F(CodecSDKTest, Normal) {
     codec::Schema schema;
-    ::fesql::type::ColumnDef* col = schema.Add();
+    ::hybridse::type::ColumnDef* col = schema.Add();
     col->set_name("col1");
-    col->set_type(::fesql::type::kInt32);
+    col->set_type(::hybridse::type::kInt32);
     col = schema.Add();
     col->set_name("col2");
-    col->set_type(::fesql::type::kInt16);
+    col->set_type(::hybridse::type::kInt16);
     col = schema.Add();
     col->set_name("col3");
-    col->set_type(::fesql::type::kFloat);
+    col->set_type(::hybridse::type::kFloat);
     col = schema.Add();
     col->set_name("col4");
-    col->set_type(::fesql::type::kDouble);
+    col->set_type(::hybridse::type::kDouble);
     col = schema.Add();
     col->set_name("col5");
-    col->set_type(::fesql::type::kInt64);
+    col->set_type(::hybridse::type::kInt64);
     codec::RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(0);
     std::string row;
@@ -101,12 +101,12 @@ TEST_F(CodecSDKTest, Normal) {
 
 TEST_F(CodecSDKTest, TimestampTest) {
     codec::Schema schema;
-    ::fesql::type::ColumnDef* col = schema.Add();
+    ::hybridse::type::ColumnDef* col = schema.Add();
     col->set_name("col1");
-    col->set_type(::fesql::type::kInt32);
+    col->set_type(::hybridse::type::kInt32);
     col = schema.Add();
     col->set_name("std_ts");
-    col->set_type(::fesql::type::kTimestamp);
+    col->set_type(::hybridse::type::kTimestamp);
     codec::RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(0);
     std::string row;
@@ -130,12 +130,12 @@ TEST_F(CodecSDKTest, TimestampTest) {
 
 TEST_F(CodecSDKTest, DateTest) {
     codec::Schema schema;
-    ::fesql::type::ColumnDef* col = schema.Add();
+    ::hybridse::type::ColumnDef* col = schema.Add();
     col->set_name("col1");
-    col->set_type(::fesql::type::kInt32);
+    col->set_type(::hybridse::type::kInt32);
     col = schema.Add();
     col->set_name("std_date");
-    col->set_type(::fesql::type::kDate);
+    col->set_type(::hybridse::type::kDate);
     codec::RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(0);
     std::string row;
@@ -164,14 +164,14 @@ TEST_F(CodecSDKTest, DateTest) {
 TEST_F(CodecSDKTest, Encode) {
     codec::Schema schema;
     for (int i = 0; i < 10; i++) {
-        ::fesql::type::ColumnDef* col = schema.Add();
+        ::hybridse::type::ColumnDef* col = schema.Add();
         col->set_name("col" + std::to_string(i));
         if (i % 3 == 0) {
-            col->set_type(::fesql::type::kInt16);
+            col->set_type(::hybridse::type::kInt16);
         } else if (i % 3 == 1) {
-            col->set_type(::fesql::type::kDouble);
+            col->set_type(::hybridse::type::kDouble);
         } else {
-            col->set_type(::fesql::type::kVarchar);
+            col->set_type(::hybridse::type::kVarchar);
         }
     }
     codec::RowBuilder builder(schema);
@@ -215,7 +215,7 @@ TEST_F(CodecSDKTest, Encode) {
 }
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

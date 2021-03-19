@@ -27,12 +27,12 @@
 #include "storage/segment.h"
 #include "vm/catalog.h"
 
-namespace fesql {
+namespace hybridse {
 namespace storage {
 
-using ::fesql::base::ConstIterator;
-using ::fesql::type::IndexDef;
-using ::fesql::type::TableDef;
+using ::hybridse::base::ConstIterator;
+using ::hybridse::type::IndexDef;
+using ::hybridse::type::TableDef;
 static constexpr uint32_t SEG_CNT = 8;
 
 class TableIterator : public ConstIterator<uint64_t, base::Slice> {
@@ -98,7 +98,7 @@ class Table {
         std::string name;
         uint32_t index;
         uint32_t ts_pos;
-        std::vector<std::pair<::fesql::type::Type, size_t>> keys;
+        std::vector<std::pair<::hybridse::type::Type, size_t>> keys;
     };
 
     const std::map<std::string, IndexSt>& GetIndexMap() const {
@@ -130,4 +130,4 @@ class Table {
 };
 
 }  // namespace storage
-}  // namespace fesql
+}  // namespace hybridse

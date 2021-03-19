@@ -31,9 +31,9 @@
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
-using fesql::udf::Nullable;
+using hybridse::udf::Nullable;
 ExitOnError ExitOnErr;
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 class CastExprIrBuilderTest : public ::testing::Test {
  public:
@@ -44,8 +44,8 @@ class CastExprIrBuilderTest : public ::testing::Test {
     node::NodeManager *manager_;
 };
 
-void CastErrorCheck(::fesql::node::DataType src_type,
-                    ::fesql::node::DataType dist_type, bool safe,
+void CastErrorCheck(::hybridse::node::DataType src_type,
+                    ::hybridse::node::DataType dist_type, bool safe,
                     const std::string &msg) {
     // Create an LLJIT instance.
     // Create an LLJIT instance.
@@ -54,7 +54,7 @@ void CastErrorCheck(::fesql::node::DataType src_type,
     llvm::Type *src_llvm_type = NULL;
     llvm::Type *dist_llvm_type = NULL;
     ASSERT_TRUE(
-        ::fesql::codegen::GetLLVMType(m.get(), src_type, &src_llvm_type));
+        ::hybridse::codegen::GetLLVMType(m.get(), src_type, &src_llvm_type));
     ASSERT_TRUE(GetLLVMType(m.get(), dist_type, &dist_llvm_type));
 
     // Create the add1 function entry and insert this entry into module M.  The
@@ -85,8 +85,8 @@ void CastErrorCheck(::fesql::node::DataType src_type,
 }
 
 template <class S, class D>
-void CastCheck(::fesql::node::DataType src_type,
-               ::fesql::node::DataType dist_type, S value, D cast_value,
+void CastCheck(::hybridse::node::DataType src_type,
+               ::hybridse::node::DataType dist_type, S value, D cast_value,
                bool safe) {
     // Create an LLJIT instance.
     // Create an LLJIT instance.
@@ -95,7 +95,7 @@ void CastCheck(::fesql::node::DataType src_type,
     llvm::Type *src_llvm_type = NULL;
     llvm::Type *dist_llvm_type = NULL;
     ASSERT_TRUE(
-        ::fesql::codegen::GetLLVMType(m.get(), src_type, &src_llvm_type));
+        ::hybridse::codegen::GetLLVMType(m.get(), src_type, &src_llvm_type));
     ASSERT_TRUE(GetLLVMType(m.get(), dist_type, &dist_llvm_type));
 
     // Create the add1 function entry and insert this entry into module M.  The
@@ -117,17 +117,17 @@ void CastCheck(::fesql::node::DataType src_type,
                                                            &output, status);
     ASSERT_TRUE(ok);
     switch (dist_type) {
-        case ::fesql::node::kInt16:
-        case ::fesql::node::kInt32:
-        case ::fesql::node::kInt64: {
+        case ::hybridse::node::kInt16:
+        case ::hybridse::node::kInt32:
+        case ::hybridse::node::kInt64: {
             ::llvm::Value *output_mul_4 = builder.CreateAdd(
                 builder.CreateAdd(builder.CreateAdd(output, output), output),
                 output);
             builder.CreateRet(output_mul_4);
             break;
         }
-        case ::fesql::node::kFloat:
-        case ::fesql::node::kDouble: {
+        case ::hybridse::node::kFloat:
+        case ::hybridse::node::kDouble: {
             ::llvm::Value *output_mul_4 = builder.CreateFAdd(
                 builder.CreateFAdd(builder.CreateFAdd(output, output), output),
                 output);
@@ -148,31 +148,34 @@ void CastCheck(::fesql::node::DataType src_type,
 }
 
 template <class S, class D>
-void UnSafeCastCheck(::fesql::node::DataType src_type,
-                     ::fesql::node::DataType dist_type, S value, D cast_value) {
+void UnSafeCastCheck(::hybridse::node::DataType src_type,
+                     ::hybridse::node::DataType dist_type, S value,
+                     D cast_value) {
     CastCheck<S, D>(src_type, dist_type, value, cast_value, false);
 }
 
 template <class S, class D>
-void SafeCastCheck(::fesql::node::DataType src_type,
-                   ::fesql::node::DataType dist_type, S value, D cast_value) {
+void SafeCastCheck(::hybridse::node::DataType src_type,
+                   ::hybridse::node::DataType dist_type, S value,
+                   D cast_value) {
     CastCheck<S, D>(src_type, dist_type, value, cast_value, true);
 }
 
-void SafeCastErrorCheck(::fesql::node::DataType src_type,
-                        ::fesql::node::DataType dist_type, std::string msg) {
+void SafeCastErrorCheck(::hybridse::node::DataType src_type,
+                        ::hybridse::node::DataType dist_type, std::string msg) {
     CastErrorCheck(src_type, dist_type, true, msg);
 }
 
 template <class V>
-void BoolCastCheck(::fesql::node::DataType type, V value, bool result) {
+void BoolCastCheck(::hybridse::node::DataType type, V value, bool result) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("bool_cast_func", *ctx);
 
     llvm::Type *left_llvm_type = NULL;
     llvm::Type *dist_llvm_type = NULL;
-    ASSERT_TRUE(::fesql::codegen::GetLLVMType(m.get(), type, &left_llvm_type));
-    ASSERT_TRUE(GetLLVMType(m.get(), ::fesql::node::kBool, &dist_llvm_type));
+    ASSERT_TRUE(
+        ::hybridse::codegen::GetLLVMType(m.get(), type, &left_llvm_type));
+    ASSERT_TRUE(GetLLVMType(m.get(), ::hybridse::node::kBool, &dist_llvm_type));
 
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "D" and take an argument of "S".
@@ -203,125 +206,127 @@ void BoolCastCheck(::fesql::node::DataType type, V value, bool result) {
     ASSERT_EQ(ret, result);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_1) {
-    UnSafeCastCheck<int16_t, int16_t>(::fesql::node::kInt16,
-                                      ::fesql::node::kInt16, 1u, 4u);
+    UnSafeCastCheck<int16_t, int16_t>(::hybridse::node::kInt16,
+                                      ::hybridse::node::kInt16, 1u, 4u);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_2) {
-    UnSafeCastCheck<int16_t, int32_t>(::fesql::node::kInt16,
-                                      ::fesql::node::kInt32, 10000u, 40000);
+    UnSafeCastCheck<int16_t, int32_t>(::hybridse::node::kInt16,
+                                      ::hybridse::node::kInt32, 10000u, 40000);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_3) {
-    UnSafeCastCheck<int16_t, int64_t>(::fesql::node::kInt16,
-                                      ::fesql::node::kInt64, 10000u, 40000L);
+    UnSafeCastCheck<int16_t, int64_t>(::hybridse::node::kInt16,
+                                      ::hybridse::node::kInt64, 10000u, 40000L);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_4) {
-    UnSafeCastCheck<int16_t, float>(::fesql::node::kInt16,
-                                    ::fesql::node::kFloat, 10000u, 40000.0f);
+    UnSafeCastCheck<int16_t, float>(::hybridse::node::kInt16,
+                                    ::hybridse::node::kFloat, 10000u, 40000.0f);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_5) {
-    UnSafeCastCheck<int16_t, double>(::fesql::node::kInt16,
-                                     ::fesql::node::kDouble, 10000u, 40000.0);
+    UnSafeCastCheck<int16_t, double>(
+        ::hybridse::node::kInt16, ::hybridse::node::kDouble, 10000u, 40000.0);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_6) {
-    UnSafeCastCheck<int32_t, int16_t>(::fesql::node::kInt32,
-                                      ::fesql::node::kInt16, 1, 4u);
+    UnSafeCastCheck<int32_t, int16_t>(::hybridse::node::kInt32,
+                                      ::hybridse::node::kInt16, 1, 4u);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_7) {
-    UnSafeCastCheck<int32_t, int32_t>(::fesql::node::kInt32,
-                                      ::fesql::node::kInt32, 1, 4);
+    UnSafeCastCheck<int32_t, int32_t>(::hybridse::node::kInt32,
+                                      ::hybridse::node::kInt32, 1, 4);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_8) {
-    UnSafeCastCheck<int32_t, int64_t>(
-        ::fesql::node::kInt32, ::fesql::node::kInt64, 2000000000, 8000000000L);
+    UnSafeCastCheck<int32_t, int64_t>(::hybridse::node::kInt32,
+                                      ::hybridse::node::kInt64, 2000000000,
+                                      8000000000L);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_9) {
-    UnSafeCastCheck<int32_t, float>(::fesql::node::kInt32,
-                                    ::fesql::node::kFloat, 1, 4.0f);
+    UnSafeCastCheck<int32_t, float>(::hybridse::node::kInt32,
+                                    ::hybridse::node::kFloat, 1, 4.0f);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_10) {
-    UnSafeCastCheck<int32_t, double>(::fesql::node::kInt32,
-                                     ::fesql::node::kDouble, 2000000000,
+    UnSafeCastCheck<int32_t, double>(::hybridse::node::kInt32,
+                                     ::hybridse::node::kDouble, 2000000000,
                                      8000000000.0);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_11) {
-    UnSafeCastCheck<float, int16_t>(::fesql::node::kFloat,
-                                    ::fesql::node::kInt16, 1.5f, 4u);
+    UnSafeCastCheck<float, int16_t>(::hybridse::node::kFloat,
+                                    ::hybridse::node::kInt16, 1.5f, 4u);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_12) {
-    UnSafeCastCheck<float, int32_t>(::fesql::node::kFloat,
-                                    ::fesql::node::kInt32, 10000.5f, 40000);
+    UnSafeCastCheck<float, int32_t>(::hybridse::node::kFloat,
+                                    ::hybridse::node::kInt32, 10000.5f, 40000);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_13) {
-    UnSafeCastCheck<float, int64_t>(::fesql::node::kFloat,
-                                    ::fesql::node::kInt64, 2000000000.5f,
+    UnSafeCastCheck<float, int64_t>(::hybridse::node::kFloat,
+                                    ::hybridse::node::kInt64, 2000000000.5f,
                                     8000000000L);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test_14) {
-    UnSafeCastCheck<float, double>(::fesql::node::kFloat,
-                                   ::fesql::node::kDouble, 2000000000.5f,
+    UnSafeCastCheck<float, double>(::hybridse::node::kFloat,
+                                   ::hybridse::node::kDouble, 2000000000.5f,
                                    static_cast<double>(2000000000.5f) * 4.0);
 }
 
 TEST_F(CastExprIrBuilderTest, safe_cast_error_test_0) {
-    SafeCastErrorCheck(::fesql::node::kInt32, ::fesql::node::kInt16, "unsafe");
+    SafeCastErrorCheck(::hybridse::node::kInt32, ::hybridse::node::kInt16,
+                       "unsafe");
 }
 TEST_F(CastExprIrBuilderTest, safe_cast_error_test_1) {
-    SafeCastErrorCheck(::fesql::node::kInt64, ::fesql::node::kInt16,
+    SafeCastErrorCheck(::hybridse::node::kInt64, ::hybridse::node::kInt16,
                        "unsafe cast");
 }
 TEST_F(CastExprIrBuilderTest, safe_cast_error_test_2) {
-    SafeCastErrorCheck(::fesql::node::kInt64, ::fesql::node::kInt32,
+    SafeCastErrorCheck(::hybridse::node::kInt64, ::hybridse::node::kInt32,
                        "unsafe cast");
 }
 TEST_F(CastExprIrBuilderTest, safe_cast_error_test_3) {
-    SafeCastErrorCheck(::fesql::node::kInt64, ::fesql::node::kFloat,
+    SafeCastErrorCheck(::hybridse::node::kInt64, ::hybridse::node::kFloat,
                        "unsafe cast");
 }
 TEST_F(CastExprIrBuilderTest, safe_cast_error_test_4) {
-    SafeCastErrorCheck(::fesql::node::kInt64, ::fesql::node::kDouble,
+    SafeCastErrorCheck(::hybridse::node::kInt64, ::hybridse::node::kDouble,
                        "unsafe cast");
 }
 TEST_F(CastExprIrBuilderTest, safe_cast_error_test_5) {
-    SafeCastErrorCheck(::fesql::node::kFloat, ::fesql::node::kInt16,
+    SafeCastErrorCheck(::hybridse::node::kFloat, ::hybridse::node::kInt16,
                        "unsafe cast");
 }
 TEST_F(CastExprIrBuilderTest, safe_cast_error_test_6) {
-    SafeCastErrorCheck(::fesql::node::kFloat, ::fesql::node::kInt32,
+    SafeCastErrorCheck(::hybridse::node::kFloat, ::hybridse::node::kInt32,
                        "unsafe cast");
 }
 TEST_F(CastExprIrBuilderTest, safe_cast_error_test_7) {
-    SafeCastErrorCheck(::fesql::node::kFloat, ::fesql::node::kInt64,
+    SafeCastErrorCheck(::hybridse::node::kFloat, ::hybridse::node::kInt64,
                        "unsafe cast");
 }
 TEST_F(CastExprIrBuilderTest, safe_cast_error_test_8) {
-    SafeCastErrorCheck(::fesql::node::kDouble, ::fesql::node::kInt16,
+    SafeCastErrorCheck(::hybridse::node::kDouble, ::hybridse::node::kInt16,
                        "unsafe cast");
 }
 TEST_F(CastExprIrBuilderTest, safe_cast_error_test_9) {
-    SafeCastErrorCheck(::fesql::node::kDouble, ::fesql::node::kInt32,
+    SafeCastErrorCheck(::hybridse::node::kDouble, ::hybridse::node::kInt32,
                        "unsafe cast");
 }
 TEST_F(CastExprIrBuilderTest, safe_cast_error_test_10) {
-    SafeCastErrorCheck(::fesql::node::kDouble, ::fesql::node::kInt64,
+    SafeCastErrorCheck(::hybridse::node::kDouble, ::hybridse::node::kInt64,
                        "unsafe cast");
 }
 TEST_F(CastExprIrBuilderTest, safe_cast_error_test_11) {
-    SafeCastErrorCheck(::fesql::node::kDouble, ::fesql::node::kFloat,
+    SafeCastErrorCheck(::hybridse::node::kDouble, ::hybridse::node::kFloat,
                        "unsafe cast");
 }
 
 TEST_F(CastExprIrBuilderTest, bool_cast_test) {
-    BoolCastCheck<int16_t>(::fesql::node::kInt16, 1u, true);
-    BoolCastCheck<int32_t>(::fesql::node::kInt32, 1, true);
-    BoolCastCheck<int64_t>(::fesql::node::kInt64, 1, true);
-    BoolCastCheck<float>(::fesql::node::kFloat, 1.0f, true);
-    BoolCastCheck<double>(::fesql::node::kDouble, 1.0, true);
+    BoolCastCheck<int16_t>(::hybridse::node::kInt16, 1u, true);
+    BoolCastCheck<int32_t>(::hybridse::node::kInt32, 1, true);
+    BoolCastCheck<int64_t>(::hybridse::node::kInt64, 1, true);
+    BoolCastCheck<float>(::hybridse::node::kFloat, 1.0f, true);
+    BoolCastCheck<double>(::hybridse::node::kDouble, 1.0, true);
 
-    BoolCastCheck<int16_t>(::fesql::node::kInt16, 0, false);
-    BoolCastCheck<int32_t>(::fesql::node::kInt32, 0, false);
-    BoolCastCheck<int64_t>(::fesql::node::kInt64, 0, false);
-    BoolCastCheck<float>(::fesql::node::kFloat, 0.0f, false);
-    BoolCastCheck<double>(::fesql::node::kDouble, 0.0, false);
+    BoolCastCheck<int16_t>(::hybridse::node::kInt16, 0, false);
+    BoolCastCheck<int32_t>(::hybridse::node::kInt32, 0, false);
+    BoolCastCheck<int64_t>(::hybridse::node::kInt64, 0, false);
+    BoolCastCheck<float>(::hybridse::node::kFloat, 0.0f, false);
+    BoolCastCheck<double>(::hybridse::node::kDouble, 0.0, false);
 }
 
 template <typename Ret, typename... Args>
@@ -368,8 +373,8 @@ void CastExprCheck(CASTTYPE exp_value, std::string src_type_str,
             DataTypeTrait<CASTTYPE>::to_type_node(nm)->base_, input);
     };
 
-    fesql::type::Type src_type;
-    ASSERT_TRUE(fesql::sqlcase::SQLCase::TypeParse(src_type_str, &src_type));
+    hybridse::type::Type src_type;
+    ASSERT_TRUE(hybridse::sqlcase::SQLCase::TypeParse(src_type_str, &src_type));
     switch (src_type) {
         case type::kBool: {
             if ("null" == src_value_str) {
@@ -487,8 +492,9 @@ void CastExprCheck(CASTTYPE exp_value, std::string src_type_str,
 
 void CastExprCheck(std::string cast_type_str, std::string cast_value_str,
                    std::string src_type_str, std::string src_value_str) {
-    fesql::type::Type cast_type;
-    ASSERT_TRUE(fesql::sqlcase::SQLCase::TypeParse(cast_type_str, &cast_type));
+    hybridse::type::Type cast_type;
+    ASSERT_TRUE(
+        hybridse::sqlcase::SQLCase::TypeParse(cast_type_str, &cast_type));
     switch (cast_type) {
         case type::kBool: {
             if ("null" == cast_value_str) {
@@ -886,8 +892,8 @@ void CastErrorExprCheck(std::string src_type_str) {
             DataTypeTrait<CASTTYPE>::to_type_node(nm)->base_, input);
     };
 
-    fesql::type::Type src_type;
-    ASSERT_TRUE(fesql::sqlcase::SQLCase::TypeParse(src_type_str, &src_type));
+    hybridse::type::Type src_type;
+    ASSERT_TRUE(hybridse::sqlcase::SQLCase::TypeParse(src_type_str, &src_type));
     switch (src_type) {
         case type::kBool: {
             ExprErrorCheck<udf::Nullable<CASTTYPE>, udf::Nullable<bool>>(
@@ -943,8 +949,9 @@ void CastErrorExprCheck(std::string src_type_str) {
 }
 
 void CastErrorExprCheck(std::string cast_type_str, std::string src_type_str) {
-    fesql::type::Type cast_type;
-    ASSERT_TRUE(fesql::sqlcase::SQLCase::TypeParse(cast_type_str, &cast_type));
+    hybridse::type::Type cast_type;
+    ASSERT_TRUE(
+        hybridse::sqlcase::SQLCase::TypeParse(cast_type_str, &cast_type));
     switch (cast_type) {
         case type::kBool: {
             CastErrorExprCheck<bool>(src_type_str);
@@ -1004,7 +1011,7 @@ TEST_P(CastErrorExprTest, cast_error_check) {
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     InitializeNativeTarget();

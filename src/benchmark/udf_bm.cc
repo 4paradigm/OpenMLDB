@@ -15,10 +15,10 @@
  */
 
 #include "benchmark/benchmark.h"
-#include "llvm/Transforms/Scalar.h"
 #include "benchmark/udf_bm_case.h"
+#include "llvm/Transforms/Scalar.h"
 
-namespace fesql {
+namespace hybridse {
 namespace bm {
 using namespace ::llvm;                                 // NOLINT
 static void BM_MemSumColInt(benchmark::State& state) {  // NOLINT
@@ -192,6 +192,6 @@ BENCHMARK(BM_RequestUnionWindowExcludeCurrentTime)
     ->Args({1000})
     ->Args({10000});
 }  // namespace bm
-}  // namespace fesql
+}  // namespace hybridse
 
 BENCHMARK_MAIN();
