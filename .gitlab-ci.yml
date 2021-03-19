@@ -24,7 +24,7 @@ stages:
     - style
     - build
     - test
-#    - deploy
+    - deploy
 
 style_check:
     stage: style
@@ -94,7 +94,7 @@ micro_benchmark:
         paths:
             - ./micro_bench_report.txt
             - ./benchmark_compare.html
-#
+            
 #deploy_jar:
 #    stage: deploy
 #    script:
