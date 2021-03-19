@@ -21,7 +21,7 @@ SUFFIX=$1
 cd ${ROOT_DIR}
 rm -r java/hybridse-native/target/classes
 
-tar cfz intermediate_cicd_artifact_${SUFFIX}.tar.gz \
+tar cvfz intermediate_cicd_artifact_${SUFFIX}.tar.gz \
 	./java/hybridse-native \
 	./java/hybridse-proto \
 	build/python/dist/*.whl \

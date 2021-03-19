@@ -18,4 +18,4 @@ SUFFIX=$1
 TAR_NAME="intermediate_cicd_artifact_${SUFFIX}.tar.gz"
 
 # extract into java/hybridse-proto java/hybridse-native etc
-cd ${ROOT_DIR}; tar xf ${TAR_NAME}
+cd ${ROOT_DIR}; tar xvf ${TAR_NAME}
