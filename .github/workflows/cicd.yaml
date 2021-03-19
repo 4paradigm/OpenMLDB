@@ -358,7 +358,7 @@ jobs:
       - uses: actions/download-artifact@v1
         with:
           name: fedb
-          path: build/bin
+          #path: build/bin
       - name: run case
         run: |
           ln -sf /depends/thirdparty thirdparty
