@@ -157,7 +157,7 @@ toydb支持基本的NewSQL数据库的操作，具体操作细节，参详[ToyDB
 
 | 项目                                                         | 状态   | 描述                                             |
 | :----------------------------------------------------------- | :----- | :----------------------------------------------- |
-| [FEDB](https://github.com/4paradigm/fedb) | 开源   | 一个面向实时决策的NewSQL数据库                   |
+| [FEDB](https://github.com/4paradigm/fedb) | 开源   | 面向实时推理和决策的NewSQL数据库                   |
 | [NativeSpark](https://github.com/4paradigm/NativeSpark) | 开源   | 基于LLVM优化的Spark兼容的高性能原生执行引擎      |
 | NativeFlink                                                  | 开发中 | 基于HybridSE开发的高性能批流一体FlinkSQL执行引擎 |
 
