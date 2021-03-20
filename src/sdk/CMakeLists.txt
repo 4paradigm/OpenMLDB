@@ -102,7 +102,7 @@ add_custom_command(OUTPUT
 	COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "setup(" >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  name='${PROJECT_NAME}'," >> setup.py
-    COMMAND ${CMAKE_COMMAND} -E echo "  version='${HYBRIDSE_VERSION_MAJOR}.${HYBRIDSE_VERSION_MEDIUM}.${HYBRIDSE_VERSION_MINOR}.${HYBRIDSE_VERSION_BUG}'," >> setup.py
+    COMMAND ${CMAKE_COMMAND} -E echo "  version='${HYBRIDSE_VERSION_MAJOR}.${HYBRIDSE_VERSION_MINOR}.${HYBRIDSE_VERSION_BUG}'," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  author='4pd'," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  url='4paradigm.com'," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  distclass=BinaryDistribution," >> setup.py
