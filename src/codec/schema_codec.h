@@ -214,19 +214,19 @@ class SchemaCodec {
         return fedb::type::kString;
     }
 
-    static fesql::type::Type ConvertType(fedb::type::DataType type) {
+    static hybridse::type::Type ConvertType(fedb::type::DataType type) {
         switch (type) {
-            case fedb::type::kBool: return fesql::type::kBool;
-            case fedb::type::kSmallInt: return fesql::type::kInt16;
-            case fedb::type::kInt: return fesql::type::kInt32;
-            case fedb::type::kBigInt: return fesql::type::kInt64;
-            case fedb::type::kFloat: return fesql::type::kFloat;
-            case fedb::type::kDouble: return fesql::type::kDouble;
-            case fedb::type::kDate: return fesql::type::kDate;
-            case fedb::type::kTimestamp: return fesql::type::kTimestamp;
-            case fedb::type::kVarchar: return fesql::type::kVarchar;
-            case fedb::type::kString: return fesql::type::kVarchar;
-            default: return fesql::type::kNull;
+            case fedb::type::kBool: return hybridse::type::kBool;
+            case fedb::type::kSmallInt: return hybridse::type::kInt16;
+            case fedb::type::kInt: return hybridse::type::kInt32;
+            case fedb::type::kBigInt: return hybridse::type::kInt64;
+            case fedb::type::kFloat: return hybridse::type::kFloat;
+            case fedb::type::kDouble: return hybridse::type::kDouble;
+            case fedb::type::kDate: return hybridse::type::kDate;
+            case fedb::type::kTimestamp: return hybridse::type::kTimestamp;
+            case fedb::type::kVarchar: return hybridse::type::kVarchar;
+            case fedb::type::kString: return hybridse::type::kVarchar;
+            default: return hybridse::type::kNull;
         }
     }
 

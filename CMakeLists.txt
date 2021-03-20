@@ -29,7 +29,7 @@ set(FEDB_VERSION_MAJOR 2)
 set(FEDB_VERSION_MEDIUM 1)
 set(FEDB_VERSION_MINOR 0)
 set(FEDB_COMMIT_ID 0)
-set(FESQL_COMMIT_ID 0)
+set(HYBRIDSE_COMMIT_ID 0)
 
 function(get_commitid CODE_DIR COMMIT_ID)
     find_package(Git REQUIRED)
@@ -45,8 +45,8 @@ function(get_commitid CODE_DIR COMMIT_ID)
 endfunction()
 
 get_commitid(${PROJECT_SOURCE_DIR} FEDB_COMMIT_ID)
-get_commitid(${PROJECT_SOURCE_DIR}/fesql FESQL_COMMIT_ID)
-message(STATUS "COMMIT_ID : ${FEDB_COMMIT_ID}.${FESQL_COMMIT_ID}")
+get_commitid(${PROJECT_SOURCE_DIR}/fesql HYBRIDSE_COMMIT_ID)
+message(STATUS "COMMIT_ID : ${FEDB_COMMIT_ID}.${HYBRIDSE_COMMIT_ID}")
 configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"
   "${PROJECT_SOURCE_DIR}/src/version.h"
@@ -98,7 +98,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_ProfilerStop")
     set(BRPC_LIBS brpc protobuf glog gflags ssl crypto leveldb z snappy dl pthread ${OS_LIB})
 endif ()
-set(VM_LIBS fesql_core fesql_sdk boost_filesystem boost_date_time boost_regex)
+set(VM_LIBS hybridse_core hybridse_sdk boost_filesystem boost_date_time boost_regex)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")

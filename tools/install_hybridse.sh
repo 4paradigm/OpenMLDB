@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# install_fesql.sh
+# install_hybridse.sh
 ENABLE_JAVA=$1
 CMAKE_TYPE=$2
 
@@ -32,5 +32,5 @@ if [[ "${ENABLE_JAVA}" != "ON" ]]; then
     cd build && cmake -DCMAKE_BUILD_TYPE=${CMAKE_TYPE} -DCMAKE_INSTALL_PREFIX="${FEDB_THIRDPARTY}/hybridse" -DTESTING_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DBENCHMARK_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DPYSDK_ENABLE=OFF -DJAVASDK_ENABLE=OFF ..  && make -j10 install
 else
     cd build && cmake -DCMAKE_BUILD_TYPE=${CMAKE_TYPE} -DCMAKE_INSTALL_PREFIX="${FEDB_THIRDPARTY}/hybridse" -DTESTING_ENABLE=OFF -DBENCHMARK_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DPYSDK_ENABLE=OFF -DJAVASDK_ENABLE=ON ..  && make -j10 install
-    cd ${WORK_DIR}/fesql/java/ && mvn install -pl fesql-common -am
+    cd ${WORK_DIR}/fesql/java/ && mvn install -pl hybridse-common -am
 fi

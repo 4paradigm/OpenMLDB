@@ -32,14 +32,14 @@ namespace catalog {
 using Tables = std::map<uint32_t, std::shared_ptr<::fedb::storage::Table>>;
 
 class FullTableIterator
-    : public ::fesql::codec::ConstIterator<uint64_t, ::fesql::codec::Row> {
+    : public ::hybridse::codec::ConstIterator<uint64_t, ::hybridse::codec::Row> {
  public:
     explicit FullTableIterator(std::shared_ptr<Tables> tables);
     void Seek(const uint64_t& ts) override {}
     void SeekToFirst() override;
     bool Valid() const override;
     void Next() override;
-    const ::fesql::codec::Row& GetValue() override;
+    const ::hybridse::codec::Row& GetValue() override;
     bool IsSeekable() const override { return true; }
     // the key maybe the row num
     const uint64_t& GetKey() const override { return key_; }
@@ -49,26 +49,26 @@ class FullTableIterator
     uint32_t cur_pid_;
     std::unique_ptr<::fedb::storage::TableIterator> it_;
     uint64_t key_;
-    ::fesql::codec::Row value_;
+    ::hybridse::codec::Row value_;
 };
 
-class DistributeWindowIterator : public ::fesql::codec::WindowIterator {
+class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {
  public:
     DistributeWindowIterator(std::shared_ptr<Tables> tables, uint32_t index);
     void Seek(const std::string& key) override;
     void SeekToFirst() override;
     void Next() override;
     bool Valid() override;
-    std::unique_ptr<::fesql::codec::RowIterator> GetValue() override;
-    ::fesql::codec::RowIterator* GetRawValue() override;
-    const ::fesql::codec::Row GetKey() override;
+    std::unique_ptr<::hybridse::codec::RowIterator> GetValue() override;
+    ::hybridse::codec::RowIterator* GetRawValue() override;
+    const ::hybridse::codec::Row GetKey() override;
 
  private:
     std::shared_ptr<Tables> tables_;
     uint32_t index_;
     uint32_t cur_pid_;
     uint32_t pid_num_;
-    std::unique_ptr<::fesql::codec::WindowIterator> it_;
+    std::unique_ptr<::hybridse::codec::WindowIterator> it_;
 };
 
 }  // namespace catalog

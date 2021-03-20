@@ -34,13 +34,13 @@ DECLARE_bool(enable_localtablet);
 typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc> RtiDBSchema;
 typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey> RtiDBIndex;
 // batch request rows size == 1
-void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,  // NOLINT
+void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SQLCase& sql_case,  // NOLINT
                      ::fedb::sdk::MiniCluster* mc) {                             // NOLINT
-    const bool is_procedure = fesql::sqlcase::SQLCase::IS_PROCEDURE();
+    const bool is_procedure = hybridse::sqlcase::SQLCase::IS_PROCEDURE();
     ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
-    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+    if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
         sql_opt.enable_debug = true;
     } else {
         sql_opt.enable_debug = false;
@@ -50,7 +50,7 @@ void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,
         std::cout << "fail to init sql cluster router" << std::endl;
         return;
     }
-    fesql::sdk::Status status;
+    hybridse::sdk::Status status;
     fedb::sdk::SQLSDKTest::CreateDB(sql_case, router);
     fedb::sdk::SQLSDKTest::CreateTables(sql_case, router, 8);
     fedb::sdk::SQLSDKTest::InsertTables(sql_case, router, fedb::sdk::kInsertAllInputs);
@@ -68,36 +68,36 @@ void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,
         LOG(INFO) << sql;
         auto request_row = router->GetRequestRow(sql_case.db(), sql, &status);
         if (status.code != 0) {
-            state.SkipWithError("benchmark error: fesql case compile fail");
+            state.SkipWithError("benchmark error: hybridse case compile fail");
             return;
         }
         // success check
 
-        fesql::type::TableDef request_table;
+        hybridse::type::TableDef request_table;
         if (!sql_case.ExtractInputTableDef(sql_case.batch_request_, request_table)) {
-            state.SkipWithError("benchmark error: fesql case input schema invalid");
+            state.SkipWithError("benchmark error: hybridse case input schema invalid");
             return;
         }
 
-        std::vector<fesql::codec::Row> request_rows;
+        std::vector<hybridse::codec::Row> request_rows;
         if (!sql_case.ExtractInputData(sql_case.batch_request_, request_rows)) {
-            state.SkipWithError("benchmark error: fesql case input data invalid");
+            state.SkipWithError("benchmark error: hybridse case input data invalid");
             return;
         }
 
-        if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
             fedb::sdk::SQLSDKTest::CheckSchema(request_table.columns(), *(request_row->GetSchema().get()));
         }
 
-        fesql::codec::RowView row_view(request_table.columns());
+        hybridse::codec::RowView row_view(request_table.columns());
         if (1 != request_rows.size()) {
             state.SkipWithError("benmark error: request rows size should be 1");
             return;
         }
         row_view.Reset(request_rows[0].buf());
-        fedb::sdk::SQLSDKTest::CovertFesqlRowToRequestRow(&row_view, request_row);
+        fedb::sdk::SQLSDKTest::CovertHybridSERowToRequestRow(&row_view, request_row);
 
-        if (!fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {
             for (int i = 0; i < 10; i++) {
                 if (is_procedure) {
                     LOG(INFO) << "--------syn procedure----------";
@@ -110,15 +110,15 @@ void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,
             }
             LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
         }
-        if (fesql::sqlcase::SQLCase::IS_DEBUG() || fesql::sqlcase::SQLCase::IS_PERF()) {
+        if (hybridse::sqlcase::SQLCase::IS_DEBUG() || hybridse::sqlcase::SQLCase::IS_PERF()) {
             for (auto _ : state) {
                 if (is_procedure) {
                     LOG(INFO) << "--------syn procedure----------";
                     auto rs = router->CallProcedure(sql_case.db(), sql_case.sp_name_, request_row, &status);
                     if (!rs) FAIL() << "sql case expect success == true";
                     fedb::sdk::SQLSDKTest::PrintResultSet(rs);
-                    fesql::type::TableDef output_table;
-                    std::vector<fesql::codec::Row> rows;
+                    hybridse::type::TableDef output_table;
+                    std::vector<hybridse::codec::Row> rows;
                     if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
                         ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
                         fedb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
@@ -133,8 +133,8 @@ void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,
                     auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
                     if (!rs) FAIL() << "sql case expect success == true";
                     fedb::sdk::SQLSDKTest::PrintResultSet(rs);
-                    fesql::type::TableDef output_table;
-                    std::vector<fesql::codec::Row> rows;
+                    hybridse::type::TableDef output_table;
+                    std::vector<hybridse::codec::Row> rows;
                     if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
                         ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
                         fedb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
@@ -165,9 +165,9 @@ void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,
     fedb::sdk::SQLSDKTest::DropTables(sql_case, router);
 }
 
-fesql::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml, const std::string& case_id) {
-    return fesql::sqlcase::SQLCase::LoadSQLCaseWithID(fedb::test::SQLCaseTest::FindRtidbDirPath("rtidb") + "/fesql/",
-                                                      yaml, case_id);
+hybridse::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml, const std::string& case_id) {
+    return hybridse::sqlcase::SQLCase::LoadSQLCaseWithID(
+        fedb::test::SQLCaseTest::FindRtidbDirPath("rtidb") + "/fesql/", yaml, case_id);
 }
 void MiniBenchmarkOnCase(const std::string& yaml_path, const std::string& case_id, BmRunMode engine_mode,
                          ::fedb::sdk::MiniCluster* mc, benchmark::State* state) {
@@ -179,7 +179,7 @@ void MiniBenchmarkOnCase(const std::string& yaml_path, const std::string& case_i
     }
     MiniBenchmarkOnCase(target_case, engine_mode, mc, state);
 }
-void MiniBenchmarkOnCase(fesql::sqlcase::SQLCase& sql_case, BmRunMode engine_mode,  // NOLINT
+void MiniBenchmarkOnCase(hybridse::sqlcase::SQLCase& sql_case, BmRunMode engine_mode,  // NOLINT
                          ::fedb::sdk::MiniCluster* mc, benchmark::State* state) {
     switch (engine_mode) {
         case kRequestMode: {
@@ -196,18 +196,18 @@ void MiniBenchmarkOnCase(fesql::sqlcase::SQLCase& sql_case, BmRunMode engine_mod
     }
 }
 // batch request rows size >= 1
-void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,  // NOLINT
+void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SQLCase& sql_case,  // NOLINT
                           ::fedb::sdk::MiniCluster* mc) {
     if (sql_case.batch_request_.columns_.empty()) {
         FAIL() << "sql case should contain batch request columns: ";
         return;
     }
     const bool enable_request_batch_optimized = state.range(0) == 1;
-    const bool is_procedure = fesql::sqlcase::SQLCase::IS_PROCEDURE();
+    const bool is_procedure = hybridse::sqlcase::SQLCase::IS_PROCEDURE();
     ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
-    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+    if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
         sql_opt.enable_debug = true;
     } else {
         sql_opt.enable_debug = false;
@@ -217,7 +217,7 @@ void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_
         std::cout << "fail to init sql cluster router" << std::endl;
         return;
     }
-    fesql::sdk::Status status;
+    hybridse::sdk::Status status;
     fedb::sdk::SQLSDKTest::CreateDB(sql_case, router);
     fedb::sdk::SQLSDKTest::CreateTables(sql_case, router, 8);
     fedb::sdk::SQLSDKTest::InsertTables(sql_case, router, fedb::sdk::kInsertAllInputs);
@@ -232,24 +232,24 @@ void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_
         LOG(INFO) << sql;
         auto request_row = router->GetRequestRow(sql_case.db(), sql, &status);
         if (status.code != 0) {
-            state.SkipWithError("benchmark error: fesql case compile fail");
+            state.SkipWithError("benchmark error: hybridse case compile fail");
             return;
         }
         // success check
 
-        fesql::type::TableDef request_table;
+        hybridse::type::TableDef request_table;
         if (!sql_case.ExtractInputTableDef(sql_case.batch_request_, request_table)) {
-            state.SkipWithError("benchmark error: fesql case input schema invalid");
+            state.SkipWithError("benchmark error: hybridse case input schema invalid");
             return;
         }
 
-        std::vector<fesql::codec::Row> request_rows;
+        std::vector<hybridse::codec::Row> request_rows;
         if (!sql_case.ExtractInputData(sql_case.batch_request_, request_rows)) {
-            state.SkipWithError("benchmark error: fesql case input data invalid");
+            state.SkipWithError("benchmark error: hybridse case input data invalid");
             return;
         }
 
-        if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
             fedb::sdk::SQLSDKTest::CheckSchema(request_table.columns(), *(request_row->GetSchema().get()));
         }
 
@@ -266,7 +266,7 @@ void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_
             fedb::sdk::SQLSDKTest::CreateProcedure(sql_case, router);
         }
 
-        fesql::codec::RowView row_view(request_table.columns());
+        hybridse::codec::RowView row_view(request_table.columns());
 
         auto row_batch =
             std::make_shared<fedb::sdk::SQLRequestRowBatch>(request_row->GetSchema(), common_column_indices);
@@ -274,9 +274,9 @@ void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_
         LOG(INFO) << "Batch Request execute sql start!";
         for (size_t i = 0; i < request_rows.size(); i++) {
             row_view.Reset(request_rows[i].buf());
-            fedb::sdk::SQLSDKTest::CovertFesqlRowToRequestRow(&row_view, request_row);
+            fedb::sdk::SQLSDKTest::CovertHybridSERowToRequestRow(&row_view, request_row);
             ASSERT_TRUE(row_batch->AddRow(request_row));
-            if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+            if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
                 continue;
             }
             // don't repeat request in debug mode
@@ -285,7 +285,7 @@ void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_
             }
         }
 
-        if (!fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {
             for (int i = 0; i < 10; i++) {
                 if (is_procedure) {
                     LOG(INFO) << "--------syn procedure----------";
@@ -299,7 +299,7 @@ void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_
             }
             LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
         }
-        if (fesql::sqlcase::SQLCase::IS_DEBUG() || fesql::sqlcase::SQLCase::IS_PERF()) {
+        if (hybridse::sqlcase::SQLCase::IS_DEBUG() || hybridse::sqlcase::SQLCase::IS_PERF()) {
             for (auto _ : state) {
                 state.SkipWithError("benchmark case debug");
                 if (is_procedure) {
@@ -308,8 +308,8 @@ void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_
                                                                    &status);
                     fedb::sdk::SQLSDKTest::PrintResultSet(rs);
                     if (!rs) FAIL() << "sql case expect success == true";
-                    fesql::type::TableDef output_table;
-                    std::vector<fesql::codec::Row> rows;
+                    hybridse::type::TableDef output_table;
+                    std::vector<hybridse::codec::Row> rows;
                     if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
                         ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
                         fedb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
@@ -323,8 +323,8 @@ void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_
                     auto rs = router->ExecuteSQLBatchRequest(sql_case.db(), sql, row_batch, &status);
                     if (!rs) FAIL() << "sql case expect success == true";
                     fedb::sdk::SQLSDKTest::PrintResultSet(rs);
-                    fesql::type::TableDef output_table;
-                    std::vector<fesql::codec::Row> rows;
+                    hybridse::type::TableDef output_table;
+                    std::vector<hybridse::codec::Row> rows;
                     if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
                         ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
                         fedb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));

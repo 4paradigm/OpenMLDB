@@ -84,7 +84,7 @@ public class FesqlConfig {
         } else {
             VERSIONS = Lists.newArrayList();
         }
-        log.info("FesqlConfig: versions: {}", VERSIONS);
+        log.info("HybridSEConfig: versions: {}", VERSIONS);
         String reportLogStr = System.getProperty("reportLog");
         if(StringUtils.isNotEmpty(reportLogStr)){
             ADD_REPORT_LOG = Boolean.parseBoolean(reportLogStr);

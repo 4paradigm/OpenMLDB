@@ -26,8 +26,8 @@
 %apply char *BYTE { char *string_buffer_var_name };
 #endif
 
-%shared_ptr(fesql::sdk::ResultSet);
-%shared_ptr(fesql::sdk::Schema);
+%shared_ptr(hybridse::sdk::ResultSet);
+%shared_ptr(hybridse::sdk::Schema);
 %shared_ptr(fedb::sdk::SQLRouter);
 %shared_ptr(fedb::sdk::SQLRequestRow);
 %shared_ptr(fedb::sdk::SQLRequestRowBatch);
@@ -35,7 +35,7 @@
 %shared_ptr(fedb::sdk::SQLInsertRow);
 %shared_ptr(fedb::sdk::SQLInsertRows);
 %shared_ptr(fedb::sdk::ExplainInfo);
-%shared_ptr(fesql::sdk::ProcedureInfo);
+%shared_ptr(hybridse::sdk::ProcedureInfo);
 %shared_ptr(fedb::sdk::QueryFuture);
 %shared_ptr(fedb::sdk::TableReader);
 %template(VectorUint32) std::vector<uint32_t>;
@@ -49,8 +49,8 @@
 #include "sdk/sql_insert_row.h"
 #include "sdk/table_reader.h"
 
-using fesql::sdk::Schema;
-using fesql::sdk::ResultSet;
+using hybridse::sdk::Schema;
+using hybridse::sdk::ResultSet;
 using fedb::sdk::SQLRouter;
 using fedb::sdk::SQLRouterOptions;
 using fedb::sdk::SQLRequestRow;
@@ -59,7 +59,7 @@ using fedb::sdk::ColumnIndicesSet;
 using fedb::sdk::SQLInsertRow;
 using fedb::sdk::SQLInsertRows;
 using fedb::sdk::ExplainInfo;
-using fesql::sdk::ProcedureInfo;
+using hybridse::sdk::ProcedureInfo;
 using fedb::sdk::QueryFuture;
 using fedb::sdk::TableReader;
 %}

@@ -26,7 +26,7 @@ fi
 if [[ "${CASE_NAME}" == "" ]]; then
         CASE_NAME="sql_sdk_test\|sql_cluster_test"
 fi
-echo "fesql c++ sdk test : case_level ${CASE_LEVEL}, case_file ${CASE_NAME}"
+echo "sql c++ sdk test : case_level ${CASE_LEVEL}, case_file ${CASE_NAME}"
 
 ROOT_DIR=`pwd`
 echo "WORK_DIR: ${ROOT_DIR}"
@@ -41,7 +41,7 @@ TMPFILE="code.tmp"
 echo 0 > $TMPFILE
 ls  build/bin/ | grep test | grep ${CASE_NAME} | grep -v grep | while read line
 do
-    GLOG_minloglevel=2 FESQL_LEVEL=${CASE_LEVEL} ./build/bin/$line --gtest_output=xml:./reports/$line.xml
+    GLOG_minloglevel=2 HYBRIDSE_LEVEL=${CASE_LEVEL} ./build/bin/$line --gtest_output=xml:./reports/$line.xml
     RET=$?
     echo "$line result code is: $RET"
     if [ $RET -ne 0 ];then

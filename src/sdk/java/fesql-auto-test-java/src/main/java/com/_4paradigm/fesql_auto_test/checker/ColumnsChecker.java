@@ -16,8 +16,8 @@
 
 package com._4paradigm.fesql_auto_test.checker;
 
-import com._4paradigm.fesql.sqlcase.model.ExpectDesc;
-import com._4paradigm.fesql.sqlcase.model.Table;
+import com._4paradigm.hybridse.sqlcase.model.ExpectDesc;
+import com._4paradigm.hybridse.sqlcase.model.Table;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
 import com._4paradigm.sql.Schema;

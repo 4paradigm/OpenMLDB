@@ -707,6 +707,6 @@ int main(int argc, char** argv) {
     std::string k2 = ::fedb::tablet::GenRand();
     FLAGS_db_root_path = "/tmp/db" + k1 + ",/tmp/db" + k2;
     FLAGS_recycle_bin_root_path = "/tmp/recycle" + k1 + ",/tmp/recycle" + k2;
-    ::fesql::vm::Engine::InitializeGlobalLLVM();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     return RUN_ALL_TESTS();
 }

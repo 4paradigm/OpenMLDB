@@ -40,17 +40,17 @@ namespace sdk {
 typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>
     RtidbSchema;
 
-static std::shared_ptr<::fesql::sdk::Schema> ConvertToSchema(
+static std::shared_ptr<::hybridse::sdk::Schema> ConvertToSchema(
     std::shared_ptr<::fedb::nameserver::TableInfo> table_info) {
-    ::fesql::vm::Schema schema;
+    ::hybridse::vm::Schema schema;
     for (const auto& column_desc : table_info->column_desc_v1()) {
-        ::fesql::type::ColumnDef* column_def = schema.Add();
+        ::hybridse::type::ColumnDef* column_def = schema.Add();
         column_def->set_name(column_desc.name());
         column_def->set_is_not_null(column_desc.not_null());
         column_def->set_type(
             fedb::codec::SchemaCodec::ConvertType(column_desc.data_type()));
     }
-    return std::make_shared<::fesql::sdk::SchemaImpl>(schema);
+    return std::make_shared<::hybridse::sdk::SchemaImpl>(schema);
 }
 
 struct SQLCache {
@@ -63,8 +63,8 @@ struct SQLCache {
         column_schema = fedb::sdk::ConvertToSchema(table_info);
     }
 
-    SQLCache(std::shared_ptr<::fesql::sdk::Schema> column_schema,
-            const ::fesql::vm::Router& input_router)
+    SQLCache(std::shared_ptr<::hybridse::sdk::Schema> column_schema,
+            const ::hybridse::vm::Router& input_router)
         : table_info(),
           default_map(),
           column_schema(column_schema),
@@ -73,9 +73,9 @@ struct SQLCache {
 
     std::shared_ptr<::fedb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
-    std::shared_ptr<::fesql::sdk::Schema> column_schema;
+    std::shared_ptr<::hybridse::sdk::Schema> column_schema;
     uint32_t str_length;
-    ::fesql::vm::Router router;
+    ::hybridse::vm::Router router;
 };
 
 class SQLClusterRouter : public SQLRouter {
@@ -87,130 +87,130 @@ class SQLClusterRouter : public SQLRouter {
 
     bool Init();
 
-    bool CreateDB(const std::string& db, fesql::sdk::Status* status) override;
+    bool CreateDB(const std::string& db, hybridse::sdk::Status* status) override;
 
-    bool DropDB(const std::string& db, fesql::sdk::Status* status) override;
+    bool DropDB(const std::string& db, hybridse::sdk::Status* status) override;
 
-    bool ShowDB(std::vector<std::string>* dbs, fesql::sdk::Status* status) override;
+    bool ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Status* status) override;
 
     bool ExecuteDDL(const std::string& db, const std::string& sql,
-                    fesql::sdk::Status* status) override;
+                    hybridse::sdk::Status* status) override;
 
     bool ExecuteInsert(const std::string& db, const std::string& sql,
-                       ::fesql::sdk::Status* status) override;
+                       ::hybridse::sdk::Status* status) override;
 
     bool ExecuteInsert(const std::string& db, const std::string& sql,
                        std::shared_ptr<SQLInsertRow> row,
-                       fesql::sdk::Status* status) override;
+                       hybridse::sdk::Status* status) override;
 
     bool ExecuteInsert(const std::string& db, const std::string& sql,
                        std::shared_ptr<SQLInsertRows> rows,
-                       fesql::sdk::Status* status) override;
+                       hybridse::sdk::Status* status) override;
 
     std::shared_ptr<TableReader> GetTableReader();
     std::shared_ptr<ExplainInfo> Explain(const std::string& db,
                                          const std::string& sql,
-                                         ::fesql::sdk::Status* status) override;
+                                         ::hybridse::sdk::Status* status) override;
 
     std::shared_ptr<SQLRequestRow> GetRequestRow(const std::string& db,
                                                  const std::string& sql,
-                                                 ::fesql::sdk::Status* status) override;
+                                                 ::hybridse::sdk::Status* status) override;
 
     std::shared_ptr<SQLRequestRow> GetRequestRowByProcedure(const std::string& db, const std::string& sp_name,
-                                                 ::fesql::sdk::Status* status) override;
+                                                 ::hybridse::sdk::Status* status) override;
 
 
     std::shared_ptr<SQLInsertRow> GetInsertRow(const std::string& db,
                                                const std::string& sql,
-                                               ::fesql::sdk::Status* status) override;
+                                               ::hybridse::sdk::Status* status) override;
 
     std::shared_ptr<SQLInsertRows> GetInsertRows(const std::string& db,
                                                  const std::string& sql,
-                                                 ::fesql::sdk::Status* status) override;
+                                                 ::hybridse::sdk::Status* status) override;
 
-    std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
+    std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
-        std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) override;
+        std::shared_ptr<SQLRequestRow> row, hybridse::sdk::Status* status) override;
 
-    std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
+    std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
-        ::fesql::sdk::Status* status) override;
+        ::hybridse::sdk::Status* status) override;
 
-    std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQLBatchRequest(
+    std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLBatchRequest(
         const std::string& db, const std::string& sql,
         std::shared_ptr<SQLRequestRowBatch> row_batch,
-        ::fesql::sdk::Status* status) override;
+        ::hybridse::sdk::Status* status) override;
 
     bool RefreshCatalog() override;
 
-    std::shared_ptr<fesql::sdk::ResultSet> CallProcedure(
+    std::shared_ptr<hybridse::sdk::ResultSet> CallProcedure(
             const std::string& db, const std::string& sp_name,
-            std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) override;
+            std::shared_ptr<SQLRequestRow> row, hybridse::sdk::Status* status) override;
 
-    std::shared_ptr<fesql::sdk::ResultSet> CallSQLBatchRequestProcedure(
+    std::shared_ptr<hybridse::sdk::ResultSet> CallSQLBatchRequestProcedure(
             const std::string& db, const std::string& sp_name,
-            std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) override;
+            std::shared_ptr<SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status) override;
 
-    std::shared_ptr<fesql::sdk::ProcedureInfo> ShowProcedure(
-            const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) override;
+    std::shared_ptr<hybridse::sdk::ProcedureInfo> ShowProcedure(
+            const std::string& db, const std::string& sp_name, hybridse::sdk::Status* status) override;
 
-    std::shared_ptr<fesql::sdk::ProcedureInfo> ShowProcedure(
+    std::shared_ptr<hybridse::sdk::ProcedureInfo> ShowProcedure(
             const std::string& db, const std::string& sp_name, std::string* msg);
 
-    std::vector<std::shared_ptr<fesql::sdk::ProcedureInfo>> ShowProcedure(std::string* msg);
+    std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> ShowProcedure(std::string* msg);
 
     std::shared_ptr<fedb::sdk::QueryFuture> CallProcedure(
             const std::string& db, const std::string& sp_name, int64_t timeout_ms,
-            std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status);
+            std::shared_ptr<SQLRequestRow> row, hybridse::sdk::Status* status);
 
     std::shared_ptr<fedb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
             const std::string& db, const std::string& sp_name, int64_t timeout_ms,
-            std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status);
+            std::shared_ptr<SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status);
 
     std::shared_ptr<::fedb::client::TabletClient> GetTabletClient(
         const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row);
 
  private:
-    void GetTables(::fesql::vm::PhysicalOpNode* node,
+    void GetTables(::hybridse::vm::PhysicalOpNode* node,
                    std::set<std::string>* tables);
 
     bool PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>& row,
             const std::vector<std::shared_ptr<::fedb::catalog::TabletAccessor>>& tablets,
-            ::fesql::sdk::Status* status);
+            ::hybridse::sdk::Status* status);
 
-    bool IsConstQuery(::fesql::vm::PhysicalOpNode* node);
+    bool IsConstQuery(::hybridse::vm::PhysicalOpNode* node);
     std::shared_ptr<SQLCache> GetCache(const std::string& db,
                                           const std::string& sql);
 
     void SetCache(const std::string& db, const std::string& sql,
                   std::shared_ptr<SQLCache> router_cache);
 
-    bool GetSQLPlan(const std::string& sql, ::fesql::node::NodeManager* nm,
-                    ::fesql::node::PlanNodeList* plan);
+    bool GetSQLPlan(const std::string& sql, ::hybridse::node::NodeManager* nm,
+                    ::hybridse::node::PlanNodeList* plan);
 
     bool GetInsertInfo(
         const std::string& db, const std::string& sql,
-        ::fesql::sdk::Status* status,
+        ::hybridse::sdk::Status* status,
         std::shared_ptr<::fedb::nameserver::TableInfo>* table_info,
         DefaultValueMap* default_map, uint32_t* str_length);
 
-    std::shared_ptr<fesql::node::ConstNode> GetDefaultMapValue(
-        const fesql::node::ConstNode& node, fedb::type::DataType column_type);
+    std::shared_ptr<hybridse::node::ConstNode> GetDefaultMapValue(
+        const hybridse::node::ConstNode& node, fedb::type::DataType column_type);
 
     DefaultValueMap GetDefaultMap(
         std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
         const std::map<uint32_t, uint32_t>& column_map,
-        ::fesql::node::ExprListNode* row, uint32_t* str_length);
+        ::hybridse::node::ExprListNode* row, uint32_t* str_length);
 
-    bool HandleSQLCreateProcedure(const fesql::node::NodePointVector& parser_trees,
+    bool HandleSQLCreateProcedure(const hybridse::node::NodePointVector& parser_trees,
             const std::string& db, const std::string& sql,
             std::shared_ptr<::fedb::client::NsClient> ns_ptr,
-            fesql::node::NodeManager* node_manager, std::string* msg);
+            hybridse::node::NodeManager* node_manager, std::string* msg);
 
     inline bool CheckParameter(const RtidbSchema& parameter, const RtidbSchema& input_schema);
 
     std::shared_ptr<fedb::client::TabletClient> GetTablet(
-            const std::string& db, const std::string& sp_name, fesql::sdk::Status* status);
+            const std::string& db, const std::string& sp_name, hybridse::sdk::Status* status);
 
  private:
     SQLRouterOptions options_;

@@ -35,7 +35,7 @@ DEFINE_REQUEST_CASE(BM_SimpleLastJoin4Right, DEFAULT_YAML_PATH, "1");
 #define DEFINE_REQUEST_WINDOW_CASE(NAME, PATH, CASE_ID)                   \
     static void BM_Request_##NAME(benchmark::State& state) {              \
         auto sql_case = LoadSQLCaseWithID(PATH, CASE_ID);                 \
-        if (!fesql::sqlcase::SQLCase::IS_DEBUG()) {                       \
+        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {                       \
             sql_case.SQLCaseRepeatConfig("window_scale", state.range(0)); \
         }                                                                 \
         MiniBenchmarkOnCase(sql_case, kRequestMode, mc, &state);          \
@@ -53,14 +53,14 @@ DEFINE_REQUEST_WINDOW_CASE(BM_LastJoin4WindowOutput, DEFAULT_YAML_PATH, "4");
 DEFINE_REQUEST_WINDOW_CASE(BM_LastJoin8WindowOutput, DEFAULT_YAML_PATH, "5");
 
 int main(int argc, char** argv) {
-    ::fesql::vm::Engine::InitializeGlobalLLVM();
-    FLAGS_enable_distsql = fesql::sqlcase::SQLCase::IS_CLUSTER();
-    FLAGS_enable_localtablet = !fesql::sqlcase::SQLCase::IS_DISABLE_LOCALTABLET();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    FLAGS_enable_distsql = hybridse::sqlcase::SQLCase::IS_CLUSTER();
+    FLAGS_enable_localtablet = !hybridse::sqlcase::SQLCase::IS_DISABLE_LOCALTABLET();
     ::benchmark::Initialize(&argc, argv);
     if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
     ::fedb::sdk::MiniCluster mini_cluster(6181);
     mc = &mini_cluster;
-    if (!fesql::sqlcase::SQLCase::IS_CLUSTER()) {
+    if (!hybridse::sqlcase::SQLCase::IS_CLUSTER()) {
         mini_cluster.SetUp(1);
     } else {
         mini_cluster.SetUp();

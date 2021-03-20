@@ -72,7 +72,7 @@ TEST_F(SQLRouterTest, empty_db_test) {
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     ASSERT_FALSE(router->CreateDB("", &status));
 }
 
@@ -84,7 +84,7 @@ TEST_F(SQLRouterTest, db_api_test) {
     ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     std::vector<std::string> dbs;
     ASSERT_TRUE(router->ShowDB(&dbs, &status));
     uint32_t origin = dbs.size();
@@ -106,7 +106,7 @@ TEST_F(SQLRouterTest, create_and_drop_table_test) {
     ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     std::string ddl = "create table " + name +
@@ -159,7 +159,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder) {
     ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     std::string ddl = "create table " + name +
@@ -309,7 +309,7 @@ TEST_F(SQLRouterTest, test_sql_insert_with_column_list) {
     ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     std::string ddl = "create table " + name +
@@ -389,7 +389,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_date_column_key) {
     ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     std::string ddl = "create table " + name +
@@ -442,7 +442,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_1) {
     ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     std::string ddl = "create table " + name +
@@ -541,7 +541,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_2) {
     ASSERT_TRUE(router != nullptr);
       std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     std::string ddl =
@@ -673,7 +673,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
     ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     std::string ddl =
@@ -693,22 +693,22 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
         router->GetInsertRow(db, insert1, &status);
 
     // test schema
-    std::shared_ptr<fesql::sdk::Schema> schema = r1->GetSchema();
+    std::shared_ptr<hybridse::sdk::Schema> schema = r1->GetSchema();
     ASSERT_EQ(schema->GetColumnCnt(), 7);
     ASSERT_EQ(schema->GetColumnName(0), "col1");
-    ASSERT_EQ(schema->GetColumnType(0), fesql::sdk::kTypeString);
+    ASSERT_EQ(schema->GetColumnType(0), hybridse::sdk::kTypeString);
     ASSERT_EQ(schema->GetColumnName(1), "col2");
-    ASSERT_EQ(schema->GetColumnType(1), fesql::sdk::kTypeInt64);
+    ASSERT_EQ(schema->GetColumnType(1), hybridse::sdk::kTypeInt64);
     ASSERT_EQ(schema->GetColumnName(2), "col3");
-    ASSERT_EQ(schema->GetColumnType(2), fesql::sdk::kTypeDate);
+    ASSERT_EQ(schema->GetColumnType(2), hybridse::sdk::kTypeDate);
     ASSERT_EQ(schema->GetColumnName(3), "col4");
-    ASSERT_EQ(schema->GetColumnType(3), fesql::sdk::kTypeInt32);
+    ASSERT_EQ(schema->GetColumnType(3), hybridse::sdk::kTypeInt32);
     ASSERT_EQ(schema->GetColumnName(4), "col5");
-    ASSERT_EQ(schema->GetColumnType(4), fesql::sdk::kTypeInt16);
+    ASSERT_EQ(schema->GetColumnType(4), hybridse::sdk::kTypeInt16);
     ASSERT_EQ(schema->GetColumnName(5), "col6");
-    ASSERT_EQ(schema->GetColumnType(5), fesql::sdk::kTypeFloat);
+    ASSERT_EQ(schema->GetColumnType(5), hybridse::sdk::kTypeFloat);
     ASSERT_EQ(schema->GetColumnName(6), "col7");
-    ASSERT_EQ(schema->GetColumnType(6), fesql::sdk::kTypeDouble);
+    ASSERT_EQ(schema->GetColumnType(6), hybridse::sdk::kTypeDouble);
 
     ASSERT_TRUE(r1->Init(5));
     ASSERT_TRUE(r1->AppendString("hello"));
@@ -807,12 +807,12 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = hybridse::sqlcase::SQLCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     std::string ddl = "create table " + name +
@@ -897,7 +897,7 @@ TEST_F(SQLRouterTest, smoke_explain_on_sql) {
     ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     std::string ddl = "create table " + name +
@@ -930,7 +930,7 @@ TEST_F(SQLRouterTest, smoke_not_null) {
     ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     std::string ddl = "create table " + name +
@@ -959,7 +959,7 @@ TEST_F(SQLRouterTest, smoketimestamptest_on_sql) {
     ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     std::string ddl = "create table " + name +
@@ -1006,7 +1006,7 @@ TEST_F(SQLRouterTest, smoketest_on_muti_partitions) {
     ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     auto endpoints = mc_->GetTbEndpoint();
@@ -1039,7 +1039,7 @@ TEST_F(SQLRouterTest, smoketest_on_muti_partitions) {
 }  // namespace fedb
 
 int main(int argc, char** argv) {
-    ::fesql::vm::Engine::InitializeGlobalLLVM();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_zk_session_timeout = 100000;

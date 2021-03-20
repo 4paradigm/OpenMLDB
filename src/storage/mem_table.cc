@@ -754,7 +754,7 @@ bool MemTable::DeleteIndex(std::string idx_name) {
     return true;
 }
 
-::fesql::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index) {
+::hybridse::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index) {
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index);
     if (index_def && index_def->IsReady()) {
         auto ts_col = index_def->GetTsColumn();
@@ -773,7 +773,7 @@ bool MemTable::DeleteIndex(std::string idx_name) {
     return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
 }
 
-::fesql::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index, uint32_t ts_index) {
+::hybridse::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index, uint32_t ts_index) {
     if (ts_index < 0) {
         return NULL;
     }
@@ -896,7 +896,7 @@ bool MemTableKeyIterator::Valid() {
 
 void MemTableKeyIterator::Next() { NextPK(); }
 
-::fesql::vm::RowIterator* MemTableKeyIterator::GetRawValue() {
+::hybridse::vm::RowIterator* MemTableKeyIterator::GetRawValue() {
     TimeEntries::Iterator* it = NULL;
     if (segments_[seg_idx_]->GetTsCnt() > 1) {
         KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];  // NOLINT
@@ -911,7 +911,7 @@ void MemTableKeyIterator::Next() { NextPK(); }
     return new MemTableWindowIterator(it, ttl_type_, expire_time_, expire_cnt_);
 }
 
-std::unique_ptr<::fesql::vm::RowIterator> MemTableKeyIterator::GetValue() {
+std::unique_ptr<::hybridse::vm::RowIterator> MemTableKeyIterator::GetValue() {
     TimeEntries::Iterator* it = NULL;
     if (segments_[seg_idx_]->GetTsCnt() > 1) {
         KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];  // NOLINT
@@ -927,8 +927,9 @@ std::unique_ptr<::fesql::vm::RowIterator> MemTableKeyIterator::GetValue() {
     return std::move(wit);
 }
 
-const fesql::codec::Row MemTableKeyIterator::GetKey() {
-    fesql::codec::Row row(::fesql::base::RefCountedSlice::Create(pk_it_->GetKey().data(), pk_it_->GetKey().size()));
+const hybridse::codec::Row MemTableKeyIterator::GetKey() {
+    hybridse::codec::Row row(
+        ::hybridse::base::RefCountedSlice::Create(pk_it_->GetKey().data(), pk_it_->GetKey().size()));
     return row;
 }
 

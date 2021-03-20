@@ -65,7 +65,7 @@ class SqlClusterTest : public ::testing::Test {
 };
 
 std::shared_ptr<fedb::sdk::SQLRouter> GetNewSQLRouter() {
-    ::fesql::vm::Engine::InitializeGlobalLLVM();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = FLAGS_zk_cluster;
     sql_opt.zk_path = FLAGS_zk_root_path;
@@ -198,7 +198,7 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
         FAIL() << "Fail new cluster sql router";
     }
     std::string db = "test";
-    fesql::sdk::Status status;
+    hybridse::sdk::Status status;
     ASSERT_TRUE(router->CreateDB(db, &status));
     router->ExecuteDDL(db, "drop table trans;", &status);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -336,7 +336,7 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
         FAIL() << "Fail new cluster sql router";
     }
     std::string db = "test1";
-    fesql::sdk::Status status;
+    hybridse::sdk::Status status;
     ASSERT_TRUE(router->CreateDB(db, &status));
     router->ExecuteDDL(db, "drop table trans;", &status);
     ASSERT_TRUE(router->RefreshCatalog());

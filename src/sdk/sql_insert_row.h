@@ -34,29 +34,29 @@
 namespace fedb {
 namespace sdk {
 
-typedef std::shared_ptr<std::map<uint32_t, std::shared_ptr<::fesql::node::ConstNode>>> DefaultValueMap;
+typedef std::shared_ptr<std::map<uint32_t, std::shared_ptr<::hybridse::node::ConstNode>>> DefaultValueMap;
 
-static inline ::fesql::sdk::DataType ConvertType(::fedb::type::DataType type) {
+static inline ::hybridse::sdk::DataType ConvertType(::fedb::type::DataType type) {
     switch (type) {
         case fedb::type::kBool:
-            return ::fesql::sdk::kTypeBool;
+            return ::hybridse::sdk::kTypeBool;
         case fedb::type::kSmallInt:
-            return ::fesql::sdk::kTypeInt16;
+            return ::hybridse::sdk::kTypeInt16;
         case fedb::type::kInt:
-            return ::fesql::sdk::kTypeInt32;
+            return ::hybridse::sdk::kTypeInt32;
         case fedb::type::kBigInt:
-            return ::fesql::sdk::kTypeInt64;
+            return ::hybridse::sdk::kTypeInt64;
         case fedb::type::kFloat:
-            return ::fesql::sdk::kTypeFloat;
+            return ::hybridse::sdk::kTypeFloat;
         case fedb::type::kDouble:
-            return ::fesql::sdk::kTypeDouble;
+            return ::hybridse::sdk::kTypeDouble;
         case fedb::type::kTimestamp:
-            return ::fesql::sdk::kTypeTimestamp;
+            return ::hybridse::sdk::kTypeTimestamp;
         case fedb::type::kString:
         case fedb::type::kVarchar:
-            return ::fesql::sdk::kTypeString;
+            return ::hybridse::sdk::kTypeString;
         default:
-            return ::fesql::sdk::kTypeUnknow;
+            return ::hybridse::sdk::kTypeUnknow;
     }
 }
 
@@ -64,7 +64,7 @@ class SQLInsertRow {
  public:
     explicit SQLInsertRow(
         std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
-        std::shared_ptr<fesql::sdk::Schema> schema, DefaultValueMap default_map,
+        std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
         uint32_t default_str_length);
     ~SQLInsertRow() = default;
     bool Init(int str_length);
@@ -84,7 +84,7 @@ class SQLInsertRow {
     const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& GetDimensions();
     inline const std::vector<uint64_t>& GetTs() { return ts_; }
     inline const std::string& GetRow() { return val_; }
-    inline const std::shared_ptr<fesql::sdk::Schema> GetSchema() {
+    inline const std::shared_ptr<hybridse::sdk::Schema> GetSchema() {
         return schema_;
     }
 
@@ -113,7 +113,7 @@ class SQLInsertRow {
 
  private:
     std::shared_ptr<::fedb::nameserver::TableInfo> table_info_;
-    std::shared_ptr<fesql::sdk::Schema> schema_;
+    std::shared_ptr<hybridse::sdk::Schema> schema_;
     DefaultValueMap default_map_;
     uint32_t default_string_length_;
     std::map<uint32_t, std::vector<uint32_t>> index_map_;
@@ -129,7 +129,7 @@ class SQLInsertRow {
 class SQLInsertRows {
  public:
     SQLInsertRows(std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
-                  std::shared_ptr<fesql::sdk::Schema> schema,
+                  std::shared_ptr<hybridse::sdk::Schema> schema,
                   DefaultValueMap default_map, uint32_t str_size);
     ~SQLInsertRows() = default;
     std::shared_ptr<SQLInsertRow> NewRow();
@@ -143,7 +143,7 @@ class SQLInsertRows {
 
  private:
     std::shared_ptr<::fedb::nameserver::TableInfo> table_info_;
-    std::shared_ptr<fesql::sdk::Schema> schema_;
+    std::shared_ptr<hybridse::sdk::Schema> schema_;
     DefaultValueMap default_map_;
     uint32_t default_str_length_;
     std::vector<std::shared_ptr<SQLInsertRow>> rows_;

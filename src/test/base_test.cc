@@ -31,7 +31,7 @@ std::string SQLCaseTest::GenRand(const std::string &prefix) {
 const std::string SQLCaseTest::AutoTableName() { return GenRand("auto_t"); }
 std::string SQLCaseTest::FindRtidbDirPath(const std::string &dirname) {
     boost::filesystem::path current_path(boost::filesystem::current_path());
-    boost::filesystem::path fesql_path;
+    boost::filesystem::path hybridse_path;
 
     if (current_path.filename() == dirname) {
         return current_path.string();
@@ -48,13 +48,14 @@ std::string SQLCaseTest::FindRtidbDirPath(const std::string &dirname) {
     return std::string();
 }
 
-std::vector<fesql::sqlcase::SQLCase> SQLCaseTest::InitCases(const std::string &yaml_path) {
-    std::vector<fesql::sqlcase::SQLCase> cases;
+std::vector<hybridse::sqlcase::SQLCase> SQLCaseTest::InitCases(const std::string &yaml_path) {
+    std::vector<hybridse::sqlcase::SQLCase> cases;
+    // TODO(denglong): fedb需要配置自己的cast路径，不依赖目录名推断
     InitCases(FindRtidbDirPath("rtidb") + "/fesql/", yaml_path, cases);
-    std::vector<fesql::sqlcase::SQLCase> level_cases;
+    std::vector<hybridse::sqlcase::SQLCase> level_cases;
 
     int skip_case_cnt = 0;
-    std::set<std::string> levels = fesql::sqlcase::SQLCase::FESQL_LEVEL();
+    std::set<std::string> levels = hybridse::sqlcase::SQLCase::HYBRIDSE_LEVEL();
     for (const auto &sql_case : cases) {
         if (levels.find(std::to_string(sql_case.level())) != levels.cend()) {
             level_cases.push_back(sql_case);
@@ -63,24 +64,24 @@ std::vector<fesql::sqlcase::SQLCase> SQLCaseTest::InitCases(const std::string &y
         }
     }
     if (skip_case_cnt > 0) {
-        DLOG(INFO) << "InitCases done: FESQL_LEVEL skip cases cnt: " << skip_case_cnt;
+        DLOG(INFO) << "InitCases done: HYBRIDSE_LEVEL skip cases cnt: " << skip_case_cnt;
     }
     return level_cases;
 }
 void SQLCaseTest::InitCases(const std::string &dir_path, const std::string &yaml_path,
-                            std::vector<fesql::sqlcase::SQLCase> &cases) {  // NOLINT
-    if (!fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(dir_path, yaml_path, cases)) {
+                            std::vector<hybridse::sqlcase::SQLCase> &cases) {  // NOLINT
+    if (!hybridse::sqlcase::SQLCase::CreateSQLCasesFromYaml(dir_path, yaml_path, cases)) {
         FAIL();
     }
 }
 
-void SQLCaseTest::PrintSchema(const fesql::vm::Schema &schema) {
+void SQLCaseTest::PrintSchema(const hybridse::vm::Schema &schema) {
     std::ostringstream oss;
-    fesql::codec::RowView row_view(schema);
-    ::fesql::base::TextTable t('-', '|', '+');
+    hybridse::codec::RowView row_view(schema);
+    ::hybridse::base::TextTable t('-', '|', '+');
     // Add ColumnName
     for (int i = 0; i < schema.size(); i++) {
-        t.add(schema.Get(i).name() + ":" + fesql::type::Type_Name(schema.Get(i).type()));
+        t.add(schema.Get(i).name() + ":" + hybridse::type::Type_Name(schema.Get(i).type()));
         if (t.current_columns_size() >= MAX_DEBUG_COLUMN_CNT) {
             t.add("...");
             break;
@@ -89,7 +90,7 @@ void SQLCaseTest::PrintSchema(const fesql::vm::Schema &schema) {
     // Add ColumnType
     t.end_of_row();
     for (int i = 0; i < schema.size(); i++) {
-        t.add(fesql::sqlcase::SQLCase::TypeString(schema.Get(i).type()));
+        t.add(hybridse::sqlcase::SQLCase::TypeString(schema.Get(i).type()));
         if (t.current_columns_size() >= MAX_DEBUG_COLUMN_CNT) {
             t.add("...");
             break;
@@ -100,9 +101,9 @@ void SQLCaseTest::PrintSchema(const fesql::vm::Schema &schema) {
     LOG(INFO) << "\n" << oss.str() << "\n";
 }
 
-void SQLCaseTest::PrintSdkSchema(const fesql::sdk::Schema &schema) {
+void SQLCaseTest::PrintSdkSchema(const hybridse::sdk::Schema &schema) {
     std::ostringstream oss;
-    ::fesql::base::TextTable t('-', '|', '+');
+    ::hybridse::base::TextTable t('-', '|', '+');
     // Add Header
     for (int i = 0; i < schema.GetColumnCnt(); i++) {
         t.add(schema.GetColumnName(i));
@@ -114,7 +115,7 @@ void SQLCaseTest::PrintSdkSchema(const fesql::sdk::Schema &schema) {
     t.end_of_row();
 }
 
-void SQLCaseTest::CheckSchema(const fesql::vm::Schema &schema, const fesql::vm::Schema &exp_schema) {
+void SQLCaseTest::CheckSchema(const hybridse::vm::Schema &schema, const hybridse::vm::Schema &exp_schema) {
     LOG(INFO) << "expect schema:\n";
     PrintSchema(exp_schema);
     LOG(INFO) << "real schema:\n";
@@ -126,7 +127,7 @@ void SQLCaseTest::CheckSchema(const fesql::vm::Schema &schema, const fesql::vm::
     }
 }
 
-void SQLCaseTest::CheckSchema(const fesql::vm::Schema &exp_schema, const fesql::sdk::Schema &schema) {
+void SQLCaseTest::CheckSchema(const hybridse::vm::Schema &exp_schema, const hybridse::sdk::Schema &schema) {
     LOG(INFO) << "expect schema:\n";
     PrintSchema(exp_schema);
     LOG(INFO) << "real schema:\n";
@@ -135,40 +136,40 @@ void SQLCaseTest::CheckSchema(const fesql::vm::Schema &exp_schema, const fesql::
     for (int i = 0; i < schema.GetColumnCnt(); i++) {
         ASSERT_EQ(exp_schema.Get(i).name(), schema.GetColumnName(i));
         switch (exp_schema.Get(i).type()) {
-            case fesql::type::kInt32: {
-                ASSERT_EQ(fesql::sdk::kTypeInt32, schema.GetColumnType(i));
+            case hybridse::type::kInt32: {
+                ASSERT_EQ(hybridse::sdk::kTypeInt32, schema.GetColumnType(i));
                 break;
             }
-            case fesql::type::kInt64: {
-                ASSERT_EQ(fesql::sdk::kTypeInt64, schema.GetColumnType(i));
+            case hybridse::type::kInt64: {
+                ASSERT_EQ(hybridse::sdk::kTypeInt64, schema.GetColumnType(i));
                 break;
             }
-            case fesql::type::kInt16: {
-                ASSERT_EQ(fesql::sdk::kTypeInt16, schema.GetColumnType(i));
+            case hybridse::type::kInt16: {
+                ASSERT_EQ(hybridse::sdk::kTypeInt16, schema.GetColumnType(i));
                 break;
             }
-            case fesql::type::kFloat: {
-                ASSERT_EQ(fesql::sdk::kTypeFloat, schema.GetColumnType(i));
+            case hybridse::type::kFloat: {
+                ASSERT_EQ(hybridse::sdk::kTypeFloat, schema.GetColumnType(i));
                 break;
             }
-            case fesql::type::kDouble: {
-                ASSERT_EQ(fesql::sdk::kTypeDouble, schema.GetColumnType(i));
+            case hybridse::type::kDouble: {
+                ASSERT_EQ(hybridse::sdk::kTypeDouble, schema.GetColumnType(i));
                 break;
             }
-            case fesql::type::kVarchar: {
-                ASSERT_EQ(fesql::sdk::kTypeString, schema.GetColumnType(i));
+            case hybridse::type::kVarchar: {
+                ASSERT_EQ(hybridse::sdk::kTypeString, schema.GetColumnType(i));
                 break;
             }
-            case fesql::type::kTimestamp: {
-                ASSERT_EQ(fesql::sdk::kTypeTimestamp, schema.GetColumnType(i));
+            case hybridse::type::kTimestamp: {
+                ASSERT_EQ(hybridse::sdk::kTypeTimestamp, schema.GetColumnType(i));
                 break;
             }
-            case fesql::type::kDate: {
-                ASSERT_EQ(fesql::sdk::kTypeDate, schema.GetColumnType(i));
+            case hybridse::type::kDate: {
+                ASSERT_EQ(hybridse::sdk::kTypeDate, schema.GetColumnType(i));
                 break;
             }
-            case fesql::type::kBool: {
-                ASSERT_EQ(fesql::sdk::kTypeBool, schema.GetColumnType(i));
+            case hybridse::type::kBool: {
+                ASSERT_EQ(hybridse::sdk::kTypeBool, schema.GetColumnType(i));
                 break;
             }
             default: {
@@ -179,10 +180,10 @@ void SQLCaseTest::CheckSchema(const fesql::vm::Schema &exp_schema, const fesql::
     }
 }
 
-void SQLCaseTest::PrintRows(const fesql::vm::Schema &schema, const std::vector<fesql::codec::Row> &rows) {
+void SQLCaseTest::PrintRows(const hybridse::vm::Schema &schema, const std::vector<hybridse::codec::Row> &rows) {
     std::ostringstream oss;
-    fesql::codec::RowView row_view(schema);
-    ::fesql::base::TextTable t('-', '|', '+');
+    hybridse::codec::RowView row_view(schema);
+    ::hybridse::base::TextTable t('-', '|', '+');
     // Add Header
     for (int i = 0; i < schema.size(); i++) {
         t.add(schema.Get(i).name());
@@ -217,11 +218,11 @@ void SQLCaseTest::PrintRows(const fesql::vm::Schema &schema, const std::vector<f
     LOG(INFO) << "\n" << oss.str() << "\n";
 }
 
-const std::vector<fesql::codec::Row> SQLCaseTest::SortRows(const fesql::vm::Schema &schema,
-                                                           const std::vector<fesql::codec::Row> &rows,
+const std::vector<hybridse::codec::Row> SQLCaseTest::SortRows(const hybridse::vm::Schema &schema,
+                                                           const std::vector<hybridse::codec::Row> &rows,
                                                            const std::string &order_col) {
     DLOG(INFO) << "sort rows start";
-    fesql::codec::RowView row_view(schema);
+    hybridse::codec::RowView row_view(schema);
     int idx = -1;
     for (int i = 0; i < schema.size(); i++) {
         if (schema.Get(i).name() == order_col) {
@@ -233,35 +234,35 @@ const std::vector<fesql::codec::Row> SQLCaseTest::SortRows(const fesql::vm::Sche
         return rows;
     }
 
-    if (schema.Get(idx).type() == fesql::type::kVarchar) {
-        std::vector<std::pair<std::string, fesql::codec::Row>> sort_rows;
+    if (schema.Get(idx).type() == hybridse::type::kVarchar) {
+        std::vector<std::pair<std::string, hybridse::codec::Row>> sort_rows;
         for (auto row : rows) {
             row_view.Reset(row.buf());
             row_view.GetAsString(idx);
             sort_rows.push_back(std::make_pair(row_view.GetAsString(idx), row));
         }
         std::sort(sort_rows.begin(), sort_rows.end(),
-                  [](std::pair<std::string, fesql::codec::Row> &a, std::pair<std::string, fesql::codec::Row> &b) {
+                  [](std::pair<std::string, hybridse::codec::Row> &a, std::pair<std::string, hybridse::codec::Row> &b) {
                       return a.first < b.first;
                   });
-        std::vector<fesql::codec::Row> output_rows;
+        std::vector<hybridse::codec::Row> output_rows;
         for (auto row : sort_rows) {
             output_rows.push_back(row.second);
         }
         DLOG(INFO) << "sort rows done!";
         return output_rows;
     } else {
-        std::vector<std::pair<int64_t, fesql::codec::Row>> sort_rows;
+        std::vector<std::pair<int64_t, hybridse::codec::Row>> sort_rows;
         for (auto row : rows) {
             row_view.Reset(row.buf());
             row_view.GetAsString(idx);
             sort_rows.push_back(std::make_pair(boost::lexical_cast<int64_t>(row_view.GetAsString(idx)), row));
         }
         std::sort(sort_rows.begin(), sort_rows.end(),
-                  [](std::pair<int64_t, fesql::codec::Row> &a, std::pair<int64_t, fesql::codec::Row> &b) {
+                  [](std::pair<int64_t, hybridse::codec::Row> &a, std::pair<int64_t, hybridse::codec::Row> &b) {
                       return a.first < b.first;
                   });
-        std::vector<fesql::codec::Row> output_rows;
+        std::vector<hybridse::codec::Row> output_rows;
         for (auto row : sort_rows) {
             output_rows.push_back(row.second);
         }
@@ -270,10 +271,10 @@ const std::vector<fesql::codec::Row> SQLCaseTest::SortRows(const fesql::vm::Sche
     }
 }
 
-void SQLCaseTest::PrintResultSetYamlFormat(std::shared_ptr<fesql::sdk::ResultSet> rs) {
-    PrintResultSetYamlFormat(std::vector<std::shared_ptr<fesql::sdk::ResultSet>>({rs}));
+void SQLCaseTest::PrintResultSetYamlFormat(std::shared_ptr<hybridse::sdk::ResultSet> rs) {
+    PrintResultSetYamlFormat(std::vector<std::shared_ptr<hybridse::sdk::ResultSet>>({rs}));
 }
-void SQLCaseTest::PrintResultSetYamlFormat(std::vector<std::shared_ptr<fesql::sdk::ResultSet>> results) {
+void SQLCaseTest::PrintResultSetYamlFormat(std::vector<std::shared_ptr<hybridse::sdk::ResultSet>> results) {
     std::ostringstream oss;
     if (results.empty()) {
         LOG(INFO) << "EMPTY results";
@@ -317,9 +318,9 @@ void SQLCaseTest::PrintResultSetYamlFormat(std::vector<std::shared_ptr<fesql::sd
     }
     LOG(INFO) << "\n" << oss.str() << "\n";
 }
-void SQLCaseTest::PrintResultSet(std::shared_ptr<fesql::sdk::ResultSet> rs) {
+void SQLCaseTest::PrintResultSet(std::shared_ptr<hybridse::sdk::ResultSet> rs) {
     std::ostringstream oss;
-    ::fesql::base::TextTable t('-', '|', '+');
+    ::hybridse::base::TextTable t('-', '|', '+');
     auto schema = rs->GetSchema();
     // Add Header
     for (int i = 0; i < schema->GetColumnCnt(); i++) {
@@ -353,13 +354,13 @@ void SQLCaseTest::PrintResultSet(std::shared_ptr<fesql::sdk::ResultSet> rs) {
     oss << t << std::endl;
     LOG(INFO) << "\n" << oss.str() << "\n";
 }
-void SQLCaseTest::PrintResultSet(std::vector<std::shared_ptr<fesql::sdk::ResultSet>> results) {
+void SQLCaseTest::PrintResultSet(std::vector<std::shared_ptr<hybridse::sdk::ResultSet>> results) {
     if (results.empty()) {
         LOG(WARNING) << "Fail to PrintResultSet: ResultSet List is Empty";
         return;
     }
     std::ostringstream oss;
-    ::fesql::base::TextTable t('-', '|', '+');
+    ::hybridse::base::TextTable t('-', '|', '+');
     auto rs = results[0];
     auto schema = rs->GetSchema();
     // Add Header
@@ -397,8 +398,8 @@ void SQLCaseTest::PrintResultSet(std::vector<std::shared_ptr<fesql::sdk::ResultS
     LOG(INFO) << "\n" << oss.str() << "\n";
 }
 
-void SQLCaseTest::CheckRow(fesql::codec::RowView &row_view,  // NOLINT
-                           std::shared_ptr<fesql::sdk::ResultSet> rs) {
+void SQLCaseTest::CheckRow(hybridse::codec::RowView &row_view,  // NOLINT
+                           std::shared_ptr<hybridse::sdk::ResultSet> rs) {
     for (int i = 0; i < row_view.GetSchema()->size(); i++) {
         DLOG(INFO) << "Check Column Idx: " << i;
         std::string column_name = row_view.GetSchema()->Get(i).name();
@@ -407,19 +408,19 @@ void SQLCaseTest::CheckRow(fesql::codec::RowView &row_view,  // NOLINT
             continue;
         }
         switch (row_view.GetSchema()->Get(i).type()) {
-            case fesql::type::kInt32: {
+            case hybridse::type::kInt32: {
                 ASSERT_EQ(row_view.GetInt32Unsafe(i), rs->GetInt32Unsafe(i)) << " At " << i;
                 break;
             }
-            case fesql::type::kInt64: {
+            case hybridse::type::kInt64: {
                 ASSERT_EQ(row_view.GetInt64Unsafe(i), rs->GetInt64Unsafe(i)) << " At " << i;
                 break;
             }
-            case fesql::type::kInt16: {
+            case hybridse::type::kInt16: {
                 ASSERT_EQ(row_view.GetInt16Unsafe(i), rs->GetInt16Unsafe(i)) << " At " << i;
                 break;
             }
-            case fesql::type::kFloat: {
+            case hybridse::type::kFloat: {
                 float act = row_view.GetFloatUnsafe(i);
                 float exp = rs->GetFloatUnsafe(i);
                 if (IsNaN(exp)) {
@@ -429,7 +430,7 @@ void SQLCaseTest::CheckRow(fesql::codec::RowView &row_view,  // NOLINT
                 }
                 break;
             }
-            case fesql::type::kDouble: {
+            case hybridse::type::kDouble: {
                 double act = row_view.GetDoubleUnsafe(i);
                 double exp = rs->GetDoubleUnsafe(i);
                 if (IsNaN(exp)) {
@@ -440,19 +441,19 @@ void SQLCaseTest::CheckRow(fesql::codec::RowView &row_view,  // NOLINT
 
                 break;
             }
-            case fesql::type::kVarchar: {
+            case hybridse::type::kVarchar: {
                 ASSERT_EQ(row_view.GetStringUnsafe(i), rs->GetStringUnsafe(i)) << " At " << i;
                 break;
             }
-            case fesql::type::kTimestamp: {
+            case hybridse::type::kTimestamp: {
                 ASSERT_EQ(row_view.GetTimestampUnsafe(i), rs->GetTimeUnsafe(i)) << " At " << i;
                 break;
             }
-            case fesql::type::kDate: {
+            case hybridse::type::kDate: {
                 ASSERT_EQ(row_view.GetDateUnsafe(i), rs->GetDateUnsafe(i)) << " At " << i;
                 break;
             }
-            case fesql::type::kBool: {
+            case hybridse::type::kBool: {
                 ASSERT_EQ(row_view.GetBoolUnsafe(i), rs->GetBoolUnsafe(i)) << " At " << i;
                 break;
             }
@@ -463,19 +464,20 @@ void SQLCaseTest::CheckRow(fesql::codec::RowView &row_view,  // NOLINT
         }
     }
 }
-void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::string &order_col,
-                            const std::vector<fesql::codec::Row> &rows, std::shared_ptr<fesql::sdk::ResultSet> rs) {
+void SQLCaseTest::CheckRows(const hybridse::vm::Schema &schema, const std::string &order_col,
+                            const std::vector<hybridse::codec::Row> &rows,
+                            std::shared_ptr<hybridse::sdk::ResultSet> rs) {
     LOG(INFO) << "Expected Rows: \n";
     PrintRows(schema, rows);
     LOG(INFO) << "ResultSet Rows: \n";
     PrintResultSet(rs);
-    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+    if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
         PrintResultSetYamlFormat(rs);
     }
     LOG(INFO) << "order: " << order_col;
 
     ASSERT_EQ(static_cast<int32_t>(rows.size()), rs->Size());
-    fesql::codec::RowView row_view(schema);
+    hybridse::codec::RowView row_view(schema);
     int order_idx = -1;
     for (int i = 0; i < schema.size(); i++) {
         if (schema.Get(i).name() == order_col) {
@@ -483,7 +485,7 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::string &
             break;
         }
     }
-    std::map<std::string, std::pair<fesql::codec::Row, bool>> rows_map;
+    std::map<std::string, std::pair<hybridse::codec::Row, bool>> rows_map;
     if (order_idx >= 0) {
         int32_t row_id = 0;
         for (auto row : rows) {
@@ -495,7 +497,7 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::string &
     }
     int32_t index = 0;
     rs->Reset();
-    std::vector<fesql::codec::Row> result_rows;
+    std::vector<hybridse::codec::Row> result_rows;
     while (rs->Next()) {
         if (order_idx >= 0) {
             std::string key = rs->GetAsString(order_idx);
@@ -512,15 +514,15 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::string &
     }
 }
 
-void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::vector<fesql::codec::Row> &rows,
-                            const std::vector<fesql::codec::Row> &exp_rows) {
+void SQLCaseTest::CheckRows(const hybridse::vm::Schema &schema, const std::vector<hybridse::codec::Row> &rows,
+                            const std::vector<hybridse::codec::Row> &exp_rows) {
     LOG(INFO) << "expect result:\n";
     PrintRows(schema, exp_rows);
     LOG(INFO) << "real result:\n";
     PrintRows(schema, rows);
     ASSERT_EQ(rows.size(), exp_rows.size());
-    fesql::codec::RowView row_view(schema);
-    fesql::codec::RowView row_view_exp(schema);
+    hybridse::codec::RowView row_view(schema);
+    hybridse::codec::RowView row_view_exp(schema);
     for (size_t row_index = 0; row_index < rows.size(); row_index++) {
         row_view.Reset(rows[row_index].buf());
         row_view_exp.Reset(exp_rows[row_index].buf());
@@ -530,19 +532,19 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::vector<f
                 continue;
             }
             switch (schema.Get(i).type()) {
-                case fesql::type::kInt32: {
+                case hybridse::type::kInt32: {
                     ASSERT_EQ(row_view.GetInt32Unsafe(i), row_view_exp.GetInt32Unsafe(i)) << " At " << i;
                     break;
                 }
-                case fesql::type::kInt64: {
+                case hybridse::type::kInt64: {
                     ASSERT_EQ(row_view.GetInt64Unsafe(i), row_view_exp.GetInt64Unsafe(i)) << " At " << i;
                     break;
                 }
-                case fesql::type::kInt16: {
+                case hybridse::type::kInt16: {
                     ASSERT_EQ(row_view.GetInt16Unsafe(i), row_view_exp.GetInt16Unsafe(i)) << " At " << i;
                     break;
                 }
-                case fesql::type::kFloat: {
+                case hybridse::type::kFloat: {
                     float act = row_view.GetFloatUnsafe(i);
                     float exp = row_view_exp.GetFloatUnsafe(i);
                     if (IsNaN(exp)) {
@@ -552,7 +554,7 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::vector<f
                     }
                     break;
                 }
-                case fesql::type::kDouble: {
+                case hybridse::type::kDouble: {
                     double act = row_view.GetDoubleUnsafe(i);
                     double exp = row_view_exp.GetDoubleUnsafe(i);
                     if (IsNaN(exp)) {
@@ -562,19 +564,19 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::vector<f
                     }
                     break;
                 }
-                case fesql::type::kVarchar: {
+                case hybridse::type::kVarchar: {
                     ASSERT_EQ(row_view.GetStringUnsafe(i), row_view_exp.GetStringUnsafe(i)) << " At " << i;
                     break;
                 }
-                case fesql::type::kDate: {
+                case hybridse::type::kDate: {
                     ASSERT_EQ(row_view.GetDateUnsafe(i), row_view_exp.GetDateUnsafe(i)) << " At " << i;
                     break;
                 }
-                case fesql::type::kTimestamp: {
+                case hybridse::type::kTimestamp: {
                     ASSERT_EQ(row_view.GetTimestampUnsafe(i), row_view_exp.GetTimestampUnsafe(i)) << " At " << i;
                     break;
                 }
-                case fesql::type::kBool: {
+                case hybridse::type::kBool: {
                     ASSERT_EQ(row_view.GetBoolUnsafe(i), row_view_exp.GetBoolUnsafe(i)) << " At " << i;
                     break;
                 }
@@ -587,19 +589,19 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::vector<f
     }
 }
 
-void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::string &order_col,
-                            const std::vector<fesql::codec::Row> &rows,
-                            std::vector<std::shared_ptr<fesql::sdk::ResultSet>> results) {
+void SQLCaseTest::CheckRows(const hybridse::vm::Schema &schema, const std::string &order_col,
+                            const std::vector<hybridse::codec::Row> &rows,
+                            std::vector<std::shared_ptr<hybridse::sdk::ResultSet>> results) {
     ASSERT_EQ(rows.size(), results.size());
     LOG(INFO) << "Expected Rows: \n";
     PrintRows(schema, rows);
     LOG(INFO) << "ResultSet Rows: \n";
     PrintResultSet(results);
-    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+    if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
         PrintResultSetYamlFormat(results);
     }
     LOG(INFO) << "order col key: " << order_col;
-    fesql::codec::RowView row_view(schema);
+    hybridse::codec::RowView row_view(schema);
     int order_idx = -1;
     for (int i = 0; i < schema.size(); i++) {
         if (schema.Get(i).name() == order_col) {
@@ -607,7 +609,7 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::string &
             break;
         }
     }
-    std::map<std::string, fesql::codec::Row> rows_map;
+    std::map<std::string, hybridse::codec::Row> rows_map;
     if (order_idx >= 0) {
         int32_t row_id = 0;
         for (auto row : rows) {
