@@ -15,15 +15,30 @@
 
 set -eE
 
+# goto the toplevel directory
+cd "$(dirname "$0")/.."
+
 echo "CICD environment tag: ${CICD_RUNNER_TAG}"
 
 echo "Third party packages path: ${CICD_RUNNER_THIRDPARTY_PATH}"
 if [[ "$OSTYPE" == "linux-gnu"* ]]
 then
+    # unpack thirdparty first time
+    pushd /depends
+    if [[ ! -d thirdparty && -r thirdparty.tar.gz ]]; then
+        tar xvzf thirdparty.tar.gz
+    fi
+    popd
     ln -sf /depends/thirdparty thirdparty
-    source /opt/rh/devtoolset-7/enable
-    source /opt/rh/sclo-git25/enable
-    [ -r /etc/profile.d/enable-thirdparty.sh ] && source /etc/profile.d/enable-thirdparty.sh
+    if [ -r /opt/rh/devtoolset-7/enable ]; then
+        source /opt/rh/devtoolset-7/enable
+    fi
+    if [ -r /opt/rh/sclo-git212/enable ]; then
+        source /opt/rh/sclo-git212/enable
+    fi
+    if [ -r /etc/profile.d/enable-thirdparty.sh ]; then
+        source /etc/profile.d/enable-thirdparty.sh
+    fi
 else
     source ~/.bash_profile
     ln -sf ${CICD_RUNNER_THIRDPARTY_PATH} thirdparty

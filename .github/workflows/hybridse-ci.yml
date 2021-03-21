@@ -20,7 +20,7 @@ jobs:
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
+      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.HYBRIDSE_PAT }}
