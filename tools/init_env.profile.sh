@@ -26,7 +26,7 @@ then
     # unpack thirdparty first time
     pushd /depends
     if [[ ! -d thirdparty && -r thirdparty.tar.gz ]]; then
-        tar xvzf thirdparty.tar.gz
+        tar xzf thirdparty.tar.gz
     fi
     popd
     ln -sf /depends/thirdparty thirdparty
@@ -38,6 +38,10 @@ then
     fi
     if [ -r /etc/profile.d/enable-thirdparty.sh ]; then
         source /etc/profile.d/enable-thirdparty.sh
+    else
+        # backward configure for old environment
+        export JAVA_HOME=${PWD}/thirdparty/jdk1.8.0_141
+        export PATH=${PWD}/thirdparty/bin:$JAVA_HOME/bin:${PWD}/thirdparty/apache-maven-3.6.3/bin:$PATH
     fi
 else
     source ~/.bash_profile
