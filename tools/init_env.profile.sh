@@ -16,7 +16,7 @@
 set -eE
 
 # goto the toplevel directory
-cd "$(dirname "$0")/.."
+pushd "$(dirname "$0")/.."
 
 echo "CICD environment tag: ${CICD_RUNNER_TAG}"
 
@@ -47,3 +47,5 @@ else
     source ~/.bash_profile
     ln -sf ${CICD_RUNNER_THIRDPARTY_PATH} thirdparty
 fi
+
+popd
