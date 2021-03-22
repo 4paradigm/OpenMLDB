@@ -35,6 +35,17 @@ style_check:
             junit:
                 - ./style.xml
 
+
+build_hybridse_on_linux:
+    stage: build
+    script:
+        - bash tools/hybridse_build.sh
+        - bash tools/cicd/gen_intermediate_cicd_artifacts.sh linux
+        - bash tools/documentation/export_udf_doc.sh
+    artifacts:
+        paths:
+            - intermediate_cicd_artifact_linux.tar.gz
+
 coverage_report:
     stage: build
     script:
@@ -46,29 +57,17 @@ coverage_report:
         paths:
             - build/coverage
 
-build_hybridse_on_linux:
-    stage: build
+test_hybridse_core_on_linux:
+    stage: test
     script:
-        - bash tools/compile_and_test_all.sh
-        - bash tools/cicd/gen_intermediate_cicd_artifacts.sh linux
-        - bash tools/documentation/export_udf_doc.sh
+        - bash tools/hybridse_core_test.sh
     artifacts:
-        paths:
-            - intermediate_cicd_artifact_linux.tar.gz
 
-#build_hybridse_on_mac:
-#    stage: test
-#    variables:
-#        CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
-#        CICD_RUNNER_TAG: "macos"
-#    script:
-#        - bash tools/compile_and_test.sh
-#        - bash tools/cicd/gen_intermediate_cicd_artifacts.sh mac
-#    tags:
-#        - macos
-#    artifacts:
-#        paths:
-#            - intermediate_cicd_artifact_mac.tar.gz
+test_hybridse_examples_on_linux:
+    stage: test
+    script:
+        - bash tools/hybridse_examples_test.sh
+    artifacts:
 
 test_hybridse_java_on_linux:
     stage: test

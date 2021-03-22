@@ -13,9 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#
-# micro_bench.sh
-
 set -eE
 
 # goto toplevel directory
@@ -31,21 +28,7 @@ fi
 
 rm -rf build
 mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=OFF -DBENCHMARK_ENABLE=ON
-make -j"$(nproc)" hybridse_bm toydb_bm
-
-echo "udf benchmark:"
-src/bm/udf_bm 2>/dev/null
-
-echo "toydb storage benchmark:"
-examples/toydb/src/bm/storage_bm 2>/dev/null
-
-echo "toydb engine benchmark:"
-examples/toydb/src/bm/engine_bm 2>/dev/null
-
-echo "toydb client batch run benchmark:"
-examples/toydb/src/bm/hybridse_client_batch_run_bm 2>/dev/null
-
-echo "toydb batch request benchmark:"
-examples/toydb/src/bm/batch_request_bm 2>/dev/null
-
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DCORE_TESTING_ENABLE=OFF
+make -j"$(nproc)" hybridse_proto && make -j"$(nproc)" hybridse_parser
+make -j"$(nproc)"
+make test -j"$(nproc)"

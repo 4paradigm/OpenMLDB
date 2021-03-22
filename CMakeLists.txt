@@ -43,6 +43,8 @@ set(HYBRIDSE_VERSION_MINOR 1)
 set(HYBRIDSE_VERSION_BUG 0)
 
 option(TESTING_ENABLE "Enable Test" ON)
+option(CORE_TESTING_ENABLE "Enable Core Test" ON)
+option(EXAMPLES_TESTING_ENABLE "Enable Examples Test" ON)
 option(BENCHMARK_ENABLE "Enable Benchmark" ON)
 option(COVERAGE_ENABLE "Enable Coverage" ON)
 option(PYSDK_ENABLE "Enable pysdk" ON)
