@@ -92,16 +92,13 @@ micro_benchmark:
             - ./micro_bench_report.txt
             - ./benchmark_compare.html
             
-#deploy_jar:
-#    stage: deploy
-#    script:
-#        - bash tools/cicd/extract_intermediate_cicd_artifacts.sh linux
-#        - bash tools/cicd/deploy_hybridse_java_jar.sh
-#    dependencies:
-#        - build_hybridse_on_linux
-#    artifacts:
-#        paths:
-#            - ./java/hybridse-spark/target/*.jar
-
-
+deploy_hybridse:
+#    only:
+#        - release/*
+#        - tags
+    stage: deploy
+    script:
+        - bash tools/cicd/hybridse_deplpy.sh
+    dependencies:
+        - build_hybridse_on_linux
 

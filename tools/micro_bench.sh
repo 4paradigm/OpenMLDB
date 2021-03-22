@@ -35,7 +35,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Release -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=OFF -
 make -j"$(nproc)" hybridse_bm toydb_bm
 
 echo "udf benchmark:"
-src/bm/udf_bm 2>/dev/null
+src/benchmark/udf_bm 2>/dev/null
 
 echo "toydb storage benchmark:"
 examples/toydb/src/bm/storage_bm 2>/dev/null
