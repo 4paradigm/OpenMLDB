@@ -14,21 +14,21 @@
 # limitations under the License.
 
 set -eE
-set -o nounset
 
-cd "$(dirname "$0")"
-cd "$(git rev-parse --show-toplevel)"
+# goto toplevel directory
+cd "$(dirname "$0")/.."
+
+source tools/init_env.profile.sh
+
 
 if uname -a | grep -q Darwin; then
     # in case coreutils not install on mac
     alias nproc='sysctl -n hw.logicalcpu'
 fi
 
-export PATH=${PWD}/thirdparty/bin:$PATH
-
 rm -rf build
 mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE=ON -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=ON -DEXAMPLES_ENABLE=ON
-make hybridse_proto && make hybridse_parser -j"$(nproc)"
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=OFF -DJAVASDK_ENABLE=OFF -DPYSDK_ENABLE=OFF -DEXAMPLES_ENABLE=OFF
+make -j"$(nproc)" hybridse_proto && make -j"$(nproc)" hybridse_parser
 make -j"$(nproc)"
-make test -j"$(nproc)"
+# make test -j"$(nproc)"
