@@ -33,7 +33,7 @@ FEDB是一个面向实时推理和决策应用开发的NewSQL数据库
 git clone https://github.com/4paradigm/fedb.git
 docker run -v \`pwd\`/fedb:/fedb -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.0.1 bash
 cd /fedb
-git submodule update
+git submodule update --init
 sh tools/install_fesql.sh
 mkdir -p build && cmake ../ && make -j5 fedb
 ```
@@ -41,6 +41,7 @@ mkdir -p build && cmake ../ && make -j5 fedb
 ### Demo应用示例
 
 * [实时预测出租车行程耗时demo](https://github.com/4paradigm/DemoApps/tree/main/predict-taxi-trip-duration)
+* [实时检测在线交易健康状态Demo] oncoming
 
 ## 架构图
 
@@ -49,15 +50,22 @@ mkdir -p build && cmake ../ && make -j5 fedb
 ## 未来规划
 
 ### ANSI SQL兼容
+
 FEDB目前已经兼容主流DDL、DML语法，并逐步增强ANSI SQL语法的兼容性
+
 * [2021H1] 完善Window的标准语法，支持Where, Group By, Join等操作
 * [2021H1&H2]针对AI场景扩展特有的语法特性和UDAF函数
+
 ### 功能/性能提升
+
 为了满足实时推理与决策场景的高性能需求，fedb选择内存作为存储引擎介质，而目前业界使用内存存储引擎都存在内存碎片和重启恢复效率问题，fedb计划在内存分配算法进行优化降低碎片问题以及引入[PMEM](https://www.intel.com/content/www/us/en/architecture-and-technology/optane-dc-persistent-memory.html)(Intel Optane DC Persistent Memory Module)存储介质提升数据恢复效率，具体计划如下
+
 * [2021H1]支持新内存分配策略，降低内存碎片问题
 * [2021H2]实验支持PMEM存储引擎
+
 ### 生态构建
 FEDB有java/python client，java client支持jdbc接口的大部分功能。未来会对接到大数据生态，让flink/kafka/spark与FEDB更方便集成
+
 * [2021H1&H2]支持flink/kafka/spark connector
 
 ## 贡献代码
