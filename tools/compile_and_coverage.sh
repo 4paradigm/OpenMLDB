@@ -16,14 +16,18 @@
 
 set -eE
 
-cd "$(dirname "$0")"
-cd "$(git rev-parse --show-toplevel)"
+# goto toplevel directory
+cd "$(dirname "$0")/.."
+
+source tools/init_env.profile.sh
+
 
 if uname -a | grep -q Darwin; then
     # in case coreutils not install on mac
     alias nproc='sysctl -n hw.logicalcpu'
 fi
 
+rm -rf build
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON
 make hybridse_proto && make hybridse_parser && make -j"$(nproc)"
