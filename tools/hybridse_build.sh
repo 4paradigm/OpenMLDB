@@ -28,7 +28,7 @@ fi
 
 HYRBIDSE_VERSION="release-0.1.0"
 rm -rf build
-mkdir -p build && cd build$
+mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="hybridse" -DBENCHMARK_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=OFF -DPYSDK_ENABLE=OFF -DEXAMPLES_ENABLE=OFF
 make -j"$(nproc)" hybridse_proto && make -j"$(nproc)" hybridse_parser
 make -j"$(nproc)"
