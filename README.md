@@ -1,10 +1,15 @@
-# 介绍
+# What is HybridSE 
+
+[![HybridSE CI](https://github.com/4paradigm/HybridSE/actions/workflows/hybridse-ci.yml/badge.svg)](https://github.com/4paradigm/HybridSE/actions/workflows/hybridse-ci.yml)
+
+- [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)
+- [**Discussions**](https://github.com/4paradigm/HybridSE/discussions)
 
 HybridSE(Hybrid SQL Engine)是基于C++和LLVM实现的高性能混合SQL执行引擎，为AI应用、OLAD数据库、HTAP系统、SparkSQL、Flink Streaming SQL等提供一致性的SQL加速优化。
 
 <img src="./docs/img/HybridSE.png" alt="image-20210301164207172" style="width:600px" align="left"/>
 
-# 背景
+# What does HybridSE have
 
 HybridSE是一个模块化的SQL编译器和执行器，提供了SQL语法校验、逻辑计划生成和优化、表达式优化、离线或在线物理计划生成、Native代码生成以及单机或分布式Runner实现等功能。开发者使用HybridSE可以快速实现一个支持SQL的高性能数据库，也可以用HybridSE来优化离线SQL执行引擎的性能。相比与MySQL、SparkSQL等内置实现的SQL执行引擎，HybridSE不仅性能更优，而且针对AI场景进行了语法拓展和优化，更加适应现代SQL引擎的需求，HybridSE的特性如下。
 
@@ -17,9 +22,9 @@ HybridSE是一个模块化的SQL编译器和执行器，提供了SQL语法校验
 - **离线在线一致性**
   同一套SQL语法解析和CodeGen代码生成逻辑，保证使用HybridSE的离线和在线系统落地时计算语意一致，SQL中内置UDF/UDAF语法也避免跨语言系统的函数一致性问题。
 
-# 快速开始
+# Getting Started 
 
-## 编译
+## Build
 
 1.使用Docker镜像
 
@@ -174,8 +179,8 @@ toydb支持基本的NewSQL数据库的操作，具体操作细节，参详[ToyDB
 
 | 项目                                                         | 状态   | 描述                                             |
 | :----------------------------------------------------------- | :----- | :----------------------------------------------- |
-| [FEDB](https://wiki.4paradigm.com/display/PlatformRD/FEDB-README.md) | 开源   | 一个面向实时决策的NewSQL数据库                   |
-| [NativeSpark](https://wiki.4paradigm.com/display/PlatformRD/NativeSpark+README.md) | 开源   | 基于LLVM优化的Spark兼容的高性能原生执行引擎      |
+| [FEDB](https://github.com/4paradigm/fedb) | 开源   | 面向实时推理和决策的NewSQL数据库                   |
+| [NativeSpark](https://github.com/4paradigm/NativeSpark) | 开源   | 基于LLVM优化的Spark兼容的高性能原生执行引擎      |
 | NativeFlink                                                  | 开发中 | 基于HybridSE开发的高性能批流一体FlinkSQL执行引擎 |
 
 ## 未来规划
