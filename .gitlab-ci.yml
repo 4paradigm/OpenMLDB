@@ -43,7 +43,7 @@ coverage_report:
         reports:
             junit:
                 - build/*.xml
-        pathexport_udf_infos:
+        paths:
             - build/coverage
 
 build_hybridse_on_linux:
