@@ -3,7 +3,7 @@
 - [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)
 - [**Discussions**](https://github.com/4paradigm/fedb/discussions)
 
-# What is FEDB
+## What is FEDB
 
 FEDB是一个面向实时推理和决策应用开发的NewSQL数据库
 
@@ -31,23 +31,23 @@ FEDB是一个面向实时推理和决策应用开发的NewSQL数据库
 
 ```
 git clone https://github.com/4paradigm/fedb.git
-docker run -v \`pwd\`/fedb:/fedb -it FEDB-docker bash
+docker run -v \`pwd\`/fedb:/fedb -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.0.1 bash
 cd /fedb
-git submodule init fesql && git submodule update fesql
+git submodule update
 sh tools/install_fesql.sh
 mkdir -p build && cmake ../ && make -j5 fedb
 ```
 
 ### Demo应用示例
 
-* 实时预测出租车行程耗时demo [](https://github.com/4paradigm/DemoApps)
-
+* [实时预测出租车行程耗时demo](https://github.com/4paradigm/DemoApps/tree/main/predict-taxi-trip-duration)
 
 ## 架构图
 
 ![架构图](images/fedb_arch.png)  
 
 ## 未来规划
+
 ### ANSI SQL兼容
 FEDB目前已经兼容主流DDL、DML语法，并逐步增强ANSI SQL语法的兼容性
 * [2021H1] 完善Window的标准语法，支持Where, Group By, Join等操作
@@ -62,9 +62,10 @@ FEDB有java/python client，java client支持jdbc接口的大部分功能。未�
 
 ## 贡献代码
 请参考这里
+
 ## 反馈和参与
 * bug、疑惑、修改欢迎提在[Github Issues](https://github.com/4paradigm/fedb/issues/new)
-* 想了解更多或者有想法可以参与到[slack](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)交流，也可以通过[邮件](mailto:g_fedb_dev@4paradigm.com)
+* 想了解更多或者有想法可以参与到[slack](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)交流
 
 ## 许可证
 Apache License 2.0
