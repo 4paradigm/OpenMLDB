@@ -166,9 +166,9 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SQLCase& sql_ca
 }
 
 hybridse::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml, const std::string& case_id) {
-    return hybridse::sqlcase::SQLCase::LoadSQLCaseWithID(
-        fedb::test::SQLCaseTest::FindRtidbDirPath("rtidb") + "/fesql/", yaml, case_id);
+    return hybridse::sqlcase::SQLCase::LoadSQLCaseWithID(fedb::test::SQLCaseTest::GetYAMLBaseDir(), yaml, case_id);
 }
+
 void MiniBenchmarkOnCase(const std::string& yaml_path, const std::string& case_id, BmRunMode engine_mode,
                          ::fedb::sdk::MiniCluster* mc, benchmark::State* state) {
     auto target_case = LoadSQLCaseWithID(yaml_path, case_id);

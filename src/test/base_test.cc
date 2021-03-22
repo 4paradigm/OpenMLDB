@@ -15,8 +15,6 @@
  */
 
 #include "test/base_test.h"
-#include "boost/filesystem.hpp"
-#include "boost/filesystem/string_file.hpp"
 #include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 #include "sdk/base.h"
@@ -29,29 +27,26 @@ std::string SQLCaseTest::GenRand(const std::string &prefix) {
     return prefix + std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
 const std::string SQLCaseTest::AutoTableName() { return GenRand("auto_t"); }
-std::string SQLCaseTest::FindRtidbDirPath(const std::string &dirname) {
-    boost::filesystem::path current_path(boost::filesystem::current_path());
-    boost::filesystem::path hybridse_path;
 
-    if (current_path.filename() == dirname) {
-        return current_path.string();
-    }
-    while (current_path.has_parent_path()) {
-        current_path = current_path.parent_path();
-        if (current_path.filename().string() == dirname) {
-            break;
+std::string SQLCaseTest::GetYAMLBaseDir() {
+    std::string yaml_base_dir;
+    const char* env_name = "YMAL_CASE_BASE_DIR";
+    char* value = getenv(env_name);
+    if (value != nullptr) {
+        yaml_base_dir.assign(value);
+        if (yaml_base_dir.back() != '/') {
+            yaml_base_dir.append("/");
         }
+    } else {
+        yaml_base_dir = "/rtidb/fesql/";
     }
-    if (current_path.filename().string() == dirname) {
-        return current_path.string();
-    }
-    return std::string();
+    DLOG(INFO) << "InitCases YMAL_CASE_BASE_DIR: " << yaml_base_dir;
+    return yaml_base_dir;
 }
 
 std::vector<hybridse::sqlcase::SQLCase> SQLCaseTest::InitCases(const std::string &yaml_path) {
     std::vector<hybridse::sqlcase::SQLCase> cases;
-    // TODO(denglong): fedb需要配置自己的cast路径，不依赖目录名推断
-    InitCases(FindRtidbDirPath("rtidb") + "/fesql/", yaml_path, cases);
+    InitCases(GetYAMLBaseDir(), yaml_path, cases);
     std::vector<hybridse::sqlcase::SQLCase> level_cases;
 
     int skip_case_cnt = 0;

@@ -41,7 +41,7 @@ TMPFILE="code.tmp"
 echo 0 > $TMPFILE
 ls  build/bin/ | grep test | grep ${CASE_NAME} | grep -v grep | while read line
 do
-    GLOG_minloglevel=2 HYBRIDSE_LEVEL=${CASE_LEVEL} ./build/bin/$line --gtest_output=xml:./reports/$line.xml
+    GLOG_minloglevel=2 HYBRIDSE_LEVEL=${CASE_LEVEL} YMAL_CASE_BASE_DIR=${ROOT_DIR}/fesql ./build/bin/$line --gtest_output=xml:./reports/$line.xml
     RET=$?
     echo "$line result code is: $RET"
     if [ $RET -ne 0 ];then
