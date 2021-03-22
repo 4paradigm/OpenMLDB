@@ -33,5 +33,5 @@ cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="hybridse" -DBENCHMAR
 make -j"$(nproc)" hybridse_proto && make -j"$(nproc)" hybridse_parser
 make -j"$(nproc)"
 make -j "$(nproc)" install
-cd ..
 tar cfz hybridse-${HYRBIDSE_VERSION}.tar.gz hybridse
+mv hybridse-${HYRBIDSE_VERSION}.tar.gz ../
