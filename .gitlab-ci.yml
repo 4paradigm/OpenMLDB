@@ -98,7 +98,7 @@ deploy_hybridse:
 #        - tags
     stage: deploy
     script:
-        - bash tools/cicd/hybridse_deplpy.sh
+        - bash tools/cicd/hybridse_deploy.sh
     dependencies:
         - build_hybridse_on_linux
 
