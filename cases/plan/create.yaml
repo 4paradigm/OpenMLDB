@@ -1,0 +1,142 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cases:
+  - id: 1
+    desc: 简单CREATE
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 smallint NOT NULL,
+          column3 float NOT NULL,
+          column4 double NOT NULL,
+          column5 bigint NOT NULL,
+          std_ts timestamp NOT NULL,
+          std_date date NOT NULL,
+          index(key=(column2), ts=std_ts)
+      );
+  - id: 2
+    desc: 简单CREATE NOT EXIST
+    sql: |
+      create table IF NOT EXISTS test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL
+      );
+  - id: 3
+    desc: CREATE with 索引
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=(column4, column3), ts=column5)
+      );
+  - id: 4
+    desc: Create with索引和TTL
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=(column4, column3), ts=column2, ttl=60d)
+      );
+  - id: 5
+    desc: Create 带索引和version
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=(column4, column3), version=(column5, 3), ts=column2, ttl=60d)
+      );
+  - id: 6
+    desc: Create with索引和TTL和TTL_TYPE
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=(column4, column3), ts=column2, ttl=60d, ttl_type=absolute)
+      );
+  - id: 7
+    desc: Create with索引和TTL和TTL_TYPE
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=(column4, column3), ts=column2, ttl=1000, ttl_type=latest)
+      );
+  - id: 8
+    desc: Create 指定副本数
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=column1, ts=column2)) replicanum=2;
+  - id: 9
+    desc: Create 指定副本数与节点分布
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=column1, ts=column2)) replicanum=2, distribution(leader="127.0.0.1:9927", follower="127.0.0.1:9926");
+  - id: 10
+    desc: create procedure 
+    sql: |
+        create procedure sp1(const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date)
+        begin
+            SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum
+                FROM trans
+                WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+        end;
+  - id: 11
+    desc: Create with ttl_type absorlat
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=column1, ts=column2, ttl=(10d,100), ttl_type=absorlat));
+  - id: 12
+    desc: Create with ttl_type absandlat
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=column1, ts=column2, ttl=(10d,100), ttl_type=absandlat));
