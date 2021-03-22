@@ -1,11 +1,10 @@
 name: FEDB-CICD
 on: [push, pull_request]
-runs-on: self-hosted
 env:
   GIT_SUBMODULE_STRATEGY: recursive
 jobs:
   style_check:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.0.1
       credentials:
@@ -27,7 +26,7 @@ jobs:
         run: source /root/.bashrc && bash tools/style_check.sh
   build:
     needs: [style_check]
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.0.1
       credentials:
