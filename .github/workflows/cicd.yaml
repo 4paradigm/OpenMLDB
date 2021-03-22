@@ -1,12 +1,13 @@
 name: FEDB-CICD
 on: [push, pull_request]
+runs-on: self-hosted
 env:
   GIT_SUBMODULE_STRATEGY: recursive
 jobs:
   style_check:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
+      image:ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.0.1
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT_ZW }}
@@ -28,7 +29,7 @@ jobs:
     needs: [style_check]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
+      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.0.1
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT_ZW }}
@@ -54,27 +55,27 @@ jobs:
           ln -sf /depends/thirdparty thirdparty
           ln -sf /depends/thirdsrc thirdsrc
           source /root/.bashrc && bash steps/simple_compile.sh
-      - uses: actions/upload-artifact@v1
-        with:
-          name: fedb
-          path: build/bin/fedb
-      - uses: actions/upload-artifact@v1
-        with:
-          name: \sql_sdk_test
-          path: build/bin/sql_sdk_test
-      - uses: actions/upload-artifact@v1
-        with:
-          name: sql_cluster_test
-          path: build/bin/sql_cluster_test
-      - uses: actions/upload-artifact@v1
-        with:
-          name: libsql_jsdk.so
-          path: build/src/sdk/libsql_jsdk.so
-      - uses: actions/upload-artifact@v1
-        with:
-          name: sql_pysdk
-          path: build/sql_pysdk/dist/
-      - uses: actions/upload-artifact@v1
-        with:
-          name: python-whl
-          path: build/python/dist/
+          #     - uses: actions/upload-artifact@v1
+          #        with:
+          #          name: fedb
+          #          path: build/bin/fedb
+          #      - uses: actions/upload-artifact@v1
+          #        with:
+          #          name: \sql_sdk_test
+          #          path: build/bin/sql_sdk_test
+          #      - uses: actions/upload-artifact@v1
+          #        with:
+          #          name: sql_cluster_test
+          #          path: build/bin/sql_cluster_test
+          #      - uses: actions/upload-artifact@v1
+          #        with:
+          #          name: libsql_jsdk.so
+          #          path: build/src/sdk/libsql_jsdk.so
+          #      - uses: actions/upload-artifact@v1
+          #        with:
+          #          name: sql_pysdk
+          #          path: build/sql_pysdk/dist/
+          #      - uses: actions/upload-artifact@v1
+          #        with:
+          #          name: python-whl
+          #          path: build/python/dist/
