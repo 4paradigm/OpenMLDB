@@ -26,7 +26,7 @@ if uname -a | grep -q Darwin; then
     alias nproc='sysctl -n hw.logicalcpu'
 fi
 
-HYRBIDSE_VERSION = "release-0.1.0"
+HYRBIDSE_VERSION="release-0.1.0"
 rm -rf build
 mkdir -p build && cd build$
 cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="hybridse" -DBENCHMARK_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=OFF -DPYSDK_ENABLE=OFF -DEXAMPLES_ENABLE=OFF
