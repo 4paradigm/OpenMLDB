@@ -29,6 +29,6 @@ fi
 
 rm -rf build
 mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON
+cmake .. -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON
 make hybridse_proto && make hybridse_parser && make -j"$(nproc)"
 make -j"$(nproc)" coverage

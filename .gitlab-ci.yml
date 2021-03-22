@@ -45,6 +45,7 @@ build_hybridse_on_linux:
     artifacts:
         paths:
             - intermediate_cicd_artifact_linux.tar.gz
+            - hybridse-*.tar.gz
 
 coverage_report:
     stage: build
