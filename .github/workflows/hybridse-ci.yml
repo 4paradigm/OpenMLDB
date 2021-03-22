@@ -35,7 +35,7 @@ jobs:
 
     - name: Build
       run: |
-        ./tools/compile_and_test.sh
+        ./tools/hybridse_build.sh
 
     - name: benchmark
       run: |

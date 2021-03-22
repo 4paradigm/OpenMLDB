@@ -61,13 +61,11 @@ test_hybridse_core_on_linux:
     stage: test
     script:
         - bash tools/hybridse_core_test.sh
-    artifacts:
 
 test_hybridse_examples_on_linux:
     stage: test
     script:
         - bash tools/hybridse_examples_test.sh
-    artifacts:
 
 test_hybridse_java_on_linux:
     stage: test
@@ -79,8 +77,7 @@ test_hybridse_java_on_linux:
     artifacts:
         reports:
             junit:
-                - java/hybridse-spark/target/surefire-reports/*.xml
-                - java/hybridse-jdbc/target/surefire-reports/*.xml
+                - java/hybridse-common/target/surefire-reports/*.xml
 
 micro_benchmark:
     stage: deploy
