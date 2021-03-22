@@ -38,7 +38,7 @@ class SQLCaseTest : public ::testing::TestWithParam<hybridse::sqlcase::SQLCase> 
 
     static std::string GenRand(const std::string &prefix);
     static const std::string AutoTableName();
-    static std::string FindRtidbDirPath(const std::string &dirname);
+    static std::string GetYAMLBaseDir();
     static std::vector<hybridse::sqlcase::SQLCase> InitCases(const std::string &yaml_path);
     static void InitCases(const std::string &dir_path, const std::string &yaml_path,
                           std::vector<hybridse::sqlcase::SQLCase> &cases);  // NOLINT
