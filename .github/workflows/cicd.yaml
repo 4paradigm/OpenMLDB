@@ -40,13 +40,7 @@ jobs:
         run: yum update -y nss curl libcurl
       - name: update submodule
         run: |
-          ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
-          git submodule init
-          git submodule update
-#      - name: tar thirdparty
-#        run: |
-#           tar -zxvf /depends/thirdparty.tar.gz -C /depends/
-#           mv /depends/depends/thirdparty /depends/
+           git submodule update --init
       - name: build fesql
         run: source /root/.bashrc && bash tools/install_fesql.sh
       - name: build fedb
