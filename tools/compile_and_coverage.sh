@@ -24,7 +24,6 @@ if uname -a | grep -q Darwin; then
     alias nproc='sysctl -n hw.logicalcpu'
 fi
 
-export PATH=${PWD}/thirdparty/bin:$PATH
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON
 make hybridse_proto && make hybridse_parser && make -j"$(nproc)"

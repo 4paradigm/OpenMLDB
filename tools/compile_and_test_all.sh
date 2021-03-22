@@ -31,4 +31,4 @@ mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE=OFF -DCOVERAGE_ENABLE=OFF
 make -j"$(nproc)" hybridse_proto && make -j"$(nproc)" hybridse_parser
 make -j"$(nproc)"
-# make test -j"$(nproc)"
+make test -j"$(nproc)"
