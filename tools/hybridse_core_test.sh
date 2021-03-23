@@ -16,7 +16,7 @@
 set -eE
 
 # goto toplevel directory
-cd "$(dirname "$0")/.."
+pushd "$(dirname "$0")/.."
 
 source tools/init_env.profile.sh
 
@@ -31,4 +31,6 @@ mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DCORE_TESTING_ENABLE=OFF
 make -j"$(nproc)" hybridse_proto && make -j"$(nproc)" hybridse_parser
 make -j"$(nproc)"
-make test -j"$(nproc)"
+make -j"$(nproc)" test
+
+popd

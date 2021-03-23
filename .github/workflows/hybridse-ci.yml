@@ -29,6 +29,10 @@ jobs:
       run: |
         ./tools/hybridse_build.sh
 
+    - name: core test
+      run: |
+        ./tools/hybridse_core_test.sh
+
     - name: benchmark
       run: |
         # cost too much time
