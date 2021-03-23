@@ -34,7 +34,7 @@ void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
-            hybridse::sqlcase::FindHybridSEDirPath(), yaml_path, cases,
+            hybridse::sqlcase::FindSQLCaseBaseDirPath(), yaml_path, cases,
             std::vector<std::string>(
                 {"logical-plan-unsupport", "parser-unsupport"}))) {
         FAIL();
