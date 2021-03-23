@@ -38,7 +38,7 @@ std::string SQLCaseTest::GetYAMLBaseDir() {
             yaml_base_dir.append("/");
         }
     } else {
-        yaml_base_dir = "/rtidb/fesql/";
+        yaml_base_dir = "/rtidb";
     }
     DLOG(INFO) << "InitCases YMAL_CASE_BASE_DIR: " << yaml_base_dir;
     return yaml_base_dir;

@@ -21,6 +21,7 @@ import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -35,16 +36,18 @@ import java.util.*;
 public class Tool {
     private static final Logger logger = LoggerFactory.getLogger(Tool.class);
 
-    public static String getFilePath(String filename){
+    public static String getFilePath(String filename) {
         return Tool.class.getClassLoader().getResource(filename).getFile();
     }
-    public static String getCasePath(String casePath){
-        String rtidbDir = Tool.rtidbDir().getAbsolutePath();
-        Assert.assertNotNull(rtidbDir);
-        String caseAbsPath = rtidbDir + "/fesql/cases/" + casePath;
+
+    public static String getCasePath(String yamlCaseDir, String casePath) {
+        String caseDir = StringUtils.isEmpty(yamlCaseDir) ? Tool.rtidbDir().getAbsolutePath() : yamlCaseDir;
+        Assert.assertNotNull(caseDir);
+        String caseAbsPath = caseDir + "/cases/" + casePath;
         logger.debug("fesql case absolute path: {}", caseAbsPath);
         return caseAbsPath;
     }
+
     public static File rtidbDir() {
         File directory = new File(".");
         directory = directory.getAbsoluteFile();
@@ -63,7 +66,7 @@ public class Tool {
         }
     }
 
-    public static void sleep(long time){
+    public static void sleep(long time) {
         try {
             Thread.sleep(time);
         } catch (InterruptedException e) {
@@ -71,10 +74,10 @@ public class Tool {
         }
     }
 
-    public static List<String> getPaths(File directory){
+    public static List<String> getPaths(File directory) {
         List<String> list = new ArrayList<>();
-        Collection<File> files = FileUtils.listFiles(directory,null,true);
-        for(File f:files){
+        Collection<File> files = FileUtils.listFiles(directory, null, true);
+        for (File f : files) {
             list.add(f.getAbsolutePath());
         }
         Collections.sort(list);
@@ -83,6 +86,7 @@ public class Tool {
 
     /**
      * 验证一个字符串是不是json格式
+     *
      * @param test
      * @return 如果是返回true，否则返回false
      */
@@ -94,7 +98,8 @@ public class Tool {
         }
         return true;
     }
-    public static Properties getProperties(String fileName){
+
+    public static Properties getProperties(String fileName) {
         Properties ps = new Properties();
         try {
             ps.load(Tool.class.getClassLoader().getResourceAsStream(fileName));
@@ -105,12 +110,12 @@ public class Tool {
         return ps;
     }
 
-    public static String uuid(){
+    public static String uuid() {
         String uuid = UUID.randomUUID().toString().replaceAll("-", "");
         return uuid;
     }
 
-    public static String md5ByResources(String path){
+    public static String md5ByResources(String path) {
         try {
             return DigestUtils.md5Hex(Tool.class.getClassLoader().getResourceAsStream(path));
         } catch (IOException e) {
@@ -119,7 +124,7 @@ public class Tool {
         return null;
     }
 
-    public static String md5(String path){
+    public static String md5(String path) {
         try {
             return DigestUtils.md5Hex(new FileInputStream(path));
         } catch (IOException e) {
