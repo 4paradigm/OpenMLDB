@@ -3,19 +3,7 @@ on: [pull_request]
 env:
   GIT_SUBMODULE_STRATEGY: recursive
 jobs:
-  cpplint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: reviewdog/action-cpplint@master
-        with:
-          github_token: ${{ secrets.github_token }}
-          level: info
-          reporter: github-pr-review
-          flags: --linelength=80
   build:
-    needs: [cpplint]
     runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.0.1
