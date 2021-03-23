@@ -38,4 +38,4 @@ else
 # Download hybridse lib and include directly
   wget https://nexus.4pd.io/repository/raw-hosted/ai-native-db/fesql/feat/gitlab-compatility/hybridse/hybridse-release-0.1.0.tar.gz
   tar xzvf hybridse-release-0.1.0.tar.gz --directory ${FEDB_THIRDPARTY}/
-if
+fi
