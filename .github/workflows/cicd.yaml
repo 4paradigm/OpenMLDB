@@ -3,7 +3,18 @@ on: [pull_request]
 env:
   GIT_SUBMODULE_STRATEGY: recursive
 jobs:
+  cpplint:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+      - uses: reviewdog/action-cpplint@master
+        with:
+          github_token: ${{ secrets.github_token }}
+          level: info
+          reporter: github-pr-review
+          flags: --linelength=80
   build:
+    needs: [cpplint]
     runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.0.1
@@ -17,14 +28,13 @@ jobs:
            /opt/rh/sclo-git212/root/usr/bin/git submodule update --init
       - name: uncompress_thirdparty
         run: cd /depends && tar -zxf thirdparty.tar.gz 
-      - name: build fesql
-        run: |
-          source /root/.bashrc && bash tools/install_fesql.sh
-      - name: build fedb
+      - name: build_fesql
+        run: bash tools/install_fesql.sh
+      - name: build_fedb
         run: |
           ln -sf /depends/thirdparty thirdparty
           ln -sf /depends/thirdsrc thirdsrc
-          source /root/.bashrc && bash steps/simple_compile.sh
+          bash steps/simple_compile.sh
           #     - uses: actions/upload-artifact@v1
           #        with:
           #          name: fedb

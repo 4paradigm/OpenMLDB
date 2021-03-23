@@ -21,6 +21,7 @@ fi
 WORK_DIR=`pwd`
 source /etc/profile.d/enable-rh.sh 
 source /etc/profile.d/enable-thirdparty.sh
+source /root/.bashrc
 mkdir -p $WORK_DIR/build
 cd $WORK_DIR/build && cmake -DCMAKE_BUILD_TYPE=${CMAKE_TYPE} .. && make -j$(nproc) fedb sql_sdk_test sql_cluster_test sql_pysdk_package sql_jsdk parse_log sqlalchemy_fedb
 code=$?
