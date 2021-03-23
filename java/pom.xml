@@ -79,21 +79,26 @@
     </pluginRepositories>
 
     <distributionManagement>
+<!--        <repository>-->
+<!--            <id>4pd-nexus-releases</id>-->
+<!--            <uniqueVersion>true</uniqueVersion>-->
+<!--            <url>https://nexus.4pd.io/repository/maven-releases/</url>-->
+<!--        </repository>-->
+<!--        <snapshotRepository>-->
+<!--            <id>4pd-nexus-snapshots</id>-->
+<!--            <uniqueVersion>true</uniqueVersion>-->
+<!--            <url>https://nexus.4pd.io/repository/maven-snapshots/</url>-->
+<!--        </snapshotRepository>-->
         <repository>
-            <id>4pd-nexus-releases</id>
-            <uniqueVersion>true</uniqueVersion>
-            <url>https://nexus.4pd.io/repository/maven-releases/</url>
+            <id>github-release</id>
+            <name>4paradigm</name>
+            <url>https://maven.pkg.github.com/4paradigm/HybridSE/Releases</url>
         </repository>
         <snapshotRepository>
-            <id>4pd-nexus-snapshots</id>
-            <uniqueVersion>true</uniqueVersion>
-            <url>https://nexus.4pd.io/repository/maven-snapshots/</url>
-        </snapshotRepository>
-        <repository>
-            <id>github</id>
+            <id>github-snapshot</id>
             <name>4paradigm</name>
-            <url>https://maven.pkg.github.com/4paradigm/NativeSpark</url>
-        </repository>
+            <url>https://maven.pkg.github.com/4paradigm/HybridSE/Snapshots</url>
+        </snapshotRepository>
     </distributionManagement>
 
 
