@@ -6,7 +6,7 @@ jobs:
   cpplint:
     runs-on: self-hosted
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.0.1
+      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT_ZW }}
@@ -22,7 +22,7 @@ jobs:
     needs: [cpplint]
     runs-on: self-hosted
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.0.1
+      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT_ZW }}
