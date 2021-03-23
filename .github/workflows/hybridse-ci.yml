@@ -34,3 +34,7 @@ jobs:
         # cost too much time
         # bash tools/micro_bench.sh | tee micro_bench_report.txt
         # bash tools/gen_micro_bench_compare.sh
+
+    - name: cleanup
+      run: |
+        git clean -dfx
