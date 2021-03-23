@@ -80,7 +80,7 @@ find_package(Threads)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
-    set(COMMON_LIBS boost_date_time boost_filesystem boost_regex leveldb protobuf glog gflags unwind lzma z snappy ssl crypto dl)
+    set(COMMON_LIBS boost_date_time boost_filesystem boost_regex leveldb protobuf glog gflags unwind z snappy ssl crypto dl)
     set(BRPC_LIBS brpc ${COMMON_LIBS})
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB
@@ -99,7 +99,6 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif ()
 
 set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
-set(abseil-cpp_DIR "${PROJECT_SOURCE_DIR}/thirdparty/")
 configure_file(
         "${PROJECT_SOURCE_DIR}/src/version.h.in"
         "${PROJECT_SOURCE_DIR}/src/hybridse_version.h"
@@ -137,7 +136,6 @@ endif ()
 set(boost_libs boost_graph)
 find_package(yaml-cpp REQUIRED)
 set(yaml_libs yaml-cpp)
-set(ABSL_LIBS absl_time absl_time_zone absl_civil_time absl_base absl_int128)
 add_definitions('-g')
 add_definitions('-std=c++14')
 add_definitions(${LLVM_DEFINITIONS})
