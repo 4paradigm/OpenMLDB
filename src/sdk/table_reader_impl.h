@@ -33,14 +33,14 @@ class TableReaderImpl : public TableReader {
     explicit TableReaderImpl(ClusterSDK* cluster_sdk);
     ~TableReaderImpl() {}
 
-    std::shared_ptr<fesql::sdk::ResultSet> Scan(const std::string& db, const std::string& table, const std::string& key,
-                                                int64_t st, int64_t et, const ScanOption& so,
-                                                ::fesql::sdk::Status* status);
+    std::shared_ptr<hybridse::sdk::ResultSet> Scan(const std::string& db, const std::string& table,
+                                                   const std::string& key, int64_t st, int64_t et, const ScanOption& so,
+                                                   ::hybridse::sdk::Status* status);
 
     std::shared_ptr<fedb::sdk::ScanFuture> AsyncScan(const std::string& db, const std::string& table,
                                                       const std::string& key, int64_t st, int64_t et,
                                                       const ScanOption& so, int64_t timeout_ms,
-                                                      ::fesql::sdk::Status* status);
+                                                      ::hybridse::sdk::Status* status);
 
  private:
     ClusterSDK* cluster_sdk_;

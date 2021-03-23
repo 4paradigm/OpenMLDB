@@ -20,7 +20,7 @@ WORKDIR=`pwd`
 set -e
 sdk_vesion=$1-SNAPSHOT
 mkdir -p src/sdk/java/sql-native/src/main/resources/
-sh tools/install_fesql.sh ON
+sh tools/install_hybridse.sh
 test -f build/src/sdk/libsql_jsdk.dylib && cp build/src/sdk/libsql_jsdk.dylib  src/sdk/java/sql-native/src/main/resources/
 mkdir -p build && cd build &&  cmake .. && make -j4 sql_jsdk
 cd ${WORKDIR}

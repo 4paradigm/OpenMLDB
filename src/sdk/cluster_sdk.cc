@@ -17,6 +17,10 @@
 
 #include "sdk/cluster_sdk.h"
 
+#ifdef DISALLOW_COPY_AND_ASSIGN
+#undef DISALLOW_COPY_AND_ASSIGN
+#endif
+#include <snappy.h>
 #include <algorithm>
 #include <map>
 #include <memory>
@@ -26,8 +30,7 @@
 #include <vector>
 #include "base/hash.h"
 #include "base/strings.h"
-#include "boost/algorithm/string.hpp"
-#include "boost/function.hpp"
+#include "boost/bind.hpp"
 #include "glog/logging.h"
 
 namespace fedb {
@@ -82,10 +85,10 @@ bool ClusterSDK::Init() {
                  << ",session timeout " << options_.session_timeout << " and session id "
                  << zk_client_->GetSessionTerm();
 
-    ::fesql::vm::EngineOptions eopt;
+    ::hybridse::vm::EngineOptions eopt;
     eopt.set_compile_only(true);
     eopt.set_plan_only(true);
-    engine_ = new ::fesql::vm::Engine(catalog_, eopt);
+    engine_ = new ::hybridse::vm::Engine(catalog_, eopt);
 
     ok = InitCatalog();
     if (!ok) return false;
@@ -198,7 +201,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         auto it = db_sp_map.find(sp_info->GetDbName());
         if (it == db_sp_map.end()) {
             std::map<std::string,
-                     std::shared_ptr<fesql::sdk::ProcedureInfo>>
+                     std::shared_ptr<hybridse::sdk::ProcedureInfo>>
                      sp_in_db = {{sp_info->GetSpName(), sp_info}};
             db_sp_map.insert(std::make_pair(sp_info->GetDbName(), sp_in_db));
         } else {
@@ -388,7 +391,7 @@ std::shared_ptr<::fedb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std
     return std::shared_ptr<::fedb::catalog::TabletAccessor>();
 }
 
-std::shared_ptr<fesql::sdk::ProcedureInfo> ClusterSDK::GetProcedureInfo(
+std::shared_ptr<hybridse::sdk::ProcedureInfo> ClusterSDK::GetProcedureInfo(
         const std::string& db, const std::string& sp_name, std::string* msg) {
     if (msg == nullptr) {
         *msg = "null ptr";
@@ -408,9 +411,9 @@ std::shared_ptr<fesql::sdk::ProcedureInfo> ClusterSDK::GetProcedureInfo(
     }
 }
 
-std::vector<std::shared_ptr<fesql::sdk::ProcedureInfo>> ClusterSDK::GetProcedureInfo(
+std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> ClusterSDK::GetProcedureInfo(
         std::string* msg) {
-    std::vector<std::shared_ptr<fesql::sdk::ProcedureInfo>> sp_infos;
+    std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> sp_infos;
     if (msg == nullptr) {
         *msg = "null ptr";
         return std::move(sp_infos);

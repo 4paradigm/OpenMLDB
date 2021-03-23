@@ -56,7 +56,6 @@ DEFINE_uint32(replica_num, 3,
               "and two followers");
 
 DEFINE_int32(gc_interval, 120, "the gc interval of tablet every two hour");
-DEFINE_int32(disk_gc_interval, 120, "the rocksdb gc interval of tablet");
 DEFINE_int32(gc_pool_size, 2, "the size of tablet gc thread pool");
 DEFINE_int32(gc_safe_offset, 1, "the safe offset of tablet gc in minute");
 DEFINE_uint64(gc_on_table_recover_count, 10000000,
@@ -106,8 +105,6 @@ DEFINE_uint32(query_slow_log_threshold, 50000,
 
 // local db config
 DEFINE_string(db_root_path, "/tmp/", "the root path of db");
-DEFINE_string(ssd_root_path, "", "the root ssd path of db");
-DEFINE_string(hdd_root_path, "", "the root hdd path of db");
 
 // thread pool config
 DEFINE_int32(scan_concurrency_limit, 8, "the limit of scan concurrency");
@@ -134,8 +131,6 @@ DEFINE_int32(stream_bandwidth_limit, 10 * 1204 * 1024,
 
 // if set 23, the task will execute 23:00 every day
 DEFINE_int32(make_snapshot_time, 23, "config the time to make snapshot");
-DEFINE_int32(make_disktable_snapshot_interval, 360,
-             "config the interval in minute to make disktable snapshot");
 DEFINE_int32(make_snapshot_check_interval, 1000 * 60 * 10,
              "config the interval to check making snapshot time");
 DEFINE_int32(make_snapshot_threshold_offset, 100000,
@@ -153,10 +148,6 @@ DEFINE_uint32(load_index_max_wait_time, 120 * 60 * 1000,
 
 DEFINE_string(recycle_bin_root_path, "/tmp/recycle",
               "specify the root path of recycle bin");
-DEFINE_string(recycle_ssd_bin_root_path, "/tmp/ssd_recycle",
-              "specify the ssd root path of recycle bin");
-DEFINE_string(recycle_hdd_bin_root_path, "/tmp/hdd_recycle",
-              "specify the hdd root path of recycle bin");
 DEFINE_bool(recycle_bin_enabled, true, "enable the recycle bin storage");
 DEFINE_uint32(recycle_ttl, 0, "ttl of recycle in minute");
 

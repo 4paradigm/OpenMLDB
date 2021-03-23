@@ -20,7 +20,6 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 #include <sys/stat.h>
-#include <boost/lexical_cast.hpp>
 #include "base/file_util.h"
 #include "base/kv_iterator.h"
 #include "base/strings.h"
@@ -37,11 +36,7 @@
 #include "timer.h" // NOLINT
 
 DECLARE_string(db_root_path);
-DECLARE_string(ssd_root_path);
-DECLARE_string(hdd_root_path);
 DECLARE_string(recycle_bin_root_path);
-DECLARE_string(recycle_ssd_bin_root_path);
-DECLARE_string(recycle_hdd_bin_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(gc_interval);
@@ -66,8 +61,7 @@ inline std::string GenRand() {
 
 void CreateBaseTablet(::fedb::tablet::TabletImpl& tablet,  // NOLINT
                       const ::fedb::api::TTLType& ttl_type, uint64_t ttl,
-                      uint64_t start_ts, uint32_t tid, uint32_t pid,
-                      const ::fedb::common::StorageMode& mode) {
+                      uint64_t start_ts, uint32_t tid, uint32_t pid) {
     ::fedb::api::CreateTableRequest crequest;
     ::fedb::api::TableMeta* table_meta = crequest.mutable_table_meta();
     table_meta->set_name("table");
@@ -76,7 +70,6 @@ void CreateBaseTablet(::fedb::tablet::TabletImpl& tablet,  // NOLINT
     table_meta->set_ttl(ttl);
     table_meta->set_seg_cnt(8);
     table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-    table_meta->set_storage_mode(mode);
     table_meta->set_key_entry_max_height(8);
     table_meta->set_ttl_type(ttl_type);
     ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
@@ -179,7 +172,7 @@ void CreateBaseTablet(::fedb::tablet::TabletImpl& tablet,  // NOLINT
 void CreateTableWithoutDBRootPath(
     ::fedb::tablet::TabletImpl& tablet,  // NOLINT
     const ::fedb::api::TTLType& ttl_type, uint64_t ttl, uint64_t start_ts,
-    uint32_t tid, uint32_t pid, const ::fedb::common::StorageMode& mode) {
+    uint32_t tid, uint32_t pid) {
     ::fedb::api::CreateTableRequest crequest;
     ::fedb::api::TableMeta* table_meta = crequest.mutable_table_meta();
     table_meta->set_name("table");
@@ -188,7 +181,6 @@ void CreateTableWithoutDBRootPath(
     table_meta->set_ttl(ttl);
     table_meta->set_seg_cnt(8);
     table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-    table_meta->set_storage_mode(mode);
     table_meta->set_key_entry_max_height(8);
     table_meta->set_ttl_type(ttl_type);
     ::fedb::api::CreateTableResponse cresponse;
@@ -202,7 +194,6 @@ void CreateAdvanceTablet(::fedb::tablet::TabletImpl& tablet,  // NOLINT
                          const ::fedb::api::TTLType& ttl_type,
                          uint64_t abs_ttl, uint64_t lat_ttl, uint64_t start_ts,
                          uint32_t tid, uint32_t pid,
-                         const ::fedb::common::StorageMode& mode,
                          uint64_t col_abs_ttl, uint64_t col_lat_ttl) {
     ::fedb::api::CreateTableRequest crequest;
     ::fedb::api::TableMeta* table_meta = crequest.mutable_table_meta();
@@ -215,7 +206,6 @@ void CreateAdvanceTablet(::fedb::tablet::TabletImpl& tablet,  // NOLINT
     ttl_desc->set_ttl_type(ttl_type);
     table_meta->set_seg_cnt(8);
     table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-    table_meta->set_storage_mode(mode);
     table_meta->set_key_entry_max_height(8);
     ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
     desc->set_name("card");
@@ -342,25 +332,19 @@ class TabletMultiPathTest : public ::testing::Test {
 
 TEST_F(TabletMultiPathTest, CreateWithoutDBPath) {
     std::string old_db_path = FLAGS_db_root_path;
-    std::string old_ssd_db_path = FLAGS_ssd_root_path;
-    std::string old_hdd_db_path = FLAGS_hdd_root_path;
-    FLAGS_ssd_root_path = "";
     FLAGS_db_root_path = "";
-    FLAGS_hdd_root_path = "";
     ::fedb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     CreateTableWithoutDBRootPath(tablet_impl,
                                  ::fedb::api::TTLType::kAbsoluteTime, 0, 1000,
-                                 100, 0, ::fedb::common::StorageMode::kMemory);
+                                 100, 0);
     CreateTableWithoutDBRootPath(tablet_impl,
                                  ::fedb::api::TTLType::kAbsoluteTime, 0, 1000,
-                                 101, 0, ::fedb::common::StorageMode::kSSD);
+                                 101, 0);
     CreateTableWithoutDBRootPath(tablet_impl,
                                  ::fedb::api::TTLType::kAbsoluteTime, 0, 1000,
-                                 102, 0, ::fedb::common::StorageMode::kHDD);
+                                 102, 0);
     FLAGS_db_root_path = old_db_path;
-    FLAGS_ssd_root_path = old_ssd_db_path;
-    FLAGS_hdd_root_path = old_hdd_db_path;
 }
 
 TEST_F(TabletMultiPathTest, Memory_Test_read_write_absolute) {
@@ -368,8 +352,7 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_absolute) {
     tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
         CreateBaseTablet(tablet_impl, ::fedb::api::TTLType::kAbsoluteTime, 0,
-                         1000, i + 1, i % 10,
-                         ::fedb::common::StorageMode::kMemory);
+                         1000, i + 1, i % 10);
     }
 }
 
@@ -378,8 +361,7 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_latest) {
     tablet_impl.Init("");
     for (uint32_t i = 100; i < 200; i++) {
         CreateBaseTablet(tablet_impl, ::fedb::api::TTLType::kLatestTime, 10,
-                         1000, i + 1, i % 10,
-                         ::fedb::common::StorageMode::kMemory);
+                         1000, i + 1, i % 10);
     }
 }
 
@@ -388,8 +370,7 @@ TEST_F(TabletMultiPathTest, HDD_Test_read_write) {
     tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
         CreateBaseTablet(tablet_impl, ::fedb::api::TTLType::kLatestTime, 10,
-                         1000, i + 1, i % 10,
-                         ::fedb::common::StorageMode::kHDD);
+                         1000, i + 1, i % 10);
     }
 }
 
@@ -398,8 +379,7 @@ TEST_F(TabletMultiPathTest, SSD_Test_read_write) {
     tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
         CreateBaseTablet(tablet_impl, ::fedb::api::TTLType::kLatestTime, 10,
-                         1000, i + 1, i % 10,
-                         ::fedb::common::StorageMode::kSSD);
+                         1000, i + 1, i % 10);
     }
 }
 
@@ -410,8 +390,7 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_abs_and_lat) {
     for (uint32_t i = 20; i < 30; i++) {
         CreateAdvanceTablet(tablet_impl, ::fedb::api::TTLType::kAbsAndLat,
                             2000, 500, now - 3000 * (60 * 1000) - 1000, i + 1,
-                            i % 10, ::fedb::common::StorageMode::kMemory, 3000,
-                            500);
+                            i % 10, 3000, 500);
     }
 }
 
@@ -422,7 +401,7 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_abs_or_lat) {
     for (uint32_t i = 30; i < 40; i++) {
         CreateAdvanceTablet(tablet_impl, ::fedb::api::TTLType::kAbsOrLat, 2000,
                             500, now - 3000 * (60 * 1000) - 1000, i + 1, i % 10,
-                            ::fedb::common::StorageMode::kMemory, 1000, 500);
+                            1000, 500);
     }
 }
 
@@ -434,13 +413,7 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     std::string k1 = ::fedb::tablet::GenRand();
     std::string k2 = ::fedb::tablet::GenRand();
-    FLAGS_ssd_root_path = "/tmp/ssd" + k1 + ",/tmp/ssd" + k2;
     FLAGS_db_root_path = "/tmp/db" + k1 + ",/tmp/db" + k2;
-    FLAGS_hdd_root_path = "/tmp/hdd" + k1 + ",/tmp/hdd" + k2;
     FLAGS_recycle_bin_root_path = "/tmp/recycle" + k1 + ",/tmp/recycle" + k2;
-    FLAGS_recycle_ssd_bin_root_path =
-        "/tmp/ssd_recycle" + k1 + ",/tmp/ssd_recycle" + k2;
-    FLAGS_recycle_hdd_bin_root_path =
-        "/tmp/hdd_recycle" + k1 + ",/tmp/hdd_recycle" + k2;
     return RUN_ALL_TESTS();
 }

@@ -16,8 +16,8 @@
 
 package com._4paradigm.fesql_auto_test.util;
 
-import com._4paradigm.fesql.sqlcase.model.InputDesc;
-import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.hybridse.sqlcase.model.InputDesc;
+import com._4paradigm.hybridse.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.fesql_auto_test.entity.FEDBInfo;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
@@ -1118,7 +1118,7 @@ public class FesqlUtil {
     }
 
     public static String formatSql(String sql, List<String> tableNames) {
-        return formatSql(sql,tableNames,FesqlConfig.mainInfo);
+        return formatSql(sql,tableNames, FesqlConfig.mainInfo);
     }
 
     public static FesqlResult createAndInsert(SqlExecutor executor, String dbName,

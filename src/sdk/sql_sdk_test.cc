@@ -26,8 +26,7 @@
 #include <vector>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  // NOLINT
-#include "boost/algorithm/string.hpp"
+#include "base/glog_wapper.h"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
 #include "gflags/gflags.h"
@@ -45,9 +44,18 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.session_timeout = 30000;
-    sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = hybridse::sqlcase::SQLCase::IS_DEBUG();
     return NewClusterSQLRouter(sql_opt);
 }
+
+static bool IsSupportMode(const std::string& mode) {
+    if (mode.find("rtidb-unsupport") != std::string::npos ||
+            mode.find("request-unsupport") != std::string::npos) {
+        return false;
+    }
+    return true;
+}
+
 TEST_P(SQLSDKTest, sql_sdk_batch_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
@@ -55,7 +63,7 @@ TEST_P(SQLSDKTest, sql_sdk_batch_test) {
     sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enable_debug = sql_case.debug() || fesql::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = sql_case.debug() || hybridse::sqlcase::SQLCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
@@ -67,9 +75,7 @@ TEST_P(SQLSDKTest, sql_sdk_batch_test) {
 TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-        boost::contains(sql_case.mode(), "request-unsupport")) {
+    if (!IsSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -80,9 +86,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
 TEST_P(SQLSDKQueryTest, sql_sdk_batch_request_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-        boost::contains(sql_case.mode(), "request-unsupport")) {
+    if (!IsSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -107,9 +111,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
 TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-        boost::contains(sql_case.mode(), "request-unsupport")) {
+    if (!IsSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -121,9 +123,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_test) {
 TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_asyn_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-        boost::contains(sql_case.mode(), "request-unsupport")) {
+    if (!IsSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -133,9 +133,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_asyn_test) {
 }
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_test) {
     auto sql_case = GetParam();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-        boost::contains(sql_case.mode(), "request-unsupport")) {
+    if (!IsSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -150,9 +148,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_test) {
 }
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_test) {
     auto sql_case = GetParam();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-        boost::contains(sql_case.mode(), "request-unsupport")) {
+    if (!IsSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -168,9 +164,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_test) {
 
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_asyn_test) {
     auto sql_case = GetParam();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-        boost::contains(sql_case.mode(), "request-unsupport")) {
+    if (!IsSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -217,13 +211,13 @@ TEST_F(SQLSDKQueryTest, execute_where_test) {
     sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = hybridse::sqlcase::SQLCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
     }
     std::string db = "sql_where_test";
-    fesql::sdk::Status status;
+    hybridse::sdk::Status status;
     ASSERT_TRUE(router->CreateDB(db, &status));
     ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
     ASSERT_TRUE(router->RefreshCatalog());
@@ -293,13 +287,13 @@ TEST_F(SQLSDKQueryTest, execute_insert_loops_test) {
     sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = hybridse::sqlcase::SQLCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
     }
     std::string db = "leak_test";
-    fesql::sdk::Status status;
+    hybridse::sdk::Status status;
     router->CreateDB(db, &status);
     router->ExecuteDDL(db, "drop table trans;", &status);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -323,7 +317,7 @@ TEST_F(SQLSDKQueryTest, execute_insert_loops_test) {
                 card++, mc++, std::to_string(ts++).c_str());  // NOLINT
         std::string insert_sql = std::string(buffer, strlen(buffer));
         //        LOG(INFO) << insert_sql;
-        fesql::sdk::Status status;
+        hybridse::sdk::Status status;
         if (!router->ExecuteInsert(db, insert_sql, &status)) {
             error_cnt += 1;
         }
@@ -345,13 +339,13 @@ TEST_F(SQLSDKQueryTest, create_no_ts) {
     sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = hybridse::sqlcase::SQLCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
     }
     std::string db = "create_no_ts";
-    fesql::sdk::Status status;
+    hybridse::sdk::Status status;
     ASSERT_TRUE(router->CreateDB(db, &status));
     ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
     ASSERT_TRUE(router->RefreshCatalog());
@@ -386,13 +380,13 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.session_timeout = 30000;
-    sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = hybridse::sqlcase::SQLCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
     }
     std::string db = "test";
-    fesql::sdk::Status status;
+    hybridse::sdk::Status status;
     router->CreateDB(db, &status);
     router->ExecuteDDL(db, "drop table trans;", &status);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -431,7 +425,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     auto rs = router->CallProcedure(db, sp_name, request_row, &status);
     if (!rs) FAIL() << "call procedure failed";
     auto schema = rs->GetSchema();
-    ASSERT_EQ(schema->GetColumnCnt(), 3u);
+    ASSERT_EQ(schema->GetColumnCnt(), 3);
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ(rs->GetStringUnsafe(0), "bb");
     ASSERT_EQ(rs->GetInt32Unsafe(1), 23);
@@ -447,7 +441,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     ASSERT_EQ(sp_info->GetTables().size(), 1u);
     ASSERT_EQ(sp_info->GetTables().at(0), "trans");
     auto& input_schema = sp_info->GetInputSchema();
-    ASSERT_EQ(input_schema.GetColumnCnt(), 7u);
+    ASSERT_EQ(input_schema.GetColumnCnt(), 7);
     ASSERT_EQ(input_schema.GetColumnName(0), "c1");
     ASSERT_EQ(input_schema.GetColumnName(1), "c3");
     ASSERT_EQ(input_schema.GetColumnName(2), "c4");
@@ -455,25 +449,25 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     ASSERT_EQ(input_schema.GetColumnName(4), "c6");
     ASSERT_EQ(input_schema.GetColumnName(5), "c7");
     ASSERT_EQ(input_schema.GetColumnName(6), "c8");
-    ASSERT_EQ(input_schema.GetColumnType(0), fesql::sdk::kTypeString);
-    ASSERT_EQ(input_schema.GetColumnType(1), fesql::sdk::kTypeInt32);
-    ASSERT_EQ(input_schema.GetColumnType(2), fesql::sdk::kTypeInt64);
-    ASSERT_EQ(input_schema.GetColumnType(3), fesql::sdk::kTypeFloat);
-    ASSERT_EQ(input_schema.GetColumnType(4), fesql::sdk::kTypeDouble);
-    ASSERT_EQ(input_schema.GetColumnType(5), fesql::sdk::kTypeTimestamp);
-    ASSERT_EQ(input_schema.GetColumnType(6), fesql::sdk::kTypeDate);
+    ASSERT_EQ(input_schema.GetColumnType(0), hybridse::sdk::kTypeString);
+    ASSERT_EQ(input_schema.GetColumnType(1), hybridse::sdk::kTypeInt32);
+    ASSERT_EQ(input_schema.GetColumnType(2), hybridse::sdk::kTypeInt64);
+    ASSERT_EQ(input_schema.GetColumnType(3), hybridse::sdk::kTypeFloat);
+    ASSERT_EQ(input_schema.GetColumnType(4), hybridse::sdk::kTypeDouble);
+    ASSERT_EQ(input_schema.GetColumnType(5), hybridse::sdk::kTypeTimestamp);
+    ASSERT_EQ(input_schema.GetColumnType(6), hybridse::sdk::kTypeDate);
     ASSERT_TRUE(input_schema.IsConstant(0));
     ASSERT_TRUE(input_schema.IsConstant(1));
     ASSERT_TRUE(!input_schema.IsConstant(2));
 
     auto& output_schema = sp_info->GetOutputSchema();
-    ASSERT_EQ(output_schema.GetColumnCnt(), 3u);
+    ASSERT_EQ(output_schema.GetColumnCnt(), 3);
     ASSERT_EQ(output_schema.GetColumnName(0), "c1");
     ASSERT_EQ(output_schema.GetColumnName(1), "c3");
     ASSERT_EQ(output_schema.GetColumnName(2), "w1_c4_sum");
-    ASSERT_EQ(output_schema.GetColumnType(0), fesql::sdk::kTypeString);
-    ASSERT_EQ(output_schema.GetColumnType(1), fesql::sdk::kTypeInt32);
-    ASSERT_EQ(output_schema.GetColumnType(2), fesql::sdk::kTypeInt64);
+    ASSERT_EQ(output_schema.GetColumnType(0), hybridse::sdk::kTypeString);
+    ASSERT_EQ(output_schema.GetColumnType(1), hybridse::sdk::kTypeInt32);
+    ASSERT_EQ(output_schema.GetColumnType(2), hybridse::sdk::kTypeInt64);
     ASSERT_TRUE(output_schema.IsConstant(0));
     ASSERT_TRUE(output_schema.IsConstant(1));
     ASSERT_TRUE(!output_schema.IsConstant(2));
@@ -491,7 +485,7 @@ TEST_F(SQLSDKTest, table_reader_scan) {
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
     std::string db = GenRand("db");
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     for (int i = 0; i < 2; i++) {
@@ -523,7 +517,7 @@ TEST_F(SQLSDKTest, table_reader_async_scan) {
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
     std::string db = GenRand("db");
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     for (int i = 0; i < 2; i++) {
@@ -556,7 +550,7 @@ TEST_F(SQLSDKTest, create_table) {
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
     std::string db = GenRand("db");
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     for (int i = 0; i < 2; i++) {
@@ -595,7 +589,7 @@ TEST_F(SQLSDKTest, create_table) {
 }  // namespace fedb
 
 int main(int argc, char** argv) {
-    ::fesql::vm::Engine::InitializeGlobalLLVM();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
     FLAGS_zk_session_timeout = 100000;

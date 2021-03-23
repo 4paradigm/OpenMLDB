@@ -41,7 +41,7 @@ static const uint32_t SEED = 0xe17a1465;
 
 MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t seg_cnt,
                    const std::map<std::string, uint32_t>& mapping, uint64_t ttl, ::fedb::api::TTLType ttl_type)
-    : Table(::fedb::common::StorageMode::kMemory, name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping, ttl_type,
+    : Table(name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping, ttl_type,
             ::fedb::api::CompressType::kNoCompress),
       seg_cnt_(seg_cnt),
       segments_(MAX_INDEX_NUM, NULL),
@@ -51,7 +51,7 @@ MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t 
       record_byte_size_(0) {}
 
 MemTable::MemTable(const ::fedb::api::TableMeta& table_meta)
-    : Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(), 0, true, 60 * 1000,
+    : Table(table_meta.name(), table_meta.tid(), table_meta.pid(), 0, true, 60 * 1000,
             std::map<std::string, uint32_t>(), ::fedb::api::TTLType::kAbsoluteTime,
             ::fedb::api::CompressType::kNoCompress),
       segments_(MAX_INDEX_NUM, NULL) {
@@ -754,7 +754,7 @@ bool MemTable::DeleteIndex(std::string idx_name) {
     return true;
 }
 
-::fesql::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index) {
+::hybridse::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index) {
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index);
     if (index_def && index_def->IsReady()) {
         auto ts_col = index_def->GetTsColumn();
@@ -773,7 +773,7 @@ bool MemTable::DeleteIndex(std::string idx_name) {
     return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
 }
 
-::fesql::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index, uint32_t ts_index) {
+::hybridse::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index, uint32_t ts_index) {
     if (ts_index < 0) {
         return NULL;
     }
@@ -896,7 +896,7 @@ bool MemTableKeyIterator::Valid() {
 
 void MemTableKeyIterator::Next() { NextPK(); }
 
-::fesql::vm::RowIterator* MemTableKeyIterator::GetRawValue() {
+::hybridse::vm::RowIterator* MemTableKeyIterator::GetRawValue() {
     TimeEntries::Iterator* it = NULL;
     if (segments_[seg_idx_]->GetTsCnt() > 1) {
         KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];  // NOLINT
@@ -911,7 +911,7 @@ void MemTableKeyIterator::Next() { NextPK(); }
     return new MemTableWindowIterator(it, ttl_type_, expire_time_, expire_cnt_);
 }
 
-std::unique_ptr<::fesql::vm::RowIterator> MemTableKeyIterator::GetValue() {
+std::unique_ptr<::hybridse::vm::RowIterator> MemTableKeyIterator::GetValue() {
     TimeEntries::Iterator* it = NULL;
     if (segments_[seg_idx_]->GetTsCnt() > 1) {
         KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];  // NOLINT
@@ -927,8 +927,9 @@ std::unique_ptr<::fesql::vm::RowIterator> MemTableKeyIterator::GetValue() {
     return std::move(wit);
 }
 
-const fesql::codec::Row MemTableKeyIterator::GetKey() {
-    fesql::codec::Row row(::fesql::base::RefCountedSlice::Create(pk_it_->GetKey().data(), pk_it_->GetKey().size()));
+const hybridse::codec::Row MemTableKeyIterator::GetKey() {
+    hybridse::codec::Row row(
+        ::hybridse::base::RefCountedSlice::Create(pk_it_->GetKey().data(), pk_it_->GetKey().size()));
     return row;
 }
 

@@ -39,9 +39,7 @@
 #include <utility>
 #include <memory>
 
-#include <boost/bind.hpp>
-#include <boost/function.hpp>
-#include <string>  // NOLINT
+#include <string>
 #include <thread>  // NOLINT
 
 #include "base/glog_wapper.h"  // NOLINT

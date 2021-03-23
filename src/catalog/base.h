@@ -25,12 +25,12 @@
 namespace fedb {
 namespace catalog {
 
-class ProcedureInfoImpl : public fesql::sdk::ProcedureInfo {
+class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
  public:
      ProcedureInfoImpl(const std::string& db_name, const std::string& sp_name,
              const std::string& sql,
-             const ::fesql::sdk::SchemaImpl& input_schema,
-             const ::fesql::sdk::SchemaImpl& output_schema,
+             const ::hybridse::sdk::SchemaImpl& input_schema,
+             const ::hybridse::sdk::SchemaImpl& output_schema,
              const std::vector<std::string>& tables,
              const std::string& main_table)
         : db_name_(db_name),
@@ -43,9 +43,9 @@ class ProcedureInfoImpl : public fesql::sdk::ProcedureInfo {
 
     ~ProcedureInfoImpl() {}
 
-    const ::fesql::sdk::Schema& GetInputSchema() const override { return input_schema_; }
+    const ::hybridse::sdk::Schema& GetInputSchema() const override { return input_schema_; }
 
-    const ::fesql::sdk::Schema& GetOutputSchema() const override { return output_schema_; }
+    const ::hybridse::sdk::Schema& GetOutputSchema() const override { return output_schema_; }
 
     const std::string& GetDbName() const override { return db_name_; }
 
@@ -61,8 +61,8 @@ class ProcedureInfoImpl : public fesql::sdk::ProcedureInfo {
     std::string db_name_;
     std::string sp_name_;
     std::string sql_;
-    ::fesql::sdk::SchemaImpl input_schema_;
-    ::fesql::sdk::SchemaImpl output_schema_;
+    ::hybridse::sdk::SchemaImpl input_schema_;
+    ::hybridse::sdk::SchemaImpl output_schema_;
     std::vector<std::string> tables_;
     std::string main_table_;
 };

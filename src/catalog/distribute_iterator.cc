@@ -61,8 +61,8 @@ void FullTableIterator::Next() {
     }
 }
 
-const ::fesql::codec::Row& FullTableIterator::GetValue() {
-    value_ = ::fesql::codec::Row(::fesql::base::RefCountedSlice::Create(
+const ::hybridse::codec::Row& FullTableIterator::GetValue() {
+    value_ = ::hybridse::codec::Row(::hybridse::base::RefCountedSlice::Create(
         it_->GetValue().data(), it_->GetValue().size()));
     return value_;
 }
@@ -141,11 +141,11 @@ void DistributeWindowIterator::Next() {
 
 bool DistributeWindowIterator::Valid() { return it_ && it_->Valid(); }
 
-std::unique_ptr<::fesql::codec::RowIterator> DistributeWindowIterator::GetValue() { return it_->GetValue(); }
+std::unique_ptr<::hybridse::codec::RowIterator> DistributeWindowIterator::GetValue() { return it_->GetValue(); }
 
-::fesql::codec::RowIterator* DistributeWindowIterator::GetRawValue() { return it_->GetRawValue(); }
+::hybridse::codec::RowIterator* DistributeWindowIterator::GetRawValue() { return it_->GetRawValue(); }
 
-const ::fesql::codec::Row DistributeWindowIterator::GetKey() { return it_->GetKey(); }
+const ::hybridse::codec::Row DistributeWindowIterator::GetKey() { return it_->GetKey(); }
 
 }  // namespace catalog
 }  // namespace fedb

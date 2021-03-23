@@ -21,7 +21,7 @@ def getCasePath(path:str):
     currentPath = os.getcwd()
     index = currentPath.rfind('rtidb')
     prePath = currentPath[0:index]
-    casePath = prePath+"rtidb/fesql/cases"+path
+    casePath = prePath+"rtidb/cases"+path
     return casePath
 
 def getRootPath():

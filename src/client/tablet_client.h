@@ -220,14 +220,13 @@ class TabletClient {
     bool LoadTable(
         const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl,
         bool leader, uint32_t seg_cnt,
-        ::fedb::common::StorageMode storage_mode,
         std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
     bool LoadTable(const ::fedb::api::TableMeta& table_meta,
                    std::shared_ptr<TaskInfo> task_info);
 
-    bool LoadTable(uint32_t tid, uint32_t pid,
-                   ::fedb::common::StorageMode storage_mode, std::string* msg);
+    bool LoadTable(uint32_t tid, uint32_t pid, std::string* msg);
+
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, uint64_t term);
 
     bool ChangeRole(
@@ -239,21 +238,19 @@ class TabletClient {
                    const ::fedb::api::TTLType& type, uint64_t abs_ttl,
                    uint64_t lat_ttl, const std::string& ts_name);
     bool SetMaxConcurrency(const std::string& key, int32_t max_concurrency);
-    bool DeleteBinlog(uint32_t tid, uint32_t pid,
-                      ::fedb::common::StorageMode storage_mode);
+
+    bool DeleteBinlog(uint32_t tid, uint32_t pid);
 
     bool GetTaskStatus(::fedb::api::TaskStatusResponse& response);  // NOLINT
 
     bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
 
     bool GetTermPair(uint32_t tid, uint32_t pid,
-                     ::fedb::common::StorageMode storage_mode,
                      uint64_t& term,                     // NOLINT
                      uint64_t& offset, bool& has_table,  // NOLINT
                      bool& is_leader);                   // NOLINT
 
     bool GetManifest(uint32_t tid, uint32_t pid,
-                     ::fedb::common::StorageMode storage_mode,
                      ::fedb::api::Manifest& manifest);  // NOLINT
 
     bool GetTableStatus(

@@ -28,13 +28,11 @@
 #include <algorithm>
 
 #include "base/status.h"
-#include "node/node_manager.h"
-#include "parser/parser.h"
-#include "plan/planner.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 #include "catalog/schema_adapter.h"
+#include "node/node_manager.h"
 
 namespace fedb {
 namespace client {
@@ -262,15 +260,15 @@ class NsClient {
 
  private:
     bool TransformToTableDef(
-        ::fesql::node::CreatePlanNode* create_node,
-        ::fedb::nameserver::TableInfo* table, fesql::plan::Status* status);
+        ::hybridse::node::CreatePlanNode* create_node,
+        ::fedb::nameserver::TableInfo* table, hybridse::base::Status* status);
 
-    bool HandleSQLCmd(const fesql::node::CmdNode* cmd_node,
-                      const std::string& db, fesql::base::Status* sql_status);
-    bool HandleSQLCreateTable(const fesql::node::NodePointVector& parser_trees,
+    bool HandleSQLCmd(const hybridse::node::CmdNode* cmd_node,
+                      const std::string& db, hybridse::base::Status* sql_status);
+    bool HandleSQLCreateTable(const hybridse::node::NodePointVector& parser_trees,
                               const std::string& db,
-                              fesql::node::NodeManager* node_manager,
-                              fesql::base::Status* sql_status);
+                              hybridse::node::NodeManager* node_manager,
+                              hybridse::base::Status* sql_status);
 
  private:
     std::string endpoint_;

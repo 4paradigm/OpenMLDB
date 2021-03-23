@@ -61,15 +61,15 @@ TEST_F(SDKCatalogTest, sdk_smoke_test) {
     std::shared_ptr<SDKCatalog> catalog(new SDKCatalog(client_manager));
     Procedures procedures;
     ASSERT_TRUE(catalog->Init(tables, procedures));
-    ::fesql::vm::EngineOptions options;
+    ::hybridse::vm::EngineOptions options;
     options.set_compile_only(true);
-    ::fesql::vm::Engine engine(catalog, options);
+    ::hybridse::vm::Engine engine(catalog, options);
     std::string sql = "select col1, col2 + 1 from t1;";
-    ::fesql::vm::BatchRunSession session;
-    ::fesql::base::Status status;
+    ::hybridse::vm::BatchRunSession session;
+    ::hybridse::base::Status status;
     ASSERT_TRUE(engine.Get(sql, "db1", session, status));
     std::stringstream ss;
-    session.GetPhysicalPlan()->Print(ss, "\t");
+    session.GetCompileInfo()->DumpPhysicalPlan(ss, "\t");
     std::cout << ss.str() << std::endl;
 }
 
@@ -81,18 +81,18 @@ TEST_F(SDKCatalogTest, sdk_window_smoke_test) {
     std::shared_ptr<SDKCatalog> catalog(new SDKCatalog(client_manager));
     Procedures procedures;
     ASSERT_TRUE(catalog->Init(tables, procedures));
-    ::fesql::vm::EngineOptions options;
+    ::hybridse::vm::EngineOptions options;
     options.set_compile_only(true);
-    ::fesql::vm::Engine engine(catalog, options);
+    ::hybridse::vm::Engine engine(catalog, options);
     std::string sql =
         "select sum(col2) over w1, t1.col1, t1.col2 from t1 window w1 "
         "as(partition by t1.col1 order by t1.col2 ROWS BETWEEN 3 PRECEDING AND "
         "CURRENT ROW);";
-    ::fesql::vm::BatchRunSession session;
-    ::fesql::base::Status status;
+    ::hybridse::vm::BatchRunSession session;
+    ::hybridse::base::Status status;
     ASSERT_TRUE(engine.Get(sql, "db1", session, status));
     std::stringstream ss;
-    session.GetPhysicalPlan()->Print(ss, "\t");
+    session.GetCompileInfo()->DumpPhysicalPlan(ss, "\t");
     std::cout << ss.str() << std::endl;
 }
 
@@ -106,18 +106,18 @@ TEST_F(SDKCatalogTest, sdk_lastjoin_smoke_test) {
     std::shared_ptr<SDKCatalog> catalog(new SDKCatalog(client_manager));
     Procedures procedures;
     ASSERT_TRUE(catalog->Init(tables, procedures));
-    ::fesql::vm::EngineOptions options;
+    ::hybridse::vm::EngineOptions options;
     options.set_compile_only(true);
-    ::fesql::vm::Engine engine(catalog, options);
+    ::hybridse::vm::Engine engine(catalog, options);
     std::string sql =
         "select t1.col1 as c1, t1.col2 as c2 , t2.col1 as c3, t2.col2 as c4 "
         "from t1 last join t2 order by t2.col2 "
         "on t1.col1 = t2.col1 and t1.col2 > t2.col2;";
-    ::fesql::vm::BatchRunSession session;
-    ::fesql::base::Status status;
+    ::hybridse::vm::BatchRunSession session;
+    ::hybridse::base::Status status;
     ASSERT_TRUE(engine.Get(sql, "db1", session, status));
     std::stringstream ss;
-    session.GetPhysicalPlan()->Print(ss, "\t");
+    session.GetCompileInfo()->DumpPhysicalPlan(ss, "\t");
     std::cout << ss.str() << std::endl;
 }
 
@@ -126,6 +126,6 @@ TEST_F(SDKCatalogTest, sdk_lastjoin_smoke_test) {
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    ::fesql::vm::Engine::InitializeGlobalLLVM();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     return RUN_ALL_TESTS();
 }

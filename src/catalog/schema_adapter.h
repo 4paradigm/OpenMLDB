@@ -29,6 +29,7 @@
 #include "vm/catalog.h"
 #include "proto/tablet.pb.h"
 #include "catalog/base.h"
+#include "node/node_enum.h"
 
 namespace fedb {
 namespace catalog {
@@ -38,19 +39,19 @@ typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>
     RtiDBIndex;
 
 
-static const std::unordered_map<::fedb::type::TTLType, ::fesql::type::TTLType>
-    TTL_TYPE_MAP = {{::fedb::type::kAbsoluteTime, ::fesql::type::kTTLTimeLive},
-                    {::fedb::type::kLatestTime, ::fesql::type::kTTLCountLive},
-                    {::fedb::type::kAbsAndLat, ::fesql::type::kTTLTimeLiveAndCountLive},
-                    {::fedb::type::kAbsOrLat, ::fesql::type::kTTLTimeLiveOrCountLive}};
+static const std::unordered_map<::fedb::type::TTLType, ::hybridse::type::TTLType>
+    TTL_TYPE_MAP = {{::fedb::type::kAbsoluteTime, ::hybridse::type::kTTLTimeLive},
+                    {::fedb::type::kLatestTime, ::hybridse::type::kTTLCountLive},
+                    {::fedb::type::kAbsAndLat, ::hybridse::type::kTTLTimeLiveAndCountLive},
+                    {::fedb::type::kAbsOrLat, ::hybridse::type::kTTLTimeLiveOrCountLive}};
 
 class SchemaAdapter {
  public:
     SchemaAdapter() {}
     ~SchemaAdapter() {}
 
-    static bool ConvertSchemaAndIndex(const ::fesql::vm::Schema& sql_schema,
-                                      const ::fesql::vm::IndexList& index,
+    static bool ConvertSchemaAndIndex(const ::hybridse::vm::Schema& sql_schema,
+                                      const ::hybridse::vm::IndexList& index,
                                       RtiDBSchema* schema_output,
                                       RtiDBIndex* index_output) {
         if (nullptr == schema_output || nullptr == index_output) {
@@ -85,7 +86,7 @@ class SchemaAdapter {
     }
 
     static bool ConvertIndex(const RtiDBIndex& index,
-                             ::fesql::vm::IndexList* output) {
+                             ::hybridse::vm::IndexList* output) {
         if (output == nullptr) {
             LOG(WARNING) << "output ptr is null";
             return false;
@@ -94,7 +95,7 @@ class SchemaAdapter {
             const ::fedb::common::ColumnKey& key = index.Get(i);
             int ts_name_pos = 0;
             do {
-                ::fesql::type::IndexDef* index = output->Add();
+                ::hybridse::type::IndexDef* index = output->Add();
                 index->set_name(key.index_name());
                 index->mutable_first_keys()->CopyFrom(key.col_name());
                 if (key.ts_name_size() > 0) {
@@ -127,23 +128,23 @@ class SchemaAdapter {
         return true;
     }
 
-    static bool SubSchema(const ::fesql::vm::Schema* schema,
+    static bool SubSchema(const ::hybridse::vm::Schema* schema,
             const ::google::protobuf::RepeatedField<uint32_t>& projection,
-            fesql::vm::Schema* output) {
+            hybridse::vm::Schema* output) {
         if (output == nullptr) {
             LOG(WARNING) << "output ptr is null";
             return false;
         }
         auto it = projection.begin();
         for (; it != projection.end(); ++it) {
-            const fesql::type::ColumnDef& col = schema->Get(*it);
+            const hybridse::type::ColumnDef& col = schema->Get(*it);
             output->Add()->CopyFrom(col);
         }
         return true;
     }
 
     static bool ConvertSchema(const RtiDBSchema& fedb_schema,
-                              ::fesql::vm::Schema* output) {
+                              ::hybridse::vm::Schema* output) {
         if (output == nullptr) {
             LOG(WARNING) << "output ptr is null";
             return false;
@@ -154,38 +155,38 @@ class SchemaAdapter {
         }
         for (int32_t i = 0; i < fedb_schema.size(); i++) {
             const common::ColumnDesc& column = fedb_schema.Get(i);
-            ::fesql::type::ColumnDef* new_column = output->Add();
+            ::hybridse::type::ColumnDef* new_column = output->Add();
             new_column->set_name(column.name());
             new_column->set_is_not_null(column.not_null());
             new_column->set_is_constant(column.is_constant());
             switch (column.data_type()) {
                 case fedb::type::kBool:
-                    new_column->set_type(::fesql::type::kBool);
+                    new_column->set_type(::hybridse::type::kBool);
                     break;
                 case fedb::type::kSmallInt:
-                    new_column->set_type(::fesql::type::kInt16);
+                    new_column->set_type(::hybridse::type::kInt16);
                     break;
                 case fedb::type::kInt:
-                    new_column->set_type(::fesql::type::kInt32);
+                    new_column->set_type(::hybridse::type::kInt32);
                     break;
                 case fedb::type::kBigInt:
-                    new_column->set_type(::fesql::type::kInt64);
+                    new_column->set_type(::hybridse::type::kInt64);
                     break;
                 case fedb::type::kFloat:
-                    new_column->set_type(::fesql::type::kFloat);
+                    new_column->set_type(::hybridse::type::kFloat);
                     break;
                 case fedb::type::kDouble:
-                    new_column->set_type(::fesql::type::kDouble);
+                    new_column->set_type(::hybridse::type::kDouble);
                     break;
                 case fedb::type::kDate:
-                    new_column->set_type(::fesql::type::kDate);
+                    new_column->set_type(::hybridse::type::kDate);
                     break;
                 case fedb::type::kTimestamp:
-                    new_column->set_type(::fesql::type::kTimestamp);
+                    new_column->set_type(::hybridse::type::kTimestamp);
                     break;
                 case fedb::type::kString:
                 case fedb::type::kVarchar:
-                    new_column->set_type(::fesql::type::kVarchar);
+                    new_column->set_type(::hybridse::type::kVarchar);
                     break;
                 default:
                     LOG(WARNING)
@@ -198,14 +199,14 @@ class SchemaAdapter {
         return true;
     }
 
-    static bool ConvertSchema(const ::fesql::vm::Schema& fesql_schema,
+    static bool ConvertSchema(const ::hybridse::vm::Schema& hybridse_schema,
             RtiDBSchema* fedb_schema) {
         if (fedb_schema == nullptr) {
             LOG(WARNING) << "fedb_schema is null";
             return false;
         }
-        for (int32_t i = 0; i < fesql_schema.size(); i++) {
-            const fesql::type::ColumnDef& sql_column = fesql_schema.Get(i);
+        for (int32_t i = 0; i < hybridse_schema.size(); i++) {
+            const hybridse::type::ColumnDef& sql_column = hybridse_schema.Get(i);
             fedb::common::ColumnDesc* fedb_column = fedb_schema->Add();
             if (!ConvertType(sql_column, fedb_column)) {
                 return false;
@@ -214,47 +215,47 @@ class SchemaAdapter {
         return true;
     }
 
-    static bool ConvertType(fesql::node::DataType fesql_type,
+    static bool ConvertType(hybridse::node::DataType hybridse_type,
             fedb::type::DataType* fedb_type) {
         if (fedb_type == nullptr) {
             return false;
         }
-        switch (fesql_type) {
-            case fesql::node::kBool:
+        switch (hybridse_type) {
+            case hybridse::node::kBool:
                 *fedb_type = fedb::type::kBool;
                 break;
-            case fesql::node::kInt16:
+            case hybridse::node::kInt16:
                 *fedb_type = fedb::type::kSmallInt;
                 break;
-            case fesql::node::kInt32:
+            case hybridse::node::kInt32:
                 *fedb_type = fedb::type::kInt;
                 break;
-            case fesql::node::kInt64:
+            case hybridse::node::kInt64:
                 *fedb_type = fedb::type::kBigInt;
                 break;
-            case fesql::node::kFloat:
+            case hybridse::node::kFloat:
                 *fedb_type = fedb::type::kFloat;
                 break;
-            case fesql::node::kDouble:
+            case hybridse::node::kDouble:
                 *fedb_type = fedb::type::kDouble;
                 break;
-            case fesql::node::kDate:
+            case hybridse::node::kDate:
                 *fedb_type = fedb::type::kDate;
                 break;
-            case fesql::node::kTimestamp:
+            case hybridse::node::kTimestamp:
                 *fedb_type = fedb::type::kTimestamp;
                 break;
-            case fesql::node::kVarchar:
+            case hybridse::node::kVarchar:
                 *fedb_type = fedb::type::kVarchar;
                 break;
             default:
-                LOG(WARNING) << "unsupported type" << fesql_type;
+                LOG(WARNING) << "unsupported type" << hybridse_type;
                 return false;
         }
         return true;
     }
 
-    static bool ConvertType(const fesql::type::ColumnDef& sql_column,
+    static bool ConvertType(const hybridse::type::ColumnDef& sql_column,
             fedb::common::ColumnDesc* fedb_column) {
         if (fedb_column == nullptr) {
             LOG(WARNING) << "fedb_column is null";
@@ -264,56 +265,56 @@ class SchemaAdapter {
         fedb_column->set_not_null(sql_column.is_not_null());
         fedb_column->set_is_constant(sql_column.is_constant());
         switch (sql_column.type()) {
-            case fesql::type::kBool:
+            case hybridse::type::kBool:
                 fedb_column->set_data_type(fedb::type::kBool);
                 break;
-            case fesql::type::kInt16:
+            case hybridse::type::kInt16:
                 fedb_column->set_data_type(fedb::type::kSmallInt);
                 break;
-            case fesql::type::kInt32:
+            case hybridse::type::kInt32:
                 fedb_column->set_data_type(fedb::type::kInt);
                 break;
-            case fesql::type::kInt64:
+            case hybridse::type::kInt64:
                 fedb_column->set_data_type(fedb::type::kBigInt);
                 break;
-            case fesql::type::kFloat:
+            case hybridse::type::kFloat:
                 fedb_column->set_data_type(fedb::type::kFloat);
                 break;
-            case fesql::type::kDouble:
+            case hybridse::type::kDouble:
                 fedb_column->set_data_type(fedb::type::kDouble);
                 break;
-            case fesql::type::kDate:
+            case hybridse::type::kDate:
                 fedb_column->set_data_type(fedb::type::kDate);
                 break;
-            case fesql::type::kTimestamp:
+            case hybridse::type::kTimestamp:
                 fedb_column->set_data_type(fedb::type::kTimestamp);
                 break;
-            case fesql::type::kVarchar:
+            case hybridse::type::kVarchar:
                 fedb_column->set_data_type(fedb::type::kVarchar);
                 break;
             default:
                 LOG(WARNING) << "type "
-                    << fesql::type::Type_Name(sql_column.type())
+                    << hybridse::type::Type_Name(sql_column.type())
                     << " is not supported";
                 return false;
         }
         return true;
     }
 
-    static std::shared_ptr<fesql::sdk::ProcedureInfo> ConvertProcedureInfo(
+    static std::shared_ptr<hybridse::sdk::ProcedureInfo> ConvertProcedureInfo(
             const fedb::api::ProcedureInfo& sp_info) {
-        ::fesql::vm::Schema fesql_in_schema;
-        if (!fedb::catalog::SchemaAdapter::ConvertSchema(sp_info.input_schema(), &fesql_in_schema)) {
+        ::hybridse::vm::Schema hybridse_in_schema;
+        if (!fedb::catalog::SchemaAdapter::ConvertSchema(sp_info.input_schema(), &hybridse_in_schema)) {
             LOG(WARNING) << "fail to convert input schema";
             return nullptr;
         }
-        ::fesql::vm::Schema fesql_out_schema;
-        if (!fedb::catalog::SchemaAdapter::ConvertSchema(sp_info.output_schema(), &fesql_out_schema)) {
+        ::hybridse::vm::Schema hybridse_out_schema;
+        if (!fedb::catalog::SchemaAdapter::ConvertSchema(sp_info.output_schema(), &hybridse_out_schema)) {
             LOG(WARNING) << "fail to convert output schema";
             return nullptr;
         }
-        ::fesql::sdk::SchemaImpl input_schema(fesql_in_schema);
-        ::fesql::sdk::SchemaImpl output_schema(fesql_out_schema);
+        ::hybridse::sdk::SchemaImpl input_schema(hybridse_in_schema);
+        ::hybridse::sdk::SchemaImpl output_schema(hybridse_out_schema);
         std::vector<std::string> table_vec;
         auto& tables = sp_info.tables();
         for (const auto& table : tables) {

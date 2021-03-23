@@ -28,11 +28,11 @@ namespace fedb {
 namespace catalog {
 
 TabletRowHandler::TabletRowHandler(const std::string& db, fedb::RpcCallback<fedb::api::QueryResponse>* callback)
-    : db_(db), name_(), status_(::fesql::base::Status::Running()), row_(), callback_(callback) {
+    : db_(db), name_(), status_(::hybridse::base::Status::Running()), row_(), callback_(callback) {
     callback_->Ref();
 }
 
-TabletRowHandler::TabletRowHandler(::fesql::base::Status status)
+TabletRowHandler::TabletRowHandler(::hybridse::base::Status status)
     : db_(), name_(), status_(status), row_(), callback_(nullptr) {}
 
 TabletRowHandler::~TabletRowHandler() {
@@ -41,65 +41,65 @@ TabletRowHandler::~TabletRowHandler() {
     }
 }
 
-const ::fesql::codec::Row& TabletRowHandler::GetValue() {
+const ::hybridse::codec::Row& TabletRowHandler::GetValue() {
     if (!status_.isRunning() || !callback_) {
         return row_;
     }
     auto cntl = callback_->GetController();
     auto response = callback_->GetResponse();
     if (!cntl || !response) {
-        status_.code = fesql::common::kRpcError;
+        status_.code = hybridse::common::kRpcError;
         return row_;
     }
     DLOG(INFO) << "TabletRowHandler get value by brpc join";
     brpc::Join(cntl->call_id());
     if (cntl->Failed()) {
-        status_ = ::fesql::base::Status(::fesql::common::kRpcError, "request error. " + cntl->ErrorText());
+        status_ = ::hybridse::base::Status(::hybridse::common::kRpcError, "request error. " + cntl->ErrorText());
         return row_;
     }
     if (cntl->response_attachment().size() <= codec::HEADER_LENGTH) {
-        status_.code = fesql::common::kSchemaCodecError;
+        status_.code = hybridse::common::kSchemaCodecError;
         status_.msg = "response content decode fail";
         return row_;
     }
-    row_ = fesql::codec::Row();
+    row_ = hybridse::codec::Row();
     if (0 != response->byte_size() &&
         !codec::DecodeRpcRow(cntl->response_attachment(), 0,
                              response->byte_size(), response->row_slices(),
                              &row_)) {
-        status_.code = fesql::common::kRpcError;
+        status_.code = hybridse::common::kRpcError;
         status_.msg = "response content decode fail";
         return row_;
     }
-    status_.code = ::fesql::common::kOk;
+    status_.code = ::hybridse::common::kOk;
     return row_;
 }
 
 AsyncTableHandler::AsyncTableHandler(fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback,
                                      const bool is_common)
-    : fesql::vm::MemTableHandler("", "", nullptr),
-      status_(::fesql::base::Status::Running()),
+    : hybridse::vm::MemTableHandler("", "", nullptr),
+      status_(::hybridse::base::Status::Running()),
       callback_(callback),
       request_is_common_(is_common) {
     callback_->Ref();
 }
 
-std::unique_ptr<fesql::vm::RowIterator> AsyncTableHandler::GetIterator() {
+std::unique_ptr<hybridse::vm::RowIterator> AsyncTableHandler::GetIterator() {
     if (status_.isRunning()) {
         SyncRpcResponse();
     }
     if (status_.isOK()) {
-        return fesql::vm::MemTableHandler::GetIterator();
+        return hybridse::vm::MemTableHandler::GetIterator();
     }
 
-    return std::unique_ptr<fesql::vm::RowIterator>();
+    return std::unique_ptr<hybridse::vm::RowIterator>();
 }
-fesql::vm::RowIterator* AsyncTableHandler::GetRawIterator() {
+hybridse::vm::RowIterator* AsyncTableHandler::GetRawIterator() {
     if (status_.isRunning()) {
         SyncRpcResponse();
     }
     if (status_.isOK()) {
-        return fesql::vm::MemTableHandler::GetRawIterator();
+        return hybridse::vm::MemTableHandler::GetRawIterator();
     }
     return nullptr;
 }
@@ -107,25 +107,25 @@ void AsyncTableHandler::SyncRpcResponse() {
     auto cntl = callback_->GetController();
     auto response = callback_->GetResponse();
     if (!cntl || !response) {
-        status_.code = fesql::common::kRpcError;
+        status_.code = hybridse::common::kRpcError;
         status_.msg = "rpc controller or response is null";
         LOG(WARNING) << status_.msg;
         return;
     }
     brpc::Join(cntl->call_id());
     if (cntl->Failed()) {
-        status_ = ::fesql::base::Status(::fesql::common::kRpcError, "request error. " + cntl->ErrorText());
+        status_ = ::hybridse::base::Status(::hybridse::common::kRpcError, "request error. " + cntl->ErrorText());
         LOG(WARNING) << status_.msg;
         return;
     }
     if (response->code() != 0) {
-        status_ = ::fesql::base::Status(::fesql::common::kResponseError, "request error. " + response->msg());
+        status_ = ::hybridse::base::Status(::hybridse::common::kResponseError, "request error. " + response->msg());
         LOG(WARNING) << status_.msg;
         return;
     }
 
     if (response->row_sizes_size() == 0) {
-        status_.code = fesql::common::kResponseError;
+        status_.code = hybridse::common::kResponseError;
         status_.msg = "response error: rows empty";
         LOG(WARNING) << status_.msg;
         return;
@@ -133,10 +133,10 @@ void AsyncTableHandler::SyncRpcResponse() {
     size_t buf_offset = 0;
     for (int i = 0; i < response->row_sizes_size(); ++i) {
         size_t row_size = response->row_sizes(i);
-        fesql::codec::Row row;
+        hybridse::codec::Row row;
         if (0 != row_size && !codec::DecodeRpcRow(cntl->response_attachment(), buf_offset, row_size,
                                                   response->non_common_slices(), &row)) {
-            status_.code = fesql::common::kResponseError;
+            status_.code = hybridse::common::kResponseError;
             status_.msg = "response error: content decode fail";
             LOG(WARNING) << status_.msg;
             return;
@@ -144,32 +144,32 @@ void AsyncTableHandler::SyncRpcResponse() {
         AddRow(row);
         buf_offset += row_size;
     }
-    status_ = fesql::base::Status::OK();
+    status_ = hybridse::base::Status::OK();
     return;
 }
 
 AsyncTablesHandler::AsyncTablesHandler()
-    : fesql::vm::MemTableHandler("", "", nullptr),
-      status_(::fesql::base::Status::Running()),
+    : hybridse::vm::MemTableHandler("", "", nullptr),
+      status_(::hybridse::base::Status::Running()),
       rows_cnt_(0),
       posinfos_(),
       handlers_() {}
 
-std::unique_ptr<fesql::vm::RowIterator> AsyncTablesHandler::GetIterator() {
+std::unique_ptr<hybridse::vm::RowIterator> AsyncTablesHandler::GetIterator() {
     if (status_.isRunning()) {
         SyncAllTableHandlers();
     }
     if (status_.isOK()) {
-        return fesql::vm::MemTableHandler::GetIterator();
+        return hybridse::vm::MemTableHandler::GetIterator();
     }
-    return std::unique_ptr<fesql::vm::RowIterator>();
+    return std::unique_ptr<hybridse::vm::RowIterator>();
 }
-fesql::vm::RowIterator* AsyncTablesHandler::GetRawIterator() {
+hybridse::vm::RowIterator* AsyncTablesHandler::GetRawIterator() {
     if (status_.isRunning()) {
         SyncAllTableHandlers();
     }
     if (status_.isOK()) {
-        return fesql::vm::MemTableHandler::GetRawIterator();
+        return hybridse::vm::MemTableHandler::GetRawIterator();
     }
     return nullptr;
 }
@@ -187,7 +187,7 @@ bool AsyncTablesHandler::SyncAllTableHandlers() {
         }
         if (!iter) {
             status_.msg = "fail to sync table hander: iter is null";
-            status_.code = fesql::common::kResponseError;
+            status_.code = hybridse::common::kResponseError;
             LOG(WARNING) << status_;
             return false;
         }
@@ -196,7 +196,7 @@ bool AsyncTablesHandler::SyncAllTableHandlers() {
         if (handler_count != posinfos_[handler_idx].size()) {
             status_.msg = "fail to sync table : rows cnt " + std::to_string(handler_count) +
                           " != " + std::to_string(posinfos_[handler_idx].size());
-            status_.code = fesql::common::kResponseError;
+            status_.code = hybridse::common::kResponseError;
             LOG(WARNING) << status_;
             return false;
         }
@@ -208,20 +208,20 @@ bool AsyncTablesHandler::SyncAllTableHandlers() {
             pos_idx++;
         }
     }
-    status_ = fesql::base::Status::OK();
+    status_ = hybridse::base::Status::OK();
     DLOG(INFO) << "SyncAllTableHandlers OK";
     return true;
 }
 
-std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
+std::shared_ptr<::hybridse::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                   const std::string& sql,
-                                                                  const ::fesql::codec::Row& row,
+                                                                  const ::hybridse::codec::Row& row,
                                                                   const bool is_procedure, const bool is_debug) {
     DLOG(INFO) << "SubQuery taskid: " << task_id << " is_procedure=" << is_procedure;
     auto client = GetClient();
     if (!client) {
         return std::make_shared<TabletRowHandler>(
-            ::fesql::base::Status(::fesql::common::kRpcError, "get client failed"));
+            ::hybridse::base::Status(::hybridse::common::kRpcError, "get client failed"));
     }
     ::fedb::api::QueryRequest request;
     if (is_procedure) {
@@ -240,7 +240,7 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
         size_t row_size;
         if (!codec::EncodeRpcRow(row, &io_buf, &row_size)) {
             return std::make_shared<TabletRowHandler>(
-                ::fesql::base::Status(::fesql::common::kRpcError, "encode row failed"));
+                ::hybridse::base::Status(::hybridse::common::kRpcError, "encode row failed"));
         }
         request.set_row_size(row_size);
         request.set_row_slices(row.GetRowPtrCnt());
@@ -251,21 +251,21 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
     auto row_handler = std::make_shared<TabletRowHandler>(db, callback);
     if (!client->SubQuery(request, callback)) {
         return std::make_shared<TabletRowHandler>(
-            ::fesql::base::Status(::fesql::common::kRpcError, "send request failed"));
+            ::hybridse::base::Status(::hybridse::common::kRpcError, "send request failed"));
     }
     return row_handler;
 }
 
-std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
+std::shared_ptr<::hybridse::vm::TableHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                     const std::string& sql,
                                                                     const std::set<size_t>& common_column_indices,
-                                                                    const std::vector<::fesql::codec::Row>& rows,
+                                                                    const std::vector<::hybridse::codec::Row>& rows,
                                                                     const bool request_is_common,
                                                                     const bool is_procedure, const bool is_debug) {
     DLOG(INFO) << "SubQuery batch request, taskid=" << task_id << ", is_procedure=" << is_procedure;
     auto client = GetClient();
     if (!client) {
-        return std::make_shared<fesql::vm::ErrorTableHandler>(::fesql::common::kRpcError, "get client failed");
+        return std::make_shared<hybridse::vm::ErrorTableHandler>(::hybridse::common::kRpcError, "get client failed");
     }
     auto cntl = std::make_shared<brpc::Controller>();
     auto& io_buf = cntl->request_attachment();
@@ -289,7 +289,7 @@ std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t tas
         } else {
             size_t common_slice_size = 0;
             if (!codec::EncodeRpcRow(rows[0], &io_buf, &common_slice_size)) {
-                return std::make_shared<::fesql::vm::ErrorTableHandler>(::fesql::common::kBadRequest,
+                return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kBadRequest,
                                                                         "encode common row buf failed");
             }
             request.add_row_sizes(common_slice_size);
@@ -298,7 +298,7 @@ std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t tas
             // TODO(baoxinqi): opt request is common, need no uncommon slices
             size_t uncommon_slice_size = 0;
             if (!codec::EncodeRpcRow(rows[0], &io_buf, &uncommon_slice_size)) {
-                return std::make_shared<::fesql::vm::ErrorTableHandler>(::fesql::common::kBadRequest,
+                return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kBadRequest,
                                                                         "encode uncommon row buf failed");
             }
             request.add_row_sizes(uncommon_slice_size);
@@ -309,7 +309,7 @@ std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t tas
         for (const auto& row : rows) {
             size_t uncommon_slice_size = 0;
             if (!codec::EncodeRpcRow(row, &io_buf, &uncommon_slice_size)) {
-                return std::make_shared<::fesql::vm::ErrorTableHandler>(::fesql::common::kBadRequest,
+                return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kBadRequest,
                                                                         "encode uncommon row buf failed");
             }
             request.add_row_sizes(uncommon_slice_size);
@@ -322,25 +322,26 @@ std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t tas
     auto async_table_handler = std::make_shared<AsyncTableHandler>(callback, request_is_common);
     if (!client->SubBatchRequestQuery(request, callback)) {
         LOG(WARNING) << "fail to query tablet";
-        return std::make_shared<::fesql::vm::ErrorTableHandler>(::fesql::common::kRpcError,
+        return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kRpcError,
                                                                 "fail to batch request query");
     }
     return async_table_handler;
 }
-std::shared_ptr<fesql::vm::RowHandler> TabletsAccessor::SubQuery(uint32_t task_id, const std::string& db,
-                                                                 const std::string& sql, const fesql::codec::Row& row,
-                                                                 const bool is_procedure, const bool is_debug) {
-    return std::make_shared<::fesql::vm::ErrorRowHandler>(::fesql::common::kRpcError,
-                                                          "TabletsAccessor Unsupport SubQuery with request");
+std::shared_ptr<hybridse::vm::RowHandler> TabletsAccessor::SubQuery(uint32_t task_id, const std::string& db,
+                                                                    const std::string& sql,
+                                                                    const hybridse::codec::Row& row,
+                                                                    const bool is_procedure, const bool is_debug) {
+    return std::make_shared<::hybridse::vm::ErrorRowHandler>(::hybridse::common::kRpcError,
+                                                             "TabletsAccessor Unsupport SubQuery with request");
 }
-std::shared_ptr<fesql::vm::TableHandler> TabletsAccessor::SubQuery(uint32_t task_id, const std::string& db,
+std::shared_ptr<hybridse::vm::TableHandler> TabletsAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                    const std::string& sql,
                                                                    const std::set<size_t>& common_column_indices,
-                                                                   const std::vector<fesql::codec::Row>& rows,
+                                                                   const std::vector<hybridse::codec::Row>& rows,
                                                                    const bool request_is_common,
                                                                    const bool is_procedure, const bool is_debug) {
     auto tables_handler = std::make_shared<AsyncTablesHandler>();
-    std::vector<std::vector<fesql::vm::Row>> accessors_rows(accessors_.size());
+    std::vector<std::vector<hybridse::vm::Row>> accessors_rows(accessors_.size());
     for (size_t idx = 0; idx < rows.size(); idx++) {
         accessors_rows[assign_accessor_idxs_[idx]].push_back(rows[idx]);
     }

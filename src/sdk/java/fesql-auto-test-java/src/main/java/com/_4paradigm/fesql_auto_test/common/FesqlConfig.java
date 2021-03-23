@@ -44,6 +44,7 @@ public class FesqlConfig {
     public static final String FESQL_CASE_NAME;
     public static final String FESQL_CASE_ID;
     public static final String FESQL_CASE_DESC;
+    public static final String YAML_CASE_BASE_DIR;
     public static final boolean ADD_REPORT_LOG;
 
     public static final Properties CONFIG = Tool.getProperties("fesql.properties");
@@ -58,6 +59,7 @@ public class FesqlConfig {
         FESQL_CASE_ID = System.getProperty("caseId");
         FESQL_CASE_DESC = System.getProperty("caseDesc");
         FESQL_CASE_PATH = System.getProperty("casePath");
+        YAML_CASE_BASE_DIR = System.getProperty("yamlCaseBaseDir");
         log.info("FESQL_CASE_LEVELS {}", FESQL_CASE_LEVELS);
         if (!StringUtils.isEmpty(FESQL_CASE_NAME)) {
             log.info("FESQL_CASE_NAME {}", FESQL_CASE_NAME);
@@ -71,6 +73,10 @@ public class FesqlConfig {
         if (!StringUtils.isEmpty(FESQL_CASE_DESC)) {
             log.info("FESQL_CASE_DESC {}", FESQL_CASE_DESC);
         }
+        if (!StringUtils.isEmpty(YAML_CASE_BASE_DIR)) {
+            log.info("YAML_CASE_BASE_DIR {}", YAML_CASE_BASE_DIR);
+        }
+
         BASE_PATH = CONFIG.getProperty(FesqlGlobalVar.env + "_base_path");
         String tb_endpoint_0 = CONFIG.getProperty(FesqlGlobalVar.env + "_tb_endpoint_0");
         String tb_endpoint_1 = CONFIG.getProperty(FesqlGlobalVar.env + "_tb_endpoint_1");
@@ -84,7 +90,7 @@ public class FesqlConfig {
         } else {
             VERSIONS = Lists.newArrayList();
         }
-        log.info("FesqlConfig: versions: {}", VERSIONS);
+        log.info("HybridSEConfig: versions: {}", VERSIONS);
         String reportLogStr = System.getProperty("reportLog");
         if(StringUtils.isNotEmpty(reportLogStr)){
             ADD_REPORT_LOG = Boolean.parseBoolean(reportLogStr);
@@ -107,4 +113,5 @@ public class FesqlConfig {
     public static boolean isCluster() {
         return FesqlGlobalVar.env.equals("cluster");
     }
+
 }

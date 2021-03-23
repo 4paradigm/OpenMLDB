@@ -16,9 +16,9 @@
 
 package com._4paradigm.fesql_auto_test.executor;
 
-import com._4paradigm.fesql.sqlcase.model.InputDesc;
-import com._4paradigm.fesql.sqlcase.model.SQLCase;
-import com._4paradigm.fesql.sqlcase.model.SQLCaseType;
+import com._4paradigm.hybridse.sqlcase.model.InputDesc;
+import com._4paradigm.hybridse.sqlcase.model.SQLCase;
+import com._4paradigm.hybridse.sqlcase.model.SQLCaseType;
 import com._4paradigm.fesql_auto_test.checker.Checker;
 import com._4paradigm.fesql_auto_test.checker.CheckerStrategy;
 import com._4paradigm.fesql_auto_test.checker.DiffVersionChecker;
