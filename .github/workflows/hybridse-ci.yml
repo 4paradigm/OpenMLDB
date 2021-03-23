@@ -37,4 +37,5 @@ jobs:
 
     - name: cleanup
       run: |
+        source /etc/profile.d/enable-rh.sh
         git clean -dfx
