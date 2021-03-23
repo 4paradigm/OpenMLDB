@@ -93,9 +93,9 @@ micro_benchmark:
             - ./benchmark_compare.html
             
 deploy_hybridse:
-#    only:
-#        - release/*
-#        - tags
+    only:
+        - release/*
+        - tags
     stage: deploy
     script:
         - bash tools/cicd/hybridse_deploy.sh

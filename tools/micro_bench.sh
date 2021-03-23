@@ -66,6 +66,8 @@ then
 else
   echo "examples/toydb/src/bm/client_batch_run_bm not exist, aborting"
   exit
+fi
+
 if [ -f examples/toydb/src/bm/batch_request_bm ]
 then
   echo "toydb batch request benchmark:"

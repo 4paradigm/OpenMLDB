@@ -7,9 +7,9 @@
     <artifactId>hybridse-java</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <modules>
-           <module>hybridse-common</module>
-           <module>hybridse-native</module>
-           <module>hybridse-proto</module>
+        <module>hybridse-common</module>
+        <module>hybridse-native</module>
+        <module>hybridse-proto</module>
     </modules>
     <packaging>pom</packaging>
     <name>java</name>
@@ -70,26 +70,31 @@
         </pluginManagement>
     </build>
 
-<pluginRepositories>
-    <pluginRepository>
-      <id>4pd-nexus-public</id>
-      <name>4Paradigm nexus maven public</name>
-      <url>https://nexus.4pd.io/repository/maven-public/</url>
-    </pluginRepository>
-  </pluginRepositories>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>4pd-nexus-public</id>
+            <name>4Paradigm nexus maven public</name>
+            <url>https://nexus.4pd.io/repository/maven-public/</url>
+        </pluginRepository>
+    </pluginRepositories>
 
-  <distributionManagement>
-    <repository>
-      <id>4pd-nexus-releases</id>
-      <uniqueVersion>true</uniqueVersion>
-      <url>https://nexus.4pd.io/repository/maven-releases/</url>
-    </repository>
-    <snapshotRepository>
-      <id>4pd-nexus-snapshots</id>
-      <uniqueVersion>true</uniqueVersion>
-      <url>https://nexus.4pd.io/repository/maven-snapshots/</url>
-    </snapshotRepository>
-  </distributionManagement>
+    <distributionManagement>
+        <repository>
+            <id>4pd-nexus-releases</id>
+            <uniqueVersion>true</uniqueVersion>
+            <url>https://nexus.4pd.io/repository/maven-releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>4pd-nexus-snapshots</id>
+            <uniqueVersion>true</uniqueVersion>
+            <url>https://nexus.4pd.io/repository/maven-snapshots/</url>
+        </snapshotRepository>
+        <repository>
+            <id>github</id>
+            <name>4paradigm</name>
+            <url>https://maven.pkg.github.com/4paradigm/NativeSpark</url>
+        </repository>
+    </distributionManagement>
 
 
 </project>
