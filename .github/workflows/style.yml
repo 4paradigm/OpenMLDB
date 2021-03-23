@@ -11,13 +11,10 @@ on:
       - v*
   pull_request:
 
-env:
-  OS: self-hosted
-
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   shellcheck:
-    runs-on: ${{ env.OS }}
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2
 
@@ -30,7 +27,7 @@ jobs:
           pattern: "*.sh"
           exclude: "./.git/*"
   cpplint:
-    runs-on: ${{ env.OS }}
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2
 
@@ -42,7 +39,7 @@ jobs:
           flags: --linelength=80
 
   detect-secrets:
-    runs-on: ${{ env.OS }}
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2
 
@@ -53,7 +50,7 @@ jobs:
           reporter: github-pr-review # Change reporter.
 
   checkstyle:
-    runs-on: ${{ env.OS }}
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2
       - name: Run check style
@@ -63,7 +60,7 @@ jobs:
           reporter: github-pr-review
           tool_name: checkstyle
   flake8-lint:
-    runs-on: ${{ env.OS }}
+    runs-on: self-hosted
     steps:
       - name: Check out source repository
         uses: actions/checkout@v2
