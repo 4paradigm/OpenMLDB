@@ -71,10 +71,15 @@
     </build>
 
     <distributionManagement>
+        <snapshotRepository>
+            <id>github</id>
+            <name>4paradigm</name>
+            <url>https://maven.pkg.github.com/4paradigm/NativeSpark/Snapshot</url>
+        </snapshotRepository>
         <repository>
             <id>github</id>
             <name>4paradigm</name>
-            <url>https://maven.pkg.github.com/4paradigm/HybridSE</url>
+            <url>https://maven.pkg.github.com/4paradigm/NativeSpark/Release</url>
         </repository>
     </distributionManagement>
 
