@@ -102,7 +102,7 @@ add_custom_command(OUTPUT
 	COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "setup(" >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  name='${PROJECT_NAME}'," >> setup.py
-    COMMAND ${CMAKE_COMMAND} -E echo "  version='${HYBRIDSE_VERSION_MAJOR}.${HYBRIDSE_VERSION_MEDIUM}.${HYBRIDSE_VERSION_MINOR}.${HYBRIDSE_VERSION_BUG}'," >> setup.py
+    COMMAND ${CMAKE_COMMAND} -E echo "  version='${HYBRIDSE_VERSION_MAJOR}.${HYBRIDSE_VERSION_MINOR}.${HYBRIDSE_VERSION_BUG}'," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  author='4pd'," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  url='4paradigm.com'," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  distclass=BinaryDistribution," >> setup.py
@@ -176,15 +176,5 @@ add_custom_target(java_package ALL
     COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java
 )
-set(HYBRIDSE_SPARK_JAR_VERSION 0.0.1-SNAPSHOT)
-install(FILES ${CMAKE_SOURCE_DIR}/java/hybridse-spark/target/hybridse-spark-${HYBRIDSE_SPARK_JAR_VERSION}-with-dependencies.jar
-    DESTINATION ${CMAKE_BINARY_DIR}/release/java/)
-install(PROGRAMS ${CMAKE_SOURCE_DIR}/java/bin/hybridse-spark.sh
-    RENAME hybridse-spark DESTINATION ${CMAKE_BINARY_DIR}/release/bin)
-install(PROGRAMS ${CMAKE_SOURCE_DIR}/java/bin/benchspark.sh
-    RENAME benchspark DESTINATION ${CMAKE_BINARY_DIR}/release/bin)
-install(PROGRAMS ${CMAKE_SOURCE_DIR}/java/bin/drawflame.sh
-    RENAME drawflame DESTINATION ${CMAKE_BINARY_DIR}/release/bin)
-
 add_dependencies(java_package hybridse_proto_java)
 endif()

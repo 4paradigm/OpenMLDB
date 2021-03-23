@@ -67,7 +67,7 @@ target_link_libraries(hybridse_core
     ${yaml_libs} ${LLVM_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} hybridse_flags)
 
 # hybridse core unittests
-if (TESTING_ENABLE)
+if (TESTING_ENABLE AND CORE_TESTING_ENABLE)
 	get_property(TEST_FILE_LIST_STR GLOBAL PROPERTY PROP_TEST_SRC_FILE_LIST)
 	string(REPLACE " " ";" TEST_FILE_LIST ${TEST_FILE_LIST_STR})
 	set(TEST_CPP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
