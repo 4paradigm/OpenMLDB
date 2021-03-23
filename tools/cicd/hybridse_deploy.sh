@@ -14,21 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -eE
+CUR_DIR=$(cd $(dirname $0); pwd)
 
-# goto toplevel directory
-cd "$(dirname "$0")/.."
+# CI_PROJECT_NAMESPAC=ai-native-db
+# CI_PROJECT_NAME=hybridse
 
-source tools/init_env.profile.sh
-
-
-if uname -a | grep -q Darwin; then
-    # in case coreutils not install on mac
-    alias nproc='sysctl -n hw.logicalcpu'
-fi
-
-rm -rf build
-mkdir -p build && cd build
-cmake .. -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON
-make hybridse_proto && make hybridse_parser && make -j"$(nproc)"
-make -j"$(nproc)" coverage
+HOST_PATH="https://nexus.4pd.io/repository/raw-hosted/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/${CI_COMMIT_REF_NAME}"
+FILE_NAME=hybridse-release-0.1.0.tar.gz
+echo "Upload hybridse to url: ${HOST_PATH}/hybridse/${FILE_NAME}"
+curl  --user 'deploy:GlW5SRo1TC3q' \
+      --upload-file ${FILE_NAME} \
+      ${HOST_PATH}/hybridse/"${FILE_NAME}"

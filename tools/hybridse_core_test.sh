@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +28,7 @@ fi
 
 rm -rf build
 mkdir -p build && cd build
-cmake .. -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON
-make hybridse_proto && make hybridse_parser && make -j"$(nproc)"
-make -j"$(nproc)" coverage
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DCORE_TESTING_ENABLE=OFF
+make -j"$(nproc)" hybridse_proto && make -j"$(nproc)" hybridse_parser
+make -j"$(nproc)"
+make test -j"$(nproc)"
