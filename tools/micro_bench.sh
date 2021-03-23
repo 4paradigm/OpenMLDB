@@ -31,7 +31,7 @@ fi
 
 rm -rf build
 mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=OFF -DBENCHMARK_ENABLE=ON
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=OFF -DJAVASDK_ENABLE=OFF -DPYSDK_ENABLE=OFF -DBENCHMARK_ENABLE=ON
 make -j"$(nproc)" hybridse_bm toydb_bm
 if [ -f src/benchmark/udf_bm ]
 then

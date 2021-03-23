@@ -15,7 +15,7 @@
  */
 
 %module hybridse_interface
-
+#pragma SWIG nowarn=315, 401, 503, 516, 822
 // Enable public interfaces for Java
 #ifdef SWIGJAVA
 #define SWIG_SHARED_PTR_TYPEMAPS(CONST, TYPE...) \
