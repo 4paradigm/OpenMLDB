@@ -36,8 +36,6 @@ jobs:
       - uses: actions/checkout@v1
 #        with:
 #          submodules: true
-      - name: update nss
-        run: yum update -y nss curl libcurl
       - name: update submodule
         run: |
            git submodule update --init
