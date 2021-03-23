@@ -135,6 +135,6 @@ public class CaseOutputUtil {
 
 
     public static void main(String[] args) {
-        fromYmlToCsv("/Users/zhaowei/code/4paradigm/rtidb/fesql/cases/integration/v1","./out_excel");
+        fromYmlToCsv("/Users/zhaowei/code/4paradigm/rtidb/cases/integration/v1","./out_excel");
     }
 }

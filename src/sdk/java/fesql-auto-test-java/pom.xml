@@ -239,6 +239,11 @@
                             <name>reportLog</name>
                             <value>${reportLog}</value>
                         </property>
+                        <property>
+                            <name>yamlCaseBaseDir</name>
+                            <value>${yamlCaseBaseDir}</value>
+                        </property>
+
                     </systemProperties>
                 </configuration>
             </plugin>
