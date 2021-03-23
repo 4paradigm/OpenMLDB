@@ -6,7 +6,7 @@ jobs:
   cpplint:
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v1
       - uses: reviewdog/action-cpplint@master
         with:
           github_token: ${{ secrets.github_token }}
