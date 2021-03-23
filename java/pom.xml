@@ -5,7 +5,7 @@
 
     <groupId>com._4paradigm.hybridse</groupId>
     <artifactId>hybridse-java</artifactId>
-    <version>0.1.0-mac-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
     <modules>
         <module>hybridse-common</module>
         <module>hybridse-native</module>
