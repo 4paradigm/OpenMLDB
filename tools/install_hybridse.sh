@@ -36,6 +36,7 @@ if [[ "${INSTALL_FROM_SRC}" != "SRC" ]]; then
   cd ${WORK_DIR}/fesql/java/ && mvn install -pl hybridse-common -am
 else
 # Download hybridse lib and include directly
-  wget https://nexus.4pd.io/repository/raw-hosted/ai-native-db/fesql/feat/gitlab-compatility/hybridse/hybridse-release-0.1.0.tar.gz
-  tar xzvf hybridse-release-0.1.0.tar.gz --directory ${FEDB_THIRDPARTY}/
+  PACKAGE_NAME=hybridse-release-0.1.0.tar.gz
+  curl -o ${PACKAGE_NAME} https://nexus.4pd.io/repository/raw-hosted/ai-native-db/fesql/feat/gitlab-compatility/hybridse/${PACKAGE_NAME}
+  tar xzvf ${PACKAGE_NAME} --directory ${FEDB_THIRDPARTY}/
 fi
