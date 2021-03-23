@@ -14,13 +14,11 @@ jobs:
       - uses: actions/checkout@v1
       - name: update submodule
         run: |
-           ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
-           git submodule update --init
+           /opt/rh/sclo-git212/bin/git submodule update --init
       - name: build fesql
         run: source /root/.bashrc && bash tools/install_fesql.sh
       - name: build fedb
         run: |
-          ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
           ln -sf /depends/thirdparty thirdparty
           ln -sf /depends/thirdsrc thirdsrc
           source /root/.bashrc && bash steps/simple_compile.sh
