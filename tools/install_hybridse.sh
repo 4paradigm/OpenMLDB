@@ -30,14 +30,9 @@ WORK_DIR=`pwd`
 
 # Install hybridse from src
 if [[ "${INSTALL_FROM_SRC}" != "SRC" ]]; then
-  git clone --branch release/opensource_1.0.0.0 git@gitlab.4pd.io:ai-native-db/fesql.git
-  cd fesql && ln -sf ${FEDB_THIRDPARTY} thirdparty && mkdir -p build
-  cd build && cmake -DCMAKE_BUILD_TYPE=${CMAKE_TYPE} -DCMAKE_INSTALL_PREFIX="${FEDB_THIRDPARTY}/hybridse" -DTESTING_ENABLE=OFF -DBENCHMARK_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DPYSDK_ENABLE=OFF -DJAVASDK_ENABLE=ON ..  && make -j10 install
-  cd ${WORK_DIR}/fesql/java/ && mvn install -pl hybridse-common -am
-else
-# Download hybridse lib and include directly
+  # Download hybridse lib and include directly
   PACKAGE_NAME=hybridse-release-0.1.0.tar.gz
-  curl --user 'deploy:GlW5SRo1TC3q' -o ${PACKAGE_NAME} https://nexus.4pd.io/repository/raw-hosted/ai-native-db/fesql/feat/gitlab-compatility/hybridse/${PACKAGE_NAME}
+  curl -o ${PACKAGE_NAME} https://nexus.4pd.io/repository/raw-hosted/ai-native-db/fesql/feat/gitlab-compatility/hybridse/${PACKAGE_NAME}
   if [ -f ${PACKAGE_NAME} ]
   then
     tar xzvf ${PACKAGE_NAME} --directory ${FEDB_THIRDPARTY}/
@@ -45,4 +40,9 @@ else
     echo "Fail to get ${PACKAGE_NAME}, aborting"
     exit
   fi
+else
+  git clone --branch release/opensource_1.0.0.0 git@gitlab.4pd.io:ai-native-db/fesql.git
+  cd fesql && ln -sf ${FEDB_THIRDPARTY} thirdparty && mkdir -p build
+  cd build && cmake -DCMAKE_BUILD_TYPE=${CMAKE_TYPE} -DCMAKE_INSTALL_PREFIX="${FEDB_THIRDPARTY}/hybridse" -DTESTING_ENABLE=OFF -DBENCHMARK_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DPYSDK_ENABLE=OFF -DJAVASDK_ENABLE=ON ..  && make -j10 install
+  cd ${WORK_DIR}/fesql/java/ && mvn install -pl hybridse-common -am
 fi
