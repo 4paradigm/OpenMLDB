@@ -5,7 +5,7 @@
 
     <groupId>com._4paradigm.hybridse</groupId>
     <artifactId>hybridse-java</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0-mac-SNAPSHOT</version>
     <modules>
         <module>hybridse-common</module>
         <module>hybridse-native</module>
@@ -70,35 +70,12 @@
         </pluginManagement>
     </build>
 
-    <pluginRepositories>
-        <pluginRepository>
-            <id>4pd-nexus-public</id>
-            <name>4Paradigm nexus maven public</name>
-            <url>https://nexus.4pd.io/repository/maven-public/</url>
-        </pluginRepository>
-    </pluginRepositories>
-
     <distributionManagement>
-<!--        <repository>-->
-<!--            <id>4pd-nexus-releases</id>-->
-<!--            <uniqueVersion>true</uniqueVersion>-->
-<!--            <url>https://nexus.4pd.io/repository/maven-releases/</url>-->
-<!--        </repository>-->
-<!--        <snapshotRepository>-->
-<!--            <id>4pd-nexus-snapshots</id>-->
-<!--            <uniqueVersion>true</uniqueVersion>-->
-<!--            <url>https://nexus.4pd.io/repository/maven-snapshots/</url>-->
-<!--        </snapshotRepository>-->
         <repository>
-            <id>github-release</id>
+            <id>github</id>
             <name>4paradigm</name>
-            <url>https://maven.pkg.github.com/4paradigm/HybridSE/Releases</url>
+            <url>https://maven.pkg.github.com/4paradigm/HybridSE</url>
         </repository>
-        <snapshotRepository>
-            <id>github-snapshot</id>
-            <name>4paradigm</name>
-            <url>https://maven.pkg.github.com/4paradigm/HybridSE/Snapshots</url>
-        </snapshotRepository>
     </distributionManagement>
 
 
