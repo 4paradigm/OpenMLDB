@@ -37,7 +37,7 @@ if [[ "${INSTALL_FROM_SRC}" != "SRC" ]]; then
 else
 # Download hybridse lib and include directly
   PACKAGE_NAME=hybridse-release-0.1.0.tar.gz
-  curl -o ${PACKAGE_NAME} https://nexus.4pd.io/repository/raw-hosted/ai-native-db/fesql/feat/gitlab-compatility/hybridse/${PACKAGE_NAME}
+  curl --user 'deploy:GlW5SRo1TC3q' -o ${PACKAGE_NAME} https://nexus.4pd.io/repository/raw-hosted/ai-native-db/fesql/feat/gitlab-compatility/hybridse/${PACKAGE_NAME}
   if [ -f ${PACKAGE_NAME} ]
   then
     tar xzvf ${PACKAGE_NAME} --directory ${FEDB_THIRDPARTY}/
