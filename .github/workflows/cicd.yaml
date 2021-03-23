@@ -6,7 +6,7 @@ env:
   #PASSWORD: secrets.DL_PAT
 jobs:
   style_check:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
       credentials:
@@ -23,7 +23,7 @@ jobs:
 
   build:
     needs: [style_check]
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
       credentials:
@@ -205,7 +205,7 @@ jobs:
 #
   fesql_sdk_cpp_sql_cluster_test_level_0:
     needs: [build]
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
       credentials:
@@ -352,7 +352,7 @@ jobs:
 
   delete_artifact:
       needs: [fesql_sdk_cpp_sql_cluster_test_level_0]
-      runs-on: ubuntu-latest
+      runs-on: self-hosted
       if: always()
       steps:
         - uses: geekyeggo/delete-artifact@v1
