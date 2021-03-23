@@ -31,9 +31,10 @@ FEDB是一个面向实时推理和决策应用开发的NewSQL数据库
 
 ```
 git clone https://github.com/4paradigm/fedb.git
-docker run -v \`pwd\`/fedb:/fedb -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.0.1 bash
-cd /fedb
+cd fedb
 git submodule update --init
+docker run -v \`pwd\`:/fedb -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.0.1
+cd /fedb
 sh tools/install_fesql.sh
 mkdir -p build && cmake ../ && make -j5 fedb
 ```
@@ -41,7 +42,7 @@ mkdir -p build && cmake ../ && make -j5 fedb
 ### Demo应用示例
 
 * [实时预测出租车行程耗时demo](https://github.com/4paradigm/DemoApps/tree/main/predict-taxi-trip-duration)
-* [实时检测在线交易健康状态Demo] oncoming
+* 实时检测在线交易健康状态Demo oncoming
 
 ## 架构图
 
