@@ -16,7 +16,9 @@ jobs:
         run: |
            /opt/rh/sclo-git212/root/usr/bin/git submodule update --init
       - name: build fesql
-        run: source /root/.bashrc && bash tools/install_fesql.sh
+        run: |
+
+          source /root/.bashrc && bash tools/install_fesql.sh
       - name: build fedb
         run: |
           ln -sf /depends/thirdparty thirdparty

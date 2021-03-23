@@ -21,10 +21,11 @@ CMAKE_TYPE=$2
 if [[ "${CMAKE_TYPE}" != "Debug" ]]; then
         CMAKE_TYPE="RelWithDebInfo"
 fi
+source /etc/profile.d/enable-rh.sh 
+source /etc/profile.d/enable-thirdparty.sh
 echo "CMake Type "${CMAKE_TYPE}
 
-#export JAVA_HOME=${FEDB_DEV_JAVA_HOME:-/depends/thirdparty/jdk1.8.0_141}
-export FEDB_THIRDPARTY=${FEDB_DEV_THIRDPARTY:-/depends/thirdparty}
+export FEDB_THIRDPARTY=/depends/thirdparty
 WORK_DIR=`pwd`
 
 cd fesql && ln -sf ${FEDB_THIRDPARTY} thirdparty && mkdir -p build
