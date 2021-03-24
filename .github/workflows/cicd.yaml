@@ -25,3 +25,8 @@ jobs:
           ln -sf /depends/thirdparty thirdparty
           ln -sf /depends/thirdsrc thirdsrc
           bash steps/simple_compile.sh
+      - name: cleanup
+        run: |
+          source /etc/profile.d/enable-rh.sh
+          git clean -dfx
+          test -d fesql && rm -rf fesql/*
