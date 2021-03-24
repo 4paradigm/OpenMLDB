@@ -45,7 +45,7 @@ cd /HybridSE
 mkdir build
 cd build
 cmake ..
-make -j4 hybridse_proto && make -j4 hybride_parser && make -j4 simple_engine_demo
+make -j4 hybridse_proto && make -j4 hybridse_parser && make -j4 simple_engine_demo
 ./src/simple_engine_demo
 ```
 
@@ -57,7 +57,7 @@ make -j4 hybridse_proto && make -j4 hybride_parser && make -j4 simple_engine_dem
 cd /HybridSE
 mkdir build 
 cmake .. -DEXAMPLES_ENABLE=ON 
-make -j4 hybridse_proto && make -j4 hybride_parser && make toydb -j4
+make -j4 hybridse_proto && make -j4 hybridse_parser && make toydb -j4
 ```
 
 #### 启动ToyDB
