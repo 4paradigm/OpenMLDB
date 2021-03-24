@@ -32,9 +32,9 @@
 namespace fedb {
 namespace codec {
 
-bool DecodeRpcRow(const butil::IOBuf& buf, size_t offset, size_t size, size_t slice_num, fesql::codec::Row* row);
+bool DecodeRpcRow(const butil::IOBuf& buf, size_t offset, size_t size, size_t slice_num, hybridse::codec::Row* row);
 
-bool EncodeRpcRow(const fesql::codec::Row& row, butil::IOBuf* buf, size_t* total_size);
+bool EncodeRpcRow(const hybridse::codec::Row& row, butil::IOBuf* buf, size_t* total_size);
 
 bool EncodeRpcRow(const int8_t* buf, size_t size, butil::IOBuf* io_buf);
 

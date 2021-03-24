@@ -21,7 +21,7 @@
 #include <unistd.h>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "client/ns_client.h"
 #include "gtest/gtest.h"
 #include "nameserver/name_server_impl.h"
@@ -30,7 +30,7 @@
 #include "proto/type.pb.h"
 #include "rpc/rpc_client.h"
 #include "tablet/tablet_impl.h"
-#include "timer.h"  // NOLINT
+#include "common/timer.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -43,8 +43,6 @@ DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_bool(auto_failover);
 DECLARE_bool(enable_timeseries_table);
-DECLARE_string(ssd_root_path);
-DECLARE_string(hdd_root_path);
 
 using brpc::Server;
 using fedb::tablet::TabletImpl;

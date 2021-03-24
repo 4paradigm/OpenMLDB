@@ -39,7 +39,7 @@ namespace storage {
 
 typedef google::protobuf::RepeatedPtrField<::fedb::api::Dimension> Dimensions;
 
-class MemTableWindowIterator : public ::fesql::vm::RowIterator {
+class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
  public:
     MemTableWindowIterator(TimeEntries::Iterator* it,
                            ::fedb::storage::TTLType ttl_type, uint64_t expire_time,
@@ -63,7 +63,7 @@ class MemTableWindowIterator : public ::fesql::vm::RowIterator {
     inline const uint64_t& GetKey() const { return it_->GetKey(); }
 
     // TODO(wangtaize) unify the row object
-    inline const ::fesql::codec::Row& GetValue() {
+    inline const ::hybridse::codec::Row& GetValue() {
         row_.Reset(reinterpret_cast<const int8_t*>(it_->GetValue()->data),
                 it_->GetValue()->size);
         return row_;
@@ -76,10 +76,10 @@ class MemTableWindowIterator : public ::fesql::vm::RowIterator {
     TimeEntries::Iterator* it_;
     uint32_t record_idx_;
     TTLSt expire_value_;
-    ::fesql::codec::Row row_;
+    ::hybridse::codec::Row row_;
 };
 
-class MemTableKeyIterator : public ::fesql::vm::WindowIterator {
+class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
  public:
     MemTableKeyIterator(Segment** segments, uint32_t seg_cnt,
                         ::fedb::storage::TTLType ttl_type, uint64_t expire_time,
@@ -95,10 +95,10 @@ class MemTableKeyIterator : public ::fesql::vm::WindowIterator {
 
     bool Valid();
 
-    std::unique_ptr<::fesql::vm::RowIterator> GetValue();
-    ::fesql::vm::RowIterator* GetRawValue();
+    std::unique_ptr<::hybridse::vm::RowIterator> GetValue();
+    ::hybridse::vm::RowIterator* GetRawValue();
 
-    const fesql::codec::Row GetKey();
+    const hybridse::codec::Row GetKey();
 
  private:
     void NextPK();
@@ -193,8 +193,8 @@ class MemTable : public Table {
     TableIterator* NewTraverseIterator(uint32_t index,
                                        uint32_t ts_idx) override;
 
-    ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t index);
-    ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t index,
+    ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t index);
+    ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t index,
                                                    uint32_t ts_idx);
 
     // release all memory allocated

@@ -16,15 +16,14 @@
 
 package com._4paradigm.fesql_auto_test.entity;
 
-import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.hybridse.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.fesql_auto_test.common.FesqlTest;
 import com._4paradigm.fesql_auto_test.util.Tool;
 import org.apache.commons.lang3.StringUtils;
-import org.testng.Assert;
+import org.apache.poi.hssf.record.common.FeatSmartTag;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
@@ -63,7 +62,7 @@ public class FesqlDataProviderList {
                     && !FesqlConfig.FESQL_CASE_PATH.equals(caseFile)) {
                 continue;
             }
-            String casePath = Tool.getCasePath(caseFile);
+            String casePath = Tool.getCasePath(FesqlConfig.YAML_CASE_BASE_DIR, caseFile);
             File file = new File(casePath);
             if (!file.exists()) {
                 continue;

@@ -9,13 +9,13 @@
     <modules>
            <module>sql-jdbc</module>
            <module>sql-native</module>
-           <module>sql-jmh</module>
            <module>fesql-auto-test-java</module>
     </modules>
     <packaging>pom</packaging>
     <name>sdk</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <hybridse.version>0.1.0-SNAPSHOT</hybridse.version>
     </properties>
     <build>
         <pluginManagement>

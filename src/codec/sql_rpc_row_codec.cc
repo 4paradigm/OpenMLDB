@@ -19,12 +19,12 @@
 namespace fedb {
 namespace codec {
 
-bool DecodeRpcRow(const butil::IOBuf& buf, size_t offset, size_t size, size_t slice_num, fesql::codec::Row* row) {
+bool DecodeRpcRow(const butil::IOBuf& buf, size_t offset, size_t size, size_t slice_num, hybridse::codec::Row* row) {
     if (row == nullptr) {
         return false;
     }
     if (slice_num == 0 || size == 0) {
-        *row = fesql::codec::Row();
+        *row = hybridse::codec::Row();
         return true;
     }
     size_t cur_offset = offset;
@@ -48,17 +48,17 @@ bool DecodeRpcRow(const butil::IOBuf& buf, size_t offset, size_t size, size_t sl
         }
         if (slice_size == 0) {
             if (i == 0) {
-                *row = fesql::codec::Row();
+                *row = hybridse::codec::Row();
             } else {
-                row->Append(fesql::base::RefCountedSlice());
+                row->Append(hybridse::base::RefCountedSlice());
             }
         } else {
             int8_t* slice_buf = reinterpret_cast<int8_t*>(malloc(slice_size));
             buf.copy_to(slice_buf, slice_size, cur_offset);
             if (i == 0) {
-                *row = fesql::codec::Row(fesql::base::RefCountedSlice::CreateManaged(slice_buf, slice_size));
+                *row = hybridse::codec::Row(hybridse::base::RefCountedSlice::CreateManaged(slice_buf, slice_size));
             } else {
-                row->Append(fesql::base::RefCountedSlice::CreateManaged(slice_buf, slice_size));
+                row->Append(hybridse::base::RefCountedSlice::CreateManaged(slice_buf, slice_size));
             }
         }
         cur_offset = next_offset;
@@ -70,7 +70,7 @@ bool DecodeRpcRow(const butil::IOBuf& buf, size_t offset, size_t size, size_t sl
     return true;
 }
 
-bool EncodeRpcRow(const fesql::codec::Row& row, butil::IOBuf* buf, size_t* total_size) {
+bool EncodeRpcRow(const hybridse::codec::Row& row, butil::IOBuf* buf, size_t* total_size) {
     if (buf == nullptr) {
         return false;
     }

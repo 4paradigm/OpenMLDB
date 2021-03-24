@@ -34,7 +34,7 @@
 #include "proto/tablet.pb.h"
 #include "replica/replicate_node.h"
 #include "storage/table.h"
-#include "thread_pool.h" // NOLINT
+#include "common/thread_pool.h"
 
 namespace fedb {
 namespace replica {

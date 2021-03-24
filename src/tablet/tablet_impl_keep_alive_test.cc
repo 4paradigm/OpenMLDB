@@ -18,12 +18,13 @@
 #include <gflags/gflags.h>
 #include <sched.h>
 #include <unistd.h>
+#include <boost/bind.hpp>
 #include "base/kv_iterator.h"
 #include "gtest/gtest.h"
-#include "base/glog_wapper.h" // NOLINT
+#include "base/glog_wapper.h"
 #include "proto/tablet.pb.h"
 #include "tablet/tablet_impl.h"
-#include "timer.h" // NOLINT
+#include "common/timer.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);

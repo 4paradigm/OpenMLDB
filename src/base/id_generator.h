@@ -19,10 +19,9 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
-
 #include <atomic>
 
-#include "timer.h"  // NOLINT
+#include "common/timer.h"
 
 namespace fedb {
 namespace base {

@@ -32,7 +32,7 @@
 #include "sdk/sql_router.h"
 #include "sdk/sql_cluster_router.h"
 #include "sdk/sql_sdk_test.h"
-#include "timer.h"  // NOLINT
+#include "common/timer.h"
 #include "vm/catalog.h"
 
 namespace fedb {
@@ -65,7 +65,7 @@ TEST_F(SQLClusterTest, cluster_insert) {
     ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     std::string ddl = "create table " + name +
@@ -116,13 +116,13 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
     sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = hybridse::sqlcase::SQLCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
     }
     std::string db = "gettabletclient;";
-    fesql::sdk::Status status;
+    hybridse::sdk::Status status;
     ASSERT_TRUE(router->CreateDB(db, &status));
     ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
     ASSERT_TRUE(router->RefreshCatalog());
@@ -156,7 +156,7 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = hybridse::sqlcase::SQLCase::IS_DEBUG();
     return NewClusterSQLRouter(sql_opt);
 }
 
@@ -344,7 +344,7 @@ TEST_F(SQLClusterTest, create_table) {
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
     std::string db = "db" + GenRand();
-    ::fesql::sdk::Status status;
+    ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     for (int i = 0; i < 2; i++) {
@@ -373,7 +373,7 @@ TEST_F(SQLClusterTest, create_table) {
             }
         }
     }
-    ASSERT_EQ(pid_map.size(), 2);
+    ASSERT_EQ(pid_map.size(), 2u);
     ASSERT_EQ(pid_map.begin()->second, pid_map.rbegin()->second);
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test1;", &status));
@@ -384,7 +384,7 @@ TEST_F(SQLClusterTest, create_table) {
 }  // namespace fedb
 
 int main(int argc, char** argv) {
-    ::fesql::vm::Engine::InitializeGlobalLLVM();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     FLAGS_zk_session_timeout = 100000;
     ::fedb::sdk::MiniCluster mc(6181);
     ::fedb::sdk::mc_ = &mc;

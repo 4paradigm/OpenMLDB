@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include "base/file_util.h"
 #include "client/tablet_client.h"
-#include "base/glog_wapper.h" // NOLINT
+#include "base/glog_wapper.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
 #include "replica/replicate_node.h"
@@ -33,8 +33,8 @@
 #include "storage/table.h"
 #include "storage/ticket.h"
 #include "tablet/tablet_impl.h"
-#include "thread_pool.h" // NOLINT
-#include "timer.h" // NOLINT
+#include "common/thread_pool.h"
+#include "common/timer.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;

@@ -199,11 +199,7 @@ public class FEDBDeploy {
 //                    "sed -i 's@--gc_interval=60@--gc_interval=1@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i 's@--scan_concurrency_limit=16@--scan_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i 's@--put_concurrency_limit=8@--put_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
-                    "sed -i 's@--get_concurrency_limit=16@--get_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
-                    "sed -i 's@#--ssd_root_path=./db@--ssd_root_path=./db@' "+testPath+tablet_name+"/conf/tablet.flags",
-                    "sed -i 's@#--hdd_root_path=./db@--hdd_root_path=./db@' "+testPath+tablet_name+"/conf/tablet.flags",
-                    "sed -i 's@#--recycle_ssd_bin_root_path=./recycle@--recycle_ssd_bin_root_path=./recycle@' "+testPath+tablet_name+"/conf/tablet.flags",
-                    "sed -i 's@#--recycle_hdd_bin_root_path=./recycle@--recycle_hdd_bin_root_path=./recycle@' "+testPath+tablet_name+"/conf/tablet.flags"
+                    "sed -i 's@--get_concurrency_limit=16@--get_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags"
             );
             if(useName){
                 commands.add("sed -i 's/--endpoint=.*/#&/' " + testPath + tablet_name + "/conf/tablet.flags");
@@ -232,82 +228,6 @@ public class FEDBDeploy {
             e.printStackTrace();
         }
         throw new RuntimeException("tablet部署失败");
-    }
-    public int deployBlobServer(String testPath, String ip, int index, String zk_endpoint, String name){
-        try {
-            int port = LinuxUtil.getNoUsedPort();
-            String blob_server_name = "/rtidb-blob-"+index;
-            List<String> commands = Lists.newArrayList(
-                    "cp -r "+testPath+"/"+fedbName+" "+testPath+blob_server_name,
-                    "sed -i 's#--role=tablet#--role=blob#' "+testPath+blob_server_name+"/conf/tablet.flags",
-                    "sed -i 's/#--zk_cluster=.*/--zk_cluster="+zk_endpoint+"/' "+testPath+blob_server_name+"/conf/tablet.flags",
-                    "sed -i 's@#--zk_root_path=/rtidb_cluster@--zk_root_path=/rtidb_cluster@' "+testPath+blob_server_name+"/conf/tablet.flags",
-                    "sed -i 's@#--hdd_root_path=./db@--hdd_root_path=./db@' "+testPath+blob_server_name+"/conf/tablet.flags",
-                    "sed -i 's@#--recycle_hdd_bin_root_path=./recycle@--recycle_hdd_bin_root_path=./recycle_db@' "+testPath+blob_server_name+"/conf/tablet.flags"
-            );
-            if(useName){
-                commands.add("sed -i 's/--endpoint=.*/#&/' " + testPath + blob_server_name + "/conf/tablet.flags");
-                commands.add("echo '--use_name=true' >> " + testPath + blob_server_name + "/conf/tablet.flags");
-                commands.add("echo '--port=" + port + "' >> " + testPath + blob_server_name + "/conf/tablet.flags");
-                if(name!=null){
-                    commands.add("mkdir -p " + testPath + blob_server_name + "/data");
-                    commands.add("echo " + name + " >> " + testPath + blob_server_name + "/data/name.txt");
-                }
-            }else{
-                String ip_port = ip+":"+port;
-                commands.add("sed -i 's#--endpoint=.*#--endpoint="+ip_port+"#' "+testPath+blob_server_name+"/conf/tablet.flags");
-            }
-            commands.forEach(ExecutorUtil::run);
-            if(StringUtils.isNotEmpty(fedbPath)){
-                FEDBCommandUtil.cpRtidb(testPath+blob_server_name,fedbPath);
-            }
-            ExecutorUtil.run("sh "+testPath+blob_server_name+"/bin/start.sh start");
-            boolean used = LinuxUtil.checkPortIsUsed(port,3000,30);
-            if(used){
-                log.info("blob-server部署成功，port："+port);
-                return port;
-            }
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-        throw new RuntimeException("blob-server部署失败");
-    }
-    public int deployBlobProxy(String testPath, String ip, int index, String zk_endpoint, String name){
-        try {
-            int port = LinuxUtil.getNoUsedPort();
-            String blob_proxy_name = "/rtidb-blob-proxy-"+index;
-            List<String> commands = Lists.newArrayList(
-                    "cp -r "+testPath+"/"+fedbName+" "+testPath+blob_proxy_name,
-                    "sed -i 's#--role=tablet#--role=blob_proxy#' "+testPath+blob_proxy_name+"/conf/tablet.flags",
-                    "sed -i 's/#--zk_cluster=.*/--zk_cluster="+zk_endpoint+"/' "+testPath+blob_proxy_name+"/conf/tablet.flags",
-                    "sed -i 's@#--zk_root_path=/rtidb_cluster@--zk_root_path=/rtidb_cluster@' "+testPath+blob_proxy_name+"/conf/tablet.flags"
-            );
-            if(useName){
-                commands.add("sed -i 's/--endpoint=.*/#&/' " + testPath + blob_proxy_name + "/conf/tablet.flags");
-                commands.add("echo '--use_name=true' >> " + testPath + blob_proxy_name + "/conf/tablet.flags");
-                commands.add("echo '--port=" + port + "' >> " + testPath + blob_proxy_name + "/conf/tablet.flags");
-                if(name!=null){
-                    commands.add("mkdir -p " + testPath + blob_proxy_name + "/data");
-                    commands.add("echo " + name + " >> " + testPath + blob_proxy_name + "/data/name.txt");
-                }
-            }else{
-                String ip_port = ip+":"+port;
-                commands.add("sed -i 's#--endpoint=.*#--endpoint="+ip_port+"#' "+testPath+blob_proxy_name+"/conf/tablet.flags");
-            }
-            commands.forEach(ExecutorUtil::run);
-            if(StringUtils.isNotEmpty(fedbPath)){
-                FEDBCommandUtil.cpRtidb(testPath+blob_proxy_name,fedbPath);
-            }
-            ExecutorUtil.run("sh "+testPath+blob_proxy_name+"/bin/start.sh start");
-            boolean used = LinuxUtil.checkPortIsUsed(port,3000,30);
-            if(used){
-                log.info("blob-proxy部署成功，port："+port);
-                return port;
-            }
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-        throw new RuntimeException("blob-proxy部署失败");
     }
 }
 

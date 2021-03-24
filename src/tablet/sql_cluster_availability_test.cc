@@ -18,10 +18,10 @@
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 #include <unistd.h>
-#include <timer.h>
 
 #include "base/glog_wapper.h"
 #include "client/ns_client.h"
+#include "common/timer.h"
 #include "gtest/gtest.h"
 #include "nameserver/name_server_impl.h"
 #include "proto/name_server.pb.h"
@@ -32,7 +32,6 @@
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
-DECLARE_string(hdd_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
@@ -66,7 +65,7 @@ class SqlClusterTest : public ::testing::Test {
 };
 
 std::shared_ptr<fedb::sdk::SQLRouter> GetNewSQLRouter() {
-    ::fesql::vm::Engine::InitializeGlobalLLVM();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = FLAGS_zk_cluster;
     sql_opt.zk_path = FLAGS_zk_root_path;
@@ -165,9 +164,9 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     // tablet1
     FLAGS_endpoint = "127.0.0.1:9831";
     FLAGS_db_root_path = "/tmp/" + GenRand();
-    brpc::Server* tb_server1 = new brpc::Server();
+    brpc::Server tb_server1;
     ::fedb::tablet::TabletImpl* tablet1 = new ::fedb::tablet::TabletImpl();
-    StartTablet(tb_server1, tablet1);
+    StartTablet(&tb_server1, tablet1);
 
     {
         // showtablet
@@ -199,7 +198,7 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
         FAIL() << "Fail new cluster sql router";
     }
     std::string db = "test";
-    fesql::sdk::Status status;
+    hybridse::sdk::Status status;
     ASSERT_TRUE(router->CreateDB(db, &status));
     router->ExecuteDDL(db, "drop table trans;", &status);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -246,15 +245,15 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     ASSERT_EQ(rs->GetInt64Unsafe(2), 67);
     ASSERT_FALSE(rs->Next());
     // stop
+    tb_server1.Stop(10);
     delete tablet1;
-    delete tb_server1;
     sleep(3);
     rs = router->CallProcedure(db, sp_name, request_row, &status);
     ASSERT_FALSE(rs);
     // restart
-    brpc::Server* tb_server2 = new brpc::Server();
+    brpc::Server tb_server2;
     ::fedb::tablet::TabletImpl* tablet2 = new ::fedb::tablet::TabletImpl();
-    StartTablet(tb_server2, tablet2);
+    StartTablet(&tb_server2, tablet2);
     sleep(3);
     rs = router->CallProcedure(db, sp_name, request_row, &status);
     if (!rs) FAIL() << "call procedure failed";
@@ -275,8 +274,8 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     DropTable(name_server_client, db, "trans", true);
     ShowTable(name_server_client, db, 0);
 
+    tb_server2.Stop(10);
     delete tablet2;
-    delete tb_server2;
 }
 
 TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
@@ -294,9 +293,9 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     // tablet1
     FLAGS_endpoint = "127.0.0.1:9831";
     FLAGS_db_root_path = "/tmp/" + GenRand();
-    brpc::Server* tb_server1 = new brpc::Server();
+    brpc::Server tb_server1;
     ::fedb::tablet::TabletImpl* tablet1 = new ::fedb::tablet::TabletImpl();
-    StartTablet(tb_server1, tablet1);
+    StartTablet(&tb_server1, tablet1);
 
     {
         // showtablet
@@ -337,7 +336,7 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
         FAIL() << "Fail new cluster sql router";
     }
     std::string db = "test1";
-    fesql::sdk::Status status;
+    hybridse::sdk::Status status;
     ASSERT_TRUE(router->CreateDB(db, &status));
     router->ExecuteDDL(db, "drop table trans;", &status);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -387,15 +386,15 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     ASSERT_EQ(rs->GetInt64Unsafe(2), 67);
     ASSERT_FALSE(rs->Next());
     // stop
+    tb_server1.Stop(10);
     delete tablet1;
-    delete tb_server1;
     sleep(3);
     rs = router->CallProcedure(db, sp_name, request_row, &status);
     ASSERT_FALSE(rs);
     // restart
-    brpc::Server* tb_server2 = new brpc::Server();
+    brpc::Server tb_server2;
     ::fedb::tablet::TabletImpl* tablet2 = new ::fedb::tablet::TabletImpl();
-    StartTablet(tb_server2, tablet2);
+    StartTablet(&tb_server2, tablet2);
     sleep(3);
     rs = router->CallProcedure(db, sp_name, request_row, &status);
     if (!rs) FAIL() << "call procedure failed";
@@ -433,9 +432,8 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     DropTable(name_server_client, db, "trans1", true);
     ShowTable(name_server_client, db, 0);
 
-
+    tb_server2.Stop(10);
     delete tablet2;
-    delete tb_server2;
 }
 
 }  // namespace tablet

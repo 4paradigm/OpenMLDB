@@ -22,13 +22,16 @@
 #include <google/protobuf/text_format.h>
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef DISALLOW_COPY_AND_ASSIGN
+#undef DISALLOW_COPY_AND_ASSIGN
+#endif
 #include <snappy.h>
-
 #include <algorithm>
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
 
+#include "boost/bind.hpp"
 #include "boost/container/deque.hpp"
 #include "config.h"  // NOLINT
 #ifdef TCMALLOC_ENABLE
@@ -46,7 +49,7 @@
 #include "storage/binlog.h"
 #include "storage/segment.h"
 #include "tablet/file_sender.h"
-#include "timer.h"  // NOLINT
+#include "common/timer.h"
 #include "codec/sql_rpc_row_codec.h"
 #include "codec/row_codec.h"
 
@@ -57,27 +60,21 @@ using ::fedb::base::ReturnCode;
 using ::fedb::codec::SchemaCodec;
 
 DECLARE_int32(gc_interval);
-DECLARE_int32(disk_gc_interval);
 DECLARE_int32(gc_pool_size);
 DECLARE_int32(statdb_ttl);
 DECLARE_uint32(scan_max_bytes_size);
 DECLARE_uint32(scan_reserve_size);
 DECLARE_double(mem_release_rate);
 DECLARE_string(db_root_path);
-DECLARE_string(ssd_root_path);
-DECLARE_string(hdd_root_path);
 DECLARE_bool(binlog_notify_on_put);
 DECLARE_int32(task_pool_size);
 DECLARE_int32(io_pool_size);
 DECLARE_int32(make_snapshot_time);
-DECLARE_int32(make_disktable_snapshot_interval);
 DECLARE_int32(make_snapshot_check_interval);
 DECLARE_uint32(make_snapshot_offline_interval);
 DECLARE_bool(recycle_bin_enabled);
 DECLARE_uint32(recycle_ttl);
 DECLARE_string(recycle_bin_root_path);
-DECLARE_string(recycle_ssd_bin_root_path);
-DECLARE_string(recycle_hdd_bin_root_path);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(get_table_diskused_interval);
 DECLARE_uint32(task_check_interval);
@@ -128,15 +125,15 @@ TabletImpl::TabletImpl()
       follower_(false),
       catalog_(new ::fedb::catalog::TabletCatalog()),
       engine_(catalog_,
-              fesql::vm::EngineOptions::NewEngineOptionWithClusterEnable(
+              hybridse::vm::EngineOptions::NewEngineOptionWithClusterEnable(
                   FLAGS_enable_distsql)),
       zk_cluster_(),
       zk_path_(),
       endpoint_(),
       sp_cache_(std::shared_ptr<SpCache>(new SpCache())),
       notify_path_() {
-    catalog_->SetLocalTablet(std::shared_ptr<::fesql::vm::Tablet>(
-        new ::fesql::vm::LocalTablet(&engine_, sp_cache_)));
+    catalog_->SetLocalTablet(std::shared_ptr<::hybridse::vm::Tablet>(
+        new ::hybridse::vm::LocalTablet(&engine_, sp_cache_)));
 }
 
 TabletImpl::~TabletImpl() {
@@ -171,21 +168,10 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     notify_path_ = zk_path + "/table/notify";
     sp_root_path_ = zk_path + "/store_procedure/db_sp_data";
     std::lock_guard<std::mutex> lock(mu_);
-    ::fedb::base::SplitString(FLAGS_db_root_path, ",",
-                               mode_root_paths_[::fedb::common::kMemory]);
-    ::fedb::base::SplitString(FLAGS_ssd_root_path, ",",
-                               mode_root_paths_[::fedb::common::kSSD]);
-    ::fedb::base::SplitString(FLAGS_hdd_root_path, ",",
-                               mode_root_paths_[::fedb::common::kHDD]);
+    ::fedb::base::SplitString(FLAGS_db_root_path, ",", mode_root_paths_);
 
     ::fedb::base::SplitString(
-        FLAGS_recycle_bin_root_path, ",",
-        mode_recycle_root_paths_[::fedb::common::kMemory]);
-    ::fedb::base::SplitString(FLAGS_recycle_ssd_bin_root_path, ",",
-                               mode_recycle_root_paths_[::fedb::common::kSSD]);
-    ::fedb::base::SplitString(FLAGS_recycle_hdd_bin_root_path, ",",
-                               mode_recycle_root_paths_[::fedb::common::kHDD]);
-
+        FLAGS_recycle_bin_root_path, ",", mode_recycle_root_paths_);
     if (!zk_cluster.empty()) {
         zk_client_ = new ZkClient(zk_cluster, real_endpoint,
                 FLAGS_zk_session_timeout, endpoint, zk_path);
@@ -205,47 +191,18 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
         return false;
     }
 
-    if (FLAGS_make_disktable_snapshot_interval <= 0) {
-        PDLOG(WARNING, "make_disktable_snapshot_interval[%d] is illegal.",
-              FLAGS_make_disktable_snapshot_interval);
-        return false;
-    }
-
-    if (!CreateMultiDir(mode_root_paths_[::fedb::common::kMemory])) {
+    if (!CreateMultiDir(mode_root_paths_)) {
         PDLOG(WARNING, "fail to create db root path %s",
               FLAGS_db_root_path.c_str());
         return false;
     }
 
-    if (!CreateMultiDir(mode_root_paths_[::fedb::common::kSSD])) {
-        PDLOG(WARNING, "fail to create ssd root path %s",
-              FLAGS_ssd_root_path.c_str());
-        return false;
-    }
-
-    if (!CreateMultiDir(mode_root_paths_[::fedb::common::kHDD])) {
-        PDLOG(WARNING, "fail to create hdd root path %s",
-              FLAGS_hdd_root_path.c_str());
-        return false;
-    }
-
-    if (!CreateMultiDir(mode_recycle_root_paths_[::fedb::common::kMemory])) {
+    if (!CreateMultiDir(mode_recycle_root_paths_)) {
         PDLOG(WARNING, "fail to create recycle bin root path %s",
               FLAGS_recycle_bin_root_path.c_str());
         return false;
     }
 
-    if (!CreateMultiDir(mode_recycle_root_paths_[::fedb::common::kSSD])) {
-        PDLOG(WARNING, "fail to create recycle ssd bin root path %s",
-              FLAGS_recycle_ssd_bin_root_path.c_str());
-        return false;
-    }
-
-    if (!CreateMultiDir(mode_recycle_root_paths_[::fedb::common::kHDD])) {
-        PDLOG(WARNING, "fail to create recycle bin root path %s",
-              FLAGS_recycle_hdd_bin_root_path.c_str());
-        return false;
-    }
     std::map<std::string, std::string> real_endpoint_map = { {endpoint, real_endpoint} };
     if (!catalog_->UpdateClient(real_endpoint_map)) {
         PDLOG(WARNING, "update client failed");
@@ -254,9 +211,6 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval,
                              boost::bind(&TabletImpl::SchedMakeSnapshot, this));
-    snapshot_pool_.DelayTask(
-        FLAGS_make_disktable_snapshot_interval * 60 * 1000,
-        boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
     task_pool_.AddTask(boost::bind(&TabletImpl::GetDiskused, this));
     if (FLAGS_recycle_ttl != 0) {
         task_pool_.DelayTask(FLAGS_recycle_ttl * 60 * 1000,
@@ -1507,8 +1461,7 @@ void TabletImpl::Count(RpcController* controller,
     }
     index = index_def->GetId();
     ttl = *index_def->GetTTL();
-    if (!request->filter_expired_data() &&
-        table->GetStorageMode() == ::fedb::common::StorageMode::kMemory) {
+    if (!request->filter_expired_data()) {
         MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
         if (mem_table != NULL) {
             uint64_t count = 0;
@@ -1830,9 +1783,9 @@ void TabletImpl::ProcessQuery(RpcController* ctrl,
                               const fedb::api::QueryRequest* request,
                               ::fedb::api::QueryResponse* response,
                               butil::IOBuf* buf) {
-    ::fesql::base::Status status;
+    ::hybridse::base::Status status;
     if (request->is_batch()) {
-        ::fesql::vm::BatchRunSession session;
+        ::hybridse::vm::BatchRunSession session;
         if (request->is_debug()) {
             session.EnableDebug();
         }
@@ -1866,7 +1819,7 @@ void TabletImpl::ProcessQuery(RpcController* ctrl,
         uint32_t byte_size = 0;
         uint32_t count = 0;
         while (iter->Valid()) {
-            const ::fesql::codec::Row& row = iter->GetValue();
+            const ::hybridse::codec::Row& row = iter->GetValue();
             if (byte_size > FLAGS_scan_max_bytes_size) {
                 LOG(WARNING) << "reach the max byte size truncate result";
                 response->set_schema(session.GetEncodedSchema());
@@ -1888,16 +1841,16 @@ void TabletImpl::ProcessQuery(RpcController* ctrl,
                    << " with record cnt " << count << " byte size "
                    << byte_size;
     } else {
-        ::fesql::vm::RequestRunSession session;
+        ::hybridse::vm::RequestRunSession session;
         if (request->is_debug()) {
             session.EnableDebug();
         }
         if (request->is_procedure()) {
             const std::string& db_name = request->db();
             const std::string& sp_name = request->sp_name();
-            std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
+            std::shared_ptr<hybridse::vm::CompileInfo> request_compile_info;
             {
-                fesql::base::Status status;
+                hybridse::base::Status status;
                 request_compile_info = sp_cache_->GetRequestInfo(db_name, sp_name, status);
                 if (!status.isOK()) {
                     response->set_code(::fedb::base::ReturnCode::kProcedureNotFound);
@@ -1920,7 +1873,7 @@ void TabletImpl::ProcessQuery(RpcController* ctrl,
             }
             RunRequestQuery(ctrl, *request, session, *response, *buf);
         }
-        const std::string& sql = session.GetCompileInfo()->get_sql_context().sql;
+        const std::string& sql = session.GetCompileInfo()->GetSQL();
         if (response->code() != ::fedb::base::kOk) {
             DLOG(WARNING) << "fail to run sql " << sql << " error msg: " << response->msg();
         } else {
@@ -1950,17 +1903,17 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl, const fedb::api::SQLB
 void TabletImpl::ProcessBatchRequestQuery(
     RpcController* ctrl, const fedb::api::SQLBatchRequestQueryRequest* request,
     fedb::api::SQLBatchRequestQueryResponse* response, butil::IOBuf& buf) {
-    ::fesql::base::Status status;
-    ::fesql::vm::BatchRequestRunSession session;
+    ::hybridse::base::Status status;
+    ::hybridse::vm::BatchRequestRunSession session;
     // run session
     if (request->is_debug()) {
         session.EnableDebug();
     }
     bool is_procedure = request->is_procedure();
     if (is_procedure) {
-        std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
+        std::shared_ptr<hybridse::vm::CompileInfo> request_compile_info;
         {
-            fesql::base::Status status;
+            hybridse::base::Status status;
             request_compile_info = sp_cache_->GetBatchRequestInfo(
                 request->db(), request->sp_name(), status);
             if (!status.isOK()) {
@@ -1997,7 +1950,7 @@ void TabletImpl::ProcessBatchRequestQuery(
         return;
     }
     const auto& batch_request_info =
-        compile_info->get_sql_context().batch_request_info;
+        compile_info->GetBatchRequestInfo();
     size_t common_column_num = batch_request_info.common_column_indices.size();
     bool has_common_and_uncommon_row =
         !request->has_task_id() && common_column_num > 0 &&
@@ -2014,10 +1967,10 @@ void TabletImpl::ProcessBatchRequestQuery(
 
     auto& io_buf = static_cast<brpc::Controller*>(ctrl)->request_attachment();
     size_t buf_offset = 0;
-    std::vector<::fesql::codec::Row> input_rows(input_row_num);
+    std::vector<::hybridse::codec::Row> input_rows(input_row_num);
     if (has_common_and_uncommon_row) {
         size_t common_size = request->row_sizes().Get(0);
-        ::fesql::codec::Row common_row;
+        ::hybridse::codec::Row common_row;
         if (!codec::DecodeRpcRow(io_buf, buf_offset, common_size,
                                  request->common_slices(), &common_row)) {
             response->set_msg("decode input common row failed");
@@ -2026,7 +1979,7 @@ void TabletImpl::ProcessBatchRequestQuery(
         }
         buf_offset += common_size;
         for (size_t i = 0; i < input_row_num; ++i) {
-            ::fesql::codec::Row non_common_row;
+            ::hybridse::codec::Row non_common_row;
             size_t non_common_size = request->row_sizes().Get(i + 1);
             if (!codec::DecodeRpcRow(io_buf, buf_offset, non_common_size,
                                      request->non_common_slices(), &non_common_row)) {
@@ -2035,7 +1988,7 @@ void TabletImpl::ProcessBatchRequestQuery(
                 return;
             }
             buf_offset += non_common_size;
-            input_rows[i] = ::fesql::codec::Row(
+            input_rows[i] = ::hybridse::codec::Row(
                 1, common_row, 1, non_common_row);
         }
     } else {
@@ -2050,7 +2003,7 @@ void TabletImpl::ProcessBatchRequestQuery(
             buf_offset += non_common_size;
         }
     }
-    std::vector<::fesql::codec::Row> output_rows;
+    std::vector<::hybridse::codec::Row> output_rows;
     int32_t run_ret = 0;
     if (request->has_task_id()) {
         session.Run(request->task_id(), input_rows, output_rows);
@@ -2496,8 +2449,7 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         table->SetSchema(schema);
         // update TableMeta.txt
         std::string db_root_path;
-        ::fedb::common::StorageMode mode = table_meta.storage_mode();
-        bool ok = ChooseDBRootPath(tid, pid, mode, db_root_path);
+        bool ok = ChooseDBRootPath(tid, pid, db_root_path);
         if (!ok) {
             response->set_code(ReturnCode::kFailToGetDbRootPath);
             response->set_msg("fail to get db root path");
@@ -2549,7 +2501,6 @@ void TabletImpl::GetTableStatus(
             status->set_tid(table->GetId());
             status->set_pid(table->GetPid());
             status->set_compress_type(table->GetCompressType());
-            status->set_storage_mode(table->GetStorageMode());
             status->set_name(table->GetName());
             ::fedb::api::TTLDesc* ttl_desc = status->mutable_ttl_desc();
             ::fedb::storage::TTLSt ttl = table->GetTTL();
@@ -2573,37 +2524,34 @@ void TabletImpl::GetTableStatus(
                 status->set_offset(replicator->GetOffset());
             }
             status->set_record_cnt(table->GetRecordCnt());
-            if (table->GetStorageMode() ==
-                ::fedb::common::StorageMode::kMemory) {
-                if (MemTable* mem_table =
-                        dynamic_cast<MemTable*>(table.get())) {
-                    status->set_is_expire(mem_table->GetExpireStatus());
-                    status->set_record_byte_size(
+            if (MemTable* mem_table =
+                    dynamic_cast<MemTable*>(table.get())) {
+                status->set_is_expire(mem_table->GetExpireStatus());
+                status->set_record_byte_size(
                         mem_table->GetRecordByteSize());
-                    status->set_record_idx_byte_size(
+                status->set_record_idx_byte_size(
                         mem_table->GetRecordIdxByteSize());
-                    status->set_record_pk_cnt(mem_table->GetRecordPkCnt());
-                    status->set_skiplist_height(mem_table->GetKeyEntryHeight());
-                    uint64_t record_idx_cnt = 0;
-                    auto indexs = table->GetAllIndex();
-                    for (const auto& index_def : indexs) {
-                        ::fedb::api::TsIdxStatus* ts_idx_status =
-                            status->add_ts_idx_status();
-                        ts_idx_status->set_idx_name(index_def->GetName());
-                        uint64_t* stats = NULL;
-                        uint32_t size = 0;
-                        bool ok = mem_table->GetRecordIdxCnt(index_def->GetId(),
-                                                             &stats, &size);
-                        if (ok) {
-                            for (uint32_t i = 0; i < size; i++) {
-                                ts_idx_status->add_seg_cnts(stats[i]);
-                                record_idx_cnt += stats[i];
-                            }
+                status->set_record_pk_cnt(mem_table->GetRecordPkCnt());
+                status->set_skiplist_height(mem_table->GetKeyEntryHeight());
+                uint64_t record_idx_cnt = 0;
+                auto indexs = table->GetAllIndex();
+                for (const auto& index_def : indexs) {
+                    ::fedb::api::TsIdxStatus* ts_idx_status =
+                        status->add_ts_idx_status();
+                    ts_idx_status->set_idx_name(index_def->GetName());
+                    uint64_t* stats = NULL;
+                    uint32_t size = 0;
+                    bool ok = mem_table->GetRecordIdxCnt(index_def->GetId(),
+                            &stats, &size);
+                    if (ok) {
+                        for (uint32_t i = 0; i < size; i++) {
+                            ts_idx_status->add_seg_cnts(stats[i]);
+                            record_idx_cnt += stats[i];
                         }
-                        delete []stats;
                     }
-                    status->set_idx_cnt(record_idx_cnt);
+                    delete []stats;
                 }
+                status->set_idx_cnt(record_idx_cnt);
             }
             if (request->has_need_schema() && request->need_schema()) {
                 status->set_schema(table->GetSchema());
@@ -2626,13 +2574,11 @@ void TabletImpl::SetExpire(RpcController* controller,
         response->set_msg("table is not exist");
         return;
     }
-    if (table->GetStorageMode() == ::fedb::common::StorageMode::kMemory) {
-        MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
-        if (mem_table != NULL) {
-            mem_table->SetExpire(request->is_expire());
-            PDLOG(INFO, "set table expire[%d]. tid[%u] pid[%u]",
-                  request->is_expire(), request->tid(), request->pid());
-        }
+    MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
+    if (mem_table != NULL) {
+        mem_table->SetExpire(request->is_expire());
+        PDLOG(INFO, "set table expire[%d]. tid[%u] pid[%u]",
+                request->is_expire(), request->tid(), request->pid());
     }
     response->set_code(::fedb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -2693,14 +2639,6 @@ void TabletImpl::MakeSnapshotInternal(
               "cur_offset[%lu], snapshot_offset[%lu] end_offset[%lu]",
               tid, pid, cur_offset, snapshot_offset, end_offset);
     } else {
-        if (table->GetStorageMode() != ::fedb::common::StorageMode::kMemory) {
-            ::fedb::storage::DiskTableSnapshot* disk_snapshot =
-                dynamic_cast<::fedb::storage::DiskTableSnapshot*>(
-                    snapshot.get());
-            if (disk_snapshot != NULL) {
-                disk_snapshot->SetTerm(replicator->GetLeaderTerm());
-            }
-        }
         uint64_t offset = 0;
         ret = snapshot->MakeSnapshot(table, offset, end_offset);
         if (ret == 0) {
@@ -2719,15 +2657,13 @@ void TabletImpl::MakeSnapshotInternal(
         if (task) {
             if (ret == 0) {
                 task->set_status(::fedb::api::kDone);
-                if (table->GetStorageMode() == common::StorageMode::kMemory) {
-                    auto right_now =
-                        std::chrono::system_clock::now().time_since_epoch();
-                    int64_t ts =
-                        std::chrono::duration_cast<std::chrono::seconds>(
+                auto right_now =
+                    std::chrono::system_clock::now().time_since_epoch();
+                int64_t ts =
+                    std::chrono::duration_cast<std::chrono::seconds>(
                             right_now)
-                            .count();
-                    table->SetMakeSnapshotTime(ts);
-                }
+                    .count();
+                table->SetMakeSnapshotTime(ts);
             } else {
                 task->set_status(::fedb::api::kFailed);
             }
@@ -2815,16 +2751,13 @@ void TabletImpl::SchedMakeSnapshot() {
                 if (iter->first == 0 && inner->first == 0) {
                     continue;
                 }
-                if (inner->second->GetStorageMode() ==
-                    ::fedb::common::StorageMode::kMemory) {
-                    if (ts - inner->second->GetMakeSnapshotTime() <=
-                            FLAGS_make_snapshot_offline_interval &&
+                if (ts - inner->second->GetMakeSnapshotTime() <=
+                        FLAGS_make_snapshot_offline_interval &&
                         !zk_cluster_.empty()) {
-                        continue;
-                    }
-                    table_set.push_back(
-                        std::make_pair(iter->first, inner->first));
+                    continue;
                 }
+                table_set.push_back(
+                        std::make_pair(iter->first, inner->first));
             }
         }
     }
@@ -2840,36 +2773,6 @@ void TabletImpl::SchedMakeSnapshot() {
         boost::bind(&TabletImpl::SchedMakeSnapshot, this));
 }
 
-void TabletImpl::SchedMakeDiskTableSnapshot() {
-    std::vector<std::pair<uint32_t, uint32_t>> table_set;
-    {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        for (auto iter = tables_.begin(); iter != tables_.end(); ++iter) {
-            for (auto inner = iter->second.begin(); inner != iter->second.end();
-                 ++inner) {
-                if (iter->first == 0 && inner->first == 0) {
-                    continue;
-                }
-                if (inner->second->GetStorageMode() !=
-                    ::fedb::common::StorageMode::kMemory) {
-                    table_set.push_back(
-                        std::make_pair(iter->first, inner->first));
-                }
-            }
-        }
-    }
-    for (auto iter = table_set.begin(); iter != table_set.end(); ++iter) {
-        PDLOG(INFO, "start make snapshot tid[%u] pid[%u]", iter->first,
-              iter->second);
-        MakeSnapshotInternal(iter->first, iter->second, 0,
-                             std::shared_ptr<::fedb::api::TaskInfo>());
-    }
-    // delay task one hour later avoid execute  more than one time
-    snapshot_pool_.DelayTask(
-        FLAGS_make_disktable_snapshot_interval * 60 * 1000,
-        boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
-}
-
 void TabletImpl::SendData(RpcController* controller,
                           const ::fedb::api::SendDataRequest* request,
                           ::fedb::api::GeneralResponse* response,
@@ -2878,12 +2781,8 @@ void TabletImpl::SendData(RpcController* controller,
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    ::fedb::common::StorageMode mode = ::fedb::common::kMemory;
-    if (request->has_storage_mode()) {
-        mode = request->storage_mode();
-    }
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, mode, db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         response->set_code(::fedb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");
@@ -3078,7 +2977,7 @@ void TabletImpl::SendSnapshotInternal(
         }
         std::string db_root_path;
         bool ok =
-            ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
+            ChooseDBRootPath(tid, pid, db_root_path);
         if (!ok) {
             PDLOG(WARNING, "fail to get db root path for table tid %u, pid %u",
                   tid, pid);
@@ -3096,8 +2995,7 @@ void TabletImpl::SendSnapshotInternal(
             }
             real_endpoint = iter->second;
         }
-        FileSender sender(
-                remote_tid, pid, table->GetStorageMode(), real_endpoint);
+        FileSender sender(remote_tid, pid, real_endpoint);
         if (!sender.Init()) {
             PDLOG(WARNING,
                   "Init FileSender failed. tid[%u] pid[%u] endpoint[%s]", tid,
@@ -3133,19 +3031,11 @@ void TabletImpl::SendSnapshotInternal(
             }
             snapshot_file = manifest.name();
         }
-        if (table->GetStorageMode() == ::fedb::common::StorageMode::kMemory) {
-            // send snapshot file
-            if (sender.SendFile(snapshot_file, full_path + snapshot_file) < 0) {
-                PDLOG(WARNING, "send snapshot failed. tid[%u] pid[%u]", tid,
-                      pid);
-                break;
-            }
-        } else {
-            if (sender.SendDir(snapshot_file, full_path + snapshot_file) < 0) {
-                PDLOG(WARNING, "send snapshot failed. tid[%u] pid[%u]", tid,
-                      pid);
-                break;
-            }
+        // send snapshot file
+        if (sender.SendFile(snapshot_file, full_path + snapshot_file) < 0) {
+            PDLOG(WARNING, "send snapshot failed. tid[%u] pid[%u]", tid,
+                    pid);
+            break;
         }
         // send manifest file
         file_name = "MANIFEST";
@@ -3314,7 +3204,7 @@ void TabletImpl::LoadTable(RpcController* controller,
         }
         std::string root_path;
         bool ok =
-            ChooseDBRootPath(tid, pid, table_meta.storage_mode(), root_path);
+            ChooseDBRootPath(tid, pid, root_path);
         if (!ok) {
             response->set_code(::fedb::base::ReturnCode::kFailToGetDbRootPath);
             response->set_msg("fail to get table db root path");
@@ -3351,153 +3241,30 @@ void TabletImpl::LoadTable(RpcController* controller,
             response->set_msg("write data failed");
             break;
         }
-        if (table_meta.storage_mode() == fedb::common::kMemory) {
-            std::string msg;
-            if (CreateTableInternal(&table_meta, msg) < 0) {
-                response->set_code(
+        if (CreateTableInternal(&table_meta, msg) < 0) {
+            response->set_code(
                     ::fedb::base::ReturnCode::kCreateTableFailed);
-                response->set_msg(msg.c_str());
-                break;
-            }
-            uint64_t ttl = table_meta.ttl();
-            std::string name = table_meta.name();
-            uint32_t seg_cnt = 8;
-            if (table_meta.seg_cnt() > 0) {
-                seg_cnt = table_meta.seg_cnt();
-            }
-            PDLOG(INFO,
-                  "start to recover table with id %u pid %u name %s seg_cnt %d "
-                  "idx_cnt %u schema_size %u ttl %llu",
-                  tid, pid, name.c_str(), seg_cnt, table_meta.dimensions_size(),
-                  table_meta.schema().size(), ttl);
-            task_pool_.AddTask(boost::bind(&TabletImpl::LoadTableInternal, this,
-                                           tid, pid, task_ptr));
-        } else {
-            task_pool_.AddTask(boost::bind(&TabletImpl::LoadDiskTableInternal,
-                                           this, tid, pid, table_meta,
-                                           task_ptr));
-            PDLOG(INFO, "load table tid[%u] pid[%u] storage mode[%s]", tid, pid,
-                  ::fedb::common::StorageMode_Name(table_meta.storage_mode())
-                      .c_str());
+            response->set_msg(msg.c_str());
+            break;
         }
+        uint64_t ttl = table_meta.ttl();
+        std::string name = table_meta.name();
+        uint32_t seg_cnt = 8;
+        if (table_meta.seg_cnt() > 0) {
+            seg_cnt = table_meta.seg_cnt();
+        }
+        PDLOG(INFO,
+                "start to recover table with id %u pid %u name %s seg_cnt %d "
+                "idx_cnt %u schema_size %u ttl %llu",
+                tid, pid, name.c_str(), seg_cnt, table_meta.dimensions_size(),
+                table_meta.schema().size(), ttl);
+        task_pool_.AddTask(boost::bind(&TabletImpl::LoadTableInternal, this,
+                    tid, pid, task_ptr));
         response->set_code(::fedb::base::ReturnCode::kOk);
         response->set_msg("ok");
         return;
     } while (0);
     SetTaskStatus(task_ptr, ::fedb::api::TaskStatus::kFailed);
-}
-
-int TabletImpl::LoadDiskTableInternal(
-    uint32_t tid, uint32_t pid, const ::fedb::api::TableMeta& table_meta,
-    std::shared_ptr<::fedb::api::TaskInfo> task_ptr) {
-    do {
-        std::string db_root_path;
-        bool ok =
-            ChooseDBRootPath(tid, pid, table_meta.storage_mode(), db_root_path);
-        if (!ok) {
-            PDLOG(WARNING, "fail to find db root path for table tid %u pid %u",
-                  tid, pid);
-            break;
-        }
-        std::string table_path = db_root_path + "/" + std::to_string(tid) +
-                                 "_" + std::to_string(pid);
-        std::string snapshot_path = table_path + "/snapshot/";
-        ::fedb::api::Manifest manifest;
-        uint64_t snapshot_offset = 0;
-        std::string data_path = table_path + "/data";
-        if (::fedb::base::IsExists(data_path)) {
-            if (!::fedb::base::RemoveDir(data_path)) {
-                PDLOG(WARNING, "remove dir failed. tid %u pid %u path %s", tid,
-                      pid, data_path.c_str());
-                break;
-            }
-        }
-        bool need_load = false;
-        std::string manifest_file = snapshot_path + "MANIFEST";
-        if (Snapshot::GetLocalManifest(manifest_file, manifest) == 0) {
-            std::string snapshot_dir = snapshot_path + manifest.name();
-            PDLOG(INFO, "rename dir %s to %s. tid %u pid %u",
-                  snapshot_dir.c_str(), data_path.c_str(), tid, pid);
-            if (!::fedb::base::Rename(snapshot_dir, data_path)) {
-                PDLOG(WARNING, "rename dir failed. tid %u pid %u path %s", tid,
-                      pid, snapshot_dir.c_str());
-                break;
-            }
-            if (unlink(manifest_file.c_str()) < 0) {
-                PDLOG(WARNING, "remove manifest failed. tid %u pid %u path %s",
-                      tid, pid, manifest_file.c_str());
-                break;
-            }
-            snapshot_offset = manifest.offset();
-            need_load = true;
-        }
-        std::string msg;
-        if (CreateDiskTableInternal(&table_meta, need_load, msg) < 0) {
-            PDLOG(WARNING, "create table failed. tid %u pid %u msg %s", tid,
-                  pid, msg.c_str());
-            break;
-        }
-        // load snapshot data
-        std::shared_ptr<Table> table = GetTable(tid, pid);
-        if (!table) {
-            PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid,
-                  pid);
-            break;
-        }
-        DiskTable* disk_table = dynamic_cast<DiskTable*>(table.get());
-        if (disk_table == NULL) {
-            break;
-        }
-        std::shared_ptr<Snapshot> snapshot = GetSnapshot(tid, pid);
-        if (!snapshot) {
-            PDLOG(WARNING, "snapshot with tid %u and pid %u does not exist",
-                  tid, pid);
-            break;
-        }
-        std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
-        if (!replicator) {
-            PDLOG(WARNING, "replicator with tid %u and pid %u does not exist",
-                  tid, pid);
-            break;
-        }
-        {
-            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            table->SetTableStat(::fedb::storage::kLoading);
-        }
-        uint64_t latest_offset = 0;
-        std::string binlog_path = table_path + "/binlog/";
-        ::fedb::storage::Binlog binlog(replicator->GetLogPart(), binlog_path);
-        if (binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset)) {
-            table->SetTableStat(::fedb::storage::kNormal);
-            replicator->SetOffset(latest_offset);
-            replicator->SetSnapshotLogPartIndex(snapshot->GetOffset());
-            replicator->StartSyncing();
-            disk_table->SetOffset(latest_offset);
-            table->SchedGc();
-            gc_pool_.DelayTask(
-                FLAGS_gc_interval * 60 * 1000,
-                boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
-            io_pool_.DelayTask(
-                FLAGS_binlog_sync_to_disk_interval,
-                boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
-            task_pool_.DelayTask(
-                FLAGS_binlog_delete_interval,
-                boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
-            PDLOG(INFO, "load table success. tid %u pid %u", tid, pid);
-            MakeSnapshotInternal(tid, pid, 0,
-                                 std::shared_ptr<::fedb::api::TaskInfo>());
-            if (task_ptr) {
-                std::lock_guard<std::mutex> lock(mu_);
-                task_ptr->set_status(::fedb::api::TaskStatus::kDone);
-                return 0;
-            }
-        } else {
-            DeleteTableInternal(tid, pid,
-                                std::shared_ptr<::fedb::api::TaskInfo>());
-        }
-    } while (0);
-    SetTaskStatus(task_ptr, ::fedb::api::TaskStatus::kFailed);
-    return -1;
 }
 
 int TabletImpl::LoadTableInternal(
@@ -3531,7 +3298,7 @@ int TabletImpl::LoadTableInternal(
         uint64_t snapshot_offset = 0;
         std::string db_root_path;
         bool ok =
-            ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
+            ChooseDBRootPath(tid, pid, db_root_path);
         if (!ok) {
             PDLOG(WARNING, "fail to find db root path for table tid %u pid %u",
                   tid, pid);
@@ -3584,13 +3351,12 @@ int32_t TabletImpl::DeleteTableInternal(
             break;
         }
         bool ok =
-            ChooseDBRootPath(tid, pid, table->GetStorageMode(), root_path);
+            ChooseDBRootPath(tid, pid, root_path);
         if (!ok) {
             PDLOG(WARNING, "fail to get db root path. tid %u pid %u", tid, pid);
             break;
         }
-        ok = ChooseRecycleBinRootPath(tid, pid, table->GetStorageMode(),
-                                      recycle_bin_root_path);
+        ok = ChooseRecycleBinRootPath(tid, pid, recycle_bin_root_path);
         if (!ok) {
             PDLOG(WARNING, "fail to get recycle bin root path. tid %u pid %u",
                   tid, pid);
@@ -3695,7 +3461,7 @@ void TabletImpl::CreateTable(RpcController* controller,
           ::fedb::api::TableMode_Name(request->table_meta().mode()).c_str());
     std::string db_root_path;
     bool ok =
-        ChooseDBRootPath(tid, pid, table_meta->storage_mode(), db_root_path);
+        ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         PDLOG(WARNING, "fail to find db root path tid[%u] pid[%u]", tid, pid);
         response->set_code(::fedb::base::ReturnCode::kFailToGetDbRootPath);
@@ -3711,20 +3477,10 @@ void TabletImpl::CreateTable(RpcController* controller,
         response->set_msg("write data failed");
         return;
     }
-    if (table_meta->storage_mode() != fedb::common::kMemory) {
-        std::string msg;
-        if (CreateDiskTableInternal(table_meta, false, msg) < 0) {
-            response->set_code(::fedb::base::ReturnCode::kCreateTableFailed);
-            response->set_msg(msg.c_str());
-            return;
-        }
-    } else {
-        std::string msg;
-        if (CreateTableInternal(table_meta, msg) < 0) {
-            response->set_code(::fedb::base::ReturnCode::kCreateTableFailed);
-            response->set_msg(msg.c_str());
-            return;
-        }
+    if (CreateTableInternal(table_meta, msg) < 0) {
+        response->set_code(::fedb::base::ReturnCode::kCreateTableFailed);
+        response->set_msg(msg.c_str());
+        return;
     }
     table = GetTable(tid, pid);
     if (!table) {
@@ -3742,8 +3498,7 @@ void TabletImpl::CreateTable(RpcController* controller,
                 tid, pid);
         return;
     }
-    if (table_meta->format_version() == 1 &&
-            table_meta->storage_mode() == ::fedb::common::kMemory) {
+    if (table_meta->format_version() == 1) {
         bool ok = catalog_->AddTable(*table_meta, table);
         engine_.ClearCacheLocked(table_meta->db());
         if (ok) {
@@ -3841,11 +3596,10 @@ void TabletImpl::GetTableFollower(
 }
 
 int32_t TabletImpl::GetSnapshotOffset(uint32_t tid, uint32_t pid,
-                                      fedb::common::StorageMode sm,
                                       std::string& msg, uint64_t& term,
                                       uint64_t& offset) {
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, sm, db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         msg = "fail to get db root path";
         PDLOG(WARNING, "fail to get table db root path");
@@ -3879,7 +3633,6 @@ void TabletImpl::GetAllSnapshotOffset(
     RpcController* controller, const ::fedb::api::EmptyRequest* request,
     ::fedb::api::TableSnapshotOffsetResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    std::map<uint32_t, fedb::common::StorageMode> table_sm;
     std::map<uint32_t, std::vector<uint32_t>> tid_pid;
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
@@ -3891,11 +3644,9 @@ void TabletImpl::GetAllSnapshotOffset(
             uint32_t tid = table_iter->first;
             std::vector<uint32_t> pids;
             auto part_iter = table_iter->second.begin();
-            fedb::common::StorageMode sm = part_iter->second->GetStorageMode();
             for (; part_iter != table_iter->second.end(); part_iter++) {
                 pids.push_back(part_iter->first);
             }
-            table_sm.insert(std::make_pair(tid, sm));
             tid_pid.insert(std::make_pair(tid, pids));
         }
     }
@@ -3906,8 +3657,7 @@ void TabletImpl::GetAllSnapshotOffset(
         table->set_tid(tid);
         for (auto pid : iter->second) {
             uint64_t term = 0, offset = 0;
-            fedb::common::StorageMode sm = table_sm.find(tid)->second;
-            int32_t code = GetSnapshotOffset(tid, pid, sm, msg, term, offset);
+            int32_t code = GetSnapshotOffset(tid, pid, msg, term, offset);
             if (code != 0) {
                 continue;
             }
@@ -3951,17 +3701,13 @@ void TabletImpl::GetTermPair(RpcController* controller,
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
     std::shared_ptr<Table> table = GetTable(tid, pid);
-    ::fedb::common::StorageMode mode = ::fedb::common::kMemory;
-    if (request->has_storage_mode()) {
-        mode = request->storage_mode();
-    }
     if (!table) {
         response->set_code(::fedb::base::ReturnCode::kOk);
         response->set_has_table(false);
         response->set_msg("table is not exist");
         std::string msg;
         uint64_t term = 0, offset = 0;
-        int32_t code = GetSnapshotOffset(tid, pid, mode, msg, term, offset);
+        int32_t code = GetSnapshotOffset(tid, pid, msg, term, offset);
         response->set_code(code);
         if (code == 0) {
             response->set_term(term);
@@ -3996,12 +3742,8 @@ void TabletImpl::DeleteBinlog(RpcController* controller,
     brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    ::fedb::common::StorageMode mode = ::fedb::common::kMemory;
-    if (request->has_storage_mode()) {
-        mode = request->storage_mode();
-    }
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, mode, db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         response->set_code(::fedb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");
@@ -4015,7 +3757,7 @@ void TabletImpl::DeleteBinlog(RpcController* controller,
         if (FLAGS_recycle_bin_enabled) {
             std::string recycle_bin_root_path;
             ok =
-                ChooseRecycleBinRootPath(tid, pid, mode, recycle_bin_root_path);
+                ChooseRecycleBinRootPath(tid, pid, recycle_bin_root_path);
             if (!ok) {
                 response->set_code(
                     ::fedb::base::ReturnCode::kFailToGetRecycleRootPath);
@@ -4047,11 +3789,7 @@ void TabletImpl::CheckFile(RpcController* controller,
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
     std::string db_root_path;
-    ::fedb::common::StorageMode mode = ::fedb::common::kMemory;
-    if (request->has_storage_mode()) {
-        mode = request->storage_mode();
-    }
-    bool ok = ChooseDBRootPath(tid, pid, mode, db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         response->set_code(::fedb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");
@@ -4095,12 +3833,8 @@ void TabletImpl::GetManifest(RpcController* controller,
                              Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::string db_root_path;
-    ::fedb::common::StorageMode mode = ::fedb::common::kMemory;
-    if (request->has_storage_mode()) {
-        mode = request->storage_mode();
-    }
     bool ok =
-        ChooseDBRootPath(request->tid(), request->pid(), mode, db_root_path);
+        ChooseDBRootPath(request->tid(), request->pid(), db_root_path);
     if (!ok) {
         response->set_code(::fedb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");
@@ -4219,7 +3953,7 @@ int TabletImpl::CreateTableInternal(const ::fedb::api::TableMeta* table_meta,
         return -1;
     }
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         PDLOG(WARNING, "fail to get table db root path");
         msg.assign("fail to get table db root path");
@@ -4273,8 +4007,7 @@ int TabletImpl::CreateTableInternal(const ::fedb::api::TableMeta* table_meta,
         std::make_pair(table_meta->pid(), snapshot));
     replicators_[table_meta->tid()].insert(
         std::make_pair(table_meta->pid(), replicator));
-    if (table_meta->format_version() == 1 &&
-            table_meta->storage_mode() == ::fedb::common::kMemory) {
+    if (table_meta->format_version() == 1) {
         bool ok = catalog_->AddTable(*table_meta, table);
         engine_.ClearCacheLocked(table_meta->db());
         if (ok) {
@@ -4285,112 +4018,6 @@ int TabletImpl::CreateTableInternal(const ::fedb::api::TableMeta* table_meta,
                 << " to catalog with db " << table_meta->db();
         }
     }
-    return 0;
-}
-
-int TabletImpl::CreateDiskTableInternal(
-    const ::fedb::api::TableMeta* table_meta, bool is_load, std::string& msg) {
-    std::vector<std::string> endpoints;
-    ::fedb::api::TTLType ttl_type = table_meta->ttl_type();
-    if (table_meta->has_ttl_desc()) {
-        ttl_type = table_meta->ttl_desc().ttl_type();
-    }
-    if (ttl_type == ::fedb::api::kAbsAndLat ||
-        ttl_type == ::fedb::api::kAbsOrLat) {
-        PDLOG(WARNING,
-              "disktable doesn't support abs&&lat, abs||lat in this version");
-        msg.assign(
-            "disktable doesn't support abs&&lat, abs||lat in this version");
-        return -1;
-    }
-    std::map<std::string, std::string> real_ep_map;
-    for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
-        real_ep_map.insert(std::make_pair(table_meta->replicas(i), ""));
-    }
-    uint32_t tid = table_meta->tid();
-    uint32_t pid = table_meta->pid();
-    if (FLAGS_use_name) {
-        if (!GetRealEp(tid, pid, &real_ep_map)) {
-            msg.assign("name not found in real_ep_map");
-            PDLOG(WARNING, "name not found in real_ep_map. tid[%u] pid[%u]", tid, pid);
-            return -1;
-        }
-    }
-    std::string db_root_path;
-    bool ok = ChooseDBRootPath(table_meta->tid(), table_meta->pid(),
-                               table_meta->storage_mode(), db_root_path);
-    if (!ok) {
-        PDLOG(WARNING, "fail to get table db root path");
-        msg.assign("fail to get table db root path");
-        return -1;
-    }
-    DiskTable* table_ptr = new DiskTable(*table_meta, db_root_path);
-    if (is_load) {
-        if (!table_ptr->LoadTable()) {
-            return -1;
-        }
-        PDLOG(INFO, "load disk table. tid %u pid %u", tid, pid);
-    } else {
-        if (!table_ptr->Init()) {
-            return -1;
-        }
-        PDLOG(INFO, "create disk table. tid %u pid %u", tid, pid);
-    }
-    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-    std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
-    if (table) {
-        PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
-        return -1;
-    }
-    table.reset((Table*)table_ptr);  // NOLINT
-    tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
-    ::fedb::storage::Snapshot* snapshot_ptr =
-        new ::fedb::storage::DiskTableSnapshot(
-            table_meta->tid(), table_meta->pid(), table_meta->storage_mode(),
-            db_root_path);
-    if (!snapshot_ptr->Init()) {
-        PDLOG(WARNING, "fail to init snapshot for tid %u, pid %u",
-              table_meta->tid(), table_meta->pid());
-        msg.assign("fail to init snapshot");
-        return -1;
-    }
-    std::string table_db_path = db_root_path + "/" +
-                                std::to_string(table_meta->tid()) + "_" +
-                                std::to_string(table_meta->pid());
-    std::shared_ptr<LogReplicator> replicator;
-    if (table->IsLeader()) {
-        replicator = std::make_shared<LogReplicator>(
-            table_db_path, real_ep_map, ReplicatorRole::kLeaderNode, table,
-            &follower_);
-    } else {
-        replicator = std::make_shared<LogReplicator>(
-            table_db_path, std::map<std::string, std::string>(),
-            ReplicatorRole::kFollowerNode, table, &follower_);
-    }
-    if (!replicator) {
-        PDLOG(WARNING, "fail to create replicator for table tid %u, pid %u",
-              table_meta->tid(), table_meta->pid());
-        msg.assign("fail create replicator for table");
-        return -1;
-    }
-    ok = replicator->Init();
-    if (!ok) {
-        PDLOG(WARNING, "fail to init replicator for table tid %u, pid %u",
-              table_meta->tid(), table_meta->pid());
-        // clean memory
-        msg.assign("fail init replicator for table");
-        return -1;
-    }
-    if (!zk_cluster_.empty() &&
-        table_meta->mode() == ::fedb::api::TableMode::kTableLeader) {
-        replicator->SetLeaderTerm(table_meta->term());
-    }
-    std::shared_ptr<Snapshot> snapshot(snapshot_ptr);
-    tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
-    snapshots_[table_meta->tid()].insert(
-        std::make_pair(table_meta->pid(), snapshot));
-    replicators_[table_meta->tid()].insert(
-        std::make_pair(table_meta->pid(), replicator));
     return 0;
 }
 
@@ -4656,9 +4283,6 @@ void TabletImpl::GcTable(uint32_t tid, uint32_t pid, bool execute_once) {
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (table) {
         int32_t gc_interval = FLAGS_gc_interval;
-        if (table->GetStorageMode() != ::fedb::common::StorageMode::kMemory) {
-            gc_interval = FLAGS_disk_gc_interval;
-        }
         table->SchedGc();
         if (!execute_once) {
             gc_pool_.DelayTask(
@@ -4833,7 +4457,7 @@ void TabletImpl::RefreshTableInfo() {
         auto it = db_sp_map.find(sp_info->GetDbName());
         if (it == db_sp_map.end()) {
             std::map<std::string,
-                std::shared_ptr<fesql::sdk::ProcedureInfo>>
+                std::shared_ptr<hybridse::sdk::ProcedureInfo>>
                     sp_in_db = {{sp_info->GetSpName(), sp_info}};
             db_sp_map.insert(std::make_pair(sp_info->GetDbName(), sp_in_db));
         } else {
@@ -4905,10 +4529,8 @@ void TabletImpl::SchedDelBinlog(uint32_t tid, uint32_t pid) {
     }
 }
 
-bool TabletImpl::ChooseDBRootPath(uint32_t tid, uint32_t pid,
-                                  const ::fedb::common::StorageMode& mode,
-                                  std::string& path) {
-    std::vector<std::string>& paths = mode_root_paths_[mode];
+bool TabletImpl::ChooseDBRootPath(uint32_t tid, uint32_t pid, std::string& path) {
+    std::vector<std::string>& paths = mode_root_paths_;
     if (paths.size() < 1) {
         return false;
     }
@@ -4925,10 +4547,8 @@ bool TabletImpl::ChooseDBRootPath(uint32_t tid, uint32_t pid,
     return path.size();
 }
 
-bool TabletImpl::ChooseRecycleBinRootPath(
-    uint32_t tid, uint32_t pid, const ::fedb::common::StorageMode& mode,
-    std::string& path) {
-    std::vector<std::string>& paths = mode_recycle_root_paths_[mode];
+bool TabletImpl::ChooseRecycleBinRootPath(uint32_t tid, uint32_t pid, std::string& path) {
+    std::vector<std::string>& paths = mode_recycle_root_paths_;
     if (paths.size() < 1) return false;
 
     if (paths.size() == 1) {
@@ -4967,10 +4587,8 @@ void TabletImpl::DelRecycle(const std::string& path) {
 }
 
 void TabletImpl::SchedDelRecycle() {
-    for (auto kv : mode_recycle_root_paths_) {
-        for (auto path : kv.second) {
-            DelRecycle(path);
-        }
+    for (auto path : mode_recycle_root_paths_) {
+        DelRecycle(path);
     }
     task_pool_.DelayTask(FLAGS_recycle_ttl * 60 * 1000,
                          boost::bind(&TabletImpl::SchedDelRecycle, this));
@@ -4989,11 +4607,9 @@ bool TabletImpl::CreateMultiDir(const std::vector<std::string>& dirs) {
     return true;
 }
 
-bool TabletImpl::ChooseTableRootPath(uint32_t tid, uint32_t pid,
-                                     const ::fedb::common::StorageMode& mode,
-                                     std::string& path) {
+bool TabletImpl::ChooseTableRootPath(uint32_t tid, uint32_t pid, std::string& path) {
     std::string root_path;
-    bool ok = ChooseDBRootPath(tid, pid, mode, root_path);
+    bool ok = ChooseDBRootPath(tid, pid, root_path);
     if (!ok) {
         PDLOG(WARNING, "table db path doesn't found. tid %u, pid %u", tid, pid);
         return false;
@@ -5006,11 +4622,9 @@ bool TabletImpl::ChooseTableRootPath(uint32_t tid, uint32_t pid,
     return true;
 }
 
-bool TabletImpl::GetTableRootSize(uint32_t tid, uint32_t pid,
-                                  const ::fedb::common::StorageMode& mode,
-                                  uint64_t& size) {
+bool TabletImpl::GetTableRootSize(uint32_t tid, uint32_t pid, uint64_t& size) {
     std::string table_path;
-    if (!ChooseTableRootPath(tid, pid, mode, table_path)) {
+    if (!ChooseTableRootPath(tid, pid, table_path)) {
         return false;
     }
     if (!::fedb::base::GetDirSizeRecur(table_path, size)) {
@@ -5033,8 +4647,7 @@ void TabletImpl::GetDiskused() {
     }
     for (const auto& table : tables) {
         uint64_t size = 0;
-        if (!GetTableRootSize(table->GetId(), table->GetPid(),
-                              table->GetStorageMode(), size)) {
+        if (!GetTableRootSize(table->GetId(), table->GetPid(), size)) {
             PDLOG(WARNING, "get table root size failed. tid[%u] pid[%u]",
                   table->GetId(), table->GetPid());
         } else {
@@ -5070,15 +4683,8 @@ void TabletImpl::DeleteIndex(RpcController* controller,
         response->set_msg("table is not exist");
         return;
     }
-    if (table->GetStorageMode() != ::fedb::common::kMemory) {
-        response->set_code(::fedb::base::ReturnCode::kOperatorNotSupport);
-        response->set_msg("only support mem_table");
-        PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
-        return;
-    }
     std::string root_path;
-    if (!ChooseDBRootPath(tid, pid, ::fedb::common::StorageMode::kMemory,
-                          root_path)) {
+    if (!ChooseDBRootPath(tid, pid, root_path)) {
         response->set_code(::fedb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get table db root path");
         PDLOG(WARNING, "table db path is not found. tid %u, pid %u", tid, pid);
@@ -5160,7 +4766,7 @@ void TabletImpl::SendIndexDataInternal(
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
     std::string db_root_path;
-    if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path)) {
+    if (!ChooseDBRootPath(tid, pid, db_root_path)) {
         PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid,
               pid);
         SetTaskStatus(task_ptr, ::fedb::api::TaskStatus::kFailed);
@@ -5189,8 +4795,7 @@ void TabletImpl::SendIndexDataInternal(
                 return;
             }
             std::string des_db_root_path;
-            if (!ChooseDBRootPath(tid, kv.first, table->GetStorageMode(),
-                                  des_db_root_path)) {
+            if (!ChooseDBRootPath(tid, kv.first, des_db_root_path)) {
                 PDLOG(WARNING,
                       "fail to find db root path for table tid %u pid %u", tid,
                       kv.first);
@@ -5242,8 +4847,7 @@ void TabletImpl::SendIndexDataInternal(
                 }
                 real_endpoint = iter->second;
             }
-            FileSender sender(tid, kv.first, table->GetStorageMode(),
-                              real_endpoint);
+            FileSender sender(tid, kv.first, real_endpoint);
             if (!sender.Init()) {
                 PDLOG(WARNING,
                       "Init FileSender failed. tid[%u] pid[%u] des_pid[%u] "
@@ -5298,12 +4902,6 @@ void TabletImpl::DumpIndexData(
                 response->set_msg("table is not exist");
                 break;
             }
-            if (table->GetStorageMode() != ::fedb::common::kMemory) {
-                response->set_code(
-                    ::fedb::base::ReturnCode::kOperatorNotSupport);
-                response->set_msg("only support mem_table");
-                break;
-            }
             if (table->GetTableStat() != ::fedb::storage::kNormal) {
                 PDLOG(WARNING,
                       "table state is %d, cannot dump index data. %u, pid %u",
@@ -5346,7 +4944,7 @@ void TabletImpl::DumpIndexDataInternal(
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
     std::string db_root_path;
-    if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path)) {
+    if (!ChooseDBRootPath(tid, pid, db_root_path)) {
         PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid,
               pid);
         SetTaskStatus(task, ::fedb::api::kFailed);
@@ -5413,12 +5011,6 @@ void TabletImpl::LoadIndexData(
             response->set_msg("table is not exist");
             break;
         }
-        if (table->GetStorageMode() != ::fedb::common::kMemory) {
-            response->set_code(::fedb::base::ReturnCode::kOperatorNotSupport);
-            response->set_msg("only support mem_table");
-            PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
-            break;
-        }
         if (table->GetTableStat() != ::fedb::storage::kNormal) {
             PDLOG(WARNING,
                   "table state is %d, cannot load index data. tid %u, pid %u",
@@ -5474,7 +5066,7 @@ void TabletImpl::LoadIndexDataInternal(
         return;
     }
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid,
               pid);
@@ -5543,7 +5135,7 @@ void TabletImpl::LoadIndexDataInternal(
     if (cur_pid == partition_num - 1 || (cur_pid + 1 == pid && pid == partition_num - 1)) {
         if (FLAGS_recycle_bin_enabled) {
             std::string recycle_bin_root_path;
-            ok = ChooseRecycleBinRootPath(tid, pid, table->GetStorageMode(), recycle_bin_root_path);
+            ok = ChooseRecycleBinRootPath(tid, pid, recycle_bin_root_path);
             if (!ok) {
                 LOG(WARNING) << "fail to get recycle bin root path. tid " << tid << " pid " << pid;
                 fedb::base::RemoveDirRecursive(index_path);
@@ -5596,14 +5188,6 @@ void TabletImpl::ExtractIndexData(
                 PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, pid);
                 response->set_code(::fedb::base::ReturnCode::kTableIsNotExist);
                 response->set_msg("table is not exist");
-                break;
-            }
-            if (table->GetStorageMode() != ::fedb::common::kMemory) {
-                response->set_code(
-                    ::fedb::base::ReturnCode::kOperatorNotSupport);
-                PDLOG(WARNING, "only support mem_table. tid %u pid %u", tid,
-                      pid);
-                response->set_msg("only support mem_table");
                 break;
             }
             if (table->GetTableStat() != ::fedb::storage::kNormal) {
@@ -5691,7 +5275,7 @@ void TabletImpl::AddIndex(RpcController* controller,
         return;
     }
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, ::fedb::common::StorageMode::kMemory, db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         response->set_code(::fedb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");
@@ -5804,10 +5388,10 @@ void TabletImpl::CreateProcedure(RpcController* controller,
         PDLOG(WARNING, "store procedure[%s] already exists in db[%s]", sp_name.c_str(), db_name.c_str());
         return;
     }
-    ::fesql::base::Status status;
+    ::hybridse::base::Status status;
 
     // build for single request
-    ::fesql::vm::RequestRunSession session;
+    ::hybridse::vm::RequestRunSession session;
     bool ok = engine_.Get(sql, db_name, session, status);
     if (!ok || session.GetCompileInfo() == nullptr) {
         response->set_msg(status.str());
@@ -5817,7 +5401,7 @@ void TabletImpl::CreateProcedure(RpcController* controller,
     }
 
     // build for batch request
-    ::fesql::vm::BatchRequestRunSession batch_session;
+    ::hybridse::vm::BatchRequestRunSession batch_session;
     for (auto i = 0; i < sp_info.input_schema_size(); ++i) {
         bool is_constant = sp_info.input_schema().Get(i).is_constant();
         if (is_constant) {
@@ -5875,13 +5459,13 @@ void TabletImpl::DropProcedure(RpcController* controller,
 
 void TabletImpl::RunRequestQuery(RpcController* ctrl,
                                  const fedb::api::QueryRequest& request,
-                                 ::fesql::vm::RequestRunSession& session,
+                                 ::hybridse::vm::RequestRunSession& session,
                                  fedb::api::QueryResponse& response,
                                  butil::IOBuf& buf) {
     if (request.is_debug()) {
         session.EnableDebug();
     }
-    ::fesql::codec::Row row;
+    ::hybridse::codec::Row row;
     auto& request_buf = static_cast<brpc::Controller*>(ctrl)->request_attachment();
     size_t input_slices = request.row_slices();
     if (!codec::DecodeRpcRow(request_buf, 0, request.row_size(), input_slices, &row)) {
@@ -5889,7 +5473,7 @@ void TabletImpl::RunRequestQuery(RpcController* ctrl,
         response.set_msg("fail to decode input row");
         return;
     }
-    ::fesql::codec::Row output;
+    ::hybridse::codec::Row output;
     int32_t ret = 0;
     if (request.has_task_id()) {
         ret = session.Run(request.task_id(), row, &output);
@@ -5920,20 +5504,20 @@ void TabletImpl::RunRequestQuery(RpcController* ctrl,
     response.set_code(::fedb::base::kOk);
 }
 
-void TabletImpl::CreateProcedure(const std::shared_ptr<fesql::sdk::ProcedureInfo> sp_info) {
+void TabletImpl::CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info) {
     const std::string& db_name = sp_info->GetDbName();
     const std::string& sp_name = sp_info->GetSpName();
     const std::string& sql = sp_info->GetSql();
-    ::fesql::base::Status status;
+    ::hybridse::base::Status status;
     // build for single request
-    ::fesql::vm::RequestRunSession session;
+    ::hybridse::vm::RequestRunSession session;
     bool ok = engine_.Get(sql, db_name, session, status);
     if (!ok || session.GetCompileInfo() == nullptr) {
         LOG(WARNING) << "fail to compile sql " << sql;
         return;
     }
     // build for batch request
-    ::fesql::vm::BatchRequestRunSession batch_session;
+    ::hybridse::vm::BatchRequestRunSession batch_session;
     for (auto i = 0; i < sp_info->GetInputSchema().GetColumnCnt(); ++i) {
         bool is_constant = sp_info->GetInputSchema().IsConstant(i);
         if (is_constant) {

@@ -19,9 +19,6 @@ import "sql_procedure.proto";
 package fedb.api;
 
 option cc_generic_services = true;
-option java_generic_services = true;
-option java_package = "com._4paradigm.fedb.tablet";
-option java_outer_classname = "Tablet";
 
 enum TableMode {
     kTableLeader = 1;
@@ -229,8 +226,7 @@ message GeneralRequest {
     required int32 tid = 1;
     required int32 pid = 2;
     optional TaskInfo task_info = 3;
-    optional fedb.common.StorageMode storage_mode = 4 [default = kMemory];
-    optional uint64 offset = 5;
+    optional uint64 offset = 4;
 }
 
 message TaskStatusRequest {
@@ -261,36 +257,18 @@ message ScanRequest {
     // the end subfix key
     optional uint64 et = 3;
     optional uint32 limit = 4;
-    optional RpcMetric metric = 5 [deprecated = true];
-    optional uint32 tid = 6;
-    optional uint32 pid = 7;
-    optional bool enable_remove_duplicated_record = 8 [default=false];
-    optional string idx_name = 9;
-    optional string ts_name = 10;
-    optional GetType st_type = 11 [default = kSubKeyLe];
-    optional GetType et_type = 12 [default = kSubKeyGt];
-    optional bool enable_remove_ts = 13 [default = false];
-    optional uint32 atleast = 14 [default = 0];
-    repeated uint32 projection = 15;
-    repeated uint32 pid_group = 16;
-    optional bool use_attachment = 17 [default = false];
-}
-
-message RpcMetric {
-    // the time start send rpc request
-    optional int64 sqtime = 1;
-    // the time server receive rpc request
-    optional int64 rqtime = 2;
-    // the time server start to caculate
-    optional int64 sctime = 3;
-    // the time server start send response
-    optional int64 sptime = 4;
-    // the time client receive response
-    optional int64 rptime = 5;
-    // the time server start first iterator
-    optional int64 sitime = 6;
-    // the time server start encode
-    optional int64 setime = 7;
+    optional uint32 tid = 5;
+    optional uint32 pid = 6;
+    optional bool enable_remove_duplicated_record = 7 [default=false];
+    optional string idx_name = 8;
+    optional string ts_name = 9;
+    optional GetType st_type = 10 [default = kSubKeyLe];
+    optional GetType et_type = 11 [default = kSubKeyGt];
+    optional bool enable_remove_ts = 12 [default = false];
+    optional uint32 atleast = 13 [default = 0];
+    repeated uint32 projection = 14;
+    repeated uint32 pid_group = 15;
+    optional bool use_attachment = 16 [default = false];
 }
 
 message TraverseRequest {
@@ -320,8 +298,7 @@ message ScanResponse {
     optional string msg = 2;
     optional int32 code = 3;
     optional uint32 count = 4;
-    optional RpcMetric metric = 6 [deprecated = true];
-    optional uint32 buf_size = 7;
+    optional uint32 buf_size = 5;
 }
 
 message ReplicaRequest {
@@ -357,14 +334,13 @@ message TableMeta {
     optional uint32 key_entry_max_height = 14;
     repeated fedb.common.ColumnDesc column_desc = 15;
     repeated fedb.common.ColumnKey column_key = 16;
-    optional fedb.common.StorageMode storage_mode = 17 [default = kMemory];
-    repeated fedb.common.ColumnDesc added_column_desc = 18;
-    optional TTLDesc ttl_desc = 19;
+    repeated fedb.common.ColumnDesc added_column_desc = 17;
+    optional TTLDesc ttl_desc = 18;
     // format_version 0 , the legacy format 1 ,the new one
-    optional uint32 format_version = 20 [default = 0];
-    optional string db = 21 [default = ""];
-    repeated common.VersionPair schema_versions = 22;
-    repeated common.TablePartition table_partition = 23;
+    optional uint32 format_version = 19 [default = 0];
+    optional string db = 20 [default = ""];
+    repeated common.VersionPair schema_versions = 21;
+    repeated common.TablePartition table_partition = 22;
 }
 
 message CreateTableRequest {
@@ -441,7 +417,6 @@ message SetConcurrencyResponse {
     optional string msg = 2;
 }
 
-// raft protocol
 message LogEntry {
     // term for leader
     optional uint64 term = 1;
@@ -507,7 +482,6 @@ message SendDataRequest {
     optional uint32 block_size = 5;
     optional bool eof = 6 [default = false];
     optional string dir_name = 7;
-    optional fedb.common.StorageMode storage_mode = 8 [default = kMemory];
 }
 
 message ChangeRoleResponse {
@@ -548,9 +522,8 @@ message TableStatus {
     optional CompressType compress_type = 17;
     optional uint32 skiplist_height = 18;
     optional bytes schema = 19;
-    optional fedb.common.StorageMode storage_mode = 20 [default = kMemory];
-    optional TTLDesc ttl_desc = 21;
-    optional uint64 diskused = 22 [default = 0];
+    optional TTLDesc ttl_desc = 20;
+    optional uint64 diskused = 21 [default = 0];
 }
 
 message GetTableStatusResponse {
@@ -604,7 +577,6 @@ message CountResponse {
 message GetTermPairRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
-    optional fedb.common.StorageMode storage_mode = 3 [default = kMemory];
 }
 
 message GetTermPairResponse {
@@ -619,7 +591,6 @@ message GetTermPairResponse {
 message GetManifestRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
-    optional fedb.common.StorageMode storage_mode = 3 [default = kMemory];
 }
 
 message GetManifestResponse { 
@@ -651,7 +622,6 @@ message CheckFileRequest {
     optional string file = 3;
     optional uint64 size = 4;
     optional string dir_name = 5;
-    optional fedb.common.StorageMode storage_mode = 6 [default = kMemory];
 }
 
 message AddIndexRequest {
@@ -811,19 +781,21 @@ message GetCatalogResponse {
 
 service TabletServer {
 
-    // write and read api for client
+    // kv storage api for client
     rpc Put(PutRequest) returns (PutResponse);
     rpc Get(GetRequest) returns (GetResponse);
     rpc Scan(ScanRequest) returns (ScanResponse);
     rpc Delete(DeleteRequest) returns (GeneralResponse);
     rpc Count(CountRequest) returns (CountResponse);
     rpc Traverse(TraverseRequest) returns (TraverseResponse);
+
+    // sql api for client
     rpc Query(QueryRequest) returns(QueryResponse);
     rpc SubQuery(QueryRequest) returns(QueryResponse);
     rpc SQLBatchRequestQuery(SQLBatchRequestQueryRequest) returns(SQLBatchRequestQueryResponse);
     rpc SubBatchRequestQuery(SQLBatchRequestQueryRequest) returns(SQLBatchRequestQueryResponse);
 
-    // table api for master
+    // table api for nameserver
     rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
     rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
     rpc DropTable(DropTableRequest) returns (DropTableResponse);

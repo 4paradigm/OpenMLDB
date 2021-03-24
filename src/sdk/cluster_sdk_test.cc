@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "brpc/server.h"
 #include "client/ns_client.h"
 #include "gflags/gflags.h"
@@ -36,8 +36,7 @@
 #include "proto/type.pb.h"
 #include "rpc/rpc_client.h"
 #include "sdk/mini_cluster.h"
-#include "tablet/tablet_impl.h"
-#include "timer.h"  // NOLINT
+#include "common/timer.h"
 
 namespace fedb {
 namespace sdk {
@@ -59,37 +58,37 @@ class MockClosure : public ::google::protobuf::Closure {
 
 class ClusterSDKTest : public ::testing::Test {
  public:
-    ClusterSDKTest() : mc_(6181) {}
-    ~ClusterSDKTest() {}
+    ClusterSDKTest() : mc_(new MiniCluster(6181)) {}
+    ~ClusterSDKTest() { delete mc_; }
     void SetUp() {
-        bool ok = mc_.SetUp();
+        bool ok = mc_->SetUp();
         ASSERT_TRUE(ok);
     }
-    void TearDown() { mc_.Close(); }
+    void TearDown() { mc_->Close(); }
 
  public:
-    MiniCluster mc_;
+    MiniCluster* mc_;
 };
 
 TEST_F(ClusterSDKTest, smoke_empty_cluster) {
     ClusterOptions option;
-    option.zk_cluster = mc_.GetZkCluster();
-    option.zk_path = mc_.GetZkPath();
+    option.zk_cluster = mc_->GetZkCluster();
+    option.zk_path = mc_->GetZkPath();
     ClusterSDK sdk(option);
     ASSERT_TRUE(sdk.Init());
 }
 
 TEST_F(ClusterSDKTest, smoketest) {
     ClusterOptions option;
-    option.zk_cluster = mc_.GetZkCluster();
-    option.zk_path = mc_.GetZkPath();
+    option.zk_cluster = mc_->GetZkCluster();
+    option.zk_path = mc_->GetZkPath();
     ClusterSDK sdk(option);
     ASSERT_TRUE(sdk.Init());
     ::fedb::nameserver::TableInfo table_info;
     table_info.set_format_version(1);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    auto ns_client = mc_.GetNsClient();
+    auto ns_client = mc_->GetNsClient();
     std::string error;
     bool ok = ns_client->CreateDatabase(db, error);
     ASSERT_TRUE(ok);

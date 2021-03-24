@@ -53,8 +53,8 @@
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
-#include "timer.h"     // NOLINT
-#include "tprinter.h"  // NOLINT
+#include "common/timer.h"
+#include "common/tprinter.h"
 #include "version.h"   // NOLINT
 #include "config.h" // NOLINT
 #include "vm/engine.h"
@@ -90,9 +90,9 @@ DECLARE_bool(use_name);
 DECLARE_string(data_dir);
 
 const std::string FEDB_VERSION = std::to_string(FEDB_VERSION_MAJOR) + "." + // NOLINT
-                            std::to_string(FEDB_VERSION_MEDIUM) + "." +
                             std::to_string(FEDB_VERSION_MINOR) + "." +
-                            FEDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
+                            std::to_string(FEDB_VERSION_BUG) + "." +
+                            FEDB_COMMIT_ID + "." + HYBRIDSE_COMMIT_ID;
 
 static std::map<std::string, std::string> real_ep_map;
 
@@ -247,7 +247,7 @@ void StartTablet() {
               "To fix this issue run the command 'swapoff -a' as root");
     }
     SetupLog();
-    ::fesql::vm::Engine::InitializeGlobalLLVM();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     std::string real_endpoint;
     GetRealEndpoint(&real_endpoint);
     ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
@@ -2733,20 +2733,6 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
                table_info.compress_type().c_str());
         return -1;
     }
-    std::string storage_mode = table_info.storage_mode();
-    std::transform(storage_mode.begin(), storage_mode.end(),
-                   storage_mode.begin(), ::tolower);
-    if (storage_mode == "kmemory" || storage_mode == "memory") {
-        ns_table_info.set_storage_mode(::fedb::common::kMemory);
-    } else if (storage_mode == "kssd" || storage_mode == "ssd") {
-        ns_table_info.set_storage_mode(::fedb::common::kSSD);
-    } else if (storage_mode == "khdd" || storage_mode == "hdd") {
-        ns_table_info.set_storage_mode(::fedb::common::kHDD);
-    } else {
-        printf("storage mode %s is invalid\n",
-               table_info.storage_mode().c_str());
-        return -1;
-    }
     if (table_info.has_key_entry_max_height()) {
         if (table_info.key_entry_max_height() > FLAGS_skiplist_max_height) {
             printf(
@@ -2925,17 +2911,6 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
         if (ns_table_info.ttl_desc().lat_ttl() > FLAGS_latest_ttl_max) {
             std::cout << "Create failed. The max num of latest LatestTime is "
                       << FLAGS_latest_ttl_max << std::endl;
-            return;
-        }
-        if ((ns_table_info.ttl_desc().ttl_type() ==
-                 ::fedb::api::TTLType::kAbsAndLat ||
-             ns_table_info.ttl_desc().ttl_type() ==
-                 ::fedb::api::TTLType::kAbsOrLat) &&
-            ns_table_info.storage_mode() !=
-                ::fedb::common::StorageMode::kMemory) {
-            std::cout << "Create failed. Disktable doesn't support abs&&lat, "
-                         "abs||lat in this version."
-                      << std::endl;
             return;
         }
     } else {
@@ -4090,12 +4065,8 @@ void HandleClientHelp(const std::vector<std::string> parts,
         } else if (parts[1] == "loadtable") {
             printf("desc: create table and load data\n");
             printf(
-                "usage: loadtable table_name tid pid ttl segment_cnt is_leader "
-                "storage_mode\n");
+                "usage: loadtable table_name tid pid ttl segment_cnt is_leader");
             printf("ex: loadtable table1 1 0 144000 8 true memory\n");
-            printf("---------for relation table------\n");
-            printf("usage: loadtable tid pid storage_mode\n");
-            printf("ex: loadtable 1 0 hdd\n");
         } else if (parts[1] == "changerole") {
             printf("desc: change role\n");
             printf("usage: changerole tid pid role\n");
@@ -4275,7 +4246,7 @@ void HandleClientLoadTable(const std::vector<std::string> parts,
                            ::fedb::client::TabletClient* client) {
     if (parts.size() < 6) {
         std::cout << "Bad LoadTable format eg loadtable <name> <tid> <pid> "
-                     "<ttl> <seg_cnt> [<is_leader> [<storage_mode>]]"
+                     "<ttl> <seg_cnt> [<is_leader>]"
                   << std::endl;
         return;
     }
@@ -4293,28 +4264,15 @@ void HandleClientLoadTable(const std::vector<std::string> parts,
             } else {
                 std::cout
                     << "Bad LoadTable format eg loadtable <name> <tid> <pid> "
-                       "<ttl> <seg_cnt> [<is_leader> [<storage_mode>]]"
+                       "<ttl> <seg_cnt> [<is_leader>]"
                     << std::endl;
                 return;
-            }
-        }
-        ::fedb::common::StorageMode storage_mode =
-            ::fedb::common::StorageMode::kMemory;
-        if (parts.size() > 7) {
-            std::string storage_str;
-            storage_str.resize(parts[7].size());
-            std::transform(parts[7].begin(), parts[7].end(),
-                           storage_str.begin(), ::tolower);
-            if (storage_str == "kssd" || storage_str == "ssd") {
-                storage_mode = ::fedb::common::StorageMode::kSSD;
-            } else if (storage_str == "khdd" || storage_str == "hdd") {
-                storage_mode = ::fedb::common::StorageMode::kHDD;
             }
         }
         bool ok =
             client->LoadTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
                               boost::lexical_cast<uint32_t>(parts[3]), ttl,
-                              is_leader, seg_cnt, storage_mode);
+                              is_leader, seg_cnt);
         if (ok) {
             std::cout << "LoadTable ok" << std::endl;
         } else {

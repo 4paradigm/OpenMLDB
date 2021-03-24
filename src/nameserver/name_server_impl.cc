@@ -23,12 +23,17 @@
 
 #include <algorithm>
 #include <set>
+#ifdef DISALLOW_COPY_AND_ASSIGN
+#undef DISALLOW_COPY_AND_ASSIGN
+#endif
+#include <snappy.h>
 #include <utility>
 
 #include "base/glog_wapper.h"
 #include "base/status.h"
 #include "boost/algorithm/string.hpp"
-#include "timer.h"  // NOLINT
+#include "boost/bind.hpp"
+#include "common/timer.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -2270,15 +2275,8 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller, const MakeSnapsho
         return;
     }
     if (request->offset() > 0) {
-        if (table_info->storage_mode() != common::kMemory) {
-            PDLOG(WARNING,
-                  "table[%s] is not memory table, can't do snapshot with end "
-                  "offset",
-                  request->name().c_str());
-        } else {
-            thread_pool_.AddTask(boost::bind(&NameServerImpl::MakeTablePartitionSnapshot, this, request->pid(),
-                                             request->offset(), table_info));
-        }
+        thread_pool_.AddTask(boost::bind(&NameServerImpl::MakeTablePartitionSnapshot, this, request->pid(),
+                    request->offset(), table_info));
         response->set_code(::fedb::base::ReturnCode::kOk);
         return;
     }
@@ -2599,12 +2597,6 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::fedb::nameserver::Tabl
     if (table_info->compress_type() == ::fedb::nameserver::kSnappy) {
         compress_type = ::fedb::api::CompressType::kSnappy;
     }
-    ::fedb::common::StorageMode storage_mode = ::fedb::common::StorageMode::kMemory;
-    if (table_info->storage_mode() == ::fedb::common::StorageMode::kSSD) {
-        storage_mode = ::fedb::common::StorageMode::kSSD;
-    } else if (table_info->storage_mode() == ::fedb::common::StorageMode::kHDD) {
-        storage_mode = ::fedb::common::StorageMode::kHDD;
-    }
     ::fedb::api::TableMeta table_meta;
     std::string schema;
     for (uint32_t i = 0; i < columns.size(); i++) {
@@ -2629,7 +2621,6 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::fedb::nameserver::Tabl
     if (table_info->has_ttl_desc()) {
         table_meta.mutable_ttl_desc()->CopyFrom(table_info->ttl_desc());
     }
-    table_meta.set_storage_mode(storage_mode);
     if (table_info->has_key_entry_max_height()) {
         table_meta.set_key_entry_max_height(table_info->key_entry_max_height());
     }
@@ -4775,7 +4766,7 @@ int NameServerImpl::CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(request.endpoint(), op_index, ::fedb::api::OPType::kAddReplicaOP, request.name(), tid,
-                               pid, ttl, seg_cnt, false, table_info->storage_mode());
+                               pid, ttl, seg_cnt, false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -5026,7 +5017,7 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(des_endpoint, op_index, ::fedb::api::OPType::kMigrateOP, name, tid, pid,
-                               table_info->ttl(), table_info->seg_cnt(), false, table_info->storage_mode());
+                               table_info->ttl(), table_info->seg_cnt(), false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u] endpoint[%s]", tid, pid, des_endpoint.c_str());
         return -1;
@@ -5380,9 +5371,6 @@ void NameServerImpl::SchedMakeSnapshot() {
                 iter->first, std::atomic_load_explicit(&iter->second->client_, std::memory_order_relaxed)));
         }
         for (auto iter = table_info_.begin(); iter != table_info_.end(); ++iter) {
-            if (iter->second->storage_mode() != common::kMemory) {
-                continue;
-            }
             table_infos.insert(std::make_pair(iter->first, iter->second));
         }
     }
@@ -5397,9 +5385,6 @@ void NameServerImpl::SchedMakeSnapshot() {
                 continue;
             }
             for (const auto& table : tables) {
-                if (table.storage_mode() != common::kMemory) {
-                    continue;
-                }
                 auto table_iter = table_part_offset.find(table.name());
                 if (table_iter == table_part_offset.end()) {
                     std::map<uint32_t, uint64_t> part_offset;
@@ -5453,9 +5438,6 @@ void NameServerImpl::SchedMakeSnapshot() {
     }
     PDLOG(INFO, "start make snapshot");
     for (const auto& table : table_infos) {
-        if (table.second->storage_mode() != common::kMemory) {
-            continue;
-        }
         auto table_iter = table_part_offset.find(table.second->name());
         if (table_iter == table_part_offset.end()) {
             continue;
@@ -6034,7 +6016,6 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, const std::st
     std::shared_ptr<TabletInfo> leader_tablet_ptr;
     std::shared_ptr<TabletInfo> tablet_ptr;
     bool has_follower = true;
-    ::fedb::common::StorageMode storage_mode = ::fedb::common::StorageMode::kMemory;
     {
         std::lock_guard<std::mutex> lock(mu_);
         std::shared_ptr<::fedb::nameserver::TableInfo> table_info;
@@ -6044,7 +6025,6 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, const std::st
             return;
         }
         tid = table_info->tid();
-        storage_mode = table_info->storage_mode();
         for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
             if (table_info->table_partition(idx).pid() != pid) {
                 continue;
@@ -6119,7 +6099,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, const std::st
     bool is_leader = false;
     uint64_t term = 0;
     uint64_t offset = 0;
-    if (!tablet_ptr->client_->GetTermPair(tid, pid, storage_mode, term, offset, has_table, is_leader)) {
+    if (!tablet_ptr->client_->GetTermPair(tid, pid, term, offset, has_table, is_leader)) {
         PDLOG(WARNING,
               "GetTermPair failed. name[%s] tid[%u] pid[%u] endpoint[%s] "
               "op_id[%lu]",
@@ -6154,7 +6134,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, const std::st
               endpoint.c_str());
     }
     if (!has_table) {
-        if (!tablet_ptr->client_->DeleteBinlog(tid, pid, storage_mode)) {
+        if (!tablet_ptr->client_->DeleteBinlog(tid, pid)) {
             PDLOG(WARNING,
                   "delete binlog failed. name[%s] tid[%u] pid[%u] endpoint[%s] "
                   "op_id[%lu]",
@@ -6173,7 +6153,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, const std::st
         return;
     }
     ::fedb::api::Manifest manifest;
-    if (!leader_tablet_ptr->client_->GetManifest(tid, pid, storage_mode, manifest)) {
+    if (!leader_tablet_ptr->client_->GetManifest(tid, pid, manifest)) {
         PDLOG(WARNING, "get manifest failed. name[%s] tid[%u] pid[%u] op_id[%lu]", name.c_str(), tid, pid,
               task_info->op_id());
         task_info->set_status(::fedb::api::TaskStatus::kFailed);
@@ -6275,7 +6255,7 @@ int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(endpoint, op_index, ::fedb::api::OPType::kReAddReplicaOP, name, tid, pid, ttl, seg_cnt,
-                               false, table_info->storage_mode());
+                               false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -6399,7 +6379,7 @@ int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_da
     }
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(endpoint, op_index, ::fedb::api::OPType::kReAddReplicaWithDropOP, name, tid, pid, ttl,
-                               seg_cnt, false, table_info->storage_mode());
+                               seg_cnt, false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -6515,7 +6495,7 @@ int NameServerImpl::CreateReAddReplicaNoSendTask(std::shared_ptr<OPData> op_data
     }
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(endpoint, op_index, ::fedb::api::OPType::kReAddReplicaNoSendOP, name, tid, pid, ttl,
-                               seg_cnt, false, table_info->storage_mode());
+                               seg_cnt, false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -6881,7 +6861,7 @@ int NameServerImpl::CreateReLoadTableTask(std::shared_ptr<OPData> op_data) {
     uint32_t seg_cnt = table_info->seg_cnt();
     std::shared_ptr<Task> task =
         CreateLoadTableTask(endpoint, op_data->op_info_.op_id(), ::fedb::api::OPType::kReLoadTableOP, name, tid, pid,
-                            ttl, seg_cnt, true, table_info->storage_mode());
+                            ttl, seg_cnt, true);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -7170,7 +7150,7 @@ std::shared_ptr<Task> NameServerImpl::CreateTableRemoteTask(const ::fedb::namese
 std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& endpoint, uint64_t op_index,
                                                           ::fedb::api::OPType op_type, const std::string& name,
                                                           uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt,
-                                                          bool is_leader, ::fedb::common::StorageMode storage_mode) {
+                                                          bool is_leader) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::fedb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::fedb::api::TabletState::kTabletHealthy) {
@@ -7182,19 +7162,12 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& end
     task->task_info_->set_status(::fedb::api::TaskStatus::kInited);
     task->task_info_->set_endpoint(endpoint);
 
-    ::fedb::common::StorageMode cur_storage_mode = ::fedb::common::StorageMode::kMemory;
-    if (storage_mode == ::fedb::common::StorageMode::kSSD) {
-        cur_storage_mode = ::fedb::common::StorageMode::kSSD;
-    } else if (storage_mode == ::fedb::common::StorageMode::kHDD) {
-        cur_storage_mode = ::fedb::common::StorageMode::kHDD;
-    }
     ::fedb::api::TableMeta table_meta;
     table_meta.set_name(name);
     table_meta.set_tid(tid);
     table_meta.set_pid(pid);
     table_meta.set_ttl(ttl);
     table_meta.set_seg_cnt(seg_cnt);
-    table_meta.set_storage_mode(cur_storage_mode);
     if (is_leader) {
         table_meta.set_mode(::fedb::api::TableMode::kTableLeader);
     } else {
@@ -9333,12 +9306,6 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
         response->set_code(ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist!");
         LOG(WARNING) << "table[" << name << "] is not exist!";
-        return;
-    }
-    if (table_info->storage_mode() != ::fedb::common::kMemory) {
-        response->set_code(ReturnCode::kTableTypeMismatch);
-        response->set_msg("only memory support addindex");
-        LOG(WARNING) << "cannot add index. table " << name;
         return;
     }
     if (table_info->column_key_size() == 0) {

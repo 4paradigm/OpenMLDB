@@ -15,13 +15,14 @@
  */
 
 #include "tablet/file_sender.h"
-#include <gflags/gflags.h>
+
 #include <thread> // NOLINT
 #include <vector>
-#include <boost/algorithm/string/predicate.hpp>
+#include "boost/algorithm/string/predicate.hpp"
 #include "base/file_util.h"
-#include "base/glog_wapper.h" // NOLINT
-#include "timer.h" // NOLINT
+#include "base/glog_wapper.h"
+#include "common/timer.h"
+#include "gflags/gflags.h"
 
 DECLARE_int32(send_file_max_try);
 DECLARE_uint32(stream_block_size);
@@ -33,17 +34,13 @@ DECLARE_int32(retry_send_file_wait_time_ms);
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
 
-
-
 namespace fedb {
 namespace tablet {
 
 FileSender::FileSender(uint32_t tid, uint32_t pid,
-                       ::fedb::common::StorageMode storage_mode,
                        const std::string& endpoint)
     : tid_(tid),
       pid_(pid),
-      storage_mode_(storage_mode),
       endpoint_(endpoint),
       cur_try_time_(0),
       max_try_time_(FLAGS_send_file_max_try),
@@ -91,7 +88,6 @@ int FileSender::WriteData(const std::string& file_name,
     if (!dir_name.empty()) {
         request.set_dir_name(dir_name);
     }
-    request.set_storage_mode(storage_mode_);
     request.set_block_id(block_id);
     request.set_block_size(len);
     brpc::Controller cntl;
@@ -233,7 +229,6 @@ int FileSender::CheckFile(const std::string& file_name,
     check_request.set_tid(tid_);
     check_request.set_pid(pid_);
     check_request.set_file(file_name);
-    check_request.set_storage_mode(storage_mode_);
     if (!dir_name.empty()) {
         check_request.set_dir_name(dir_name);
     }

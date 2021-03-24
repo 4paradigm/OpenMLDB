@@ -16,9 +16,10 @@
 
 
 #include "base/count_down_latch.h"
-#include <thread_pool.h>
 #include "boost/bind.hpp"
 #include "gtest/gtest.h"
+#include "common/thread_pool.h"
+
 
 using ::baidu::common::ThreadPool;
 

@@ -18,7 +18,6 @@
 #ifndef SRC_SDK_CLUSTER_SDK_H_
 #define SRC_SDK_CLUSTER_SDK_H_
 
-#include <snappy.h>
 #include <map>
 #include <memory>
 #include <string>
@@ -28,7 +27,7 @@
 #include "catalog/sdk_catalog.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
-#include "thread_pool.h"  // NOLINT
+#include "common/thread_pool.h"
 #include "vm/catalog.h"
 #include "zk/zk_client.h"
 #include "vm/engine.h"
@@ -90,12 +89,12 @@ class ClusterSDK {
                                                                    const std::string& name,
                                                                    const std::string& pk);
 
-    std::shared_ptr<fesql::sdk::ProcedureInfo> GetProcedureInfo(
+    std::shared_ptr<hybridse::sdk::ProcedureInfo> GetProcedureInfo(
             const std::string& db, const std::string& sp_name, std::string* msg);
 
-    std::vector<std::shared_ptr<fesql::sdk::ProcedureInfo>> GetProcedureInfo(std::string* msg);
+    std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> GetProcedureInfo(std::string* msg);
 
-    inline ::fesql::vm::Engine* GetEngine() {
+    inline ::hybridse::vm::Engine* GetEngine() {
         return engine_;
     }
 
@@ -127,7 +126,7 @@ class ClusterSDK {
     uint64_t session_id_;
     ::fedb::base::Random rand_;
     std::string sp_root_path_;
-    ::fesql::vm::Engine* engine_;
+    ::hybridse::vm::Engine* engine_;
 };
 
 }  // namespace sdk

@@ -13,7 +13,6 @@
 
     <properties>
         <sql.version>2.1.0.0-SNAPSHOT</sql.version>
-        <fesql.version>0.0.4-RELEASE</fesql.version>
         <suiteXmlFile>test_suite/test_v1.xml</suiteXmlFile>
         <aspectj.version>1.8.9</aspectj.version>
         <fe.command.version>1.0-SNAPSHOT</fe.command.version>
@@ -91,9 +90,9 @@
             <version>${sql.version}</version>
         </dependency>
         <dependency>
-            <groupId>com._4paradigm.fesql</groupId>
-            <artifactId>fesql-common</artifactId>
-            <version>${fesql.version}</version>
+            <groupId>com._4paradigm.hybridse</groupId>
+            <artifactId>hybridse-common</artifactId>
+            <version>${hybridse.version}</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -240,6 +239,11 @@
                             <name>reportLog</name>
                             <value>${reportLog}</value>
                         </property>
+                        <property>
+                            <name>yamlCaseBaseDir</name>
+                            <value>${yamlCaseBaseDir}</value>
+                        </property>
+
                     </systemProperties>
                 </configuration>
             </plugin>

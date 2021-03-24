@@ -25,7 +25,7 @@
 #include "codec/codec.h"
 #include "codec/sql_rpc_row_codec.h"
 #include "sdk/sql_request_row.h"
-#include "timer.h"  // NOLINT
+#include "common/timer.h"
 
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
@@ -523,14 +523,12 @@ bool TabletClient::SendSnapshot(uint32_t tid, uint32_t remote_tid, uint32_t pid,
 
 bool TabletClient::LoadTable(const std::string& name, uint32_t id, uint32_t pid,
                              uint64_t ttl, uint32_t seg_cnt) {
-    return LoadTable(name, id, pid, ttl, false, seg_cnt,
-                     ::fedb::common::StorageMode::kMemory);
+    return LoadTable(name, id, pid, ttl, false, seg_cnt);
 }
 
 bool TabletClient::LoadTable(const std::string& name, uint32_t tid,
                              uint32_t pid, uint64_t ttl, bool leader,
                              uint32_t seg_cnt,
-                             ::fedb::common::StorageMode storage_mode,
                              std::shared_ptr<TaskInfo> task_info) {
     ::fedb::api::TableMeta table_meta;
     table_meta.set_name(name);
@@ -538,7 +536,6 @@ bool TabletClient::LoadTable(const std::string& name, uint32_t tid,
     table_meta.set_pid(pid);
     table_meta.set_ttl(ttl);
     table_meta.set_seg_cnt(seg_cnt);
-    table_meta.set_storage_mode(storage_mode);
     if (leader) {
         table_meta.set_mode(::fedb::api::TableMode::kTableLeader);
     } else {
@@ -566,13 +563,11 @@ bool TabletClient::LoadTable(const ::fedb::api::TableMeta& table_meta,
 }
 
 bool TabletClient::LoadTable(uint32_t tid, uint32_t pid,
-                             ::fedb::common::StorageMode storage_mode,
                              std::string* msg) {
     ::fedb::api::LoadTableRequest request;
     ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
-    table_meta->set_storage_mode(storage_mode);
     table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
     ::fedb::api::GeneralResponse response;
     bool ok =
@@ -695,14 +690,12 @@ bool TabletClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
 }
 
 bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid,
-                               ::fedb::common::StorageMode storage_mode,
                                uint64_t& term, uint64_t& offset,
                                bool& has_table, bool& is_leader) {
     ::fedb::api::GetTermPairRequest request;
     ::fedb::api::GetTermPairResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    request.set_storage_mode(storage_mode);
     bool ret = client_.SendRequest(
         &::fedb::api::TabletServer_Stub::GetTermPair, &request, &response,
         FLAGS_request_timeout_ms, FLAGS_request_max_retry);
@@ -719,13 +712,11 @@ bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid,
 }
 
 bool TabletClient::GetManifest(uint32_t tid, uint32_t pid,
-                               ::fedb::common::StorageMode storage_mode,
                                ::fedb::api::Manifest& manifest) {
     ::fedb::api::GetManifestRequest request;
     ::fedb::api::GetManifestResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    request.set_storage_mode(storage_mode);
     bool ret = client_.SendRequest(
         &::fedb::api::TabletServer_Stub::GetManifest, &request, &response,
         FLAGS_request_timeout_ms, FLAGS_request_max_retry);
@@ -799,8 +790,6 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     bool ok =
         client_.SendRequest(&::fedb::api::TabletServer_Stub::Scan, &request,
                             response, FLAGS_request_timeout_ms, 1);
-    response->mutable_metric()->set_rptime(
-        ::baidu::common::timer::get_micros());
     if (response->has_msg()) {
         msg = response->msg();
     }
@@ -837,14 +826,11 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     request.set_pid(pid);
     request.set_limit(limit);
     request.set_atleast(atleast);
-    request.mutable_metric()->set_sqtime(::baidu::common::timer::get_micros());
     ::fedb::api::ScanResponse* response = new ::fedb::api::ScanResponse();
     uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok =
         client_.SendRequest(&::fedb::api::TabletServer_Stub::Scan, &request,
                             response, FLAGS_request_timeout_ms, 1);
-    response->mutable_metric()->set_rptime(
-        ::baidu::common::timer::get_micros());
     if (response->has_msg()) {
         msg = response->msg();
     }
@@ -888,14 +874,11 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
     request.set_et(etime);
     request.set_tid(tid);
     request.set_pid(pid);
-    request.mutable_metric()->set_sqtime(::baidu::common::timer::get_micros());
     ::fedb::api::ScanResponse* response = new ::fedb::api::ScanResponse();
     uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok =
         client_.SendRequest(&::fedb::api::TabletServer_Stub::Scan, &request,
                             response, FLAGS_request_timeout_ms, 1);
-    response->mutable_metric()->set_rptime(
-        ::baidu::common::timer::get_micros());
     if (response->has_msg()) {
         msg = response->msg();
     }
@@ -912,29 +895,6 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
     if (FLAGS_enable_show_tp) {
         consumed = ::baidu::common::timer::get_micros() - consumed;
         percentile_.push_back(consumed);
-    }
-    if (showm) {
-        uint64_t rpc_send_time =
-            response->metric().rqtime() - response->metric().sqtime();
-        uint64_t mutex_time =
-            response->metric().sctime() - response->metric().rqtime();
-        uint64_t seek_time =
-            response->metric().sitime() - response->metric().sctime();
-        uint64_t it_time =
-            response->metric().setime() - response->metric().sitime();
-        uint64_t encode_time =
-            response->metric().sptime() - response->metric().setime();
-        uint64_t receive_time =
-            response->metric().rptime() - response->metric().sptime();
-        uint64_t decode_time =
-            ::baidu::common::timer::get_micros() - response->metric().rptime();
-        std::cout << "Metric: rpc_send=" << rpc_send_time << " "
-                  << "db_lock=" << mutex_time << " "
-                  << "seek_time=" << seek_time << " "
-                  << "iterator_time=" << it_time << " "
-                  << "encode=" << encode_time << " "
-                  << "receive_time=" << receive_time << " "
-                  << "decode_time=" << decode_time << std::endl;
     }
     return kv_it;
 }
@@ -1248,12 +1208,10 @@ bool TabletClient::DisConnectZK() {
     return true;
 }
 
-bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid,
-                                ::fedb::common::StorageMode storage_mode) {
+bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid) {
     ::fedb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
-    request.set_storage_mode(storage_mode);
     ::fedb::api::GeneralResponse response;
     bool ok =
         client_.SendRequest(&::fedb::api::TabletServer_Stub::DeleteBinlog,

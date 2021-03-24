@@ -19,10 +19,10 @@
 #include "base/kv_iterator.h"
 #include "config.h" // NOLINT
 #include "gtest/gtest.h"
-#include "base/glog_wapper.h" // NOLINT
+#include "base/glog_wapper.h"
 #include "proto/tablet.pb.h"
 #include "tablet/tablet_impl.h"
-#include "timer.h" // NOLINT
+#include "common/timer.h"
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/heap-checker.h"
 #endif

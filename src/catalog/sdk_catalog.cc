@@ -48,8 +48,8 @@ bool SDKTableHandler::Init() {
 
     // init types var
     for (int32_t i = 0; i < schema_.size(); i++) {
-        const ::fesql::type::ColumnDef& column = schema_.Get(i);
-        ::fesql::vm::ColInfo col_info;
+        const ::hybridse::type::ColumnDef& column = schema_.Get(i);
+        ::hybridse::vm::ColInfo col_info;
         col_info.type = column.type();
         col_info.idx = i;
         col_info.name = column.name();
@@ -58,10 +58,10 @@ bool SDKTableHandler::Init() {
 
     // init index hint
     for (int32_t i = 0; i < index_list_.size(); i++) {
-        const ::fesql::type::IndexDef& index_def = index_list_.Get(i);
-        ::fesql::vm::IndexSt index_st;
+        const ::hybridse::type::IndexDef& index_def = index_list_.Get(i);
+        ::hybridse::vm::IndexSt index_st;
         index_st.index = i;
-        index_st.ts_pos = ::fesql::vm::INVALID_POS;
+        index_st.ts_pos = ::hybridse::vm::INVALID_POS;
         if (!index_def.second_key().empty()) {
             int32_t pos = GetColumnIndex(index_def.second_key());
             if (pos < 0) {
@@ -88,9 +88,10 @@ bool SDKTableHandler::Init() {
     return true;
 }
 
-std::shared_ptr<::fesql::vm::Tablet> SDKTableHandler::GetTablet(const std::string& index_name, const std::string& pk) {
+std::shared_ptr<::hybridse::vm::Tablet> SDKTableHandler::GetTablet(const std::string& index_name,
+                                                                   const std::string& pk) {
     if (index_name.empty() || pk.empty()) {
-        return std::shared_ptr<::fesql::vm::Tablet>();
+        return std::shared_ptr<::hybridse::vm::Tablet>();
     }
     uint32_t pid = 0;
     uint32_t pid_num = meta_.table_partition_size();
@@ -136,15 +137,15 @@ bool SDKCatalog::Init(const std::vector<::fedb::nameserver::TableInfo>& tables, 
     return true;
 }
 
-std::shared_ptr<::fesql::vm::TableHandler> SDKCatalog::GetTable(
+std::shared_ptr<::hybridse::vm::TableHandler> SDKCatalog::GetTable(
     const std::string& db, const std::string& table_name) {
     auto db_it = tables_.find(db);
     if (db_it == tables_.end()) {
-        return std::shared_ptr<::fesql::vm::TableHandler>();
+        return std::shared_ptr<::hybridse::vm::TableHandler>();
     }
     auto it = db_it->second.find(table_name);
     if (it == db_it->second.end()) {
-        return std::shared_ptr<::fesql::vm::TableHandler>();
+        return std::shared_ptr<::hybridse::vm::TableHandler>();
     }
     return it->second;
 }
@@ -153,7 +154,7 @@ std::shared_ptr<TabletAccessor> SDKCatalog::GetTablet() const {
     return client_manager_->GetTablet();
 }
 
-std::shared_ptr<::fesql::sdk::ProcedureInfo> SDKCatalog::GetProcedureInfo(
+std::shared_ptr<::hybridse::sdk::ProcedureInfo> SDKCatalog::GetProcedureInfo(
         const std::string& db, const std::string& sp_name) {
     auto db_sp_it = db_sp_map_.find(db);
     if (db_sp_it == db_sp_map_.end()) {

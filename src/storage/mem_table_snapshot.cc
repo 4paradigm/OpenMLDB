@@ -17,9 +17,11 @@
 #include "storage/mem_table_snapshot.h"
 
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#ifdef DISALLOW_COPY_AND_ASSIGN
+#undef DISALLOW_COPY_AND_ASSIGN
+#endif
 #include <snappy.h>
 #include <unistd.h>
-
 #include <set>
 #include <utility>
 
@@ -34,12 +36,12 @@
 #include "boost/bind.hpp"
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
+#include "common/timer.h"
+#include "common/thread_pool.h"
 #include "gflags/gflags.h"
 #include "log/log_reader.h"
 #include "log/sequential_file.h"
 #include "proto/tablet.pb.h"
-#include "thread_pool.h"  // NOLINT
-#include "timer.h"        // NOLINT
 
 using google::protobuf::RepeatedPtrField;
 using ::fedb::codec::SchemaCodec;
