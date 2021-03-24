@@ -22,7 +22,7 @@ bool CaseDataMock::LoadResource(const std::string& resource_path,
                                 type::TableDef& table_def,  // NOLINT
                                 std::vector<Row>& rows) {   // NOLINT
     if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            hybridse::sqlcase::FindHybridSEDirPath(), resource_path, table_def,
+            hybridse::sqlcase::FindSQLCaseBaseDirPath(), resource_path, table_def,
             rows)) {
         return false;
     }

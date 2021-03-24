@@ -204,6 +204,14 @@ class SQLCase {
         return false;
     }
     static std::set<std::string> HYBRIDSE_LEVEL();
+    static std::string SQL_CASE_BASE_DIR() {
+        const char* env_name = "SQL_CASE_BASE_DIR";
+        char* value = getenv(env_name);
+        if (value != nullptr) {
+            return std::string(value);
+        }
+        return "";
+    }
     static bool IS_DEBUG() {
         const char* env_name = "HYBRIDSE_DEV";
         char* value = getenv(env_name);
@@ -300,7 +308,7 @@ class SQLCase {
     std::string sp_name_;
     int level_ = 0;
 };
-std::string FindHybridSEDirPath();
+std::string FindSQLCaseBaseDirPath();
 
 }  // namespace sqlcase
 }  // namespace hybridse

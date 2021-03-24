@@ -1478,7 +1478,11 @@ hybridse::sqlcase::SQLCase SQLCase::LoadSQLCaseWithID(
     }
     return SQLCase();
 }
-std::string FindHybridSEDirPath() {
+std::string FindSQLCaseBaseDirPath() {
+    auto base_dir = SQLCase::SQL_CASE_BASE_DIR();
+    if (!base_dir.empty()) {
+        return base_dir;
+    }
     boost::filesystem::path current_path(boost::filesystem::current_path());
     boost::filesystem::path hybridse_path;
     bool find_hybridse_dir = false;
