@@ -18,7 +18,6 @@
 #define SRC_SDK_SQL_SDK_TEST_H_
 
 #include <sched.h>
-#include <timer.h>
 #include <unistd.h>
 
 #include <memory>
@@ -27,9 +26,10 @@
 #include <vector>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h" 
 #include "boost/algorithm/string.hpp"
 #include "catalog/schema_adapter.h"
+#include "common/timer.h"
 #include "codec/fe_row_codec.h"
 #include "gflags/gflags.h"
 #include "sdk/mini_cluster.h"

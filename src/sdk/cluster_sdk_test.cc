@@ -36,7 +36,7 @@
 #include "proto/type.pb.h"
 #include "rpc/rpc_client.h"
 #include "sdk/mini_cluster.h"
-#include "timer.h"  // NOLINT
+#include "common/timer.h"
 
 namespace fedb {
 namespace sdk {

@@ -25,13 +25,13 @@
 #include <vector>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
+#include "common/timer.h"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
-#include "timer.h"  // NOLINT
 #include "vm/catalog.h"
 #include "case/sql_case.h"
 
