@@ -15,11 +15,11 @@ FEDB is a NewSQL database optimised for realtime inference and decisioning appli
 
 兼容大部分ANSI SQL语法，有python和java client。其中java client支持大部分JDBC接口
 
-* __在线离线一致性__
+- __在线离线一致性__
 
 使用FEDB开发的机器学习应用可以一键上线，并且保证在线离线一致性，大大降低了机器学习场景的落地成本
 
-* __支持分布式，易扩展__
+- __支持分布式，易扩展__
 
 支持故障自动切换，支持横向扩展
 
@@ -33,7 +33,7 @@ FEDB is a NewSQL database optimised for realtime inference and decisioning appli
 git clone https://github.com/4paradigm/fedb.git
 cd fedb
 git submodule update --init
-docker run -v \`pwd\`:/fedb -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
+docker run -v `pwd`:/fedb -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
 cd /fedb
 sh tools/install_hybridse.sh
 mkdir -p build && cmake ../ && make -j5 fedb
