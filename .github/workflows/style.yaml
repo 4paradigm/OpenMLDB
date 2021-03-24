@@ -49,13 +49,13 @@ jobs:
           github_token: ${{ secrets.github_token }}
           reporter: github-pr-review # Change reporter.
 
-  checkstyle:
-    runs-on: self-hosted
-    steps:
-      - uses: actions/checkout@v2
-      - name: Run check style
-        uses: nikitasavinov/checkstyle-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-review
-          tool_name: checkstyle
+          #  checkstyle:
+          #    runs-on: self-hosted
+          #    steps:
+          #      - uses: actions/checkout@v2
+          #      - name: Run check style
+          #        uses: nikitasavinov/checkstyle-action@master
+          #        with:
+          #          github_token: ${{ secrets.GITHUB_TOKEN }}
+          #          reporter: github-pr-review
+          #          tool_name: checkstyle

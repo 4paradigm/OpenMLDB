@@ -24,9 +24,10 @@
 #include <vector>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "brpc/server.h"
 #include "client/ns_client.h"
+#include "common/timer.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "nameserver/name_server_impl.h"
@@ -36,7 +37,6 @@
 #include "rpc/rpc_client.h"
 #include "sdk/cluster_sdk.h"
 #include "tablet/tablet_impl.h"
-#include "timer.h"  // NOLINT
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
