@@ -19,7 +19,7 @@ jobs:
       - name: uncompress_thirdparty
         run: cd /depends && tar -zxf thirdparty.tar.gz 
       - name: build_fesql
-        run: bash tools/install_fesql.sh
+        run: bash tools/install_hybridse.sh
       - name: build_fedb
         run: |
           ln -sf /depends/thirdparty thirdparty
