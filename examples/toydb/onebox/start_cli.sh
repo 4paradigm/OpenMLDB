@@ -15,8 +15,15 @@
 #! /bin/sh
 #
 # start_cli.sh
+
+set -eE
+set -o nounset
+
+cd "$(dirname "$0")"
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
+cd "$PROJECT_ROOT"
 mkdir -p log/cli
-BUILD_DIR=../../../build/examples/toydb
-${BUILD_DIR}/src/toydb --role=client --tablet_endpoint=127.0.0.1:9212 --toydb_endpoint=127.0.0.1:9211
+BUILD_DIR=$PROJECT_ROOT/build/examples/toydb
+"${BUILD_DIR}/src/toydb" --role=client --tablet_endpoint=127.0.0.1:9212 --toydb_endpoint=127.0.0.1:9211
 
 
