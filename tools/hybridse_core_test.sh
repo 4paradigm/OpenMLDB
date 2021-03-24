@@ -18,15 +18,15 @@ set -eE
 # goto toplevel directory
 pushd "$(dirname "$0")/.."
 
+# shellcheck disable=SC1091
 source tools/init_env.profile.sh
 
-
 if uname -a | grep -q Darwin; then
-    # in case coreutils not install on mac
-    alias nproc='sysctl -n hw.logicalcpu'
+	# in case coreutils not install on mac
+	alias nproc='sysctl -n hw.logicalcpu'
 fi
 
-HYRBIDSE_DIR=`PWD`
+HYRBIDSE_DIR=$(pwd)
 rm -rf build
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DJAVASDK_ENABLE=OFF -DPYSDK_ENABLE=OFF -DEXAMPLES_ENABLE=OFF

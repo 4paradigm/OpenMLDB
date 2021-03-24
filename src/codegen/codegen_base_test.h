@@ -33,8 +33,8 @@ bool BuildWindowFromResource(const std::string& resource_path,
                              std::vector<Row>& rows,                 // NOLINT
                              int8_t** buf) {
     if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            hybridse::sqlcase::FindSQLCaseBaseDirPath(), resource_path, table_def,
-            rows)) {
+            hybridse::sqlcase::FindSQLCaseBaseDirPath(), resource_path,
+            table_def, rows)) {
         return false;
     }
     ArrayListV<Row>* w = new ArrayListV<Row>(&rows);
