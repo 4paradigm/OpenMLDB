@@ -21,11 +21,12 @@
 
 #include "base/strings.h"
 #include "glog/logging.h"
+#include "plan/plan_api.h"
 
 DECLARE_int32(request_timeout_ms);
 namespace fedb {
 namespace client {
-
+using hybridse::plan::PlanAPI;
 NsClient::NsClient(const std::string& endpoint, const std::string& real_endpoint)
     : endpoint_(endpoint), client_(endpoint), db_("") {
         if (!real_endpoint.empty()) {
@@ -260,28 +261,27 @@ bool NsClient::ExecuteSQL(const std::string& script, std::string& msg) {
 
 bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
                           std::string& msg) {
-    fesql::node::NodeManager node_manager;
-    fesql::parser::FeSQLParser parser;
+    hybridse::node::NodeManager node_manager;
     DLOG(INFO) << "start to execute script from dbms:\n" << script;
-    fesql::base::Status sql_status;
-    fesql::node::NodePointVector parser_trees;
-    parser.parse(script, parser_trees, &node_manager, sql_status);
+    hybridse::base::Status sql_status;
+    hybridse::node::NodePointVector parser_trees;
+    PlanAPI::CreateSyntaxTreeFromScript(script, parser_trees, &node_manager, sql_status);
     if (parser_trees.empty() || 0 != sql_status.code) {
         msg = sql_status.msg;
         return false;
     }
-    fesql::node::SQLNode* node = parser_trees[0];
+    hybridse::node::SQLNode* node = parser_trees[0];
     switch (node->GetType()) {
-        case fesql::node::kCmdStmt: {
-            fesql::node::CmdNode* cmd =
-                dynamic_cast<fesql::node::CmdNode*>(node);
+        case hybridse::node::kCmdStmt: {
+            hybridse::node::CmdNode* cmd =
+                dynamic_cast<hybridse::node::CmdNode*>(node);
             bool ok = HandleSQLCmd(cmd, db, &sql_status);
             if (!ok) {
                 msg = sql_status.msg;
             }
             return ok;
         }
-        case fesql::node::kCreateStmt: {
+        case hybridse::node::kCreateStmt: {
             bool ok = HandleSQLCreateTable(parser_trees, db, &node_manager,
                                            &sql_status);
             if (!ok) {
@@ -296,11 +296,11 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
     }
 }
 
-bool NsClient::HandleSQLCmd(const fesql::node::CmdNode* cmd_node,
+bool NsClient::HandleSQLCmd(const hybridse::node::CmdNode* cmd_node,
                             const std::string& db,
-                            fesql::base::Status* sql_status) {
+                            hybridse::base::Status* sql_status) {
     switch (cmd_node->GetCmdType()) {
-        case fesql::node::kCmdDropTable: {
+        case hybridse::node::kCmdDropTable: {
             std::string name = cmd_node->GetArgs()[0];
             std::string error;
             bool ok = DropTable(db, name, error);
@@ -311,7 +311,7 @@ bool NsClient::HandleSQLCmd(const fesql::node::CmdNode* cmd_node,
                 return false;
             }
         }
-        case fesql::node::kCmdDropIndex: {
+        case hybridse::node::kCmdDropIndex: {
             std::string index_name = cmd_node->GetArgs()[0];
             std::string table_name = cmd_node->GetArgs()[1];
             std::string error;
@@ -324,7 +324,7 @@ bool NsClient::HandleSQLCmd(const fesql::node::CmdNode* cmd_node,
                 return false;
             }
         }
-        case fesql::node::kCmdDropSp: {
+        case hybridse::node::kCmdDropSp: {
             std::string sp_name = cmd_node->GetArgs()[0];
             std::string error;
             bool ok = DropProcedure(db, sp_name, error);
@@ -343,25 +343,24 @@ bool NsClient::HandleSQLCmd(const fesql::node::CmdNode* cmd_node,
 }
 
 bool NsClient::HandleSQLCreateTable(
-    const fesql::node::NodePointVector& parser_trees, const std::string& db,
-    fesql::node::NodeManager* node_manager, fesql::base::Status* sql_status) {
-    fesql::plan::SimplePlanner planner(node_manager);
-    fesql::node::PlanNodeList plan_trees;
-    planner.CreatePlanTree(parser_trees, plan_trees, *sql_status);
+    const hybridse::node::NodePointVector& parser_trees, const std::string& db,
+    hybridse::node::NodeManager* node_manager, hybridse::base::Status* sql_status) {
+    hybridse::node::PlanNodeList plan_trees;
+    PlanAPI::CreatePlanTreeFromSyntaxTree(parser_trees, plan_trees, node_manager, *sql_status);
     if (plan_trees.empty() || 0 != sql_status->code) {
         return false;
     }
 
-    fesql::node::PlanNode* plan = plan_trees[0];
+    hybridse::node::PlanNode* plan = plan_trees[0];
     if (nullptr == plan) {
         sql_status->msg = "fail to execute plan : plan null";
         return false;
     }
 
     switch (plan->GetType()) {
-        case fesql::node::kPlanTypeCreate: {
-            fesql::node::CreatePlanNode* create =
-                dynamic_cast<fesql::node::CreatePlanNode*>(plan);
+        case hybridse::node::kPlanTypeCreate: {
+            hybridse::node::CreatePlanNode* create =
+                dynamic_cast<hybridse::node::CreatePlanNode*>(plan);
             ::fedb::nameserver::CreateTableRequest request;
             ::fedb::nameserver::GeneralResponse response;
             ::fedb::nameserver::TableInfo* table_info =
@@ -382,7 +381,7 @@ bool NsClient::HandleSQLCreateTable(
         }
         default: {
             sql_status->msg = "fail to execute script with unSuppurt type" +
-                              fesql::node::NameOfPlanNodeType(plan->GetType());
+                              hybridse::node::NameOfPlanNodeType(plan->GetType());
             return false;
         }
     }
@@ -1148,12 +1147,12 @@ bool NsClient::ShowCatalogVersion(std::map<std::string, uint64_t>* version_map, 
 }
 
 bool NsClient::TransformToTableDef(
-    ::fesql::node::CreatePlanNode* create_node,
-    ::fedb::nameserver::TableInfo* table, fesql::plan::Status* status) {
+    ::hybridse::node::CreatePlanNode* create_node,
+    ::fedb::nameserver::TableInfo* table, hybridse::plan::Status* status) {
     if (create_node == NULL || table == NULL || status == NULL) return false;
     std::string table_name = create_node->GetTableName();
-    const fesql::node::NodePointVector& column_desc_list = create_node->GetColumnDescList();
-    const fesql::node::NodePointVector& distribution_list = create_node->GetDistributionList();
+    const hybridse::node::NodePointVector& column_desc_list = create_node->GetColumnDescList();
+    const hybridse::node::NodePointVector& distribution_list = create_node->GetDistributionList();
     std::set<std::string> index_names;
     std::map<std::string, ::fedb::common::ColumnDesc*> column_names;
     table->set_name(table_name);
@@ -1161,14 +1160,14 @@ bool NsClient::TransformToTableDef(
     int replica_num = create_node->GetReplicaNum();
     if (replica_num <= 0) {
         status->msg = "CREATE common: replica_num should be bigger than 0";
-        status->code = fesql::common::kSQLError;
+        status->code = hybridse::common::kSQLError;
         return false;
     }
     table->set_replica_num((uint32_t)replica_num);
     int partition_num = create_node->GetPartitionNum();
     if (partition_num <= 0) {
         status->msg = "CREATE common: partition_num should be greater than 0";
-        status->code = fesql::common::kSQLError;
+        status->code = hybridse::common::kSQLError;
         return false;
     }
     table->set_partition_num(create_node->GetPartitionNum());
@@ -1180,16 +1179,16 @@ bool NsClient::TransformToTableDef(
     int no_ts_cnt = 0;
     for (auto column_desc : column_desc_list) {
         switch (column_desc->GetType()) {
-            case fesql::node::kColumnDesc: {
-                fesql::node::ColumnDefNode* column_def =
-                    (fesql::node::ColumnDefNode*)column_desc;
+            case hybridse::node::kColumnDesc: {
+                hybridse::node::ColumnDefNode* column_def =
+                    (hybridse::node::ColumnDefNode*)column_desc;
                 ::fedb::common::ColumnDesc* column_desc =
                     table->add_column_desc_v1();
                 if (column_names.find(column_desc->name()) !=
                     column_names.end()) {
                     status->msg = "CREATE common: COLUMN NAME " +
                                   column_def->GetColumnName() + " duplicate";
-                    status->code = fesql::common::kSQLError;
+                    status->code = hybridse::common::kSQLError;
                     return false;
                 }
                 column_desc->set_name(column_def->GetColumnName());
@@ -1197,74 +1196,74 @@ bool NsClient::TransformToTableDef(
                 column_names.insert(
                     std::make_pair(column_def->GetColumnName(), column_desc));
                 switch (column_def->GetColumnType()) {
-                    case fesql::node::kBool:
+                    case hybridse::node::kBool:
                         column_desc->set_data_type(
                             fedb::type::DataType::kBool);
                         column_desc->set_type("bool");
                         break;
-                    case fesql::node::kInt16:
+                    case hybridse::node::kInt16:
                         column_desc->set_data_type(
                             fedb::type::DataType::kSmallInt);
                         column_desc->set_type("int16");
                         break;
-                    case fesql::node::kInt32:
+                    case hybridse::node::kInt32:
                         column_desc->set_data_type(fedb::type::DataType::kInt);
                         column_desc->set_type("int32");
                         break;
-                    case fesql::node::kInt64:
+                    case hybridse::node::kInt64:
                         column_desc->set_data_type(
                             fedb::type::DataType::kBigInt);
                         column_desc->set_type("int64");
                         break;
-                    case fesql::node::kFloat:
+                    case hybridse::node::kFloat:
                         column_desc->set_data_type(
                             fedb::type::DataType::kFloat);
                         column_desc->set_type("float");
                         break;
-                    case fesql::node::kDouble:
+                    case hybridse::node::kDouble:
                         column_desc->set_data_type(
                             fedb::type::DataType::kDouble);
                         column_desc->set_type("double");
                         break;
-                    case fesql::node::kTimestamp: {
+                    case hybridse::node::kTimestamp: {
                         column_desc->set_data_type(
                             fedb::type::DataType::kTimestamp);
                         column_desc->set_type("timestamp");
                         break;
                     }
-                    case fesql::node::kVarchar:
+                    case hybridse::node::kVarchar:
                         column_desc->set_data_type(
                             fedb::type::DataType::kVarchar);
                         column_desc->set_type("string");
                         break;
-                    case fesql::node::kDate:
+                    case hybridse::node::kDate:
                         column_desc->set_data_type(
                             fedb::type::DataType::kDate);
                         column_desc->set_type("date");
                         break;
                     default: {
                         status->msg = "CREATE common: column type " +
-                                      fesql::node::DataTypeName(
+                                      hybridse::node::DataTypeName(
                                           column_def->GetColumnType()) +
                                       " is not supported";
-                        status->code = fesql::common::kSQLError;
+                        status->code = hybridse::common::kSQLError;
                         return false;
                     }
                 }
                 break;
             }
 
-            case fesql::node::kColumnIndex: {
-                fesql::node::ColumnIndexNode* column_index =
-                    (fesql::node::ColumnIndexNode*)column_desc;
+            case hybridse::node::kColumnIndex: {
+                hybridse::node::ColumnIndexNode* column_index =
+                    (hybridse::node::ColumnIndexNode*)column_desc;
                 std::string index_name = column_index->GetName();
                 if (index_name.empty()) {
-                    index_name = fesql::plan::GenerateName("INDEX", table->column_key_size());
+                    index_name = PlanAPI::GenerateName("INDEX", table->column_key_size());
                     column_index->SetName(index_name);
                 }
                 if (index_names.find(index_name) != index_names.end()) {
                     status->msg = "CREATE common: INDEX NAME " + index_name + " duplicate";
-                    status->code = fesql::common::kSQLError;
+                    status->code = hybridse::common::kSQLError;
                     return false;
                 }
                 index_names.insert(index_name);
@@ -1273,14 +1272,14 @@ bool NsClient::TransformToTableDef(
 
                 if (column_index->GetKey().empty()) {
                     status->msg = "CREATE common: INDEX KEY empty";
-                    status->code = fesql::common::kSQLError;
+                    status->code = hybridse::common::kSQLError;
                     return false;
                 }
                 for (auto key : column_index->GetKey()) {
                     auto cit = column_names.find(key);
                     if (cit == column_names.end()) {
                         status->msg = "column " + key + " does not exist";
-                        status->code = fesql::common::kSQLError;
+                        status->code = hybridse::common::kSQLError;
                         return false;
                     }
                     cit->second->set_add_ts_idx(true);
@@ -1302,7 +1301,7 @@ bool NsClient::TransformToTableDef(
                         status->msg = "CREATE common: ttl_type " +
                                       column_index->ttl_type() +
                                       " not support";
-                        status->code = fesql::common::kSQLError;
+                        status->code = hybridse::common::kSQLError;
                         return false;
                     }
                 } else {
@@ -1311,7 +1310,7 @@ bool NsClient::TransformToTableDef(
                 if (ttl_st->ttl_type() == fedb::type::kAbsoluteTime) {
                     if (column_index->GetAbsTTL() == -1 || column_index->GetLatTTL() != -2) {
                         status->msg = "CREATE common: abs ttl format error";
-                        status->code = fesql::common::kSQLError;
+                        status->code = hybridse::common::kSQLError;
                         return false;
                     }
                     if (column_index->GetAbsTTL() == -2) {
@@ -1322,7 +1321,7 @@ bool NsClient::TransformToTableDef(
                 } else if (ttl_st->ttl_type() == fedb::type::kLatestTime) {
                     if (column_index->GetLatTTL() == -1 || column_index->GetAbsTTL() != -2) {
                         status->msg = "CREATE common: lat ttl format error";
-                        status->code = fesql::common::kSQLError;
+                        status->code = hybridse::common::kSQLError;
                         return false;
                     }
                     if (column_index->GetLatTTL() == -2) {
@@ -1333,7 +1332,7 @@ bool NsClient::TransformToTableDef(
                 } else {
                     if (column_index->GetAbsTTL() == -1) {
                         status->msg = "CREATE common: abs ttl format error";
-                        status->code = fesql::common::kSQLError;
+                        status->code = hybridse::common::kSQLError;
                         return false;
                     }
                     if (column_index->GetAbsTTL() == -2) {
@@ -1343,7 +1342,7 @@ bool NsClient::TransformToTableDef(
                     }
                     if (column_index->GetLatTTL() == -1) {
                         status->msg = "CREATE common: lat ttl format error";
-                        status->code = fesql::common::kSQLError;
+                        status->code = hybridse::common::kSQLError;
                         return false;
                     }
                     if (column_index->GetLatTTL() == -2) {
@@ -1358,7 +1357,7 @@ bool NsClient::TransformToTableDef(
                     if (it == column_names.end()) {
                         status->msg = "CREATE common: TS NAME " +
                                       column_index->GetTs() + " not exists";
-                        status->code = fesql::common::kSQLError;
+                        status->code = hybridse::common::kSQLError;
                         return false;
                     }
                     switch (it->second->data_type()) {
@@ -1374,7 +1373,7 @@ bool NsClient::TransformToTableDef(
                                           fedb::type::DataType_Name(
                                               it->second->data_type()) +
                                           " not support";
-                            status->code = fesql::common::kSQLError;
+                            status->code = hybridse::common::kSQLError;
                             return false;
                         }
                     }
@@ -1387,23 +1386,23 @@ bool NsClient::TransformToTableDef(
             default: {
                 status->msg =
                     "can not support " +
-                    fesql::node::NameOfSQLNodeType(column_desc->GetType()) +
+                    hybridse::node::NameOfSQLNodeType(column_desc->GetType()) +
                     " when CREATE TABLE";
-                status->code = fesql::common::kSQLError;
+                status->code = hybridse::common::kSQLError;
                 return false;
             }
         }
     }
     if (no_ts_cnt > 0 && no_ts_cnt != table->column_key_size()) {
         status->msg = "CREATE common: need to set ts col";
-        status->code = fesql::common::kSQLError;
+        status->code = hybridse::common::kSQLError;
         return false;
     }
     if (!distribution_list.empty()) {
         if (replica_num != (int32_t)distribution_list.size()) {
             status->msg = "CREATE common: "
                 "replica_num should equal to partition meta size";
-            status->code = fesql::common::kSQLError;
+            status->code = hybridse::common::kSQLError;
             return false;
         }
         ::fedb::nameserver::TablePartition* table_partition =
@@ -1412,40 +1411,40 @@ bool NsClient::TransformToTableDef(
         std::vector<std::string> ep_vec;
         for (auto partition_meta : distribution_list) {
             switch (partition_meta->GetType()) {
-                case fesql::node::kPartitionMeta: {
-                    fesql::node::PartitionMetaNode* p_meta_node =
-                        (fesql::node::PartitionMetaNode*)partition_meta;
+                case hybridse::node::kPartitionMeta: {
+                    hybridse::node::PartitionMetaNode* p_meta_node =
+                        (hybridse::node::PartitionMetaNode*)partition_meta;
                     const std::string& ep = p_meta_node->GetEndpoint();
                     if (std::find(ep_vec.begin(), ep_vec.end(), ep) !=
                         ep_vec.end()) {
                         status->msg = "CREATE common: "
                             "partition meta endpoint duplicate";
-                        status->code = fesql::common::kSQLError;
+                        status->code = hybridse::common::kSQLError;
                         return false;
                     }
                     ep_vec.push_back(ep);
                     ::fedb::nameserver::PartitionMeta* meta =
                         table_partition->add_partition_meta();
                     meta->set_endpoint(ep);
-                    if (p_meta_node->GetRoleType() == fesql::node::kLeader) {
+                    if (p_meta_node->GetRoleType() == hybridse::node::kLeader) {
                         meta->set_is_leader(true);
                     } else if (p_meta_node->GetRoleType() ==
-                            fesql::node::kFollower) {
+                            hybridse::node::kFollower) {
                         meta->set_is_leader(false);
                     } else {
                         status->msg = "CREATE common: role_type " +
-                            fesql::node::RoleTypeName(p_meta_node->GetRoleType()) +
+                            hybridse::node::RoleTypeName(p_meta_node->GetRoleType()) +
                             " not support";
-                        status->code = fesql::common::kSQLError;
+                        status->code = hybridse::common::kSQLError;
                         return false;
                     }
                     break;
                 }
                 default: {
                     status->msg = "can not support " +
-                        fesql::node::NameOfSQLNodeType(partition_meta->GetType()) +
+                        hybridse::node::NameOfSQLNodeType(partition_meta->GetType()) +
                         " when CREATE TABLE 2";
-                    status->code = fesql::common::kSQLError;
+                    status->code = hybridse::common::kSQLError;
                     return false;
                 }
             }

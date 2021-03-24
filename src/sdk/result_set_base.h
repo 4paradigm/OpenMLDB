@@ -31,7 +31,7 @@ namespace sdk {
 class ResultSetBase {
  public:
     ResultSetBase(const std::shared_ptr<brpc::Controller>& cntl, uint32_t count, uint32_t buf_size,
-                  std::unique_ptr<::fesql::sdk::RowIOBufView> row_view, const ::fesql::vm::Schema& schema);
+                  std::unique_ptr<::hybridse::sdk::RowIOBufView> row_view, const ::hybridse::vm::Schema& schema);
     ~ResultSetBase();
 
     bool Reset();
@@ -62,7 +62,7 @@ class ResultSetBase {
 
     bool GetTime(uint32_t index, int64_t* mills);
 
-    inline const ::fesql::sdk::Schema* GetSchema() { return &schema_; }
+    inline const ::hybridse::sdk::Schema* GetSchema() { return &schema_; }
 
     inline int32_t Size() { return count_; }
 
@@ -70,8 +70,8 @@ class ResultSetBase {
     std::shared_ptr<brpc::Controller> cntl_;
     uint32_t count_;
     uint32_t buf_size_;
-    std::unique_ptr<::fesql::sdk::RowIOBufView> row_view_;
-    ::fesql::sdk::SchemaImpl schema_;
+    std::unique_ptr<::hybridse::sdk::RowIOBufView> row_view_;
+    ::hybridse::sdk::SchemaImpl schema_;
     uint32_t position_;
     int32_t index_;
 };

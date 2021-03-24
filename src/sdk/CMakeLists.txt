@@ -16,7 +16,7 @@ if(TESTING_ENABLE)
     add_library(mini_cluster_bm_common STATIC mini_cluster_bm.cc sql_sdk_test.cc)
     add_library(base_test STATIC ../test/base_test.cc)
 
-    set(FESQL_CASE_LIBS base_test fesql_core yaml-cpp boost_filesystem)
+    set(HYBRIDSE_CASE_LIBS base_test hybridse_core yaml-cpp)
 
     add_executable(cluster_sdk_test cluster_sdk_test.cc)
     target_link_libraries(cluster_sdk_test gtest ${BIN_LIBS})
@@ -25,25 +25,25 @@ if(TESTING_ENABLE)
     target_link_libraries(sql_router_test gtest ${BIN_LIBS})
 
     add_executable(sql_sdk_test sql_sdk_test.cc)
-    target_link_libraries(sql_sdk_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+    target_link_libraries(sql_sdk_test gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 
     add_executable(sql_cluster_test sql_cluster_test.cc)
-    target_link_libraries(sql_cluster_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+    target_link_libraries(sql_cluster_test gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 
     add_executable(sql_request_row_test sql_request_row_test.cc)
     target_link_libraries(sql_request_row_test gtest ${BIN_LIBS})
 
     add_executable(mini_cluster_bm mini_cluster_microbenchmark.cc)
-    target_link_libraries(mini_cluster_bm mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+    target_link_libraries(mini_cluster_bm mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 
     add_executable(mini_cluster_bm_request_batch mini_cluster_bm_request_batch.cc)
-    target_link_libraries(mini_cluster_bm_request_batch mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+    target_link_libraries(mini_cluster_bm_request_batch mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 
     add_executable(mini_cluster_bm_request mini_cluster_bm_request.cc)
-    target_link_libraries(mini_cluster_bm_request mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+    target_link_libraries(mini_cluster_bm_request mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 endif()
 
-set(SDK_LIBS fedb_sdk fedb_catalog client zk_client fedb_flags fedb_codec fedb_proto base fesql_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS})
+set(SDK_LIBS fedb_sdk fedb_catalog client zk_client fedb_flags fedb_codec fedb_proto base hybridse_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS})
 
 if(SQL_PYSDK_ENABLE)
 	find_package(Python3 COMPONENTS Interpreter Development)

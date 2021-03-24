@@ -35,7 +35,7 @@ namespace sdk {
 class SQLRequestRow {
  public:
     SQLRequestRow() {}
-    SQLRequestRow(std::shared_ptr<fesql::sdk::Schema> schema,
+    SQLRequestRow(std::shared_ptr<hybridse::sdk::Schema> schema,
             const std::set<std::string>& record_cols);
     ~SQLRequestRow() {}
     bool Init(int32_t str_length);
@@ -56,16 +56,16 @@ class SQLRequestRow {
         return is_ok_;
     }
     inline const std::string& GetRow() { return val_; }
-    inline const std::shared_ptr<fesql::sdk::Schema> GetSchema() {
+    inline const std::shared_ptr<hybridse::sdk::Schema> GetSchema() {
         return schema_;
     }
     bool GetRecordVal(const std::string& col, std::string* val);
 
  private:
-    bool Check(fesql::sdk::DataType type);
+    bool Check(hybridse::sdk::DataType type);
 
  private:
-    std::shared_ptr<fesql::sdk::Schema> schema_;
+    std::shared_ptr<hybridse::sdk::Schema> schema_;
     uint32_t cnt_;
     uint32_t size_;
     uint32_t str_field_cnt_;
@@ -91,7 +91,7 @@ class ColumnIndicesSet;
   */
 class SQLRequestRowBatch {
  public:
-    SQLRequestRowBatch(std::shared_ptr<fesql::sdk::Schema> schema,
+    SQLRequestRowBatch(std::shared_ptr<hybridse::sdk::Schema> schema,
                        std::shared_ptr<ColumnIndicesSet> indices);
     bool AddRow(std::shared_ptr<SQLRequestRow> row);
     int Size() const { return non_common_slices_.size(); }
@@ -117,11 +117,11 @@ class SQLRequestRowBatch {
     }
 
  private:
-    ::fesql::codec::Schema request_schema_;
+    ::hybridse::codec::Schema request_schema_;
     std::set<size_t> common_column_indices_;
 
-    std::unique_ptr<::fesql::codec::RowSelector> common_selector_;
-    std::unique_ptr<::fesql::codec::RowSelector> non_common_selector_;
+    std::unique_ptr<::hybridse::codec::RowSelector> common_selector_;
+    std::unique_ptr<::hybridse::codec::RowSelector> non_common_selector_;
 
     std::string common_slice_;
     std::vector<std::string> non_common_slices_;
@@ -129,7 +129,7 @@ class SQLRequestRowBatch {
 
 class ColumnIndicesSet {
  public:
-    explicit ColumnIndicesSet(std::shared_ptr<fesql::sdk::Schema> schema)
+    explicit ColumnIndicesSet(std::shared_ptr<hybridse::sdk::Schema> schema)
         : bound_(schema->GetColumnCnt()) {}
 
     bool Empty() const { return common_column_indices_.empty(); }

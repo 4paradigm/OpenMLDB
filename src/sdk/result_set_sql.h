@@ -32,21 +32,21 @@
 namespace fedb {
 namespace sdk {
 
-class ResultSetSQL : public ::fesql::sdk::ResultSet {
+class ResultSetSQL : public ::hybridse::sdk::ResultSet {
  public:
-    ResultSetSQL(const ::fesql::vm::Schema& schema, uint32_t record_cnt, uint32_t buf_size,
+    ResultSetSQL(const ::hybridse::vm::Schema& schema, uint32_t record_cnt, uint32_t buf_size,
                  const std::shared_ptr<brpc::Controller>& cntl);
 
     ~ResultSetSQL();
 
-    static std::shared_ptr<::fesql::sdk::ResultSet> MakeResultSet(
+    static std::shared_ptr<::hybridse::sdk::ResultSet> MakeResultSet(
         const std::shared_ptr<::fedb::api::QueryResponse>& response, const std::shared_ptr<brpc::Controller>& cntl,
-        ::fesql::sdk::Status* status);
+        ::hybridse::sdk::Status* status);
 
-    static std::shared_ptr<::fesql::sdk::ResultSet> MakeResultSet(
+    static std::shared_ptr<::hybridse::sdk::ResultSet> MakeResultSet(
         const std::shared_ptr<::fedb::api::ScanResponse>& response,
         const ::google::protobuf::RepeatedField<uint32_t>& projection, const std::shared_ptr<brpc::Controller>& cntl,
-        std::shared_ptr<::fesql::vm::TableHandler> table_handler, ::fesql::sdk::Status* status);
+        std::shared_ptr<::hybridse::vm::TableHandler> table_handler, ::hybridse::sdk::Status* status);
 
     bool Init();
 
@@ -80,12 +80,12 @@ class ResultSetSQL : public ::fesql::sdk::ResultSet {
 
     bool GetTime(uint32_t index, int64_t* mills) { return result_set_base_->GetTime(index, mills); }
 
-    const ::fesql::sdk::Schema* GetSchema() { return result_set_base_->GetSchema(); }
+    const ::hybridse::sdk::Schema* GetSchema() { return result_set_base_->GetSchema(); }
 
     int32_t Size() { return result_set_base_->Size(); }
 
  private:
-    ::fesql::vm::Schema schema_;
+    ::hybridse::vm::Schema schema_;
     uint32_t record_cnt_;
     uint32_t buf_size_;
     std::shared_ptr<brpc::Controller> cntl_;

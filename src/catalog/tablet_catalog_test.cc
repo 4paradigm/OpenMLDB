@@ -69,9 +69,9 @@ TestArgs *PrepareTable(const std::string &tname) {
 
     ::fedb::storage::MemTable *table = new ::fedb::storage::MemTable(meta);
     table->Init();
-    ::fesql::vm::Schema fe_schema;
+    ::hybridse::vm::Schema fe_schema;
     SchemaAdapter::ConvertSchema(meta.column_desc(), &fe_schema);
-    ::fesql::codec::RowBuilder rb(fe_schema);
+    ::hybridse::codec::RowBuilder rb(fe_schema);
     std::string pk = "pk1";
     args->pk = pk;
     uint32_t size = rb.CalTotalLength(pk.size());
@@ -126,9 +126,9 @@ TestArgs *PrepareMultiPartitionTable(const std::string &tname,
         args->tables.push_back(table);
         args->meta.push_back(cur_meta);
     }
-    ::fesql::vm::Schema fe_schema;
+    ::hybridse::vm::Schema fe_schema;
     SchemaAdapter::ConvertSchema(meta.column_desc(), &fe_schema);
-    ::fesql::codec::RowBuilder rb(fe_schema);
+    ::hybridse::codec::RowBuilder rb(fe_schema);
     uint32_t base = 100;
     for (int i = 0; i < 100; i++) {
         std::string pk = "pk" + std::to_string(base + i);
@@ -153,7 +153,7 @@ TestArgs *PrepareMultiPartitionTable(const std::string &tname,
 TEST_F(TabletCatalogTest, tablet_smoke_test) {
     TestArgs *args = PrepareTable("t1");
     TabletTableHandler handler(args->meta[0],
-                               std::shared_ptr<fesql::vm::Tablet>());
+                               std::shared_ptr<hybridse::vm::Tablet>());
     ClientManager client_manager;
     ASSERT_TRUE(handler.Init(client_manager));
     handler.AddTable(args->tables[0]);
@@ -184,7 +184,7 @@ TEST_F(TabletCatalogTest, tablet_smoke_test) {
 TEST_F(TabletCatalogTest, segment_handler_test) {
     TestArgs *args = PrepareTable("t1");
     auto handler = std::shared_ptr<TabletTableHandler>(new TabletTableHandler(
-        args->meta[0], std::shared_ptr<fesql::vm::Tablet>()));
+        args->meta[0], std::shared_ptr<hybridse::vm::Tablet>()));
     ClientManager client_manager;
     ASSERT_TRUE(handler->Init(client_manager));
     handler->AddTable(args->tables[0]);
@@ -205,7 +205,7 @@ TEST_F(TabletCatalogTest, segment_handler_test) {
 TEST_F(TabletCatalogTest, segment_handler_pk_not_exist_test) {
     TestArgs *args = PrepareTable("t1");
     auto handler = std::shared_ptr<TabletTableHandler>(new TabletTableHandler(
-        args->meta[0], std::shared_ptr<fesql::vm::Tablet>()));
+        args->meta[0], std::shared_ptr<hybridse::vm::Tablet>()));
     ClientManager client_manager;
     ASSERT_TRUE(handler->Init(client_manager));
     handler->AddTable(args->tables[0]);
@@ -225,26 +225,26 @@ TEST_F(TabletCatalogTest, sql_smoke_test) {
     ASSERT_TRUE(catalog->Init());
     TestArgs *args = PrepareTable("t1");
     ASSERT_TRUE(catalog->AddTable(args->meta[0], args->tables[0]));
-    ::fesql::vm::Engine engine(catalog);
+    ::hybridse::vm::Engine engine(catalog);
     std::string sql = "select col1, col2 + 1 from t1;";
-    ::fesql::vm::BatchRunSession session;
+    ::hybridse::vm::BatchRunSession session;
     session.EnableDebug();
-    ::fesql::base::Status status;
+    ::hybridse::base::Status status;
     engine.Get(sql, "db1", session, status);
-    if (status.code != ::fesql::common::kOk) {
+    if (status.code != ::hybridse::common::kOk) {
         std::cout << status.msg << std::endl;
     }
-    ASSERT_EQ(::fesql::common::kOk, status.code);
+    ASSERT_EQ(::hybridse::common::kOk, status.code);
     std::vector<int8_t *> output;
-    std::shared_ptr<::fesql::vm::TableHandler> result = session.Run();
+    std::shared_ptr<::hybridse::vm::TableHandler> result = session.Run();
     if (!result) {
         ASSERT_TRUE(false);
     }
-    ::fesql::codec::RowView rv(session.GetSchema());
+    ::hybridse::codec::RowView rv(session.GetSchema());
     ASSERT_EQ(2, session.GetSchema().size());
     auto it = result->GetIterator();
     ASSERT_TRUE(it->Valid());
-    const ::fesql::codec::Row &row = it->GetValue();
+    const ::hybridse::codec::Row &row = it->GetValue();
     rv.Reset(row.buf(), row.size());
     int64_t val = 0;
     ASSERT_EQ(0, rv.GetInt64(1, &val));
@@ -266,34 +266,34 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
     TestArgs *args1 = PrepareTable("t2");
     ASSERT_TRUE(catalog->AddTable(args1->meta[0], args1->tables[0]));
 
-    ::fesql::vm::Engine engine(catalog);
+    ::hybridse::vm::Engine engine(catalog);
     std::string sql =
         "select t1.col1 as c1, t1.col2 as c2 , t2.col1 as c3, t2.col2 as c4 "
         "from t1 last join t2 order by t2.col2 "
         "on t1.col1 = t2.col1 and t1.col2 > t2.col2;";
-    ::fesql::vm::ExplainOutput explain;
-    ::fesql::base::Status status;
-    engine.Explain(sql, "db1", ::fesql::vm::kBatchMode, &explain, &status);
+    ::hybridse::vm::ExplainOutput explain;
+    ::hybridse::base::Status status;
+    engine.Explain(sql, "db1", ::hybridse::vm::kBatchMode, &explain, &status);
     std::cout << "logical_plan \n" << explain.logical_plan << std::endl;
     std::cout << "physical \n" << explain.physical_plan << std::endl;
 
-    ::fesql::vm::BatchRunSession session;
+    ::hybridse::vm::BatchRunSession session;
     session.EnableDebug();
     engine.Get(sql, "db1", session, status);
-    if (status.code != ::fesql::common::kOk) {
+    if (status.code != ::hybridse::common::kOk) {
         std::cout << status.msg << std::endl;
     }
-    ASSERT_EQ(::fesql::common::kOk, status.code);
+    ASSERT_EQ(::hybridse::common::kOk, status.code);
     std::vector<int8_t *> output;
-    std::shared_ptr<::fesql::vm::TableHandler> result = session.Run();
+    std::shared_ptr<::hybridse::vm::TableHandler> result = session.Run();
     if (!result) {
         ASSERT_TRUE(false);
     }
-    ::fesql::codec::RowView rv(session.GetSchema());
+    ::hybridse::codec::RowView rv(session.GetSchema());
     ASSERT_EQ(4, session.GetSchema().size());
     auto it = result->GetIterator();
     ASSERT_TRUE(it->Valid());
-    const ::fesql::codec::Row &row = it->GetValue();
+    const ::hybridse::codec::Row &row = it->GetValue();
     rv.Reset(row.buf(), row.size());
     ASSERT_EQ(args->pk, rv.GetStringUnsafe(0));
 }
@@ -307,33 +307,33 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
     TestArgs *args1 = PrepareTable("t2");
     ASSERT_TRUE(catalog->AddTable(args1->meta[0], args1->tables[0]));
 
-    ::fesql::vm::Engine engine(catalog);
+    ::hybridse::vm::Engine engine(catalog);
     std::string sql =
         "select t1.col1 as c1, t1.col2 as c2 , t2.col1 as c3, t2.col2 as c4 "
         "from t1 last join t2 order by t2.col2 desc"
         " on t1.col1 = t2.col1 and t1.col2 = t2.col2;";
-    ::fesql::vm::ExplainOutput explain;
-    ::fesql::base::Status status;
-    engine.Explain(sql, "db1", ::fesql::vm::kBatchMode, &explain, &status);
+    ::hybridse::vm::ExplainOutput explain;
+    ::hybridse::base::Status status;
+    engine.Explain(sql, "db1", ::hybridse::vm::kBatchMode, &explain, &status);
     std::cout << "logical_plan \n" << explain.logical_plan << std::endl;
     std::cout << "physical \n" << explain.physical_plan << std::endl;
-    ::fesql::vm::BatchRunSession session;
+    ::hybridse::vm::BatchRunSession session;
     session.EnableDebug();
     engine.Get(sql, "db1", session, status);
-    if (status.code != ::fesql::common::kOk) {
+    if (status.code != ::hybridse::common::kOk) {
         std::cout << status.msg << std::endl;
     }
-    ASSERT_EQ(::fesql::common::kOk, status.code);
+    ASSERT_EQ(::hybridse::common::kOk, status.code);
     std::vector<int8_t *> output;
-    std::shared_ptr<::fesql::vm::TableHandler> result = session.Run();
+    std::shared_ptr<::hybridse::vm::TableHandler> result = session.Run();
     if (!result) {
         ASSERT_TRUE(false);
     }
-    ::fesql::codec::RowView rv(session.GetSchema());
+    ::hybridse::codec::RowView rv(session.GetSchema());
     ASSERT_EQ(4, session.GetSchema().size());
     auto it = result->GetIterator();
     ASSERT_TRUE(it->Valid());
-    const ::fesql::codec::Row &row = it->GetValue();
+    const ::hybridse::codec::Row &row = it->GetValue();
     rv.Reset(row.buf(), row.size());
     const char *data = NULL;
     uint32_t data_size = 0;
@@ -348,7 +348,7 @@ TEST_F(TabletCatalogTest, sql_window_smoke_500_test) {
     TestArgs *args = PrepareTable("t1");
 
     ASSERT_TRUE(catalog->AddTable(args->meta[0], args->tables[0]));
-    ::fesql::vm::Engine engine(catalog);
+    ::hybridse::vm::Engine engine(catalog);
     std::stringstream ss;
     ss << "select ";
     for (uint32_t i = 0; i < 100; i++) {
@@ -357,20 +357,20 @@ TEST_F(TabletCatalogTest, sql_window_smoke_500_test) {
     }
     ss << " from t1 limit 1;";
     std::string sql = ss.str();
-    ::fesql::vm::BatchRunSession session;
+    ::hybridse::vm::BatchRunSession session;
     session.EnableDebug();
-    ::fesql::base::Status status;
+    ::hybridse::base::Status status;
     engine.Get(sql, "db1", session, status);
-    if (status.code != ::fesql::common::kOk) {
+    if (status.code != ::hybridse::common::kOk) {
         std::cout << status.msg << std::endl;
     }
-    ASSERT_EQ(::fesql::common::kOk, status.code);
+    ASSERT_EQ(::hybridse::common::kOk, status.code);
     std::vector<int8_t *> output;
-    std::shared_ptr<::fesql::vm::TableHandler> result = session.Run();
+    std::shared_ptr<::hybridse::vm::TableHandler> result = session.Run();
     if (!result) {
         ASSERT_TRUE(false);
     }
-    ::fesql::codec::RowView rv(session.GetSchema());
+    ::hybridse::codec::RowView rv(session.GetSchema());
     ASSERT_EQ(200, session.GetSchema().size());
 }
 
@@ -380,29 +380,29 @@ TEST_F(TabletCatalogTest, sql_window_smoke_test) {
     TestArgs *args = PrepareTable("t1");
 
     ASSERT_TRUE(catalog->AddTable(args->meta[0], args->tables[0]));
-    ::fesql::vm::Engine engine(catalog);
+    ::hybridse::vm::Engine engine(catalog);
     std::string sql =
         "select sum(col2) over w1, t1.col1, t1.col2 from t1 window w1 "
         "as(partition by t1.col1 order by t1.col2 ROWS BETWEEN 3 PRECEDING AND "
         "CURRENT ROW);";
-    ::fesql::vm::BatchRunSession session;
+    ::hybridse::vm::BatchRunSession session;
     session.EnableDebug();
-    ::fesql::base::Status status;
+    ::hybridse::base::Status status;
     engine.Get(sql, "db1", session, status);
-    if (status.code != ::fesql::common::kOk) {
+    if (status.code != ::hybridse::common::kOk) {
         std::cout << status.msg << std::endl;
     }
-    ASSERT_EQ(::fesql::common::kOk, status.code);
+    ASSERT_EQ(::hybridse::common::kOk, status.code);
     std::vector<int8_t *> output;
-    std::shared_ptr<::fesql::vm::TableHandler> result = session.Run();
+    std::shared_ptr<::hybridse::vm::TableHandler> result = session.Run();
     if (!result) {
         ASSERT_TRUE(false);
     }
-    ::fesql::codec::RowView rv(session.GetSchema());
+    ::hybridse::codec::RowView rv(session.GetSchema());
     ASSERT_EQ(3, session.GetSchema().size());
     auto it = result->GetIterator();
     ASSERT_TRUE(it->Valid());
-    const ::fesql::codec::Row &row = it->GetValue();
+    const ::hybridse::codec::Row &row = it->GetValue();
     rv.Reset(row.buf(), row.size());
     int64_t val = 0;
     ASSERT_EQ(0, rv.GetInt64(0, &val));
@@ -564,7 +564,7 @@ TEST_F(TabletCatalogTest, iterator_test_discontinuous) {
 
 TEST_F(TabletCatalogTest, get_tablet) {
     auto local_tablet =
-        std::make_shared<fesql::vm::LocalTablet>(nullptr, std::shared_ptr<fesql::vm::CompileInfoCache>());
+        std::make_shared<hybridse::vm::LocalTablet>(nullptr, std::shared_ptr<hybridse::vm::CompileInfoCache>());
     uint32_t pid_num = 8;
     TestArgs *args = PrepareMultiPartitionTable("t1", pid_num);
     auto handler = std::make_shared<TabletTableHandler>(args->meta[0], local_tablet);
@@ -577,13 +577,13 @@ TEST_F(TabletCatalogTest, get_tablet) {
     int pid = (uint32_t)(::fedb::base::hash64(pk) % pid_num);
     ASSERT_EQ(pid, 7);
     auto tablet = handler->GetTablet("", pk);
-    auto real_tablet = std::dynamic_pointer_cast<fesql::vm::LocalTablet>(tablet);
+    auto real_tablet = std::dynamic_pointer_cast<hybridse::vm::LocalTablet>(tablet);
     ASSERT_TRUE(real_tablet != nullptr);
     pk = "key1";
     pid = (uint32_t)(::fedb::base::hash64(pk) % pid_num);
     ASSERT_EQ(pid, 6);
     tablet = handler->GetTablet("", pk);
-    real_tablet = std::dynamic_pointer_cast<fesql::vm::LocalTablet>(tablet);
+    real_tablet = std::dynamic_pointer_cast<hybridse::vm::LocalTablet>(tablet);
     ASSERT_TRUE(real_tablet == nullptr);
     delete args;
 }
@@ -593,6 +593,6 @@ TEST_F(TabletCatalogTest, get_tablet) {
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    ::fesql::vm::Engine::InitializeGlobalLLVM();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     return RUN_ALL_TESTS();
 }

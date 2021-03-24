@@ -29,15 +29,15 @@ namespace sdk {
 class SQLRequestRowTest : public ::testing::Test {};
 
 TEST_F(SQLRequestRowTest, str_null) {
-    ::fesql::vm::Schema schema;
+    ::hybridse::vm::Schema schema;
     {
-        ::fesql::type::ColumnDef* column = schema.Add();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = schema.Add();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col0");
     }
-    ::fesql::sdk::SchemaImpl* schema_impl =
-        new ::fesql::sdk::SchemaImpl(schema);
-    std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
+    ::hybridse::sdk::SchemaImpl* schema_impl =
+        new ::hybridse::sdk::SchemaImpl(schema);
+    std::shared_ptr<::hybridse::sdk::Schema> schema_shared(schema_impl);
     SQLRequestRow rr(schema_shared, std::set<std::string>());
     rr.Init(0);
     ASSERT_TRUE(rr.AppendNULL());
@@ -45,16 +45,16 @@ TEST_F(SQLRequestRowTest, str_null) {
 }
 
 TEST_F(SQLRequestRowTest, not_null) {
-    ::fesql::vm::Schema schema;
+    ::hybridse::vm::Schema schema;
     {
-        ::fesql::type::ColumnDef* column = schema.Add();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = schema.Add();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col0");
         column->set_is_not_null(true);
     }
-    ::fesql::sdk::SchemaImpl* schema_impl =
-        new ::fesql::sdk::SchemaImpl(schema);
-    std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
+    ::hybridse::sdk::SchemaImpl* schema_impl =
+        new ::hybridse::sdk::SchemaImpl(schema);
+    std::shared_ptr<::hybridse::sdk::Schema> schema_shared(schema_impl);
     SQLRequestRow rr(schema_shared, std::set<std::string>());
     rr.Init(0);
     ASSERT_FALSE(rr.AppendNULL());
@@ -62,15 +62,15 @@ TEST_F(SQLRequestRowTest, not_null) {
 }
 
 TEST_F(SQLRequestRowTest, invalid_str_len) {
-    ::fesql::vm::Schema schema;
+    ::hybridse::vm::Schema schema;
     {
-        ::fesql::type::ColumnDef* column = schema.Add();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = schema.Add();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col0");
     }
-    ::fesql::sdk::SchemaImpl* schema_impl =
-        new ::fesql::sdk::SchemaImpl(schema);
-    std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
+    ::hybridse::sdk::SchemaImpl* schema_impl =
+        new ::hybridse::sdk::SchemaImpl(schema);
+    std::shared_ptr<::hybridse::sdk::Schema> schema_shared(schema_impl);
     SQLRequestRow rr(schema_shared, std::set<std::string>());
     rr.Init(1);
     std::string hello = "hello";
@@ -78,37 +78,37 @@ TEST_F(SQLRequestRowTest, invalid_str_len) {
     ASSERT_FALSE(rr.Build());
 }
 
-void InitSimpleSchema(::fesql::vm::Schema* schema) {
+void InitSimpleSchema(::hybridse::vm::Schema* schema) {
     {
-        ::fesql::type::ColumnDef* column = schema->Add();
-        column->set_type(::fesql::type::kInt32);
+        ::hybridse::type::ColumnDef* column = schema->Add();
+        column->set_type(::hybridse::type::kInt32);
         column->set_name("col0");
     }
     {
-        ::fesql::type::ColumnDef* column = schema->Add();
-        column->set_type(::fesql::type::kVarchar);
+        ::hybridse::type::ColumnDef* column = schema->Add();
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col1");
     }
     {
-        ::fesql::type::ColumnDef* column = schema->Add();
-        column->set_type(::fesql::type::kInt64);
+        ::hybridse::type::ColumnDef* column = schema->Add();
+        column->set_type(::hybridse::type::kInt64);
         column->set_name("col2");
     }
 }
 
 TEST_F(SQLRequestRowTest, normal_test) {
-    ::fesql::vm::Schema schema;
+    ::hybridse::vm::Schema schema;
     InitSimpleSchema(&schema);
-    ::fesql::sdk::SchemaImpl* schema_impl =
-        new ::fesql::sdk::SchemaImpl(schema);
-    std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
+    ::hybridse::sdk::SchemaImpl* schema_impl =
+        new ::hybridse::sdk::SchemaImpl(schema);
+    std::shared_ptr<::hybridse::sdk::Schema> schema_shared(schema_impl);
     SQLRequestRow rr(schema_shared, std::set<std::string>());
     ASSERT_TRUE(rr.Init(5));
     ASSERT_TRUE(rr.AppendInt32(32));
     ASSERT_TRUE(rr.AppendString("hello"));
     ASSERT_TRUE(rr.AppendInt64(64));
     ASSERT_TRUE(rr.Build());
-    ::fesql::codec::RowView rv(schema);
+    ::hybridse::codec::RowView rv(schema);
     bool ok = rv.Reset(reinterpret_cast<const int8_t*>(rr.GetRow().c_str()),
                        rr.GetRow().size());
     ASSERT_TRUE(ok);
@@ -118,40 +118,40 @@ TEST_F(SQLRequestRowTest, normal_test) {
 }
 
 TEST_F(SQLRequestRowTest, GetRecordVal) {
-    ::fesql::vm::Schema schema;
+    ::hybridse::vm::Schema schema;
     {
-        ::fesql::type::ColumnDef* column = schema.Add();
-        column->set_type(::fesql::type::kInt16);
+        ::hybridse::type::ColumnDef* column = schema.Add();
+        column->set_type(::hybridse::type::kInt16);
         column->set_name("col0");
         column = schema.Add();
-        column->set_type(::fesql::type::kInt16);
+        column->set_type(::hybridse::type::kInt16);
         column->set_name("col1");
         column = schema.Add();
-        column->set_type(::fesql::type::kInt32);
+        column->set_type(::hybridse::type::kInt32);
         column->set_name("col2");
         column = schema.Add();
-        column->set_type(::fesql::type::kInt32);
+        column->set_type(::hybridse::type::kInt32);
         column->set_name("col3");
         column = schema.Add();
-        column->set_type(::fesql::type::kInt64);
+        column->set_type(::hybridse::type::kInt64);
         column->set_name("col4");
         column = schema.Add();
-        column->set_type(::fesql::type::kInt64);
+        column->set_type(::hybridse::type::kInt64);
         column->set_name("col5");
         column = schema.Add();
-        column->set_type(::fesql::type::kVarchar);
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col6");
         column = schema.Add();
-        column->set_type(::fesql::type::kVarchar);
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col7");
         column = schema.Add();
-        column->set_type(::fesql::type::kVarchar);
+        column->set_type(::hybridse::type::kVarchar);
         column->set_name("col8");
     }
 
-    ::fesql::sdk::SchemaImpl* schema_impl =
-        new ::fesql::sdk::SchemaImpl(schema);
-    std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
+    ::hybridse::sdk::SchemaImpl* schema_impl =
+        new ::hybridse::sdk::SchemaImpl(schema);
+    std::shared_ptr<::hybridse::sdk::Schema> schema_shared(schema_impl);
     std::set<std::string> record_set {"col1", "col3", "col5", "col7", "col8"};
     SQLRequestRow rr(schema_shared, record_set);
     ASSERT_TRUE(rr.Init(8));
@@ -181,12 +181,12 @@ TEST_F(SQLRequestRowTest, GetRecordVal) {
 class SQLRequestRowBatchTest : public ::testing::Test {
  public:
     SQLRequestRowBatch* NewSimpleBatch(const std::vector<size_t>& common_column_indices) {
-        ::fesql::vm::Schema schema;
+        ::hybridse::vm::Schema schema;
         InitSimpleSchema(&schema);
 
-        ::fesql::sdk::SchemaImpl* schema_impl =
-            new ::fesql::sdk::SchemaImpl(schema);
-        std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
+        ::hybridse::sdk::SchemaImpl* schema_impl =
+            new ::hybridse::sdk::SchemaImpl(schema);
+        std::shared_ptr<::hybridse::sdk::Schema> schema_shared(schema_impl);
 
         auto r1 = std::make_shared<SQLRequestRow>(schema_shared, std::set<std::string>());
         r1->Init(5);
@@ -225,8 +225,8 @@ class SQLRequestRowBatchTest : public ::testing::Test {
         return batch;
     }
 
-    ::fesql::vm::Schema common_schema;
-    ::fesql::vm::Schema non_common_schema;
+    ::hybridse::vm::Schema common_schema;
+    ::hybridse::vm::Schema non_common_schema;
 };
 
 
@@ -234,8 +234,8 @@ TEST_F(SQLRequestRowBatchTest, batch_test_non_trival) {
     std::vector<size_t> common_indices = {0, 2};
     SQLRequestRowBatch* batch = NewSimpleBatch(common_indices);
 
-    ::fesql::codec::RowView common_view(common_schema);
-    ::fesql::codec::RowView non_common_view(non_common_schema);
+    ::hybridse::codec::RowView common_view(common_schema);
+    ::hybridse::codec::RowView non_common_view(non_common_schema);
 
     const auto common_slice = batch->GetCommonSlice();
     common_view.Reset(reinterpret_cast<const int8_t*>(common_slice->c_str()),
@@ -258,7 +258,7 @@ TEST_F(SQLRequestRowBatchTest, batch_test_trival) {
     std::vector<size_t> common_indices = {0, 1, 2};
     SQLRequestRowBatch* batch = NewSimpleBatch(common_indices);
 
-    ::fesql::codec::RowView non_common_view(non_common_schema);
+    ::hybridse::codec::RowView non_common_view(non_common_schema);
 
     const auto non_common_slice1 = batch->GetNonCommonSlice(0);
     non_common_view.Reset(reinterpret_cast<const int8_t*>(non_common_slice1->c_str()),
@@ -275,7 +275,7 @@ TEST_F(SQLRequestRowBatchTest, batch_test_all_common) {
     std::vector<size_t> common_indices = {};
     SQLRequestRowBatch* batch = NewSimpleBatch(common_indices);
 
-    ::fesql::codec::RowView non_common_view(non_common_schema);
+    ::hybridse::codec::RowView non_common_view(non_common_schema);
 
     const auto non_common_slice1 = batch->GetNonCommonSlice(0);
     non_common_view.Reset(reinterpret_cast<const int8_t*>(non_common_slice1->c_str()),

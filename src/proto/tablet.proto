@@ -229,8 +229,7 @@ message GeneralRequest {
     required int32 tid = 1;
     required int32 pid = 2;
     optional TaskInfo task_info = 3;
-    optional fedb.common.StorageMode storage_mode = 4 [default = kMemory];
-    optional uint64 offset = 5;
+    optional uint64 offset = 4;
 }
 
 message TaskStatusRequest {
@@ -357,14 +356,13 @@ message TableMeta {
     optional uint32 key_entry_max_height = 14;
     repeated fedb.common.ColumnDesc column_desc = 15;
     repeated fedb.common.ColumnKey column_key = 16;
-    optional fedb.common.StorageMode storage_mode = 17 [default = kMemory];
-    repeated fedb.common.ColumnDesc added_column_desc = 18;
-    optional TTLDesc ttl_desc = 19;
+    repeated fedb.common.ColumnDesc added_column_desc = 17;
+    optional TTLDesc ttl_desc = 18;
     // format_version 0 , the legacy format 1 ,the new one
-    optional uint32 format_version = 20 [default = 0];
-    optional string db = 21 [default = ""];
-    repeated common.VersionPair schema_versions = 22;
-    repeated common.TablePartition table_partition = 23;
+    optional uint32 format_version = 19 [default = 0];
+    optional string db = 20 [default = ""];
+    repeated common.VersionPair schema_versions = 21;
+    repeated common.TablePartition table_partition = 22;
 }
 
 message CreateTableRequest {
@@ -507,7 +505,6 @@ message SendDataRequest {
     optional uint32 block_size = 5;
     optional bool eof = 6 [default = false];
     optional string dir_name = 7;
-    optional fedb.common.StorageMode storage_mode = 8 [default = kMemory];
 }
 
 message ChangeRoleResponse {
@@ -548,9 +545,8 @@ message TableStatus {
     optional CompressType compress_type = 17;
     optional uint32 skiplist_height = 18;
     optional bytes schema = 19;
-    optional fedb.common.StorageMode storage_mode = 20 [default = kMemory];
-    optional TTLDesc ttl_desc = 21;
-    optional uint64 diskused = 22 [default = 0];
+    optional TTLDesc ttl_desc = 20;
+    optional uint64 diskused = 21 [default = 0];
 }
 
 message GetTableStatusResponse {
@@ -604,7 +600,6 @@ message CountResponse {
 message GetTermPairRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
-    optional fedb.common.StorageMode storage_mode = 3 [default = kMemory];
 }
 
 message GetTermPairResponse {
@@ -619,7 +614,6 @@ message GetTermPairResponse {
 message GetManifestRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
-    optional fedb.common.StorageMode storage_mode = 3 [default = kMemory];
 }
 
 message GetManifestResponse { 
@@ -651,7 +645,6 @@ message CheckFileRequest {
     optional string file = 3;
     optional uint64 size = 4;
     optional string dir_name = 5;
-    optional fedb.common.StorageMode storage_mode = 6 [default = kMemory];
 }
 
 message AddIndexRequest {

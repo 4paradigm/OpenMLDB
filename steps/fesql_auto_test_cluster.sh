@@ -20,10 +20,12 @@ CASE_LEVEL=$1
 if [[ "${CASE_LEVEL}" == "" ]]; then
         CASE_LEVEL="0"
 fi
+if [[ "${YAML_CASE_BASE_DIR}" == "" ]]; then
+        YAML_CASE_BASE_DIR=${ROOT_DIR}
+fi
 echo "fesql auto test cluster: case_level ${CASE_LEVEL}"
 echo "ROOT_DIR:${ROOT_DIR}"
-sh tools/install_fesql.sh ON
-cd ${ROOT_DIR}/fesql/java/fesql-common; mvn install
+sh tools/install_hybridse.sh
 
 mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. 
 make -j5 sql_javasdk_package || { echo "compile error"; exit 1; }
@@ -46,4 +48,4 @@ case_xml=test_v1_cluster.xml
 cd ${ROOT_DIR}/src/sdk/java/
 mvn install -Dmaven.test.skip=true
 cd ${ROOT_DIR}/src/sdk/java/fesql-auto-test-java
-mvn test -DsuiteXmlFile=test_suite/${case_xml} -DcaseLevel=$CASE_LEVEL
+mvn test -DsuiteXmlFile=test_suite/${case_xml} -DcaseLevel=$CASE_LEVEL -DyamlCaseBaseDir=$YAML_CASE_BASE_DIR

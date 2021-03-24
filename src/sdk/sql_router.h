@@ -44,8 +44,8 @@ class ExplainInfo {
  public:
     ExplainInfo() {}
     virtual ~ExplainInfo() {}
-    virtual const ::fesql::sdk::Schema& GetInputSchema() = 0;
-    virtual const ::fesql::sdk::Schema& GetOutputSchema() = 0;
+    virtual const ::hybridse::sdk::Schema& GetInputSchema() = 0;
+    virtual const ::hybridse::sdk::Schema& GetOutputSchema() = 0;
     virtual const std::string& GetLogicalPlan() = 0;
     virtual const std::string& GetPhysicalPlan() = 0;
     virtual const std::string& GetIR() = 0;
@@ -57,7 +57,7 @@ class QueryFuture {
     QueryFuture() {}
     virtual ~QueryFuture() {}
 
-    virtual std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(fesql::sdk::Status* status) = 0;
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> GetResultSet(hybridse::sdk::Status* status) = 0;
     virtual bool IsDone() const = 0;
 };
 
@@ -67,81 +67,81 @@ class SQLRouter {
     virtual ~SQLRouter() {}
 
     virtual bool ShowDB(std::vector<std::string>* dbs,
-                        fesql::sdk::Status* status) = 0;
+                        hybridse::sdk::Status* status) = 0;
     virtual bool CreateDB(const std::string& db,
-                          fesql::sdk::Status* status) = 0;
+                          hybridse::sdk::Status* status) = 0;
 
-    virtual bool DropDB(const std::string& db, fesql::sdk::Status* status) = 0;
+    virtual bool DropDB(const std::string& db, hybridse::sdk::Status* status) = 0;
 
     virtual bool ExecuteDDL(const std::string& db, const std::string& sql,
-                            fesql::sdk::Status* status) = 0;
+                            hybridse::sdk::Status* status) = 0;
 
     virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
-                               fesql::sdk::Status* status) = 0;
+                               hybridse::sdk::Status* status) = 0;
 
     virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
                                std::shared_ptr<fedb::sdk::SQLInsertRow> row,
-                               fesql::sdk::Status* status) = 0;
+                               hybridse::sdk::Status* status) = 0;
 
     virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
                                std::shared_ptr<fedb::sdk::SQLInsertRows> row,
-                               fesql::sdk::Status* status) = 0;
+                               hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<fedb::sdk::TableReader> GetTableReader() = 0;
 
     virtual std::shared_ptr<ExplainInfo> Explain(
         const std::string& db, const std::string& sql,
-        ::fesql::sdk::Status* status) = 0;
+        ::hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<fedb::sdk::SQLRequestRow> GetRequestRow(
         const std::string& db, const std::string& sql,
-        fesql::sdk::Status* status) = 0;
+        hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<fedb::sdk::SQLRequestRow> GetRequestRowByProcedure(const std::string& db,
-        const std::string& sp_name, ::fesql::sdk::Status* status) = 0;
+        const std::string& sp_name, ::hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<fedb::sdk::SQLInsertRow> GetInsertRow(
         const std::string& db, const std::string& sql,
-        ::fesql::sdk::Status* status) = 0;
+        ::hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<fedb::sdk::SQLInsertRows> GetInsertRows(
         const std::string& db, const std::string& sql,
-        ::fesql::sdk::Status* status) = 0;
+        ::hybridse::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
         std::shared_ptr<fedb::sdk::SQLRequestRow> row,
-        fesql::sdk::Status* status) = 0;
+        hybridse::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
-        fesql::sdk::Status* status) = 0;
+        hybridse::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQLBatchRequest(
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLBatchRequest(
         const std::string& db, const std::string& sql,
         std::shared_ptr<fedb::sdk::SQLRequestRowBatch> row_batch,
-        ::fesql::sdk::Status* status) = 0;
+        ::hybridse::sdk::Status* status) = 0;
 
     virtual bool RefreshCatalog() = 0;
 
-    virtual std::shared_ptr<fesql::sdk::ResultSet> CallProcedure(
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> CallProcedure(
             const std::string& db, const std::string& sp_name,
-            std::shared_ptr<fedb::sdk::SQLRequestRow> row, fesql::sdk::Status* status) = 0;
+            std::shared_ptr<fedb::sdk::SQLRequestRow> row, hybridse::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<fesql::sdk::ResultSet> CallSQLBatchRequestProcedure(
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> CallSQLBatchRequestProcedure(
             const std::string& db, const std::string& sp_name,
-            std::shared_ptr<fedb::sdk::SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) = 0;
+            std::shared_ptr<fedb::sdk::SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<fesql::sdk::ProcedureInfo> ShowProcedure(
-            const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) = 0;
+    virtual std::shared_ptr<hybridse::sdk::ProcedureInfo> ShowProcedure(
+            const std::string& db, const std::string& sp_name, hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<fedb::sdk::QueryFuture> CallProcedure(
             const std::string& db, const std::string& sp_name, int64_t timeout_ms,
-            std::shared_ptr<fedb::sdk::SQLRequestRow> row, fesql::sdk::Status* status) = 0;
+            std::shared_ptr<fedb::sdk::SQLRequestRow> row, hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<fedb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
             const std::string& db, const std::string& sp_name, int64_t timeout_ms,
-            std::shared_ptr<fedb::sdk::SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) = 0;
+            std::shared_ptr<fedb::sdk::SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status) = 0;
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);

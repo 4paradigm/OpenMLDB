@@ -33,7 +33,7 @@ class ScanFutureImpl : public ScanFuture {
  public:
     explicit ScanFutureImpl(fedb::RpcCallback<fedb::api::ScanResponse>* callback,
                             const ::google::protobuf::RepeatedField<uint32_t>& projection,
-                            std::shared_ptr<::fesql::vm::TableHandler> table_handler)
+                            std::shared_ptr<::hybridse::vm::TableHandler> table_handler)
         : callback_(callback), schema_(), projection_(projection), table_handler_(table_handler) {
         if (callback_) {
             callback_->Ref();
@@ -51,20 +51,20 @@ class ScanFutureImpl : public ScanFuture {
         return false;
     }
 
-    std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(::fesql::sdk::Status* status) override {
+    std::shared_ptr<hybridse::sdk::ResultSet> GetResultSet(::hybridse::sdk::Status* status) override {
         if (status == nullptr) {
-            return std::shared_ptr<fesql::sdk::ResultSet>();
+            return std::shared_ptr<hybridse::sdk::ResultSet>();
         }
 
         if (!callback_ || !callback_->GetResponse() || !callback_->GetController()) {
-            status->code = fesql::common::kRpcError;
+            status->code = hybridse::common::kRpcError;
             status->msg = "request error, response or controller null";
             return nullptr;
         }
 
         brpc::Join(callback_->GetController()->call_id());
         if (callback_->GetController()->Failed()) {
-            status->code = fesql::common::kRpcError;
+            status->code = hybridse::common::kRpcError;
             status->msg = "request error, " + callback_->GetController()->ErrorText();
             return nullptr;
         }
@@ -81,9 +81,9 @@ class ScanFutureImpl : public ScanFuture {
 
  private:
     fedb::RpcCallback<fedb::api::ScanResponse>* callback_;
-    fesql::vm::Schema schema_;
+    hybridse::vm::Schema schema_;
     ::google::protobuf::RepeatedField<uint32_t> projection_;
-    std::shared_ptr<::fesql::vm::TableHandler> table_handler_;
+    std::shared_ptr<::hybridse::vm::TableHandler> table_handler_;
 };
 
 TableReaderImpl::TableReaderImpl(ClusterSDK* cluster_sdk) : cluster_sdk_(cluster_sdk) {}
@@ -91,7 +91,7 @@ TableReaderImpl::TableReaderImpl(ClusterSDK* cluster_sdk) : cluster_sdk_(cluster
 std::shared_ptr<fedb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std::string& db, const std::string& table,
                                                                    const std::string& key, int64_t st, int64_t et,
                                                                    const ScanOption& so, int64_t timeout_ms,
-                                                                   ::fesql::sdk::Status* status) {
+                                                                   ::hybridse::sdk::Status* status) {
     auto table_handler = cluster_sdk_->GetCatalog()->GetTable(db, table);
     if (!table_handler) {
         LOG(WARNING) << "fail to get table " << table << "desc from catalog";
@@ -149,13 +149,13 @@ std::shared_ptr<fedb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std::str
     return scan_future;
 }
 
-std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& db, const std::string& table,
+std::shared_ptr<hybridse::sdk::ResultSet> TableReaderImpl::Scan(const std::string& db, const std::string& table,
                                                              const std::string& key, int64_t st, int64_t et,
-                                                             const ScanOption& so, ::fesql::sdk::Status* status) {
+                                                             const ScanOption& so, ::hybridse::sdk::Status* status) {
     auto table_handler = cluster_sdk_->GetCatalog()->GetTable(db, table);
     if (!table_handler) {
         LOG(WARNING) << "fail to get table " << table << "desc from catalog";
-        return std::shared_ptr<fesql::sdk::ResultSet>();
+        return std::shared_ptr<hybridse::sdk::ResultSet>();
     }
 
     auto sdk_table_handler = dynamic_cast<::fedb::catalog::SDKTableHandler*>(table_handler.get());
@@ -167,7 +167,7 @@ std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& 
     auto accessor = sdk_table_handler->GetTablet(pid);
     if (!accessor) {
         LOG(WARNING) << "fail to get tablet for db " << db << " table " << table;
-        return std::shared_ptr<fesql::sdk::ResultSet>();
+        return std::shared_ptr<hybridse::sdk::ResultSet>();
     }
     auto client = accessor->GetClient();
     ::fedb::api::ScanRequest request;
@@ -182,7 +182,7 @@ std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& 
         int32_t col_idx = sdk_table_handler->GetColumnIndex(col);
         if (col_idx < 0) {
             LOG(WARNING) << "fail to get col " << col << " from table " << table;
-            return std::shared_ptr<fesql::sdk::ResultSet>();
+            return std::shared_ptr<hybridse::sdk::ResultSet>();
         }
         request.add_projection(static_cast<uint32_t>(col_idx));
     }
@@ -204,7 +204,7 @@ std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& 
     if (response->code() != 0) {
         status->code = response->code();
         status->msg = response->msg();
-        return std::shared_ptr<fesql::sdk::ResultSet>();
+        return std::shared_ptr<hybridse::sdk::ResultSet>();
     }
     auto rs = ResultSetSQL::MakeResultSet(response, request.projection(), cntl, table_handler, status);
     return rs;
