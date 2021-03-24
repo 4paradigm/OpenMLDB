@@ -53,8 +53,8 @@
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
-#include "timer.h"     // NOLINT
-#include "tprinter.h"  // NOLINT
+#include "common/timer.h"
+#include "common/tprinter.h"
 #include "version.h"   // NOLINT
 #include "config.h" // NOLINT
 #include "vm/engine.h"

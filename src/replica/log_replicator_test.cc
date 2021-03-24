@@ -24,14 +24,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <utility>
-#include "base/glog_wapper.h" // NOLINT
+#include "base/glog_wapper.h"
 #include "proto/tablet.pb.h"
 #include "replica/replicate_node.h"
 #include "storage/mem_table.h"
 #include "storage/segment.h"
 #include "storage/ticket.h"
-#include "thread_pool.h" // NOLINT
-#include "timer.h" // NOLINT
+#include "common/thread_pool.h"
+#include "common/timer.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;

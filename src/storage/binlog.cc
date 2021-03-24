@@ -27,8 +27,8 @@
 #include "codec/schema_codec.h"
 #include "gflags/gflags.h"
 #include "log/log_writer.h"
-#include "base/glog_wapper.h" // NOLINT
-#include "timer.h" // NOLINT
+#include "base/glog_wapper.h"
+#include "common/timer.h"
 
 DECLARE_uint64(gc_on_table_recover_count);
 DECLARE_int32(binlog_name_length);

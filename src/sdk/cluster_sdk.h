@@ -27,7 +27,7 @@
 #include "catalog/sdk_catalog.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
-#include "thread_pool.h"  // NOLINT
+#include "common/thread_pool.h"
 #include "vm/catalog.h"
 #include "zk/zk_client.h"
 #include "vm/engine.h"

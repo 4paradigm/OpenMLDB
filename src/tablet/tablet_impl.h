@@ -37,7 +37,7 @@
 #include "storage/mem_table_snapshot.h"
 #include "tablet/combine_iterator.h"
 #include "tablet/file_receiver.h"
-#include "thread_pool.h"  // NOLINT
+#include "common/thread_pool.h"
 #include "vm/engine.h"
 #include "zk/zk_client.h"
 #include "catalog/schema_adapter.h"

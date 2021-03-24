@@ -23,7 +23,7 @@
 #include <vector>
 #include <string>
 #include "boost/function.hpp"
-#include "thread_pool.h" // NOLINT
+#include "common/thread_pool.h"
 #include "zk/zk_client.h"
 
 using ::baidu::common::ThreadPool;

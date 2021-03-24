@@ -17,7 +17,7 @@
 
 #include "gtest/gtest.h"
 #include "storage/table.h"
-#include "timer.h" // NOLINT
+#include "common/timer.h"
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/heap-checker.h"
 #endif

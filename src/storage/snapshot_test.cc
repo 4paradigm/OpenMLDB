@@ -26,15 +26,15 @@
 #include <iostream>
 #include "base/file_util.h"
 #include "base/strings.h"
+#include "base/glog_wapper.h"
+#include "common/timer.h"
 #include "gtest/gtest.h"
 #include "log/log_writer.h"
-#include "base/glog_wapper.h" // NOLINT
 #include "proto/tablet.pb.h"
 #include "storage/binlog.h"
 #include "storage/mem_table.h"
 #include "storage/mem_table_snapshot.h"
 #include "storage/ticket.h"
-#include "timer.h" // NOLINT
 
 DECLARE_string(db_root_path);
 DECLARE_string(snapshot_compression);

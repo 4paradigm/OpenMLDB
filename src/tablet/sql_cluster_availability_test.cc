@@ -18,10 +18,10 @@
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 #include <unistd.h>
-#include <timer.h>
 
 #include "base/glog_wapper.h"
 #include "client/ns_client.h"
+#include "common/timer.h"
 #include "gtest/gtest.h"
 #include "nameserver/name_server_impl.h"
 #include "proto/name_server.pb.h"

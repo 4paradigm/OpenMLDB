@@ -29,7 +29,7 @@
 #include "sdk/base_impl.h"
 #include "sdk/result_set_sql.h"
 #include "sdk/batch_request_result_set_sql.h"
-#include "timer.h"  //NOLINT
+#include "common/timer.h"
 #include "boost/none.hpp"
 #include "rpc/rpc_client.h"
 

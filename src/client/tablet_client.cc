@@ -25,7 +25,7 @@
 #include "codec/codec.h"
 #include "codec/sql_rpc_row_codec.h"
 #include "sdk/sql_request_row.h"
-#include "timer.h"  // NOLINT
+#include "common/timer.h"
 
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);

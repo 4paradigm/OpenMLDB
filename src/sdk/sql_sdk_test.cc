@@ -18,7 +18,6 @@
 #include "sdk/sql_sdk_test.h"
 
 #include <sched.h>
-#include <timer.h>
 #include <unistd.h>
 
 #include <memory>
@@ -34,6 +33,8 @@
 #include "sdk/sql_router.h"
 #include "test/base_test.h"
 #include "vm/catalog.h"
+#include "common/timer.h"
+
 namespace fedb {
 namespace sdk {
 

@@ -32,7 +32,7 @@
 #include "sdk/sql_router.h"
 #include "sdk/sql_cluster_router.h"
 #include "sdk/sql_sdk_test.h"
-#include "timer.h"  // NOLINT
+#include "common/timer.h"
 #include "vm/catalog.h"
 
 namespace fedb {

@@ -17,10 +17,10 @@
 
 #include <gflags/gflags.h>
 #include "gtest/gtest.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
+#include "common/timer.h"
 #include "storage/mem_table.h"
 #include "storage/ticket.h"
-#include "timer.h"  // NOLINT
 
 DECLARE_uint32(max_traverse_cnt);
 DECLARE_int32(gc_safe_offset);
