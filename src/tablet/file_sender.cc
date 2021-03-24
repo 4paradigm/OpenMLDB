@@ -15,13 +15,14 @@
  */
 
 #include "tablet/file_sender.h"
-#include <gflags/gflags.h>
-#include <thread>
+
+#include <thread> // NOLINT
 #include <vector>
-#include <boost/algorithm/string/predicate.hpp>
+#include "boost/algorithm/string/predicate.hpp"
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
 #include "common/timer.h"
+#include "gflags/gflags.h"
 
 DECLARE_int32(send_file_max_try);
 DECLARE_uint32(stream_block_size);
