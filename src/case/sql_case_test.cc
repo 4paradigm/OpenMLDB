@@ -868,7 +868,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
     }
 }
 
-TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
+TEST_F(SQLCaseTest, ExtractYamlSQLCase2) {
     std::string hybridse_dir = hybridse::sqlcase::FindSQLCaseBaseDirPath();
     std::string case_path = "/cases/yaml/rtidb_demo.yaml";
     std::vector<SQLCase> cases;
