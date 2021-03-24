@@ -20,7 +20,8 @@ set -eE
 
 # goto toplevel directory
 cd "$(dirname "$0")/.."
-
+HYRBIDSE_DIR=$(pwd)
+# shellcheck disable=SC1091
 source tools/init_env.profile.sh
 
 
@@ -31,7 +32,7 @@ fi
 
 rm -rf build
 mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=OFF -DBENCHMARK_ENABLE=ON
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=OFF -DJAVASDK_ENABLE=OFF -DPYSDK_ENABLE=OFF -DBENCHMARK_ENABLE=ON
 make -j"$(nproc)" hybridse_bm toydb_bm
 if [ -f src/benchmark/udf_bm ]
 then
@@ -53,7 +54,7 @@ fi
 if [ -f examples/toydb/src/bm/engine_bm ]
 then
   echo "toydb engine benchmark:"
-  examples/toydb/src/bm/engine_bm 2>/dev/null
+  SQL_CASE_BASE_DIR=${HYRBIDSE_DIR} examples/toydb/src/bm/engine_bm 2>/dev/null
 else
   echo "examples/toydb/src/bm/engine_bm not exist, aborting"
   exit
@@ -62,7 +63,7 @@ fi
 if [ -f examples/toydb/src/bm/client_batch_run_bm ]
 then
   echo "toydb client batch run benchmark:"
-  examples/toydb/src/bm/client_batch_run_bm 2>/dev/null
+  SQL_CASE_BASE_DIR=${HYRBIDSE_DIR} examples/toydb/src/bm/client_batch_run_bm 2>/dev/null
 else
   echo "examples/toydb/src/bm/client_batch_run_bm not exist, aborting"
   exit
@@ -71,7 +72,7 @@ fi
 if [ -f examples/toydb/src/bm/batch_request_bm ]
 then
   echo "toydb batch request benchmark:"
-  examples/toydb/src/bm/batch_request_bm 2>/dev/null
+  SQL_CASE_BASE_DIR=${HYRBIDSE_DIR} examples/toydb/src/bm/batch_request_bm 2>/dev/null
 else
   echo "examples/toydb/src/bm/batch_request_bm not exist, aborting"
   exit

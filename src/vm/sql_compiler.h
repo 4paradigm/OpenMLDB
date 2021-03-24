@@ -76,14 +76,6 @@ struct SQLContext {
     ~SQLContext() {}
 };
 
-bool RegisterFeLibs(udf::UDFLibrary* lib, base::Status& status,  // NOLINT
-                    const std::string& libs_home = "",
-                    const std::string& libs_name = "");
-bool GetLibsFiles(const std::string& dir_path,
-                  std::vector<std::string>& filenames,  // NOLINT
-                  base::Status& status);                // NOLINT
-const std::string FindHybridSEDirPath();
-
 class SQLCompileInfo : public CompileInfo {
  public:
     SQLCompileInfo() : sql_ctx() {}

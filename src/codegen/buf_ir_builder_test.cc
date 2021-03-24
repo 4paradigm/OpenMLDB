@@ -141,7 +141,7 @@ void RunEncode(::hybridse::type::TableDef& table, // NOLINT
                int8_t** output_ptr) {
     SQLCase::TableInfo table_info;
     ASSERT_TRUE(SQLCase::CreateTableInfoFromYaml(
-        hybridse::sqlcase::FindHybridSEDirPath(),
+        hybridse::sqlcase::FindSQLCaseBaseDirPath(),
         "cases/resource/codegen_t1_one_row.yaml", &table_info));
     ASSERT_TRUE(
         SQLCase::ExtractTableDef(table_info.schema_, table_info.index_, table));
