@@ -30,4 +30,4 @@ jobs:
         run: |
           source /etc/profile.d/enable-rh.sh
           git clean -dfx
-          test -d fesql && rm -rf fesql/*
+          test -d fesql && cd fesql && git clean -dfx
