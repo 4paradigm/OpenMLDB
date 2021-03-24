@@ -5,11 +5,11 @@
 
 ## What is FEDB
 
-FEDB是一个面向实时推理和决策应用开发的NewSQL数据库
+FEDB is a NewSQL database optimised for realtime inference and decisioning application
 
 - __高性能__
 
-基于内存的存储引擎降低数据访问延迟，通过[HybridSE](https://github.com/4paradigm/HybridSE)对SQL进行极致地编译优化提升执行效率，让开发高性能的实时推理和决策应用变的非常简单
+基于内存的存储引擎降低数据访问延迟，对SQL进行极致地编译优化提升执行效率，让开发高性能的实时推理和决策应用变的非常简单
 
 - __SQL兼容__
 
@@ -17,7 +17,7 @@ FEDB是一个面向实时推理和决策应用开发的NewSQL数据库
 
 * __在线离线一致性__
 
-结合[NativeSpark](https://github.com/4paradigm/NativeSpark), 使用FEDB开发的机器学习应用可以一键上线，并且保证在线离线一致性，大大降低了机器学习场景的落地成本
+使用FEDB开发的机器学习应用可以一键上线，并且保证在线离线一致性，大大降低了机器学习场景的落地成本
 
 * __支持分布式，易扩展__
 
@@ -39,10 +39,11 @@ sh tools/install_fesql.sh
 mkdir -p build && cmake ../ && make -j5 fedb
 ```
 
-### Demo应用示例
+### Demo Applications
 
-* [实时预测出租车行程耗时demo](https://github.com/4paradigm/DemoApps/tree/main/predict-taxi-trip-duration)
-* 实时检测在线交易健康状态Demo oncoming
+* [predict taxi trip duration](https://github.com/4paradigm/DemoApps/tree/main/predict-taxi-trip-duration) 
+* detect the healthy of online transaction and make a alert -oncoming
+* antifund detecting for online transaction -oncoming
 
 ## 架构图
 

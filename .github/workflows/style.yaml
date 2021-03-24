@@ -1,0 +1,61 @@
+# This is a basic workflow to help you get started with Actions
+name: style
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - v*
+  pull_request:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  shellcheck:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: shellcheck
+        uses: reviewdog/action-shellcheck@v1
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-pr-review
+          path: "."
+          pattern: "*.sh"
+          exclude: "./.git/*"
+  cpplint:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: reviewdog/action-cpplint@master
+        with:
+          github_token: ${{ secrets.github_token }}
+          level: info
+          reporter: github-pr-review
+          flags: --linelength=80
+
+  detect-secrets:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: detect-secrets
+        uses: reviewdog/action-detect-secrets@master
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-pr-review # Change reporter.
+
+  checkstyle:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run check style
+        uses: nikitasavinov/checkstyle-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-review
+          tool_name: checkstyle

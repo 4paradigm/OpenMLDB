@@ -1,25 +1,10 @@
-name: FEDB-CICD
+name: cicd
 on: [pull_request]
 env:
   GIT_SUBMODULE_STRATEGY: recursive
+
 jobs:
-  cpplint:
-    runs-on: self-hosted
-    container:
-      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.CR_PAT_ZW }}
-    steps:
-      - uses: actions/checkout@v1
-      - uses: reviewdog/action-cpplint@master
-        with:
-          github_token: ${{ secrets.github_token }}
-          level: info
-          reporter: github-pr-review
-          flags: --linelength=80
   build:
-    needs: [cpplint]
     runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
@@ -40,15 +25,3 @@ jobs:
           ln -sf /depends/thirdparty thirdparty
           ln -sf /depends/thirdsrc thirdsrc
           bash steps/simple_compile.sh
-          #     - uses: actions/upload-artifact@v1
-          #        with:
-          #          name: fedb
-          #          path: build/bin/fedb
-          #      - uses: actions/upload-artifact@v1
-          #        with:
-          #          name: \sql_sdk_test
-          #          path: build/bin/sql_sdk_test
-          #      - uses: actions/upload-artifact@v1
-          #        with:
-          #          name: sql_cluster_test
-          #          path: build/bin/sql_cluster_tes
