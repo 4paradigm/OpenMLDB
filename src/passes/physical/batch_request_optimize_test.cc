@@ -17,8 +17,9 @@
 #include "passes/physical/batch_request_optimize.h"
 #include "gtest/gtest.h"
 #include "vm/engine_test_base.h"
+#include "vm/sql_compiler.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 class BatchRequestOptimizeTest : public ::testing::TestWithParam<SQLCase> {
@@ -153,7 +154,9 @@ void CheckOptimizePlan(const SQLCase& sql_case_org,
     bool ok = engine->Get(sql_str, sql_case.db(), session, status);
     ASSERT_TRUE(ok) << status;
     auto origin_plan =
-        session.GetCompileInfo()->get_sql_context().physical_plan;
+        std::dynamic_pointer_cast<SQLCompileInfo>(session.GetCompileInfo())
+            ->get_sql_context()
+            .physical_plan;
     LOG(INFO) << "Original plan:\n" << origin_plan->GetTreeString();
 
     if (!common_column_indices.empty()) {
@@ -170,8 +173,10 @@ void CheckOptimizePlan(const SQLCase& sql_case_org,
     }
     ok = engine->Get(sql_str, sql_case.db(), batch_request_session, status);
     ASSERT_TRUE(ok) << status;
-    auto optimized_plan =
-        batch_request_session.GetCompileInfo()->get_sql_context().physical_plan;
+    auto optimized_plan = std::dynamic_pointer_cast<SQLCompileInfo>(
+                              batch_request_session.GetCompileInfo())
+                              ->get_sql_context()
+                              .physical_plan;
     LOG(INFO) << "Optimized plan:\n" << optimized_plan->GetTreeString();
 
     if (unchanged) {
@@ -222,7 +227,7 @@ TEST_P(BatchRequestOptimizeTest, test_with_common_columns) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::GTEST_FLAG(color) = "yes";

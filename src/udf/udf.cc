@@ -20,7 +20,6 @@
 #include <map>
 #include <set>
 #include <utility>
-#include "absl/time/time.h"
 #include "base/iterator.h"
 #include "boost/date_time.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
@@ -37,17 +36,17 @@
 #include "udf/literal_traits.h"
 #include "vm/jit_runtime.h"
 
-namespace fesql {
+namespace hybridse {
 namespace udf {
 namespace v1 {
-using fesql::base::ConstIterator;
-using fesql::codec::ColumnImpl;
-using fesql::codec::IteratorRef;
-using fesql::codec::ListRef;
-using fesql::codec::ListV;
-using fesql::codec::Row;
-using fesql::codec::StringColumnImpl;
-using fesql::codec::StringRef;
+using hybridse::base::ConstIterator;
+using hybridse::codec::ColumnImpl;
+using hybridse::codec::IteratorRef;
+using hybridse::codec::ListRef;
+using hybridse::codec::ListV;
+using hybridse::codec::Row;
+using hybridse::codec::StringColumnImpl;
+using hybridse::codec::StringRef;
 // TODO(chenjing): 时区统一配置
 const int32_t TZ = 8;
 const time_t TZ_OFFSET = TZ * 3600000;
@@ -132,8 +131,9 @@ int32_t weekofyear(codec::Date *date) {
 
 float Cotf(float x) { return cosf(x) / sinf(x); }
 
-void date_format(codec::Timestamp *timestamp, fesql::codec::StringRef *format,
-                 fesql::codec::StringRef *output) {
+void date_format(codec::Timestamp *timestamp,
+                 hybridse::codec::StringRef *format,
+                 hybridse::codec::StringRef *output) {
     if (nullptr == format) {
         return;
     }
@@ -147,7 +147,7 @@ void date_format(const codec::Timestamp *timestamp, const char *format,
     strftime(buffer, size, format, &t);
 }
 void date_format(codec::Timestamp *timestamp, const std::string &format,
-                 fesql::codec::StringRef *output) {
+                 hybridse::codec::StringRef *output) {
     if (nullptr == output) {
         return;
     }
@@ -164,8 +164,8 @@ void date_format(codec::Timestamp *timestamp, const std::string &format,
     output->data_ = target;
 }
 
-void date_format(codec::Date *date, fesql::codec::StringRef *format,
-                 fesql::codec::StringRef *output) {
+void date_format(codec::Date *date, hybridse::codec::StringRef *format,
+                 hybridse::codec::StringRef *output) {
     if (nullptr == format) {
         return;
     }
@@ -197,7 +197,7 @@ bool date_format(const codec::Date *date, const char *format, char *buffer,
 }
 
 void date_format(codec::Date *date, const std::string &format,
-                 fesql::codec::StringRef *output) {
+                 hybridse::codec::StringRef *output) {
     if (nullptr == output) {
         return;
     }
@@ -218,10 +218,11 @@ void date_format(codec::Date *date, const std::string &format,
     output->data_ = target;
 }
 
-void timestamp_to_string(codec::Timestamp *v, fesql::codec::StringRef *output) {
+void timestamp_to_string(codec::Timestamp *v,
+                         hybridse::codec::StringRef *output) {
     date_format(v, "%Y-%m-%d %H:%M:%S", output);
 }
-void bool_to_string(bool v, fesql::codec::StringRef *output) {
+void bool_to_string(bool v, hybridse::codec::StringRef *output) {
     if (v) {
         char *buffer = AllocManagedStringBuf(4);
         output->size_ = 4;
@@ -235,8 +236,8 @@ void bool_to_string(bool v, fesql::codec::StringRef *output) {
     }
 }
 
-void timestamp_to_date(codec::Timestamp *timestamp, fesql::codec::Date *output,
-                       bool *is_null) {
+void timestamp_to_date(codec::Timestamp *timestamp,
+                       hybridse::codec::Date *output, bool *is_null) {
     time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
     struct tm t;
     if (nullptr == gmtime_r(&time, &t)) {
@@ -248,7 +249,7 @@ void timestamp_to_date(codec::Timestamp *timestamp, fesql::codec::Date *output,
     return;
 }
 
-void date_to_string(codec::Date *date, fesql::codec::StringRef *output) {
+void date_to_string(codec::Date *date, hybridse::codec::StringRef *output) {
     date_format(date, "%Y-%m-%d", output);
 }
 void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr) {
@@ -453,7 +454,7 @@ void string_to_double(codec::StringRef *str, double *out, bool *is_null_ptr) {
     }
     return;
 }
-void string_to_date(codec::StringRef *str, fesql::codec::Date *output,
+void string_to_date(codec::StringRef *str, hybridse::codec::Date *output,
                     bool *is_null) {
     if (19 == str->size_) {
         struct tm timeinfo;
@@ -466,8 +467,8 @@ void string_to_date(codec::StringRef *str, fesql::codec::Date *output,
                 *is_null = true;
                 return;
             }
-            *output = fesql::codec::Date(timeinfo.tm_year + 1900,
-                                         timeinfo.tm_mon + 1, timeinfo.tm_mday);
+            *output = hybridse::codec::Date(
+                timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday);
             *is_null = false;
             return;
         }
@@ -479,7 +480,7 @@ void string_to_date(codec::StringRef *str, fesql::codec::Date *output,
                 *is_null = true;
                 return;
             }
-            *output = fesql::codec::Date(ymd.year, ymd.month, ymd.day);
+            *output = hybridse::codec::Date(ymd.year, ymd.month, ymd.day);
             *is_null = false;
         } catch (...) {
             *is_null = true;
@@ -494,7 +495,7 @@ void string_to_date(codec::StringRef *str, fesql::codec::Date *output,
                 *is_null = true;
                 return;
             }
-            *output = fesql::codec::Date(ymd.year, ymd.month, ymd.day);
+            *output = hybridse::codec::Date(ymd.year, ymd.month, ymd.day);
             *is_null = false;
         } catch (...) {
             *is_null = true;
@@ -507,8 +508,8 @@ void string_to_date(codec::StringRef *str, fesql::codec::Date *output,
     return;
 }
 // cast string to timestamp with yyyy-mm-dd or YYYY-mm-dd HH:MM:SS
-void string_to_timestamp(codec::StringRef *str, fesql::codec::Timestamp *output,
-                         bool *is_null) {
+void string_to_timestamp(codec::StringRef *str,
+                         hybridse::codec::Timestamp *output, bool *is_null) {
     if (19 == str->size_) {
         struct tm timeinfo;
         if (nullptr ==
@@ -560,7 +561,7 @@ void string_to_timestamp(codec::StringRef *str, fesql::codec::Timestamp *output,
     }
     return;
 }
-void date_to_timestamp(codec::Date *date, fesql::codec::Timestamp *output,
+void date_to_timestamp(codec::Date *date, hybridse::codec::Timestamp *output,
                        bool *is_null) {
     int32_t day, month, year;
     if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
@@ -589,8 +590,8 @@ void date_to_timestamp(codec::Date *date, fesql::codec::Timestamp *output,
         return;
     }
 }
-void sub_string(fesql::codec::StringRef *str, int32_t from,
-                fesql::codec::StringRef *output) {
+void sub_string(hybridse::codec::StringRef *str, int32_t from,
+                hybridse::codec::StringRef *output) {
     if (nullptr == output) {
         return;
     }
@@ -602,8 +603,8 @@ void sub_string(fesql::codec::StringRef *str, int32_t from,
     return sub_string(str, from, str->size_, output);
 }
 // set output as empty string if from == 0
-void sub_string(fesql::codec::StringRef *str, int32_t from, int32_t len,
-                fesql::codec::StringRef *output) {
+void sub_string(hybridse::codec::StringRef *str, int32_t from, int32_t len,
+                hybridse::codec::StringRef *output) {
     if (nullptr == output) {
         return;
     }
@@ -639,7 +640,7 @@ void sub_string(fesql::codec::StringRef *str, int32_t from, int32_t len,
     output->size_ = static_cast<uint32_t>(len);
     return;
 }
-int32_t strcmp(fesql::codec::StringRef *s1, fesql::codec::StringRef *s2) {
+int32_t strcmp(hybridse::codec::StringRef *s1, hybridse::codec::StringRef *s2) {
     if (s1 == s2) {
         return 0;
     }
@@ -649,7 +650,7 @@ int32_t strcmp(fesql::codec::StringRef *s1, fesql::codec::StringRef *s2) {
     if (nullptr == s2) {
         return 1;
     }
-    return fesql::codec::StringRef::compare(*s1, *s2);
+    return hybridse::codec::StringRef::compare(*s1, *s2);
 }
 
 //
@@ -784,9 +785,10 @@ bool iterator_list(int8_t *input, int8_t *output) {
     if (nullptr == input || nullptr == output) {
         return false;
     }
-    ::fesql::codec::ListRef<> *list_ref = (::fesql::codec::ListRef<> *)(input);
-    ::fesql::codec::IteratorRef *iterator_ref =
-        (::fesql::codec::IteratorRef *)(output);
+    ::hybridse::codec::ListRef<> *list_ref =
+        (::hybridse::codec::ListRef<> *)(input);
+    ::hybridse::codec::IteratorRef *iterator_ref =
+        (::hybridse::codec::IteratorRef *)(output);
     ListV<V> *col = (ListV<V> *)(list_ref->list);
     auto col_iter = col->GetRawIterator();
     col_iter->SeekToFirst();
@@ -799,8 +801,8 @@ bool has_next(int8_t *input) {
     if (nullptr == input) {
         return false;
     }
-    ::fesql::codec::IteratorRef *iter_ref =
-        (::fesql::codec::IteratorRef *)(input);
+    ::hybridse::codec::IteratorRef *iter_ref =
+        (::hybridse::codec::IteratorRef *)(input);
     ConstIterator<uint64_t, V> *iter =
         (ConstIterator<uint64_t, V> *)(iter_ref->iterator);
     return iter == nullptr ? false : iter->Valid();
@@ -808,8 +810,8 @@ bool has_next(int8_t *input) {
 
 template <class V>
 V next_iterator(int8_t *input) {
-    ::fesql::codec::IteratorRef *iter_ref =
-        (::fesql::codec::IteratorRef *)(input);
+    ::hybridse::codec::IteratorRef *iter_ref =
+        (::hybridse::codec::IteratorRef *)(input);
     ConstIterator<uint64_t, V> *iter =
         (ConstIterator<uint64_t, V> *)(iter_ref->iterator);
     V v = iter->GetValue();
@@ -818,8 +820,8 @@ V next_iterator(int8_t *input) {
 }
 
 const codec::Row *next_row_iterator(int8_t *input) {
-    ::fesql::codec::IteratorRef *iter_ref =
-        (::fesql::codec::IteratorRef *)(input);
+    ::hybridse::codec::IteratorRef *iter_ref =
+        (::hybridse::codec::IteratorRef *)(input);
     ConstIterator<uint64_t, codec::Row> *iter =
         (ConstIterator<uint64_t, codec::Row> *)(iter_ref->iterator);
     auto res = &(iter->GetValue());
@@ -829,8 +831,8 @@ const codec::Row *next_row_iterator(int8_t *input) {
 
 template <class V>
 void next_nullable_iterator(int8_t *input, V *v, bool *is_null) {
-    ::fesql::codec::IteratorRef *iter_ref =
-        (::fesql::codec::IteratorRef *)(input);
+    ::hybridse::codec::IteratorRef *iter_ref =
+        (::hybridse::codec::IteratorRef *)(input);
     ConstIterator<uint64_t, Nullable<V>> *iter =
         (ConstIterator<uint64_t, Nullable<V>> *)(iter_ref->iterator);
     auto nullable_value = iter->GetValue();
@@ -842,8 +844,8 @@ void next_nullable_iterator(int8_t *input, V *v, bool *is_null) {
 
 template <class V>
 bool next_struct_iterator(int8_t *input, V *v) {
-    ::fesql::codec::IteratorRef *iter_ref =
-        (::fesql::codec::IteratorRef *)(input);
+    ::hybridse::codec::IteratorRef *iter_ref =
+        (::hybridse::codec::IteratorRef *)(input);
     ConstIterator<uint64_t, V> *iter =
         (ConstIterator<uint64_t, V> *)(iter_ref->iterator);
     *v = iter->GetValue();
@@ -852,8 +854,8 @@ bool next_struct_iterator(int8_t *input, V *v) {
 }
 template <class V>
 void delete_iterator(int8_t *input) {
-    ::fesql::codec::IteratorRef *iter_ref =
-        (::fesql::codec::IteratorRef *)(input);
+    ::hybridse::codec::IteratorRef *iter_ref =
+        (::hybridse::codec::IteratorRef *)(input);
     ConstIterator<uint64_t, V> *iter =
         (ConstIterator<uint64_t, V> *)(iter_ref->iterator);
     if (iter) {
@@ -863,8 +865,8 @@ void delete_iterator(int8_t *input) {
 
 }  // namespace v1
 
-bool RegisterMethod(const std::string &fn_name, fesql::node::TypeNode *ret,
-                    std::initializer_list<fesql::node::TypeNode *> args,
+bool RegisterMethod(const std::string &fn_name, hybridse::node::TypeNode *ret,
+                    std::initializer_list<hybridse::node::TypeNode *> args,
                     void *fn_ptr) {
     node::NodeManager nm;
     base::Status status;
@@ -1035,4 +1037,4 @@ void RegisterNativeUDFToModule() {
 }
 
 }  // namespace udf
-}  // namespace fesql
+}  // namespace hybridse

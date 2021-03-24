@@ -17,9 +17,9 @@
 import "fe_type.proto";
 import "fe_common.proto";
 
-package fesql.tablet;
+package hybridse.tablet;
 option cc_generic_services = true;
-option java_package = "com._4paradigm.fesql.tablet";
+option java_package = "com._4paradigm.hybridse.tablet";
 option java_outer_classname = "Tablet";
 
 message QueryRequest {

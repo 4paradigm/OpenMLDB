@@ -26,7 +26,7 @@
 #include "vm/jit_runtime.h"
 #include "vm/mem_catalog.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 #define MAX_DEBUG_BATCH_SiZE 5
 #define MAX_DEBUG_LINES_CNT 20
@@ -796,7 +796,7 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
                            type::Type type) {
     bool key = false;
     switch (type) {
-        case fesql::type::kInt32: {
+        case hybridse::type::kInt32: {
             int32_t value = 0;
             if (0 == row_view->GetValue(buf, idx, type,
                                         reinterpret_cast<void*>(&value))) {
@@ -804,7 +804,7 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
             }
             break;
         }
-        case fesql::type::kInt64: {
+        case hybridse::type::kInt64: {
             int64_t value = 0;
             if (0 == row_view->GetValue(buf, idx, type,
                                         reinterpret_cast<void*>(&value))) {
@@ -812,7 +812,7 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
             }
             break;
         }
-        case fesql::type::kInt16: {
+        case hybridse::type::kInt16: {
             int16_t value;
             if (0 == row_view->GetValue(buf, idx, type,
                                         reinterpret_cast<void*>(&value))) {
@@ -820,7 +820,7 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
             }
             break;
         }
-        case fesql::type::kFloat: {
+        case hybridse::type::kFloat: {
             float value;
             if (0 == row_view->GetValue(buf, idx, type,
                                         reinterpret_cast<void*>(&value))) {
@@ -828,7 +828,7 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
             }
             break;
         }
-        case fesql::type::kDouble: {
+        case hybridse::type::kDouble: {
             double value;
             if (0 == row_view->GetValue(buf, idx, type,
                                         reinterpret_cast<void*>(&value))) {
@@ -836,7 +836,7 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
             }
             break;
         }
-        case fesql::type::kBool: {
+        case hybridse::type::kBool: {
             bool value;
             if (0 == row_view->GetValue(buf, idx, type,
                                         reinterpret_cast<void*>(&value))) {
@@ -905,7 +905,7 @@ int64_t Runner::GetColumnInt64(const int8_t* buf, const RowView* row_view,
                                int key_idx, type::Type key_type) {
     int64_t key = -1;
     switch (key_type) {
-        case fesql::type::kInt32: {
+        case hybridse::type::kInt32: {
             int32_t value = 0;
             if (0 == row_view->GetValue(buf, key_idx, key_type,
                                         reinterpret_cast<void*>(&value))) {
@@ -913,7 +913,7 @@ int64_t Runner::GetColumnInt64(const int8_t* buf, const RowView* row_view,
             }
             break;
         }
-        case fesql::type::kInt64: {
+        case hybridse::type::kInt64: {
             int64_t value = 0;
             if (0 == row_view->GetValue(buf, key_idx, key_type,
                                         reinterpret_cast<void*>(&value))) {
@@ -921,7 +921,7 @@ int64_t Runner::GetColumnInt64(const int8_t* buf, const RowView* row_view,
             }
             break;
         }
-        case fesql::type::kInt16: {
+        case hybridse::type::kInt16: {
             int16_t value;
             if (0 == row_view->GetValue(buf, key_idx, key_type,
                                         reinterpret_cast<void*>(&value))) {
@@ -929,7 +929,7 @@ int64_t Runner::GetColumnInt64(const int8_t* buf, const RowView* row_view,
             }
             break;
         }
-        case fesql::type::kTimestamp: {
+        case hybridse::type::kTimestamp: {
             int64_t value;
             if (0 == row_view->GetValue(buf, key_idx, key_type,
                                         reinterpret_cast<void*>(&value))) {
@@ -2030,7 +2030,7 @@ void Runner::PrintData(std::ostringstream& oss,
                        const vm::SchemasContext* schema_list,
                        std::shared_ptr<DataHandler> data) {
     std::vector<RowView> row_view_list;
-    ::fesql::base::TextTable t('-', '|', '+');
+    ::hybridse::base::TextTable t('-', '|', '+');
     // Add Header
     if (data) {
         t.add(data->GetHandlerTypeName());
@@ -3039,10 +3039,12 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
-                          : fn_schema_.Get(pos).type() == fesql::type::kDate
-                              ? std::to_string(row_view.GetDateUnsafe(pos))
-                              : row_view.GetAsString(pos);
+        std::string key =
+            row_view.IsNULL(pos)
+                ? codec::NONETOKEN
+                : fn_schema_.Get(pos).type() == hybridse::type::kDate
+                      ? std::to_string(row_view.GetDateUnsafe(pos))
+                      : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -3068,9 +3070,9 @@ const std::string KeyGenerator::Gen(const Row& row) {
             keys.append(codec::NONETOKEN);
             continue;
         }
-        ::fesql::type::Type type = fn_schema_.Get(pos).type();
+        ::hybridse::type::Type type = fn_schema_.Get(pos).type();
         switch (type) {
-            case ::fesql::type::kVarchar: {
+            case ::hybridse::type::kVarchar: {
                 const char* buf = nullptr;
                 uint32_t size = 0;
                 if (row_view_.GetValue(key_row.buf(), pos, &buf, &size) == 0) {
@@ -3083,7 +3085,7 @@ const std::string KeyGenerator::Gen(const Row& row) {
                 }
                 break;
             }
-            case fesql::type::kDate: {
+            case hybridse::type::kDate: {
                 int32_t buf = 0;
                 if (row_view_.GetValue(key_row.buf(), pos, type,
                                        reinterpret_cast<void*>(&buf)) == 0) {
@@ -3091,7 +3093,7 @@ const std::string KeyGenerator::Gen(const Row& row) {
                 }
                 break;
             }
-            case fesql::type::kBool: {
+            case hybridse::type::kBool: {
                 bool buf = false;
                 if (row_view_.GetValue(key_row.buf(), pos, type,
                                        reinterpret_cast<void*>(&buf)) == 0) {
@@ -3099,22 +3101,22 @@ const std::string KeyGenerator::Gen(const Row& row) {
                 }
                 break;
             }
-            case fesql::type::kInt16: {
+            case hybridse::type::kInt16: {
                 int16_t buf = 0;
                 if (row_view_.GetValue(key_row.buf(), pos, type,
                                        reinterpret_cast<void*>(&buf)) == 0)
                     keys.append(std::to_string(buf));
                 break;
             }
-            case fesql::type::kInt32: {
+            case hybridse::type::kInt32: {
                 int32_t buf = 0;
                 if (row_view_.GetValue(key_row.buf(), pos, type,
                                        reinterpret_cast<void*>(&buf)) == 0)
                     keys.append(std::to_string(buf));
                 break;
             }
-            case fesql::type::kInt64:
-            case fesql::type::kTimestamp: {
+            case hybridse::type::kInt64:
+            case hybridse::type::kTimestamp: {
                 int64_t buf = 0;
                 if (row_view_.GetValue(key_row.buf(), pos, type,
                                        reinterpret_cast<void*>(&buf)) == 0)
@@ -3381,12 +3383,12 @@ void RunnerContext::SetCache(int64_t id,
     cache_[id] = data;
 }
 
-void RunnerContext::SetRequest(const fesql::codec::Row& request) {
+void RunnerContext::SetRequest(const hybridse::codec::Row& request) {
     request_ = request;
 }
 void RunnerContext::SetRequests(
-    const std::vector<fesql::codec::Row>& requests) {
+    const std::vector<hybridse::codec::Row>& requests) {
     requests_ = requests;
 }
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

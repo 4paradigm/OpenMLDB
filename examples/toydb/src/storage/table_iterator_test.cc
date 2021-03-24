@@ -22,23 +22,23 @@
 #include "gtest/gtest.h"
 #include "storage/table_impl.h"
 
-namespace fesql {
+namespace hybridse {
 namespace storage {
 using codec::Row;
 using codec::RowBuilder;
 using codec::RowView;
 
 void BuildTableSchema(type::TableDef& table_def) {  // NOLINT
-    ::fesql::type::ColumnDef* col = table_def.add_columns();
+    ::hybridse::type::ColumnDef* col = table_def.add_columns();
     col->set_name("col1");
-    col->set_type(::fesql::type::kVarchar);
+    col->set_type(::hybridse::type::kVarchar);
     col = table_def.add_columns();
     col->set_name("col2");
-    col->set_type(::fesql::type::kInt64);
+    col->set_type(::hybridse::type::kInt64);
     col = table_def.add_columns();
     col->set_name("col3");
-    col->set_type(::fesql::type::kVarchar);
-    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    col->set_type(::hybridse::type::kVarchar);
+    ::hybridse::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col1");
     index->set_second_key("col2");
@@ -157,7 +157,7 @@ TEST_F(TableIteratorTest, it_window_table) {
 }
 
 }  // namespace storage
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

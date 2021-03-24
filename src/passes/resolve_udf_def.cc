@@ -18,9 +18,9 @@
 #include "base/fe_status.h"
 #include "node/sql_node.h"
 
-using ::fesql::common::kCodegenError;
+using ::hybridse::common::kCodegenError;
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 Status ResolveUdfDef::Visit(node::FnNodeFnDef* fn_def) {
@@ -175,4 +175,4 @@ int64_t ResolveUdfDef::GetVar(const std::string& var) {
 }
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse

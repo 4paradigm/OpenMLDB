@@ -16,11 +16,11 @@
 
 #include "passes/expression/expr_pass.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
-using fesql::base::Status;
-using fesql::common::kCodegenError;
+using hybridse::base::Status;
+using hybridse::common::kCodegenError;
 
 void ExprPassGroup::AddPass(const std::shared_ptr<ExprPass>& pass) {
     if (pass == nullptr) {
@@ -152,4 +152,4 @@ node::ExprIdNode* ExprPass::GetRow() const { return row_; }
 void ExprPass::SetRow(node::ExprIdNode* row) { row_ = row; }
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse

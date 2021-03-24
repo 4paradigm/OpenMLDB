@@ -16,16 +16,19 @@
 
 set -eE
 
-cd "$(dirname "$0")"
-cd "$(git rev-parse --show-toplevel)"
+# goto toplevel directory
+cd "$(dirname "$0")/.."
+
+source tools/init_env.profile.sh
+
 
 if uname -a | grep -q Darwin; then
     # in case coreutils not install on mac
     alias nproc='sysctl -n hw.logicalcpu'
 fi
 
-export PATH=${PWD}/thirdparty/bin:$PATH
+rm -rf build
 mkdir -p build && cd build
 cmake .. -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON
-make fesql_proto && make fesql_parser && make -j"$(nproc)"
-make coverage -j"$(nproc)"
+make hybridse_proto && make hybridse_parser && make -j"$(nproc)"
+make -j"$(nproc)" coverage

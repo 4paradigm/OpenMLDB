@@ -24,12 +24,12 @@
 #include "glog/logging.h"
 #include "proto/fe_type.pb.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codec {
 namespace v1 {
 
-using fesql::codec::ListV;
-using fesql::codec::Row;
+using hybridse::codec::ListV;
+using hybridse::codec::Row;
 
 int32_t GetStrField(const int8_t* row, uint32_t idx, uint32_t str_field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
@@ -200,9 +200,9 @@ int32_t GetStrCol(int8_t* input, int32_t row_idx, uint32_t col_idx,
     }
     ListRef<>* w_ref = reinterpret_cast<ListRef<>*>(input);
     ListV<Row>* w = reinterpret_cast<ListV<Row>*>(w_ref->list);
-    fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
+    hybridse::type::Type type = static_cast<hybridse::type::Type>(type_id);
     switch (type) {
-        case fesql::type::kVarchar: {
+        case hybridse::type::kVarchar: {
             new (data)
                 StringColumnImpl(w, row_idx, col_idx, str_field_offset,
                                  next_str_field_offset, str_start_offset);
@@ -217,49 +217,49 @@ int32_t GetStrCol(int8_t* input, int32_t row_idx, uint32_t col_idx,
 
 int32_t GetCol(int8_t* input, int32_t row_idx, uint32_t col_idx, int32_t offset,
                int32_t type_id, int8_t* data) {
-    fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
+    hybridse::type::Type type = static_cast<hybridse::type::Type>(type_id);
     if (nullptr == input || nullptr == data) {
         return -2;
     }
     ListRef<>* w_ref = reinterpret_cast<ListRef<>*>(input);
     ListV<Row>* w = reinterpret_cast<ListV<Row>*>(w_ref->list);
     switch (type) {
-        case fesql::type::kInt32: {
+        case hybridse::type::kInt32: {
             new (data) ColumnImpl<int>(w, row_idx, col_idx, offset);
             break;
         }
-        case fesql::type::kInt16: {
+        case hybridse::type::kInt16: {
             new (data) ColumnImpl<int16_t>(w, row_idx, col_idx, offset);
             break;
         }
-        case fesql::type::kInt64: {
+        case hybridse::type::kInt64: {
             new (data) ColumnImpl<int64_t>(w, row_idx, col_idx, offset);
             break;
         }
-        case fesql::type::kFloat: {
+        case hybridse::type::kFloat: {
             new (data) ColumnImpl<float>(w, row_idx, col_idx, offset);
             break;
         }
-        case fesql::type::kDouble: {
+        case hybridse::type::kDouble: {
             new (data) ColumnImpl<double>(w, row_idx, col_idx, offset);
             break;
         }
-        case fesql::type::kTimestamp: {
+        case hybridse::type::kTimestamp: {
             new (data)
                 ColumnImpl<codec::Timestamp>(w, row_idx, col_idx, offset);
             break;
         }
-        case fesql::type::kDate: {
+        case hybridse::type::kDate: {
             new (data) ColumnImpl<codec::Date>(w, row_idx, col_idx, offset);
             break;
         }
-        case fesql::type::kBool: {
+        case hybridse::type::kBool: {
             new (data) ColumnImpl<bool>(w, row_idx, col_idx, offset);
             break;
         }
         default: {
             LOG(WARNING) << "cannot get col for type "
-                         << ::fesql::type::Type_Name(type) << " type id "
+                         << ::hybridse::type::Type_Name(type) << " type id "
                          << type_id;
             return -2;
         }
@@ -295,4 +295,4 @@ int32_t GetInnerRowsList(int8_t* input, int64_t start_rows, int64_t end_rows,
 }
 }  // namespace v1
 }  // namespace codec
-}  // namespace fesql
+}  // namespace hybridse

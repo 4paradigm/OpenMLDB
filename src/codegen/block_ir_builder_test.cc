@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <string>
 #include "codegen/fn_ir_builder.h"
 #include "gtest/gtest.h"
@@ -34,20 +33,20 @@ using namespace llvm::orc;  // NOLINT (build/namespaces)
 
 ExitOnError ExitOnErr;
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 class BlockIRBuilderTest : public ::testing::Test {
  public:
     BlockIRBuilderTest() {
         manager_ = new node::NodeManager();
-        parser_ = new parser::FeSQLParser();
+        parser_ = new parser::HybridSEParser();
     }
     ~BlockIRBuilderTest() { delete manager_; }
 
  protected:
     node::NodeManager *manager_;
-    parser::FeSQLParser *parser_;
+    parser::HybridSEParser *parser_;
 };
 
 void CheckResult(node::NodeManager *manager, std::string test, int32_t res,
@@ -55,7 +54,7 @@ void CheckResult(node::NodeManager *manager, std::string test, int32_t res,
     node::NodePointVector trees;
     node::PlanNodeList plan_trees;
     base::Status status;
-    parser::FeSQLParser parser;
+    parser::HybridSEParser parser;
     int ret = parser.parse(test, trees, manager, status);
     ASSERT_EQ(0, ret);
     // Create an LLJIT instance.
@@ -183,7 +182,7 @@ TEST_F(BlockIRBuilderTest, test_if_else_mutable_var_block) {
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

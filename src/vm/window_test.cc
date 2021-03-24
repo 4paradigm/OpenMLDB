@@ -20,7 +20,7 @@
 #include "proto/fe_type.pb.h"
 #include "vm/mem_catalog.h"
 #include "vm/runner.h"
-namespace fesql {
+namespace hybridse {
 namespace vm {
 using codec::ArrayListIterator;
 using codec::ArrayListV;
@@ -1547,7 +1547,7 @@ TEST_F(RequestUnionWindowTest, RequestRowsMergeRowsRangeWindowTest) {
     }
 }
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

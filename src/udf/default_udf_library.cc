@@ -29,15 +29,15 @@
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
 
-using fesql::codec::Date;
-using fesql::codec::StringRef;
-using fesql::codec::Timestamp;
-using fesql::codegen::CodeGenContext;
-using fesql::codegen::NativeValue;
-using fesql::common::kCodegenError;
-using fesql::node::TypeNode;
+using hybridse::codec::Date;
+using hybridse::codec::StringRef;
+using hybridse::codec::Timestamp;
+using hybridse::codegen::CodeGenContext;
+using hybridse::codegen::NativeValue;
+using hybridse::common::kCodegenError;
+using hybridse::node::TypeNode;
 
-namespace fesql {
+namespace hybridse {
 namespace udf {
 
 // static instance
@@ -1429,4 +1429,4 @@ void DefaultUDFLibrary::InitUDAF() {
 }
 
 }  // namespace udf
-}  // namespace fesql
+}  // namespace hybridse

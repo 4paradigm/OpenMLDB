@@ -20,13 +20,13 @@
 
 from test_base import *
 import time
-import fesql
+import hybridse
 
 def test_query():
-    dbms = fesql.CreateDBMSSdk(dbms_endpoint)
+    dbms = hybridse.CreateDBMSSdk(dbms_endpoint)
     db1 = "name" + str(time.time())
     sql = "create table t1(col1 string, col2 bigint, col3 float, index(key=col1, ts=col2));"
-    status = fesql.Status()
+    status = hybridse.Status()
     dbms.CreateDatabase(db1, status)
     assert status.code == 0
     ok, msg, rs = exec_query(dbms, db1, sql)
@@ -44,10 +44,10 @@ def test_query():
     assert rs.GetInt64Unsafe(1) == 10
 
 def test_request_query():
-    dbms = fesql.CreateDBMSSdk(dbms_endpoint)
+    dbms = hybridse.CreateDBMSSdk(dbms_endpoint)
     db1 = "name2" + str(time.time())
     sql = "create table t1(col0 bigint, col1 string, col2 bigint, col3 float, index(key=col1, ts=col2));"
-    status = fesql.Status()
+    status = hybridse.Status()
     dbms.CreateDatabase(db1, status)
     assert status.code == 0
     ok, msg, rs = exec_query(dbms, db1, sql)

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CODEGEN_CODEGEN_BASE_TEST_H_
 #define SRC_CODEGEN_CODEGEN_BASE_TEST_H_
 
@@ -23,29 +22,30 @@
 #include <vector>
 #include "codec/list_iterator_codec.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
-using fesql::codec::ArrayListV;
-using fesql::codec::Row;
-using fesql::sqlcase::SQLCase;
+using hybridse::codec::ArrayListV;
+using hybridse::codec::Row;
+using hybridse::sqlcase::SQLCase;
 
 bool BuildWindowFromResource(const std::string& resource_path,
-                             ::fesql::type::TableDef& table_def,  // NOLINT
-                             std::vector<Row>& rows,              // NOLINT
+                             ::hybridse::type::TableDef& table_def,  // NOLINT
+                             std::vector<Row>& rows,                 // NOLINT
                              int8_t** buf) {
-    if (!SQLCase::LoadSchemaAndRowsFromYaml(fesql::sqlcase::FindFesqlDirPath(),
-                                            resource_path, table_def, rows)) {
+    if (!SQLCase::LoadSchemaAndRowsFromYaml(
+            hybridse::sqlcase::FindSQLCaseBaseDirPath(), resource_path,
+            table_def, rows)) {
         return false;
     }
     ArrayListV<Row>* w = new ArrayListV<Row>(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
     return true;
 }
-bool BuildWindow(::fesql::type::TableDef& table_def,  // NOLINT
-                 std::vector<Row>& rows,              // NOLINT
+bool BuildWindow(::hybridse::type::TableDef& table_def,  // NOLINT
+                 std::vector<Row>& rows,                 // NOLINT
                  int8_t** buf) {
     if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            fesql::sqlcase::FindFesqlDirPath(),
+            hybridse::sqlcase::FindSQLCaseBaseDirPath(),
             "cases/resource/codegen_t1_rows.yaml", table_def, rows)) {
         return false;
     }
@@ -53,11 +53,11 @@ bool BuildWindow(::fesql::type::TableDef& table_def,  // NOLINT
     *buf = reinterpret_cast<int8_t*>(w);
     return true;
 }
-bool BuildWindow2(::fesql::type::TableDef& table_def,  // NOLINT
-                  std::vector<Row>& rows,              // NOLINT
+bool BuildWindow2(::hybridse::type::TableDef& table_def,  // NOLINT
+                  std::vector<Row>& rows,                 // NOLINT
                   int8_t** buf) {
     if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            fesql::sqlcase::FindFesqlDirPath(),
+            hybridse::sqlcase::FindSQLCaseBaseDirPath(),
             "cases/resource/codegen_t2_rows.yaml", table_def, rows)) {
         return false;
     }
@@ -69,7 +69,7 @@ bool BuildT1Buf(type::TableDef& table_def, int8_t** buf,  // NOLINT
                 uint32_t* size) {
     std::vector<Row> rows;
     if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            fesql::sqlcase::FindFesqlDirPath(),
+            hybridse::sqlcase::FindSQLCaseBaseDirPath(),
             "cases/resource/codegen_t1_one_row.yaml", table_def, rows)) {
         return false;
     }
@@ -82,7 +82,7 @@ bool BuildT2Buf(type::TableDef& table_def, int8_t** buf,  // NOLINT
     std::vector<Row> rows;
 
     if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            fesql::sqlcase::FindFesqlDirPath(),
+            hybridse::sqlcase::FindSQLCaseBaseDirPath(),
             "cases/resource/codegen_t2_one_row.yaml", table_def, rows)) {
         return false;
     }
@@ -92,6 +92,6 @@ bool BuildT2Buf(type::TableDef& table_def, int8_t** buf,  // NOLINT
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_CODEGEN_CODEGEN_BASE_TEST_H_

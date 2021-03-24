@@ -19,7 +19,7 @@
 #include <memory>
 #include <string>
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 
 static const std::string EMPTY_STR;  // NOLINT
@@ -105,4 +105,4 @@ const std::shared_ptr<Table> TableSetImpl::GetTable() {
 }
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse

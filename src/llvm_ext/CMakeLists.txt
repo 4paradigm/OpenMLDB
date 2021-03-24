@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-message(STATUS "Enable fesql llvm ext sources")
-add_library(fesql_llvm_ext STATIC symbol_resolve.cc)
+message(STATUS "Enable hybridse llvm ext sources")
+add_library(hybridse_llvm_ext STATIC symbol_resolve.cc)
 if (NOT ${LLVM_ENABLE_RTTI})
-    message(STATUS "Compile fesql llvm ext with -fno-rtti")
-    target_compile_options(fesql_llvm_ext PRIVATE -fno-rtti)
+    message(STATUS "Compile hybridse llvm ext with -fno-rtti")
+    target_compile_options(hybridse_llvm_ext PRIVATE -fno-rtti)
 endif()
-target_link_libraries(fesql_llvm_ext ${LLVM_LIBS})
-set(LLVM_EXT_LIB fesql_llvm_ext PARENT_SCOPE)
+target_link_libraries(hybridse_llvm_ext ${LLVM_LIBS})
+set(LLVM_EXT_LIB hybridse_llvm_ext PARENT_SCOPE)

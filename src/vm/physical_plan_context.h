@@ -26,10 +26,10 @@
 #include "node/node_manager.h"
 #include "udf/udf_library.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
-using fesql::base::Status;
+using hybridse::base::Status;
 
 class PhysicalPlanContext {
  public:
@@ -149,5 +149,5 @@ class PhysicalPlanContext {
     bool enable_expr_opt_ = false;
 };
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_VM_PHYSICAL_PLAN_CONTEXT_H_

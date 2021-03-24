@@ -21,7 +21,7 @@ set(SQL_AST_LEXER_GEN
 
 set(SQL_AST_PARSER_GEN
         ${CMAKE_CURRENT_BINARY_DIR}/sql_parser.gen.cc)
-set(case_deps_libs fesql_case ${yaml_libs} fesql_codec boost_filesystem)
+set(case_deps_libs hybridse_case ${yaml_libs} hybridse_codec boost_filesystem)
 add_custom_command(OUTPUT ${SQL_AST_LEXER_GEN}
         COMMAND flex ${PROJECT_SOURCE_DIR}/src/parser/sql_scan.l
         DEPENDS ${PROJECT_SOURCE_DIR}/src/parser/sql_scan.l
@@ -35,7 +35,7 @@ add_custom_command(OUTPUT ${SQL_AST_PARSER_GEN}
 ADD_CUSTOM_TARGET(run_gen_parser DEPENDS ${SQL_AST_LEXER_GEN}
     ${SQL_AST_PARSER_GEN})
 
-add_library(fesql_parser OBJECT ${SQL_AST_LEXER_GEN} ${SQL_AST_PARSER_GEN})
-add_dependencies(fesql_parser run_gen_parser)
+add_library(hybridse_parser OBJECT ${SQL_AST_LEXER_GEN} ${SQL_AST_PARSER_GEN})
+add_dependencies(hybridse_parser run_gen_parser)
 
 

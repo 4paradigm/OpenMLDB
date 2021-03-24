@@ -28,7 +28,7 @@
 #include "tablet/tablet_catalog.h"
 #include "vm/engine.h"
 
-namespace fesql {
+namespace hybridse {
 namespace tablet {
 
 using ::google::protobuf::Closure;
@@ -74,7 +74,7 @@ class TabletServerImpl : public TabletServer {
     inline bool AddTableUnLocked(std::shared_ptr<storage::Table> table) {
         const type::TableDef& table_def = table->GetTableDef();
         auto local_tablet = std::shared_ptr<vm::Tablet>(new vm::LocalTablet(
-            engine_.get(), std::shared_ptr<fesql::vm::CompileInfoCache>()));
+            engine_.get(), std::shared_ptr<hybridse::vm::CompileInfoCache>()));
         std::shared_ptr<TabletTableHandler> handler(new TabletTableHandler(
             table_def.columns(), table_def.name(), table_def.catalog(),
             table_def.indexes(), table, local_tablet));
@@ -98,5 +98,5 @@ class TabletServerImpl : public TabletServer {
 };
 
 }  // namespace tablet
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // EXAMPLES_TOYDB_SRC_TABLET_TABLET_SERVER_IMPL_H_

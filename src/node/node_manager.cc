@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-
 #include "node/node_manager.h"
 #include <string>
 #include <utility>
 #include <vector>
 
-namespace fesql {
+namespace hybridse {
 namespace node {
 
 NodeManager::NodeManager() {}
@@ -541,26 +540,26 @@ ConstNode *NodeManager::MakeConstNodeDOUBLEMIN() {
     return MakeConstNode(static_cast<double>(DBL_MIN));
 }
 ConstNode *NodeManager::MakeConstNodePlaceHolder() {
-    return MakeConstNode(fesql::node::kPlaceholder);
+    return MakeConstNode(hybridse::node::kPlaceholder);
 }
 ExprIdNode *NodeManager::MakeExprIdNode(const std::string &name) {
     return RegisterNode(
-        new ::fesql::node::ExprIdNode(name, exprid_idx_counter_++));
+        new ::hybridse::node::ExprIdNode(name, exprid_idx_counter_++));
 }
 ExprIdNode *NodeManager::MakeUnresolvedExprId(const std::string &name) {
-    return RegisterNode(new ::fesql::node::ExprIdNode(name, -1));
+    return RegisterNode(new ::hybridse::node::ExprIdNode(name, -1));
 }
 
 BinaryExpr *NodeManager::MakeBinaryExprNode(ExprNode *left, ExprNode *right,
                                             FnOperator op) {
-    ::fesql::node::BinaryExpr *bexpr = new ::fesql::node::BinaryExpr(op);
+    ::hybridse::node::BinaryExpr *bexpr = new ::hybridse::node::BinaryExpr(op);
     bexpr->AddChild(left);
     bexpr->AddChild(right);
     return RegisterNode(bexpr);
 }
 
 UnaryExpr *NodeManager::MakeUnaryExprNode(ExprNode *left, FnOperator op) {
-    ::fesql::node::UnaryExpr *uexpr = new ::fesql::node::UnaryExpr(op);
+    ::hybridse::node::UnaryExpr *uexpr = new ::hybridse::node::UnaryExpr(op);
     uexpr->AddChild(left);
     return RegisterNode(uexpr);
 }
@@ -776,21 +775,21 @@ ProjectListNode *NodeManager::MakeProjectListPlanNode(
 FnNode *NodeManager::MakeFnHeaderNode(const std::string &name,
                                       FnNodeList *plist,
                                       const TypeNode *return_type) {
-    ::fesql::node::FnNodeFnHeander *fn_header =
+    ::hybridse::node::FnNodeFnHeander *fn_header =
         new FnNodeFnHeander(name, plist, return_type);
     return RegisterNode(fn_header);
 }
 
 FnNode *NodeManager::MakeFnDefNode(const FnNode *header, FnNodeList *block) {
-    ::fesql::node::FnNodeFnDef *fn_def =
+    ::hybridse::node::FnNodeFnDef *fn_def =
         new FnNodeFnDef(dynamic_cast<const FnNodeFnHeander *>(header), block);
     return RegisterNode(fn_def);
 }
 FnNode *NodeManager::MakeAssignNode(const std::string &name,
                                     ExprNode *expression) {
     auto var = MakeExprIdNode(name);
-    ::fesql::node::FnAssignNode *fn_assign =
-        new fesql::node::FnAssignNode(var, expression);
+    ::hybridse::node::FnAssignNode *fn_assign =
+        new hybridse::node::FnAssignNode(var, expression);
     return RegisterNode(fn_assign);
 }
 
@@ -798,8 +797,9 @@ FnNode *NodeManager::MakeAssignNode(const std::string &name,
                                     ExprNode *expression, const FnOperator op) {
     auto lhs_var = MakeExprIdNode(name);
     auto rhs_var = MakeUnresolvedExprId(name);
-    ::fesql::node::FnAssignNode *fn_assign = new fesql::node::FnAssignNode(
-        lhs_var, MakeBinaryExprNode(rhs_var, expression, op));
+    ::hybridse::node::FnAssignNode *fn_assign =
+        new hybridse::node::FnAssignNode(
+            lhs_var, MakeBinaryExprNode(rhs_var, expression, op));
     return RegisterNode(fn_assign);
 }
 FnNode *NodeManager::MakeReturnStmtNode(ExprNode *value) {
@@ -830,29 +830,29 @@ FnNodeList *NodeManager::MakeFnListNode() {
 }
 
 FnIfBlock *NodeManager::MakeFnIfBlock(FnIfNode *if_node, FnNodeList *block) {
-    ::fesql::node::FnIfBlock *if_block =
-        new ::fesql::node::FnIfBlock(if_node, block);
+    ::hybridse::node::FnIfBlock *if_block =
+        new ::hybridse::node::FnIfBlock(if_node, block);
     RegisterNode(if_block);
     return if_block;
 }
 
 FnElifBlock *NodeManager::MakeFnElifBlock(FnElifNode *elif_node,
                                           FnNodeList *block) {
-    ::fesql::node::FnElifBlock *elif_block =
-        new ::fesql::node::FnElifBlock(elif_node, block);
+    ::hybridse::node::FnElifBlock *elif_block =
+        new ::hybridse::node::FnElifBlock(elif_node, block);
     RegisterNode(elif_block);
     return elif_block;
 }
 FnIfElseBlock *NodeManager::MakeFnIfElseBlock(FnIfBlock *if_block,
                                               FnElseBlock *else_block) {
-    ::fesql::node::FnIfElseBlock *if_else_block =
-        new ::fesql::node::FnIfElseBlock(if_block, else_block);
+    ::hybridse::node::FnIfElseBlock *if_else_block =
+        new ::hybridse::node::FnIfElseBlock(if_block, else_block);
     RegisterNode(if_else_block);
     return if_else_block;
 }
 FnElseBlock *NodeManager::MakeFnElseBlock(FnNodeList *block) {
-    ::fesql::node::FnElseBlock *else_block =
-        new ::fesql::node::FnElseBlock(block);
+    ::hybridse::node::FnElseBlock *else_block =
+        new ::hybridse::node::FnElseBlock(block);
     RegisterNode(else_block);
     return else_block;
 }
@@ -861,8 +861,8 @@ FnParaNode *NodeManager::MakeFnParaNode(const std::string &name,
                                         const TypeNode *para_type) {
     auto expr_id = MakeExprIdNode(name);
     expr_id->SetOutputType(para_type);
-    ::fesql::node::FnParaNode *para_node =
-        new ::fesql::node::FnParaNode(expr_id);
+    ::hybridse::node::FnParaNode *para_node =
+        new ::hybridse::node::FnParaNode(expr_id);
     return RegisterNode(para_node);
 }
 
@@ -972,26 +972,26 @@ MapNode *NodeManager::MakeMapNode(const NodePointVector &nodes) {
     return RegisterNode(new MapNode(nodes));
 }
 
-TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base) {
+TypeNode *NodeManager::MakeTypeNode(hybridse::node::DataType base) {
     TypeNode *node_ptr = new TypeNode(base);
     RegisterNode(node_ptr);
     return node_ptr;
 }
-TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
-                                    const fesql::node::TypeNode *v1) {
+TypeNode *NodeManager::MakeTypeNode(hybridse::node::DataType base,
+                                    const hybridse::node::TypeNode *v1) {
     TypeNode *node_ptr = new TypeNode(base, v1);
     RegisterNode(node_ptr);
     return node_ptr;
 }
-TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
-                                    fesql::node::DataType v1) {
+TypeNode *NodeManager::MakeTypeNode(hybridse::node::DataType base,
+                                    hybridse::node::DataType v1) {
     TypeNode *node_ptr = new TypeNode(base, MakeTypeNode(v1));
     RegisterNode(node_ptr);
     return node_ptr;
 }
-TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
-                                    fesql::node::DataType v1,
-                                    fesql::node::DataType v2) {
+TypeNode *NodeManager::MakeTypeNode(hybridse::node::DataType base,
+                                    hybridse::node::DataType v1,
+                                    hybridse::node::DataType v2) {
     TypeNode *node_ptr = new TypeNode(base, MakeTypeNode(v1), MakeTypeNode(v2));
     RegisterNode(node_ptr);
     return node_ptr;
@@ -1250,4 +1250,4 @@ void NodeManager::SetNodeUniqueId(vm::PhysicalOpNode *node) {
 }
 
 }  // namespace node
-}  // namespace fesql
+}  // namespace hybridse

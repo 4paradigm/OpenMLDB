@@ -15,7 +15,7 @@
  */
 #include "vm/jit_runtime.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 thread_local JITRuntime JITRuntime::tls_runtime_inst_;
@@ -45,4 +45,4 @@ void JITRuntime::ReleaseRunStep() {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

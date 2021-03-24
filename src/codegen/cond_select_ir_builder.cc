@@ -17,7 +17,7 @@
 #include "codegen/cond_select_ir_builder.h"
 #include <vector>
 #include "codegen/ir_base_builder.h"
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 CondSelectIRBuilder::CondSelectIRBuilder() {}
 CondSelectIRBuilder::~CondSelectIRBuilder() {}
@@ -96,4 +96,4 @@ base::Status CondSelectIRBuilder::Select(::llvm::BasicBlock* block,
     return base::Status::OK();
 }
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

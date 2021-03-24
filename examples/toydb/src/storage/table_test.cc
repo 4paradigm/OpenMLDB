@@ -20,7 +20,7 @@
 #include "gtest/gtest.h"
 #include "storage/table_impl.h"
 
-namespace fesql {
+namespace hybridse {
 namespace storage {
 using codec::RowBuilder;
 using codec::RowView;
@@ -32,17 +32,17 @@ class TableTest : public ::testing::Test {
 };
 
 TEST_F(TableTest, SingleIndexIterator) {
-    ::fesql::type::TableDef def;
-    ::fesql::type::ColumnDef* col = def.add_columns();
+    ::hybridse::type::TableDef def;
+    ::hybridse::type::ColumnDef* col = def.add_columns();
     col->set_name("col1");
-    col->set_type(::fesql::type::kVarchar);
+    col->set_type(::hybridse::type::kVarchar);
     col = def.add_columns();
     col->set_name("col2");
-    col->set_type(::fesql::type::kInt64);
+    col->set_type(::hybridse::type::kInt64);
     col = def.add_columns();
     col->set_name("col3");
-    col->set_type(::fesql::type::kVarchar);
-    ::fesql::type::IndexDef* index = def.add_indexes();
+    col->set_type(::hybridse::type::kVarchar);
+    ::hybridse::type::IndexDef* index = def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col1");
     index->set_second_key("col2");
@@ -193,21 +193,21 @@ TEST_F(TableTest, SingleIndexIterator) {
 }
 
 TEST_F(TableTest, MultiIndexIterator) {
-    ::fesql::type::TableDef def;
-    ::fesql::type::ColumnDef* col = def.add_columns();
+    ::hybridse::type::TableDef def;
+    ::hybridse::type::ColumnDef* col = def.add_columns();
     col->set_name("col1");
-    col->set_type(::fesql::type::kVarchar);
+    col->set_type(::hybridse::type::kVarchar);
     col = def.add_columns();
     col->set_name("col2");
-    col->set_type(::fesql::type::kInt64);
+    col->set_type(::hybridse::type::kInt64);
     col = def.add_columns();
     col->set_name("col3");
-    col->set_type(::fesql::type::kVarchar);
+    col->set_type(::hybridse::type::kVarchar);
     col = def.add_columns();
     col->set_name("col4");
-    col->set_type(::fesql::type::kInt64);
+    col->set_type(::hybridse::type::kInt64);
 
-    ::fesql::type::IndexDef* index = def.add_indexes();
+    ::hybridse::type::IndexDef* index = def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col1");
     index->set_second_key("col2");
@@ -366,17 +366,17 @@ TEST_F(TableTest, MultiIndexIterator) {
 }
 
 TEST_F(TableTest, FullTableTest) {
-    ::fesql::type::TableDef def;
-    ::fesql::type::ColumnDef* col = def.add_columns();
+    ::hybridse::type::TableDef def;
+    ::hybridse::type::ColumnDef* col = def.add_columns();
     col->set_name("col1");
-    col->set_type(::fesql::type::kVarchar);
+    col->set_type(::hybridse::type::kVarchar);
     col = def.add_columns();
     col->set_name("col2");
-    col->set_type(::fesql::type::kInt64);
+    col->set_type(::hybridse::type::kInt64);
     col = def.add_columns();
     col->set_name("col3");
-    col->set_type(::fesql::type::kVarchar);
-    ::fesql::type::IndexDef* index = def.add_indexes();
+    col->set_type(::hybridse::type::kVarchar);
+    ::hybridse::type::IndexDef* index = def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col1");
     index->set_second_key("col2");
@@ -418,21 +418,21 @@ TEST_F(TableTest, FullTableTest) {
     ASSERT_EQ(count, 1000);
 }
 TEST_F(TableTest, DecodeKeysAndTsTest) {
-    ::fesql::type::TableDef def;
-    ::fesql::type::ColumnDef* col = def.add_columns();
+    ::hybridse::type::TableDef def;
+    ::hybridse::type::ColumnDef* col = def.add_columns();
     col->set_name("col1");
-    col->set_type(::fesql::type::kVarchar);
+    col->set_type(::hybridse::type::kVarchar);
     col = def.add_columns();
     col->set_name("col2");
-    col->set_type(::fesql::type::kInt64);
+    col->set_type(::hybridse::type::kInt64);
     col = def.add_columns();
     col->set_name("col3");
-    col->set_type(::fesql::type::kVarchar);
+    col->set_type(::hybridse::type::kVarchar);
     col = def.add_columns();
     col->set_name("col4");
-    col->set_type(::fesql::type::kInt64);
+    col->set_type(::hybridse::type::kInt64);
 
-    ::fesql::type::IndexDef* index = def.add_indexes();
+    ::hybridse::type::IndexDef* index = def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col1");
     index->add_first_keys("col4");
@@ -468,7 +468,7 @@ TEST_F(TableTest, DecodeKeysAndTsTest) {
     ASSERT_EQ(11L, time);
 }
 }  // namespace storage
-}  // namespace fesql
+}  // namespace hybridse
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

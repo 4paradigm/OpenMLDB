@@ -17,10 +17,10 @@
 #include "passes/lambdafy_projects.h"
 #include "passes/resolve_fn_and_attrs.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
-using ::fesql::common::kCodegenError;
+using ::hybridse::common::kCodegenError;
 
 Status LambdafyProjects::Transform(
     const std::vector<const node::ExprNode*>& exprs,
@@ -423,11 +423,11 @@ bool LambdafyProjects::FallBackToLegacyAgg(const node::ExprNode* expr) {
                 return false;
             }
             switch (schemas_ctx->GetSchema(schema_idx)->Get(col_idx).type()) {
-                case fesql::type::kInt16:
-                case fesql::type::kInt32:
-                case fesql::type::kInt64:
-                case fesql::type::kFloat:
-                case fesql::type::kDouble:
+                case hybridse::type::kInt16:
+                case hybridse::type::kInt32:
+                case hybridse::type::kInt64:
+                case hybridse::type::kFloat:
+                case hybridse::type::kDouble:
                     break;
                 default:
                     return false;
@@ -441,4 +441,4 @@ bool LambdafyProjects::FallBackToLegacyAgg(const node::ExprNode* expr) {
 }
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse

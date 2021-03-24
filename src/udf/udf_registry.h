@@ -35,15 +35,15 @@
 #include "udf/udf_library.h"
 #include "vm/schemas_context.h"
 
-namespace fesql {
+namespace hybridse {
 namespace udf {
 
-using fesql::base::Status;
-using fesql::codec::StringRef;
-using fesql::node::ExprAttrNode;
-using fesql::node::ExprListNode;
-using fesql::node::ExprNode;
-using fesql::node::SQLNode;
+using hybridse::base::Status;
+using hybridse::codec::StringRef;
+using hybridse::node::ExprAttrNode;
+using hybridse::node::ExprListNode;
+using hybridse::node::ExprNode;
+using hybridse::node::SQLNode;
 
 /**
  * Overall information to resolve a sql function call.
@@ -1875,6 +1875,6 @@ class UDAFTemplateRegistryHelper : public UDFRegistryHelper<UDAFRegistry> {
 };
 
 }  // namespace udf
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_UDF_UDF_REGISTRY_H_

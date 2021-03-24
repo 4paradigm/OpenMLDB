@@ -20,7 +20,7 @@
 #include <vector>
 #include "udf/udf_registry.h"
 
-namespace fesql {
+namespace hybridse {
 namespace udf {
 
 class UDFLibraryTest : public ::testing::Test {
@@ -62,7 +62,7 @@ TEST_F(UDFLibraryTest, test_check_list_arg) {
 }
 
 }  // namespace udf
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::GTEST_FLAG(color) = "yes";

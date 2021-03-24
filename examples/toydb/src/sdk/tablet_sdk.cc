@@ -30,7 +30,7 @@
 #include "proto/fe_tablet.pb.h"
 #include "sdk/result_set_impl.h"
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 
 static const std::string EMPTY_STR;  // NOLINT
@@ -137,8 +137,8 @@ bool TabletSdkImpl::Init() {
 
 void TabletSdkImpl::Insert(const tablet::InsertRequest& request,
                            sdk::Status* status) {
-    ::fesql::tablet::TabletServer_Stub stub(channel_);
-    ::fesql::tablet::InsertResponse response;
+    ::hybridse::tablet::TabletServer_Stub stub(channel_);
+    ::hybridse::tablet::InsertResponse response;
     brpc::Controller cntl;
     stub.Insert(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
@@ -157,8 +157,8 @@ std::shared_ptr<ResultSet> TabletSdkImpl::Query(const std::string& db,
         return std::shared_ptr<ResultSet>();
     }
 
-    ::fesql::tablet::TabletServer_Stub stub(channel_);
-    ::fesql::tablet::QueryRequest request;
+    ::hybridse::tablet::TabletServer_Stub stub(channel_);
+    ::hybridse::tablet::QueryRequest request;
     std::unique_ptr<tablet::QueryResponse> response(
         new tablet::QueryResponse());
     request.set_sql(sql);
@@ -190,9 +190,9 @@ std::shared_ptr<ResultSet> TabletSdkImpl::Query(const std::string& db,
 bool TabletSdkImpl::GetSchema(const std::string& db, const std::string& table,
                               type::TableDef* schema, sdk::Status* status) {
     if (schema == NULL || status == NULL) return false;
-    ::fesql::tablet::TabletServer_Stub stub(channel_);
-    ::fesql::tablet::GetTablesSchemaRequest request;
-    ::fesql::tablet::GetTableSchemaReponse response;
+    ::hybridse::tablet::TabletServer_Stub stub(channel_);
+    ::hybridse::tablet::GetTablesSchemaRequest request;
+    ::hybridse::tablet::GetTableSchemaReponse response;
     request.set_db(db);
     request.set_name(table);
     brpc::Controller cntl;
@@ -215,11 +215,11 @@ std::shared_ptr<ExplainInfo> TabletSdkImpl::Explain(const std::string& db,
                                                     const std::string& sql,
                                                     sdk::Status* status) {
     if (status == NULL) return std::shared_ptr<ExplainInfo>();
-    ::fesql::tablet::TabletServer_Stub stub(channel_);
-    ::fesql::tablet::ExplainRequest request;
+    ::hybridse::tablet::TabletServer_Stub stub(channel_);
+    ::hybridse::tablet::ExplainRequest request;
     request.set_sql(sql);
     request.set_db(db);
-    ::fesql::tablet::ExplainResponse response;
+    ::hybridse::tablet::ExplainResponse response;
     brpc::Controller cntl;
     stub.Explain(&cntl, &request, &response, NULL);
 
@@ -264,7 +264,7 @@ void TabletSdkImpl::GetSqlPlan(const std::string& db, const std::string& sql,
                                node::NodeManager& node_manager,
                                node::PlanNodeList& plan_trees,
                                sdk::Status& status) {
-    parser::FeSQLParser parser;
+    parser::HybridSEParser parser;
     plan::SimplePlanner planner(&node_manager);
     base::Status sql_status;
 
@@ -515,4 +515,4 @@ std::shared_ptr<TabletSdk> CreateTabletSdk(const std::string& endpoint) {
 }
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse

@@ -18,7 +18,7 @@
 #include <algorithm>
 #include "gtest/gtest.h"
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 class VertexNumber : public Vertex<int> {
@@ -70,7 +70,7 @@ TEST_F(GraphTest, GraphOpTest) {
 }
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

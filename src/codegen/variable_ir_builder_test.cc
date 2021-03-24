@@ -28,7 +28,7 @@
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 ExitOnError ExitOnErr;
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 class VariableIRBuilderTest : public ::testing::Test {
  public:
@@ -40,11 +40,12 @@ class VariableIRBuilderTest : public ::testing::Test {
 };
 
 template <class V1>
-void MutableVariableCheck(::fesql::node::DataType type, V1 value1, V1 result) {
+void MutableVariableCheck(::hybridse::node::DataType type, V1 value1,
+                          V1 result) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("predicate_func", *ctx);
     llvm::Type *llvm_type = NULL;
-    ASSERT_TRUE(::fesql::codegen::GetLLVMType(m.get(), type, &llvm_type));
+    ASSERT_TRUE(::hybridse::codegen::GetLLVMType(m.get(), type, &llvm_type));
 
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "D" and take an argument of "S".
@@ -80,7 +81,7 @@ void ArrayVariableCheck(node::DataType type, V1 *array, int pos, V1 exp) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("array_func", *ctx);
     llvm::Type *element_type = NULL;
-    ASSERT_TRUE(::fesql::codegen::GetLLVMType(m.get(), type, &element_type));
+    ASSERT_TRUE(::hybridse::codegen::GetLLVMType(m.get(), type, &element_type));
     //    ::llvm::ArrayType *llvm_type =
     //        ::llvm::ArrayType::get(element_type, element_num);
 
@@ -117,14 +118,14 @@ void ArrayVariableCheck(node::DataType type, V1 *array, int pos, V1 exp) {
 }
 
 TEST_F(VariableIRBuilderTest, test_mutable_variable_assign) {
-    MutableVariableCheck<int32_t>(::fesql::node::DataType::kInt32, 999, 999);
-    MutableVariableCheck<int64_t>(::fesql::node::DataType::kInt64, 99999999L,
+    MutableVariableCheck<int32_t>(::hybridse::node::DataType::kInt32, 999, 999);
+    MutableVariableCheck<int64_t>(::hybridse::node::DataType::kInt64, 99999999L,
                                   99999999L);
-    MutableVariableCheck<float>(::fesql::node::DataType::kFloat, 0.999f,
+    MutableVariableCheck<float>(::hybridse::node::DataType::kFloat, 0.999f,
                                 0.999f);
-    MutableVariableCheck<double>(::fesql::node::DataType::kDouble, 0.999,
+    MutableVariableCheck<double>(::hybridse::node::DataType::kDouble, 0.999,
                                  0.999);
-    MutableVariableCheck<int16_t>(::fesql::node::DataType::kInt16, 99, 99);
+    MutableVariableCheck<int16_t>(::hybridse::node::DataType::kInt16, 99, 99);
 }
 
 TEST_F(VariableIRBuilderTest, test_int32_array_variable) {
@@ -133,9 +134,11 @@ TEST_F(VariableIRBuilderTest, test_int32_array_variable) {
     for (int j = 0; j < len; ++j) {
         int_num[j] = j + 1;
     }
-    ArrayVariableCheck<int32_t>(::fesql::node::DataType::kInt32, int_num, 0, 1);
-    ArrayVariableCheck<int32_t>(::fesql::node::DataType::kInt32, int_num, 1, 2);
-    ArrayVariableCheck<int32_t>(::fesql::node::DataType::kInt32, int_num, 9,
+    ArrayVariableCheck<int32_t>(::hybridse::node::DataType::kInt32, int_num, 0,
+                                1);
+    ArrayVariableCheck<int32_t>(::hybridse::node::DataType::kInt32, int_num, 1,
+                                2);
+    ArrayVariableCheck<int32_t>(::hybridse::node::DataType::kInt32, int_num, 9,
                                 10);
 }
 
@@ -146,16 +149,16 @@ TEST_F(VariableIRBuilderTest, test_int8ptr_array_variable) {
     for (size_t j = 0; j < strs.size(); ++j) {
         int_num[j] = reinterpret_cast<int8_t *>(&(strs[j]));
     }
-    ArrayVariableCheck<int8_t *>(::fesql::node::DataType::kInt8Ptr, int_num, 0,
-                                 reinterpret_cast<int8_t *>(&strs[0]));
-    ArrayVariableCheck<int8_t *>(::fesql::node::DataType::kInt8Ptr, int_num, 1,
-                                 reinterpret_cast<int8_t *>(&strs[1]));
-    ArrayVariableCheck<int8_t *>(::fesql::node::DataType::kInt8Ptr, int_num, 7,
-                                 reinterpret_cast<int8_t *>(&strs[7]));
+    ArrayVariableCheck<int8_t *>(::hybridse::node::DataType::kInt8Ptr, int_num,
+                                 0, reinterpret_cast<int8_t *>(&strs[0]));
+    ArrayVariableCheck<int8_t *>(::hybridse::node::DataType::kInt8Ptr, int_num,
+                                 1, reinterpret_cast<int8_t *>(&strs[1]));
+    ArrayVariableCheck<int8_t *>(::hybridse::node::DataType::kInt8Ptr, int_num,
+                                 7, reinterpret_cast<int8_t *>(&strs[7]));
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     InitializeNativeTarget();

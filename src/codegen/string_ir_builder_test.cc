@@ -28,7 +28,7 @@
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 ExitOnError ExitOnErr;
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 class StringIRBuilderTest : public ::testing::Test {
  public:
@@ -169,7 +169,7 @@ TEST_F(StringIRBuilderTest, StringRefOp) {
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

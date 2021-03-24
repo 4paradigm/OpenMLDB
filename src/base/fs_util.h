@@ -20,12 +20,12 @@
 #include <string>
 #include <vector>
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 bool ListDir(const std::string& path,
              std::vector<std::string>& files);  // NOLINT
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_BASE_FS_UTIL_H_

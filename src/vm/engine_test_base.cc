@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 #include "vm/engine_test_base.h"
-namespace fesql {
+#include "vm/sql_compiler.h"
+namespace hybridse {
 namespace vm {
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
-                                         yaml_path, cases)) {
+    if (!SQLCase::CreateSQLCasesFromYaml(
+            hybridse::sqlcase::FindSQLCaseBaseDirPath(), yaml_path, cases)) {
         FAIL();
     }
 }
@@ -40,7 +41,7 @@ void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema) {
 }
 
 std::string YamlTypeName(type::Type type) {
-    return fesql::sqlcase::SQLCase::TypeString(type);
+    return hybridse::sqlcase::SQLCase::TypeString(type);
 }
 
 // 打印符合yaml测试框架格式的预期结果
@@ -73,7 +74,7 @@ void PrintYamlResult(const vm::Schema& schema, const std::vector<Row>& rows) {
 void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
     std::ostringstream oss;
     RowView row_view(schema);
-    ::fesql::base::TextTable t('-', '|', '+');
+    ::hybridse::base::TextTable t('-', '|', '+');
     // Add Header
     for (int i = 0; i < schema.size(); i++) {
         t.add(schema.Get(i).name());
@@ -126,7 +127,7 @@ const std::vector<Row> SortRows(const vm::Schema& schema,
         return rows;
     }
 
-    if (schema.Get(idx).type() == fesql::type::kVarchar) {
+    if (schema.Get(idx).type() == hybridse::type::kVarchar) {
         std::vector<std::pair<std::string, Row>> sort_rows;
         for (auto row : rows) {
             row_view.Reset(row.buf());
@@ -182,25 +183,25 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
             }
             ASSERT_FALSE(row_view.IsNULL(i)) << " At " << i;
             switch (schema.Get(i).type()) {
-                case fesql::type::kInt32: {
+                case hybridse::type::kInt32: {
                     ASSERT_EQ(row_view.GetInt32Unsafe(i),
                               row_view_exp.GetInt32Unsafe(i))
                         << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
-                case fesql::type::kInt64: {
+                case hybridse::type::kInt64: {
                     ASSERT_EQ(row_view.GetInt64Unsafe(i),
                               row_view_exp.GetInt64Unsafe(i))
                         << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
-                case fesql::type::kInt16: {
+                case hybridse::type::kInt16: {
                     ASSERT_EQ(row_view.GetInt16Unsafe(i),
                               row_view_exp.GetInt16Unsafe(i))
                         << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
-                case fesql::type::kFloat: {
+                case hybridse::type::kFloat: {
                     float act = row_view.GetFloatUnsafe(i);
                     float exp = row_view_exp.GetFloatUnsafe(i);
                     if (IsNaN(exp)) {
@@ -212,7 +213,7 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                     }
                     break;
                 }
-                case fesql::type::kDouble: {
+                case hybridse::type::kDouble: {
                     double act = row_view.GetDoubleUnsafe(i);
                     double exp = row_view_exp.GetDoubleUnsafe(i);
                     if (IsNaN(exp)) {
@@ -224,25 +225,25 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                     }
                     break;
                 }
-                case fesql::type::kVarchar: {
+                case hybridse::type::kVarchar: {
                     ASSERT_EQ(row_view.GetStringUnsafe(i),
                               row_view_exp.GetStringUnsafe(i))
                         << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
-                case fesql::type::kDate: {
+                case hybridse::type::kDate: {
                     ASSERT_EQ(row_view.GetDateUnsafe(i),
                               row_view_exp.GetDateUnsafe(i))
                         << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
-                case fesql::type::kTimestamp: {
+                case hybridse::type::kTimestamp: {
                     ASSERT_EQ(row_view.GetTimestampUnsafe(i),
                               row_view_exp.GetTimestampUnsafe(i))
                         << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
-                case fesql::type::kBool: {
+                case hybridse::type::kBool: {
                     ASSERT_EQ(row_view.GetBoolUnsafe(i),
                               row_view_exp.GetBoolUnsafe(i))
                         << " At " << i << " " << schema.Get(i).name();
@@ -272,7 +273,9 @@ void DoEngineCheckExpect(const SQLCase& sql_case,
 
     bool is_batch_request = session->engine_mode() == kBatchRequestMode;
     if (is_batch_request) {
-        const auto& sql_ctx = session->GetCompileInfo()->get_sql_context();
+        const auto& sql_ctx =
+            std::dynamic_pointer_cast<SQLCompileInfo>(session->GetCompileInfo())
+                ->get_sql_context();
         const auto& output_common_column_indices =
             sql_ctx.batch_request_info.output_common_column_indices;
         if (!output_common_column_indices.empty() &&
@@ -365,8 +368,8 @@ Status EngineTestRunner::ExtractTableInfoFromCreateString(
                "Fail extract with empty create string");
 
     node::NodeManager manager;
-    parser::FeSQLParser parser;
-    fesql::plan::NodePointVector trees;
+    parser::HybridSEParser parser;
+    hybridse::plan::NodePointVector trees;
     base::Status status;
     int ret = parser.parse(create, trees, &manager, status);
 
@@ -434,7 +437,7 @@ Status EngineTestRunner::Compile() {
     }
     LOG(INFO) << "Compile SQL:\n" << sql_str;
     CHECK_TRUE(session_ != nullptr, common::kSQLError, "Session is not set");
-    if (fesql::sqlcase::SQLCase::IS_DEBUG() || sql_case_.debug()) {
+    if (hybridse::sqlcase::SQLCase::IS_DEBUG() || sql_case_.debug()) {
         session_->EnableDebug();
     }
     struct timeval st;
@@ -453,12 +456,16 @@ Status EngineTestRunner::Compile() {
     } else {
         LOG(INFO) << "SQL output schema:";
         std::ostringstream oss;
-        session_->GetPhysicalPlan()->Print(oss, "");
+        std::dynamic_pointer_cast<SQLCompileInfo>(session_->GetCompileInfo())
+            ->GetPhysicalPlan()
+            ->Print(oss, "");
         LOG(INFO) << "Physical plan:";
         std::cerr << oss.str() << std::endl;
 
         std::ostringstream runner_oss;
-        session_->GetClusterJob().Print(runner_oss, "");
+        std::dynamic_pointer_cast<SQLCompileInfo>(session_->GetCompileInfo())
+            ->GetClusterJob()
+            .Print(runner_oss, "");
         LOG(INFO) << "Runner plan:";
         std::cerr << runner_oss.str() << std::endl;
     }
@@ -478,7 +485,9 @@ void EngineTestRunner::RunCheck() {
         return;
     }
     std::ostringstream oss;
-    session_->GetPhysicalPlan()->Print(oss, "");
+    std::dynamic_pointer_cast<SQLCompileInfo>(session_->GetCompileInfo())
+        ->GetPhysicalPlan()
+        ->Print(oss, "");
     if (!sql_case_.batch_plan().empty() && engine_mode == kBatchMode) {
         ASSERT_EQ(oss.str(), sql_case_.batch_plan());
     } else if (!sql_case_.cluster_request_plan().empty() &&
@@ -765,4 +774,4 @@ INSTANTIATE_TEST_CASE_P(BatchRequestEngineTest, BatchRequestEngineTest,
                         testing::ValuesIn(InitCases(
                             "/cases/integration/v1/test_batch_request.yaml")));
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

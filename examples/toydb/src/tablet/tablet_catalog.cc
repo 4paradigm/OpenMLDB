@@ -23,10 +23,10 @@
 #include "glog/logging.h"
 #include "storage/table_iterator.h"
 
-namespace fesql {
+namespace hybridse {
 namespace tablet {
-using fesql::codec::RowIterator;
-using fesql::codec::WindowIterator;
+using hybridse::codec::RowIterator;
+using hybridse::codec::WindowIterator;
 
 TabletTableHandler::TabletTableHandler(const vm::Schema schema,
                                        const std::string& name,
@@ -69,7 +69,7 @@ bool TabletTableHandler::Init() {
         const type::IndexDef& index_def = index_list_.Get(i);
         vm::IndexSt index_st;
         index_st.index = i;
-        index_st.ts_pos = ::fesql::vm::INVALID_POS;
+        index_st.ts_pos = ::hybridse::vm::INVALID_POS;
         if (!index_def.second_key().empty()) {
             int32_t pos = GetColumnIndex(index_def.second_key());
             if (pos < 0) {
@@ -224,10 +224,10 @@ std::unique_ptr<RowIterator> TabletSegmentHandler::GetIterator() {
     if (iter) {
         iter->Seek(key_);
         if (iter->Valid() &&
-            0 == iter->GetKey().compare(fesql::codec::Row(key_))) {
+            0 == iter->GetKey().compare(hybridse::codec::Row(key_))) {
             return iter->GetValue();
         } else {
-            return std::unique_ptr<::fesql::vm::RowIterator>();
+            return std::unique_ptr<::hybridse::vm::RowIterator>();
         }
     }
     return std::unique_ptr<RowIterator>();
@@ -237,7 +237,7 @@ RowIterator* TabletSegmentHandler::GetRawIterator() {
     if (iter) {
         iter->Seek(key_);
         if (iter->Valid() &&
-            0 == iter->GetKey().compare(fesql::codec::Row(key_))) {
+            0 == iter->GetKey().compare(hybridse::codec::Row(key_))) {
             return iter->GetRawValue();
         } else {
             return nullptr;
@@ -276,4 +276,4 @@ const uint64_t TabletPartitionHandler::GetCount() {
     return cnt;
 }
 }  // namespace tablet
-}  // namespace fesql
+}  // namespace hybridse

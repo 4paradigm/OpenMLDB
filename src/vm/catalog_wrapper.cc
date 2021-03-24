@@ -15,7 +15,7 @@
  */
 
 #include "vm/catalog_wrapper.h"
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
 std::shared_ptr<TableHandler> PartitionProjectWrapper::GetSegment(
@@ -76,4 +76,4 @@ std::shared_ptr<PartitionHandler> TableFilterWrapper::GetPartition(
     }
 }
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

@@ -21,18 +21,18 @@
 #include "node/sql_node.h"
 #include "parser/parser.h"
 
-namespace fesql {
+namespace hybridse {
 namespace parser {
-using fesql::node::NodeManager;
-using fesql::node::NodePointVector;
-using fesql::node::SQLNode;
-using fesql::sqlcase::SQLCase;
+using hybridse::node::NodeManager;
+using hybridse::node::NodePointVector;
+using hybridse::node::SQLNode;
+using hybridse::sqlcase::SQLCase;
 std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
-                                         yaml_path, cases)) {
+    if (!SQLCase::CreateSQLCasesFromYaml(
+            hybridse::sqlcase::FindSQLCaseBaseDirPath(), yaml_path, cases)) {
         FAIL();
     }
 }
@@ -45,7 +45,7 @@ class SqlParserTest : public ::testing::TestWithParam<SQLCase> {
  public:
     SqlParserTest() {
         manager_ = new NodeManager();
-        parser_ = new FeSQLParser();
+        parser_ = new HybridSEParser();
     }
 
     ~SqlParserTest() {
@@ -66,7 +66,7 @@ class SqlParserTest : public ::testing::TestWithParam<SQLCase> {
 
  protected:
     NodeManager *manager_;
-    FeSQLParser *parser_;
+    HybridSEParser *parser_;
 };
 
 INSTANTIATE_TEST_SUITE_P(
@@ -256,62 +256,70 @@ TEST_F(SqlParserTest, Assign_Op_Test) {
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, trees.size());
     std::cout << *(trees.front()) << std::endl;
-    ASSERT_EQ(fesql::node::kFnDef, trees[0]->GetType());
+    ASSERT_EQ(hybridse::node::kFnDef, trees[0]->GetType());
     node::FnNodeFnDef *fn_def = dynamic_cast<node::FnNodeFnDef *>(trees[0]);
     ASSERT_EQ(6u, fn_def->block_->children.size());
 
     {
-        ASSERT_EQ(fesql::node::kFnAssignStmt,
+        ASSERT_EQ(hybridse::node::kFnAssignStmt,
                   fn_def->block_->children[0]->GetType());
-        fesql::node::FnAssignNode *assign =
-            dynamic_cast<fesql::node::FnAssignNode *>(
+        hybridse::node::FnAssignNode *assign =
+            dynamic_cast<hybridse::node::FnAssignNode *>(
                 fn_def->block_->children[0]);
-        ASSERT_EQ(fesql::node::kExprPrimary,
+        ASSERT_EQ(hybridse::node::kExprPrimary,
                   assign->expression_->GetExprType());
     }
     {
-        ASSERT_EQ(fesql::node::kFnAssignStmt,
+        ASSERT_EQ(hybridse::node::kFnAssignStmt,
                   fn_def->block_->children[1]->GetType());
-        fesql::node::FnAssignNode *assign =
-            dynamic_cast<fesql::node::FnAssignNode *>(
+        hybridse::node::FnAssignNode *assign =
+            dynamic_cast<hybridse::node::FnAssignNode *>(
                 fn_def->block_->children[1]);
-        ASSERT_EQ(fesql::node::kExprBinary, assign->expression_->GetExprType());
-        const fesql::node::BinaryExpr *expr =
-            dynamic_cast<const fesql::node::BinaryExpr *>(assign->expression_);
-        ASSERT_EQ(fesql::node::kFnOpAdd, expr->GetOp());
+        ASSERT_EQ(hybridse::node::kExprBinary,
+                  assign->expression_->GetExprType());
+        const hybridse::node::BinaryExpr *expr =
+            dynamic_cast<const hybridse::node::BinaryExpr *>(
+                assign->expression_);
+        ASSERT_EQ(hybridse::node::kFnOpAdd, expr->GetOp());
     }
     {
-        ASSERT_EQ(fesql::node::kFnAssignStmt,
+        ASSERT_EQ(hybridse::node::kFnAssignStmt,
                   fn_def->block_->children[2]->GetType());
-        fesql::node::FnAssignNode *assign =
-            dynamic_cast<fesql::node::FnAssignNode *>(
+        hybridse::node::FnAssignNode *assign =
+            dynamic_cast<hybridse::node::FnAssignNode *>(
                 fn_def->block_->children[2]);
-        ASSERT_EQ(fesql::node::kExprBinary, assign->expression_->GetExprType());
-        const fesql::node::BinaryExpr *expr =
-            dynamic_cast<const fesql::node::BinaryExpr *>(assign->expression_);
-        ASSERT_EQ(fesql::node::kFnOpMinus, expr->GetOp());
+        ASSERT_EQ(hybridse::node::kExprBinary,
+                  assign->expression_->GetExprType());
+        const hybridse::node::BinaryExpr *expr =
+            dynamic_cast<const hybridse::node::BinaryExpr *>(
+                assign->expression_);
+        ASSERT_EQ(hybridse::node::kFnOpMinus, expr->GetOp());
     }
     {
-        ASSERT_EQ(fesql::node::kFnAssignStmt,
+        ASSERT_EQ(hybridse::node::kFnAssignStmt,
                   fn_def->block_->children[3]->GetType());
-        fesql::node::FnAssignNode *assign =
-            dynamic_cast<fesql::node::FnAssignNode *>(
+        hybridse::node::FnAssignNode *assign =
+            dynamic_cast<hybridse::node::FnAssignNode *>(
                 fn_def->block_->children[3]);
-        ASSERT_EQ(fesql::node::kExprBinary, assign->expression_->GetExprType());
-        const fesql::node::BinaryExpr *expr =
-            dynamic_cast<const fesql::node::BinaryExpr *>(assign->expression_);
-        ASSERT_EQ(fesql::node::kFnOpMulti, expr->GetOp());
+        ASSERT_EQ(hybridse::node::kExprBinary,
+                  assign->expression_->GetExprType());
+        const hybridse::node::BinaryExpr *expr =
+            dynamic_cast<const hybridse::node::BinaryExpr *>(
+                assign->expression_);
+        ASSERT_EQ(hybridse::node::kFnOpMulti, expr->GetOp());
     }
     {
-        ASSERT_EQ(fesql::node::kFnAssignStmt,
+        ASSERT_EQ(hybridse::node::kFnAssignStmt,
                   fn_def->block_->children[4]->GetType());
-        fesql::node::FnAssignNode *assign =
-            dynamic_cast<fesql::node::FnAssignNode *>(
+        hybridse::node::FnAssignNode *assign =
+            dynamic_cast<hybridse::node::FnAssignNode *>(
                 fn_def->block_->children[4]);
-        ASSERT_EQ(fesql::node::kExprBinary, assign->expression_->GetExprType());
-        const fesql::node::BinaryExpr *expr =
-            dynamic_cast<const fesql::node::BinaryExpr *>(assign->expression_);
-        ASSERT_EQ(fesql::node::kFnOpFDiv, expr->GetOp());
+        ASSERT_EQ(hybridse::node::kExprBinary,
+                  assign->expression_->GetExprType());
+        const hybridse::node::BinaryExpr *expr =
+            dynamic_cast<const hybridse::node::BinaryExpr *>(
+                assign->expression_);
+        ASSERT_EQ(hybridse::node::kFnOpFDiv, expr->GetOp());
     }
 }
 TEST_F(SqlParserTest, Parser_Insert_ALL_Stmt) {
@@ -361,13 +369,13 @@ TEST_F(SqlParserTest, Parser_Insert_All_Placeholder) {
     auto insert_value = insert_stmt->values_[0]->children_;
 
     ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[0])->GetDataType(),
-              fesql::node::kPlaceholder);
+              hybridse::node::kPlaceholder);
     ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[1])->GetDataType(),
-              fesql::node::kPlaceholder);
+              hybridse::node::kPlaceholder);
     ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[2])->GetDataType(),
-              fesql::node::kPlaceholder);
+              hybridse::node::kPlaceholder);
     ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[3])->GetDataType(),
-              fesql::node::kPlaceholder);
+              hybridse::node::kPlaceholder);
 }
 
 TEST_F(SqlParserTest, Parser_Insert_Part_Placeholder) {
@@ -390,11 +398,11 @@ TEST_F(SqlParserTest, Parser_Insert_Part_Placeholder) {
 
     ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[0])->GetInt(), 1);
     ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[1])->GetDataType(),
-              fesql::node::kPlaceholder);
+              hybridse::node::kPlaceholder);
     ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[2])->GetDouble(),
               3.1);
     ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[3])->GetDataType(),
-              fesql::node::kPlaceholder);
+              hybridse::node::kPlaceholder);
 }
 
 TEST_F(SqlParserTest, Parser_Insert_Stmt) {
@@ -566,8 +574,8 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ(60 * 86400000L, index_node->GetAbsTTL());
 }
 
-void CheckTTL(FeSQLParser *parser, NodeManager *manager, const std::string &sql,
-              int expect) {
+void CheckTTL(HybridSEParser *parser, NodeManager *manager,
+              const std::string &sql, int expect) {
     NodePointVector trees;
     base::Status status;
     int ret = parser->parse(sql.c_str(), trees, manager, status);
@@ -659,7 +667,7 @@ class SqlParserErrorTest : public ::testing::TestWithParam<
  public:
     SqlParserErrorTest() {
         manager_ = new NodeManager();
-        parser_ = new FeSQLParser();
+        parser_ = new HybridSEParser();
     }
 
     ~SqlParserErrorTest() {
@@ -669,7 +677,7 @@ class SqlParserErrorTest : public ::testing::TestWithParam<
 
  protected:
     NodeManager *manager_;
-    FeSQLParser *parser_;
+    HybridSEParser *parser_;
 };
 
 // TODO(chenjing): line and column check
@@ -704,7 +712,7 @@ INSTANTIATE_TEST_SUITE_P(
                        "return c\nend")));
 
 }  // namespace parser
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

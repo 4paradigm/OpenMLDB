@@ -22,24 +22,24 @@
 #include <vector>
 #include "vm/physical_op.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
-using fesql::vm::DataProviderType;
-using fesql::vm::INVALID_POS;
-using fesql::vm::PhysicalDataProviderNode;
-using fesql::vm::PhysicalFilterNode;
-using fesql::vm::PhysicalGroupNode;
-using fesql::vm::PhysicalJoinNode;
-using fesql::vm::PhysicalOpType;
-using fesql::vm::PhysicalPartitionProviderNode;
-using fesql::vm::PhysicalProjectNode;
-using fesql::vm::PhysicalRenameNode;
-using fesql::vm::PhysicalRequestJoinNode;
-using fesql::vm::PhysicalRequestUnionNode;
-using fesql::vm::PhysicalSimpleProjectNode;
-using fesql::vm::PhysicalWindowAggrerationNode;
-using fesql::vm::ProjectType;
+using hybridse::vm::DataProviderType;
+using hybridse::vm::INVALID_POS;
+using hybridse::vm::PhysicalDataProviderNode;
+using hybridse::vm::PhysicalFilterNode;
+using hybridse::vm::PhysicalGroupNode;
+using hybridse::vm::PhysicalJoinNode;
+using hybridse::vm::PhysicalOpType;
+using hybridse::vm::PhysicalPartitionProviderNode;
+using hybridse::vm::PhysicalProjectNode;
+using hybridse::vm::PhysicalRenameNode;
+using hybridse::vm::PhysicalRequestJoinNode;
+using hybridse::vm::PhysicalRequestUnionNode;
+using hybridse::vm::PhysicalSimpleProjectNode;
+using hybridse::vm::PhysicalWindowAggrerationNode;
+using hybridse::vm::ProjectType;
 
 static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col,
                                             const SchemasContext* schemas_ctx,
@@ -656,4 +656,4 @@ static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col,
 }
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse

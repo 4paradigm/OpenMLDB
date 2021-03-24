@@ -25,7 +25,7 @@
 #include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 BufNativeIRBuilder::BufNativeIRBuilder(const size_t schema_idx,
@@ -56,53 +56,54 @@ bool BufNativeIRBuilder::BuildGetField(size_t col_idx, ::llvm::Value* row_ptr,
     }
     if (!SchemaType2DataType(col_info->type, &data_type)) {
         LOG(WARNING) << "unrecognized data type " +
-                            fesql::type::Type_Name(col_info->type);
+                            hybridse::type::Type_Name(col_info->type);
         return false;
     }
     uint32_t offset = col_info->offset;
 
     ::llvm::IRBuilder<> builder(block_);
     switch (data_type.base_) {
-        case ::fesql::node::kBool: {
+        case ::hybridse::node::kBool: {
             llvm::Type* bool_ty = builder.getInt1Ty();
-            return BuildGetPrimaryField("fesql_storage_get_bool_field", row_ptr,
-                                        col_idx, offset, bool_ty, output);
+            return BuildGetPrimaryField("hybridse_storage_get_bool_field",
+                                        row_ptr, col_idx, offset, bool_ty,
+                                        output);
         }
-        case ::fesql::node::kInt16: {
+        case ::hybridse::node::kInt16: {
             llvm::Type* i16_ty = builder.getInt16Ty();
-            return BuildGetPrimaryField("fesql_storage_get_int16_field",
+            return BuildGetPrimaryField("hybridse_storage_get_int16_field",
                                         row_ptr, col_idx, offset, i16_ty,
                                         output);
         }
-        case ::fesql::node::kInt32: {
+        case ::hybridse::node::kInt32: {
             llvm::Type* i32_ty = builder.getInt32Ty();
-            return BuildGetPrimaryField("fesql_storage_get_int32_field",
+            return BuildGetPrimaryField("hybridse_storage_get_int32_field",
                                         row_ptr, col_idx, offset, i32_ty,
                                         output);
         }
-        case ::fesql::node::kInt64: {
+        case ::hybridse::node::kInt64: {
             llvm::Type* i64_ty = builder.getInt64Ty();
-            return BuildGetPrimaryField("fesql_storage_get_int64_field",
+            return BuildGetPrimaryField("hybridse_storage_get_int64_field",
                                         row_ptr, col_idx, offset, i64_ty,
                                         output);
         }
-        case ::fesql::node::kFloat: {
+        case ::hybridse::node::kFloat: {
             llvm::Type* float_ty = builder.getFloatTy();
-            return BuildGetPrimaryField("fesql_storage_get_float_field",
+            return BuildGetPrimaryField("hybridse_storage_get_float_field",
                                         row_ptr, col_idx, offset, float_ty,
                                         output);
         }
-        case ::fesql::node::kDouble: {
+        case ::hybridse::node::kDouble: {
             llvm::Type* double_ty = builder.getDoubleTy();
-            return BuildGetPrimaryField("fesql_storage_get_double_field",
+            return BuildGetPrimaryField("hybridse_storage_get_double_field",
                                         row_ptr, col_idx, offset, double_ty,
                                         output);
         }
-        case ::fesql::node::kTimestamp: {
+        case ::hybridse::node::kTimestamp: {
             NativeValue int64_val;
-            if (!BuildGetPrimaryField("fesql_storage_get_int64_field", row_ptr,
-                                      col_idx, offset, builder.getInt64Ty(),
-                                      &int64_val)) {
+            if (!BuildGetPrimaryField("hybridse_storage_get_int64_field",
+                                      row_ptr, col_idx, offset,
+                                      builder.getInt64Ty(), &int64_val)) {
                 return false;
             }
             codegen::TimestampIRBuilder timestamp_builder(block_->getModule());
@@ -114,11 +115,11 @@ bool BufNativeIRBuilder::BuildGetField(size_t col_idx, ::llvm::Value* row_ptr,
             *output = int64_val.Replace(ts_st);
             return true;
         }
-        case ::fesql::node::kDate: {
+        case ::hybridse::node::kDate: {
             NativeValue int32_val;
-            if (!BuildGetPrimaryField("fesql_storage_get_int32_field", row_ptr,
-                                      col_idx, offset, builder.getInt32Ty(),
-                                      &int32_val)) {
+            if (!BuildGetPrimaryField("hybridse_storage_get_int32_field",
+                                      row_ptr, col_idx, offset,
+                                      builder.getInt32Ty(), &int32_val)) {
                 return false;
             }
             codegen::DateIRBuilder date_ir_builder(block_->getModule());
@@ -131,7 +132,7 @@ bool BufNativeIRBuilder::BuildGetField(size_t col_idx, ::llvm::Value* row_ptr,
             return true;
         }
 
-        case ::fesql::node::kVarchar: {
+        case ::hybridse::node::kVarchar: {
             codec::StringColInfo str_info;
             if (!format_->GetStringColumnInfo(col_idx, &str_info)) {
                 LOG(WARNING)
@@ -194,7 +195,7 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t col_idx, uint32_t offset,
     ::llvm::Type* i8_ty = builder.getInt8Ty();
     ::llvm::FunctionCallee addr_space_callee =
         block_->getModule()->getOrInsertFunction(
-            "fesql_storage_get_str_addr_space", i8_ty, i32_ty);
+            "hybridse_storage_get_str_addr_space", i8_ty, i32_ty);
     ::llvm::Value* str_addr_space =
         builder.CreateCall(addr_space_callee, {size});
     str_addr_space =
@@ -215,7 +216,7 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t col_idx, uint32_t offset,
 
     // get str field declear
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
-        "fesql_storage_get_str_field", i32_ty, i8_ptr_ty, i32_ty, i32_ty,
+        "hybridse_storage_get_str_field", i32_ty, i8_ptr_ty, i32_ty, i32_ty,
         i32_ty, i32_ty, i32_ty, i8_ptr_ty->getPointerTo(),
         i32_ty->getPointerTo(), bool_ptr_ty);
 
@@ -257,15 +258,15 @@ BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(
       block_(block) {
     str_field_start_offset_ = codec::GetStartOffset(schema_->size());
     for (int32_t idx = 0; idx < schema_->size(); idx++) {
-        const ::fesql::type::ColumnDef& column = schema_->Get(idx);
-        if (column.type() == ::fesql::type::kVarchar) {
+        const ::hybridse::type::ColumnDef& column = schema_->Get(idx);
+        if (column.type() == ::hybridse::type::kVarchar) {
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
         } else {
             auto TYPE_SIZE_MAP = codec::GetTypeSizeMap();
             auto it = TYPE_SIZE_MAP.find(column.type());
             if (it == TYPE_SIZE_MAP.end()) {
-                LOG(WARNING) << ::fesql::type::Type_Name(column.type())
+                LOG(WARNING) << ::hybridse::type::Type_Name(column.type())
                              << " is not supported";
             } else {
                 offset_vec_.push_back(str_field_start_offset_);
@@ -311,7 +312,7 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
     // append header
     ok = AppendHeader(
         i8_ptr, row_size,
-        builder.getInt32(::fesql::codec::GetBitmapSize(schema_->size())));
+        builder.getInt32(::hybridse::codec::GetBitmapSize(schema_->size())));
     if (!ok) {
         return false;
     }
@@ -320,7 +321,7 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
     ::llvm::Value* str_addr_space_val = NULL;
     TimestampIRBuilder timestamp_builder(block_->getModule());
     for (int32_t idx = 0; idx < schema_->size(); idx++) {
-        const ::fesql::type::ColumnDef& column = schema_->Get(idx);
+        const ::hybridse::type::ColumnDef& column = schema_->Get(idx);
         // TODO(wangtaize) null check
         auto output_iter = outputs_->find(idx);
         if (output_iter == outputs_->end()) {
@@ -329,14 +330,14 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
 
         const NativeValue& val = output_iter->second;
         switch (column.type()) {
-            case ::fesql::type::kBool:
-            case ::fesql::type::kInt16:
-            case ::fesql::type::kInt32:
-            case ::fesql::type::kInt64:
-            case ::fesql::type::kTimestamp:
-            case ::fesql::type::kDate:
-            case ::fesql::type::kFloat:
-            case ::fesql::type::kDouble: {
+            case ::hybridse::type::kBool:
+            case ::hybridse::type::kInt16:
+            case ::hybridse::type::kInt32:
+            case ::hybridse::type::kInt64:
+            case ::hybridse::type::kTimestamp:
+            case ::hybridse::type::kDate:
+            case ::hybridse::type::kFloat:
+            case ::hybridse::type::kDouble: {
                 uint32_t offset = offset_vec_.at(idx);
                 if (val.GetType()->isFloatTy() || val.GetType()->isDoubleTy() ||
                     val.GetType()->isIntegerTy()) {
@@ -406,7 +407,7 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
                 }
                 break;
             }
-            case ::fesql::type::kVarchar: {
+            case ::hybridse::type::kVarchar: {
                 if (str_body_offset == NULL) {
                     str_addr_space_val = builder.CreateLoad(
                         i32_ty, str_addr_space_ptr, "load_str_space");
@@ -486,7 +487,7 @@ bool BufNativeEncoderIRBuilder::AppendString(
         builder.CreateIntCast(str_val.GetIsNull(&builder), i8_ty, true);
 
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
-        "fesql_storage_encode_string_field",
+        "hybridse_storage_encode_string_field",
         size_ty,    // return type
         i8_ptr_ty,  // buf ptr
         size_ty,    // buf size
@@ -533,7 +534,8 @@ bool BufNativeEncoderIRBuilder::AppendPrimary(::llvm::Value* i8_ptr,
         ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
         ::llvm::Type* void_ty = builder.getVoidTy();
         auto callee = block_->getModule()->getOrInsertFunction(
-            "fesql_storage_encode_nullbit", void_ty, i8_ptr_ty, size_ty, i8_ty);
+            "hybridse_storage_encode_nullbit", void_ty, i8_ptr_ty, size_ty,
+            i8_ty);
         builder.CreateCall(callee, {i8_ptr, builder.getInt32(field_idx),
                                     builder.CreateIntCast(
                                         val.GetIsNull(&builder), i8_ty, true)});
@@ -603,9 +605,9 @@ bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr,
     // build get string length and call native functon
     ::llvm::Type* size_ty = builder.getInt32Ty();
     for (int32_t idx = 0; idx < schema_->size(); ++idx) {
-        const ::fesql::type::ColumnDef& column = schema_->Get(idx);
+        const ::hybridse::type::ColumnDef& column = schema_->Get(idx);
         DLOG(INFO) << "output column " << column.name() << " " << idx;
-        if (column.type() == ::fesql::type::kVarchar) {
+        if (column.type() == ::hybridse::type::kVarchar) {
             const NativeValue& fe_str = outputs_->at(idx);
             ::llvm::Value* fe_str_st = fe_str.GetValue(&builder);
             if (fe_str_st == NULL) {
@@ -634,7 +636,7 @@ bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr,
     }
 
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
-        "fesql_storage_encode_calc_size", size_ty, size_ty, size_ty, size_ty,
+        "hybridse_storage_encode_calc_size", size_ty, size_ty, size_ty, size_ty,
         size_ty->getPointerTo());
     *output_ptr = builder.CreateCall(
         callee,
@@ -645,4 +647,4 @@ bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr,
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

@@ -22,17 +22,18 @@
 #include "passes/physical/physical_pass.h"
 #include "vm/engine.h"
 #include "vm/simple_catalog.h"
+#include "vm/sql_compiler.h"
 #include "vm/test_base.h"
 #include "yaml-cpp/yaml.h"
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
-                                         yaml_path, cases)) {
+    if (!SQLCase::CreateSQLCasesFromYaml(
+            hybridse::sqlcase::FindSQLCaseBaseDirPath(), yaml_path, cases)) {
         FAIL();
     }
 }
@@ -193,7 +194,9 @@ PhysicalOpNode* GetTestSQLPlan(SQLCase& sql_case,  // NOLINT
         LOG(WARNING) << status;
         return nullptr;
     }
-    return session->GetCompileInfo()->get_sql_context().physical_plan;
+    return std::dynamic_pointer_cast<SQLCompileInfo>(session->GetCompileInfo())
+        ->get_sql_context()
+        .physical_plan;
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -259,7 +262,7 @@ TEST_F(SchemasContextTest, NewSchemasContextTest) {
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::GTEST_FLAG(color) = "yes";

@@ -5,7 +5,7 @@
 #pragma once
 #include <stdint.h>
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 // A very simple random number generator.  Not especially good at
@@ -58,4 +58,4 @@ class Random {
 };
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse

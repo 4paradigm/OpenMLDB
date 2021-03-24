@@ -18,7 +18,7 @@
 #include "gtest/gtest.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
-namespace fesql {
+namespace hybridse {
 namespace bm {
 class EngineBMCaseTest : public ::testing::Test {
  public:
@@ -132,7 +132,7 @@ TEST_F(EngineBMCaseTest, EngineSimpleSelectDate_TEST) {
 //    EngineSimpleUDF(nullptr, TEST);
 // }
 }  // namespace bm
-}  // namespace fesql
+}  // namespace hybridse
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

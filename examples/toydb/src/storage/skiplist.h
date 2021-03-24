@@ -23,10 +23,10 @@
 #include "base/fe_random.h"
 #include "base/iterator.h"
 
-namespace fesql {
+namespace hybridse {
 namespace storage {
 
-using ::fesql::base::Iterator;
+using ::hybridse::base::Iterator;
 
 // SkipList node , a thread safe structure
 template <class K, class V>
@@ -417,10 +417,10 @@ class SkipList {
     uint8_t const Branch;
     std::atomic<uint8_t> max_height_;
     Comparator const compare_;
-    ::fesql::base::Random rand_;
+    ::hybridse::base::Random rand_;
     Node<K, V>* head_;
     std::atomic<Node<K, V>*> tail_;
 };
 
 }  // namespace storage
-}  // namespace fesql
+}  // namespace hybridse

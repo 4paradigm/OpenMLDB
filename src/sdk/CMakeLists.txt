@@ -17,7 +17,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_BINARY_DIR}/src)
 
 
-set(SDK_DEPS_LIBS fesql_core fesql_flags
+set(SDK_DEPS_LIBS hybridse_core hybridse_flags
 		${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
 # split sdk test and bm
@@ -32,48 +32,48 @@ foreach(SRC_FILE ${BM_FILES})
 	endif()
 endforeach()
 
-# fesql sdk library
-add_library(fesql_sdk STATIC ${SDK_SRC_FILE_LIST})
-target_link_libraries(fesql_sdk ${SDK_DEPS_LIBS})
+# hybridse sdk library
+add_library(hybridse_sdk STATIC ${SDK_SRC_FILE_LIST})
+target_link_libraries(hybridse_sdk ${SDK_DEPS_LIBS})
 
-set_property(SOURCE fesql_interface_core.i PROPERTY CPLUSPLUS ON)
+set_property(SOURCE hybridse_interface_core.i PROPERTY CPLUSPLUS ON)
 
 if(PYSDK_ENABLE)
 set(UseSWIG_TARGET_NAME_PREFERENCE STANDARD)
-swig_add_library(fesql_pysdk
+swig_add_library(hybridse_pysdk
         TYPE SHARED
         LANGUAGE python
-        OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/fesql/
-        SOURCES fesql_interface_core.i)
-target_include_directories(fesql_pysdk PRIVATE ${PYTHON_INCLUDE_DIRS})
-target_link_libraries(fesql_pysdk ${SDK_DEPS_LIBS})
-set_property(SOURCE fesql_interface_core.i PROPERTY SWIG_FLAGS ${CUR_SWIG_FLAGS})
+        OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/hybridse/
+        SOURCES hybridse_interface_core.i)
+target_include_directories(hybridse_pysdk PRIVATE ${PYTHON_INCLUDE_DIRS})
+target_link_libraries(hybridse_pysdk ${SDK_DEPS_LIBS})
+set_property(SOURCE hybridse_interface_core.i PROPERTY SWIG_FLAGS ${CUR_SWIG_FLAGS})
 endif()
 
 if(JAVASDK_ENABLE)
-set_property(SOURCE fesql_interface_core.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
-swig_add_library(fesql_jsdk_core
+set_property(SOURCE hybridse_interface_core.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
+swig_add_library(hybridse_jsdk_core
         TYPE SHARED
         LANGUAGE java
-        OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/java/com/_4paradigm/
-        SOURCES fesql_interface_core.i)
-target_include_directories(fesql_jsdk_core PRIVATE ${JNI_INCLUDE_DIRS})
-target_compile_options(fesql_jsdk_core PRIVATE -w)
+        OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/hybridse-native/src/main/java/com/_4paradigm/
+        SOURCES hybridse_interface_core.i)
+target_include_directories(hybridse_jsdk_core PRIVATE ${JNI_INCLUDE_DIRS})
+target_compile_options(hybridse_jsdk_core PRIVATE -w)
 set(sdk_core_deps_libs
-	fesql_core fesql_flags ${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${COMMON_LIBS})
-target_link_libraries(fesql_jsdk_core PRIVATE glog ${sdk_core_deps_libs})
+	hybridse_core hybridse_flags ${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${COMMON_LIBS})
+target_link_libraries(hybridse_jsdk_core PRIVATE glog ${sdk_core_deps_libs})
 
 if(APPLE)
-	set_target_properties(fesql_jsdk_core PROPERTIES
+	set_target_properties(hybridse_jsdk_core PROPERTIES
            SUFFIX ".dylib")
 endif()
 endif()
 
 if(PYSDK_ENABLE)
 if(APPLE)
-  	set_target_properties(fesql_pysdk PROPERTIES
+  	set_target_properties(hybridse_pysdk PROPERTIES
            SUFFIX ".so")
-  	set_property(TARGET fesql_pysdk APPEND PROPERTY
+  	set_property(TARGET hybridse_pysdk APPEND PROPERTY
     			 LINK_FLAGS "-flat_namespace -undefined suppress")
 endif()
 
@@ -102,14 +102,14 @@ add_custom_command(OUTPUT
 	COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "setup(" >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  name='${PROJECT_NAME}'," >> setup.py
-    COMMAND ${CMAKE_COMMAND} -E echo "  version='${FESQL_VERSION_MAJOR}.${FESQL_VERSION_MEDIUM}.${FESQL_VERSION_MINOR}.${FESQL_VERSION_BUG}'," >> setup.py
+    COMMAND ${CMAKE_COMMAND} -E echo "  version='${HYBRIDSE_VERSION_MAJOR}.${HYBRIDSE_VERSION_MINOR}.${HYBRIDSE_VERSION_BUG}'," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  author='4pd'," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  url='4paradigm.com'," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  distclass=BinaryDistribution," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  cmdclass={'install': InstallPlatlib}," >> setup.py
     COMMAND ${CMAKE_COMMAND} -E echo "  packages=find_packages()," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  package_data={" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  'fesql':['$<TARGET_FILE_NAME:fesql_pysdk>']," >> setup.py
+	COMMAND ${CMAKE_COMMAND} -E echo "  'hybridse':['$<TARGET_FILE_NAME:hybridse_pysdk>']," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  }," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  include_package_data=True," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  classifiers=[" >> setup.py
@@ -149,10 +149,10 @@ search_python_module(wheel)
 
 add_custom_target(python_package ALL
 	DEPENDS python/setup.py
-	COMMAND ${CMAKE_COMMAND} -E make_directory fesql
+	COMMAND ${CMAKE_COMMAND} -E make_directory hybridse
 	COMMAND ${CMAKE_COMMAND} -E remove_directory dist
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/__init__.py.in fesql/__init__.py
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_pysdk> fesql/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/__init__.py.in hybridse/__init__.py
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hybridse_pysdk> hybridse/
 	COMMAND ${PYTHON_EXECUTABLE} setup.py bdist_wheel
 	BYPRODUCTS
 	  python/${PROJECT_NAME}
@@ -166,8 +166,8 @@ endif()
 if(JAVASDK_ENABLE)
 add_custom_command(OUTPUT
     cp_java_native_so
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_jsdk_core>
-    	${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/resources/
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hybridse_jsdk_core>
+    	${PROJECT_SOURCE_DIR}/java/hybridse-native/src/main/resources/
     )
 
 add_custom_target(java_package ALL
@@ -176,15 +176,5 @@ add_custom_target(java_package ALL
     COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java
 )
-set(FESQL_SPARK_JAR_VERSION 0.0.1-SNAPSHOT)
-install(FILES ${CMAKE_SOURCE_DIR}/java/fesql-spark/target/fesql-spark-${FESQL_SPARK_JAR_VERSION}-with-dependencies.jar
-    DESTINATION ${CMAKE_BINARY_DIR}/release/java/)
-install(PROGRAMS ${CMAKE_SOURCE_DIR}/java/bin/fesql-spark.sh
-    RENAME fesql-spark DESTINATION ${CMAKE_BINARY_DIR}/release/bin)
-install(PROGRAMS ${CMAKE_SOURCE_DIR}/java/bin/benchspark.sh
-    RENAME benchspark DESTINATION ${CMAKE_BINARY_DIR}/release/bin)
-install(PROGRAMS ${CMAKE_SOURCE_DIR}/java/bin/drawflame.sh
-    RENAME drawflame DESTINATION ${CMAKE_BINARY_DIR}/release/bin)
-
-add_dependencies(java_package fesql_proto_java)
+add_dependencies(java_package hybridse_proto_java)
 endif()

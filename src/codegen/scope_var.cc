@@ -18,7 +18,7 @@
 #include <utility>
 #include "glog/logging.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 ScopeVar::ScopeVar() : parent_(nullptr) {}
@@ -103,4 +103,4 @@ const std::vector<::llvm::Value*>* ScopeVar::GetScopeIteratorValues() {
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

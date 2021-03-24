@@ -36,14 +36,15 @@ endif ()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
 
-project(fesql)
+project(hybridse)
 
-set(FESQL_VERSION_MAJOR 0)
-set(FESQL_VERSION_MEDIUM 1)
-set(FESQL_VERSION_MINOR 0)
-set(FESQL_VERSION_BUG 0)
+set(HYBRIDSE_VERSION_MAJOR 0)
+set(HYBRIDSE_VERSION_MINOR 1)
+set(HYBRIDSE_VERSION_BUG 0)
 
 option(TESTING_ENABLE "Enable Test" ON)
+option(CORE_TESTING_ENABLE "Enable Core Test" ON)
+option(EXAMPLES_TESTING_ENABLE "Enable Examples Test" ON)
 option(BENCHMARK_ENABLE "Enable Benchmark" ON)
 option(COVERAGE_ENABLE "Enable Coverage" ON)
 option(PYSDK_ENABLE "Enable pysdk" ON)
@@ -54,32 +55,32 @@ option(LLVM_EXT_ENABLE "Enable llvm ext sources" OFF)
 if (CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif ()
-message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # llvm dependency
-if (NOT DEFINED LLVM_DIR) 
+if (NOT DEFINED LLVM_DIR)
     set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
-endif()
+endif ()
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 if (LLVM_EXT_ENABLE)
     llvm_map_components_to_libnames(LLVM_LIBS
-        support core orcjit nativecodegen
-        mcjit executionengine IntelJITEvents PerfJITEvents object)
-else() 
+            support core orcjit nativecodegen
+            mcjit executionengine IntelJITEvents PerfJITEvents object)
+else ()
     llvm_map_components_to_libnames(LLVM_LIBS
-        support core orcjit nativecodegen)
-endif()
+            support core orcjit nativecodegen)
+endif ()
 
 find_package(Threads)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
-    set(COMMON_LIBS boost_date_time boost_filesystem boost_regex leveldb protobuf glog gflags unwind lzma z snappy ssl crypto dl)
+    set(COMMON_LIBS boost_date_time boost_filesystem boost_regex leveldb protobuf glog gflags unwind z snappy ssl crypto dl)
     set(BRPC_LIBS brpc ${COMMON_LIBS})
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB
@@ -98,10 +99,9 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif ()
 
 set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
-set(abseil-cpp_DIR "${PROJECT_SOURCE_DIR}/thirdparty/")
 configure_file(
         "${PROJECT_SOURCE_DIR}/src/version.h.in"
-        "${PROJECT_SOURCE_DIR}/src/fe_version.h"
+        "${PROJECT_SOURCE_DIR}/src/hybridse_version.h"
 )
 
 if (TESTING_ENABLE)
@@ -136,7 +136,6 @@ endif ()
 set(boost_libs boost_graph)
 find_package(yaml-cpp REQUIRED)
 set(yaml_libs yaml-cpp)
-set(ABSL_LIBS absl_time absl_time_zone absl_civil_time absl_base absl_int128)
 add_definitions('-g')
 add_definitions('-std=c++14')
 add_definitions(${LLVM_DEFINITIONS})
@@ -144,6 +143,7 @@ find_package(SWIG REQUIRED)
 include(UseSWIG)
 
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
+include_directories(${PROJECT_SOURCE_DIR}/include)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib64)
 
@@ -182,10 +182,15 @@ if (COVERAGE_ENABLE)
     endif ()
 endif ()
 
-set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
+if (CMAKE_INSTALL_PREFIX STREQUAL "")
+    set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
+endif ()
+message(STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
+install(TARGETS hybridse_core hybridse_sdk
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-install(TARGETS fesql_core fesql_sdk
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-
+FILE(GLOB header_files "${CMAKE_CURRENT_SOURCE_DIR}/include/*")
+INSTALL(DIRECTORY ${header_files} DESTINATION include)
+INSTALL(DIRECTORY "${CMAKE_BINARY_DIR}/src/proto" DESTINATION include FILES_MATCHING PATTERN "*.h")

@@ -46,10 +46,15 @@ make -j4
 
 ### 使用C++编程接口
 
-HybridSE提供C++编程接口，用户可以在C/C++项目中使用来编译SQL以及生成最终的可执行代码
+HybridSE提供C++编程接口，用户可以在C/C++项目中使用来编译SQL以及生成最终的可执行代码。[C++API文档](./docs/zh-hans/developer_guide/api/c++/reference.md)
 
 ```c++
-TEST_F(EngineTest, SimpleEngineTest) {
+using namespace llvm;       // NOLINT (build/namespaces)
+using namespace llvm::orc;  // NOLINT (build/namespaces)
+namespace fesql {
+namespace cmd {
+// ...
+int run() {
     // build Simple Catalog
     auto catalog = std::make_shared<SimpleCatalog>(true);
     // database simple_db
@@ -89,40 +94,54 @@ TEST_F(EngineTest, SimpleEngineTest) {
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
         builder.SetBuffer(ptr, total_size);
         builder.AppendString(str1.c_str(), str1.size());
-        builder.AppendInt32(1);
+        builder.AppendInt32(i);
         builder.AppendInt64(1576571615000 - i);
         t1_rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
-    catalog->InsertRows("simple_db", "t1", t1_rows);
+    if (!catalog->InsertRows("simple_db", "t1", t1_rows)) {
+        return SIMPLE_ENGINE_DATA_ERROR;
+    }
 
     // build simple engine
     EngineOptions options;
     Engine engine(catalog, options);
-    std::string sql =
-        "select col0, col1, col2, col3, col4, col5, col6, col1+col2 as col12, "
-        "col3+col4 as col34 from t1;";
+    std::string sql = "select col0, col1, col2, col1+col2 as col12 from t1;";
     {
         base::Status get_status;
         BatchRunSession session;
         // compile sql
-        ASSERT_TRUE(engine.Get(sql, "simple_db", session, get_status));
-        ASSERT_EQ(get_status.code, common::kOk);
+        if (!engine.Get(sql, "simple_db", session, get_status) ||
+            get_status.code != common::kOk) {
+            return SIMPLE_ENGINE_COMPILE_ERROR;
+        }
         std::vector<Row> outputs;
         // run sql query
-        ASSERT_EQ(0, session.Run(outputs));
-        LOG(INFO) << "output size " << outputs.size();
+        if (0 != session.Run(outputs)) {
+            return SIMPLE_ENGINE_RUN_ERROR;
+        }
         PrintRows(session.GetSchema(), outputs);
     }
+    return SIMPLE_ENGINE_RET_SUCCESS;
 }
+
+}  // namespace cmd
+}  // namespace fesql
+
+int main(int argc, char** argv) {
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+    return fesql::cmd::run();
+}
+
 ```
 
-#### 编译和运行SimpleEngine
+#### 编译和运行SimpleEngineDemo
 
 ```shell
 cd hybridse/build
-cmake .. -DTESTING_ENABLE=ON 
-make simple_engine_test
-./src/vm/simple_engine_test
+cmake .. 
+make simple_engine_demo
+./src/simple_engine_demo
 ```
 
 

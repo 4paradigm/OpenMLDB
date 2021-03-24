@@ -18,16 +18,16 @@
 #include <gtest/gtest.h>
 #include "codegen/context.h"
 
-namespace fesql {
+namespace hybridse {
 namespace udf {
 
-using fesql::base::Status;
-using fesql::codegen::CodeGenContext;
-using fesql::codegen::NativeValue;
-using fesql::node::ExprAnalysisContext;
-using fesql::node::ExprNode;
-using fesql::node::NodeManager;
-using fesql::node::TypeNode;
+using hybridse::base::Status;
+using hybridse::codegen::CodeGenContext;
+using hybridse::codegen::NativeValue;
+using hybridse::node::ExprAnalysisContext;
+using hybridse::node::ExprNode;
+using hybridse::node::NodeManager;
+using hybridse::node::TypeNode;
 
 class UDFRegistryTest : public ::testing::Test {
  public:
@@ -516,7 +516,7 @@ TEST_F(UDFRegistryTest, static_extern_signature_check) {
 }
 
 }  // namespace udf
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::GTEST_FLAG(color) = "yes";

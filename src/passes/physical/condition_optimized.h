@@ -19,13 +19,13 @@
 #include <utility>
 #include "passes/physical/transform_up_physical_pass.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
-using fesql::vm::Filter;
-using fesql::vm::Join;
-using fesql::vm::PhysicalBinaryNode;
-using fesql::vm::SchemasContext;
+using hybridse::vm::Filter;
+using hybridse::vm::Join;
+using hybridse::vm::PhysicalBinaryNode;
+using hybridse::vm::SchemasContext;
 
 // Optimize filter condition
 // for FilterNode, JoinNode
@@ -63,5 +63,5 @@ class ConditionOptimized : public TransformUpPysicalPass {
 };
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_PASSES_PHYSICAL_CONDITION_OPTIMIZED_H_

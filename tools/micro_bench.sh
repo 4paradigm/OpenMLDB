@@ -15,29 +15,66 @@
 
 #
 # micro_bench.sh
-PWD=`pwd`
-export JAVA_HOME=${PWD}/thirdparty/jdk1.8.0_141
-export PATH=${PWD}/thirdparty/bin:$JAVA_HOME/bin:${PWD}/thirdparty/apache-maven-3.6.3/bin:$PATH
 
+set -eE
+
+# goto toplevel directory
+cd "$(dirname "$0")/.."
+HYRBIDSE_DIR=$(pwd)
+# shellcheck disable=SC1091
+source tools/init_env.profile.sh
+
+
+if uname -a | grep -q Darwin; then
+    # in case coreutils not install on mac
+    alias nproc='sysctl -n hw.logicalcpu'
+fi
+
+rm -rf build
 mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=OFF -DBENCHMARK_ENABLE=ON
-make -j16 fesql_bm toydb_bm
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=OFF -DJAVASDK_ENABLE=OFF -DPYSDK_ENABLE=OFF -DBENCHMARK_ENABLE=ON
+make -j"$(nproc)" hybridse_bm toydb_bm
+if [ -f src/benchmark/udf_bm ]
+then
+  echo "udf benchmark:"
+  src/benchmark/udf_bm 2>/dev/null
+else
+  echo "udf_bm not exist, aborting"
+  exit
+fi
 
-echo "udf benchmark:"
-src/bm/udf_bm 2>/dev/null
+if [ -f examples/toydb/src/bm/storage_bm ]
+then
+  echo "toydb storage benchmark:"
+  examples/toydb/src/bm/storage_bm 2>/dev/null
+else
+  echo "examples/toydb/src/bm/storage_bm not exist, aborting"
+  exit
+fi
+if [ -f examples/toydb/src/bm/engine_bm ]
+then
+  echo "toydb engine benchmark:"
+  SQL_CASE_BASE_DIR=${HYRBIDSE_DIR} examples/toydb/src/bm/engine_bm 2>/dev/null
+else
+  echo "examples/toydb/src/bm/engine_bm not exist, aborting"
+  exit
+fi
 
-echo "toydb storage benchmark:"
-examples/toydb/src/bm/storage_bm 2>/dev/null
+if [ -f examples/toydb/src/bm/client_batch_run_bm ]
+then
+  echo "toydb client batch run benchmark:"
+  SQL_CASE_BASE_DIR=${HYRBIDSE_DIR} examples/toydb/src/bm/client_batch_run_bm 2>/dev/null
+else
+  echo "examples/toydb/src/bm/client_batch_run_bm not exist, aborting"
+  exit
+fi
 
-echo "toydb runner benchmark:"
-examples/toydb/src/bm/runner_bm 2>/dev/null
-
-echo "toydb engine benchmark:"
-examples/toydb/src/bm/engine_bm 2>/dev/null
-
-echo "toydb client batch run benchmark:"
-examples/toydb/src/bm/fesql_client_batch_run_bm 2>/dev/null
-
-echo "toydb batch request benchmark:"
-examples/toydb/src/bm/batch_request_bm 2>/dev/null
+if [ -f examples/toydb/src/bm/batch_request_bm ]
+then
+  echo "toydb batch request benchmark:"
+  SQL_CASE_BASE_DIR=${HYRBIDSE_DIR} examples/toydb/src/bm/batch_request_bm 2>/dev/null
+else
+  echo "examples/toydb/src/bm/batch_request_bm not exist, aborting"
+  exit
+fi
 

@@ -35,7 +35,7 @@
 #include "vm/jit.h"
 #include "vm/sql_compiler.h"
 
-namespace fesql {
+namespace hybridse {
 namespace udf {
 
 template <typename Ret, typename... Args>
@@ -215,6 +215,6 @@ codec::ListRef<bool> MakeBoolList(const std::initializer_list<int>& vec) {
 }
 
 }  // namespace udf
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_UDF_UDF_TEST_H_

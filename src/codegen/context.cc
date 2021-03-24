@@ -18,7 +18,7 @@
 #include <memory>
 #include "glog/logging.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 BlockGroup::BlockGroup(CodeGenContext* ctx) : ctx_(ctx), name_("") {
@@ -367,4 +367,4 @@ CodeScope* CodeGenContext::GetFunctionScope(const std::string& name) {
 }
 
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse

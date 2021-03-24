@@ -38,30 +38,30 @@
 #include "passes/physical/window_column_pruning.h"
 #include "passes/resolve_fn_and_attrs.h"
 
-using ::fesql::base::Status;
-using ::fesql::common::kPlanError;
+using ::hybridse::base::Status;
+using ::hybridse::common::kPlanError;
 
-namespace fesql {
+namespace hybridse {
 namespace vm {
 
-using fesql::passes::CheckExprDependOnChildOnly;
-using fesql::passes::ClusterOptimized;
-using fesql::passes::CommonColumnOptimize;
-using fesql::passes::ConditionOptimized;
-using fesql::passes::GroupAndSortOptimized;
-using fesql::passes::LeftJoinOptimized;
-using fesql::passes::LimitOptimized;
-using fesql::passes::PhysicalPlanPassType;
-using fesql::passes::SimpleProjectOptimized;
-using fesql::passes::WindowColumnPruning;
+using hybridse::passes::CheckExprDependOnChildOnly;
+using hybridse::passes::ClusterOptimized;
+using hybridse::passes::CommonColumnOptimize;
+using hybridse::passes::ConditionOptimized;
+using hybridse::passes::GroupAndSortOptimized;
+using hybridse::passes::LeftJoinOptimized;
+using hybridse::passes::LimitOptimized;
+using hybridse::passes::PhysicalPlanPassType;
+using hybridse::passes::SimpleProjectOptimized;
+using hybridse::passes::WindowColumnPruning;
 
 std::ostream& operator<<(std::ostream& output,
-                         const fesql::vm::LogicalOp& thiz) {
+                         const hybridse::vm::LogicalOp& thiz) {
     return output << *(thiz.node_);
 }
 bool TransformLogicalTreeToLogicalGraph(
-    const ::fesql::node::PlanNode* node, LogicalGraph* graph_ptr,
-    fesql::base::Status& status) {  // NOLINT
+    const ::hybridse::node::PlanNode* node, LogicalGraph* graph_ptr,
+    hybridse::base::Status& status) {  // NOLINT
 
     if (nullptr == node || nullptr == graph_ptr) {
         status.msg = "node or graph_ptr is null";
@@ -140,61 +140,69 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node,
     }
 
     Status status;
-    ::fesql::vm::PhysicalOpNode* op = nullptr;
+    ::hybridse::vm::PhysicalOpNode* op = nullptr;
     switch (node->type_) {
         case node::kPlanTypeLimit: {
             status = TransformLimitOp(
-                dynamic_cast<const ::fesql::node::LimitPlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::LimitPlanNode*>(node),
+                &op);
             break;
         }
         case node::kPlanTypeProject: {
             status = TransformProjectPlanOp(
-                dynamic_cast<const ::fesql::node::ProjectPlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::ProjectPlanNode*>(node),
+                &op);
             break;
         }
         case node::kPlanTypeJoin: {
             status = TransformJoinOp(
-                dynamic_cast<const ::fesql::node::JoinPlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::JoinPlanNode*>(node), &op);
             break;
         }
         case node::kPlanTypeUnion: {
             status = TransformUnionOp(
-                dynamic_cast<const ::fesql::node::UnionPlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::UnionPlanNode*>(node),
+                &op);
             break;
         }
         case node::kPlanTypeGroup: {
             status = TransformGroupOp(
-                dynamic_cast<const ::fesql::node::GroupPlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::GroupPlanNode*>(node),
+                &op);
             break;
         }
         case node::kPlanTypeSort: {
             status = TransformSortOp(
-                dynamic_cast<const ::fesql::node::SortPlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::SortPlanNode*>(node), &op);
             break;
         }
         case node::kPlanTypeFilter: {
             status = TransformFilterOp(
-                dynamic_cast<const ::fesql::node::FilterPlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::FilterPlanNode*>(node),
+                &op);
             break;
         }
         case node::kPlanTypeTable: {
             status = TransformScanOp(
-                dynamic_cast<const ::fesql::node::TablePlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::TablePlanNode*>(node),
+                &op);
             break;
         }
         case node::kPlanTypeQuery: {
             status = TransformQueryPlan(
-                dynamic_cast<const ::fesql::node::QueryPlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::QueryPlanNode*>(node),
+                &op);
             break;
         }
         case node::kPlanTypeRename: {
             status = TransformRenameOp(
-                dynamic_cast<const ::fesql::node::RenamePlanNode*>(node), &op);
+                dynamic_cast<const ::hybridse::node::RenamePlanNode*>(node),
+                &op);
             break;
         }
         case node::kPlanTypeDistinct: {
             status = TransformDistinctOp(
-                dynamic_cast<const ::fesql::node::DistinctPlanNode*>(node),
+                dynamic_cast<const ::hybridse::node::DistinctPlanNode*>(node),
                 &op);
             break;
         }
@@ -361,16 +369,17 @@ Status BatchModeTransformer::TransformProjectPlanOpWithWindowParallel(
     CHECK_TRUE(!node->project_list_vec_.empty(), kPlanError,
                "Fail transform project op: empty projects");
     if (1 == node->project_list_vec_.size()) {
-        return TransformProjectOp(dynamic_cast<fesql::node::ProjectListNode*>(
-                                      node->project_list_vec_[0]),
-                                  depend, false, output);
+        return TransformProjectOp(
+            dynamic_cast<hybridse::node::ProjectListNode*>(
+                node->project_list_vec_[0]),
+            depend, false, output);
     }
 
     std::vector<PhysicalOpNode*> ops;
     for (auto iter = node->project_list_vec_.cbegin();
          iter != node->project_list_vec_.cend(); iter++) {
-        fesql::node::ProjectListNode* project_list =
-            dynamic_cast<fesql::node::ProjectListNode*>(*iter);
+        hybridse::node::ProjectListNode* project_list =
+            dynamic_cast<hybridse::node::ProjectListNode*>(*iter);
 
         PhysicalOpNode* project_op = nullptr;
         CHECK_STATUS(
@@ -388,12 +397,12 @@ Status BatchModeTransformer::TransformProjectPlanOpWithWindowParallel(
 
     PhysicalJoinNode* join = nullptr;
     CHECK_STATUS(CreateOp<PhysicalJoinNode>(&join, ops[0], ops[1],
-                                            ::fesql::node::kJoinTypeConcat));
+                                            ::hybridse::node::kJoinTypeConcat));
 
     for (size_t i = 2; i < ops.size(); ++i) {
         PhysicalJoinNode* new_join = nullptr;
         CHECK_STATUS(CreateOp<PhysicalJoinNode>(
-            &new_join, join, ops[i], ::fesql::node::kJoinTypeConcat));
+            &new_join, join, ops[i], ::hybridse::node::kJoinTypeConcat));
         join = new_join;
     }
 
@@ -438,16 +447,17 @@ Status BatchModeTransformer::TransformProjectPlanOpWindowSerial(
     CHECK_TRUE(!node->project_list_vec_.empty(), kPlanError,
                "Fail transform project op: empty projects");
     if (1 == node->project_list_vec_.size()) {
-        return TransformProjectOp(dynamic_cast<fesql::node::ProjectListNode*>(
-                                      node->project_list_vec_[0]),
-                                  depend, false, output);
+        return TransformProjectOp(
+            dynamic_cast<hybridse::node::ProjectListNode*>(
+                node->project_list_vec_[0]),
+            depend, false, output);
     }
     // 处理project_list_vec_[1...N-1], 串联执行windowAggWithAppendInput
     std::vector<PhysicalOpNode*> ops;
     int32_t project_cnt = 0;
     for (size_t i = node->project_list_vec_.size() - 1; i > 0; i--) {
-        fesql::node::ProjectListNode* project_list =
-            dynamic_cast<fesql::node::ProjectListNode*>(
+        hybridse::node::ProjectListNode* project_list =
+            dynamic_cast<hybridse::node::ProjectListNode*>(
                 node->project_list_vec_[i]);
         project_cnt++;
         PhysicalOpNode* project_op = nullptr;
@@ -458,8 +468,9 @@ Status BatchModeTransformer::TransformProjectPlanOpWindowSerial(
 
     // 第一个Project节点除了计算投影表达式之外，还需要筛选出前面窗口的表达式结果
     // TODO(chenjing): 这部分代码可读性还是太差
-    fesql::node::ProjectListNode* first_project_list =
-        dynamic_cast<fesql::node::ProjectListNode*>(node->project_list_vec_[0]);
+    hybridse::node::ProjectListNode* first_project_list =
+        dynamic_cast<hybridse::node::ProjectListNode*>(
+            node->project_list_vec_[0]);
     auto project_list = node_manager_->MakeProjectListPlanNode(
         first_project_list->w_ptr_, first_project_list->is_window_agg_);
     uint32_t pos = 0;
@@ -885,7 +896,8 @@ Status BatchModeTransformer::TransformDistinctOp(
 }
 
 Status BatchModeTransformer::TransformQueryPlan(
-    const ::fesql::node::PlanNode* node, ::fesql::vm::PhysicalOpNode** output) {
+    const ::hybridse::node::PlanNode* node,
+    ::hybridse::vm::PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
                "Input node or output node is null");
     return TransformPlanOp(node->GetChildren()[0], output);
@@ -1411,25 +1423,26 @@ Status BatchModeTransformer::ValidateIndexOptimization(PhysicalOpNode* in) {
 }
 
 Status BatchModeTransformer::TransformPhysicalPlan(
-    const ::fesql::node::PlanNodeList& trees,
-    ::fesql::vm::PhysicalOpNode** output) {
+    const ::hybridse::node::PlanNodeList& trees,
+    ::hybridse::vm::PhysicalOpNode** output) {
     CHECK_TRUE(module_ != nullptr && !trees.empty(), kPlanError,
                "Module or logical trees is empty");
 
     auto it = trees.begin();
     for (; it != trees.end(); ++it) {
-        const ::fesql::node::PlanNode* node = *it;
+        const ::hybridse::node::PlanNode* node = *it;
         switch (node->GetType()) {
-            case ::fesql::node::kPlanTypeFuncDef: {
-                const ::fesql::node::FuncDefPlanNode* func_def_plan =
-                    dynamic_cast<const ::fesql::node::FuncDefPlanNode*>(node);
+            case ::hybridse::node::kPlanTypeFuncDef: {
+                const ::hybridse::node::FuncDefPlanNode* func_def_plan =
+                    dynamic_cast<const ::hybridse::node::FuncDefPlanNode*>(
+                        node);
                 CHECK_STATUS(GenFnDef(func_def_plan),
                              "Fail to compile user function def");
                 *output = nullptr;
                 break;
             }
-            case ::fesql::node::kPlanTypeUnion:
-            case ::fesql::node::kPlanTypeQuery: {
+            case ::hybridse::node::kPlanTypeUnion:
+            case ::hybridse::node::kPlanTypeQuery: {
                 PhysicalOpNode* physical_plan = nullptr;
                 CHECK_STATUS(TransformQueryPlan(node, &physical_plan),
                              "Fail to transform query plan to physical plan");
@@ -1450,10 +1463,10 @@ Status BatchModeTransformer::TransformPhysicalPlan(
                 *output = optimized_physical_plan;
                 break;
             }
-            case ::fesql::node::kPlanTypeCreateSp: {
-                const ::fesql::node::CreateProcedurePlanNode* sp_plan =
-                    dynamic_cast<const ::fesql::node::CreateProcedurePlanNode*>(
-                        node);
+            case ::hybridse::node::kPlanTypeCreateSp: {
+                const ::hybridse::node::CreateProcedurePlanNode* sp_plan =
+                    dynamic_cast<
+                        const ::hybridse::node::CreateProcedurePlanNode*>(node);
                 return TransformPhysicalPlan(sp_plan->GetInnerPlanNodeList(),
                                              output);
             }
@@ -1472,7 +1485,7 @@ Status BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan) {
         module_ != nullptr && fn_plan != nullptr && fn_plan->fn_def_ != nullptr,
         kPlanError, "Fail to codegen function: module or fn_def node is null");
 
-    ::fesql::codegen::FnIRBuilder builder(module_);
+    ::hybridse::codegen::FnIRBuilder builder(module_);
     ::llvm::Function* fn = nullptr;
     Status status;
     bool ok = builder.Build(fn_plan->fn_def_, &fn, status);
@@ -1682,8 +1695,9 @@ Status BatchModeTransformer::CheckTimeOrIntegerOrderColumn(
                 return Status::OK();
             }
             default: {
-                return Status(kPlanError, "Invalid Order column type : " +
-                                              fesql::type::Type_Name(col_type));
+                return Status(kPlanError,
+                              "Invalid Order column type : " +
+                                  hybridse::type::Type_Name(col_type));
             }
         }
     }
@@ -1749,8 +1763,8 @@ Status RequestModeTransformer::TransformProjectPlanOp(
     std::vector<PhysicalOpNode*> ops;
     for (auto iter = node->project_list_vec_.cbegin();
          iter != node->project_list_vec_.cend(); iter++) {
-        fesql::node::ProjectListNode* project_list =
-            dynamic_cast<fesql::node::ProjectListNode*>(*iter);
+        hybridse::node::ProjectListNode* project_list =
+            dynamic_cast<hybridse::node::ProjectListNode*>(*iter);
 
         PhysicalOpNode* project_op = nullptr;
         CHECK_STATUS(
@@ -1768,12 +1782,12 @@ Status RequestModeTransformer::TransformProjectPlanOp(
 
     PhysicalRequestJoinNode* join = nullptr;
     CHECK_STATUS(CreateOp<PhysicalRequestJoinNode>(
-        &join, ops[0], ops[1], ::fesql::node::kJoinTypeConcat));
+        &join, ops[0], ops[1], ::hybridse::node::kJoinTypeConcat));
 
     for (size_t i = 2; i < ops.size(); ++i) {
         PhysicalRequestJoinNode* new_join = nullptr;
         CHECK_STATUS(CreateOp<PhysicalRequestJoinNode>(
-            &new_join, join, ops[i], ::fesql::node::kJoinTypeConcat));
+            &new_join, join, ops[i], ::hybridse::node::kJoinTypeConcat));
         join = new_join;
     }
 
@@ -1988,4 +2002,4 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  // namespace hybridse

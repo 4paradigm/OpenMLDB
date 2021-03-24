@@ -18,7 +18,7 @@
 #include "codec/fe_schema_codec.h"
 #include "gtest/gtest.h"
 
-namespace fesql {
+namespace hybridse {
 namespace codec {
 
 class SchemaCodecTest
@@ -36,8 +36,8 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
         // varchar
         vm::Schema schema;
         {
-            ::fesql::type::ColumnDef* column = schema.Add();
-            column->set_type(::fesql::type::kVarchar);
+            ::hybridse::type::ColumnDef* column = schema.Add();
+            column->set_type(::hybridse::type::kVarchar);
             column->set_name("col0");
             column->set_is_constant(true);
         }
@@ -48,8 +48,8 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
         // int16
         vm::Schema schema;
         {
-            ::fesql::type::ColumnDef* column = schema.Add();
-            column->set_type(::fesql::type::kInt16);
+            ::hybridse::type::ColumnDef* column = schema.Add();
+            column->set_type(::hybridse::type::kInt16);
             column->set_name("col0");
             column->set_is_constant(true);
         }
@@ -59,8 +59,8 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
         // int32
         vm::Schema schema;
         {
-            ::fesql::type::ColumnDef* column = schema.Add();
-            column->set_type(::fesql::type::kInt32);
+            ::hybridse::type::ColumnDef* column = schema.Add();
+            column->set_type(::hybridse::type::kInt32);
             column->set_name("col0");
             column->set_is_constant(true);
         }
@@ -70,8 +70,8 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
         // int64
         vm::Schema schema;
         {
-            ::fesql::type::ColumnDef* column = schema.Add();
-            column->set_type(::fesql::type::kInt64);
+            ::hybridse::type::ColumnDef* column = schema.Add();
+            column->set_type(::hybridse::type::kInt64);
             column->set_name("col0");
             column->set_is_constant(false);
         }
@@ -81,8 +81,8 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
         // float
         vm::Schema schema;
         {
-            ::fesql::type::ColumnDef* column = schema.Add();
-            column->set_type(::fesql::type::kFloat);
+            ::hybridse::type::ColumnDef* column = schema.Add();
+            column->set_type(::hybridse::type::kFloat);
             column->set_name("col0");
             column->set_is_constant(false);
         }
@@ -92,8 +92,8 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
         // double
         vm::Schema schema;
         {
-            ::fesql::type::ColumnDef* column = schema.Add();
-            column->set_type(::fesql::type::kDouble);
+            ::hybridse::type::ColumnDef* column = schema.Add();
+            column->set_type(::hybridse::type::kDouble);
             column->set_name("col0");
             column->set_is_constant(false);
         }
@@ -103,8 +103,8 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
         // date
         vm::Schema schema;
         {
-            ::fesql::type::ColumnDef* column = schema.Add();
-            column->set_type(::fesql::type::kDate);
+            ::hybridse::type::ColumnDef* column = schema.Add();
+            column->set_type(::hybridse::type::kDate);
             column->set_name("col0");
             column->set_is_constant(false);
         }
@@ -114,8 +114,8 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
         // timestamp
         vm::Schema schema;
         {
-            ::fesql::type::ColumnDef* column = schema.Add();
-            column->set_type(::fesql::type::kTimestamp);
+            ::hybridse::type::ColumnDef* column = schema.Add();
+            column->set_type(::hybridse::type::kTimestamp);
             column->set_name("col0");
             column->set_is_constant(false);
         }
@@ -125,20 +125,20 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
     {
         vm::Schema schema;
         {
-            ::fesql::type::ColumnDef* column = schema.Add();
-            column->set_type(::fesql::type::kTimestamp);
+            ::hybridse::type::ColumnDef* column = schema.Add();
+            column->set_type(::hybridse::type::kTimestamp);
             column->set_name("col0");
             column->set_is_constant(true);
         }
         {
-            ::fesql::type::ColumnDef* column = schema.Add();
-            column->set_type(::fesql::type::kVarchar);
+            ::hybridse::type::ColumnDef* column = schema.Add();
+            column->set_type(::hybridse::type::kVarchar);
             column->set_name("col20");
             column->set_is_constant(false);
         }
         {
-            ::fesql::type::ColumnDef* column = schema.Add();
-            column->set_type(::fesql::type::kInt32);
+            ::hybridse::type::ColumnDef* column = schema.Add();
+            column->set_type(::hybridse::type::kInt32);
             column->set_name("col21");
             column->set_is_constant(false);
         }
@@ -174,7 +174,7 @@ INSTANTIATE_TEST_CASE_P(SchemaCodecTestPrefix, SchemaCodecTest,
                         testing::ValuesIn(GenTestInput()));
 
 }  // namespace codec
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

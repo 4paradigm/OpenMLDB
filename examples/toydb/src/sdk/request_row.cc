@@ -22,7 +22,7 @@
 #include "base/fe_strings.h"
 #include "glog/logging.h"
 
-namespace fesql {
+namespace hybridse {
 namespace sdk {
 
 #define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
@@ -31,15 +31,15 @@ static constexpr uint8_t SDK_SIZE_LENGTH = 4;
 static constexpr uint8_t SDK_HEADER_LENGTH =
     SDK_VERSION_LENGTH + SDK_SIZE_LENGTH;
 static constexpr uint32_t SDK_UINT24_MAX = (1 << 24) - 1;
-static const std::unordered_map<::fesql::sdk::DataType, uint8_t>
-    SDK_TYPE_SIZE_MAP = {{::fesql::sdk::kTypeBool, sizeof(bool)},
-                         {::fesql::sdk::kTypeInt16, sizeof(int16_t)},
-                         {::fesql::sdk::kTypeInt32, sizeof(int32_t)},
-                         {::fesql::sdk::kTypeDate, sizeof(int32_t)},
-                         {::fesql::sdk::kTypeFloat, sizeof(float)},
-                         {::fesql::sdk::kTypeInt64, sizeof(int64_t)},
-                         {::fesql::sdk::kTypeTimestamp, sizeof(int64_t)},
-                         {::fesql::sdk::kTypeDouble, sizeof(double)}};
+static const std::unordered_map<::hybridse::sdk::DataType, uint8_t>
+    SDK_TYPE_SIZE_MAP = {{::hybridse::sdk::kTypeBool, sizeof(bool)},
+                         {::hybridse::sdk::kTypeInt16, sizeof(int16_t)},
+                         {::hybridse::sdk::kTypeInt32, sizeof(int32_t)},
+                         {::hybridse::sdk::kTypeDate, sizeof(int32_t)},
+                         {::hybridse::sdk::kTypeFloat, sizeof(float)},
+                         {::hybridse::sdk::kTypeInt64, sizeof(int64_t)},
+                         {::hybridse::sdk::kTypeTimestamp, sizeof(int64_t)},
+                         {::hybridse::sdk::kTypeDouble, sizeof(double)}};
 static inline uint8_t SDKGetAddrLength(uint32_t size) {
     if (size <= UINT8_MAX) {
         return 1;
@@ -56,7 +56,7 @@ inline uint32_t SDKGetStartOffset(int32_t column_count) {
     return SDK_HEADER_LENGTH + BitMapSize(column_count);
 }
 
-RequestRow::RequestRow(const fesql::sdk::Schema* schema)
+RequestRow::RequestRow(const hybridse::sdk::Schema* schema)
     : schema_(schema),
       cnt_(0),
       size_(0),
@@ -71,14 +71,14 @@ RequestRow::RequestRow(const fesql::sdk::Schema* schema)
         SDK_HEADER_LENGTH + BitMapSize(schema->GetColumnCnt());
     for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {
         auto type = schema->GetColumnType(idx);
-        if (type == ::fesql::sdk::kTypeString) {
+        if (type == ::hybridse::sdk::kTypeString) {
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
         } else {
             auto iter = SDK_TYPE_SIZE_MAP.find(type);
             if (iter == SDK_TYPE_SIZE_MAP.end()) {
                 LOG(WARNING)
-                    << fesql::sdk::DataTypeName(type) << " is not supported";
+                    << hybridse::sdk::DataTypeName(type) << " is not supported";
             } else {
                 offset_vec_.push_back(str_field_start_offset_);
                 str_field_start_offset_ += iter->second;
@@ -117,7 +117,7 @@ bool RequestRow::Init(int str_length) {
     return true;
 }
 
-bool RequestRow::Check(fesql::sdk::DataType type) {
+bool RequestRow::Check(hybridse::sdk::DataType type) {
     if (buf_ == NULL) {
         LOG(WARNING) << "please init this object";
         return false;
@@ -132,10 +132,10 @@ bool RequestRow::Check(fesql::sdk::DataType type) {
         LOG(WARNING) << "type mismatch required";
         return false;
     }
-    if (type != ::fesql::sdk::kTypeString) {
+    if (type != ::hybridse::sdk::kTypeString) {
         auto iter = SDK_TYPE_SIZE_MAP.find(type);
         if (iter == SDK_TYPE_SIZE_MAP.end()) {
-            LOG(WARNING) << fesql::sdk::DataTypeName(type)
+            LOG(WARNING) << hybridse::sdk::DataTypeName(type)
                          << " is not supported";
             return false;
         }
@@ -144,7 +144,7 @@ bool RequestRow::Check(fesql::sdk::DataType type) {
 }
 
 bool RequestRow::AppendBool(bool val) {
-    if (!Check(::fesql::sdk::kTypeBool)) return false;
+    if (!Check(::hybridse::sdk::kTypeBool)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<uint8_t*>(ptr)) = val ? 1 : 0;
     cnt_++;
@@ -152,7 +152,7 @@ bool RequestRow::AppendBool(bool val) {
 }
 
 bool RequestRow::AppendInt32(int32_t val) {
-    if (!Check(::fesql::sdk::kTypeInt32)) return false;
+    if (!Check(::hybridse::sdk::kTypeInt32)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int32_t*>(ptr)) = val;
     cnt_++;
@@ -160,7 +160,7 @@ bool RequestRow::AppendInt32(int32_t val) {
 }
 
 bool RequestRow::AppendInt16(int16_t val) {
-    if (!Check(::fesql::sdk::kTypeInt16)) return false;
+    if (!Check(::hybridse::sdk::kTypeInt16)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int16_t*>(ptr)) = val;
     cnt_++;
@@ -168,7 +168,7 @@ bool RequestRow::AppendInt16(int16_t val) {
 }
 
 bool RequestRow::AppendInt64(int64_t val) {
-    if (!Check(::fesql::sdk::kTypeInt64)) return false;
+    if (!Check(::hybridse::sdk::kTypeInt64)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
     cnt_++;
@@ -176,7 +176,7 @@ bool RequestRow::AppendInt64(int64_t val) {
 }
 
 bool RequestRow::AppendTimestamp(int64_t val) {
-    if (!Check(::fesql::sdk::kTypeTimestamp)) return false;
+    if (!Check(::hybridse::sdk::kTypeTimestamp)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
     cnt_++;
@@ -184,7 +184,7 @@ bool RequestRow::AppendTimestamp(int64_t val) {
 }
 
 bool RequestRow::AppendFloat(float val) {
-    if (!Check(::fesql::sdk::kTypeFloat)) return false;
+    if (!Check(::hybridse::sdk::kTypeFloat)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<float*>(ptr)) = val;
     cnt_++;
@@ -192,7 +192,7 @@ bool RequestRow::AppendFloat(float val) {
 }
 
 bool RequestRow::AppendDouble(double val) {
-    if (!Check(::fesql::sdk::kTypeDouble)) return false;
+    if (!Check(::hybridse::sdk::kTypeDouble)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<double*>(ptr)) = val;
     cnt_++;
@@ -200,7 +200,7 @@ bool RequestRow::AppendDouble(double val) {
 }
 
 bool RequestRow::AppendString(const std::string& val) {
-    if (!Check(::fesql::sdk::kTypeString)) return false;
+    if (!Check(::hybridse::sdk::kTypeString)) return false;
     if (str_offset_ + val.size() > size_) return false;
     int8_t* ptr =
         buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[cnt_];
@@ -228,7 +228,7 @@ bool RequestRow::AppendNULL() {
     int8_t* ptr = buf_ + SDK_HEADER_LENGTH + (cnt_ >> 3);
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (cnt_ & 0x07);
     auto type = schema_->GetColumnType(cnt_);
-    if (type == ::fesql::sdk::kTypeString) {
+    if (type == ::hybridse::sdk::kTypeString) {
         ptr = buf_ + str_field_start_offset_ +
               str_addr_length_ * offset_vec_[cnt_];
         if (str_addr_length_ == 1) {
@@ -258,4 +258,4 @@ bool RequestRow::Build() {
 }
 
 }  // namespace sdk
-}  // namespace fesql
+}  // namespace hybridse

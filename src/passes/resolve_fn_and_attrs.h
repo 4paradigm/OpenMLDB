@@ -28,7 +28,7 @@
 #include "udf/udf_library.h"
 #include "vm/schemas_context.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 using base::Status;
@@ -69,5 +69,5 @@ class ResolveFnAndAttrs : public ExprPass {
 };
 
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 #endif  // SRC_PASSES_RESOLVE_FN_AND_ATTRS_H_

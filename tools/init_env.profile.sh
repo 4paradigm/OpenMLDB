@@ -15,17 +15,47 @@
 
 set -eE
 
+# goto the toplevel directory
+pushd "$(dirname "$0")/.."
+
 echo "CICD environment tag: ${CICD_RUNNER_TAG}"
 
 echo "Third party packages path: ${CICD_RUNNER_THIRDPARTY_PATH}"
 if [[ "$OSTYPE" == "linux-gnu"* ]]
 then
+    # unpack thirdparty first time
+    pushd /depends
+    if [[ ! -d thirdparty && -r thirdparty.tar.gz ]]; then
+        tar xzf thirdparty.tar.gz
+    fi
+    popd
+
     ln -sf /depends/thirdparty thirdparty
-    source /opt/rh/python27/enable
-    source /opt/rh/devtoolset-7/enable
-    export JAVA_HOME=${PWD}/thirdparty/jdk1.8.0_141
-    export PATH=${PWD}/thirdparty/bin:$JAVA_HOME/bin:${PWD}/thirdparty/apache-maven-3.6.3/bin:$PATH
+
+    if [ -r /opt/rh/devtoolset-7/enable ]; then
+        # shellcheck disable=SC1091
+        source /opt/rh/devtoolset-7/enable
+    fi
+    if [ -r /opt/rh/sclo-git212/enable ]; then
+        # shellcheck disable=SC1091
+        source /opt/rh/sclo-git212/enable
+    fi
+    if [ -r /opt/rh/python27 ]; then
+        # shellcheck disable=SC1091
+        source /opt/rh/python27/enable
+    fi
+
+    if [ -r /etc/profile.d/enable-thirdparty.sh ]; then
+        # shellcheck disable=SC1091
+        source /etc/profile.d/enable-thirdparty.sh
+    else
+        # backward configure for old environment
+        export JAVA_HOME=${PWD}/thirdparty/jdk1.8.0_141
+        export PATH=${PWD}/thirdparty/bin:$JAVA_HOME/bin:${PWD}/thirdparty/apache-maven-3.6.3/bin:$PATH
+    fi
 else
+    # shellcheck disable=SC1090
     source ~/.bash_profile
-    ln -sf ${CICD_RUNNER_THIRDPARTY_PATH} thirdparty
+    ln -sf "${CICD_RUNNER_THIRDPARTY_PATH}" thirdparty
 fi
+popd

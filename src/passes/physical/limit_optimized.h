@@ -18,7 +18,7 @@
 
 #include "passes/physical/transform_up_physical_pass.h"
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 class LimitOptimized : public TransformUpPysicalPass {
@@ -33,6 +33,6 @@ class LimitOptimized : public TransformUpPysicalPass {
     static bool ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt);
 };
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_PASSES_PHYSICAL_LIMIT_OPTIMIZED_H_

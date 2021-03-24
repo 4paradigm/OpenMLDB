@@ -45,20 +45,20 @@ using namespace llvm::orc;  // NOLINT (build/namespaces)
 
 ExitOnError ExitOnErr;
 
-namespace fesql {
+namespace hybridse {
 namespace codegen {
 
 class FnIRBuilderTest : public ::testing::Test {
  public:
     FnIRBuilderTest() {
         manager_ = new node::NodeManager();
-        parser_ = new parser::FeSQLParser();
+        parser_ = new parser::HybridSEParser();
     }
     ~FnIRBuilderTest() { delete manager_; }
 
  protected:
     node::NodeManager *manager_;
-    parser::FeSQLParser *parser_;
+    parser::HybridSEParser *parser_;
 };
 
 template <class R, class V1, class V2>
@@ -66,7 +66,7 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     node::NodePointVector trees;
     node::PlanNodeList plan_trees;
     base::Status status;
-    parser::FeSQLParser parser;
+    parser::HybridSEParser parser;
     node::NodeManager manager;
     int ret = parser.parse(test, trees, &manager, status);
     ASSERT_EQ(0, ret);
@@ -91,10 +91,10 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     }
     LOG(INFO) << "after opt with ins cnt " << m->getInstructionCount();
     m->print(::llvm::errs(), NULL, true, true);
-    auto jit =
-        std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
+    auto jit = std::unique_ptr<vm::HybridSEJITWrapper>(
+        vm::HybridSEJITWrapper::Create());
     jit->Init();
-    vm::FeSQLJITWrapper::InitJITSymbols(jit.get());
+    vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto test_fn =
         (R(*)(V1, V2))jit->FindFunction(fn_def->header_->GeIRFunctionName());
@@ -232,19 +232,15 @@ TEST_F(FnIRBuilderTest, test_if_else_mutable_var_block) {
         "end";
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef<> list_ref;
+    hybridse::codec::ArrayListV<int32_t> list(&vec);
+    hybridse::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 1, &list_ref,
-                                                             0);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 3, &list_ref,
-                                                             1);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 5, &list_ref,
-                                                             2);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 7, &list_ref,
-                                                             3);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 9, &list_ref,
-                                                             4);
+    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(test, 1,
+&list_ref, 0); CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(test,
+3, &list_ref, 1); CheckResult<int32_t, hybridse::codec::ListRef<> *,
+int32_t>(test, 5, &list_ref, 2); CheckResult<int32_t, hybridse::codec::ListRef<>
+*, int32_t>(test, 7, &list_ref, 3); CheckResult<int32_t,
+hybridse::codec::ListRef<> *, int32_t>(test, 9, &list_ref, 4);
 }*/
 
 TEST_F(FnIRBuilderTest, test_for_in_sum) {
@@ -258,10 +254,10 @@ TEST_F(FnIRBuilderTest, test_for_in_sum) {
         "end";
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef<> list_ref;
+    hybridse::codec::ArrayListV<int32_t> list(&vec);
+    hybridse::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
+    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(
         test, 1 + 3 + 5 + 7 + 9, &list_ref, 0);
 }
 
@@ -279,10 +275,10 @@ TEST_F(FnIRBuilderTest, test_for_in_sum_ret) {
         "end";
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef<> list_ref;
+    hybridse::codec::ArrayListV<int32_t> list(&vec);
+    hybridse::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
+    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(
         test, 1 + 3 + 5 + 7, &list_ref, 0);
 }
 
@@ -298,17 +294,17 @@ TEST_F(FnIRBuilderTest, test_for_in_condition_sum) {
         "end";
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef<> list_ref;
+    hybridse::codec::ArrayListV<int32_t> list(&vec);
+    hybridse::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
+    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(
         test, 1 + 3 + 5 + 7 + 9, &list_ref, 0);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
+    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(
         test, 3 + 5 + 7 + 9, &list_ref, 1);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
+    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(
         test, 3 + 5 + 7 + 9, &list_ref, 2);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 5 + 7 + 9,
-                                                             &list_ref, 3);
+    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(test, 5 + 7 + 9,
+                                                                &list_ref, 3);
 }
 
 TEST_F(FnIRBuilderTest, test_for_in_condition2_sum) {
@@ -327,14 +323,14 @@ TEST_F(FnIRBuilderTest, test_for_in_condition2_sum) {
         "end\n";
 
     std::vector<int32_t> vec = {-4, -2, 1, 3, 5, 7, 9};
-    fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef<> list_ref;
+    hybridse::codec::ArrayListV<int32_t> list(&vec);
+    hybridse::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
+    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(
         test, 4 + 2 + 1 + 3 + 5 + 5 + 5, &list_ref, 5);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
+    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(
         test, 4 + 2 + 1 + 1 + 1 + 1 + 1, &list_ref, 1);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
+    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(
         test, 4 + 2 + 1 + 2 + 2 + 2 + 2, &list_ref, 2);
 }
 
@@ -349,10 +345,10 @@ TEST_F(FnIRBuilderTest, test_for_in_sum_add_assign) {
         "end";
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef<> list_ref;
+    hybridse::codec::ArrayListV<int32_t> list(&vec);
+    hybridse::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
+    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(
         test, 1 + 3 + 5 + 7 + 9, &list_ref, 0);
 }
 TEST_F(FnIRBuilderTest, test_for_in_sum_minus_assign) {
@@ -366,10 +362,10 @@ TEST_F(FnIRBuilderTest, test_for_in_sum_minus_assign) {
         "end";
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef<> list_ref;
+    hybridse::codec::ArrayListV<int32_t> list(&vec);
+    hybridse::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
+    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(
         test, -1 - 3 - 5 - 7 - 9, &list_ref, 0);
 }
 
@@ -384,10 +380,10 @@ TEST_F(FnIRBuilderTest, test_for_in_sum_multi_assign) {
         "end";
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef<> list_ref;
+    hybridse::codec::ArrayListV<int32_t> list(&vec);
+    hybridse::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
+    CheckResult<int32_t, hybridse::codec::ListRef<> *, int32_t>(
         test, 1 * 3 * 5 * 7 * 9, &list_ref, 0);
 }
 
@@ -402,14 +398,14 @@ TEST_F(FnIRBuilderTest, test_for_in_sum_fdiv_assign) {
         "end";
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef<> list_ref;
+    hybridse::codec::ArrayListV<int32_t> list(&vec);
+    hybridse::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<double, fesql::codec::ListRef<> *, int32_t>(
+    CheckResult<double, hybridse::codec::ListRef<> *, int32_t>(
         test, 1.0 / 3.0 / 5.0 / 7.0 / 9.0, &list_ref, 0);
 }
 }  // namespace codegen
-}  // namespace fesql
+}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

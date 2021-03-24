@@ -16,7 +16,7 @@
 
 #include "base/fe_status.h"
 
-namespace fesql {
+namespace hybridse {
 namespace base {
 
 std::ostream& operator<<(std::ostream& os, const Status& status) {  // NOLINT
@@ -25,4 +25,4 @@ std::ostream& operator<<(std::ostream& os, const Status& status) {  // NOLINT
 }
 
 }  // namespace base
-}  // namespace fesql
+}  // namespace hybridse

@@ -21,9 +21,11 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "parser/parser.h"
+#include "plan/plan_api.h"
 #include "proto/fe_common.pb.h"
 
-namespace fesql {
+namespace hybridse {
 namespace plan {
 
 bool Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
@@ -383,7 +385,7 @@ bool Planner::CreateWindowPlanNode(
         // Prepare Window Name
         if (w_ptr->GetName().empty()) {
             w_node_ptr->SetName(
-                GenerateName("anonymous_w", w_node_ptr->GetId()));
+                PlanAPI::GenerateName("anonymous_w", w_node_ptr->GetId()));
         } else {
             w_node_ptr->SetName(w_ptr->GetName());
         }
@@ -545,7 +547,7 @@ int SimplePlanner::CreatePlanTree(
 
                 if (!is_batch_mode_) {
                     // return false if Primary path check fail
-                    ::fesql::node::PlanNode *primary_node;
+                    ::hybridse::node::PlanNode *primary_node;
                     if (!ValidatePrimaryPath(query_plan, &primary_node,
                                              status)) {
                         DLOG(INFO) << "primay check fail, logical plan:\n"
@@ -602,7 +604,7 @@ int SimplePlanner::CreatePlanTree(
                 plan_trees.push_back(insert_plan);
                 break;
             }
-            case ::fesql::node::kFnDef: {
+            case ::hybridse::node::kFnDef: {
                 node::PlanNode *fn_plan = nullptr;
                 if (!CreateFuncDefPlan(parser_tree, &fn_plan, status)) {
                     return status.code;
@@ -622,6 +624,7 @@ int SimplePlanner::CreatePlanTree(
 
     return status.code;
 }
+
 /***
  * Create function def plan node
  * 1. check indent
@@ -991,10 +994,10 @@ bool Planner::ExpandCurrentHistoryWindow(
     return has_window_expand;
 }
 
-bool TransformTableDef(const std::string &table_name,
-                       const NodePointVector &column_desc_list,
-                       type::TableDef *table,
-                       Status &status) {  // NOLINT (runtime/references)
+bool Planner::TransformTableDef(
+    const std::string &table_name, const NodePointVector &column_desc_list,
+    type::TableDef *table,
+    Status &status) {  // NOLINT (runtime/references)
     std::set<std::string> index_names;
     std::set<std::string> column_names;
 
@@ -1065,7 +1068,7 @@ bool TransformTableDef(const std::string &table_name,
 
                 if (column_index->GetName().empty()) {
                     column_index->SetName(
-                        GenerateName("INDEX", table->indexes_size()));
+                        PlanAPI::GenerateName("INDEX", table->indexes_size()));
                 }
                 if (index_names.find(column_index->GetName()) !=
                     index_names.end()) {
@@ -1114,13 +1117,5 @@ bool TransformTableDef(const std::string &table_name,
     return true;
 }
 
-std::string GenerateName(const std::string prefix, int id) {
-    time_t t;
-    time(&t);
-    std::string name =
-        prefix + "_" + std::to_string(id) + "_" + std::to_string(t);
-    return name;
-}
-
 }  // namespace plan
-}  // namespace fesql
+}  // namespace hybridse

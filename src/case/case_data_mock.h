@@ -25,9 +25,9 @@
 #include "codec/fe_row_codec.h"
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
-namespace fesql {
+namespace hybridse {
 namespace sqlcase {
-using fesql::codec::Row;
+using hybridse::codec::Row;
 template <class T>
 class Repeater {
  public:
@@ -85,11 +85,11 @@ class RealRepeater : public NumberRepeater<T> {
 class CaseDataMock {
  public:
     static void BuildOnePkTableData(type::TableDef& table_def,  // NOLINT
-                             std::vector<Row>& buffer,   // NOLINT
-                             int64_t data_size);
-    static void BuildTableAndData(type::TableDef& table_def,  // NOLINT
                                     std::vector<Row>& buffer,   // NOLINT
                                     int64_t data_size);
+    static void BuildTableAndData(type::TableDef& table_def,  // NOLINT
+                                  std::vector<Row>& buffer,   // NOLINT
+                                  int64_t data_size);
     static bool LoadResource(const std::string& resource_path,
                              type::TableDef& table_def,  // NOLINT
                              std::vector<Row>& rows);    // NOLINT
@@ -97,13 +97,10 @@ class CaseDataMock {
 
 class CaseSchemaMock {
  public:
-    static void BuildTableDef(::fesql::type::TableDef& table); // NOLINT
+    static void BuildTableDef(::hybridse::type::TableDef& table);  // NOLINT
 };
 
-
-
-
 }  // namespace sqlcase
-}  // namespace fesql
+}  // namespace hybridse
 
 #endif  // SRC_CASE_CASE_DATA_MOCK_H_

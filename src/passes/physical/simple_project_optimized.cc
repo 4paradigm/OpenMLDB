@@ -16,7 +16,7 @@
 #include "passes/physical/simple_project_optimized.h"
 #include <vector>
 
-namespace fesql {
+namespace hybridse {
 namespace passes {
 
 static Status BuildColumnMapping(
@@ -126,4 +126,4 @@ static Status BuildColumnMapping(
     return Status::OK();
 }
 }  // namespace passes
-}  // namespace fesql
+}  // namespace hybridse
