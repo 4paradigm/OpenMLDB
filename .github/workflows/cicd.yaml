@@ -26,6 +26,7 @@ jobs:
           ln -sf /depends/thirdsrc thirdsrc
           bash steps/simple_compile.sh
       - name: cleanup
+        if: always()
         run: |
           source /etc/profile.d/enable-rh.sh
           git clean -dfx
