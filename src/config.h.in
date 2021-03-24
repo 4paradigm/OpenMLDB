@@ -15,10 +15,9 @@
  */
 
 
-#ifndef RTIDB_CONFIG_H
-#define RTIDB_CONFIG_H
+#ifndef FEDB_CONFIG_H
+#define FEDB_CONFIG_H
 
 #cmakedefine TCMALLOC_ENABLE
-#cmakedefine PZFPGA_ENABLE
 
 #endif /* !CONFIG_H */

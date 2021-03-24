@@ -790,8 +790,6 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     bool ok =
         client_.SendRequest(&::fedb::api::TabletServer_Stub::Scan, &request,
                             response, FLAGS_request_timeout_ms, 1);
-    response->mutable_metric()->set_rptime(
-        ::baidu::common::timer::get_micros());
     if (response->has_msg()) {
         msg = response->msg();
     }
@@ -828,14 +826,11 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     request.set_pid(pid);
     request.set_limit(limit);
     request.set_atleast(atleast);
-    request.mutable_metric()->set_sqtime(::baidu::common::timer::get_micros());
     ::fedb::api::ScanResponse* response = new ::fedb::api::ScanResponse();
     uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok =
         client_.SendRequest(&::fedb::api::TabletServer_Stub::Scan, &request,
                             response, FLAGS_request_timeout_ms, 1);
-    response->mutable_metric()->set_rptime(
-        ::baidu::common::timer::get_micros());
     if (response->has_msg()) {
         msg = response->msg();
     }
@@ -879,14 +874,11 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
     request.set_et(etime);
     request.set_tid(tid);
     request.set_pid(pid);
-    request.mutable_metric()->set_sqtime(::baidu::common::timer::get_micros());
     ::fedb::api::ScanResponse* response = new ::fedb::api::ScanResponse();
     uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok =
         client_.SendRequest(&::fedb::api::TabletServer_Stub::Scan, &request,
                             response, FLAGS_request_timeout_ms, 1);
-    response->mutable_metric()->set_rptime(
-        ::baidu::common::timer::get_micros());
     if (response->has_msg()) {
         msg = response->msg();
     }
@@ -903,29 +895,6 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
     if (FLAGS_enable_show_tp) {
         consumed = ::baidu::common::timer::get_micros() - consumed;
         percentile_.push_back(consumed);
-    }
-    if (showm) {
-        uint64_t rpc_send_time =
-            response->metric().rqtime() - response->metric().sqtime();
-        uint64_t mutex_time =
-            response->metric().sctime() - response->metric().rqtime();
-        uint64_t seek_time =
-            response->metric().sitime() - response->metric().sctime();
-        uint64_t it_time =
-            response->metric().setime() - response->metric().sitime();
-        uint64_t encode_time =
-            response->metric().sptime() - response->metric().setime();
-        uint64_t receive_time =
-            response->metric().rptime() - response->metric().sptime();
-        uint64_t decode_time =
-            ::baidu::common::timer::get_micros() - response->metric().rptime();
-        std::cout << "Metric: rpc_send=" << rpc_send_time << " "
-                  << "db_lock=" << mutex_time << " "
-                  << "seek_time=" << seek_time << " "
-                  << "iterator_time=" << it_time << " "
-                  << "encode=" << encode_time << " "
-                  << "receive_time=" << receive_time << " "
-                  << "decode_time=" << decode_time << std::endl;
     }
     return kv_it;
 }

@@ -298,8 +298,7 @@ message ScanResponse {
     optional string msg = 2;
     optional int32 code = 3;
     optional uint32 count = 4;
-    optional RpcMetric metric = 6 [deprecated = true];
-    optional uint32 buf_size = 7;
+    optional uint32 buf_size = 5;
 }
 
 message ReplicaRequest {
@@ -796,7 +795,7 @@ service TabletServer {
     rpc SQLBatchRequestQuery(SQLBatchRequestQueryRequest) returns(SQLBatchRequestQueryResponse);
     rpc SubBatchRequestQuery(SQLBatchRequestQueryRequest) returns(SQLBatchRequestQueryResponse);
 
-    // table api for master
+    // table api for nameserver
     rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
     rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
     rpc DropTable(DropTableRequest) returns (DropTableResponse);
