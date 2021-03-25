@@ -1,0 +1,12 @@
+name: Check PR semantics
+
+on: pull_request
+
+jobs:
+  conventional-pr:
+    runs-on: self-hosted
+    steps:
+      - name: Check PR semantics
+        uses: Namchee/conventional-pr@v0.3.0
+        with:
+          access_token: ${{ secrets.ACCESS_TOKEN }}
