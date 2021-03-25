@@ -69,7 +69,7 @@
             </plugins>
         </pluginManagement>
     </build>
-
+    <!--
     <distributionManagement>
         <snapshotRepository>
             <id>github</id>
@@ -82,7 +82,18 @@
             <url>https://maven.pkg.github.com/4paradigm/NativeSpark/Release</url>
         </repository>
     </distributionManagement>
+    -->
 
+    <distributionManagement>
+        <snapshotRepository>
+            <id>file-repository</id>
+            <url>file:///tmp/hybridse_java_packages/</url>
+        </snapshotRepository>
+        <repository>
+            <id>file-repository</id>
+            <url>file:///tmp/hybridse_java_packages/</url>
+        </repository>
+    </distributionManagement>
 
 </project>
 
