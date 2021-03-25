@@ -14,7 +14,7 @@
 
 #! /bin/sh
 #
-# deploy_fedb_package.sh
+# deploy_java_sdk.sh 
 #
 
 set -e
