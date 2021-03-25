@@ -15,7 +15,6 @@
     <name>sdk</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <hybridse.version>0.1.0-SNAPSHOT</hybridse.version>
     </properties>
     <build>
         <pluginManagement>
@@ -61,25 +60,12 @@
             </plugins>
         </pluginManagement>
     </build>
-<pluginRepositories>
-    <pluginRepository>
-      <id>4pd-nexus-public</id>
-      <name>4Paradigm nexus maven public</name>
-      <url>https://nexus.4pd.io/repository/maven-public/</url>
-    </pluginRepository>
-  </pluginRepositories>
-
   <distributionManagement>
     <repository>
-      <id>4pd-nexus-releases</id>
-      <uniqueVersion>true</uniqueVersion>
-      <url>https://nexus.4pd.io/repository/maven-releases/</url>
-    </repository>
-    <snapshotRepository>
-      <id>4pd-nexus-snapshots</id>
-      <uniqueVersion>true</uniqueVersion>
-      <url>https://nexus.4pd.io/repository/maven-snapshots/</url>
-    </snapshotRepository>
+	    <id>github</id>
+     	<name>innerpeace1203</name>
+     	<url>https://maven.pkg.github.com/innerpeace1203/myfedb</url>
+   	</repository>
   </distributionManagement>
 
  </project>

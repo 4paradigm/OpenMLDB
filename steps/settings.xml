@@ -3,35 +3,22 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <servers>
     <server>
-      <id>4pd-nexus-snapshots</id>
-      <username>deploy</username>
-      <password>GlW5SRo1TC3q</password>
-    </server>
-    <server>
-      <id>4pd-nexus-releases</id>
-      <username>deploy</username>
-      <password>GlW5SRo1TC3q</password>
-    </server>
-    <server>
-      <id>ftp.4pd.io</id>
-      <username>anonymous</username>
-      <password></password>
+      <id>github</id>
+      <username>innerpeace1203</username>
+      <password>5b028c1919774fa5bcff3f670093e8d265dc1587</password>
     </server>
   </servers>
-  <mirrors>
-    <mirror>
-      <id>4pd-nexus</id>
-      <mirrorOf>*</mirrorOf>
-      <url>https://nexus.4pd.io/repository/maven-public/</url>
-    </mirror>
-  </mirrors>
   <profiles>
     <profile>
-      <id>nexus</id>
+      <id>github</id>
       <repositories>
         <repository>
           <id>central</id>
-          <url>https://nexus.4pd.io/repository/maven-public/</url>
+          <url>https://repo1.maven.org/maven2</url>
+        </repository>
+        <repository>
+          <id>github</id>
+          <url>https://maven.pkg.github.com/innerpeace1203/myfedb</url>
           <releases>
             <enabled>true</enabled>
           </releases>
@@ -40,32 +27,10 @@
           </snapshots>
         </repository>
       </repositories>
-      <pluginRepositories>
-        <pluginRepository>
-          <id>central</id>
-          <url>https://nexus.4pd.io/repository/maven-public/</url>
-          <releases>
-            <enabled>true</enabled>
-          </releases>
-          <snapshots>
-            <enabled>true</enabled>
-          </snapshots>
-        </pluginRepository>
-      </pluginRepositories>
-    </profile>
-    <profile>
-      <id>sonar</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <properties>
-        <sonar.host.url>https://sonar.4pd.io</sonar.host.url>
-        <sonar.login>94154b7e6c47b538522edafd90b453bdac0bc7fa</sonar.login>
-      </properties>
     </profile>
   </profiles>
   <activeProfiles>
-    <activeProfile>nexus</activeProfile>
+    <activeProfile>github</activeProfile>
   </activeProfiles>
 </settings>
 
