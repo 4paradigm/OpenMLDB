@@ -27,6 +27,7 @@
 #include "base/strings.h"
 #include "codec/flat_array.h"
 #include "codec/schema_codec.h"
+#include "common/timer.h"
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
@@ -34,7 +35,6 @@
 #include "storage/mem_table.h"
 #include "storage/ticket.h"
 #include "tablet/tablet_impl.h"
-#include "timer.h"  // NOLINT
 
 DECLARE_string(db_root_path);
 DECLARE_string(zk_cluster);

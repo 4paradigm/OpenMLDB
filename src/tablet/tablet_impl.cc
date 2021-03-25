@@ -49,7 +49,7 @@
 #include "storage/binlog.h"
 #include "storage/segment.h"
 #include "tablet/file_sender.h"
-#include "timer.h"  // NOLINT
+#include "common/timer.h"
 #include "codec/sql_rpc_row_codec.h"
 #include "codec/row_codec.h"
 

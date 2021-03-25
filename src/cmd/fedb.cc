@@ -53,8 +53,8 @@
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
-#include "timer.h"     // NOLINT
-#include "tprinter.h"  // NOLINT
+#include "common/timer.h"
+#include "common/tprinter.h"
 #include "version.h"   // NOLINT
 #include "config.h" // NOLINT
 #include "vm/engine.h"
@@ -90,8 +90,8 @@ DECLARE_bool(use_name);
 DECLARE_string(data_dir);
 
 const std::string FEDB_VERSION = std::to_string(FEDB_VERSION_MAJOR) + "." + // NOLINT
-                            std::to_string(FEDB_VERSION_MEDIUM) + "." +
                             std::to_string(FEDB_VERSION_MINOR) + "." +
+                            std::to_string(FEDB_VERSION_BUG) + "." +
                             FEDB_COMMIT_ID + "." + HYBRIDSE_COMMIT_ID;
 
 static std::map<std::string, std::string> real_ep_map;

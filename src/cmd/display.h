@@ -18,7 +18,6 @@
 
 #include <gflags/gflags.h>
 #include <snappy.h>
-#include <tprinter.h>
 
 #include <map>
 #include <string>
@@ -31,6 +30,7 @@
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
+#include "common/tprinter.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"

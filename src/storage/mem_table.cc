@@ -24,7 +24,7 @@
 #include "base/slice.h"
 #include "gflags/gflags.h"
 #include "storage/record.h"
-#include "timer.h"  // NOLINT
+#include "common/timer.h"
 
 DECLARE_string(db_root_path);
 DECLARE_uint32(skiplist_max_height);

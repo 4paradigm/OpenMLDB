@@ -19,9 +19,9 @@
 
 #include <gflags/gflags.h>
 #include "base/strings.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
+#include "common/timer.h"
 #include "storage/record.h"
-#include "timer.h"  // NOLINT
 
 DECLARE_int32(gc_safe_offset);
 DECLARE_uint32(skiplist_max_height);

@@ -18,7 +18,6 @@
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 #include <unistd.h>
-#include <timer.h>
 
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
@@ -29,6 +28,7 @@
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 #include "tablet/tablet_impl.h"
+#include "common/timer.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);

@@ -17,7 +17,7 @@
 
 #include "gtest/gtest.h"
 #include "storage/mem_table.h"
-#include "timer.h"  //NOLINT
+#include "common/timer.h"
 
 namespace fedb {
 namespace storage {

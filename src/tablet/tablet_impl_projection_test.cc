@@ -22,7 +22,7 @@
 #include <sys/stat.h>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  //NOLINT
+#include "base/glog_wapper.h"
 #include "base/kv_iterator.h"
 #include "base/strings.h"
 #include "brpc/channel.h"
@@ -35,7 +35,7 @@
 #include "storage/mem_table.h"
 #include "storage/ticket.h"
 #include "tablet/tablet_impl.h"
-#include "timer.h"  // NOLINT
+#include "common/timer.h"
 #include "vm/engine.h"
 
 DECLARE_string(db_root_path);

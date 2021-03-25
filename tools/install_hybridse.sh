@@ -15,17 +15,19 @@
 # limitations under the License.
 
 # install_hybridse.sh
-INSTALL_FROM_SRC=$1
+ENABLE_JAVA=$1
 CMAKE_TYPE=$2
 
-HYRBID_VESION=release-0.1.0
 if [[ "${CMAKE_TYPE}" != "Debug" ]]; then
         CMAKE_TYPE="RelWithDebInfo"
 fi
+source /etc/profile.d/enable-rh.sh 
+source /etc/profile.d/enable-thirdparty.sh
 echo "CMake Type "${CMAKE_TYPE}
 
-export FEDB_THIRDPARTY=${FEDB_DEV_THIRDPARTY:-/depends/thirdparty}
+export FEDB_THIRDPARTY=/depends/thirdparty
 WORK_DIR=`pwd`
+<<<<<<< HEAD
 
 
 # Install hybridse from src
@@ -40,3 +42,8 @@ else
   cd build && cmake -DCMAKE_BUILD_TYPE=${CMAKE_TYPE} -DCMAKE_INSTALL_PREFIX="${FEDB_THIRDPARTY}/hybridse" -DTESTING_ENABLE=OFF -DBENCHMARK_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DPYSDK_ENABLE=OFF -DJAVASDK_ENABLE=ON ..  && make -j10 install
   # cd ${WORK_DIR}/HybridSE/java/ && mvn install -pl hybridse-common -am
 fi
+=======
+cd ${WORK_DIR}/fesql 
+ln -sf ${FEDB_THIRDPARTY} thirdparty && mkdir -p build
+cd build && cmake -DCMAKE_BUILD_TYPE=${CMAKE_TYPE} -DCMAKE_INSTALL_PREFIX="${FEDB_THIRDPARTY}" -DTESTING_ENABLE=OFF -DBENCHMARK_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DPYSDK_ENABLE=OFF -DJAVASDK_ENABLE=OFF -DEXPRIRMENT_ENABLE=OFF ..  && make -j$(nproc) install
+>>>>>>> origin/main

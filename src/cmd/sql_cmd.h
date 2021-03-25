@@ -56,8 +56,8 @@ const std::string LOGO =  // NOLINT
     " |_|  \\___||_____/|____/\n";
 
 const std::string VERSION = std::to_string(FEDB_VERSION_MAJOR) + "." +  // NOLINT
-                            std::to_string(FEDB_VERSION_MEDIUM) + "." +
                             std::to_string(FEDB_VERSION_MINOR) + "." +
+                            std::to_string(FEDB_VERSION_BUG) + "." +
                             FEDB_COMMIT_ID + "." + HYBRIDSE_COMMIT_ID;
 
 std::string db = "";  // NOLINT

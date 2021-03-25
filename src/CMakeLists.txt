@@ -36,7 +36,7 @@ function(compile_lib LIB_NAME DIR DEPEND_FILE_LIST)
 endfunction(compile_lib)
 
 function(compile_test DIR)
-    set(TEST_LIBS nameserver tablet fedb_sdk fedb_catalog client zk_client replica base storage fedb_codec fedb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
+    set(TEST_LIBS nameserver tablet fedb_sdk fedb_catalog client zk_client replica base storage fedb_codec fedb_proto log common zookeeper_mt tcmalloc_minimal
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${BRPC_LIBS})
@@ -80,7 +80,7 @@ add_library(fedb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.p
 
 add_library(fedb_flags flags.cc)
 
-set(BIN_LIBS nameserver tablet fedb_sdk fedb_catalog client zk_client replica base storage fedb_codec fedb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
+set(BIN_LIBS nameserver tablet fedb_sdk fedb_catalog client zk_client replica base storage fedb_codec fedb_proto log common zookeeper_mt tcmalloc_minimal
 ${VM_LIBS}
 ${LLVM_LIBS}
 ${BRPC_LIBS})
@@ -98,7 +98,7 @@ if(TESTING_ENABLE)
 endif()
 
 add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:fedb_proto>)
-target_link_libraries(parse_log log fedb_proto base protobuf glog gflags unwind lzma ssl crypto z snappy dl pthread)
+target_link_libraries(parse_log log fedb_proto base protobuf glog gflags unwind ssl crypto z snappy dl pthread)
 
 add_executable(fedb cmd/fedb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 target_link_libraries(fedb ${BIN_LIBS})

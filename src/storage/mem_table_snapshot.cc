@@ -36,12 +36,12 @@
 #include "boost/bind.hpp"
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
+#include "common/timer.h"
+#include "common/thread_pool.h"
 #include "gflags/gflags.h"
 #include "log/log_reader.h"
 #include "log/sequential_file.h"
 #include "proto/tablet.pb.h"
-#include "thread_pool.h"  // NOLINT
-#include "timer.h"        // NOLINT
 
 using google::protobuf::RepeatedPtrField;
 using ::fedb::codec::SchemaCodec;

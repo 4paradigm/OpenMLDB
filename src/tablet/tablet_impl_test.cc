@@ -36,10 +36,10 @@
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
-#include "base/glog_wapper.h" // NOLINT
+#include "base/glog_wapper.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
-#include "timer.h"  // NOLINT
+#include "common/timer.h"
 
 DECLARE_string(db_root_path);
 DECLARE_string(zk_cluster);

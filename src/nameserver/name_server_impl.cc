@@ -33,7 +33,7 @@
 #include "base/status.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/bind.hpp"
-#include "timer.h"  // NOLINT
+#include "common/timer.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
