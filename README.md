@@ -1,6 +1,6 @@
 [![HybridSE CI](https://github.com/4paradigm/HybridSE/actions/workflows/hybridse-ci.yml/badge.svg)](https://github.com/4paradigm/HybridSE/actions/workflows/hybridse-ci.yml)
 
-- [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)
+- [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7LAF6AY)
 - [**Discussions**](https://github.com/4paradigm/HybridSE/discussions)
 
 # What is HybridSE
@@ -11,17 +11,20 @@ HybridSE(Hybrid SQL Engine)是基于C++和LLVM实现的高性能混合SQL执行�
 
 HybridSE是一个模块化的SQL编译器和执行器，提供了SQL语法校验、逻辑计划生成和优化、表达式优化、离线或在线物理计划生成、Native代码生成以及单机或分布式Runner实现等功能。开发者使用HybridSE可以快速实现一个支持SQL的高性能数据库，也可以用HybridSE来优化离线SQL执行引擎的性能。相比与MySQL、SparkSQL等内置实现的SQL执行引擎，HybridSE不仅性能更优，而且针对AI场景进行了语法拓展和优化，更加适应现代SQL引擎的需求，HybridSE的特性如下。
 
-- **高性能**
+- __高性能__
 
   基于LLVM JIT即时编译技术，针对不同硬件环境动态生成二进制码，内置数十种SQL编译优化过程，还有更灵活的内存管理，保证性能在所有SQL引擎中处于前列。
 
-- **拓展性强**
+- __拓展性强__
+
   HybridSE模块化的设计，对外可生成不同阶段的逻辑计划和物理计划，加上丰富完善的多编程语言SDK，无论是实时的OLAD数据库，还是离线的分布式OLAP系统、流式SQL系统都可以使用HybridSE进行SQL优化和加速。
 
-- **针对机器学习优化**
+- __针对机器学习优化__
+
   提供机器学习场景常用的特殊拼表操作以及定制化UDF/UDAF支持，基本满足生产环境下机器学习特征抽取和上线的应用需求。
 
-- **离线在线一致性**
+- __离线在线一致性__
+
   同一套SQL语法解析和CodeGen代码生成逻辑，保证使用HybridSE的离线和在线系统落地时计算语意一致，SQL中内置UDF/UDAF语法也避免跨语言系统的函数一致性问题。
 
 注:目前还处于unstable状态并且有许多功能待补齐,不能运用于生产环境
@@ -30,12 +33,110 @@ HybridSE是一个模块化的SQL编译器和执行器，提供了SQL语法校验
 
 ## Build
 
+
 ```shell
-git clone https://github.com/4paradigm/HybridSE.git
+git clone git@github.com:4paradigm/HybridSE.git
 cd HybridSE
 docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
-cd /HybridSE
-sh tools/build_hybridse.sh
+cd /depends && tar -zxf thirdparty.tar.gz
+cd /Hybridse
+source tools/init_env.profile.sh
+ln -sf /depends/thirdparty thirdparty
+mkdir -p build && cd build
+cmake ..
+# just compile the core library
+make -j4 hybridse_core
+```
+
+### 使用C++编程接口
+
+HybridSE提供C++编程接口，用户可以在C/C++项目中使用来编译SQL以及生成最终的可执行代码。[C++API文档](./docs/zh-hans/developer_guide/api/c++/reference.md)
+
+```c++
+using namespace llvm;       // NOLINT (build/namespaces)
+using namespace llvm::orc;  // NOLINT (build/namespaces)
+namespace fesql {
+namespace cmd {
+// ...
+int run() {
+    // build Simple Catalog
+    auto catalog = std::make_shared<SimpleCatalog>(true);
+    // database simple_db
+    fesql::type::Database db;
+    db.set_name("simple_db");
+
+    // prepare table t1 schema and data
+    fesql::type::TableDef table_def;
+    {
+        table_def.set_name("t1");
+        table_def.set_catalog("db");
+        {
+            ::fesql::type::ColumnDef* column = table_def.add_columns();
+            column->set_type(::fesql::type::kVarchar);
+            column->set_name("col0");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table_def.add_columns();
+            column->set_type(::fesql::type::kInt32);
+            column->set_name("col1");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table_def.add_columns();
+            column->set_type(::fesql::type::kInt64);
+            column->set_name("col2");
+        }
+    }
+    *(db.add_tables()) = table_def;
+    catalog->AddDatabase(db);
+
+    // insert data into simple_db
+    std::vector<Row> t1_rows;
+    for (int i = 0; i < 10; ++i) {
+        std::string str1 = "hello";
+        codec::RowBuilder builder(table_def.columns());
+        uint32_t total_size = builder.CalTotalLength(str1.size());
+        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+        builder.SetBuffer(ptr, total_size);
+        builder.AppendString(str1.c_str(), str1.size());
+        builder.AppendInt32(i);
+        builder.AppendInt64(1576571615000 - i);
+        t1_rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
+    }
+    if (!catalog->InsertRows("simple_db", "t1", t1_rows)) {
+        return SIMPLE_ENGINE_DATA_ERROR;
+    }
+
+    // build simple engine
+    EngineOptions options;
+    Engine engine(catalog, options);
+    std::string sql = "select col0, col1, col2, col1+col2 as col12 from t1;";
+    {
+        base::Status get_status;
+        BatchRunSession session;
+        // compile sql
+        if (!engine.Get(sql, "simple_db", session, get_status) ||
+            get_status.code != common::kOk) {
+            return SIMPLE_ENGINE_COMPILE_ERROR;
+        }
+        std::vector<Row> outputs;
+        // run sql query
+        if (0 != session.Run(outputs)) {
+            return SIMPLE_ENGINE_RUN_ERROR;
+        }
+        PrintRows(session.GetSchema(), outputs);
+    }
+    return SIMPLE_ENGINE_RET_SUCCESS;
+}
+
+}  // namespace cmd
+}  // namespace fesql
+
+int main(int argc, char** argv) {
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+    return fesql::cmd::run();
+}
+
 ```
 
 ### Simple Engine Demo
@@ -107,7 +208,7 @@ HybridSE可拓展适配NoSQL、OLAP、OLTP等系统，已支持SparkSQL和FEDB�
 ## 反馈与参与
 
 - Bug、疑惑、修改欢迎提在[Github Issue](https://github.com/4paradigm/HybridSE/issues)
-- 想了解更多或者有想法可以参与到[Github Discussions](https://github.com/4paradigm/HybridSE/discussions)和[slack](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)交流
+- 想了解更多或者有想法可以参与到[Github Discussions](https://github.com/4paradigm/HybridSE/discussions)和[slack](https://hybridsql-ws.slack.com/archives/C01R7LAF6AY)交流
 
 ## 许可证
 

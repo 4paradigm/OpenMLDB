@@ -4,14 +4,38 @@
 	<parent>
 		<artifactId>hybridse-java</artifactId>
 		<groupId>com._4paradigm.hybridse</groupId>
-        <version>0.1.0-SNAPSHOT</version>
+                <version>0.1.0-SNAPSHOT</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>hybridse-common</artifactId>
 	<packaging>jar</packaging>
 	<name>hybridse-common</name>
-	<version>0.1.0-SNAPSHOT</version>
+	<version>${versionFromProfile}</version>
+
+	<profiles>
+		<profile>
+			<id>default</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<properties>
+				<versionFromProfile>${project.parent.version}</versionFromProfile>
+			</properties>
+		</profile>
+		<profile>
+			<id>macos</id>
+			<properties>
+				<versionFromProfile>${project.parent.version}-macos</versionFromProfile>
+			</properties>
+		</profile>
+		<profile>
+			<id>allinone</id>
+			<properties>
+				<versionFromProfile>${project.parent.version}-allinone</versionFromProfile>
+			</properties>
+		</profile>
+	</profiles>
 
     <dependencies>
 		<dependency>
@@ -54,8 +78,9 @@
 		<dependency>
 			<groupId>com._4paradigm.hybridse</groupId>
 			<artifactId>hybridse-native</artifactId>
-			<version>${project.version}</version>
+			<version>${versionFromProfile}</version>
 		</dependency>
+
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
