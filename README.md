@@ -2,7 +2,7 @@
 
 [![HybridSE CI](https://github.com/4paradigm/HybridSE/actions/workflows/hybridse-ci.yml/badge.svg)](https://github.com/4paradigm/HybridSE/actions/workflows/hybridse-ci.yml)
 
-- [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)
+- [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7LAF6AY)
 - [**Discussions**](https://github.com/4paradigm/HybridSE/discussions)
 
 HybridSE(Hybrid SQL Engine)是基于C++和LLVM实现的高性能混合SQL执行引擎，为AI应用、OLAD数据库、HTAP系统、SparkSQL、Flink Streaming SQL等提供一致性的SQL加速优化。
@@ -13,35 +13,39 @@ HybridSE(Hybrid SQL Engine)是基于C++和LLVM实现的高性能混合SQL执行�
 
 HybridSE是一个模块化的SQL编译器和执行器，提供了SQL语法校验、逻辑计划生成和优化、表达式优化、离线或在线物理计划生成、Native代码生成以及单机或分布式Runner实现等功能。开发者使用HybridSE可以快速实现一个支持SQL的高性能数据库，也可以用HybridSE来优化离线SQL执行引擎的性能。相比与MySQL、SparkSQL等内置实现的SQL执行引擎，HybridSE不仅性能更优，而且针对AI场景进行了语法拓展和优化，更加适应现代SQL引擎的需求，HybridSE的特性如下。
 
-- **高性能**
+- __高性能__
+
   基于LLVM JIT即时编译技术，针对不同硬件环境动态生成二进制码，内置数十种SQL编译优化过程，还有更灵活的内存管理，保证性能在所有SQL引擎中处于前列。
-- **拓展性强**
+
+- __拓展性强__
+
   HybridSE模块化的设计，对外可生成不同阶段的逻辑计划和物理计划，加上丰富完善的多编程语言SDK，无论是实时的OLAD数据库，还是离线的分布式OLAP系统、流式SQL系统都可以使用HybridSE进行SQL优化和加速。
-- **针对机器学习优化**
+
+- __针对机器学习优化__
+
   提供机器学习场景常用的特殊拼表操作以及定制化UDF/UDAF支持，基本满足生产环境下机器学习特征抽取和上线的应用需求。
-- **离线在线一致性**
+
+- __离线在线一致性__
+
   同一套SQL语法解析和CodeGen代码生成逻辑，保证使用HybridSE的离线和在线系统落地时计算语意一致，SQL中内置UDF/UDAF语法也避免跨语言系统的函数一致性问题。
 
 # Getting Started 
 
 ## Build
 
-1.使用Docker镜像
-
-```shell
-docker run -it develop-registry.4pd.io/centos6_gcc7_fesql:master bash
-```
-
-2.从源码编译项目
 
 ```shell
 git clone git@github.com:4paradigm/hybridse.git
-
-mkdir -p ./hybridse/build
-cd ./hybridse/build/
-
+cd hybridse
+docker run -v `pwd`:/Hybridse -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
+cd /depends && tar -zxf thirdparty.tar.gz
+cd /Hybridse
+source tools/init_env.profile.sh
+ln -sf /depends/thirdparty thirdparty
+mkdir -p build && cd build
 cmake ..
-make -j4
+# just compile the core library
+make -j4 hybridse_core
 ```
 
 ### 使用C++编程接口
@@ -162,7 +166,7 @@ HybridSE也提供Java编程接口，基于Java/Scala的项目也可以使用来�
 cd hybridse 
 mkdir build/ 
 cmake .. -DEXAMPLES_ENABLE=ON 
-make -j4
+make -j4 toydb
 ```
 
 #### 启动ToyDB
