@@ -7,7 +7,7 @@
 
 HybridSE(Hybrid SQL Engine)是基于C++和LLVM实现的高性能混合SQL执行引擎，为AI应用、OLAD数据库、HTAP系统、SparkSQL、Flink Streaming SQL等提供一致性的SQL加速优化。
 
-<img src="./images/HybridSE.png" alt="image-20210301164207172" style="width:600px" align="left"/>
+<img src="/Users/chenjing/work/4paradigm/HybridSQL-docs/hybridse/introduction/images/HybridSE.png" alt="image-HybridSE" style="width:600px" align="left"/>
 
 HybridSE是一个模块化的SQL编译器和执行器，提供了SQL语法校验、逻辑计划生成和优化、表达式优化、离线或在线物理计划生成、Native代码生成以及单机或分布式Runner实现等功能。开发者使用HybridSE可以快速实现一个支持SQL的高性能数据库，也可以用HybridSE来优化离线SQL执行引擎的性能。相比与MySQL、SparkSQL等内置实现的SQL执行引擎，HybridSE不仅性能更优，而且针对AI场景进行了语法拓展和优化，更加适应现代SQL引擎的需求，HybridSE的特性如下。
 
@@ -27,119 +27,55 @@ HybridSE是一个模块化的SQL编译器和执行器，提供了SQL语法校验
 
   同一套SQL语法解析和CodeGen代码生成逻辑，保证使用HybridSE的离线和在线系统落地时计算语意一致，SQL中内置UDF/UDAF语法也避免跨语言系统的函数一致性问题。
 
-注:目前还处于unstable状态并且有许多功能待补齐,不能运用于生产环境
+
 
 # Getting Started
 
-## Build
-
+## Prepare Code & Docker
 
 ```shell
 git clone git@github.com:4paradigm/HybridSE.git
 cd HybridSE
 docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
-cd /depends && tar -zxf thirdparty.tar.gz
 cd /Hybridse
+# init enviroment before build
 source tools/init_env.profile.sh
-ln -sf /depends/thirdparty thirdparty
+```
+
+建议开发者使用我们提供的镜像编译和安装库。若需要使用自己的开发环境，请确保相关依赖库正确安装。编译环境和依赖库可参考 [HybridSQL-docker](https://github.com/4paradigm/HybridSQL-docker/blob/main/README.md)
+
+## Build
+
+```shell
+cd /Hybridse
 mkdir -p build && cd build
 cmake ..
 # just compile the core library
 make -j4 hybridse_core
 ```
 
-### 使用C++编程接口
+## Install
 
-HybridSE提供C++编程接口，用户可以在C/C++项目中使用来编译SQL以及生成最终的可执行代码。[C++API文档](./docs/zh-hans/developer_guide/api/c++/reference.md)
-
-```c++
-using namespace llvm;       // NOLINT (build/namespaces)
-using namespace llvm::orc;  // NOLINT (build/namespaces)
-namespace fesql {
-namespace cmd {
-// ...
-int run() {
-    // build Simple Catalog
-    auto catalog = std::make_shared<SimpleCatalog>(true);
-    // database simple_db
-    fesql::type::Database db;
-    db.set_name("simple_db");
-
-    // prepare table t1 schema and data
-    fesql::type::TableDef table_def;
-    {
-        table_def.set_name("t1");
-        table_def.set_catalog("db");
-        {
-            ::fesql::type::ColumnDef* column = table_def.add_columns();
-            column->set_type(::fesql::type::kVarchar);
-            column->set_name("col0");
-        }
-        {
-            ::fesql::type::ColumnDef* column = table_def.add_columns();
-            column->set_type(::fesql::type::kInt32);
-            column->set_name("col1");
-        }
-        {
-            ::fesql::type::ColumnDef* column = table_def.add_columns();
-            column->set_type(::fesql::type::kInt64);
-            column->set_name("col2");
-        }
-    }
-    *(db.add_tables()) = table_def;
-    catalog->AddDatabase(db);
-
-    // insert data into simple_db
-    std::vector<Row> t1_rows;
-    for (int i = 0; i < 10; ++i) {
-        std::string str1 = "hello";
-        codec::RowBuilder builder(table_def.columns());
-        uint32_t total_size = builder.CalTotalLength(str1.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendString(str1.c_str(), str1.size());
-        builder.AppendInt32(i);
-        builder.AppendInt64(1576571615000 - i);
-        t1_rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
-    }
-    if (!catalog->InsertRows("simple_db", "t1", t1_rows)) {
-        return SIMPLE_ENGINE_DATA_ERROR;
-    }
-
-    // build simple engine
-    EngineOptions options;
-    Engine engine(catalog, options);
-    std::string sql = "select col0, col1, col2, col1+col2 as col12 from t1;";
-    {
-        base::Status get_status;
-        BatchRunSession session;
-        // compile sql
-        if (!engine.Get(sql, "simple_db", session, get_status) ||
-            get_status.code != common::kOk) {
-            return SIMPLE_ENGINE_COMPILE_ERROR;
-        }
-        std::vector<Row> outputs;
-        // run sql query
-        if (0 != session.Run(outputs)) {
-            return SIMPLE_ENGINE_RUN_ERROR;
-        }
-        PrintRows(session.GetSchema(), outputs);
-    }
-    return SIMPLE_ENGINE_RET_SUCCESS;
-}
-
-}  // namespace cmd
-}  // namespace fesql
-
-int main(int argc, char** argv) {
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    return fesql::cmd::run();
-}
-
+```shell
+cd /Hybridse
+mkdir -p build && cd build
+cmake ..  -DCMAKE_INSTALL_PREFIX="CONFIG_YOUR_HYRBIDSE_INSTALL_DIR"
+make -j4 install
 ```
 
-### Simple Engine Demo
+更详细的编译和安装配置可以参考 [快速开始HybridSE](https://github.com/4paradigm/HybridSQL-docs/blob/feat/hybridse-quick-start-doc/hybridse/usage/quick_start.md) 
+
+## Run tests
+
+```shell
+cd /Hybridse
+mkdir -p build & cd buid
+cmake .. -DTESTING_ENABLE=ON
+export SQL_CASE_BASE_DIR=/HybridSE 
+make -j4 && make -j4 test
+```
+
+## Run simple engine demo
 
 ```shell
 cd /HybridSE
@@ -150,18 +86,18 @@ make -j4 hybridse_proto && make -j4 hybridse_parser && make -j4 simple_engine_de
 ./src/simple_engine_demo
 ```
 
-### ToyDB Demo
+## Run ToyDB
 
-#### 编译ToyDB
+- Build ToyDB
 
 ```shell
 cd /HybridSE
 mkdir build 
 cmake .. -DEXAMPLES_ENABLE=ON 
-make -j4 hybridse_proto && make -j4 hybridse_parser && make toydb -j4
+make -j4 hybridse_proto && make -j4 hybride_parser && make toydb -j4
 ```
 
-#### 启动ToyDB
+- Start ToyDB
 
 ```
 cd /HybridSE/examples/toydb/onebox
@@ -169,7 +105,9 @@ sh start_all.sh
 sh start_cli.sh
 ```
 
-Toydb支持基本的NewSQL数据库的操作，具体操作细节可参考[ToyDB使用手册](../usage/toydb_tutorial/toydb_usage.md)
+ToyDB是基于HybridSE开发的简易内存数据库. 它支持基本的数据库操作和SQL查询语句。详细使用参见 [ToyDB快速开始](https://github.com/4paradigm/HybridSQL-docs/blob/feat/hybridse-quick-start-doc/hybridse/usage/toydb_usage/toydb_quickstart.md)
+
+
 
 ## 生态项目
 
@@ -181,7 +119,7 @@ Toydb支持基本的NewSQL数据库的操作，具体操作细节可参考[ToyDB
 
 ## 未来规划
 
-### SQL兼容
+### ANSI SQL兼容
 
 HybridSE已经兼容主流的DDL、DML语法，并将逐步增强对ANSI SQL语法的兼容性，从而简化用户从其他SQL引擎迁移的成本。
 
@@ -208,7 +146,7 @@ HybridSE可拓展适配NoSQL、OLAP、OLTP等系统，已支持SparkSQL和FEDB�
 ## 反馈与参与
 
 - Bug、疑惑、修改欢迎提在[Github Issue](https://github.com/4paradigm/HybridSE/issues)
-- 想了解更多或者有想法可以参与到[Github Discussions](https://github.com/4paradigm/HybridSE/discussions)和[slack](https://hybridsql-ws.slack.com/archives/C01R7LAF6AY)交流
+- 想了解更多或者有想法可以参与到[Discussions](https://github.com/4paradigm/HybridSE/discussions)和[slack](https://hybridsql-ws.slack.com/archives/C01R7LAF6AY)交流
 
 ## 许可证
 
