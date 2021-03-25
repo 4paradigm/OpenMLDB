@@ -7,7 +7,7 @@
 
 HybridSE(Hybrid SQL Engine)是基于C++和LLVM实现的高性能混合SQL执行引擎，为AI应用、OLAD数据库、HTAP系统、SparkSQL、Flink Streaming SQL等提供一致性的SQL加速优化。
 
-<img src="/Users/chenjing/work/4paradigm/HybridSQL-docs/hybridse/introduction/images/HybridSE.png" alt="image-HybridSE" style="width:600px" align="left"/>
+<img src="./images/HybridSE.png" alt="image-HybridSE" style="width:600px" align="left"/>
 
 HybridSE是一个模块化的SQL编译器和执行器，提供了SQL语法校验、逻辑计划生成和优化、表达式优化、离线或在线物理计划生成、Native代码生成以及单机或分布式Runner实现等功能。开发者使用HybridSE可以快速实现一个支持SQL的高性能数据库，也可以用HybridSE来优化离线SQL执行引擎的性能。相比与MySQL、SparkSQL等内置实现的SQL执行引擎，HybridSE不仅性能更优，而且针对AI场景进行了语法拓展和优化，更加适应现代SQL引擎的需求，HybridSE的特性如下。
 
