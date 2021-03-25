@@ -4,38 +4,38 @@ env:
   GIT_SUBMODULE_STRATEGY: recursive
 
 jobs:
-  build:
-    runs-on: self-hosted
-    container:
-      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.CR_PAT_ZW }}
-    steps:
-      - uses: actions/checkout@v1
-      - name: update submodule
-        run: |
-           /opt/rh/sclo-git212/root/usr/bin/git submodule update --init
-      - name: uncompress_thirdparty
-        run: cd /depends && tar -zxf thirdparty.tar.gz 
+#  build:
+#    runs-on: self-hosted
+#    container:
+#      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
+#      credentials:
+#        username: ${{ github.actor }}
+#        password: ${{ secrets.CR_PAT_ZW }}
+#    steps:
+#      - uses: actions/checkout@v1
+#      - name: update submodule
+#        run: |
+#           /opt/rh/sclo-git212/root/usr/bin/git submodule update --init
+#      - name: uncompress_thirdparty
+#        run: cd /depends && tar -zxf thirdparty.tar.gz 
 #      - name: build_fesql
 #        run: bash tools/install_hybridse.sh
-      - name: build_fedb
-        run: |
-          ln -sf /depends/thirdparty thirdparty
-          ln -sf /depends/thirdsrc thirdsrc
+#      - name: build_fedb
+#        run: |
+#          ln -sf /depends/thirdparty thirdparty
+#          ln -sf /depends/thirdsrc thirdsrc
 #          bash steps/simple_compile.sh
-      - name: cleanup
-        if: always()
-        run: |
-          source /etc/profile.d/enable-rh.sh
-          git clean -dfx
-          test -d fesql && cd fesql && git clean -dfx
+#      - name: cleanup
+#        if: always()
+#        run: |
+#          source /etc/profile.d/enable-rh.sh
+#          git clean -dfx
+#          test -d fesql && cd fesql && git clean -dfx
 
 
   cpp_ut:
-    needs: [build]
-        runs-on: self-hosted
+#    needs: [build]
+    runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
       credentials:
@@ -62,6 +62,7 @@ jobs:
         if: always()
         with:
           files: reports/*.xml
+          comment_title: Test Report
           report_individual_runs: true
           check_run_annotations: all tests, skipped tests    
       - name: cleanup
