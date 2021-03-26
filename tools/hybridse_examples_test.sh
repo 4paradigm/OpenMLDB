@@ -25,10 +25,9 @@ if uname -a | grep -q Darwin; then
     # in case coreutils not install on mac
     alias nproc='sysctl -n hw.logicalcpu'
 fi
-HYRBIDSE_DIR=`PWD`
+HYRBIDSE_DIR=$(pwd)
 rm -rf build
 mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DJAVASDK_ENABLE=OFF -DPYSDK_ENABLE=OFF -DCORE_TESTING_ENABLE=OFF
-make -j"$(nproc)" hybridse_proto && make -j"$(nproc)" hybridse_parser
+cmake .. -DCMAKE_BUILD_TYPE=Release -DEXAMPLES_ENABLE=ON -DEXAMPLES_TESTING_ENABLE=ON -DJAVASDK_ENABLE=OFF -DPYSDK_ENABLE=OFF -DCORE_TESTING_ENABLE=OFF
 make -j"$(nproc)"
 YAML_CASE_BASE_DIR=${HYRBIDSE_DIR} make test -j"$(nproc)"

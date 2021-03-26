@@ -17,6 +17,7 @@ set -eE
 
 # goto toplevel directory
 pushd "$(dirname "$0")/.."
+HYRBIDSE_DIR=$(pwd)
 
 # shellcheck disable=SC1091
 source tools/init_env.profile.sh
@@ -26,12 +27,10 @@ if uname -a | grep -q Darwin; then
 	alias nproc='sysctl -n hw.logicalcpu'
 fi
 
-HYRBIDSE_DIR=$(pwd)
-rm -rf build
-mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DJAVASDK_ENABLE=OFF -DPYSDK_ENABLE=OFF -DEXAMPLES_ENABLE=OFF
-make -j"$(nproc)" hybridse_proto && make -j"$(nproc)" hybridse_parser
-make -j"$(nproc)"
+mkdir -p build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="hybridse"
+make -j"$(nproc)" hybridse_core
 SQL_CASE_BASE_DIR=${HYRBIDSE_DIR} make -j"$(nproc)" test
 
 popd
