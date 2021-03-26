@@ -25,21 +25,59 @@ jobs:
     steps:
     - uses: actions/checkout@v1
 
-    - name: Build
+    - name: Fetch Submodules
+      run: |
+        git submodule update --init --recursive
+
+    - name: Build Core
       run: |
         ./tools/hybridse_build.sh
 
-    - name: core test
+    - name: Core Test
       run: |
         ./tools/hybridse_core_test.sh
 
-    - name: benchmark
+    - name: Publish Unit Test Results
+      uses: EnricoMi/publish-unit-test-result-action@v1
+      if: always()
+      with:
+        files: build/*.xml
+
+    - name: Cleanup
+      if: always()
       run: |
+        git clean -dfx
+
+  coverage:
+    runs-on: self-hosted
+    container:
+      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
+
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Fetch Submodules
+      run: |
+        git submodule update --init --recursive
+
+    - name: Build and Coverage
+      run: |
+        ./tools/compile_and_coverage.sh
+
+    # - name: coverage report
+    #   uses: romeovs/lcov-reporter-action@master
+    #   with:
+    #     github-token: ${{ secrets.GITHUB_TOKEN }}
+    #     lcov-file: ./build/coverage.info
+
+    # - name: benchmark
+    #   run: |
         # cost too much time
         # bash tools/micro_bench.sh | tee micro_bench_report.txt
         # bash tools/gen_micro_bench_compare.sh
 
-    - name: cleanup
+    - name: Cleanup
+      if: always()
       run: |
-        source /etc/profile.d/enable-rh.sh
         git clean -dfx

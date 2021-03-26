@@ -19,8 +19,9 @@ set -eE
 # goto toplevel directory
 cd "$(dirname "$0")/.."
 
-source tools/init_env.profile.sh
+HYRBIDSE_DIR=$(pwd)
 
+source tools/init_env.profile.sh
 
 if uname -a | grep -q Darwin; then
     # in case coreutils not install on mac
@@ -29,6 +30,6 @@ fi
 
 rm -rf build
 mkdir -p build && cd build
-cmake .. -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON
-make hybridse_proto && make hybridse_parser && make -j"$(nproc)"
-make -j"$(nproc)" coverage
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON -DEXAMPLES_ENABLE=ON -DEXAMPLES_TESTING_ENABLE=ON
+make -j"$(nproc)"
+make -j"$(nproc)" coverage SQL_CASE_BASE_DIR="$HYRBIDSE_DIR" YAML_CASE_BASE_DIR="$HYRBIDSE_DIR"

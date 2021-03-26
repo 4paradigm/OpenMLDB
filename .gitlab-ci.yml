@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.13
+image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
 variables:
     GIT_SUBMODULE_STRATEGY: normal
     CICD_RUNNER_THIRDPARTY_PATH: "/depends/thirdparty"
