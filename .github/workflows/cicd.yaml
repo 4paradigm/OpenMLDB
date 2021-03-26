@@ -81,7 +81,7 @@ jobs:
 
   publish-test-results:
     name: "Publish Unit Tests Results"
-    needs: [cpput, sql_sdk_test_level_0]
+    needs: [cpp_ut, sql_sdk_test_level_0]
     runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
