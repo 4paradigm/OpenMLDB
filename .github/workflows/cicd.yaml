@@ -34,7 +34,7 @@ jobs:
         if: always()
         with:
           name: cpp_ut-report
-          path: ${{ github.workspace }}/reports/*.xml
+          path: reports/*.xml
       - name: cleanup
         if: always()
         run: |
@@ -71,7 +71,7 @@ jobs:
         if: always()
         with:
           name: sql_sdk_test_level0-report
-          path: ${{ github.workspace }}/reports/*.xml
+          path: reports/sql_sdk_test.xml
       - name: cleanup
         if: always()
         run: |
