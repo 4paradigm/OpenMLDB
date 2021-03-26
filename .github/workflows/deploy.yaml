@@ -12,7 +12,7 @@ jobs:
       image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
       credentials:
         username: ${{ github.actor }}
-        password: ${{ secrets.CR_PAT_ZW }}
+        password: ${{ secrets.CR_PAT }}
     steps:
       - uses: actions/checkout@v1
 #        with:
@@ -31,54 +31,18 @@ jobs:
           ln -sf /depends/thirdparty thirdparty
           ln -sf /depends/thirdsrc thirdsrc
           source /root/.bashrc && bash steps/simple_compile.sh
-      - uses: actions/upload-artifact@v1
-        with:
-          name: fedb
-          path: build/bin/fedb
+      - name: package fedb
+        run: |
+          source /root/.bashrc && bash steps/deploy_fedb_package.sh
+      - name: package
+        run: |
+          ln -sf /depends/thirdparty thirdparty
+          ln -sf /depends/thirdsrc thirdsrc
+          source /root/.bashrc && bash steps/deploy_java_sdk.sh
+
       - name: cleanup
         if: always()
         run: |
           source /etc/profile.d/enable-rh.sh
           git clean -dfx
           test -d fesql && cd fesql && git clean -dfx
-  deploy_fedb_package:
-    needs: [build]
-    runs-on: self-hosted
-    container:
-      image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.CR_PAT_ZW }}
-    steps:
-      - uses: actions/checkout@v1
-      - name: update nss
-        run: yum update -y nss curl libcurl
-      - uses: actions/download-artifact@v1
-        with:
-          name: fedb
-          path: build/bin/fedb
-      - name: package
-        run: |
-          source /root/.bashrc && bash steps/deploy_fedb_package.sh
-  deploy_java_sdk:
-    needs: [build]
-    runs-on: self-hosted
-    container:
-      image: ghcr.io/4paradigm/centos6_gcc7_fesql:0.0.1-legacy
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.CR_PAT_ZW }}
-    steps:
-      - uses: actions/checkout@v1
-      - name: update nss
-        run: yum update -y nss curl libcurl
-      - name: update submodule
-        run: |
-          ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/local/bin/git
-          git submodule init
-          git submodule update
-      - name: package
-        run: |
-          ln -sf /depends/thirdparty thirdparty
-          ln -sf /depends/thirdsrc thirdsrc
-          source /root/.bashrc && bash steps/deploy_java_sdk.sh
