@@ -66,7 +66,7 @@ jobs:
           ln -sf /depends/thirdsrc thirdsrc
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_sdk_test && cd ../
-          bash steps/fesql_c_ut.sh 0 sql_sdk_test
+          bash steps/sql_sdk_c_ut.sh 0 sql_sdk_test
       - uses: actions/upload-artifact@v1
         if: always()
         with:
