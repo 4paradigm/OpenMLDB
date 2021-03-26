@@ -63,7 +63,7 @@ cmake ..  -DCMAKE_INSTALL_PREFIX="CONFIG_YOUR_HYRBIDSE_INSTALL_DIR"
 make -j4 install
 ```
 
-更详细的编译和安装配置可以参考 [快速开始HybridSE](https://github.com/4paradigm/HybridSQL-docs/blob/feat/hybridse-quick-start-doc/hybridse/usage/quick_start.md) 
+更详细的编译和安装配置可参见文档：[快速开始HybridSE](https://github.com/4paradigm/HybridSQL-docs/blob/feat/hybridse-quick-start-doc/hybridse/usage/quick_start.md) 
 
 ## Run tests
 
@@ -85,7 +85,7 @@ cmake ..
 make -j4 hybridse_proto && make -j4 hybridse_parser && make -j4 simple_engine_demo
 ./src/simple_engine_demo
 ```
-`simple_engine_demo`是基于HyrbidSE实现的内存表SQL查询引擎。更多细节可参见文档[如何实现一个简单引擎](https://github.com/4paradigm/HybridSQL-docs/blob/feat/simple_engine_demo_doc/hybridse/usage/simple_engine_demo.md)
+`simple_engine_demo`是基于HyrbidSE实现的内存表SQL引擎。更多细节可参见文档：[如何实现一个简单引擎](https://github.com/4paradigm/HybridSQL-docs/blob/feat/simple_engine_demo_doc/hybridse/usage/simple_engine_demo.md)
 
 ## Run ToyDB
 
@@ -106,7 +106,7 @@ sh start_all.sh
 sh start_cli.sh
 ```
 
-ToyDB是基于HybridSE开发的简易单机内存数据库. 它支持基本的数据库操作和SQL查询语句。详细使用参见 [ToyDB快速开始](https://github.com/4paradigm/HybridSQL-docs/blob/feat/hybridse-quick-start-doc/hybridse/usage/toydb_usage/toydb_quickstart.md)
+ToyDB是基于HybridSE开发的简易单机内存数据库. 它支持基本的数据库操作和SQL查询语句。详细使用可参见：[ToyDB快速开始](https://github.com/4paradigm/HybridSQL-docs/blob/feat/hybridse-quick-start-doc/hybridse/usage/toydb_usage/toydb_quickstart.md)
 
 
 
