@@ -22,9 +22,10 @@ jobs:
           cd /depends && tar -zxf thirdparty.tar.gz
           mkdir zookeeper-3.4.14 && mv thirdsrc/* zookeeper-3.4.14/ && mv zookeeper-3.4.14 thirdsrc/
       - name: build
-        run: bash tools/install_hybridse.sh
+        run: |
           ln -sf /depends/thirdparty thirdparty
           ln -sf /depends/thirdsrc thirdsrc
+          bash tools/install_hybridse.sh
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) && cd ../
       - name: run cpp
