@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#! /bin/sh
-#
-# start_cli.sh
 
 set -eE
 set -o nounset
