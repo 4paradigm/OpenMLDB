@@ -19,5 +19,16 @@ set -eE
 cd "$(dirname "$0")"
 cd "$(git rev-parse --show-toplevel)"
 
-find ./src | grep "\(\.h\|\.cc\)$" | xargs -I {} clang-format -i -style=file {}
-find ./examples/toydb/src | grep "\(\.h\|\.cc\)$" | xargs -I {} clang-format -i -style=file {}
+for file in $(git ls-files); do
+    if [[ $file = *.cc || $file = *.h ]]; then
+        clang-format -i -style=file "$file"
+    elif [[ $file = *.py ]]; then
+        yapf -i "$file"
+    elif [[ $file = *.sh ]]; then
+        shfmt -i 4 -w "$file"
+    elif [[ $file = *.xml || $file = *.yaml || $file = *.yml || $file = *.json ]]; then
+        prettier -w "$file"
+    elif [[ $file = *.java ]]; then
+        google-java-format -i --aosp "$file"
+    fi
+done

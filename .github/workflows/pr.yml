@@ -1,0 +1,13 @@
+name: pr-linter
+on:
+  pull_request:
+    types: ['opened', 'edited', 'reopened', 'synchronize']
+
+jobs:
+  pr-name-lint:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install Dependencies
+      run: npm install @commitlint/config-conventional
+    - uses: JulienKode/pull-request-name-linter-action@v0.2.0

@@ -47,6 +47,7 @@ jobs:
       if: always()
       run: |
         git clean -dfx
+        git submodule foreach 'rm -rf $displaypath'
 
   coverage:
     runs-on: self-hosted
@@ -81,3 +82,4 @@ jobs:
       if: always()
       run: |
         git clean -dfx
+        git submodule foreach 'rm -rf $displaypath'
