@@ -19,6 +19,8 @@ jobs:
         shell: bash
         run: |
           ./tools/format.sh
+          # make sure only commit modified files
+          git clean -dfx
 
       - name: Create PR
         uses: peter-evans/create-pull-request@v3
