@@ -16,19 +16,48 @@
 
 set -eE
 
-cd "$(dirname "$0")"
-cd "$(git rev-parse --show-toplevel)"
+pushd "$(dirname "$0")"
+pushd "$(git rev-parse --show-toplevel)"
+
+if ! command -v shfmt; then
+    if [ ! -e bin/shfmt ]; then
+        curl --create-dirs -SLo bin/shfmt https://github.com/mvdan/sh/releases/download/v3.2.4/shfmt_v3.2.4_linux_amd64
+    fi
+    alias shfmt="bin/shfmt"
+fi
+
+if ! command -v google-java-format; then
+    if [ ! -e bin/google-java-format.jar ]; then
+        curl --create-dirs -SLo bin/google-java-format.jar https://github.com/google/google-java-format/releases/download/google-java-format-1.9/google-java-format-1.9-all-deps.jar
+    fi
+    alias google-java-format='java -jar bin/google-java-format.jar'
+fi
+
+if [ ! -e node_modules/bin/prettier ]; then
+    npm install --save-dev prettier @prettier/plugin-xml
+fi
+alias prettier='./node_modules/bin/prettier'
+
+if  ! command -v yapf ; then
+    python3 -m pip install --user -U yapf
+    alias yapf=~/.local/bin/yapf
+fi
+
+# download clang-format
 
 for file in $(git ls-files); do
     if [[ $file = *.cc || $file = *.h ]]; then
-        clang-format -i -style=file "$file"
+        clang-format -i -style=file "$file" || true
     elif [[ $file = *.py ]]; then
-        yapf -i "$file"
+        yapf -i --style=google "$file" || true
     elif [[ $file = *.sh ]]; then
-        shfmt -i 4 -w "$file"
+        shfmt -i 4 -w "$file" || true
     elif [[ $file = *.xml || $file = *.yaml || $file = *.yml || $file = *.json ]]; then
-        prettier -w "$file"
+        prettier -w "$file" || true
     elif [[ $file = *.java ]]; then
-        google-java-format -i --aosp "$file"
+        google-java-format -i --aosp "$file" || true
     fi
 done
+
+popd
+popd
