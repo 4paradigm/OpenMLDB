@@ -80,7 +80,7 @@
                         </dependency>
                     </dependencies>
                     <configuration>
-                        <configLocation>google_checks.xml</configLocation>
+                        <configLocation>style_checks.xml</configLocation>
                         <encoding>UTF-8</encoding>
                         <consoleOutput>true</consoleOutput>
                         <failsOnError>true</failsOnError>
@@ -88,11 +88,14 @@
                     </configuration>
                     <executions>
                         <execution>
-                            <id>validate</id>
+                            <id>checkstyle</id>
                             <phase>validate</phase>
                             <goals>
                                 <goal>check</goal>
                             </goals>
+                            <configuration>
+                                <failOnViolation>true</failOnViolation>
+                            </configuration>
                         </execution>
                     </executions>
                 </plugin>
