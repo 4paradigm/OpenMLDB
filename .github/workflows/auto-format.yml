@@ -2,6 +2,7 @@ name: auto format
 on:
   schedule:
     - cron: '29 12 * * 6'
+  workflow_dispatch:
 
 jobs:
   auto-format:
