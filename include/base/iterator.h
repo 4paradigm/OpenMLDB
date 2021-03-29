@@ -31,6 +31,26 @@ struct DefaultComparator {
     }
 };
 
+/// \brief An iterator over a key-value pairs dataset
+/// \tparam K key type of elements
+/// \tparam V value type of elements
+/// \tparam Ref decorate the value returned by GetValue method, e.g, it can be
+/// const V& or V&
+///
+/// Example:
+///
+/// We use the Valid and  Next() functions to manually iterate through
+/// all the items of an iterator. When we reach the end and Valid() will
+/// return `false`.
+///
+/// ```
+/// // assume we have got and initialized an row iterator already
+/// while (iterator->Valid()) {
+///     auto &value = iterator->GetValue();
+///     auto &key = iterator->GetKey();
+///     iterator->Next();
+/// }
+/// ```
 template <class K, class V, class Ref>
 class AbstractIterator {
  public:
@@ -38,18 +58,38 @@ class AbstractIterator {
     AbstractIterator(const AbstractIterator&) = delete;
     AbstractIterator& operator=(const AbstractIterator&) = delete;
     virtual ~AbstractIterator() {}
+    /// Return whether the iteration has elements
+    /// or not.
     virtual bool Valid() const = 0;
+    /// Implemented by subclasses to move to the next element in the iteration
+    /// when Valid() return `true`.
     virtual void Next() = 0;
+    /// Return the key of current element pair.
     virtual const K& GetKey() const = 0;
+    /// Return the value of current element pari
+    /// when Valid() return `true`.
     virtual Ref GetValue() = 0;
-    virtual void Seek(const K& k) = 0;
-    virtual void SeekToFirst() = 0;
+    /// Return whether the dataset is seekable or
+    /// not. A dataset is seekable if it allows access to data with Seek()
+    /// method
     virtual bool IsSeekable() const = 0;
-};
 
+    /// Set the dataset's current position move to
+    /// the first element whose key equals to `k` offset.
+    virtual void Seek(const K& k) = 0;
+
+    /// Move to the beginning of the dataset.
+    virtual void SeekToFirst() = 0;
+};
+/// \brief An iterator over a key-value pairs dataset
+/// \tparam K key type of elements
+/// \tparam V value type of elements
 template <class K, class V>
 class Iterator : public AbstractIterator<K, V, V&> {};
 
+/// \brief An const iterator over a key-value pairs dataset
+/// \tparam K key type of elements
+/// \tparam V value type of elements
 template <class K, class V>
 class ConstIterator : public hybridse::base::AbstractIterator<K, V, const V&> {
 };

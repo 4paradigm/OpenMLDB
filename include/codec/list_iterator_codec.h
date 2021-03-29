@@ -26,12 +26,12 @@
 #include "base/fe_slice.h"
 #include "base/iterator.h"
 #include "codec/row.h"
+#include "codec/row_list.h"
 #include "codec/type_codec.h"
 #include "glog/logging.h"
 namespace hybridse {
 namespace codec {
 
-using hybridse::base::ConstIterator;
 template <class V>
 class ArrayListIterator;
 
@@ -41,48 +41,6 @@ class ColumnImpl;
 template <class V>
 class ColumnIterator;
 
-typedef ConstIterator<uint64_t, Row> RowIterator;
-class WindowIterator {
- public:
-    WindowIterator() {}
-    virtual ~WindowIterator() {}
-    virtual void Seek(const std::string &key) = 0;
-    virtual void SeekToFirst() = 0;
-    virtual void Next() = 0;
-    virtual bool Valid() = 0;
-    virtual std::unique_ptr<RowIterator> GetValue() = 0;
-    virtual RowIterator *GetRawValue() = 0;
-    virtual const Row GetKey() = 0;
-};
-
-template <class V>
-class ListV {
- public:
-    ListV() {}
-    virtual ~ListV() {}
-    // TODO(chenjing): at 数组越界处理
-    virtual std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() = 0;
-    virtual ConstIterator<uint64_t, V> *GetRawIterator() = 0;
-    virtual const uint64_t GetCount() {
-        auto iter = GetIterator();
-        uint64_t cnt = 0;
-        while (iter->Valid()) {
-            iter->Next();
-            cnt++;
-        }
-        return cnt;
-    }
-    virtual V At(uint64_t pos) {
-        auto iter = GetIterator();
-        if (!iter) {
-            return V();
-        }
-        while (pos-- > 0 && iter->Valid()) {
-            iter->Next();
-        }
-        return iter->Valid() ? iter->GetValue() : V();
-    }
-};
 
 template <class V, class R>
 class WrapListImpl : public ListV<V> {

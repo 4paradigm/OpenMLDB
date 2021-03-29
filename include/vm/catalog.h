@@ -41,16 +41,22 @@ using hybridse::codec::Schema;
 using hybridse::codec::WindowIterator;
 
 constexpr uint32_t INVALID_POS = UINT32_MAX;
+
+/// \struct represents index information, e.g, name, first keys, second key
+/// information
 struct IndexSt {
-    std::string name;
-    uint32_t index;
-    uint32_t ts_pos;
-    std::vector<ColInfo> keys;
+    std::string name;           ///< index name
+    uint32_t index;             ///< position of index
+    uint32_t ts_pos;            ///< second key column position
+    std::vector<ColInfo> keys;  ///< first keys set
 };
 
+/// \var typedef repeated fields of IndexDef
 typedef ::google::protobuf::RepeatedPtrField<::hybridse::type::IndexDef>
     IndexList;
+/// \var typedef a map with string type key and ColInfo value
 typedef std::map<std::string, ColInfo> Types;
+/// \var typedef a map with string type key and IndexSt value
 typedef std::map<std::string, IndexSt> IndexHint;
 
 class PartitionHandler;
@@ -60,29 +66,44 @@ class Tablet;
 
 enum HandlerType { kRowHandler, kTableHandler, kPartitionHandler };
 enum OrderType { kDescOrder, kAscOrder, kNoneOrder };
+
+/// \brief The basic dataset operation abstraction.
+///
+/// It contains the basic operations available on all row-based dataset
+/// handlers, such as TableHandler, Partitionhandler.
 class DataHandler : public ListV<Row> {
  public:
     DataHandler() {}
     virtual ~DataHandler() {}
-    // get the schema of table
+    /// Return table schema.
     virtual const Schema* GetSchema() = 0;
 
-    // get the table name
+    /// Return table name.
     virtual const std::string& GetName() = 0;
 
-    // get the db name
+    /// Return the name of database.
     virtual const std::string& GetDatabase() = 0;
+
+    /// Return the type of DataHandler.
     virtual const HandlerType GetHanlderType() = 0;
+    /// Return the name of handler type
     virtual const std::string GetHandlerTypeName() = 0;
+    /// Return dataset status. Default is hybridse::common::kOk
     virtual base::Status GetStatus() { return base::Status::OK(); }
 };
+
+/// \brief A sequence of DataHandler
 class DataHandlerList {
  public:
     DataHandlerList() {}
     virtual ~DataHandlerList() {}
+    /// Return the number of elements
     virtual size_t GetSize() = 0;
+    /// Return the idx-th element
     virtual std::shared_ptr<DataHandler> Get(size_t idx) = 0;
 };
+
+/// \brief A implementation of DataHandlerList.
 class DataHandlerVector : public DataHandlerList {
  public:
     DataHandlerVector() : data_handlers_() {}
@@ -90,7 +111,9 @@ class DataHandlerVector : public DataHandlerList {
     void Add(std::shared_ptr<DataHandler> data_handler) {
         data_handlers_.push_back(data_handler);
     }
+    /// Return the number of elements
     size_t GetSize() { return data_handlers_.size(); }
+    /// Return the idx-th element. Return `null` when position is out of range
     std::shared_ptr<DataHandler> Get(size_t idx) {
         return idx < data_handlers_.size() ? data_handlers_[idx]
                                            : std::shared_ptr<DataHandler>();
@@ -99,12 +122,20 @@ class DataHandlerVector : public DataHandlerList {
  private:
     std::vector<std::shared_ptr<DataHandler>> data_handlers_;
 };
+/// \brief A implementation of DataHandlerList.
+///
+/// Actually, we just keep one data_handler_ in container where elements are
+/// repeated logically.
 class DataHandlerRepeater : public DataHandlerList {
  public:
+    /// Create DataHandlerRepeater with a DataHandler and elements number
     DataHandlerRepeater(std::shared_ptr<DataHandler> data_handler, size_t size)
         : size_(size), data_handler_(data_handler) {}
     ~DataHandlerRepeater() {}
+
+    /// Return the number of elements
     size_t GetSize() { return size_; }
+    /// Return the idx-th element. Return `null` when position is out of range
     std::shared_ptr<DataHandler> Get(size_t idx) {
         return idx < size_ ? data_handler_ : std::shared_ptr<DataHandler>();
     }
@@ -113,24 +144,42 @@ class DataHandlerRepeater : public DataHandlerList {
     size_t size_;
     std::shared_ptr<DataHandler> data_handler_;
 };
+
+/// \brief A row operation abstraction.
 class RowHandler : public DataHandler {
  public:
     RowHandler() {}
 
     virtual ~RowHandler() {}
+    /// Return `null` since GetIterator isn't supported for a row
     std::unique_ptr<RowIterator> GetIterator() override {
         return std::unique_ptr<RowIterator>();
     }
+    /// Return `null` since GetRawIterator isn't supported for a row,
     RowIterator* GetRawIterator() override { return nullptr; }
+
+    /// Return 0 since Getcount isn't supported for a row
     const uint64_t GetCount() override { return 0; }
+
+    /// Return 0 since Getcount isn't supported for a row
     Row At(uint64_t pos) override { return Row(); }
+
+    /// Return the HandlerType of the row handler.
+    /// Return HandlerType::kRowHandler by default
     const HandlerType GetHanlderType() override { return kRowHandler; }
+
+    /// Return value of row
     virtual const Row& GetValue() = 0;
+
+    /// Return the name of handler type.
+    /// Return `"RowHandler"` by default.
     const std::string GetHandlerTypeName() override { return "RowHandler"; }
 };
 
+/// \brief A row's error handler, representing a error row
 class ErrorRowHandler : public RowHandler {
  public:
+    /// Creating ErrorRowHandler with status code and error msg
     ErrorRowHandler(common::StatusCode status_code, const std::string& msg_str)
         : status_(status_code, msg_str),
           table_name_(""),
@@ -138,7 +187,11 @@ class ErrorRowHandler : public RowHandler {
           schema_(nullptr),
           row_() {}
     ~ErrorRowHandler() {}
-    virtual const Row& GetValue() { return row_; }
+
+    /// Return empty Row as value
+    virtual const Row& GetValue() final { return row_; }
+
+    /// Return handler type name, and return "ErrorRowHandler" by default.
     const std::string GetHandlerTypeName() override {
         return "ErrorRowHandler";
     }
@@ -155,39 +208,62 @@ class ErrorRowHandler : public RowHandler {
     Row row_;
 };
 
+/// \brief A table dataset operation abstraction.
 class TableHandler : public DataHandler {
  public:
     TableHandler() : DataHandler() {}
 
     virtual ~TableHandler() {}
 
-    // get the types
+    /// Return table column Types information.
     virtual const Types& GetTypes() = 0;
 
-    // get the index information
+    /// Return the index information
     virtual const IndexHint& GetIndex() = 0;
-    // get the table iterator
 
+    /// Return WindowIterator
+    /// so that user can use it to iterate datasets segment by segment.
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) = 0;
+
+    /// Return the HandlerType of the dataset.
+    /// Return HandlerType::kTableHandler by default
     const HandlerType GetHanlderType() override { return kTableHandler; }
+
+    /// Return partition handler of specify partition binding to given index.
+    /// Return `null` by default.
     virtual std::shared_ptr<PartitionHandler> GetPartition(
         const std::string& index_name) {
         return std::shared_ptr<PartitionHandler>();
     }
+
+    /// Return the name of handler and return "TableHandler" by default.
     const std::string GetHandlerTypeName() override { return "TableHandler"; }
+
+    /// Return the order type of the dataset,
+    /// and return OrderType::kNoneOrder by default.
     virtual const OrderType GetOrderType() const { return kNoneOrder; }
+
+    /// Return Tablet binding to specify index and key.
+    /// Return `null` by default.
     virtual std::shared_ptr<Tablet> GetTablet(const std::string& index_name,
                                               const std::string& pk) {
         return std::shared_ptr<Tablet>();
     }
+
+    /// Return Tablet binding to specify index and keys.
+    /// Return `null` by default.
     virtual std::shared_ptr<Tablet> GetTablet(
         const std::string& index_name, const std::vector<std::string>& pks) {
         return std::shared_ptr<Tablet>();
     }
 };
+
+/// \brief A table dataset's error handler, representing a error table
 class ErrorTableHandler : public TableHandler {
  public:
+    /// Create ErrorTableTable with initializing status_ with
+    /// common::kCallMethodError
     ErrorTableHandler()
         : status_(common::kCallMethodError, "error"),
           table_name_(""),
@@ -195,6 +271,7 @@ class ErrorTableHandler : public TableHandler {
           schema_(nullptr),
           types_(),
           index_hint_() {}
+    /// Create ErrorTableHandler with specific status code and message
     ErrorTableHandler(common::StatusCode status_code,
                       const std::string& msg_str)
         : status_(status_code, msg_str),
@@ -205,25 +282,40 @@ class ErrorTableHandler : public TableHandler {
           index_hint_() {}
     ~ErrorTableHandler() {}
 
+    /// Return empty column Types.
     const Types& GetTypes() override { return types_; }
+    /// Return empty table Schema.
     inline const Schema* GetSchema() override { return schema_; }
+    /// Return empty table name
     inline const std::string& GetName() override { return table_name_; }
+    /// Return empty indexn information
     inline const IndexHint& GetIndex() override { return index_hint_; }
+    /// Return name of database
     inline const std::string& GetDatabase() override { return db_; }
 
+    /// Return null iterator
     std::unique_ptr<RowIterator> GetIterator() {
         return std::unique_ptr<RowIterator>();
     }
+    /// Return null iterator
     RowIterator* GetRawIterator() { return nullptr; }
+    /// Return null window iterator
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) {
         return std::unique_ptr<WindowIterator>();
     }
+    /// Return empty row
     virtual Row At(uint64_t pos) { return Row(); }
+
+    /// Return 0
     const uint64_t GetCount() override { return 0; }
+
+    /// Return handler type name, and return "ErrorTableHandler" by default.
     const std::string GetHandlerTypeName() override {
         return "ErrorTableHandler";
     }
+
+    /// Return status
     virtual base::Status GetStatus() { return status_; }
 
  protected:
@@ -235,27 +327,49 @@ class ErrorTableHandler : public TableHandler {
     IndexHint index_hint_;
     OrderType order_type_;
 };
+
+/// \brief The abstraction of partition dataset operation.
+///
+/// A partition dataset is always organized by segments
+///              +-- key1 --> segment1
+///  partition --+-- key2 --> segment2
+///              +-- key3 --> segment3
 class PartitionHandler : public TableHandler {
  public:
     PartitionHandler() : TableHandler() {}
     ~PartitionHandler() {}
+
+    /// Return the iterator of row iterator.
+    /// Return null by default
     virtual std::unique_ptr<RowIterator> GetIterator() {
         return std::unique_ptr<RowIterator>();
     }
+    /// Return the iterator of row iterator
+    /// Return null by default
     RowIterator* GetRawIterator() { return nullptr; }
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) {
         return std::unique_ptr<WindowIterator>();
     }
+
+    /// Return WindowIterator to iterate datasets
+    /// segment-by-segment.
     virtual std::unique_ptr<WindowIterator> GetWindowIterator() = 0;
+
+    /// Return HandlerType::kPartitionHandler by default
     const HandlerType GetHanlderType() override { return kPartitionHandler; }
+
+    /// Return empty row, cause partition dataset does not support At operation.
     virtual Row At(uint64_t pos) { return Row(); }
+
+    /// Return Return table handler of specific segment binding to given key.
+    /// Return `null` by default.
     virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key) {
         return std::shared_ptr<TableHandler>();
     }
 
-    // Return batch segments with given keys vector
-    // this is default implementation of GetSegments
+    /// Return a sequence of table handles of specify segments binding to given
+    /// keys set.
     virtual std::vector<std::shared_ptr<TableHandler>> GetSegments(
         const std::vector<std::string>& keys) {
         std::vector<std::shared_ptr<TableHandler>> segments;
@@ -264,13 +378,23 @@ class PartitionHandler : public TableHandler {
         }
         return segments;
     }
+    /// Return the name of handler, and return `"PartitionHandler"` by default.
     const std::string GetHandlerTypeName() override {
         return "PartitionHandler";
     }
+    /// Return order type of the dataset,
+    /// and return kNoneOrder by default.
     const OrderType GetOrderType() const { return kNoneOrder; }
 };
+
+/// \brief A wrapper of table handler which is used as a asynchronous row handler
+///
+/// AysncRowHandler is statefull. It is running when created.
+/// GetValue is invoked, status will be changed if it is running at that moment.
 class AysncRowHandler : public RowHandler {
  public:
+    /// Create with given table_handler and row position index.
+    /// status_ is set with common::kRunning
     AysncRowHandler(size_t idx,
                     std::shared_ptr<TableHandler> aysnc_table_handler)
         : RowHandler(),
@@ -287,6 +411,10 @@ class AysncRowHandler : public RowHandler {
         }
     }
     virtual ~AysncRowHandler() {}
+
+    /// Return the row value.
+    /// Sync row value by invoking aysnc_table_handler_->At(idx_)
+    /// if status isn't common::kRunning
     const Row& GetValue() override {
         if (!status_.isRunning()) {
             return value_;
@@ -298,6 +426,8 @@ class AysncRowHandler : public RowHandler {
     const Schema* GetSchema() override { return schema_; }
     const std::string& GetName() override { return table_name_; }
     const std::string& GetDatabase() override { return db_; }
+
+ private:
     base::Status status_;
     std::string table_name_;
     std::string db_;
@@ -307,15 +437,22 @@ class AysncRowHandler : public RowHandler {
     Row value_;
 };
 
+/// \brief A component responsible to Query subtask
 class Tablet {
  public:
     Tablet() {}
     virtual ~Tablet() {}
+    /// Return the name of tablet.
     virtual const std::string& GetName() const = 0;
+    /// Return RowHandler by calling request-mode
+    /// query on subtask which is specified by task_id and sql string
     virtual std::shared_ptr<RowHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
         const hybridse::codec::Row& row, const bool is_procedure,
         const bool is_debug) = 0;
+    /// Return TableHandler by calling
+    /// batch-request-mode query on subtask which is specified by task_id and
+    /// sql
     virtual std::shared_ptr<TableHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
         const std::set<size_t>& common_column_indices,
@@ -323,22 +460,31 @@ class Tablet {
         const bool is_procedure, const bool is_debug) = 0;
 };
 
-// database/table/schema/type management
+
+/// \brief A Catalog handler which defines a set of operation for, e.g, database, table and
+/// index management.
+///
+/// Users should implement the subclasses for their own purpose
 class Catalog {
  public:
     Catalog() {}
 
     virtual ~Catalog() {}
 
+    /// Return whether index is supported or not.
     virtual bool IndexSupport() = 0;
-    // get database information
+
+    /// Return database information.
     virtual std::shared_ptr<type::Database> GetDatabase(
         const std::string& db) = 0;
 
-    // get table handler
+    /// Return a table handler with given table
+    /// name
     virtual std::shared_ptr<TableHandler> GetTable(
         const std::string& db, const std::string& table_name) = 0;
 
+    /// Return ProcedureInfo instance with given database name `db` and
+    /// procedure name `sp_name`
     virtual std::shared_ptr<hybridse::sdk::ProcedureInfo> GetProcedureInfo(
         const std::string& db, const std::string& sp_name) {
         return nullptr;
