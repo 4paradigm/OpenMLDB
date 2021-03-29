@@ -46,7 +46,7 @@ shlint:
 		|| echo "SKIP: shlint (shellcheck not found)"
 
 javalint:
-	@cd java && mvn -pl hybridse-common checkstyle:check
+	@cd java && mvn -pl hybridse-common -Dplugin.violationSeverity=warning checkstyle:check
 
 pylint:
 	@command -v pylint && git ls-files | grep --regexp "\.py$$" | xargs -I {} pylint {} \
