@@ -19,7 +19,7 @@ jobs:
       - name: Format
         shell: bash
         run: |
-          ./tools/format.sh
+          make format
           # make sure only commit modified files
           git clean -dfx
 
