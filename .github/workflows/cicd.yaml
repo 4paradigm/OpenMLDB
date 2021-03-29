@@ -31,10 +31,10 @@ jobs:
       - name: run cpp
         run: |
           bash steps/ut.sh
-      - name: run sql_sdk_test
-        if: always()
-        run: |
-          bash steps/sql_sdk_c_ut.sh 0 sql_sdk_test
+#      - name: run sql_sdk_test
+#        if: always()
+#        run: |
+#          bash steps/sql_sdk_c_ut.sh 0 sql_sdk_test
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         if: always()
