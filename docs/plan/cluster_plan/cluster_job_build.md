@@ -1,3 +1,0 @@
-分布式计划的生成策略
-
-分布式任务ClusterJob包含一个或者多个作业ClusterTask

@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,14 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#! /bin/sh
-#
-# stop_all.sh
-
-if [[ "$OSTYPE" == "linux-gnu"* ]] 
-then
-    ps -efx | grep toydb | grep role | grep -v grep | awk '{print $1}' | while read line; do kill -9 $line;done
-else
-    ps -efx | grep toydb | grep role | grep -v grep | awk '{print $2}' | while read line; do kill -9 $line;done
-fi
+pgrep -f "toydb --role" | while read -r line; do kill -9 "$line";done
 
