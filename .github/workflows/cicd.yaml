@@ -4,7 +4,8 @@ env:
   GIT_SUBMODULE_STRATEGY: recursive
 
 jobs:
-  build:
+
+  cpp_ut:
     runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
@@ -17,14 +18,31 @@ jobs:
         run: |
            /opt/rh/sclo-git212/root/usr/bin/git submodule update --init
       - name: uncompress_thirdparty
-        run: cd /depends && tar -zxf thirdparty.tar.gz 
-      - name: build_fesql
-        run: bash tools/install_hybridse.sh
-      - name: build_fedb
+        run: |
+          cd /depends && tar -zxf thirdparty.tar.gz
+          mkdir zookeeper-3.4.14 && mv thirdsrc/* zookeeper-3.4.14/ && mv zookeeper-3.4.14 thirdsrc/
+      - name: build
         run: |
           ln -sf /depends/thirdparty thirdparty
           ln -sf /depends/thirdsrc thirdsrc
-          bash steps/simple_compile.sh
+          bash tools/install_hybridse.sh
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) && cd ../
+      - name: run cpp
+        run: |
+          bash steps/ut.sh
+#      - name: run sql_sdk_test
+#        if: always()
+#        run: |
+#          bash steps/sql_sdk_c_ut.sh 0 sql_sdk_test
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        with:
+          files: reports/*.xml
+          comment_title: Test Report
+          report_individual_runs: true
+          check_run_annotations: all tests, skipped tests
       - name: cleanup
         if: always()
         run: |

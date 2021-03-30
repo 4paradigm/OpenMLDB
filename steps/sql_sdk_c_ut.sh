@@ -31,7 +31,7 @@ echo "sql c++ sdk test : case_level ${CASE_LEVEL}, case_file ${CASE_NAME}"
 ROOT_DIR=`pwd`
 echo "WORK_DIR: ${ROOT_DIR}"
 ulimit -c unlimited
-test -d reports && rm -rf reports
+#test -d reports && rm -rf reports
 mkdir -p reports
 cd ${ROOT_DIR}
 cp ${ROOT_DIR}/steps/zoo.cfg ${ROOT_DIR}/thirdsrc/zookeeper-3.4.14/conf/zoo.cfg

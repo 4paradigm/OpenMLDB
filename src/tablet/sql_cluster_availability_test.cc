@@ -284,14 +284,14 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     FLAGS_zk_root_path = "/rtidb4" + GenRand();
 
     // ns1
-    FLAGS_endpoint = "127.0.0.1:9631";
+    FLAGS_endpoint = "127.0.0.1:9632";
     brpc::Server ns_server;
     StartNameServer(ns_server);
     ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
     name_server_client.Init();
 
     // tablet1
-    FLAGS_endpoint = "127.0.0.1:9831";
+    FLAGS_endpoint = "127.0.0.1:9832";
     FLAGS_db_root_path = "/tmp/" + GenRand();
     brpc::Server tb_server1;
     ::fedb::tablet::TabletImpl* tablet1 = new ::fedb::tablet::TabletImpl();
