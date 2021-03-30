@@ -17,7 +17,7 @@ jobs:
       image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest 
       credentials:
         username: ${{ github.actor }}
-        password: ${{ secrets.CR_PAT }}
+        password: ${{ secrets.CR_PAT_ZW }}
     steps:
       - uses: actions/checkout@v1
       - name: update submodule
