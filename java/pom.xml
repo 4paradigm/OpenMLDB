@@ -1,8 +1,10 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+<project
+  xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+>
 
+    <modelVersion>4.0.0</modelVersion>
     <groupId>com._4paradigm.hybridse</groupId>
     <artifactId>hybridse-java</artifactId>
     <version>0.1.0-SNAPSHOT</version>
@@ -12,10 +14,10 @@
         <module>hybridse-proto</module>
     </modules>
     <packaging>pom</packaging>
-    <name>java</name>
+    <name>hybridse</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
+        <plugin.violationSeverity>error</plugin.violationSeverity>
     </properties>
     <build>
         <pluginManagement>
@@ -25,7 +27,8 @@
                     <artifactId>versions-maven-plugin</artifactId>
                     <version>2.3</version>
                     <configuration>
-                        <generateBackupPoms>false</generateBackupPoms>
+                        <generateBackupPoms>
+                        false</generateBackupPoms>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -61,10 +64,35 @@
                             <id>scoverage-report</id>
                             <phase>prepare-package</phase>
                             <goals>
-                                <goal>report</goal> <!-- or integration-check -->
+                                <goal>report</goal>
+                                <!-- or integration-check -->
                             </goals>
                         </execution>
                     </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-site-plugin</artifactId>
+                    <version>3.9.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <version>3.1.2</version>
+                    <configuration>
+                        <configLocation>style_checks.xml</configLocation>
+                        <consoleOutput>false</consoleOutput>
+                        <failsOnError>true</failsOnError>
+                        <failOnViolation>true</failOnViolation>
+                        <violationSeverity>${plugin.violationSeverity}</violationSeverity>
+                    </configuration>
+                    <dependencies>
+                        <dependency>
+                            <groupId>com.puppycrawl.tools</groupId>
+                            <artifactId>checkstyle</artifactId>
+                            <version>8.41</version>
+                        </dependency>
+                    </dependencies>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -83,7 +111,6 @@
         </repository>
     </distributionManagement>
     -->
-
     <distributionManagement>
         <snapshotRepository>
             <id>file-repository</id>
@@ -94,6 +121,28 @@
             <url>file:///tmp/hybridse_java_packages/</url>
         </repository>
     </distributionManagement>
-
+    <reporting>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>3.1.2</version>
+                <reportSets>
+                    <reportSet>
+                        <reports>
+                            <report>checkstyle</report>
+                        </reports>
+                    </reportSet>
+                </reportSets>
+                <configuration>
+                    <configLocation>style_checks.xml</configLocation>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>4.2.2</version>
+            </plugin>
+        </plugins>
+    </reporting>
 </project>
-

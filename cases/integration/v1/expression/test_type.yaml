@@ -260,8 +260,7 @@ cases:
     mode: offline-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
-      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
-      "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
+      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
         indexs: ["index1:c6:c8"]
         rows:
           - [1, 1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
@@ -285,8 +284,7 @@ cases:
     mode: offline-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
-      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
-      "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
+      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
         indexs: ["index1:c6:c8"]
         rows:
           - [1, 1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
@@ -311,8 +309,7 @@ cases:
     mode: offline-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
-      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
-      "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
+      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
         indexs: ["index1:c6:c8"]
         rows:
           - [1, 1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
@@ -337,8 +334,7 @@ cases:
     mode: offline-unsupport, python-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
-      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
-      "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
+      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
         indexs: ["index1:c6:c8"]
         rows:
           - [1, 1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
@@ -362,8 +358,7 @@ cases:
     mode: offline-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
-      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
-      "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
+      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
         indexs: ["index1:c6:c8"]
         rows:
           - [1, 1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
@@ -387,8 +382,7 @@ cases:
     mode: offline-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
-      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
-      "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
+      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
         indexs: ["index1:c6:c8"]
         rows:
           - [1, 1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
@@ -413,8 +407,7 @@ cases:
     mode: offline-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
-      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
-      "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
+      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
         indexs: ["index1:c6:c8"]
         rows:
           - [1, 1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
@@ -436,8 +429,7 @@ cases:
     mode: offline-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
-      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
-      "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
+      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
         indexs: ["index1:c6:c8"]
         rows:
           - [1, 1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
@@ -461,8 +453,7 @@ cases:
     mode: offline-unsupport
     tags: ["TODO", "@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
-      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
-      "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
+      - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
         indexs: ["index1:c6:c8"]
         rows:
           - [1, 1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]

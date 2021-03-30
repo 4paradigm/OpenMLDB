@@ -197,7 +197,7 @@ cases:
         eventTime timestamp,
         ingestionTime timestamp,
         actionValue int,
-    ]
+      ]
       indexs: [index1:reqId:null:1:latest]
       name: action
       rows:
