@@ -20,7 +20,7 @@ namespace hybridse {
 namespace codec {
 using hybridse::base::ConstIterator;
 
-/// \typedef  const iterator of key-value pairs.
+/// \typedef const iterator of key-value pairs.
 /// key type is `uint64_t` and value type is Row
 typedef ConstIterator<uint64_t, Row> RowIterator;
 

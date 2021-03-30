@@ -28,13 +28,13 @@ class ListV {
  public:
     ListV() {}
     virtual ~ListV() {}
-    /// Return the const iterator
+    /// \brief Return the const iterator
     virtual std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() = 0;
-    /// Return the const iterator raw pointer
+    /// \brief Return the const iterator raw pointer
     virtual ConstIterator<uint64_t, V> *GetRawIterator() = 0;
     /// \brief Returns the number of elements in this list.
     ///
-    /// It count element by traverse the list
+    /// \brief It count element by traverse the list
     virtual const uint64_t GetCount() {
         auto iter = GetIterator();
         uint64_t cnt = 0;
@@ -45,7 +45,7 @@ class ListV {
         return cnt;
     }
 
-    /// Return a the value of element by its position in the list
+    /// \brief Return a the value of element by its position in the list
     /// \param pos is element position in the list
     virtual V At(uint64_t pos) {
         auto iter = GetIterator();

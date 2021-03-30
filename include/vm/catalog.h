@@ -40,7 +40,7 @@ using hybridse::codec::RowIterator;
 using hybridse::codec::Schema;
 using hybridse::codec::WindowIterator;
 
-constexpr uint32_t INVALID_POS = UINT32_MAX;
+constexpr uint32_t INVALID_POS = UINT32_MAX; ///<
 
 /// \struct represents index information, e.g, name, first keys, second key
 /// information
@@ -171,8 +171,8 @@ class RowHandler : public DataHandler {
     /// Return value of row
     virtual const Row& GetValue() = 0;
 
-    /// Return the name of handler type.
-    /// Return `"RowHandler"` by default.
+    /// Get the name of handler type.
+    /// \return name of handler type, default is `"RowHandler"`
     const std::string GetHandlerTypeName() override { return "RowHandler"; }
 };
 
