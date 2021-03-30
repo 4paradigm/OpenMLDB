@@ -12,9 +12,6 @@
 # concurrency conf
 # thread_pool_size建议和cpu核数一致
 --thread_pool_size=24
---scan_concurrency_limit=16
---put_concurrency_limit=8
---get_concurrency_limit=16
 #--file_compression=off
 
 --zk_session_timeout=10000
