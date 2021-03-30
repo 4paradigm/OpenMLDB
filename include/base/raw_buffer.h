@@ -15,7 +15,7 @@
  */
 
 #ifndef INCLUDE_BASE_RAW_BUFFER_H_
-#define
+#define INCLUDE_BASE_RAW_BUFFER_H_
 #include <assert.h>
 #include <stddef.h>
 #include <string.h>
