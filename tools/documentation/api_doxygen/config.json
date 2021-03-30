@@ -1,0 +1,10 @@
+{
+  "baseUrl": "/hybridse/usage/api/c++/",
+  "indexInFolders": true,
+  "linkSuffix": ".md",
+  "linkLowercase": false,
+  "indexNamespacesName": "README",
+  "indexClassesName": "README",
+  "indexRelatedPagesName": "README",
+  "mainPageInRoot": true
+}
