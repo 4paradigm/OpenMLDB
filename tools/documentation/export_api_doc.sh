@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# need to install doxybook2 before run script
 set -eE
 # goto toplevel directory
 cd "$(dirname "$0")"

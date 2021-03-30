@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_CASE_SQL_CASE_H_
-#define SRC_INCLUDE_CASE_SQL_CASE_H_
+#ifndef INCLUDE_CASE_SQL_CASE_H_
+#define INCLUDE_CASE_SQL_CASE_H_
 #include <vm/catalog.h>
 #include <yaml-cpp/node/node.h>
 #include <yaml-cpp/yaml.h>
@@ -312,4 +312,4 @@ std::string FindSQLCaseBaseDirPath();
 
 }  // namespace sqlcase
 }  // namespace hybridse
-#endif  // SRC_INCLUDE_CASE_SQL_CASE_H_
+#endif  // INCLUDE_CASE_SQL_CASE_H_

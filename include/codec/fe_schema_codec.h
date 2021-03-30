@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_CODEC_FE_SCHEMA_CODEC_H_
-#define SRC_INCLUDE_CODEC_FE_SCHEMA_CODEC_H_
+#ifndef INCLUDE_CODEC_FE_SCHEMA_CODEC_H_
+#define INCLUDE_CODEC_FE_SCHEMA_CODEC_H_
 
 #include <cstring>
 #include <iostream>
@@ -122,4 +122,4 @@ class SchemaCodec {
 
 }  // namespace codec
 }  // namespace hybridse
-#endif  // SRC_INCLUDE_CODEC_FE_SCHEMA_CODEC_H_
+#endif  // INCLUDE_CODEC_FE_SCHEMA_CODEC_H_

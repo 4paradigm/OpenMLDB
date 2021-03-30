@@ -13,16 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef HYBRIDSE_ROW_LIST_H
-#define HYBRIDSE_ROW_LIST_H
+#ifndef INCLUDE_CODEC_ROW_LIST_H_
+#define INCLUDE_CODEC_ROW_LIST_H_
+#include <memory>
 #include "codec/row_iterator.h"
-namespace hybridse{
-namespace codec{
+namespace hybridse {
+namespace codec {
 /// \brief Basic key-value list of HybridSe.
 /// \tparam V the type of elements in this list
 ///
 /// The user can access a element by its position in the list.
-/// Also, can just use the iterator returned by GetIterator() to traverse the list.
+/// Also, can just use the iterator returned by GetIterator() to traverse the
+/// list.
 template <class V>
 class ListV {
  public:
@@ -30,11 +32,13 @@ class ListV {
     virtual ~ListV() {}
     /// \brief Return the const iterator
     virtual std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() = 0;
+
     /// \brief Return the const iterator raw pointer
     virtual ConstIterator<uint64_t, V> *GetRawIterator() = 0;
+
     /// \brief Returns the number of elements in this list.
     ///
-    /// \brief It count element by traverse the list
+    /// It count element by traverse the list
     virtual const uint64_t GetCount() {
         auto iter = GetIterator();
         uint64_t cnt = 0;
@@ -58,6 +62,6 @@ class ListV {
         return iter->Valid() ? iter->GetValue() : V();
     }
 };
-}
-}
-#endif  // HYBRIDSE_ROW_LIST_H
+}  // namespace codec
+}  // namespace hybridse
+#endif  // INCLUDE_CODEC_ROW_LIST_H_

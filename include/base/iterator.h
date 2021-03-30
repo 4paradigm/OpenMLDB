@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef INCLUDE_BASE_ITERATOR_H_
+#define INCLUDE_BASE_ITERATOR_H_
 #include <stdint.h>
 
 namespace hybridse {
@@ -95,3 +96,4 @@ class ConstIterator : public hybridse::base::AbstractIterator<K, V, const V&> {
 };
 }  // namespace base
 }  // namespace hybridse
+#endif  // INCLUDE_BASE_ITERATOR_H_

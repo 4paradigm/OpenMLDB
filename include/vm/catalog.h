@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_VM_CATALOG_H_
-#define SRC_INCLUDE_VM_CATALOG_H_
+#ifndef INCLUDE_VM_CATALOG_H_
+#define INCLUDE_VM_CATALOG_H_
 #include <map>
 #include <memory>
 #include <set>
@@ -40,7 +40,7 @@ using hybridse::codec::RowIterator;
 using hybridse::codec::Schema;
 using hybridse::codec::WindowIterator;
 
-constexpr uint32_t INVALID_POS = UINT32_MAX; ///<
+constexpr uint32_t INVALID_POS = UINT32_MAX;  ///<
 
 /// \struct represents index information, e.g, name, first keys, second key
 /// information
@@ -189,7 +189,7 @@ class ErrorRowHandler : public RowHandler {
     ~ErrorRowHandler() {}
 
     /// Return empty Row as value
-    virtual const Row& GetValue() final { return row_; }
+    const Row& GetValue() final { return row_; }
 
     /// Return handler type name, and return "ErrorRowHandler" by default.
     const std::string GetHandlerTypeName() override {
@@ -387,7 +387,8 @@ class PartitionHandler : public TableHandler {
     const OrderType GetOrderType() const { return kNoneOrder; }
 };
 
-/// \brief A wrapper of table handler which is used as a asynchronous row handler
+/// \brief A wrapper of table handler which is used as a asynchronous row
+/// handler
 ///
 /// AysncRowHandler is statefull. It is running when created.
 /// GetValue is invoked, status will be changed if it is running at that moment.
@@ -460,9 +461,8 @@ class Tablet {
         const bool is_procedure, const bool is_debug) = 0;
 };
 
-
-/// \brief A Catalog handler which defines a set of operation for, e.g, database, table and
-/// index management.
+/// \brief A Catalog handler which defines a set of operation for, e.g,
+/// database, table and index management.
 ///
 /// Users should implement the subclasses for their own purpose
 class Catalog {
@@ -494,4 +494,4 @@ class Catalog {
 }  // namespace vm
 }  // namespace hybridse
 
-#endif  // SRC_INCLUDE_VM_CATALOG_H_
+#endif  // INCLUDE_VM_CATALOG_H_

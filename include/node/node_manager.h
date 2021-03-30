@@ -18,8 +18,8 @@
 //     负责HybridSE的基础元件（SQLNode, PlanNode)的创建和销毁
 //     SQL的语法解析树、查询计划里面维护的只是这些节点的指针或者引用
 
-#ifndef SRC_INCLUDE_NODE_NODE_MANAGER_H_
-#define SRC_INCLUDE_NODE_NODE_MANAGER_H_
+#ifndef INCLUDE_NODE_NODE_MANAGER_H_
+#define INCLUDE_NODE_NODE_MANAGER_H_
 
 #include <ctype.h>
 #include <list>
@@ -388,4 +388,4 @@ class NodeManager {
 
 }  // namespace node
 }  // namespace hybridse
-#endif  // SRC_INCLUDE_NODE_NODE_MANAGER_H_
+#endif  // INCLUDE_NODE_NODE_MANAGER_H_

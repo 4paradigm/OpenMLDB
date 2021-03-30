@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef INCLUDE_BASE_RAW_BUFFER_H_
+#define
 #include <assert.h>
 #include <stddef.h>
 #include <string.h>
@@ -44,3 +45,4 @@ struct RawBuffer {
 
 }  // namespace base
 }  // namespace hybridse
+#endif  // INCLUDE_BASE_RAW_BUFFER_H_

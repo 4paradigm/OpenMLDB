@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_VM_PHYSICAL_OP_H_
-#define SRC_INCLUDE_VM_PHYSICAL_OP_H_
+#ifndef INCLUDE_VM_PHYSICAL_OP_H_
+#define INCLUDE_VM_PHYSICAL_OP_H_
 #include <list>
 #include <memory>
 #include <set>
@@ -1619,4 +1619,4 @@ static Status ReplaceComponentExpr(const Component &component,
 
 }  // namespace vm
 }  // namespace hybridse
-#endif  // SRC_INCLUDE_VM_PHYSICAL_OP_H_
+#endif  // INCLUDE_VM_PHYSICAL_OP_H_

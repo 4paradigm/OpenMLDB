@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_NODE_NODE_ENUM_H_
-#define SRC_INCLUDE_NODE_NODE_ENUM_H_
+#ifndef INCLUDE_NODE_NODE_ENUM_H_
+#define INCLUDE_NODE_NODE_ENUM_H_
 
 #include <string>
 #include "proto/fe_common.pb.h"
@@ -275,4 +275,4 @@ enum RoleType { kLeader, kFollower };
 }  // namespace node
 }  // namespace hybridse
 
-#endif  // SRC_INCLUDE_NODE_NODE_ENUM_H_
+#endif  // INCLUDE_NODE_NODE_ENUM_H_

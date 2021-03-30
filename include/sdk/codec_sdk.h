@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_SDK_CODEC_SDK_H_
-#define SRC_INCLUDE_SDK_CODEC_SDK_H_
+#ifndef INCLUDE_SDK_CODEC_SDK_H_
+#define INCLUDE_SDK_CODEC_SDK_H_
 
 #include <vector>
 #include "butil/iobuf.h"
@@ -123,4 +123,4 @@ int32_t GetStrField(const butil::IOBuf& row, uint32_t str_field_offset,
 
 }  // namespace sdk
 }  // namespace hybridse
-#endif  // SRC_INCLUDE_SDK_CODEC_SDK_H_
+#endif  // INCLUDE_SDK_CODEC_SDK_H_
