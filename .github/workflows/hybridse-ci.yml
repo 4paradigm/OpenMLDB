@@ -20,7 +20,7 @@ jobs:
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: self-hosted
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
+      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:stable
 
     steps:
     - uses: actions/checkout@v1
