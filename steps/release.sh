@@ -39,3 +39,4 @@ do
         break
     fi
 done
+sed -i "s/version=.*/version='$1',/g" src/sdk/python/sqlalchemy-fedb/setup.py

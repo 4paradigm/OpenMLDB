@@ -17,12 +17,12 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='sqlalchemy-fedb',
-    version='1.3.0',
+    name='fedb',
+    version='2.2.0',
     author='fedb Team',
-    author_email=' g_featureengine@4paradigm.com',
-    url='https://www.4paradigm.com',
-    description='feDB adapter for SQLAlchemy',
+    author_email=' ',
+    url='https://github.com/4paradigm/fedb',
+    description='fedb python sdk',
     license="copyright 4paradigm.com",
     classifiers=[
         'Programming Language :: Python :: 3',
