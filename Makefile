@@ -6,48 +6,84 @@ lint: cpplint shlint javalint pylint
 format: javafmt shfmt cppfmt pyfmt configfmt
 
 javafmt:
-	@command -v google-java-format && git ls-files | grep --regexp "\.java$$" | xargs -I {} google-java-format --aosp -i {} \
-		|| echo "SKIP: javafmt (google-java-format not found)"
+	@if command -v google-java-format; then \
+		git ls-files | grep --regexp "\.java$$" | xargs -I {} google-java-format --aosp -i {}; \
+		exit 0; \
+	else \
+		echo "SKIP: javafmt (google-java-format not found)"; \
+	fi
 
 shfmt:
-	@command -v shfmt && git ls-files | grep --regexp "\.sh$$" | xargs -I {} shfmt -i 4 -w {} \
-		|| echo "SKIP: shfmt (shfmt not found)"
+	@if command -v shfmt; then\
+		git ls-files | grep --regexp "\.sh$$" | xargs -I {} shfmt -i 4 -w {}; \
+		exit 0; \
+	else \
+		echo "SKIP: shfmt (shfmt not found)"; \
+	fi
 
 cppfmt:
-	@command -v clang-format && git ls-files | grep --regexp "\(\.h\|\.cc\)$$" | xargs -I {} clang-format -i -style=file {} \
-		|| echo "SKIP: cppfmt (clang-format not found)"
+	@if command -v clang-format; then \
+		git ls-files | grep --regexp "\(\.h\|\.cc\)$$" | xargs -I {} clang-format -i -style=file {} ; \
+		exit 0; \
+	else \
+		echo "SKIP: cppfmt (clang-format not found)"; \
+	fi
 
 pyfmt:
-	@command -v yapf && git ls-files | grep --regexp "\.py$$" | xargs -I {} yapf -i --style=google {} \
-		|| echo "SKIP: pyfmt (yapf not found)"
+	@if command -v yapf; then \
+		git ls-files | grep --regexp "\.py$$" | xargs -I {} yapf -i --style=google {}; \
+		exit 0; \
+	else \
+		echo "SKIP: pyfmt (yapf not found)"; \
+	fi
 
-configfmt: yamlfmt jsonfmt xmlfmt
+configfmt: yamlfmt jsonfmt
 
 yamlfmt:
-	@command -v prettier && git ls-files | grep --regexp "\(\.yaml\|\.yml\)$$" | xargs -I {} prettier -w {} \
-		|| echo "SKIP: yamlfmt (prettier not found)"
+	@if command -v prettier; then \
+		git ls-files | grep --regexp "\(\.yaml\|\.yml\)$$" | xargs -I {} prettier -w {}; \
+		exit 0; \
+	else \
+		echo "SKIP: yamlfmt (prettier not found)"; \
+	fi
 
 jsonfmt:
-	@command -v prettier && git ls-files | grep --regexp "\.json$$" | xargs -I {} prettier -w {} \
-		|| echo "SKIP: jsonfmt (prettier not found)"
+	@if command -v prettier; then \
+		git ls-files | grep --regexp "\.json$$" | xargs -I {} prettier -w {}; \
+		exit 0; \
+	else \
+		echo "SKIP: jsonfmt (prettier not found)"; \
+	fi
 
 xmlfmt:
-	@command -v prettier \
-		&& git ls-files | grep --regexp "\.xml$$" | xargs -I {} prettier --plugin=@prettier/plugin-xml --plugin-search-dir=./node_modules -w {} \
-		|| echo "SKIP: xmlfmt (prettier not found)"
+	@if command -v prettier; then \
+		git ls-files | grep --regexp "\.xml$$" | xargs -I {} prettier --plugin=@prettier/plugin-xml --plugin-search-dir=./node_modules -w {}; \
+		exit 0; \
+	else \
+		echo "SKIP: xmlfmt (prettier not found)"; \
+	fi
 
 
 cpplint:
-	@command -v cpplint && git ls-files | grep --regexp "\(\.h\|\.cc\)$$" | xargs -I {} cpplint {} \
-		|| echo "SKIP: cpplint (cpplint not found)"
+	@if command -v cpplint; then \
+		git ls-files | grep --regexp "\(\.h\|\.cc\)$$" | xargs -I {} cpplint {} ; \
+	else \
+		echo "SKIP: cpplint (cpplint not found)"; \
+	fi
 
 shlint:
-	@command -v shellcheck && git ls-files | grep --regexp "\.sh$$" | xargs -I {} shellcheck {} \
-		|| echo "SKIP: shlint (shellcheck not found)"
+	@if command -v shellcheck; then \
+		git ls-files | grep --regexp "\.sh$$" | xargs -I {} shellcheck {}; \
+	else \
+		echo "SKIP: shlint (shellcheck not found)"; \
+	fi
 
 javalint:
 	@cd java && mvn -pl hybridse-common -Dplugin.violationSeverity=warning checkstyle:check
 
 pylint:
-	@command -v pylint && git ls-files | grep --regexp "\.py$$" | xargs -I {} pylint {} \
-		echo "SKIP: pylint (pylint not found)"
+	@if command -v pylint; then \
+		git ls-files | grep --regexp "\.py$$" | xargs -I {} pylint {}; \
+	else \
+		echo "SKIP: pylint (pylint not found)"; \
+	fi
