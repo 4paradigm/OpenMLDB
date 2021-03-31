@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_BASE_SIG_TRACE_H_
-#define SRC_INCLUDE_BASE_SIG_TRACE_H_
+#ifndef INCLUDE_BASE_SIG_TRACE_H_
+#define INCLUDE_BASE_SIG_TRACE_H_
 
 #include <dlfcn.h>
 #include <execinfo.h>
@@ -56,4 +56,4 @@ void FeSignalBacktraceHandler(int sig) {
 
 }  // namespace base
 }  // namespace hybridse
-#endif  // SRC_INCLUDE_BASE_SIG_TRACE_H_
+#endif  // INCLUDE_BASE_SIG_TRACE_H_

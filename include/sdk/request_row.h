@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_SDK_REQUEST_ROW_H_
-#define SRC_INCLUDE_SDK_REQUEST_ROW_H_
+#ifndef INCLUDE_SDK_REQUEST_ROW_H_
+#define INCLUDE_SDK_REQUEST_ROW_H_
 
 #include <string>
 #include <vector>
@@ -61,4 +61,4 @@ class RequestRow {
 
 }  // namespace sdk
 }  // namespace hybridse
-#endif  // SRC_INCLUDE_SDK_REQUEST_ROW_H_
+#endif  // INCLUDE_SDK_REQUEST_ROW_H_

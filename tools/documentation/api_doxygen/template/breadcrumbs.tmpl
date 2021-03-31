@@ -1,0 +1,5 @@
+{% if exists("moduleBreadcrumbs") -%}
+**Module:** {%- for module in moduleBreadcrumbs -%}
+ **[{{module.title}}]({{module.url}})**{% if not loop.is_last %} **/** {% endif -%}
+{% endfor %}
+{% endif -%}

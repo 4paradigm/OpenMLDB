@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_INCLUDE_VM_ENGINE_CONTEXT_H_
-#define SRC_INCLUDE_VM_ENGINE_CONTEXT_H_
+#ifndef INCLUDE_VM_ENGINE_CONTEXT_H_
+#define INCLUDE_VM_ENGINE_CONTEXT_H_
 #include <map>
 #include <memory>
 #include <set>
@@ -101,4 +101,4 @@ class JITOptions {
 };
 }  // namespace vm
 }  // namespace hybridse
-#endif  // SRC_INCLUDE_VM_ENGINE_CONTEXT_H_
+#endif  // INCLUDE_VM_ENGINE_CONTEXT_H_
