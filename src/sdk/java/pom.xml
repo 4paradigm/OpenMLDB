@@ -9,7 +9,6 @@
     <modules>
            <module>sql-jdbc</module>
            <module>sql-native</module>
-           <module>fesql-auto-test-java</module>
     </modules>
     <packaging>pom</packaging>
     <name>sdk</name>
