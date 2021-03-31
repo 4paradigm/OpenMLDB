@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_BASE_FE_STATUS_H_
-#define SRC_INCLUDE_BASE_FE_STATUS_H_
+#ifndef INCLUDE_BASE_FE_STATUS_H_
+#define INCLUDE_BASE_FE_STATUS_H_
 #include <string>
 #include "glog/logging.h"
 #include "proto/fe_common.pb.h"
@@ -103,4 +103,4 @@ std::ostream& operator<<(std::ostream& os, const Status& status);  // NOLINT
 
 }  // namespace base
 }  // namespace hybridse
-#endif  // SRC_INCLUDE_BASE_FE_STATUS_H_
+#endif  // INCLUDE_BASE_FE_STATUS_H_

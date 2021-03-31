@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_SDK_BASE_STRUCT_H_
-#define SRC_INCLUDE_SDK_BASE_STRUCT_H_
+#ifndef INCLUDE_SDK_BASE_STRUCT_H_
+#define INCLUDE_SDK_BASE_STRUCT_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -277,4 +277,4 @@ inline const std::string DataTypeName(const DataType& type) {
 
 }  // namespace sdk
 }  // namespace hybridse
-#endif  // SRC_INCLUDE_SDK_BASE_STRUCT_H_
+#endif  // INCLUDE_SDK_BASE_STRUCT_H_

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_SDK_BASE_H_
-#define SRC_INCLUDE_SDK_BASE_H_
+#ifndef INCLUDE_SDK_BASE_H_
+#define INCLUDE_SDK_BASE_H_
 
 #include <stdint.h>
 #include <memory>
@@ -130,4 +130,4 @@ class ProcedureInfo {
 
 }  // namespace sdk
 }  // namespace hybridse
-#endif  // SRC_INCLUDE_SDK_BASE_H_
+#endif  // INCLUDE_SDK_BASE_H_

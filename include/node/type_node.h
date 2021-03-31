@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_NODE_TYPE_NODE_H_
-#define SRC_INCLUDE_NODE_TYPE_NODE_H_
+#ifndef INCLUDE_NODE_TYPE_NODE_H_
+#define INCLUDE_NODE_TYPE_NODE_H_
 
 #include <string>
 #include <vector>
@@ -141,4 +141,4 @@ class RowTypeNode : public TypeNode {
 
 }  // namespace node
 }  // namespace hybridse
-#endif  // SRC_INCLUDE_NODE_TYPE_NODE_H_
+#endif  // INCLUDE_NODE_TYPE_NODE_H_

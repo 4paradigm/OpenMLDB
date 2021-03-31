@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_BASE_FE_HASH_H_
-#define SRC_INCLUDE_BASE_FE_HASH_H_
+#ifndef INCLUDE_BASE_FE_HASH_H_
+#define INCLUDE_BASE_FE_HASH_H_
 
 #include <stdint.h>
 
@@ -102,4 +102,4 @@ __attribute__((unused)) static uint64_t MurmurHash64A(const void *key, int len,
 
 }  // namespace base
 }  // namespace hybridse
-#endif  // SRC_INCLUDE_BASE_FE_HASH_H_
+#endif  // INCLUDE_BASE_FE_HASH_H_
