@@ -6,12 +6,7 @@ lint: cpplint shlint javalint pylint
 format: javafmt shfmt cppfmt pyfmt configfmt
 
 javafmt:
-	@if command -v google-java-format; then \
-		git ls-files | grep --regexp "\.java$$" | xargs -I {} google-java-format --aosp -i {}; \
-		exit 0; \
-	else \
-		echo "SKIP: javafmt (google-java-format not found)"; \
-	fi
+	@cd java && mvn -pl hybrid-common spotless:apply
 
 shfmt:
 	@if command -v shfmt; then\
