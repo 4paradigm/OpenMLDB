@@ -1,0 +1,41 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cases:
+  - id: 1
+    desc: CREATE DATABASE db1
+    sql: CREATE DATABASE db1;
+  - id: 2
+    desc: CREATE TABLE
+    sql: CREATE TABLE "schema.sql";
+  - id: 3
+    desc: CREATE GROUP
+    sql: CREATE GROUP group1;
+  - id: 4
+    desc: DESC table
+    sql: DESC t1;
+  - id: 5
+    desc: SHOW TABLE
+    sql: SHOW TABLES;
+  - id: 6
+    desc: SHOW DATABASES
+    sql: SHOW DATABASES;
+  - id: 7
+    desc: explain
+    sql: explain SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from t1) limit 10;
+    mode: logical-plan-unsupport
+  - id: 8
+    desc: explain logical
+    sql: explain logical SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from t1) limit 10;
+    mode: logical-plan-unsupport
