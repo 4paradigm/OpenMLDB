@@ -41,7 +41,20 @@ jobs:
       uses: EnricoMi/publish-unit-test-result-action@v1
       if: always()
       with:
-        files: build/*.xml
+        files: |
+          build/*.xml
+          java/hybridse-sdk/target/surefire-reports/*.xml
+         
+    - name: Java SDK Test
+      run: |
+        cd java/
+        mvn -U clean compile test
+        
+    - name: Publish Java Unit Test Results
+      uses: EnricoMi/publish-unit-test-result-action@v1
+      if: always()
+      with:
+        files: java/hybridse-sdk/target/surefire-reports/*.xml
 
     - name: Cleanup
       if: always()
