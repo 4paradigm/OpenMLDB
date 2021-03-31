@@ -43,10 +43,10 @@ jobs:
       with:
         files: |
           build/*.xml
-          java/hybridse-sdk/target/surefire-reports/*.xml
-         
+
     - name: Java SDK Test
       run: |
+        ./tools/init_env.profile.sh
         cd java/
         mvn -U clean compile test
         
