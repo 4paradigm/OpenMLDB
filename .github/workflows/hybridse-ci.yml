@@ -54,6 +54,9 @@ jobs:
       if: always()
       with:
         files: java/hybridse-sdk/target/surefire-reports/*.xml
+        comment_title: Java Test Report
+        report_individual_runs: true
+        check_run_annotations: all tests, skipped tests
 
     - name: Cleanup
       if: always()
