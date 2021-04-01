@@ -27,7 +27,6 @@ NS3=$IP:9624
 TABLET1=$IP:9520
 TABLET2=$IP:9521
 TABLET3=$IP:9522
-BLOB1=$IP:9720
 
 ../build/bin/fedb --db_root_path=/rambuild/tablet0-binlogs \
                    --recycle_bin_root_path=/rambuild/recycle_bin0 \

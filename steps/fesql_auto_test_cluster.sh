@@ -25,7 +25,7 @@ if [[ "${YAML_CASE_BASE_DIR}" == "" ]]; then
 fi
 echo "fesql auto test cluster: case_level ${CASE_LEVEL}"
 echo "ROOT_DIR:${ROOT_DIR}"
-sh tools/install_hybridse.sh
+sh steps/install_hybridse.sh
 
 mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. 
 make -j5 sql_javasdk_package || { echo "compile error"; exit 1; }

@@ -27,7 +27,6 @@ NS3=$IP:9624
 TABLET1=$IP:9520
 TABLET2=$IP:9521
 TABLET3=$IP:9522
-BLOB1=$IP:9720
 
 # start tablet0
 test -d tablet0-binlogs && rm -rf tablet0-binlogs

@@ -27,7 +27,7 @@ ROOT_DIR=`pwd`
 ulimit -c unlimited
 
 echo "ROOT_DIR:${ROOT_DIR}"
-sh tools/install_hybridse.sh
+sh steps/install_hybridse.sh
 
 mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. 
 make -j5 sql_javasdk_package || { echo "compile error"; exit 1; }
