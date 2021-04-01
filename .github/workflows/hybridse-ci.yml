@@ -64,7 +64,7 @@ jobs:
 
     - name: Build and Coverage
       run: |
-        ./tools/compile_and_coverage.sh
+        # ./tools/compile_and_coverage.sh
 
     # - name: coverage report
     #   uses: romeovs/lcov-reporter-action@master
