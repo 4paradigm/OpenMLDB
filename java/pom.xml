@@ -19,7 +19,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <plugin.violationSeverity>error</plugin.violationSeverity>
         <spotless-maven-plugin.version>2.9.0</spotless-maven-plugin.version>
-        <google-java-format.version>1.7</google-java-format.version>
+        <eclipse.jdt.version>4.13.0</eclipse.jdt.version>
     </properties>
     <build>
         <pluginManagement>
@@ -103,15 +103,10 @@
                     <!-- spotless:check is bound to verfiy phase by default -->
                     <configuration>
                         <java>
-                            <googleJavaFormat>
-                                <version>${google-java-format.version}</version>
-                                <style>AOSP</style>
-                            </googleJavaFormat>
-                            <removeUnusedImports/>
-                            <indent> <!-- specify whether to use tabs or spaces for indentation -->
-                                <spaces>true</spaces> <!-- or <tabs>true</tabs> -->
-                                <spacesPerTab>4</spacesPerTab> <!-- optional, default is 4 -->
-                            </indent>
+                            <eclipse>
+                                <version>${eclipse.jdt.version}</version>
+                                <file>eclipse-formatter.xml</file> <!-- optional -->
+                            </eclipse>
                             <!-- <licenseHeader> <!&#45;&#45; specify either content or file, but not both &#45;&#45;> -->
                             <!--     <content>/* Copyright $YEAR 4Paradigm */</content>  <!&#45;&#45; or <file>${basedir}/license&#45;header</file> &#45;&#45;> -->
                             <!--     <delimiter> -->
