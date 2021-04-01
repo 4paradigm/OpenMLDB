@@ -25,7 +25,7 @@
 namespace hybridse {
 namespace vm {
 
-class JITWrapperTest : public ::testing::Test {};
+class JitWrapperTest : public ::testing::Test {};
 
 std::shared_ptr<SimpleCatalog> GetTestCatalog() {
     hybridse::type::Database db;
@@ -68,9 +68,9 @@ void simple_test(const EngineOptions &options) {
     auto &sql_context = compile_info->get_sql_context();
     std::string ir_str = sql_context.ir;
     ASSERT_FALSE(ir_str.empty());
-    HybridSEJITWrapper *jit = HybridSEJITWrapper::Create();
+    HybridSeJitWrapper *jit = HybridSeJitWrapper::Create();
     ASSERT_TRUE(jit->Init());
-    HybridSEJITWrapper::InitJITSymbols(jit);
+    HybridSeJitWrapper::InitJitSymbols(jit);
 
     base::RawBuffer ir_buf(const_cast<char *>(ir_str.data()), ir_str.size());
     ASSERT_TRUE(jit->AddModuleFromBuffer(ir_buf));
@@ -98,14 +98,14 @@ void simple_test(const EngineOptions &options) {
     delete jit;
 }
 
-TEST_F(JITWrapperTest, test) {
+TEST_F(JitWrapperTest, test) {
     EngineOptions options;
     options.set_keep_ir(true);
     simple_test(options);
 }
 
 #ifdef LLVM_EXT_ENABLE
-TEST_F(JITWrapperTest, test_mcjit) {
+TEST_F(JitWrapperTest, test_mcjit) {
     EngineOptions options;
     options.set_keep_ir(true);
     options.jit_options().set_enable_mcjit(true);
@@ -116,7 +116,7 @@ TEST_F(JITWrapperTest, test_mcjit) {
 }
 #endif
 
-TEST_F(JITWrapperTest, test_window) {
+TEST_F(JitWrapperTest, test_window) {
     EngineOptions options;
     options.set_keep_ir(true);
     options.set_performance_sensitive(false);
@@ -136,9 +136,9 @@ TEST_F(JITWrapperTest, test_window) {
     // this should be removed by better symbol init utility
 
     ASSERT_FALSE(ir_str.empty());
-    HybridSEJITWrapper *jit = HybridSEJITWrapper::Create();
+    HybridSeJitWrapper *jit = HybridSeJitWrapper::Create();
     ASSERT_TRUE(jit->Init());
-    HybridSEJITWrapper::InitJITSymbols(jit);
+    HybridSeJitWrapper::InitJitSymbols(jit);
 
     base::RawBuffer ir_buf(const_cast<char *>(ir_str.data()), ir_str.size());
     ASSERT_TRUE(jit->AddModuleFromBuffer(ir_buf));

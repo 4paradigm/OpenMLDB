@@ -30,20 +30,20 @@ using ::hybridse::common::kCodegenError;
 namespace hybridse {
 namespace codegen {
 
-bool GetLLVMType(::llvm::Module* m, const ::hybridse::node::TypeNode* type,
+bool GetLlvmType(::llvm::Module* m, const ::hybridse::node::TypeNode* type,
                  ::llvm::Type** output);
-bool GetLLVMType(::llvm::BasicBlock* block,
+bool GetLlvmType(::llvm::BasicBlock* block,
                  const ::hybridse::node::DataType& type, ::llvm::Type** output);
-bool GetLLVMType(::llvm::BasicBlock* block,
+bool GetLlvmType(::llvm::BasicBlock* block,
                  const ::hybridse::node::TypeNode* type, ::llvm::Type** output);
-bool GetLLVMType(::llvm::Module* m, const ::hybridse::node::DataType& type,
+bool GetLlvmType(::llvm::Module* m, const ::hybridse::node::DataType& type,
                  ::llvm::Type** output);
-bool GetLLVMListType(::llvm::Module* m, const ::hybridse::node::TypeNode* type,
+bool GetLlvmListType(::llvm::Module* m, const ::hybridse::node::TypeNode* type,
                      ::llvm::Type** output);
-bool GetLLVMIteratorType(::llvm::Module* m,
+bool GetLlvmIteratorType(::llvm::Module* m,
                          const ::hybridse::node::TypeNode* type,
                          ::llvm::Type** output);
-bool GetLLVMColumnSize(::hybridse::node::TypeNode* v_type, uint32_t* size);
+bool GetLlvmColumnSize(::hybridse::node::TypeNode* v_type, uint32_t* size);
 
 bool GetBaseType(::llvm::Type* type, ::hybridse::node::DataType* output);
 bool IsStringType(::llvm::Type* type);
@@ -61,14 +61,14 @@ bool DataType2SchemaType(const ::hybridse::node::TypeNode& type,
 bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
                       ::llvm::Value** output);
 
-base::Status GetLLVMFunctionType(
+base::Status GetLlvmFunctionType(
     ::llvm::Module* m, const std::vector<const node::TypeNode*>& arg_types,
     const std::vector<int>& arg_nullable, const node::TypeNode* return_type,
     bool return_nullable, bool variadic, bool* return_by_arg,
     ::llvm::FunctionType** output);
 
 template <typename T>
-std::string GetLLVMObjectString(T* obj) {
+std::string GetLlvmObjectString(T* obj) {
     if (obj == nullptr) {
         return "<null>";
     }

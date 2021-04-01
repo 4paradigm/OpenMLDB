@@ -60,9 +60,9 @@ bool AggregateIRBuilder::CollectAggColumn(const hybridse::node::ExprNode* expr,
                             ->function_name();
                     break;
                 }
-                case node::kUDAFDef: {
+                case node::kUdafDef: {
                     agg_func_name =
-                        dynamic_cast<const node::UDAFDefNode*>(call->GetFnDef())
+                        dynamic_cast<const node::UdafDefNode*>(call->GetFnDef())
                             ->GetName();
                     break;
                 }
@@ -106,7 +106,7 @@ bool AggregateIRBuilder::CollectAggColumn(const hybridse::node::ExprNode* expr,
                            << hybridse::type::Type_Name(col_type);
                 return false;
             }
-            if (GetOutputLLVMType(module_->getContext(), agg_func_name,
+            if (GetOutputLlvmType(module_->getContext(), agg_func_name,
                                   node_type) == nullptr) {
                 return false;
             }
@@ -154,7 +154,7 @@ class StatisticalAggGenerator {
     ::llvm::Value* GenSumInitState(::llvm::IRBuilder<>* builder) {
         ::llvm::LLVMContext& llvm_ctx = builder->getContext();
         ::llvm::Type* llvm_ty =
-            AggregateIRBuilder::GetOutputLLVMType(llvm_ctx, "sum", col_type_);
+            AggregateIRBuilder::GetOutputLlvmType(llvm_ctx, "sum", col_type_);
         ::llvm::Value* accum = CreateAllocaAtHead(builder, llvm_ty, "sum");
         if (llvm_ty->isIntegerTy()) {
             builder->CreateStore(::llvm::ConstantInt::get(llvm_ty, 0, true),
@@ -168,7 +168,7 @@ class StatisticalAggGenerator {
     ::llvm::Value* GenAvgInitState(::llvm::IRBuilder<>* builder) {
         ::llvm::LLVMContext& llvm_ctx = builder->getContext();
         ::llvm::Type* llvm_ty =
-            AggregateIRBuilder::GetOutputLLVMType(llvm_ctx, "avg", col_type_);
+            AggregateIRBuilder::GetOutputLlvmType(llvm_ctx, "avg", col_type_);
         ::llvm::Value* accum = CreateAllocaAtHead(builder, llvm_ty, "avg");
         builder->CreateStore(::llvm::ConstantFP::get(llvm_ty, 0.0), accum);
         return accum;
@@ -185,7 +185,7 @@ class StatisticalAggGenerator {
     ::llvm::Value* GenMinInitState(::llvm::IRBuilder<>* builder) {
         ::llvm::LLVMContext& llvm_ctx = builder->getContext();
         ::llvm::Type* llvm_ty =
-            AggregateIRBuilder::GetOutputLLVMType(llvm_ctx, "min", col_type_);
+            AggregateIRBuilder::GetOutputLlvmType(llvm_ctx, "min", col_type_);
         ::llvm::Value* accum = CreateAllocaAtHead(builder, llvm_ty, "min");
         ::llvm::Value* min;
         if (llvm_ty == ::llvm::Type::getInt16Ty(llvm_ctx)) {
@@ -211,7 +211,7 @@ class StatisticalAggGenerator {
     ::llvm::Value* GenMaxInitState(::llvm::IRBuilder<>* builder) {
         ::llvm::LLVMContext& llvm_ctx = builder->getContext();
         ::llvm::Type* llvm_ty =
-            AggregateIRBuilder::GetOutputLLVMType(llvm_ctx, "max", col_type_);
+            AggregateIRBuilder::GetOutputLlvmType(llvm_ctx, "max", col_type_);
         ::llvm::Value* accum = CreateAllocaAtHead(builder, llvm_ty, "max");
         ::llvm::Value* max;
         if (llvm_ty == ::llvm::Type::getInt16Ty(llvm_ctx)) {
@@ -378,7 +378,7 @@ class StatisticalAggGenerator {
                 cnt = builder->CreateLoad(count_state_);
             }
             if (!avg_idxs_[i].empty()) {
-                ::llvm::Type* avg_ty = AggregateIRBuilder::GetOutputLLVMType(
+                ::llvm::Type* avg_ty = AggregateIRBuilder::GetOutputLlvmType(
                     builder->getContext(), "avg", col_type_);
                 ::llvm::Value* sum;
                 if (avg_states_[i] == nullptr) {
@@ -461,7 +461,7 @@ class StatisticalAggGenerator {
     ::llvm::Value* count_state_;
 };
 
-llvm::Type* AggregateIRBuilder::GetOutputLLVMType(
+llvm::Type* AggregateIRBuilder::GetOutputLlvmType(
     ::llvm::LLVMContext& llvm_ctx, const std::string& fname,
     const node::DataType& node_type) {
     ::llvm::Type* llvm_ty = nullptr;

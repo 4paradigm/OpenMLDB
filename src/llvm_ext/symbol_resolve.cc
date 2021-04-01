@@ -19,11 +19,11 @@
 namespace hybridse {
 namespace vm {
 
-HybridSESymbolResolver::HybridSESymbolResolver(
+HybridSeSymbolResolver::HybridSeSymbolResolver(
     const ::llvm::DataLayout& data_layout)
     : data_layout_(data_layout) {}
 
-::llvm::JITSymbol HybridSESymbolResolver::findSymbol(const std::string& name) {
+::llvm::JITSymbol HybridSeSymbolResolver::findSymbol(const std::string& name) {
     auto iter = symbol_dict_.find(name);
     if (iter != symbol_dict_.end()) {
         DLOG(INFO) << "Find " << name << ": " << (uint64_t)iter->second;
@@ -33,12 +33,12 @@ HybridSESymbolResolver::HybridSESymbolResolver(
     return nullptr;
 }
 
-::llvm::JITSymbol HybridSESymbolResolver::findSymbolInLogicalDylib(
+::llvm::JITSymbol HybridSeSymbolResolver::findSymbolInLogicalDylib(
     const std::string& name) {
     return nullptr;
 }
 
-void HybridSESymbolResolver::addSymbol(const std::string& name, void* addr) {
+void HybridSeSymbolResolver::addSymbol(const std::string& name, void* addr) {
     ::llvm::SmallString<128> mangle_name;
     ::llvm::Mangler::getNameWithPrefix(mangle_name, name, data_layout_);
     DLOG(INFO) << "Add symbol " << name << " -> " << mangle_name.str().str();

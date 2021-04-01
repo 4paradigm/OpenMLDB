@@ -83,7 +83,7 @@ bool FnIRBuilder::BuildFnHead(const ::hybridse::node::FnNodeFnHeander *header,
                               CodeGenContext *ctx, ::llvm::Function **fn,
                               base::Status &status) {  // NOLINE
     ::llvm::Type *ret_type = NULL;
-    bool ok = GetLLVMType(module_, header->ret_type_, &ret_type);
+    bool ok = GetLlvmType(module_, header->ret_type_, &ret_type);
     if (!ok) {
         status.code = common::kCodegenError;
         status.msg = "fail to get llvm type";
@@ -120,7 +120,7 @@ bool FnIRBuilder::CreateFunction(
     }
 
     ::llvm::Type *ret_type = NULL;
-    bool ok = GetLLVMType(module_, fn_def->ret_type_, &ret_type);
+    bool ok = GetLlvmType(module_, fn_def->ret_type_, &ret_type);
     if (!ok) {
         status.code = common::kCodegenError;
         status.msg = "fail to get llvm type";
@@ -202,7 +202,7 @@ bool FnIRBuilder::BuildParas(const ::hybridse::node::FnNodeList *node,
         ::hybridse::node::FnParaNode *pnode =
             (::hybridse::node::FnParaNode *)node->children[i];
         ::llvm::Type *type = NULL;
-        bool ok = GetLLVMType(module_, pnode->GetParaType(), &type);
+        bool ok = GetLlvmType(module_, pnode->GetParaType(), &type);
         if (!ok) {
             status.code = common::kCodegenError;
             status.msg =

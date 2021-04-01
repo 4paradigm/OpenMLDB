@@ -18,23 +18,23 @@
 namespace hybridse {
 namespace vm {
 
-thread_local JITRuntime JITRuntime::tls_runtime_inst_;
+thread_local JitRuntime JitRuntime::tls_runtime_inst_;
 
-JITRuntime* JITRuntime::get() { return &tls_runtime_inst_; }
+JitRuntime* JitRuntime::get() { return &tls_runtime_inst_; }
 
-int8_t* JITRuntime::AllocManaged(size_t bytes) {
+int8_t* JitRuntime::AllocManaged(size_t bytes) {
     return reinterpret_cast<int8_t*>(mem_pool_.Alloc(bytes));
 }
 
-void JITRuntime::AddManagedObject(base::FeBaseObject* obj) {
+void JitRuntime::AddManagedObject(base::FeBaseObject* obj) {
     if (obj != nullptr) {
         allocated_obj_pool_.push_back(obj);
     }
 }
 
-void JITRuntime::InitRunStep() {}
+void JitRuntime::InitRunStep() {}
 
-void JITRuntime::ReleaseRunStep() {
+void JitRuntime::ReleaseRunStep() {
     mem_pool_.Reset();
     for (base::FeBaseObject* obj : allocated_obj_pool_) {
         if (obj != nullptr) {

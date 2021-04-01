@@ -14,29 +14,22 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridse.common;
+package com._4paradigm.hybridse;
 
-public class HybridSEException extends Exception {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-    private String message;
-    private Throwable cause;
+public class HybridSeLibrary {
+    private static final Logger logger = LoggerFactory.getLogger(HybridSeLibrary.class.getName());
+    static private final String HybridSE_JSDK_CORE_NAME = "hybridse_jsdk_core";
+    static private boolean initialized = false;
 
-    public HybridSEException(String message) {
-        this.message = message;
-        this.cause = null;
+    static synchronized public void initCore() {
+        if (initialized) {
+            return;
+        }
+        LibraryLoader.loadLibrary(HybridSE_JSDK_CORE_NAME);
+        initialized = true;
     }
 
-    public HybridSEException(String message, Throwable cause) {
-        this.message = message;
-        this.cause = cause;
-    }
-
-    public synchronized Throwable getCause() {
-        return this.cause;
-    }
-
-    @Override
-    public String getMessage() {
-        return this.message;
-    }
 }

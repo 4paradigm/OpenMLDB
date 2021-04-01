@@ -38,9 +38,9 @@ namespace udf {
 
 template <typename K>
 struct MinCateDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUDAFTemplate<Impl>("min_cate")
+            ->RegisterUdafTemplate<Impl>("min_cate")
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -51,7 +51,7 @@ struct MinCateDef {
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
-        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix = ".opaque_dict_" +
                                  DataTypeTrait<K>::to_string() + "_" +
                                  DataTypeTrait<V>::to_string();
@@ -96,9 +96,9 @@ struct MinCateDef {
 
 template <typename K>
 struct MinCateWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUDAFTemplate<Impl>("min_cate_where")
+            ->RegisterUdafTemplate<Impl>("min_cate_where")
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -111,7 +111,7 @@ struct MinCateWhereDef {
 
         using CountCateImpl = typename MinCateDef<K>::template Impl<V>;
 
-        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix = ".opaque_dict_" +
                                  DataTypeTrait<K>::to_string() + "_" +
                                  DataTypeTrait<V>::to_string();
@@ -139,9 +139,9 @@ struct MinCateWhereDef {
 
 template <typename K>
 struct TopKMinCateWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUDAFTemplate<Impl>("top_n_key_min_cate_where")
+            ->RegisterUdafTemplate<Impl>("top_n_key_min_cate_where")
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -154,7 +154,7 @@ struct TopKMinCateWhereDef {
 
         using AvgCateImpl = typename MinCateDef<K>::template Impl<V>;
 
-        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix;
 
             suffix = ".i32_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
@@ -212,8 +212,8 @@ struct TopKMinCateWhereDef {
     };
 };
 
-void DefaultUDFLibrary::InitMinByCateUDAFs() {
-    RegisterUDAFTemplate<MinCateDef>("min_cate")
+void DefaultUdfLibrary::InitMinByCateUdafs() {
+    RegisterUdafTemplate<MinCateDef>("min_cate")
         .doc(R"(
             Compute minimum of values grouped by category key and output string.
             Each group is represented as 'K:V' and separated by comma in outputs
@@ -237,7 +237,7 @@ void DefaultUDFLibrary::InitMinByCateUDAFs() {
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
-    RegisterUDAFTemplate<MinCateWhereDef>("min_cate_where")
+    RegisterUdafTemplate<MinCateWhereDef>("min_cate_where")
         .doc(R"(
             Compute minimum of values matching specified condition grouped by
     category key and output string. Each group is represented as 'K:V' and
@@ -264,7 +264,7 @@ void DefaultUDFLibrary::InitMinByCateUDAFs() {
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
-    RegisterUDAFTemplate<TopKMinCateWhereDef>("top_n_key_min_cate_where")
+    RegisterUdafTemplate<TopKMinCateWhereDef>("top_n_key_min_cate_where")
         .doc(R"(
             Compute minimum of values matching specified condition grouped by
     category key. Output string for top N keys in descend order. Each group is

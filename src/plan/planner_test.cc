@@ -49,7 +49,7 @@ class PlannerTest : public ::testing::TestWithParam<SQLCase> {
  public:
     PlannerTest() {
         manager_ = new NodeManager();
-        parser_ = new parser::HybridSEParser();
+        parser_ = new parser::HybridSeParser();
     }
 
     ~PlannerTest() {
@@ -58,7 +58,7 @@ class PlannerTest : public ::testing::TestWithParam<SQLCase> {
     }
 
  protected:
-    parser::HybridSEParser *parser_;
+    parser::HybridSeParser *parser_;
     NodeManager *manager_;
 };
 
@@ -106,7 +106,7 @@ INSTANTIATE_TEST_CASE_P(
     SqlSubQueryParse, PlannerTest,
     testing::ValuesIn(InitCases("cases/plan/sub_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(UDFParse, PlannerTest,
+INSTANTIATE_TEST_CASE_P(UdfParse, PlannerTest,
                         testing::ValuesIn(InitCases("cases/plan/udf.yaml")));
 
 INSTANTIATE_TEST_CASE_P(SQLCreate, PlannerTest,
@@ -1655,7 +1655,7 @@ TEST_F(PlannerTest, CreatePlanLeakTest) {
     while (true) {
         base::Status status;
         NodeManager nm;
-        parser::HybridSEParser parser;
+        parser::HybridSeParser parser;
         node::NodePointVector parser_trees;
         int ret = parser.parse(sql, parser_trees, &nm, status);
         ASSERT_EQ(0, ret);
@@ -1714,7 +1714,7 @@ class PlannerErrorTest : public ::testing::TestWithParam<SQLCase> {
  public:
     PlannerErrorTest() {
         manager_ = new NodeManager();
-        parser_ = new parser::HybridSEParser();
+        parser_ = new parser::HybridSeParser();
     }
 
     ~PlannerErrorTest() {
@@ -1723,7 +1723,7 @@ class PlannerErrorTest : public ::testing::TestWithParam<SQLCase> {
     }
 
  protected:
-    parser::HybridSEParser *parser_;
+    parser::HybridSeParser *parser_;
     NodeManager *manager_;
 };
 INSTANTIATE_TEST_CASE_P(

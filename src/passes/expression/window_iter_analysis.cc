@@ -84,10 +84,10 @@ Status WindowIterAnalysis::VisitCall(
                "Incompatible arg num: ", arg_ranks.size(), ", ",
                fn->GetArgSize());
     switch (fn->GetType()) {
-        case node::kUDAFDef: {
-            auto udaf = dynamic_cast<node::UDAFDefNode*>(fn);
+        case node::kUdafDef: {
+            auto udaf = dynamic_cast<node::UdafDefNode*>(fn);
             WindowIterRank update_rank;
-            CHECK_STATUS(VisitUDAF(udaf, &update_rank));
+            CHECK_STATUS(VisitUdaf(udaf, &update_rank));
 
             bool is_window_iter = false;
             for (auto arg_rank : arg_ranks) {
@@ -132,7 +132,7 @@ Status WindowIterAnalysis::VisitCall(
     return Status::OK();
 }
 
-Status WindowIterAnalysis::VisitUDAF(node::UDAFDefNode* udaf,
+Status WindowIterAnalysis::VisitUdaf(node::UdafDefNode* udaf,
                                      WindowIterRank* rank) {
     auto update = udaf->update_func();
     std::vector<WindowIterRank> arg_ranks(update->GetArgSize());

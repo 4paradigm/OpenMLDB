@@ -368,7 +368,7 @@ Status EngineTestRunner::ExtractTableInfoFromCreateString(
                "Fail extract with empty create string");
 
     node::NodeManager manager;
-    parser::HybridSEParser parser;
+    parser::HybridSeParser parser;
     hybridse::plan::NodePointVector trees;
     base::Status status;
     int ret = parser.parse(create, trees, &manager, status);

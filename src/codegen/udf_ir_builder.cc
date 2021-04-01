@@ -37,11 +37,11 @@ namespace codegen {
 
 using TypeNodeVec = std::vector<const node::TypeNode*>;
 
-UDFIRBuilder::UDFIRBuilder(CodeGenContext* ctx, node::ExprNode* frame_arg,
+UdfIRBuilder::UdfIRBuilder(CodeGenContext* ctx, node::ExprNode* frame_arg,
                            const node::FrameNode* frame)
     : ctx_(ctx), frame_arg_(frame_arg), frame_(frame) {}
 
-Status UDFIRBuilder::BuildCall(
+Status UdfIRBuilder::BuildCall(
     const node::FnDefNode* fn,
     const std::vector<const node::TypeNode*>& arg_types,
     const std::vector<NativeValue>& args, NativeValue* output) {
@@ -56,17 +56,17 @@ Status UDFIRBuilder::BuildCall(
             auto node = dynamic_cast<const node::ExternalFnDefNode*>(fn);
             return BuildExternCall(node, arg_types, args, output);
         }
-        case node::kUDFByCodeGenDef: {
-            auto node = dynamic_cast<const node::UDFByCodeGenDefNode*>(fn);
-            return BuildCodeGenUDFCall(node, arg_types, args, output);
+        case node::kUdfByCodeGenDef: {
+            auto node = dynamic_cast<const node::UdfByCodeGenDefNode*>(fn);
+            return BuildCodeGenUdfCall(node, arg_types, args, output);
         }
-        case node::kUDFDef: {
-            auto node = dynamic_cast<const node::UDFDefNode*>(fn);
-            return BuildUDFCall(node, arg_types, args, output);
+        case node::kUdfDef: {
+            auto node = dynamic_cast<const node::UdfDefNode*>(fn);
+            return BuildUdfCall(node, arg_types, args, output);
         }
-        case node::kUDAFDef: {
-            auto node = dynamic_cast<const node::UDAFDefNode*>(fn);
-            return BuildUDAFCall(node, arg_types, args, output);
+        case node::kUdafDef: {
+            auto node = dynamic_cast<const node::UdafDefNode*>(fn);
+            return BuildUdafCall(node, arg_types, args, output);
         }
         case node::kLambdaDef: {
             auto node = dynamic_cast<const node::LambdaNode*>(fn);
@@ -77,25 +77,25 @@ Status UDFIRBuilder::BuildCall(
     }
 }
 
-Status UDFIRBuilder::BuildUDFCall(
-    const node::UDFDefNode* fn,
+Status UdfIRBuilder::BuildUdfCall(
+    const node::UdfDefNode* fn,
     const std::vector<const node::TypeNode*>& arg_types,
     const std::vector<NativeValue>& args, NativeValue* output) {
     // resolve to llvm function
     bool return_by_arg;
     ::llvm::FunctionCallee callee;
-    CHECK_STATUS(GetUDFCallee(fn, arg_types, &callee, &return_by_arg));
-    return BuildLLVMCall(fn, callee, args, return_by_arg, output);
+    CHECK_STATUS(GetUdfCallee(fn, arg_types, &callee, &return_by_arg));
+    return BuildLlvmCall(fn, callee, args, return_by_arg, output);
 }
 
-Status UDFIRBuilder::GetUDFCallee(
-    const node::UDFDefNode* fn,
+Status UdfIRBuilder::GetUdfCallee(
+    const node::UdfDefNode* fn,
     const std::vector<const node::TypeNode*>& arg_types,
     ::llvm::FunctionCallee* callee, bool* return_by_arg) {
     std::string fn_name = fn->def()->header_->GeIRFunctionName();
     ::llvm::Type* llvm_ret_ty = nullptr;
     CHECK_TRUE(
-        GetLLVMType(ctx_->GetModule(), fn->GetReturnType(), &llvm_ret_ty),
+        GetLlvmType(ctx_->GetModule(), fn->GetReturnType(), &llvm_ret_ty),
         kCodegenError);
     if (TypeIRBuilder::IsStructPtr(llvm_ret_ty)) {
         *return_by_arg = true;
@@ -126,7 +126,7 @@ Status UDFIRBuilder::GetUDFCallee(
     return Status::OK();
 }
 
-Status UDFIRBuilder::BuildLambdaCall(
+Status UdfIRBuilder::BuildLambdaCall(
     const node::LambdaNode* fn,
     const std::vector<const node::TypeNode*>& arg_types,
     const std::vector<NativeValue>& args, NativeValue* output) {
@@ -151,8 +151,8 @@ Status UDFIRBuilder::BuildLambdaCall(
     return Status::OK();
 }
 
-Status UDFIRBuilder::BuildCodeGenUDFCall(
-    const node::UDFByCodeGenDefNode* fn,
+Status UdfIRBuilder::BuildCodeGenUdfCall(
+    const node::UdfByCodeGenDefNode* fn,
     const std::vector<const node::TypeNode*>& arg_types,
     const std::vector<NativeValue>& args, NativeValue* output) {
     auto gen_impl = fn->GetGenImpl();
@@ -192,7 +192,7 @@ Status UDFIRBuilder::BuildCodeGenUDFCall(
         Value flag to indicate some argument is null but
         extern function call do not handle it.
   */
-Status UDFIRBuilder::ExpandLLVMCallArgs(const node::TypeNode* dtype,
+Status UdfIRBuilder::ExpandLlvmCallArgs(const node::TypeNode* dtype,
                                         bool nullable, const NativeValue& value,
                                         ::llvm::IRBuilder<>* builder,
                                         std::vector<::llvm::Value*>* arg_vec,
@@ -207,7 +207,7 @@ Status UDFIRBuilder::ExpandLLVMCallArgs(const node::TypeNode* dtype,
         CHECK_TRUE(!nullable, kCodegenError, "kTuple should never be null");
 
         for (size_t i = 0; i < value.GetFieldNum(); ++i) {
-            CHECK_STATUS(ExpandLLVMCallArgs(
+            CHECK_STATUS(ExpandLlvmCallArgs(
                 dtype->GetGenericType(i), dtype->IsGenericNullable(i),
                 value.GetField(i), builder, arg_vec, should_ret_null));
         }
@@ -244,7 +244,7 @@ Status UDFIRBuilder::ExpandLLVMCallArgs(const node::TypeNode* dtype,
         Value flag to indicate some argument is null but
         extern function call do not handle it.
   */
-Status UDFIRBuilder::ExpandLLVMCallVariadicArgs(
+Status UdfIRBuilder::ExpandLlvmCallVariadicArgs(
     const NativeValue& value, ::llvm::IRBuilder<>* builder,
     std::vector<::llvm::Value*>* arg_vec, ::llvm::Value** should_ret_null) {
     CHECK_TRUE(!value.IsTuple(), kCodegenError,
@@ -265,18 +265,18 @@ Status UDFIRBuilder::ExpandLLVMCallVariadicArgs(
 /**
  * Expand return addr into llvm arguments.
  */
-Status UDFIRBuilder::ExpandLLVMCallReturnArgs(
+Status UdfIRBuilder::ExpandLlvmCallReturnArgs(
     const node::TypeNode* dtype, bool nullable, ::llvm::IRBuilder<>* builder,
     std::vector<::llvm::Value*>* arg_vec) {
     if (dtype->base() == node::kTuple) {
         for (size_t i = 0; i < dtype->GetGenericSize(); ++i) {
-            CHECK_STATUS(ExpandLLVMCallReturnArgs(dtype->GetGenericType(i),
+            CHECK_STATUS(ExpandLlvmCallReturnArgs(dtype->GetGenericType(i),
                                                   dtype->IsGenericNullable(i),
                                                   builder, arg_vec));
         }
     } else {
         ::llvm::Type* llvm_ty = nullptr;
-        CHECK_TRUE(GetLLVMType(ctx_->GetModule(), dtype, &llvm_ty),
+        CHECK_TRUE(GetLlvmType(ctx_->GetModule(), dtype, &llvm_ty),
                    kCodegenError);
 
         ::llvm::Value* ret_alloca;
@@ -315,7 +315,7 @@ Status UDFIRBuilder::ExpandLLVMCallReturnArgs(
 /**
  * Extract llvm return results into native value wrapper.
  */
-Status UDFIRBuilder::ExtractLLVMReturnValue(
+Status UdfIRBuilder::ExtractLlvmReturnValue(
     const node::TypeNode* dtype, bool nullable,
     const std::vector<::llvm::Value*>& llvm_args, ::llvm::IRBuilder<>* builder,
     size_t* pos_idx, NativeValue* output) {
@@ -324,7 +324,7 @@ Status UDFIRBuilder::ExtractLLVMReturnValue(
         std::vector<NativeValue> fields;
         for (size_t i = 0; i < dtype->GetGenericSize(); ++i) {
             NativeValue sub_field;
-            CHECK_STATUS(ExtractLLVMReturnValue(
+            CHECK_STATUS(ExtractLlvmReturnValue(
                 dtype->GetGenericType(i), dtype->IsGenericNullable(i),
                 llvm_args, builder, pos_idx, &sub_field));
             fields.push_back(sub_field);
@@ -332,7 +332,7 @@ Status UDFIRBuilder::ExtractLLVMReturnValue(
         *output = NativeValue::CreateTuple(fields);
     } else {
         ::llvm::Type* llvm_ty = nullptr;
-        CHECK_TRUE(GetLLVMType(ctx_->GetModule(), dtype, &llvm_ty),
+        CHECK_TRUE(GetLlvmType(ctx_->GetModule(), dtype, &llvm_ty),
                    kCodegenError);
 
         ::llvm::Value* raw;
@@ -356,7 +356,7 @@ Status UDFIRBuilder::ExtractLLVMReturnValue(
     return Status::OK();
 }
 
-Status UDFIRBuilder::BuildLLVMCall(const node::FnDefNode* fn,
+Status UdfIRBuilder::BuildLlvmCall(const node::FnDefNode* fn,
                                    ::llvm::FunctionCallee callee,
                                    const std::vector<NativeValue>& args,
                                    bool return_by_arg, NativeValue* output) {
@@ -375,17 +375,17 @@ Status UDFIRBuilder::BuildLLVMCall(const node::FnDefNode* fn,
     ::llvm::Value* should_ret_null = nullptr;
     std::vector<llvm::Value*> llvm_args;
     for (size_t i = 0; i < variadic_pos; ++i) {
-        CHECK_STATUS(ExpandLLVMCallArgs(fn->GetArgType(i), fn->IsArgNullable(i),
+        CHECK_STATUS(ExpandLlvmCallArgs(fn->GetArgType(i), fn->IsArgNullable(i),
                                         args[i], &builder, &llvm_args,
                                         &should_ret_null));
     }
     size_t ret_pos_begin = llvm_args.size();
     if (return_by_arg) {
-        CHECK_STATUS(ExpandLLVMCallReturnArgs(
+        CHECK_STATUS(ExpandLlvmCallReturnArgs(
             fn->GetReturnType(), fn->IsReturnNullable(), &builder, &llvm_args));
     }
     for (size_t i = variadic_pos; i < args.size(); ++i) {
-        CHECK_STATUS(ExpandLLVMCallVariadicArgs(args[i], &builder, &llvm_args,
+        CHECK_STATUS(ExpandLlvmCallVariadicArgs(args[i], &builder, &llvm_args,
                                                 &should_ret_null));
     }
 
@@ -396,16 +396,16 @@ Status UDFIRBuilder::BuildLLVMCall(const node::FnDefNode* fn,
                        "Argument num out of bound for non-variadic function: ",
                        "expect ", function_ty->getNumParams(), " but get ",
                        llvm_args.size(), ": ",
-                       GetLLVMObjectString(function_ty));
+                       GetLlvmObjectString(function_ty));
             break;
         }
         ::llvm::Type* actual_llvm_ty = llvm_args[i]->getType();
         ::llvm::Type* expect_llvm_ty = function_ty->params()[i];
         CHECK_TRUE(expect_llvm_ty == actual_llvm_ty, kCodegenError,
                    "LLVM argument type mismatch at ", i, ", expect ",
-                   GetLLVMObjectString(expect_llvm_ty), " but get ",
-                   GetLLVMObjectString(actual_llvm_ty), ": ",
-                   GetLLVMObjectString(function_ty));
+                   GetLlvmObjectString(expect_llvm_ty), " but get ",
+                   GetLlvmObjectString(actual_llvm_ty), ": ",
+                   GetLlvmObjectString(function_ty));
     }
     ::llvm::Value* raw = builder.CreateCall(callee, llvm_args);
 
@@ -413,7 +413,7 @@ Status UDFIRBuilder::BuildLLVMCall(const node::FnDefNode* fn,
     NativeValue return_value;
     if (return_by_arg) {
         size_t pos_idx = ret_pos_begin;
-        CHECK_STATUS(ExtractLLVMReturnValue(fn->GetReturnType(),
+        CHECK_STATUS(ExtractLlvmReturnValue(fn->GetReturnType(),
                                             fn->IsReturnNullable(), llvm_args,
                                             &builder, &pos_idx, &return_value));
     } else {
@@ -432,7 +432,7 @@ Status UDFIRBuilder::BuildLLVMCall(const node::FnDefNode* fn,
     return Status::OK();
 }
 
-Status UDFIRBuilder::GetLLVMFunctionType(const node::FnDefNode* fn,
+Status UdfIRBuilder::GetLlvmFunctionType(const node::FnDefNode* fn,
                                          ::llvm::FunctionType** func_ty) {
     std::vector<const node::TypeNode*> arg_types;
     std::vector<int> arg_nullable;
@@ -447,18 +447,18 @@ Status UDFIRBuilder::GetLLVMFunctionType(const node::FnDefNode* fn,
         return_by_arg = extern_fn->return_by_arg();
         variadic = extern_fn->variadic_pos() >= 0;
     }
-    return codegen::GetLLVMFunctionType(
+    return codegen::GetLlvmFunctionType(
         ctx_->GetModule(), arg_types, arg_nullable, fn->GetReturnType(),
         fn->IsReturnNullable(), variadic, &return_by_arg, func_ty);
 }
 
-Status UDFIRBuilder::BuildExternCall(
+Status UdfIRBuilder::BuildExternCall(
     const node::ExternalFnDefNode* fn,
     const std::vector<const node::TypeNode*>& arg_types,
     const std::vector<NativeValue>& args, NativeValue* output) {
     // resolve to llvm function
     ::llvm::FunctionType* func_ty = nullptr;
-    CHECK_STATUS(GetLLVMFunctionType(fn, &func_ty));
+    CHECK_STATUS(GetLlvmFunctionType(fn, &func_ty));
 
     auto callee =
         ctx_->GetModule()->getOrInsertFunction(fn->function_name(), func_ty);
@@ -483,15 +483,15 @@ Status UDFIRBuilder::BuildExternCall(
         }
     }
 
-    return BuildLLVMCall(fn, callee, args, fn->return_by_arg(), output);
+    return BuildLlvmCall(fn, callee, args, fn->return_by_arg(), output);
 }
 
-Status UDFIRBuilder::BuildUDAFCall(
-    const node::UDAFDefNode* udaf,
+Status UdfIRBuilder::BuildUdafCall(
+    const node::UdafDefNode* fn,
     const std::vector<const node::TypeNode*>& arg_types,
     const std::vector<NativeValue>& args, NativeValue* output) {
     // udaf state type
-    const node::TypeNode* state_type = udaf->GetStateType();
+    const node::TypeNode* state_type = fn->GetStateType();
     CHECK_TRUE(state_type != nullptr, kCodegenError, "Missing state type");
     size_t state_num = 1;
     if (state_type->base() == node::kTuple) {
@@ -499,12 +499,12 @@ Status UDFIRBuilder::BuildUDAFCall(
     }
 
     // udaf input elements type
-    size_t input_num = udaf->GetArgSize();
+    size_t input_num = fn->GetArgSize();
     std::vector<const node::TypeNode*> elem_types(input_num);
     std::vector<int> elem_nullable(input_num);
     for (size_t i = 0; i < input_num; ++i) {
-        elem_types[i] = udaf->GetElementType(i);
-        elem_nullable[i] = udaf->IsElementNullable(i);
+        elem_types[i] = fn->GetElementType(i);
+        elem_nullable[i] = fn->IsElementNullable(i);
     }
     Status status;
 
@@ -514,14 +514,14 @@ Status UDFIRBuilder::BuildUDAFCall(
         // tuple state should be expanded
         for (auto field_type : state_type->generics()) {
             llvm::Type* llvm_ty = nullptr;
-            CHECK_TRUE(GetLLVMType(ctx_->GetModule(), field_type, &llvm_ty),
+            CHECK_TRUE(GetLlvmType(ctx_->GetModule(), field_type, &llvm_ty),
                        kCodegenError,
                        "Fail to get llvm type for " + field_type->GetName());
             state_llvm_tys.push_back(llvm_ty);
         }
     } else {
         llvm::Type* llvm_ty = nullptr;
-        CHECK_TRUE(GetLLVMType(ctx_->GetModule(), state_type, &llvm_ty),
+        CHECK_TRUE(GetLlvmType(ctx_->GetModule(), state_type, &llvm_ty),
                    kCodegenError,
                    "Fail to get llvm type for " + state_type->GetName());
         state_llvm_tys.push_back(llvm_ty);
@@ -545,11 +545,11 @@ Status UDFIRBuilder::BuildUDAFCall(
 
     // build init state
     NativeValue init_value;
-    CHECK_TRUE(udaf->init_expr() != nullptr, kCodegenError);
+    CHECK_TRUE(fn->init_expr() != nullptr, kCodegenError);
     ExprIRBuilder init_expr_builder(ctx_);
     init_expr_builder.set_frame(frame_arg_, frame_);
-    CHECK_STATUS(init_expr_builder.Build(udaf->init_expr(), &init_value),
-                 "Build init expr ", udaf->init_expr()->GetExprString(),
+    CHECK_STATUS(init_expr_builder.Build(fn->init_expr(), &init_value),
+                 "Build init expr ", fn->init_expr()->GetExprString(),
                  " failed: ", status.str());
 
     // local states storage
@@ -603,7 +603,7 @@ Status UDFIRBuilder::BuildUDAFCall(
             // iter body
             auto body_begin_block = ctx_->GetCurrentBlock();
             ListIRBuilder iter_next_builder(body_begin_block, nullptr);
-            UDFIRBuilder sub_udf_builder(ctx_, frame_arg_, frame_);
+            UdfIRBuilder sub_udf_builder(ctx_, frame_arg_, frame_);
 
             std::vector<NativeValue> cur_state_values;
             std::vector<NativeValue> update_args;
@@ -636,8 +636,8 @@ Status UDFIRBuilder::BuildUDAFCall(
             for (size_t i = 0; i < input_num; ++i) {
                 update_arg_types.push_back(elem_types[i]);
             }
-            CHECK_TRUE(udaf->update_func() != nullptr, kCodegenError);
-            CHECK_STATUS(sub_udf_builder.BuildCall(udaf->update_func(),
+            CHECK_TRUE(fn->update_func() != nullptr, kCodegenError);
+            CHECK_STATUS(sub_udf_builder.BuildCall(fn->update_func(),
                                                    update_arg_types,
                                                    update_args, &update_value));
 
@@ -681,10 +681,10 @@ Status UDFIRBuilder::BuildUDAFCall(
         single_final_state = final_state_values[0];
     }
 
-    UDFIRBuilder sub_udf_builder_exit(ctx_, frame_arg_, frame_);
+    UdfIRBuilder sub_udf_builder_exit(ctx_, frame_arg_, frame_);
     NativeValue local_output;
     CHECK_STATUS(
-        sub_udf_builder_exit.BuildCall(udaf->output_func(), {state_type},
+        sub_udf_builder_exit.BuildCall(fn->output_func(), {state_type},
                                        {single_final_state}, &local_output),
         "Build output function call failed");
 

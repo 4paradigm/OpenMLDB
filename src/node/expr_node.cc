@@ -540,7 +540,7 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
             break;
         }
         case kFnOpAt: {
-            return ctx->InferAsUDF(this, "at");
+            return ctx->InferAsUdf(this, "at");
             break;
         }
         default:
@@ -613,7 +613,7 @@ Status CondExpr::InferAttr(ExprAnalysisContext* ctx) {
     return Status::OK();
 }
 
-Status ExprAnalysisContext::InferAsUDF(node::ExprNode* expr,
+Status ExprAnalysisContext::InferAsUdf(node::ExprNode* expr,
                                        const std::string& name) {
     auto nm = this->node_manager();
     std::vector<node::ExprNode*> proxy_args;
@@ -797,36 +797,36 @@ ExternalFnDefNode* ExternalFnDefNode::DeepCopy(NodeManager* nm) const {
     }
 }
 
-UDFDefNode* UDFDefNode::ShadowCopy(NodeManager* nm) const {
+UdfDefNode* UdfDefNode::ShadowCopy(NodeManager* nm) const {
     return DeepCopy(nm);
 }
 
-UDFDefNode* UDFDefNode::DeepCopy(NodeManager* nm) const {
-    return nm->MakeUDFDefNode(def_);
+UdfDefNode* UdfDefNode::DeepCopy(NodeManager* nm) const {
+    return nm->MakeUdfDefNode(def_);
 }
 
-UDFByCodeGenDefNode* UDFByCodeGenDefNode::ShadowCopy(NodeManager* nm) const {
+UdfByCodeGenDefNode* UdfByCodeGenDefNode::ShadowCopy(NodeManager* nm) const {
     return DeepCopy(nm);
 }
 
-UDFByCodeGenDefNode* UDFByCodeGenDefNode::DeepCopy(NodeManager* nm) const {
-    auto def_node = nm->MakeUDFByCodeGenDefNode(
+UdfByCodeGenDefNode* UdfByCodeGenDefNode::DeepCopy(NodeManager* nm) const {
+    auto def_node = nm->MakeUdfByCodeGenDefNode(
         name_, arg_types_, arg_nullable_, ret_type_, ret_nullable_);
     def_node->SetGenImpl(this->GetGenImpl());
     return def_node;
 }
 
-UDAFDefNode* UDAFDefNode::ShadowCopy(NodeManager* nm) const {
-    return nm->MakeUDAFDefNode(name_, arg_types_, init_expr_, update_, merge_,
+UdafDefNode* UdafDefNode::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeUdafDefNode(name_, arg_types_, init_expr_, update_, merge_,
                                output_);
 }
 
-UDAFDefNode* UDAFDefNode::DeepCopy(NodeManager* nm) const {
+UdafDefNode* UdafDefNode::DeepCopy(NodeManager* nm) const {
     ExprNode* new_init = init_expr_ ? init_expr_->DeepCopy(nm) : nullptr;
     FnDefNode* new_update = update_ ? update_->DeepCopy(nm) : nullptr;
     FnDefNode* new_merge = merge_ ? merge_->DeepCopy(nm) : nullptr;
     FnDefNode* new_output = output_ ? output_->DeepCopy(nm) : nullptr;
-    return nm->MakeUDAFDefNode(name_, arg_types_, new_init, new_update,
+    return nm->MakeUdafDefNode(name_, arg_types_, new_init, new_update,
                                new_merge, new_output);
 }
 

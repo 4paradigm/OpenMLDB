@@ -56,8 +56,8 @@ struct SQLContext {
     hybridse::vm::ClusterJob cluster_job;
     // TODO(wangtaize) add a light jit engine
     // eg using bthead to compile ir
-    hybridse::vm::JITOptions jit_options;
-    std::shared_ptr<hybridse::vm::HybridSEJITWrapper> jit = nullptr;
+    hybridse::vm::JitOptions jit_options;
+    std::shared_ptr<hybridse::vm::HybridSeJitWrapper> jit = nullptr;
     Schema schema;
     Schema request_schema;
     std::string request_name;
@@ -68,7 +68,7 @@ struct SQLContext {
     std::string encoded_schema;
     std::string encoded_request_schema;
     ::hybridse::node::NodeManager nm;
-    ::hybridse::udf::UDFLibrary* udf_library = nullptr;
+    ::hybridse::udf::UdfLibrary* udf_library = nullptr;
 
     ::hybridse::vm::BatchRequestInfo batch_request_info;
 
@@ -153,7 +153,7 @@ class SQLCompiler {
 
     bool ResolvePlanFnAddress(
         PhysicalOpNode* node,
-        std::shared_ptr<HybridSEJITWrapper>& jit,  // NOLINT
+        std::shared_ptr<HybridSeJitWrapper>& jit,  // NOLINT
         Status& status);                           // NOLINT
 
     Status BuildPhysicalPlan(SQLContext* ctx,
@@ -162,15 +162,15 @@ class SQLCompiler {
                              PhysicalOpNode** output);
     Status BuildBatchModePhysicalPlan(
         SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
-        ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+        ::llvm::Module* llvm_module, udf::UdfLibrary* library,
         PhysicalOpNode** output);
     Status BuildRequestModePhysicalPlan(
         SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
-        ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+        ::llvm::Module* llvm_module, udf::UdfLibrary* library,
         PhysicalOpNode** output);
     Status BuildBatchRequestModePhysicalPlan(
         SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
-        ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+        ::llvm::Module* llvm_module, udf::UdfLibrary* library,
         PhysicalOpNode** output);
 
  private:

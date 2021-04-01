@@ -45,7 +45,7 @@ enum StatusCode {
     kFunError = 40;
     kCodegenError = 50;
     kOpGenError = 60;
-    kJitError = 70;
+    kJITError = 70;
     kSchemaCodecError = 71;
 
 }

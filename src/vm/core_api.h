@@ -31,7 +31,7 @@ namespace vm {
 
 class CoreAPI;
 class Window;
-class HybridSEJITWrapper;
+class HybridSeJitWrapper;
 
 typedef const int8_t* RawPtrHandle;
 typedef int8_t* ByteArrayPtr;

@@ -144,8 +144,8 @@ Status ExprInplaceTransformUp::VisitFnDef(
             return VisitLambda(dynamic_cast<node::LambdaNode*>(fn), arg_attrs,
                                out);
         }
-        case node::kUDAFDef: {
-            return VisitUDAF(dynamic_cast<node::UDAFDefNode*>(fn), arg_attrs,
+        case node::kUdafDef: {
+            return VisitUdaf(dynamic_cast<node::UdafDefNode*>(fn), arg_attrs,
                              out);
         }
         default: {
@@ -167,8 +167,8 @@ Status ExprInplaceTransformUp::VisitLambda(
     return Status::OK();
 }
 
-Status ExprInplaceTransformUp::VisitUDAF(
-    node::UDAFDefNode* udaf, const std::vector<node::ExprAttrNode>& arg_attrs,
+Status ExprInplaceTransformUp::VisitUdaf(
+    node::UdafDefNode* udaf, const std::vector<node::ExprAttrNode>& arg_attrs,
     node::FnDefNode** out) {
     CHECK_TRUE(arg_attrs.size() == udaf->GetArgSize(), common::kPlanError);
     bool changed = false;
@@ -225,7 +225,7 @@ Status ExprInplaceTransformUp::VisitUDAF(
     }
 
     if (changed) {
-        *out = ctx_->node_manager()->MakeUDAFDefNode(
+        *out = ctx_->node_manager()->MakeUdafDefNode(
             udaf->GetName(), udaf->GetArgTypeList(), init, update, merge,
             output_fn);
     } else {

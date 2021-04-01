@@ -79,7 +79,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     }
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
-    ctx.udf_library = udf::DefaultUDFLibrary::get();
+    ctx.udf_library = udf::DefaultUdfLibrary::get();
 
     status =
         BuildPhysicalPlan(&ctx, ctx.logical_plan, m.get(), &ctx.physical_plan);
@@ -115,15 +115,15 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
     // ::llvm::errs() << *(m.get());
-    auto jit = std::shared_ptr<HybridSEJITWrapper>(
-        HybridSEJITWrapper::Create(ctx.jit_options));
+    auto jit = std::shared_ptr<HybridSeJitWrapper>(
+        HybridSeJitWrapper::Create(ctx.jit_options));
     if (jit == nullptr || !jit->Init()) {
         status.msg = "fail to init jit let";
-        status.code = common::kJitError;
+        status.code = common::kJITError;
         LOG(WARNING) << status;
         return false;
     }
-    InitBuiltinJITSymbols(jit.get());
+    InitBuiltinJitSymbols(jit.get());
     ctx.udf_library->InitJITSymbols(jit.get());
     if (!jit->OptModule(m.get())) {
         LOG(WARNING) << "fail to opt ir module for sql " << ctx.sql;
@@ -159,7 +159,7 @@ std::string EngineModeName(EngineMode mode) {
 
 Status SQLCompiler::BuildBatchModePhysicalPlan(
     SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
-    ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+    ::llvm::Module* llvm_module, udf::UdfLibrary* library,
     PhysicalOpNode** output) {
     vm::BatchModeTransformer transformer(
         &ctx->nm, ctx->db, cl_, llvm_module, library,
@@ -174,7 +174,7 @@ Status SQLCompiler::BuildBatchModePhysicalPlan(
 
 Status SQLCompiler::BuildRequestModePhysicalPlan(
     SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
-    ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+    ::llvm::Module* llvm_module, udf::UdfLibrary* library,
     PhysicalOpNode** output) {
     vm::RequestModeTransformer transformer(
         &ctx->nm, ctx->db, cl_, llvm_module, library, {},
@@ -194,7 +194,7 @@ Status SQLCompiler::BuildRequestModePhysicalPlan(
 
 Status SQLCompiler::BuildBatchRequestModePhysicalPlan(
     SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
-    ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+    ::llvm::Module* llvm_module, udf::UdfLibrary* library,
     PhysicalOpNode** output) {
     vm::RequestModeTransformer transformer(
         &ctx->nm, ctx->db, cl_, llvm_module, library,
@@ -259,7 +259,7 @@ Status SQLCompiler::BuildPhysicalPlan(
     Status status;
     CHECK_TRUE(ctx != nullptr, kPlanError, "Null sql context");
 
-    udf::UDFLibrary* library = ctx->udf_library;
+    udf::UdfLibrary* library = ctx->udf_library;
     CHECK_TRUE(library != nullptr, kPlanError, "Null udf library");
 
     switch (ctx->engine_mode) {
@@ -307,7 +307,7 @@ bool SQLCompiler::BuildClusterJob(SQLContext& ctx, Status& status) {  // NOLINT
 bool SQLCompiler::Parse(SQLContext& ctx,
                         ::hybridse::base::Status& status) {  // NOLINT
     ::hybridse::node::NodePointVector parser_trees;
-    ::hybridse::parser::HybridSEParser parser;
+    ::hybridse::parser::HybridSeParser parser;
 
     bool is_batch_mode = ctx.engine_mode == kBatchMode;
     ::hybridse::plan::SimplePlanner planer(
@@ -328,7 +328,7 @@ bool SQLCompiler::Parse(SQLContext& ctx,
     return true;
 }
 bool SQLCompiler::ResolvePlanFnAddress(vm::PhysicalOpNode* node,
-                                       std::shared_ptr<HybridSEJITWrapper>& jit,
+                                       std::shared_ptr<HybridSeJitWrapper>& jit,
                                        Status& status) {
     if (nullptr == node) {
         status.msg = "fail to resolve project fn address: node is null";

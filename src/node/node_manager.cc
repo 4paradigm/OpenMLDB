@@ -1165,24 +1165,24 @@ node::ExternalFnDefNode *NodeManager::MakeUnresolvedFnDefNode(
         function_name, nullptr, nullptr, true, {}, {}, -1, false));
 }
 
-node::UDFDefNode *NodeManager::MakeUDFDefNode(FnNodeFnDef *def) {
-    return RegisterNode(new node::UDFDefNode(def));
+node::UdfDefNode *NodeManager::MakeUdfDefNode(FnNodeFnDef *def) {
+    return RegisterNode(new node::UdfDefNode(def));
 }
 
-node::UDFByCodeGenDefNode *NodeManager::MakeUDFByCodeGenDefNode(
+node::UdfByCodeGenDefNode *NodeManager::MakeUdfByCodeGenDefNode(
     const std::string &name,
     const std::vector<const node::TypeNode *> &arg_types,
     const std::vector<int> &arg_nullable, const node::TypeNode *ret_type,
     bool ret_nullable) {
-    return RegisterNode(new node::UDFByCodeGenDefNode(
+    return RegisterNode(new node::UdfByCodeGenDefNode(
         name, arg_types, arg_nullable, ret_type, ret_nullable));
 }
 
-node::UDAFDefNode *NodeManager::MakeUDAFDefNode(
+node::UdafDefNode *NodeManager::MakeUdafDefNode(
     const std::string &name, const std::vector<const TypeNode *> &arg_types,
     ExprNode *init, FnDefNode *update_func, FnDefNode *merge_func,
     FnDefNode *output_func) {
-    return RegisterNode(new node::UDAFDefNode(
+    return RegisterNode(new node::UdafDefNode(
         name, arg_types, init, update_func, merge_func, output_func));
 }
 

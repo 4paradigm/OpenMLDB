@@ -48,9 +48,9 @@ namespace hybridse {
 namespace vm {
 using ::llvm::orc::LLJIT;
 
-HybridSEJIT::HybridSEJIT(::llvm::orc::LLJITBuilderState& s, ::llvm::Error& e)
+HybridSeJit::HybridSeJit(::llvm::orc::LLJITBuilderState& s, ::llvm::Error& e)
     : LLJIT(s, e) {}
-HybridSEJIT::~HybridSEJIT() {}
+HybridSeJit::~HybridSeJit() {}
 
 static void RunDefaultOptPasses(::llvm::Module* m) {
     ::llvm::legacy::FunctionPassManager fpm(m);
@@ -66,7 +66,7 @@ static void RunDefaultOptPasses(::llvm::Module* m) {
     }
 }
 
-::llvm::Error HybridSEJIT::AddIRModule(::llvm::orc::JITDylib& jd,  // NOLINT
+::llvm::Error HybridSeJit::AddIRModule(::llvm::orc::JITDylib& jd,  // NOLINT
                                        ::llvm::orc::ThreadSafeModule tsm,
                                        ::llvm::orc::VModuleKey key) {
     if (auto err = applyDataLayout(*tsm.getModule())) return err;
@@ -78,38 +78,38 @@ static void RunDefaultOptPasses(::llvm::Module* m) {
     return CompileLayer->add(jd, std::move(tsm), key);
 }
 
-bool HybridSEJIT::OptModule(::llvm::Module* m) {
+bool HybridSeJit::OptModule(::llvm::Module* m) {
     if (auto err = applyDataLayout(*m)) {
         return false;
     }
-    DLOG(INFO) << "Module before opt:\n" << LLVMToString(*m);
+    DLOG(INFO) << "Module before opt:\n" << LlvmToString(*m);
     RunDefaultOptPasses(m);
-    DLOG(INFO) << "Module after opt:\n" << LLVMToString(*m);
+    DLOG(INFO) << "Module after opt:\n" << LlvmToString(*m);
     return true;
 }
 
-::llvm::orc::VModuleKey HybridSEJIT::CreateVModule() {
+::llvm::orc::VModuleKey HybridSeJit::CreateVModule() {
     ::llvm::orc::VModuleKey key = ES->allocateVModule();
     DLOG(INFO) << "allocate a new module key " << key;
     return key;
 }
 
-void HybridSEJIT::ReleaseVModule(::llvm::orc::VModuleKey key) {
+void HybridSeJit::ReleaseVModule(::llvm::orc::VModuleKey key) {
     DLOG(INFO) << "release module with key " << key;
     ES->releaseVModule(key);
 }
 
-bool HybridSEJIT::AddSymbol(::llvm::orc::JITDylib& jd, const std::string& name,
+bool HybridSeJit::AddSymbol(::llvm::orc::JITDylib& jd, const std::string& name,
                             void* fn_ptr) {
     if (fn_ptr == NULL) {
         LOG(WARNING) << "fn ptr is null";
         return false;
     }
     ::llvm::orc::MangleAndInterner mi(getExecutionSession(), getDataLayout());
-    return HybridSEJIT::AddSymbol(jd, mi, name, fn_ptr);
+    return HybridSeJit::AddSymbol(jd, mi, name, fn_ptr);
 }
 
-bool HybridSEJIT::AddSymbol(const std::string& name, void* fn_ptr) {
+bool HybridSeJit::AddSymbol(const std::string& name, void* fn_ptr) {
     if (fn_ptr == NULL) {
         LOG(WARNING) << "fn ptr is null";
         return false;
@@ -118,7 +118,7 @@ bool HybridSEJIT::AddSymbol(const std::string& name, void* fn_ptr) {
     return AddSymbol(jd, name, fn_ptr);
 }
 
-void HybridSEJIT::Init() {
+void HybridSeJit::Init() {
     auto& jd = getMainJITDylib();
     auto gen = llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
         getDataLayout().getGlobalPrefix());
@@ -131,7 +131,7 @@ void HybridSEJIT::Init() {
     jd.setGenerator(gen.get());
 }
 
-bool HybridSEJIT::AddSymbol(::llvm::orc::JITDylib& jd,
+bool HybridSeJit::AddSymbol(::llvm::orc::JITDylib& jd,
                             ::llvm::orc::MangleAndInterner& mi,
                             const std::string& fn_name, void* fn_ptr) {
     ::llvm::StringRef symbol(fn_name);
@@ -148,10 +148,10 @@ bool HybridSEJIT::AddSymbol(::llvm::orc::JITDylib& jd,
     }
 }
 
-bool HybridSELLJITWrapper::Init() {
+bool HybridSeLlvmJitWrapper::Init() {
     DLOG(INFO) << "Start to initialize hybridse jit";
-    auto jit = ::llvm::Expected<std::unique_ptr<HybridSEJIT>>(
-        HybridSEJITBuilder().create());
+    auto jit = ::llvm::Expected<std::unique_ptr<HybridSeJit>>(
+        HybridSeJitBuilder().create());
     {
         ::llvm::Error e = jit.takeError();
         if (e) {
@@ -168,23 +168,23 @@ bool HybridSELLJITWrapper::Init() {
     return true;
 }
 
-bool HybridSELLJITWrapper::OptModule(::llvm::Module* module) {
+bool HybridSeLlvmJitWrapper::OptModule(::llvm::Module* module) {
     return jit_->OptModule(module);
 }
 
-bool HybridSELLJITWrapper::AddModule(
+bool HybridSeLlvmJitWrapper::AddModule(
     std::unique_ptr<llvm::Module> module,
     std::unique_ptr<llvm::LLVMContext> llvm_ctx) {
     ::llvm::Error e = jit_->addIRModule(
         ::llvm::orc::ThreadSafeModule(std::move(module), std::move(llvm_ctx)));
     if (e) {
-        LOG(WARNING) << "fail to add ir module: " << LLVMToString(e);
+        LOG(WARNING) << "fail to add ir module: " << LlvmToString(e);
         return false;
     }
     return true;
 }
 
-RawPtrHandle HybridSELLJITWrapper::FindFunction(const std::string& funcname) {
+RawPtrHandle HybridSeLlvmJitWrapper::FindFunction(const std::string& funcname) {
     if (funcname == "") {
         return 0;
     }
@@ -192,29 +192,29 @@ RawPtrHandle HybridSELLJITWrapper::FindFunction(const std::string& funcname) {
     ::llvm::Error e = symbol.takeError();
     if (e) {
         LOG(WARNING) << "fail to resolve fn address of" << funcname << ": "
-                     << LLVMToString(e);
+                     << LlvmToString(e);
         return 0;
     }
     return reinterpret_cast<const int8_t*>(symbol->getAddress());
 }
 
-bool HybridSELLJITWrapper::AddExternalFunction(const std::string& name,
+bool HybridSeLlvmJitWrapper::AddExternalFunction(const std::string& name,
                                                void* addr) {
-    return hybridse::vm::HybridSEJIT::AddSymbol(jit_->getMainJITDylib(), *mi_,
+    return hybridse::vm::HybridSeJit::AddSymbol(jit_->getMainJITDylib(), *mi_,
                                                 name, addr);
 }
 
 #ifdef LLVM_EXT_ENABLE
-bool HybridSEMCJITWrapper::Init() { return true; }
+bool HybridSeMcJitWrapper::Init() { return true; }
 
-bool HybridSEMCJITWrapper::OptModule(::llvm::Module* module) {
-    DLOG(INFO) << "Module before opt:\n" << LLVMToString(*module);
+bool HybridSeMcJitWrapper::OptModule(::llvm::Module* module) {
+    DLOG(INFO) << "Module before opt:\n" << LlvmToString(*module);
     RunDefaultOptPasses(module);
-    DLOG(INFO) << "Module after opt:\n" << LLVMToString(*module);
+    DLOG(INFO) << "Module after opt:\n" << LlvmToString(*module);
     return true;
 }
 
-bool HybridSEMCJITWrapper::AddModule(
+bool HybridSeMcJitWrapper::AddModule(
     std::unique_ptr<llvm::Module> module,
     std::unique_ptr<llvm::LLVMContext> llvm_ctx) {
     if (llvm::verifyModule(*module, &llvm::errs(), nullptr)) {
@@ -227,7 +227,7 @@ bool HybridSEMCJITWrapper::AddModule(
         const ::llvm::DataLayout& module_layout = module->getDataLayout();
         llvm::EngineBuilder engine_builder(std::move(module));
 
-        auto resolver = new HybridSESymbolResolver(
+        auto resolver = new HybridSeSymbolResolver(
             module_layout.isDefault()
                 ? engine_builder.selectTarget()->createDataLayout()
                 : module_layout);
@@ -288,7 +288,7 @@ bool HybridSEMCJITWrapper::AddModule(
     return CheckError();
 }
 
-bool HybridSEMCJITWrapper::AddExternalFunction(const std::string& name,
+bool HybridSeMcJitWrapper::AddExternalFunction(const std::string& name,
                                                void* addr) {
     if (execution_engine_ != nullptr) {
         LOG(WARNING)
@@ -300,7 +300,7 @@ bool HybridSEMCJITWrapper::AddExternalFunction(const std::string& name,
     return true;
 }
 
-hybridse::vm::RawPtrHandle HybridSEMCJITWrapper::FindFunction(
+hybridse::vm::RawPtrHandle HybridSeMcJitWrapper::FindFunction(
     const std::string& funcname) {
     if (!CheckInitialized()) {
         return nullptr;
@@ -312,7 +312,7 @@ hybridse::vm::RawPtrHandle HybridSEMCJITWrapper::FindFunction(
     return reinterpret_cast<int8_t*>(addr);
 }
 
-bool HybridSEMCJITWrapper::CheckError() {
+bool HybridSeMcJitWrapper::CheckError() {
     if (!err_str_.empty()) {
         LOG(WARNING) << "Detect jit error: " << err_str_;
         err_str_.clear();
@@ -321,7 +321,7 @@ bool HybridSEMCJITWrapper::CheckError() {
     return true;
 }
 
-bool HybridSEMCJITWrapper::CheckInitialized() const {
+bool HybridSeMcJitWrapper::CheckInitialized() const {
     if (execution_engine_ == nullptr) {
         LOG(WARNING) << "JIT engine is not initialized";
         return false;

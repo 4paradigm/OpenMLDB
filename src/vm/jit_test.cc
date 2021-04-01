@@ -59,7 +59,7 @@ T FeCheck(::llvm::Expected<T> &&E) {
 }
 
 TEST_F(JITTest, test_release_module) {
-    auto jit = FeCheck((HybridSEJITBuilder().create()));
+    auto jit = FeCheck((HybridSeJitBuilder().create()));
     ::llvm::orc::JITDylib &jd = jit->createJITDylib("test");
     ::llvm::orc::VModuleKey m1 = jit->CreateVModule();
     int (*Add1)(int) = NULL;
@@ -102,7 +102,7 @@ TEST_F(JITTest, test_release_module) {
 static int32_t inc_for_test(int32_t x) { return x + 1; }
 
 TEST_F(JITTest, test_udf_invoke_module) {
-    auto jit = FeCheck((HybridSEJITBuilder().create()));
+    auto jit = FeCheck((HybridSeJitBuilder().create()));
     ::llvm::orc::JITDylib &jd = jit->createJITDylib("test");
     ::llvm::orc::VModuleKey m1 = jit->CreateVModule();
     int (*Add1)(int) = NULL;

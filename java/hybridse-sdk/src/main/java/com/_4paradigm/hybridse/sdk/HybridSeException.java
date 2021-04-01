@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridse.common;
+package com._4paradigm.hybridse.sdk;
 
-public class UnsupportedHybridSEException extends Exception {
+public class HybridSeException extends Exception {
 
     private String message;
     private Throwable cause;
 
-    public UnsupportedHybridSEException(String message) {
+    public HybridSeException(String message) {
         this.message = message;
         this.cause = null;
     }
 
-    public UnsupportedHybridSEException(String message, Throwable cause) {
+    public HybridSeException(String message, Throwable cause) {
         this.message = message;
         this.cause = cause;
     }

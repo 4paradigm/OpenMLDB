@@ -777,7 +777,7 @@ char *AllocManagedStringBuf(int32_t bytes) {
     if (bytes < 0) {
         return nullptr;
     }
-    return reinterpret_cast<char *>(vm::JITRuntime::get()->AllocManaged(bytes));
+    return reinterpret_cast<char *>(vm::JitRuntime::get()->AllocManaged(bytes));
 }
 
 template <class V>
@@ -876,12 +876,12 @@ bool RegisterMethod(const std::string &fn_name, hybridse::node::TypeNode *ret,
     }
     auto header = dynamic_cast<node::FnNodeFnHeander *>(
         nm.MakeFnHeaderNode(fn_name, fn_args, ret));
-    DefaultUDFLibrary::get()->AddExternalFunction(header->GeIRFunctionName(),
+    DefaultUdfLibrary::get()->AddExternalFunction(header->GeIRFunctionName(),
                                                   fn_ptr);
     return true;
 }
 
-void RegisterNativeUDFToModule() {
+void RegisterNativeUdfToModule() {
     node::NodeManager nm;
     base::Status status;
 

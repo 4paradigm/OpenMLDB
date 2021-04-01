@@ -984,14 +984,14 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kExternalFnDef:
             output = "kExternFnDef";
             break;
-        case kUDFDef:
-            output = "kUDFDef";
+        case kUdfDef:
+            output = "kUdfDef";
             break;
-        case kUDFByCodeGenDef:
-            output = "kUDFByCodeGenDef";
+        case kUdfByCodeGenDef:
+            output = "kUdfByCodeGenDef";
             break;
-        case kUDAFDef:
-            output = "kUDAFDef";
+        case kUdafDef:
+            output = "kUdafDef";
             break;
         case kLambdaDef:
             output = "kLambdaDef";
@@ -1850,24 +1850,24 @@ Status ExternalFnDefNode::Validate(
     return Status::OK();
 }
 
-void UDFDefNode::Print(std::ostream &output, const std::string &tab) const {
-    output << tab << "UDFDefNode {\n";
+void UdfDefNode::Print(std::ostream &output, const std::string &tab) const {
+    output << tab << "UdfDefNode {\n";
     def_->Print(output, tab + INDENT);
     output << tab << "\n}";
 }
 
-bool UDFDefNode::Equals(const SQLNode *node) const {
-    auto other = dynamic_cast<const UDFDefNode *>(node);
+bool UdfDefNode::Equals(const SQLNode *node) const {
+    auto other = dynamic_cast<const UdfDefNode *>(node);
     return other != nullptr && def_->Equals(other->def_);
 }
 
-void UDFByCodeGenDefNode::Print(std::ostream &output,
+void UdfByCodeGenDefNode::Print(std::ostream &output,
                                 const std::string &tab) const {
     output << tab << "[kCodeGenFnDef] " << name_;
 }
 
-bool UDFByCodeGenDefNode::Equals(const SQLNode *node) const {
-    auto other = dynamic_cast<const UDFByCodeGenDefNode *>(node);
+bool UdfByCodeGenDefNode::Equals(const SQLNode *node) const {
+    auto other = dynamic_cast<const UdfByCodeGenDefNode *>(node);
     return other != nullptr && name_ == other->name_ &&
            gen_impl_ == other->gen_impl_;
 }
@@ -1924,7 +1924,7 @@ Status LambdaNode::Validate(
     return Status::OK();
 }
 
-const TypeNode *UDAFDefNode::GetElementType(size_t i) const {
+const TypeNode *UdafDefNode::GetElementType(size_t i) const {
     if (i > arg_types_.size() || arg_types_[i] == nullptr ||
         arg_types_[i]->generics_.size() < 1) {
         return nullptr;
@@ -1932,7 +1932,7 @@ const TypeNode *UDAFDefNode::GetElementType(size_t i) const {
     return arg_types_[i]->generics_[0];
 }
 
-bool UDAFDefNode::IsElementNullable(size_t i) const {
+bool UdafDefNode::IsElementNullable(size_t i) const {
     if (i > arg_types_.size() || arg_types_[i] == nullptr ||
         arg_types_[i]->generics_.size() < 1) {
         return false;
@@ -1940,7 +1940,7 @@ bool UDAFDefNode::IsElementNullable(size_t i) const {
     return arg_types_[i]->generics_nullable_[0];
 }
 
-Status UDAFDefNode::Validate(
+Status UdafDefNode::Validate(
     const std::vector<const TypeNode *> &arg_types) const {
     // check non-null fields
     CHECK_TRUE(update_func() != nullptr, kTypeError, "update func is null");
@@ -2028,17 +2028,17 @@ Status UDAFDefNode::Validate(
     return Status::OK();
 }
 
-bool UDAFDefNode::Equals(const SQLNode *node) const {
-    auto other = dynamic_cast<const UDAFDefNode *>(node);
+bool UdafDefNode::Equals(const SQLNode *node) const {
+    auto other = dynamic_cast<const UdafDefNode *>(node);
     return other != nullptr && init_expr_->Equals(other->init_expr()) &&
            update_->Equals(other->update_) &&
            FnDefEquals(merge_, other->merge_) &&
            FnDefEquals(output_, other->output_);
 }
 
-void UDAFDefNode::Print(std::ostream &output,
+void UdafDefNode::Print(std::ostream &output,
                         const std::string &org_tab) const {
-    output << org_tab << "[kUDAFDef] " << name_;
+    output << org_tab << "[kUdafFDef] " << name_;
     output << "(";
     for (size_t i = 0; i < GetArgSize(); ++i) {
         if (arg_types_[i] == nullptr) {

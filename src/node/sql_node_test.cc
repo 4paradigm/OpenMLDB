@@ -165,7 +165,7 @@ TEST_F(SqlNodeTest, MakeExternalFnDefNodeTest) {
     ASSERT_EQ("extern_f", node_ptr->function_name());
 }
 
-TEST_F(SqlNodeTest, MakeUDAFDefNodeTest) {
+TEST_F(SqlNodeTest, MakeUdafDefNodeTest) {
     auto zero = node_manager_->MakeConstNode(1);
     auto f1 = dynamic_cast<ExternalFnDefNode *>(
         node_manager_->MakeUnresolvedFnDefNode("f1"));
@@ -173,9 +173,9 @@ TEST_F(SqlNodeTest, MakeUDAFDefNodeTest) {
         node_manager_->MakeUnresolvedFnDefNode("f2"));
     auto f3 = dynamic_cast<ExternalFnDefNode *>(
         node_manager_->MakeUnresolvedFnDefNode("f3"));
-    auto *udaf = dynamic_cast<UDAFDefNode *>(
-        node_manager_->MakeUDAFDefNode("udaf", {}, zero, f1, f2, f3));
-    ASSERT_EQ(kUDAFDef, udaf->GetType());
+    auto *udaf = dynamic_cast<UdafDefNode *>(
+        node_manager_->MakeUdafDefNode("udaf", {}, zero, f1, f2, f3));
+    ASSERT_EQ(kUdafDef, udaf->GetType());
     ASSERT_EQ(true, udaf->init_expr()->Equals(zero));
     ASSERT_EQ(true, udaf->update_func()->Equals(f1));
     ASSERT_EQ(true, udaf->merge_func()->Equals(f2));

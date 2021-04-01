@@ -126,7 +126,7 @@ void StartDBMS(char *argv[]) {
 
 void StartClient(char *argv[]) {
     SetupLogging(argv);
-    std::cout << "Welcome to HybridSE " << HYBRIDSE_VERSION_MAJOR << "."
+    std::cout << "Welcome to TOYDB " << HYBRIDSE_VERSION_MAJOR << "."
               << HYBRIDSE_VERSION_MINOR << "." << HYBRIDSE_VERSION_BUG
               << std::endl;
     cmd_client_db.name = "";

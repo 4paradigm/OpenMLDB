@@ -38,9 +38,9 @@ namespace udf {
 
 template <typename K>
 struct AvgCateDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUDAFTemplate<Impl>("avg_cate")
+            ->RegisterUdafTemplate<Impl>("avg_cate")
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -53,7 +53,7 @@ struct AvgCateDef {
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
-        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix = ".opaque_dict_" +
                                  DataTypeTrait<K>::to_string() + "_" +
                                  DataTypeTrait<V>::to_string();
@@ -100,9 +100,9 @@ struct AvgCateDef {
 
 template <typename K>
 struct AvgCateWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUDAFTemplate<Impl>("avg_cate_where")
+            ->RegisterUdafTemplate<Impl>("avg_cate_where")
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -117,7 +117,7 @@ struct AvgCateWhereDef {
 
         using AvgCateImpl = typename AvgCateDef<K>::template Impl<V>;
 
-        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix = ".opaque_dict_" +
                                  DataTypeTrait<K>::to_string() + "_" +
                                  DataTypeTrait<V>::to_string();
@@ -143,9 +143,9 @@ struct AvgCateWhereDef {
 };
 template <typename K>
 struct TopKAvgCateWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUDAFTemplate<Impl>("top_n_key_avg_cate_where")
+            ->RegisterUdafTemplate<Impl>("top_n_key_avg_cate_where")
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -160,7 +160,7 @@ struct TopKAvgCateWhereDef {
 
         using AvgCateImpl = typename AvgCateDef<K>::template Impl<V>;
 
-        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix;
 
             suffix = ".i32_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
@@ -221,8 +221,8 @@ struct TopKAvgCateWhereDef {
     };
 };
 
-void DefaultUDFLibrary::InitAvgByCateUDAFs() {
-    RegisterUDAFTemplate<AvgCateDef>("avg_cate")
+void DefaultUdfLibrary::InitAvgByCateUdafs() {
+    RegisterUdafTemplate<AvgCateDef>("avg_cate")
         .doc(R"(
             Compute average of values grouped by category key and output string.
             Each group is represented as 'K:V' and separated by comma in outputs
@@ -246,7 +246,7 @@ void DefaultUDFLibrary::InitAvgByCateUDAFs() {
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
-    RegisterUDAFTemplate<AvgCateWhereDef>("avg_cate_where")
+    RegisterUdafTemplate<AvgCateWhereDef>("avg_cate_where")
         .doc(R"(
             Compute average of values matching specified condition grouped by
     category key and output string. Each group is represented as 'K:V' and
@@ -272,7 +272,7 @@ void DefaultUDFLibrary::InitAvgByCateUDAFs() {
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
-    RegisterUDAFTemplate<TopKAvgCateWhereDef>("top_n_key_avg_cate_where")
+    RegisterUdafTemplate<TopKAvgCateWhereDef>("top_n_key_avg_cate_where")
         .doc(R"(
             Compute average of values matching specified condition grouped by
     category key. Output string for top N keys in descend order. Each group is

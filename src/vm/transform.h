@@ -102,10 +102,10 @@ class BatchModeTransformer {
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                          const std::shared_ptr<Catalog>& catalog,
                          ::llvm::Module* module,
-                         const udf::UDFLibrary* library);
+                         const udf::UdfLibrary* library);
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                          const std::shared_ptr<Catalog>& catalog,
-                         ::llvm::Module* module, const udf::UDFLibrary* library,
+                         ::llvm::Module* module, const udf::UdfLibrary* library,
                          bool performance_sensitive,
                          bool cluster_optimized_mode, bool enable_expr_opt,
                          bool enable_window_parallelization);
@@ -246,7 +246,7 @@ class BatchModeTransformer {
     bool enable_batch_window_parallelization_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
-    const udf::UDFLibrary* library_;
+    const udf::UdfLibrary* library_;
     PhysicalPlanContext plan_ctx_;
 };
 
@@ -255,7 +255,7 @@ class RequestModeTransformer : public BatchModeTransformer {
     RequestModeTransformer(
         node::NodeManager* node_manager, const std::string& db,
         const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
-        udf::UDFLibrary* library, const std::set<size_t>& common_column_indices,
+        udf::UdfLibrary* library, const std::set<size_t>& common_column_indices,
         const bool performance_sensitive, const bool cluster_optimized,
         const bool enable_batch_request_opt, bool enable_expr_opt);
     virtual ~RequestModeTransformer();

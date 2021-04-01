@@ -79,7 +79,7 @@ class CompileInfoCache {
         base::Status& status) = 0;  // NOLINT
 };
 
-class JITOptions {
+class JitOptions {
  public:
     bool is_enable_mcjit() const { return enable_mcjit_; }
     void set_enable_mcjit(bool flag) { enable_mcjit_ = flag; }

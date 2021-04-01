@@ -185,7 +185,7 @@ TEST_P(TransformTest, transform_physical_plan) {
     ::hybridse::base::Status base_status;
     {
         ::hybridse::plan::SimplePlanner planner(&manager);
-        ::hybridse::parser::HybridSEParser parser;
+        ::hybridse::parser::HybridSeParser parser;
         ::hybridse::node::NodePointVector parser_trees;
         parser.parse(sqlstr, parser_trees, &manager, base_status);
         LOG(INFO) << *(parser_trees[0]) << std::endl;
@@ -202,7 +202,7 @@ TEST_P(TransformTest, transform_physical_plan) {
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
-    auto lib = ::hybridse::udf::DefaultUDFLibrary::get();
+    auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
     BatchModeTransformer transform(&manager, "db", catalog, m.get(), lib);
 
     transform.AddDefaultPasses();
@@ -280,7 +280,7 @@ TEST_P(TransformTest, transform_physical_plan_enable_window_paralled) {
     ::hybridse::base::Status base_status;
     {
         ::hybridse::plan::SimplePlanner planner(&manager);
-        ::hybridse::parser::HybridSEParser parser;
+        ::hybridse::parser::HybridSeParser parser;
         ::hybridse::node::NodePointVector parser_trees;
         parser.parse(sqlstr, parser_trees, &manager, base_status);
         LOG(INFO) << *(parser_trees[0]) << std::endl;
@@ -297,7 +297,7 @@ TEST_P(TransformTest, transform_physical_plan_enable_window_paralled) {
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
-    auto lib = ::hybridse::udf::DefaultUDFLibrary::get();
+    auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
     BatchModeTransformer transform(&manager, "db", catalog, m.get(), lib, false,
                                    false, false, true);
 
@@ -324,7 +324,7 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     ::hybridse::base::Status base_status;
     {
         ::hybridse::plan::SimplePlanner planner(&manager);
-        ::hybridse::parser::HybridSEParser parser;
+        ::hybridse::parser::HybridSeParser parser;
         ::hybridse::node::NodePointVector parser_trees;
         parser.parse(sql, parser_trees, &manager, base_status);
         ASSERT_EQ(0, base_status.code);
@@ -343,7 +343,7 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     base::Status status;
-    auto lib = ::hybridse::udf::DefaultUDFLibrary::get();
+    auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
     BatchModeTransformer transform(&manager, "db", catalog, m.get(), lib);
 
     transform.AddDefaultPasses();
@@ -549,7 +549,7 @@ TEST_P(TransformTest, window_merge_opt_test) {
     ::hybridse::base::Status base_status;
     {
         ::hybridse::plan::SimplePlanner planner(&manager);
-        ::hybridse::parser::HybridSEParser parser;
+        ::hybridse::parser::HybridSeParser parser;
         ::hybridse::node::NodePointVector parser_trees;
         parser.parse(sqlstr, parser_trees, &manager, base_status);
         LOG(INFO) << *(parser_trees[0]) << std::endl;
@@ -567,7 +567,7 @@ TEST_P(TransformTest, window_merge_opt_test) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     base::Status status;
-    auto lib = ::hybridse::udf::DefaultUDFLibrary::get();
+    auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
     BatchModeTransformer transform(&manager, "db", catalog, m.get(), lib);
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
@@ -617,7 +617,7 @@ TEST_P(KeyGenTest, GenTest) {
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
-    auto lib = ::hybridse::udf::DefaultUDFLibrary::get();
+    auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
     BatchModeTransformer transformer(&nm, "db", catalog, m.get(), lib);
 
     auto groups = nm.MakeExprList();
@@ -667,7 +667,7 @@ TEST_P(FilterGenTest, GenFilter) {
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
-    auto lib = ::hybridse::udf::DefaultUDFLibrary::get();
+    auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
     BatchModeTransformer transformer(&nm, "db", catalog, m.get(), lib);
 
     auto plan_ctx = transformer.GetPlanContext();

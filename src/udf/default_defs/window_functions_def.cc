@@ -59,7 +59,7 @@ void AtList(::hybridse::codec::ListRef<V>* list_ref, int64_t pos, V* v,
     }
 }
 
-node::ExprNode* BuildAt(UDFResolveContext* ctx, ExprNode* input, ExprNode* idx,
+node::ExprNode* BuildAt(UdfResolveContext* ctx, ExprNode* input, ExprNode* idx,
                         ExprNode* default_val) {
     auto input_type = input->GetOutputType();
     if (input_type->base() != node::kList) {
@@ -96,14 +96,14 @@ node::ExprNode* BuildAt(UDFResolveContext* ctx, ExprNode* input, ExprNode* idx,
 }
 
 template <typename V>
-void RegisterBaseListAt(UDFLibrary* lib) {
+void RegisterBaseListAt(UdfLibrary* lib) {
     lib->RegisterExternal("at")
         .args<codec::ListRef<V>, int64_t>(reinterpret_cast<void*>(AtList<V>))
         .return_by_arg(true)
         .template returns<Nullable<V>>();
 }
 
-void DefaultUDFLibrary::InitWindowFunctions() {
+void DefaultUdfLibrary::InitWindowFunctions() {
     // basic at impl for <list<V>, int32>
     RegisterBaseListAt<bool>(this);
     RegisterBaseListAt<int16_t>(this);
@@ -116,14 +116,14 @@ void DefaultUDFLibrary::InitWindowFunctions() {
     RegisterBaseListAt<StringRef>(this);
 
     // general at
-    RegisterExprUDF("at").list_argument_at(0).args<AnyArg, AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* input, ExprNode* idx) {
+    RegisterExprUdf("at").list_argument_at(0).args<AnyArg, AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* input, ExprNode* idx) {
             return BuildAt(ctx, input, idx, nullptr);
         });
 
-    RegisterExprUDF("first_value")
+    RegisterExprUdf("first_value")
         .list_argument_at(0)
-        .args<AnyArg>([](UDFResolveContext* ctx, ExprNode* input) {
+        .args<AnyArg>([](UdfResolveContext* ctx, ExprNode* input) {
             return BuildAt(ctx, input, ctx->node_manager()->MakeConstNode(0),
                            nullptr);
         })

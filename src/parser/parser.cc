@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-// HybridSE Parser
+// HybridSe Parser
 #include "parser/parser.h"
 #include <utility>
 #include "node/sql_node.h"
@@ -22,7 +22,7 @@
 namespace hybridse {
 namespace parser {
 
-int HybridSEParser::parse(
+int HybridSeParser::parse(
     const std::string &sqlstr,
     node::NodePointVector &trees,  // NOLINT (runtime/references)
     node::NodeManager *manager,
@@ -62,7 +62,7 @@ int HybridSEParser::parse(
     return ret;
 }
 
-int HybridSEParser::ReflectFnDefNode(node::FnNodeFnDef *fn_def,
+int HybridSeParser::ReflectFnDefNode(node::FnNodeFnDef *fn_def,
                                      node::NodeManager *node_manager,
                                      base::Status &status) {  // NOLINT
     if (nullptr == fn_def->header_) {
@@ -93,7 +93,7 @@ int HybridSEParser::ReflectFnDefNode(node::FnNodeFnDef *fn_def,
     return 0;
 }
 
-int HybridSEParser::CreateFnBlock(std::vector<node::FnNode *> statements,
+int HybridSeParser::CreateFnBlock(std::vector<node::FnNode *> statements,
                                   int start, int end, int32_t indent,
                                   node::FnNodeList *block,
                                   node::NodeManager *node_manager,
@@ -253,7 +253,7 @@ int HybridSEParser::CreateFnBlock(std::vector<node::FnNode *> statements,
     }
     return pos;
 }
-bool HybridSEParser::SSAOptimized(
+bool HybridSeParser::SSAOptimized(
     const node::FnNodeList *block,
     std::map<std::string, node::FnNode *> &assign_var_map,
     base::Status &status) {

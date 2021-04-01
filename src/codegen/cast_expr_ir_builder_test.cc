@@ -54,8 +54,8 @@ void CastErrorCheck(::hybridse::node::DataType src_type,
     llvm::Type *src_llvm_type = NULL;
     llvm::Type *dist_llvm_type = NULL;
     ASSERT_TRUE(
-        ::hybridse::codegen::GetLLVMType(m.get(), src_type, &src_llvm_type));
-    ASSERT_TRUE(GetLLVMType(m.get(), dist_type, &dist_llvm_type));
+        ::hybridse::codegen::GetLlvmType(m.get(), src_type, &src_llvm_type));
+    ASSERT_TRUE(GetLlvmType(m.get(), dist_type, &dist_llvm_type));
 
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "D" and take an argument of "S".
@@ -95,8 +95,8 @@ void CastCheck(::hybridse::node::DataType src_type,
     llvm::Type *src_llvm_type = NULL;
     llvm::Type *dist_llvm_type = NULL;
     ASSERT_TRUE(
-        ::hybridse::codegen::GetLLVMType(m.get(), src_type, &src_llvm_type));
-    ASSERT_TRUE(GetLLVMType(m.get(), dist_type, &dist_llvm_type));
+        ::hybridse::codegen::GetLlvmType(m.get(), src_type, &src_llvm_type));
+    ASSERT_TRUE(GetLlvmType(m.get(), dist_type, &dist_llvm_type));
 
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "D" and take an argument of "S".
@@ -174,8 +174,8 @@ void BoolCastCheck(::hybridse::node::DataType type, V value, bool result) {
     llvm::Type *left_llvm_type = NULL;
     llvm::Type *dist_llvm_type = NULL;
     ASSERT_TRUE(
-        ::hybridse::codegen::GetLLVMType(m.get(), type, &left_llvm_type));
-    ASSERT_TRUE(GetLLVMType(m.get(), ::hybridse::node::kBool, &dist_llvm_type));
+        ::hybridse::codegen::GetLlvmType(m.get(), type, &left_llvm_type));
+    ASSERT_TRUE(GetLlvmType(m.get(), ::hybridse::node::kBool, &dist_llvm_type));
 
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "D" and take an argument of "S".

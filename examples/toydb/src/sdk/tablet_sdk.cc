@@ -264,7 +264,7 @@ void TabletSdkImpl::GetSqlPlan(const std::string& db, const std::string& sql,
                                node::NodeManager& node_manager,
                                node::PlanNodeList& plan_trees,
                                sdk::Status& status) {
-    parser::HybridSEParser parser;
+    parser::HybridSeParser parser;
     plan::SimplePlanner planner(&node_manager);
     base::Status sql_status;
 

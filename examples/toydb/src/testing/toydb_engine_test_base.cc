@@ -289,11 +289,11 @@ void CheckSQLiteCompatible(const SQLCase& sql_case, const vm::Schema& schema,
     sqlite3_close(db);
     sqliteStr.pop_back();
 
-    // Transfer Sqlite outcome to HybridSE row
+    // Transfer Sqlite outcome to ToyDB row
     std::vector<hybridse::codec::Row> sqliteRows;
     SQLCase::ExtractRows(schema, sqliteStr, sqliteRows);
 
-    // Compare HybridSE output with SQLite output.
+    // Compare ToyDB output with SQLite output.
     ASSERT_NO_FATAL_FAILURE(CheckRows(
         schema, SortRows(schema, sqliteRows, sql_case.expect().order_),
         SortRows(schema, output, sql_case.expect().order_)));

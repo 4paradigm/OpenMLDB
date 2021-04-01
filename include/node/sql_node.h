@@ -32,7 +32,7 @@
 
 // fwd
 namespace hybridse::udf {
-class LLVMUDFGenBase;
+class LlvmUdfGenBase;
 }
 
 namespace hybridse {
@@ -2242,12 +2242,12 @@ class ExternalFnDefNode : public FnDefNode {
     bool return_by_arg_;
 };
 
-class UDFDefNode : public FnDefNode {
+class UdfDefNode : public FnDefNode {
  public:
-    explicit UDFDefNode(FnNodeFnDef *def) : FnDefNode(kUDFDef), def_(def) {}
+    explicit UdfDefNode(FnNodeFnDef *def) : FnDefNode(kUdfDef), def_(def) {}
     FnNodeFnDef *def() const { return def_; }
 
-    const std::string GetName() const override { return "UDF"; }
+    const std::string GetName() const override { return "Udf"; }
 
     void Print(std::ostream &output, const std::string &tab) const override;
     bool Equals(const SQLNode *node) const override;
@@ -2271,20 +2271,20 @@ class UDFDefNode : public FnDefNode {
         return Status::OK();
     }
 
-    UDFDefNode *ShadowCopy(NodeManager *) const override;
-    UDFDefNode *DeepCopy(NodeManager *) const override;
+    UdfDefNode *ShadowCopy(NodeManager *) const override;
+    UdfDefNode *DeepCopy(NodeManager *) const override;
 
  private:
     FnNodeFnDef *def_;
 };
 
-class UDFByCodeGenDefNode : public FnDefNode {
+class UdfByCodeGenDefNode : public FnDefNode {
  public:
-    UDFByCodeGenDefNode(const std::string &name,
+    UdfByCodeGenDefNode(const std::string &name,
                         const std::vector<const node::TypeNode *> &arg_types,
                         const std::vector<int> &arg_nullable,
                         const node::TypeNode *ret_type, bool ret_nullable)
-        : FnDefNode(kUDFByCodeGenDef),
+        : FnDefNode(kUdfByCodeGenDef),
           name_(name),
           arg_types_(arg_types),
           arg_nullable_(arg_nullable),
@@ -2293,11 +2293,11 @@ class UDFByCodeGenDefNode : public FnDefNode {
 
     const std::string GetName() const override { return name_; }
 
-    void SetGenImpl(std::shared_ptr<udf::LLVMUDFGenBase> gen_impl) {
+    void SetGenImpl(std::shared_ptr<udf::LlvmUdfGenBase> gen_impl) {
         this->gen_impl_ = gen_impl;
     }
 
-    std::shared_ptr<udf::LLVMUDFGenBase> GetGenImpl() const {
+    std::shared_ptr<udf::LlvmUdfGenBase> GetGenImpl() const {
         return this->gen_impl_;
     }
 
@@ -2315,12 +2315,12 @@ class UDFByCodeGenDefNode : public FnDefNode {
     void Print(std::ostream &output, const std::string &tab) const override;
     bool Equals(const SQLNode *node) const override;
 
-    UDFByCodeGenDefNode *ShadowCopy(NodeManager *) const override;
-    UDFByCodeGenDefNode *DeepCopy(NodeManager *) const override;
+    UdfByCodeGenDefNode *ShadowCopy(NodeManager *) const override;
+    UdfByCodeGenDefNode *DeepCopy(NodeManager *) const override;
 
  private:
     const std::string name_;
-    std::shared_ptr<udf::LLVMUDFGenBase> gen_impl_;
+    std::shared_ptr<udf::LlvmUdfGenBase> gen_impl_;
     std::vector<const node::TypeNode *> arg_types_;
     std::vector<int> arg_nullable_;
     const node::TypeNode *ret_type_;
@@ -2365,13 +2365,13 @@ class LambdaNode : public FnDefNode {
     node::ExprNode *body_;
 };
 
-class UDAFDefNode : public FnDefNode {
+class UdafDefNode : public FnDefNode {
  public:
-    UDAFDefNode(const std::string &name,
+    UdafDefNode(const std::string &name,
                 const std::vector<const TypeNode *> &arg_types,
                 ExprNode *init_expr, FnDefNode *update_func,
                 FnDefNode *merge_func, FnDefNode *output_func)
-        : FnDefNode(kUDAFDef),
+        : FnDefNode(kUdafDef),
           name_(name),
           arg_types_(arg_types),
           init_expr_(init_expr),
@@ -2432,8 +2432,8 @@ class UDAFDefNode : public FnDefNode {
         return arg_types_;
     }
 
-    UDAFDefNode *ShadowCopy(NodeManager *) const override;
-    UDAFDefNode *DeepCopy(NodeManager *) const override;
+    UdafDefNode *ShadowCopy(NodeManager *) const override;
+    UdafDefNode *DeepCopy(NodeManager *) const override;
 
  private:
     std::string name_;

@@ -91,7 +91,7 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     ::hybridse::base::Status base_status;
     {
         ::hybridse::plan::SimplePlanner planner(&manager, false);
-        ::hybridse::parser::HybridSEParser parser;
+        ::hybridse::parser::HybridSeParser parser;
         ::hybridse::node::NodePointVector parser_trees;
         parser.parse(sql, parser_trees, &manager, base_status);
         ASSERT_EQ(0, base_status.code);
@@ -110,7 +110,7 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
-    auto lib = ::hybridse::udf::DefaultUDFLibrary::get();
+    auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
     RequestModeTransformer transform(&manager, "db", catalog, m.get(), lib, {},
                                      false, false, false, false);
 
@@ -225,7 +225,7 @@ void CheckTransformPhysicalPlan(const SQLCase& sql_case,
     ::hybridse::base::Status base_status;
     {
         ::hybridse::plan::SimplePlanner planner(nm, false);
-        ::hybridse::parser::HybridSEParser parser;
+        ::hybridse::parser::HybridSeParser parser;
         ::hybridse::node::NodePointVector parser_trees;
         parser.parse(sqlstr, parser_trees, nm, base_status);
         ASSERT_EQ(0, base_status.code);
@@ -244,7 +244,7 @@ void CheckTransformPhysicalPlan(const SQLCase& sql_case,
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
-    auto lib = ::hybridse::udf::DefaultUDFLibrary::get();
+    auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
     RequestModeTransformer transform(nm, "db", catalog, m.get(), lib, {}, false,
                                      false, false, false);
     PhysicalOpNode* physical_plan = nullptr;

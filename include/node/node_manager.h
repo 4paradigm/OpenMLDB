@@ -15,7 +15,7 @@
  */
 
 // memory_manager.h
-//     负责HybridSE的基础元件（SQLNode, PlanNode)的创建和销毁
+//     负责HybridSe的基础元件（SQLNode, PlanNode)的创建和销毁
 //     SQL的语法解析树、查询计划里面维护的只是这些节点的指针或者引用
 
 #ifndef INCLUDE_NODE_NODE_MANAGER_H_
@@ -320,15 +320,15 @@ class NodeManager {
     ExternalFnDefNode *MakeUnresolvedFnDefNode(
         const std::string &function_name);
 
-    UDFDefNode *MakeUDFDefNode(FnNodeFnDef *def);
+    UdfDefNode *MakeUdfDefNode(FnNodeFnDef *def);
 
-    UDFByCodeGenDefNode *MakeUDFByCodeGenDefNode(
+    UdfByCodeGenDefNode *MakeUdfByCodeGenDefNode(
         const std::string &name,
         const std::vector<const node::TypeNode *> &arg_types,
         const std::vector<int> &arg_nullable, const node::TypeNode *ret_type,
         bool ret_nullable);
 
-    UDAFDefNode *MakeUDAFDefNode(const std::string &name,
+    UdafDefNode *MakeUdafDefNode(const std::string &name,
                                  const std::vector<const TypeNode *> &arg_types,
                                  ExprNode *init, FnDefNode *update_func,
                                  FnDefNode *merge_func, FnDefNode *output_func);

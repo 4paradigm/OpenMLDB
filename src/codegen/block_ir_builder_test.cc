@@ -40,13 +40,13 @@ class BlockIRBuilderTest : public ::testing::Test {
  public:
     BlockIRBuilderTest() {
         manager_ = new node::NodeManager();
-        parser_ = new parser::HybridSEParser();
+        parser_ = new parser::HybridSeParser();
     }
     ~BlockIRBuilderTest() { delete manager_; }
 
  protected:
     node::NodeManager *manager_;
-    parser::HybridSEParser *parser_;
+    parser::HybridSeParser *parser_;
 };
 
 void CheckResult(node::NodeManager *manager, std::string test, int32_t res,
@@ -54,7 +54,7 @@ void CheckResult(node::NodeManager *manager, std::string test, int32_t res,
     node::NodePointVector trees;
     node::PlanNodeList plan_trees;
     base::Status status;
-    parser::HybridSEParser parser;
+    parser::HybridSeParser parser;
     int ret = parser.parse(test, trees, manager, status);
     ASSERT_EQ(0, ret);
     // Create an LLJIT instance.

@@ -45,7 +45,7 @@ void MutableVariableCheck(::hybridse::node::DataType type, V1 value1,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("predicate_func", *ctx);
     llvm::Type *llvm_type = NULL;
-    ASSERT_TRUE(::hybridse::codegen::GetLLVMType(m.get(), type, &llvm_type));
+    ASSERT_TRUE(::hybridse::codegen::GetLlvmType(m.get(), type, &llvm_type));
 
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "D" and take an argument of "S".
@@ -81,7 +81,7 @@ void ArrayVariableCheck(node::DataType type, V1 *array, int pos, V1 exp) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("array_func", *ctx);
     llvm::Type *element_type = NULL;
-    ASSERT_TRUE(::hybridse::codegen::GetLLVMType(m.get(), type, &element_type));
+    ASSERT_TRUE(::hybridse::codegen::GetLlvmType(m.get(), type, &element_type));
     //    ::llvm::ArrayType *llvm_type =
     //        ::llvm::ArrayType::get(element_type, element_num);
 

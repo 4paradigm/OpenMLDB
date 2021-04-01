@@ -26,11 +26,11 @@ using ::hybridse::common::kCodegenError;
 namespace hybridse {
 namespace udf {
 
-const std::string UDFResolveContext::GetArgSignature() const {
+const std::string UdfResolveContext::GetArgSignature() const {
     return hybridse::udf::GetArgSignature(args_);
 }
 
-Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
+Status ExprUdfRegistry::ResolveFunction(UdfResolveContext* ctx,
                                         node::FnDefNode** result) {
     // construct fn def node:
     // def fn(arg0, arg1, ...argN):
@@ -42,7 +42,7 @@ Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
     for (size_t i = 0; i < ctx->arg_size(); ++i) {
         std::string arg_name = "arg_" + std::to_string(i);
         auto arg_type = ctx->arg_type(i);
-        CHECK_TRUE(arg_type != nullptr, kCodegenError, "ExprUDF's ", i,
+        CHECK_TRUE(arg_type != nullptr, kCodegenError, "ExprUdf's ", i,
                    "th argument type is null, maybe error occurs in type infer "
                    "process");
         arg_types.push_back(arg_type);
@@ -62,7 +62,7 @@ Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
     return Status::OK();
 }
 
-Status LLVMUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
+Status LlvmUdfRegistry::ResolveFunction(UdfResolveContext* ctx,
                                         node::FnDefNode** result) {
     std::vector<const node::TypeNode*> arg_types;
     std::vector<const ExprAttrNode*> arg_attrs;
@@ -94,15 +94,15 @@ Status LLVMUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
         arg_nullable[pos] = true;
     }
 
-    auto udf_def = dynamic_cast<node::UDFByCodeGenDefNode*>(
-        ctx->node_manager()->MakeUDFByCodeGenDefNode(
+    auto udf_def = dynamic_cast<node::UdfByCodeGenDefNode*>(
+        ctx->node_manager()->MakeUdfByCodeGenDefNode(
             name(), arg_types, arg_nullable, return_type, return_nullable));
     udf_def->SetGenImpl(gen_impl_func_);
     *result = udf_def;
     return Status::OK();
 }
 
-Status ExternalFuncRegistry::ResolveFunction(UDFResolveContext* ctx,
+Status ExternalFuncRegistry::ResolveFunction(UdfResolveContext* ctx,
                                              node::FnDefNode** result) {
     CHECK_TRUE(extern_def_->ret_type() != nullptr, kCodegenError,
                "No return type specified for ", extern_def_->function_name());
@@ -112,13 +112,13 @@ Status ExternalFuncRegistry::ResolveFunction(UDFResolveContext* ctx,
     return Status::OK();
 }
 
-Status SimpleUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
+Status SimpleUdfRegistry::ResolveFunction(UdfResolveContext* ctx,
                                           node::FnDefNode** result) {
     *result = fn_def_;
     return Status::OK();
 }
 
-Status UDAFRegistry::ResolveFunction(UDFResolveContext* ctx,
+Status UdafRegistry::ResolveFunction(UdfResolveContext* ctx,
                                      node::FnDefNode** result) {
     // gen init
     node::ExprNode* init_expr = nullptr;
@@ -146,7 +146,7 @@ Status UDAFRegistry::ResolveFunction(UDFResolveContext* ctx,
         update_args.push_back(elem_arg);
         list_types.push_back(list_type);
     }
-    UDFResolveContext update_ctx(update_args, nm, ctx->library());
+    UdfResolveContext update_ctx(update_args, nm, ctx->library());
     CHECK_TRUE(udaf_gen_.update_gen != nullptr, kCodegenError);
     CHECK_STATUS(
         udaf_gen_.update_gen->ResolveFunction(&update_ctx, &update_func),
@@ -155,7 +155,7 @@ Status UDAFRegistry::ResolveFunction(UDFResolveContext* ctx,
     // gen merge
     node::FnDefNode* merge_func = nullptr;
     if (udaf_gen_.merge_gen != nullptr) {
-        UDFResolveContext merge_ctx({state_arg, state_arg}, nm, ctx->library());
+        UdfResolveContext merge_ctx({state_arg, state_arg}, nm, ctx->library());
         CHECK_STATUS(
             udaf_gen_.merge_gen->ResolveFunction(&merge_ctx, &merge_func),
             "Resolve merge function of ", name(), " failed");
@@ -164,12 +164,12 @@ Status UDAFRegistry::ResolveFunction(UDFResolveContext* ctx,
     // gen output
     node::FnDefNode* output_func = nullptr;
     if (udaf_gen_.output_gen != nullptr) {
-        UDFResolveContext output_ctx({state_arg}, nm, ctx->library());
+        UdfResolveContext output_ctx({state_arg}, nm, ctx->library());
         CHECK_STATUS(
             udaf_gen_.output_gen->ResolveFunction(&output_ctx, &output_func),
             "Resolve output function of ", name(), " failed");
     }
-    *result = nm->MakeUDAFDefNode(name(), list_types, init_expr, update_func,
+    *result = nm->MakeUdafDefNode(name(), list_types, init_expr, update_func,
                                   merge_func, output_func);
     return Status::OK();
 }

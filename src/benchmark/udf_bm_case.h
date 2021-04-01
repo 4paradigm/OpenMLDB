@@ -31,7 +31,7 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
 void CopyMemTable(benchmark::State* state, MODE mode, int64_t data_size);
 void CopyMemSegment(benchmark::State* state, MODE mode, int64_t data_size);
 void CopyArrayList(benchmark::State* state, MODE mode, int64_t data_size);
-// Time UDF
+// Time Udf
 void CTimeDay(benchmark::State* state, MODE mode, const int32_t data_size);
 void CTimeMonth(benchmark::State* state, MODE mode, const int32_t data_size);
 void CTimeYear(benchmark::State* state, MODE mode, const int32_t data_size);

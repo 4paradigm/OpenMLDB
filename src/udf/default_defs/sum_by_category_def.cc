@@ -38,9 +38,9 @@ namespace udf {
 
 template <typename K>
 struct SumCateDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUDAFTemplate<Impl>("sum_cate")
+            ->RegisterUdafTemplate<Impl>("sum_cate")
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -51,7 +51,7 @@ struct SumCateDef {
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
-        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix = ".opaque_dict_" +
                                  DataTypeTrait<K>::to_string() + "_" +
                                  DataTypeTrait<V>::to_string();
@@ -94,9 +94,9 @@ struct SumCateDef {
 
 template <typename K>
 struct SumCateWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUDAFTemplate<Impl>("sum_cate_where")
+            ->RegisterUdafTemplate<Impl>("sum_cate_where")
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -109,7 +109,7 @@ struct SumCateWhereDef {
 
         using SumCateImpl = typename SumCateDef<K>::template Impl<V>;
 
-        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix = ".opaque_dict_" +
                                  DataTypeTrait<K>::to_string() + "_" +
                                  DataTypeTrait<V>::to_string();
@@ -136,9 +136,9 @@ struct SumCateWhereDef {
 
 template <typename K>
 struct TopKSumCateWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUDAFTemplate<Impl>("top_n_key_sum_cate_where")
+            ->RegisterUdafTemplate<Impl>("top_n_key_sum_cate_where")
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -151,7 +151,7 @@ struct TopKSumCateWhereDef {
 
         using AvgCateImpl = typename SumCateDef<K>::template Impl<V>;
 
-        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix;
 
             suffix = ".i32_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
@@ -209,8 +209,8 @@ struct TopKSumCateWhereDef {
     };
 };
 
-void DefaultUDFLibrary::InitSumByCateUDAFs() {
-    RegisterUDAFTemplate<SumCateDef>("sum_cate")
+void DefaultUdfLibrary::InitSumByCateUdafs() {
+    RegisterUdafTemplate<SumCateDef>("sum_cate")
         .doc(R"(
             Compute sum of values grouped by category key and output string.
             Each group is represented as 'K:V' and separated by comma in outputs
@@ -234,7 +234,7 @@ void DefaultUDFLibrary::InitSumByCateUDAFs() {
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
-    RegisterUDAFTemplate<SumCateWhereDef>("sum_cate_where")
+    RegisterUdafTemplate<SumCateWhereDef>("sum_cate_where")
         .doc(R"(
             Compute sum of values matching specified condition grouped by
     category key and output string. Each group is represented as 'K:V' and
@@ -260,7 +260,7 @@ void DefaultUDFLibrary::InitSumByCateUDAFs() {
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
-    RegisterUDAFTemplate<TopKSumCateWhereDef>("top_n_key_sum_cate_where")
+    RegisterUdafTemplate<TopKSumCateWhereDef>("top_n_key_sum_cate_where")
         .doc(R"(
             Compute sum of values matching specified condition grouped by
     category key. Output string for top N keys in descend order. Each group is

@@ -45,7 +45,7 @@ class SqlParserTest : public ::testing::TestWithParam<SQLCase> {
  public:
     SqlParserTest() {
         manager_ = new NodeManager();
-        parser_ = new HybridSEParser();
+        parser_ = new HybridSeParser();
     }
 
     ~SqlParserTest() {
@@ -66,7 +66,7 @@ class SqlParserTest : public ::testing::TestWithParam<SQLCase> {
 
  protected:
     NodeManager *manager_;
-    HybridSEParser *parser_;
+    HybridSeParser *parser_;
 };
 
 INSTANTIATE_TEST_SUITE_P(
@@ -115,7 +115,7 @@ INSTANTIATE_TEST_SUITE_P(
     SqlSubQueryParse, SqlParserTest,
     testing::ValuesIn(InitCases("cases/plan/sub_query.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(UDFParse, SqlParserTest,
+INSTANTIATE_TEST_SUITE_P(UdfParse, SqlParserTest,
                          testing::ValuesIn(InitCases("cases/plan/udf.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
@@ -574,7 +574,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ(60 * 86400000L, index_node->GetAbsTTL());
 }
 
-void CheckTTL(HybridSEParser *parser, NodeManager *manager,
+void CheckTTL(HybridSeParser *parser, NodeManager *manager,
               const std::string &sql, int expect) {
     NodePointVector trees;
     base::Status status;
@@ -667,7 +667,7 @@ class SqlParserErrorTest : public ::testing::TestWithParam<
  public:
     SqlParserErrorTest() {
         manager_ = new NodeManager();
-        parser_ = new HybridSEParser();
+        parser_ = new HybridSeParser();
     }
 
     ~SqlParserErrorTest() {
@@ -677,7 +677,7 @@ class SqlParserErrorTest : public ::testing::TestWithParam<
 
  protected:
     NodeManager *manager_;
-    HybridSEParser *parser_;
+    HybridSeParser *parser_;
 };
 
 // TODO(chenjing): line and column check
@@ -699,7 +699,7 @@ INSTANTIATE_TEST_SUITE_P(SQLErrorParse, SqlParserErrorTest,
                              common::kSQLError, "SELECT SUM(*) FROM t1;")));
 
 INSTANTIATE_TEST_SUITE_P(
-    UDFErrorParse, SqlParserErrorTest,
+    UdfErrorParse, SqlParserErrorTest,
     testing::Values(
         std::make_pair(common::kSQLError,
                        "%%fun\ndefine test(x:i32,y:i32):i32\n    c=x+y\n    "

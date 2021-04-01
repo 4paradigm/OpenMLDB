@@ -31,18 +31,18 @@ namespace codegen {
 
 using base::Status;
 
-class UDFIRBuilder {
+class UdfIRBuilder {
  public:
-    UDFIRBuilder(CodeGenContext* ctx, node::ExprNode* frame_arg,
+    UdfIRBuilder(CodeGenContext* ctx, node::ExprNode* frame_arg,
                  const node::FrameNode* frame);
 
-    ~UDFIRBuilder() {}
+    ~UdfIRBuilder() {}
 
     Status BuildCall(const node::FnDefNode* fn,
                      const std::vector<const node::TypeNode*>& arg_types,
                      const std::vector<NativeValue>& args, NativeValue* output);
 
-    Status BuildUDFCall(const node::UDFDefNode* fn,
+    Status BuildUdfCall(const node::UdfDefNode* fn,
                         const std::vector<const node::TypeNode*>& arg_types,
                         const std::vector<NativeValue>& args,
                         NativeValue* output);
@@ -57,47 +57,47 @@ class UDFIRBuilder {
                            const std::vector<NativeValue>& args,
                            NativeValue* output);
 
-    Status BuildCodeGenUDFCall(
-        const node::UDFByCodeGenDefNode* fn,
+    Status BuildCodeGenUdfCall(
+        const node::UdfByCodeGenDefNode* fn,
         const std::vector<const node::TypeNode*>& arg_types,
         const std::vector<NativeValue>& args, NativeValue* output);
 
-    Status BuildUDAFCall(const node::UDAFDefNode* fn,
+    Status BuildUdafCall(const node::UdafDefNode* fn,
                          const std::vector<const node::TypeNode*>& arg_types,
                          const std::vector<NativeValue>& args,
                          NativeValue* output);
 
-    Status GetUDFCallee(const node::UDFDefNode* fn,
+    Status GetUdfCallee(const node::UdfDefNode* fn,
                         const std::vector<const node::TypeNode*>& arg_types,
                         ::llvm::FunctionCallee* callee, bool* return_by_arg);
 
  private:
-    Status ExpandLLVMCallArgs(const node::TypeNode* dtype, bool nullable,
+    Status ExpandLlvmCallArgs(const node::TypeNode* dtype, bool nullable,
                               const NativeValue& value,
                               ::llvm::IRBuilder<>* builder,
                               std::vector<::llvm::Value*>* arg_vec,
                               ::llvm::Value** should_ret_null);
 
-    Status ExpandLLVMCallVariadicArgs(const NativeValue& value,
+    Status ExpandLlvmCallVariadicArgs(const NativeValue& value,
                                       ::llvm::IRBuilder<>* builder,
                                       std::vector<::llvm::Value*>* arg_vec,
                                       ::llvm::Value** should_ret_null);
 
-    Status ExpandLLVMCallReturnArgs(const node::TypeNode* dtype, bool nullable,
+    Status ExpandLlvmCallReturnArgs(const node::TypeNode* dtype, bool nullable,
                                     ::llvm::IRBuilder<>* builder,
                                     std::vector<::llvm::Value*>* arg_vec);
 
-    Status ExtractLLVMReturnValue(const node::TypeNode* dtype, bool nullable,
+    Status ExtractLlvmReturnValue(const node::TypeNode* dtype, bool nullable,
                                   const std::vector<::llvm::Value*>& llvm_args,
                                   ::llvm::IRBuilder<>* builder, size_t* pos_idx,
                                   NativeValue* output);
 
-    Status BuildLLVMCall(const node::FnDefNode* fn,
+    Status BuildLlvmCall(const node::FnDefNode* fn,
                          ::llvm::FunctionCallee callee,
                          const std::vector<NativeValue>& args,
                          bool return_by_arg, NativeValue* output);
 
-    Status GetLLVMFunctionType(const node::FnDefNode* fn,
+    Status GetLlvmFunctionType(const node::FnDefNode* fn,
                                ::llvm::FunctionType** func_ty);
 
     CodeGenContext* ctx_;

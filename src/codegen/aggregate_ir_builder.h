@@ -90,7 +90,7 @@ class AggregateIRBuilder {
 
     bool IsAggFuncName(const std::string& fname);
 
-    static llvm::Type* GetOutputLLVMType(
+    static llvm::Type* GetOutputLlvmType(
         ::llvm::LLVMContext& llvm_ctx,  // NOLINT
         const std::string& fname, const node::DataType& node_type);
 

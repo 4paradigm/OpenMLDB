@@ -143,7 +143,7 @@ using hybridse::node::DataType;
 %ignore hybridse::vm::LocalTabletTableHandler;
 %ignore hybridse::vm::AysncRowHandler;
 %ignore DataTypeName; // TODO: Geneerate duplicated class
-%ignore hybridse::vm::HybridSEJITWrapper::AddModule;
+%ignore hybridse::vm::HybridSeJitWrapper::AddModule;
 
 // Ignore the unique_ptr functions
 %ignore hybridse::vm::MemTableHandler::GetWindowIterator;

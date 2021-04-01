@@ -31,7 +31,7 @@
 namespace hybridse {
 
 namespace vm {
-class HybridSEJITWrapper;
+class HybridSeJitWrapper;
 }
 
 namespace udf {
@@ -42,14 +42,14 @@ using hybridse::node::ExprNode;
 using hybridse::node::SQLNode;
 
 // Forward declarations
-class ExprUDFRegistryHelper;
-class LLVMUDFRegistryHelper;
+class ExprUdfRegistryHelper;
+class LlvmUdfRegistryHelper;
 class ExternalFuncRegistryHelper;
-class UDAFRegistryHelper;
-class UDFRegistry;
-class UDAFRegistry;
+class UdafRegistryHelper;
+class UdfRegistry;
+class UdafRegistry;
 class CompositeRegistry;
-class UDFResolveContext;
+class UdfResolveContext;
 
 template <typename T>
 class ArgSignatureTable;
@@ -58,30 +58,30 @@ template <template <typename> typename FTemplate>
 class ExternalTemplateFuncRegistryHelper;
 
 template <template <typename> typename FTemplate>
-class CodeGenUDFTemplateRegistryHelper;
+class CodeGenUdfTemplateRegistryHelper;
 
 template <template <typename> typename FTemplate>
-class UDAFTemplateRegistryHelper;
+class UdafTemplateRegistryHelper;
 
 template <template <typename> typename FTemplate>
-class ExprUDFTemplateRegistryHelper;
+class ExprUdfTemplateRegistryHelper;
 
-struct UDFLibraryEntry;
+struct UdfLibraryEntry;
 
 /**
  * Hold global udf registry entries.
  * "fn(arg0, arg1, ...argN)" -> some expression
  */
-class UDFLibrary {
+class UdfLibrary {
  public:
     Status Transform(const std::string& name,
                      const std::vector<node::ExprNode*>& args,
                      node::NodeManager* node_manager, ExprNode** result) const;
 
-    Status Transform(const std::string& name, UDFResolveContext* ctx,
+    Status Transform(const std::string& name, UdfResolveContext* ctx,
                      ExprNode** result) const;
 
-    Status ResolveFunction(const std::string& name, UDFResolveContext* ctx,
+    Status ResolveFunction(const std::string& name, UdfResolveContext* ctx,
                            node::FnDefNode** result) const;
 
     Status ResolveFunction(const std::string& name,
@@ -89,26 +89,26 @@ class UDFLibrary {
                            node::NodeManager* node_manager,
                            node::FnDefNode** result) const;
 
-    std::shared_ptr<UDFRegistry> Find(
+    std::shared_ptr<UdfRegistry> Find(
         const std::string& name,
         const std::vector<const node::TypeNode*>& arg_types) const;
 
     bool HasFunction(const std::string& name) const;
 
-    std::shared_ptr<ArgSignatureTable<std::shared_ptr<UDFRegistry>>> FindAll(
+    std::shared_ptr<ArgSignatureTable<std::shared_ptr<UdfRegistry>>> FindAll(
         const std::string& name) const;
 
-    bool IsUDAF(const std::string& name, size_t args) const;
-    void SetIsUDAF(const std::string& name, size_t args);
+    bool IsUdaf(const std::string& name, size_t args) const;
+    void SetIsUdaf(const std::string& name, size_t args);
 
     bool RequireListAt(const std::string& name, size_t index) const;
     bool IsListReturn(const std::string& name) const;
 
     // register interfaces
-    ExprUDFRegistryHelper RegisterExprUDF(const std::string& name);
-    LLVMUDFRegistryHelper RegisterCodeGenUDF(const std::string& name);
+    ExprUdfRegistryHelper RegisterExprUdf(const std::string& name);
+    LlvmUdfRegistryHelper RegisterCodeGenUdf(const std::string& name);
     ExternalFuncRegistryHelper RegisterExternal(const std::string& name);
-    UDAFRegistryHelper RegisterUDAF(const std::string& name);
+    UdafRegistryHelper RegisterUdaf(const std::string& name);
 
     Status RegisterAlias(const std::string& alias, const std::string& name);
     Status RegisterFromFile(const std::string& path);
@@ -119,22 +119,22 @@ class UDFLibrary {
     }
 
     template <template <typename> class FTemplate>
-    auto RegisterCodeGenUDFTemplate(const std::string& name) {
-        return CodeGenUDFTemplateRegistryHelper<FTemplate>(name, this);
+    auto RegisterCodeGenUdfTemplate(const std::string& name) {
+        return CodeGenUdfTemplateRegistryHelper<FTemplate>(name, this);
     }
 
     template <template <typename> class FTemplate>
-    auto RegisterUDAFTemplate(const std::string& name) {
-        return UDAFTemplateRegistryHelper<FTemplate>(name, this);
+    auto RegisterUdafTemplate(const std::string& name) {
+        return UdafTemplateRegistryHelper<FTemplate>(name, this);
     }
 
     template <template <typename> class FTemplate>
-    auto RegisterExprUDFTemplate(const std::string& name) {
-        return ExprUDFTemplateRegistryHelper<FTemplate>(name, this);
+    auto RegisterExprUdfTemplate(const std::string& name) {
+        return ExprUdfTemplateRegistryHelper<FTemplate>(name, this);
     }
 
     void AddExternalFunction(const std::string& name, void* addr);
-    void InitJITSymbols(vm::HybridSEJITWrapper* jit_ptr);
+    void InitJITSymbols(vm::HybridSeJitWrapper* jit_ptr);
 
     node::NodeManager* node_manager() { return &nm_; }
 
@@ -144,13 +144,13 @@ class UDFLibrary {
                         const std::vector<const node::TypeNode*>& arg_types,
                         bool is_variadic, bool always_return_list,
                         const std::unordered_set<size_t>& always_list_argidx,
-                        std::shared_ptr<UDFRegistry> registry);
+                        std::shared_ptr<UdfRegistry> registry);
 
  private:
     std::string GetCanonicalName(const std::string& name) const;
 
     // argument type matching table
-    std::unordered_map<std::string, std::shared_ptr<UDFLibraryEntry>> table_;
+    std::unordered_map<std::string, std::shared_ptr<UdfLibraryEntry>> table_;
 
     // external symbols
     std::unordered_map<std::string, void*> external_symbols_;
