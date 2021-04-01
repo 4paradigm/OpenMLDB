@@ -53,10 +53,8 @@ jobs:
       uses: EnricoMi/publish-unit-test-result-action@v1
       if: always()
       with:
-        files: java/hybridse-sdk/target/surefire-reports/*.xml
+        files: java/hybridse-sdk/target/**/TEST-*.xml
         comment_title: Java Test Report
-        report_individual_runs: true
-        check_run_annotations: all tests, skipped tests
 
     - name: Cleanup
       if: always()
