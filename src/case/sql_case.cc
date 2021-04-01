@@ -29,7 +29,7 @@ namespace hybridse {
 namespace sqlcase {
 using hybridse::codec::Row;
 
-bool SQLCase::TTLParse(const std::string& org_type_str,
+bool SqlCase::TTLParse(const std::string& org_type_str,
                        std::vector<int64_t>& ttls) {
     std::string type_str = org_type_str;
     boost::to_lower(type_str);
@@ -62,7 +62,7 @@ bool SQLCase::TTLParse(const std::string& org_type_str,
     }
     return true;
 }
-bool SQLCase::TTLTypeParse(const std::string& org_type_str,
+bool SqlCase::TTLTypeParse(const std::string& org_type_str,
                            ::hybridse::type::TTLType* type) {
     if (nullptr == type) {
         LOG(WARNING) << "Null TTL Type Output";
@@ -84,7 +84,7 @@ bool SQLCase::TTLTypeParse(const std::string& org_type_str,
     }
     return true;
 }
-bool SQLCase::TypeParse(const std::string& org_type_str,
+bool SqlCase::TypeParse(const std::string& org_type_str,
                         hybridse::type::Type* type) {
     if (nullptr == type) {
         LOG(WARNING) << "Null Type Output";
@@ -118,7 +118,7 @@ bool SQLCase::TypeParse(const std::string& org_type_str,
     return true;
 }
 
-const std::string SQLCase::TypeString(hybridse::type::Type type) {
+const std::string SqlCase::TypeString(hybridse::type::Type type) {
     switch (type) {
         case type::kInt16:
             return "smallint";
@@ -143,7 +143,7 @@ const std::string SQLCase::TypeString(hybridse::type::Type type) {
         }
     }
 }
-bool SQLCase::ExtractTableDef(const std::vector<std::string>& columns,
+bool SqlCase::ExtractTableDef(const std::vector<std::string>& columns,
                               const std::vector<std::string>& indexs,
                               type::TableDef& table) {
     if (!ExtractSchema(columns, table)) {
@@ -154,7 +154,7 @@ bool SQLCase::ExtractTableDef(const std::vector<std::string>& columns,
     }
     return ExtractIndex(indexs, table);
 }
-bool SQLCase::ExtractTableDef(const std::string& schema_str,
+bool SqlCase::ExtractTableDef(const std::string& schema_str,
                               const std::string& index_str,
                               type::TableDef& table) {
     if (!ExtractSchema(schema_str, table)) {
@@ -165,7 +165,7 @@ bool SQLCase::ExtractTableDef(const std::string& schema_str,
     }
     return ExtractIndex(index_str, table);
 }
-bool SQLCase::ExtractIndex(const std::string& index_str,
+bool SqlCase::ExtractIndex(const std::string& index_str,
                            type::TableDef& table) {  // NOLINT
     if (index_str.empty()) {
         LOG(WARNING) << "Empty Index String";
@@ -180,7 +180,7 @@ bool SQLCase::ExtractIndex(const std::string& index_str,
     }
     return true;
 }
-bool SQLCase::ExtractIndex(const std::vector<std::string>& indexs,
+bool SqlCase::ExtractIndex(const std::vector<std::string>& indexs,
                            type::TableDef& table) {  // NOLINT
     if (indexs.empty()) {
         LOG(WARNING) << "Invalid Schema Format";
@@ -257,7 +257,7 @@ bool SQLCase::ExtractIndex(const std::vector<std::string>& indexs,
     return true;
 }
 
-bool SQLCase::ExtractSchema(const std::string& schema_str,
+bool SqlCase::ExtractSchema(const std::string& schema_str,
                             type::TableDef& table) {  // NOLINT
     if (schema_str.empty()) {
         LOG(WARNING) << "Empty Schema String";
@@ -272,7 +272,7 @@ bool SQLCase::ExtractSchema(const std::string& schema_str,
     }
     return true;
 }
-bool SQLCase::ExtractSchema(const std::vector<std::string>& columns,
+bool SqlCase::ExtractSchema(const std::vector<std::string>& columns,
                             type::TableDef& table) {  // NOLINT
     if (columns.empty()) {
         LOG(WARNING) << "Invalid Schema Format";
@@ -309,7 +309,7 @@ bool SQLCase::ExtractSchema(const std::vector<std::string>& columns,
     }
     return true;
 }
-bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
+bool SqlCase::BuildCreateSqlFromSchema(const type::TableDef& table,
                                        std::string* create_sql,
                                        bool isGenerateIndex,
                                        int partition_num) {
@@ -405,15 +405,15 @@ bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
     *create_sql = sql;
     return true;
 }
-bool SQLCase::AddInput(const TableInfo& table_data) {
+bool SqlCase::AddInput(const TableInfo& table_data) {
     inputs_.push_back(table_data);
     return true;
 }
-bool SQLCase::ExtractInputData(std::vector<Row>& rows,
+bool SqlCase::ExtractInputData(std::vector<Row>& rows,
                                int32_t input_idx) const {
     return ExtractInputData(inputs_[input_idx], rows);
 }
-bool SQLCase::ExtractInputData(const TableInfo& input,
+bool SqlCase::ExtractInputData(const TableInfo& input,
                                std::vector<Row>& rows) const {
     try {
         if (input.data_.empty() && input.rows_.empty()) {
@@ -444,7 +444,7 @@ bool SQLCase::ExtractInputData(const TableInfo& input,
     return true;
 }
 
-bool SQLCase::ExtractOutputData(std::vector<Row>& rows) const {
+bool SqlCase::ExtractOutputData(std::vector<Row>& rows) const {
     if (expect_.data_.empty() && expect_.rows_.empty()) {
         LOG(WARNING) << "ExtractOutputData Fail: Empty Data";
         return false;
@@ -468,7 +468,7 @@ bool SQLCase::ExtractOutputData(std::vector<Row>& rows) const {
     }
     return true;
 }
-bool SQLCase::BuildInsertSQLFromRows(
+bool SqlCase::BuildInsertSqlFromRows(
     const type::TableDef& table,
     const std::vector<std::vector<std::string>>& rows,
     std::string* insert_sql) {
@@ -492,7 +492,7 @@ bool SQLCase::BuildInsertSQLFromRows(
     *insert_sql = sql;
     return true;
 }
-bool SQLCase::BuildInsertSQLFromData(const type::TableDef& table,
+bool SqlCase::BuildInsertSqlFromData(const type::TableDef& table,
                                      std::string data,
                                      std::string* insert_sql) {
     boost::trim(data);
@@ -506,11 +506,11 @@ bool SQLCase::BuildInsertSQLFromData(const type::TableDef& table,
                      boost::token_compress_on);
         rows.push_back(item_vec);
     }
-    BuildInsertSQLFromRows(table, rows, insert_sql);
+    BuildInsertSqlFromRows(table, rows, insert_sql);
     return true;
 }
 
-bool SQLCase::BuildInsertValueStringFromRow(
+bool SqlCase::BuildInsertValueStringFromRow(
     const type::TableDef& table, const std::vector<std::string>& item_vec,
     std::string* values) {
     std::string sql = "(";
@@ -565,7 +565,7 @@ bool SQLCase::BuildInsertValueStringFromRow(
     *values = sql;
     return true;
 }
-bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
+bool SqlCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
                          int8_t** out_ptr, int32_t* out_size) {
     std::vector<std::string> item_vec;
     boost::split(item_vec, row_str, boost::is_any_of(","),
@@ -576,7 +576,7 @@ bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
     }
     return true;
 }
-bool SQLCase::ExtractRow(const vm::Schema& schema,
+bool SqlCase::ExtractRow(const vm::Schema& schema,
                          const std::vector<std::string>& row, int8_t** out_ptr,
                          int32_t* out_size) {
     if (row.size() != static_cast<size_t>(schema.size())) {
@@ -709,7 +709,7 @@ bool SQLCase::ExtractRow(const vm::Schema& schema,
     *out_size = row_size;
     return true;
 }
-bool SQLCase::ExtractRows(const vm::Schema& schema,
+bool SqlCase::ExtractRows(const vm::Schema& schema,
                           const std::vector<std::vector<std::string>>& row_vec,
                           std::vector<hybridse::codec::Row>& rows) {
     if (row_vec.empty()) {
@@ -727,7 +727,7 @@ bool SQLCase::ExtractRows(const vm::Schema& schema,
     }
     return true;
 }
-bool SQLCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
+bool SqlCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
                           std::vector<hybridse::codec::Row>& rows) {
     std::vector<std::string> row_vec;
     boost::split(row_vec, data_str, boost::is_any_of("\n"),
@@ -747,16 +747,16 @@ bool SQLCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
     }
     return true;
 }
-const std::string SQLCase::case_name() const {
+const std::string SqlCase::case_name() const {
     std::string name = id_ + "_" + desc_;
     boost::replace_all(name, " ", "_");
     return name;
 }
-bool SQLCase::ExtractInputTableDef(type::TableDef& table,
+bool SqlCase::ExtractInputTableDef(type::TableDef& table,
                                    int32_t input_idx) const {
     return ExtractInputTableDef(inputs_[input_idx], table);
 }
-bool SQLCase::ExtractInputTableDef(const TableInfo& input,
+bool SqlCase::ExtractInputTableDef(const TableInfo& input,
                                    type::TableDef& table) const {
     if (!input.schema_.empty()) {
         if (!ExtractTableDef(input.schema_, input.index_, table)) {
@@ -776,7 +776,7 @@ bool SQLCase::ExtractInputTableDef(const TableInfo& input,
 // Build Create SQL
 // schema + index --> create sql
 // columns + indexs --> create sql
-bool SQLCase::BuildCreateSQLFromInput(int32_t input_idx, std::string* sql,
+bool SqlCase::BuildCreateSqlFromInput(int32_t input_idx, std::string* sql,
                                       int partition_num) const {
     if (!inputs_[input_idx].create_.empty()) {
         *sql = inputs_[input_idx].create_;
@@ -787,14 +787,14 @@ bool SQLCase::BuildCreateSQLFromInput(int32_t input_idx, std::string* sql,
         LOG(WARNING) << "Fail to extract table schema";
         return false;
     }
-    if (!BuildCreateSQLFromSchema(table, sql, true, partition_num)) {
+    if (!BuildCreateSqlFromSchema(table, sql, true, partition_num)) {
         LOG(WARNING) << "Fail to build create sql string";
         return false;
     }
     return true;
 }
 
-bool SQLCase::BuildInsertSQLListFromInput(
+bool SqlCase::BuildInsertSqlListFromInput(
     int32_t input_idx, std::vector<std::string>* sql_list) const {
     if (!inputs_[input_idx].insert_.empty()) {
         sql_list->push_back(inputs_[input_idx].insert_);
@@ -824,7 +824,7 @@ bool SQLCase::BuildInsertSQLListFromInput(
                          boost::token_compress_on);
             rows.push_back(item_vec);
             std::string insert_sql;
-            if (!BuildInsertSQLFromRows(table, rows, &insert_sql)) {
+            if (!BuildInsertSqlFromRows(table, rows, &insert_sql)) {
                 LOG(WARNING) << "Fail to build insert sql from rows";
                 return false;
             }
@@ -836,7 +836,7 @@ bool SQLCase::BuildInsertSQLListFromInput(
             std::vector<std::vector<std::string>> rows;
             rows.push_back(row);
             std::string insert_sql;
-            if (!BuildInsertSQLFromRows(table, rows, &insert_sql)) {
+            if (!BuildInsertSqlFromRows(table, rows, &insert_sql)) {
                 LOG(WARNING) << "Fail to build insert sql from rows";
                 return false;
             }
@@ -845,7 +845,7 @@ bool SQLCase::BuildInsertSQLListFromInput(
     }
     return true;
 }
-bool SQLCase::BuildInsertSQLFromInput(int32_t input_idx,
+bool SqlCase::BuildInsertSqlFromInput(int32_t input_idx,
                                       std::string* sql) const {
     if (!inputs_[input_idx].insert_.empty()) {
         *sql = inputs_[input_idx].insert_;
@@ -858,19 +858,19 @@ bool SQLCase::BuildInsertSQLFromInput(int32_t input_idx,
     }
 
     if (!inputs_[input_idx].data_.empty()) {
-        if (!BuildInsertSQLFromData(table, inputs_[input_idx].data_, sql)) {
+        if (!BuildInsertSqlFromData(table, inputs_[input_idx].data_, sql)) {
             LOG(WARNING) << "Fail to build create sql string";
             return false;
         }
     } else if (!inputs_[input_idx].rows_.empty()) {
-        if (!BuildInsertSQLFromRows(table, inputs_[input_idx].rows_, sql)) {
+        if (!BuildInsertSqlFromRows(table, inputs_[input_idx].rows_, sql)) {
             LOG(WARNING) << "Fail to build create sql string";
             return false;
         }
     }
     return true;
 }
-bool SQLCase::ExtractOutputSchema(type::TableDef& table) const {
+bool SqlCase::ExtractOutputSchema(type::TableDef& table) const {
     if (!expect_.schema_.empty()) {
         return ExtractSchema(expect_.schema_, table);
     } else if (!expect_.columns_.empty()) {
@@ -881,11 +881,11 @@ bool SQLCase::ExtractOutputSchema(type::TableDef& table) const {
         return false;
     }
 }
-std::ostream& operator<<(std::ostream& output, const SQLCase& thiz) {
+std::ostream& operator<<(std::ostream& output, const SqlCase& thiz) {
     output << "Case ID: " << thiz.id() << ", Desc:" << thiz.desc();
     return output;
 }
-bool SQLCase::CreateStringListFromYamlNode(const YAML::Node& node,
+bool SqlCase::CreateStringListFromYamlNode(const YAML::Node& node,
                                            std::vector<std::string>& rows) {
     for (size_t i = 0; i < node.size(); i++) {
         if (node[i].IsNull()) {
@@ -896,7 +896,7 @@ bool SQLCase::CreateStringListFromYamlNode(const YAML::Node& node,
     }
     return true;
 }
-bool SQLCase::CreateRowsFromYamlNode(
+bool SqlCase::CreateRowsFromYamlNode(
     const YAML::Node& node, std::vector<std::vector<std::string>>& rows) {
     for (size_t i = 0; i < node.size(); ++i) {
         std::vector<std::string> row;
@@ -908,8 +908,8 @@ bool SQLCase::CreateRowsFromYamlNode(
     }
     return true;
 }
-bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
-                                          SQLCase::TableInfo* table) {
+bool SqlCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
+                                          SqlCase::TableInfo* table) {
     if (schema_data["name"]) {
         table->name_ = schema_data["name"].as<std::string>();
         boost::trim(table->name_);
@@ -992,9 +992,9 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
     }
     return true;
 }
-bool SQLCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
+bool SqlCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
                                        const YAML::Node& expect_provider,
-                                       SQLCase::ExpectInfo* expect) {
+                                       SqlCase::ExpectInfo* expect) {
     if (schema_data["schema"]) {
         expect->schema_ = schema_data["schema"].as<std::string>();
         boost::trim(expect->schema_);
@@ -1061,22 +1061,22 @@ bool SQLCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
     }
     return true;
 }
-bool SQLCase::CreateSQLCasesFromYaml(const std::string& cases_dir,
+bool SqlCase::CreateSqlCasesFromYaml(const std::string& cases_dir,
                                      const std::string& yaml_path,
-                                     std::vector<SQLCase>& sql_cases,
+                                     std::vector<SqlCase>& sql_case_ptr,
                                      const std::string filter_mode) {
     std::vector<std::string> filter_modes;
     if (filter_mode.empty()) {
-        return CreateSQLCasesFromYaml(cases_dir, yaml_path, sql_cases,
+        return CreateSqlCasesFromYaml(cases_dir, yaml_path, sql_case_ptr,
                                       filter_modes);
     } else {
         filter_modes.push_back(filter_mode);
-        return CreateSQLCasesFromYaml(cases_dir, yaml_path, sql_cases,
+        return CreateSqlCasesFromYaml(cases_dir, yaml_path, sql_case_ptr,
                                       filter_modes);
     }
 }
 
-bool SQLCase::CreateTableInfoFromYaml(const std::string& cases_dir,
+bool SqlCase::CreateTableInfoFromYaml(const std::string& cases_dir,
                                       const std::string& yaml_path,
                                       TableInfo* table_info) {
     std::string resouces_path;
@@ -1101,33 +1101,33 @@ bool SQLCase::CreateTableInfoFromYaml(const std::string& cases_dir,
     return true;
 }
 
-bool SQLCase::LoadSchemaAndRowsFromYaml(
+bool SqlCase::LoadSchemaAndRowsFromYaml(
     const std::string& cases_dir, const std::string& resource_path,
     type::TableDef& table, std::vector<hybridse::codec::Row>& rows) {
     TableInfo table_info;
     if (!CreateTableInfoFromYaml(cases_dir, resource_path, &table_info)) {
         return false;
     }
-    if (!SQLCase::ExtractTableDef(table_info.schema_, table_info.index_,
+    if (!SqlCase::ExtractTableDef(table_info.schema_, table_info.index_,
                                   table)) {
         return false;
     }
     table.set_name(table_info.name_);
-    if (!SQLCase::ExtractRows(table.columns(), table_info.data_, rows)) {
+    if (!SqlCase::ExtractRows(table.columns(), table_info.data_, rows)) {
         return false;
     }
     return true;
 }
 
-static bool ParseSQLCaseNode(const YAML::Node& sql_case_node,
+static bool ParseSqlCaseNode(const YAML::Node& sql_case_node,
                              const YAML::Node& expect_provider,
                              const std::string& global_db,
                              const std::string& cases_dir,
                              const std::set<std::string>& debugs,
                              const std::vector<std::string>& filter_modes,
-                             SQLCase* sql_case_ptr, bool* is_skip) {
+                             SqlCase* sql_case_ptr, bool* is_skip) {
     *is_skip = false;
-    SQLCase& sql_case = *sql_case_ptr;
+    SqlCase& sql_case = *sql_case_ptr;
     sql_case.raw_node_ = YAML::Node(sql_case_node);
     if (sql_case_node["id"]) {
         sql_case.id_ = sql_case_node["id"].as<std::string>();
@@ -1157,7 +1157,7 @@ static bool ParseSQLCaseNode(const YAML::Node& sql_case_node,
         sql_case.debug_ = false;
     }
     if (sql_case_node["tags"]) {
-        if (!SQLCase::CreateStringListFromYamlNode(sql_case_node["tags"],
+        if (!SqlCase::CreateStringListFromYamlNode(sql_case_node["tags"],
                                                    sql_case.tags_)) {
             LOG(WARNING) << "Fail to parse tags";
             return false;
@@ -1171,7 +1171,7 @@ static bool ParseSQLCaseNode(const YAML::Node& sql_case_node,
         }
 
         if (tags.find("TODO") != tags.cend()) {
-            if (SQLCase::IS_DEBUG()) {
+            if (SqlCase::IsDebug()) {
                 DLOG(INFO) << "SKIP TODO SQL Case " << sql_case.desc();
             }
             *is_skip = true;
@@ -1204,7 +1204,7 @@ static bool ParseSQLCaseNode(const YAML::Node& sql_case_node,
     }
     if (sql_case_node["sqls"]) {
         sql_case.sql_strs_.clear();
-        if (!SQLCase::CreateStringListFromYamlNode(sql_case_node["sqls"],
+        if (!SqlCase::CreateStringListFromYamlNode(sql_case_node["sqls"],
                                                    sql_case.sql_strs_)) {
             LOG(WARNING) << "Fail to parse sqls";
             return false;
@@ -1233,19 +1233,19 @@ static bool ParseSQLCaseNode(const YAML::Node& sql_case_node,
     if (sql_case_node["inputs"]) {
         auto inputs = sql_case_node["inputs"];
         for (auto iter = inputs.begin(); iter != inputs.end(); iter++) {
-            SQLCase::TableInfo table;
+            SqlCase::TableInfo table;
             auto schema_data = *iter;
 
             if (schema_data["resource"]) {
                 std::string resource =
                     schema_data["resource"].as<std::string>();
                 boost::trim(resource);
-                if (!SQLCase::CreateTableInfoFromYaml(cases_dir, resource,
+                if (!SqlCase::CreateTableInfoFromYaml(cases_dir, resource,
                                                       &table)) {
                     return false;
                 }
             }
-            if (!SQLCase::CreateTableInfoFromYamlNode(schema_data, &table)) {
+            if (!SqlCase::CreateTableInfoFromYamlNode(schema_data, &table)) {
                 return false;
             }
             sql_case.inputs_.push_back(table);
@@ -1260,25 +1260,25 @@ static bool ParseSQLCaseNode(const YAML::Node& sql_case_node,
     }
 
     if (expect_node) {
-        if (!SQLCase::CreateExpectFromYamlNode(expect_node, expect_provider,
+        if (!SqlCase::CreateExpectFromYamlNode(expect_node, expect_provider,
                                                &sql_case.expect_)) {
             return false;
         }
     } else if (expect_provider) {
-        if (!SQLCase::CreateExpectFromYamlNode(expect_provider, YAML::Node(),
+        if (!SqlCase::CreateExpectFromYamlNode(expect_provider, YAML::Node(),
                                                &sql_case.expect_)) {
             return false;
         }
     }
     // parse expect info for "output","expect", "expectProvider"
     if (expect_node.IsDefined() || expect_provider.IsDefined()) {
-        if (!SQLCase::CreateExpectFromYamlNode(expect_node, expect_provider,
+        if (!SqlCase::CreateExpectFromYamlNode(expect_node, expect_provider,
                                                &sql_case.expect_)) {
             return false;
         }
     }
     if (sql_case_node["batch_request"]) {
-        if (!SQLCase::CreateTableInfoFromYamlNode(
+        if (!SqlCase::CreateTableInfoFromYamlNode(
                 sql_case_node["batch_request"], &sql_case.batch_request_)) {
             return false;
         }
@@ -1311,9 +1311,9 @@ static bool DoExpandProviderCase(
     const std::string& global_db, const std::string& cases_dir,
     const std::set<std::string>& debugs,
     const std::vector<std::string>& filter_modes,
-    std::vector<size_t>* choice_idxs, std::vector<SQLCase>* outputs) {
+    std::vector<size_t>* choice_idxs, std::vector<SqlCase>* outputs) {
     if (idx == provider_contents.size()) {
-        SQLCase sql_case;
+        SqlCase sql_case;
         YAML::Node expect_provider;
         if (sql_case_node["expectProvider"]) {
             YAML::Node expect = sql_case_node["expectProvider"];
@@ -1328,7 +1328,7 @@ static bool DoExpandProviderCase(
             }
         }
         bool is_skip = false;
-        bool parse_success = ParseSQLCaseNode(
+        bool parse_success = ParseSqlCaseNode(
             sql_case_node, expect_provider, global_db, cases_dir, debugs,
             filter_modes, &sql_case, &is_skip);
         if (!parse_success) {
@@ -1371,7 +1371,7 @@ static bool ExpandProviderCase(const YAML::Node& sql_case_node,
                                const std::string& cases_dir,
                                const std::set<std::string>& debugs,
                                const std::vector<std::string>& filter_modes,
-                               std::vector<SQLCase>* outputs) {
+                               std::vector<SqlCase>* outputs) {
     YAML::Node providers = sql_case_node["dataProvider"];
     std::vector<std::vector<std::string>> provider_contents;
     for (auto provider_iter = providers.begin();
@@ -1394,9 +1394,9 @@ static bool ExpandProviderCase(const YAML::Node& sql_case_node,
                                 outputs);
 }
 
-bool SQLCase::CreateSQLCasesFromYaml(
+bool SqlCase::CreateSqlCasesFromYaml(
     const std::string& cases_dir, const std::string& yaml_path,
-    std::vector<SQLCase>& sql_cases,
+    std::vector<SqlCase>& sql_case_ptr,
     const std::vector<std::string>& filter_modes) {
     std::string sql_case_path;
     if (cases_dir != "") {
@@ -1404,7 +1404,7 @@ bool SQLCase::CreateSQLCasesFromYaml(
     } else {
         sql_case_path = yaml_path;
     }
-    if (IS_DEBUG()) {
+    if (IsDebug()) {
         DLOG(INFO) << "SQL Cases Path: " << sql_case_path;
     }
     if (!boost::filesystem::is_regular_file(sql_case_path)) {
@@ -1427,9 +1427,7 @@ bool SQLCase::CreateSQLCasesFromYaml(
     std::set<std::string> debugs(debugs_vec.begin(), debugs_vec.end());
 
     YAML::Node sql_cases_node;
-    if (config["SQLCases"]) {
-        sql_cases_node = config["SQLCases"];
-    } else if (config["cases"]) {
+    if (config["cases"]) {
         sql_cases_node = config["cases"];
     } else {
         LOG(WARNING) << "Fail to parse sql cases: " << yaml_path;
@@ -1441,17 +1439,17 @@ bool SQLCase::CreateSQLCasesFromYaml(
         if (sql_case_node["dataProvider"]) {
             bool expand_ok =
                 ExpandProviderCase(sql_case_node, global_db, cases_dir, debugs,
-                                   filter_modes, &sql_cases);
+                                   filter_modes, &sql_case_ptr);
             if (!expand_ok) {
                 LOG(WARNING) << "Expand provider case failed in: " << yaml_path;
                 return false;
             }
             continue;
         }
-        SQLCase sql_case;
+        SqlCase sql_case;
         bool is_skip = false;
         bool parse_success =
-            ParseSQLCaseNode(sql_case_node, YAML::Node(), global_db, cases_dir,
+            ParseSqlCaseNode(sql_case_node, YAML::Node(), global_db, cases_dir,
                              debugs, filter_modes, &sql_case, &is_skip);
         if (!parse_success) {
             LOG(WARNING) << "Parse sql case failed in: " << yaml_path;
@@ -1459,27 +1457,27 @@ bool SQLCase::CreateSQLCasesFromYaml(
         } else if (is_skip) {
             continue;
         }
-        sql_cases.push_back(sql_case);
+        sql_case_ptr.push_back(sql_case);
     }
     return true;
 }
 
-hybridse::sqlcase::SQLCase SQLCase::LoadSQLCaseWithID(
+hybridse::sqlcase::SqlCase SqlCase::LoadSqlCaseWithID(
     const std::string& dir_path, const std::string& yaml_path,
     const std::string& case_id) {
-    std::vector<SQLCase> cases;
+    std::vector<SqlCase> cases;
     LOG(INFO) << "BENCHMARK LOAD SQL CASE";
-    SQLCase::CreateSQLCasesFromYaml(dir_path, yaml_path, cases);
+    SqlCase::CreateSqlCasesFromYaml(dir_path, yaml_path, cases);
 
     for (const auto& sql_case : cases) {
         if (sql_case.id() == case_id) {
             return sql_case;
         }
     }
-    return SQLCase();
+    return SqlCase();
 }
-std::string FindSQLCaseBaseDirPath() {
-    auto base_dir = SQLCase::SQL_CASE_BASE_DIR();
+std::string FindSqlCaseBaseDirPath() {
+    auto base_dir = SqlCase::SqlCaseBaseDir();
     if (!base_dir.empty()) {
         return base_dir;
     }
@@ -1515,7 +1513,7 @@ std::string FindSQLCaseBaseDirPath() {
     return std::string();
 }
 
-bool SQLCase::BuildCreateSpSQLFromInput(int32_t input_idx,
+bool SqlCase::BuildCreateSpSqlFromInput(int32_t input_idx,
                                         const std::string& select_sql,
                                         const std::set<size_t>& common_idx,
                                         std::string* create_sp_sql) {
@@ -1524,7 +1522,7 @@ bool SQLCase::BuildCreateSpSQLFromInput(int32_t input_idx,
         LOG(WARNING) << "Fail to extract table schema";
         return false;
     }
-    if (!BuildCreateSpSQLFromSchema(table, select_sql, common_idx,
+    if (!BuildCreateSpSqlFromSchema(table, select_sql, common_idx,
                                     create_sp_sql)) {
         LOG(WARNING) << "Fail to build create sql string";
         return false;
@@ -1532,7 +1530,7 @@ bool SQLCase::BuildCreateSpSQLFromInput(int32_t input_idx,
     return true;
 }
 
-bool SQLCase::BuildCreateSpSQLFromSchema(const type::TableDef& table,
+bool SqlCase::BuildCreateSpSqlFromSchema(const type::TableDef& table,
                                          const std::string& select_sql,
                                          const std::set<size_t>& common_idx,
                                          std::string* create_sql) {
@@ -1555,7 +1553,7 @@ bool SQLCase::BuildCreateSpSQLFromSchema(const type::TableDef& table,
     *create_sql = sql;
     return true;
 }
-std::set<std::string> SQLCase::HYBRIDSE_LEVEL() {
+std::set<std::string> SqlCase::HYBRIDSE_LEVEL() {
     const char* env_name = "HYBRIDSE_LEVEL";
     char* value = getenv(env_name);
     if (value != nullptr) {

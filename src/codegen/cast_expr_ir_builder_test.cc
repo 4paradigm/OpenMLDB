@@ -374,7 +374,7 @@ void CastExprCheck(CASTTYPE exp_value, std::string src_type_str,
     };
 
     hybridse::type::Type src_type;
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::TypeParse(src_type_str, &src_type));
+    ASSERT_TRUE(hybridse::sqlcase::SqlCase::TypeParse(src_type_str, &src_type));
     switch (src_type) {
         case type::kBool: {
             if ("null" == src_value_str) {
@@ -494,7 +494,7 @@ void CastExprCheck(std::string cast_type_str, std::string cast_value_str,
                    std::string src_type_str, std::string src_value_str) {
     hybridse::type::Type cast_type;
     ASSERT_TRUE(
-        hybridse::sqlcase::SQLCase::TypeParse(cast_type_str, &cast_type));
+        hybridse::sqlcase::SqlCase::TypeParse(cast_type_str, &cast_type));
     switch (cast_type) {
         case type::kBool: {
             if ("null" == cast_value_str) {
@@ -893,7 +893,7 @@ void CastErrorExprCheck(std::string src_type_str) {
     };
 
     hybridse::type::Type src_type;
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::TypeParse(src_type_str, &src_type));
+    ASSERT_TRUE(hybridse::sqlcase::SqlCase::TypeParse(src_type_str, &src_type));
     switch (src_type) {
         case type::kBool: {
             ExprErrorCheck<udf::Nullable<CASTTYPE>, udf::Nullable<bool>>(
@@ -951,7 +951,7 @@ void CastErrorExprCheck(std::string src_type_str) {
 void CastErrorExprCheck(std::string cast_type_str, std::string src_type_str) {
     hybridse::type::Type cast_type;
     ASSERT_TRUE(
-        hybridse::sqlcase::SQLCase::TypeParse(cast_type_str, &cast_type));
+        hybridse::sqlcase::SqlCase::TypeParse(cast_type_str, &cast_type));
     switch (cast_type) {
         case type::kBool: {
             CastErrorExprCheck<bool>(src_type_str);

@@ -22,9 +22,9 @@
 namespace hybridse {
 namespace sqlcase {
 
-class SQLCaseTest : public ::testing::Test {};
+class SqlCaseTest : public ::testing::Test {};
 
-TEST_F(SQLCaseTest, ExtractTableDefTest) {
+TEST_F(SqlCaseTest, ExtractTableDefTest) {
     type::TableDef table;
     table.set_name("t1");
     table.set_catalog("db");
@@ -83,9 +83,9 @@ TEST_F(SQLCaseTest, ExtractTableDefTest) {
             "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
             "col5:int64, col6:string";
         type::TableDef output_table;
-        ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+        ASSERT_TRUE(SqlCase::ExtractSchema(schema_str, output_table));
         const std::string index_str = "index1:col1:col5";
-        ASSERT_TRUE(SQLCase::ExtractIndex(index_str, output_table));
+        ASSERT_TRUE(SqlCase::ExtractIndex(index_str, output_table));
         output_table.set_name(table.name());
         output_table.set_catalog(table.catalog());
         ASSERT_EQ(exp_table.DebugString(), output_table.DebugString());
@@ -101,9 +101,9 @@ TEST_F(SQLCaseTest, ExtractTableDefTest) {
             "col0:string, col1:int, col2:smallint, col3:float, col4:double, "
             "col5:bigint, col6:string";
         type::TableDef output_table;
-        ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+        ASSERT_TRUE(SqlCase::ExtractSchema(schema_str, output_table));
         const std::string index_str = "index1:col1|col2:col5";
-        ASSERT_TRUE(SQLCase::ExtractIndex(index_str, output_table));
+        ASSERT_TRUE(SqlCase::ExtractIndex(index_str, output_table));
         output_table.set_name(table.name());
         output_table.set_catalog(table.catalog());
         ASSERT_EQ(exp_table.DebugString(), output_table.DebugString());
@@ -128,9 +128,9 @@ TEST_F(SQLCaseTest, ExtractTableDefTest) {
             "col0:string\ncol1:i32\ncol2:i16\ncol3:float\ncol4:double\n"
             "col5:i64\ncol6:varchar";
         type::TableDef output_table;
-        ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+        ASSERT_TRUE(SqlCase::ExtractSchema(schema_str, output_table));
         const std::string index_str = "index1:col1:col5, index2:col1|col2:col5";
-        ASSERT_TRUE(SQLCase::ExtractIndex(index_str, output_table));
+        ASSERT_TRUE(SqlCase::ExtractIndex(index_str, output_table));
         output_table.set_name(table.name());
         output_table.set_catalog(table.catalog());
         ASSERT_EQ(exp_table.DebugString(), output_table.DebugString());
@@ -165,7 +165,7 @@ TEST_F(SQLCaseTest, ExtractTableDefTest) {
         type::TableDef output_table;
         output_table.set_name(table2.name());
         output_table.set_catalog(table2.catalog());
-        ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+        ASSERT_TRUE(SqlCase::ExtractSchema(schema_str, output_table));
         ASSERT_EQ(table2.DebugString(), output_table.DebugString());
     }
 
@@ -173,24 +173,24 @@ TEST_F(SQLCaseTest, ExtractTableDefTest) {
     {
         const std::string schema_str = "col0:str, col1:long";
         type::TableDef output_table;
-        ASSERT_FALSE(SQLCase::ExtractSchema(schema_str, output_table));
+        ASSERT_FALSE(SqlCase::ExtractSchema(schema_str, output_table));
     }
 
     {
         const std::string schema_str = "col0:integer, col1:int32";
         type::TableDef output_table;
-        ASSERT_FALSE(SQLCase::ExtractSchema(schema_str, output_table));
+        ASSERT_FALSE(SqlCase::ExtractSchema(schema_str, output_table));
     }
 
     // InValid Column
     {
         const std::string schema_str = "col0:str, col1:int32,,";
         type::TableDef output_table;
-        ASSERT_FALSE(SQLCase::ExtractSchema(schema_str, output_table));
+        ASSERT_FALSE(SqlCase::ExtractSchema(schema_str, output_table));
     }
 }
 
-TEST_F(SQLCaseTest, ExtractDataTest) {
+TEST_F(SqlCaseTest, ExtractDataTest) {
     {
         std::string data_schema_str =
             "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
@@ -204,10 +204,10 @@ TEST_F(SQLCaseTest, ExtractDataTest) {
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             "a";
         type::TableDef output_table;
-        ASSERT_TRUE(SQLCase::ExtractSchema(data_schema_str, output_table));
+        ASSERT_TRUE(SqlCase::ExtractSchema(data_schema_str, output_table));
         std::vector<hybridse::codec::Row> rows;
         ASSERT_TRUE(
-            SQLCase::ExtractRows(output_table.columns(), data_str, rows));
+            SqlCase::ExtractRows(output_table.columns(), data_str, rows));
         ASSERT_EQ(5u, rows.size());
         hybridse::codec::RowView row_view(output_table.columns());
 
@@ -266,19 +266,19 @@ TEST_F(SQLCaseTest, ExtractDataTest) {
         }
     }
 }
-TEST_F(SQLCaseTest, ExtractInsertSqlTest) {
+TEST_F(SqlCaseTest, ExtractInsertSqlTest) {
     const std::string schema_str =
         "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
         "col5:int64, col6:string, col7:timestamp";
     type::TableDef output_table;
-    ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+    ASSERT_TRUE(SqlCase::ExtractSchema(schema_str, output_table));
     {
         std::string row_str =
             "0, 1, 5, 1.1, 11.1, 1, 1, 1587647803000\n1, 10, 50, 10.1, 110.1, "
             "11, "
             "111, 1587647804000\n";
         std::string create_sql;
-        ASSERT_TRUE(SQLCase::BuildInsertSQLFromData(output_table, row_str,
+        ASSERT_TRUE(SqlCase::BuildInsertSqlFromData(output_table, row_str,
                                                     &create_sql));
         ASSERT_EQ(
             "Insert into  values\n('0', 1, 5, 1.1, 11.1, 1, '1', "
@@ -294,7 +294,7 @@ TEST_F(SQLCaseTest, ExtractInsertSqlTest) {
             "1", "10", "50", "10.1", "110.1", "11", "111", "1587647804000"});
         std::string create_sql;
         ASSERT_TRUE(
-            SQLCase::BuildInsertSQLFromRows(output_table, rows, &create_sql));
+            SqlCase::BuildInsertSqlFromRows(output_table, rows, &create_sql));
         ASSERT_EQ(
             "Insert into  values\n('0', 1, 5, 1.1, 11.1, 1, '1', "
             "1587647803000),\n('1', 10, 50, 10.1, 110.1, 11, '111', "
@@ -302,7 +302,7 @@ TEST_F(SQLCaseTest, ExtractInsertSqlTest) {
             create_sql);
     }
 }
-TEST_F(SQLCaseTest, ExtractRowTest) {
+TEST_F(SqlCaseTest, ExtractRowTest) {
     const std::string schema_str =
         "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
         "col5:int64, col6:string, col7:timestamp, col8:date";
@@ -310,11 +310,11 @@ TEST_F(SQLCaseTest, ExtractRowTest) {
     std::string row_str =
         "0, 1, 5, 1.1, 11.1, 1, 1, 1587647803000, 2020-05-28\n";
     type::TableDef output_table;
-    ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+    ASSERT_TRUE(SqlCase::ExtractSchema(schema_str, output_table));
     std::vector<hybridse::codec::Row> rows;
     int8_t* row_ptr = nullptr;
     int32_t row_size = 0;
-    ASSERT_TRUE(SQLCase::ExtractRow(output_table.columns(), row_str, &row_ptr,
+    ASSERT_TRUE(SqlCase::ExtractRow(output_table.columns(), row_str, &row_ptr,
                                     &row_size));
     hybridse::codec::RowView row_view(output_table.columns());
 
@@ -338,7 +338,7 @@ TEST_F(SQLCaseTest, ExtractRowTest) {
     }
 }
 
-TEST_F(SQLCaseTest, ExtractRowFromStringListTest) {
+TEST_F(SqlCaseTest, ExtractRowFromStringListTest) {
     const std::vector<std::string> columns = {
         "col0:string", "col1:int32",     "col2:int16",
         "col3:float",  "col4:double",    "col5:int64",
@@ -347,11 +347,11 @@ TEST_F(SQLCaseTest, ExtractRowFromStringListTest) {
     std::vector<std::string> str_list = {
         "0", "1", "5", "1.1", "11.1", "1", "1", "1587647803000", "2020-05-28"};
     type::TableDef output_table;
-    ASSERT_TRUE(SQLCase::ExtractSchema(columns, output_table));
+    ASSERT_TRUE(SqlCase::ExtractSchema(columns, output_table));
     std::vector<hybridse::codec::Row> rows;
     int8_t* row_ptr = nullptr;
     int32_t row_size = 0;
-    ASSERT_TRUE(SQLCase::ExtractRow(output_table.columns(), str_list, &row_ptr,
+    ASSERT_TRUE(SqlCase::ExtractRow(output_table.columns(), str_list, &row_ptr,
                                     &row_size));
     hybridse::codec::RowView row_view(output_table.columns());
 
@@ -374,25 +374,25 @@ TEST_F(SQLCaseTest, ExtractRowFromStringListTest) {
         ASSERT_EQ(28, day);
     }
 }
-TEST_F(SQLCaseTest, ExtractColumnsTest) {
+TEST_F(SqlCaseTest, ExtractColumnsTest) {
     const std::vector<std::string> columns = {"col0 string", "col1 int32"};
     type::TableDef output_table;
-    ASSERT_TRUE(SQLCase::ExtractSchema(columns, output_table));
+    ASSERT_TRUE(SqlCase::ExtractSchema(columns, output_table));
     ASSERT_EQ(2, output_table.columns_size());
     ASSERT_EQ("col0", output_table.columns(0).name());
     ASSERT_EQ(hybridse::type::kVarchar, output_table.columns(0).type());
     ASSERT_EQ("col1", output_table.columns(1).name());
     ASSERT_EQ(hybridse::type::kInt32, output_table.columns(1).type());
 }
-TEST_F(SQLCaseTest, ExtractRowWithNullTest) {
+TEST_F(SqlCaseTest, ExtractRowWithNullTest) {
     const std::string schema_str = "col0:string, col1:int32";
     std::string row_str = "0, NULL\n";
     type::TableDef output_table;
-    ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+    ASSERT_TRUE(SqlCase::ExtractSchema(schema_str, output_table));
     std::vector<hybridse::codec::Row> rows;
     int8_t* row_ptr = nullptr;
     int32_t row_size = 0;
-    ASSERT_TRUE(SQLCase::ExtractRow(output_table.columns(), row_str, &row_ptr,
+    ASSERT_TRUE(SqlCase::ExtractRow(output_table.columns(), row_str, &row_ptr,
                                     &row_size));
     hybridse::codec::RowView row_view(output_table.columns());
 
@@ -402,8 +402,8 @@ TEST_F(SQLCaseTest, ExtractRowWithNullTest) {
         ASSERT_TRUE(row_view.IsNULL(1));
     }
 }
-TEST_F(SQLCaseTest, ExtractSQLCase) {
-    SQLCase sql_case;
+TEST_F(SqlCaseTest, ExtractSqlCase) {
+    SqlCase sql_case;
 
     const std::string schema =
         "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
@@ -419,7 +419,7 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
         "a";
     const std::string order = "col1";
     {
-        SQLCase::TableInfo table_data = {.name_ = "",
+        SqlCase::TableInfo table_data = {.name_ = "",
                                          .schema_ = schema,
                                          .index_ = index,
                                          .data_ = data,
@@ -428,7 +428,7 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
     }
 
     {
-        SQLCase::ExpectInfo table_data;
+        SqlCase::ExpectInfo table_data;
         table_data.schema_ =
             "f0:string, f1:float, f2:double, f3:int16, f4:int32, f5:int64, "
             "f6:timestamp";
@@ -501,7 +501,7 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
         {
             std::string create_sql;
             ASSERT_TRUE(
-                SQLCase::BuildCreateSQLFromSchema(output_table, &create_sql));
+                SqlCase::BuildCreateSqlFromSchema(output_table, &create_sql));
             LOG(INFO) << create_sql;
             ASSERT_EQ(
                 "CREATE TABLE t1(\n"
@@ -586,7 +586,7 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
     {
         std::string create_sql;
         std::vector<std::string> sql_list;
-        sql_case.BuildInsertSQLListFromInput(0, &sql_list);
+        sql_case.BuildInsertSqlListFromInput(0, &sql_list);
         ASSERT_EQ(5u, sql_list.size());
         ASSERT_EQ("Insert into  values\n('0', 1, 5, 1.1, 11.1, 1, '1');",
                   sql_list[0]);
@@ -690,16 +690,16 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
     }
 }
 
-TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
-    std::string hybridse_dir = hybridse::sqlcase::FindSQLCaseBaseDirPath();
+TEST_F(SqlCaseTest, ExtractYamlSqlCase) {
+    std::string hybridse_dir = hybridse::sqlcase::FindSqlCaseBaseDirPath();
     std::string case_path = "/cases/yaml/demo.yaml";
-    std::vector<SQLCase> cases;
+    std::vector<SqlCase> cases;
 
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::CreateSQLCasesFromYaml(
+    ASSERT_TRUE(hybridse::sqlcase::SqlCase::CreateSqlCasesFromYaml(
         hybridse_dir, case_path, cases));
     ASSERT_EQ(5, cases.size());
     {
-        SQLCase& sql_case = cases[0];
+        SqlCase& sql_case = cases[0];
         ASSERT_EQ(sql_case.id(), "1");
         ASSERT_EQ("batch", sql_case.mode());
         ASSERT_EQ("SELECT所有列", sql_case.desc());
@@ -731,7 +731,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
                   "aaaaaa");
     }
     {
-        SQLCase& sql_case = cases[1];
+        SqlCase& sql_case = cases[1];
         ASSERT_EQ(sql_case.id(), "2");
         ASSERT_EQ("batch", sql_case.mode());
         ASSERT_EQ("SELECT所有列使用resource输入", sql_case.desc());
@@ -764,7 +764,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
     }
 
     {
-        SQLCase& sql_case = cases[2];
+        SqlCase& sql_case = cases[2];
         ASSERT_EQ(sql_case.id(), "3");
         ASSERT_EQ("SELECT UDF", sql_case.desc());
         ASSERT_EQ("request", sql_case.mode());
@@ -794,7 +794,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
     }
 
     {
-        SQLCase& sql_case = cases[3];
+        SqlCase& sql_case = cases[3];
         ASSERT_EQ(sql_case.id(), "4");
         ASSERT_EQ("简单INSERT", sql_case.desc());
         ASSERT_EQ(sql_case.db(), "test");
@@ -832,7 +832,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
     }
     // 简单INSERT with inserts
     {
-        SQLCase& sql_case = cases[4];
+        SqlCase& sql_case = cases[4];
         ASSERT_EQ(sql_case.id(), "5");
         ASSERT_EQ("简单INSERT with inserts", sql_case.desc());
         ASSERT_EQ(sql_case.db(), "test");
@@ -868,16 +868,16 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
     }
 }
 
-TEST_F(SQLCaseTest, ExtractYamlSQLCase2) {
-    std::string hybridse_dir = hybridse::sqlcase::FindSQLCaseBaseDirPath();
+TEST_F(SqlCaseTest, ExtractYamlSqlCase2) {
+    std::string hybridse_dir = hybridse::sqlcase::FindSqlCaseBaseDirPath();
     std::string case_path = "/cases/yaml/rtidb_demo.yaml";
-    std::vector<SQLCase> cases;
+    std::vector<SqlCase> cases;
 
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::CreateSQLCasesFromYaml(
+    ASSERT_TRUE(hybridse::sqlcase::SqlCase::CreateSqlCasesFromYaml(
         hybridse_dir, case_path, cases));
     ASSERT_EQ(3, cases.size());
     {
-        SQLCase& sql_case = cases[0];
+        SqlCase& sql_case = cases[0];
         ASSERT_EQ(sql_case.id(), "0");
         ASSERT_EQ("正常拼接", sql_case.desc());
         ASSERT_EQ(2u, sql_case.inputs().size());
@@ -930,7 +930,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase2) {
     }
 
     {
-        SQLCase& sql_case = cases[1];
+        SqlCase& sql_case = cases[1];
         ASSERT_EQ(sql_case.id(), "1");
         ASSERT_EQ("普通select", sql_case.desc());
         ASSERT_EQ(1u, sql_case.inputs().size());
@@ -961,7 +961,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase2) {
     }
 
     {
-        SQLCase& sql_case = cases[2];
+        SqlCase& sql_case = cases[2];
         ASSERT_EQ(sql_case.id(), "2");
         ASSERT_EQ("普通select,Sucess false", sql_case.desc());
         ASSERT_EQ(1u, sql_case.inputs().size());
@@ -992,16 +992,16 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase2) {
     }
 }
 
-TEST_F(SQLCaseTest, ExtractYamlWithDebugSQLCase) {
-    std::string hybridse_dir = hybridse::sqlcase::FindSQLCaseBaseDirPath();
+TEST_F(SqlCaseTest, ExtractYamlWithDebugSqlCase) {
+    std::string hybridse_dir = hybridse::sqlcase::FindSqlCaseBaseDirPath();
     std::string case_path = "/cases/yaml/rtidb_demo_debug.yaml";
-    std::vector<SQLCase> cases;
+    std::vector<SqlCase> cases;
 
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::CreateSQLCasesFromYaml(
+    ASSERT_TRUE(hybridse::sqlcase::SqlCase::CreateSqlCasesFromYaml(
         hybridse_dir, case_path, cases));
     ASSERT_EQ(1, cases.size());
     {
-        SQLCase& sql_case = cases[0];
+        SqlCase& sql_case = cases[0];
         ASSERT_EQ(sql_case.id(), "1");
         ASSERT_EQ("普通select", sql_case.desc());
         ASSERT_EQ(1u, sql_case.inputs().size());

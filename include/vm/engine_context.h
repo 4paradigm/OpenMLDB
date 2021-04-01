@@ -39,7 +39,7 @@ struct BatchRequestInfo {
 };
 
 enum ComileType {
-    kCompileSQL,
+    kCompileSql,
 };
 class CompileInfo {
  public:
@@ -48,7 +48,7 @@ class CompileInfo {
     virtual bool GetIRBuffer(const base::RawBuffer& buf) = 0;
     virtual size_t GetIRSize() = 0;
     virtual const EngineMode GetEngineMode() const = 0;
-    virtual const std::string& GetSQL() const = 0;
+    virtual const std::string& GetSql() const = 0;
     virtual const Schema& GetSchema() const = 0;
     virtual const ComileType GetCompileType() const = 0;
     virtual const std::string& GetEncodedSchema() const = 0;

@@ -72,11 +72,11 @@ class NodeManager {
                            const ExprNode *condition);
     // Make SQLxxx Node
     QueryNode *MakeSelectQueryNode(
-        bool is_distinct, SQLNodeList *select_list_ptr,
-        SQLNodeList *tableref_list_ptr, ExprNode *where_expr,
+        bool is_distinct, SqlNodeList *select_list_ptr,
+        SqlNodeList *tableref_list_ptr, ExprNode *where_expr,
         ExprListNode *group_expr_list, ExprNode *having_expr,
-        ExprNode *order_expr_list, SQLNodeList *window_list_ptr,
-        SQLNode *limit_ptr);
+        ExprNode *order_expr_list, SqlNodeList *window_list_ptr,
+        SqlNode *limit_ptr);
     QueryNode *MakeUnionQueryNode(QueryNode *left, QueryNode *right,
                                   bool is_all);
     TableRefNode *MakeTableNode(const std::string &name,
@@ -101,67 +101,67 @@ class NodeManager {
                                        ExprNode *else_expr);
     ExprNode *MakeTimeFuncNode(const TimeUnit time_unit, ExprListNode *args);
     CallExprNode *MakeFuncNode(const std::string &name, ExprListNode *args,
-                               const SQLNode *over);
+                               const SqlNode *over);
     CallExprNode *MakeFuncNode(FnDefNode *fn, ExprListNode *args,
-                               const SQLNode *over);
+                               const SqlNode *over);
     CallExprNode *MakeFuncNode(const std::string &name,
                                const std::vector<ExprNode *> &args,
-                               const SQLNode *over);
+                               const SqlNode *over);
     CallExprNode *MakeFuncNode(FnDefNode *fn,
                                const std::vector<ExprNode *> &args,
-                               const SQLNode *over);
+                               const SqlNode *over);
 
     QueryExpr *MakeQueryExprNode(const QueryNode *query);
-    SQLNode *MakeWindowDefNode(const std::string &name);
-    SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
-                               SQLNode *frame);
-    SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
-                               SQLNode *frame, bool opt_open_interval_window);
-    SQLNode *MakeWindowDefNode(SQLNodeList *union_tables,
+    SqlNode *MakeWindowDefNode(const std::string &name);
+    SqlNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
+                               SqlNode *frame);
+    SqlNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
+                               SqlNode *frame, bool opt_open_interval_window);
+    SqlNode *MakeWindowDefNode(SqlNodeList *union_tables,
                                ExprListNode *partitions, ExprNode *orders,
-                               SQLNode *frame, bool opt_open_interval_window,
+                               SqlNode *frame, bool opt_open_interval_window,
                                bool instance_not_in_window);
     WindowDefNode *MergeWindow(const WindowDefNode *w1,
                                const WindowDefNode *w2);
     OrderByNode *MakeOrderByNode(const ExprListNode *node_ptr,
                                  const bool is_asc);
-    SQLNode *MakeFrameExtent(SQLNode *start, SQLNode *end);
-    SQLNode *MakeFrameBound(BoundType bound_type);
-    SQLNode *MakeFrameBound(BoundType bound_type, ExprNode *offset);
-    SQLNode *MakeFrameBound(BoundType bound_type, int64_t offset);
-    SQLNode *MakeFrameNode(FrameType frame_type, SQLNode *node_ptr,
+    SqlNode *MakeFrameExtent(SqlNode *start, SqlNode *end);
+    SqlNode *MakeFrameBound(BoundType bound_type);
+    SqlNode *MakeFrameBound(BoundType bound_type, ExprNode *offset);
+    SqlNode *MakeFrameBound(BoundType bound_type, int64_t offset);
+    SqlNode *MakeFrameNode(FrameType frame_type, SqlNode *node_ptr,
                            ExprNode *frame_size);
-    SQLNode *MakeFrameNode(FrameType frame_type, SQLNode *node_ptr);
-    SQLNode *MakeFrameNode(FrameType frame_type, SQLNode *node_ptr,
+    SqlNode *MakeFrameNode(FrameType frame_type, SqlNode *node_ptr);
+    SqlNode *MakeFrameNode(FrameType frame_type, SqlNode *node_ptr,
                            int64_t maxsize);
-    SQLNode *MakeFrameNode(FrameType frame_type, FrameExtent *frame_range,
+    SqlNode *MakeFrameNode(FrameType frame_type, FrameExtent *frame_range,
                            FrameExtent *frame_rows, int64_t maxsize);
     FrameNode *MergeFrameNode(const FrameNode *frame1, const FrameNode *frame2);
-    SQLNode *MakeLimitNode(int count);
+    SqlNode *MakeLimitNode(int count);
 
-    SQLNode *MakeNameNode(const std::string &name);
-    SQLNode *MakeInsertTableNode(const std::string &table_name,
+    SqlNode *MakeNameNode(const std::string &name);
+    SqlNode *MakeInsertTableNode(const std::string &table_name,
                                  const ExprListNode *column_names,
                                  const ExprListNode *values);
-    SQLNode *MakeCreateTableNode(bool op_if_not_exist,
+    SqlNode *MakeCreateTableNode(bool op_if_not_exist,
                                  const std::string &table_name,
-                                 SQLNodeList *column_desc_list,
-                                 SQLNodeList *partition_meta_list);
-    SQLNode *MakeColumnDescNode(const std::string &column_name,
+                                 SqlNodeList *column_desc_list,
+                                 SqlNodeList *partition_meta_list);
+    SqlNode *MakeColumnDescNode(const std::string &column_name,
                                 const DataType data_type, bool op_not_null);
-    SQLNode *MakeColumnIndexNode(SQLNodeList *keys, SQLNode *ts, SQLNode *ttl,
-                                 SQLNode *version);
-    SQLNode *MakeColumnIndexNode(SQLNodeList *index_item_list);
-    SQLNode *MakeKeyNode(SQLNodeList *key_list);
-    SQLNode *MakeKeyNode(const std::string &key);
-    SQLNode *MakeIndexKeyNode(const std::string &key);
-    SQLNode *MakeIndexTsNode(const std::string &ts);
-    SQLNode *MakeIndexTTLNode(ExprListNode *ttl_expr);
-    SQLNode *MakeIndexTTLTypeNode(const std::string &ttl_type);
-    SQLNode *MakeIndexVersionNode(const std::string &version);
-    SQLNode *MakeIndexVersionNode(const std::string &version, int count);
+    SqlNode *MakeColumnIndexNode(SqlNodeList *keys, SqlNode *ts, SqlNode *ttl,
+                                 SqlNode *version);
+    SqlNode *MakeColumnIndexNode(SqlNodeList *index_item_list);
+    SqlNode *MakeKeyNode(SqlNodeList *key_list);
+    SqlNode *MakeKeyNode(const std::string &key);
+    SqlNode *MakeIndexKeyNode(const std::string &key);
+    SqlNode *MakeIndexTsNode(const std::string &ts);
+    SqlNode *MakeIndexTTLNode(ExprListNode *ttl_expr);
+    SqlNode *MakeIndexTTLTypeNode(const std::string &ttl_type);
+    SqlNode *MakeIndexVersionNode(const std::string &version);
+    SqlNode *MakeIndexVersionNode(const std::string &version, int count);
 
-    SQLNode *MakeResTargetNode(ExprNode *node_ptr, const std::string &name);
+    SqlNode *MakeResTargetNode(ExprNode *node_ptr, const std::string &name);
 
     TypeNode *MakeTypeNode(hybridse::node::DataType base);
     TypeNode *MakeTypeNode(hybridse::node::DataType base,
@@ -227,7 +227,7 @@ class NodeManager {
     AllNode *MakeAllNode(const std::string &relation_name,
                          const std::string &db_name);
 
-    FnNode *MakeFnNode(const SQLNodeType &type);
+    FnNode *MakeFnNode(const SqlNodeType &type);
     FnNodeList *MakeFnListNode();
     FnNode *MakeFnDefNode(const FnNode *header, FnNodeList *block);
     FnNode *MakeFnHeaderNode(const std::string &name, FnNodeList *plist,
@@ -249,18 +249,18 @@ class NodeManager {
     FnNode *MakeElseStmtNode();
     FnNode *MakeForInStmtNode(const std::string &var_name, ExprNode *value);
 
-    SQLNode *MakeCmdNode(node::CmdType cmd_type);
-    SQLNode *MakeCmdNode(node::CmdType cmd_type, const std::string &arg);
-    SQLNode *MakeCmdNode(node::CmdType cmd_type, const std::string &index_name,
+    SqlNode *MakeCmdNode(node::CmdType cmd_type);
+    SqlNode *MakeCmdNode(node::CmdType cmd_type, const std::string &arg);
+    SqlNode *MakeCmdNode(node::CmdType cmd_type, const std::string &index_name,
                          const std::string &table_name);
-    SQLNode *MakeCreateIndexNode(const std::string &index_name,
+    SqlNode *MakeCreateIndexNode(const std::string &index_name,
                                  const std::string &table_name,
                                  ColumnIndexNode *index);
     // Make NodeList
-    SQLNode *MakeExplainNode(const QueryNode *query,
+    SqlNode *MakeExplainNode(const QueryNode *query,
                              node::ExplainType explain_type);
-    SQLNodeList *MakeNodeList(SQLNode *node_ptr);
-    SQLNodeList *MakeNodeList();
+    SqlNodeList *MakeNodeList(SqlNode *node_ptr);
+    SqlNodeList *MakeNodeList();
 
     ExprListNode *MakeExprList(ExprNode *node_ptr);
     ExprListNode *MakeExprList(ExprNode *node_ptr_1, ExprNode *node_ptr_2);
@@ -335,20 +335,20 @@ class NodeManager {
     LambdaNode *MakeLambdaNode(const std::vector<ExprIdNode *> &args,
                                ExprNode *body);
 
-    SQLNode *MakePartitionMetaNode(RoleType role_type,
+    SqlNode *MakePartitionMetaNode(RoleType role_type,
                                    const std::string &endpoint);
 
-    SQLNode *MakeReplicaNumNode(int num);
+    SqlNode *MakeReplicaNumNode(int num);
 
-    SQLNode *MakePartitionNumNode(int num);
+    SqlNode *MakePartitionNumNode(int num);
 
-    SQLNode *MakeDistributionsNode(SQLNodeList *distribution_list);
+    SqlNode *MakeDistributionsNode(SqlNodeList *distribution_list);
 
-    SQLNode *MakeCreateProcedureNode(const std::string &sp_name,
-                                     SQLNodeList *input_parameter_list,
-                                     SQLNode *inner_node);
+    SqlNode *MakeCreateProcedureNode(const std::string &sp_name,
+                                     SqlNodeList *input_parameter_list,
+                                     SqlNode *inner_node);
 
-    SQLNode *MakeInputParameterNode(bool is_constant,
+    SqlNode *MakeInputParameterNode(bool is_constant,
                                     const std::string &column_name,
                                     DataType data_type);
 

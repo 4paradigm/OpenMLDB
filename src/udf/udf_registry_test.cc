@@ -37,7 +37,7 @@ class UdfRegistryTest : public ::testing::Test {
 template <typename... LiteralArgTypes>
 const node::FnDefNode* GetFnDef(UdfLibrary* lib, const std::string& name,
                                 node::NodeManager* nm,
-                                const node::SQLNode* over = nullptr) {
+                                const node::SqlNode* over = nullptr) {
     std::vector<node::TypeNode*> arg_types(
         {DataTypeTrait<LiteralArgTypes>::to_type_node(nm)...});
     std::vector<node::ExprNode*> arg_list;

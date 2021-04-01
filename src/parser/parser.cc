@@ -40,9 +40,9 @@ int HybridSeParser::parse(
         return ret;
     }
 
-    for (node::SQLNode *tree : trees) {
+    for (node::SqlNode *tree : trees) {
         if (nullptr == tree) {
-            status.code = common::kSQLError;
+            status.code = common::kSqlError;
             status.msg = "fail to parse: parsed tree is null";
             return -1;
         }
@@ -100,7 +100,7 @@ int HybridSeParser::CreateFnBlock(std::vector<node::FnNode *> statements,
                                   base::Status &status) {
     if (nullptr == block) {
         status.msg = "fail to create fn block node: block null";
-        status.code = common::kSQLError;
+        status.code = common::kSqlError;
         LOG(WARNING) << status;
         return -1;
     }
@@ -111,7 +111,7 @@ int HybridSeParser::CreateFnBlock(std::vector<node::FnNode *> statements,
         node::FnNode *node = statements[pos];
         if (nullptr == node) {
             status.msg = "fail to create fn block node: node is null";
-            status.code = common::kSQLError;
+            status.code = common::kSqlError;
             return -1;
         }
         if (indent < node->indent) {
@@ -242,7 +242,7 @@ int HybridSeParser::CreateFnBlock(std::vector<node::FnNode *> statements,
                 status.code = common::kFunError;
                 status.msg =
                     "fail to create block, unrecognized statement type " +
-                    node::NameOfSQLNodeType(node->GetType());
+                    node::NameOfSqlNodeType(node->GetType());
                 LOG(WARNING) << status;
                 return -1;
             }

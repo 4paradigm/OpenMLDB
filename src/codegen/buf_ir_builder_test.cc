@@ -130,7 +130,7 @@ namespace hybridse {
 namespace codegen {
 
 using hybridse::codec::Row;
-using hybridse::sqlcase::SQLCase;
+using hybridse::sqlcase::SqlCase;
 class BufIRBuilderTest : public ::testing::Test {
  public:
     BufIRBuilderTest() {}
@@ -139,12 +139,12 @@ class BufIRBuilderTest : public ::testing::Test {
 
 void RunEncode(::hybridse::type::TableDef& table, // NOLINT
                int8_t** output_ptr) {
-    SQLCase::TableInfo table_info;
-    ASSERT_TRUE(SQLCase::CreateTableInfoFromYaml(
-        hybridse::sqlcase::FindSQLCaseBaseDirPath(),
+    SqlCase::TableInfo table_info;
+    ASSERT_TRUE(SqlCase::CreateTableInfoFromYaml(
+        hybridse::sqlcase::FindSqlCaseBaseDirPath(),
         "cases/resource/codegen_t1_one_row.yaml", &table_info));
     ASSERT_TRUE(
-        SQLCase::ExtractTableDef(table_info.schema_, table_info.index_, table));
+        SqlCase::ExtractTableDef(table_info.schema_, table_info.index_, table));
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_encode", *ctx);
     // Create the add1 function entry and insert this entry into module M.  The

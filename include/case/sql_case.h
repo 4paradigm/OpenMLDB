@@ -26,8 +26,7 @@
 #include "proto/fe_type.pb.h"
 namespace hybridse {
 namespace sqlcase {
-class SQLCaseBuilder;
-class SQLCase {
+class SqlCase {
  public:
     struct TableInfo {
         std::string name_;
@@ -55,8 +54,8 @@ class SQLCase {
         std::set<size_t> common_column_indices_;
         bool success_ = true;
     };
-    SQLCase() {}
-    virtual ~SQLCase() {}
+    SqlCase() {}
+    virtual ~SqlCase() {}
 
     const std::string id() const { return id_; }
     const std::string& desc() const { return desc_; }
@@ -92,10 +91,10 @@ class SQLCase {
                               int32_t input_idx = 0) const;
     bool ExtractInputTableDef(const TableInfo& info,
                               type::TableDef& table) const;  // NOLINT
-    bool BuildCreateSQLFromInput(int32_t input_idx, std::string* sql,
+    bool BuildCreateSqlFromInput(int32_t input_idx, std::string* sql,
                                  int partition_num = 1) const;
-    bool BuildInsertSQLFromInput(int32_t input_idx, std::string* sql) const;
-    bool BuildInsertSQLListFromInput(int32_t input_idx,
+    bool BuildInsertSqlFromInput(int32_t input_idx, std::string* sql) const;
+    bool BuildInsertSqlListFromInput(int32_t input_idx,
                                      std::vector<std::string>* sql_list) const;
     bool ExtractOutputSchema(type::TableDef& table) const;          // NOLINT
     bool ExtractInputData(std::vector<hybridse::codec::Row>& rows,  // NOLINT
@@ -119,7 +118,7 @@ class SQLCase {
                               type::TableDef& table);  // NOLINT
     static bool ExtractSchema(const std::string& schema_str,
                               type::TableDef& table);  // NOLINT
-    static bool BuildCreateSQLFromSchema(const type::TableDef& table,
+    static bool BuildCreateSqlFromSchema(const type::TableDef& table,
                                          std::string* create_sql,
                                          bool isGenerateIndex = true,
                                          int partition_num = 1);  // NOLINT
@@ -140,13 +139,13 @@ class SQLCase {
         const vm::Schema& schema,
         const std::vector<std::vector<std::string>>& row_vec,
         std::vector<hybridse::codec::Row>& rows);  // NOLINT
-    static bool BuildInsertSQLFromData(const type::TableDef& table,
+    static bool BuildInsertSqlFromData(const type::TableDef& table,
                                        std::string data,
                                        std::string* insert_sql);
     static bool BuildInsertValueStringFromRow(
         const type::TableDef& table, const std::vector<std::string>& item_vec,
         std::string* create_sql);
-    static bool BuildInsertSQLFromRows(
+    static bool BuildInsertSqlFromRows(
         const type::TableDef& table,
         const std::vector<std::vector<std::string>>& rows,
         std::string* insert_sql);
@@ -156,21 +155,21 @@ class SQLCase {
                            const std::vector<std::string>& item_vec,
                            int8_t** out_ptr, int32_t* out_size);
     static bool CreateTableInfoFromYamlNode(const YAML::Node& node,
-                                            SQLCase::TableInfo* output);
+                                            SqlCase::TableInfo* output);
     static bool CreateExpectFromYamlNode(const YAML::Node& schema_data,
                                          const YAML::Node& expect_provider,
-                                         SQLCase::ExpectInfo* table);
+                                         SqlCase::ExpectInfo* table);
     static bool LoadSchemaAndRowsFromYaml(
         const std::string& cases_dir, const std::string& resource_path,
         type::TableDef& table,                     // NOLINT
         std::vector<hybridse::codec::Row>& rows);  // NOLINT
-    static bool CreateSQLCasesFromYaml(
+    static bool CreateSqlCasesFromYaml(
         const std::string& cases_dir, const std::string& yaml_path,
-        std::vector<SQLCase>& sql_case_ptr,  // NOLINT
+        std::vector<SqlCase>& sql_case_ptr,  // NOLINT
         const std::string filter_mode = "");
-    static bool CreateSQLCasesFromYaml(
+    static bool CreateSqlCasesFromYaml(
         const std::string& cases_dir, const std::string& yaml_path,
-        std::vector<SQLCase>& sql_case_ptr,  // NOLINT
+        std::vector<SqlCase>& sql_case_ptr,  // NOLINT
         const std::vector<std::string>& filter_modes);
     static bool CreateTableInfoFromYaml(const std::string& cases_dir,
                                         const std::string& yaml_path,
@@ -184,17 +183,16 @@ class SQLCase {
     static std::string GenRand(const std::string& prefix) {
         return prefix + std::to_string(rand() % 10000000 + 1);  // NOLINT
     }
-    bool BuildCreateSpSQLFromInput(int32_t input_idx,
+    bool BuildCreateSpSqlFromInput(int32_t input_idx,
                                    const std::string& select_sql,
                                    const std::set<size_t>& common_idx,
                                    std::string* create_sp_sql);
-    bool BuildCreateSpSQLFromSchema(const type::TableDef& table,
+    bool BuildCreateSpSqlFromSchema(const type::TableDef& table,
                                     const std::string& select_sql,
                                     const std::set<size_t>& common_idx,
                                     std::string* create_sql);
 
-    friend SQLCaseBuilder;
-    friend std::ostream& operator<<(std::ostream& output, const SQLCase& thiz);
+    friend std::ostream& operator<<(std::ostream& output, const SqlCase& thiz);
     static bool IS_PERF() {
         const char* env_name = "HYBRIDSE_PERF";
         char* value = getenv(env_name);
@@ -204,7 +202,7 @@ class SQLCase {
         return false;
     }
     static std::set<std::string> HYBRIDSE_LEVEL();
-    static std::string SQL_CASE_BASE_DIR() {
+    static std::string SqlCaseBaseDir() {
         const char* env_name = "SQL_CASE_BASE_DIR";
         char* value = getenv(env_name);
         if (value != nullptr) {
@@ -212,7 +210,7 @@ class SQLCase {
         }
         return "";
     }
-    static bool IS_DEBUG() {
+    static bool IsDebug() {
         const char* env_name = "HYBRIDSE_DEV";
         char* value = getenv(env_name);
         if (value != nullptr && strcmp(value, "true") == 0) {
@@ -224,7 +222,7 @@ class SQLCase {
         }
         return false;
     }
-    static bool IS_CLUSTER() {
+    static bool IsCluster() {
         const char* env_name = "HYBRIDSE_CLUSTER";
         char* value = getenv(env_name);
         if (value != nullptr && strcmp(value, "true") == 0) {
@@ -233,7 +231,7 @@ class SQLCase {
         return false;
     }
 
-    static bool IS_DISABLE_EXPR_OPT() {
+    static bool IsDisableExprOpt() {
         const char* env_name = "HYBRIDSE_DISABLE_EXPR_OPT";
         char* value = getenv(env_name);
         if (value != nullptr && strcmp(value, "true") == 0) {
@@ -242,7 +240,7 @@ class SQLCase {
         return false;
     }
 
-    static bool IS_BATCH_REQUEST_OPT() {
+    static bool IsBatchRequestOpt() {
         const char* env_name = "HYBRIDSE_BATCH_REQUEST_OPT";
         char* value = getenv(env_name);
         if (value != nullptr && strcmp(value, "true") == 0) {
@@ -251,7 +249,7 @@ class SQLCase {
         return false;
     }
 
-    static bool IS_DISABLE_LOCALTABLET() {
+    static bool IsDisableLocalTablet() {
         const char* env_name = "HYBRIDSE_DISTABLE_LOCALTABLET";
         char* value = getenv(env_name);
         if (value != nullptr && strcmp(value, "true") == 0) {
@@ -260,7 +258,7 @@ class SQLCase {
         return false;
     }
 
-    static bool IS_PROCEDURE() {
+    static bool IsProcedure() {
         const char* env_name = "HYBRIDSE_PROCEDURE";
         char* value = getenv(env_name);
         if (value != nullptr && strcmp(value, "true") == 0) {
@@ -269,10 +267,10 @@ class SQLCase {
         return false;
     }
 
-    static hybridse::sqlcase::SQLCase LoadSQLCaseWithID(
+    static hybridse::sqlcase::SqlCase LoadSqlCaseWithID(
         const std::string& dir_path, const std::string& yaml_path,
         const std::string& case_id);
-    void SQLCaseRepeatConfig(const std::string& tag, const int value) {
+    void SqlCaseRepeatConfig(const std::string& tag, const int value) {
         for (size_t idx = 0; idx < inputs_.size(); idx++) {
             if (inputs_[idx].repeat_tag_ == tag) {
                 LOG(INFO) << "config input " << idx << " " << tag << " "
@@ -308,7 +306,7 @@ class SQLCase {
     std::string sp_name_;
     int level_ = 0;
 };
-std::string FindSQLCaseBaseDirPath();
+std::string FindSqlCaseBaseDirPath();
 
 }  // namespace sqlcase
 }  // namespace hybridse

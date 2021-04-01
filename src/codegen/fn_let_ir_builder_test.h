@@ -96,7 +96,7 @@ void AddFunc(const std::string& fn, ::hybridse::node::NodeManager* manager,
     int ret = parser.parse(fn, trees, manager, status);
     ASSERT_EQ(0, ret);
     FnIRBuilder fn_ir_builder(m);
-    for (node::SQLNode* node : trees) {
+    for (node::SqlNode* node : trees) {
         LOG(INFO) << "Add Func: " << *node;
         ::llvm::Function* func = nullptr;
         bool ok = fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef*>(node),

@@ -61,7 +61,7 @@ bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     return catalog->AddTable(handler);
 }
 bool InitToydbEngineCatalog(
-    SQLCase& sql_case,  // NOLINT
+    SqlCase& sql_case,  // NOLINT
     const EngineOptions& engine_options,
     std::map<std::string,
              std::shared_ptr<::hybridse::storage::Table>>&  // NOLINT
@@ -142,7 +142,7 @@ std::shared_ptr<tablet::TabletCatalog> BuildOnePkTableStorage(
     return catalog;
 }
 void BatchRequestEngineCheckWithCommonColumnIndices(
-    const SQLCase& sql_case, const EngineOptions options,
+    const SqlCase& sql_case, const EngineOptions options,
     const std::set<size_t>& common_column_indices) {
     std::ostringstream oss;
     for (size_t index : common_column_indices) {
@@ -156,7 +156,7 @@ void BatchRequestEngineCheckWithCommonColumnIndices(
     engine_test.RunCheck();
 }
 
-void BatchRequestEngineCheck(const SQLCase& sql_case,
+void BatchRequestEngineCheck(const SqlCase& sql_case,
                              const EngineOptions options) {
     bool has_batch_request = !sql_case.batch_request().columns_.empty();
     if (has_batch_request) {
@@ -197,12 +197,12 @@ void BatchRequestEngineCheck(const SQLCase& sql_case,
     }
 }
 
-void EngineCheck(const SQLCase& sql_case, const EngineOptions& options,
+void EngineCheck(const SqlCase& sql_case, const EngineOptions& options,
                  EngineMode engine_mode) {
     if (engine_mode == kBatchMode) {
         ToydbBatchEngineTestRunner engine_test(sql_case, options);
         engine_test.RunCheck();
-        engine_test.RunSQLiteCheck();
+        engine_test.RunSqliteCheck();
     } else if (engine_mode == kRequestMode) {
         ToydbRequestEngineTestRunner engine_test(sql_case, options);
         engine_test.RunCheck();
@@ -224,9 +224,9 @@ int GenerateSqliteTestStringCallback(void* s, int argc, char** argv,
     return 0;
 }
 
-void CheckSQLiteCompatible(const SQLCase& sql_case, const vm::Schema& schema,
+void CheckSqliteCompatible(const SqlCase& sql_case, const vm::Schema& schema,
                            const std::vector<Row>& output) {
-    // Use SQLite to get output
+    // Use Sqlite to get output
     sqlite3* db;
     char* zErrMsg = 0;
     int rc;
@@ -244,7 +244,7 @@ void CheckSQLiteCompatible(const SQLCase& sql_case, const vm::Schema& schema,
     type::TableDef output_table;
     sql_case.ExtractInputTableDef(output_table);
     std::string create_table_sql;
-    SQLCase::BuildCreateSQLFromSchema(output_table, &create_table_sql, false);
+    SqlCase::BuildCreateSqlFromSchema(output_table, &create_table_sql, false);
     LOG(INFO) << create_table_sql;
 
     // Create a table schema
@@ -260,7 +260,7 @@ void CheckSQLiteCompatible(const SQLCase& sql_case, const vm::Schema& schema,
     // Create SQL statements to insert data to the table (One insert)
     std::string create_insert_sql = "";
     std::vector<std::string> data_line;
-    sql_case.BuildInsertSQLFromInput(0, &create_insert_sql);
+    sql_case.BuildInsertSqlFromInput(0, &create_insert_sql);
 
     // Insert data into the table
     const char* create_insert_sql_ch = create_insert_sql.c_str();
@@ -291,9 +291,9 @@ void CheckSQLiteCompatible(const SQLCase& sql_case, const vm::Schema& schema,
 
     // Transfer Sqlite outcome to ToyDB row
     std::vector<hybridse::codec::Row> sqliteRows;
-    SQLCase::ExtractRows(schema, sqliteStr, sqliteRows);
+    SqlCase::ExtractRows(schema, sqliteStr, sqliteRows);
 
-    // Compare ToyDB output with SQLite output.
+    // Compare ToyDB output with Sqlite output.
     ASSERT_NO_FATAL_FAILURE(CheckRows(
         schema, SortRows(schema, sqliteRows, sql_case.expect().order_),
         SortRows(schema, output, sql_case.expect().order_)));

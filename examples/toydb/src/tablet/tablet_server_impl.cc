@@ -176,7 +176,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
 
         if (!table) {
             LOG(WARNING) << "fail to run sql " << request->sql();
-            status->set_code(common::kSQLError);
+            status->set_code(common::kSqlError);
             status->set_msg("fail to run sql");
             return;
         }
@@ -221,7 +221,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         int32_t ret = session.Run(request->task_id(), row, &output);
         if (ret != 0) {
             LOG(WARNING) << "fail to run sql " << request->sql();
-            status->set_code(common::kSQLError);
+            status->set_code(common::kSqlError);
             status->set_msg("fail to run sql");
             return;
         }

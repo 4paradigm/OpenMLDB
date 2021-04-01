@@ -86,7 +86,7 @@ bool hybridse::codegen::BlockIRBuilder::BuildBlock(
             default: {
                 status.code = common::kCodegenError;
                 status.msg = "fail to codegen for unrecognized fn type " +
-                             node::NameOfSQLNodeType(node->GetType());
+                             node::NameOfSqlNodeType(node->GetType());
                 LOG(WARNING) << status;
                 return false;
             }

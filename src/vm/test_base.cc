@@ -348,7 +348,7 @@ void BuildT2Rows(::hybridse::type::TableDef& table,  // NOLINT
         rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
 }
-void ExtractExprListFromSimpleSQL(::hybridse::node::NodeManager* nm,
+void ExtractExprListFromSimpleSql(::hybridse::node::NodeManager* nm,
                                   const std::string& sql,
                                   node::ExprListNode* output) {
     std::cout << sql << std::endl;
@@ -376,7 +376,7 @@ void ExtractExprListFromSimpleSQL(::hybridse::node::NodeManager* nm,
             dynamic_cast<node::ProjectNode*>(project)->GetExpression());
     }
 }
-void ExtractExprFromSimpleSQL(::hybridse::node::NodeManager* nm,
+void ExtractExprFromSimpleSql(::hybridse::node::NodeManager* nm,
                               const std::string& sql, node::ExprNode** output) {
     std::cout << sql << std::endl;
     ::hybridse::node::PlanNodeList plan_trees;
@@ -417,14 +417,14 @@ std::shared_ptr<SimpleCatalog> BuildSimpleCatalog(
 std::shared_ptr<SimpleCatalog> BuildSimpleCatalog() {
     return std::make_shared<SimpleCatalog>(true);
 }
-bool InitSimpleCataLogFromSQLCase(SQLCase& sql_case,  // NOLINT
+bool InitSimpleCataLogFromSqlCase(SqlCase& sql_case,  // NOLINT
                                   std::shared_ptr<SimpleCatalog> catalog) {
     hybridse::type::Database db;
     db.set_name(sql_case.db());
     for (int32_t i = 0; i < sql_case.CountInputs(); i++) {
         sql_case.inputs_[i].name_ = sql_case.inputs()[i].name_;
         if (sql_case.inputs_[i].name_.empty()) {
-            sql_case.inputs_[i].name_ = SQLCase::GenRand("auto_t");
+            sql_case.inputs_[i].name_ = SqlCase::GenRand("auto_t");
         }
         type::TableDef table_def;
         if (!sql_case.ExtractInputTableDef(table_def, i)) {

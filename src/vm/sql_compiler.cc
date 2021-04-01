@@ -40,16 +40,16 @@ using hybridse::common::kPlanError;
 namespace hybridse {
 namespace vm {
 
-SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir,
+SqlCompiler::SqlCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir,
                          bool dump_plan, bool plan_only)
     : cl_(cl),
       keep_ir_(keep_ir),
       dump_plan_(dump_plan),
       plan_only_(plan_only) {}
 
-SQLCompiler::~SQLCompiler() {}
+SqlCompiler::~SqlCompiler() {}
 
-void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
+void SqlCompiler::KeepIR(SqlContext& ctx, llvm::Module* m) {
     if (m == NULL) {
         LOG(WARNING) << "module is null";
         return;
@@ -61,7 +61,7 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
     LOG(INFO) << "keep ir length: " << ctx.ir.size();
 }
 
-bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
+bool SqlCompiler::Compile(SqlContext& ctx, Status& status) {  // NOLINT
     bool ok = Parse(ctx, status);
     if (!ok) {
         return false;
@@ -119,7 +119,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         HybridSeJitWrapper::Create(ctx.jit_options));
     if (jit == nullptr || !jit->Init()) {
         status.msg = "fail to init jit let";
-        status.code = common::kJITError;
+        status.code = common::kJitError;
         LOG(WARNING) << status;
         return false;
     }
@@ -157,8 +157,8 @@ std::string EngineModeName(EngineMode mode) {
     }
 }
 
-Status SQLCompiler::BuildBatchModePhysicalPlan(
-    SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+Status SqlCompiler::BuildBatchModePhysicalPlan(
+    SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
     ::llvm::Module* llvm_module, udf::UdfLibrary* library,
     PhysicalOpNode** output) {
     vm::BatchModeTransformer transformer(
@@ -172,8 +172,8 @@ Status SQLCompiler::BuildBatchModePhysicalPlan(
     return Status::OK();
 }
 
-Status SQLCompiler::BuildRequestModePhysicalPlan(
-    SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+Status SqlCompiler::BuildRequestModePhysicalPlan(
+    SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
     ::llvm::Module* llvm_module, udf::UdfLibrary* library,
     PhysicalOpNode** output) {
     vm::RequestModeTransformer transformer(
@@ -192,8 +192,8 @@ Status SQLCompiler::BuildRequestModePhysicalPlan(
     return Status::OK();
 }
 
-Status SQLCompiler::BuildBatchRequestModePhysicalPlan(
-    SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+Status SqlCompiler::BuildBatchRequestModePhysicalPlan(
+    SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
     ::llvm::Module* llvm_module, udf::UdfLibrary* library,
     PhysicalOpNode** output) {
     vm::RequestModeTransformer transformer(
@@ -253,8 +253,8 @@ Status SQLCompiler::BuildBatchRequestModePhysicalPlan(
     return Status::OK();
 }
 
-Status SQLCompiler::BuildPhysicalPlan(
-    SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+Status SqlCompiler::BuildPhysicalPlan(
+    SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
     ::llvm::Module* llvm_module, PhysicalOpNode** output) {
     Status status;
     CHECK_TRUE(ctx != nullptr, kPlanError, "Null sql context");
@@ -281,7 +281,7 @@ Status SQLCompiler::BuildPhysicalPlan(
     }
 }
 
-bool SQLCompiler::BuildClusterJob(SQLContext& ctx, Status& status) {  // NOLINT
+bool SqlCompiler::BuildClusterJob(SqlContext& ctx, Status& status) {  // NOLINT
     if (nullptr == ctx.physical_plan) {
         status.msg = "fail to build cluster job: physical plan is empty";
         status.code = common::kOpGenError;
@@ -304,7 +304,7 @@ bool SQLCompiler::BuildClusterJob(SQLContext& ctx, Status& status) {  // NOLINT
  * @return true if success to transform logical plan, store logical
  *         plan into SQLContext
  */
-bool SQLCompiler::Parse(SQLContext& ctx,
+bool SqlCompiler::Parse(SqlContext& ctx,
                         ::hybridse::base::Status& status) {  // NOLINT
     ::hybridse::node::NodePointVector parser_trees;
     ::hybridse::parser::HybridSeParser parser;
@@ -327,7 +327,7 @@ bool SQLCompiler::Parse(SQLContext& ctx,
     }
     return true;
 }
-bool SQLCompiler::ResolvePlanFnAddress(vm::PhysicalOpNode* node,
+bool SqlCompiler::ResolvePlanFnAddress(vm::PhysicalOpNode* node,
                                        std::shared_ptr<HybridSeJitWrapper>& jit,
                                        Status& status) {
     if (nullptr == node) {

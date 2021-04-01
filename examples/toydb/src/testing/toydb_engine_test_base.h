@@ -35,7 +35,7 @@ std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
     const hybridse::type::TableDef& table_def,
     std::shared_ptr<hybridse::storage::Table> table);
 bool InitToydbEngineCatalog(
-    SQLCase& sql_case,  // NOLINT
+    SqlCase& sql_case,  // NOLINT
     const EngineOptions& engine_options,
     std::map<std::string,
              std::shared_ptr<::hybridse::storage::Table>>&  // NOLINT
@@ -45,21 +45,21 @@ bool InitToydbEngineCatalog(
 std::shared_ptr<tablet::TabletCatalog> BuildOnePkTableStorage(
     int32_t data_size);
 void BatchRequestEngineCheckWithCommonColumnIndices(
-    const SQLCase& sql_case, const EngineOptions options,
+    const SqlCase& sql_case, const EngineOptions options,
     const std::set<size_t>& common_column_indices);
-void BatchRequestEngineCheck(const SQLCase& sql_case,
+void BatchRequestEngineCheck(const SqlCase& sql_case,
                              const EngineOptions options);
-void EngineCheck(const SQLCase& sql_case, const EngineOptions& options,
+void EngineCheck(const SqlCase& sql_case, const EngineOptions& options,
                  EngineMode engine_mode);
 
 int GenerateSqliteTestStringCallback(void* s, int argc, char** argv,
                                      char** azColName);
-void CheckSQLiteCompatible(const SQLCase& sql_case, const vm::Schema& schema,
+void CheckSqliteCompatible(const SqlCase& sql_case, const vm::Schema& schema,
                            const std::vector<Row>& output);
 
 class ToydbBatchEngineTestRunner : public BatchEngineTestRunner {
  public:
-    explicit ToydbBatchEngineTestRunner(const SQLCase& sql_case,
+    explicit ToydbBatchEngineTestRunner(const SqlCase& sql_case,
                                         const EngineOptions options)
         : BatchEngineTestRunner(sql_case, options), catalog_() {}
     bool InitEngineCatalog() override {
@@ -100,12 +100,12 @@ class ToydbBatchEngineTestRunner : public BatchEngineTestRunner {
         return table->Put(reinterpret_cast<char*>(row.buf()), row.size());
     }
 
-    void RunSQLiteCheck() {
-        // Determine whether to compare with SQLite
+    void RunSqliteCheck() {
+        // Determine whether to compare with Sqlite
         if (sql_case_.standard_sql() && sql_case_.standard_sql_compatible()) {
             std::vector<Row> output_rows;
             ASSERT_TRUE(Compute(&output_rows).isOK());
-            CheckSQLiteCompatible(sql_case_, GetSession()->GetSchema(),
+            CheckSqliteCompatible(sql_case_, GetSession()->GetSchema(),
                                   output_rows);
         }
     }
@@ -118,7 +118,7 @@ class ToydbBatchEngineTestRunner : public BatchEngineTestRunner {
 
 class ToydbRequestEngineTestRunner : public RequestEngineTestRunner {
  public:
-    explicit ToydbRequestEngineTestRunner(const SQLCase& sql_case,
+    explicit ToydbRequestEngineTestRunner(const SqlCase& sql_case,
                                           const EngineOptions options)
         : RequestEngineTestRunner(sql_case, options), catalog_() {}
     bool InitEngineCatalog() override {
@@ -168,7 +168,7 @@ class ToydbRequestEngineTestRunner : public RequestEngineTestRunner {
 class ToydbBatchRequestEngineTestRunner : public BatchRequestEngineTestRunner {
  public:
     ToydbBatchRequestEngineTestRunner(
-        const SQLCase& sql_case, const EngineOptions options,
+        const SqlCase& sql_case, const EngineOptions options,
         const std::set<size_t>& common_column_indices)
         : BatchRequestEngineTestRunner(sql_case, options,
                                        common_column_indices),

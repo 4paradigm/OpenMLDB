@@ -38,7 +38,7 @@ namespace std {
 %shared_ptr(hybridse::vm::Catalog);
 %shared_ptr(hybridse::vm::SimpleCatalog);
 %shared_ptr(hybridse::vm::CompileInfo);
-%shared_ptr(hybridse::vm::SQLCompileInfo);
+%shared_ptr(hybridse::vm::SqlCompileInfo);
 
 %typemap(jni) hybridse::vm::RawPtrHandle "jlong"
 %typemap(jtype) hybridse::vm::RawPtrHandle "long"

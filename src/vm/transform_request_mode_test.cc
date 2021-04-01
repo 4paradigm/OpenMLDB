@@ -53,13 +53,13 @@ ExitOnError ExitOnErr;
 namespace hybridse {
 namespace vm {
 
-using hybridse::sqlcase::SQLCase;
-std::vector<SQLCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
+using hybridse::sqlcase::SqlCase;
+std::vector<SqlCase> InitCases(std::string yaml_path);
+void InitCases(std::string yaml_path, std::vector<SqlCase>& cases);  // NOLINT
 
-void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(
-            hybridse::sqlcase::FindSQLCaseBaseDirPath(), yaml_path, cases,
+void InitCases(std::string yaml_path, std::vector<SqlCase>& cases) {  // NOLINT
+    if (!SqlCase::CreateSqlCasesFromYaml(
+            hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases,
             std::vector<std::string>({"physical-plan-unsupport",
                                       "plan-unsupport", "parser-unsupport",
                                       "request-unsupport"}))) {
@@ -67,12 +67,12 @@ void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
     }
 }
 
-std::vector<SQLCase> InitCases(std::string yaml_path) {
-    std::vector<SQLCase> cases;
+std::vector<SqlCase> InitCases(std::string yaml_path) {
+    std::vector<SqlCase> cases;
     InitCases(yaml_path, cases);
     return cases;
 }
-class TransformRequestModeTest : public ::testing::TestWithParam<SQLCase> {
+class TransformRequestModeTest : public ::testing::TestWithParam<SqlCase> {
  public:
     TransformRequestModeTest() {}
     ~TransformRequestModeTest() {}
@@ -162,7 +162,7 @@ INSTANTIATE_TEST_CASE_P(
     SqlSubQueryPlan, TransformRequestModeTest,
     testing::ValuesIn(InitCases("cases/plan/sub_query.yaml")));
 
-void CheckTransformPhysicalPlan(const SQLCase& sql_case,
+void CheckTransformPhysicalPlan(const SqlCase& sql_case,
                                 bool is_cluster_optimized,
                                 node::NodeManager* nm) {
     std::string sqlstr = sql_case.sql_str();

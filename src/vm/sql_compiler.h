@@ -37,7 +37,7 @@ namespace vm {
 
 using hybridse::base::Status;
 
-struct SQLContext {
+struct SqlContext {
     // mode: batch|request|batch request
     ::hybridse::vm::EngineMode engine_mode;
     bool is_performance_sensitive = false;
@@ -72,15 +72,15 @@ struct SQLContext {
 
     ::hybridse::vm::BatchRequestInfo batch_request_info;
 
-    SQLContext() {}
-    ~SQLContext() {}
+    SqlContext() {}
+    ~SqlContext() {}
 };
 
-class SQLCompileInfo : public CompileInfo {
+class SqlCompileInfo : public CompileInfo {
  public:
-    SQLCompileInfo() : sql_ctx() {}
-    virtual ~SQLCompileInfo() {}
-    hybridse::vm::SQLContext& get_sql_context() { return this->sql_ctx; }
+    SqlCompileInfo() : sql_ctx() {}
+    virtual ~SqlCompileInfo() {}
+    hybridse::vm::SqlContext& get_sql_context() { return this->sql_ctx; }
 
     bool GetIRBuffer(const base::RawBuffer& buf) {
         auto& str = this->sql_ctx.ir;
@@ -91,7 +91,7 @@ class SQLCompileInfo : public CompileInfo {
     const hybridse::vm::Schema& GetSchema() const { return sql_ctx.schema; }
 
     const hybridse::vm::ComileType GetCompileType() const {
-        return ComileType::kCompileSQL;
+        return ComileType::kCompileSql;
     }
     const hybridse::vm::EngineMode GetEngineMode() const {
         return sql_ctx.engine_mode;
@@ -100,7 +100,7 @@ class SQLCompileInfo : public CompileInfo {
         return sql_ctx.encoded_schema;
     }
 
-    const std::string& GetSQL() const { return sql_ctx.sql; }
+    const std::string& GetSql() const { return sql_ctx.sql; }
 
     virtual const Schema& GetRequestSchema() const {
         return sql_ctx.request_schema;
@@ -127,49 +127,49 @@ class SQLCompileInfo : public CompileInfo {
     virtual void DumpClusterJob(std::ostream& output, const std::string& tab) {
         sql_ctx.cluster_job.Print(output, tab);
     }
-    static SQLCompileInfo* CastFrom(CompileInfo* node) {
-        return dynamic_cast<SQLCompileInfo*>(node);
+    static SqlCompileInfo* CastFrom(CompileInfo* node) {
+        return dynamic_cast<SqlCompileInfo*>(node);
     }
 
  private:
-    hybridse::vm::SQLContext sql_ctx;
+    hybridse::vm::SqlContext sql_ctx;
 };
 
-class SQLCompiler {
+class SqlCompiler {
  public:
-    SQLCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir = false,
+    SqlCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir = false,
                 bool dump_plan = false, bool plan_only = false);
 
-    ~SQLCompiler();
+    ~SqlCompiler();
 
-    bool Compile(SQLContext& ctx,                 // NOLINT
+    bool Compile(SqlContext& ctx,                 // NOLINT
                  Status& status);                 // NOLINT
-    bool Parse(SQLContext& ctx, Status& status);  // NOLINT
-    bool BuildClusterJob(SQLContext& ctx,         // NOLINT
+    bool Parse(SqlContext& ctx, Status& status);  // NOLINT
+    bool BuildClusterJob(SqlContext& ctx,         // NOLINT
                          Status& status);         // NOLINT
 
  private:
-    void KeepIR(SQLContext& ctx, llvm::Module* m);  // NOLINT
+    void KeepIR(SqlContext& ctx, llvm::Module* m);  // NOLINT
 
     bool ResolvePlanFnAddress(
         PhysicalOpNode* node,
         std::shared_ptr<HybridSeJitWrapper>& jit,  // NOLINT
         Status& status);                           // NOLINT
 
-    Status BuildPhysicalPlan(SQLContext* ctx,
+    Status BuildPhysicalPlan(SqlContext* ctx,
                              const ::hybridse::node::PlanNodeList& plan_list,
                              ::llvm::Module* llvm_module,
                              PhysicalOpNode** output);
     Status BuildBatchModePhysicalPlan(
-        SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+        SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
         ::llvm::Module* llvm_module, udf::UdfLibrary* library,
         PhysicalOpNode** output);
     Status BuildRequestModePhysicalPlan(
-        SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+        SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
         ::llvm::Module* llvm_module, udf::UdfLibrary* library,
         PhysicalOpNode** output);
     Status BuildBatchRequestModePhysicalPlan(
-        SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+        SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
         ::llvm::Module* llvm_module, udf::UdfLibrary* library,
         PhysicalOpNode** output);
 

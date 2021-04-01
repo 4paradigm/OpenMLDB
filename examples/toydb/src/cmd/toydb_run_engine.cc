@@ -43,7 +43,7 @@ DEFINE_bool(enable_perf, false, "Enable llvm jit perf events");
 namespace hybridse {
 namespace vm {
 
-int DoRunEngine(const SQLCase& sql_case, const EngineOptions& options,
+int DoRunEngine(const SqlCase& sql_case, const EngineOptions& options,
                 EngineMode engine_mode) {
     std::shared_ptr<EngineTestRunner> runner;
     if (engine_mode == kBatchMode) {
@@ -65,8 +65,8 @@ int DoRunEngine(const SQLCase& sql_case, const EngineOptions& options,
 }
 
 int RunSingle(const std::string& yaml_path) {
-    std::vector<SQLCase> cases;
-    if (!SQLCase::CreateSQLCasesFromYaml("", yaml_path, cases)) {
+    std::vector<SqlCase> cases;
+    if (!SqlCase::CreateSqlCasesFromYaml("", yaml_path, cases)) {
         LOG(WARNING) << "Load cases from " << yaml_path << " failed";
         return ENGINE_TEST_RET_INVALID_CASE;
     }

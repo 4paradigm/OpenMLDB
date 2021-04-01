@@ -64,10 +64,10 @@ bool Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
 bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
                                     PlanNode **plan_tree, Status &status) {
     const node::NodePointVector &table_ref_list =
-        nullptr == root->GetTableRefList() ? std::vector<SQLNode *>()
+        nullptr == root->GetTableRefList() ? std::vector<SqlNode *>()
                                            : root->GetTableRefList()->GetList();
     std::vector<node::PlanNode *> relation_nodes;
-    for (node::SQLNode *node : table_ref_list) {
+    for (node::SqlNode *node : table_ref_list) {
         node::PlanNode *table_ref_plan = nullptr;
         if (nullptr == node) {
             status.msg =
@@ -81,8 +81,8 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
                 "can not create select plan node: table reference node "
                 "type is "
                 "invalid" +
-                node::NameOfSQLNodeType(node->GetType());
-            status.code = common::kSQLError;
+                node::NameOfSqlNodeType(node->GetType());
+            status.code = common::kSqlError;
             return false;
         }
         if (!CreateTableReferencePlanNode(
@@ -177,7 +177,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
             }
             default: {
                 status.msg = "can not create project plan node with type " +
-                             node::NameOfSQLNodeType(root->GetType());
+                             node::NameOfSqlNodeType(root->GetType());
                 status.code = common::kPlanError;
                 LOG(WARNING) << status;
                 return false;
@@ -414,7 +414,7 @@ bool Planner::CreateWindowPlanNode(
 }
 
 bool Planner::CreateCreateTablePlan(
-    const node::SQLNode *root, node::PlanNode **output,
+    const node::SqlNode *root, node::PlanNode **output,
     Status &status) {  // NOLINT (runtime/references)
     const node::CreateStmt *create_tree = (const node::CreateStmt *)root;
     *output = node_manager_->MakeCreateTablePlanNode(
@@ -614,7 +614,7 @@ int SimplePlanner::CreatePlanTree(
             }
             default: {
                 status.msg = "can not handle tree type " +
-                             node::NameOfSQLNodeType(parser_tree->GetType());
+                             node::NameOfSqlNodeType(parser_tree->GetType());
                 status.code = common::kPlanError;
                 LOG(WARNING) << status;
                 return status.code;
@@ -636,18 +636,18 @@ int SimplePlanner::CreatePlanTree(
  * @param status
  */
 bool Planner::CreateFuncDefPlan(
-    const SQLNode *root, node::PlanNode **output,
+    const SqlNode *root, node::PlanNode **output,
     Status &status) {  // NOLINT (runtime/references)
     if (nullptr == root) {
         status.msg =
             "fail to create func def plan node: query tree node it null";
-        status.code = common::kSQLError;
+        status.code = common::kSqlError;
         LOG(WARNING) << status;
         return false;
     }
 
     if (root->GetType() != node::kFnDef) {
-        status.code = common::kSQLError;
+        status.code = common::kSqlError;
         status.msg =
             "fail to create cmd plan node: query tree node it not function "
             "def "
@@ -656,16 +656,16 @@ bool Planner::CreateFuncDefPlan(
         return false;
     }
     *output = node_manager_->MakeFuncPlanNode(
-        dynamic_cast<node::FnNodeFnDef *>(const_cast<SQLNode *>(root)));
+        dynamic_cast<node::FnNodeFnDef *>(const_cast<SqlNode *>(root)));
     return true;
 }
 
-bool Planner::CreateInsertPlan(const node::SQLNode *root,
+bool Planner::CreateInsertPlan(const node::SqlNode *root,
                                node::PlanNode **output,
                                Status &status) {  // NOLINT (runtime/references)
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
-        status.code = common::kSQLError;
+        status.code = common::kSqlError;
         LOG(WARNING) << status;
         return false;
     }
@@ -674,7 +674,7 @@ bool Planner::CreateInsertPlan(const node::SQLNode *root,
         status.msg =
             "fail to create cmd plan node: query tree node it not insert "
             "type";
-        status.code = common::kSQLError;
+        status.code = common::kSqlError;
         return false;
     }
     *output = node_manager_->MakeInsertPlanNode(
@@ -682,7 +682,7 @@ bool Planner::CreateInsertPlan(const node::SQLNode *root,
     return true;
 }
 
-bool Planner::CreateCmdPlan(const SQLNode *root, node::PlanNode **output,
+bool Planner::CreateCmdPlan(const SqlNode *root, node::PlanNode **output,
                             Status &status) {  // NOLINT (runtime/references)
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
@@ -703,7 +703,7 @@ bool Planner::CreateCmdPlan(const SQLNode *root, node::PlanNode **output,
 }
 
 bool Planner::CreateCreateProcedurePlan(
-    const node::SQLNode *root, const PlanNodeList &inner_plan_node_list,
+    const node::SqlNode *root, const PlanNodeList &inner_plan_node_list,
     node::PlanNode **output, Status &status) {  // NOLINT (runtime/references)
     const node::CreateSpStmt *create_sp_tree = (const node::CreateSpStmt *)root;
     *output = node_manager_->MakeCreateProcedurePlanNode(
@@ -798,7 +798,7 @@ bool Planner::CreateTableReferencePlanNode(const node::TableRefNode *root,
         default: {
             status.msg =
                 "fail to create table reference node, unrecognized type " +
-                node::NameOfSQLNodeType(root->GetType());
+                node::NameOfSqlNodeType(root->GetType());
             status.code = common::kPlanError;
             LOG(WARNING) << status;
             return false;
@@ -844,7 +844,7 @@ bool Planner::MergeWindows(
         }
         bool can_be_merged = false;
         for (auto iter_w = windows.begin(); iter_w != windows.end(); iter_w++) {
-            if (node::SQLEquals(iter->first, *iter_w)) {
+            if (node::SqlEquals(iter->first, *iter_w)) {
                 can_be_merged = true;
                 has_window_merged = true;
                 break;
@@ -879,7 +879,7 @@ bool Planner::MergeWindows(
         }
         bool can_be_merged = false;
         for (auto iter_w = windows.begin(); iter_w != windows.end(); iter_w++) {
-            if (node::SQLEquals(iter->first, *iter_w)) {
+            if (node::SqlEquals(iter->first, *iter_w)) {
                 can_be_merged = true;
                 has_window_merged = true;
                 break;
@@ -942,7 +942,7 @@ bool Planner::MergeProjectMap(
     for (auto map_iter = map.cbegin(); map_iter != map.cend(); map_iter++) {
         bool merge_ok = false;
         for (auto iter = output->begin(); iter != output->end(); iter++) {
-            if (node::SQLEquals(map_iter->first, iter->first) ||
+            if (node::SqlEquals(map_iter->first, iter->first) ||
                 (nullptr != map_iter->first &&
                  map_iter->first->CanMergeWith(iter->first))) {
                 auto frame = iter->second->GetW();
@@ -1012,7 +1012,7 @@ bool Planner::TransformTableDef(
                     column_names.end()) {
                     status.msg = "CREATE common: COLUMN NAME " +
                                  column_def->GetColumnName() + " duplicate";
-                    status.code = common::kSQLError;
+                    status.code = common::kSqlError;
                     LOG(WARNING) << status;
                     return false;
                 }
@@ -1054,7 +1054,7 @@ bool Planner::TransformTableDef(
                             "CREATE common: column type " +
                             node::DataTypeName(column_def->GetColumnType()) +
                             " is not supported";
-                        status.code = common::kSQLError;
+                        status.code = common::kSqlError;
                         LOG(WARNING) << status;
                         return false;
                     }
@@ -1074,7 +1074,7 @@ bool Planner::TransformTableDef(
                     index_names.end()) {
                     status.msg = "CREATE common: INDEX NAME " +
                                  column_index->GetName() + " duplicate";
-                    status.code = common::kSQLError;
+                    status.code = common::kSqlError;
                     LOG(WARNING) << status;
                     return false;
                 }
@@ -1105,9 +1105,9 @@ bool Planner::TransformTableDef(
             }
             default: {
                 status.msg = "can not support " +
-                             node::NameOfSQLNodeType(column_desc->GetType()) +
+                             node::NameOfSqlNodeType(column_desc->GetType()) +
                              " when CREATE TABLE";
-                status.code = common::kSQLError;
+                status.code = common::kSqlError;
                 LOG(WARNING) << status;
                 return false;
             }

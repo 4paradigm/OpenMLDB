@@ -34,7 +34,7 @@ using hybridse::codec::ArrayListV;
 using hybridse::codec::ColumnImpl;
 using hybridse::codec::ListRef;
 using hybridse::codec::Row;
-using hybridse::sqlcase::SQLCase;
+using hybridse::sqlcase::SqlCase;
 
 class UdfTest : public ::testing::Test {
  public:
@@ -272,8 +272,8 @@ TEST_F(UdfTest, GetWindowColRangeTest) {
         "9, 1590115500000";
     type::TableDef table_def;
     std::vector<Row> rows;
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractSchema(schema, table_def));
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRows(table_def.columns(),
+    ASSERT_TRUE(hybridse::sqlcase::SqlCase::ExtractSchema(schema, table_def));
+    ASSERT_TRUE(hybridse::sqlcase::SqlCase::ExtractRows(table_def.columns(),
                                                         data, rows));
     codec::RowView row_view(table_def.columns());
     for (auto row : rows) {
@@ -332,8 +332,8 @@ TEST_F(UdfTest, GetWindowColRowsTest) {
         "9, 1590115500000";
     type::TableDef table_def;
     std::vector<Row> rows;
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractSchema(schema, table_def));
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRows(table_def.columns(),
+    ASSERT_TRUE(hybridse::sqlcase::SqlCase::ExtractSchema(schema, table_def));
+    ASSERT_TRUE(hybridse::sqlcase::SqlCase::ExtractRows(table_def.columns(),
                                                         data, rows));
     codec::RowView row_view(table_def.columns());
     for (auto row : rows) {

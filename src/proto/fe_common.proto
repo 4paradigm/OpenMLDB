@@ -37,7 +37,7 @@ enum StatusCode {
     kRpcError = 21;
     kTimeoutError = 22;
     kResponseError = 23;
-    kSQLError = 30;
+    kSqlError = 30;
     kPlanError = 31;
     kCallMethodError = 32;
     kColumnNotFound = 33;
@@ -45,7 +45,7 @@ enum StatusCode {
     kFunError = 40;
     kCodegenError = 50;
     kOpGenError = 60;
-    kJITError = 70;
+    kJitError = 70;
     kSchemaCodecError = 71;
 
 }

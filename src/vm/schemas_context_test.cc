@@ -28,18 +28,18 @@
 
 namespace hybridse {
 namespace vm {
-std::vector<SQLCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
+std::vector<SqlCase> InitCases(std::string yaml_path);
+void InitCases(std::string yaml_path, std::vector<SqlCase>& cases);  // NOLINT
 
-void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(
-            hybridse::sqlcase::FindSQLCaseBaseDirPath(), yaml_path, cases)) {
+void InitCases(std::string yaml_path, std::vector<SqlCase>& cases) {  // NOLINT
+    if (!SqlCase::CreateSqlCasesFromYaml(
+            hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases)) {
         FAIL();
     }
 }
 
-std::vector<SQLCase> InitCases(std::string yaml_path) {
-    std::vector<SQLCase> cases;
+std::vector<SqlCase> InitCases(std::string yaml_path) {
+    std::vector<SqlCase> cases;
     InitCases(yaml_path, cases);
     return cases;
 }
@@ -63,7 +63,7 @@ struct ColumnNameResolveResult {
     bool is_error = false;
 };
 
-class SchemasContextResolveTest : public ::testing::TestWithParam<SQLCase> {
+class SchemasContextResolveTest : public ::testing::TestWithParam<SqlCase> {
  public:
     SchemasContextResolveTest() {}
 };
@@ -161,7 +161,7 @@ void CheckColumnResolveCase(const YAML::Node& resolve_case,
     CheckColumnResolveCase(relation_name, column_name, node, expect);
 }
 
-void CheckColumnResolveCases(const SQLCase& sql_case, PhysicalOpNode* node) {
+void CheckColumnResolveCases(const SqlCase& sql_case, PhysicalOpNode* node) {
     LOG(INFO) << "Physical plan:\n" << node->SchemaToString();
 
     auto& raw_node = sql_case.raw_node();
@@ -178,14 +178,14 @@ void CheckColumnResolveCases(const SQLCase& sql_case, PhysicalOpNode* node) {
     }
 }
 
-PhysicalOpNode* GetTestSQLPlan(SQLCase& sql_case,  // NOLINT
+PhysicalOpNode* GetTestSqlPlan(SqlCase& sql_case,  // NOLINT
                                RunSession* session) {
     std::map<size_t, std::string> idx_to_table_dict;
     auto catalog = std::make_shared<SimpleCatalog>();
     EngineOptions options;
     options.set_plan_only(true);
     auto engine = std::make_shared<vm::Engine>(catalog, options);
-    InitSimpleCataLogFromSQLCase(sql_case, catalog);
+    InitSimpleCataLogFromSqlCase(sql_case, catalog);
 
     // Compile sql plan
     base::Status status;
@@ -194,7 +194,7 @@ PhysicalOpNode* GetTestSQLPlan(SQLCase& sql_case,  // NOLINT
         LOG(WARNING) << status;
         return nullptr;
     }
-    return std::dynamic_pointer_cast<SQLCompileInfo>(session->GetCompileInfo())
+    return std::dynamic_pointer_cast<SqlCompileInfo>(session->GetCompileInfo())
         ->get_sql_context()
         .physical_plan;
 }
@@ -205,22 +205,22 @@ INSTANTIATE_TEST_CASE_P(
         InitCases("/cases/schemas_context/resolve_column_name.yaml")));
 
 TEST_P(SchemasContextResolveTest, test_request_column_resolve) {
-    SQLCase sql_case = GetParam();
+    SqlCase sql_case = GetParam();
     LOG(INFO) << "Test resolve request mode sql root of: "
               << sql_case.sql_str();
 
     RequestRunSession session;
-    auto plan = GetTestSQLPlan(sql_case, &session);
+    auto plan = GetTestSqlPlan(sql_case, &session);
     CheckColumnResolveCases(sql_case, plan);
 }
 
 TEST_P(SchemasContextResolveTest, test_batch_column_resolve) {
-    SQLCase sql_case = GetParam();
+    SqlCase sql_case = GetParam();
     LOG(INFO) << "Test resolve request mode sql root of: "
               << sql_case.sql_str();
 
     BatchRunSession session;
-    auto plan = GetTestSQLPlan(sql_case, &session);
+    auto plan = GetTestSqlPlan(sql_case, &session);
     CheckColumnResolveCases(sql_case, plan);
 }
 

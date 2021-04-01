@@ -48,7 +48,7 @@ std::shared_ptr<SimpleCatalog> GetTestCatalog() {
     return catalog;
 }
 
-std::shared_ptr<SQLCompileInfo> Compile(
+std::shared_ptr<SqlCompileInfo> Compile(
     const std::string &sql, const EngineOptions &options,
     std::shared_ptr<SimpleCatalog> catalog) {
     base::Status status;
@@ -58,7 +58,7 @@ std::shared_ptr<SQLCompileInfo> Compile(
         LOG(WARNING) << "Fail to compile sql";
         return nullptr;
     }
-    return std::dynamic_pointer_cast<SQLCompileInfo>(session.GetCompileInfo());
+    return std::dynamic_pointer_cast<SqlCompileInfo>(session.GetCompileInfo());
 }
 
 void simple_test(const EngineOptions &options) {

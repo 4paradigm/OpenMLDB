@@ -57,14 +57,14 @@ namespace vm {
 
 using hybridse::passes::ConditionOptimized;
 using hybridse::passes::ExprPair;
-using hybridse::sqlcase::SQLCase;
+using hybridse::sqlcase::SqlCase;
 
-std::vector<SQLCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
+std::vector<SqlCase> InitCases(std::string yaml_path);
+void InitCases(std::string yaml_path, std::vector<SqlCase>& cases);  // NOLINT
 
-void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(
-            hybridse::sqlcase::FindSQLCaseBaseDirPath(), yaml_path, cases,
+void InitCases(std::string yaml_path, std::vector<SqlCase>& cases) {  // NOLINT
+    if (!SqlCase::CreateSqlCasesFromYaml(
+            hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases,
             std::vector<std::string>({"physical-plan-unsupport",
                                       "logical-plan-unsupport",
                                       "parser-unsupport"}))) {
@@ -72,12 +72,12 @@ void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
     }
 }
 
-std::vector<SQLCase> InitCases(std::string yaml_path) {
-    std::vector<SQLCase> cases;
+std::vector<SqlCase> InitCases(std::string yaml_path) {
+    std::vector<SqlCase> cases;
     InitCases(yaml_path, cases);
     return cases;
 }
-class TransformTest : public ::testing::TestWithParam<SQLCase> {
+class TransformTest : public ::testing::TestWithParam<SqlCase> {
  public:
     TransformTest() {}
     ~TransformTest() {}
@@ -404,7 +404,7 @@ TEST_F(TransformTest, TransfromConditionsTest) {
         std::vector<std::string>& exp_list = sql_exp[i].second;
         node::ExprNode* condition;
         boost::to_lower(sql);
-        ExtractExprFromSimpleSQL(&manager, sql, &condition);
+        ExtractExprFromSimpleSql(&manager, sql, &condition);
         LOG(INFO) << "TEST condition [" << i
                   << "]: " << node::ExprString(condition);
         node::ExprListNode and_condition_list;
@@ -459,7 +459,7 @@ TEST_F(TransformTest, TransformEqualExprPairTest) {
         std::pair<std::string, std::string>& exp_list = sql_exp[i].second;
         node::ExprNode* condition;
         boost::to_lower(sql);
-        ExtractExprFromSimpleSQL(&manager, sql, &condition);
+        ExtractExprFromSimpleSql(&manager, sql, &condition);
         LOG(INFO) << "TEST condition [" << i
                   << "]: " << node::ExprString(condition);
         node::ExprListNode mock_condition_list;
@@ -621,7 +621,7 @@ TEST_P(KeyGenTest, GenTest) {
     BatchModeTransformer transformer(&nm, "db", catalog, m.get(), lib);
 
     auto groups = nm.MakeExprList();
-    ExtractExprListFromSimpleSQL(&nm, GetParam(), groups);
+    ExtractExprListFromSimpleSql(&nm, GetParam(), groups);
 
     PhysicalTableProviderNode* table_provider;
     transformer.GetPlanContext()->CreateOp<PhysicalTableProviderNode>(
@@ -663,7 +663,7 @@ TEST_P(FilterGenTest, GenFilter) {
     AddTable(db, table_def2);
     auto catalog = BuildSimpleCatalog(db);
     node::ExprNode* condition;
-    ExtractExprFromSimpleSQL(&nm, GetParam(), &condition);
+    ExtractExprFromSimpleSql(&nm, GetParam(), &condition);
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);

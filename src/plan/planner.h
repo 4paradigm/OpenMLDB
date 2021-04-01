@@ -34,7 +34,7 @@ using base::Status;
 using node::NodePointVector;
 using node::PlanNode;
 using node::PlanNodeList;
-using node::SQLNode;
+using node::SqlNode;
 
 class Planner {
  public:
@@ -73,7 +73,7 @@ class Planner {
         base::Status &status);  // NOLINT (runtime/references)
     bool CheckWindowFrame(const node::WindowDefNode *w_ptr,
                           base::Status &status);  // NOLINT (runtime/references)
-    void CreatePlanRecurse(const node::SQLNode *root, PlanNode *plan_tree,
+    void CreatePlanRecurse(const node::SqlNode *root, PlanNode *plan_tree,
                            Status &status);  // NOLINT (runtime/references)
     bool CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
                          Status &status);  // NOLINT (runtime/references)
@@ -83,24 +83,24 @@ class Planner {
     bool CreateUnionQueryPlan(const node::UnionQueryNode *root,
                               PlanNode **plan_tree,
                               Status &status);  // NOLINT (runtime/references)
-    bool CreateCreateTablePlan(const node::SQLNode *root,
+    bool CreateCreateTablePlan(const node::SqlNode *root,
                                node::PlanNode **output,
                                Status &status);  // NOLINT (runtime/references)
     bool CreateTableReferencePlanNode(
         const node::TableRefNode *root, node::PlanNode **output,
         Status &status);  // NOLINT (runtime/references)
-    bool CreateCmdPlan(const SQLNode *root, node::PlanNode **output,
+    bool CreateCmdPlan(const SqlNode *root, node::PlanNode **output,
                        Status &status);  // NOLINT (runtime/references)
-    bool CreateInsertPlan(const SQLNode *root, node::PlanNode **output,
+    bool CreateInsertPlan(const SqlNode *root, node::PlanNode **output,
                           Status &status);  // NOLINT (runtime/references)
 
-    bool CreateFuncDefPlan(const SQLNode *root, node::PlanNode **output,
+    bool CreateFuncDefPlan(const SqlNode *root, node::PlanNode **output,
                            Status &status);  // NOLINT (runtime/references)
     bool CreateWindowPlanNode(const node::WindowDefNode *w_ptr,
                               node::WindowPlanNode *plan_node,
                               Status &status);  // NOLINT (runtime/references)
     bool CreateCreateProcedurePlan(
-        const node::SQLNode *root, const PlanNodeList &inner_plan_node_list,
+        const node::SqlNode *root, const PlanNodeList &inner_plan_node_list,
         node::PlanNode **output,
         Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
