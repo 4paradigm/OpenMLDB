@@ -78,7 +78,7 @@ int RunSingle(const std::string& yaml_path) {
     options.set_enable_batch_window_parallelization(
         FLAGS_enable_batch_window_parallelization);
 
-    JITOptions& jit_options = options.jit_options();
+    JitOptions& jit_options = options.jit_options();
     jit_options.set_enable_mcjit(FLAGS_enable_mcjit);
     jit_options.set_enable_vtune(FLAGS_enable_vtune);
     jit_options.set_enable_gdb(FLAGS_enable_gdb);

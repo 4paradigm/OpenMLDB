@@ -44,7 +44,7 @@ public class JitManager {
 
     synchronized static public HybridSeJitWrapper getJIT(String tag) {
         if (! jits.containsKey(tag)) {
-            HybridSeJitWrapper jit = HybridSeJitWrapper.Create(getJITOptions());
+            HybridSeJitWrapper jit = HybridSeJitWrapper.Create(getJiTOptions());
             if (jit == null) {
                 throw new RuntimeException("Fail to create native jit");
             }
@@ -55,7 +55,7 @@ public class JitManager {
         return jits.get(tag);
     }
 
-    static private JitOptions getJITOptions() {
+    static private JitOptions getJitOptions() {
         JitOptions options = new JitOptions();
         try (InputStream input = JitManager.class.getClassLoader().getResourceAsStream(
                 "jit.properties")) {
