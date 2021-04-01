@@ -44,7 +44,7 @@ public class JitManager {
 
     synchronized static public HybridSeJitWrapper getJIT(String tag) {
         if (! jits.containsKey(tag)) {
-            HybridSeJitWrapper jit = HybridSeJitWrapper.Create(getJiTOptions());
+            HybridSeJitWrapper jit = HybridSeJitWrapper.Create(getJitOptions());
             if (jit == null) {
                 throw new RuntimeException("Fail to create native jit");
             }
