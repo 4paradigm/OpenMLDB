@@ -99,7 +99,7 @@ Status LambdafyProjects::VisitExpr(node::ExprNode* expr,
                     *has_agg = false;
                     return Status::OK();
                 }
-            } else if (library->IsUDAF(fn->function_name(), child_num)) {
+            } else if (library->IsUdaf(fn->function_name(), child_num)) {
                 return VisitAggExpr(call, row_arg, window_arg, out, has_agg);
             }
         }
@@ -303,7 +303,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
     CHECK_STATUS(ctx_->library()->ResolveFunction(
                      fn->function_name(), agg_original_args, nm, &fn_def),
                  "Resolve original udaf for ", fn->function_name(), " failed");
-    auto origin_udaf = dynamic_cast<node::UDAFDefNode*>(fn_def);
+    auto origin_udaf = dynamic_cast<node::UdafDefNode*>(fn_def);
     CHECK_TRUE(origin_udaf != nullptr, kCodegenError, fn->function_name(),
                " is not an udaf");
 
@@ -375,7 +375,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
     new_udaf_name.append(">");
 
     auto new_udaf =
-        nm->MakeUDAFDefNode(new_udaf_name, proxy_udaf_arg_types, ori_init,
+        nm->MakeUdafDefNode(new_udaf_name, proxy_udaf_arg_types, ori_init,
                             update_func, ori_merge_fn, ori_output_fn);
     *out = nm->MakeFuncNode(new_udaf, proxy_udaf_args, nullptr);
     return Status::OK();

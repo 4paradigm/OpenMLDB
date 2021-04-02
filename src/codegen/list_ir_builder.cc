@@ -36,10 +36,10 @@ Status ListIRBuilder::BuildIterator(::llvm::Value* list,
 
     ::llvm::Type* iter_ref_type = NULL;
     CHECK_TRUE(
-        GetLLVMIteratorType(block_->getModule(), elem_type, &iter_ref_type),
+        GetLlvmIteratorType(block_->getModule(), elem_type, &iter_ref_type),
         kCodegenError, "fail to get iterator ref type");
     ::llvm::Type* list_ref_type = nullptr;
-    CHECK_TRUE(GetLLVMListType(block_->getModule(), elem_type, &list_ref_type),
+    CHECK_TRUE(GetLlvmListType(block_->getModule(), elem_type, &list_ref_type),
                kCodegenError, "fail to get list ref type");
 
     ::std::string fn_name = "iterator.list_" + elem_type->GetName() +
@@ -73,7 +73,7 @@ Status ListIRBuilder::BuildIteratorHasNext(::llvm::Value* iterator,
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Type* iter_ref_type = NULL;
     CHECK_TRUE(
-        GetLLVMIteratorType(block_->getModule(), elem_type, &iter_ref_type),
+        GetLlvmIteratorType(block_->getModule(), elem_type, &iter_ref_type),
         kCodegenError, "fail to get iterator ref type");
 
     ::std::string fn_name = "has_next.iterator_" + elem_type->GetName();
@@ -97,7 +97,7 @@ Status ListIRBuilder::BuildStructTypeIteratorNext(
 
     ::llvm::Type* struct_type = nullptr;
     CHECK_TRUE(
-        GetLLVMType(block_, elem_type, &struct_type), kCodegenError,
+        GetLlvmType(block_, elem_type, &struct_type), kCodegenError,
         "fail to codegen iterator.next(): invalid value type of iterator");
 
     CHECK_TRUE(TypeIRBuilder::IsStructPtr(struct_type), kCodegenError,
@@ -110,7 +110,7 @@ Status ListIRBuilder::BuildStructTypeIteratorNext(
 
     ::llvm::Type* iter_ref_type = NULL;
     CHECK_TRUE(
-        GetLLVMIteratorType(block_->getModule(), elem_type, &iter_ref_type),
+        GetLlvmIteratorType(block_->getModule(), elem_type, &iter_ref_type),
         kCodegenError, "fail to get iterator ref type");
     ::llvm::Type* bool_ty = ::llvm::Type::getInt1Ty(builder.getContext());
     auto iter_next_fn_ty = ::llvm::FunctionType::get(
@@ -136,12 +136,12 @@ Status ListIRBuilder::BuildIteratorNext(::llvm::Value* iterator,
 
     ::llvm::Type* v1_type = nullptr;
     CHECK_TRUE(
-        GetLLVMType(block_, elem_type, &v1_type), kCodegenError,
+        GetLlvmType(block_, elem_type, &v1_type), kCodegenError,
         "fail to codegen iterator.next(): invalid value type of iterator");
 
     ::llvm::Type* iter_ref_type = NULL;
     CHECK_TRUE(
-        GetLLVMIteratorType(block_->getModule(), elem_type, &iter_ref_type),
+        GetLlvmIteratorType(block_->getModule(), elem_type, &iter_ref_type),
         kCodegenError, "fail to get iterator ref type");
 
     if (elem_nullable) {
@@ -200,12 +200,12 @@ Status ListIRBuilder::BuildIteratorDelete(::llvm::Value* iterator,
 
     ::llvm::Type* v1_type = nullptr;
     CHECK_TRUE(
-        GetLLVMType(block_, elem_type, &v1_type), kCodegenError,
+        GetLlvmType(block_, elem_type, &v1_type), kCodegenError,
         "fail to codegen iterator.delete(): invalid value type of iterator");
 
     ::llvm::Type* iter_ref_type = NULL;
     CHECK_TRUE(
-        GetLLVMIteratorType(block_->getModule(), elem_type, &iter_ref_type),
+        GetLlvmIteratorType(block_->getModule(), elem_type, &iter_ref_type),
         kCodegenError, "fail to get iterator ref type");
 
     ::llvm::IRBuilder<> builder(block_);

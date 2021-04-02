@@ -33,7 +33,7 @@ using ::hybridse::common::kCodegenError;
 namespace hybridse {
 namespace udf {
 
-std::string UDFLibrary::GetCanonicalName(const std::string& name) const {
+std::string UdfLibrary::GetCanonicalName(const std::string& name) const {
     std::string canonical_name = name;
     if (!case_sensitive_) {
         boost::to_lower(canonical_name);
@@ -41,7 +41,7 @@ std::string UDFLibrary::GetCanonicalName(const std::string& name) const {
     return canonical_name;
 }
 
-std::shared_ptr<UDFRegistry> UDFLibrary::Find(
+std::shared_ptr<UdfRegistry> UdfLibrary::Find(
     const std::string& name,
     const std::vector<const node::TypeNode*>& arg_types) const {
     std::string canonical_name = GetCanonicalName(name);
@@ -50,7 +50,7 @@ std::shared_ptr<UDFRegistry> UDFLibrary::Find(
         return nullptr;
     }
     auto& signature_table = iter->second->signature_table;
-    std::shared_ptr<UDFRegistry> registry = nullptr;
+    std::shared_ptr<UdfRegistry> registry = nullptr;
     std::string signature;
     int variadic_pos = -1;
     auto status =
@@ -58,22 +58,22 @@ std::shared_ptr<UDFRegistry> UDFLibrary::Find(
     return registry;
 }
 
-bool UDFLibrary::HasFunction(const std::string& name) const {
+bool UdfLibrary::HasFunction(const std::string& name) const {
     std::string canonical_name = GetCanonicalName(name);
     return table_.find(canonical_name) != table_.end();
 }
 
-void UDFLibrary::InsertRegistry(
+void UdfLibrary::InsertRegistry(
     const std::string& name,
     const std::vector<const node::TypeNode*>& arg_types, bool is_variadic,
     bool always_return_list,
     const std::unordered_set<size_t>& always_list_argidx,
-    std::shared_ptr<UDFRegistry> registry) {
+    std::shared_ptr<UdfRegistry> registry) {
     std::string canonical_name = GetCanonicalName(name);
-    std::shared_ptr<UDFLibraryEntry> entry = nullptr;
+    std::shared_ptr<UdfLibraryEntry> entry = nullptr;
     auto iter = table_.find(canonical_name);
     if (iter == table_.end()) {
-        entry = std::make_shared<UDFLibraryEntry>();
+        entry = std::make_shared<UdfLibraryEntry>();
         table_.insert(iter, {canonical_name, entry});
     } else {
         entry = iter->second;
@@ -118,7 +118,7 @@ void UDFLibrary::InsertRegistry(
     }
 }
 
-bool UDFLibrary::IsUDAF(const std::string& name, size_t args) const {
+bool UdfLibrary::IsUdaf(const std::string& name, size_t args) const {
     std::string canonical_name = GetCanonicalName(name);
     auto iter = table_.find(canonical_name);
     if (iter == table_.end()) {
@@ -128,7 +128,7 @@ bool UDFLibrary::IsUDAF(const std::string& name, size_t args) const {
     return arg_num_set.find(args) != arg_num_set.end();
 }
 
-void UDFLibrary::SetIsUDAF(const std::string& name, size_t args) {
+void UdfLibrary::SetIsUdaf(const std::string& name, size_t args) {
     std::string canonical_name = GetCanonicalName(name);
     auto iter = table_.find(canonical_name);
     if (iter == table_.end()) {
@@ -139,7 +139,7 @@ void UDFLibrary::SetIsUDAF(const std::string& name, size_t args) {
     iter->second->udaf_arg_nums.insert(args);
 }
 
-bool UDFLibrary::RequireListAt(const std::string& name, size_t index) const {
+bool UdfLibrary::RequireListAt(const std::string& name, size_t index) const {
     std::string canonical_name = GetCanonicalName(name);
     auto entry_iter = table_.find(canonical_name);
     if (entry_iter == table_.end()) {
@@ -150,7 +150,7 @@ bool UDFLibrary::RequireListAt(const std::string& name, size_t index) const {
     return iter != is_list_dict.end() && iter->second;
 }
 
-bool UDFLibrary::IsListReturn(const std::string& name) const {
+bool UdfLibrary::IsListReturn(const std::string& name) const {
     std::string canonical_name = GetCanonicalName(name);
     auto iter = table_.find(canonical_name);
     if (iter == table_.end()) {
@@ -159,24 +159,24 @@ bool UDFLibrary::IsListReturn(const std::string& name) const {
     return iter->second->always_return_list;
 }
 
-ExprUDFRegistryHelper UDFLibrary::RegisterExprUDF(const std::string& name) {
-    return ExprUDFRegistryHelper(GetCanonicalName(name), this);
+ExprUdfRegistryHelper UdfLibrary::RegisterExprUdf(const std::string& name) {
+    return ExprUdfRegistryHelper(GetCanonicalName(name), this);
 }
 
-LLVMUDFRegistryHelper UDFLibrary::RegisterCodeGenUDF(const std::string& name) {
-    return LLVMUDFRegistryHelper(GetCanonicalName(name), this);
+LlvmUdfRegistryHelper UdfLibrary::RegisterCodeGenUdf(const std::string& name) {
+    return LlvmUdfRegistryHelper(GetCanonicalName(name), this);
 }
 
-ExternalFuncRegistryHelper UDFLibrary::RegisterExternal(
+ExternalFuncRegistryHelper UdfLibrary::RegisterExternal(
     const std::string& name) {
     return ExternalFuncRegistryHelper(GetCanonicalName(name), this);
 }
 
-UDAFRegistryHelper UDFLibrary::RegisterUDAF(const std::string& name) {
-    return UDAFRegistryHelper(GetCanonicalName(name), this);
+UdafRegistryHelper UdfLibrary::RegisterUdaf(const std::string& name) {
+    return UdafRegistryHelper(GetCanonicalName(name), this);
 }
 
-Status UDFLibrary::RegisterAlias(const std::string& alias,
+Status UdfLibrary::RegisterAlias(const std::string& alias,
                                  const std::string& name) {
     std::string canonical_name = GetCanonicalName(name);
     std::string canonical_alias = GetCanonicalName(alias);
@@ -190,14 +190,14 @@ Status UDFLibrary::RegisterAlias(const std::string& alias,
     return Status::OK();
 }
 
-Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
+Status UdfLibrary::RegisterFromFile(const std::string& path_str) {
     boost::filesystem::path path(path_str);
     std::string script;
     boost::filesystem::load_string_file(path, script);
     DLOG(INFO) << "Script file : " << script << "\n" << script;
 
     ::hybridse::node::NodePointVector parser_trees;
-    ::hybridse::parser::HybridSEParser parser;
+    ::hybridse::parser::HybridSeParser parser;
     ::hybridse::plan::SimplePlanner planer(node_manager());
     ::hybridse::node::PlanNodeList plan_trees;
 
@@ -207,7 +207,7 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
     CHECK_TRUE(0 == planer.CreatePlanTree(parser_trees, plan_trees, status),
                kCodegenError, "Fail to create sql plan: ", status.str());
 
-    std::unordered_map<std::string, std::shared_ptr<SimpleUDFRegistry>> dict;
+    std::unordered_map<std::string, std::shared_ptr<SimpleUdfRegistry>> dict;
     auto it = plan_trees.begin();
     for (; it != plan_trees.end(); ++it) {
         const ::hybridse::node::PlanNode* node = *it;
@@ -221,9 +221,9 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
                            "fn_def node is null");
 
                 auto header = func_def_plan->fn_def_->header_;
-                auto def_node = dynamic_cast<node::UDFDefNode*>(
-                    node_manager()->MakeUDFDefNode(func_def_plan->fn_def_));
-                auto registry = std::make_shared<SimpleUDFRegistry>(
+                auto def_node = dynamic_cast<node::UdfDefNode*>(
+                    node_manager()->MakeUdfDefNode(func_def_plan->fn_def_));
+                auto registry = std::make_shared<SimpleUdfRegistry>(
                     header->name_, def_node);
 
                 std::vector<const node::TypeNode*> arg_types;
@@ -245,15 +245,15 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
     return Status::OK();
 }
 
-Status UDFLibrary::Transform(const std::string& name,
+Status UdfLibrary::Transform(const std::string& name,
                              const std::vector<node::ExprNode*>& args,
                              node::NodeManager* node_manager,
                              ExprNode** result) const {
-    UDFResolveContext ctx(args, node_manager, this);
+    UdfResolveContext ctx(args, node_manager, this);
     return this->Transform(name, &ctx, result);
 }
 
-Status UDFLibrary::Transform(const std::string& name, UDFResolveContext* ctx,
+Status UdfLibrary::Transform(const std::string& name, UdfResolveContext* ctx,
                              ExprNode** result) const {
     std::string canonical_name = GetCanonicalName(name);
     auto iter = table_.find(canonical_name);
@@ -261,7 +261,7 @@ Status UDFLibrary::Transform(const std::string& name, UDFResolveContext* ctx,
                "Fail to find registered function: ", canonical_name);
     auto& signature_table = iter->second->signature_table;
 
-    std::shared_ptr<UDFRegistry> registry = nullptr;
+    std::shared_ptr<UdfRegistry> registry = nullptr;
     std::string signature;
     int variadic_pos = -1;
     CHECK_STATUS(
@@ -276,8 +276,8 @@ Status UDFLibrary::Transform(const std::string& name, UDFResolveContext* ctx,
     return registry->Transform(ctx, result);
 }
 
-Status UDFLibrary::ResolveFunction(const std::string& name,
-                                   UDFResolveContext* ctx,
+Status UdfLibrary::ResolveFunction(const std::string& name,
+                                   UdfResolveContext* ctx,
                                    node::FnDefNode** result) const {
     std::string canonical_name = GetCanonicalName(name);
     auto iter = table_.find(canonical_name);
@@ -285,7 +285,7 @@ Status UDFLibrary::ResolveFunction(const std::string& name,
                "Fail to find registered function: ", canonical_name);
     auto& signature_table = iter->second->signature_table;
 
-    std::shared_ptr<UDFRegistry> registry = nullptr;
+    std::shared_ptr<UdfRegistry> registry = nullptr;
     std::string signature;
     int variadic_pos = -1;
     CHECK_STATUS(
@@ -300,19 +300,19 @@ Status UDFLibrary::ResolveFunction(const std::string& name,
     return registry->ResolveFunction(ctx, result);
 }
 
-Status UDFLibrary::ResolveFunction(const std::string& name,
+Status UdfLibrary::ResolveFunction(const std::string& name,
                                    const std::vector<node::ExprNode*>& args,
                                    node::NodeManager* node_manager,
                                    node::FnDefNode** result) const {
-    UDFResolveContext ctx(args, node_manager, this);
+    UdfResolveContext ctx(args, node_manager, this);
     return this->ResolveFunction(name, &ctx, result);
 }
 
-void UDFLibrary::AddExternalFunction(const std::string& name, void* addr) {
+void UdfLibrary::AddExternalFunction(const std::string& name, void* addr) {
     external_symbols_.insert(std::make_pair(name, addr));
 }
 
-void UDFLibrary::InitJITSymbols(vm::HybridSEJITWrapper* jit_ptr) {
+void UdfLibrary::InitJITSymbols(vm::HybridSeJitWrapper* jit_ptr) {
     for (auto& pair : external_symbols_) {
         jit_ptr->AddExternalFunction(pair.first, pair.second);
     }

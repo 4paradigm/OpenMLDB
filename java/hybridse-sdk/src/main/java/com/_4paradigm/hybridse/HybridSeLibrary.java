@@ -14,13 +14,22 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridse.sqlcase.model;
+package com._4paradigm.hybridse;
 
-import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Data
+public class HybridSeLibrary {
+    private static final Logger logger = LoggerFactory.getLogger(HybridSeLibrary.class.getName());
+    static private final String HybridSE_JSDK_CORE_NAME = "hybridse_jsdk_core";
+    static private boolean initialized = false;
 
-public class InputDesc extends Table {
-    String resource;
+    static synchronized public void initCore() {
+        if (initialized) {
+            return;
+        }
+        LibraryLoader.loadLibrary(HybridSE_JSDK_CORE_NAME);
+        initialized = true;
+    }
 
 }

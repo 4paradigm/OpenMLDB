@@ -32,10 +32,10 @@ bool IsCandidate(const WindowIterAnalysis& window_iter_analyzer,
         return false;
     }
     auto call = dynamic_cast<node::CallExprNode*>(expr);
-    if (call->GetFnDef()->GetType() != node::kUDAFDef) {
+    if (call->GetFnDef()->GetType() != node::kUdafDef) {
         return false;
     }
-    auto udaf = dynamic_cast<node::UDAFDefNode*>(call->GetFnDef());
+    auto udaf = dynamic_cast<node::UdafDefNode*>(call->GetFnDef());
     if (udaf->merge_func() != nullptr) {
         return false;
     }
@@ -72,7 +72,7 @@ bool IsCandidate(const WindowIterAnalysis& window_iter_analyzer,
 /**
  * Find all rank-1 udaf call to be merged.
  */
-Status CollectUDAFCalls(const WindowIterAnalysis& window_iter_analyzer,
+Status CollectUdafCalls(const WindowIterAnalysis& window_iter_analyzer,
                         const ExprIdNode* window, ExprNode* expr,
                         std::set<size_t>* visisted,
                         std::vector<ExprNode*>* candidates) {
@@ -85,7 +85,7 @@ Status CollectUDAFCalls(const WindowIterAnalysis& window_iter_analyzer,
         return Status::OK();
     }
     for (size_t i = 0; i < expr->GetChildNum(); ++i) {
-        CHECK_STATUS(CollectUDAFCalls(window_iter_analyzer, window,
+        CHECK_STATUS(CollectUdafCalls(window_iter_analyzer, window,
                                       expr->GetChild(i), visisted, candidates));
     }
     return Status::OK();
@@ -107,11 +107,11 @@ Status ApplyArgs(node::FnDefNode* func, const std::vector<ExprNode*>& args,
     return Status::OK();
 }
 
-Status MergeUDAFCalls(const std::vector<ExprNode*>& calls, ExprIdNode* window,
+Status MergeUdafCalls(const std::vector<ExprNode*>& calls, ExprIdNode* window,
                       node::NodeManager* nm, ExprNode** output) {
-    std::vector<node::UDAFDefNode*> udafs;
+    std::vector<node::UdafDefNode*> udafs;
     for (auto expr : calls) {
-        udafs.push_back(dynamic_cast<node::UDAFDefNode*>(
+        udafs.push_back(dynamic_cast<node::UdafDefNode*>(
             dynamic_cast<node::CallExprNode*>(expr)->GetFnDef()));
     }
 
@@ -283,7 +283,7 @@ Status MergeUDAFCalls(const std::vector<ExprNode*>& calls, ExprIdNode* window,
         call_arg_types.push_back(expr->GetOutputType());
     }
     auto new_udaf =
-        nm->MakeUDAFDefNode("merged_window_agg", call_arg_types, new_init_expr,
+        nm->MakeUdafDefNode("merged_window_agg", call_arg_types, new_init_expr,
                             new_update_func, nullptr, new_output_func);
     *output = nm->MakeFuncNode(new_udaf, call_args, nullptr);
     return Status::OK();
@@ -302,7 +302,7 @@ Status MergeAggregations::Apply(ExprAnalysisContext* ctx, ExprNode* expr,
     // find merge candidates
     std::set<size_t> visisted;
     std::vector<ExprNode*> candidates;
-    CHECK_STATUS(CollectUDAFCalls(window_iter_analyzer, this->GetWindow(), expr,
+    CHECK_STATUS(CollectUdafCalls(window_iter_analyzer, this->GetWindow(), expr,
                                   &visisted, &candidates));
     if (candidates.size() < 2) {
         *out = expr;
@@ -311,7 +311,7 @@ Status MergeAggregations::Apply(ExprAnalysisContext* ctx, ExprNode* expr,
 
     // build merged udaf call
     ExprNode* merged_call = nullptr;
-    CHECK_STATUS(MergeUDAFCalls(candidates, this->GetWindow(),
+    CHECK_STATUS(MergeUdafCalls(candidates, this->GetWindow(),
                                 ctx->node_manager(), &merged_call));
 
     // replace sub udaf calls

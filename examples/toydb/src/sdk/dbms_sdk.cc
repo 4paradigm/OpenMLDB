@@ -218,7 +218,7 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
                                                      sdk::Status *status) {
     std::shared_ptr<ResultSetImpl> empty;
     node::NodeManager node_manager;
-    parser::HybridSEParser parser;
+    parser::HybridSeParser parser;
     plan::SimplePlanner planner(&node_manager);
     DLOG(INFO) << "start to execute script from dbms:\n" << sql;
 

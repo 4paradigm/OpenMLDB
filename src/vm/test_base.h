@@ -33,8 +33,8 @@ namespace hybridse {
 namespace vm {
 using hybridse::base::Status;
 using hybridse::codec::Row;
-using hybridse::common::kSQLError;
-using hybridse::sqlcase::SQLCase;
+using hybridse::common::kSqlError;
+using hybridse::sqlcase::SqlCase;
 void BuildTableDef(::hybridse::type::TableDef& table);    // NOLINT
 void BuildTableA(::hybridse::type::TableDef& table);      // NOLINT
 void BuildTableT2Def(::hybridse::type::TableDef& table);  // NOLINT
@@ -44,10 +44,10 @@ void BuildRows(::hybridse::type::TableDef& table,    // NOLINT
                std::vector<Row>& rows);              // NOLINT
 void BuildT2Rows(::hybridse::type::TableDef& table,  // NOLINT
                  std::vector<Row>& rows);            // NOLINT
-void ExtractExprListFromSimpleSQL(::hybridse::node::NodeManager* nm,
+void ExtractExprListFromSimpleSql(::hybridse::node::NodeManager* nm,
                                   const std::string& sql,
                                   node::ExprListNode* output);
-void ExtractExprFromSimpleSQL(::hybridse::node::NodeManager* nm,
+void ExtractExprFromSimpleSql(::hybridse::node::NodeManager* nm,
                               const std::string& sql, node::ExprNode** output);
 bool AddTable(hybridse::type::Database& db,  // NOLINT
               const hybridse::type::TableDef& table_def);
@@ -55,7 +55,7 @@ std::shared_ptr<SimpleCatalog> BuildSimpleCatalog(
     const hybridse::type::Database& database);
 
 std::shared_ptr<SimpleCatalog> BuildSimpleCatalog();
-bool InitSimpleCataLogFromSQLCase(SQLCase& sql_case,  // NOLINT
+bool InitSimpleCataLogFromSqlCase(SqlCase& sql_case,  // NOLINT
                                   std::shared_ptr<SimpleCatalog> catalog);
 
 void PrintSchema(std::ostringstream& ss, const Schema& schema);

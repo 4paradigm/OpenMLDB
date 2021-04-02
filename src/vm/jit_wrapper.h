@@ -30,16 +30,15 @@
 namespace hybridse {
 namespace vm {
 
-class JITOptions;
+class JitOptions;
 
-class HybridSEJITWrapper {
+class HybridSeJitWrapper {
  public:
-    HybridSEJITWrapper() {}
-    virtual ~HybridSEJITWrapper() {}
-    HybridSEJITWrapper(const HybridSEJITWrapper&) = delete;
+    HybridSeJitWrapper() {}
+    virtual ~HybridSeJitWrapper() {}
+    HybridSeJitWrapper(const HybridSeJitWrapper&) = delete;
 
     virtual bool Init() = 0;
-
     virtual bool OptModule(::llvm::Module* module) = 0;
 
     virtual bool AddModule(std::unique_ptr<llvm::Module> module,
@@ -52,14 +51,14 @@ class HybridSEJITWrapper {
     virtual hybridse::vm::RawPtrHandle FindFunction(
         const std::string& funcname) = 0;
 
-    static HybridSEJITWrapper* Create(const JITOptions& jit_options);
-    static HybridSEJITWrapper* Create();
-    static void DeleteJIT(HybridSEJITWrapper* jit);
+    static HybridSeJitWrapper* Create(const JitOptions& jit_options);
+    static HybridSeJitWrapper* Create();
+    static void DeleteJit(HybridSeJitWrapper* jit);
 
-    static bool InitJITSymbols(HybridSEJITWrapper* jit);
+    static bool InitJitSymbols(HybridSeJitWrapper* jit);
 };
 
-void InitBuiltinJITSymbols(HybridSEJITWrapper* jit_ptr);
+void InitBuiltinJitSymbols(HybridSeJitWrapper* jit_ptr);
 
 }  // namespace vm
 }  // namespace hybridse

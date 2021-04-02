@@ -95,7 +95,7 @@ bool TransformLogicalTreeToLogicalGraph(
 BatchModeTransformer::BatchModeTransformer(
     node::NodeManager* node_manager, const std::string& db,
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
-    const udf::UDFLibrary* library)
+    const udf::UdfLibrary* library)
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
@@ -110,7 +110,7 @@ BatchModeTransformer::BatchModeTransformer(
 BatchModeTransformer::BatchModeTransformer(
     node::NodeManager* node_manager, const std::string& db,
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
-    const udf::UDFLibrary* library, bool performance_sensitive,
+    const udf::UdfLibrary* library, bool performance_sensitive,
     bool cluster_optimized_mode, bool enable_expr_opt,
     bool enable_window_parallelization)
     : node_manager_(node_manager),
@@ -1738,7 +1738,7 @@ Status BatchModeTransformer::CheckHistoryWindowFrame(
 RequestModeTransformer::RequestModeTransformer(
     node::NodeManager* node_manager, const std::string& db,
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
-    udf::UDFLibrary* library, const std::set<size_t>& common_column_indices,
+    udf::UdfLibrary* library, const std::set<size_t>& common_column_indices,
     const bool performance_sensitive, const bool cluster_optimized,
     const bool enable_batch_request_opt, bool enable_expr_opt)
     : BatchModeTransformer(node_manager, db, catalog, module, library,

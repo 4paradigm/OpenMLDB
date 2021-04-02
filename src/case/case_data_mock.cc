@@ -21,8 +21,8 @@ using hybridse::codec::Row;
 bool CaseDataMock::LoadResource(const std::string& resource_path,
                                 type::TableDef& table_def,  // NOLINT
                                 std::vector<Row>& rows) {   // NOLINT
-    if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            hybridse::sqlcase::FindSQLCaseBaseDirPath(), resource_path,
+    if (!SqlCase::LoadSchemaAndRowsFromYaml(
+            hybridse::sqlcase::FindSqlCaseBaseDirPath(), resource_path,
             table_def, rows)) {
         return false;
     }

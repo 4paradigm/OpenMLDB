@@ -25,31 +25,31 @@ namespace plan {
 
 using hybridse::node::NodeManager;
 using hybridse::node::PlanNode;
-using hybridse::node::SQLNode;
-using hybridse::node::SQLNodeList;
-using hybridse::sqlcase::SQLCase;
+using hybridse::node::SqlNode;
+using hybridse::node::SqlNodeList;
+using hybridse::sqlcase::SqlCase;
 
-std::vector<SQLCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
+std::vector<SqlCase> InitCases(std::string yaml_path);
+void InitCases(std::string yaml_path, std::vector<SqlCase> &cases);  // NOLINT
 
-void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(
-            hybridse::sqlcase::FindSQLCaseBaseDirPath(), yaml_path, cases,
+void InitCases(std::string yaml_path, std::vector<SqlCase> &cases) {  // NOLINT
+    if (!SqlCase::CreateSqlCasesFromYaml(
+            hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases,
             std::vector<std::string>(
                 {"logical-plan-unsupport", "parser-unsupport"}))) {
         FAIL();
     }
 }
-std::vector<SQLCase> InitCases(std::string yaml_path) {
-    std::vector<SQLCase> cases;
+std::vector<SqlCase> InitCases(std::string yaml_path) {
+    std::vector<SqlCase> cases;
     InitCases(yaml_path, cases);
     return cases;
 }
-class PlannerTest : public ::testing::TestWithParam<SQLCase> {
+class PlannerTest : public ::testing::TestWithParam<SqlCase> {
  public:
     PlannerTest() {
         manager_ = new NodeManager();
-        parser_ = new parser::HybridSEParser();
+        parser_ = new parser::HybridSeParser();
     }
 
     ~PlannerTest() {
@@ -58,7 +58,7 @@ class PlannerTest : public ::testing::TestWithParam<SQLCase> {
     }
 
  protected:
-    parser::HybridSEParser *parser_;
+    parser::HybridSeParser *parser_;
     NodeManager *manager_;
 };
 
@@ -106,7 +106,7 @@ INSTANTIATE_TEST_CASE_P(
     SqlSubQueryParse, PlannerTest,
     testing::ValuesIn(InitCases("cases/plan/sub_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(UDFParse, PlannerTest,
+INSTANTIATE_TEST_CASE_P(UdfParse, PlannerTest,
                         testing::ValuesIn(InitCases("cases/plan/udf.yaml")));
 
 INSTANTIATE_TEST_CASE_P(SQLCreate, PlannerTest,
@@ -1655,7 +1655,7 @@ TEST_F(PlannerTest, CreatePlanLeakTest) {
     while (true) {
         base::Status status;
         NodeManager nm;
-        parser::HybridSEParser parser;
+        parser::HybridSeParser parser;
         node::NodePointVector parser_trees;
         int ret = parser.parse(sql, parser_trees, &nm, status);
         ASSERT_EQ(0, ret);
@@ -1710,11 +1710,11 @@ TEST_F(PlannerTest, CreateSpParseTest) {
     ASSERT_EQ(1, ret);
 }
 
-class PlannerErrorTest : public ::testing::TestWithParam<SQLCase> {
+class PlannerErrorTest : public ::testing::TestWithParam<SqlCase> {
  public:
     PlannerErrorTest() {
         manager_ = new NodeManager();
-        parser_ = new parser::HybridSEParser();
+        parser_ = new parser::HybridSeParser();
     }
 
     ~PlannerErrorTest() {
@@ -1723,7 +1723,7 @@ class PlannerErrorTest : public ::testing::TestWithParam<SQLCase> {
     }
 
  protected:
-    parser::HybridSEParser *parser_;
+    parser::HybridSeParser *parser_;
     NodeManager *manager_;
 };
 INSTANTIATE_TEST_CASE_P(

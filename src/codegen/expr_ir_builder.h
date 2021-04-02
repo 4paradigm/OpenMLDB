@@ -48,7 +48,7 @@ class ExprIRBuilder {
 
     Status Build(const ::hybridse::node::ExprNode* node, NativeValue* output);
 
-    Status BuildAsUDF(const node::ExprNode* expr, const std::string& name,
+    Status BuildAsUdf(const node::ExprNode* expr, const std::string& name,
                       const std::vector<NativeValue>& args,
                       NativeValue* output);
 

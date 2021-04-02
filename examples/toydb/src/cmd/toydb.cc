@@ -53,7 +53,7 @@ struct DBContxt {
 };
 static DBContxt cmd_client_db;
 
-void HandleSQLScript(
+void HandleSqlScript(
     const std::string &script,
     hybridse::sdk::Status &status);  // NOLINT (runtime/references)
 
@@ -126,7 +126,7 @@ void StartDBMS(char *argv[]) {
 
 void StartClient(char *argv[]) {
     SetupLogging(argv);
-    std::cout << "Welcome to HybridSE " << HYBRIDSE_VERSION_MAJOR << "."
+    std::cout << "Welcome to TOYDB " << HYBRIDSE_VERSION_MAJOR << "."
               << HYBRIDSE_VERSION_MINOR << "." << HYBRIDSE_VERSION_BUG
               << std::endl;
     cmd_client_db.name = "";
@@ -163,7 +163,7 @@ void StartClient(char *argv[]) {
         // TODO(CHENJING) remove
         if (cmd_str.back() == ';') {
             ::hybridse::sdk::Status status;
-            HandleSQLScript(cmd_str, status);
+            HandleSqlScript(cmd_str, status);
             if (0 != status.code) {
                 std::cout << "ERROR " << status.code << ":" << status.msg
                           << std::endl;
@@ -293,7 +293,7 @@ void PrintItems(std::ostream &stream, const std::string &head,
     }
 }
 
-void HandleSQLScript(
+void HandleSqlScript(
     const std::string &script,
     hybridse::sdk::Status &status) {  // NOLINT (runtime/references)
     if (!dbms_sdk) {
@@ -318,7 +318,7 @@ void HandleSQLScript(
             return;
         }
 
-        hybridse::node::SQLNode *node = parser_trees[0];
+        hybridse::node::SqlNode *node = parser_trees[0];
 
         if (nullptr == node) {
             status.msg = "fail to execute cmd: parser tree is null";
@@ -394,7 +394,7 @@ void HandleSQLScript(
             }
             default: {
                 status.msg = "Fail to execute script with unSuppurt type" +
-                             hybridse::node::NameOfSQLNodeType(node->GetType());
+                             hybridse::node::NameOfSqlNodeType(node->GetType());
                 status.code = hybridse::common::kUnSupport;
                 return;
             }

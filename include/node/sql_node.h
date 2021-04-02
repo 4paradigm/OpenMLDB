@@ -32,14 +32,14 @@
 
 // fwd
 namespace hybridse::udf {
-class LLVMUDFGenBase;
+class LlvmUdfGenBase;
 }
 
 namespace hybridse {
 namespace node {
 
 // Global methods
-std::string NameOfSQLNodeType(const SQLNodeType &type);
+std::string NameOfSqlNodeType(const SqlNodeType &type);
 
 inline const std::string CmdTypeName(const CmdType &type) {
     switch (type) {
@@ -331,7 +331,7 @@ inline const std::string DataTypeName(const DataType &type) {
     return "";
 }
 
-inline const std::string FnNodeName(const SQLNodeType &type) {
+inline const std::string FnNodeName(const SqlNodeType &type) {
     switch (type) {
         case kFnDef:
             return "def";
@@ -363,53 +363,53 @@ inline const std::string RoleTypeName(RoleType type) {
     }
 }
 
-class SQLNode : public NodeBase<SQLNode> {
+class SqlNode : public NodeBase<SqlNode> {
  public:
-    SQLNode(const SQLNodeType &type, uint32_t line_num, uint32_t location)
+    SqlNode(const SqlNodeType &type, uint32_t line_num, uint32_t location)
         : type_(type), line_num_(line_num), location_(location) {}
 
-    virtual ~SQLNode() {}
+    virtual ~SqlNode() {}
 
-    const SQLNodeType GetType() const { return type_; }
+    const SqlNodeType GetType() const { return type_; }
     uint32_t GetLineNum() const override { return line_num_; }
     uint32_t GetLocation() const override { return location_; }
 
     const std::string GetTypeName() const override {
-        return NameOfSQLNodeType(type_);
+        return NameOfSqlNodeType(type_);
     }
 
-    bool Equals(const SQLNode *node) const override;
+    bool Equals(const SqlNode *node) const override;
 
-    SQLNodeType type_;
+    SqlNodeType type_;
 
  private:
     uint32_t line_num_;
     uint32_t location_;
 };
 
-typedef std::vector<SQLNode *> NodePointVector;
+typedef std::vector<SqlNode *> NodePointVector;
 
-class SQLNodeList : public SQLNode {
+class SqlNodeList : public SqlNode {
  public:
-    SQLNodeList() : SQLNode(kNodeList, 0, 0) {}
-    virtual ~SQLNodeList() {}
-    void PushBack(SQLNode *node_ptr) { list_.push_back(node_ptr); }
+    SqlNodeList() : SqlNode(kNodeList, 0, 0) {}
+    virtual ~SqlNodeList() {}
+    void PushBack(SqlNode *node_ptr) { list_.push_back(node_ptr); }
     const bool IsEmpty() const { return list_.empty(); }
     const int GetSize() const { return list_.size(); }
-    const std::vector<SQLNode *> &GetList() const { return list_; }
+    const std::vector<SqlNode *> &GetList() const { return list_; }
     void Print(std::ostream &output, const std::string &tab) const;
-    virtual bool Equals(const SQLNodeList *that) const;
+    virtual bool Equals(const SqlNodeList *that) const;
 
  private:
-    std::vector<SQLNode *> list_;
+    std::vector<SqlNode *> list_;
 };
 
 class TypeNode;
 
-class ExprNode : public SQLNode {
+class ExprNode : public SqlNode {
  public:
     explicit ExprNode(ExprType expr_type)
-        : SQLNode(kExpr, 0, 0), expr_type_(expr_type) {}
+        : SqlNode(kExpr, 0, 0), expr_type_(expr_type) {}
     ~ExprNode() {}
     void AddChild(ExprNode *expr) { children_.push_back(expr); }
     void SetChild(size_t idx, ExprNode *expr) { children_[idx] = expr; }
@@ -531,10 +531,10 @@ class ExprListNode : public ExprNode {
     ExprListNode *ShadowCopy(NodeManager *) const override;
 };
 
-class FnNode : public SQLNode {
+class FnNode : public SqlNode {
  public:
-    FnNode() : SQLNode(kFn, 0, 0), indent(0) {}
-    explicit FnNode(SQLNodeType type) : SQLNode(type, 0, 0), indent(0) {}
+    FnNode() : SqlNode(kFn, 0, 0), indent(0) {}
+    explicit FnNode(SqlNodeType type) : SqlNode(type, 0, 0), indent(0) {}
 
  public:
     int32_t indent;
@@ -567,27 +567,27 @@ class OrderByNode : public ExprNode {
     const bool is_asc_;
     const ExprListNode *order_by_;
 };
-class TableRefNode : public SQLNode {
+class TableRefNode : public SqlNode {
  public:
     explicit TableRefNode(TableRefType ref_type, std::string alias_table_name)
-        : SQLNode(kTableRef, 0, 0),
+        : SqlNode(kTableRef, 0, 0),
           ref_type_(ref_type),
           alias_table_name_(alias_table_name) {}
     ~TableRefNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SQLNode *node) const;
+    virtual bool Equals(const SqlNode *node) const;
 
     const TableRefType ref_type_;
     const std::string alias_table_name_;
 };
 
-class QueryNode : public SQLNode {
+class QueryNode : public SqlNode {
  public:
     explicit QueryNode(QueryType query_type)
-        : SQLNode(node::kQuery, 0, 0), query_type_(query_type) {}
+        : SqlNode(node::kQuery, 0, 0), query_type_(query_type) {}
     ~QueryNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SQLNode *node) const;
+    virtual bool Equals(const SqlNode *node) const;
     const QueryType query_type_;
 };
 
@@ -599,7 +599,7 @@ class TableNode : public TableRefNode {
         : TableRefNode(kRefTable, alias), org_table_name_(name) {}
     ~TableNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SQLNode *node) const;
+    virtual bool Equals(const SqlNode *node) const;
     const std::string org_table_name_;
 };
 
@@ -609,7 +609,7 @@ class QueryRefNode : public TableRefNode {
         : TableRefNode(kRefQuery, alias), query_(query) {}
     ~QueryRefNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SQLNode *node) const;
+    virtual bool Equals(const SqlNode *node) const;
     const QueryNode *query_;
 };
 
@@ -625,7 +625,7 @@ class JoinNode : public TableRefNode {
           orders_(orders),
           condition_(condition) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SQLNode *node) const;
+    virtual bool Equals(const SqlNode *node) const;
     const TableRefNode *left_;
     const TableRefNode *right_;
     const JoinType join_type_;
@@ -634,11 +634,11 @@ class JoinNode : public TableRefNode {
 };
 class SelectQueryNode : public QueryNode {
  public:
-    SelectQueryNode(bool is_distinct, SQLNodeList *select_list,
-                    SQLNodeList *tableref_list, ExprNode *where_expr,
+    SelectQueryNode(bool is_distinct, SqlNodeList *select_list,
+                    SqlNodeList *tableref_list, ExprNode *where_expr,
                     ExprListNode *group_expr_list, ExprNode *having_expr,
-                    OrderByNode *order_expr_list, SQLNodeList *window_list,
-                    SQLNode *limit_ptr)
+                    OrderByNode *order_expr_list, SqlNodeList *window_list,
+                    SqlNode *limit_ptr)
         : QueryNode(kQuerySelect),
           distinct_opt_(is_distinct),
           where_clause_ptr_(where_expr),
@@ -653,40 +653,40 @@ class SelectQueryNode : public QueryNode {
     ~SelectQueryNode() {}
 
     // Getter and Setter
-    const SQLNodeList *GetSelectList() const { return select_list_; }
+    const SqlNodeList *GetSelectList() const { return select_list_; }
 
-    SQLNodeList *GetSelectList() { return select_list_; }
+    SqlNodeList *GetSelectList() { return select_list_; }
 
-    const SQLNode *GetLimit() const { return limit_ptr_; }
+    const SqlNode *GetLimit() const { return limit_ptr_; }
 
-    const SQLNodeList *GetTableRefList() const { return tableref_list_; }
+    const SqlNodeList *GetTableRefList() const { return tableref_list_; }
 
-    SQLNodeList *GetTableRefList() { return tableref_list_; }
+    SqlNodeList *GetTableRefList() { return tableref_list_; }
 
-    const SQLNodeList *GetWindowList() const { return window_list_; }
+    const SqlNodeList *GetWindowList() const { return window_list_; }
 
-    SQLNodeList *GetWindowList() { return window_list_; }
+    SqlNodeList *GetWindowList() { return window_list_; }
 
-    void SetLimit(SQLNode *limit) { limit_ptr_ = limit; }
+    void SetLimit(SqlNode *limit) { limit_ptr_ = limit; }
 
     int GetDistinctOpt() const { return distinct_opt_; }
     // Print
     void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SQLNode *node) const;
+    virtual bool Equals(const SqlNode *node) const;
 
     const bool distinct_opt_;
     const ExprNode *where_clause_ptr_;
     const ExprListNode *group_clause_ptr_;
     const ExprNode *having_clause_ptr_;
     const OrderByNode *order_clause_ptr_;
-    const SQLNode *limit_ptr_;
+    const SqlNode *limit_ptr_;
 
  private:
-    SQLNodeList *select_list_;
-    SQLNodeList *tableref_list_;
-    SQLNodeList *window_list_;
-    void PrintSQLNodeList(std::ostream &output, const std::string &tab,
-                          SQLNodeList *list, const std::string &name,
+    SqlNodeList *select_list_;
+    SqlNodeList *tableref_list_;
+    SqlNodeList *window_list_;
+    void PrintSqlNodeList(std::ostream &output, const std::string &tab,
+                          SqlNodeList *list, const std::string &name,
                           bool last_item) const;
 };
 
@@ -695,21 +695,21 @@ class UnionQueryNode : public QueryNode {
     UnionQueryNode(const QueryNode *left, const QueryNode *right, bool is_all)
         : QueryNode(kQueryUnion), left_(left), right_(right), is_all_(is_all) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SQLNode *node) const;
+    virtual bool Equals(const SqlNode *node) const;
     const QueryNode *left_;
     const QueryNode *right_;
     const bool is_all_;
 };
 
-class NameNode : public SQLNode {
+class NameNode : public SqlNode {
  public:
-    NameNode() : SQLNode(kName, 0, 0), name_("") {}
+    NameNode() : SqlNode(kName, 0, 0), name_("") {}
     explicit NameNode(const std::string &name)
-        : SQLNode(kName, 0, 0), name_(name) {}
+        : SqlNode(kName, 0, 0), name_(name) {}
     ~NameNode() {}
 
     std::string GetName() const { return name_; }
-    virtual bool Equals(const SQLNode *node) const;
+    virtual bool Equals(const SqlNode *node) const;
 
  private:
     std::string name_;
@@ -986,38 +986,38 @@ class ConstNode : public ExprNode {
     } val_;
     TTLType ttl_type_ = hybridse::node::kAbsolute;
 };
-class LimitNode : public SQLNode {
+class LimitNode : public SqlNode {
  public:
-    LimitNode() : SQLNode(kLimit, 0, 0), limit_cnt_(0) {}
+    LimitNode() : SqlNode(kLimit, 0, 0), limit_cnt_(0) {}
 
     explicit LimitNode(int limit_cnt)
-        : SQLNode(kLimit, 0, 0), limit_cnt_(limit_cnt) {}
+        : SqlNode(kLimit, 0, 0), limit_cnt_(limit_cnt) {}
 
     int GetLimitCount() const { return limit_cnt_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SQLNode *node) const;
+    virtual bool Equals(const SqlNode *node) const;
 
  private:
     int limit_cnt_;
 };
 
-class FrameBound : public SQLNode {
+class FrameBound : public SqlNode {
  public:
     FrameBound()
-        : SQLNode(kFrameBound, 0, 0),
+        : SqlNode(kFrameBound, 0, 0),
           bound_type_(kPreceding),
           is_time_offset_(false),
           offset_(0) {}
 
     explicit FrameBound(BoundType bound_type)
-        : SQLNode(kFrameBound, 0, 0),
+        : SqlNode(kFrameBound, 0, 0),
           bound_type_(bound_type),
           is_time_offset_(false),
           offset_(0) {}
 
     FrameBound(BoundType bound_type, int64_t offset, bool is_time_offet)
-        : SQLNode(kFrameBound, 0, 0),
+        : SqlNode(kFrameBound, 0, 0),
           bound_type_(bound_type),
           is_time_offset_(is_time_offet),
           offset_(offset) {}
@@ -1025,7 +1025,7 @@ class FrameBound : public SQLNode {
     ~FrameBound() {}
 
     void Print(std::ostream &output, const std::string &org_tab) const {
-        SQLNode::Print(output, org_tab);
+        SqlNode::Print(output, org_tab);
         const std::string tab = org_tab + INDENT + SPACE_ED;
         std::string space = org_tab + INDENT + INDENT;
         output << "\n";
@@ -1074,7 +1074,7 @@ class FrameBound : public SQLNode {
         }
         return 0;
     }
-    virtual bool Equals(const SQLNode *node) const;
+    virtual bool Equals(const SqlNode *node) const;
     static int Compare(const FrameBound *bound1, const FrameBound *bound2);
 
  private:
@@ -1083,18 +1083,18 @@ class FrameBound : public SQLNode {
     int64_t offset_;
 };
 
-class FrameExtent : public SQLNode {
+class FrameExtent : public SqlNode {
  public:
     explicit FrameExtent(FrameBound *start)
-        : SQLNode(kFrameExtent, 0, 0), start_(start) {}
+        : SqlNode(kFrameExtent, 0, 0), start_(start) {}
 
     FrameExtent(FrameBound *start, FrameBound *end)
-        : SQLNode(kFrameExtent, 0, 0), start_(start), end_(end) {}
+        : SqlNode(kFrameExtent, 0, 0), start_(start), end_(end) {}
 
     ~FrameExtent() {}
 
     void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SQLNode *node) const;
+    virtual bool Equals(const SqlNode *node) const;
     FrameBound *start() const { return start_; }
     FrameBound *end() const { return end_; }
     const std::string GetExprString() const {
@@ -1119,11 +1119,11 @@ class FrameExtent : public SQLNode {
     FrameBound *start_;
     FrameBound *end_;
 };
-class FrameNode : public SQLNode {
+class FrameNode : public SqlNode {
  public:
     FrameNode(FrameType frame_type, FrameExtent *frame_range,
               FrameExtent *frame_rows, int64_t frame_maxsize)
-        : SQLNode(kFrames, 0, 0),
+        : SqlNode(kFrames, 0, 0),
           frame_type_(frame_type),
           frame_range_(frame_range),
           frame_rows_(frame_rows),
@@ -1214,7 +1214,7 @@ class FrameNode : public SQLNode {
         return false;
     }
     void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SQLNode *node) const;
+    virtual bool Equals(const SqlNode *node) const;
     const std::string GetExprString() const;
     bool CanMergeWith(const FrameNode *that,
                       const bool enbale_merge_with_maxsize = true) const;
@@ -1249,10 +1249,10 @@ class FrameNode : public SQLNode {
     FrameExtent *frame_rows_;
     int64_t frame_maxsize_;
 };
-class WindowDefNode : public SQLNode {
+class WindowDefNode : public SqlNode {
  public:
     WindowDefNode()
-        : SQLNode(kWindowDef, 0, 0),
+        : SqlNode(kWindowDef, 0, 0),
           exclude_current_time_(false),
           instance_not_in_window_(false),
           window_name_(""),
@@ -1277,8 +1277,8 @@ class WindowDefNode : public SQLNode {
     void SetOrders(OrderByNode *orders) { orders_ = orders; }
     void SetFrame(FrameNode *frame) { frame_ptr_ = frame; }
 
-    SQLNodeList *union_tables() const { return union_tables_; }
-    void set_union_tables(SQLNodeList *union_table) {
+    SqlNodeList *union_tables() const { return union_tables_; }
+    void set_union_tables(SqlNodeList *union_table) {
         union_tables_ = union_table;
     }
 
@@ -1293,7 +1293,7 @@ class WindowDefNode : public SQLNode {
         exclude_current_time_ = exclude_current_time;
     }
     void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SQLNode *that) const;
+    virtual bool Equals(const SqlNode *that) const;
     bool CanMergeWith(const WindowDefNode *that,
                       const bool enable_window_maxsize_merged = true) const;
 
@@ -1302,7 +1302,7 @@ class WindowDefNode : public SQLNode {
     bool instance_not_in_window_;
     std::string window_name_;   /* window's own name */
     FrameNode *frame_ptr_;      /* expression for starting bound, if any */
-    SQLNodeList *union_tables_; /* union other table in window */
+    SqlNodeList *union_tables_; /* union other table in window */
     ExprListNode *partitions_;  /* PARTITION BY expression list */
     OrderByNode *orders_;       /* ORDER BY (list of SortBy) */
 };
@@ -1335,9 +1335,9 @@ class AllNode : public ExprNode {
     std::string db_name_;
 };
 
-class FnDefNode : public SQLNode {
+class FnDefNode : public SqlNode {
  public:
-    explicit FnDefNode(const SQLNodeType &type) : SQLNode(type, 0, 0) {}
+    explicit FnDefNode(const SqlNodeType &type) : SqlNode(type, 0, 0) {}
     virtual const TypeNode *GetReturnType() const = 0;
     virtual bool IsReturnNullable() const = 0;
     virtual size_t GetArgSize() const = 0;
@@ -1656,12 +1656,12 @@ class BetweenExpr : public ExprNode {
     ExprNode *left_;
     ExprNode *right_;
 };
-class ResTarget : public SQLNode {
+class ResTarget : public SqlNode {
  public:
-    ResTarget() : SQLNode(kResTarget, 0, 0), name_(""), val_(nullptr) {}
+    ResTarget() : SqlNode(kResTarget, 0, 0), name_(""), val_(nullptr) {}
 
     ResTarget(const std::string &name, ExprNode *val)
-        : SQLNode(kResTarget, 0, 0), name_(name), val_(val) {}
+        : SqlNode(kResTarget, 0, 0), name_(name), val_(val) {}
 
     ~ResTarget() {}
 
@@ -1670,7 +1670,7 @@ class ResTarget : public SQLNode {
     ExprNode *GetVal() const { return val_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SQLNode *node) const;
+    virtual bool Equals(const SqlNode *node) const;
 
  private:
     std::string name_; /* column name or NULL */
@@ -1678,13 +1678,13 @@ class ResTarget : public SQLNode {
     NodePointVector indirection_; /* subscripts, field names, and '*', or NIL */
 };
 
-class ColumnDefNode : public SQLNode {
+class ColumnDefNode : public SqlNode {
  public:
     ColumnDefNode()
-        : SQLNode(kColumnDesc, 0, 0), column_name_(""), column_type_() {}
+        : SqlNode(kColumnDesc, 0, 0), column_name_(""), column_type_() {}
     ColumnDefNode(const std::string &name, const DataType &data_type,
                   bool op_not_null)
-        : SQLNode(kColumnDesc, 0, 0),
+        : SqlNode(kColumnDesc, 0, 0),
           column_name_(name),
           column_type_(data_type),
           op_not_null_(op_not_null) {}
@@ -1703,12 +1703,12 @@ class ColumnDefNode : public SQLNode {
     bool op_not_null_;
 };
 
-class InsertStmt : public SQLNode {
+class InsertStmt : public SqlNode {
  public:
     InsertStmt(const std::string &table_name,
                const std::vector<std::string> &columns,
                const std::vector<ExprNode *> &values)
-        : SQLNode(kInsertStmt, 0, 0),
+        : SqlNode(kInsertStmt, 0, 0),
           table_name_(table_name),
           columns_(columns),
           values_(values),
@@ -1716,7 +1716,7 @@ class InsertStmt : public SQLNode {
 
     InsertStmt(const std::string &table_name,
                const std::vector<ExprNode *> &values)
-        : SQLNode(kInsertStmt, 0, 0),
+        : SqlNode(kInsertStmt, 0, 0),
           table_name_(table_name),
           values_(values),
           is_all_(true) {}
@@ -1727,10 +1727,10 @@ class InsertStmt : public SQLNode {
     const std::vector<ExprNode *> values_;
     const bool is_all_;
 };
-class CreateStmt : public SQLNode {
+class CreateStmt : public SqlNode {
  public:
     CreateStmt()
-        : SQLNode(kCreateStmt, 0, 0),
+        : SqlNode(kCreateStmt, 0, 0),
           table_name_(""),
           op_if_not_exist_(false),
           replica_num_(1),
@@ -1738,7 +1738,7 @@ class CreateStmt : public SQLNode {
 
     CreateStmt(const std::string &table_name, bool op_if_not_exist,
                int replica_num, int partition_num)
-        : SQLNode(kCreateStmt, 0, 0),
+        : SqlNode(kCreateStmt, 0, 0),
           table_name_(table_name),
           op_if_not_exist_(op_if_not_exist),
           replica_num_(replica_num),
@@ -1774,10 +1774,10 @@ class CreateStmt : public SQLNode {
     int partition_num_;
     NodePointVector distribution_list_;
 };
-class IndexKeyNode : public SQLNode {
+class IndexKeyNode : public SqlNode {
  public:
-    IndexKeyNode() : SQLNode(kIndexKey, 0, 0) {}
-    explicit IndexKeyNode(const std::string &key) : SQLNode(kIndexKey, 0, 0) {
+    IndexKeyNode() : SqlNode(kIndexKey, 0, 0) {}
+    explicit IndexKeyNode(const std::string &key) : SqlNode(kIndexKey, 0, 0) {
         key_.push_back(key);
     }
     ~IndexKeyNode() {}
@@ -1787,13 +1787,13 @@ class IndexKeyNode : public SQLNode {
  private:
     std::vector<std::string> key_;
 };
-class IndexVersionNode : public SQLNode {
+class IndexVersionNode : public SqlNode {
  public:
-    IndexVersionNode() : SQLNode(kIndexVersion, 0, 0) {}
+    IndexVersionNode() : SqlNode(kIndexVersion, 0, 0) {}
     explicit IndexVersionNode(const std::string &column_name)
-        : SQLNode(kIndexVersion, 0, 0), column_name_(column_name), count_(1) {}
+        : SqlNode(kIndexVersion, 0, 0), column_name_(column_name), count_(1) {}
     IndexVersionNode(const std::string &column_name, int count)
-        : SQLNode(kIndexVersion, 0, 0),
+        : SqlNode(kIndexVersion, 0, 0),
           column_name_(column_name),
           count_(count) {}
 
@@ -1805,33 +1805,33 @@ class IndexVersionNode : public SQLNode {
     std::string column_name_;
     int count_;
 };
-class IndexTsNode : public SQLNode {
+class IndexTsNode : public SqlNode {
  public:
-    IndexTsNode() : SQLNode(kIndexTs, 0, 0) {}
+    IndexTsNode() : SqlNode(kIndexTs, 0, 0) {}
     explicit IndexTsNode(const std::string &column_name)
-        : SQLNode(kIndexTs, 0, 0), column_name_(column_name) {}
+        : SqlNode(kIndexTs, 0, 0), column_name_(column_name) {}
 
     std::string &GetColumnName() { return column_name_; }
 
  private:
     std::string column_name_;
 };
-class IndexTTLNode : public SQLNode {
+class IndexTTLNode : public SqlNode {
  public:
-    IndexTTLNode() : SQLNode(kIndexTTL, 0, 0) {}
+    IndexTTLNode() : SqlNode(kIndexTTL, 0, 0) {}
     explicit IndexTTLNode(ExprListNode *expr)
-        : SQLNode(kIndexTTL, 0, 0), ttl_expr_(expr) {}
+        : SqlNode(kIndexTTL, 0, 0), ttl_expr_(expr) {}
 
     ExprListNode *GetTTLExpr() const { return ttl_expr_; }
 
  private:
     ExprListNode *ttl_expr_;
 };
-class IndexTTLTypeNode : public SQLNode {
+class IndexTTLTypeNode : public SqlNode {
  public:
-    IndexTTLTypeNode() : SQLNode(kIndexTTLType, 0, 0) {}
+    IndexTTLTypeNode() : SqlNode(kIndexTTLType, 0, 0) {}
     explicit IndexTTLTypeNode(const std::string &ttl_type)
-        : SQLNode(kIndexTTLType, 0, 0), ttl_type_(ttl_type) {}
+        : SqlNode(kIndexTTLType, 0, 0), ttl_type_(ttl_type) {}
 
     void set_ttl_type(const std::string &ttl_type) {
         this->ttl_type_ = ttl_type;
@@ -1842,10 +1842,10 @@ class IndexTTLTypeNode : public SQLNode {
     std::string ttl_type_;
 };
 
-class ColumnIndexNode : public SQLNode {
+class ColumnIndexNode : public SqlNode {
  public:
     ColumnIndexNode()
-        : SQLNode(kColumnIndex, 0, 0),
+        : SqlNode(kColumnIndex, 0, 0),
           ts_(""),
           version_(""),
           version_count_(0),
@@ -1963,10 +1963,10 @@ class ColumnIndexNode : public SQLNode {
     std::string ttl_type_;
     std::string name_;
 };
-class CmdNode : public SQLNode {
+class CmdNode : public SqlNode {
  public:
     explicit CmdNode(node::CmdType cmd_type)
-        : SQLNode(kCmdStmt, 0, 0), cmd_type_(cmd_type) {}
+        : SqlNode(kCmdStmt, 0, 0), cmd_type_(cmd_type) {}
 
     ~CmdNode() {}
 
@@ -1981,12 +1981,12 @@ class CmdNode : public SQLNode {
     std::vector<std::string> args_;
 };
 
-class CreateIndexNode : public SQLNode {
+class CreateIndexNode : public SqlNode {
  public:
     explicit CreateIndexNode(const std::string &index_name,
                              const std::string &table_name,
                              ColumnIndexNode *index)
-        : SQLNode(kCreateIndexStmt, 0, 0),
+        : SqlNode(kCreateIndexStmt, 0, 0),
           index_name_(index_name),
           table_name_(table_name),
           index_(index) {}
@@ -1997,10 +1997,10 @@ class CreateIndexNode : public SQLNode {
     node::ColumnIndexNode *index_;
 };
 
-class ExplainNode : public SQLNode {
+class ExplainNode : public SqlNode {
  public:
     explicit ExplainNode(const QueryNode *query, node::ExplainType explain_type)
-        : SQLNode(kExplainStmt, 0, 0),
+        : SqlNode(kExplainStmt, 0, 0),
           explain_type_(explain_type),
           query_(query) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
@@ -2200,7 +2200,7 @@ class ExternalFnDefNode : public FnDefNode {
     bool return_by_arg() const { return return_by_arg_; }
 
     void Print(std::ostream &output, const std::string &tab) const override;
-    bool Equals(const SQLNode *node) const override;
+    bool Equals(const SqlNode *node) const override;
 
     void SetReturnType(const node::TypeNode *dtype) { this->ret_type_ = dtype; }
     void SetReturnNullable(bool flag) { this->ret_nullable_ = flag; }
@@ -2242,15 +2242,15 @@ class ExternalFnDefNode : public FnDefNode {
     bool return_by_arg_;
 };
 
-class UDFDefNode : public FnDefNode {
+class UdfDefNode : public FnDefNode {
  public:
-    explicit UDFDefNode(FnNodeFnDef *def) : FnDefNode(kUDFDef), def_(def) {}
+    explicit UdfDefNode(FnNodeFnDef *def) : FnDefNode(kUdfDef), def_(def) {}
     FnNodeFnDef *def() const { return def_; }
 
-    const std::string GetName() const override { return "UDF"; }
+    const std::string GetName() const override { return "Udf"; }
 
     void Print(std::ostream &output, const std::string &tab) const override;
-    bool Equals(const SQLNode *node) const override;
+    bool Equals(const SqlNode *node) const override;
 
     const TypeNode *GetReturnType() const override {
         return def()->header_->ret_type_;
@@ -2271,20 +2271,20 @@ class UDFDefNode : public FnDefNode {
         return Status::OK();
     }
 
-    UDFDefNode *ShadowCopy(NodeManager *) const override;
-    UDFDefNode *DeepCopy(NodeManager *) const override;
+    UdfDefNode *ShadowCopy(NodeManager *) const override;
+    UdfDefNode *DeepCopy(NodeManager *) const override;
 
  private:
     FnNodeFnDef *def_;
 };
 
-class UDFByCodeGenDefNode : public FnDefNode {
+class UdfByCodeGenDefNode : public FnDefNode {
  public:
-    UDFByCodeGenDefNode(const std::string &name,
+    UdfByCodeGenDefNode(const std::string &name,
                         const std::vector<const node::TypeNode *> &arg_types,
                         const std::vector<int> &arg_nullable,
                         const node::TypeNode *ret_type, bool ret_nullable)
-        : FnDefNode(kUDFByCodeGenDef),
+        : FnDefNode(kUdfByCodeGenDef),
           name_(name),
           arg_types_(arg_types),
           arg_nullable_(arg_nullable),
@@ -2293,11 +2293,11 @@ class UDFByCodeGenDefNode : public FnDefNode {
 
     const std::string GetName() const override { return name_; }
 
-    void SetGenImpl(std::shared_ptr<udf::LLVMUDFGenBase> gen_impl) {
+    void SetGenImpl(std::shared_ptr<udf::LlvmUdfGenBase> gen_impl) {
         this->gen_impl_ = gen_impl;
     }
 
-    std::shared_ptr<udf::LLVMUDFGenBase> GetGenImpl() const {
+    std::shared_ptr<udf::LlvmUdfGenBase> GetGenImpl() const {
         return this->gen_impl_;
     }
 
@@ -2313,14 +2313,14 @@ class UDFByCodeGenDefNode : public FnDefNode {
     }
 
     void Print(std::ostream &output, const std::string &tab) const override;
-    bool Equals(const SQLNode *node) const override;
+    bool Equals(const SqlNode *node) const override;
 
-    UDFByCodeGenDefNode *ShadowCopy(NodeManager *) const override;
-    UDFByCodeGenDefNode *DeepCopy(NodeManager *) const override;
+    UdfByCodeGenDefNode *ShadowCopy(NodeManager *) const override;
+    UdfByCodeGenDefNode *DeepCopy(NodeManager *) const override;
 
  private:
     const std::string name_;
-    std::shared_ptr<udf::LLVMUDFGenBase> gen_impl_;
+    std::shared_ptr<udf::LlvmUdfGenBase> gen_impl_;
     std::vector<const node::TypeNode *> arg_types_;
     std::vector<int> arg_nullable_;
     const node::TypeNode *ret_type_;
@@ -2352,7 +2352,7 @@ class LambdaNode : public FnDefNode {
     void SetBody(node::ExprNode *body) { body_ = body; }
 
     void Print(std::ostream &output, const std::string &tab) const override;
-    bool Equals(const SQLNode *node) const override;
+    bool Equals(const SqlNode *node) const override;
 
     base::Status Validate(
         const std::vector<const TypeNode *> &arg_types) const override;
@@ -2365,13 +2365,13 @@ class LambdaNode : public FnDefNode {
     node::ExprNode *body_;
 };
 
-class UDAFDefNode : public FnDefNode {
+class UdafDefNode : public FnDefNode {
  public:
-    UDAFDefNode(const std::string &name,
+    UdafDefNode(const std::string &name,
                 const std::vector<const TypeNode *> &arg_types,
                 ExprNode *init_expr, FnDefNode *update_func,
                 FnDefNode *merge_func, FnDefNode *output_func)
-        : FnDefNode(kUDAFDef),
+        : FnDefNode(kUdafDef),
           name_(name),
           arg_types_(arg_types),
           init_expr_(init_expr),
@@ -2381,7 +2381,7 @@ class UDAFDefNode : public FnDefNode {
 
     const std::string GetName() const override { return name_; }
 
-    bool Equals(const SQLNode *node) const override;
+    bool Equals(const SqlNode *node) const override;
     void Print(std::ostream &output, const std::string &tab) const override;
 
     ExprNode *init_expr() const { return init_expr_; }
@@ -2432,8 +2432,8 @@ class UDAFDefNode : public FnDefNode {
         return arg_types_;
     }
 
-    UDAFDefNode *ShadowCopy(NodeManager *) const override;
-    UDAFDefNode *DeepCopy(NodeManager *) const override;
+    UdafDefNode *ShadowCopy(NodeManager *) const override;
+    UdafDefNode *DeepCopy(NodeManager *) const override;
 
  private:
     std::string name_;
@@ -2444,13 +2444,13 @@ class UDAFDefNode : public FnDefNode {
     FnDefNode *output_;
 };
 
-class PartitionMetaNode : public SQLNode {
+class PartitionMetaNode : public SqlNode {
  public:
     PartitionMetaNode()
-        : SQLNode(kPartitionMeta, 0, 0), endpoint_(""), role_type_() {}
+        : SqlNode(kPartitionMeta, 0, 0), endpoint_(""), role_type_() {}
 
     PartitionMetaNode(const std::string &endpoint, RoleType role_type)
-        : SQLNode(kPartitionMeta, 0, 0),
+        : SqlNode(kPartitionMeta, 0, 0),
           endpoint_(endpoint),
           role_type_(role_type) {}
 
@@ -2467,12 +2467,12 @@ class PartitionMetaNode : public SQLNode {
     RoleType role_type_;
 };
 
-class ReplicaNumNode : public SQLNode {
+class ReplicaNumNode : public SqlNode {
  public:
-    ReplicaNumNode() : SQLNode(kReplicaNum, 0, 0), replica_num_(1) {}
+    ReplicaNumNode() : SqlNode(kReplicaNum, 0, 0), replica_num_(1) {}
 
     explicit ReplicaNumNode(int num)
-        : SQLNode(kReplicaNum, 0, 0), replica_num_(num) {}
+        : SqlNode(kReplicaNum, 0, 0), replica_num_(num) {}
 
     ~ReplicaNumNode() {}
 
@@ -2484,12 +2484,12 @@ class ReplicaNumNode : public SQLNode {
     int replica_num_;
 };
 
-class PartitionNumNode : public SQLNode {
+class PartitionNumNode : public SqlNode {
  public:
-    PartitionNumNode() : SQLNode(kPartitionNum, 0, 0), partition_num_(1) {}
+    PartitionNumNode() : SqlNode(kPartitionNum, 0, 0), partition_num_(1) {}
 
     explicit PartitionNumNode(int num)
-        : SQLNode(kPartitionNum, 0, 0), partition_num_(num) {}
+        : SqlNode(kPartitionNum, 0, 0), partition_num_(num) {}
 
     ~PartitionNumNode() {}
 
@@ -2501,28 +2501,28 @@ class PartitionNumNode : public SQLNode {
     int partition_num_;
 };
 
-class DistributionsNode : public SQLNode {
+class DistributionsNode : public SqlNode {
  public:
-    explicit DistributionsNode(SQLNodeList *distribution_list)
-        : SQLNode(kDistributions, 0, 0),
+    explicit DistributionsNode(SqlNodeList *distribution_list)
+        : SqlNode(kDistributions, 0, 0),
           distribution_list_(distribution_list) {}
 
     ~DistributionsNode() {}
 
-    const SQLNodeList *GetDistributionList() const {
+    const SqlNodeList *GetDistributionList() const {
         return distribution_list_;
     }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
-    SQLNodeList *distribution_list_;
+    SqlNodeList *distribution_list_;
 };
 
-class CreateSpStmt : public SQLNode {
+class CreateSpStmt : public SqlNode {
  public:
     explicit CreateSpStmt(const std::string &sp_name)
-        : SQLNode(kCreateSpStmt, 0, 0), sp_name_(sp_name) {}
+        : SqlNode(kCreateSpStmt, 0, 0), sp_name_(sp_name) {}
 
     ~CreateSpStmt() {}
 
@@ -2544,11 +2544,11 @@ class CreateSpStmt : public SQLNode {
     NodePointVector inner_node_list_;
 };
 
-class InputParameterNode : public SQLNode {
+class InputParameterNode : public SqlNode {
  public:
     InputParameterNode(const std::string &name, DataType data_type,
                        bool is_constant)
-        : SQLNode(kInputParameter, 0, 0),
+        : SqlNode(kInputParameter, 0, 0),
           column_name_(name),
           column_type_(data_type),
           is_constant_(is_constant) {}
@@ -2574,8 +2574,8 @@ bool ExprListNullOrEmpty(const ExprListNode *expr);
 bool ExprIsConst(const ExprNode *expr);
 bool ExprIsSimple(const ExprNode *expr);
 bool ExprListIsConst(const std::vector<node::ExprNode *> &exprs);
-bool SQLEquals(const SQLNode *left, const SQLNode *right);
-bool SQLListEquals(const SQLNodeList *left, const SQLNodeList *right);
+bool SqlEquals(const SqlNode *left, const SqlNode *right);
+bool SqlListEquals(const SqlNodeList *left, const SqlNodeList *right);
 bool ExprEquals(const ExprNode *left, const ExprNode *right);
 bool FnDefEquals(const FnDefNode *left, const FnDefNode *right);
 bool TypeEquals(const TypeNode *left, const TypeNode *right);
@@ -2584,16 +2584,16 @@ bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
 void ColumnOfExpression(
     const ExprNode *node_ptr,
     std::vector<const node::ExprNode *> *columns);  // NOLINT
-void FillSQLNodeList2NodeVector(
-    SQLNodeList *node_list_ptr,
-    std::vector<SQLNode *> &node_list);  // NOLINT (runtime/references)
-void PrintSQLNode(std::ostream &output, const std::string &org_tab,
-                  const SQLNode *node_ptr, const std::string &item_name,
+void FillSqlNodeList2NodeVector(
+    SqlNodeList *node_list_ptr,
+    std::vector<SqlNode *> &node_list);  // NOLINT (runtime/references)
+void PrintSqlNode(std::ostream &output, const std::string &org_tab,
+                  const SqlNode *node_ptr, const std::string &item_name,
                   bool last_child);
-void PrintSQLVector(std::ostream &output, const std::string &tab,
+void PrintSqlVector(std::ostream &output, const std::string &tab,
                     const NodePointVector &vec, const std::string &vector_name,
                     bool last_item);
-void PrintSQLVector(std::ostream &output, const std::string &tab,
+void PrintSqlVector(std::ostream &output, const std::string &tab,
                     const std::vector<ExprNode *> &vec,
                     const std::string &vector_name, bool last_item);
 void PrintValue(std::ostream &output, const std::string &org_tab,

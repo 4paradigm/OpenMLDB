@@ -173,7 +173,7 @@ class StringSplitState : public base::FeBaseObject {
 struct FZStringOpsDef {
     static StringSplitState* InitList() {
         auto list = new StringSplitState();
-        vm::JITRuntime::get()->AddManagedObject(list);
+        vm::JitRuntime::get()->AddManagedObject(list);
         return list;
     }
 
@@ -388,7 +388,7 @@ struct FZTop1Ratio {
     using ContainerT = udf::container::BoundedGroupByDict<K, int64_t, int64_t>;
     using InputK = typename ContainerT::InputK;
 
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         std::string suffix =
             ".opaque_dict_" + DataTypeTrait<K>::to_string() + "_";
         helper.doc(helper.GetDoc())
@@ -449,7 +449,7 @@ struct FZTopNFrequency {
 
     using InputK = typename TopNContainer::InputK;
 
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         std::string suffix =
             ".opaque_dict_" + DataTypeTrait<K>::to_string() + "_";
         helper.doc(helper.GetDoc())
@@ -546,8 +546,8 @@ struct FZTopNFrequency {
     }
 };
 
-void DefaultUDFLibrary::InitFeatureZero() {
-    RegisterUDAF("fz_window_split")
+void DefaultUdfLibrary::InitFeatureZero() {
+    RegisterUdaf("fz_window_split")
         .templates<ListRef<StringRef>, Opaque<StringSplitState>,
                    Nullable<StringRef>, StringRef>()
         .init("fz_window_split_init", FZStringOpsDef::InitList)
@@ -567,7 +567,7 @@ void DefaultUDFLibrary::InitFeatureZero() {
             Used by feature zero, split string to list by delimeter. 
             Null values are skipped.)");
 
-    RegisterUDAF("fz_window_split_by_key")
+    RegisterUdaf("fz_window_split_by_key")
         .templates<ListRef<StringRef>, Opaque<StringSplitState>,
                    Nullable<StringRef>, StringRef, StringRef>()
         .init("fz_window_split_by_key_init", FZStringOpsDef::InitList)
@@ -591,7 +591,7 @@ void DefaultUDFLibrary::InitFeatureZero() {
             split each segment as kv pair, then add each 
             key to output list. Null and illegal segments are skipped.)");
 
-    RegisterUDAF("fz_window_split_by_value")
+    RegisterUdaf("fz_window_split_by_value")
         .templates<ListRef<StringRef>, Opaque<StringSplitState>,
                    Nullable<StringRef>, StringRef, StringRef>()
         .init("fz_window_split_by_value_init", FZStringOpsDef::InitList)
@@ -619,12 +619,12 @@ void DefaultUDFLibrary::InitFeatureZero() {
         .list_argument_at(0)
         .args<ListRef<StringRef>, StringRef>(FZStringOpsDef::StringJoin);
 
-    RegisterUDAFTemplate<FZTop1Ratio>("fz_top1_ratio")
+    RegisterUdafTemplate<FZTop1Ratio>("fz_top1_ratio")
         .doc("Compute the top1 key's ratio")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
 
-    RegisterUDAFTemplate<FZTopNFrequency>("fz_topn_frequency")
+    RegisterUdafTemplate<FZTopNFrequency>("fz_topn_frequency")
         .doc("Return the topN keys sorted by their frequency")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();

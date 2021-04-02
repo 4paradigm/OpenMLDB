@@ -37,9 +37,9 @@ namespace hybridse {
 namespace udf {
 template <typename K>
 struct MaxCateDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUDAFTemplate<Impl>("max_cate")
+            ->RegisterUdafTemplate<Impl>("max_cate")
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -50,7 +50,7 @@ struct MaxCateDef {
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
-        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix = ".opaque_dict_" +
                                  DataTypeTrait<K>::to_string() + "_" +
                                  DataTypeTrait<V>::to_string();
@@ -95,9 +95,9 @@ struct MaxCateDef {
 
 template <typename K>
 struct MaxCateWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUDAFTemplate<Impl>("max_cate_where")
+            ->RegisterUdafTemplate<Impl>("max_cate_where")
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -110,7 +110,7 @@ struct MaxCateWhereDef {
 
         using CountCateImpl = typename MaxCateDef<K>::template Impl<V>;
 
-        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix = ".opaque_dict_" +
                                  DataTypeTrait<K>::to_string() + "_" +
                                  DataTypeTrait<V>::to_string();
@@ -138,9 +138,9 @@ struct MaxCateWhereDef {
 
 template <typename K>
 struct TopKMaxCateWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUDAFTemplate<Impl>("top_n_key_max_cate_where")
+            ->RegisterUdafTemplate<Impl>("top_n_key_max_cate_where")
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -153,7 +153,7 @@ struct TopKMaxCateWhereDef {
 
         using AvgCateImpl = typename MaxCateDef<K>::template Impl<V>;
 
-        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix;
 
             suffix = ".i32_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
@@ -211,8 +211,8 @@ struct TopKMaxCateWhereDef {
     };
 };
 
-void DefaultUDFLibrary::InitMaxByCateUDAFs() {
-    RegisterUDAFTemplate<MaxCateDef>("max_cate")
+void DefaultUdfLibrary::initMaxByCateUdaFs() {
+    RegisterUdafTemplate<MaxCateDef>("max_cate")
         .doc(R"(
             Compute maximum of values grouped by category key and output string.
             Each group is represented as 'K:V' and separated by comma in outputs
@@ -236,7 +236,7 @@ void DefaultUDFLibrary::InitMaxByCateUDAFs() {
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
-    RegisterUDAFTemplate<MaxCateWhereDef>("max_cate_where")
+    RegisterUdafTemplate<MaxCateWhereDef>("max_cate_where")
         .doc(R"(
             Compute maximum of values matching specified condition grouped by
     category key and output string. Each group is represented as 'K:V' and
@@ -262,7 +262,7 @@ void DefaultUDFLibrary::InitMaxByCateUDAFs() {
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
-    RegisterUDAFTemplate<TopKMaxCateWhereDef>("top_n_key_max_cate_where")
+    RegisterUdafTemplate<TopKMaxCateWhereDef>("top_n_key_max_cate_where")
         .doc(R"(
             Compute maximum of values matching specified condition grouped by
     category key. Output string for top N keys in descend order. Each group is

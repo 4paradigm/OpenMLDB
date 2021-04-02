@@ -867,7 +867,7 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t row_key,
         return Row();
     }
     // Init current run step runtime
-    JITRuntime::get()->InitRunStep();
+    JitRuntime::get()->InitRunStep();
 
     auto udf = reinterpret_cast<int32_t (*)(const int64_t key, const int8_t*,
                                             const int8_t*, int8_t**)>(
@@ -882,7 +882,7 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t row_key,
     uint32_t ret = udf(row_key, row_ptr, window_ptr, &out_buf);
 
     // Release current run step resources
-    JITRuntime::get()->ReleaseRunStep();
+    JitRuntime::get()->ReleaseRunStep();
 
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;

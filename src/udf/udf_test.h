@@ -39,26 +39,26 @@ namespace hybridse {
 namespace udf {
 
 template <typename Ret, typename... Args>
-class UDFFunctionBuilderWithFullInfo;
+class UdfFunctionBuilderWithFullInfo;
 
-struct UDFFunctionBuilderState {
+struct UdfFunctionBuilderState {
     std::string name;
     std::vector<node::TypeNode*> arg_types;
     std::vector<int> arg_nullable;
     node::TypeNode* ret_type;
     node::NodeManager nm;
-    UDFLibrary* library;
+    UdfLibrary* library;
 };
 
-typedef std::unique_ptr<UDFFunctionBuilderState> BuilderStatePtr;
+typedef std::unique_ptr<UdfFunctionBuilderState> BuilderStatePtr;
 
 template <typename Ret, typename... Args>
-class UDFFunctionBuilderWithFullInfo {
+class UdfFunctionBuilderWithFullInfo {
  public:
-    explicit UDFFunctionBuilderWithFullInfo(BuilderStatePtr&& state)
+    explicit UdfFunctionBuilderWithFullInfo(BuilderStatePtr&& state)
         : state(std::move(state)) {}
 
-    auto& library(UDFLibrary* library) {
+    auto& library(UdfLibrary* library) {
         state->library = library;
         return *this;
     }
@@ -70,12 +70,12 @@ class UDFFunctionBuilderWithFullInfo {
 };
 
 template <typename... Args>
-class UDFFunctionBuilderWithArgs {
+class UdfFunctionBuilderWithArgs {
  public:
-    explicit UDFFunctionBuilderWithArgs(BuilderStatePtr&& state)
+    explicit UdfFunctionBuilderWithArgs(BuilderStatePtr&& state)
         : state(std::move(state)) {}
 
-    auto& library(UDFLibrary* library) {
+    auto& library(UdfLibrary* library) {
         state->library = library;
         return *this;
     }
@@ -83,7 +83,7 @@ class UDFFunctionBuilderWithArgs {
     template <typename Ret>
     auto returns() {
         state->ret_type = DataTypeTrait<Ret>::to_type_node(&(state->nm));
-        return UDFFunctionBuilderWithFullInfo<Ret, Args...>(std::move(state));
+        return UdfFunctionBuilderWithFullInfo<Ret, Args...>(std::move(state));
     }
 
  private:
@@ -91,9 +91,9 @@ class UDFFunctionBuilderWithArgs {
 };
 
 template <typename Ret>
-class UDFFunctionBuilderWithRet {
+class UdfFunctionBuilderWithRet {
  public:
-    auto& library(UDFLibrary* library) {
+    auto& library(UdfLibrary* library) {
         state->library = library;
         return *this;
     }
@@ -102,21 +102,21 @@ class UDFFunctionBuilderWithRet {
     auto args() {
         state->arg_types = {DataTypeTrait<Args>::to_type_node(&(state->nm))...};
         state->arg_nullable = {IsNullableTrait<Args>::value...};
-        return UDFFunctionBuilderWithFullInfo<Ret, Args...>(std::move(state));
+        return UdfFunctionBuilderWithFullInfo<Ret, Args...>(std::move(state));
     }
 
  private:
     BuilderStatePtr state;
 };
 
-class UDFFunctionBuilder {
+class UdfFunctionBuilder {
  public:
-    explicit UDFFunctionBuilder(const std::string& name)
-        : state(new UDFFunctionBuilderState()) {
+    explicit UdfFunctionBuilder(const std::string& name)
+        : state(new UdfFunctionBuilderState()) {
         state->name = name;
     }
 
-    auto& library(udf::UDFLibrary* library) {
+    auto& library(udf::UdfLibrary* library) {
         state->library = library;
         return *this;
     }
@@ -125,13 +125,13 @@ class UDFFunctionBuilder {
     auto args() {
         state->arg_types = {DataTypeTrait<Args>::to_type_node(&(state->nm))...};
         state->arg_nullable = {IsNullableTrait<Args>::value...};
-        return UDFFunctionBuilderWithArgs<Args...>(std::move(state));
+        return UdfFunctionBuilderWithArgs<Args...>(std::move(state));
     }
 
     template <typename Ret>
     auto returns() {
         state->ret_type = DataTypeTrait<Ret>::to_type_node(&(state->nm));
-        return UDFFunctionBuilderWithRet<Ret>(std::move(state));
+        return UdfFunctionBuilderWithRet<Ret>(std::move(state));
     }
 
  private:
@@ -140,12 +140,12 @@ class UDFFunctionBuilder {
 
 template <typename Ret, typename... Args>
 codegen::ModuleTestFunction<Ret, Args...>
-UDFFunctionBuilderWithFullInfo<Ret, Args...>::build() {
-    UDFLibrary* library;
+UdfFunctionBuilderWithFullInfo<Ret, Args...>::build() {
+    UdfLibrary* library;
     if (state->library != nullptr) {
         library = state->library;
     } else {
-        library = DefaultUDFLibrary::get();
+        library = DefaultUdfLibrary::get();
     }
     return codegen::BuildExprFunction<Ret, Args...>(
         library,

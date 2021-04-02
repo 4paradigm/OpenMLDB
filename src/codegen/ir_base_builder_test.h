@@ -193,19 +193,19 @@ class ModuleTestFunction {
 
     ModuleTestFunction(const std::string& fn_name,
                        const std::string& proxy_fn_name,
-                       udf::UDFLibrary* library,
+                       udf::UdfLibrary* library,
                        std::unique_ptr<::llvm::Module> module,
                        std::unique_ptr<::llvm::LLVMContext> llvm_ctx) {
         llvm::InitializeNativeTarget();
         llvm::InitializeNativeTargetAsmPrinter();
-        jit = std::unique_ptr<vm::HybridSEJITWrapper>(
-            vm::HybridSEJITWrapper::Create());
+        jit = std::unique_ptr<vm::HybridSeJitWrapper>(
+            vm::HybridSeJitWrapper::Create());
         jit->Init();
-        InitBuiltinJITSymbols(jit.get());
+        InitBuiltinJitSymbols(jit.get());
         if (library != nullptr) {
             library->InitJITSymbols(jit.get());
         } else {
-            udf::DefaultUDFLibrary::get()->InitJITSymbols(jit.get());
+            udf::DefaultUdfLibrary::get()->InitJITSymbols(jit.get());
         }
 
         llvm::errs() << *(module.get()) << "\n";
@@ -219,7 +219,7 @@ class ModuleTestFunction {
             const_cast<int8_t*>(jit->FindFunction(proxy_fn_name));
     }
 
-    std::unique_ptr<vm::HybridSEJITWrapper> jit = nullptr;
+    std::unique_ptr<vm::HybridSeJitWrapper> jit = nullptr;
     void* fn_ptr = nullptr;
     void* proxy_fn_ptr = nullptr;
 };
@@ -230,7 +230,7 @@ struct ModuleFunctionBuilderState {
     node::TypeNode* ret_type;
     bool ret_nullable;
     node::NodeManager nm;
-    udf::UDFLibrary* library = nullptr;
+    udf::UdfLibrary* library = nullptr;
 };
 
 typedef std::unique_ptr<ModuleFunctionBuilderState> BuilderStatePtr;
@@ -241,7 +241,7 @@ class ModuleFunctionBuilderWithFullInfo {
     explicit ModuleFunctionBuilderWithFullInfo(BuilderStatePtr&& state)
         : state(std::move(state)) {}
 
-    auto& library(udf::UDFLibrary* library) {
+    auto& library(udf::UdfLibrary* library) {
         state->library = library;
         return *this;
     }
@@ -269,7 +269,7 @@ class ModuleFunctionBuilderWithArgs {
     explicit ModuleFunctionBuilderWithArgs(BuilderStatePtr&& state)
         : state(std::move(state)) {}
 
-    auto& library(udf::UDFLibrary* library) {
+    auto& library(udf::UdfLibrary* library) {
         state->library = library;
         return *this;
     }
@@ -292,7 +292,7 @@ class ModuleFunctionBuilderWithRet {
     explicit ModuleFunctionBuilderWithRet(BuilderStatePtr&& state)
         : state(std::move(state)) {}
 
-    auto& library(udf::UDFLibrary* library) {
+    auto& library(udf::UdfLibrary* library) {
         state->library = library;
         return *this;
     }
@@ -313,7 +313,7 @@ class ModuleFunctionBuilder {
  public:
     ModuleFunctionBuilder() : state(new ModuleFunctionBuilderState()) {}
 
-    auto& library(udf::UDFLibrary* library) {
+    auto& library(udf::UdfLibrary* library) {
         state->library = library;
         return *this;
     }
@@ -350,7 +350,7 @@ void ModuleFunctionBuilderWithFullInfo<Ret, Args...>::ExpandApplyArg(
         // extract actual args to apply function from input ptr
         ::llvm::IRBuilder<> builder(&function->getEntryBlock());
         ::llvm::Type* expect_ty = nullptr;
-        GetLLVMType(function->getParent(), arg_type, &expect_ty);
+        GetLlvmType(function->getParent(), arg_type, &expect_ty);
         ::llvm::Value* arg_arr = function->arg_begin();
         ::llvm::Value* arg = builder.CreateLoad(
             builder.CreateGEP(arg_arr, builder.getInt64(*arg_idx)));
@@ -401,7 +401,7 @@ void ModuleFunctionBuilderWithFullInfo<Ret, Args...>::ExpandApplyReturn(
         // extract actual return ptrs to apply function from input ptr
         ::llvm::IRBuilder<> builder(&function->getEntryBlock());
         ::llvm::Type* expect_ty = nullptr;
-        GetLLVMType(function->getParent(), ret_type, &expect_ty);
+        GetLlvmType(function->getParent(), ret_type, &expect_ty);
         if (!TypeIRBuilder::IsStructPtr(expect_ty)) {
             expect_ty = expect_ty->getPointerTo();
         }
@@ -450,7 +450,7 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
     bool return_by_arg = true;  // always use return_by_arg convention in test
     ::llvm::FunctionType* function_ty = nullptr;
     auto status =
-        GetLLVMFunctionType(module.get(), arg_types, arg_nullable, ret_type,
+        GetLlvmFunctionType(module.get(), arg_types, arg_nullable, ret_type,
                             ret_nullable, false, &return_by_arg, &function_ty);
     if (!status.isOK()) {
         LOG(WARNING) << status;
@@ -503,13 +503,13 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
                                             std::move(llvm_ctx));
 }
 
-static inline NativeValue BindValueFromLLVMFunction(
+static inline NativeValue BindValueFromLlvmFunction(
     const node::TypeNode* arg_type, bool nullable, ::llvm::Function* llvm_func,
     size_t* arg_idx) {
     if (arg_type->base() == node::kTuple) {
         std::vector<NativeValue> sub_vec;
         for (size_t i = 0; i < arg_type->GetGenericSize(); ++i) {
-            NativeValue sub_field = BindValueFromLLVMFunction(
+            NativeValue sub_field = BindValueFromLlvmFunction(
                 arg_type->GetGenericType(i), arg_type->IsGenericNullable(i),
                 llvm_func, arg_idx);
             sub_vec.push_back(sub_field);
@@ -580,7 +580,7 @@ static node::ExprNode* ApplyExprFuncHelper(
  */
 template <typename Ret, typename... Args>
 ModuleTestFunction<Ret, Args...> BuildExprFunction(
-    udf::UDFLibrary* library,
+    udf::UdfLibrary* library,
     const std::function<node::ExprNode*(
         node::NodeManager*,
         typename std::pair<Args, node::ExprNode*>::second_type...)>&
@@ -625,7 +625,7 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
             auto llvm_func = ctx->GetCurrentFunction();
             size_t llvm_arg_idx = 0;
             for (size_t i = 0; i < sizeof...(Args); ++i) {
-                auto value = BindValueFromLLVMFunction(
+                auto value = BindValueFromLlvmFunction(
                     arg_types[i], arg_nullable[i], llvm_func, &llvm_arg_idx);
                 sv->AddVar(arg_exprs[i]->GetExprString(), value);
             }
@@ -649,7 +649,7 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
         node::NodeManager*,
         typename std::pair<Args, node::ExprNode*>::second_type...)>&
         expr_func) {
-    return BuildExprFunction<Ret, Args...>(udf::DefaultUDFLibrary::get(),
+    return BuildExprFunction<Ret, Args...>(udf::DefaultUdfLibrary::get(),
                                            expr_func);
 }
 

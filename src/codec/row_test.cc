@@ -44,28 +44,28 @@ TEST_F(RowTest, NewRowTest) {
 
     type::TableDef table1;
     ASSERT_TRUE(
-        hybridse::sqlcase::SQLCase::ExtractTableDef(schema1, "", table1));
+        hybridse::sqlcase::SqlCase::ExtractTableDef(schema1, "", table1));
     type::TableDef table2;
     ASSERT_TRUE(
-        hybridse::sqlcase::SQLCase::ExtractTableDef(schema2, "", table2));
+        hybridse::sqlcase::SqlCase::ExtractTableDef(schema2, "", table2));
     type::TableDef table3;
     ASSERT_TRUE(
-        hybridse::sqlcase::SQLCase::ExtractTableDef(schema3, "", table3));
+        hybridse::sqlcase::SqlCase::ExtractTableDef(schema3, "", table3));
     {
         int8_t* ptr1;
         int32_t ptr_size1;
-        ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRow(
+        ASSERT_TRUE(hybridse::sqlcase::SqlCase::ExtractRow(
             table1.columns(), data1, &ptr1, &ptr_size1));
         Row row1(base::RefCountedSlice::Create(ptr1, ptr_size1));
         int8_t* ptr2;
         int32_t ptr_size2;
-        ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRow(
+        ASSERT_TRUE(hybridse::sqlcase::SqlCase::ExtractRow(
             table2.columns(), data2, &ptr2, &ptr_size2));
         Row row2(base::RefCountedSlice::Create(ptr2, ptr_size2));
 
         int8_t* ptr3;
         int32_t ptr_size3;
-        ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRow(
+        ASSERT_TRUE(hybridse::sqlcase::SqlCase::ExtractRow(
             table3.columns(), data3, &ptr3, &ptr_size3));
         Row row3(base::RefCountedSlice::Create(ptr3, ptr_size3));
 

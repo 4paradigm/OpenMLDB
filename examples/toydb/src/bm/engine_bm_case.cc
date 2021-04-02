@@ -43,7 +43,7 @@ namespace hybridse {
 namespace bm {
 using codec::Row;
 using sqlcase::CaseDataMock;
-using sqlcase::SQLCase;
+using sqlcase::SqlCase;
 using vm::BatchRunSession;
 using vm::Engine;
 using vm::RequestRunSession;
@@ -109,7 +109,7 @@ static void EngineRequestMode(const std::string sql, MODE mode,
     // prepare data into table
     auto catalog = vm::BuildOnePkTableStorage(size);
     vm::EngineOptions options;
-    if (hybridse::sqlcase::SQLCase::IS_CLUSTER()) {
+    if (hybridse::sqlcase::SqlCase::IsCluster()) {
         options.set_cluster_optimized(true);
     }
     Engine engine(catalog, options);
@@ -800,17 +800,17 @@ void EngineRequestSimpleSelectDate(benchmark::State* state,
         "cases/resource/benchmark_t1_with_time_one_row.yaml";
     EngineRequestModeSimpleQueryBM("db", "t1", sql, 1, resource, state, mode);
 }
-hybridse::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml,
+hybridse::sqlcase::SqlCase LoadSqlCaseWithID(const std::string& yaml,
                                              const std::string& case_id) {
-    return hybridse::sqlcase::SQLCase::LoadSQLCaseWithID(
-        hybridse::sqlcase::FindSQLCaseBaseDirPath(), yaml, case_id);
+    return hybridse::sqlcase::SqlCase::LoadSqlCaseWithID(
+        hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml, case_id);
 }
 void EngineBenchmarkOnCase(const std::string& yaml_path,
                            const std::string& case_id,
                            vm::EngineMode engine_mode,
                            benchmark::State* state) {
-    SQLCase target_case = hybridse::sqlcase::SQLCase::LoadSQLCaseWithID(
-        hybridse::sqlcase::FindSQLCaseBaseDirPath(), yaml_path, case_id);
+    SqlCase target_case = hybridse::sqlcase::SqlCase::LoadSqlCaseWithID(
+        hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, case_id);
     if (target_case.id() != case_id) {
         LOG(WARNING) << "Fail to find case #" << case_id << " in " << yaml_path;
         state->SkipWithError("BENCHMARK CASE LOAD FAIL: fail to find case");
@@ -818,7 +818,7 @@ void EngineBenchmarkOnCase(const std::string& yaml_path,
     }
     EngineBenchmarkOnCase(target_case, engine_mode, state);
 }
-void EngineBenchmarkOnCase(hybridse::sqlcase::SQLCase& sql_case,  // NOLINT
+void EngineBenchmarkOnCase(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                            vm::EngineMode engine_mode,
                            benchmark::State* state) {
     InitializeNativeTarget();
@@ -831,12 +831,12 @@ void EngineBenchmarkOnCase(hybridse::sqlcase::SQLCase& sql_case,  // NOLINT
         engine_options.set_batch_request_optimized(
             sql_case.batch_request_optimized_);
     }
-    if (hybridse::sqlcase::SQLCase::IS_CLUSTER()) {
+    if (hybridse::sqlcase::SqlCase::IsCluster()) {
         engine_options.set_cluster_optimized(true);
     } else {
         engine_options.set_cluster_optimized(false);
     }
-    if (hybridse::sqlcase::SQLCase::IS_DISABLE_EXPR_OPT()) {
+    if (hybridse::sqlcase::SqlCase::IsDisableExprOpt()) {
         engine_options.set_enable_expr_optimize(false);
     } else {
         engine_options.set_enable_expr_optimize(true);
@@ -854,7 +854,7 @@ void EngineBenchmarkOnCase(hybridse::sqlcase::SQLCase& sql_case,  // NOLINT
                 sql_case, engine_options,
                 sql_case.batch_request().common_column_indices_));
     }
-    if (SQLCase::IS_DEBUG()) {
+    if (SqlCase::IsDebug()) {
         LOG(INFO) << "BENCHMARK CASE TEST: BEGIN";
         for (auto _ : *state) {
             engine_runner->RunCheck();

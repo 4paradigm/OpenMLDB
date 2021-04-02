@@ -28,7 +28,7 @@ const char SPACE_ED[] = "";
 const char OR_INDENT[] = "|  ";
 const char INDENT[] = "  ";
 
-enum SQLNodeType {
+enum SqlNodeType {
     // SQL
     kCreateStmt,
     kInsertStmt,
@@ -75,9 +75,9 @@ enum SQLNodeType {
     kFnParaList,
     kFnList,
     kExternalFnDef,
-    kUDFDef,
-    kUDFByCodeGenDef,
-    kUDAFDef,
+    kUdfDef,
+    kUdfByCodeGenDef,
+    kUdafDef,
     kLambdaDef,
     kPartitionMeta,
     kReplicaNum,

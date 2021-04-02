@@ -277,7 +277,7 @@ uint32_t to_string_len(const V &v);
 
 }  // namespace v1
 
-void RegisterNativeUDFToModule();
+void RegisterNativeUdfToModule();
 }  // namespace udf
 }  // namespace hybridse
 

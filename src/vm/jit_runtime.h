@@ -24,14 +24,14 @@
 namespace hybridse {
 namespace vm {
 
-class JITRuntime {
+class JitRuntime {
  public:
-    JITRuntime() {}
+    JitRuntime() {}
 
     /**
      * Get TLS JIT runtime instance.
      */
-    static JITRuntime* get();
+    static JitRuntime* get();
 
     /**
      * Allocate raw memory with specified bytes.
@@ -60,7 +60,7 @@ class JITRuntime {
     base::ByteMemoryPool mem_pool_;
     std::list<base::FeBaseObject*> allocated_obj_pool_;
 
-    static thread_local JITRuntime tls_runtime_inst_;
+    static thread_local JitRuntime tls_runtime_inst_;
 };
 
 }  // namespace vm

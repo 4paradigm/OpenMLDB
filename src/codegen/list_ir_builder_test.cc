@@ -55,7 +55,7 @@ using namespace llvm::orc;  // NOLINT
 ExitOnError ExitOnErr;
 
 using hybridse::base::ConstIterator;
-using hybridse::sqlcase::SQLCase;
+using hybridse::sqlcase::SqlCase;
 struct TestString {
     int32_t size;
     char* data = nullptr;

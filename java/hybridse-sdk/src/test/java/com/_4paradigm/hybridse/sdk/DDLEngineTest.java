@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridse.common;
+package com._4paradigm.hybridse.sdk;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -32,8 +32,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com._4paradigm.hybridse.common.DDLEngine.genDDL;
-import static com._4paradigm.hybridse.common.DDLEngine.sql2Feconfig;
+import static com._4paradigm.hybridse.sdk.DDLEngine.genDDL;
+import static com._4paradigm.hybridse.sdk.DDLEngine.sql2Feconfig;
 
 public class DDLEngineTest {
     private static final Logger logger = LoggerFactory.getLogger(DDLEngineTest.class);

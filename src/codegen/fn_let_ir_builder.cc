@@ -252,7 +252,7 @@ Status RowFnLetIRBuilder::BindProjectFrame(ExprIRBuilder* expr_ir_builder,
     CHECK_TRUE(frame_ptr != nullptr && frame_ptr->getType()->isPointerTy(),
                kCodegenError);
     ::llvm::Type* row_list_ptr_ty = nullptr;
-    CHECK_TRUE(GetLLVMType(ctx_->GetModule(), frame_arg->GetOutputType(),
+    CHECK_TRUE(GetLlvmType(ctx_->GetModule(), frame_arg->GetOutputType(),
                            &row_list_ptr_ty),
                kCodegenError);
     frame_ptr = builder.CreatePointerCast(frame_ptr, row_list_ptr_ty);

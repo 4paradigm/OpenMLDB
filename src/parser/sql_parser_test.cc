@@ -25,27 +25,27 @@ namespace hybridse {
 namespace parser {
 using hybridse::node::NodeManager;
 using hybridse::node::NodePointVector;
-using hybridse::node::SQLNode;
-using hybridse::sqlcase::SQLCase;
-std::vector<SQLCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
+using hybridse::node::SqlNode;
+using hybridse::sqlcase::SqlCase;
+std::vector<SqlCase> InitCases(std::string yaml_path);
+void InitCases(std::string yaml_path, std::vector<SqlCase> &cases);  // NOLINT
 
-void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(
-            hybridse::sqlcase::FindSQLCaseBaseDirPath(), yaml_path, cases)) {
+void InitCases(std::string yaml_path, std::vector<SqlCase> &cases) {  // NOLINT
+    if (!SqlCase::CreateSqlCasesFromYaml(
+            hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases)) {
         FAIL();
     }
 }
-std::vector<SQLCase> InitCases(std::string yaml_path) {
-    std::vector<SQLCase> cases;
+std::vector<SqlCase> InitCases(std::string yaml_path) {
+    std::vector<SqlCase> cases;
     InitCases(yaml_path, cases);
     return cases;
 }
-class SqlParserTest : public ::testing::TestWithParam<SQLCase> {
+class SqlParserTest : public ::testing::TestWithParam<SqlCase> {
  public:
     SqlParserTest() {
         manager_ = new NodeManager();
-        parser_ = new HybridSEParser();
+        parser_ = new HybridSeParser();
     }
 
     ~SqlParserTest() {
@@ -57,7 +57,7 @@ class SqlParserTest : public ::testing::TestWithParam<SQLCase> {
         template <class ParamType>
         std::string operator()(
             const testing::TestParamInfo<ParamType> &info) const {
-            auto sql_case = static_cast<SQLCase>(info.param);
+            auto sql_case = static_cast<SqlCase>(info.param);
             std::string desc = sql_case.id();
             boost::replace_all(desc, "-", "_");
             return desc;
@@ -66,7 +66,7 @@ class SqlParserTest : public ::testing::TestWithParam<SQLCase> {
 
  protected:
     NodeManager *manager_;
-    HybridSEParser *parser_;
+    HybridSeParser *parser_;
 };
 
 INSTANTIATE_TEST_SUITE_P(
@@ -115,18 +115,18 @@ INSTANTIATE_TEST_SUITE_P(
     SqlSubQueryParse, SqlParserTest,
     testing::ValuesIn(InitCases("cases/plan/sub_query.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(UDFParse, SqlParserTest,
+INSTANTIATE_TEST_SUITE_P(UdfParse, SqlParserTest,
                          testing::ValuesIn(InitCases("cases/plan/udf.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
-    SQLCreate, SqlParserTest,
+    SqlCreate, SqlParserTest,
     testing::ValuesIn(InitCases("cases/plan/create.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
-    SQLInsert, SqlParserTest,
+    SqlInsert, SqlParserTest,
     testing::ValuesIn(InitCases("cases/plan/insert.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(SQLCmdParserTest, SqlParserTest,
+INSTANTIATE_TEST_SUITE_P(SqlCmdParserTest, SqlParserTest,
                          testing::ValuesIn(InitCases("cases/plan/cmd.yaml")));
 
 TEST_P(SqlParserTest, Parser_Select_Expr_List) {
@@ -574,7 +574,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ(60 * 86400000L, index_node->GetAbsTTL());
 }
 
-void CheckTTL(HybridSEParser *parser, NodeManager *manager,
+void CheckTTL(HybridSeParser *parser, NodeManager *manager,
               const std::string &sql, int expect) {
     NodePointVector trees;
     base::Status status;
@@ -667,7 +667,7 @@ class SqlParserErrorTest : public ::testing::TestWithParam<
  public:
     SqlParserErrorTest() {
         manager_ = new NodeManager();
-        parser_ = new HybridSEParser();
+        parser_ = new HybridSeParser();
     }
 
     ~SqlParserErrorTest() {
@@ -677,7 +677,7 @@ class SqlParserErrorTest : public ::testing::TestWithParam<
 
  protected:
     NodeManager *manager_;
-    HybridSEParser *parser_;
+    HybridSeParser *parser_;
 };
 
 // TODO(chenjing): line and column check
@@ -694,20 +694,20 @@ TEST_P(SqlParserErrorTest, ParserErrorStatusTest) {
     std::cout << status << std::endl;
 }
 
-INSTANTIATE_TEST_SUITE_P(SQLErrorParse, SqlParserErrorTest,
+INSTANTIATE_TEST_SUITE_P(SqlErrorParse, SqlParserErrorTest,
                          testing::Values(std::make_pair(
-                             common::kSQLError, "SELECT SUM(*) FROM t1;")));
+                             common::kSqlError, "SELECT SUM(*) FROM t1;")));
 
 INSTANTIATE_TEST_SUITE_P(
-    UDFErrorParse, SqlParserErrorTest,
+    UdfErrorParse, SqlParserErrorTest,
     testing::Values(
-        std::make_pair(common::kSQLError,
+        std::make_pair(common::kSqlError,
                        "%%fun\ndefine test(x:i32,y:i32):i32\n    c=x+y\n    "
                        "return c\nend"),
-        std::make_pair(common::kSQLError,
+        std::make_pair(common::kSqlError,
                        "%%fun\ndef 123test(x:i32,y:i32):i32\n    c=x+y\n    "
                        "return c\nend"),
-        std::make_pair(common::kSQLError,
+        std::make_pair(common::kSqlError,
                        "%%fun\ndef test(x:i32,y:i32):i32\n    c=x)(y\n    "
                        "return c\nend")));
 

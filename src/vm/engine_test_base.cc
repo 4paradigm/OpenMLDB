@@ -17,14 +17,14 @@
 #include "vm/sql_compiler.h"
 namespace hybridse {
 namespace vm {
-void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(
-            hybridse::sqlcase::FindSQLCaseBaseDirPath(), yaml_path, cases)) {
+void InitCases(std::string yaml_path, std::vector<SqlCase>& cases) {  // NOLINT
+    if (!SqlCase::CreateSqlCasesFromYaml(
+            hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases)) {
         FAIL();
     }
 }
-std::vector<SQLCase> InitCases(std::string yaml_path) {
-    std::vector<SQLCase> cases;
+std::vector<SqlCase> InitCases(std::string yaml_path) {
+    std::vector<SqlCase> cases;
     InitCases(yaml_path, cases);
     return cases;
 }
@@ -41,7 +41,7 @@ void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema) {
 }
 
 std::string YamlTypeName(type::Type type) {
-    return hybridse::sqlcase::SQLCase::TypeString(type);
+    return hybridse::sqlcase::SqlCase::TypeString(type);
 }
 
 // 打印符合yaml测试框架格式的预期结果
@@ -262,7 +262,7 @@ const std::string GenerateTableName(int32_t id) {
     return "auto_t" + std::to_string(id);
 }
 
-void DoEngineCheckExpect(const SQLCase& sql_case,
+void DoEngineCheckExpect(const SqlCase& sql_case,
                          std::shared_ptr<RunSession> session,
                          const std::vector<Row>& output) {
     if (sql_case.expect().count_ >= 0) {
@@ -274,7 +274,7 @@ void DoEngineCheckExpect(const SQLCase& sql_case,
     bool is_batch_request = session->engine_mode() == kBatchRequestMode;
     if (is_batch_request) {
         const auto& sql_ctx =
-            std::dynamic_pointer_cast<SQLCompileInfo>(session->GetCompileInfo())
+            std::dynamic_pointer_cast<SqlCompileInfo>(session->GetCompileInfo())
                 ->get_sql_context();
         const auto& output_common_column_indices =
             sql_ctx.batch_request_info.output_common_column_indices;
@@ -361,14 +361,14 @@ void DoEngineCheckExpect(const SQLCase& sql_case,
 }
 
 Status EngineTestRunner::ExtractTableInfoFromCreateString(
-    const std::string& create, sqlcase::SQLCase::TableInfo* table_info) {
+    const std::string& create, sqlcase::SqlCase::TableInfo* table_info) {
     CHECK_TRUE(table_info != nullptr, common::kNullPointer,
                "Fail extract with null table info");
-    CHECK_TRUE(!create.empty(), common::kSQLError,
+    CHECK_TRUE(!create.empty(), common::kSqlError,
                "Fail extract with empty create string");
 
     node::NodeManager manager;
-    parser::HybridSEParser parser;
+    parser::HybridSeParser parser;
     hybridse::plan::NodePointVector trees;
     base::Status status;
     int ret = parser.parse(create, trees, &manager, status);
@@ -376,7 +376,7 @@ Status EngineTestRunner::ExtractTableInfoFromCreateString(
     if (0 != status.code) {
         std::cout << status << std::endl;
     }
-    CHECK_TRUE(0 == ret, common::kSQLError, "Fail to parser SQL");
+    CHECK_TRUE(0 == ret, common::kSqlError, "Fail to parser SQL");
     //    ASSERT_EQ(1, trees.size());
     //    std::cout << *(trees.front()) << std::endl;
     plan::SimplePlanner planner_ptr(&manager);
@@ -412,7 +412,7 @@ Status EngineTestRunner::ExtractTableInfoFromCreateString(
     return Status::OK();
 }
 
-void EngineTestRunner::InitSQLCase() {
+void EngineTestRunner::InitSqlCase() {
     for (size_t idx = 0; idx < sql_case_.inputs_.size(); idx++) {
         if (!sql_case_.inputs_[idx].create_.empty()) {
             auto status = ExtractTableInfoFromCreateString(
@@ -429,15 +429,15 @@ void EngineTestRunner::InitSQLCase() {
 }
 
 Status EngineTestRunner::Compile() {
-    CHECK_TRUE(engine_ != nullptr, common::kSQLError, "Engine is not init");
+    CHECK_TRUE(engine_ != nullptr, common::kSqlError, "Engine is not init");
     std::string sql_str = sql_case_.sql_str();
     for (int j = 0; j < sql_case_.CountInputs(); ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
         boost::replace_all(sql_str, placeholder, sql_case_.inputs_[j].name_);
     }
     LOG(INFO) << "Compile SQL:\n" << sql_str;
-    CHECK_TRUE(session_ != nullptr, common::kSQLError, "Session is not set");
-    if (hybridse::sqlcase::SQLCase::IS_DEBUG() || sql_case_.debug()) {
+    CHECK_TRUE(session_ != nullptr, common::kSqlError, "Session is not set");
+    if (hybridse::sqlcase::SqlCase::IsDebug() || sql_case_.debug()) {
         session_->EnableDebug();
     }
     struct timeval st;
@@ -456,14 +456,14 @@ Status EngineTestRunner::Compile() {
     } else {
         LOG(INFO) << "SQL output schema:";
         std::ostringstream oss;
-        std::dynamic_pointer_cast<SQLCompileInfo>(session_->GetCompileInfo())
+        std::dynamic_pointer_cast<SqlCompileInfo>(session_->GetCompileInfo())
             ->GetPhysicalPlan()
             ->Print(oss, "");
         LOG(INFO) << "Physical plan:";
         std::cerr << oss.str() << std::endl;
 
         std::ostringstream runner_oss;
-        std::dynamic_pointer_cast<SQLCompileInfo>(session_->GetCompileInfo())
+        std::dynamic_pointer_cast<SqlCompileInfo>(session_->GetCompileInfo())
             ->GetClusterJob()
             .Print(runner_oss, "");
         LOG(INFO) << "Runner plan:";
@@ -485,7 +485,7 @@ void EngineTestRunner::RunCheck() {
         return;
     }
     std::ostringstream oss;
-    std::dynamic_pointer_cast<SQLCompileInfo>(session_->GetCompileInfo())
+    std::dynamic_pointer_cast<SqlCompileInfo>(session_->GetCompileInfo())
         ->GetPhysicalPlan()
         ->Print(oss, "");
     if (!sql_case_.batch_plan().empty() && engine_mode == kBatchMode) {

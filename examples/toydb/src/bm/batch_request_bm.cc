@@ -23,13 +23,13 @@ using namespace ::llvm;  // NOLINT
 
 #define DEFINE_BATCH_REQUEST_CASE(NAME, PATH, CASE_ID)                         \
     static void BM_BatchRequest_##NAME(benchmark::State& state) {              \
-        auto sql_case = LoadSQLCaseWithID(PATH, CASE_ID);                      \
+        auto sql_case = LoadSqlCaseWithID(PATH, CASE_ID);                      \
         sql_case.batch_request_optimized_ = state.range(0) == 1;               \
-        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {                         \
-            sql_case.SQLCaseRepeatConfig("window_scale", state.range(1));      \
+        if (!hybridse::sqlcase::SqlCase::IsDebug()) {                         \
+            sql_case.SqlCaseRepeatConfig("window_scale", state.range(1));      \
         }                                                                      \
-        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {                         \
-            sql_case.SQLCaseRepeatConfig("batch_scale", state.range(2));       \
+        if (!hybridse::sqlcase::SqlCase::IsDebug()) {                         \
+            sql_case.SqlCaseRepeatConfig("batch_scale", state.range(2));       \
         }                                                                      \
                                                                                \
         EngineBenchmarkOnCase(sql_case, vm::kBatchRequestMode, &state);        \

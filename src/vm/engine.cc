@@ -78,11 +78,11 @@ bool Engine::GetDependentTables(const std::string& sql, const std::string& db,
                                 EngineMode engine_mode,
                                 std::set<std::string>* tables,
                                 base::Status& status) {
-    auto info = std::make_shared<hybridse::vm::SQLCompileInfo>();
+    auto info = std::make_shared<hybridse::vm::SqlCompileInfo>();
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
     info->get_sql_context().engine_mode = engine_mode;
-    SQLCompiler compiler(
+    SqlCompiler compiler(
         std::atomic_load_explicit(&cl_, std::memory_order_acquire),
         options_.is_keep_ir(), false, options_.is_plan_only());
     bool ok = compiler.Parse(info->get_sql_context(), status);
@@ -153,7 +153,7 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
                                base::Status& status) {  // NOLINT
     if (info->GetEngineMode() != session.engine_mode()) {
         status =
-            Status(common::kSQLError,
+            Status(common::kSqlError,
                    "Inconsistent cache, mode expect " +
                        EngineModeName(session.engine_mode()) + " but get " +
                        EngineModeName(info->GetEngineMode()));
@@ -161,7 +161,7 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
     }
     if (session.engine_mode() == kBatchRequestMode) {
         auto& cache_ctx =
-            std::dynamic_pointer_cast<SQLCompileInfo>(info)->get_sql_context();
+            std::dynamic_pointer_cast<SqlCompileInfo>(info)->get_sql_context();
         auto batch_req_sess = dynamic_cast<BatchRequestRunSession*>(&session);
         if (batch_req_sess == nullptr) {
             return false;
@@ -171,7 +171,7 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
         auto& sess_indices = batch_req_sess->common_column_indices();
         if (cache_indices != sess_indices) {
             status =
-                Status(common::kSQLError, "Inconsistent common column config");
+                Status(common::kSqlError, "Inconsistent common column config");
             return false;
         }
     }
@@ -194,9 +194,9 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     }
     DLOG(INFO) << "Compile HYBRIDSE ...";
     status = base::Status::OK();
-    std::shared_ptr<SQLCompileInfo> info = std::make_shared<SQLCompileInfo>();
+    std::shared_ptr<SqlCompileInfo> info = std::make_shared<SqlCompileInfo>();
     auto& sql_context =
-        std::dynamic_pointer_cast<SQLCompileInfo>(info)->get_sql_context();
+        std::dynamic_pointer_cast<SqlCompileInfo>(info)->get_sql_context();
     sql_context.sql = sql;
     sql_context.db = db;
     sql_context.engine_mode = session.engine_mode();
@@ -215,7 +215,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
             batch_req_sess->common_column_indices();
     }
 
-    SQLCompiler compiler(
+    SqlCompiler compiler(
         std::atomic_load_explicit(&cl_, std::memory_order_acquire),
         options_.is_keep_ir(), false, options_.is_plan_only());
     bool ok = compiler.Compile(info->get_sql_context(), status);
@@ -258,7 +258,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
             << "common column config can only be valid in batch request mode";
         return false;
     }
-    SQLContext ctx;
+    SqlContext ctx;
     ctx.engine_mode = engine_mode;
     ctx.sql = sql;
     ctx.db = db;
@@ -266,7 +266,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     ctx.is_cluster_optimized = options_.is_cluster_optimzied();
     ctx.is_batch_request_optimized = !common_column_indices.empty();
     ctx.batch_request_info.common_column_indices = common_column_indices;
-    SQLCompiler compiler(
+    SqlCompiler compiler(
         std::atomic_load_explicit(&cl_, std::memory_order_acquire), true, true,
         true);
     bool ok = compiler.Compile(ctx, *status);
@@ -392,14 +392,14 @@ bool RunSession::SetCompileInfo(
 
 int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
     DLOG(INFO) << "Request Row Run with main task";
-    return Run(std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+    return Run(std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)
                    ->get_sql_context()
                    .cluster_job.main_task_id(),
                in_row, out_row);
 }
 int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row,
                                Row* out_row) {
-    auto task = std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+    auto task = std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)
                     ->get_sql_context()
                     .cluster_job.GetTask(task_id)
                     .GetRoot();
@@ -409,7 +409,7 @@ int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row,
         return -2;
     }
     DLOG(INFO) << "Request Row Run with task_id " << task_id;
-    RunnerContext ctx(&std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+    RunnerContext ctx(&std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)
                            ->get_sql_context()
                            .cluster_job,
                       in_row, sp_name_, is_debug_);
@@ -427,7 +427,7 @@ int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row,
 
 int32_t BatchRequestRunSession::Run(const std::vector<Row>& request_batch,
                                     std::vector<Row>& output) {
-    return Run(std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+    return Run(std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)
                    ->get_sql_context()
                    .cluster_job.main_task_id(),
                request_batch, output);
@@ -435,11 +435,11 @@ int32_t BatchRequestRunSession::Run(const std::vector<Row>& request_batch,
 int32_t BatchRequestRunSession::Run(const uint32_t id,
                                     const std::vector<Row>& request_batch,
                                     std::vector<Row>& output) {
-    RunnerContext ctx(&std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+    RunnerContext ctx(&std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)
                            ->get_sql_context()
                            .cluster_job,
                       request_batch, sp_name_, is_debug_);
-    auto task = std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+    auto task = std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)
                     ->get_sql_context()
                     .cluster_job.GetTask(id)
                     .GetRoot();
@@ -462,11 +462,11 @@ int32_t BatchRequestRunSession::Run(const uint32_t id,
 }
 
 std::shared_ptr<TableHandler> BatchRunSession::Run() {
-    RunnerContext ctx(&std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+    RunnerContext ctx(&std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)
                            ->get_sql_context()
                            .cluster_job,
                       is_debug_);
-    auto output = std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+    auto output = std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)
                       ->get_sql_context()
                       .cluster_job.GetMainTask()
                       .GetRoot()
@@ -495,7 +495,7 @@ std::shared_ptr<TableHandler> BatchRunSession::Run() {
 }
 
 int32_t BatchRunSession::Run(std::vector<Row>& rows, uint64_t limit) {
-    auto& sql_ctx = std::dynamic_pointer_cast<SQLCompileInfo>(compile_info_)
+    auto& sql_ctx = std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)
                         ->get_sql_context();
     RunnerContext ctx(&sql_ctx.cluster_job, is_debug_);
     auto output = sql_ctx.cluster_job.GetTask(0).GetRoot()->RunWithCache(ctx);

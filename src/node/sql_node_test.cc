@@ -54,7 +54,7 @@ TEST_F(SqlNodeTest, StructExprNodeTest) {
 }
 
 TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
-    SQLNode *node = node_manager_->MakeColumnRefNode("col", "t");
+    SqlNode *node = node_manager_->MakeColumnRefNode("col", "t");
     ColumnRefNode *columnnode = dynamic_cast<ColumnRefNode *>(node);
     std::cout << *node << std::endl;
     ASSERT_EQ(kExprColumnRef, columnnode->GetExprType());
@@ -130,7 +130,7 @@ TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
     orders->PushBack(ptr2);
 
     int64_t maxsize = 0;
-    SQLNode *frame = node_manager_->MakeFrameNode(
+    SqlNode *frame = node_manager_->MakeFrameNode(
         kFrameRange,
         node_manager_->MakeFrameExtent(
             node_manager_->MakeFrameBound(kPreceding),
@@ -165,7 +165,7 @@ TEST_F(SqlNodeTest, MakeExternalFnDefNodeTest) {
     ASSERT_EQ("extern_f", node_ptr->function_name());
 }
 
-TEST_F(SqlNodeTest, MakeUDAFDefNodeTest) {
+TEST_F(SqlNodeTest, MakeUdafDefNodeTest) {
     auto zero = node_manager_->MakeConstNode(1);
     auto f1 = dynamic_cast<ExternalFnDefNode *>(
         node_manager_->MakeUnresolvedFnDefNode("f1"));
@@ -173,9 +173,9 @@ TEST_F(SqlNodeTest, MakeUDAFDefNodeTest) {
         node_manager_->MakeUnresolvedFnDefNode("f2"));
     auto f3 = dynamic_cast<ExternalFnDefNode *>(
         node_manager_->MakeUnresolvedFnDefNode("f3"));
-    auto *udaf = dynamic_cast<UDAFDefNode *>(
-        node_manager_->MakeUDAFDefNode("udaf", {}, zero, f1, f2, f3));
-    ASSERT_EQ(kUDAFDef, udaf->GetType());
+    auto *udaf = dynamic_cast<UdafDefNode *>(
+        node_manager_->MakeUdafDefNode("udaf", {}, zero, f1, f2, f3));
+    ASSERT_EQ(kUdafDef, udaf->GetType());
     ASSERT_EQ(true, udaf->init_expr()->Equals(zero));
     ASSERT_EQ(true, udaf->update_func()->Equals(f1));
     ASSERT_EQ(true, udaf->merge_func()->Equals(f2));
@@ -236,7 +236,7 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     value_expr_list->PushBack(value4);
     ExprListNode *insert_values = node_manager_->MakeExprList();
     insert_values->PushBack(value_expr_list);
-    SQLNode *node_ptr = node_manager_->MakeInsertTableNode(
+    SqlNode *node_ptr = node_manager_->MakeInsertTableNode(
         "t1", column_expr_list, insert_values);
 
     ASSERT_EQ(kInsertStmt, node_ptr->GetType());
@@ -493,15 +493,15 @@ TEST_F(SqlNodeTest, WindowAndFrameNodeMergeTest) {
     orders2_exprs->AddChild(node_manager_->MakeColumnRefNode("ts2", "t1"));
     ExprNode *orders2 = node_manager_->MakeOrderByNode(orders2_exprs, false);
 
-    node::SQLNodeList unions1;
+    node::SqlNodeList unions1;
     unions1.PushBack(node_manager_->MakeTableNode("ta", ""));
     unions1.PushBack(node_manager_->MakeTableNode("tb", ""));
 
-    node::SQLNodeList unions2;
+    node::SqlNodeList unions2;
     unions2.PushBack(node_manager_->MakeTableNode("ta", ""));
     unions2.PushBack(node_manager_->MakeTableNode("tb", ""));
 
-    node::SQLNodeList unions3;
+    node::SqlNodeList unions3;
     unions3.PushBack(node_manager_->MakeTableNode("ta", ""));
 
     WindowDefNode *w1 = dynamic_cast<WindowDefNode *>(

@@ -41,10 +41,10 @@ namespace hybridse {
 namespace udf {
 
 // static instance
-DefaultUDFLibrary DefaultUDFLibrary::inst_;
+DefaultUdfLibrary DefaultUdfLibrary::inst_;
 
 template <typename T>
-struct BuildGetHourUDF {
+struct BuildGetHourUdf {
     using Args = std::tuple<T>;
 
     Status operator()(CodeGenContext* ctx, NativeValue time, NativeValue* out) {
@@ -61,7 +61,7 @@ struct BuildGetHourUDF {
 };
 
 template <typename T>
-struct BuildGetMinuteUDF {
+struct BuildGetMinuteUdf {
     using Args = std::tuple<T>;
 
     Status operator()(CodeGenContext* ctx, NativeValue time, NativeValue* out) {
@@ -78,7 +78,7 @@ struct BuildGetMinuteUDF {
 };
 
 template <typename T>
-struct BuildGetSecondUDF {
+struct BuildGetSecondUdf {
     using Args = std::tuple<T>;
 
     Status operator()(CodeGenContext* ctx, NativeValue time, NativeValue* out) {
@@ -95,11 +95,11 @@ struct BuildGetSecondUDF {
 };
 
 template <typename T>
-struct SumUDAFDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+struct SumUdafDef {
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<T, T, T>()
             .const_init(T(0))
-            .update([](UDFResolveContext* ctx, ExprNode* cur_sum,
+            .update([](UdfResolveContext* ctx, ExprNode* cur_sum,
                        ExprNode* input) {
                 auto nm = ctx->node_manager();
                 auto is_null = nm->MakeUnaryExprNode(input, node::kFnOpIsNull);
@@ -112,11 +112,11 @@ struct SumUDAFDef {
 };
 
 template <typename T>
-struct MinUDAFDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+struct MinUdafDef {
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<T, Tuple<bool, T>, T>()
             .const_init(MakeTuple(true, DataTypeTrait<T>::maximum_value()))
-            .update([](UDFResolveContext* ctx, ExprNode* state,
+            .update([](UdfResolveContext* ctx, ExprNode* state,
                        ExprNode* input) {
                 auto nm = ctx->node_manager();
                 auto flag = nm->MakeGetFieldExpr(state, 0);
@@ -130,7 +130,7 @@ struct MinUDAFDef {
                 return nm->MakeFuncNode("make_tuple", {new_flag, new_min},
                                         nullptr);
             })
-            .output([](UDFResolveContext* ctx, ExprNode* state) {
+            .output([](UdfResolveContext* ctx, ExprNode* state) {
                 auto nm = ctx->node_manager();
                 auto flag = nm->MakeGetFieldExpr(state, 0);
                 auto cur_min = nm->MakeGetFieldExpr(state, 1);
@@ -144,11 +144,11 @@ struct MinUDAFDef {
 };
 
 template <>
-struct MinUDAFDef<StringRef> {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+struct MinUdafDef<StringRef> {
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<StringRef, Tuple<bool, StringRef>, StringRef>()
             .const_init(MakeTuple(true, StringRef("")))
-            .update([](UDFResolveContext* ctx, ExprNode* state,
+            .update([](UdfResolveContext* ctx, ExprNode* state,
                        ExprNode* input) {
                 auto nm = ctx->node_manager();
                 auto flag = nm->MakeGetFieldExpr(state, 0);
@@ -163,7 +163,7 @@ struct MinUDAFDef<StringRef> {
                 return nm->MakeFuncNode("make_tuple", {new_flag, new_min},
                                         nullptr);
             })
-            .output([](UDFResolveContext* ctx, ExprNode* state) {
+            .output([](UdfResolveContext* ctx, ExprNode* state) {
                 auto nm = ctx->node_manager();
                 auto flag = nm->MakeGetFieldExpr(state, 0);
                 auto cur_min = nm->MakeGetFieldExpr(state, 1);
@@ -175,11 +175,11 @@ struct MinUDAFDef<StringRef> {
 };
 
 template <typename T>
-struct MaxUDAFDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+struct MaxUdafDef {
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<T, Tuple<bool, T>, T>()
             .const_init(MakeTuple(true, DataTypeTrait<T>::minimum_value()))
-            .update([](UDFResolveContext* ctx, ExprNode* state,
+            .update([](UdfResolveContext* ctx, ExprNode* state,
                        ExprNode* input) {
                 auto nm = ctx->node_manager();
                 auto flag = nm->MakeGetFieldExpr(state, 0);
@@ -193,7 +193,7 @@ struct MaxUDAFDef {
                 return nm->MakeFuncNode("make_tuple", {new_flag, new_max},
                                         nullptr);
             })
-            .output([](UDFResolveContext* ctx, ExprNode* state) {
+            .output([](UdfResolveContext* ctx, ExprNode* state) {
                 auto nm = ctx->node_manager();
                 auto flag = nm->MakeGetFieldExpr(state, 0);
                 auto cur_max = nm->MakeGetFieldExpr(state, 1);
@@ -207,11 +207,11 @@ struct MaxUDAFDef {
 };
 
 template <typename T>
-struct CountUDAFDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+struct CountUdafDef {
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<int64_t, int64_t, T>()
             .const_init(0)
-            .update([](UDFResolveContext* ctx, ExprNode* cur_cnt,
+            .update([](UdfResolveContext* ctx, ExprNode* cur_cnt,
                        ExprNode* input) {
                 auto nm = ctx->node_manager();
                 auto is_null = nm->MakeUnaryExprNode(input, node::kFnOpIsNull);
@@ -224,12 +224,12 @@ struct CountUDAFDef {
 };
 
 template <typename T>
-struct AvgUDAFDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+struct AvgUdafDef {
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<double, Tuple<int64_t, double>, T>()
             .const_init(MakeTuple((int64_t)0, 0.0))
             .update(
-                [](UDFResolveContext* ctx, ExprNode* state, ExprNode* input) {
+                [](UdfResolveContext* ctx, ExprNode* state, ExprNode* input) {
                     auto nm = ctx->node_manager();
                     ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
                     ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
@@ -242,7 +242,7 @@ struct AvgUDAFDef {
                         nm->MakeFuncNode("make_tuple", {cnt, sum}, nullptr);
                     return nm->MakeCondExpr(is_null, state, new_state);
                 })
-            .output([](UDFResolveContext* ctx, ExprNode* state) {
+            .output([](UdfResolveContext* ctx, ExprNode* state) {
                 auto nm = ctx->node_manager();
                 ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
                 ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
@@ -258,7 +258,7 @@ struct DistinctCountDef {
     using ArgT = typename DataTypeTrait<T>::CCallArgType;
     using SetT = std::unordered_set<T>;
 
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         std::string suffix = ".opaque_std_set_" + DataTypeTrait<T>::to_string();
         helper.templates<int64_t, Opaque<SetT>, T>()
             .init("distinct_count_init" + suffix, init_set)
@@ -295,10 +295,10 @@ struct DistinctCountDef {
 
 template <typename T>
 struct SumWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<T, T, T, bool>()
             .const_init(0.0)
-            .update([](UDFResolveContext* ctx, ExprNode* sum, ExprNode* elem,
+            .update([](UdfResolveContext* ctx, ExprNode* sum, ExprNode* elem,
                        ExprNode* cond) {
                 auto nm = ctx->node_manager();
                 if (elem->GetOutputType()->base() == node::kTimestamp) {
@@ -315,10 +315,10 @@ struct SumWhereDef {
 
 template <typename T>
 struct CountWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<int64_t, int64_t, T, bool>()
             .const_init(0)
-            .update([](UDFResolveContext* ctx, ExprNode* cnt, ExprNode* elem,
+            .update([](UdfResolveContext* ctx, ExprNode* cnt, ExprNode* elem,
                        ExprNode* cond) {
                 auto nm = ctx->node_manager();
                 ExprNode* is_null =
@@ -335,10 +335,10 @@ struct CountWhereDef {
 
 template <typename T>
 struct AvgWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<double, Tuple<int64_t, double>, T, bool>()
             .const_init(MakeTuple((int64_t)0, 0.0))
-            .update([](UDFResolveContext* ctx, ExprNode* state, ExprNode* elem,
+            .update([](UdfResolveContext* ctx, ExprNode* state, ExprNode* elem,
                        ExprNode* cond) {
                 auto nm = ctx->node_manager();
                 ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
@@ -362,7 +362,7 @@ struct AvgWhereDef {
                     nm->MakeFuncNode("make_tuple", {new_cnt, new_sum}, nullptr);
                 return nm->MakeCondExpr(cond, new_state, state);
             })
-            .output([](UDFResolveContext* ctx, ExprNode* state) {
+            .output([](UdfResolveContext* ctx, ExprNode* state) {
                 auto nm = ctx->node_manager();
                 ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
                 ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
@@ -375,10 +375,10 @@ struct AvgWhereDef {
 
 template <typename T>
 struct MinWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<T, T, T, bool>()
             .const_init(DataTypeTrait<T>::maximum_value())
-            .update([](UDFResolveContext* ctx, ExprNode* min, ExprNode* elem,
+            .update([](UdfResolveContext* ctx, ExprNode* min, ExprNode* elem,
                        ExprNode* cond) {
                 auto nm = ctx->node_manager();
                 if (elem->GetOutputType()->base() == node::kTimestamp) {
@@ -396,10 +396,10 @@ struct MinWhereDef {
 
 template <typename T>
 struct MaxWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<T, T, T, bool>()
             .const_init(DataTypeTrait<T>::minimum_value())
-            .update([](UDFResolveContext* ctx, ExprNode* max, ExprNode* elem,
+            .update([](UdfResolveContext* ctx, ExprNode* max, ExprNode* elem,
                        ExprNode* cond) {
                 auto nm = ctx->node_manager();
                 if (elem->GetOutputType()->base() == node::kTimestamp) {
@@ -417,14 +417,14 @@ struct MaxWhereDef {
 
 template <typename T>
 struct TopKDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         // register for i32 and i64 bound
         DoRegister<int32_t>(helper);
         DoRegister<int64_t>(helper);
     }
 
     template <typename BoundT>
-    void DoRegister(UDAFRegistryHelper& helper) {  // NOLINT
+    void DoRegister(UdafRegistryHelper& helper) {  // NOLINT
         using ContainerT = udf::container::TopKContainer<T, BoundT>;
         std::string suffix = ".opaque_" + DataTypeTrait<BoundT>::to_string() +
                              "_bound_" + DataTypeTrait<T>::to_string();
@@ -435,7 +435,7 @@ struct TopKDef {
     }
 };
 
-void DefaultUDFLibrary::InitStringUDF() {
+void DefaultUdfLibrary::InitStringUdf() {
     RegisterExternalTemplate<v1::ToString>("string")
         .args_in<int16_t, int32_t, int64_t, float, double>()
         .return_by_arg(true);
@@ -455,9 +455,9 @@ void DefaultUDFLibrary::InitStringUDF() {
             udf::v1::date_to_string))
         .return_by_arg(true);
 
-    RegisterCodeGenUDF("concat").variadic_args<>(
+    RegisterCodeGenUdf("concat").variadic_args<>(
         /* infer */
-        [](UDFResolveContext* ctx,
+        [](UdfResolveContext* ctx,
            const std::vector<const ExprAttrNode*>& arg_attrs,
            ExprAttrNode* out) {
             out->SetType(ctx->node_manager()->MakeTypeNode(node::kVarchar));
@@ -471,10 +471,10 @@ void DefaultUDFLibrary::InitStringUDF() {
             return string_ir_builder.Concat(ctx->GetCurrentBlock(), args, out);
         });
 
-    RegisterCodeGenUDF("concat_ws")
+    RegisterCodeGenUdf("concat_ws")
         .variadic_args<AnyArg>(
             /* infer */
-            [](UDFResolveContext* ctx, const ExprAttrNode* arg,
+            [](UdfResolveContext* ctx, const ExprAttrNode* arg,
                const std::vector<const ExprAttrNode*>& arg_types,
                ExprAttrNode* out) {
                 out->SetType(ctx->node_manager()->MakeTypeNode(node::kVarchar));
@@ -575,7 +575,7 @@ void DefaultUDFLibrary::InitStringUDF() {
         .return_by_arg(true);
 }
 
-void DefaultUDFLibrary::IniMathUDF() {
+void DefaultUdfLibrary::IniMathUdf() {
     RegisterExternal("log")
         .doc(R"(
             log(base, expr)
@@ -597,8 +597,8 @@ void DefaultUDFLibrary::IniMathUDF() {
             @since 2.0.0.0)")
         .args<float>(static_cast<float (*)(float)>(log))
         .args<double>(static_cast<double (*)(double)>(log));
-    RegisterExprUDF("log").args<AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+    RegisterExprUdf("log").args<AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
                 ctx->SetError("log do not support type " +
                               x->GetOutputType()->GetName());
@@ -608,8 +608,8 @@ void DefaultUDFLibrary::IniMathUDF() {
             auto cast = nm->MakeCastNode(node::kDouble, x);
             return nm->MakeFuncNode("log", {cast}, nullptr);
         });
-    RegisterExprUDF("log").args<AnyArg, AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
+    RegisterExprUdf("log").args<AnyArg, AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
                 ctx->SetError("log do not support type " +
                               x->GetOutputType()->GetName());
@@ -639,8 +639,8 @@ void DefaultUDFLibrary::IniMathUDF() {
             @since 2.0.0.0)")
         .args<float>(static_cast<float (*)(float)>(log))
         .args<double>(static_cast<double (*)(double)>(log));
-    RegisterExprUDF("ln").args<AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+    RegisterExprUdf("ln").args<AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
                 ctx->SetError("log do not support type " +
                               x->GetOutputType()->GetName());
@@ -667,8 +667,8 @@ void DefaultUDFLibrary::IniMathUDF() {
             @since 2.0.0.0)")
         .args<float>(static_cast<float (*)(float)>(log2))
         .args<double>(static_cast<double (*)(double)>(log2));
-    RegisterExprUDF("log2").args<AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+    RegisterExprUdf("log2").args<AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
                 ctx->SetError("log2 do not support type " +
                               x->GetOutputType()->GetName());
@@ -695,8 +695,8 @@ void DefaultUDFLibrary::IniMathUDF() {
             @since 2.0.0.0)")
         .args<float>(static_cast<float (*)(float)>(log10))
         .args<double>(static_cast<double (*)(double)>(log10));
-    RegisterExprUDF("log10").args<AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+    RegisterExprUdf("log10").args<AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
                 ctx->SetError("log do not support type " +
                               x->GetOutputType()->GetName());
@@ -723,8 +723,8 @@ void DefaultUDFLibrary::IniMathUDF() {
             @since 2.0.0.0)")
         .args_in<int64_t, double>();
     RegisterExternalTemplate<v1::Abs32>("abs").args_in<int16_t, int32_t>();
-    RegisterExprUDF("abs").args<AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+    RegisterExprUdf("abs").args<AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
                 ctx->SetError("abs do not support type " +
                               x->GetOutputType()->GetName());
@@ -752,8 +752,8 @@ void DefaultUDFLibrary::IniMathUDF() {
         .args_in<int16_t, int32_t, int64_t>();
     RegisterExternal("ceil").args<double>(
         static_cast<double (*)(double)>(ceil));
-    RegisterExprUDF("ceil").args<AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+    RegisterExprUdf("ceil").args<AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
                 ctx->SetError("ceil do not support type " +
                               x->GetOutputType()->GetName());
@@ -800,8 +800,8 @@ void DefaultUDFLibrary::IniMathUDF() {
         .args_in<int16_t, int32_t, int64_t>();
     RegisterExternal("floor").args<double>(
         static_cast<double (*)(double)>(floor));
-    RegisterExprUDF("floor").args<AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+    RegisterExprUdf("floor").args<AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
                 ctx->SetError("floor do not support type " +
                               x->GetOutputType()->GetName());
@@ -831,8 +831,8 @@ void DefaultUDFLibrary::IniMathUDF() {
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("pow").args<float, float>(
         static_cast<float (*)(float, float)>(powf));
-    RegisterExprUDF("pow").args<AnyArg, AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
+    RegisterExprUdf("pow").args<AnyArg, AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
                 ctx->SetError("pow do not support type " +
                               x->GetOutputType()->GetName());
@@ -867,8 +867,8 @@ void DefaultUDFLibrary::IniMathUDF() {
             @since 2.0.0.0)")
         .args_in<int64_t, double>();
     RegisterExternalTemplate<v1::Round32>("round").args_in<int16_t, int32_t>();
-    RegisterExprUDF("round").args<AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+    RegisterExprUdf("round").args<AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
                 ctx->SetError("round do not support type " +
                               x->GetOutputType()->GetName());
@@ -913,8 +913,8 @@ void DefaultUDFLibrary::IniMathUDF() {
         .args_in<int64_t, double>();
     RegisterExternalTemplate<v1::Truncate32>("truncate")
         .args_in<int16_t, int32_t>();
-    RegisterExprUDF("truncate")
-        .args<AnyArg>([](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+    RegisterExprUdf("truncate")
+        .args<AnyArg>([](UdfResolveContext* ctx, ExprNode* x) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
                 ctx->SetError("truncate do not support type " +
                               x->GetOutputType()->GetName());
@@ -926,7 +926,7 @@ void DefaultUDFLibrary::IniMathUDF() {
         });
 }
 
-void DefaultUDFLibrary::InitTrigonometricUDF() {
+void DefaultUdfLibrary::InitTrigonometricUdf() {
     RegisterExternalTemplate<v1::Acos>("acos")
         .doc(R"(
             Return the arc cosine of expr.
@@ -988,8 +988,8 @@ void DefaultUDFLibrary::InitTrigonometricUDF() {
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("atan").args<float, float>(
         static_cast<float (*)(float, float)>(atan2f));
-    RegisterExprUDF("atan").args<AnyArg, AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
+    RegisterExprUdf("atan").args<AnyArg, AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
                 ctx->SetError("atan do not support type " +
                               x->GetOutputType()->GetName());
@@ -1025,8 +1025,8 @@ void DefaultUDFLibrary::InitTrigonometricUDF() {
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("atan2").args<float, float>(
         static_cast<float (*)(float, float)>(atan2f));
-    RegisterExprUDF("atan2").args<AnyArg, AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
+    RegisterExprUdf("atan2").args<AnyArg, AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
                 ctx->SetError("atan2 do not support type " +
                               x->GetOutputType()->GetName());
@@ -1117,9 +1117,9 @@ void DefaultUDFLibrary::InitTrigonometricUDF() {
     RegisterExternal("tan").args<float>(static_cast<float (*)(float)>(tanf));
 }
 
-void DefaultUDFLibrary::InitUtilityUDF() {
-    RegisterExprUDF("is_null")
-        .args<AnyArg>([](UDFResolveContext* ctx, ExprNode* input) {
+void DefaultUdfLibrary::InitUtilityUdf() {
+    RegisterExprUdf("is_null")
+        .args<AnyArg>([](UdfResolveContext* ctx, ExprNode* input) {
             return ctx->node_manager()->MakeUnaryExprNode(input,
                                                           node::kFnOpIsNull);
         })
@@ -1129,8 +1129,8 @@ void DefaultUDFLibrary::InitUtilityUDF() {
 
     RegisterAlias("isnull", "is_null");
 
-    RegisterExprUDF("if_null")
-        .args<AnyArg, AnyArg>([](UDFResolveContext* ctx, ExprNode* input,
+    RegisterExprUdf("if_null")
+        .args<AnyArg, AnyArg>([](UdfResolveContext* ctx, ExprNode* input,
                                  ExprNode* default_val) {
             if (!node::TypeEquals(input->GetOutputType(),
                                   default_val->GetOutputType())) {
@@ -1158,7 +1158,7 @@ void DefaultUDFLibrary::InitUtilityUDF() {
     RegisterAlias("ifnull", "if_null");
 }
 
-void DefaultUDFLibrary::InitTypeUDF() {
+void DefaultUdfLibrary::InitTypeUdf() {
     RegisterExternal("double")
         .args<codec::StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, double*, bool*)>(
@@ -1222,12 +1222,12 @@ void DefaultUDFLibrary::InitTypeUDF() {
         .returns<Nullable<Timestamp>>();
 }
 
-void DefaultUDFLibrary::InitDateUDF() {
+void DefaultUdfLibrary::InitDateUdf() {
     RegisterExternal("year")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::year))
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::year));
 
-    RegisterCodeGenUDF("year")
+    RegisterCodeGenUdf("year")
         .args<Date>(
             [](CodeGenContext* ctx, NativeValue date, NativeValue* out) {
                 codegen::DateIRBuilder date_ir_builder(ctx->GetModule());
@@ -1246,7 +1246,7 @@ void DefaultUDFLibrary::InitDateUDF() {
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::month))
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::month));
 
-    RegisterCodeGenUDF("month")
+    RegisterCodeGenUdf("month")
         .args<Date>(
             [](CodeGenContext* ctx, NativeValue date, NativeValue* out) {
                 codegen::DateIRBuilder date_ir_builder(ctx->GetModule());
@@ -1265,7 +1265,7 @@ void DefaultUDFLibrary::InitDateUDF() {
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::dayofmonth))
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::dayofmonth));
 
-    RegisterCodeGenUDF("dayofmonth")
+    RegisterCodeGenUdf("dayofmonth")
         .args<Date>(
             [](CodeGenContext* ctx, NativeValue date, NativeValue* out) {
                 codegen::DateIRBuilder date_ir_builder(ctx->GetModule());
@@ -1297,30 +1297,30 @@ void DefaultUDFLibrary::InitDateUDF() {
     RegisterExternalTemplate<v1::IncOne>("inc")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
-    RegisterCodeGenUDFTemplate<BuildGetHourUDF>("hour")
+    RegisterCodeGenUdfTemplate<BuildGetHourUdf>("hour")
         .args_in<int64_t, Timestamp>()
         .returns<int32_t>();
 
-    RegisterCodeGenUDFTemplate<BuildGetMinuteUDF>("minute")
+    RegisterCodeGenUdfTemplate<BuildGetMinuteUdf>("minute")
         .args_in<int64_t, Timestamp>()
         .returns<int32_t>();
 
-    RegisterCodeGenUDFTemplate<BuildGetSecondUDF>("second")
+    RegisterCodeGenUdfTemplate<BuildGetSecondUdf>("second")
         .args_in<int64_t, Timestamp>()
         .returns<int32_t>();
 
-    RegisterExprUDF("identity")
-        .args<AnyArg>([](UDFResolveContext* ctx, ExprNode* x) { return x; });
+    RegisterExprUdf("identity")
+        .args<AnyArg>([](UdfResolveContext* ctx, ExprNode* x) { return x; });
 
-    RegisterExprUDF("add").args<AnyArg, AnyArg>([](UDFResolveContext* ctx,
+    RegisterExprUdf("add").args<AnyArg, AnyArg>([](UdfResolveContext* ctx,
                                                    ExprNode* x, ExprNode* y) {
         return ctx->node_manager()->MakeBinaryExprNode(x, y, node::kFnOpAdd);
     });
 
-    RegisterCodeGenUDF("make_tuple")
+    RegisterCodeGenUdf("make_tuple")
         .variadic_args<>(
             /* infer */
-            [](UDFResolveContext* ctx,
+            [](UdfResolveContext* ctx,
                const std::vector<const ExprAttrNode*>& args,
                ExprAttrNode* out) {
                 auto nm = ctx->node_manager();
@@ -1341,91 +1341,91 @@ void DefaultUDFLibrary::InitDateUDF() {
             });
 }
 
-void DefaultUDFLibrary::Init() {
-    udf::RegisterNativeUDFToModule();
-    InitUtilityUDF();
-    InitDateUDF();
-    InitTypeUDF();
-    IniMathUDF();
-    InitStringUDF();
-    InitTrigonometricUDF();
+void DefaultUdfLibrary::Init() {
+    udf::RegisterNativeUdfToModule();
+    InitUtilityUdf();
+    InitDateUdf();
+    InitTypeUdf();
+    IniMathUdf();
+    InitStringUdf();
+    InitTrigonometricUdf();
     InitWindowFunctions();
-    InitUDAF();
+    InitUdaf();
     InitFeatureZero();
 }
 
-void DefaultUDFLibrary::InitUDAF() {
-    RegisterUDAFTemplate<SumUDAFDef>("sum")
+void DefaultUdfLibrary::InitUdaf() {
+    RegisterUdafTemplate<SumUdafDef>("sum")
         .doc("Compute sum of values")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp>();
 
-    RegisterExprUDF("minimum").args<AnyArg, AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) {
+    RegisterExprUdf("minimum").args<AnyArg, AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x, ExprNode* y) {
             auto nm = ctx->node_manager();
             auto cond = nm->MakeBinaryExprNode(x, y, node::kFnOpLt);
             return nm->MakeCondExpr(cond, x, y);
         });
 
-    RegisterExprUDF("maximum").args<AnyArg, AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) {
+    RegisterExprUdf("maximum").args<AnyArg, AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x, ExprNode* y) {
             auto nm = ctx->node_manager();
             auto cond = nm->MakeBinaryExprNode(x, y, node::kFnOpGt);
             return nm->MakeCondExpr(cond, x, y);
         });
 
-    RegisterUDAFTemplate<MinUDAFDef>("min")
+    RegisterUdafTemplate<MinUdafDef>("min")
         .doc("Compute min of values")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
                  StringRef>();
 
-    RegisterUDAFTemplate<MaxUDAFDef>("max")
+    RegisterUdafTemplate<MaxUdafDef>("max")
         .doc("Compute max of values")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
                  StringRef>();
 
-    RegisterUDAFTemplate<CountUDAFDef>("count")
+    RegisterUdafTemplate<CountUdafDef>("count")
         .doc("Compute count of values")
         .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp,
                  Date, StringRef, LiteralTypedRow<>>();
 
-    RegisterUDAFTemplate<AvgUDAFDef>("avg")
+    RegisterUdafTemplate<AvgUdafDef>("avg")
         .doc("Compute average of values")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
-    RegisterUDAFTemplate<DistinctCountDef>("distinct_count")
+    RegisterUdafTemplate<DistinctCountDef>("distinct_count")
         .doc("Compute distinct number of values")
         .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp,
                  Date, StringRef>();
 
-    RegisterUDAFTemplate<SumWhereDef>("sum_where")
+    RegisterUdafTemplate<SumWhereDef>("sum_where")
         .doc("Compute sum of values match specified condition")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
-    RegisterUDAFTemplate<CountWhereDef>("count_where")
+    RegisterUdafTemplate<CountWhereDef>("count_where")
         .doc("Compute number of values match specified condition")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
                  StringRef>();
 
-    RegisterUDAFTemplate<AvgWhereDef>("avg_where")
+    RegisterUdafTemplate<AvgWhereDef>("avg_where")
         .doc("Compute average of values match specified condition")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
-    RegisterUDAFTemplate<MinWhereDef>("min_where")
+    RegisterUdafTemplate<MinWhereDef>("min_where")
         .doc("Compute minimum of values match specified condition")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
-    RegisterUDAFTemplate<MaxWhereDef>("max_where")
+    RegisterUdafTemplate<MaxWhereDef>("max_where")
         .doc("Compute maximum of values match specified condition")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
-    RegisterUDAFTemplate<TopKDef>("top")
+    RegisterUdafTemplate<TopKDef>("top")
         .doc(
             "Compute top k of values and output string separated by comma. "
             "The outputs are sorted in desc order")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
 
-    InitAggByCateUDAFs();
+    InitAggByCateUdafs();
 }
 
 }  // namespace udf

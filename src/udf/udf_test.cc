@@ -34,12 +34,12 @@ using hybridse::codec::ArrayListV;
 using hybridse::codec::ColumnImpl;
 using hybridse::codec::ListRef;
 using hybridse::codec::Row;
-using hybridse::sqlcase::SQLCase;
+using hybridse::sqlcase::SqlCase;
 
-class UDFTest : public ::testing::Test {
+class UdfTest : public ::testing::Test {
  public:
-    UDFTest() { InitData(); }
-    ~UDFTest() {}
+    UdfTest() { InitData(); }
+    ~UdfTest() {}
 
     void InitData() {
         rows.clear();
@@ -103,7 +103,7 @@ void SumTest(vm::ListV<Row>* table) {
         ListRef<int32_t> list;
         ASSERT_TRUE(FetchColList(table, 0, 2, &list));
 
-        auto sum = UDFFunctionBuilder("sum")
+        auto sum = UdfFunctionBuilder("sum")
                        .args<ListRef<int32_t>>()
                        .returns<int32_t>()
                        .build();
@@ -115,7 +115,7 @@ void SumTest(vm::ListV<Row>* table) {
         ListRef<int16_t> list;
         ASSERT_TRUE(FetchColList(table, 1, 2 + 4, &list));
 
-        auto sum = UDFFunctionBuilder("sum")
+        auto sum = UdfFunctionBuilder("sum")
                        .args<ListRef<int16_t>>()
                        .returns<int16_t>()
                        .build();
@@ -127,7 +127,7 @@ void SumTest(vm::ListV<Row>* table) {
         ListRef<float> list;
         ASSERT_TRUE(FetchColList(table, 2, 2 + 4 + 2, &list));
 
-        auto sum = UDFFunctionBuilder("sum")
+        auto sum = UdfFunctionBuilder("sum")
                        .args<ListRef<float>>()
                        .returns<float>()
                        .build();
@@ -139,7 +139,7 @@ void SumTest(vm::ListV<Row>* table) {
         ListRef<double> list;
         ASSERT_TRUE(FetchColList(table, 3, 2 + 4 + 2 + 4, &list));
 
-        auto sum = UDFFunctionBuilder("sum")
+        auto sum = UdfFunctionBuilder("sum")
                        .args<ListRef<double>>()
                        .returns<double>()
                        .build();
@@ -151,7 +151,7 @@ void SumTest(vm::ListV<Row>* table) {
         ListRef<int64_t> list;
         ASSERT_TRUE(FetchColList(table, 4, 2 + 4 + 2 + 4 + 8, &list));
 
-        auto sum = UDFFunctionBuilder("sum")
+        auto sum = UdfFunctionBuilder("sum")
                        .args<ListRef<int64_t>>()
                        .returns<int64_t>()
                        .build();
@@ -160,7 +160,7 @@ void SumTest(vm::ListV<Row>* table) {
     }
 }
 
-TEST_F(UDFTest, UDF_mem_table_handler_sum_test) {
+TEST_F(UdfTest, udf_mem_table_handler_sum_test) {
     vm::MemTableHandler window;
     for (auto row : rows) {
         window.AddRow(row);
@@ -168,7 +168,7 @@ TEST_F(UDFTest, UDF_mem_table_handler_sum_test) {
     SumTest(&window);
 }
 
-TEST_F(UDFTest, UDF_mem_time_table_handler_sum_test) {
+TEST_F(UdfTest, udf_mem_time_table_handler_sum_test) {
     vm::MemTimeTableHandler window;
     uint64_t ts = 1000;
     for (auto row : rows) {
@@ -176,7 +176,7 @@ TEST_F(UDFTest, UDF_mem_time_table_handler_sum_test) {
     }
     SumTest(&window);
 }
-TEST_F(UDFTest, UDF_mem_table_handler_large_size_sum_test) {
+TEST_F(UdfTest, udf_mem_table_handler_large_size_sum_test) {
     vm::MemTableHandler window;
     int64_t w_size = 4000000;
     for (int i = 0; i < w_size; i++) {
@@ -186,7 +186,7 @@ TEST_F(UDFTest, UDF_mem_table_handler_large_size_sum_test) {
         ListRef<int32_t> list;
         ASSERT_TRUE(FetchColList(&window, 0, 2, &list));
 
-        auto sum = UDFFunctionBuilder("sum")
+        auto sum = UdfFunctionBuilder("sum")
                        .args<ListRef<int32_t>>()
                        .returns<int32_t>()
                        .build();
@@ -194,7 +194,7 @@ TEST_F(UDFTest, UDF_mem_table_handler_large_size_sum_test) {
         ASSERT_EQ(w_size, sum(list));
     }
 }
-TEST_F(UDFTest, UDF_mem_time_table_handler_large_size_sum_test) {
+TEST_F(UdfTest, udf_mem_time_table_handler_large_size_sum_test) {
     vm::MemTimeTableHandler window;
     uint64_t ts = 1000;
     int64_t w_size = 4000000;
@@ -211,7 +211,7 @@ TEST_F(UDFTest, UDF_mem_time_table_handler_large_size_sum_test) {
         ListRef<int32_t> list;
         ASSERT_TRUE(FetchColList(&window, 0, 2, &list));
 
-        auto sum = UDFFunctionBuilder("sum")
+        auto sum = UdfFunctionBuilder("sum")
                        .args<ListRef<int32_t>>()
                        .returns<int32_t>()
                        .build();
@@ -220,12 +220,12 @@ TEST_F(UDFTest, UDF_mem_time_table_handler_large_size_sum_test) {
     }
 }
 
-TEST_F(UDFTest, UDF_sum_test) {
+TEST_F(UdfTest, udf_sum_test) {
     ArrayListV<Row> window(&rows);
     SumTest(&window);
 }
 
-TEST_F(UDFTest, GetColTest) {
+TEST_F(UdfTest, GetColTest) {
     ArrayListV<Row> impl(&rows);
     const uint32_t size = sizeof(ColumnImpl<int16_t>);
     codec::ListRef<Row> impl_ref;
@@ -255,7 +255,7 @@ TEST_F(UDFTest, GetColTest) {
     }
 }
 
-TEST_F(UDFTest, GetWindowColRangeTest) {
+TEST_F(UdfTest, GetWindowColRangeTest) {
     // w[0:20s]
     vm::CurrentHistoryWindow table(vm::Window::kFrameRowsRange, -36000000, 0);
     std::string schema = "col1:int,col2:timestamp";
@@ -272,8 +272,8 @@ TEST_F(UDFTest, GetWindowColRangeTest) {
         "9, 1590115500000";
     type::TableDef table_def;
     std::vector<Row> rows;
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractSchema(schema, table_def));
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRows(table_def.columns(),
+    ASSERT_TRUE(hybridse::sqlcase::SqlCase::ExtractSchema(schema, table_def));
+    ASSERT_TRUE(hybridse::sqlcase::SqlCase::ExtractRows(table_def.columns(),
                                                         data, rows));
     codec::RowView row_view(table_def.columns());
     for (auto row : rows) {
@@ -315,7 +315,7 @@ TEST_F(UDFTest, GetWindowColRangeTest) {
     }
 }
 
-TEST_F(UDFTest, GetWindowColRowsTest) {
+TEST_F(UdfTest, GetWindowColRowsTest) {
     // w[0:20s]
     vm::CurrentHistoryWindow table(vm::Window::kFrameRowsRange, -36000000, 0);
     std::string schema = "col1:int,col2:timestamp";
@@ -332,8 +332,8 @@ TEST_F(UDFTest, GetWindowColRowsTest) {
         "9, 1590115500000";
     type::TableDef table_def;
     std::vector<Row> rows;
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractSchema(schema, table_def));
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::ExtractRows(table_def.columns(),
+    ASSERT_TRUE(hybridse::sqlcase::SqlCase::ExtractSchema(schema, table_def));
+    ASSERT_TRUE(hybridse::sqlcase::SqlCase::ExtractRows(table_def.columns(),
                                                         data, rows));
     codec::RowView row_view(table_def.columns());
     for (auto row : rows) {
@@ -378,7 +378,7 @@ TEST_F(UDFTest, GetWindowColRowsTest) {
     }
 }
 
-TEST_F(UDFTest, GetWindowColTest) {
+TEST_F(UdfTest, GetWindowColTest) {
     vm::CurrentHistoryWindow table(vm::Window::kFrameRowsRange, -2, 0);
     uint64_t ts = 1000;
     for (auto row : rows) {
@@ -408,7 +408,7 @@ TEST_F(UDFTest, GetWindowColTest) {
         ASSERT_FALSE(col_iterator->Valid());
     }
 }
-TEST_F(UDFTest, GetTimeMemColTest) {
+TEST_F(UdfTest, GetTimeMemColTest) {
     vm::MemTimeTableHandler table;
     uint64_t ts = 1000;
     for (auto row : rows) {
@@ -437,7 +437,7 @@ TEST_F(UDFTest, GetTimeMemColTest) {
         ASSERT_FALSE(col_iterator->Valid());
     }
 }
-TEST_F(UDFTest, GetColHeapTest) {
+TEST_F(UdfTest, GetColHeapTest) {
     ArrayListV<Row> impl(&rows);
     ListRef<> impl_ref;
     impl_ref.list = reinterpret_cast<int8_t*>(&impl);
@@ -464,7 +464,7 @@ TEST_F(UDFTest, GetColHeapTest) {
     }
 }
 
-TEST_F(UDFTest, DateToString) {
+TEST_F(UdfTest, DateToString) {
     {
         codec::StringRef str;
         codec::Date date(2020, 5, 22);
@@ -473,7 +473,7 @@ TEST_F(UDFTest, DateToString) {
     }
 }
 
-TEST_F(UDFTest, TimestampToString) {
+TEST_F(UdfTest, TimestampToString) {
     {
         codec::StringRef str;
         codec::Timestamp ts(1590115420000L);
@@ -489,9 +489,9 @@ TEST_F(UDFTest, TimestampToString) {
 }
 
 template <class Ret, class... Args>
-void CheckUDF(UDFLibrary* library, const std::string& name, Ret&& expect,
+void CheckUdf(UdfLibrary* library, const std::string& name, Ret&& expect,
               Args&&... args) {
-    auto function = udf::UDFFunctionBuilder(name)
+    auto function = udf::UdfFunctionBuilder(name)
                         .args<Args...>()
                         .template returns<Ret>()
                         .library(library)
@@ -501,7 +501,7 @@ void CheckUDF(UDFLibrary* library, const std::string& name, Ret&& expect,
     ASSERT_EQ(std::forward<Ret>(expect), result);
 }
 
-class ExternUDFTest : public ::testing::Test {
+class ExternUdfTest : public ::testing::Test {
  public:
     static int32_t IfNull(int32_t in, bool is_null, int32_t default_val) {
         return is_null ? default_val : in;
@@ -553,104 +553,104 @@ class ExternUDFTest : public ::testing::Test {
     }
 };
 
-TEST_F(ExternUDFTest, TestCompoundTypedExternalCall) {
-    UDFLibrary library;
+TEST_F(ExternUdfTest, TestCompoundTypedExternalCall) {
+    UdfLibrary library;
     library.RegisterExternal("if_null")
-        .args<Nullable<int32_t>, int32_t>(ExternUDFTest::IfNull)
+        .args<Nullable<int32_t>, int32_t>(ExternUdfTest::IfNull)
         .args<Nullable<codec::StringRef>, codec::StringRef>(
-            ExternUDFTest::IfStringNull);
+            ExternUdfTest::IfStringNull);
 
-    library.RegisterExternal("add_one").args<int32_t>(ExternUDFTest::AddOne);
+    library.RegisterExternal("add_one").args<int32_t>(ExternUdfTest::AddOne);
 
     library.RegisterExternal("add_two").args<int32_t, int32_t>(
-        ExternUDFTest::AddTwo);
+        ExternUdfTest::AddTwo);
 
     library.RegisterExternal("add_two_one_nullable")
-        .args<Nullable<int32_t>, int32_t>(ExternUDFTest::AddTwoOneNullable);
+        .args<Nullable<int32_t>, int32_t>(ExternUdfTest::AddTwoOneNullable);
 
     library.RegisterExternal("new_date")
         .args<Nullable<int64_t>>(
             TypeAnnotatedFuncPtrImpl<std::tuple<Nullable<int64_t>>>::RBA<
-                Nullable<codec::Date>>(ExternUDFTest::NewDate));
+                Nullable<codec::Date>>(ExternUdfTest::NewDate));
 
     library.RegisterExternal("sum_tuple")
         .args<Tuple<Nullable<float>, float>, Tuple<double, Nullable<double>>>(
-            ExternUDFTest::SumTuple)
+            ExternUdfTest::SumTuple)
         .args<Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>>(
-            ExternUDFTest::SumTuple);
+            ExternUdfTest::SumTuple);
 
     library.RegisterExternal("make_tuple")
         .args<int16_t, Nullable<int32_t>, int64_t>(
             TypeAnnotatedFuncPtrImpl<
                 std::tuple<int16_t, Nullable<int32_t>, int64_t>>::
                 RBA<Tuple<int16_t, Nullable<int32_t>, int64_t>>(
-                    ExternUDFTest::MakeTuple));
+                    ExternUdfTest::MakeTuple));
 
     // pass null to primitive
-    CheckUDF<int32_t, Nullable<int32_t>, int32_t>(&library, "if_null", 1, 1, 3);
-    CheckUDF<int32_t, Nullable<int32_t>, int32_t>(&library, "if_null", 3,
+    CheckUdf<int32_t, Nullable<int32_t>, int32_t>(&library, "if_null", 1, 1, 3);
+    CheckUdf<int32_t, Nullable<int32_t>, int32_t>(&library, "if_null", 3,
                                                   nullptr, 3);
 
     // pass null to struct
-    CheckUDF<codec::StringRef, Nullable<codec::StringRef>, codec::StringRef>(
+    CheckUdf<codec::StringRef, Nullable<codec::StringRef>, codec::StringRef>(
         &library, "if_null", codec::StringRef("1"), codec::StringRef("1"),
         codec::StringRef("3"));
-    CheckUDF<codec::StringRef, Nullable<codec::StringRef>, codec::StringRef>(
+    CheckUdf<codec::StringRef, Nullable<codec::StringRef>, codec::StringRef>(
         &library, "if_null", codec::StringRef("3"), nullptr,
         codec::StringRef("3"));
 
     // pass null to non-null arg
-    CheckUDF<Nullable<int32_t>, int32_t>(&library, "add_one", 2, 1);
-    CheckUDF<Nullable<int32_t>, Nullable<int32_t>>(&library, "add_one", 2, 1);
-    CheckUDF<Nullable<int32_t>, Nullable<int32_t>>(&library, "add_one", nullptr,
+    CheckUdf<Nullable<int32_t>, int32_t>(&library, "add_one", 2, 1);
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>>(&library, "add_one", 2, 1);
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>>(&library, "add_one", nullptr,
                                                    nullptr);
 
-    CheckUDF<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
         &library, "add_two", nullptr, 1, nullptr);
-    CheckUDF<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
         &library, "add_two_one_nullable", 3, 2, 1);
-    CheckUDF<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
         &library, "add_two_one_nullable", nullptr, 1, nullptr);
-    CheckUDF<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
         &library, "add_two_one_nullable", 1, nullptr, 1);
-    CheckUDF<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
         &library, "add_two_one_nullable", nullptr, nullptr, nullptr);
 
     // nullable return
-    CheckUDF<Nullable<codec::Date>, Nullable<int64_t>>(&library, "new_date",
+    CheckUdf<Nullable<codec::Date>, Nullable<int64_t>>(&library, "new_date",
                                                        codec::Date(1), 1);
-    CheckUDF<Nullable<codec::Date>, Nullable<int64_t>>(&library, "new_date",
+    CheckUdf<Nullable<codec::Date>, Nullable<int64_t>>(&library, "new_date",
                                                        nullptr, nullptr);
 
     // pass tuple
-    CheckUDF<double, Tuple<Nullable<float>, float>,
+    CheckUdf<double, Tuple<Nullable<float>, float>,
              Tuple<double, Nullable<double>>>(
         &library, "sum_tuple", 10.0, Tuple<Nullable<float>, float>(1.0f, 2.0f),
         Tuple<double, Nullable<double>>(3.0, 4.0));
-    CheckUDF<double, Tuple<Nullable<float>, float>,
+    CheckUdf<double, Tuple<Nullable<float>, float>,
              Tuple<double, Nullable<double>>>(
         &library, "sum_tuple", 5.0,
         Tuple<Nullable<float>, float>(nullptr, 2.0f),
         Tuple<double, Nullable<double>>(3.0, nullptr));
-    CheckUDF<Nullable<double>, Tuple<float, Nullable<float>>,
+    CheckUdf<Nullable<double>, Tuple<float, Nullable<float>>,
              Tuple<double, double>>(
         &library, "sum_tuple", nullptr,
         Tuple<float, Nullable<float>>(1.0f, nullptr),
         Tuple<double, double>(3.0, 4.0));
 
     // nested tuple
-    CheckUDF<double,
+    CheckUdf<double,
              Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>>(
         &library, "sum_tuple", 10.0,
         Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>(
             1.0f, Tuple<float, double, Nullable<double>>(2.0f, 3.0, 4.0)));
-    CheckUDF<double,
+    CheckUdf<double,
              Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>>(
         &library, "sum_tuple", 5.0,
         Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>(
             nullptr,
             Tuple<float, double, Nullable<double>>(2.0f, 3.0, nullptr)));
-    CheckUDF<Nullable<double>,
+    CheckUdf<Nullable<double>,
              Tuple<float, Tuple<Nullable<float>, double, double>>>(
         &library, "sum_tuple", nullptr,
         Tuple<float, Tuple<Nullable<float>, double, double>>(
@@ -658,9 +658,9 @@ TEST_F(ExternUDFTest, TestCompoundTypedExternalCall) {
 
     // return tuple
     using TupleResT = Tuple<int16_t, Nullable<int32_t>, int64_t>;
-    CheckUDF<TupleResT, int16_t, Nullable<int32_t>, int64_t>(
+    CheckUdf<TupleResT, int16_t, Nullable<int32_t>, int64_t>(
         &library, "make_tuple", TupleResT(1, 2, 3), 1, 2, 3);
-    CheckUDF<TupleResT, int16_t, Nullable<int32_t>, int64_t>(
+    CheckUdf<TupleResT, int16_t, Nullable<int32_t>, int64_t>(
         &library, "make_tuple", TupleResT(1, nullptr, 3), 1, nullptr, 3);
 }
 

@@ -90,7 +90,7 @@ class BoolIRBuilder : public TypeIRBuilder {
         return ::llvm::Type::getInt1Ty(m->getContext());
     }
 };
-inline const bool ConvertHybridSEType2LLVMType(const node::TypeNode* data_type,
+inline const bool ConvertHybridSeType2LlvmType(const node::TypeNode* data_type,
                                                ::llvm::Module* m,  // NOLINT
                                                ::llvm::Type** llvm_type) {
     if (nullptr == data_type) {

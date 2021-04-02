@@ -32,12 +32,12 @@
 namespace hybridse {
 namespace vm {
 
-struct JITString {
+struct JitString {
     int32_t size;
     int8_t* data;
 };
 
-class HybridSEJIT : public ::llvm::orc::LLJIT {
+class HybridSeJit : public ::llvm::orc::LLJIT {
     template <typename, typename, typename>
     friend class ::llvm::orc::LLJITBuilderSetters;
 
@@ -64,20 +64,20 @@ class HybridSEJIT : public ::llvm::orc::LLJIT {
     static bool AddSymbol(::llvm::orc::JITDylib& jd,           // NOLINT
                           ::llvm::orc::MangleAndInterner& mi,  // NOLINT
                           const std::string& fn_name, void* fn_ptr);
-    ~HybridSEJIT();
+    ~HybridSeJit();
 
  protected:
-    HybridSEJIT(::llvm::orc::LLJITBuilderState& s, ::llvm::Error& e);  // NOLINT
+    HybridSeJit(::llvm::orc::LLJITBuilderState& s, ::llvm::Error& e);  // NOLINT
 };
 
-class HybridSEJITBuilder
+class HybridSeJitBuilder
     : public ::llvm::orc::LLJITBuilderState,
-      public ::llvm::orc::LLJITBuilderSetters<HybridSEJIT, HybridSEJITBuilder,
+      public ::llvm::orc::LLJITBuilderSetters<HybridSeJit, HybridSeJitBuilder,
                                               ::llvm::orc::LLJITBuilderState> {
 };
 
 template <typename T>
-std::string LLVMToString(const T& value) {
+std::string LlvmToString(const T& value) {
     std::string str;
     ::llvm::raw_string_ostream ss(str);
     ss << value;
@@ -85,10 +85,10 @@ std::string LLVMToString(const T& value) {
     return str;
 }
 
-class HybridSELLJITWrapper : public HybridSEJITWrapper {
+class HybridSeLlvmJitWrapper : public HybridSeJitWrapper {
  public:
-    HybridSELLJITWrapper() {}
-    ~HybridSELLJITWrapper() {}
+    HybridSeLlvmJitWrapper() {}
+    ~HybridSeLlvmJitWrapper() {}
 
     bool Init() override;
 
@@ -103,16 +103,16 @@ class HybridSELLJITWrapper : public HybridSEJITWrapper {
         const std::string& funcname) override;
 
  private:
-    std::unique_ptr<HybridSEJIT> jit_;
+    std::unique_ptr<HybridSeJit> jit_;
     std::unique_ptr<::llvm::orc::MangleAndInterner> mi_;
 };
 
 #ifdef LLVM_EXT_ENABLE
-class HybridSEMCJITWrapper : public HybridSEJITWrapper {
+class HybridSeMcJitWrapper : public HybridSeJitWrapper {
  public:
-    explicit HybridSEMCJITWrapper(const JITOptions& jit_options)
+    explicit HybridSeMcJitWrapper(const JitOptions& jit_options)
         : jit_options_(jit_options) {}
-    ~HybridSEMCJITWrapper() {}
+    ~HybridSeMcJitWrapper() {}
 
     bool Init() override;
 
@@ -130,7 +130,7 @@ class HybridSEMCJITWrapper : public HybridSEJITWrapper {
     bool CheckInitialized() const;
     bool CheckError();
 
-    const JITOptions jit_options_;
+    const JitOptions jit_options_;
     std::string err_str_ = "";
     std::map<std::string, void*> extern_functions_;
     llvm::ExecutionEngine* execution_engine_ = nullptr;

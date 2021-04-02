@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridse.common;
+package com._4paradigm.hybridse.sdk;
 
-import com._4paradigm.hybridse.HybridSELibrary;
+import com._4paradigm.hybridse.HybridSeLibrary;
 import com._4paradigm.hybridse.vm.Engine;
-import com._4paradigm.hybridse.vm.HybridSEJITWrapper;
-import com._4paradigm.hybridse.vm.JITOptions;
+import com._4paradigm.hybridse.vm.HybridSeJitWrapper;
+import com._4paradigm.hybridse.vm.JitOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,35 +29,35 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 
-public class JITManager {
+public class JitManager {
 
-    static private Logger logger = LoggerFactory.getLogger(JITManager.class);
+    static private Logger logger = LoggerFactory.getLogger(JitManager.class);
 
     static {
-        HybridSELibrary.initCore();
+        HybridSeLibrary.initCore();
         Engine.InitializeGlobalLLVM();
     }
 
     // One jit currently only take one llvm module, since symbol may duplicate
-    static private Map<String, HybridSEJITWrapper> jits = new HashMap<>();
+    static private Map<String, HybridSeJitWrapper> jits = new HashMap<>();
     static private Set<String> initializedModuleTags = new HashSet<>();
 
-    synchronized static public HybridSEJITWrapper getJIT(String tag) {
+    synchronized static public HybridSeJitWrapper getJIT(String tag) {
         if (! jits.containsKey(tag)) {
-            HybridSEJITWrapper jit = HybridSEJITWrapper.Create(getJITOptions());
+            HybridSeJitWrapper jit = HybridSeJitWrapper.Create(getJitOptions());
             if (jit == null) {
                 throw new RuntimeException("Fail to create native jit");
             }
             jit.Init();
-            HybridSEJITWrapper.InitJITSymbols(jit);
+            HybridSeJitWrapper.InitJitSymbols(jit);
             jits.put(tag, jit);
         }
         return jits.get(tag);
     }
 
-    static private JITOptions getJITOptions() {
-        JITOptions options = new JITOptions();
-        try (InputStream input = JITManager.class.getClassLoader().getResourceAsStream(
+    static private JitOptions getJitOptions() {
+        JitOptions options = new JitOptions();
+        try (InputStream input = JitManager.class.getClassLoader().getResourceAsStream(
                 "jit.properties")) {
             Properties prop = new Properties(System.getProperties());
             if (input == null) {
@@ -95,7 +95,7 @@ public class JITManager {
     }
 
     synchronized static private void initModule(String tag, ByteBuffer moduleBuffer) {
-        HybridSEJITWrapper jit = getJIT(tag);
+        HybridSeJitWrapper jit = getJIT(tag);
         if (! moduleBuffer.isDirect()) {
             throw new RuntimeException("JIT must use direct buffer");
         }
@@ -108,28 +108,28 @@ public class JITManager {
     synchronized static public void initJITModule(String tag, ByteBuffer moduleBuffer) {
 
         // ensure worker native
-        HybridSELibrary.initCore();
+        HybridSeLibrary.initCore();
 
         // ensure worker side module
-        if (!JITManager.hasModule(tag)) {
-            JITManager.initModule(tag, moduleBuffer);
+        if (!JitManager.hasModule(tag)) {
+            JitManager.initModule(tag, moduleBuffer);
             logger.info("Init jit module with tag:\n" + tag);
         }
     }
 
     synchronized static public void removeModule(String tag) {
         initializedModuleTags.remove(tag);
-        HybridSEJITWrapper jit = jits.remove(tag);
+        HybridSeJitWrapper jit = jits.remove(tag);
         if (jit != null) {
-            HybridSEJITWrapper.DeleteJIT(jit);
+            HybridSeJitWrapper.DeleteJit(jit);
             jit.delete();
         }
     }
 
     synchronized static public void clear() {
         initializedModuleTags.clear();
-        for (Map.Entry<String, HybridSEJITWrapper> entry : jits.entrySet()) {
-            HybridSEJITWrapper.DeleteJIT(entry.getValue());
+        for (Map.Entry<String, HybridSeJitWrapper> entry : jits.entrySet()) {
+            HybridSeJitWrapper.DeleteJit(entry.getValue());
             entry.getValue().delete();
         }
         jits.clear();

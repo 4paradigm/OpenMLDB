@@ -37,9 +37,9 @@ namespace hybridse {
 namespace udf {
 template <typename K>
 struct CountCateDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUDAFTemplate<Impl>("count_cate")
+            ->RegisterUdafTemplate<Impl>("count_cate")
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -50,7 +50,7 @@ struct CountCateDef {
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
-        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix = ".opaque_dict_" +
                                  DataTypeTrait<K>::to_string() + "_" +
                                  DataTypeTrait<V>::to_string();
@@ -93,9 +93,9 @@ struct CountCateDef {
 
 template <typename K>
 struct CountCateWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUDAFTemplate<Impl>("count_cate_where")
+            ->RegisterUdafTemplate<Impl>("count_cate_where")
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -108,7 +108,7 @@ struct CountCateWhereDef {
 
         using CountCateImpl = typename CountCateDef<K>::template Impl<V>;
 
-        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix = ".opaque_dict_" +
                                  DataTypeTrait<K>::to_string() + "_" +
                                  DataTypeTrait<V>::to_string();
@@ -136,9 +136,9 @@ struct CountCateWhereDef {
 
 template <typename K>
 struct TopKCountCateWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUDAFTemplate<Impl>("top_n_key_count_cate_where")
+            ->RegisterUdafTemplate<Impl>("top_n_key_count_cate_where")
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -151,7 +151,7 @@ struct TopKCountCateWhereDef {
 
         using AvgCateImpl = typename CountCateDef<K>::template Impl<V>;
 
-        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix;
 
             suffix = ".i32_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
@@ -210,8 +210,8 @@ struct TopKCountCateWhereDef {
     };
 };
 
-void DefaultUDFLibrary::InitCountByCateUDAFs() {
-    RegisterUDAFTemplate<CountCateDef>("count_cate")
+void DefaultUdfLibrary::InitCountByCateUdafs() {
+    RegisterUdafTemplate<CountCateDef>("count_cate")
         .doc(R"(
             Compute count of values grouped by category key and output string.
             Each group is represented as 'K:V' and separated by comma in outputs
@@ -235,7 +235,7 @@ void DefaultUDFLibrary::InitCountByCateUDAFs() {
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
-    RegisterUDAFTemplate<CountCateWhereDef>("count_cate_where")
+    RegisterUdafTemplate<CountCateWhereDef>("count_cate_where")
         .doc(R"(
             Compute count of values matching specified condition grouped by
     category key and output string. Each group is represented as 'K:V' and
@@ -261,7 +261,7 @@ void DefaultUDFLibrary::InitCountByCateUDAFs() {
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
-    RegisterUDAFTemplate<TopKCountCateWhereDef>("top_n_key_count_cate_where")
+    RegisterUdafTemplate<TopKCountCateWhereDef>("top_n_key_count_cate_where")
         .doc(R"(
             Compute count of values matching specified condition grouped by
     category key. Output string for top N keys in descend order. Each group is

@@ -130,7 +130,7 @@ namespace hybridse {
 namespace codegen {
 
 using hybridse::codec::Row;
-using hybridse::sqlcase::SQLCase;
+using hybridse::sqlcase::SqlCase;
 class BufIRBuilderTest : public ::testing::Test {
  public:
     BufIRBuilderTest() {}
@@ -139,12 +139,12 @@ class BufIRBuilderTest : public ::testing::Test {
 
 void RunEncode(::hybridse::type::TableDef& table, // NOLINT
                int8_t** output_ptr) {
-    SQLCase::TableInfo table_info;
-    ASSERT_TRUE(SQLCase::CreateTableInfoFromYaml(
-        hybridse::sqlcase::FindSQLCaseBaseDirPath(),
+    SqlCase::TableInfo table_info;
+    ASSERT_TRUE(SqlCase::CreateTableInfoFromYaml(
+        hybridse::sqlcase::FindSqlCaseBaseDirPath(),
         "cases/resource/codegen_t1_one_row.yaml", &table_info));
     ASSERT_TRUE(
-        SQLCase::ExtractTableDef(table_info.schema_, table_info.index_, table));
+        SqlCase::ExtractTableDef(table_info.schema_, table_info.index_, table));
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_encode", *ctx);
     // Create the add1 function entry and insert this entry into module M.  The
@@ -187,10 +187,10 @@ void RunEncode(::hybridse::type::TableDef& table, // NOLINT
     builder.CreateRetVoid();
     m->print(::llvm::errs(), NULL);
 
-    auto jit = std::unique_ptr<vm::HybridSEJITWrapper>(
-        vm::HybridSEJITWrapper::Create());
+    auto jit = std::unique_ptr<vm::HybridSeJitWrapper>(
+        vm::HybridSeJitWrapper::Create());
     jit->Init();
-    vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
+    vm::HybridSeJitWrapper::InitJitSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto load_fn_jit = jit->FindFunction("fn");
     void (*decode)(int8_t**) =
@@ -225,12 +225,12 @@ void LoadValue(T* result, bool* is_null,
             break;
         case ::hybridse::type::kVarchar: {
             const node::TypeNode type_node(hybridse::node::kVarchar);
-            ASSERT_TRUE(codegen::GetLLVMType(m.get(), &type_node, &retTy));
+            ASSERT_TRUE(codegen::GetLlvmType(m.get(), &type_node, &retTy));
             break;
         }
         case ::hybridse::type::kTimestamp: {
             const node::TypeNode type_node(hybridse::node::kTimestamp);
-            ASSERT_TRUE(codegen::GetLLVMType(m.get(), &type_node, &retTy));
+            ASSERT_TRUE(codegen::GetLlvmType(m.get(), &type_node, &retTy));
             break;
         }
         default:
@@ -309,10 +309,10 @@ void LoadValue(T* result, bool* is_null,
     builder.CreateRet(llvm::ConstantInt::getFalse(*ctx));
     m->print(::llvm::errs(), NULL);
 
-    auto jit = std::unique_ptr<vm::HybridSEJITWrapper>(
-        vm::HybridSEJITWrapper::Create());
+    auto jit = std::unique_ptr<vm::HybridSeJitWrapper>(
+        vm::HybridSeJitWrapper::Create());
     jit->Init();
-    vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
+    vm::HybridSeJitWrapper::InitJitSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto load_fn_jit = jit->FindFunction("fn");
 
@@ -440,10 +440,10 @@ void RunColCase(T expected, type::TableDef& table,  // NOLINT
     }
     m->print(::llvm::errs(), NULL);
 
-    auto jit = std::unique_ptr<vm::HybridSEJITWrapper>(
-        vm::HybridSEJITWrapper::Create());
+    auto jit = std::unique_ptr<vm::HybridSeJitWrapper>(
+        vm::HybridSeJitWrapper::Create());
     jit->Init();
-    vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
+    vm::HybridSeJitWrapper::InitJitSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     jit->AddExternalFunction("print_list_i16",
                              reinterpret_cast<void*>(&PrintListInt16));

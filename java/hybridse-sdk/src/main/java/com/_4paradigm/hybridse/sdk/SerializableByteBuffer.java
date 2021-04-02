@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridse.common;
+package com._4paradigm.hybridse.sdk;
 
 import java.io.DataInputStream;
 import java.io.IOException;

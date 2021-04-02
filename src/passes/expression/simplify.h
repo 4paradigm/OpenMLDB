@@ -52,7 +52,7 @@ class ExprInplaceTransformUp : public ExprPass {
     virtual Status VisitLambda(node::LambdaNode*,
                                const std::vector<node::ExprAttrNode>&,
                                node::FnDefNode**);
-    virtual Status VisitUDAF(node::UDAFDefNode*,
+    virtual Status VisitUdaf(node::UdafDefNode*,
                              const std::vector<node::ExprAttrNode>&,
                              node::FnDefNode**);
 

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridse.common;
-import com._4paradigm.hybridse.HybridSELibrary;
+package com._4paradigm.hybridse.sdk;
+import com._4paradigm.hybridse.HybridSeLibrary;
 
 import com._4paradigm.hybridse.node.ColumnRefNode;
 import com._4paradigm.hybridse.node.ExprNode;
@@ -35,7 +35,7 @@ import java.util.*;
 public class DDLEngine {
     static {
         // Ensure native initialized
-        HybridSELibrary.initCore();
+        HybridSeLibrary.initCore();
         Engine.InitializeGlobalLLVM();
     }
 
@@ -43,16 +43,16 @@ public class DDLEngine {
 
     public static String SQLTableName = "sql_table";
 
-    public static int resolveColumnIndex(ExprNode expr, PhysicalOpNode planNode) throws HybridSEException {
+    public static int resolveColumnIndex(ExprNode expr, PhysicalOpNode planNode) throws HybridSeException {
         if (expr.getExpr_type_() == ExprType.kExprColumnRef) {
             int index = CoreAPI.ResolveColumnIndex(planNode, ColumnRefNode.CastFrom(expr));
             if (index >= 0 && index <= planNode.GetOutputSchema().size()) {
                 return index;
             } else {
-                throw new HybridSEException("Fail to resolve {} with index = {}".format(expr.GetExprString(), index));
+                throw new HybridSeException("Fail to resolve {} with index = {}".format(expr.GetExprString(), index));
             }
         }
-        throw new HybridSEException("Expr {} not supported".format(expr.GetExprString()));
+        throw new HybridSeException("Expr {} not supported".format(expr.GetExprString()));
     }
 
     public static String genDDL(String sql, String schema, int replicanum, int partitionnum) throws Exception {
@@ -82,7 +82,7 @@ public class DDLEngine {
             }
             String res = sb.toString();
             return res;
-        } catch (UnsupportedHybridSEException | HybridSEException e) {
+        } catch (UnsupportedHybridSeException | HybridSeException e) {
             e.printStackTrace();
         }
         throw new Exception("failed to gen ddl for " + schema);
@@ -119,7 +119,7 @@ public class DDLEngine {
             }
             String res = sb.toString();
             return res;
-        } catch (UnsupportedHybridSEException | HybridSEException e) {
+        } catch (UnsupportedHybridSeException | HybridSeException e) {
             e.printStackTrace();
         }
         throw new Exception("failed to gen ddl");
@@ -232,7 +232,7 @@ public class DDLEngine {
         logger.info("begin to pares lastjoin op");
     }
 
-    public static Map<String, RtidbTable> parseRtidbIndex(List<PhysicalOpNode> nodes, Map<String, TypeOuterClass.TableDef> tableDefMap) throws HybridSEException {
+    public static Map<String, RtidbTable> parseRtidbIndex(List<PhysicalOpNode> nodes, Map<String, TypeOuterClass.TableDef> tableDefMap) throws HybridSeException {
         Map<String, RtidbTable> rtidbTables = new HashMap<>();
         Map<String, String> table2OrgTable = new HashMap<>();
         for (PhysicalOpNode node : nodes) {
@@ -425,7 +425,7 @@ public class DDLEngine {
         RequestEngine engine = null;
         try {
             engine = new RequestEngine(sql, db.build());
-        } catch (UnsupportedHybridSEException e) {
+        } catch (UnsupportedHybridSeException e) {
             e.printStackTrace();
         }
         PhysicalOpNode plan = engine.getPlan();
@@ -441,7 +441,7 @@ public class DDLEngine {
         RequestEngine engine = null;
         try {
             engine = new RequestEngine(sql, db);
-        } catch (UnsupportedHybridSEException e) {
+        } catch (UnsupportedHybridSeException e) {
             e.printStackTrace();
         }
         PhysicalOpNode plan = engine.getPlan();

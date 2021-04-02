@@ -36,12 +36,12 @@ using hybridse::node::TypeNode;
 namespace hybridse {
 namespace udf {
 
-void DefaultUDFLibrary::InitAggByCateUDAFs() {
-    InitSumByCateUDAFs();
-    InitCountByCateUDAFs();
-    InitMinByCateUDAFs();
-    InitMaxByCateUDAFs();
-    InitAvgByCateUDAFs();
+void DefaultUdfLibrary::InitAggByCateUdafs() {
+    InitSumByCateUdafs();
+    InitCountByCateUdafs();
+    InitMinByCateUdafs();
+    initMaxByCateUdaFs();
+    InitAvgByCateUdafs();
 }
 
 }  // namespace udf

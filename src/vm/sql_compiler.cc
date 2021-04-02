@@ -40,16 +40,16 @@ using hybridse::common::kPlanError;
 namespace hybridse {
 namespace vm {
 
-SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir,
+SqlCompiler::SqlCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir,
                          bool dump_plan, bool plan_only)
     : cl_(cl),
       keep_ir_(keep_ir),
       dump_plan_(dump_plan),
       plan_only_(plan_only) {}
 
-SQLCompiler::~SQLCompiler() {}
+SqlCompiler::~SqlCompiler() {}
 
-void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
+void SqlCompiler::KeepIR(SqlContext& ctx, llvm::Module* m) {
     if (m == NULL) {
         LOG(WARNING) << "module is null";
         return;
@@ -61,7 +61,7 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
     LOG(INFO) << "keep ir length: " << ctx.ir.size();
 }
 
-bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
+bool SqlCompiler::Compile(SqlContext& ctx, Status& status) {  // NOLINT
     bool ok = Parse(ctx, status);
     if (!ok) {
         return false;
@@ -79,7 +79,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     }
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
-    ctx.udf_library = udf::DefaultUDFLibrary::get();
+    ctx.udf_library = udf::DefaultUdfLibrary::get();
 
     status =
         BuildPhysicalPlan(&ctx, ctx.logical_plan, m.get(), &ctx.physical_plan);
@@ -115,15 +115,15 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
     // ::llvm::errs() << *(m.get());
-    auto jit = std::shared_ptr<HybridSEJITWrapper>(
-        HybridSEJITWrapper::Create(ctx.jit_options));
+    auto jit = std::shared_ptr<HybridSeJitWrapper>(
+        HybridSeJitWrapper::Create(ctx.jit_options));
     if (jit == nullptr || !jit->Init()) {
         status.msg = "fail to init jit let";
         status.code = common::kJitError;
         LOG(WARNING) << status;
         return false;
     }
-    InitBuiltinJITSymbols(jit.get());
+    InitBuiltinJitSymbols(jit.get());
     ctx.udf_library->InitJITSymbols(jit.get());
     if (!jit->OptModule(m.get())) {
         LOG(WARNING) << "fail to opt ir module for sql " << ctx.sql;
@@ -157,9 +157,9 @@ std::string EngineModeName(EngineMode mode) {
     }
 }
 
-Status SQLCompiler::BuildBatchModePhysicalPlan(
-    SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
-    ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+Status SqlCompiler::BuildBatchModePhysicalPlan(
+    SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+    ::llvm::Module* llvm_module, udf::UdfLibrary* library,
     PhysicalOpNode** output) {
     vm::BatchModeTransformer transformer(
         &ctx->nm, ctx->db, cl_, llvm_module, library,
@@ -172,9 +172,9 @@ Status SQLCompiler::BuildBatchModePhysicalPlan(
     return Status::OK();
 }
 
-Status SQLCompiler::BuildRequestModePhysicalPlan(
-    SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
-    ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+Status SqlCompiler::BuildRequestModePhysicalPlan(
+    SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+    ::llvm::Module* llvm_module, udf::UdfLibrary* library,
     PhysicalOpNode** output) {
     vm::RequestModeTransformer transformer(
         &ctx->nm, ctx->db, cl_, llvm_module, library, {},
@@ -192,9 +192,9 @@ Status SQLCompiler::BuildRequestModePhysicalPlan(
     return Status::OK();
 }
 
-Status SQLCompiler::BuildBatchRequestModePhysicalPlan(
-    SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
-    ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+Status SqlCompiler::BuildBatchRequestModePhysicalPlan(
+    SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+    ::llvm::Module* llvm_module, udf::UdfLibrary* library,
     PhysicalOpNode** output) {
     vm::RequestModeTransformer transformer(
         &ctx->nm, ctx->db, cl_, llvm_module, library,
@@ -253,13 +253,13 @@ Status SQLCompiler::BuildBatchRequestModePhysicalPlan(
     return Status::OK();
 }
 
-Status SQLCompiler::BuildPhysicalPlan(
-    SQLContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+Status SqlCompiler::BuildPhysicalPlan(
+    SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
     ::llvm::Module* llvm_module, PhysicalOpNode** output) {
     Status status;
     CHECK_TRUE(ctx != nullptr, kPlanError, "Null sql context");
 
-    udf::UDFLibrary* library = ctx->udf_library;
+    udf::UdfLibrary* library = ctx->udf_library;
     CHECK_TRUE(library != nullptr, kPlanError, "Null udf library");
 
     switch (ctx->engine_mode) {
@@ -281,7 +281,7 @@ Status SQLCompiler::BuildPhysicalPlan(
     }
 }
 
-bool SQLCompiler::BuildClusterJob(SQLContext& ctx, Status& status) {  // NOLINT
+bool SqlCompiler::BuildClusterJob(SqlContext& ctx, Status& status) {  // NOLINT
     if (nullptr == ctx.physical_plan) {
         status.msg = "fail to build cluster job: physical plan is empty";
         status.code = common::kOpGenError;
@@ -304,10 +304,10 @@ bool SQLCompiler::BuildClusterJob(SQLContext& ctx, Status& status) {  // NOLINT
  * @return true if success to transform logical plan, store logical
  *         plan into SQLContext
  */
-bool SQLCompiler::Parse(SQLContext& ctx,
+bool SqlCompiler::Parse(SqlContext& ctx,
                         ::hybridse::base::Status& status) {  // NOLINT
     ::hybridse::node::NodePointVector parser_trees;
-    ::hybridse::parser::HybridSEParser parser;
+    ::hybridse::parser::HybridSeParser parser;
 
     bool is_batch_mode = ctx.engine_mode == kBatchMode;
     ::hybridse::plan::SimplePlanner planer(
@@ -327,8 +327,8 @@ bool SQLCompiler::Parse(SQLContext& ctx,
     }
     return true;
 }
-bool SQLCompiler::ResolvePlanFnAddress(vm::PhysicalOpNode* node,
-                                       std::shared_ptr<HybridSEJITWrapper>& jit,
+bool SqlCompiler::ResolvePlanFnAddress(vm::PhysicalOpNode* node,
+                                       std::shared_ptr<HybridSeJitWrapper>& jit,
                                        Status& status) {
     if (nullptr == node) {
         status.msg = "fail to resolve project fn address: node is null";

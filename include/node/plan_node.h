@@ -426,7 +426,7 @@ class CreatePlanNode : public LeafPlanNode {
                 }
                 default: {
                     LOG(WARNING) << "Invalid column desc "
-                                 << node::NameOfSQLNodeType(item->GetType());
+                                 << node::NameOfSqlNodeType(item->GetType());
                     return false;
                 }
             }
