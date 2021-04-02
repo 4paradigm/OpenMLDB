@@ -28,10 +28,8 @@ do
             "1")
                 sed -i 's/FEDB_VERSION_MAJOR .*/FEDB_VERSION_MAJOR '${value}')/g' ${cmake_file};;
             "2")
-                sed -i 's/FEDB_VERSION_MEDIUM .*/FEDB_VERSION_MEDIUM '${value}')/g' ${cmake_file};;
-            "3")
                 sed -i 's/FEDB_VERSION_MINOR .*/FEDB_VERSION_MINOR '${value}')/g' ${cmake_file};;
-            "4")
+            "3")
                 sed -i 's/FEDB_VERSION_BUG .*/FEDB_VERSION_BUG '${value}')/g' ${cmake_file};;
             *)
                 echo "xx";;
@@ -41,3 +39,4 @@ do
         break
     fi
 done
+sed -i "s/version=.*/version='$1',/g" src/sdk/python/sqlalchemy-fedb/setup.py

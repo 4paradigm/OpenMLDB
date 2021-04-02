@@ -1,8 +1,7 @@
 # nameserver.conf 
-#endpoint不能用0.0.0.0和127.0.0.1
---endpoint=172.27.128.31:6527
+--endpoint=127.0.0.1:6527
 --role=nameserver
---zk_cluster=172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181
+--zk_cluster=127.0.0.1:7181
 --zk_root_path=/fedb_cluster
 
 --log_dir=./logs

@@ -1,20 +1,15 @@
 # tablet.conf 
-#endpoint不能用0.0.0.0和127.0.0.1
 #--use_name=false
 #--port=9527
---endpoint=172.27.128.33:9527
+--endpoint=127.0.0.1:9527
 --role=tablet
 
 # if tablet run as cluster mode zk_cluster and zk_root_path should be set
-#--zk_cluster=172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181
+#--zk_cluster=127.0.0.1:7181
 #--zk_root_path=/fedb_cluster
 
-# concurrency conf
 # thread_pool_size建议和cpu核数一致
 --thread_pool_size=24
---scan_concurrency_limit=16
---put_concurrency_limit=8
---get_concurrency_limit=16
 #--file_compression=off
 
 --zk_session_timeout=10000
