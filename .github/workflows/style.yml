@@ -36,7 +36,7 @@ jobs:
           github_token: ${{ secrets.github_token }}
           level: info
           reporter: github-pr-review
-          flags: --linelength=80
+          flags: --linelength=120
 
   detect-secrets:
     runs-on: self-hosted
