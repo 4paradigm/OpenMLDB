@@ -20,7 +20,6 @@ jobs:
       - name: uncompress_thirdparty
         run: |
           cd /depends && tar -zxf thirdparty.tar.gz
-          mkdir zookeeper-3.4.14 && mv thirdsrc/* zookeeper-3.4.14/ && mv zookeeper-3.4.14 thirdsrc/
       - name: build
         run: |
           ln -sf /depends/thirdparty thirdparty
