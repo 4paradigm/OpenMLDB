@@ -32,26 +32,26 @@ namespace codegen {
 using base::Status;
 using ::hybridse::common::kCodegenError;
 
-bool GetLLVMType(::llvm::BasicBlock* block,
+bool GetLlvmType(::llvm::BasicBlock* block,
                  const ::hybridse::node::DataType& type,  // NOLINT
                  ::llvm::Type** output) {
     if (output == NULL || block == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
         return false;
     }
-    return GetLLVMType(block->getModule(), type, output);
+    return GetLlvmType(block->getModule(), type, output);
 }
 
-bool GetLLVMType(::llvm::BasicBlock* block,
+bool GetLlvmType(::llvm::BasicBlock* block,
                  const ::hybridse::node::TypeNode* type,  // NOLINT
                  ::llvm::Type** output) {
     if (output == NULL || block == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
         return false;
     }
-    return GetLLVMType(block->getModule(), type, output);
+    return GetLlvmType(block->getModule(), type, output);
 }
-bool GetLLVMType(::llvm::Module* m, const ::hybridse::node::DataType& type,
+bool GetLlvmType(::llvm::Module* m, const ::hybridse::node::DataType& type,
                  ::llvm::Type** llvm_type) {
     if (nullptr == m) {
         LOG(WARNING) << "fail to convert data type to llvm type";
@@ -118,7 +118,7 @@ bool GetLLVMType(::llvm::Module* m, const ::hybridse::node::DataType& type,
     return true;
 }
 
-bool GetLLVMColumnSize(::hybridse::node::TypeNode* v_type, uint32_t* size) {
+bool GetLlvmColumnSize(::hybridse::node::TypeNode* v_type, uint32_t* size) {
     if (nullptr == size) {
         LOG(WARNING) << "the size ptr is NULL ";
         return false;
@@ -169,7 +169,7 @@ bool GetLLVMColumnSize(::hybridse::node::TypeNode* v_type, uint32_t* size) {
     return true;
 }  // namespace codegen
 
-bool GetLLVMListType(::llvm::Module* m,
+bool GetLlvmListType(::llvm::Module* m,
                      const ::hybridse::node::TypeNode* v_type,
                      ::llvm::Type** output) {
     if (output == NULL) {
@@ -240,7 +240,7 @@ bool GetLLVMListType(::llvm::Module* m,
     return true;
 }
 
-bool GetLLVMIteratorType(::llvm::Module* m,
+bool GetLlvmIteratorType(::llvm::Module* m,
                          const ::hybridse::node::TypeNode* v_type,
                          ::llvm::Type** output) {
     if (output == NULL) {
@@ -311,7 +311,7 @@ bool GetLLVMIteratorType(::llvm::Module* m,
     return true;
 }
 
-bool GetLLVMType(::llvm::Module* m, const hybridse::node::TypeNode* data_type,
+bool GetLlvmType(::llvm::Module* m, const hybridse::node::TypeNode* data_type,
                  ::llvm::Type** llvm_type) {
     if (nullptr == data_type) {
         LOG(WARNING) << "fail to convert data type to llvm type";
@@ -327,7 +327,7 @@ bool GetLLVMType(::llvm::Module* m, const hybridse::node::TypeNode* data_type,
             }
             ::llvm::Type* list_type = nullptr;
             if (false ==
-                GetLLVMListType(m, data_type->generics_[0], &list_type)) {
+                GetLlvmListType(m, data_type->generics_[0], &list_type)) {
                 return false;
             }
             *llvm_type = list_type->getPointerTo();
@@ -343,7 +343,7 @@ bool GetLLVMType(::llvm::Module* m, const hybridse::node::TypeNode* data_type,
             }
             ::llvm::Type* list_type = nullptr;
             if (false ==
-                GetLLVMIteratorType(m, data_type->generics_[0], &list_type)) {
+                GetLlvmIteratorType(m, data_type->generics_[0], &list_type)) {
                 return false;
             }
             *llvm_type = list_type->getPointerTo();
@@ -353,7 +353,7 @@ bool GetLLVMType(::llvm::Module* m, const hybridse::node::TypeNode* data_type,
             LOG(WARNING) << "fail to codegen map type, currently not support";
         }
         default: {
-            return GetLLVMType(m, data_type->base_, llvm_type);
+            return GetLlvmType(m, data_type->base_, llvm_type);
         }
     }
 }
@@ -410,7 +410,7 @@ bool GetFullType(node::NodeManager* nm, ::llvm::Type* type,
     node::DataType base;
     if (false == GetBaseType(type, &base)) {
         LOG(WARNING) << "Fail to get base type of "
-                     << GetLLVMObjectString(type);
+                     << GetLlvmObjectString(type);
         return false;
     }
 
@@ -607,7 +607,7 @@ bool GetBaseType(::llvm::Type* type, ::hybridse::node::DataType* output) {
         }
         default: {
             LOG(WARNING) << "no mapping type for llvm type: "
-                         << GetLLVMObjectString(type);
+                         << GetLlvmObjectString(type);
             return false;
         }
     }
@@ -884,39 +884,39 @@ base::Status TypeIRBuilder::BinaryOpTypeInfer(
     return Status::OK();
 }
 
-static Status ExpandLLVMArgTypes(
+static Status ExpandLlvmArgTypes(
     ::llvm::Module* m, const node::TypeNode* dtype, bool nullable,
     std::vector<std::pair<::llvm::Type*, bool>>* output) {
     if (dtype->base() == node::kTuple) {
         CHECK_TRUE(!nullable, kCodegenError, "kTuple should never be nullable");
         for (size_t i = 0; i < dtype->GetGenericSize(); ++i) {
             CHECK_STATUS(
-                ExpandLLVMArgTypes(m, dtype->GetGenericType(i),
+                ExpandLlvmArgTypes(m, dtype->GetGenericType(i),
                                    dtype->IsGenericNullable(i), output),
                 kCodegenError);
         }
     } else {
         ::llvm::Type* llvm_ty = nullptr;
-        CHECK_TRUE(GetLLVMType(m, dtype, &llvm_ty), kCodegenError,
+        CHECK_TRUE(GetLlvmType(m, dtype, &llvm_ty), kCodegenError,
                    "Fail to lower ", dtype->GetName());
         output->push_back(std::make_pair(llvm_ty, nullable));
     }
     return Status::OK();
 }
 
-static Status ExpandLLVMReturnTypes(
+static Status ExpandLlvmReturnTypes(
     ::llvm::Module* m, const node::TypeNode* dtype, bool nullable,
     std::vector<std::pair<::llvm::Type*, bool>>* output) {
     if (dtype->base() == node::kTuple) {
         CHECK_TRUE(!nullable, kCodegenError, "kTuple should never be nullable");
         for (size_t i = 0; i < dtype->GetGenericSize(); ++i) {
-            CHECK_STATUS(ExpandLLVMReturnTypes(m, dtype->GetGenericType(i),
+            CHECK_STATUS(ExpandLlvmReturnTypes(m, dtype->GetGenericType(i),
                                                dtype->IsGenericNullable(i),
                                                output));
         }
     } else {
         ::llvm::Type* llvm_ty = nullptr;
-        CHECK_TRUE(GetLLVMType(m, dtype, &llvm_ty), kCodegenError,
+        CHECK_TRUE(GetLlvmType(m, dtype, &llvm_ty), kCodegenError,
                    "Fail to lower ", dtype->GetName());
         if (dtype->base() == node::kOpaque) {
             llvm_ty = ::llvm::Type::getInt8Ty(m->getContext());
@@ -926,7 +926,7 @@ static Status ExpandLLVMReturnTypes(
     return Status::OK();
 }
 
-Status GetLLVMFunctionType(::llvm::Module* m,
+Status GetLlvmFunctionType(::llvm::Module* m,
                            const std::vector<const node::TypeNode*>& arg_types,
                            const std::vector<int>& arg_nullable,
                            const node::TypeNode* return_type,
@@ -935,7 +935,7 @@ Status GetLLVMFunctionType(::llvm::Module* m,
     // expand raw llvm arg types from signature
     std::vector<std::pair<::llvm::Type*, bool>> llvm_arg_types;
     for (size_t i = 0; i < arg_types.size(); ++i) {
-        CHECK_STATUS(ExpandLLVMArgTypes(m, arg_types[i], arg_nullable[i],
+        CHECK_STATUS(ExpandLlvmArgTypes(m, arg_types[i], arg_nullable[i],
                                         &llvm_arg_types))
     }
 
@@ -944,7 +944,7 @@ Status GetLLVMFunctionType(::llvm::Module* m,
     // expand raw llvm return types
     std::vector<std::pair<::llvm::Type*, bool>> llvm_ret_types;
     CHECK_STATUS(
-        ExpandLLVMReturnTypes(m, return_type, return_nullable, &llvm_ret_types))
+        ExpandLlvmReturnTypes(m, return_type, return_nullable, &llvm_ret_types))
     CHECK_TRUE(llvm_ret_types.size() > 0, kCodegenError);
 
     if (llvm_ret_types.size() > 1 ||

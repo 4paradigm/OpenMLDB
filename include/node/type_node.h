@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_NODE_TYPE_NODE_H_
-#define SRC_INCLUDE_NODE_TYPE_NODE_H_
+#ifndef INCLUDE_NODE_TYPE_NODE_H_
+#define INCLUDE_NODE_TYPE_NODE_H_
 
 #include <string>
 #include <vector>
@@ -28,20 +28,20 @@ namespace node {
 
 class NodeManager;
 
-class TypeNode : public SQLNode {
+class TypeNode : public SqlNode {
  public:
-    TypeNode() : SQLNode(node::kType, 0, 0), base_(hybridse::node::kNull) {}
+    TypeNode() : SqlNode(node::kType, 0, 0), base_(hybridse::node::kNull) {}
     explicit TypeNode(hybridse::node::DataType base)
-        : SQLNode(node::kType, 0, 0), base_(base), generics_({}) {}
+        : SqlNode(node::kType, 0, 0), base_(base), generics_({}) {}
     explicit TypeNode(hybridse::node::DataType base, const TypeNode *v1)
-        : SQLNode(node::kType, 0, 0),
+        : SqlNode(node::kType, 0, 0),
           base_(base),
           generics_({v1}),
           generics_nullable_({false}) {}
     explicit TypeNode(hybridse::node::DataType base,
                       const hybridse::node::TypeNode *v1,
                       const hybridse::node::TypeNode *v2)
-        : SQLNode(node::kType, 0, 0),
+        : SqlNode(node::kType, 0, 0),
           base_(base),
           generics_({v1, v2}),
           generics_nullable_({false, false}) {}
@@ -79,7 +79,7 @@ class TypeNode : public SQLNode {
     std::vector<const hybridse::node::TypeNode *> generics_;
     std::vector<int> generics_nullable_;
     void Print(std::ostream &output, const std::string &org_tab) const override;
-    virtual bool Equals(const SQLNode *node) const;
+    virtual bool Equals(const SqlNode *node) const;
     TypeNode *ShadowCopy(NodeManager *) const override;
     TypeNode *DeepCopy(NodeManager *) const override;
 
@@ -141,4 +141,4 @@ class RowTypeNode : public TypeNode {
 
 }  // namespace node
 }  // namespace hybridse
-#endif  // SRC_INCLUDE_NODE_TYPE_NODE_H_
+#endif  // INCLUDE_NODE_TYPE_NODE_H_

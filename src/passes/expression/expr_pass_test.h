@@ -34,7 +34,7 @@ namespace passes {
 
 void InitFunctionLet(const std::string& sql, node::ExprAnalysisContext* ctx,
                      node::LambdaNode** result) {
-    parser::HybridSEParser parser;
+    parser::HybridSeParser parser;
     Status status;
     plan::SimplePlanner planner(ctx->node_manager());
     node::NodePointVector list1;
@@ -78,7 +78,7 @@ void InitFunctionLet(const std::string& sql, node::ExprAnalysisContext* ctx,
 class ExprPassTestBase : public ::testing::Test {
  public:
     ExprPassTestBase()
-        : lib_(udf::DefaultUDFLibrary::get()),
+        : lib_(udf::DefaultUdfLibrary::get()),
           ctx_(&nm_, lib_, &schemas_ctx_) {}
     virtual ~ExprPassTestBase() {}
     node::ExprAnalysisContext* pass_ctx() { return &ctx_; }
@@ -99,7 +99,7 @@ class ExprPassTestBase : public ::testing::Test {
  protected:
     node::NodeManager nm_;
     vm::SchemasContext schemas_ctx_;
-    const udf::UDFLibrary* lib_;
+    const udf::UdfLibrary* lib_;
     node::ExprAnalysisContext ctx_;
 };
 

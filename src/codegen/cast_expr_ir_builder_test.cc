@@ -54,8 +54,8 @@ void CastErrorCheck(::hybridse::node::DataType src_type,
     llvm::Type *src_llvm_type = NULL;
     llvm::Type *dist_llvm_type = NULL;
     ASSERT_TRUE(
-        ::hybridse::codegen::GetLLVMType(m.get(), src_type, &src_llvm_type));
-    ASSERT_TRUE(GetLLVMType(m.get(), dist_type, &dist_llvm_type));
+        ::hybridse::codegen::GetLlvmType(m.get(), src_type, &src_llvm_type));
+    ASSERT_TRUE(GetLlvmType(m.get(), dist_type, &dist_llvm_type));
 
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "D" and take an argument of "S".
@@ -95,8 +95,8 @@ void CastCheck(::hybridse::node::DataType src_type,
     llvm::Type *src_llvm_type = NULL;
     llvm::Type *dist_llvm_type = NULL;
     ASSERT_TRUE(
-        ::hybridse::codegen::GetLLVMType(m.get(), src_type, &src_llvm_type));
-    ASSERT_TRUE(GetLLVMType(m.get(), dist_type, &dist_llvm_type));
+        ::hybridse::codegen::GetLlvmType(m.get(), src_type, &src_llvm_type));
+    ASSERT_TRUE(GetLlvmType(m.get(), dist_type, &dist_llvm_type));
 
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "D" and take an argument of "S".
@@ -174,8 +174,8 @@ void BoolCastCheck(::hybridse::node::DataType type, V value, bool result) {
     llvm::Type *left_llvm_type = NULL;
     llvm::Type *dist_llvm_type = NULL;
     ASSERT_TRUE(
-        ::hybridse::codegen::GetLLVMType(m.get(), type, &left_llvm_type));
-    ASSERT_TRUE(GetLLVMType(m.get(), ::hybridse::node::kBool, &dist_llvm_type));
+        ::hybridse::codegen::GetLlvmType(m.get(), type, &left_llvm_type));
+    ASSERT_TRUE(GetLlvmType(m.get(), ::hybridse::node::kBool, &dist_llvm_type));
 
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "D" and take an argument of "S".
@@ -374,7 +374,7 @@ void CastExprCheck(CASTTYPE exp_value, std::string src_type_str,
     };
 
     hybridse::type::Type src_type;
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::TypeParse(src_type_str, &src_type));
+    ASSERT_TRUE(hybridse::sqlcase::SqlCase::TypeParse(src_type_str, &src_type));
     switch (src_type) {
         case type::kBool: {
             if ("null" == src_value_str) {
@@ -494,7 +494,7 @@ void CastExprCheck(std::string cast_type_str, std::string cast_value_str,
                    std::string src_type_str, std::string src_value_str) {
     hybridse::type::Type cast_type;
     ASSERT_TRUE(
-        hybridse::sqlcase::SQLCase::TypeParse(cast_type_str, &cast_type));
+        hybridse::sqlcase::SqlCase::TypeParse(cast_type_str, &cast_type));
     switch (cast_type) {
         case type::kBool: {
             if ("null" == cast_value_str) {
@@ -893,7 +893,7 @@ void CastErrorExprCheck(std::string src_type_str) {
     };
 
     hybridse::type::Type src_type;
-    ASSERT_TRUE(hybridse::sqlcase::SQLCase::TypeParse(src_type_str, &src_type));
+    ASSERT_TRUE(hybridse::sqlcase::SqlCase::TypeParse(src_type_str, &src_type));
     switch (src_type) {
         case type::kBool: {
             ExprErrorCheck<udf::Nullable<CASTTYPE>, udf::Nullable<bool>>(
@@ -951,7 +951,7 @@ void CastErrorExprCheck(std::string src_type_str) {
 void CastErrorExprCheck(std::string cast_type_str, std::string src_type_str) {
     hybridse::type::Type cast_type;
     ASSERT_TRUE(
-        hybridse::sqlcase::SQLCase::TypeParse(cast_type_str, &cast_type));
+        hybridse::sqlcase::SqlCase::TypeParse(cast_type_str, &cast_type));
     switch (cast_type) {
         case type::kBool: {
             CastErrorExprCheck<bool>(src_type_str);

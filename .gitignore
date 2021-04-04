@@ -34,3 +34,6 @@ hybridse_version.h
 intermediate_cicd_artifact_.tar.gz
 java/hybridse-spark/src/test/resources/fesql_windows
 .husky
+tools/documentation/api_doxygen/html
+tools/documentation/api_doxygen/xml
+tools/documentation/api_doxygen/c++

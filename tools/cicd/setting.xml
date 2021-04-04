@@ -1,4 +1,3 @@
-
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
@@ -17,21 +16,11 @@
                     <url>https://repo1.maven.org/maven2</url>
                 </repository>
                 <repository>
-                    <id>github</id>
-                    <url>https://maven.pkg.github.com/4paradigm/NativeSpark</url>
-                    <snapshots>
-                        <enabled>true</enabled>
-                    </snapshots>
+                    <id>http-repository</id>
+                    <url>http://103.3.60.66:8001/</url>
                 </repository>
             </repositories>
         </profile>
     </profiles>
 
-    <servers>
-        <server>
-            <id>github</id>
-            <username>wuyou10206</username>
-            <password>1cf68583e36cf11ebcd22a10333247e0298347e4</password>
-        </server>
-    </servers>
 </settings>

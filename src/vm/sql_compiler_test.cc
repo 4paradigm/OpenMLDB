@@ -46,48 +46,48 @@ ExitOnError ExitOnErr;
 namespace hybridse {
 namespace vm {
 
-using hybridse::sqlcase::SQLCase;
-std::vector<SQLCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
+using hybridse::sqlcase::SqlCase;
+std::vector<SqlCase> InitCases(std::string yaml_path);
+void InitCases(std::string yaml_path, std::vector<SqlCase>& cases);  // NOLINT
 
-void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(
-            hybridse::sqlcase::FindSQLCaseBaseDirPath(), yaml_path, cases,
+void InitCases(std::string yaml_path, std::vector<SqlCase>& cases) {  // NOLINT
+    if (!SqlCase::CreateSqlCasesFromYaml(
+            hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases,
             std::vector<std::string>({"physical-plan-unsupport",
                                       "plan-unsupport", "parser-unsupport"}))) {
         FAIL();
     }
 }
-std::vector<SQLCase> InitCases(std::string yaml_path) {
-    std::vector<SQLCase> cases;
+std::vector<SqlCase> InitCases(std::string yaml_path) {
+    std::vector<SqlCase> cases;
     InitCases(yaml_path, cases);
     return cases;
 }
-class SQLCompilerTest : public ::testing::TestWithParam<SQLCase> {};
+class SqlCompilerTest : public ::testing::TestWithParam<SqlCase> {};
 INSTANTIATE_TEST_CASE_P(
-    SqlSimpleQueryParse, SQLCompilerTest,
+    SqlSimpleQueryParse, SqlCompilerTest,
     testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
-    SqlWindowQueryParse, SQLCompilerTest,
+    SqlWindowQueryParse, SqlCompilerTest,
     testing::ValuesIn(InitCases("cases/plan/window_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    SqlWherePlan, SQLCompilerTest,
+    SqlWherePlan, SqlCompilerTest,
     testing::ValuesIn(InitCases("cases/plan/where_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    SqlGroupPlan, SQLCompilerTest,
+    SqlGroupPlan, SqlCompilerTest,
     testing::ValuesIn(InitCases("cases/plan/group_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    SqlJoinPlan, SQLCompilerTest,
+    SqlJoinPlan, SqlCompilerTest,
     testing::ValuesIn(InitCases("cases/plan/join_query.yaml")));
 
 void CompilerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
                    EngineMode engine_mode,
                    const bool enable_batch_window_paralled) {
-    SQLCompiler sql_compiler(catalog, false, true, false);
-    SQLContext sql_context;
+    SqlCompiler sql_compiler(catalog, false, true, false);
+    SqlContext sql_context;
     sql_context.sql = sql;
     sql_context.db = "db";
     sql_context.engine_mode = engine_mode;
@@ -112,8 +112,8 @@ void CompilerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
 }
 void RequestSchemaCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
                         const type::TableDef& exp_table_def) {
-    SQLCompiler sql_compiler(catalog);
-    SQLContext sql_context;
+    SqlCompiler sql_compiler(catalog);
+    SqlContext sql_context;
     sql_context.sql = sql;
     sql_context.db = "db";
     sql_context.engine_mode = kRequestMode;
@@ -143,7 +143,7 @@ void RequestSchemaCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     }
 }
 
-TEST_P(SQLCompilerTest, compile_request_mode_test) {
+TEST_P(SqlCompilerTest, compile_request_mode_test) {
     if (boost::contains(GetParam().mode(), "request-unsupport")) {
         LOG(INFO) << "Skip sql case: request unsupport";
         return;
@@ -206,7 +206,7 @@ TEST_P(SQLCompilerTest, compile_request_mode_test) {
     RequestSchemaCheck(catalog, sqlstr, table_def);
 }
 
-TEST_P(SQLCompilerTest, compile_batch_mode_test) {
+TEST_P(SqlCompilerTest, compile_batch_mode_test) {
     if (boost::contains(GetParam().mode(), "batch-unsupport")) {
         LOG(INFO) << "Skip sql case: batch unsupport";
         return;
@@ -319,7 +319,7 @@ TEST_P(SQLCompilerTest, compile_batch_mode_test) {
     }
 }
 
-TEST_P(SQLCompilerTest, compile_batch_mode_enable_window_paralled_test) {
+TEST_P(SqlCompilerTest, compile_batch_mode_enable_window_paralled_test) {
     if (boost::contains(GetParam().mode(), "batch-unsupport")) {
         LOG(INFO) << "Skip sql case: batch unsupport";
         return;

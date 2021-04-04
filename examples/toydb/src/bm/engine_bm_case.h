@@ -107,12 +107,12 @@ void EngineRequestSimpleUDF(benchmark::State* state, MODE mode);
 void EngineRequestSimpleSelectTimestamp(benchmark::State* state, MODE mode);
 void EngineRequestSimpleSelectDate(benchmark::State* state, MODE mode);
 
-hybridse::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml,
+hybridse::sqlcase::SqlCase LoadSqlCaseWithID(const std::string& yaml,
                                              const std::string& case_id);
 void EngineBenchmarkOnCase(const std::string& yaml_path,
                            const std::string& case_id,
                            vm::EngineMode engine_mode, benchmark::State* state);
-void EngineBenchmarkOnCase(hybridse::sqlcase::SQLCase& sql_case,  // NOLINT
+void EngineBenchmarkOnCase(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                            vm::EngineMode engine_mode, benchmark::State* state);
 
 }  // namespace bm

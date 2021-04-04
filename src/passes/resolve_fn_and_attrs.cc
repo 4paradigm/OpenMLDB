@@ -61,16 +61,16 @@ Status ResolveFnAndAttrs::VisitFnDef(
             *output = lambda;
             break;
         }
-        case node::kUDFDef: {
-            node::UDFDefNode* udf_def = nullptr;
-            CHECK_STATUS(VisitUDFDef(dynamic_cast<node::UDFDefNode*>(fn),
+        case node::kUdfDef: {
+            node::UdfDefNode* udf_def = nullptr;
+            CHECK_STATUS(VisitUdfDef(dynamic_cast<node::UdfDefNode*>(fn),
                                      arg_types, &udf_def));
             *output = udf_def;
             break;
         }
-        case node::kUDAFDef: {
-            node::UDAFDefNode* udaf_def = nullptr;
-            CHECK_STATUS(VisitUDAFDef(dynamic_cast<node::UDAFDefNode*>(fn),
+        case node::kUdafDef: {
+            node::UdafDefNode* udaf_def = nullptr;
+            CHECK_STATUS(VisitUdafDef(dynamic_cast<node::UdafDefNode*>(fn),
                                       arg_types, &udaf_def));
             *output = udaf_def;
             break;
@@ -107,10 +107,10 @@ Status ResolveFnAndAttrs::VisitLambda(
     return Status::OK();
 }
 
-Status ResolveFnAndAttrs::VisitUDFDef(
-    node::UDFDefNode* udf_def,
+Status ResolveFnAndAttrs::VisitUdfDef(
+    node::UdfDefNode* udf_def,
     const std::vector<const node::TypeNode*>& arg_types,
-    node::UDFDefNode** output) {
+    node::UdfDefNode** output) {
     // sanity checks
     CHECK_STATUS(CheckSignature(udf_def, arg_types),
                  "Check udf signature failed for\n", udf_def->GetTreeString());
@@ -124,20 +124,20 @@ Status ResolveFnAndAttrs::VisitUDFDef(
     return Status::OK();
 }
 
-Status ResolveFnAndAttrs::VisitUDAFDef(
-    node::UDAFDefNode* udaf,
+Status ResolveFnAndAttrs::VisitUdafDef(
+    node::UdafDefNode* lambda,
     const std::vector<const node::TypeNode*>& arg_types,
-    node::UDAFDefNode** output) {
+    node::UdafDefNode** output) {
     // sanity checks
-    CHECK_STATUS(CheckSignature(udaf, arg_types),
-                 "Check udaf signature failed for\n", udaf->GetTreeString());
+    CHECK_STATUS(CheckSignature(lambda, arg_types),
+                 "Check udaf signature failed for\n", lambda->GetTreeString());
 
     // visit init
     node::ExprNode* resolved_init = nullptr;
-    if (udaf->init_expr() != nullptr) {
-        CHECK_STATUS(VisitExpr(udaf->init_expr(), &resolved_init),
-                     "Resolve init expr failed for ", udaf->GetName(), ":\n",
-                     udaf->GetTreeString());
+    if (lambda->init_expr() != nullptr) {
+        CHECK_STATUS(VisitExpr(lambda->init_expr(), &resolved_init),
+                     "Resolve init expr failed for ", lambda->GetName(), ":\n",
+                     lambda->GetTreeString());
     }
 
     // get state type
@@ -145,10 +145,10 @@ Status ResolveFnAndAttrs::VisitUDAFDef(
     if (resolved_init != nullptr) {
         state_type = resolved_init->GetOutputType();
     } else {
-        state_type = udaf->GetElementType(0);
+        state_type = lambda->GetElementType(0);
     }
     CHECK_TRUE(state_type != nullptr, kCodegenError,
-               "Fail to resolve state type of udaf ", udaf->GetName());
+               "Fail to resolve state type of udaf ", lambda->GetName());
 
     // visit update
     std::vector<const node::TypeNode*> update_arg_types;
@@ -158,32 +158,33 @@ Status ResolveFnAndAttrs::VisitUDAFDef(
         update_arg_types.push_back(list_type->GetGenericType(0));
     }
     node::FnDefNode* resolved_update = nullptr;
-    CHECK_TRUE(udaf->update_func() != nullptr, kCodegenError);
+    CHECK_TRUE(lambda->update_func() != nullptr, kCodegenError);
     CHECK_STATUS(
-        VisitFnDef(udaf->update_func(), update_arg_types, &resolved_update),
-        "Resolve update function of ", udaf->GetName(), " failed");
+        VisitFnDef(lambda->update_func(), update_arg_types, &resolved_update),
+        "Resolve update function of ", lambda->GetName(), " failed");
     state_type = resolved_update->GetReturnType();
     CHECK_TRUE(state_type != nullptr, kCodegenError,
-               "Fail to resolve state type of udaf ", udaf->GetName());
+               "Fail to resolve state type of udaf ", lambda->GetName());
 
     // visit merge
     node::FnDefNode* resolved_merge = nullptr;
-    if (udaf->merge_func() != nullptr) {
-        CHECK_STATUS(VisitFnDef(udaf->merge_func(), {state_type, state_type},
+    if (lambda->merge_func() != nullptr) {
+        CHECK_STATUS(VisitFnDef(lambda->merge_func(), {state_type, state_type},
                                 &resolved_merge),
-                     "Resolve merge function of ", udaf->GetName(), " failed");
+                     "Resolve merge function of ", lambda->GetName(),
+                     " failed");
     }
 
     // visit output
     node::FnDefNode* resolved_output = nullptr;
-    if (udaf->output_func() != nullptr) {
+    if (lambda->output_func() != nullptr) {
         CHECK_STATUS(
-            VisitFnDef(udaf->output_func(), {state_type}, &resolved_output),
-            "Resolve output function of ", udaf->GetName(), " failed");
+            VisitFnDef(lambda->output_func(), {state_type}, &resolved_output),
+            "Resolve output function of ", lambda->GetName(), " failed");
     }
 
-    *output = ctx_->node_manager()->MakeUDAFDefNode(
-        udaf->GetName(), arg_types, resolved_init, resolved_update,
+    *output = ctx_->node_manager()->MakeUdafDefNode(
+        lambda->GetName(), arg_types, resolved_init, resolved_update,
         resolved_merge, resolved_output);
     CHECK_STATUS((*output)->Validate(arg_types), "Illegal resolved udaf: \n",
                  (*output)->GetTreeString());

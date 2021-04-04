@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_NODE_EXPR_NODE_H_
-#define SRC_INCLUDE_NODE_EXPR_NODE_H_
+#ifndef INCLUDE_NODE_EXPR_NODE_H_
+#define INCLUDE_NODE_EXPR_NODE_H_
 
 #include <string>
 #include <vector>
@@ -27,7 +27,7 @@ namespace hybridse::vm {
 class SchemasContext;
 }
 namespace hybridse::udf {
-class UDFLibrary;
+class UdfLibrary;
 }
 
 namespace hybridse {
@@ -60,26 +60,26 @@ class ExprAttrNode {
 
 class ExprAnalysisContext {
  public:
-    ExprAnalysisContext(node::NodeManager* nm, const udf::UDFLibrary* library,
+    ExprAnalysisContext(node::NodeManager* nm, const udf::UdfLibrary* library,
                         const vm::SchemasContext* schemas_context)
         : nm_(nm), library_(library), schemas_context_(schemas_context) {}
 
     node::NodeManager* node_manager() { return nm_; }
 
-    const udf::UDFLibrary* library() const { return library_; }
+    const udf::UdfLibrary* library() const { return library_; }
 
     const vm::SchemasContext* schemas_context() const {
         return schemas_context_;
     }
 
-    Status InferAsUDF(node::ExprNode* expr, const std::string& name);
+    Status InferAsUdf(node::ExprNode* expr, const std::string& name);
 
  private:
     node::NodeManager* nm_;
-    const udf::UDFLibrary* library_;
+    const udf::UdfLibrary* library_;
     const vm::SchemasContext* schemas_context_;
 };
 
 }  // namespace node
 }  // namespace hybridse
-#endif  // SRC_INCLUDE_NODE_EXPR_NODE_H_
+#endif  // INCLUDE_NODE_EXPR_NODE_H_

@@ -30,17 +30,17 @@ DEFINE_string(output_file, "udf_defs.yaml", "Output yaml filename");
 namespace hybridse {
 namespace cmd {
 
-struct UDFTypeInfo {
+struct UdfTypeInfo {
     std::vector<const node::TypeNode*> arg_types;
     const node::TypeNode* return_type;
-    UDFTypeInfo(const std::vector<const node::TypeNode*>& arg_types,
+    UdfTypeInfo(const std::vector<const node::TypeNode*>& arg_types,
                 const node::TypeNode* return_type)
         : arg_types(arg_types), return_type(return_type) {}
 };
 
-class UDFTypeExtractor {
+class UdfTypeExtractor {
  public:
-    UDFTypeExtractor() {
+    UdfTypeExtractor() {
         enum_types_.push_back(node_manager_.MakeTypeNode(node::kBool));
         enum_types_.push_back(node_manager_.MakeTypeNode(node::kDate));
         enum_types_.push_back(node_manager_.MakeTypeNode(node::kTimestamp));
@@ -54,10 +54,10 @@ class UDFTypeExtractor {
 
     void Expand(const std::string& name, size_t idx, bool is_expansion,
                 std::vector<const node::TypeNode*>* arg_types,
-                std::vector<UDFTypeInfo>* output) {
+                std::vector<UdfTypeInfo>* output) {
         if (idx == arg_types->size()) {
             // rec end
-            auto library = udf::DefaultUDFLibrary::get();
+            auto library = udf::DefaultUdfLibrary::get();
             node::NodeManager* nm = &node_manager_;
             std::vector<node::ExprNode*> args;
             for (size_t i = 0; i < arg_types->size(); ++i) {
@@ -86,7 +86,7 @@ class UDFTypeExtractor {
                              << udf::GetArgSignature(args) << ">";
                 return;
             }
-            UDFTypeInfo info(*arg_types, resolved->GetOutputType());
+            UdfTypeInfo info(*arg_types, resolved->GetOutputType());
             output->push_back(info);
             return;
         }
@@ -108,12 +108,12 @@ class UDFTypeExtractor {
     std::vector<const node::TypeNode*> enum_types_;
 };
 
-int ExportUDFInfo(const std::string& dir, const std::string& filename) {
-    auto library = udf::DefaultUDFLibrary::get();
+int ExportUdfInfo(const std::string& dir, const std::string& filename) {
+    auto library = udf::DefaultUdfLibrary::get();
     auto& registries = library->GetAllRegistries();
     YAML::Emitter yaml_out;
 
-    UDFTypeExtractor udf_extractor;
+    UdfTypeExtractor udf_extractor;
 
     yaml_out << YAML::BeginMap;
     for (auto& pair : registries) {
@@ -129,7 +129,7 @@ int ExportUDFInfo(const std::string& dir, const std::string& filename) {
             auto& regitem = pair.second;
             auto registry = regitem.value;
 
-            std::vector<UDFTypeInfo> expand_type_infos;
+            std::vector<UdfTypeInfo> expand_type_infos;
             udf_extractor.Expand(name, 0, false, &regitem.arg_types,
                                  &expand_type_infos);
 
@@ -180,6 +180,6 @@ int ExportUDFInfo(const std::string& dir, const std::string& filename) {
 
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    return hybridse::cmd::ExportUDFInfo(FLAGS_output_dir, FLAGS_output_file);
+    return hybridse::cmd::ExportUdfInfo(FLAGS_output_dir, FLAGS_output_file);
     return 0;
 }

@@ -70,7 +70,7 @@ class WindowIterAnalysis {
                            const std::vector<WindowIterRank>& arg_ranks,
                            WindowIterRank* rank);
 
-    Status VisitUDAF(node::UDAFDefNode* udaf, WindowIterRank* rank);
+    Status VisitUdaf(node::UdafDefNode* udaf, WindowIterRank* rank);
 
     node::ExprAnalysisContext* ctx_;
 

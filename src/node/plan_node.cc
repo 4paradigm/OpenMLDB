@@ -167,7 +167,7 @@ bool ProjectNode::Equals(const PlanNode *node) const {
     const ProjectNode *that = dynamic_cast<const ProjectNode *>(node);
     return this->name_ == that->name_ &&
            node::ExprEquals(this->expression_, that->expression_) &&
-           node::SQLEquals(this->frame_, that->frame_) &&
+           node::SqlEquals(this->frame_, that->frame_) &&
            LeafPlanNode::Equals(node);
 }
 
@@ -352,7 +352,7 @@ void FuncDefPlanNode::Print(std::ostream &output,
                             const std::string &orgTab) const {
     PlanNode::Print(output, orgTab);
     output << "\n";
-    PrintSQLNode(output, orgTab + "\t", fn_def_, "fun_def", true);
+    PrintSqlNode(output, orgTab + "\t", fn_def_, "fun_def", true);
 }
 void ProjectPlanNode::Print(std::ostream &output,
                             const std::string &org_tab) const {
@@ -512,7 +512,7 @@ bool WindowPlanNode::Equals(const PlanNode *node) const {
     }
     const WindowPlanNode *that = dynamic_cast<const WindowPlanNode *>(node);
     return this->name == that->name &&
-           SQLEquals(this->frame_node_, that->frame_node_) &&
+           SqlEquals(this->frame_node_, that->frame_node_) &&
            this->orders_ == that->orders_ && this->keys_ == that->keys_ &&
            PlanListEquals(this->union_tables_, that->union_tables_) &&
            LeafPlanNode::Equals(node);

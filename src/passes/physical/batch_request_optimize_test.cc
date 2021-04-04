@@ -22,7 +22,7 @@
 namespace hybridse {
 namespace vm {
 
-class BatchRequestOptimizeTest : public ::testing::TestWithParam<SQLCase> {
+class BatchRequestOptimizeTest : public ::testing::TestWithParam<SqlCase> {
  public:
     BatchRequestOptimizeTest() {}
 };
@@ -109,7 +109,7 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(
         InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
 INSTANTIATE_TEST_CASE_P(
-    BatchRequestTestFzSQLFunction, BatchRequestOptimizeTest,
+    BatchRequestTestFzSqlFunction, BatchRequestOptimizeTest,
     testing::ValuesIn(InitCases("/cases/integration/v1/test_fz_sql.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestTestClusterWindowAndLastJoin, BatchRequestOptimizeTest,
@@ -124,10 +124,10 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(
         InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
 
-void CheckOptimizePlan(const SQLCase& sql_case_org,
+void CheckOptimizePlan(const SqlCase& sql_case_org,
                        const std::set<size_t> common_column_indices,
                        bool unchanged) {
-    SQLCase sql_case = sql_case_org;
+    SqlCase sql_case = sql_case_org;
     if (boost::contains(sql_case.mode(), "request-unsupport") ||
         boost::contains(sql_case.mode(), "rtidb-unsupport")) {
         LOG(INFO) << "Skip mode " << sql_case.mode();
@@ -138,7 +138,7 @@ void CheckOptimizePlan(const SQLCase& sql_case_org,
     }
 
     auto catalog = std::make_shared<SimpleCatalog>();
-    InitSimpleCataLogFromSQLCase(sql_case, catalog);
+    InitSimpleCataLogFromSqlCase(sql_case, catalog);
     EngineOptions options;
     options.set_compile_only(true);
     auto engine = std::make_shared<vm::Engine>(catalog, options);
@@ -154,7 +154,7 @@ void CheckOptimizePlan(const SQLCase& sql_case_org,
     bool ok = engine->Get(sql_str, sql_case.db(), session, status);
     ASSERT_TRUE(ok) << status;
     auto origin_plan =
-        std::dynamic_pointer_cast<SQLCompileInfo>(session.GetCompileInfo())
+        std::dynamic_pointer_cast<SqlCompileInfo>(session.GetCompileInfo())
             ->get_sql_context()
             .physical_plan;
     LOG(INFO) << "Original plan:\n" << origin_plan->GetTreeString();
@@ -173,7 +173,7 @@ void CheckOptimizePlan(const SQLCase& sql_case_org,
     }
     ok = engine->Get(sql_str, sql_case.db(), batch_request_session, status);
     ASSERT_TRUE(ok) << status;
-    auto optimized_plan = std::dynamic_pointer_cast<SQLCompileInfo>(
+    auto optimized_plan = std::dynamic_pointer_cast<SqlCompileInfo>(
                               batch_request_session.GetCompileInfo())
                               ->get_sql_context()
                               .physical_plan;
@@ -186,12 +186,12 @@ void CheckOptimizePlan(const SQLCase& sql_case_org,
 }
 
 TEST_P(BatchRequestOptimizeTest, test_without_common_column) {
-    const SQLCase& sql_case = GetParam();
+    const SqlCase& sql_case = GetParam();
     CheckOptimizePlan(sql_case, {}, true);
 }
 
 TEST_P(BatchRequestOptimizeTest, test_with_all_common_columns) {
-    const SQLCase& sql_case = GetParam();
+    const SqlCase& sql_case = GetParam();
     type::TableDef request_table;
     if (!sql_case.inputs().empty()) {
         sql_case.ExtractInputTableDef(request_table, 0);
@@ -206,7 +206,7 @@ TEST_P(BatchRequestOptimizeTest, test_with_all_common_columns) {
 }
 
 TEST_P(BatchRequestOptimizeTest, test_with_common_columns) {
-    const SQLCase& sql_case = GetParam();
+    const SqlCase& sql_case = GetParam();
     type::TableDef request_table;
     if (!sql_case.inputs().empty()) {
         sql_case.ExtractInputTableDef(request_table, 0);

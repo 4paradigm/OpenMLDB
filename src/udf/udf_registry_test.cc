@@ -29,15 +29,15 @@ using hybridse::node::ExprNode;
 using hybridse::node::NodeManager;
 using hybridse::node::TypeNode;
 
-class UDFRegistryTest : public ::testing::Test {
+class UdfRegistryTest : public ::testing::Test {
  public:
     node::NodeManager nm;
 };
 
 template <typename... LiteralArgTypes>
-const node::FnDefNode* GetFnDef(UDFLibrary* lib, const std::string& name,
+const node::FnDefNode* GetFnDef(UdfLibrary* lib, const std::string& name,
                                 node::NodeManager* nm,
-                                const node::SQLNode* over = nullptr) {
+                                const node::SqlNode* over = nullptr) {
     std::vector<node::TypeNode*> arg_types(
         {DataTypeTrait<LiteralArgTypes>::to_type_node(nm)...});
     std::vector<node::ExprNode*> arg_list;
@@ -60,14 +60,14 @@ const node::FnDefNode* GetFnDef(UDFLibrary* lib, const std::string& name,
     return reinterpret_cast<node::CallExprNode*>(transformed)->GetFnDef();
 }
 
-TEST_F(UDFRegistryTest, test_expr_udf_register) {
-    UDFLibrary library;
+TEST_F(UdfRegistryTest, test_expr_udf_register) {
+    UdfLibrary library;
     const node::FnDefNode* fn_def;
 
     // define "add"
-    library.RegisterExprUDF("add")
+    library.RegisterExprUdf("add")
         .args<AnyArg, AnyArg>(
-            [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) {
+            [](UdfResolveContext* ctx, ExprNode* x, ExprNode* y) {
                 // extra check logic
                 auto ltype = x->GetOutputType();
                 auto rtype = y->GetOutputType();
@@ -79,13 +79,13 @@ TEST_F(UDFRegistryTest, test_expr_udf_register) {
             })
 
         .args<double, int32_t>(
-            [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) {
+            [](UdfResolveContext* ctx, ExprNode* x, ExprNode* y) {
                 return ctx->node_manager()->MakeBinaryExprNode(x, y,
                                                                node::kFnOpAdd);
             })
 
         .args<StringRef, AnyArg, bool>(
-            [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y, ExprNode* z) {
+            [](UdfResolveContext* ctx, ExprNode* x, ExprNode* y, ExprNode* z) {
                 return ctx->node_manager()->MakeBinaryExprNode(x, y,
                                                                node::kFnOpAdd);
             });
@@ -116,24 +116,24 @@ TEST_F(UDFRegistryTest, test_expr_udf_register) {
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kLambdaDef);
 }
 
-TEST_F(UDFRegistryTest, test_variadic_expr_udf_register) {
-    UDFLibrary library;
+TEST_F(UdfRegistryTest, test_variadic_expr_udf_register) {
+    UdfLibrary library;
     const node::FnDefNode* fn_def;
 
     // define "join"
-    library.RegisterExprUDF("join")
+    library.RegisterExprUdf("join")
         .args<StringRef, StringRef>(
-            [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) { return x; })
+            [](UdfResolveContext* ctx, ExprNode* x, ExprNode* y) { return x; })
 
         .args<StringRef, AnyArg>(
-            [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) {
+            [](UdfResolveContext* ctx, ExprNode* x, ExprNode* y) {
                 if (y->GetOutputType()->GetName() != "int32") {
                     ctx->SetError("Join arg type error");
                 }
                 return y;
             })
 
-        .variadic_args<StringRef>([](UDFResolveContext* ctx, ExprNode* split,
+        .variadic_args<StringRef>([](UdfResolveContext* ctx, ExprNode* split,
                                      const std::vector<ExprNode*>& other) {
             if (other.size() < 3) {
                 ctx->SetError("Join tail args error");
@@ -141,7 +141,7 @@ TEST_F(UDFRegistryTest, test_variadic_expr_udf_register) {
             return split;
         })
 
-        .variadic_args<AnyArg>([](UDFResolveContext* ctx, ExprNode* split,
+        .variadic_args<AnyArg>([](UdfResolveContext* ctx, ExprNode* split,
                                   const std::vector<ExprNode*>& other) {
             if (other.size() < 2) {
                 ctx->SetError("Join tail args error with any split");
@@ -179,18 +179,18 @@ TEST_F(UDFRegistryTest, test_variadic_expr_udf_register) {
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kLambdaDef);
 }
 
-TEST_F(UDFRegistryTest, test_variadic_expr_udf_register_order) {
-    UDFLibrary library;
+TEST_F(UdfRegistryTest, test_variadic_expr_udf_register_order) {
+    UdfLibrary library;
     const node::FnDefNode* fn_def;
 
     // define "concat"
-    library.RegisterExprUDF("concat")
+    library.RegisterExprUdf("concat")
         .variadic_args<>(
-            [](UDFResolveContext* ctx, const std::vector<ExprNode*> other) {
+            [](UdfResolveContext* ctx, const std::vector<ExprNode*> other) {
                 return ctx->node_manager()->MakeExprIdNode("concat");
             })
 
-        .variadic_args<int32_t>([](UDFResolveContext* ctx, ExprNode* x,
+        .variadic_args<int32_t>([](UdfResolveContext* ctx, ExprNode* x,
                                    const std::vector<ExprNode*> other) {
             if (other.size() > 2) {
                 ctx->SetError("Error");
@@ -210,8 +210,8 @@ TEST_F(UDFRegistryTest, test_variadic_expr_udf_register_order) {
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kLambdaDef);
 }
 
-TEST_F(UDFRegistryTest, test_external_udf_register) {
-    UDFLibrary library;
+TEST_F(UdfRegistryTest, test_external_udf_register) {
+    UdfLibrary library;
     const node::ExternalFnDefNode* fn_def;
 
     // define "add"
@@ -261,8 +261,8 @@ TEST_F(UDFRegistryTest, test_external_udf_register) {
     ASSERT_EQ("string", fn_def->ret_type()->GetName());
 }
 
-TEST_F(UDFRegistryTest, test_variadic_external_udf_register) {
-    UDFLibrary library;
+TEST_F(UdfRegistryTest, test_variadic_external_udf_register) {
+    UdfLibrary library;
     const node::ExternalFnDefNode* fn_def;
 
     // define "join"
@@ -306,8 +306,8 @@ TEST_F(UDFRegistryTest, test_variadic_external_udf_register) {
     ASSERT_EQ("join_many2", fn_def->function_name());
 }
 
-TEST_F(UDFRegistryTest, test_variadic_external_udf_register_order) {
-    UDFLibrary library;
+TEST_F(UdfRegistryTest, test_variadic_external_udf_register_order) {
+    UdfLibrary library;
     const node::ExternalFnDefNode* fn_def;
 
     // define "concat"
@@ -333,13 +333,13 @@ TEST_F(UDFRegistryTest, test_variadic_external_udf_register_order) {
     ASSERT_EQ(0, fn_def->variadic_pos());
 }
 
-TEST_F(UDFRegistryTest, test_simple_udaf_register) {
-    UDFLibrary library;
+TEST_F(UdfRegistryTest, test_simple_udaf_register) {
+    UdfLibrary library;
 
-    const node::UDAFDefNode* fn_def;
+    const node::UdafDefNode* fn_def;
 
-    library.RegisterExprUDF("add").args<AnyArg, AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) {
+    library.RegisterExprUdf("add").args<AnyArg, AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x, ExprNode* y) {
             auto res =
                 ctx->node_manager()->MakeBinaryExprNode(x, y, node::kFnOpAdd);
             res->SetOutputType(x->GetOutputType());
@@ -347,10 +347,10 @@ TEST_F(UDFRegistryTest, test_simple_udaf_register) {
             return res;
         });
 
-    library.RegisterExprUDF("identity")
-        .args<AnyArg>([](UDFResolveContext* ctx, ExprNode* x) { return x; });
+    library.RegisterExprUdf("identity")
+        .args<AnyArg>([](UdfResolveContext* ctx, ExprNode* x) { return x; });
 
-    library.RegisterUDAF("sum")
+    library.RegisterUdaf("sum")
         .templates<int32_t, int32_t, int32_t>()
         .const_init(0)
         .update("add")
@@ -363,26 +363,26 @@ TEST_F(UDFRegistryTest, test_simple_udaf_register) {
         .output("identity")
         .finalize();
 
-    fn_def = dynamic_cast<const node::UDAFDefNode*>(
+    fn_def = dynamic_cast<const node::UdafDefNode*>(
         GetFnDef<codec::ListRef<int32_t>>(&library, "sum", &nm));
-    ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDAFDef);
+    ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUdafDef);
 
-    fn_def = dynamic_cast<const node::UDAFDefNode*>(
+    fn_def = dynamic_cast<const node::UdafDefNode*>(
         GetFnDef<codec::ListRef<int32_t>>(&library, "sum", &nm));
-    ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDAFDef);
+    ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUdafDef);
 
-    fn_def = dynamic_cast<const node::UDAFDefNode*>(
+    fn_def = dynamic_cast<const node::UdafDefNode*>(
         GetFnDef<codec::ListRef<StringRef>>(&library, "sum", &nm));
     ASSERT_TRUE(fn_def == nullptr);
 }
 
-TEST_F(UDFRegistryTest, test_codegen_udf_register) {
-    UDFLibrary library;
-    const node::UDFByCodeGenDefNode* fn_def;
+TEST_F(UdfRegistryTest, test_codegen_udf_register) {
+    UdfLibrary library;
+    const node::UdfByCodeGenDefNode* fn_def;
 
-    library.RegisterCodeGenUDF("add").args<AnyArg, AnyArg>(
+    library.RegisterCodeGenUdf("add").args<AnyArg, AnyArg>(
         /* infer */
-        [](UDFResolveContext* ctx, const ExprAttrNode* x, const ExprAttrNode* y,
+        [](UdfResolveContext* ctx, const ExprAttrNode* x, const ExprAttrNode* y,
            ExprAttrNode* out) {
             out->SetType(x->type());
             return Status::OK();
@@ -394,19 +394,19 @@ TEST_F(UDFRegistryTest, test_codegen_udf_register) {
             return Status::OK();
         });
 
-    fn_def = dynamic_cast<const node::UDFByCodeGenDefNode*>(
+    fn_def = dynamic_cast<const node::UdfByCodeGenDefNode*>(
         GetFnDef<int32_t, int32_t>(&library, "add", &nm));
     ASSERT_TRUE(fn_def != nullptr &&
-                fn_def->GetType() == node::kUDFByCodeGenDef);
+                fn_def->GetType() == node::kUdfByCodeGenDef);
 }
 
-TEST_F(UDFRegistryTest, test_variadic_codegen_udf_register) {
-    UDFLibrary library;
-    const node::UDFByCodeGenDefNode* fn_def;
+TEST_F(UdfRegistryTest, test_variadic_codegen_udf_register) {
+    UdfLibrary library;
+    const node::UdfByCodeGenDefNode* fn_def;
 
-    library.RegisterCodeGenUDF("concat").variadic_args<>(
+    library.RegisterCodeGenUdf("concat").variadic_args<>(
         /* infer */
-        [](UDFResolveContext* ctx,
+        [](UdfResolveContext* ctx,
            const std::vector<const ExprAttrNode*>& arg_attrs,
            ExprAttrNode* out) {
             out->SetType(arg_attrs[0]->type());
@@ -419,10 +419,10 @@ TEST_F(UDFRegistryTest, test_variadic_codegen_udf_register) {
             return Status::OK();
         });
 
-    fn_def = dynamic_cast<const node::UDFByCodeGenDefNode*>(
+    fn_def = dynamic_cast<const node::UdfByCodeGenDefNode*>(
         GetFnDef<int32_t, int32_t>(&library, "concat", &nm));
     ASSERT_TRUE(fn_def != nullptr &&
-                fn_def->GetType() == node::kUDFByCodeGenDef);
+                fn_def->GetType() == node::kUdfByCodeGenDef);
 }
 
 template <typename A, typename B, typename C, typename D>
@@ -437,7 +437,7 @@ void StaticSignatureCheckFail() {
     static_assert(!Check::value, "error");
 }
 
-TEST_F(UDFRegistryTest, static_extern_signature_check) {
+TEST_F(UdfRegistryTest, static_extern_signature_check) {
     using codec::Date;
     using codec::StringRef;
     using codec::Timestamp;

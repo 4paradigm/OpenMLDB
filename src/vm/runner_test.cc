@@ -44,28 +44,28 @@ ExitOnError ExitOnErr;
 
 namespace hybridse {
 namespace vm {
-using hybridse::sqlcase::SQLCase;
+using hybridse::sqlcase::SqlCase;
 Runner* GetFirstRunnerOfType(Runner* root, const RunnerType type);
 
-std::vector<SQLCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
+std::vector<SqlCase> InitCases(std::string yaml_path);
+void InitCases(std::string yaml_path, std::vector<SqlCase>& cases);  // NOLINT
 
-void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(
-            hybridse::sqlcase::FindSQLCaseBaseDirPath(), yaml_path, cases,
+void InitCases(std::string yaml_path, std::vector<SqlCase>& cases) {  // NOLINT
+    if (!SqlCase::CreateSqlCasesFromYaml(
+            hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases,
             std::vector<std::string>({"runner-unsupport",
                                       "physical-plan-unsupport",
                                       "logical-plan-unsupport"}))) {
         FAIL();
     }
 }
-std::vector<SQLCase> InitCases(std::string yaml_path) {
-    std::vector<SQLCase> cases;
+std::vector<SqlCase> InitCases(std::string yaml_path) {
+    std::vector<SqlCase> cases;
     InitCases(yaml_path, cases);
     return cases;
 }
 
-class RunnerTest : public ::testing::TestWithParam<SQLCase> {};
+class RunnerTest : public ::testing::TestWithParam<SqlCase> {};
 INSTANTIATE_TEST_CASE_P(
     SqlSimpleQueryParse, RunnerTest,
     testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
@@ -87,8 +87,8 @@ INSTANTIATE_TEST_CASE_P(
 
 void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
                  EngineMode engine_mode) {
-    SQLCompiler sql_compiler(catalog);
-    SQLContext sql_context;
+    SqlCompiler sql_compiler(catalog);
+    SqlContext sql_context;
     sql_context.sql = sql;
     sql_context.db = "db";
     sql_context.engine_mode = engine_mode;
@@ -269,8 +269,8 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     auto catalog = BuildSimpleCatalog(db);
     RunnerCheck(catalog, sqlstr, kBatchMode);
 
-    SQLCompiler sql_compiler(catalog);
-    SQLContext sql_context;
+    SqlCompiler sql_compiler(catalog);
+    SqlContext sql_context;
     sql_context.sql = sqlstr;
     sql_context.db = "db";
     sql_context.engine_mode = kBatchMode;

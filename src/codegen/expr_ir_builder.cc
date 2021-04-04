@@ -290,7 +290,7 @@ Status ExprIRBuilder::BuildCallFn(const ::hybridse::node::CallExprNode* call,
         arg_values.push_back(arg_value);
         arg_types.push_back(arg_expr->GetOutputType());
     }
-    UDFIRBuilder udf_builder(ctx_, frame_arg_, frame_);
+    UdfIRBuilder udf_builder(ctx_, frame_arg_, frame_);
     return udf_builder.BuildCall(fn_def, arg_types, arg_values, output);
 }
 
@@ -414,7 +414,7 @@ Status ExprIRBuilder::BuildStructExpr(const ::hybridse::node::StructExpr* node,
         for (auto each : node->GetFileds()->children) {
             node::FnParaNode* field = dynamic_cast<node::FnParaNode*>(each);
             ::llvm::Type* type = nullptr;
-            CHECK_TRUE(ConvertHybridSEType2LLVMType(field->GetParaType(),
+            CHECK_TRUE(ConvertHybridSeType2LlvmType(field->GetParaType(),
                                                     ctx_->GetModule(), &type),
                        kCodegenError,
                        "Invalid struct with unacceptable field type: " +
@@ -606,11 +606,11 @@ Status ExprIRBuilder::BuildUnaryExpr(const ::hybridse::node::UnaryExpr* node,
         LOG(WARNING) << "Unary op type not inferred";
     } else {
         ::llvm::Type* expect_llvm_ty = nullptr;
-        GetLLVMType(ctx_->GetModule(), node->GetOutputType(), &expect_llvm_ty);
+        GetLlvmType(ctx_->GetModule(), node->GetOutputType(), &expect_llvm_ty);
         if (expect_llvm_ty != output->GetType()) {
             LOG(WARNING) << "Inconsistent return llvm type: "
-                         << GetLLVMObjectString(output->GetType())
-                         << ", expect " << GetLLVMObjectString(expect_llvm_ty);
+                         << GetLlvmObjectString(output->GetType())
+                         << ", expect " << GetLlvmObjectString(expect_llvm_ty);
         }
     }
     return Status::OK();
@@ -627,7 +627,7 @@ Status ExprIRBuilder::BuildCastExpr(const ::hybridse::node::CastExprNode* node,
 
     CastExprIRBuilder cast_builder(ctx_->GetCurrentBlock());
     ::llvm::Type* cast_type = NULL;
-    CHECK_TRUE(GetLLVMType(ctx_->GetModule(), node->cast_type_, &cast_type),
+    CHECK_TRUE(GetLlvmType(ctx_->GetModule(), node->cast_type_, &cast_type),
                kCodegenError, "Fail to cast expr: dist type invalid");
 
     if (cast_builder.IsSafeCast(left.GetType(), cast_type)) {
@@ -726,7 +726,7 @@ Status ExprIRBuilder::BuildBinaryExpr(const ::hybridse::node::BinaryExpr* node,
             break;
         }
         case ::hybridse::node::kFnOpAt: {
-            CHECK_STATUS(BuildAsUDF(node, "at", {left, right}, output));
+            CHECK_STATUS(BuildAsUdf(node, "at", {left, right}, output));
             break;
         }
         default: {
@@ -740,22 +740,22 @@ Status ExprIRBuilder::BuildBinaryExpr(const ::hybridse::node::BinaryExpr* node,
         LOG(WARNING) << "Binary op type not inferred";
     } else {
         ::llvm::Type* expect_llvm_ty = nullptr;
-        GetLLVMType(ctx_->GetModule(), node->GetOutputType(), &expect_llvm_ty);
+        GetLlvmType(ctx_->GetModule(), node->GetOutputType(), &expect_llvm_ty);
         if (expect_llvm_ty != output->GetType()) {
             LOG(WARNING) << "Inconsistent return llvm type: "
-                         << GetLLVMObjectString(output->GetType())
-                         << ", expect " << GetLLVMObjectString(expect_llvm_ty);
+                         << GetLlvmObjectString(output->GetType())
+                         << ", expect " << GetLlvmObjectString(expect_llvm_ty);
         }
     }
     return Status::OK();
 }
 
-Status ExprIRBuilder::BuildAsUDF(const node::ExprNode* expr,
+Status ExprIRBuilder::BuildAsUdf(const node::ExprNode* expr,
                                  const std::string& name,
                                  const std::vector<NativeValue>& args,
                                  NativeValue* output) {
     CHECK_TRUE(args.size() == expr->GetChildNum(), kCodegenError);
-    auto library = udf::DefaultUDFLibrary::get();
+    auto library = udf::DefaultUdfLibrary::get();
 
     std::vector<node::ExprNode*> proxy_args;
     for (size_t i = 0; i < expr->GetChildNum(); ++i) {

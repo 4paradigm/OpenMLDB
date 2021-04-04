@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_NODE_PLAN_NODE_H_
-#define SRC_INCLUDE_NODE_PLAN_NODE_H_
+#ifndef INCLUDE_NODE_PLAN_NODE_H_
+#define INCLUDE_NODE_PLAN_NODE_H_
 
 #include <glog/logging.h>
 #include <list>
@@ -426,7 +426,7 @@ class CreatePlanNode : public LeafPlanNode {
                 }
                 default: {
                     LOG(WARNING) << "Invalid column desc "
-                                 << node::NameOfSQLNodeType(item->GetType());
+                                 << node::NameOfSqlNodeType(item->GetType());
                     return false;
                 }
             }
@@ -553,4 +553,4 @@ void PrintPlanNode(std::ostream &output, const std::string &org_tab,
 }  // namespace node
 }  // namespace hybridse
 
-#endif  // SRC_INCLUDE_NODE_PLAN_NODE_H_
+#endif  // INCLUDE_NODE_PLAN_NODE_H_

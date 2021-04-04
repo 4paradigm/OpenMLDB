@@ -25,7 +25,7 @@ using namespace llvm::orc;  // NOLINT (build/namespaces)
 namespace hybridse {
 namespace vm {
 using hybridse::sqlcase::CaseDataMock;
-class EngineCompileTest : public ::testing::TestWithParam<SQLCase> {
+class EngineCompileTest : public ::testing::TestWithParam<SqlCase> {
  public:
     EngineCompileTest() {}
     virtual ~EngineCompileTest() {}

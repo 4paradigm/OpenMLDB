@@ -188,7 +188,7 @@ hybridse::vm::TableHandler* GroupbyInterface::GetTableHandler() {
 hybridse::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
                                               const bool need_free) {
     // Init current run step runtime
-    JITRuntime::get()->InitRunStep();
+    JitRuntime::get()->InitRunStep();
 
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
                                             const int8_t*, int8_t**)>(
@@ -197,7 +197,7 @@ hybridse::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
     uint32_t ret = udf(0, nullptr, nullptr, &buf);
 
     // Release current run step resources
-    JITRuntime::get()->ReleaseRunStep();
+    JitRuntime::get()->ReleaseRunStep();
 
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
@@ -214,7 +214,7 @@ hybridse::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
         return hybridse::codec::Row();
     }
     // Init current run step runtime
-    JITRuntime::get()->InitRunStep();
+    JitRuntime::get()->InitRunStep();
 
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
                                             const int8_t*, int8_t**)>(
@@ -225,7 +225,7 @@ hybridse::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
     uint32_t ret = udf(0, row_ptr, nullptr, &buf);
 
     // Release current run step resources
-    JITRuntime::get()->ReleaseRunStep();
+    JitRuntime::get()->ReleaseRunStep();
 
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
@@ -245,7 +245,7 @@ hybridse::codec::Row CoreAPI::UnsafeRowProject(
     auto row_ptr = reinterpret_cast<const int8_t*>(&inputRow);
 
     // Init current run step runtime
-    JITRuntime::get()->InitRunStep();
+    JitRuntime::get()->InitRunStep();
 
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
                                             const int8_t*, int8_t**)>(
@@ -255,7 +255,7 @@ hybridse::codec::Row CoreAPI::UnsafeRowProject(
     uint32_t ret = udf(0, row_ptr, nullptr, &buf);
 
     // Release current run step resources
-    JITRuntime::get()->ReleaseRunStep();
+    JitRuntime::get()->ReleaseRunStep();
 
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
@@ -280,7 +280,7 @@ hybridse::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
         return row;
     }
     // Init current run step runtime
-    JITRuntime::get()->InitRunStep();
+    JitRuntime::get()->InitRunStep();
 
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
                                             const int8_t*, int8_t**)>(
@@ -296,7 +296,7 @@ hybridse::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
         udf(static_cast<int64_t>(row_key), row_ptr, window_ptr, &out_buf);
 
     // Release current run step resources
-    JITRuntime::get()->ReleaseRunStep();
+    JitRuntime::get()->ReleaseRunStep();
 
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;

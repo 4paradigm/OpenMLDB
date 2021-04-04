@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_INCLUDE_VM_ENGINE_CONTEXT_H_
-#define SRC_INCLUDE_VM_ENGINE_CONTEXT_H_
+#ifndef INCLUDE_VM_ENGINE_CONTEXT_H_
+#define INCLUDE_VM_ENGINE_CONTEXT_H_
 #include <map>
 #include <memory>
 #include <set>
@@ -39,7 +39,7 @@ struct BatchRequestInfo {
 };
 
 enum ComileType {
-    kCompileSQL,
+    kCompileSql,
 };
 class CompileInfo {
  public:
@@ -48,7 +48,7 @@ class CompileInfo {
     virtual bool GetIRBuffer(const base::RawBuffer& buf) = 0;
     virtual size_t GetIRSize() = 0;
     virtual const EngineMode GetEngineMode() const = 0;
-    virtual const std::string& GetSQL() const = 0;
+    virtual const std::string& GetSql() const = 0;
     virtual const Schema& GetSchema() const = 0;
     virtual const ComileType GetCompileType() const = 0;
     virtual const std::string& GetEncodedSchema() const = 0;
@@ -79,7 +79,7 @@ class CompileInfoCache {
         base::Status& status) = 0;  // NOLINT
 };
 
-class JITOptions {
+class JitOptions {
  public:
     bool is_enable_mcjit() const { return enable_mcjit_; }
     void set_enable_mcjit(bool flag) { enable_mcjit_ = flag; }
@@ -101,4 +101,4 @@ class JITOptions {
 };
 }  // namespace vm
 }  // namespace hybridse
-#endif  // SRC_INCLUDE_VM_ENGINE_CONTEXT_H_
+#endif  // INCLUDE_VM_ENGINE_CONTEXT_H_

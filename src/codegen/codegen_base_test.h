@@ -26,14 +26,14 @@ namespace hybridse {
 namespace codegen {
 using hybridse::codec::ArrayListV;
 using hybridse::codec::Row;
-using hybridse::sqlcase::SQLCase;
+using hybridse::sqlcase::SqlCase;
 
 bool BuildWindowFromResource(const std::string& resource_path,
                              ::hybridse::type::TableDef& table_def,  // NOLINT
                              std::vector<Row>& rows,                 // NOLINT
                              int8_t** buf) {
-    if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            hybridse::sqlcase::FindSQLCaseBaseDirPath(), resource_path,
+    if (!SqlCase::LoadSchemaAndRowsFromYaml(
+            hybridse::sqlcase::FindSqlCaseBaseDirPath(), resource_path,
             table_def, rows)) {
         return false;
     }
@@ -44,8 +44,8 @@ bool BuildWindowFromResource(const std::string& resource_path,
 bool BuildWindow(::hybridse::type::TableDef& table_def,  // NOLINT
                  std::vector<Row>& rows,                 // NOLINT
                  int8_t** buf) {
-    if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            hybridse::sqlcase::FindSQLCaseBaseDirPath(),
+    if (!SqlCase::LoadSchemaAndRowsFromYaml(
+            hybridse::sqlcase::FindSqlCaseBaseDirPath(),
             "cases/resource/codegen_t1_rows.yaml", table_def, rows)) {
         return false;
     }
@@ -56,8 +56,8 @@ bool BuildWindow(::hybridse::type::TableDef& table_def,  // NOLINT
 bool BuildWindow2(::hybridse::type::TableDef& table_def,  // NOLINT
                   std::vector<Row>& rows,                 // NOLINT
                   int8_t** buf) {
-    if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            hybridse::sqlcase::FindSQLCaseBaseDirPath(),
+    if (!SqlCase::LoadSchemaAndRowsFromYaml(
+            hybridse::sqlcase::FindSqlCaseBaseDirPath(),
             "cases/resource/codegen_t2_rows.yaml", table_def, rows)) {
         return false;
     }
@@ -68,8 +68,8 @@ bool BuildWindow2(::hybridse::type::TableDef& table_def,  // NOLINT
 bool BuildT1Buf(type::TableDef& table_def, int8_t** buf,  // NOLINT
                 uint32_t* size) {
     std::vector<Row> rows;
-    if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            hybridse::sqlcase::FindSQLCaseBaseDirPath(),
+    if (!SqlCase::LoadSchemaAndRowsFromYaml(
+            hybridse::sqlcase::FindSqlCaseBaseDirPath(),
             "cases/resource/codegen_t1_one_row.yaml", table_def, rows)) {
         return false;
     }
@@ -81,8 +81,8 @@ bool BuildT2Buf(type::TableDef& table_def, int8_t** buf,  // NOLINT
                 uint32_t* size) {
     std::vector<Row> rows;
 
-    if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            hybridse::sqlcase::FindSQLCaseBaseDirPath(),
+    if (!SqlCase::LoadSchemaAndRowsFromYaml(
+            hybridse::sqlcase::FindSqlCaseBaseDirPath(),
             "cases/resource/codegen_t2_one_row.yaml", table_def, rows)) {
         return false;
     }

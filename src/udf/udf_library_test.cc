@@ -23,25 +23,25 @@
 namespace hybridse {
 namespace udf {
 
-class UDFLibraryTest : public ::testing::Test {
+class UdfLibraryTest : public ::testing::Test {
  public:
-    UDFLibrary library;
+    UdfLibrary library;
     node::NodeManager nm;
 };
 
-TEST_F(UDFLibraryTest, test_check_is_udaf_by_name) {
-    library.RegisterUDAF("sum")
+TEST_F(UdfLibraryTest, test_check_is_udaf_by_name) {
+    library.RegisterUdaf("sum")
         .templates<int32_t, int32_t, int32_t>()
         .const_init(0)
         .update("add", reinterpret_cast<void*>(0))
         .output("identity", reinterpret_cast<void*>(1));
 
-    ASSERT_TRUE(library.IsUDAF("sum", 1));
-    ASSERT_TRUE(!library.IsUDAF("sum", 2));
-    ASSERT_TRUE(!library.IsUDAF("sum2", 1));
+    ASSERT_TRUE(library.IsUdaf("sum", 1));
+    ASSERT_TRUE(!library.IsUdaf("sum", 2));
+    ASSERT_TRUE(!library.IsUdaf("sum2", 1));
 }
 
-TEST_F(UDFLibraryTest, test_check_list_arg) {
+TEST_F(UdfLibraryTest, test_check_list_arg) {
     library.RegisterExternal("f1")
         .args<codec::ListRef<int32_t>, int32_t>(reinterpret_cast<void*>(0))
         .returns<codec::ListRef<int32_t>>();

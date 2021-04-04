@@ -25,7 +25,7 @@ extern int yylex(YYSTYPE* yylvalp,
 void emit(const char *s, ...);
 void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::hybridse::node::NodePointVector &trees,
 	::hybridse::node::NodeManager *node_manager, ::hybridse::base::Status &status, const char* msg) {
-	status.code=::hybridse::common::kSQLError;
+	status.code=::hybridse::common::kSqlError;
 	std::ostringstream s;
         s << "line: "<< yyllocp->last_line << ", column: "
        	<< yyllocp->first_column << ": " <<
@@ -52,7 +52,7 @@ typedef void* yyscan_t;
 	char* strval;
 	int subtok;
 	bool flag;
-	::hybridse::node::SQLNode* node;
+	::hybridse::node::SqlNode* node;
 	::hybridse::node::QueryNode* query_node;
 	::hybridse::node::FnNode* fnnode;
 	::hybridse::node::ExprNode* expr;
@@ -64,7 +64,7 @@ typedef void* yyscan_t;
 	::hybridse::node::TypeNode* typenode;
 	::hybridse::node::FnNodeList* fnlist;
 	::hybridse::node::ExprListNode* exprlist;
-	::hybridse::node::SQLNodeList* list;
+	::hybridse::node::SqlNodeList* list;
 	::hybridse::node::RoleType role_type;
 }
 
@@ -2057,31 +2057,31 @@ frame_extent:
 frame_bound:
 			UNBOUNDED PRECEDING
 				{
-				    $$ = (hybridse::node::SQLNode*)(node_manager->MakeFrameBound(hybridse::node::kPrecedingUnbound));
+				    $$ = (hybridse::node::SqlNode*)(node_manager->MakeFrameBound(hybridse::node::kPrecedingUnbound));
 				}
 			| UNBOUNDED FOLLOWING
 				{
-				    $$ = (hybridse::node::SQLNode*)(node_manager->MakeFrameBound(hybridse::node::kFollowingUnbound));
+				    $$ = (hybridse::node::SqlNode*)(node_manager->MakeFrameBound(hybridse::node::kFollowingUnbound));
 				}
 			| CURRENT ROW
 				{
-				    $$ = (hybridse::node::SQLNode*)(node_manager->MakeFrameBound(hybridse::node::kCurrent));
+				    $$ = (hybridse::node::SqlNode*)(node_manager->MakeFrameBound(hybridse::node::kCurrent));
 				}
 			| frame_expr PRECEDING
 				{
-				    $$ = (hybridse::node::SQLNode*)(node_manager->MakeFrameBound(hybridse::node::kPreceding, $1));
+				    $$ = (hybridse::node::SqlNode*)(node_manager->MakeFrameBound(hybridse::node::kPreceding, $1));
 				}
 			| frame_expr FOLLOWING
 				{
-				    $$ = (hybridse::node::SQLNode*)(node_manager->MakeFrameBound(hybridse::node::kFollowing, $1));
+				    $$ = (hybridse::node::SqlNode*)(node_manager->MakeFrameBound(hybridse::node::kFollowing, $1));
 				}
 		    | frame_expr OPEN PRECEDING
                 {
-                    $$ = (hybridse::node::SQLNode*)(node_manager->MakeFrameBound(hybridse::node::kOpenPreceding, $1));
+                    $$ = (hybridse::node::SqlNode*)(node_manager->MakeFrameBound(hybridse::node::kOpenPreceding, $1));
                 }
             | frame_expr OPEN FOLLOWING
                 {
-                    $$ = (hybridse::node::SQLNode*)(node_manager->MakeFrameBound(hybridse::node::kOpenFollowing, $1));
+                    $$ = (hybridse::node::SqlNode*)(node_manager->MakeFrameBound(hybridse::node::kOpenFollowing, $1));
                 }
 		    ;
 

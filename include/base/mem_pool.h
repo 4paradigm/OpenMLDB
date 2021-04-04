@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_INCLUDE_BASE_MEM_POOL_H_
-#define SRC_INCLUDE_BASE_MEM_POOL_H_
+#ifndef INCLUDE_BASE_MEM_POOL_H_
+#define INCLUDE_BASE_MEM_POOL_H_
 #include <stddef.h>
 #include <stdint.h>
 #include <list>
@@ -99,4 +99,4 @@ class ByteMemoryPool {
 }  // namespace base
 }  // namespace hybridse
 
-#endif  // SRC_INCLUDE_BASE_MEM_POOL_H_
+#endif  // INCLUDE_BASE_MEM_POOL_H_

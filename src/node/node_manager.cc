@@ -31,11 +31,11 @@ NodeManager::~NodeManager() {
 }
 
 QueryNode *NodeManager::MakeSelectQueryNode(
-    bool is_distinct, SQLNodeList *select_list_ptr,
-    SQLNodeList *tableref_list_ptr, ExprNode *where_expr,
+    bool is_distinct, SqlNodeList *select_list_ptr,
+    SqlNodeList *tableref_list_ptr, ExprNode *where_expr,
     ExprListNode *group_expr_list, ExprNode *having_expr,
-    ExprNode *order_expr_list, SQLNodeList *window_list_ptr,
-    SQLNode *limit_ptr) {
+    ExprNode *order_expr_list, SqlNodeList *window_list_ptr,
+    SqlNode *limit_ptr) {
     SelectQueryNode *node_ptr =
         new SelectQueryNode(is_distinct, select_list_ptr, tableref_list_ptr,
                             where_expr, group_expr_list, having_expr,
@@ -78,7 +78,7 @@ TableRefNode *NodeManager::MakeLastJoinNode(const TableRefNode *left,
     if (nullptr != orders && node::kExprOrder != orders->GetExprType()) {
         LOG(WARNING)
             << "fail to create last join node with invalid order type " +
-                   NameOfSQLNodeType(orders->GetType());
+                   NameOfSqlNodeType(orders->GetType());
         return nullptr;
     }
     TableRefNode *node_ptr = new JoinNode(
@@ -94,29 +94,29 @@ TableRefNode *NodeManager::MakeQueryRefNode(const QueryNode *sub_query,
     RegisterNode(node_ptr);
     return node_ptr;
 }
-SQLNode *NodeManager::MakeResTargetNode(ExprNode *node,
+SqlNode *NodeManager::MakeResTargetNode(ExprNode *node,
                                         const std::string &name) {
     ResTarget *node_ptr = new ResTarget(name, node);
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeLimitNode(int count) {
+SqlNode *NodeManager::MakeLimitNode(int count) {
     LimitNode *node_ptr = new LimitNode(count);
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
-                                        ExprNode *orders, SQLNode *frame) {
+SqlNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
+                                        ExprNode *orders, SqlNode *frame) {
     return MakeWindowDefNode(nullptr, partitions, orders, frame, false, false);
 }
-SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
-                                        ExprNode *orders, SQLNode *frame,
+SqlNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
+                                        ExprNode *orders, SqlNode *frame,
                                         bool open_interval_window) {
     return MakeWindowDefNode(nullptr, partitions, orders, frame,
                              open_interval_window, false);
 }
-SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
+SqlNode *NodeManager::MakeWindowDefNode(SqlNodeList *union_tables,
                                         ExprListNode *partitions,
-                                        ExprNode *orders, SQLNode *frame,
+                                        ExprNode *orders, SqlNode *frame,
                                         bool exclude_current_time,
                                         bool instance_not_in_window) {
     WindowDefNode *node_ptr = new WindowDefNode();
@@ -124,7 +124,7 @@ SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
         if (node::kExprOrder != orders->GetExprType()) {
             LOG(WARNING)
                 << "fail to create window node with invalid order type " +
-                       NameOfSQLNodeType(orders->GetType());
+                       NameOfSqlNodeType(orders->GetType());
             delete node_ptr;
             return nullptr;
         }
@@ -138,7 +138,7 @@ SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeWindowDefNode(const std::string &name) {
+SqlNode *NodeManager::MakeWindowDefNode(const std::string &name) {
     WindowDefNode *node_ptr = new WindowDefNode();
     node_ptr->SetName(name);
     return RegisterNode(node_ptr);
@@ -228,12 +228,12 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
     return dynamic_cast<FrameNode *>(
         MakeFrameNode(frame_type, frame_range, frame_rows, maxsize));
 }
-SQLNode *NodeManager::MakeFrameBound(BoundType bound_type) {
+SqlNode *NodeManager::MakeFrameBound(BoundType bound_type) {
     FrameBound *node_ptr = new FrameBound(bound_type);
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeFrameBound(BoundType bound_type, ExprNode *expr) {
+SqlNode *NodeManager::MakeFrameBound(BoundType bound_type, ExprNode *expr) {
     if (kExprPrimary != expr->expr_type_) {
         LOG(WARNING) << "cannot create window frame, only support "
                         "const number and const time offset of frame";
@@ -264,21 +264,21 @@ SQLNode *NodeManager::MakeFrameBound(BoundType bound_type, ExprNode *expr) {
         }
     }
 }
-SQLNode *NodeManager::MakeFrameBound(BoundType bound_type, int64_t offset) {
+SqlNode *NodeManager::MakeFrameBound(BoundType bound_type, int64_t offset) {
     FrameBound *node_ptr = new FrameBound(bound_type, offset, false);
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeFrameExtent(SQLNode *start, SQLNode *end) {
+SqlNode *NodeManager::MakeFrameExtent(SqlNode *start, SqlNode *end) {
     FrameExtent *node_ptr = new FrameExtent(dynamic_cast<FrameBound *>(start),
                                             dynamic_cast<FrameBound *>(end));
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeFrameNode(FrameType frame_type,
-                                    SQLNode *frame_extent) {
+SqlNode *NodeManager::MakeFrameNode(FrameType frame_type,
+                                    SqlNode *frame_extent) {
     int64_t max_size = 0;
     return MakeFrameNode(frame_type, frame_extent, max_size);
 }
-SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
+SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent,
                                     ExprNode *frame_size) {
     if (nullptr != frame_extent && node::kFrameExtent != frame_extent->type_) {
         LOG(WARNING) << "Fail Make Frame Node: 2nd arg isn't frame extent";
@@ -302,7 +302,7 @@ SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
     return MakeFrameNode(frame_type, frame_extent, max_size);
 }
 
-SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
+SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent,
                                     int64_t maxsize) {
     if (nullptr != frame_extent && node::kFrameExtent != frame_extent->type_) {
         LOG(WARNING) << "Fail Make Frame Node: 2nd arg isn't frame extent";
@@ -328,7 +328,7 @@ SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
     return nullptr;
 }
 
-SQLNode *NodeManager::MakeFrameNode(FrameType frame_type,
+SqlNode *NodeManager::MakeFrameNode(FrameType frame_type,
                                     FrameExtent *frame_range,
                                     FrameExtent *frame_rows, int64_t maxsize) {
     FrameNode *node_ptr =
@@ -422,7 +422,7 @@ ExprNode *NodeManager::MakeTimeFuncNode(const TimeUnit time_unit,
 
 CallExprNode *NodeManager::MakeFuncNode(const std::string &name,
                                         const std::vector<ExprNode *> &args,
-                                        const SQLNode *over) {
+                                        const SqlNode *over) {
     ExprListNode args_node;
     for (auto child : args) {
         args_node.AddChild(child);
@@ -436,7 +436,7 @@ CallExprNode *NodeManager::MakeFuncNode(const std::string &name,
 
 CallExprNode *NodeManager::MakeFuncNode(const std::string &name,
                                         ExprListNode *list_ptr,
-                                        const SQLNode *over) {
+                                        const SqlNode *over) {
     FnDefNode *def_node =
         dynamic_cast<FnDefNode *>(MakeUnresolvedFnDefNode(name));
     CallExprNode *node_ptr = new CallExprNode(
@@ -445,7 +445,7 @@ CallExprNode *NodeManager::MakeFuncNode(const std::string &name,
 }
 
 CallExprNode *NodeManager::MakeFuncNode(FnDefNode *fn, ExprListNode *list_ptr,
-                                        const SQLNode *over) {
+                                        const SqlNode *over) {
     CallExprNode *node_ptr = new CallExprNode(
         fn, list_ptr, dynamic_cast<const WindowDefNode *>(over));
     return RegisterNode(node_ptr);
@@ -453,7 +453,7 @@ CallExprNode *NodeManager::MakeFuncNode(FnDefNode *fn, ExprListNode *list_ptr,
 
 CallExprNode *NodeManager::MakeFuncNode(FnDefNode *fn,
                                         const std::vector<ExprNode *> &args,
-                                        const SQLNode *over) {
+                                        const SqlNode *over) {
     ExprListNode args_node;
     for (auto child : args) {
         args_node.AddChild(child);
@@ -564,18 +564,18 @@ UnaryExpr *NodeManager::MakeUnaryExprNode(ExprNode *left, FnOperator op) {
     return RegisterNode(uexpr);
 }
 
-SQLNode *NodeManager::MakeNameNode(const std::string &name) {
-    SQLNode *node_ptr = new NameNode(name);
+SqlNode *NodeManager::MakeNameNode(const std::string &name) {
+    SqlNode *node_ptr = new NameNode(name);
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
+SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
                                           const std::string &table_name,
-                                          SQLNodeList *column_desc_list,
-                                          SQLNodeList *table_option_list) {
+                                          SqlNodeList *column_desc_list,
+                                          SqlNodeList *table_option_list) {
     int replica_num = 1;
     int partition_num = 1;
-    SQLNodeList partition_meta_list;
+    SqlNodeList partition_meta_list;
     if (nullptr != table_option_list) {
         for (auto node_ptr : table_option_list->GetList()) {
             if (nullptr != node_ptr) {
@@ -600,7 +600,7 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
                                 if (nullptr != meta_ptr) {
                                     if (meta_ptr->GetType() != kPartitionMeta) {
                                         LOG(WARNING) << "can not handle type "
-                                                     << NameOfSQLNodeType(
+                                                     << NameOfSqlNodeType(
                                                             meta_ptr->GetType())
                                                      << " for table node";
                                     }
@@ -612,7 +612,7 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
                     }
                     default: {
                         LOG(WARNING) << "can not handle type "
-                                     << NameOfSQLNodeType(node_ptr->GetType())
+                                     << NameOfSqlNodeType(node_ptr->GetType())
                                      << " for table node";
                     }
                 }
@@ -621,13 +621,13 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
     }
     CreateStmt *node_ptr =
         new CreateStmt(table_name, op_if_not_exist, replica_num, partition_num);
-    FillSQLNodeList2NodeVector(column_desc_list, node_ptr->GetColumnDefList());
-    FillSQLNodeList2NodeVector(&partition_meta_list,
+    FillSqlNodeList2NodeVector(column_desc_list, node_ptr->GetColumnDefList());
+    FillSqlNodeList2NodeVector(&partition_meta_list,
                                node_ptr->GetDistributionList());
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeColumnIndexNode(SQLNodeList *index_item_list) {
+SqlNode *NodeManager::MakeColumnIndexNode(SqlNodeList *index_item_list) {
     ColumnIndexNode *index_ptr = new ColumnIndexNode();
     if (nullptr != index_item_list && 0 != index_item_list->GetSize()) {
         for (auto node_ptr : index_item_list->GetList()) {
@@ -662,7 +662,7 @@ SQLNode *NodeManager::MakeColumnIndexNode(SQLNodeList *index_item_list) {
                 }
                 default: {
                     LOG(WARNING) << "can not handle type "
-                                 << NameOfSQLNodeType(node_ptr->GetType())
+                                 << NameOfSqlNodeType(node_ptr->GetType())
                                  << " for column index";
                 }
             }
@@ -670,27 +670,27 @@ SQLNode *NodeManager::MakeColumnIndexNode(SQLNodeList *index_item_list) {
     }
     return RegisterNode(index_ptr);
 }
-SQLNode *NodeManager::MakeColumnIndexNode(SQLNodeList *keys, SQLNode *ts,
-                                          SQLNode *ttl, SQLNode *version) {
-    SQLNode *node_ptr = new SQLNode(kColumnIndex, 0, 0);
+SqlNode *NodeManager::MakeColumnIndexNode(SqlNodeList *keys, SqlNode *ts,
+                                          SqlNode *ttl, SqlNode *version) {
+    SqlNode *node_ptr = new SqlNode(kColumnIndex, 0, 0);
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeColumnDescNode(const std::string &column_name,
+SqlNode *NodeManager::MakeColumnDescNode(const std::string &column_name,
                                          const DataType data_type,
                                          bool op_not_null) {
-    SQLNode *node_ptr = new ColumnDefNode(column_name, data_type, op_not_null);
+    SqlNode *node_ptr = new ColumnDefNode(column_name, data_type, op_not_null);
     return RegisterNode(node_ptr);
 }
 
-SQLNodeList *NodeManager::MakeNodeList() {
-    SQLNodeList *new_list_ptr = new SQLNodeList();
+SqlNodeList *NodeManager::MakeNodeList() {
+    SqlNodeList *new_list_ptr = new SqlNodeList();
     RegisterNode(new_list_ptr);
     return new_list_ptr;
 }
 
-SQLNodeList *NodeManager::MakeNodeList(SQLNode *node) {
-    SQLNodeList *new_list_ptr = new SQLNodeList();
+SqlNodeList *NodeManager::MakeNodeList(SqlNode *node) {
+    SqlNodeList *new_list_ptr = new SqlNodeList();
     new_list_ptr->PushBack(node);
     RegisterNode(new_list_ptr);
     return new_list_ptr;
@@ -819,7 +819,7 @@ FnNode *NodeManager::MakeElifStmtNode(ExprNode *value) {
     FnNode *fn_node = new FnElifNode(value);
     return RegisterNode(fn_node);
 }
-FnNode *NodeManager::MakeFnNode(const SQLNodeType &type) {
+FnNode *NodeManager::MakeFnNode(const SqlNodeType &type) {
     return RegisterNode(new FnNode(type));
 }
 
@@ -866,52 +866,52 @@ FnParaNode *NodeManager::MakeFnParaNode(const std::string &name,
     return RegisterNode(para_node);
 }
 
-SQLNode *NodeManager::MakeKeyNode(SQLNodeList *key_list) {
-    SQLNode *node_ptr = new SQLNode(kIndexKey, 0, 0);
+SqlNode *NodeManager::MakeKeyNode(SqlNodeList *key_list) {
+    SqlNode *node_ptr = new SqlNode(kIndexKey, 0, 0);
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeKeyNode(const std::string &key) {
-    SQLNode *node_ptr = new SQLNode(kIndexKey, 0, 0);
-    return RegisterNode(node_ptr);
-}
-
-SQLNode *NodeManager::MakeIndexKeyNode(const std::string &key) {
-    SQLNode *node_ptr = new IndexKeyNode(key);
-    return RegisterNode(node_ptr);
-}
-SQLNode *NodeManager::MakeIndexTsNode(const std::string &ts) {
-    SQLNode *node_ptr = new IndexTsNode(ts);
+SqlNode *NodeManager::MakeKeyNode(const std::string &key) {
+    SqlNode *node_ptr = new SqlNode(kIndexKey, 0, 0);
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeIndexTTLNode(ExprListNode *ttl_expr) {
-    SQLNode *node_ptr = new IndexTTLNode(ttl_expr);
+SqlNode *NodeManager::MakeIndexKeyNode(const std::string &key) {
+    SqlNode *node_ptr = new IndexKeyNode(key);
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeIndexTTLTypeNode(const std::string &ttl_type) {
-    SQLNode *node_ptr = new IndexTTLTypeNode(ttl_type);
+SqlNode *NodeManager::MakeIndexTsNode(const std::string &ts) {
+    SqlNode *node_ptr = new IndexTsNode(ts);
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeIndexVersionNode(const std::string &version) {
-    SQLNode *node_ptr = new IndexVersionNode(version);
+
+SqlNode *NodeManager::MakeIndexTTLNode(ExprListNode *ttl_expr) {
+    SqlNode *node_ptr = new IndexTTLNode(ttl_expr);
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeIndexVersionNode(const std::string &version,
+SqlNode *NodeManager::MakeIndexTTLTypeNode(const std::string &ttl_type) {
+    SqlNode *node_ptr = new IndexTTLTypeNode(ttl_type);
+    return RegisterNode(node_ptr);
+}
+SqlNode *NodeManager::MakeIndexVersionNode(const std::string &version) {
+    SqlNode *node_ptr = new IndexVersionNode(version);
+    return RegisterNode(node_ptr);
+}
+SqlNode *NodeManager::MakeIndexVersionNode(const std::string &version,
                                            int count) {
-    SQLNode *node_ptr = new IndexVersionNode(version, count);
+    SqlNode *node_ptr = new IndexVersionNode(version, count);
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeCmdNode(node::CmdType cmd_type) {
-    SQLNode *node_ptr = new CmdNode(cmd_type);
+SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type) {
+    SqlNode *node_ptr = new CmdNode(cmd_type);
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeCmdNode(node::CmdType cmd_type,
+SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type,
                                   const std::string &arg) {
     CmdNode *node_ptr = new CmdNode(cmd_type);
     node_ptr->AddArg(arg);
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeCmdNode(node::CmdType cmd_type,
+SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type,
                                   const std::string &index_name,
                                   const std::string &table_name) {
     CmdNode *node_ptr = new CmdNode(cmd_type);
@@ -919,7 +919,7 @@ SQLNode *NodeManager::MakeCmdNode(node::CmdType cmd_type,
     node_ptr->AddArg(table_name);
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeCreateIndexNode(const std::string &index_name,
+SqlNode *NodeManager::MakeCreateIndexNode(const std::string &index_name,
                                           const std::string &table_name,
                                           ColumnIndexNode *index) {
     CreateIndexNode *node_ptr =
@@ -935,7 +935,7 @@ AllNode *NodeManager::MakeAllNode(const std::string &relation_name,
     return RegisterNode(new AllNode(relation_name, db_name));
 }
 
-SQLNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
+SqlNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
                                           const ExprListNode *columns_expr,
                                           const ExprListNode *values) {
     if (nullptr == columns_expr) {
@@ -1112,7 +1112,7 @@ PlanNode *NodeManager::MakeDistinctPlanNode(PlanNode *node) {
     node::DistinctPlanNode *node_ptr = new DistinctPlanNode(node);
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeExplainNode(const QueryNode *query,
+SqlNode *NodeManager::MakeExplainNode(const QueryNode *query,
                                       ExplainType explain_type) {
     node::ExplainNode *node_ptr = new ExplainNode(query, explain_type);
     return RegisterNode(node_ptr);
@@ -1165,24 +1165,24 @@ node::ExternalFnDefNode *NodeManager::MakeUnresolvedFnDefNode(
         function_name, nullptr, nullptr, true, {}, {}, -1, false));
 }
 
-node::UDFDefNode *NodeManager::MakeUDFDefNode(FnNodeFnDef *def) {
-    return RegisterNode(new node::UDFDefNode(def));
+node::UdfDefNode *NodeManager::MakeUdfDefNode(FnNodeFnDef *def) {
+    return RegisterNode(new node::UdfDefNode(def));
 }
 
-node::UDFByCodeGenDefNode *NodeManager::MakeUDFByCodeGenDefNode(
+node::UdfByCodeGenDefNode *NodeManager::MakeUdfByCodeGenDefNode(
     const std::string &name,
     const std::vector<const node::TypeNode *> &arg_types,
     const std::vector<int> &arg_nullable, const node::TypeNode *ret_type,
     bool ret_nullable) {
-    return RegisterNode(new node::UDFByCodeGenDefNode(
+    return RegisterNode(new node::UdfByCodeGenDefNode(
         name, arg_types, arg_nullable, ret_type, ret_nullable));
 }
 
-node::UDAFDefNode *NodeManager::MakeUDAFDefNode(
+node::UdafDefNode *NodeManager::MakeUdafDefNode(
     const std::string &name, const std::vector<const TypeNode *> &arg_types,
     ExprNode *init, FnDefNode *update_func, FnDefNode *merge_func,
     FnDefNode *output_func) {
-    return RegisterNode(new node::UDAFDefNode(
+    return RegisterNode(new node::UdafDefNode(
         name, arg_types, init, update_func, merge_func, output_func));
 }
 
@@ -1196,42 +1196,42 @@ CondExpr *NodeManager::MakeCondExpr(ExprNode *condition, ExprNode *left,
     return RegisterNode(new CondExpr(condition, left, right));
 }
 
-SQLNode *NodeManager::MakePartitionMetaNode(RoleType role_type,
+SqlNode *NodeManager::MakePartitionMetaNode(RoleType role_type,
                                             const std::string &endpoint) {
-    SQLNode *node_ptr = new PartitionMetaNode(endpoint, role_type);
+    SqlNode *node_ptr = new PartitionMetaNode(endpoint, role_type);
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeReplicaNumNode(int num) {
-    SQLNode *node_ptr = new ReplicaNumNode(num);
+SqlNode *NodeManager::MakeReplicaNumNode(int num) {
+    SqlNode *node_ptr = new ReplicaNumNode(num);
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakePartitionNumNode(int num) {
-    SQLNode *node_ptr = new PartitionNumNode(num);
+SqlNode *NodeManager::MakePartitionNumNode(int num) {
+    SqlNode *node_ptr = new PartitionNumNode(num);
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeDistributionsNode(SQLNodeList *distribution_list) {
+SqlNode *NodeManager::MakeDistributionsNode(SqlNodeList *distribution_list) {
     DistributionsNode *index_ptr = new DistributionsNode(distribution_list);
     return RegisterNode(index_ptr);
 }
 
-SQLNode *NodeManager::MakeCreateProcedureNode(const std::string &sp_name,
-                                              SQLNodeList *input_parameter_list,
-                                              SQLNode *inner_node) {
+SqlNode *NodeManager::MakeCreateProcedureNode(const std::string &sp_name,
+                                              SqlNodeList *input_parameter_list,
+                                              SqlNode *inner_node) {
     CreateSpStmt *node_ptr = new CreateSpStmt(sp_name);
-    FillSQLNodeList2NodeVector(input_parameter_list,
+    FillSqlNodeList2NodeVector(input_parameter_list,
                                node_ptr->GetInputParameterList());
-    std::vector<SQLNode *> &list = node_ptr->GetInnerNodeList();
+    std::vector<SqlNode *> &list = node_ptr->GetInnerNodeList();
     list.push_back(inner_node);
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeInputParameterNode(bool is_constant,
+SqlNode *NodeManager::MakeInputParameterNode(bool is_constant,
                                              const std::string &column_name,
                                              DataType data_type) {
-    SQLNode *node_ptr =
+    SqlNode *node_ptr =
         new InputParameterNode(column_name, data_type, is_constant);
     return RegisterNode(node_ptr);
 }

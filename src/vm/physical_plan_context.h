@@ -33,7 +33,7 @@ using hybridse::base::Status;
 
 class PhysicalPlanContext {
  public:
-    PhysicalPlanContext(node::NodeManager* nm, const udf::UDFLibrary* library,
+    PhysicalPlanContext(node::NodeManager* nm, const udf::UdfLibrary* library,
                         const std::string& db,
                         const std::shared_ptr<Catalog>& catalog,
                         bool enable_expr_opt)
@@ -115,7 +115,7 @@ class PhysicalPlanContext {
     }
 
     node::NodeManager* node_manager() const { return nm_; }
-    const udf::UDFLibrary* library() const { return library_; }
+    const udf::UdfLibrary* library() const { return library_; }
     const std::string& db() { return db_; }
     std::shared_ptr<Catalog> catalog() { return catalog_; }
 
@@ -125,7 +125,7 @@ class PhysicalPlanContext {
 
  private:
     node::NodeManager* nm_;
-    const udf::UDFLibrary* library_;
+    const udf::UdfLibrary* library_;
     const std::string db_;
     std::shared_ptr<Catalog> catalog_;
 

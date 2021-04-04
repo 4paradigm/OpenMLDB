@@ -52,13 +52,13 @@ class FnIRBuilderTest : public ::testing::Test {
  public:
     FnIRBuilderTest() {
         manager_ = new node::NodeManager();
-        parser_ = new parser::HybridSEParser();
+        parser_ = new parser::HybridSeParser();
     }
     ~FnIRBuilderTest() { delete manager_; }
 
  protected:
     node::NodeManager *manager_;
-    parser::HybridSEParser *parser_;
+    parser::HybridSeParser *parser_;
 };
 
 template <class R, class V1, class V2>
@@ -66,7 +66,7 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     node::NodePointVector trees;
     node::PlanNodeList plan_trees;
     base::Status status;
-    parser::HybridSEParser parser;
+    parser::HybridSeParser parser;
     node::NodeManager manager;
     int ret = parser.parse(test, trees, &manager, status);
     ASSERT_EQ(0, ret);
@@ -91,10 +91,10 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     }
     LOG(INFO) << "after opt with ins cnt " << m->getInstructionCount();
     m->print(::llvm::errs(), NULL, true, true);
-    auto jit = std::unique_ptr<vm::HybridSEJITWrapper>(
-        vm::HybridSEJITWrapper::Create());
+    auto jit = std::unique_ptr<vm::HybridSeJitWrapper>(
+        vm::HybridSeJitWrapper::Create());
     jit->Init();
-    vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
+    vm::HybridSeJitWrapper::InitJitSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto test_fn =
         (R(*)(V1, V2))jit->FindFunction(fn_def->header_->GeIRFunctionName());

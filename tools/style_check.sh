@@ -21,4 +21,4 @@ if [ -r '/opt/rh/python27/enable' ]; then
     # enable python27 in docker
     source /opt/rh/python27/enable
 fi
-python tools/cpplint.py --output=junit --root=. --recursive src/* examples/toydb/src/* 2> ./style.xml
+python tools/cpplint.py --output=junit --root=. --recursive src/* examples/toydb/src/* include/* 2> ./style.xml

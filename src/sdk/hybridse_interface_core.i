@@ -38,7 +38,7 @@ namespace std {
 %shared_ptr(hybridse::vm::Catalog);
 %shared_ptr(hybridse::vm::SimpleCatalog);
 %shared_ptr(hybridse::vm::CompileInfo);
-%shared_ptr(hybridse::vm::SQLCompileInfo);
+%shared_ptr(hybridse::vm::SqlCompileInfo);
 
 %typemap(jni) hybridse::vm::RawPtrHandle "jlong"
 %typemap(jtype) hybridse::vm::RawPtrHandle "long"
@@ -143,7 +143,7 @@ using hybridse::node::DataType;
 %ignore hybridse::vm::LocalTabletTableHandler;
 %ignore hybridse::vm::AysncRowHandler;
 %ignore DataTypeName; // TODO: Geneerate duplicated class
-%ignore hybridse::vm::HybridSEJITWrapper::AddModule;
+%ignore hybridse::vm::HybridSeJitWrapper::AddModule;
 
 // Ignore the unique_ptr functions
 %ignore hybridse::vm::MemTableHandler::GetWindowIterator;

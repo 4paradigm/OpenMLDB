@@ -149,7 +149,7 @@ int32_t RunCopyToTimeTable(MemTimeTableHandler& segment,  // NOLINT
 
 template <typename V>
 auto CreateSumFunc() {
-    return udf::UDFFunctionBuilder("sum")
+    return udf::UdfFunctionBuilder("sum")
         .args<codec::ListRef<V>>()
         .template returns<V>()
         .build();
@@ -187,7 +187,7 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     codegen::SchemaType2DataType(info->type, &type);
 
     uint32_t col_size;
-    ASSERT_TRUE(codegen::GetLLVMColumnSize(&type, &col_size));
+    ASSERT_TRUE(codegen::GetLlvmColumnSize(&type, &col_size));
 
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
 
@@ -299,7 +299,7 @@ void DoSumTableCol(vm::TableHandler* window, benchmark::State* state, MODE mode,
     ASSERT_TRUE(codegen::SchemaType2DataType(info->type, &type));
 
     uint32_t col_size;
-    ASSERT_TRUE(codegen::GetLLVMColumnSize(&type, &col_size));
+    ASSERT_TRUE(codegen::GetLlvmColumnSize(&type, &col_size));
 
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
     codec::ListRef<> window_ref;
@@ -470,9 +470,9 @@ int32_t RunByteMemPoolAlloc1000(size_t request_size) {
     std::vector<int8_t*> chucks;
     for (int i = 0; i < 1000; i++) {
         chucks.push_back(
-            hybridse::vm::JITRuntime::get()->AllocManaged(request_size));
+            hybridse::vm::JitRuntime::get()->AllocManaged(request_size));
     }
-    hybridse::vm::JITRuntime::get()->ReleaseRunStep();
+    hybridse::vm::JitRuntime::get()->ReleaseRunStep();
     return 1;
 }
 int32_t RunNewFree1000(size_t request_size) {

@@ -28,7 +28,7 @@ class NodeManagerTest : public ::testing::Test {
     ~NodeManagerTest() {}
 };
 
-TEST_F(NodeManagerTest, MakeSQLNode) {
+TEST_F(NodeManagerTest, MakeSqlNode) {
     NodeManager *manager = new NodeManager();
     manager->MakeTableNode("", "table1");
     manager->MakeTableNode("", "table2");

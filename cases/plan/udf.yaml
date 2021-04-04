@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-SQLCases:
+cases:
   - id: 0
     desc: 简单UDF定义
     sql: |

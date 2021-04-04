@@ -41,9 +41,9 @@
 namespace hybridse {
 namespace vm {
 
-class HybridSESymbolResolver : public ::llvm::LegacyJITSymbolResolver {
+class HybridSeSymbolResolver : public ::llvm::LegacyJITSymbolResolver {
  public:
-    explicit HybridSESymbolResolver(const ::llvm::DataLayout& data_layout);
+    explicit HybridSeSymbolResolver(const ::llvm::DataLayout& data_layout);
     ::llvm::JITSymbol findSymbol(const std::string& Name) override;
     ::llvm::JITSymbol findSymbolInLogicalDylib(const std::string& Name);
     void addSymbol(const std::string& name, void* addr);

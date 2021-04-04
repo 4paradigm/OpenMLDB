@@ -35,18 +35,18 @@ DECLARE_bool(enable_keep_alive);
 
 namespace hybridse {
 namespace sdk {
-using hybridse::sqlcase::SQLCase;
-std::vector<SQLCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
+using hybridse::sqlcase::SqlCase;
+std::vector<SqlCase> InitCases(std::string yaml_path);
+void InitCases(std::string yaml_path, std::vector<SqlCase> &cases);  // NOLINT
 
-void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(
-            hybridse::sqlcase::FindSQLCaseBaseDirPath(), yaml_path, cases)) {
+void InitCases(std::string yaml_path, std::vector<SqlCase> &cases) {  // NOLINT
+    if (!SqlCase::CreateSqlCasesFromYaml(
+            hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases)) {
         FAIL();
     }
 }
-std::vector<SQLCase> InitCases(std::string yaml_path) {
-    std::vector<SQLCase> cases;
+std::vector<SqlCase> InitCases(std::string yaml_path) {
+    std::vector<SqlCase> cases;
     InitCases(yaml_path, cases);
     return cases;
 }
@@ -56,7 +56,7 @@ class MockClosure : public ::google::protobuf::Closure {
     ~MockClosure() {}
     void Run() {}
 };
-class DBMSSdkTest : public ::testing::TestWithParam<SQLCase> {
+class DBMSSdkTest : public ::testing::TestWithParam<SqlCase> {
  public:
     DBMSSdkTest()
         : dbms_server_(), tablet_server_(), tablet_(NULL), dbms_(NULL) {}
@@ -363,7 +363,7 @@ TEST_F(DBMSSdkTest, GetInputSchema1) {
     }
 }
 
-TEST_F(DBMSSdkTest, ExecuteSQLTest) {
+TEST_F(DBMSSdkTest, ExecuteSqlTest) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
     std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
@@ -696,11 +696,11 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
         // create and insert inputs
         for (size_t i = 0; i < sql_case.inputs().size(); i++) {
             if (sql_case.inputs()[i].name_.empty()) {
-                sql_case.set_input_name(SQLCase::GenRand("auto_t"), i);
+                sql_case.set_input_name(SqlCase::GenRand("auto_t"), i);
             }
             Status status;
             std::string create;
-            ASSERT_TRUE(sql_case.BuildCreateSQLFromInput(i, &create));
+            ASSERT_TRUE(sql_case.BuildCreateSqlFromInput(i, &create));
             std::string placeholder = "{" + std::to_string(i) + "}";
             boost::replace_all(create, placeholder, sql_case.inputs()[i].name_);
             LOG(INFO) << create;
@@ -708,7 +708,7 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
             ASSERT_EQ(0, static_cast<int>(status.code));
 
             std::string insert;
-            ASSERT_TRUE(sql_case.BuildInsertSQLFromInput(i, &insert));
+            ASSERT_TRUE(sql_case.BuildInsertSqlFromInput(i, &insert));
             boost::replace_all(insert, placeholder, sql_case.inputs()[i].name_);
             LOG(INFO) << insert;
             dbms_sdk->ExecuteQuery(db, insert, &status);

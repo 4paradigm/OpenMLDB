@@ -31,7 +31,7 @@ TEST_F(LambdafyProjectsTest, Test) {
     vm::SchemasContext schemas_ctx;
     schemas_ctx.BuildTrivial({&schema});
 
-    parser::HybridSEParser parser;
+    parser::HybridSeParser parser;
     Status status;
     node::NodeManager nm;
     plan::SimplePlanner planner(&nm);
@@ -71,7 +71,7 @@ TEST_F(LambdafyProjectsTest, Test) {
         exprs.push_back(pp_node->GetExpression());
     }
 
-    auto lib = udf::DefaultUDFLibrary::get();
+    auto lib = udf::DefaultUdfLibrary::get();
     node::ExprAnalysisContext ctx(&nm, lib, &schemas_ctx);
     LambdafyProjects transformer(&ctx, false);
 

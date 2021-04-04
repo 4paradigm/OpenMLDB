@@ -91,12 +91,12 @@ void AddFunc(const std::string& fn, ::hybridse::node::NodeManager* manager,
         return;
     }
     ::hybridse::node::NodePointVector trees;
-    ::hybridse::parser::HybridSEParser parser;
+    ::hybridse::parser::HybridSeParser parser;
     ::hybridse::base::Status status;
     int ret = parser.parse(fn, trees, manager, status);
     ASSERT_EQ(0, ret);
     FnIRBuilder fn_ir_builder(m);
-    for (node::SQLNode* node : trees) {
+    for (node::SqlNode* node : trees) {
         LOG(INFO) << "Add Func: " << *node;
         ::llvm::Function* func = nullptr;
         bool ok = fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef*>(node),
@@ -115,9 +115,9 @@ void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
 
     // Parse SQL
     ::hybridse::node::NodePointVector list;
-    ::hybridse::parser::HybridSEParser parser;
+    ::hybridse::parser::HybridSeParser parser;
     ::hybridse::base::Status status;
-    auto lib = udf::DefaultUDFLibrary::get();
+    auto lib = udf::DefaultUdfLibrary::get();
     AddFunc(udf_str, manager, m.get());
     m->print(::llvm::errs(), NULL);
     int ret = parser.parse(sql, list, manager, status);
@@ -160,10 +160,10 @@ void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
     *output_schema = *fn_info.fn_schema();
 
     m->print(::llvm::errs(), NULL);
-    auto jit = std::unique_ptr<vm::HybridSEJITWrapper>(
-        vm::HybridSEJITWrapper::Create());
+    auto jit = std::unique_ptr<vm::HybridSeJitWrapper>(
+        vm::HybridSeJitWrapper::Create());
     jit->Init();
-    vm::HybridSEJITWrapper::InitJITSymbols(jit.get());
+    vm::HybridSeJitWrapper::InitJitSymbols(jit.get());
 
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto address = jit->FindFunction("test_at_fn");

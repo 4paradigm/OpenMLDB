@@ -21,31 +21,31 @@
 namespace hybridse {
 namespace udf {
 
-class DefaultUDFLibrary : public UDFLibrary {
+class DefaultUdfLibrary : public UdfLibrary {
  public:
-    static DefaultUDFLibrary* get() { return &inst_; }
+    static DefaultUdfLibrary* get() { return &inst_; }
 
  private:
     void Init();
-    void IniMathUDF();
-    void InitStringUDF();
-    void InitTrigonometricUDF();
-    void InitDateUDF();
-    void InitTypeUDF();
-    void InitUtilityUDF();
+    void IniMathUdf();
+    void InitStringUdf();
+    void InitTrigonometricUdf();
+    void InitDateUdf();
+    void InitTypeUdf();
+    void InitUtilityUdf();
     void InitWindowFunctions();
-    void InitUDAF();
-    void InitAggByCateUDAFs();
-    void InitSumByCateUDAFs();
-    void InitCountByCateUDAFs();
-    void InitMinByCateUDAFs();
-    void InitMaxByCateUDAFs();
-    void InitAvgByCateUDAFs();
+    void InitUdaf();
+    void InitAggByCateUdafs();
+    void InitSumByCateUdafs();
+    void InitCountByCateUdafs();
+    void InitMinByCateUdafs();
+    void initMaxByCateUdaFs();
+    void InitAvgByCateUdafs();
     void InitFeatureZero();
 
-    static DefaultUDFLibrary inst_;
+    static DefaultUdfLibrary inst_;
 
-    DefaultUDFLibrary() { Init(); }
+    DefaultUdfLibrary() { Init(); }
 };
 
 }  // namespace udf

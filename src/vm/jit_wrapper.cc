@@ -43,7 +43,7 @@
 namespace hybridse {
 namespace vm {
 
-bool HybridSEJITWrapper::AddModuleFromBuffer(const base::RawBuffer& buf) {
+bool HybridSeJitWrapper::AddModuleFromBuffer(const base::RawBuffer& buf) {
     std::string buf_str(buf.addr, buf.size);
     ::llvm::SMDiagnostic diagnostic;
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
@@ -59,41 +59,41 @@ bool HybridSEJITWrapper::AddModuleFromBuffer(const base::RawBuffer& buf) {
     return this->AddModule(std::move(llvm_module), std::move(llvm_ctx));
 }
 
-bool HybridSEJITWrapper::InitJITSymbols(HybridSEJITWrapper* jit) {
-    InitBuiltinJITSymbols(jit);
-    udf::DefaultUDFLibrary::get()->InitJITSymbols(jit);
+bool HybridSeJitWrapper::InitJitSymbols(HybridSeJitWrapper* jit) {
+    InitBuiltinJitSymbols(jit);
+    udf::DefaultUdfLibrary::get()->InitJITSymbols(jit);
     return true;
 }
 
-HybridSEJITWrapper* HybridSEJITWrapper::Create() {
-    return Create(JITOptions());
+HybridSeJitWrapper* HybridSeJitWrapper::Create() {
+    return Create(JitOptions());
 }
 
-HybridSEJITWrapper* HybridSEJITWrapper::Create(const JITOptions& jit_options) {
+HybridSeJitWrapper* HybridSeJitWrapper::Create(const JitOptions& jit_options) {
     if (jit_options.is_enable_mcjit()) {
 #ifdef LLVM_EXT_ENABLE
-        LOG(INFO) << "Create MCJIT engine";
-        return new HybridSEMCJITWrapper(jit_options);
+        LOG(INFO) << "Create McJit engine";
+        return new HybridSeMcJitWrapper(jit_options);
 #else
-        LOG(WARNING) << "MCJIT support is not enabled";
-        return new HybridSELLJITWrapper();
+        LOG(WARNING) << "McJit support is not enabled";
+        return new HybridSeLlvmJitWrapper();
 #endif
     } else {
         if (jit_options.is_enable_vtune() || jit_options.is_enable_perf() ||
             jit_options.is_enable_gdb()) {
             LOG(WARNING) << "LLJIT do not support jit events";
         }
-        return new HybridSELLJITWrapper();
+        return new HybridSeLlvmJitWrapper();
     }
 }
 
-void HybridSEJITWrapper::DeleteJIT(HybridSEJITWrapper* jit) {
+void HybridSeJitWrapper::DeleteJit(HybridSeJitWrapper* jit) {
     if (jit != nullptr) {
         delete jit;
     }
 }
 
-void InitBuiltinJITSymbols(HybridSEJITWrapper* jit) {
+void InitBuiltinJitSymbols(HybridSeJitWrapper* jit) {
     jit->AddExternalFunction("malloc", (reinterpret_cast<void*>(&malloc)));
     jit->AddExternalFunction("memset", (reinterpret_cast<void*>(&memset)));
     jit->AddExternalFunction("memcpy", (reinterpret_cast<void*>(&memcpy)));

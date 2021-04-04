@@ -48,13 +48,13 @@ class ResolveFnAndAttrs : public ExprPass {
                        const std::vector<const node::TypeNode*>& arg_types,
                        node::LambdaNode** output);
 
-    Status VisitUDFDef(node::UDFDefNode* lambda,
+    Status VisitUdfDef(node::UdfDefNode* lambda,
                        const std::vector<const node::TypeNode*>& arg_types,
-                       node::UDFDefNode** output);
+                       node::UdfDefNode** output);
 
-    Status VisitUDAFDef(node::UDAFDefNode* lambda,
+    Status VisitUdafDef(node::UdafDefNode* lambda,
                         const std::vector<const node::TypeNode*>& arg_types,
-                        node::UDAFDefNode** output);
+                        node::UdafDefNode** output);
 
     Status VisitOneStep(node::ExprNode* expr, node::ExprNode** output);
     Status VisitExpr(node::ExprNode* expr, node::ExprNode** output);
