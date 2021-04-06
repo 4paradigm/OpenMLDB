@@ -6,11 +6,11 @@
 
 # Introduction
 
-HybridSE (aka Hybrid SQL Engine) is an LLVM-based, hybrid-execution and high-performance SQL engine, It can provide fast and consistent execution on heterogeneous SQL data systems, e.g., OLAD database, HTAP system, SparkSQL, and Flink Stream SQL.
+HybridSE (Hybrid SQL Engine) is an LLVM-based, hybrid-execution and high-performance SQL engine, It can provide fast and consistent execution on heterogeneous SQL data systems, e.g., OLAD database, HTAP system, SparkSQL, and Flink Stream SQL.
 
 ![image-hybridse](images/HybridSE.png)
 
-HybridSE is a modularized SQL compiler and executor, which features on
+HybridSE is a modularized SQL compiler and executor, with following features:
 
 - SQL syntax validation
 - Logical plan generation and optimization
@@ -19,11 +19,11 @@ HybridSE is a modularized SQL compiler and executor, which features on
 - Native code generation
 - Cluster/Standalone runner
 
-By leveraging the power of HybridSE, developer can archive a high performance SQL database with ease, or optimize performance over existing offline SQL execution engine.
-Unlike MySQL and SparkSQL, which have buildin SQL engine, HybridSE offers not only better performance. What's more, it's designed specially for AI scenarios,
-did various grammar expansion and optimization, making HybridSE more like a modernized SQL engine.
+By leveraging the power of HybridSE, developer can implement high performance SQL database with ease, or improve performance over existing offline SQL execution engine.
+Unlike MySQL and SparkSQL, which have buildin SQL engine, HybridSE offers better performance. What's more, it's designed for AI scenarios,
+did grammar expansion and optimization, making HybridSE more like a modern SQL engine.
 
-HybridSE have following characteristic:
+HybridSE has following characteristic:
 
 - **High Performance**
 
@@ -33,11 +33,11 @@ HybridSE have following characteristic:
 - **Great Scalability**
 
   Thanks to the modularized design, HybridSE can generate logical and physical plan for different stages.
-  With various sdk for multiple languages, HybridSE can be used on SQL optimization, regardless the system is realtime OLAD database, distributed OLAP or stream SQL.
+  With sdk for multiple languages, HybridSE can be used on SQL optimization, regardless the system is realtime OLAD database, distributed OLAP or stream SQL.
 
 - **Machine Learning Aimed Optimization**
 
-  Offer the special table join operation and customized UDF/UDAF, which fullfill the feature extraction and online requirement from machine learning.
+  Offer the special table join operation and customized UDF/UDAF, which fullfill the requirement of feature extraction from machine learning.
 
 - **Online-Offline Consistency**
 
@@ -69,7 +69,7 @@ It is recommended using the docker image listed above for faster start and avoid
 cd /HybridSE
 mkdir -p build && cd build
 cmake ..
-# just compile the core library
+# compile the core library
 make -j$(nproc) hybridse_core
 ```
 
@@ -105,7 +105,7 @@ make -j$(nproc) hybridse_proto && make -j$(nproc) hybridse_parser && make -j$(np
 ./src/simple_engine_demo
 ```
 
-`simple_engine_demo` is a memory table SQL engine implemented on HybridSE。For more information see [How to create a simple SQL engine](https://github.com/4paradigm/HybridSQL-docs/blob/feat/simple_engine_demo_doc/hybridse/usage/simple_engine_demo.md)
+`simple_engine_demo` is a in-memory SQL engine implemented on HybridSE。For more information see [How to create a simple SQL engine](https://github.com/4paradigm/HybridSQL-docs/blob/feat/simple_engine_demo_doc/hybridse/usage/simple_engine_demo.md)
 
 ## Run ToyDB
 
@@ -126,7 +126,7 @@ sh start_all.sh
 sh start_cli.sh
 ```
 
-ToyDB is a simple memory database powered by HybridSE, supporting basic CRUD operations. see more information at [ToyDB quick start](https://github.com/4paradigm/HybridSQL-docs/blob/feat/hybridse-quick-start-doc/hybridse/usage/toydb_usage/toydb_quickstart.md)
+ToyDB is a simple in-memory database powered by HybridSE, supporting basic CRUD operations. see more information at [ToyDB quick start](https://github.com/4paradigm/HybridSQL-docs/blob/feat/hybridse-quick-start-doc/hybridse/usage/toydb_usage/toydb_quickstart.md)
 
 ## Related Projects
 
@@ -136,27 +136,27 @@ ToyDB is a simple memory database powered by HybridSE, supporting basic CRUD ope
 | [NativeSpark](https://github.com/4paradigm/NativeSpark) | Open Source   | LLVM-based, Spark-compatible and high-performance native execution engine |
 | NativeFlink                                             | Under Develop | High-performance, Batch-Stream-in-onebox FlinkSQL execution engine           |
 
-## Further Plan
+## Roadmap
 
 ### ANSI SQL compatibility
 
-HybridSE is compatible with mainstream DDL、DML already，and will support ANSI SQL progressively, which will greatly reduce the migration price from other SQL engine.
+HybridSE is compatible with mainstream DDL, DML already，and will support ANSI SQL progressively, which will reduce the cost of migration from other SQL engine.
 
 - [2021H1&H2] Enrich standard syntax of `Window`，support Where, Group By, Join etc
 - [2021H1&H2] Extend AI-domain specific grammar and UDAF functions
 
-### Performance Optimization
+### Performance
 
 HybridSE offer dozens of SQL expression and logical plan optimization, standardized optimization pass interface, and will implement more SQL optimization.
 
 - [2021H1] Logical and physical plan optimization for batch mode and request mode data processing
-- [2021H1] High-performance, distributed execution plan generation and codegen.
-- [2021H2] Compilation and codegen optimization for LLVM-based expression.
+- [2021H1] High-performance, distributed execution plan generation and codegen
+- [2021H2] Compilation and codegen optimization for LLVM-based expression
 - [2021H2] More classic SQL expression pass support
 
 ### Ecosystem Integration
 
-HybridSE can be integrated into NoSQL, OLAP, OLTP system. It is used in SparkSQL and FEDB already, and will support more open source system in the future.
+HybridSE has been integrated by NativeSpark and FEDB already. It can been integrated into NoSQL, OLAP, OLTP system, and will support more open source system in the future.
 
 - [2021H2] Adapt to open source SQL compute framework like FlinkSQL
 - [2021H2] Adapt to various encoding format in row and column, be compatible with Apache Arrow

@@ -80,7 +80,7 @@ export SQL_CASE_BASE_DIR=/HybridSE
 make -j$(nproc) && make -j$(nproc) test
 ```
 
-## Run simple engine demo
+## 运行 simple engine demo
 
 ```bash
 cd /HybridSE
