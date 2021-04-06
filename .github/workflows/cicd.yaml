@@ -24,7 +24,7 @@ jobs:
         run: |
           ln -sf /depends/thirdparty thirdparty
           ln -sf /depends/thirdsrc thirdsrc
-          bash tools/install_hybridse.sh
+          bash steps/install_hybridse.sh
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) && cd ../
       - name: run cpp

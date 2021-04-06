@@ -1,81 +1,80 @@
+[中文版](README_cn.md)
+
 ![](images/fedb_black.png)
 
 - [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)
 - [**Discussions**](https://github.com/4paradigm/fedb/discussions)
 
-## What is FEDB
+## Introduction
 
-FEDB is a NewSQL database optimised for realtime inference and decisioning application
+FEDB is a NewSQL database optimised for realtime inference and decisioning applications.
 
-- __高性能__
+- __High Performance__
 
-基于内存的存储引擎降低数据访问延迟，对SQL进行极致地编译优化提升执行效率，让开发高性能的实时推理和决策应用变的非常简单
+   Reduce data access latency by using in-memory storage engine and Improve the execution performance significantly with sql compilation optimization.
 
-- __SQL兼容__
+- __SQL Compatible__
 
-兼容大部分ANSI SQL语法，有python和java client。其中java client支持大部分JDBC接口
+   FEDB is compatible with most of ANSI SQL syntax. You can implement your aplications with sqlalchemy or JDBC.
 
-- __在线离线一致性__
+- __Online-offline Consistency__
 
-使用FEDB开发的机器学习应用可以一键上线，并且保证在线离线一致性，大大降低了机器学习场景的落地成本
+   Machine learning applications developed by FEDB can be launched simply and ensure online and offline consistency, which greatly reduces the cost.
 
-- __支持分布式，易扩展__
+- __High Availability__
 
-支持故障自动切换，支持横向扩展
+   Support auto failover and scaling horizontally.
 
-注:目前还处于unstable状态并且有许多功能待补齐,不能运用于生产环境
+Note: The latest released FEDB is unstable and not recommend to be used in production environment.
 
-## Getting Started
+## Quick Start
 
 ### Build
 
 ```
-git clone https://github.com/4paradigm/fedb.git
+git clone --recurse-submodules https://github.com/4paradigm/fedb.git
 cd fedb
-git submodule update --init
 docker run -v `pwd`:/fedb -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
 cd /fedb
 sh tools/install_hybridse.sh
 mkdir -p build && cmake ../ && make -j5 fedb
 ```
 
-### Demo Applications
+### Demo
 
-* [predict taxi trip duration](https://github.com/4paradigm/DemoApps/tree/main/predict-taxi-trip-duration) 
-* detect the healthy of online transaction and make a alert -oncoming
-* antifund detecting for online transaction -oncoming
+* [Predict taxi trip duration](https://github.com/4paradigm/DemoApps/tree/main/predict-taxi-trip-duration)
+* Detect the healthy of online transaction and make a alert -oncoming
+* Antifund detecting for online transaction -oncoming
 
-## 架构图
+## Architecture
 
-![架构图](images/fedb_arch.png)  
+![Architecture](images/fedb_arch.png)  
 
-## 未来规划
+## Roadmap
 
-### ANSI SQL兼容
+### ANSI SQL Compatibility
 
-FEDB目前已经兼容主流DDL、DML语法，并逐步增强ANSI SQL语法的兼容性
+FEDB is currently compatible with mainstream DDL and DML syntax, and will gradually enhances the compatibility of ANSI SQL syntax.
 
-* [2021H1] 完善Window的标准语法，支持Where, Group By, Join等操作
-* [2021H1&H2]针对AI场景扩展特有的语法特性和UDAF函数
+* [2021H1] Support the standard syntax of Window, Where, Group By and Join ect.
+* [2021H1&H2] Expand AI-oriented SQL syntax and UDAF functions.
 
-### 功能/性能提升
+### Features
 
-为了满足实时推理与决策场景的高性能需求，fedb选择内存作为存储引擎介质，而目前业界使用内存存储引擎都存在内存碎片和重启恢复效率问题，fedb计划在内存分配算法进行优化降低碎片问题以及引入[PMEM](https://www.intel.com/content/www/us/en/architecture-and-technology/optane-dc-persistent-memory.html)(Intel Optane DC Persistent Memory Module)存储介质提升数据恢复效率，具体计划如下
+In order to meet the high performance requirements of realtime inference and decisioning scenarios, FEDB chooses memory as the storage engine medium. At present, the memory storage engine used in the industry has memory fragmentation and recovery efficiency problems. FEDB plans to optimize the memory allocation algorithm to reduce fragmentation and introduce [PMEM](https://www.intel.com/content/www/us/en/architecture-and-technology/optane-dc-persistent-memory.html)(Intel Optane DC Persistent Memory Module) to improve data recovery efficiency.
 
-* [2021H1]支持新内存分配策略，降低内存碎片问题
-* [2021H2]实验支持PMEM存储引擎
+* [2021H1]Provide a new strategy of memory allocation to reduce memory fragmentation.
+* [2021H2]Support PMEM-based storage engine.
 
-### 生态构建
-FEDB有java/python client，java client支持jdbc接口的大部分功能。未来会对接到大数据生态，让flink/kafka/spark与FEDB更方便集成
+### Build Ecosystem
+FEDB has python client and java client which support most of JDBC API. FEDB will make a connection with big data ecosystem for integrating with Flink/Kafka/Spark simplily.
 
-* [2021H1&H2]支持flink/kafka/spark connector
+* [2021H1&H2]Support Flink/Kafka/Spark connector.
 
-## 贡献代码
-请参考这里
 
-## 反馈和参与
-* bug、疑惑、修改欢迎提在[Github Issues](https://github.com/4paradigm/fedb/issues/new)
-* 想了解更多或者有想法可以参与到[slack](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)交流
+## Feedback and Getting involved
+* Report bugs, ask questions or give suggestions by [Github Issues](https://github.com/4paradigm/fedb/issues/new).
+* Cannot find what you are looking for? Have a question or idea? Please post your questions or comments on our [slack](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W).
 
-## 许可证
+## License
 Apache License 2.0
