@@ -37,7 +37,7 @@ HybridSE has following characteristic:
 
 - **Machine Learning Aimed Optimization**
 
-  Offer the special table join operation and customized UDF/UDAF, which fullfill the requirement of feature extraction from machine learning.
+  Offer the special table join operation and customized UDF/UDAF, which fullfill the requirements of feature extraction and deployment from machine learning applications.
 
 - **Online-Offline Consistency**
 
