@@ -2,6 +2,7 @@
 
 - [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7LAF6AY)
 - [**Discussions**](https://github.com/4paradigm/HybridSE/discussions)
+- [English README](README.md)
 
 # 什么是 HybridSE
 
