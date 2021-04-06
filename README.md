@@ -4,41 +4,42 @@
 - [**Discussions**](https://github.com/4paradigm/HybridSE/discussions)
 - [中文文档](README-zh.md)
 
-# What is HybridSE
+# Introduction
 
-HybridSE(aka Hybrid SQL Engine) is a high performance hybird execution engine based on C++ and LLVM, which provide consistent SQL performance optimization for AI application, OLAD database, HTAP system, SparkSQL and Flink Stream SQL.
+HybridSE (aka Hybrid SQL Engine) is an LLVM-based, hybrid-execution and high-performance SQL engine, It can provide fast and consistent execution on heterogeneous SQL data systems, e.g., OLAD database, HTAP system, SparkSQL, and Flink Stream SQL.
 
-<img src="./images/HybridSE.png" alt="image-HybridSE" style="width:600px" align="center"/>
+![image-hybridse](images/HybridSE.png)
 
 HybridSE is a modularized SQL compiler and executor, which features on
 
 - SQL syntax validation
-- logical plan generation and optimization
-- expression optimization
+- Logical plan generation and optimization
+- Expression optimization
 - Online/Offline physical plan generation
-- native code generation
+- Native code generation
 - Cluster/Standalone runner
 
-By leveraging the power of HybridSE, developer can archive a high performance SQL database with ease, or perform optimize over offline SQL execution engine.
-Unlike MySQL and SparkSQL, which have buildin SQL engine, HybridSE offers better performance. What's more, it's designed especially for AI scenarios,
-perform grammar expansion and optimization, making it a more modern SQL engine.
+By leveraging the power of HybridSE, developer can archive a high performance SQL database with ease, or optimize performance over existing offline SQL execution engine.
+Unlike MySQL and SparkSQL, which have buildin SQL engine, HybridSE offers not only better performance. What's more, it's designed specially for AI scenarios,
+did various grammar expansion and optimization, making HybridSE more like a modernized SQL engine.
 
 HybridSE have following characteristic:
 
 - **High Performance**
 
-  Based on LLVM JIT, HybridSE can generate binary code dynamicly for different hardware environment, with dozens of plan pass buildin, more flexible memory management.
+  Leveraging the power of LLVM JIT, HybridSE can generate binary code dynamicly based on different hardware environment. It also have dozens of plan pass buildin, a more flexible memory management,
+  which ensure High-Performance for HybridSE.
 
-* **Great Scalability**
+- **Great Scalability**
 
   Thanks to the modularized design, HybridSE can generate logical and physical plan for different stages.
-  With various sdk for multiple languages, HybridSE can be used on SQL optimization, regardless the system is realtime OLAD database, distributed OLAP system or stream SQL system.
+  With various sdk for multiple languages, HybridSE can be used on SQL optimization, regardless the system is realtime OLAD database, distributed OLAP or stream SQL.
 
-* **Machine Learning Aimed Optimization**
+- **Machine Learning Aimed Optimization**
 
   Offer the special table join operation and customized UDF/UDAF, which fullfill the feature extraction and online requirement from machine learning.
 
-* **Online-Offline Consistency**
+- **Online-Offline Consistency**
 
   Same SQL and CodeGen logical, is guaranteed equivalent meaning and exact same result. Consistency also apply to UDF/UDAF in multiple programing languages.
 
@@ -52,10 +53,12 @@ HybridSE have following characteristic:
 ## Prepare Code & Docker
 
 ```bash
-git clone git@github.com:4paradigm/HybridSE.git
+git clone https://github.com/4paradigm/HybridSE.git
 cd HybridSE
 docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
 cd /HybridSE
+# init enviroment before build
+source tools/init_env.profile.sh
 ```
 
 It is recommended using the docker image listed above for faster start and avoid dependency hole. You may checkout [HybridSQL-docker](https://github.com/4paradigm/HybridSQL-docker/blob/main/README.md) for complete dependency.
@@ -102,7 +105,7 @@ make -j$(nproc) hybridse_proto && make -j$(nproc) hybridse_parser && make -j$(np
 ./src/simple_engine_demo
 ```
 
-`simple_engine_demo` is a memory table SQL engine implemented on HybridSE。watch more at [How to create a simple SQL engine](https://github.com/4paradigm/HybridSQL-docs/blob/feat/simple_engine_demo_doc/hybridse/usage/simple_engine_demo.md)
+`simple_engine_demo` is a memory table SQL engine implemented on HybridSE。For more information see [How to create a simple SQL engine](https://github.com/4paradigm/HybridSQL-docs/blob/feat/simple_engine_demo_doc/hybridse/usage/simple_engine_demo.md)
 
 ## Run ToyDB
 
@@ -123,7 +126,7 @@ sh start_all.sh
 sh start_cli.sh
 ```
 
-ToyDB is a simple memory database powered by HybridSE, which support basic CRUD operation. see more at [ToyDB quick start](https://github.com/4paradigm/HybridSQL-docs/blob/feat/hybridse-quick-start-doc/hybridse/usage/toydb_usage/toydb_quickstart.md)
+ToyDB is a simple memory database powered by HybridSE, supporting basic CRUD operations. see more information at [ToyDB quick start](https://github.com/4paradigm/HybridSQL-docs/blob/feat/hybridse-quick-start-doc/hybridse/usage/toydb_usage/toydb_quickstart.md)
 
 ## Related Projects
 
@@ -137,23 +140,23 @@ ToyDB is a simple memory database powered by HybridSE, which support basic CRUD 
 
 ### ANSI SQL compatibility
 
-HybridSE is compatible with mainstream DDL、DML already，and will support ANSI SQL progressively, in order to reduce the migration price from other SQL engine.
+HybridSE is compatible with mainstream DDL、DML already，and will support ANSI SQL progressively, which will greatly reduce the migration price from other SQL engine.
 
 - [2021H1&H2] Enrich standard syntax of `Window`，support Where, Group By, Join etc
-- [2021H1&H2] Extend AI-domain specific grammar and UDAF functions 
+- [2021H1&H2] Extend AI-domain specific grammar and UDAF functions
 
 ### Performance Optimization
 
 HybridSE offer dozens of SQL expression and logical plan optimization, standardized optimization pass interface, and will implement more SQL optimization.
 
 - [2021H1] Logical and physical plan optimization for batch mode and request mode data processing
-- [2021H1] high-performance, distributed execution plan generation and codegen.
+- [2021H1] High-performance, distributed execution plan generation and codegen.
 - [2021H2] Compilation and codegen optimization for LLVM-based expression.
 - [2021H2] More classic SQL expression pass support
 
 ### Ecosystem Integration
 
-HybridSE can be integrated into NoSQL, OLAP, OLTP system. It is used in SparkSQL and FEDB already. We are working on more [接入] open source system.
+HybridSE can be integrated into NoSQL, OLAP, OLTP system. It is used in SparkSQL and FEDB already, and will support more open source system in the future.
 
 - [2021H2] Adapt to open source SQL compute framework like FlinkSQL
 - [2021H2] Adapt to various encoding format in row and column, be compatible with Apache Arrow
@@ -162,7 +165,7 @@ HybridSE can be integrated into NoSQL, OLAP, OLTP system. It is used in SparkSQL
 ## Contribution
 
 - Report issues in [Github Issue](https://github.com/4paradigm/HybridSE/issues)
-- Ask and tell in [Discussions](https://github.com/4paradigm/HybridSE/discussions) and [slack](https://hybridsql-ws.slack.com/archives/C01R7LAF6AY)
+- Ask and discuss more in [Discussions](https://github.com/4paradigm/HybridSE/discussions) and [slack](https://hybridsql-ws.slack.com/archives/C01R7LAF6AY)
 
 ## License
 

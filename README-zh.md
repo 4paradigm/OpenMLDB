@@ -39,10 +39,12 @@ HybridSE是一个模块化的SQL编译器和执行器，提供了SQL语法校验
 ## 准备开发环境
 
 ```bash
-git clone git@github.com:4paradigm/HybridSE.git
+git clone https://github.com/4paradigm/HybridSE.git
 cd HybridSE
 docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
 cd /HybridSE
+# init enviroment before build
+source tools/init_env.profile.sh
 ```
 
 建议开发者使用我们提供的镜像编译和安装库。若需要使用自己的开发环境，请确保相关依赖库正确安装。编译环境和依赖库可参考 [HybridSQL-docker](https://github.com/4paradigm/HybridSQL-docker/blob/main/README.md)
