@@ -11,7 +11,7 @@ FEDB is a NewSQL database optimised for realtime inference and decisioning appli
 
 - __High Performance__
 
-   Reduce data access latency by using in-memory storage engine and Improve the execution performance significantly with sql compilation optimization.
+   Reduce data access latency by using in-memory storage engine and improve the execution performance significantly with sql compilation optimization.
 
 - __SQL Compatible__
 
