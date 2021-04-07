@@ -585,7 +585,7 @@ void HandleNSShowTablet(const std::vector<std::string>& parts,
     row.push_back("real_endpoint");
     row.push_back("state");
     row.push_back("age");
-    ::baidu::common::TPrinter tp(row.size());
+    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     std::vector<::fedb::client::TabletInfo> tablets;
     std::string msg;
@@ -610,7 +610,7 @@ void HandleNSShowSdkEndpoint(const std::vector<std::string>& parts,
     std::vector<std::string> row;
     row.push_back("endpoint");
     row.push_back("sdk_endpoint");
-    ::baidu::common::TPrinter tp(row.size());
+    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     std::vector<::fedb::client::TabletInfo> tablets;
     std::string msg;
@@ -710,7 +710,7 @@ void HandleNSShowNameServer(const std::vector<std::string>& parts,
     row.push_back("endpoint");
     row.push_back("real_endpoint");
     row.push_back("role");
-    ::baidu::common::TPrinter tp(row.size());
+    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     for (size_t i = 0; i < endpoint_vec.size(); i++) {
         std::vector<std::string> row;
@@ -2243,7 +2243,7 @@ void HandleShowReplicaCluster(const std::vector<std::string>& parts,
                               ::fedb::client::NsClient* client) {
     std::vector<std::string> row = {"zk_endpoints", "zk_path", "alias", "state",
                                     "age"};
-    ::baidu::common::TPrinter tp(row.size());
+    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
 
     std::vector<::fedb::nameserver::ClusterAddAge> cluster_info;
@@ -3420,7 +3420,7 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts,
     row.push_back("end_time");
     row.push_back("cur_task");
     row.push_back("for_replica_cluster");
-    ::baidu::common::TPrinter tp(row.size());
+    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     ::fedb::nameserver::ShowOPStatusResponse response;
     std::string msg;
@@ -4747,7 +4747,7 @@ void HandleClientGetFollower(const std::vector<std::string>& parts,
     header.push_back("leader_offset");
     header.push_back("follower");
     header.push_back("offset");
-    ::baidu::common::TPrinter tp(header.size());
+    ::baidu::common::TPrinter tp(header.size(), FLAGS_max_col_display_length);
 
     tp.AddRow(header);
     int idx = 0;
