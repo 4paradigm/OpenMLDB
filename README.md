@@ -11,7 +11,7 @@ FEDB is a NewSQL database optimised for realtime inference and decisioning appli
 
 - __High Performance__
 
-   Reduce data access latency by using in-memory storage engine and Improve the execution performance significantly with sql compilation optimization.
+   Reduce data access latency by using in-memory storage engine and improve the execution performance significantly with sql compilation optimization.
 
 - __SQL Compatible__
 
@@ -36,15 +36,16 @@ git clone --recurse-submodules https://github.com/4paradigm/fedb.git
 cd fedb
 docker run -v `pwd`:/fedb -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
 cd /fedb
-sh tools/install_hybridse.sh
-mkdir -p build && cmake ../ && make -j5 fedb
+sh steps/init_env.sh
+sh steps/install_hybridse.sh
+mkdir -p build && cd build && cmake ../ && make -j5 fedb
 ```
 
 ### Demo
 
 * [Predict taxi trip duration](https://github.com/4paradigm/DemoApps/tree/main/predict-taxi-trip-duration)
-* Detect the healthy of online transaction and make a alert -oncoming
-* Antifund detecting for online transaction -oncoming
+* Detect the healthy of online transaction and make an alert -oncoming
+* Online real-time transaction fraud detection -oncoming
 
 ## Architecture
 
