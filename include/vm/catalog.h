@@ -40,9 +40,9 @@ using hybridse::codec::RowIterator;
 using hybridse::codec::Schema;
 using hybridse::codec::WindowIterator;
 
-constexpr uint32_t INVALID_POS = UINT32_MAX;  ///<
+constexpr uint32_t INVALID_POS = UINT32_MAX;
 
-/// \struct represents index information, e.g, name, first keys, second key
+/// represents index information, e.g, name, first keys, second key
 /// information
 struct IndexSt {
     std::string name;           ///< index name
@@ -51,12 +51,12 @@ struct IndexSt {
     std::vector<ColInfo> keys;  ///< first keys set
 };
 
-/// \var typedef repeated fields of IndexDef
+/// \typedef IndexList repeated fields of IndexDef
 typedef ::google::protobuf::RepeatedPtrField<::hybridse::type::IndexDef>
     IndexList;
-/// \var typedef a map with string type key and ColInfo value
+/// \typedef Types a map with string type key and ColInfo value
 typedef std::map<std::string, ColInfo> Types;
-/// \var typedef a map with string type key and IndexSt value
+/// \typedef IndexHint a map with string type key and IndexSt value
 typedef std::map<std::string, IndexSt> IndexHint;
 
 class PartitionHandler;

@@ -32,6 +32,7 @@ endfunction(hybridse_add_src_and_tests)
 
 include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
+		${PROJECT_SOURCE_DIR}/include
         ${PROJECT_BINARY_DIR}/src)
 
 # sub-directory with specific modules
