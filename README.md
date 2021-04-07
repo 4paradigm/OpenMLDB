@@ -44,7 +44,7 @@ mkdir -p build && cmake ../ && make -j5 fedb
 
 * [Predict taxi trip duration](https://github.com/4paradigm/DemoApps/tree/main/predict-taxi-trip-duration)
 * Detect the healthy of online transaction and make an alert -oncoming
-* Antifund detecting for online transaction -oncoming
+* Online real-time transaction fraud detection -oncoming
 
 ## Architecture
 
