@@ -262,7 +262,7 @@ class BatchRequestRunSession : public RunSession {
     /// \brief Run query in batch request mode.
     /// \param request_batch: a batch of request rows
     /// \param output: query results will be returned as std::vector<Row> in output
-    /// \return return 0 if query successfully, otherwise return negative int
+    /// \return 0 if runs successfully else negative integer
     int32_t Run(const std::vector<Row>& request_batch,
                 std::vector<Row>& output);  // NOLINT
 
@@ -270,7 +270,7 @@ class BatchRequestRunSession : public RunSession {
     /// \param id: id of task
     /// \param request_batch: a batch of request rows
     /// \param output: query results will be returned as std::vector<Row> in output
-    /// \return return 0 if query successfully, otherwise return negative int
+    /// \return 0 if runs successfully else negative integer
     int32_t Run(const uint32_t id, const std::vector<Row>& request_batch,
                 std::vector<Row>& output);  // NOLINT
 
@@ -407,7 +407,7 @@ class LocalTablet : public Tablet {
     /// \param row: request row
     /// \param is_procedure: whether sql is a procedure or not
     /// \param is_debug: whether printing debug information while running
-    /// \return Return query result row as RowHandler pointer
+    /// \return result row as RowHandler pointer
     std::shared_ptr<RowHandler> SubQuery(uint32_t task_id,
                                          const std::string& db,
                                          const std::string& sql, const Row& row,
@@ -423,7 +423,7 @@ class LocalTablet : public Tablet {
     /// \param request_is_common: whether request is common or not
     /// \param is_procedure: whether run procedure or not
     /// \param is_debug: whether printing debug information while running
-    /// \return Return query result rows as TableHandler pointer
+    /// \return result rows as TableHandler pointer
     virtual std::shared_ptr<TableHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
         const std::set<size_t>& common_column_indices,
