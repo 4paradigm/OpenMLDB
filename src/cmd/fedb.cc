@@ -966,7 +966,7 @@ void HandleNSClientConfGet(const std::vector<std::string>& parts,
     std::vector<std::string> row;
     row.push_back("key");
     row.push_back("value");
-    ::baidu::common::TPrinter tp(row.size());
+    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     for (const auto& kv : conf_map) {
         row.clear();

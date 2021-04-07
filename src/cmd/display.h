@@ -59,7 +59,7 @@ __attribute__((unused)) static void PrintSchema(
     row.push_back("#");
     row.push_back("name");
     row.push_back("type");
-    ::baidu::common::TPrinter tp(row.size());
+    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     uint32_t idx = 0;
     for (const auto& column_desc : column_desc_field) {
@@ -82,7 +82,7 @@ __attribute__((unused)) static void PrintSchema(
     if (table_info.column_desc_v1_size() == 0) {
         row.push_back("index");
     }
-    ::baidu::common::TPrinter tp(row.size());
+    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     uint32_t idx = 0;
     if (table_info.column_desc_v1_size() > 0) {
@@ -128,7 +128,7 @@ __attribute__((unused)) static void PrintSchema(
     row.push_back("name");
     row.push_back("type");
     row.push_back("index");
-    ::baidu::common::TPrinter tp(row.size());
+    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     uint32_t idx = 0;
     for (const auto& column_desc : column_desc_field) {
@@ -155,7 +155,7 @@ __attribute__((unused)) static void PrintSchema(const std::string& schema,
     if (!has_column_key) {
         header.push_back("index");
     }
-    ::baidu::common::TPrinter tp(header.size());
+    ::baidu::common::TPrinter tp(header.size(), FLAGS_max_col_display_length);
     tp.AddRow(header);
     for (uint32_t i = 0; i < raw.size(); i++) {
         std::vector<std::string> row;
@@ -229,7 +229,7 @@ __attribute__((unused)) static void PrintColumnKey(
     row.push_back("col_name");
     row.push_back("ts_col");
     row.push_back("ttl");
-    ::baidu::common::TPrinter tp(row.size());
+    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     std::map<std::string, ::fedb::storage::TTLSt> ttl_map;
     for (const auto& column_desc : column_desc_field) {
