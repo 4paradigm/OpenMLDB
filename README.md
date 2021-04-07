@@ -36,6 +36,7 @@ git clone --recurse-submodules https://github.com/4paradigm/fedb.git
 cd fedb
 docker run -v `pwd`:/fedb -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
 cd /fedb
+sh steps/init_env.sh
 sh steps/install_hybridse.sh
 mkdir -p build && cd build && cmake ../ && make -j5 fedb
 ```
