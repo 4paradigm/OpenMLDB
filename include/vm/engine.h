@@ -318,7 +318,6 @@ struct ExplainOutput {
 /// ```
 class Engine {
  public:
-
     /// \brief Create an Engine with a specific Catalog object.
     explicit Engine(const std::shared_ptr<Catalog>& cl);
 
