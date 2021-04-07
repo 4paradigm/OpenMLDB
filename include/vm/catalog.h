@@ -40,9 +40,10 @@ using hybridse::codec::RowIterator;
 using hybridse::codec::Schema;
 using hybridse::codec::WindowIterator;
 
-constexpr uint32_t INVALID_POS = UINT32_MAX;
+constexpr uint32_t INVALID_POS =
+    UINT32_MAX;    ///< Invalid position. A column position is invalid if equals to INVALID_POS
 
-/// represents index information, e.g, name, first keys, second key
+/// Represents index information, e.g, name, first keys, second key
 /// information
 struct IndexSt {
     std::string name;           ///< index name

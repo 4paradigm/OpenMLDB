@@ -220,15 +220,15 @@ class RequestRunSession : public RunSession {
     ///
     /// \param in_row request row
     /// \param output query result will be returned as Row in output
-    /// \return return 0 if query successfully, otherwise return negative int
+    /// \return `0` if run successfully else negative integer
     int32_t Run(const Row& in_row, Row* output);                    // NOLINT
 
     /// \brief Run a task specified by task_id in request mode.
     ///
-    /// \param task_id task id of task
-    /// \param in_row request row
-    /// \param output query result will be returned as Row in output
-    /// \return return 0 if query successfully, otherwise return negative int
+    /// \param task_id: task id of task
+    /// \param in_row: request row
+    /// \param[out] output: result is written to this variable
+    /// \return `0` if run successfully else negative integer
     int32_t Run(uint32_t task_id, const Row& in_row, Row* output);  // NOLINT
 
 
@@ -244,7 +244,7 @@ class RequestRunSession : public RunSession {
 
 /// \brief BatchRequestRunSession is a kind of RunSession designed for batch request mode query.
 ///
-/// BatchRequest-mode query is widely used in OLAD database. It requires a batch of request Rows.
+/// BatchRequest mode query is widely used in OLAD database. It requires a batch of request Rows.
 class BatchRequestRunSession : public RunSession {
  public:
     BatchRequestRunSession() : RunSession(kBatchRequestMode) {}
@@ -288,7 +288,6 @@ class BatchRequestRunSession : public RunSession {
 
 /// An options class for controlling runtime interpreter behavior.
 struct ExplainOutput {
-    // just for request mode
     vm::Schema input_schema;    ///< The schema of request row for request-mode query
     std::string request_name;   ///< The name of request for request-mode query
     std::string logical_plan;   ///< Logical plan string
@@ -311,7 +310,7 @@ struct ExplainOutput {
 /// EngineOptions options;
 /// Engine engine(catalog, options);
 /// BatchRunSession session;
-/// std::db = "test_db";
+/// std::string db = "test_db";
 /// std::string sql = "select col0, col1, col2, col1+col2 as col12 from t1;";
 /// engine.Get(sql, db, session, status);
 /// engine.Explain(sql, db, EngineMode::kBatchMode, &output, &status);
