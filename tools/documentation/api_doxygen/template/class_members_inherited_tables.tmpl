@@ -1,6 +1,9 @@
 {% for base in baseClasses -%}
 
-{% if existsIn(base, "url") %}Inherited from [{{base.name}}]({{base.url}}){% else %}{{base.name}}{% endif %}
+{% if existsIn(base, "url") %}
+Inherited from [{{base.name}}]({{base.url}}){% else %}{{base.name}}
+{% endif %}
+
 {%- if existsIn(base, "publicClasses") -%}
 
 
