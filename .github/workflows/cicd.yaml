@@ -14,6 +14,8 @@ jobs:
         password: ${{ secrets.CR_PAT_ZW }}
     steps:
       - uses: actions/checkout@v1
+        with:
+          token: ${{ secrets.CR_PAT_ZW }}
       - name: update submodule
         run: |
            /opt/rh/sclo-git212/root/usr/bin/git submodule update --init
