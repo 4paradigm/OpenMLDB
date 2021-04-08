@@ -13,8 +13,8 @@
 # limitations under the License.
 
 #! /bin/sh
-# install_fesql_mac.sh
+# install_hybridse_mac.sh
 export FEDB_THIRDPARTY=/opt/depends/thirdparty
 WORK_DIR=`pwd`
-cd fesql && ln -sf ${FEDB_THIRDPARTY} thirdparty && mkdir -p build
+cd hybridse && ln -sf ${FEDB_THIRDPARTY} thirdparty && mkdir -p build
 cd build && cmake -DCMAKE_INSTALL_PREFIX="${FEDB_THIRDPARTY}"/hybridse -DTESTING_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DPYSDK_ENABLE=OFF -DJAVASDK_ENABLE=ON -DEXPRIRMENT_ENABLE=OFF .. &&make -j4 install
