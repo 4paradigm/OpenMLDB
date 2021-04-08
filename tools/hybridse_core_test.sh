@@ -30,7 +30,7 @@ fi
 mkdir -p build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="hybridse"
-make -j"$(nproc)" hybridse_core
+make -j"$(nproc)"
 SQL_CASE_BASE_DIR=${HYRBIDSE_DIR} make -j"$(nproc)" test
 
 popd
