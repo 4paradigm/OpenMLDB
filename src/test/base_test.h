@@ -31,7 +31,7 @@
 
 namespace fedb {
 namespace test {
-class SQLCaseTest : public ::testing::TestWithParam<hybridse::sqlcase::SQLCase> {
+class SQLCaseTest : public ::testing::TestWithParam<hybridse::sqlcase::SqlCase> {
  public:
     SQLCaseTest() {}
     virtual ~SQLCaseTest() {}
@@ -39,9 +39,9 @@ class SQLCaseTest : public ::testing::TestWithParam<hybridse::sqlcase::SQLCase> 
     static std::string GenRand(const std::string &prefix);
     static const std::string AutoTableName();
     static std::string GetYAMLBaseDir();
-    static std::vector<hybridse::sqlcase::SQLCase> InitCases(const std::string &yaml_path);
+    static std::vector<hybridse::sqlcase::SqlCase> InitCases(const std::string &yaml_path);
     static void InitCases(const std::string &dir_path, const std::string &yaml_path,
-                          std::vector<hybridse::sqlcase::SQLCase> &cases);  // NOLINT
+                          std::vector<hybridse::sqlcase::SqlCase> &cases);  // NOLINT
 
     static void PrintSchema(const hybridse::vm::Schema &schema);
     static void PrintSdkSchema(const hybridse::sdk::Schema &schema);

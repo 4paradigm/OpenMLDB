@@ -807,7 +807,7 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enable_debug = hybridse::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();

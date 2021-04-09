@@ -34,13 +34,13 @@ DECLARE_bool(enable_localtablet);
 typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc> RtiDBSchema;
 typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey> RtiDBIndex;
 // batch request rows size == 1
-void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SQLCase& sql_case,  // NOLINT
+void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                      ::fedb::sdk::MiniCluster* mc) {                             // NOLINT
-    const bool is_procedure = hybridse::sqlcase::SQLCase::IS_PROCEDURE();
+    const bool is_procedure = hybridse::sqlcase::SqlCase::IsProcedure();
     ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
-    if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
+    if (hybridse::sqlcase::SqlCase::IsDebug()) {
         sql_opt.enable_debug = true;
     } else {
         sql_opt.enable_debug = false;
@@ -85,7 +85,7 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SQLCase& sql_ca
             return;
         }
 
-        if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
+        if (hybridse::sqlcase::SqlCase::IsDebug()) {
             fedb::sdk::SQLSDKTest::CheckSchema(request_table.columns(), *(request_row->GetSchema().get()));
         }
 
@@ -97,7 +97,7 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SQLCase& sql_ca
         row_view.Reset(request_rows[0].buf());
         fedb::sdk::SQLSDKTest::CovertHybridSERowToRequestRow(&row_view, request_row);
 
-        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {
+        if (!hybridse::sqlcase::SqlCase::IsDebug()) {
             for (int i = 0; i < 10; i++) {
                 if (is_procedure) {
                     LOG(INFO) << "--------syn procedure----------";
@@ -110,7 +110,7 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SQLCase& sql_ca
             }
             LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
         }
-        if (hybridse::sqlcase::SQLCase::IS_DEBUG() || hybridse::sqlcase::SQLCase::IS_PERF()) {
+        if (hybridse::sqlcase::SqlCase::IsDebug() || hybridse::sqlcase::SqlCase::IS_PERF()) {
             for (auto _ : state) {
                 if (is_procedure) {
                     LOG(INFO) << "--------syn procedure----------";
@@ -165,8 +165,8 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SQLCase& sql_ca
     fedb::sdk::SQLSDKTest::DropTables(sql_case, router);
 }
 
-hybridse::sqlcase::SQLCase LoadSQLCaseWithID(const std::string& yaml, const std::string& case_id) {
-    return hybridse::sqlcase::SQLCase::LoadSQLCaseWithID(fedb::test::SQLCaseTest::GetYAMLBaseDir(), yaml, case_id);
+hybridse::sqlcase::SqlCase LoadSQLCaseWithID(const std::string& yaml, const std::string& case_id) {
+    return hybridse::sqlcase::SqlCase::LoadSqlCaseWithID(fedb::test::SQLCaseTest::GetYAMLBaseDir(), yaml, case_id);
 }
 
 void MiniBenchmarkOnCase(const std::string& yaml_path, const std::string& case_id, BmRunMode engine_mode,
@@ -179,7 +179,7 @@ void MiniBenchmarkOnCase(const std::string& yaml_path, const std::string& case_i
     }
     MiniBenchmarkOnCase(target_case, engine_mode, mc, state);
 }
-void MiniBenchmarkOnCase(hybridse::sqlcase::SQLCase& sql_case, BmRunMode engine_mode,  // NOLINT
+void MiniBenchmarkOnCase(hybridse::sqlcase::SqlCase& sql_case, BmRunMode engine_mode,  // NOLINT
                          ::fedb::sdk::MiniCluster* mc, benchmark::State* state) {
     switch (engine_mode) {
         case kRequestMode: {
@@ -196,18 +196,18 @@ void MiniBenchmarkOnCase(hybridse::sqlcase::SQLCase& sql_case, BmRunMode engine_
     }
 }
 // batch request rows size >= 1
-void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SQLCase& sql_case,  // NOLINT
+void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                           ::fedb::sdk::MiniCluster* mc) {
     if (sql_case.batch_request_.columns_.empty()) {
         FAIL() << "sql case should contain batch request columns: ";
         return;
     }
     const bool enable_request_batch_optimized = state.range(0) == 1;
-    const bool is_procedure = hybridse::sqlcase::SQLCase::IS_PROCEDURE();
+    const bool is_procedure = hybridse::sqlcase::SqlCase::IsProcedure();
     ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
-    if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
+    if (hybridse::sqlcase::SqlCase::IsDebug()) {
         sql_opt.enable_debug = true;
     } else {
         sql_opt.enable_debug = false;
@@ -249,7 +249,7 @@ void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SQLCase& s
             return;
         }
 
-        if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
+        if (hybridse::sqlcase::SqlCase::IsDebug()) {
             fedb::sdk::SQLSDKTest::CheckSchema(request_table.columns(), *(request_row->GetSchema().get()));
         }
 
@@ -276,7 +276,7 @@ void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SQLCase& s
             row_view.Reset(request_rows[i].buf());
             fedb::sdk::SQLSDKTest::CovertHybridSERowToRequestRow(&row_view, request_row);
             ASSERT_TRUE(row_batch->AddRow(request_row));
-            if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
+            if (hybridse::sqlcase::SqlCase::IsDebug()) {
                 continue;
             }
             // don't repeat request in debug mode
@@ -285,7 +285,7 @@ void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SQLCase& s
             }
         }
 
-        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {
+        if (!hybridse::sqlcase::SqlCase::IsDebug()) {
             for (int i = 0; i < 10; i++) {
                 if (is_procedure) {
                     LOG(INFO) << "--------syn procedure----------";
@@ -299,7 +299,7 @@ void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SQLCase& s
             }
             LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
         }
-        if (hybridse::sqlcase::SQLCase::IS_DEBUG() || hybridse::sqlcase::SQLCase::IS_PERF()) {
+        if (hybridse::sqlcase::SqlCase::IsDebug() || hybridse::sqlcase::SqlCase::IS_PERF()) {
             for (auto _ : state) {
                 state.SkipWithError("benchmark case debug");
                 if (is_procedure) {

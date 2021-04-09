@@ -14,12 +14,12 @@
 
 #! /bin/sh
 
-fesql_branch=$1
-if [ -z "${fesql_branch}" ]; then
+hybridse_branch=$1
+if [ -z "${hybridse_branch}" ]; then
     git submodule update
 else
-    cd fesql
-    git checkout ${fesql_branch}
+    cd hybridse
+    git checkout ${hybridse_branch}
     git pull
     cd ..
 fi

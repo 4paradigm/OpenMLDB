@@ -45,7 +45,7 @@ function(get_commitid CODE_DIR COMMIT_ID)
 endfunction()
 
 get_commitid(${PROJECT_SOURCE_DIR} FEDB_COMMIT_ID)
-get_commitid(${PROJECT_SOURCE_DIR}/fesql HYBRIDSE_COMMIT_ID)
+get_commitid(${PROJECT_SOURCE_DIR}/hybridse HYBRIDSE_COMMIT_ID)
 message(STATUS "COMMIT_ID : ${FEDB_COMMIT_ID}.${HYBRIDSE_COMMIT_ID}")
 configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"

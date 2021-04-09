@@ -595,7 +595,7 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
         LOG(WARNING) << status->msg;
         return false;
     }
-    hybridse::node::SQLNode* node = parser_trees[0];
+    hybridse::node::SqlNode* node = parser_trees[0];
     if (node->GetType() == hybridse::node::kCreateSpStmt) {
         ok = HandleSQLCreateProcedure(parser_trees, db, sql,
                 ns_ptr, &node_manager, &err);
@@ -1209,7 +1209,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const hybridse::node::NodePointV
                     col_desc->set_is_constant(input_ptr->GetIsConstant());
                 } else {
                     *msg = "fail to execute script with unSuppurt type" +
-                        hybridse::node::NameOfSQLNodeType(input->GetType());
+                        hybridse::node::NameOfSqlNodeType(input->GetType());
                     return false;
                 }
             }
