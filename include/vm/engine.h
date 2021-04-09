@@ -119,7 +119,7 @@ class EngineOptions {
     inline uint32_t max_sql_cache_size() const { return max_sql_cache_size_; }
 
     /// Set `true` to enable spark unsafe row format, default `false`.
-    inline EngineOptions* set_enable_spark_unsaferow_format(bool flag);
+    EngineOptions* set_enable_spark_unsaferow_format(bool flag);
     /// Return if the engine can support can support spark unsafe row format.
     inline bool is_enable_spark_unsaferow_format() const {
         return enable_spark_unsaferow_format_;
