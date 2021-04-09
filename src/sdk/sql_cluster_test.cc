@@ -116,7 +116,7 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
     sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enable_debug = hybridse::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
@@ -156,7 +156,7 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enable_debug = hybridse::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IS_DEBUG();
     return NewClusterSQLRouter(sql_opt);
 }
 

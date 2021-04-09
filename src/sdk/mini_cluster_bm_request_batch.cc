@@ -26,10 +26,10 @@ DECLARE_bool(enable_localtablet);
     static void BM_BatchRequest_##NAME(benchmark::State& state) {              \
         auto sql_case = LoadSQLCaseWithID(PATH, CASE_ID);                      \
         sql_case.batch_request_optimized_ = state.range(0) == 1;               \
-        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {                            \
+        if (!hybridse::sqlcase::SqlCase::IS_DEBUG()) {                            \
             sql_case.SQLCaseRepeatConfig("window_scale", state.range(1));      \
         }                                                                      \
-        if (!hybridse::sqlcase::SQLCase::IS_DEBUG()) {                            \
+        if (!hybridse::sqlcase::SqlCase::IS_DEBUG()) {                            \
             sql_case.SQLCaseRepeatConfig("batch_scale", state.range(2));       \
         }                                                                      \
                                                                                \
@@ -53,13 +53,13 @@ DEFINE_BATCH_REQUEST_CASE(CommonWindow, DEFAULT_YAML_PATH, "1");
 
 int main(int argc, char** argv) {
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
-    FLAGS_enable_distsql = hybridse::sqlcase::SQLCase::IS_CLUSTER();
-    FLAGS_enable_localtablet = !hybridse::sqlcase::SQLCase::IS_DISABLE_LOCALTABLET();
+    FLAGS_enable_distsql = hybridse::sqlcase::SqlCase::IS_CLUSTER();
+    FLAGS_enable_localtablet = !hybridse::sqlcase::SqlCase::IS_DISABLE_LOCALTABLET();
     ::benchmark::Initialize(&argc, argv);
     if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
     ::fedb::sdk::MiniCluster mini_cluster(6181);
     mc = &mini_cluster;
-    if (!hybridse::sqlcase::SQLCase::IS_CLUSTER()) {
+    if (!hybridse::sqlcase::SqlCase::IS_CLUSTER()) {
         mini_cluster.SetUp(1);
     } else {
         mini_cluster.SetUp();

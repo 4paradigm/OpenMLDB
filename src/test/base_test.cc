@@ -44,13 +44,13 @@ std::string SQLCaseTest::GetYAMLBaseDir() {
     return yaml_base_dir;
 }
 
-std::vector<hybridse::sqlcase::SQLCase> SQLCaseTest::InitCases(const std::string &yaml_path) {
-    std::vector<hybridse::sqlcase::SQLCase> cases;
+std::vector<hybridse::sqlcase::SqlCase> SQLCaseTest::InitCases(const std::string &yaml_path) {
+    std::vector<hybridse::sqlcase::SqlCase> cases;
     InitCases(GetYAMLBaseDir(), yaml_path, cases);
-    std::vector<hybridse::sqlcase::SQLCase> level_cases;
+    std::vector<hybridse::sqlcase::SqlCase> level_cases;
 
     int skip_case_cnt = 0;
-    std::set<std::string> levels = hybridse::sqlcase::SQLCase::HYBRIDSE_LEVEL();
+    std::set<std::string> levels = hybridse::sqlcase::SqlCase::HYBRIDSE_LEVEL();
     for (const auto &sql_case : cases) {
         if (levels.find(std::to_string(sql_case.level())) != levels.cend()) {
             level_cases.push_back(sql_case);
@@ -64,8 +64,8 @@ std::vector<hybridse::sqlcase::SQLCase> SQLCaseTest::InitCases(const std::string
     return level_cases;
 }
 void SQLCaseTest::InitCases(const std::string &dir_path, const std::string &yaml_path,
-                            std::vector<hybridse::sqlcase::SQLCase> &cases) {  // NOLINT
-    if (!hybridse::sqlcase::SQLCase::CreateSQLCasesFromYaml(dir_path, yaml_path, cases)) {
+                            std::vector<hybridse::sqlcase::SqlCase> &cases) {  // NOLINT
+    if (!hybridse::sqlcase::SqlCase::CreateSQLCasesFromYaml(dir_path, yaml_path, cases)) {
         FAIL();
     }
 }
@@ -85,7 +85,7 @@ void SQLCaseTest::PrintSchema(const hybridse::vm::Schema &schema) {
     // Add ColumnType
     t.end_of_row();
     for (int i = 0; i < schema.size(); i++) {
-        t.add(hybridse::sqlcase::SQLCase::TypeString(schema.Get(i).type()));
+        t.add(hybridse::sqlcase::SqlCase::TypeString(schema.Get(i).type()));
         if (t.current_columns_size() >= MAX_DEBUG_COLUMN_CNT) {
             t.add("...");
             break;
@@ -466,7 +466,7 @@ void SQLCaseTest::CheckRows(const hybridse::vm::Schema &schema, const std::strin
     PrintRows(schema, rows);
     LOG(INFO) << "ResultSet Rows: \n";
     PrintResultSet(rs);
-    if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
+    if (hybridse::sqlcase::SqlCase::IS_DEBUG()) {
         PrintResultSetYamlFormat(rs);
     }
     LOG(INFO) << "order: " << order_col;
@@ -592,7 +592,7 @@ void SQLCaseTest::CheckRows(const hybridse::vm::Schema &schema, const std::strin
     PrintRows(schema, rows);
     LOG(INFO) << "ResultSet Rows: \n";
     PrintResultSet(results);
-    if (hybridse::sqlcase::SQLCase::IS_DEBUG()) {
+    if (hybridse::sqlcase::SqlCase::IS_DEBUG()) {
         PrintResultSetYamlFormat(results);
     }
     LOG(INFO) << "order col key: " << order_col;

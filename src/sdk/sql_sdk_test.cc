@@ -45,7 +45,7 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.session_timeout = 30000;
-    sql_opt.enable_debug = hybridse::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IS_DEBUG();
     return NewClusterSQLRouter(sql_opt);
 }
 
@@ -64,7 +64,7 @@ TEST_P(SQLSDKTest, sql_sdk_batch_test) {
     sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enable_debug = sql_case.debug() || hybridse::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = sql_case.debug() || hybridse::sqlcase::SqlCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
@@ -212,7 +212,7 @@ TEST_F(SQLSDKQueryTest, execute_where_test) {
     sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enable_debug = hybridse::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
@@ -288,7 +288,7 @@ TEST_F(SQLSDKQueryTest, execute_insert_loops_test) {
     sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enable_debug = hybridse::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
@@ -340,7 +340,7 @@ TEST_F(SQLSDKQueryTest, create_no_ts) {
     sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enable_debug = hybridse::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
@@ -381,7 +381,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.session_timeout = 30000;
-    sql_opt.enable_debug = hybridse::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
