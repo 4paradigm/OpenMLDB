@@ -41,19 +41,21 @@ jobs:
       uses: EnricoMi/publish-unit-test-result-action@v1
       if: always()
       with:
-        files: |
-          build/*.xml
+        files: build/*.xml
+        check_name: Cpp Test Report
+        comment_title: Cpp Test Report
 
     - name: Java SDK Test
       run: |
         cd java/
         mvn -U clean compile test
-        
+
     - name: Publish Java Unit Test Results
       uses: EnricoMi/publish-unit-test-result-action@v1
       if: always()
       with:
         files: java/hybridse-sdk/target/**/TEST-*.xml
+        check_name: Java Test Report
         comment_title: Java Test Report
 
     - name: Cleanup
