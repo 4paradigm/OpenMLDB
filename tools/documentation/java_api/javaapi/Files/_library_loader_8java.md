@@ -1,3 +1,27 @@
+---
+title: /Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/LibraryLoader.java
+
+---
+# /Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/LibraryLoader.java
+
+## Namespaces
+
+| Name           |
+| -------------- |
+| **[com::_4paradigm::hybridse](/hybridse/usage/api/c++/Namespaces/namespacecom_1_1__4paradigm_1_1hybridse.md)**  |
+
+## Classes
+
+|                | Name           |
+| -------------- | -------------- |
+| class | **[com::_4paradigm::hybridse::LibraryLoader](/hybridse/usage/api/c++/Classes/classcom_1_1__4paradigm_1_1hybridse_1_1_library_loader.md)** <br>This class is used to load the shared library from within the jar. The shared library is extracted to a temp folder and loaded from there.  |
+
+
+
+
+## Source code
+
+```cpp
 /*
  * Copyright 2021 4Paradigm
  *
@@ -26,19 +50,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 
-/**
- * @brief This class is used to load the shared library from within the jar.
- * The shared library is extracted to a temp folder and loaded from there.
- */
 public class LibraryLoader {
 
     private static final Logger logger = LoggerFactory.getLogger(LibraryLoader.class.getName());
 
-    /**
-     * Firstly attempts to load the native library specified by the libraryPath.
-     * If that fails then it falls back to extracting the library from the classpath.
-     * @param libraryPath
-     */
     synchronized public static void loadLibrary(String libraryPath) {
         logger.info("Try to load the library {}", libraryPath);
 
@@ -97,13 +112,6 @@ public class LibraryLoader {
         }
     }
 
-    /**
-     * Extract library in resource into filesystem
-     * @param path Local resource path
-     * @param isTemp If extract to template file
-     * @return
-     * @throws IOException
-     */
     public static String extractResource(String path, boolean isTemp) throws IOException {
         InputStream inputStream = LibraryLoader.class.getClassLoader().getResourceAsStream(path);
         if (inputStream != null) {
@@ -134,3 +142,7 @@ public class LibraryLoader {
     }
 
 }
+```
+
+
+

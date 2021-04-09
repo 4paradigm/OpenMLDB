@@ -1,0 +1,426 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.20" xml:lang="en-US">
+  <compounddef id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine" kind="class" language="Java" prot="public">
+    <compoundname>com::_4paradigm::hybridse::sdk::DDLEngine</compoundname>
+      <sectiondef kind="private-static-attrib">
+      <memberdef kind="variable" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a728eba9c608ed7dda7f990357d54c6e9" prot="private" static="yes" mutable="no">
+        <type>final Logger</type>
+        <definition>final Logger com._4paradigm.hybridse.sdk.DDLEngine.logger</definition>
+        <argsstring></argsstring>
+        <name>logger</name>
+        <initializer>= LoggerFactory.getLogger(DDLEngine.class)</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="42" column="33" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="42" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-attrib">
+      <memberdef kind="variable" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1ad9cdcd0aea4a57b955f99b5ea05cfd7f" prot="public" static="yes" mutable="no">
+        <type>String</type>
+        <definition>String com._4paradigm.hybridse.sdk.DDLEngine.SQLTableName</definition>
+        <argsstring></argsstring>
+        <name>SQLTableName</name>
+        <initializer>= &quot;sql_table&quot;</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="44" column="26" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="44" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="package-static-func">
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1afa8c283e74f783491a50435dbade1407" prot="package" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>com._4paradigm.hybridse.sdk.DDLEngine.[static initializer]</definition>
+        <argsstring></argsstring>
+        <name>[static initializer]</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="35" column="1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1ab4fb8d87534b27c6ab1271ea0f66163a" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>int</type>
+        <definition>static int com._4paradigm.hybridse.sdk.DDLEngine.resolveColumnIndex</definition>
+        <argsstring>(ExprNode expr, PhysicalOpNode planNode)</argsstring>
+        <name>resolveColumnIndex</name>
+        <param>
+          <type>ExprNode</type>
+          <declname>expr</declname>
+        </param>
+        <param>
+          <type>PhysicalOpNode</type>
+          <declname>planNode</declname>
+        </param>
+        <exceptions> throws HybridSeException </exceptions>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="46" column="23" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="46" bodyend="56"/>
+      </memberdef>
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a928b9fa19b5ace19ac1953f8874a0e30" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>String</type>
+        <definition>static String com._4paradigm.hybridse.sdk.DDLEngine.genDDL</definition>
+        <argsstring>(String sql, String schema, int replicanum, int partitionnum)</argsstring>
+        <name>genDDL</name>
+        <param>
+          <type>String</type>
+          <declname>sql</declname>
+        </param>
+        <param>
+          <type>String</type>
+          <declname>schema</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>replicanum</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>partitionnum</declname>
+        </param>
+        <exceptions> throws Exception </exceptions>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="58" column="26" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="58" bodyend="89"/>
+      </memberdef>
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1adaee843a9a0dc2a5adb4514ce7060543" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>String</type>
+        <definition>static String com._4paradigm.hybridse.sdk.DDLEngine.genDDL</definition>
+        <argsstring>(String sql, String schema)</argsstring>
+        <name>genDDL</name>
+        <param>
+          <type>String</type>
+          <declname>sql</declname>
+        </param>
+        <param>
+          <type>String</type>
+          <declname>schema</declname>
+        </param>
+        <exceptions> throws Exception </exceptions>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>sql</parametername>
+</parameternamelist>
+<parameterdescription>
+<para></para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>schema</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>json format </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para></para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="97" column="26" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="97" bodyend="126"/>
+      </memberdef>
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a13f5d077bacaa403fa5524e286eb432f" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>static void com._4paradigm.hybridse.sdk.DDLEngine.parseWindowOp</definition>
+        <argsstring>(PhysicalOpNode node, Map&lt; String, RtidbTable &gt; rtidbTables)</argsstring>
+        <name>parseWindowOp</name>
+        <param>
+          <type>PhysicalOpNode</type>
+          <declname>node</declname>
+        </param>
+        <param>
+          <type>Map&lt; String, <ref refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_table" kindref="compound">RtidbTable</ref> &gt;</type>
+          <declname>rtidbTables</declname>
+        </param>
+        <briefdescription>
+<para>只对window op做解析，因为fesql node类型太多了，暂时没办法做通用性解析 </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="131" column="24" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="131" bodyend="193"/>
+      </memberdef>
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1aa191ce9d0781167ec5685a79389d67a8" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>static void com._4paradigm.hybridse.sdk.DDLEngine.parseLastJoinOp</definition>
+        <argsstring>(PhysicalOpNode node, Map&lt; String, RtidbTable &gt; rtidbTables)</argsstring>
+        <name>parseLastJoinOp</name>
+        <param>
+          <type>PhysicalOpNode</type>
+          <declname>node</declname>
+        </param>
+        <param>
+          <type>Map&lt; String, <ref refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_table" kindref="compound">RtidbTable</ref> &gt;</type>
+          <declname>rtidbTables</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="195" column="24" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="195" bodyend="233"/>
+      </memberdef>
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a69dd0a01946927d39e28167b1e19a2b2" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>Map&lt; String, <ref refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_table" kindref="compound">RtidbTable</ref> &gt;</type>
+        <definition>static Map&lt;String, RtidbTable&gt; com._4paradigm.hybridse.sdk.DDLEngine.parseRtidbIndex</definition>
+        <argsstring>(List&lt; PhysicalOpNode &gt; nodes, Map&lt; String, TypeOuterClass.TableDef &gt; tableDefMap)</argsstring>
+        <name>parseRtidbIndex</name>
+        <param>
+          <type>List&lt; PhysicalOpNode &gt;</type>
+          <declname>nodes</declname>
+        </param>
+        <param>
+          <type>Map&lt; String, TypeOuterClass.TableDef &gt;</type>
+          <declname>tableDefMap</declname>
+        </param>
+        <exceptions> throws HybridSeException </exceptions>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="235" column="23" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="235" bodyend="274"/>
+      </memberdef>
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a70fff5aec6cfef912806f39d9261a100" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>PhysicalDataProviderNode</type>
+        <definition>static PhysicalDataProviderNode com._4paradigm.hybridse.sdk.DDLEngine.findDataProviderNode</definition>
+        <argsstring>(PhysicalOpNode node)</argsstring>
+        <name>findDataProviderNode</name>
+        <param>
+          <type>PhysicalOpNode</type>
+          <declname>node</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="276" column="44" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="276" bodyend="288"/>
+      </memberdef>
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1ae23af6a5255569321213b17656653b26" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>static void com._4paradigm.hybridse.sdk.DDLEngine.dagToList</definition>
+        <argsstring>(PhysicalOpNode node, List&lt; PhysicalOpNode &gt; list)</argsstring>
+        <name>dagToList</name>
+        <param>
+          <type>PhysicalOpNode</type>
+          <declname>node</declname>
+        </param>
+        <param>
+          <type>List&lt; PhysicalOpNode &gt;</type>
+          <declname>list</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="290" column="24" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="290" bodyend="304"/>
+      </memberdef>
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1afc12baf102927576dd8d6502a8044368" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>TypeOuterClass.Type</type>
+        <definition>static TypeOuterClass.Type com._4paradigm.hybridse.sdk.DDLEngine.getFesqlType</definition>
+        <argsstring>(String type)</argsstring>
+        <name>getFesqlType</name>
+        <param>
+          <type>String</type>
+          <declname>type</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="306" column="38" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="306" bodyend="336"/>
+      </memberdef>
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a697aa9167f1821d1f4587d6eabbf5c0d" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>String</type>
+        <definition>static String com._4paradigm.hybridse.sdk.DDLEngine.getDDLType</definition>
+        <argsstring>(TypeOuterClass.Type type)</argsstring>
+        <name>getDDLType</name>
+        <param>
+          <type>TypeOuterClass.Type</type>
+          <declname>type</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="338" column="26" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="338" bodyend="368"/>
+      </memberdef>
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1ad23e8800f81282d28abefaed6bd091c2" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>String</type>
+        <definition>static String com._4paradigm.hybridse.sdk.DDLEngine.getRtidbIndexType</definition>
+        <argsstring>(TTLType type)</argsstring>
+        <name>getRtidbIndexType</name>
+        <param>
+          <type><ref refid="enumcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_t_t_l_type" kindref="compound">TTLType</ref></type>
+          <declname>type</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="370" column="26" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="370" bodyend="385"/>
+      </memberdef>
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a956eca267bb742c7c3c14831ef8848d3" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>List&lt; TypeOuterClass.TableDef &gt;</type>
+        <definition>static List&lt;TypeOuterClass.TableDef&gt; com._4paradigm.hybridse.sdk.DDLEngine.getTableDefs</definition>
+        <argsstring>(String jsonObject)</argsstring>
+        <name>getTableDefs</name>
+        <param>
+          <type>String</type>
+          <declname>jsonObject</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="387" column="24" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="387" bodyend="404"/>
+      </memberdef>
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1af0520b443d6e5c0f5d7e5ee6979b6ede" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>List&lt; String &gt;</type>
+        <definition>static List&lt;String&gt; com._4paradigm.hybridse.sdk.DDLEngine.addEscapeChar</definition>
+        <argsstring>(List&lt; String &gt; list, String singleChar)</argsstring>
+        <name>addEscapeChar</name>
+        <param>
+          <type>List&lt; String &gt;</type>
+          <declname>list</declname>
+        </param>
+        <param>
+          <type>String</type>
+          <declname>singleChar</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="406" column="24" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="406" bodyend="413"/>
+      </memberdef>
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a4f9bb9ab1060d181b990b66651e36836" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>String</type>
+        <definition>static String com._4paradigm.hybridse.sdk.DDLEngine.sql2Feconfig</definition>
+        <argsstring>(String sql, String schema)</argsstring>
+        <name>sql2Feconfig</name>
+        <param>
+          <type>String</type>
+          <declname>sql</declname>
+        </param>
+        <param>
+          <type>String</type>
+          <declname>schema</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="415" column="26" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="415" bodyend="434"/>
+      </memberdef>
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a889630ba6f7bca979ae2cb4cac300a8b" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>String</type>
+        <definition>static String com._4paradigm.hybridse.sdk.DDLEngine.sql2Feconfig</definition>
+        <argsstring>(String sql, TypeOuterClass.Database db)</argsstring>
+        <name>sql2Feconfig</name>
+        <param>
+          <type>String</type>
+          <declname>sql</declname>
+        </param>
+        <param>
+          <type>TypeOuterClass.Database</type>
+          <declname>db</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="436" column="26" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="436" bodyend="450"/>
+      </memberdef>
+      <memberdef kind="function" id="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1acc4d1edde33039f476925b1868c24814" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>String</type>
+        <definition>static String com._4paradigm.hybridse.sdk.DDLEngine.parseOpSchema</definition>
+        <argsstring>(PhysicalOpNode plan)</argsstring>
+        <name>parseOpSchema</name>
+        <param>
+          <type>PhysicalOpNode</type>
+          <declname>plan</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="452" column="26" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="452" bodyend="468"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" line="35" column="7" bodyfile="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/DDLEngine.java" bodystart="35" bodyend="469"/>
+    <listofallmembers>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1afa8c283e74f783491a50435dbade1407" prot="package" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>[static initializer]</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1af0520b443d6e5c0f5d7e5ee6979b6ede" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>addEscapeChar</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1ae23af6a5255569321213b17656653b26" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>dagToList</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a70fff5aec6cfef912806f39d9261a100" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>findDataProviderNode</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a928b9fa19b5ace19ac1953f8874a0e30" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>genDDL</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1adaee843a9a0dc2a5adb4514ce7060543" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>genDDL</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a697aa9167f1821d1f4587d6eabbf5c0d" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>getDDLType</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1afc12baf102927576dd8d6502a8044368" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>getFesqlType</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1ad23e8800f81282d28abefaed6bd091c2" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>getRtidbIndexType</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a956eca267bb742c7c3c14831ef8848d3" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>getTableDefs</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a728eba9c608ed7dda7f990357d54c6e9" prot="private" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>logger</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1aa191ce9d0781167ec5685a79389d67a8" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>parseLastJoinOp</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1acc4d1edde33039f476925b1868c24814" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>parseOpSchema</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a69dd0a01946927d39e28167b1e19a2b2" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>parseRtidbIndex</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a13f5d077bacaa403fa5524e286eb432f" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>parseWindowOp</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1ab4fb8d87534b27c6ab1271ea0f66163a" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>resolveColumnIndex</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a4f9bb9ab1060d181b990b66651e36836" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>sql2Feconfig</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a889630ba6f7bca979ae2cb4cac300a8b" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>sql2Feconfig</name></member>
+      <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1ad9cdcd0aea4a57b955f99b5ea05cfd7f" prot="public" virt="non-virtual"><scope>com::_4paradigm::hybridse::sdk::DDLEngine</scope><name>SQLTableName</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

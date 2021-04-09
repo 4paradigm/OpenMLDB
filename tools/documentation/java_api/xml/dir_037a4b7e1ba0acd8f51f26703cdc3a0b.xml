@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.20" xml:lang="en-US">
+  <compounddef id="dir_037a4b7e1ba0acd8f51f26703cdc3a0b" kind="dir">
+    <compoundname>/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src</compoundname>
+    <innerdir refid="dir_90f9d588602c93d08d39a856227ff788">/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main</innerdir>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/"/>
+  </compounddef>
+</doxygen>

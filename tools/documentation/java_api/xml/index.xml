@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygenindex xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="index.xsd" version="1.8.20" xml:lang="en-US">
+  <compound refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine" kind="class"><name>com::_4paradigm::hybridse::sdk::DDLEngine</name>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a728eba9c608ed7dda7f990357d54c6e9" kind="variable"><name>logger</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1ad9cdcd0aea4a57b955f99b5ea05cfd7f" kind="variable"><name>SQLTableName</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1afa8c283e74f783491a50435dbade1407" kind="function"><name>[static initializer]</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1ab4fb8d87534b27c6ab1271ea0f66163a" kind="function"><name>resolveColumnIndex</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a928b9fa19b5ace19ac1953f8874a0e30" kind="function"><name>genDDL</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1adaee843a9a0dc2a5adb4514ce7060543" kind="function"><name>genDDL</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a13f5d077bacaa403fa5524e286eb432f" kind="function"><name>parseWindowOp</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1aa191ce9d0781167ec5685a79389d67a8" kind="function"><name>parseLastJoinOp</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a69dd0a01946927d39e28167b1e19a2b2" kind="function"><name>parseRtidbIndex</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a70fff5aec6cfef912806f39d9261a100" kind="function"><name>findDataProviderNode</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1ae23af6a5255569321213b17656653b26" kind="function"><name>dagToList</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1afc12baf102927576dd8d6502a8044368" kind="function"><name>getFesqlType</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a697aa9167f1821d1f4587d6eabbf5c0d" kind="function"><name>getDDLType</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1ad23e8800f81282d28abefaed6bd091c2" kind="function"><name>getRtidbIndexType</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a956eca267bb742c7c3c14831ef8848d3" kind="function"><name>getTableDefs</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1af0520b443d6e5c0f5d7e5ee6979b6ede" kind="function"><name>addEscapeChar</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a4f9bb9ab1060d181b990b66651e36836" kind="function"><name>sql2Feconfig</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1a889630ba6f7bca979ae2cb4cac300a8b" kind="function"><name>sql2Feconfig</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_d_d_l_engine_1acc4d1edde33039f476925b1868c24814" kind="function"><name>parseOpSchema</name></member>
+  </compound>
+  <compound refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_pair" kind="class"><name>com::_4paradigm::hybridse::sdk::Pair</name>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_pair_1a0116943da24f82eddcc1d0146b1dfeba" kind="variable"><name>name</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_pair_1a8c9e4ce9fe88d539b66da7ddef6a9ba9" kind="variable"><name>type</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_pair_1ace7bd04e47770635b2d501302317960f" kind="function"><name>Pair</name></member>
+  </compound>
+  <compound refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_index" kind="class"><name>com::_4paradigm::hybridse::sdk::RtidbIndex</name>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_index_1a35315a8eb6dc26cde40cc21ac8801779" kind="variable"><name>keys</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_index_1ae722a58ad504e488904816af04d322fd" kind="variable"><name>ts</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_index_1aab533ae96ed9f1cc5af1cf051895c603" kind="variable"><name>type</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_index_1ab90e0a685ec457aa28aa0d4b230408da" kind="variable"><name>atmost</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_index_1a14390501e08be9fb6db1aeb0236fb5b6" kind="variable"><name>expire</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_index_1a75587cb2d5e449b9adf61f63bd2bcd22" kind="function"><name>toIndexString</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_index_1a0333a3c0c732603161dade098b365bac" kind="function"><name>getTTL</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_index_1a52331f9ab8d99d14067fc451a8b303e9" kind="function"><name>equals</name></member>
+  </compound>
+  <compound refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_table" kind="class"><name>com::_4paradigm::hybridse::sdk::RtidbTable</name>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_table_1a0c40aca602ce22bf821b6ed34ce52a40" kind="variable"><name>tableName</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_table_1a2949b4a635f37c7aa98a51bc9a1a8ae1" kind="variable"><name>schema</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_table_1ac8ca65e5bfb31482872b018f72fd6cc9" kind="variable"><name>indexs</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_table_1a978ec2f681fd0a2f4e73446959fadddd" kind="function"><name>addIndex</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_table_1a8739c500b3c902964f3eaa18f2f2e9f9" kind="function"><name>expandDDL</name></member>
+    <member refid="classcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_rtidb_table_1a9dc878ce7978ade0955eb5087126df8c" kind="function"><name>toDDL</name></member>
+  </compound>
+  <compound refid="enumcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_t_t_l_type" kind="enum"><name>com::_4paradigm::hybridse::sdk::TTLType</name>
+    <member refid="enumcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_t_t_l_type_1a783e2549ad2a2bede19518732ff4186b" kind="variable"><name>kAbsolute</name></member>
+    <member refid="enumcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_t_t_l_type_1a0c6a8d4ffb0e9ad7b01a04264d68edfc" kind="variable"><name>kLatest</name></member>
+    <member refid="enumcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_t_t_l_type_1a58f94d157437fbf5ca853b60a835f8d6" kind="variable"><name>kAbsOrLat</name></member>
+    <member refid="enumcom_1_1__4paradigm_1_1hybridse_1_1sdk_1_1_t_t_l_type_1ab788967108e39e7ebe7b3b38df038c7a" kind="variable"><name>kAbsAndLat</name></member>
+  </compound>
+  <compound refid="namespacecom" kind="namespace"><name>com</name>
+  </compound>
+  <compound refid="namespacecom_1_1__4paradigm" kind="namespace"><name>com::_4paradigm</name>
+  </compound>
+  <compound refid="namespacecom_1_1__4paradigm_1_1hybridse" kind="namespace"><name>com::_4paradigm::hybridse</name>
+  </compound>
+  <compound refid="namespacecom_1_1__4paradigm_1_1hybridse_1_1sdk" kind="namespace"><name>com::_4paradigm::hybridse::sdk</name>
+  </compound>
+  <compound refid="namespacecom_1_1__4paradigm_1_1hybridse_1_1vm" kind="namespace"><name>com::_4paradigm::hybridse::vm</name>
+  </compound>
+  <compound refid="namespacejava_1_1util" kind="namespace"><name>java::util</name>
+  </compound>
+  <compound refid="_d_d_l_engine_8java" kind="file"><name>DDLEngine.java</name>
+  </compound>
+  <compound refid="dir_84a13101a90c7974c2bb1d2b51078f9b" kind="dir"><name>/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm</name>
+  </compound>
+  <compound refid="dir_39223e622a80f484b6961b1058e3bbf8" kind="dir"><name>/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com</name>
+  </compound>
+  <compound refid="dir_683a90d6cb2f6f701e6e8e20a0959286" kind="dir"><name>/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse</name>
+  </compound>
+  <compound refid="dir_717e05452f1c9871e0b17f654b19cab1" kind="dir"><name>/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk</name>
+  </compound>
+  <compound refid="dir_93c6ba7fb77bae0709fae89c9c13b44a" kind="dir"><name>/Users/chenjing/work/4paradigm/HybridSE/java</name>
+  </compound>
+  <compound refid="dir_ead5c6e3fb627d0db82d8f93609e5fd3" kind="dir"><name>/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java</name>
+  </compound>
+  <compound refid="dir_90f9d588602c93d08d39a856227ff788" kind="dir"><name>/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main</name>
+  </compound>
+  <compound refid="dir_e1403ed4da531ab49eb73f6b381dbb91" kind="dir"><name>/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk</name>
+  </compound>
+  <compound refid="dir_037a4b7e1ba0acd8f51f26703cdc3a0b" kind="dir"><name>/Users/chenjing/work/4paradigm/HybridSE/java/hybridse-sdk/src</name>
+  </compound>
+</doxygenindex>
