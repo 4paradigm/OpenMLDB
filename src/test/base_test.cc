@@ -65,7 +65,7 @@ std::vector<hybridse::sqlcase::SqlCase> SQLCaseTest::InitCases(const std::string
 }
 void SQLCaseTest::InitCases(const std::string &dir_path, const std::string &yaml_path,
                             std::vector<hybridse::sqlcase::SqlCase> &cases) {  // NOLINT
-    if (!hybridse::sqlcase::SqlCase::CreateSQLCasesFromYaml(dir_path, yaml_path, cases)) {
+    if (!hybridse::sqlcase::SqlCase::CreateSqlCasesFromYaml(dir_path, yaml_path, cases)) {
         FAIL();
     }
 }
@@ -466,7 +466,7 @@ void SQLCaseTest::CheckRows(const hybridse::vm::Schema &schema, const std::strin
     PrintRows(schema, rows);
     LOG(INFO) << "ResultSet Rows: \n";
     PrintResultSet(rs);
-    if (hybridse::sqlcase::SqlCase::IS_DEBUG()) {
+    if (hybridse::sqlcase::SqlCase::IsDebug()) {
         PrintResultSetYamlFormat(rs);
     }
     LOG(INFO) << "order: " << order_col;
@@ -592,7 +592,7 @@ void SQLCaseTest::CheckRows(const hybridse::vm::Schema &schema, const std::strin
     PrintRows(schema, rows);
     LOG(INFO) << "ResultSet Rows: \n";
     PrintResultSet(results);
-    if (hybridse::sqlcase::SqlCase::IS_DEBUG()) {
+    if (hybridse::sqlcase::SqlCase::IsDebug()) {
         PrintResultSetYamlFormat(results);
     }
     LOG(INFO) << "order col key: " << order_col;

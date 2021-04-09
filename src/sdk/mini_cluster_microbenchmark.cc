@@ -118,7 +118,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     if (!router) return;
     for (auto _ : state) {
         benchmark::DoNotOptimize(router->ExecuteSQL(db, sql, &status));
-        if (hybridse::sqlcase::SqlCase::IS_DEBUG()) {
+        if (hybridse::sqlcase::SqlCase::IsDebug()) {
             state.SkipWithError("benchmark case debug");
             break;
         }
@@ -300,7 +300,7 @@ static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
     for (auto _ : state) {
         for (uint64_t i = 0; i < sample.size(); ++i) {
             benchmark::DoNotOptimize(router->ExecuteInsert(db, sample[i], &status));
-            if (hybridse::sqlcase::SqlCase::IS_DEBUG()) {
+            if (hybridse::sqlcase::SqlCase::IsDebug()) {
                 state.SkipWithError("benchmark case debug");
                 break;
             }
@@ -347,7 +347,7 @@ static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
             } else {
                 std::cout << "get insert row failed" << std::endl;
             }
-            if (hybridse::sqlcase::SqlCase::IS_DEBUG()) {
+            if (hybridse::sqlcase::SqlCase::IsDebug()) {
                 state.SkipWithError("benchmark case debug");
                 break;
             }
@@ -396,7 +396,7 @@ static void BM_InsertPlaceHolderBatchFunction(benchmark::State& state) {  // NOL
         } else {
             std::cout << "get insert row failed" << std::endl;
         }
-        if (hybridse::sqlcase::SqlCase::IS_DEBUG()) {
+        if (hybridse::sqlcase::SqlCase::IsDebug()) {
             state.SkipWithError("benchmark case debug");
             break;
         }
@@ -407,7 +407,7 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
-    if (hybridse::sqlcase::SqlCase::IS_DEBUG()) {
+    if (hybridse::sqlcase::SqlCase::IsDebug()) {
         sql_opt.enable_debug = true;
     } else {
         sql_opt.enable_debug = false;
@@ -472,7 +472,7 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
         router->ExecuteSQL(db, exe_sql, request_row, &status);
     }
     LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
-    if (hybridse::sqlcase::SqlCase::IS_DEBUG() || hybridse::sqlcase::SqlCase::IS_PERF()) {
+    if (hybridse::sqlcase::SqlCase::IsDebug() || hybridse::sqlcase::SqlCase::IS_PERF()) {
         for (auto _ : state) {
             router->ExecuteSQL(db, exe_sql, request_row, &status);
             state.SkipWithError("benchmark case debug");
@@ -488,7 +488,7 @@ static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
     ::fedb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
-    if (hybridse::sqlcase::SqlCase::IS_DEBUG()) {
+    if (hybridse::sqlcase::SqlCase::IsDebug()) {
         sql_opt.enable_debug = true;
     } else {
         sql_opt.enable_debug = false;
@@ -563,7 +563,7 @@ static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
         router->ExecuteSQL(db, exe_sql, request_row, &status);
     }
     LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
-    if (hybridse::sqlcase::SqlCase::IS_DEBUG() || hybridse::sqlcase::SqlCase::IS_PERF()) {
+    if (hybridse::sqlcase::SqlCase::IsDebug() || hybridse::sqlcase::SqlCase::IS_PERF()) {
         for (auto _ : state) {
             router->ExecuteSQL(db, exe_sql, request_row, &status);
             state.SkipWithError("benchmark case debug");
@@ -903,13 +903,13 @@ BENCHMARK(BM_SimpleTableReaderAsyncMulti)
 
 int main(int argc, char** argv) {
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
-    FLAGS_enable_distsql = hybridse::sqlcase::SqlCase::IS_CLUSTER();
-    FLAGS_enable_localtablet = !hybridse::sqlcase::SqlCase::IS_DISABLE_LOCALTABLET();
+    FLAGS_enable_distsql = hybridse::sqlcase::SqlCase::IsCluster();
+    FLAGS_enable_localtablet = !hybridse::sqlcase::SqlCase::IsDisableLocalTablet();
     ::benchmark::Initialize(&argc, argv);
     if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
     ::fedb::sdk::MiniCluster mini_cluster(6181);
     mc = &mini_cluster;
-    if (!hybridse::sqlcase::SqlCase::IS_CLUSTER()) {
+    if (!hybridse::sqlcase::SqlCase::IsCluster()) {
         mini_cluster.SetUp(1);
     } else {
         mini_cluster.SetUp();

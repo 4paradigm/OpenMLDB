@@ -547,7 +547,7 @@ void HandleSQL(const std::string &sql) {
         std::cout << sql_status.msg << std::endl;
         return;
     }
-    hybridse::node::SQLNode *node = parser_trees[0];
+    hybridse::node::SqlNode *node = parser_trees[0];
     switch (node->GetType()) {
         case hybridse::node::kCmdStmt: {
             hybridse::node::CmdNode *cmd =

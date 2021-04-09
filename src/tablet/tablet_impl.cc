@@ -1873,7 +1873,7 @@ void TabletImpl::ProcessQuery(RpcController* ctrl,
             }
             RunRequestQuery(ctrl, *request, session, *response, *buf);
         }
-        const std::string& sql = session.GetCompileInfo()->GetSQL();
+        const std::string& sql = session.GetCompileInfo()->GetSql();
         if (response->code() != ::fedb::base::kOk) {
             DLOG(WARNING) << "fail to run sql " << sql << " error msg: " << response->msg();
         } else {

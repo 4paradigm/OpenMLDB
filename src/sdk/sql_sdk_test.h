@@ -151,7 +151,7 @@ void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
         }
         // create table
         std::string create;
-        ASSERT_TRUE(sql_case.BuildCreateSQLFromInput(i, &create, partition_num));
+        ASSERT_TRUE(sql_case.BuildCreateSqlFromInput(i, &create, partition_num));
         std::string placeholder = "{" + std::to_string(i) + "}";
         boost::replace_all(create, placeholder, sql_case.inputs()[i].name_);
         LOG(INFO) << create;
@@ -201,10 +201,10 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     std::string create_sp;
     if (is_batch) {
         ASSERT_TRUE(
-            sql_case.BuildCreateSpSQLFromInput(0, sql, sql_case.batch_request().common_column_indices_, &create_sp));
+            sql_case.BuildCreateSpSqlFromInput(0, sql, sql_case.batch_request().common_column_indices_, &create_sp));
     } else {
         std::set<size_t> common_idx;
-        ASSERT_TRUE(sql_case.BuildCreateSpSQLFromInput(0, sql, common_idx, &create_sp));
+        ASSERT_TRUE(sql_case.BuildCreateSpSqlFromInput(0, sql, common_idx, &create_sp));
     }
 
     for (size_t i = 0; i < sql_case.inputs_.size(); i++) {
@@ -271,7 +271,7 @@ void SQLSDKTest::InsertTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
 
         // insert into table
         std::vector<std::string> inserts;
-        ASSERT_TRUE(sql_case.BuildInsertSQLListFromInput(i, &inserts));
+        ASSERT_TRUE(sql_case.BuildInsertSqlListFromInput(i, &inserts));
         for (size_t row_idx = 0; row_idx < inserts.size(); row_idx++) {
             if (0 == i && row_idx == inserts.size() - 1 && kNotInsertLastRowOfFirstInput == insert_rule) {
                 continue;
@@ -455,7 +455,7 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
         if (!has_batch_request) {
             ASSERT_TRUE(sql_case.ExtractInputTableDef(insert_table, 0));
             ASSERT_TRUE(sql_case.ExtractInputData(insert_rows, 0));
-            sql_case.BuildInsertSQLListFromInput(0, &inserts);
+            sql_case.BuildInsertSqlListFromInput(0, &inserts);
         } else {
             ASSERT_TRUE(sql_case.ExtractInputTableDef(sql_case.batch_request_, insert_table));
             ASSERT_TRUE(sql_case.ExtractInputData(sql_case.batch_request_, insert_rows));
