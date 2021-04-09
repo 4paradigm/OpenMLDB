@@ -46,12 +46,12 @@ class EngineOptions {
  public:
     EngineOptions();
 
-    /// Set if support to store ir results into SqlContext.
+    /// Set `true` to enable storing ir results into SqlContext, default `false`.
     inline void set_keep_ir(bool flag) { this->keep_ir_ = flag; }
     /// Return if support to store ir results into SqlContext.
     inline bool is_keep_ir() const { return this->keep_ir_; }
 
-    /// Set if only support to compile SQL.
+    /// Set `true` if only support to compile SQL, default `false`
     ///
     /// If set `true`, the engine won't generate runner plan as well.
     inline void set_compile_only(bool flag) { this->compile_only_ = flag; }
@@ -59,33 +59,25 @@ class EngineOptions {
     inline bool is_compile_only() const { return compile_only_; }
 
 
-    /// Set if the engine only generate physical plan.
+    /// Set `true` if the engine only generate physical plan, default `false`.
     ///
     /// If set `true`, the engine won't build llvm jit.
     inline void set_plan_only(bool flag) { plan_only_ = flag; }
-    ///
+    /// Return `true` if the engine only generate physical plan.
     inline bool is_plan_only() const { return plan_only_; }
 
-    /// Return the maximum number of entries we can hold for compiling cache.
-    inline uint32_t max_sql_cache_size() const { return max_sql_cache_size_; }
-
-    /// Set the maxinum number of cache entries.
-    inline void set_max_sql_cache_size(uint32_t size) {
-        max_sql_cache_size_ = size;
-    }
-
-    /// Set if the engine is performance sensitive.
+    /// Set `true` if the engine is performance sensitive, default `true`.
     ///
     /// Normally, the engine can support more abilities under performance un-sensitive mode.
     inline void set_performance_sensitive(bool flag) {
         performance_sensitive_ = flag;
     }
-    /// Return if the engine is performance sensitive.
+    /// Return `true` if the engine is performance sensitive.
     inline bool is_performance_sensitive() const {
         return performance_sensitive_;
     }
 
-    /// Set if the engine support cluster optimization.
+    /// Set `true` to enable cluster optimization, default `false`
     inline EngineOptions* set_cluster_optimized(bool flag) {
         cluster_optimized_ = flag;
         return this;
@@ -93,7 +85,7 @@ class EngineOptions {
     /// Return if the engine support cluster optimization.
     inline bool is_cluster_optimzied() const { return cluster_optimized_; }
 
-    /// Set if the engine supoort batch request optimization.
+    /// Set `true` to enable batch request optimization, default `true`.
     inline EngineOptions* set_batch_request_optimized(bool flag) {
         batch_request_optimized_ = flag;
         return this;
@@ -101,8 +93,7 @@ class EngineOptions {
     /// Return if the engine support batch request optimization.
     inline bool is_batch_request_optimized() const { return batch_request_optimized_; }
 
-
-    /// Set if the engine can support expression optimization.
+    /// Set `true` to enable expression optimization, default `true`.
     inline EngineOptions* set_enable_expr_optimize(bool flag) {
         enable_expr_optimize_ = flag;
         return this;
@@ -110,8 +101,7 @@ class EngineOptions {
     /// Return if the engine support expression optimization
     inline bool is_enable_expr_optimize() const { return enable_expr_optimize_; }
 
-
-    /// Set if the engine can support batch window parallelization.
+    /// Set `true` to enable batch window parallelization, default `false`.
     inline EngineOptions* set_enable_batch_window_parallelization(bool flag) {
         enable_batch_window_parallelization_ = flag;
         return this;
@@ -121,7 +111,14 @@ class EngineOptions {
         return enable_batch_window_parallelization_;
     }
 
-    /// Set if the engine can support spark unsafe row format.
+    /// Set the maximum number of cache entries, default is `50`.
+    inline void set_max_sql_cache_size(uint32_t size) {
+        max_sql_cache_size_ = size;
+    }
+    /// Return the maximum number of entries we can hold for compiling cache.
+    inline uint32_t max_sql_cache_size() const { return max_sql_cache_size_; }
+
+    /// Set `true` to enable spark unsafe row format, default `false`.
     inline EngineOptions* set_enable_spark_unsaferow_format(bool flag);
     /// Return if the engine can support can support spark unsafe row format.
     inline bool is_enable_spark_unsaferow_format() const {

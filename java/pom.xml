@@ -7,7 +7,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com._4paradigm.hybridse</groupId>
     <artifactId>hybridse-java</artifactId>
-    <version>0.1.1-SNAPSHOT</version>
+    <version>0.1.1</version>
     <modules>
         <module>hybridse-sdk</module>
         <module>hybridse-native</module>
