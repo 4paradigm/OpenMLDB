@@ -4,7 +4,7 @@
 - [**Discussions**](https://github.com/4paradigm/HybridSE/discussions)
 - [English README](README.md)
 
-# 什么是 HybridSE
+# 介绍
 
 HybridSE(Hybrid SQL Engine)是基于C++和LLVM实现的高性能混合SQL执行引擎，为AI应用、OLAD数据库、HTAP系统、SparkSQL、Flink Streaming SQL等提供一致性的SQL加速优化。
 
@@ -69,7 +69,7 @@ cmake ..  -DCMAKE_INSTALL_PREFIX="CONFIG_YOUR_HYRBIDSE_INSTALL_DIR"
 make -j$(nproc) install
 ```
 
-更详细的编译和安装配置可参见文档：[快速开始HybridSE](https://github.com/4paradigm/HybridSQL-docs/blob/feat/hybridse-quick-start-doc/hybridse/usage/quick_start.md) 
+更详细的编译和安装配置可参见文档：[快速开始HybridSE](https://github.com/4paradigm/HybridSQL-docs/blob/feat/hybridse-quick-start-doc/hybridse/usage/quick_start.md)
 
 ## 测试
 

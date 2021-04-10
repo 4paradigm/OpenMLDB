@@ -37,3 +37,5 @@ java/hybridse-spark/src/test/resources/fesql_windows
 tools/documentation/api_doxygen/html
 tools/documentation/api_doxygen/xml
 tools/documentation/api_doxygen/c++
+SUMMARY.md
+doxybook2.sh

@@ -76,13 +76,13 @@ make -j$(nproc) hybridse_core # install coreutils if nproc not found in mac
 ## Install
 
 ```bash
-cd /Hybridse
+cd /HybridSE
 mkdir -p build && cd build
 cmake ..  -DCMAKE_INSTALL_PREFIX="CONFIG_YOUR_HYRBIDSE_INSTALL_DIR"
 make -j$(nproc) install
 ```
 
-checkout [HybridSE Quick start](https://github.com/4paradigm/HybridSQL-docs/blob/feat/hybridse-quick-start-doc/hybridse/usage/quick_start.md) for more information
+checkout [HybridSE Quick start](https://github.com/4paradigm/HybridSQL-docs/blob/main/hybridse/usage/quick_start.md) for more information
 
 ## Run tests
 

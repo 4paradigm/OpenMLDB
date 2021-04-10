@@ -96,7 +96,7 @@
 {% endif -%}
 {%- if exists("publicProperties") %}
 
-| Public properties| |
+| **Public properties**| |
 | -------------- | -------------- |
 {% for child in publicProperties -%}
 | **[{{child.name}}]({{child.url}})**
@@ -105,7 +105,7 @@
 {% endif -%}
 {%- if exists("protectedProperties") %}
 
-| Protected properties|     |
+| **Protected properties**|     |
 | -------------- | -------------- |
 {% for child in protectedProperties -%}
 | **[{{child.name}}]({{child.url}})**
@@ -114,25 +114,27 @@
 {% endif -%}
 {%- if exists("publicAttributes") %}
 
-| Public attributes|    |
+| **Public attributes**|    |
 | -------------- | -------------- |
 {% for child in publicAttributes -%}
 | **[{{child.name}}]({{child.url}})**| {% if existsIn(child, "type") %}{{child.type}} {% endif -%}
 {% if existsIn(child, "brief") %}<br>{{child.brief}}{% endif %} |
 {% endfor %}
 {% endif -%}
-{%- if exists("protectedAttributes") %}##
+{%- if exists("protectedAttributes") %}
 
-| Protected attributes | |
+| **Protected attributes** | |
 | -------------- | -------------- |
 {% for child in protectedAttributes -%}
-| **[{{child.name}}]({{child.url}})**
-| {% if existsIn(child, "type") %}{{child.type}} {% endif -%} {% if existsIn(child, "brief") %}<br>{{child.brief}}{% endif %} |
+| **[{{child.name}}]({{child.url}})** | {% if existsIn(child, "type") %}{{child.type}}{% endif -%}
+{% if existsIn(child, "brief") %}<br>{{child.brief}}{% endif %} |
 {% endfor %}
 {% endif -%}
-{% if exists("friends") %}##
 
-| Friends |         |
+
+{% if exists("friends") %}
+
+| **Friends** |         |
 | -------------- | -------------- |
 {% for child in friends -%}
 | **[{{child.name}}]({{child.url}})**{% if child.type != "class" -%}
