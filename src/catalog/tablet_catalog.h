@@ -208,6 +208,8 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
 
     void AddTable(std::shared_ptr<::fedb::storage::Table> table);
 
+    bool HasLocalTable();
+
     int DeleteTable(uint32_t pid);
 
     void Update(const ::fedb::nameserver::TableInfo &meta, const ClientManager &client_manager);
