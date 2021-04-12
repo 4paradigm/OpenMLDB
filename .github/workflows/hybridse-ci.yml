@@ -59,11 +59,16 @@ jobs:
         comment_title: Java Test Report
 
     - name: Create Archive
+      if: ${{ github.event_name == 'push' }}
       run: |
-        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-        [[ "${{ github.ref }}" == "refs/tags/v"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-        echo "HYBRIDSE_VERSION=$VERSION" >> $GITHUB_ENV
-        HYBRIDSE_VERSION=$VERSION ./tools/hybridse_deploy.sh
+        if [ "${{ github.ref }}" == "refs/tags/v"* ]; then
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          VERSION=$(echo $VERSION | sed -e 's/^v//')
+          echo "HYBRIDSE_VERSION=$VERSION" >> $GITHUB_ENV
+          HYBRIDSE_VERSION=$VERSION ./tools/hybridse_deploy.sh
+        else
+          ./tools/hybridse_deploy.sh
+        fi
 
     - name: Upload Artifacts
       if: ${{ startsWith(github.ref, 'refs/tags/v') }}
