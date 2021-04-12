@@ -62,7 +62,7 @@ jobs:
       run: |
         VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
         [[ "${{ github.ref }}" == "refs/tags/v"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-        echo ::set-env name=HYBRIDSE_VERSION::"$VERSION"
+        echo "HYBRIDSE_VERSION=$VERSION" >> $GITHUB_ENV
         HYBRIDSE_VERSION=$VERSION ./tools/hybridse_deploy.sh
 
     - name: Upload Artifacts
