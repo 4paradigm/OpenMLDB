@@ -8,7 +8,7 @@ jobs:
   cpp_ut:
     runs-on: self-hosted
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
+      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.1.1
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT_ZW }}
