@@ -21,9 +21,7 @@ set -eE
 # goto toplevel directory
 pushd "$(dirname "$0")/.."
 
-if [[ -n $VERSION ]]; then
-    HYBRIDSE_VERSION=$VERSION
-else
+if [[ -z $HYBRIDSE_VERSION ]]; then
     HYBRIDSE_VERSION="SNAPSHOT-$(date +%Y-%m-%d)"
 fi
 
