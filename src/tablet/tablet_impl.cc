@@ -3498,17 +3498,6 @@ void TabletImpl::CreateTable(RpcController* controller,
                 tid, pid);
         return;
     }
-    if (table_meta->format_version() == 1) {
-        bool ok = catalog_->AddTable(*table_meta, table);
-        engine_.ClearCacheLocked(table_meta->db());
-        if (ok) {
-            LOG(INFO) << "add table " << table_meta->name()
-                << " to catalog with db " << table_meta->db();
-        } else {
-            LOG(WARNING) << "fail to add table " << table_meta->name()
-                << " to catalog with db " << table_meta->db();
-        }
-    }
     table->SetTableStat(::fedb::storage::kNormal);
     replicator->StartSyncing();
     io_pool_.DelayTask(
@@ -4007,7 +3996,7 @@ int TabletImpl::CreateTableInternal(const ::fedb::api::TableMeta* table_meta,
         std::make_pair(table_meta->pid(), snapshot));
     replicators_[table_meta->tid()].insert(
         std::make_pair(table_meta->pid(), replicator));
-    if (table_meta->format_version() == 1) {
+    if (!table_meta->db().empty()) {
         bool ok = catalog_->AddTable(*table_meta, table);
         engine_.ClearCacheLocked(table_meta->db());
         if (ok) {

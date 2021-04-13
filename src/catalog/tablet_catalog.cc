@@ -184,6 +184,10 @@ void TabletTableHandler::AddTable(std::shared_ptr<::fedb::storage::Table> table)
     } while (!atomic_compare_exchange_weak(&tables_, &old_tables, new_tables));
 }
 
+bool TabletTableHandler::HasLocalTable() {
+    return !std::atomic_load_explicit(&tables_, std::memory_order_acquire)->empty();
+}
+
 int TabletTableHandler::DeleteTable(uint32_t pid) {
     std::shared_ptr<Tables> old_tables;
     std::shared_ptr<Tables> new_tables;
@@ -393,6 +397,7 @@ void TabletCatalog::Refresh(const std::vector<::fedb::nameserver::TableInfo>& ta
                     return;
                 }
                 db_it->second.emplace(table_name, handler);
+                LOG(INFO) << "add table " << table_name << " db " << db_name;
             } else {
                 handler = it->second;
             }
@@ -415,7 +420,8 @@ void TabletCatalog::Refresh(const std::vector<::fedb::nameserver::TableInfo>& ta
             continue;
         }
         for (auto table_it = db_it->second.begin(); table_it != db_it->second.end();) {
-            if (cur_db_it->second.find(table_it->first) == cur_db_it->second.end()) {
+            if (cur_db_it->second.find(table_it->first) == cur_db_it->second.end() &&
+                    !table_it->second->HasLocalTable()) {
                 LOG(INFO) << "delete table from catalog. db: " << db_it->first << ", table: " << table_it->first;
                 table_it = db_it->second.erase(table_it);
                 continue;
