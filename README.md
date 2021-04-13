@@ -29,12 +29,13 @@ Note: The latest released FEDB is unstable and not recommend to be used in produ
 
 ## Quick Start
 
-### Build
+### Build on Linux
 
 ```
+docker pull 4pdosc/centos6_gcc7_hybridsql:0.1.1
 git clone --recurse-submodules https://github.com/4paradigm/fedb.git
 cd fedb
-docker run -v `pwd`:/fedb -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
+docker run -v `pwd`:/fedb -it 4pdosc/centos6_gcc7_hybridsql:0.1.1
 cd /fedb
 sh steps/init_env.sh
 sh steps/install_hybridse.sh
