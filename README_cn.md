@@ -30,12 +30,13 @@ FEDB是一个面向在线推理和决策应用的NewSQL数据库。
 
 ## 快速开始
 
-### 构建
+### 在Linux平台构建
 
 ```
+docker pull 4pdosc/centos6_gcc7_hybridsql:0.1.1
 git clone --recurse-submodules https://github.com/4paradigm/fedb.git
 cd fedb
-docker run -v `pwd`:/fedb -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
+docker run -v `pwd`:/fedb -it 4pdosc/centos6_gcc7_hybridsql:0.1.1
 cd /fedb
 sh steps/init_env.sh
 sh steps/install_hybridse.sh
