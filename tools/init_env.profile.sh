@@ -42,6 +42,10 @@ then
         # shellcheck disable=SC1091
         source /opt/rh/sclo-git212/enable
     fi
+    if [ -r /opt/rh/rh-git218/enable ]; then
+        # shellcheck disable=SC1091
+        source /opt/rh/rh-git218/enable
+    fi
     if [ -r /opt/rh/python27 ]; then
         # shellcheck disable=SC1091
         source /opt/rh/python27/enable
