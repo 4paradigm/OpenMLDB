@@ -25,6 +25,8 @@ if [[ -z $HYBRIDSE_VERSION ]]; then
     HYBRIDSE_VERSION="SNAPSHOT-$(date +%Y-%m-%d)"
 fi
 
+echo "deploying with HYBRIDSE_VERSION=$HYBRIDSE_VERSION"
+
 if uname -a | grep -q Darwin; then
     # in case coreutils not install on mac
     alias nproc='sysctl -n hw.logicalcpu'
@@ -37,6 +39,8 @@ cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="hybridse"
 make -j "$(nproc)" install
 mv hybridse "hybridse-$HYBRIDSE_VERSION"
 tar czf ../hybridse-"$HYBRIDSE_VERSION.tar.gz" "hybridse-$HYBRIDSE_VERSION"
+
+echo "created archive: hybridse-$HYBRIDSE_VERSION.tar.gz"
 
 popd
 

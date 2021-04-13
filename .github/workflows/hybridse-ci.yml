@@ -84,7 +84,7 @@ jobs:
       - name: Create Archive
         if: ${{ github.event_name == 'push' }}
         run: |
-          if [ "${{ github.ref }}" == "refs/tags/v"* ]; then
+          if [[ "${{ github.ref }}" == "refs/tags/v"* ]]; then
             VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
             VERSION=$(echo $VERSION | sed -e 's/^v//')
             echo "HYBRIDSE_VERSION=$VERSION" >> $GITHUB_ENV
