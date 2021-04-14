@@ -83,6 +83,9 @@ jobs:
 
       - name: Create Archive
         if: ${{ github.event_name == 'push' }}
+        env:
+          OS: linux
+          ARCH: x86_64
         run: |
           if [[ "${{ github.ref }}" == "refs/tags/v"* ]]; then
             VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
@@ -100,7 +103,7 @@ jobs:
         with:
           draft: true
           files: |
-            hybridse-${{ env.HYBRIDSE_VERSION }}.tar.gz
+            hybridse-${{ env.HYBRIDSE_VERSION }}-*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

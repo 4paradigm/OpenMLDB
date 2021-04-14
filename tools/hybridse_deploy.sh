@@ -21,11 +21,20 @@ set -eE
 # goto toplevel directory
 pushd "$(dirname "$0")/.."
 
+GREEN='\033[0;32m'
+NC='\033[0m'
+
 if [[ -z $HYBRIDSE_VERSION ]]; then
     HYBRIDSE_VERSION="SNAPSHOT-$(date +%Y-%m-%d)"
 fi
 
-echo "deploying with HYBRIDSE_VERSION=$HYBRIDSE_VERSION"
+OS=${OS:-linux}
+ARCH=${ARCH:-x86_64}
+
+OUTPUT_DIR="hybridse-$HYBRIDSE_VERSION-$OS-$ARCH"
+OUTPUT_ARCHIVE="$OUTPUT_DIR.tar.gz"
+
+echo -e "${GREEN}deploying with HYBRIDSE_VERSION=$HYBRIDSE_VERSION${NC}"
 
 if uname -a | grep -q Darwin; then
     # in case coreutils not install on mac
@@ -37,10 +46,10 @@ pushd build/
 
 cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="hybridse"
 make -j "$(nproc)" install
-mv hybridse "hybridse-$HYBRIDSE_VERSION"
-tar czf ../hybridse-"$HYBRIDSE_VERSION.tar.gz" "hybridse-$HYBRIDSE_VERSION"
+mv hybridse "$OUTPUT_DIR"
+tar czf "../$OUTPUT_ARCHIVE" "$OUTPUT_DIR"
 
-echo "created archive: hybridse-$HYBRIDSE_VERSION.tar.gz"
+echo -e "${GREEN}created archive: $OUTPUT_ARCHIVE${NC}"
 
 popd
 
