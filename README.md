@@ -56,7 +56,7 @@ mkdir -p build && cd build && cmake ../ && make -j5 fedb
 
 ## Performance
 
-In AI scenarios most real-time features are time-related and required to be computed over multiple time windows. So we use computation TopN queries as benchmark scenary.
+In AI scenarios most real-time features are time-related and required to be computed over multiple time windows. So we use computation TopN queries as benchmark scenario.
 
 ### Server Specification
 The server spec is as follows:
