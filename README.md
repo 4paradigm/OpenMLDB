@@ -7,7 +7,7 @@
 
 ## Introduction
 
-FEDB is a NewSQL database optimised for realtime inference and decisioning applications. These applications puts real-time features extracted from multiple time windows through a pre-trained model to evaluate new data to support decision making. Existing in-memory databases cost hundreds or even thousands of milliseconds so they cannot meet the requirements of inference and decisioning applications. 
+FEDB is a NewSQL database optimised for realtime inference and decisioning applications. These applications put real-time features extracted from multiple time windows through a pre-trained model to evaluate new data to support decision making. Existing in-memory databases cost hundreds or even thousands of milliseconds so they cannot meet the requirements of inference and decisioning applications. 
 
 FEDB use a double-layered skiplist as the core data structure to store all the data in memory and optimize sql compilation to improve the execution performance.
 
