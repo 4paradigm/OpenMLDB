@@ -1,18 +1,17 @@
-[English version](README.md)
-
 
 ![](images/fedb_black.png)
 
 - [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)
 - [**Discussions**](https://github.com/4paradigm/fedb/discussions)
+- [**English version**](README.md)
 
 ## 介绍
 
-FEDB是一个面向在线推理和决策应用的NewSQL数据库。
+FEDB是一个面向在线推理和决策应用的NewSQL数据库。这些应用通过预先训练好的模型从多个时间窗口中提取实时特征用于在线预估和决策。用现有的数据库耗时在几百毫秒甚至到妙级别不能满足在线推理和决策的实时性要求。FEDB使用双层跳表的内存数据结构和对SQL进行极致地编译优化能够大幅降低延时。
 
 - __高性能__
 
-    基于内存的存储引擎降低数据访问延迟，对SQL进行极致地编译优化提升执行效率，让开发高性能的实时推理和决策应用变的非常简单。
+    FEDB比SingleStore和SAP HANA快一到两个数量级。
 
 - __SQL兼容__
 
@@ -27,6 +26,10 @@ FEDB是一个面向在线推理和决策应用的NewSQL数据库。
     支持故障自动切换，支持横向扩展。
 
 注:目前还处于unstable状态并且有许多功能待补齐，不能运用于生产环境。
+
+### 架构
+
+[参考这里](https://github.com/4paradigm/HybridSQL-docs/blob/main/fedb/architecture/architecture.md)
 
 ## 快速开始
 
@@ -49,9 +52,24 @@ mkdir -p build && cd build && cmake ../ && make -j5 fedb
 * 在线交易系统健康检测和预警
 * 在线交易反欺诈
 
-## 架构图
+## 性能测试
 
-![架构图](images/fedb_arch.png)  
+在AI场景中大部分实时特征是时序相关的需要通过多个时间窗口计算。我们用常见的求TopN作为测试场景。
+
+### 测试环境
+机器配置:
+
+|配置项|值|
+|---|----|
+|CPU型号|Intel Xeon Platinum 8280L|
+|内存|384 GB|
+|操作系统|CentOS-7 with kernel 5.1.9-1.el7|
+
+### 测试结果
+
+![Benchmark](images/benchmark.png)
+
+测试结果表明FEDB比SingleStore和SAP HANA快了一到两个数量级。
 
 ## 未来规划
 
