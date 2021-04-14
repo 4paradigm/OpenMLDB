@@ -1,17 +1,19 @@
-[中文版](README_cn.md)
 
 ![](images/fedb_black.png)
 
 - [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)
 - [**Discussions**](https://github.com/4paradigm/fedb/discussions)
+- [**中文README**](README_cn.md)
 
 ## Introduction
 
-FEDB is a NewSQL database optimised for realtime inference and decisioning applications.
+FEDB is a NewSQL database optimised for realtime inference and decisioning applications. These applications put real-time features extracted from multiple time windows through a pre-trained model to evaluate new data to support decision making. Existing in-memory databases cost hundreds or even thousands of milliseconds so they cannot meet the requirements of inference and decisioning applications. 
+
+FEDB use a double-layered skiplist as the core data structure to store all the data in memory and optimize sql compilation to improve the execution performance.
 
 - __High Performance__
 
-   Reduce data access latency by using in-memory storage engine and improve the execution performance significantly with sql compilation optimization.
+   The benchmark shows that FEDB can be one to two orders of magnitude faster than SingleStore and SAP HANA.
 
 - __SQL Compatible__
 
@@ -26,6 +28,10 @@ FEDB is a NewSQL database optimised for realtime inference and decisioning appli
    Support auto failover and scaling horizontally.
 
 Note: The latest released FEDB is unstable and not recommend to be used in production environment.
+
+### Architecture
+
+[See more](https://github.com/4paradigm/HybridSQL-docs/blob/main/fedb/architecture/architecture.md) 
 
 ## Quick Start
 
@@ -48,9 +54,24 @@ mkdir -p build && cd build && cmake ../ && make -j5 fedb
 * Detect the healthy of online transaction and make an alert -oncoming
 * Online real-time transaction fraud detection -oncoming
 
-## Architecture
+## Performance
 
-![Architecture](images/fedb_arch.png)  
+In AI scenarios most real-time features are time-related and required to be computed over multiple time windows. So we use computation TopN queries as benchmark scenario.
+
+### Server Specification
+The server spec is as follows:
+
+|Item|Spec|
+|---|----|
+|CPU|Intel Xeon Platinum 8280L Processor|
+|Memory|384 GB|
+|OS|CentOS-7 with kernel 5.1.9-1.el7|
+
+### Benchmark Result
+
+![Benchmark](images/benchmark.png)
+
+The benchmark result shows that FEDB can be one to two orders of magnitude faster than SingleStore and SAP HANA.
 
 ## Roadmap
 
@@ -63,7 +84,7 @@ FEDB is currently compatible with mainstream DDL and DML syntax, and will gradua
 
 ### Features
 
-In order to meet the high performance requirements of realtime inference and decisioning scenarios, FEDB chooses memory as the storage engine medium. At present, the memory storage engine used in the industry has memory fragmentation and recovery efficiency problems. FEDB plans to optimize the memory allocation algorithm to reduce fragmentation and introduce [PMEM](https://www.intel.com/content/www/us/en/architecture-and-technology/optane-dc-persistent-memory.html)(Intel Optane DC Persistent Memory Module) to improve data recovery efficiency.
+In order to meet the high performance requirements of realtime inference and decisioning scenarios, FEDB chooses memory as the storage engine medium. At present, the memory storage engine used in the industry has memory fragmentation and recovery efficiency problems. FEDB plans to optimize the memory allocation algorithm to reduce fragmentation and accelerate data recovery with [PMEM](https://www.intel.com/content/www/us/en/architecture-and-technology/optane-dc-persistent-memory.html)(Intel Optane DC Persistent Memory Module).
 
 * [2021H1]Provide a new strategy of memory allocation to reduce memory fragmentation.
 * [2021H2]Support PMEM-based storage engine.
