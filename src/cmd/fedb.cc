@@ -75,7 +75,7 @@ DEFINE_string(role, "tablet | nameserver | client | ns_client | sql_client",
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
 
-DECLARE_string(log_dir);
+DECLARE_string(fedb_log_dir);
 DEFINE_int32(log_file_size, 1024, "Config the log size in MB");
 DEFINE_int32(log_file_count, 24, "Config the log count");
 DEFINE_string(log_level, "debug", "Set the fedb log level, eg: debug or info");
@@ -108,9 +108,9 @@ void SetupLog() {
     } else {
         ::fedb::base::SetLogLevel(INFO);
     }
-    if (!FLAGS_log_dir.empty()) {
-        ::fedb::base::Mkdir(FLAGS_log_dir);
-        std::string file = FLAGS_log_dir + "/" + FLAGS_role;
+    if (!FLAGS_fedb_log_dir.empty()) {
+        ::fedb::base::Mkdir(FLAGS_fedb_log_dir);
+        std::string file = FLAGS_fedb_log_dir + "/" + FLAGS_role;
         fedb::base::SetLogFile(file);
     }
 }

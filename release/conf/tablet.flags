@@ -16,7 +16,7 @@
 #--zk_keep_alive_check_interval=15000
 
 # log conf
---log_dir=./logs
+--fedb_log_dir=./logs
 --log_file_count=24
 --log_file_size=1024
 --log_level=info

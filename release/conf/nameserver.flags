@@ -4,7 +4,7 @@
 --zk_cluster=127.0.0.1:7181
 --zk_root_path=/fedb_cluster
 
---log_dir=./logs
+--fedb_log_dir=./logs
 --log_file_count=24
 --log_file_size=1024
 --log_level=info
