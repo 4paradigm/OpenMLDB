@@ -1,9 +1,9 @@
-[中文版](README_cn.md)
 
 ![](images/fedb_black.png)
 
 - [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)
 - [**Discussions**](https://github.com/4paradigm/fedb/discussions)
+- [**中文README**](README_cn.md)
 
 ## Introduction
 
@@ -11,7 +11,7 @@ FEDB is a NewSQL database optimised for realtime inference and decisioning appli
 
 - __High Performance__
 
-   Reduce data access latency by using in-memory storage engine and improve the execution performance significantly with sql compilation optimization.
+   Reduce data access latency by using in-memory storage engine and improve the execution performance significantly with sql compilation optimization. The benchmark shows that FEDB is 10X faster than SingleStore and SAP HANA.
 
 - __SQL Compatible__
 
@@ -26,6 +26,10 @@ FEDB is a NewSQL database optimised for realtime inference and decisioning appli
    Support auto failover and scaling horizontally.
 
 Note: The latest released FEDB is unstable and not recommend to be used in production environment.
+
+## Architecture
+
+![Architecture](images/fedb_arch.png)  
 
 ## Quick Start
 
@@ -48,9 +52,24 @@ mkdir -p build && cd build && cmake ../ && make -j5 fedb
 * Detect the healthy of online transaction and make an alert -oncoming
 * Online real-time transaction fraud detection -oncoming
 
-## Architecture
+## Performance
 
-![Architecture](images/fedb_arch.png)  
+In AI scenarios most real-time features are time-related and required to be computed over multiple time windows. So we use computation TopN queries as benchmark scenary.
+
+### Server Specification
+The server spec is as follows:
+
+|Item|Spec|
+|---|----|
+|CPU|Intel Xeon Platinum 8280L Processor|
+|Memory|384 GB|
+|OS|CentOS-7 with kernel 5.1.9-1.el7|
+
+### Benchmark Result
+
+![Benchmark](images/benchmark.png)
+
+The benchmark result shows that FEDB has outstanding performance compared with SingleStore and SAP HANA.
 
 ## Roadmap
 
