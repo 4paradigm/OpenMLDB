@@ -7,11 +7,13 @@
 
 ## Introduction
 
-FEDB is a NewSQL database optimised for realtime inference and decisioning applications.
+FEDB is a NewSQL database optimised for realtime inference and decisioning applications. These applications puts real-time features extracted from multiple time windows through a pre-trained model to evaluate new data to support decision making. Existing in-memory databases cost hundreds or even thousands of milliseconds so they cannot meet the requirements of inference and decisioning applications. 
+
+FEDB use a double-layered skiplist as the core data structure to store all the data in memory and optimize sql compilation to improve the execution performance.
 
 - __High Performance__
 
-   Reduce data access latency by using in-memory storage engine and improve the execution performance significantly with sql compilation optimization. The benchmark shows that FEDB is 10X faster than SingleStore and SAP HANA.
+   The benchmark shows that FEDB can be one to two orders of magnitude faster than SingleStore and SAP HANA.
 
 - __SQL Compatible__
 
@@ -27,9 +29,9 @@ FEDB is a NewSQL database optimised for realtime inference and decisioning appli
 
 Note: The latest released FEDB is unstable and not recommend to be used in production environment.
 
-## Architecture
+### Architecture
 
-![Architecture](images/fedb_arch.png)  
+[See more](https://github.com/4paradigm/HybridSQL-docs/blob/main/fedb/architecture/architecture.md) 
 
 ## Quick Start
 
