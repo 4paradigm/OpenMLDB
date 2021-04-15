@@ -17,6 +17,14 @@
 # init_env.sh
 
 cd /depends && tar -zxf thirdparty.tar.gz
+
+rm -rf thirdparty/hybridse
+mkdir -p thirdparty/hybridse
+PACKAGE_NAME=hybridse-0.1.1-linux-x86_64
+curl -O  http://103.3.60.66:8001/${PACKAGE_NAME}.tar.gz
+tar zxf ${PACKAGE_NAME}.tar.gz > /dev/null
+mv ${PACKAGE_NAME}/* thirdparty/hybridse
+
 cd -
 ln -sf /depends/thirdparty thirdparty
 ln -sf /depends/thirdsrc thirdsrc
