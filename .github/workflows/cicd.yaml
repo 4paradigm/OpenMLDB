@@ -14,6 +14,9 @@ jobs:
         password: ${{ secrets.CR_PAT_ZW }}
     steps:
       - uses: actions/checkout@v1
+      - name: uncompress_thirdparty
+        run: |
+          cd /depends && tar -zxf thirdparty.tar.gz && cd -
       - name: build
         run: |
           bash steps/init_env.sh
