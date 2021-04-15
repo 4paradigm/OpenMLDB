@@ -4,8 +4,8 @@ env:
   GIT_SUBMODULE_STRATEGY: recursive
 
 jobs:
-  runs_on: ubuntu-latest
   cpp_ut:
+    runs_on: ubuntu-latest
     container:
       image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.1.1
       credentials:
