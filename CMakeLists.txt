@@ -192,4 +192,7 @@ install(TARGETS hybridse_core hybridse_sdk
 
 FILE(GLOB header_files "${CMAKE_CURRENT_SOURCE_DIR}/include/*")
 INSTALL(DIRECTORY ${header_files} DESTINATION include)
-INSTALL(DIRECTORY "${CMAKE_BINARY_DIR}/src/proto" DESTINATION include FILES_MATCHING PATTERN "*.h")
+INSTALL(DIRECTORY "${CMAKE_BINARY_DIR}/src/proto" DESTINATION include
+    FILES_MATCHING PATTERN "*.h"
+    PATTERN "CMakeFiles" EXCLUDE
+    )
