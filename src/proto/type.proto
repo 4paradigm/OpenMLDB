@@ -51,3 +51,7 @@ enum TTLType {
     kAbsOrLat = 5;
 }
 
+enum CompressType {
+    kNoCompress = 0;
+    kSnappy = 1;
+}

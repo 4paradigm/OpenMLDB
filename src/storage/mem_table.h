@@ -212,8 +212,8 @@ class MemTable : public Table {
     uint64_t GetRecordIdxByteSize();
     uint64_t GetRecordPkCnt();
 
-    void SetCompressType(::fedb::api::CompressType compress_type);
-    ::fedb::api::CompressType GetCompressType();
+    void SetCompressType(::fedb::type::CompressType compress_type);
+    ::fedb::type::CompressType GetCompressType();
 
     inline uint64_t GetRecordByteSize() const {
         return record_byte_size_.load(std::memory_order_relaxed);

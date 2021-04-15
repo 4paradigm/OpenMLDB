@@ -31,7 +31,7 @@ Table::Table(const std::string &name,
              uint64_t ttl_offset,
              const std::map<std::string, uint32_t> &mapping,
              ::fedb::api::TTLType ttl_type,
-             ::fedb::api::CompressType compress_type)
+             ::fedb::type::CompressType compress_type)
       : name_(name),
       id_(id),
       pid_(pid),

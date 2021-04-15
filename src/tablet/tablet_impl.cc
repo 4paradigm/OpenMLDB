@@ -395,7 +395,7 @@ int32_t TabletImpl::GetIndex(const ::fedb::api::GetRequest* request,
     bool enable_project = false;
     fedb::codec::RowProject row_project(vers_schema, request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
-        if (meta.compress_type() == api::kSnappy) {
+        if (meta.compress_type() == ::fedb::type::kSnappy) {
             return -1;
         }
         bool ok = row_project.Init();
@@ -949,7 +949,7 @@ int32_t TabletImpl::ScanIndex(const ::fedb::api::ScanRequest* request, const ::f
     bool enable_project = false;
     ::fedb::codec::RowProject row_project(vers_schema, request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
-        if (meta.compress_type() == api::kSnappy) {
+        if (meta.compress_type() == ::fedb::type::kSnappy) {
             LOG(WARNING) << "project on compress row data do not eing supported";
             return -1;
         }
@@ -1062,7 +1062,7 @@ int32_t TabletImpl::ScanIndex(const ::fedb::api::ScanRequest* request,
     bool enable_project = false;
     ::fedb::codec::RowProject row_project(vers_schema, request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
-        if (meta.compress_type() == api::kSnappy) {
+        if (meta.compress_type() == ::fedb::type::kSnappy) {
             LOG(WARNING) << "project on compress row data do not eing supported";
             return -1;
         }

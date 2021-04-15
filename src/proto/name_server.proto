@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import "type.proto";
 import "common.proto";
 import "tablet.proto";
 import "sql_procedure.proto";
@@ -22,11 +23,6 @@ package fedb.nameserver;
 option cc_generic_services = true;
 option java_package = "com._4paradigm.fedb.ns";
 option java_outer_classname = "NS";
-
-enum CompressType {
-    kNoCompress = 0;
-    kSnappy = 1;
-}
 
 enum ServerMode {
     kNORMAL = 0;
@@ -98,7 +94,7 @@ message TableInfo {
     optional string ttl_type = 7 [default = "kAbsoluteTime", deprecated = true];
     optional uint32 partition_num = 8;
     optional uint32 replica_num = 9; // contain the leader
-    optional CompressType compress_type = 10 [default = kNoCompress];
+    optional fedb.type.CompressType compress_type = 10 [default = kNoCompress];
     optional uint32 key_entry_max_height = 11;
     repeated fedb.common.ColumnDesc column_desc_v1 = 12;
     repeated fedb.common.ColumnKey column_key = 13;
