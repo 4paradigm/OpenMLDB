@@ -9,13 +9,13 @@ on:
   pull_request:
 
 jobs:
-  build-centos6:
+  build-centos7:
     runs-on: self-hosted
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.1.1
+      image: ghcr.io/4paradigm/hybridsql:latest
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
 
       - name: Fetch Submodules
         run: |
@@ -49,37 +49,6 @@ jobs:
           files: java/hybridse-sdk/target/**/TEST-*.xml
           check_name: Java Test Report
           comment_title: Java Test Report
-
-      - name: Cleanup
-        if: always()
-        run: |
-          git clean -dfx
-          git submodule foreach 'rm -rf $displaypath'
-
-  build-centos7:
-    runs-on: self-hosted
-    container:
-      image: ghcr.io/4paradigm/hybridsql:latest
-
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Fetch Submodules
-        run: |
-          git submodule update --init --recursive
-
-      - name: Build Core
-        run: |
-          ./tools/hybridse_build.sh
-
-      - name: Core Test
-        run: |
-          ./tools/hybridse_core_test.sh
-
-      - name: Java SDK Test
-        run: |
-          cd java/
-          mvn -U clean compile test
 
       - name: Create Archive
         if: ${{ github.event_name == 'push' }}
