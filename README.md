@@ -66,7 +66,7 @@ The server spec is as follows:
 |Memory|384 GB|
 |OS|CentOS-7 with kernel 5.1.9-1.el7|
 
-### Benchmark Result
+### Benchmark Results
 
 ![Benchmark](images/benchmark.png)
 
