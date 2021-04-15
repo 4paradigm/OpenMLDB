@@ -2593,9 +2593,9 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::fedb::nameserver::Tabl
     } else {
         ttl_type = table_info->ttl_desc().ttl_type();
     }
-    ::fedb::api::CompressType compress_type = ::fedb::api::CompressType::kNoCompress;
-    if (table_info->compress_type() == ::fedb::nameserver::kSnappy) {
-        compress_type = ::fedb::api::CompressType::kSnappy;
+    ::fedb::type::CompressType compress_type = ::fedb::type::CompressType::kNoCompress;
+    if (table_info->compress_type() == ::fedb::type::kSnappy) {
+        compress_type = ::fedb::type::CompressType::kSnappy;
     }
     ::fedb::api::TableMeta table_meta;
     std::string schema;

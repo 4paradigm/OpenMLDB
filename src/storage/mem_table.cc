@@ -42,7 +42,7 @@ static const uint32_t SEED = 0xe17a1465;
 MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t seg_cnt,
                    const std::map<std::string, uint32_t>& mapping, uint64_t ttl, ::fedb::api::TTLType ttl_type)
     : Table(name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping, ttl_type,
-            ::fedb::api::CompressType::kNoCompress),
+            ::fedb::type::CompressType::kNoCompress),
       seg_cnt_(seg_cnt),
       segments_(MAX_INDEX_NUM, NULL),
       enable_gc_(true),
@@ -53,7 +53,7 @@ MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t 
 MemTable::MemTable(const ::fedb::api::TableMeta& table_meta)
     : Table(table_meta.name(), table_meta.tid(), table_meta.pid(), 0, true, 60 * 1000,
             std::map<std::string, uint32_t>(), ::fedb::api::TTLType::kAbsoluteTime,
-            ::fedb::api::CompressType::kNoCompress),
+            ::fedb::type::CompressType::kNoCompress),
       segments_(MAX_INDEX_NUM, NULL) {
     seg_cnt_ = 8;
     enable_gc_ = true;
@@ -124,9 +124,9 @@ bool MemTable::Init() {
     return true;
 }
 
-void MemTable::SetCompressType(::fedb::api::CompressType compress_type) { compress_type_ = compress_type; }
+void MemTable::SetCompressType(::fedb::type::CompressType compress_type) { compress_type_ = compress_type; }
 
-::fedb::api::CompressType MemTable::GetCompressType() { return compress_type_; }
+::fedb::type::CompressType MemTable::GetCompressType() { return compress_type_; }
 
 bool MemTable::Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) {
     if (segments_.empty()) return false;

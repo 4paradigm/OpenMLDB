@@ -391,7 +391,7 @@ int PutData(
     if (codec.EncodeTsDimension(input_value, &ts_dimensions) < 0) {
         return ::fedb::base::ResultMsg(-1, "Encode ts dimension error");
     }
-    if (table_info.compress_type() == ::fedb::nameserver::kSnappy) {
+    if (table_info.compress_type() == ::fedb::type::CompressType::kSnappy) {
         std::string compressed;
         ::snappy::Compress(value.c_str(), value.length(), &compressed);
         value = compressed;
@@ -1631,7 +1631,7 @@ void HandleNSGet(const std::vector<std::string>& parts,
             std::string msg;
             bool ok = tb_client->Get(tid, pid, key, timestamp, value, ts, msg);
             if (ok) {
-                if (tables[0].compress_type() == ::fedb::nameserver::kSnappy) {
+                if (tables[0].compress_type() == ::fedb::type::CompressType::kSnappy) {
                     std::string uncompressed;
                     ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
                     value = uncompressed;
@@ -1684,7 +1684,7 @@ void HandleNSGet(const std::vector<std::string>& parts,
                 return;
             }
         }
-        if (tables[0].compress_type() == ::fedb::nameserver::kSnappy) {
+        if (tables[0].compress_type() == ::fedb::type::CompressType::kSnappy) {
             std::string uncompressed;
             ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
             value.swap(uncompressed);
@@ -2120,7 +2120,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
 
             if (no_schema) {
                 std::string value = it->GetValue().ToString();
-                if (tables[0].compress_type() == ::fedb::nameserver::kSnappy) {
+                if (tables[0].compress_type() == ::fedb::type::CompressType::kSnappy) {
                     std::string uncompressed;
                     ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
                     value = uncompressed;
@@ -2133,7 +2133,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
                     row.push_back(std::to_string(it->GetKey()));
                 }
                 std::string value;
-                if (tables[0].compress_type() == ::fedb::nameserver::kSnappy) {
+                if (tables[0].compress_type() == ::fedb::type::CompressType::kSnappy) {
                     ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(), &value);
                 } else {
                     value.assign(it->GetValue().data(), it->GetValue().size());
@@ -2379,7 +2379,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::fedb::client::NsClient
             return;
         }
         std::string value = parts[4];
-        if (tables[0].compress_type() == ::fedb::nameserver::kSnappy) {
+        if (tables[0].compress_type() == ::fedb::type::CompressType::kSnappy) {
             std::string compressed;
             ::snappy::Compress(value.c_str(), value.length(), &compressed);
             value = compressed;
@@ -2725,9 +2725,9 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
                    compress_type.begin(), ::tolower);
     if (compress_type == "knocompress" || compress_type == "nocompress" ||
         compress_type == "no") {
-        ns_table_info.set_compress_type(::fedb::nameserver::kNoCompress);
+        ns_table_info.set_compress_type(::fedb::type::CompressType::kNoCompress);
     } else if (compress_type == "ksnappy" || compress_type == "snappy") {
-        ns_table_info.set_compress_type(::fedb::nameserver::kSnappy);
+        ns_table_info.set_compress_type(::fedb::type::CompressType::kSnappy);
     } else {
         printf("compress type %s is invalid\n",
                table_info.compress_type().c_str());
@@ -3619,13 +3619,13 @@ void HandleClientGet(const std::vector<std::string>& parts,
             std::cout << "Fail to get table status" << std::endl;
             return;
         }
-        ::fedb::nameserver::CompressType compress_type =
-            ::fedb::nameserver::kNoCompress;
+        ::fedb::type::CompressType compress_type =
+            ::fedb::type::CompressType::kNoCompress;
         if (table_status.compress_type() ==
-            ::fedb::api::CompressType::kSnappy) {
-            compress_type = ::fedb::nameserver::kSnappy;
+            ::fedb::type::CompressType::kSnappy) {
+            compress_type = ::fedb::type::CompressType::kSnappy;
         }
-        if (compress_type == ::fedb::nameserver::kSnappy) {
+        if (compress_type == ::fedb::type::CompressType::kSnappy) {
             std::string uncompressed;
             ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
             value = uncompressed;
@@ -3793,18 +3793,18 @@ void HandleClientCreateTable(const std::vector<std::string>& parts,
             is_leader = false;
         }
         std::vector<std::string> endpoints;
-        ::fedb::api::CompressType compress_type =
-            ::fedb::api::CompressType::kNoCompress;
+        ::fedb::type::CompressType compress_type =
+            ::fedb::type::CompressType::kNoCompress;
         if (parts.size() > 7) {
             std::string raw_compress_type = parts[7];
             std::transform(raw_compress_type.begin(), raw_compress_type.end(),
                            raw_compress_type.begin(), ::tolower);
             if (raw_compress_type == "knocompress" ||
                 raw_compress_type == "nocompress") {
-                compress_type = ::fedb::api::CompressType::kNoCompress;
+                compress_type = ::fedb::type::CompressType::kNoCompress;
             } else if (raw_compress_type == "ksnappy" ||
                        raw_compress_type == "snappy") {
-                compress_type = ::fedb::api::CompressType::kSnappy;
+                compress_type = ::fedb::type::CompressType::kSnappy;
             } else {
                 printf("compress type %s is invalid\n", parts[7].c_str());
                 return;
@@ -4429,7 +4429,7 @@ void HandleClientPreview(const std::vector<std::string>& parts,
         if (schema.empty()) {
             std::string value = it->GetValue().ToString();
             if (table_status.compress_type() ==
-                ::fedb::api::CompressType::kSnappy) {
+                ::fedb::type::CompressType::kSnappy) {
                 std::string uncompressed;
                 ::snappy::Uncompress(value.c_str(), value.length(),
                                      &uncompressed);
@@ -4449,7 +4449,7 @@ void HandleClientPreview(const std::vector<std::string>& parts,
                 return;
             }
             std::string value;
-            if (table_meta.compress_type() == ::fedb::api::kSnappy) {
+            if (table_meta.compress_type() == ::fedb::type::CompressType::kSnappy) {
                 ::snappy::Uncompress(it->GetValue().data(),
                                      it->GetValue().size(), &value);
             } else {
@@ -5043,12 +5043,12 @@ void HandleClientSGet(const std::vector<std::string>& parts,
         std::cout << "Fail to get table status" << std::endl;
         return;
     }
-    ::fedb::nameserver::CompressType compress_type =
-        ::fedb::nameserver::kNoCompress;
-    if (table_status.compress_type() == ::fedb::api::CompressType::kSnappy) {
-        compress_type = ::fedb::nameserver::kSnappy;
+    ::fedb::type::CompressType compress_type =
+        ::fedb::type::CompressType::kNoCompress;
+    if (table_status.compress_type() == ::fedb::type::CompressType::kSnappy) {
+        compress_type = ::fedb::type::CompressType::kSnappy;
     }
-    if (compress_type == ::fedb::nameserver::kSnappy) {
+    if (compress_type == ::fedb::type::CompressType::kSnappy) {
         std::string uncompressed;
         ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
         value = uncompressed;
@@ -5225,7 +5225,7 @@ void HandleClientSPut(const std::vector<std::string>& parts,
             return;
         }
 
-        if (table_meta.compress_type() == ::fedb::api::CompressType::kSnappy) {
+        if (table_meta.compress_type() == ::fedb::type::CompressType::kSnappy) {
             std::string compressed;
             ::snappy::Compress(value.c_str(), value.length(), &compressed);
             value.swap(compressed);

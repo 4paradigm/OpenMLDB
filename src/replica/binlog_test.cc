@@ -88,7 +88,7 @@ TEST_F(BinlogTest, DeleteBinlog) {
     bool ret =
         client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
                            ::fedb::api::TTLType::kAbsoluteTime, 16, 0,
-                           ::fedb::api::CompressType::kNoCompress);
+                           ::fedb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;

@@ -64,7 +64,7 @@ class TabletClient {
                      const std::vector<std::string>& endpoints,
                      const ::fedb::api::TTLType& type, uint32_t seg_cnt,
                      uint64_t term,
-                     const ::fedb::api::CompressType compress_type);
+                     const ::fedb::type::CompressType compress_type);
 
     bool CreateTable(const std::string& name, uint32_t tid, uint32_t pid,
                      uint64_t abs_ttl, uint64_t lat_ttl, uint32_t seg_cnt,
@@ -72,8 +72,8 @@ class TabletClient {
                      const ::fedb::api::TTLType& type, bool leader,
                      const std::vector<std::string>& endpoints,
                      uint64_t term = 0,
-                     const ::fedb::api::CompressType compress_type =
-                         ::fedb::api::CompressType::kNoCompress);
+                     const ::fedb::type::CompressType compress_type =
+                         ::fedb::type::CompressType::kNoCompress);
 
     bool CreateTable(const ::fedb::api::TableMeta& table_meta);
 
