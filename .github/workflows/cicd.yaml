@@ -38,4 +38,3 @@ jobs:
         run: |
           source /etc/profile.d/enable-rh.sh
           git clean -dfx
-          test -d hybridse && cd hybridse && git clean -dfx
