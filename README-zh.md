@@ -42,7 +42,7 @@ HybridSE是一个模块化的SQL编译器和执行器，提供了SQL语法校验
 ```bash
 git clone https://github.com/4paradigm/HybridSE.git
 cd HybridSE
-docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
+docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/hybridsql:latest
 cd /HybridSE
 # init enviroment before build
 source tools/init_env.profile.sh
