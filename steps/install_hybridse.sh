@@ -15,18 +15,9 @@
 # limitations under the License.
 
 # install_hybridse.sh
-ENABLE_JAVA=$1
-CMAKE_TYPE=$2
-
-if [[ "${CMAKE_TYPE}" != "Debug" ]]; then
-        CMAKE_TYPE="RelWithDebInfo"
-fi
-source /etc/profile.d/enable-rh.sh 
-source /etc/profile.d/enable-thirdparty.sh
-echo "CMake Type "${CMAKE_TYPE}
-
-export FEDB_THIRDPARTY=/depends/thirdparty
-WORK_DIR=`pwd`
-cd ${WORK_DIR}/hybridse
-ln -sf ${FEDB_THIRDPARTY} thirdparty && mkdir -p build
-cd build && cmake -DCMAKE_BUILD_TYPE=${CMAKE_TYPE} -DCMAKE_INSTALL_PREFIX="${FEDB_THIRDPARTY}"/hybridse -DTESTING_ENABLE=OFF -DBENCHMARK_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DPYSDK_ENABLE=OFF -DJAVASDK_ENABLE=OFF -DEXPRIRMENT_ENABLE=OFF ..  && make -j$(nproc) install
+rm -rf thirdparty/hybridse
+mkdir -p thirdparty/hybridse
+PACKAGE_NAME=hybridse-0.1.1-linux-x86_64
+curl -O  http://103.3.60.66:8001/${PACKAGE_NAME}.tar.gz
+tar zxf ${PACKAGE_NAME}.tar.gz > /dev/null
+mv ${PACKAGE_NAME}/* thirdparty/hybridse/

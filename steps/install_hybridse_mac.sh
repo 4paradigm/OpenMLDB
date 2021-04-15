@@ -14,7 +14,9 @@
 
 #! /bin/sh
 # install_hybridse_mac.sh
-export FEDB_THIRDPARTY=/opt/depends/thirdparty
-WORK_DIR=`pwd`
-cd hybridse && ln -sf ${FEDB_THIRDPARTY} thirdparty && mkdir -p build
-cd build && cmake -DCMAKE_INSTALL_PREFIX="${FEDB_THIRDPARTY}"/hybridse -DTESTING_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DPYSDK_ENABLE=OFF -DJAVASDK_ENABLE=ON -DEXPRIRMENT_ENABLE=OFF .. &&make -j4 install
+rm -rf thirdparty/hybridse
+mkdir -p thirdparty/hybridse
+PACKAGE_NAME=hybridse-0.1.1-darwin-x86_64
+curl -O  http://103.3.60.66:8001/${PACKAGE_NAME}.tar.gz
+tar zxf ${PACKAGE_NAME}.tar.gz > /dev/null
+mv ${PACKAGE_NAME}/* thirdparty/hybridse/
