@@ -124,16 +124,12 @@ TabletImpl::TabletImpl()
       mode_recycle_root_paths_(),
       follower_(false),
       catalog_(new ::fedb::catalog::TabletCatalog()),
-      engine_(catalog_,
-              hybridse::vm::EngineOptions::NewEngineOptionWithClusterEnable(
-                  FLAGS_enable_distsql)),
+      engine_(),
       zk_cluster_(),
       zk_path_(),
       endpoint_(),
       sp_cache_(std::shared_ptr<SpCache>(new SpCache())),
       notify_path_() {
-    catalog_->SetLocalTablet(std::shared_ptr<::hybridse::vm::Tablet>(
-        new ::hybridse::vm::LocalTablet(&engine_, sp_cache_)));
 }
 
 TabletImpl::~TabletImpl() {
@@ -152,6 +148,11 @@ bool TabletImpl::Init(const std::string& real_endpoint) {
 
 bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
         const std::string& endpoint, const std::string& real_endpoint) {
+    ::hybridse::vm::EngineOptions options;
+    options.set_cluster_optimized(FLAGS_enable_distsql);
+    engine_ = std::unique_ptr<::hybridse::vm::Engine>(new ::hybridse::vm::Engine(catalog_, options));
+    catalog_->SetLocalTablet(std::shared_ptr<::hybridse::vm::Tablet>(
+        new ::hybridse::vm::LocalTablet(engine_.get(), sp_cache_)));
     std::set<std::string> snapshot_compression_set{"off", "zlib", "snappy"};
     if (snapshot_compression_set.find(FLAGS_snapshot_compression) == snapshot_compression_set.end()) {
         LOG(WARNING) << "wrong snapshot_compression: " << FLAGS_snapshot_compression;
@@ -1791,7 +1792,7 @@ void TabletImpl::ProcessQuery(RpcController* ctrl,
         }
         {
             bool ok =
-                engine_.Get(request->sql(), request->db(), session, status);
+                engine_->Get(request->sql(), request->db(), session, status);
             if (!ok) {
                 response->set_msg(status.msg);
                 response->set_code(::fedb::base::kSQLCompileError);
@@ -1863,7 +1864,7 @@ void TabletImpl::ProcessQuery(RpcController* ctrl,
             session.SetSpName(sp_name);
             RunRequestQuery(ctrl, *request, session, *response, *buf);
         } else {
-            bool ok = engine_.Get(request->sql(), request->db(), session, status);
+            bool ok = engine_->Get(request->sql(), request->db(), session, status);
             if (!ok || session.GetCompileInfo() == nullptr) {
                 response->set_msg(status.msg);
                 response->set_code(::fedb::base::kSQLCompileError);
@@ -1932,7 +1933,7 @@ void TabletImpl::ProcessBatchRequestQuery(
             auto col_idx = request->common_column_indices().Get(i);
             session.AddCommonColumnIdx(col_idx);
         }
-        bool ok = engine_.Get(request->sql(), request->db(), session, status);
+        bool ok = engine_->Get(request->sql(), request->db(), session, status);
         if (!ok || session.GetCompileInfo() == nullptr) {
             response->set_msg(status.msg);
             response->set_code(::fedb::base::kSQLCompileError);
@@ -3365,7 +3366,7 @@ int32_t TabletImpl::DeleteTableInternal(
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            engine_.ClearCacheLocked(table->GetTableMeta().db());
+            engine_->ClearCacheLocked(table->GetTableMeta().db());
             tables_[tid].erase(pid);
             replicators_[tid].erase(pid);
             snapshots_[tid].erase(pid);
@@ -3998,7 +3999,7 @@ int TabletImpl::CreateTableInternal(const ::fedb::api::TableMeta* table_meta,
         std::make_pair(table_meta->pid(), replicator));
     if (!table_meta->db().empty()) {
         bool ok = catalog_->AddTable(*table_meta, table);
-        engine_.ClearCacheLocked(table_meta->db());
+        engine_->ClearCacheLocked(table_meta->db());
         if (ok) {
             LOG(INFO) << "add table " << table_meta->name()
                 << " to catalog with db " << table_meta->db();
@@ -5381,7 +5382,7 @@ void TabletImpl::CreateProcedure(RpcController* controller,
 
     // build for single request
     ::hybridse::vm::RequestRunSession session;
-    bool ok = engine_.Get(sql, db_name, session, status);
+    bool ok = engine_->Get(sql, db_name, session, status);
     if (!ok || session.GetCompileInfo() == nullptr) {
         response->set_msg(status.str());
         response->set_code(::fedb::base::kSQLCompileError);
@@ -5397,7 +5398,7 @@ void TabletImpl::CreateProcedure(RpcController* controller,
             batch_session.AddCommonColumnIdx(i);
         }
     }
-    ok = engine_.Get(sql, db_name, batch_session, status);
+    ok = engine_->Get(sql, db_name, batch_session, status);
     if (!ok || batch_session.GetCompileInfo() == nullptr) {
         response->set_msg(status.str());
         response->set_code(::fedb::base::kSQLCompileError);
@@ -5500,7 +5501,7 @@ void TabletImpl::CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureI
     ::hybridse::base::Status status;
     // build for single request
     ::hybridse::vm::RequestRunSession session;
-    bool ok = engine_.Get(sql, db_name, session, status);
+    bool ok = engine_->Get(sql, db_name, session, status);
     if (!ok || session.GetCompileInfo() == nullptr) {
         LOG(WARNING) << "fail to compile sql " << sql;
         return;
@@ -5513,7 +5514,7 @@ void TabletImpl::CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureI
             batch_session.AddCommonColumnIdx(i);
         }
     }
-    ok = engine_.Get(sql, db_name, batch_session, status);
+    ok = engine_->Get(sql, db_name, batch_session, status);
     if (!ok || batch_session.GetCompileInfo() == nullptr) {
         LOG(WARNING) << "fail to compile batch request for sql " << sql;
         return;

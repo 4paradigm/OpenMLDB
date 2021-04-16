@@ -589,7 +589,7 @@ class TabletImpl : public ::fedb::api::TabletServer {
     // thread safe
     std::shared_ptr<::fedb::catalog::TabletCatalog> catalog_;
     // thread safe
-    ::hybridse::vm::Engine engine_;
+    std::unique_ptr<::hybridse::vm::Engine> engine_;
     std::shared_ptr<::hybridse::vm::LocalTablet> local_tablet_;
     std::string zk_cluster_;
     std::string zk_path_;

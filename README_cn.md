@@ -7,7 +7,7 @@
 
 ## 介绍
 
-FEDB是一个面向在线推理和决策应用的NewSQL数据库。这些应用通过预先训练好的模型从多个时间窗口中提取实时特征用于在线预估和决策。用现有的数据库耗时在几百毫秒甚至到妙级别不能满足在线推理和决策的实时性要求。FEDB使用双层跳表的内存数据结构和对SQL进行极致地编译优化能够大幅降低延时。
+FEDB是一个面向在线推理和决策应用的NewSQL数据库。这些应用通过预先训练好的模型从多个时间窗口中提取实时特征用于在线预估和决策。用现有的数据库耗时在几百毫秒甚至到秒级别不能满足在线推理和决策的实时性要求。FEDB使用双层跳表的内存数据结构和对SQL进行极致地编译优化能够大幅降低延时。
 
 - __高性能__
 
@@ -37,12 +37,11 @@ FEDB是一个面向在线推理和决策应用的NewSQL数据库。这些应用�
 
 ```
 docker pull 4pdosc/centos6_gcc7_hybridsql:0.1.1
-git clone --recurse-submodules https://github.com/4paradigm/fedb.git
+git clone https://github.com/4paradigm/fedb.git
 cd fedb
 docker run -v `pwd`:/fedb -it 4pdosc/centos6_gcc7_hybridsql:0.1.1
 cd /fedb
 sh steps/init_env.sh
-sh steps/install_hybridse.sh
 mkdir -p build && cd build && cmake ../ && make -j5 fedb
 ```
 
