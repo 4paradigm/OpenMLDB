@@ -14,7 +14,7 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   shellcheck:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
 
@@ -27,7 +27,7 @@ jobs:
           pattern: "*.sh"
           exclude: "./.git/*"
   cpplint:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
 
@@ -39,7 +39,7 @@ jobs:
           flags: --linelength=120
 
   detect-secrets:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
 
@@ -50,7 +50,7 @@ jobs:
           reporter: github-pr-review # Change reporter.
 
   checkstyle:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Run check style

@@ -26,7 +26,7 @@
 #include <vector>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h" 
+#include "base/glog_wapper.h"
 #include "boost/algorithm/string.hpp"
 #include "catalog/schema_adapter.h"
 #include "common/timer.h"
