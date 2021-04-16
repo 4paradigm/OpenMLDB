@@ -21,7 +21,7 @@ cd /depends && tar -zxf thirdparty.tar.gz
 rm -rf thirdparty/hybridse
 mkdir -p thirdparty/hybridse
 PACKAGE_NAME=hybridse-0.1.1-linux-x86_64
-curl -O  https://github.com/4paradigm/HybridSE/releases/download/v0.1.1/${PACKAGE_NAME}.tar.gz
+curl -LJO  https://github.com/4paradigm/HybridSE/releases/download/v0.1.1/${PACKAGE_NAME}.tar.gz
 tar zxf ${PACKAGE_NAME}.tar.gz > /dev/null
 mv ${PACKAGE_NAME}/* thirdparty/hybridse
 
