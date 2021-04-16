@@ -10,16 +10,14 @@ on:
 
 jobs:
   build-centos7:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
 
     steps:
       - uses: actions/checkout@v2
-
-      - name: Fetch Submodules
-        run: |
-          git submodule update --init --recursive
+        with:
+          submodules: true
 
       - name: Build Core
         run: |
@@ -76,12 +74,6 @@ jobs:
             hybridse-${{ env.HYBRIDSE_VERSION }}-*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Cleanup
-        if: always()
-        run: |
-          git clean -dfx
-          git submodule foreach 'rm -rf $displaypath'
 
   coverage:
     runs-on: self-hosted
