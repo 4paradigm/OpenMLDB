@@ -9,7 +9,7 @@ on:
   pull_request:
 
 jobs:
-  build-centos7:
+  build:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
@@ -76,7 +76,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   coverage:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
 
@@ -89,7 +89,7 @@ jobs:
 
       - name: Build and Coverage
         run: |
-          # ./tools/compile_and_coverage.sh
+          ./tools/compile_and_coverage.sh
 
       # - name: coverage report
       #   uses: romeovs/lcov-reporter-action@master
