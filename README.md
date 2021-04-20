@@ -1,6 +1,6 @@
 [![HybridSE CI](https://github.com/4paradigm/HybridSE/actions/workflows/hybridse-ci.yml/badge.svg)](https://github.com/4paradigm/HybridSE/actions/workflows/hybridse-ci.yml)
 
-- [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7LAF6AY)
+- [**Slack Channel**](https://join.slack.com/t/hybridsql-ws/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)
 - [**Discussions**](https://github.com/4paradigm/HybridSE/discussions)
 - [中文文档](README-zh.md)
 
@@ -55,7 +55,7 @@ HybridSE has following characteristic:
 ```bash
 git clone https://github.com/4paradigm/HybridSE.git
 cd HybridSE
-docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
+docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/hybridsql:latest
 cd /HybridSE
 # init enviroment before build
 source tools/init_env.profile.sh
@@ -132,8 +132,8 @@ ToyDB is a simple in-memory database powered by HybridSE, supporting basic CRUD 
 
 | Project                                                 | Status        | Description                                                               |
 | :------------------------------------------------------ | :------------ | :------------------------------------------------------------------------ |
-| [FEDB](https://github.com/4paradigm/fedb)               | Open Source   | NewSQL database optimized for realtime inference and decisioning          |
-| [NativeSpark](https://github.com/4paradigm/NativeSpark) | Open Source   | LLVM-based, Spark-compatible and high-performance native execution engine |
+| [FEDB](https://github.com/4paradigm/fedb)               | Open Source   | NewSQL database optimised for realtime inference and decisioning applications          |
+| [SparkFE](https://github.com/4paradigm/SparkFE) | Open Source   | LLVM-based and high-performance Spark native execution engine which is designed for feature engineering |
 | NativeFlink                                             | Under Develop | High-performance, Batch-Stream-in-onebox FlinkSQL execution engine           |
 
 ## Roadmap

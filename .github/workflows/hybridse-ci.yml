@@ -8,91 +8,103 @@ on:
       - v*
   pull_request:
 
-env:
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
-  BUILD_TYPE: Release
-
 jobs:
   build:
-    # The CMake configure and build commands are platform agnostic and should work equally
-    # well on Windows or Mac.  You can convert this to a matrix build if you need
-    # cross-platform coverage.
-    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:stable
+      image: ghcr.io/4paradigm/hybridsql:latest
 
     steps:
-    - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
 
-    - name: Fetch Submodules
-      run: |
-        git submodule update --init --recursive
+      - name: Build Core
+        run: |
+          ./tools/hybridse_build.sh
 
-    - name: Build Core
-      run: |
-        ./tools/hybridse_build.sh
+      - name: Core Test
+        run: |
+          ./tools/hybridse_core_test.sh
 
-    - name: Core Test
-      run: |
-        ./tools/hybridse_core_test.sh
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        with:
+          files: build/*.xml
+          check_name: Cpp Test Report
+          comment_title: Cpp Test Report
 
-    - name: Publish Unit Test Results
-      uses: EnricoMi/publish-unit-test-result-action@v1
-      if: always()
-      with:
-        files: |
-          build/*.xml
+      - name: Java SDK Test
+        run: |
+          cd java/
+          mvn -U clean compile test
 
-    - name: Java SDK Test
-      run: |
-        cd java/
-        mvn -U clean compile test
-        
-    - name: Publish Java Unit Test Results
-      uses: EnricoMi/publish-unit-test-result-action@v1
-      if: always()
-      with:
-        files: java/hybridse-sdk/target/**/TEST-*.xml
-        comment_title: Java Test Report
+      - name: Publish Java Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        with:
+          files: java/hybridse-sdk/target/**/TEST-*.xml
+          check_name: Java Test Report
+          comment_title: Java Test Report
 
-    - name: Cleanup
-      if: always()
-      run: |
-        git clean -dfx
-        git submodule foreach 'rm -rf $displaypath'
+      - name: Create Archive
+        if: ${{ github.event_name == 'push' }}
+        env:
+          OS: linux
+          ARCH: x86_64
+        run: |
+          if [[ "${{ github.ref }}" == "refs/tags/v"* ]]; then
+            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+            VERSION=$(echo $VERSION | sed -e 's/^v//')
+            echo "HYBRIDSE_VERSION=$VERSION" >> $GITHUB_ENV
+            HYBRIDSE_VERSION=$VERSION ./tools/hybridse_deploy.sh
+          else
+            # TODO: upload using action/upload-artifact
+            ./tools/hybridse_deploy.sh
+          fi
+
+      - name: Release
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        uses: softprops/action-gh-release@v1
+        with:
+          # TODO: add CHANGELOG.md and remove draft option
+          draft: true
+          files: |
+            hybridse-${{ env.HYBRIDSE_VERSION }}-*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   coverage:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
-
+      image: ghcr.io/4paradigm/hybridsql:latest
 
     steps:
-    - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
 
-    - name: Fetch Submodules
-      run: |
-        git submodule update --init --recursive
+      - name: Fetch Submodules
+        run: |
+          git submodule update --init --recursive
 
-    - name: Build and Coverage
-      run: |
-        # ./tools/compile_and_coverage.sh
+      - name: Build and Coverage
+        run: |
+          ./tools/compile_and_coverage.sh
 
-    # - name: coverage report
-    #   uses: romeovs/lcov-reporter-action@master
-    #   with:
-    #     github-token: ${{ secrets.GITHUB_TOKEN }}
-    #     lcov-file: ./build/coverage.info
+      # - name: coverage report
+      #   uses: romeovs/lcov-reporter-action@master
+      #   with:
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      #     lcov-file: ./build/coverage.info
 
-    # - name: benchmark
-    #   run: |
-        # cost too much time
-        # bash tools/micro_bench.sh | tee micro_bench_report.txt
-        # bash tools/gen_micro_bench_compare.sh
+      # - name: benchmark
+      #   run: |
+      # cost too much time
+      # bash tools/micro_bench.sh | tee micro_bench_report.txt
+      # bash tools/gen_micro_bench_compare.sh
 
-    - name: Cleanup
-      if: always()
-      run: |
-        git clean -dfx
-        git submodule foreach 'rm -rf $displaypath'
+      - name: Cleanup
+        if: always()
+        run: |
+          git clean -dfx
+          git submodule foreach 'rm -rf $displaypath'

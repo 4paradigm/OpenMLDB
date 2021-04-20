@@ -42,7 +42,7 @@ HybridSE是一个模块化的SQL编译器和执行器，提供了SQL语法校验
 ```bash
 git clone https://github.com/4paradigm/HybridSE.git
 cd HybridSE
-docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
+docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/hybridsql:latest
 cd /HybridSE
 # init enviroment before build
 source tools/init_env.profile.sh
@@ -120,8 +120,8 @@ ToyDB是基于HybridSE开发的简易单机内存数据库. 它支持基本的�
 
 | 项目                                                    | 状态   | 描述                                             |
 | :------------------------------------------------------ | :----- | :----------------------------------------------- |
-| [FEDB](https://github.com/4paradigm/fedb)               | 开源   | 面向实时推理和决策的NewSQL数据库                 |
-| [NativeSpark](https://github.com/4paradigm/NativeSpark) | 开源   | 基于LLVM优化的Spark兼容的高性能原生执行引擎      |
+| [FEDB](https://github.com/4paradigm/fedb)               | 开源   | 面向在线推理和决策应用的NewSQL数据库                 |
+| [SparkFE](https://github.com/4paradigm/SparkFE) | 开源   | 面向特征工程场景的基于LLVM优化的高性能Spark原生执行引擎      |
 | NativeFlink                                             | 开发中 | 基于HybridSE开发的高性能批流一体FlinkSQL执行引擎 |
 
 ## 未来规划

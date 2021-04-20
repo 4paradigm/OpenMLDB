@@ -40,7 +40,7 @@ project(hybridse)
 
 set(HYBRIDSE_VERSION_MAJOR 0)
 set(HYBRIDSE_VERSION_MINOR 1)
-set(HYBRIDSE_VERSION_BUG 0)
+set(HYBRIDSE_VERSION_BUG 1)
 
 option(TESTING_ENABLE "Enable Test" ON)
 option(CORE_TESTING_ENABLE "Enable Core Test" ON)
@@ -192,4 +192,7 @@ install(TARGETS hybridse_core hybridse_sdk
 
 FILE(GLOB header_files "${CMAKE_CURRENT_SOURCE_DIR}/include/*")
 INSTALL(DIRECTORY ${header_files} DESTINATION include)
-INSTALL(DIRECTORY "${CMAKE_BINARY_DIR}/src/proto" DESTINATION include FILES_MATCHING PATTERN "*.h")
+INSTALL(DIRECTORY "${CMAKE_BINARY_DIR}/src/proto" DESTINATION include
+    FILES_MATCHING PATTERN "*.h"
+    PATTERN "CMakeFiles" EXCLUDE
+    )
