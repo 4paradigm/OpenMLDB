@@ -21,12 +21,6 @@ import org.apache.commons.lang3.StringUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-/**
- * @Author wangzixian
- * @Description TODO
- * @Date 2020/12/2 19:15
- **/
 public class SkewUtils {
 
     public static String genPercentileSql(String table1, int quantile, List<String> keys, String ts, String cnt) {

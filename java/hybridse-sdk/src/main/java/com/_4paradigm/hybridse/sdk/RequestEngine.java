@@ -22,6 +22,9 @@ import com._4paradigm.hybridse.vm.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * SQL Engine in request mode
+ */
 public class RequestEngine implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(SQLEngine.class);
@@ -34,6 +37,12 @@ public class RequestEngine implements AutoCloseable {
     private PhysicalOpNode plan;
 
 
+    /**
+     * Construct RequestEngine with given sql and database
+     * @param sql
+     * @param database
+     * @throws UnsupportedHybridSeException
+     */
     public RequestEngine(String sql, TypeOuterClass.Database database) throws UnsupportedHybridSeException {
         options = new EngineOptions();
         options.set_keep_ir(true);
@@ -54,10 +63,17 @@ public class RequestEngine implements AutoCloseable {
         plan = compileInfo.GetPhysicalPlan();
     }
 
+    /**
+     * Get physical plan
+     */
     public PhysicalOpNode getPlan() {
         return plan;
     }
 
+    /**
+     * Close the request engine
+     * @throws Exception
+     */
     @Override
     synchronized public void close() throws Exception {
         engine.delete();

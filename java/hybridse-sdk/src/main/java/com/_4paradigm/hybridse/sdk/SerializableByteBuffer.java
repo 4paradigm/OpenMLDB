@@ -23,6 +23,8 @@ import java.nio.ByteBuffer;
 
 
 /**
+ * @brief Serializable ByteBuffer
+ *
  * By default, ByteBuffer instances are not serializable, tihs class implemented
  * serializable wrapper for byte buffer to communicate serialize buffer content.
  */
@@ -35,11 +37,20 @@ public class SerializableByteBuffer implements Serializable {
     public SerializableByteBuffer() {}
     public SerializableByteBuffer(ByteBuffer buffer) { this.buffer = buffer; }
 
+    /**
+     * Return ByteBuffer
+     */
     public ByteBuffer getBuffer() {
         return buffer;
     }
 
 
+    /**
+     * Serialization method to save the ByteBuffer.
+     * @serialData The length of the ByteBuffer type ID (int),
+     * followed by ByteBuffer isDirect flag (boolean)
+     * followed by buffer array
+     */
     private void writeObject(java.io.ObjectOutputStream out) throws IOException {
         if (buffer == null) {
             throw new IOException("No backed buffer");
@@ -60,6 +71,11 @@ public class SerializableByteBuffer implements Serializable {
     }
 
 
+    /**
+     * Serialization method to load the ByteBuffer.
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
     private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
 

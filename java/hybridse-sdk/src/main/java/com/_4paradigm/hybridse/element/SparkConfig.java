@@ -27,7 +27,4 @@ public class SparkConfig {
     private List<String> sparkConfig = new ArrayList<>();
     private String outputPath = "";
     private String instanceFormat = "parquet";
-
-
-
 }
