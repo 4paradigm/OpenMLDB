@@ -39,3 +39,11 @@ tools/documentation/api_doxygen/xml
 tools/documentation/api_doxygen/c++
 SUMMARY.md
 doxybook2.sh
+tools/documentation/c++_api/c++
+tools/documentation/c++_api/doxybook2_home
+tools/documentation/c++_api/html
+tools/documentation/c++_api/xml
+tools/documentation/java_api/doxybook2_home
+tools/documentation/java_api/html
+tools/documentation/java_api/xml
+tools/documentation/java_api/java

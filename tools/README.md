@@ -11,7 +11,7 @@ tools
 │   └── gen_intermediate_cicd_artifacts.sh      # pack compile result
 ├── documentation/
 │   ├── export_udf_doc.sh        # export udf documentations
-│   └── api_doxygen/             # generate c++ api documentation
+│   └── c++_api/             # generate c++ api documentation
 │   └── java_api/                # generate java api documentation
 ├── clang_format.sh              # format code
 ├── init_env.profile.sh          # init running environment
@@ -71,6 +71,50 @@ java sdk 编译测试
 
 生成 udf 文档
 
+#### documentation/c++_api
+Generate c++ api documentation
+
+1. Configure Doxyfile
+
+Configure project name
+```
+PROJECT_NAME           = "HybridSE-C++"
+```
+
+Configure headers directory or file
+```
+INPUT                  = ../../../include/vm
+```
+
+
+2. Run doxybook2 script
+```shell
+cd documentation/c++_api
+sh doxybook2.sh
+```
+
+#### documentation/java_api
+Generate java api documentation
+
+1. Configure Doxyfile
+
+Configure project name
+```
+PROJECT_NAME           = "HybridSE-Java"
+```
+
+Configure headers directory or file
+```
+INPUT                  = ../../../java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk
+```
+
+2. Run doxybook2 script
+```shell
+cd documentation/java_api
+sh doxybook2.sh
+```
+生成 udf 文档
+
 ### 3. 集成测试&性能测试
 
 #### micro_bench.sh
@@ -84,42 +128,3 @@ java sdk 编译测试
 #### gen_auto_case.sh
 
 生成自动化的SQL Case
-
-### 4. Generate API Doc
-
-#### C++ API Doc 
-
-1. Downlaod doxybook2 tools
-
-```shell
-cd documentation/api_doxygen
-# download mac os doxygen2 
-# wget https://github.com/matusnovak/doxybook2/releases/download/v1.3.3/doxybook2-linux-amd64-v1.3.3.zip
-wget https://github.com/matusnovak/doxybook2/releases/download/v1.3.3/doxybook2-osx-amd64-v1.3.3.zip
-unzip doxybook2-osx-amd64-v1.3.3.zip -d doxybook_home
-```
-2. Generate c++ api markdown into `c++` directory and generate summary into SUMMARY.md
-```shell
-doxygen
-sh doxybook2.sh doxybook_home/bin/doxybook2
-```
-
-#### Java API Doc
-
-1. Downlaod doxybook2 tools
-```shell
-cd documentation/java_api
-# downlaod mac os doxygen2 
-# wget https://github.com/matusnovak/doxybook2/releases/download/v1.3.3/doxybook2-osx-amd64-v1.3.3.zip
-# unzip doxybook2-osx-amd64-v1.3.3.zip -d doxybook_home
-wget https://github.com/matusnovak/doxybook2/releases/download/v1.3.3/doxybook2-osx-amd64-v1.3.3.zip
-unzip doxybook2-osx-amd64-v1.3.3.zip -d doxybook_home
-```
-
-2. Generate java api markdown into `java` directory and generate summary into SUMMARY.md
-
-```shell
-mkdir java
-doxygen
-sh doxybook2.sh doxybook_home/bin/doxybook2
-```
