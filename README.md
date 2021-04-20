@@ -55,7 +55,7 @@ HybridSE has following characteristic:
 ```bash
 git clone https://github.com/4paradigm/HybridSE.git
 cd HybridSE
-docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/centos6_gcc7_hybridsql:latest
+docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/hybridsql:latest
 cd /HybridSE
 # init enviroment before build
 source tools/init_env.profile.sh

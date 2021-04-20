@@ -32,6 +32,8 @@ then
 
     ln -sf /depends/thirdparty thirdparty
 
+    # TODO: delete the 'source' code. Those code is just a double-ensure that rh tools are enabled.
+    #  It is specific to docker development environment and therefore should ensured by docker image.
     if [ -r /opt/rh/devtoolset-7/enable ]; then
         # shellcheck disable=SC1091
         source /opt/rh/devtoolset-7/enable
@@ -40,9 +42,17 @@ then
         # shellcheck disable=SC1091
         source /opt/rh/sclo-git212/enable
     fi
-    if [ -r /opt/rh/python27 ]; then
+    if [ -r /opt/rh/rh-git218/enable ]; then
+        # shellcheck disable=SC1091
+        source /opt/rh/rh-git218/enable
+    fi
+    if [ -r /opt/rh/python27/enable ]; then
         # shellcheck disable=SC1091
         source /opt/rh/python27/enable
+    fi
+    if [ -r /opt/rh/rh-python38/enable ]; then
+        # shellcheck disable=SC1091
+        source /opt/rh/rh-python38/enable
     fi
 
     if [ -r /etc/profile.d/enable-thirdparty.sh ]; then
