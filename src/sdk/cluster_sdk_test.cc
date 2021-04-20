@@ -94,7 +94,7 @@ TEST_F(ClusterSDKTest, smoketest) {
     ASSERT_TRUE(ok);
     table_info.set_name(name);
     table_info.set_db(db);
-    RtiDBSchema* schema = table_info.mutable_column_desc_v1();
+    RtiDBSchema* schema = table_info.mutable_column_desc();
     auto col1 = schema->Add();
     col1->set_name("col1");
     col1->set_data_type(::fedb::type::kVarchar);

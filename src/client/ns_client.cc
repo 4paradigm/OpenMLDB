@@ -794,25 +794,18 @@ bool NsClient::UpdateTableAliveStatus(const std::string& endpoint,
 }
 
 bool NsClient::UpdateTTL(const std::string& name,
-                         const ::fedb::api::TTLType& type, uint64_t abs_ttl,
-                         uint64_t lat_ttl, const std::string& ts_name,
+                         const ::fedb::type::TTLType& type, uint64_t abs_ttl,
+                         uint64_t lat_ttl, const std::string& index_name,
                          std::string& msg) {
     ::fedb::nameserver::UpdateTTLRequest request;
     ::fedb::nameserver::UpdateTTLResponse response;
     request.set_name(name);
-    ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+    ::fedb::common::TTLSt* ttl_desc = request.mutable_ttl_desc();
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
     ttl_desc->set_lat_ttl(lat_ttl);
-    if (type == ::fedb::api::TTLType::kAbsoluteTime) {
-        request.set_ttl_type("kAbsoluteTime");
-        request.set_value(abs_ttl);
-    } else {
-        request.set_ttl_type("kLatestTime");
-        request.set_value(lat_ttl);
-    }
-    if (!ts_name.empty()) {
-        request.set_ts_name(ts_name);
+    if (!index_name.empty()) {
+        request.set_index_name(index_name);
     }
     request.set_db(GetDb());
     bool ok =
@@ -1172,10 +1165,6 @@ bool NsClient::TransformToTableDef(
     }
     table->set_partition_num(create_node->GetPartitionNum());
     table->set_format_version(1);
-    ::fedb::api::TTLDesc* ttl_desc = table->mutable_ttl_desc();
-    ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
-    ttl_desc->set_abs_ttl(0);
-    ttl_desc->set_lat_ttl(0);
     int no_ts_cnt = 0;
     for (auto column_desc : column_desc_list) {
         switch (column_desc->GetType()) {
@@ -1183,7 +1172,7 @@ bool NsClient::TransformToTableDef(
                 hybridse::node::ColumnDefNode* column_def =
                     (hybridse::node::ColumnDefNode*)column_desc;
                 ::fedb::common::ColumnDesc* column_desc =
-                    table->add_column_desc_v1();
+                    table->add_column_desc();
                 if (column_names.find(column_desc->name()) !=
                     column_names.end()) {
                     status->msg = "CREATE common: COLUMN NAME " +
@@ -1282,7 +1271,6 @@ bool NsClient::TransformToTableDef(
                         status->code = hybridse::common::kSqlError;
                         return false;
                     }
-                    cit->second->set_add_ts_idx(true);
                     index->add_col_name(key);
                 }
                 ::fedb::common::TTLSt* ttl_st = index->mutable_ttl();
@@ -1352,30 +1340,13 @@ bool NsClient::TransformToTableDef(
                     }
                 }
                 if (!column_index->GetTs().empty()) {
-                    index->add_ts_name(column_index->GetTs());
+                    index->set_ts_name(column_index->GetTs());
                     auto it = column_names.find(column_index->GetTs());
                     if (it == column_names.end()) {
                         status->msg = "CREATE common: TS NAME " +
                                       column_index->GetTs() + " not exists";
                         status->code = hybridse::common::kSqlError;
                         return false;
-                    }
-                    switch (it->second->data_type()) {
-                        case fedb::type::DataType::kInt:
-                        case fedb::type::DataType::kSmallInt:
-                        case fedb::type::DataType::kBigInt:
-                        case fedb::type::DataType::kTimestamp: {
-                            it->second->set_is_ts_col(true);
-                            break;
-                        }
-                        default: {
-                            status->msg = "CREATE common: TS Type " +
-                                          fedb::type::DataType_Name(
-                                              it->second->data_type()) +
-                                          " not support";
-                            status->code = hybridse::common::kSqlError;
-                            return false;
-                        }
                     }
                 } else {
                     no_ts_cnt++;

@@ -124,7 +124,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 4, 3, 8, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime);
+        "test", 4, 3, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset_value = 0;
     int ret = snapshot.MakeSnapshot(table, offset_value, 0);
@@ -249,7 +249,7 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 4, 4, 8, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime);
+        "test", 4, 4, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     MemTableSnapshot snapshot(4, 4, log_part, FLAGS_db_root_path);
     snapshot.Init();
@@ -322,7 +322,7 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 3, 3, 8, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime);
+        "test", 3, 3, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     MemTableSnapshot snapshot(3, 3, log_part, FLAGS_db_root_path);
     snapshot.Init();
@@ -437,7 +437,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 3, 2, 8, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime);
+        "test", 3, 2, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(3, 2, log_part, FLAGS_db_root_path);
@@ -695,7 +695,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     mapping.insert(std::make_pair("idx0", 0));
 
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 2, 2, 8, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime);
+        "test", 2, 2, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(2, 2, log_part, FLAGS_db_root_path);
@@ -728,7 +728,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "tx_log", 1, 1, 8, mapping, 2, ::fedb::api::TTLType::kAbsoluteTime);
+        "tx_log", 1, 1, 8, mapping, 2, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -1023,7 +1023,7 @@ TEST_F(SnapshotTest, MakeSnapshotAbsOrLat) {
     table_meta->set_pid(0);
     table_meta->set_seg_cnt(8);
     ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-    ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
+    ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
     ttl_desc->set_abs_ttl(0);
     ttl_desc->set_lat_ttl(1);
 
@@ -1102,7 +1102,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "tx_log", 5, 1, 8, mapping, 4, ::fedb::api::TTLType::kLatestTime);
+        "tx_log", 5, 1, 8, mapping, 4, ::fedb::type::TTLType::kLatestTime);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -1307,7 +1307,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", tid, 0, 8, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime);
+        "test", tid, 0, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     MemTableSnapshot snapshot(tid, 0, log_part, FLAGS_db_root_path);
     snapshot.Init();
@@ -1484,7 +1484,7 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "tx_log", 1, 10, 8, mapping, 2, ::fedb::api::TTLType::kAbsoluteTime);
+        "tx_log", 1, 10, 8, mapping, 2, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -1677,7 +1677,7 @@ TEST_F(SnapshotTest, Recover_large_snapshot) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 100, 0, 8, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime);
+        "test", 100, 0, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset_value = 0;
     int ret = snapshot.MakeSnapshot(table, offset_value, 0);
@@ -1743,7 +1743,7 @@ TEST_F(SnapshotTest, Recover_large_snapshot_and_binlog) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 100, 0, 8, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime);
+        "test", 100, 0, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset_value = 0;
     int ret = snapshot.MakeSnapshot(table, offset_value, 0);

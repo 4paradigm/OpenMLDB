@@ -53,7 +53,7 @@ inline std::string GenRand() {
 }
 
 void CreateBaseTable(::fedb::storage::Table*& table,  // NOLINT
-                     const ::fedb::api::TTLType& ttl_type, uint64_t ttl,
+                     const ::fedb::type::TTLType& ttl_type, uint64_t ttl,
                      uint64_t start_ts) {
     ::fedb::api::TableMeta table_meta;
     table_meta.set_name("table");
@@ -317,7 +317,7 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
 
 TEST_F(TabletFuncTest, GetLatestIndex_default_iterator) {
     ::fedb::storage::Table* table;
-    CreateBaseTable(table, ::fedb::api::TTLType::kLatestTime, 10, 1000);
+    CreateBaseTable(table, ::fedb::type::TTLType::kLatestTime, 10, 1000);
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
     ::fedb::storage::TableIterator* it =
@@ -329,7 +329,7 @@ TEST_F(TabletFuncTest, GetLatestIndex_default_iterator) {
 
 TEST_F(TabletFuncTest, GetLatestIndex_ts0_iterator) {
     ::fedb::storage::Table* table = NULL;
-    CreateBaseTable(table, ::fedb::api::TTLType::kLatestTime, 10, 1000);
+    CreateBaseTable(table, ::fedb::type::TTLType::kLatestTime, 10, 1000);
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
     ::fedb::storage::TableIterator* it =
@@ -341,7 +341,7 @@ TEST_F(TabletFuncTest, GetLatestIndex_ts0_iterator) {
 
 TEST_F(TabletFuncTest, GetLatestIndex_ts1_iterator) {
     ::fedb::storage::Table* table = NULL;
-    CreateBaseTable(table, ::fedb::api::TTLType::kLatestTime, 10, 1000);
+    CreateBaseTable(table, ::fedb::type::TTLType::kLatestTime, 10, 1000);
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
     ::fedb::storage::TableIterator* it =
@@ -354,7 +354,7 @@ TEST_F(TabletFuncTest, GetLatestIndex_ts1_iterator) {
 TEST_F(TabletFuncTest, GetTimeIndex_default_iterator) {
     uint64_t base_ts = ::baidu::common::timer::get_micros();
     ::fedb::storage::Table* table = NULL;
-    CreateBaseTable(table, ::fedb::api::TTLType::kAbsoluteTime, 1000, base_ts);
+    CreateBaseTable(table, ::fedb::type::TTLType::kAbsoluteTime, 1000, base_ts);
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
     ::fedb::storage::TableIterator* it =
@@ -367,7 +367,7 @@ TEST_F(TabletFuncTest, GetTimeIndex_default_iterator) {
 TEST_F(TabletFuncTest, GetTimeIndex_ts0_iterator) {
     uint64_t base_ts = ::baidu::common::timer::get_micros();
     ::fedb::storage::Table* table = NULL;
-    CreateBaseTable(table, ::fedb::api::TTLType::kAbsoluteTime, 1000, base_ts);
+    CreateBaseTable(table, ::fedb::type::TTLType::kAbsoluteTime, 1000, base_ts);
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
     ::fedb::storage::TableIterator* it =
@@ -380,7 +380,7 @@ TEST_F(TabletFuncTest, GetTimeIndex_ts0_iterator) {
 TEST_F(TabletFuncTest, GetTimeIndex_ts1_iterator) {
     uint64_t base_ts = ::baidu::common::timer::get_micros();
     ::fedb::storage::Table* table = NULL;
-    CreateBaseTable(table, ::fedb::api::TTLType::kAbsoluteTime, 1000, base_ts);
+    CreateBaseTable(table, ::fedb::type::TTLType::kAbsoluteTime, 1000, base_ts);
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
     ::fedb::storage::TableIterator* it =

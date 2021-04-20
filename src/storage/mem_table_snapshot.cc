@@ -621,7 +621,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
     std::shared_ptr<Table> table, const ::fedb::api::Manifest& manifest,
     WriteHandle* wh, const ::fedb::common::ColumnKey& column_key, uint32_t idx,
     uint32_t partition_num,
-    const std::vector<::fedb::codec::ColumnDesc>& columns, uint32_t max_idx,
+    uint32_t max_idx,
     const std::vector<uint32_t>& index_cols, uint64_t& count,
     uint64_t& expired_key_num, uint64_t& deleted_key_num) {
     uint32_t tid = table->GetId();
@@ -713,7 +713,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
         if (!(entry.has_method_type() && entry.method_type() == ::fedb::api::MethodType::kDelete)) {
             // new column_key
             std::vector<std::string> row;
-            int ret = DecodeData(table, columns, entry, max_idx, row);
+            int ret = DecodeData(table, entry, max_idx, row);
             if (ret == 2) {
                 count++;
                 wh->Write(record);
@@ -828,21 +828,14 @@ int MemTableSnapshot::ExtractIndexData(
     uint64_t deleted_key_num = 0;
     uint64_t last_term = 0;
 
-    std::string schema = table->GetSchema();
-    std::vector<::fedb::codec::ColumnDesc> columns;
-    if (!schema.empty()) {
-        ::fedb::codec::SchemaCodec codec;
-        codec.Decode(schema, columns);
-    } else {
-        PDLOG(INFO, "schema is empty. tid %u, pid %u", tid, pid);
-        making_snapshot_.store(false, std::memory_order_release);
-        return 0;
-    }
 
-    // get all columns
     std::map<std::string, uint32_t> column_desc_map;
-    for (uint32_t i = 0; i < columns.size(); ++i) {
-        column_desc_map.insert(std::make_pair(columns[i].name, i));
+    for (uint32_t i = 0; table->GetTableMeta().column_desc_size(); ++i) {
+        column_desc_map.insert(std::make_pair(table->GetTableMeta().column_desc(i).name(), i));
+    }
+    uint32_t base_size = table->GetTableMeta().column_desc_size();
+    for (uint32_t i = 0; table->GetTableMeta().added_column_desc_size(); ++i) {
+        column_desc_map.insert(std::make_pair(table->GetTableMeta().added_column_desc(i).name(), i + base_size));
     }
     std::vector<uint32_t> index_cols;
     uint32_t max_idx = 0;
@@ -866,7 +859,7 @@ int MemTableSnapshot::ExtractIndexData(
     if (result == 0) {
         DLOG(INFO) << "begin extract index data from snapshot";
         if (ExtractIndexFromSnapshot(table, manifest, wh, column_key, idx,
-                                     partition_num, columns, max_idx,
+                                     partition_num, max_idx,
                                      index_cols, write_count, expired_key_num,
                                      deleted_key_num) < 0) {
             has_error = true;
@@ -957,7 +950,7 @@ int MemTableSnapshot::ExtractIndexData(
             if (!(entry.has_method_type() && entry.method_type() == ::fedb::api::MethodType::kDelete)) {
                 // new column_key
                 std::vector<std::string> row;
-                int ret = DecodeData(table, columns, entry, max_idx, row);
+                int ret = DecodeData(table, entry, max_idx, row);
                 if (ret == 2) {
                     wh->Write(record);
                     write_count++;
@@ -1082,7 +1075,7 @@ int MemTableSnapshot::ExtractIndexData(
 bool MemTableSnapshot::PackNewIndexEntry(
     std::shared_ptr<Table> table,
     const std::vector<std::vector<uint32_t>>& index_cols,
-    const std::vector<::fedb::codec::ColumnDesc>& columns, uint32_t max_idx,
+    uint32_t max_idx,
     uint32_t idx, uint32_t partition_num, ::fedb::api::LogEntry* entry,
     uint32_t* index_pid) {
     if (entry->dimensions_size() == 0) {
@@ -1106,7 +1099,7 @@ bool MemTableSnapshot::PackNewIndexEntry(
         }
     }
     std::vector<std::string> row;
-    int ret = DecodeData(table, columns, *entry, max_idx, row);
+    int ret = DecodeData(table, *entry, max_idx, row);
     if (ret != 0 && ret != 2) {
         DLOG(INFO) << "pack fail code is " << ret;
         return false;
@@ -1161,7 +1154,7 @@ bool MemTableSnapshot::PackNewIndexEntry(
 bool MemTableSnapshot::DumpSnapshotIndexData(
     std::shared_ptr<Table> table,
     const std::vector<std::vector<uint32_t>>& index_cols,
-    const std::vector<::fedb::codec::ColumnDesc>& columns, uint32_t max_idx,
+    uint32_t max_idx,
     uint32_t idx, const std::vector<::fedb::log::WriteHandle*>& whs,
     uint64_t* snapshot_offset) {
     uint32_t partition_num = whs.size();
@@ -1214,7 +1207,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
             continue;
         }
         uint32_t index_pid = 0;
-        if (!PackNewIndexEntry(table, index_cols, columns, max_idx, idx, partition_num, &entry, &index_pid)) {
+        if (!PackNewIndexEntry(table, index_cols, max_idx, idx, partition_num, &entry, &index_pid)) {
             DLOG(INFO) << "pack new entry fail in snapshot";
             continue;
         }
@@ -1241,22 +1234,17 @@ bool MemTableSnapshot::DumpIndexData(
     uint32_t idx, const std::vector<::fedb::log::WriteHandle*>& whs) {
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
-    std::string schema = table->GetSchema();
-    std::vector<::fedb::codec::ColumnDesc> columns;
-    if (!schema.empty()) {
-        ::fedb::codec::SchemaCodec codec;
-        codec.Decode(schema, columns);
-    } else {
-        PDLOG(INFO, "schema of table tid[%u] pid[%u]is empty", tid, pid);
-        return true;
-    }
     if (making_snapshot_.exchange(true, std::memory_order_consume)) {
         PDLOG(INFO, "snapshot is doing now. tid %u, pid %u", tid, pid);
         return false;
     }
     std::map<std::string, uint32_t> column_desc_map;
-    for (uint32_t i = 0; i < columns.size(); ++i) {
-        column_desc_map.insert(std::make_pair(columns[i].name, i));
+    for (uint32_t i = 0; table->GetTableMeta().column_desc_size(); ++i) {
+        column_desc_map.insert(std::make_pair(table->GetTableMeta().column_desc(i).name(), i));
+    }
+    uint32_t base_size = table->GetTableMeta().column_desc_size();
+    for (uint32_t i = 0; table->GetTableMeta().added_column_desc_size(); ++i) {
+        column_desc_map.insert(std::make_pair(table->GetTableMeta().added_column_desc(i).name(), i + base_size));
     }
     std::vector<std::vector<uint32_t>> index_cols;
     uint32_t max_idx = 0;
@@ -1298,8 +1286,8 @@ bool MemTableSnapshot::DumpIndexData(
     uint64_t collected_offset = CollectDeletedKey(0);
     uint64_t snapshot_offset = 0;
     bool ret = true;
-    if (!DumpSnapshotIndexData(table, index_cols, columns, max_idx, idx, whs, &snapshot_offset) ||
-        !DumpBinlogIndexData(table, index_cols, columns, max_idx, idx, whs, snapshot_offset, collected_offset)) {
+    if (!DumpSnapshotIndexData(table, index_cols, max_idx, idx, whs, &snapshot_offset) ||
+        !DumpBinlogIndexData(table, index_cols, max_idx, idx, whs, snapshot_offset, collected_offset)) {
         ret = false;
     }
     making_snapshot_.store(false, std::memory_order_release);
@@ -1309,7 +1297,7 @@ bool MemTableSnapshot::DumpIndexData(
 bool MemTableSnapshot::DumpBinlogIndexData(
     std::shared_ptr<Table> table,
     const std::vector<std::vector<uint32_t>>& index_cols,
-    const std::vector<::fedb::codec::ColumnDesc>& columns, uint32_t max_idx,
+    uint32_t max_idx,
     uint32_t idx, const std::vector<::fedb::log::WriteHandle*>& whs,
     uint64_t snapshot_offset, uint64_t collected_offset) {
     ::fedb::log::LogReader log_reader(log_part_, log_path_, false);
@@ -1376,7 +1364,7 @@ bool MemTableSnapshot::DumpBinlogIndexData(
                   cur_offset, entry.log_index(), tid_, pid_);
         }
         uint32_t index_pid = 0;
-        if (!PackNewIndexEntry(table, index_cols, columns, max_idx, idx, partition_num, &entry, &index_pid)) {
+        if (!PackNewIndexEntry(table, index_cols, max_idx, idx, partition_num, &entry, &index_pid)) {
             LOG(INFO) << "pack new entry fail in binlog";
             continue;
         }
@@ -1395,9 +1383,8 @@ bool MemTableSnapshot::DumpBinlogIndexData(
     return true;
 }
 
-int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector<::fedb::codec::ColumnDesc>& columns,
-                                  const fedb::api::LogEntry& entry, uint32_t max_idx, std::vector<std::string>& row) {
-    const ::fedb::api::TableMeta& table_meta = table->GetTableMeta();
+int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const fedb::api::LogEntry& entry,
+            uint32_t max_idx, std::vector<std::string>& row) {
     std::string buff;
     fedb::base::Slice data;
     if (table->GetCompressType() == fedb::type::kSnappy) {
@@ -1405,35 +1392,6 @@ int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector
         data.reset(buff.data(), buff.size());
     } else {
         data.reset(entry.value().data(), entry.value().size());
-    }
-    if (table_meta.format_version() == 0) {
-        uint16_t col_cnt = 0;
-        if (table_meta.column_desc_size() < 128) {
-            if ((uint8_t)(data.data()[0] & 0x80) != 0) {
-                col_cnt = ((uint8_t)data.data()[0] & 0x7F) + table_meta.column_desc_size();
-            } else {
-                col_cnt = (uint8_t)data.data()[0];
-            }
-        } else {
-            uint16_t col_cnt_tmp = 0;
-            memcpy(static_cast<void*>(&col_cnt_tmp), data.data(), 2);
-            memrev16ifbe(static_cast<void*>(&col_cnt_tmp));
-            if ((col_cnt_tmp & 0x0080) != 0) {
-                col_cnt = (col_cnt_tmp & 0x007F) + table_meta.column_desc_size();
-            } else {
-                col_cnt = col_cnt_tmp;
-            }
-        }
-        bool ok = fedb::codec::RowCodec::DecodeRow(table_meta.column_desc_size(), max_idx + 1, data, &row);
-        if (!ok) {
-            DLOG(WARNING) << "decode data error";
-            return 3;
-        }
-        if (col_cnt < (int64_t)(max_idx + 1)) {
-            DLOG(WARNING) << "data size is " << row.size() << " less than " << max_idx + 1;
-            return 2;
-        }
-        return 0;
     }
     const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
     uint8_t version = fedb::codec::RowView::GetSchemaVersion(raw);

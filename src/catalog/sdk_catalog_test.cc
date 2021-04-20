@@ -38,7 +38,7 @@ TestArgs* PrepareTable(const std::string& tname, const std::string& db) {
     args->meta.set_name(tname);
     args->meta.set_format_version(1);
     args->meta.set_db(db);
-    RtiDBSchema* schema = args->meta.mutable_column_desc_v1();
+    RtiDBSchema* schema = args->meta.mutable_column_desc();
     auto col1 = schema->Add();
     col1->set_name("col1");
     col1->set_data_type(::fedb::type::kVarchar);

@@ -229,7 +229,7 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_ttl(0);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        table_meta->set_ttl_type(::fedb::type::TTLType::kLatestTime);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
@@ -364,7 +364,7 @@ TEST_F(TabletImplTest, Count_Time_Table) {
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_ttl(0);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
+        table_meta->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
@@ -499,7 +499,7 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_ttl(5);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        table_meta->set_ttl_type(::fedb::type::TTLType::kLatestTime);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
@@ -705,7 +705,7 @@ TEST_F(TabletImplTest, Get) {
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(5);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        table_meta->set_ttl_type(::fedb::type::TTLType::kLatestTime);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
@@ -767,7 +767,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         table_meta->set_pid(0);
         table_meta->set_wal(true);
         table_meta->set_ttl(100);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
+        table_meta->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
@@ -779,7 +779,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(0);
         request.set_pid(0);
-        request.set_type(::fedb::api::TTLType::kAbsoluteTime);
+        request.set_type(::fedb::type::TTLType::kAbsoluteTime);
         request.set_value(0);
         ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
@@ -791,7 +791,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::fedb::api::TTLType::kAbsoluteTime);
+        request.set_type(::fedb::type::TTLType::kAbsoluteTime);
         request.set_value(60 * 24 * 365 * 30 * 2);
         ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
@@ -835,7 +835,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
     ::fedb::api::UpdateTTLRequest request;
     request.set_tid(id);
     request.set_pid(0);
-    request.set_type(::fedb::api::TTLType::kAbsoluteTime);
+    request.set_type(::fedb::type::TTLType::kAbsoluteTime);
     ::fedb::api::UpdateTTLResponse response;
     // ExecuteGcRequest
     ::fedb::api::ExecuteGcRequest request_execute;
@@ -1029,7 +1029,7 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::fedb::api::TTLType::kAbsoluteTime);
+        request.set_type(::fedb::type::TTLType::kAbsoluteTime);
         request.set_value(0);
         ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
@@ -2600,7 +2600,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         table_meta->set_pid(1);
         // 3 minutes
         table_meta->set_ttl(3);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
+        table_meta->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2669,7 +2669,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(1);
-        request.set_type(::fedb::api::TTLType::kAbsoluteTime);
+        request.set_type(::fedb::type::TTLType::kAbsoluteTime);
         request.set_value(1);
         ::fedb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
@@ -2751,7 +2751,7 @@ TEST_F(TabletImplTest, TestGetType) {
     table_meta->set_pid(1);
     table_meta->set_ttl(4);
     table_meta->set_wal(true);
-    table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+    table_meta->set_ttl_type(::fedb::type::TTLType::kLatestTime);
     ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -2944,7 +2944,7 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Default) {
         table_meta->set_ttl(0);
         table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        table_meta->set_ttl_type(::fedb::type::TTLType::kLatestTime);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2974,7 +2974,7 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Specify) {
         table_meta->set_ttl(0);
         table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        table_meta->set_ttl_type(::fedb::type::TTLType::kLatestTime);
         table_meta->set_key_entry_max_height(2);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -3005,7 +3005,7 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Default) {
         table_meta->set_ttl(0);
         table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
+        table_meta->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -3035,7 +3035,7 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Specify) {
         table_meta->set_ttl(0);
         table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
+        table_meta->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
         table_meta->set_key_entry_max_height(8);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -3066,7 +3066,7 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_TTlDesc) {
         table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
         ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
         ttl_desc->set_abs_ttl(10);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -3081,7 +3081,7 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_TTlDesc) {
         const TableStatus& ts = response.all_table_status(0);
         ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
         ASSERT_EQ(0, (signed)ts.ttl_desc().lat_ttl());
-        ASSERT_EQ(::fedb::api::TTLType::kAbsoluteTime,
+        ASSERT_EQ(::fedb::type::TTLType::kAbsoluteTime,
                   ts.ttl_desc().ttl_type());
     }
 }
@@ -3100,7 +3100,7 @@ TEST_F(TabletImplTest, CreateTableLatestTest_TTlDesc) {
         table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
         ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kLatestTime);
         ttl_desc->set_lat_ttl(10);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -3115,7 +3115,7 @@ TEST_F(TabletImplTest, CreateTableLatestTest_TTlDesc) {
         const TableStatus& ts = response.all_table_status(0);
         ASSERT_EQ(0, (signed)ts.ttl_desc().abs_ttl());
         ASSERT_EQ(10, (signed)ts.ttl_desc().lat_ttl());
-        ASSERT_EQ(::fedb::api::TTLType::kLatestTime, ts.ttl_desc().ttl_type());
+        ASSERT_EQ(::fedb::type::TTLType::kLatestTime, ts.ttl_desc().ttl_type());
     }
 }
 
@@ -3133,7 +3133,7 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest) {
         table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
         ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(20);
         ::fedb::api::CreateTableResponse response;
@@ -3149,7 +3149,7 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest) {
         const TableStatus& ts = response.all_table_status(0);
         ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
         ASSERT_EQ(20, (signed)ts.ttl_desc().lat_ttl());
-        ASSERT_EQ(::fedb::api::TTLType::kAbsAndLat, ts.ttl_desc().ttl_type());
+        ASSERT_EQ(::fedb::type::TTLType::kAbsAndLat, ts.ttl_desc().ttl_type());
     }
 }
 
@@ -3167,7 +3167,7 @@ TEST_F(TabletImplTest, CreateTableAbsAndOrTest) {
         table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
         ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(20);
         ::fedb::api::CreateTableResponse response;
@@ -3183,7 +3183,7 @@ TEST_F(TabletImplTest, CreateTableAbsAndOrTest) {
         const TableStatus& ts = response.all_table_status(0);
         ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
         ASSERT_EQ(20, (signed)ts.ttl_desc().lat_ttl());
-        ASSERT_EQ(::fedb::api::TTLType::kAbsOrLat, ts.ttl_desc().ttl_type());
+        ASSERT_EQ(::fedb::type::TTLType::kAbsOrLat, ts.ttl_desc().ttl_type());
     }
 }
 
@@ -3201,7 +3201,7 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest_Specify) {
         table_meta->set_ttl(0);
         table_meta->set_mode(::fedb::api::kTableLeader);
         table_meta->set_wal(true);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
+        table_meta->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
         table_meta->set_key_entry_max_height(8);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -3408,7 +3408,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         table_meta->set_pid(0);
         table_meta->set_wal(true);
         ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(100);
         ttl_desc->set_lat_ttl(50);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
@@ -3423,7 +3423,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         request.set_tid(0);
         request.set_pid(0);
         ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(5);
         ::fedb::api::UpdateTTLResponse response;
@@ -3437,7 +3437,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         request.set_tid(id);
         request.set_pid(0);
         ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(60 * 24 * 365 * 30 * 2);
         ttl_desc->set_lat_ttl(5);
         ::fedb::api::UpdateTTLResponse response;
@@ -3451,7 +3451,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         request.set_tid(id);
         request.set_pid(0);
         ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(30);
         ttl_desc->set_lat_ttl(20000);
         ::fedb::api::UpdateTTLResponse response;
@@ -3465,7 +3465,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         request.set_tid(id);
         request.set_pid(0);
         ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kLatestTime);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(5);
         ::fedb::api::UpdateTTLResponse response;
@@ -3524,7 +3524,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         request.set_tid(id);
         request.set_pid(0);
         ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(0);
         ttl_desc->set_lat_ttl(0);
         ::fedb::api::UpdateTTLResponse response;
@@ -3575,7 +3575,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         request.set_tid(id);
         request.set_pid(0);
         ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(50);
         ttl_desc->set_lat_ttl(1);
         ::fedb::api::UpdateTTLResponse response;
@@ -3627,7 +3627,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         request.set_tid(id);
         request.set_pid(0);
         ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(100);
         ttl_desc->set_lat_ttl(2);
         ::fedb::api::UpdateTTLResponse response;
@@ -3695,7 +3695,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         table_meta->set_pid(0);
         table_meta->set_wal(true);
         ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(100);
         ttl_desc->set_lat_ttl(50);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
@@ -3710,7 +3710,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         request.set_tid(0);
         request.set_pid(0);
         ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(5);
         ::fedb::api::UpdateTTLResponse response;
@@ -3724,7 +3724,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         request.set_tid(id);
         request.set_pid(0);
         ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(60 * 24 * 365 * 30 * 2);
         ttl_desc->set_lat_ttl(5);
         ::fedb::api::UpdateTTLResponse response;
@@ -3738,7 +3738,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         request.set_tid(id);
         request.set_pid(0);
         ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(30);
         ttl_desc->set_lat_ttl(20000);
         ::fedb::api::UpdateTTLResponse response;
@@ -3752,7 +3752,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         request.set_tid(id);
         request.set_pid(0);
         ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kLatestTime);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(5);
         ::fedb::api::UpdateTTLResponse response;
@@ -3810,7 +3810,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         request.set_tid(id);
         request.set_pid(0);
         ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(0);
         ttl_desc->set_lat_ttl(0);
         ::fedb::api::UpdateTTLResponse response;
@@ -3861,7 +3861,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         request.set_tid(id);
         request.set_pid(0);
         ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(1);
         ::fedb::api::UpdateTTLResponse response;
@@ -3912,7 +3912,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         request.set_tid(id);
         request.set_pid(0);
         ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(100);
         ttl_desc->set_lat_ttl(2);
         ::fedb::api::UpdateTTLResponse response;
@@ -3976,7 +3976,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         table_meta->set_pid(0);
         table_meta->set_wal(true);
         ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(0);
         ttl_desc->set_lat_ttl(0);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
@@ -4077,7 +4077,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(100);
         ttl_desc->set_lat_ttl(10);
         ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
@@ -5004,7 +5004,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(100);
         ttl_desc->set_lat_ttl(10);
         ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
@@ -6097,7 +6097,7 @@ TEST_F(TabletImplTest, SendIndexData) {
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_ttl(0);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        table_meta->set_ttl_type(::fedb::type::TTLType::kLatestTime);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
@@ -6111,7 +6111,7 @@ TEST_F(TabletImplTest, SendIndexData) {
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(0);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        table_meta->set_ttl_type(::fedb::type::TTLType::kLatestTime);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;

@@ -558,7 +558,7 @@ class NameServerImpl : public NameServer {
     std::shared_ptr<Task> CreateLoadTableTask(
         const std::string& endpoint, uint64_t op_index,
         ::fedb::api::OPType op_type, const std::string& name, uint32_t tid,
-        uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader);
+        uint32_t pid, uint32_t seg_cnt, bool is_leader);
 
     std::shared_ptr<Task> CreateLoadTableRemoteTask(
         const std::string& alias, const std::string& name,
@@ -853,9 +853,8 @@ class NameServerImpl : public NameServer {
 
     // update ttl for partition
     bool UpdateTTLOnTablet(const std::string& endpoint, int32_t tid,
-                           int32_t pid, const ::fedb::api::TTLType& type,
-                           uint64_t abs_ttl, uint64_t lat_ttl,
-                           const std::string& ts_name);
+                           int32_t pid, const std::string& index_name,
+                           const ::fedb::common::TTLSt& ttl);
 
     void CheckSyncExistTable(
         const std::string& alias,

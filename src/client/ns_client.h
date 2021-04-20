@@ -215,7 +215,7 @@ class NsClient {
                                 uint32_t pid, bool is_alive,
                                 std::string& msg);  // NOLINT
 
-    bool UpdateTTL(const std::string& name, const ::fedb::api::TTLType& type,
+    bool UpdateTTL(const std::string& name, const ::fedb::type::TTLType& type,
                    uint64_t abs_ttl, uint64_t lat_ttl,
                    const std::string& ts_name, std::string& msg);  // NOLINT
 

@@ -38,7 +38,7 @@ TEST_F(TableTest, Put) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10,
-                                   ::fedb::api::TTLType::kAbsoluteTime);
+                                   ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     table->Put("test", 9537, "test", 4);
     ASSERT_EQ(1, (int64_t)table->GetRecordCnt());
@@ -88,7 +88,7 @@ TEST_F(TableTest, MultiDimissionPut0) {
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10,
-                                   ::fedb::api::TTLType::kAbsoluteTime);
+                                   ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     ASSERT_EQ(3, (int64_t)table->GetIdxCnt());
     ASSERT_EQ(0, (int64_t)table->GetRecordIdxCnt());
@@ -117,7 +117,7 @@ TEST_F(TableTest, MultiDimissionPut1) {
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10,
-                                   ::fedb::api::TTLType::kAbsoluteTime);
+                                   ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     ASSERT_EQ(3, (int64_t)table->GetIdxCnt());
     DataBlock* db = new DataBlock(3, "helloworld", 10);
@@ -134,7 +134,7 @@ TEST_F(TableTest, Release) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10,
-                                   ::fedb::api::TTLType::kAbsoluteTime);
+                                   ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     table->Put("test", 9537, "test", 4);
     table->Put("test2", 9537, "test", 4);
@@ -148,7 +148,7 @@ TEST_F(TableTest, IsExpired) {
     mapping.insert(std::make_pair("idx0", 0));
     // table ttl is 1
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1,
-                                   ::fedb::api::TTLType::kAbsoluteTime);
+                                   ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t now_time = ::baidu::common::timer::get_micros() / 1000;
     ::fedb::api::LogEntry entry;
@@ -168,7 +168,7 @@ TEST_F(TableTest, Iterator) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10,
-                                   ::fedb::api::TTLType::kAbsoluteTime);
+                                   ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
 
     table->Put("pk", 9527, "test", 4);
@@ -194,7 +194,7 @@ TEST_F(TableTest, Iterator_GetSize) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10,
-                                   ::fedb::api::TTLType::kAbsoluteTime);
+                                   ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
 
     table->Put("pk", 9527, "test", 4);
@@ -228,7 +228,7 @@ TEST_F(TableTest, SchedGcForMultiDimissionTable) {
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1,
-                                   ::fedb::api::TTLType::kAbsoluteTime);
+                                   ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     ASSERT_EQ(3, (int64_t)table->GetIdxCnt());
     DataBlock* db = new DataBlock(3, "helloworld", 10);
@@ -250,7 +250,7 @@ TEST_F(TableTest, SchedGcHead) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1,
-                                   ::fedb::api::TTLType::kLatestTime);
+                                   ::fedb::type::TTLType::kLatestTime);
     table->Init();
     table->Put("test", 2, "test1", 5);
     uint64_t bytes = table->GetRecordByteSize();
@@ -287,7 +287,7 @@ TEST_F(TableTest, SchedGcHead1) {
     mapping.insert(std::make_pair("idx0", 0));
     uint64_t keep_cnt = 500;
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, keep_cnt,
-                                   ::fedb::api::TTLType::kLatestTime);
+                                   ::fedb::type::TTLType::kLatestTime);
     table->Init();
     uint64_t ts = 0;
     for (int i = 0; i < 10; i++) {
@@ -324,7 +324,7 @@ TEST_F(TableTest, SchedGc) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1,
-                                   ::fedb::api::TTLType::kLatestTime);
+                                   ::fedb::type::TTLType::kLatestTime);
     table->Init();
 
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
@@ -357,7 +357,7 @@ TEST_F(TableTest, TableDataCnt) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1,
-                                   ::fedb::api::TTLType::kAbsoluteTime);
+                                   ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     ASSERT_EQ((int64_t)table->GetRecordCnt(), 0);
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
@@ -391,7 +391,7 @@ TEST_F(TableTest, TableUnref) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1,
-                                   ::fedb::api::TTLType::kAbsoluteTime);
+                                   ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     table->Put("test", 9527, "test", 4);
     delete table;
@@ -401,7 +401,7 @@ TEST_F(TableTest, TableIterator) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0,
-                                   ::fedb::api::TTLType::kAbsoluteTime);
+                                   ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
 
     table->Put("pk", 9527, "test1", 5);
@@ -446,7 +446,7 @@ TEST_F(TableTest, TableIterator) {
     delete table;
 
     MemTable* table1 = new MemTable("tx_log", 1, 1, 8, mapping, 2,
-                                    ::fedb::api::TTLType::kLatestTime);
+                                    ::fedb::type::TTLType::kLatestTime);
     table1->Init();
 
     table1->Put("pk", 9527, "test1", 5);
@@ -474,7 +474,7 @@ TEST_F(TableTest, TableIteratorNoPk) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0,
-                                   ::fedb::api::TTLType::kAbsoluteTime);
+                                   ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
 
     table->Put("pk10", 9527, "test10", 5);
@@ -520,7 +520,7 @@ TEST_F(TableTest, TableIteratorCount) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0,
-                                   ::fedb::api::TTLType::kAbsoluteTime);
+                                   ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     for (int i = 0; i < 100000; i = i + 2) {
         std::string key = "pk" + std::to_string(i);
@@ -831,7 +831,7 @@ TEST_F(TableTest, UpdateTTL) {
 }
 
 void BuildTableMeta(::fedb::api::TableMeta& table_meta, // NOLINT
-                    ::fedb::api::TTLType ttl_type, int abs_ttl, int lat_ttl) {
+                    ::fedb::type::TTLType ttl_type, int abs_ttl, int lat_ttl) {
     table_meta.set_name("table1");
     table_meta.set_tid(1);
     table_meta.set_pid(0);
@@ -850,7 +850,7 @@ void BuildTableMeta(::fedb::api::TableMeta& table_meta, // NOLINT
 
 TEST_F(TableTest, AbsAndLatSetGet) {
     ::fedb::api::TableMeta table_meta;
-    BuildTableMeta(table_meta, ::fedb::api::TTLType::kAbsAndLat, 10, 12);
+    BuildTableMeta(table_meta, ::fedb::type::TTLType::kAbsAndLat, 10, 12);
     AddColumnDesc(table_meta, "card", "string", true, false, 0, 0);
     AddColumnDesc(table_meta, "mcc", "string", true, false, 0, 0);
     AddColumnDesc(table_meta, "price", "int64", false, false, 0, 0);
@@ -948,7 +948,7 @@ TEST_F(TableTest, AbsAndLatSetGet) {
 
 TEST_F(TableTest, AbsOrLatSetGet) {
     ::fedb::api::TableMeta table_meta;
-    BuildTableMeta(table_meta, ::fedb::api::TTLType::kAbsOrLat, 10, 12);
+    BuildTableMeta(table_meta, ::fedb::type::TTLType::kAbsOrLat, 10, 12);
     AddColumnDesc(table_meta, "card", "string", true, false, 0, 0);
     AddColumnDesc(table_meta, "mcc", "string", true, false, 0, 0);
     AddColumnDesc(table_meta, "price", "int64", false, 0, 0);
@@ -1049,7 +1049,7 @@ TEST_F(TableTest, AbsOrLatSetGet) {
 
 TEST_F(TableTest, GcAbsOrLat) {
     ::fedb::api::TableMeta table_meta;
-    BuildTableMeta(table_meta, ::fedb::api::TTLType::kAbsOrLat, 4, 3);
+    BuildTableMeta(table_meta, ::fedb::type::TTLType::kAbsOrLat, 4, 3);
     AddColumnDesc(table_meta, "idx0", "string", true, false, 0, 0);
 
     int32_t offset = FLAGS_gc_safe_offset;
@@ -1135,7 +1135,7 @@ TEST_F(TableTest, GcAbsOrLat) {
 
 TEST_F(TableTest, GcAbsAndLat) {
     ::fedb::api::TableMeta table_meta;
-    BuildTableMeta(table_meta, ::fedb::api::TTLType::kAbsAndLat, 3, 3);
+    BuildTableMeta(table_meta, ::fedb::type::TTLType::kAbsAndLat, 3, 3);
     AddColumnDesc(table_meta, "idx0", "string", true, false, 0, 0);
 
     int32_t offset = FLAGS_gc_safe_offset;

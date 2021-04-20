@@ -60,13 +60,6 @@ static const std::unordered_map<std::string, ::fedb::type::DataType>
                      {"date", ::fedb::type::kDate},
                      {"timestamp", ::fedb::type::kTimestamp}};
 
-static const std::unordered_map<std::string, ::fedb::type::IndexType>
-    INDEX_TYPE_MAP = {{"unique", ::fedb::type::kUnique},
-                      {"nounique", ::fedb::type::kNoUnique},
-                      {"primarykey", ::fedb::type::kPrimaryKey},
-                      {"autogen", ::fedb::type::kAutoGen},
-                      {"increment", ::fedb::type::kIncrement}};
-
 static const std::unordered_map<::fedb::type::DataType, std::string>
     DATA_TYPE_STR_MAP = {{::fedb::type::kBool, "bool"},
                          {::fedb::type::kSmallInt, "smallInt"},
@@ -105,74 +98,10 @@ struct Column {
 struct ColumnDesc {
     ColType type;
     std::string name;
-    bool add_ts_idx = false;
-    bool is_ts_col = false;
 };
 
 class SchemaCodec {
  public:
-    bool Encode(const std::vector<ColumnDesc>& columns,
-                std::string& buffer) {  // NOLINT
-        uint32_t byte_size = GetSize(columns);
-        if (byte_size > MAX_ROW_BYTE_SIZE) {
-            return false;
-        }
-        buffer.resize(byte_size);
-        char* cbuffer = reinterpret_cast<char*>(&(buffer[0]));
-        for (uint32_t i = 0; i < columns.size(); i++) {
-            uint8_t type = (uint8_t)columns[i].type;
-            memcpy(cbuffer, static_cast<const void*>(&type), 1);
-            cbuffer += 1;
-            uint8_t add_ts_idx = 0;
-            if (columns[i].add_ts_idx) {
-                add_ts_idx = 1;
-            }
-            memcpy(cbuffer, static_cast<const void*>(&add_ts_idx), 1);
-            cbuffer += 1;
-            const std::string& name = columns[i].name;
-            if (name.size() >= 128) {
-                return false;
-            }
-            uint8_t name_size = (uint8_t)name.size();
-            memcpy(cbuffer, static_cast<const void*>(&name_size), 1);
-            cbuffer += 1;
-            memcpy(cbuffer, static_cast<const void*>(name.c_str()), name_size);
-            cbuffer += name_size;
-        }
-        return true;
-    }
-
-    void Decode(const std::string& schema,
-                std::vector<ColumnDesc>& columns) {  // NOLINT
-        const char* buffer = schema.c_str();
-        uint32_t read_size = 0;
-        while (read_size < schema.size()) {
-            if (schema.size() - read_size < HEADER_BYTE_SIZE) {
-                return;
-            }
-            uint8_t type = 0;
-            memcpy(static_cast<void*>(&type), buffer, 1);
-            buffer += 1;
-            uint8_t add_ts_idx = 0;
-            memcpy(static_cast<void*>(&add_ts_idx), buffer, 1);
-            buffer += 1;
-            uint8_t name_size = 0;
-            memcpy(static_cast<void*>(&name_size), buffer, 1);
-            buffer += 1;
-            uint32_t total_size = HEADER_BYTE_SIZE + name_size;
-            if (schema.size() - read_size < total_size) {
-                return;
-            }
-            std::string name(buffer, name_size);
-            buffer += name_size;
-            read_size += total_size;
-            ColumnDesc desc;
-            desc.name = name;
-            desc.type = static_cast<ColType>(type);
-            desc.add_ts_idx = add_ts_idx;
-            columns.push_back(desc);
-        }
-    }
 
     static ::fedb::codec::ColType ConvertType(const std::string& raw_type) {
         ::fedb::codec::ColType type;
@@ -240,42 +169,11 @@ class SchemaCodec {
         const ::fedb::nameserver::TableInfo& table_info,
         std::vector<ColumnDesc>& columns, int modify_index) {  // NOLINT
         columns.clear();
-        if (table_info.column_desc_v1_size() > 0) {
-            if (modify_index > 0) {
-                return ConvertColumnDesc(table_info.column_desc_v1(), columns,
-                                         table_info.added_column_desc());
-            }
-            return ConvertColumnDesc(table_info.column_desc_v1(), columns);
-        }
-        for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
-            ::fedb::codec::ColType type =
-                ConvertType(table_info.column_desc(idx).type());
-            if (type == ::fedb::codec::ColType::kUnknown) {
-                return -1;
-            }
-            ColumnDesc column_desc;
-            column_desc.type = type;
-            column_desc.name = table_info.column_desc(idx).name();
-            column_desc.add_ts_idx = table_info.column_desc(idx).add_ts_idx();
-            column_desc.is_ts_col = false;
-            columns.push_back(column_desc);
-        }
         if (modify_index > 0) {
-            for (int idx = 0; idx < modify_index; idx++) {
-                ::fedb::codec::ColType type =
-                    ConvertType(table_info.added_column_desc(idx).type());
-                if (type == ::fedb::codec::ColType::kUnknown) {
-                    return -1;
-                }
-                ColumnDesc column_desc;
-                column_desc.type = type;
-                column_desc.name = table_info.added_column_desc(idx).name();
-                column_desc.add_ts_idx = false;
-                column_desc.is_ts_col = false;
-                columns.push_back(column_desc);
-            }
+            return ConvertColumnDesc(table_info.column_desc(), columns,
+                                     table_info.added_column_desc());
         }
-        return 0;
+        return ConvertColumnDesc(table_info.column_desc(), columns);
     }
 
     static int ConvertColumnDesc(const Schema& column_desc_field,
@@ -290,8 +188,6 @@ class SchemaCodec {
             ColumnDesc column_desc;
             column_desc.type = type;
             column_desc.name = cur_column_desc.name();
-            column_desc.add_ts_idx = cur_column_desc.add_ts_idx();
-            column_desc.is_ts_col = cur_column_desc.is_ts_col();
             columns.push_back(column_desc);
         }
         if (!added_column_field.empty()) {
@@ -304,8 +200,6 @@ class SchemaCodec {
                 ColumnDesc column_desc;
                 column_desc.type = type;
                 column_desc.name = added_column_field.Get(idx).name();
-                column_desc.add_ts_idx = false;
-                column_desc.is_ts_col = false;
                 columns.push_back(column_desc);
             }
         }
@@ -364,14 +258,6 @@ class SchemaCodec {
         }
     }
 
-    static bool HasTSCol(const std::vector<ColumnDesc>& columns) {
-        for (const auto& column_desc : columns) {
-            if (column_desc.is_ts_col) {
-                return true;
-            }
-        }
-        return false;
-    }
     static fedb::base::ResultMsg GetCdColumns(const Schema& schema,
             const std::map<std::string, std::string>& cd_columns_map,
             ::google::protobuf::RepeatedPtrField<::fedb::api::Columns>*
@@ -394,13 +280,6 @@ class SchemaCodec {
             if (kv.second == NONETOKEN || kv.second == "null") {
                 continue;
             }
-            ::fedb::type::DataType type = iter->second;
-            std::string* val = index->mutable_value();
-            if (!::fedb::codec::Convert(kv.second, type, val)) {
-                rm.code = -1;
-                rm.msg = "convert str " + kv.second + "  failed!";
-                return rm;
-            }
         }
         rm.code = 0;
         rm.msg = "ok";
@@ -409,9 +288,9 @@ class SchemaCodec {
 
     static bool AddTypeToColumnDesc(
             std::shared_ptr<::fedb::nameserver::TableInfo> table_info) {
-        for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
+        for (int i = 0; i < table_info->column_desc_size(); i++) {
             ::fedb::common::ColumnDesc* col_desc =
-                table_info->mutable_column_desc_v1(i);
+                table_info->mutable_column_desc(i);
             ::fedb::type::DataType data_type = col_desc->data_type();
             switch (data_type) {
                 case fedb::type::kBool: {

@@ -30,7 +30,7 @@ Table::Table(const std::string &name,
              uint32_t id, uint32_t pid, uint64_t ttl, bool is_leader,
              uint64_t ttl_offset,
              const std::map<std::string, uint32_t> &mapping,
-             ::fedb::api::TTLType ttl_type,
+             ::fedb::type::TTLType ttl_type,
              ::fedb::type::CompressType compress_type)
       : name_(name),
       id_(id),
@@ -40,18 +40,16 @@ Table::Table(const std::string &name,
       compress_type_(compress_type),
       version_schema_(),
       update_ttl_(std::make_shared<std::vector<::fedb::storage::UpdateTTLMeta>>()) {
-    ::fedb::api::TTLDesc *ttl_desc = table_meta_.mutable_ttl_desc();
-    ttl_desc->set_ttl_type(ttl_type);
-    if (ttl_type == ::fedb::api::TTLType::kAbsoluteTime) {
-        ttl_desc->set_abs_ttl(ttl / (60 * 1000));
-        ttl_desc->set_lat_ttl(0);
+    ::fedb::common::TTLSt ttl_st;
+    ttl_st.set_ttl_type(ttl_type);
+    if (ttl_type == ::fedb::type::TTLType::kAbsoluteTime) {
+        ttl_st.set_abs_ttl(ttl / (60 * 1000));
+        ttl_st.set_lat_ttl(0);
     } else {
-        ttl_desc->set_abs_ttl(0);
-        ttl_desc->set_lat_ttl(ttl / (60 * 1000));
+        ttl_st.set_abs_ttl(0);
+        ttl_st.set_lat_ttl(ttl / (60 * 1000));
     }
     last_make_snapshot_time_ = 0;
-    ::fedb::storage::TTLSt ttl_st(ttl_desc->abs_ttl(), ttl_desc->lat_ttl(),
-            ::fedb::storage::TTLSt::ConvertTTLType(ttl_desc->ttl_type()));
     std::map<uint32_t, std::string> idx_map;
     for (const auto &kv : mapping) {
         idx_map.emplace(kv.second, kv.first);
@@ -59,8 +57,12 @@ Table::Table(const std::string &name,
     for (const auto& kv : idx_map) {
         ::fedb::common::ColumnDesc* column_desc = table_meta_.add_column_desc();
         column_desc->set_name(kv.second);
-        column_desc->set_type("string");
-        column_desc->set_add_ts_idx(true);
+        column_desc->set_data_type(::fedb::type::kString);
+        ::fedb::common::ColumnKey* index = table_meta_.add_column_key();
+        index->set_index_name(kv.second);
+        index->add_col_name(kv.second);
+        ::fedb::common::TTLSt* cur_ttl = index->mutable_ttl();
+        cur_ttl->CopyFrom(ttl_st);
     }
 }
 
@@ -98,17 +100,7 @@ int Table::InitColumnDesc() {
         return -1;
     }
     if (table_meta_.column_key_size() == 0) {
-        for (const auto &column_desc : table_meta_.column_desc()) {
-            if (column_desc.add_ts_idx()) {
-                fedb::common::ColumnKey *column_key =
-                    table_meta_.add_column_key();
-                column_key->add_col_name(column_desc.name());
-                column_key->set_index_name(column_desc.name());
-                if (!ts_mapping_.empty()) {
-                    column_key->add_ts_name(ts_mapping_.begin()->first);
-                }
-            }
-        }
+        return -1;
     }
     AddVersionSchema();
     return 0;
@@ -144,11 +136,6 @@ void Table::UpdateTTL() {
                 if (index->GetName() == ttl_meta.index_name) {
                     index->SetTTL(ttl_meta.ttl);
                 }
-            } else if (ttl_meta.ts_idx >= 0) {
-                auto ts_col = index->GetTsColumn();
-                if (ts_col && ts_col->GetTsIdx() == ttl_meta.ts_idx) {
-                    index->SetTTL(ttl_meta.ttl);
-                }
             } else {
                 index->SetTTL(ttl_meta.ttl);
             }
@@ -165,9 +152,9 @@ bool Table::InitFromMeta() {
         PDLOG(WARNING, "init column desc failed, tid %u pid %u", id_, pid_);
         return false;
     }
-    if (table_meta_.has_schema()) schema_ = table_meta_.schema();
-    if (table_meta_.has_compress_type())
+    if (table_meta_.has_compress_type()) {
         compress_type_ = table_meta_.compress_type();
+    }
     return true;
 }
 

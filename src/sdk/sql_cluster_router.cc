@@ -326,8 +326,8 @@ bool SQLClusterRouter::GetInsertInfo(
     for (size_t j = 0; j < insert_stmt->columns_.size(); ++j) {
         const std::string& col_name = insert_stmt->columns_[j];
         bool find_flag = false;
-        for (int i = 0; i < (*table_info)->column_desc_v1_size(); ++i) {
-            if (col_name == (*table_info)->column_desc_v1(i).name()) {
+        for (int i = 0; i < (*table_info)->column_desc_size(); ++i) {
+            if (col_name == (*table_info)->column_desc(i).name()) {
                 if (column_map.count(i) > 0) {
                     status->msg = "duplicate column of " + col_name;
                     LOG(WARNING) << status->msg;
@@ -467,16 +467,16 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
     DefaultValueMap default_map(
         new std::map<uint32_t, std::shared_ptr<::hybridse::node::ConstNode>>());
     if ((column_map.empty() && static_cast<int32_t>(row->children_.size()) <
-                                   table_info->column_desc_v1_size()) ||
+                                   table_info->column_desc_size()) ||
         (!column_map.empty() && row->children_.size() < column_map.size())) {
         LOG(WARNING) << "insert value number less than column number";
         return DefaultValueMap();
     }
-    for (int32_t idx = 0; idx < table_info->column_desc_v1_size(); idx++) {
+    for (int32_t idx = 0; idx < table_info->column_desc_size(); idx++) {
         if (!column_map.empty() && (column_map.count(idx) == 0)) {
-            if (table_info->column_desc_v1(idx).not_null()) {
+            if (table_info->column_desc(idx).not_null()) {
                 LOG(WARNING)
-                    << "column " << table_info->column_desc_v1(idx).name()
+                    << "column " << table_info->column_desc(idx).name()
                     << " can't be null";
                 return DefaultValueMap();
             }
@@ -485,7 +485,7 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
             continue;
         }
 
-        auto column = table_info->column_desc_v1(idx);
+        auto column = table_info->column_desc(idx);
         uint32_t i = idx;
         if (!column_map.empty()) {
             i = column_map.at(idx);
@@ -689,7 +689,7 @@ std::shared_ptr<::fedb::client::TabletClient> SQLClusterRouter::GetTabletClient(
                 auto table_info = cluster_sdk_->GetTableInfo(db, explain.router.GetMainTable());
                 ::hybridse::vm::Schema raw_schema;
                 if (table_info &&
-                        ::fedb::catalog::SchemaAdapter::ConvertSchema(table_info->column_desc_v1(), &raw_schema)) {
+                        ::fedb::catalog::SchemaAdapter::ConvertSchema(table_info->column_desc(), &raw_schema)) {
                     schema = std::make_shared<::hybridse::sdk::SchemaImpl>(raw_schema);
                 }
             }

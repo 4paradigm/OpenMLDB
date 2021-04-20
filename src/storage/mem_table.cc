@@ -40,7 +40,7 @@ namespace storage {
 static const uint32_t SEED = 0xe17a1465;
 
 MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t seg_cnt,
-                   const std::map<std::string, uint32_t>& mapping, uint64_t ttl, ::fedb::api::TTLType ttl_type)
+                   const std::map<std::string, uint32_t>& mapping, uint64_t ttl, ::fedb::type::TTLType ttl_type)
     : Table(name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping, ttl_type,
             ::fedb::type::CompressType::kNoCompress),
       seg_cnt_(seg_cnt),
@@ -52,7 +52,7 @@ MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t 
 
 MemTable::MemTable(const ::fedb::api::TableMeta& table_meta)
     : Table(table_meta.name(), table_meta.tid(), table_meta.pid(), 0, true, 60 * 1000,
-            std::map<std::string, uint32_t>(), ::fedb::api::TTLType::kAbsoluteTime,
+            std::map<std::string, uint32_t>(), ::fedb::type::TTLType::kAbsoluteTime,
             ::fedb::type::CompressType::kNoCompress),
       segments_(MAX_INDEX_NUM, NULL) {
     seg_cnt_ = 8;
@@ -656,14 +656,10 @@ bool MemTable::AddIndex(const ::fedb::common::ColumnKey& column_key) {
     }
     if (!index_def) {
         std::vector<uint32_t> ts_vec;
-        for (int idx = 0; idx < column_key.ts_name_size(); idx++) {
-            auto ts_iter = ts_mapping_.find(column_key.ts_name(idx));
+        if (!column_key.ts_name().empty()) {
+            auto ts_iter = ts_mapping_.find(column_key.ts_name());
             if (ts_iter == ts_mapping_.end()) {
-                PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", column_key.ts_name(idx).c_str(), id_, pid_);
-                return false;
-            }
-            if (std::find(ts_vec.begin(), ts_vec.end(), ts_iter->second) != ts_vec.end()) {
-                PDLOG(WARNING, "has repeated ts_name[%s]. tid %u pid %u", column_key.ts_name(idx).c_str(), id_, pid_);
+                PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", column_key.ts_name().c_str(), id_, pid_);
                 return false;
             }
             ts_vec.push_back(ts_iter->second);
@@ -689,39 +685,15 @@ bool MemTable::AddIndex(const ::fedb::common::ColumnKey& column_key) {
             return false;
         }
         segments_[inner_id] = seg_arr;
-        if (column_key.ts_name_size() > 0) {
-            auto ts_col = std::make_shared<ColumnDef>(column_key.ts_name(0), 0,
-                    ::fedb::type::kTimestamp, true, ts_mapping_[column_key.ts_name(0)]);
+        if (!column_key.ts_name().empty()) {
+            auto ts_col = std::make_shared<ColumnDef>(column_key.ts_name(), 0,
+                    ::fedb::type::kTimestamp, true, ts_mapping_[column_key.ts_name()]);
             index_def->SetTsColumn(ts_col);
-            auto index_vec = table_index_.GetAllIndex();
-            bool has_set_ttl = false;
-            for (const auto& index : index_vec) {
-                auto ts_col = index->GetTsColumn();
-                if (ts_col && ts_col->GetName() == column_key.ts_name(0)) {
-                    index_def->SetTTL(*(index->GetTTL()));
-                    has_set_ttl = true;
-                    break;
-                }
-            }
-            if (!has_set_ttl) {
-                PDLOG(WARNING, "has not set ttl. tid %u pid %u", id_, pid_);
-                return false;
-            }
+        }
+        if (column_key.has_ttl()) {
+            index_def->SetTTL(::fedb::storage::TTLSt(column_key.ttl()));
         } else {
-            const auto& table_meta = GetTableMeta();
-            if (table_meta.has_ttl_desc()) {
-                index_def->SetTTL(::fedb::storage::TTLSt(table_meta.ttl_desc()));
-            } else {
-                uint64_t abs_ttl = 0;
-                uint64_t lat_ttl = 0;
-                if (table_meta.ttl_type() == ::fedb::api::TTLType::kAbsoluteTime) {
-                    abs_ttl = table_meta.ttl() * 60 * 1000;
-                } else {
-                    lat_ttl = table_meta.ttl();
-                }
-                index_def->SetTTL(::fedb::storage::TTLSt(abs_ttl, lat_ttl,
-                            TTLSt::ConvertTTLType(table_meta.ttl_type())));
-            }
+            index_def->SetTTL(*(table_index_.GetIndex(0)->GetTTL()));
         }
         index_def->SetInnerPos(inner_id);
         std::vector<std::shared_ptr<IndexDef>> index_vec = { index_def };

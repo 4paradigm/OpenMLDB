@@ -1540,7 +1540,7 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         meta = partion->add_partition_meta();
         meta->set_endpoint("127.0.0.1:9536");
         meta->set_is_leader(true);
-        ::fedb::common::ColumnDesc* desc = table_info->add_column_desc_v1();
+        ::fedb::common::ColumnDesc* desc = table_info->add_column_desc();
         desc->set_name("col1");
         desc->set_type("string");
         desc->set_add_ts_idx(true);
@@ -1582,7 +1582,7 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         meta = partion->add_partition_meta();
         meta->set_endpoint("127.0.0.1:9536");
         meta->set_is_leader(true);
-        ::fedb::common::ColumnDesc* desc = table_info->add_column_desc_v1();
+        ::fedb::common::ColumnDesc* desc = table_info->add_column_desc();
         desc->set_name("col1");
         desc->set_type("string");
         desc->set_add_ts_idx(true);
