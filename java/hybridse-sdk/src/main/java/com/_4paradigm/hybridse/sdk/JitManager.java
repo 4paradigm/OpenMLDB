@@ -28,7 +28,9 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-
+/**
+ * @brief JIT manager provides a set of API to access jit, configure JitOptions and init llvm module
+ */
 public class JitManager {
 
     static private Logger logger = LoggerFactory.getLogger(JitManager.class);
@@ -42,6 +44,9 @@ public class JitManager {
     static private Map<String, HybridSeJitWrapper> jits = new HashMap<>();
     static private Set<String> initializedModuleTags = new HashSet<>();
 
+    /**
+     * Return JIT specified by tag
+     */
     synchronized static public HybridSeJitWrapper getJIT(String tag) {
         if (! jits.containsKey(tag)) {
             HybridSeJitWrapper jit = HybridSeJitWrapper.Create(getJitOptions());
@@ -105,6 +110,11 @@ public class JitManager {
         initializedModuleTags.add(tag);
     }
 
+    /**
+     * Init llvm module specified by tag. Init native module with module byte buffer.
+     * @param tag tag specified a jit
+     * @param moduleBuffer ByteBuffer used to initialize native module
+     */
     synchronized static public void initJITModule(String tag, ByteBuffer moduleBuffer) {
 
         // ensure worker native
@@ -117,6 +127,10 @@ public class JitManager {
         }
     }
 
+    /**
+     * Remove native module specified by tag
+     * @param tag
+     */
     synchronized static public void removeModule(String tag) {
         initializedModuleTags.remove(tag);
         HybridSeJitWrapper jit = jits.remove(tag);
@@ -126,6 +140,9 @@ public class JitManager {
         }
     }
 
+    /**
+     * Clear native modules and jits
+     */
     synchronized static public void clear() {
         initializedModuleTags.clear();
         for (Map.Entry<String, HybridSeJitWrapper> entry : jits.entrySet()) {
