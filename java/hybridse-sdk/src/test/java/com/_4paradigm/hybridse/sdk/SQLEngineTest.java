@@ -2,10 +2,10 @@ package com._4paradigm.hybridse.sdk;
 
 import com._4paradigm.hybridse.HybridSeLibrary;
 import com._4paradigm.hybridse.vm.Engine;
+import com._4paradigm.hybridse.type.TypeOuterClass;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import com._4paradigm.hybridse.type.TypeOuterClass;
 
 public class SQLEngineTest {
 
