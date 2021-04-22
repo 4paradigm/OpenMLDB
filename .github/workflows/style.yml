@@ -53,11 +53,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
       - name: Run check style
-        uses: nikitasavinov/checkstyle-action@master
+        uses: dbelyaev/action-checkstyle@master
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.github_token }}
           reporter: github-pr-review
-          tool_name: checkstyle
+          level: warning
           workdir: java
           checkstyle_config: style_checks.xml
