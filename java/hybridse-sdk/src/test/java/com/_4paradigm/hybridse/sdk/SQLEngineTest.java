@@ -17,10 +17,8 @@ public class SQLEngineTest {
 
     @DataProvider(name = "sqlEngineCase")
     public Object[] sqlEngineCase() {
-        return new Object[]{
-                "select col1, col2, col3 col4, col5, col6 from t1;",
-                "select col2+col3 as addcol23 from t1;",
-        };
+        return new Object[] {"select col1, col2, col3 col4, col5, col6 from t1;",
+                "select col2+col3 as addcol23 from t1;",};
     }
 
     @Test(dataProvider = "sqlEngineCase")
@@ -30,46 +28,18 @@ public class SQLEngineTest {
 
         TypeOuterClass.TableDef.Builder tbl = TypeOuterClass.TableDef.newBuilder();
         tbl.setName("t1")
-                .addColumns(TypeOuterClass.ColumnDef.newBuilder()
-                        .setName("col1")
-                        .setIsNotNull(true)
-                        .setType(TypeOuterClass.Type.kInt32)
-                        .build())
-                .addColumns(
-                        TypeOuterClass.ColumnDef.newBuilder()
-                                .setName("col2")
-                                .setIsNotNull(true)
-                                .setType(TypeOuterClass.Type.kInt64)
-                                .build()
-                )
-                .addColumns(
-                        TypeOuterClass.ColumnDef.newBuilder()
-                                .setName("col3")
-                                .setIsNotNull(true)
-                                .setType(TypeOuterClass.Type.kFloat)
-                                .build()
-                )
-                .addColumns(
-                        TypeOuterClass.ColumnDef.newBuilder()
-                                .setName("col4")
-                                .setIsNotNull(true)
-                                .setType(TypeOuterClass.Type.kDouble)
-                                .build()
-                )
-                .addColumns(
-                        TypeOuterClass.ColumnDef.newBuilder()
-                                .setName("col5")
-                                .setIsNotNull(true)
-                                .setType(TypeOuterClass.Type.kTimestamp)
-                                .build()
-                )
-                .addColumns(
-                        TypeOuterClass.ColumnDef.newBuilder()
-                                .setName("col6")
-                                .setIsNotNull(true)
-                                .setType(TypeOuterClass.Type.kVarchar)
-                                .build()
-                );
+                .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col1").setIsNotNull(true)
+                        .setType(TypeOuterClass.Type.kInt32).build())
+                .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col2").setIsNotNull(true)
+                        .setType(TypeOuterClass.Type.kInt64).build())
+                .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col3").setIsNotNull(true)
+                        .setType(TypeOuterClass.Type.kFloat).build())
+                .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col4").setIsNotNull(true)
+                        .setType(TypeOuterClass.Type.kDouble).build())
+                .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col5").setIsNotNull(true)
+                        .setType(TypeOuterClass.Type.kTimestamp).build())
+                .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col6").setIsNotNull(true)
+                        .setType(TypeOuterClass.Type.kVarchar).build());
         db.addTables(tbl.build());
         try {
             SQLEngine engine = new SQLEngine(sql, db.build());

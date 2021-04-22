@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -62,8 +62,7 @@ public class JitManager {
 
     static private JitOptions getJitOptions() {
         JitOptions options = new JitOptions();
-        try (InputStream input = JitManager.class.getClassLoader().getResourceAsStream(
-                "jit.properties")) {
+        try (InputStream input = JitManager.class.getClassLoader().getResourceAsStream("jit.properties")) {
             Properties prop = new Properties(System.getProperties());
             if (input == null) {
                 return options;
@@ -113,7 +112,7 @@ public class JitManager {
     /**
      * Init llvm module specified by tag. Init native module with module byte buffer.
      *
-     * @param tag          tag specified a jit
+     * @param tag tag specified a jit
      * @param moduleBuffer ByteBuffer used to initialize native module
      */
     synchronized static public void initJITModule(String tag, ByteBuffer moduleBuffer) {

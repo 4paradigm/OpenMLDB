@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -53,7 +53,8 @@ public class SQLEngine implements AutoCloseable {
      *
      * @throws UnsupportedHybridSeException throws exception when fail to compile queries
      */
-    public SQLEngine(String sql, TypeOuterClass.Database database, EngineOptions engineOptions) throws UnsupportedHybridSeException {
+    public SQLEngine(String sql, TypeOuterClass.Database database, EngineOptions engineOptions)
+            throws UnsupportedHybridSeException {
         this.initilize(sql, database, engineOptions);
     }
 
@@ -74,7 +75,8 @@ public class SQLEngine implements AutoCloseable {
         return engineOptions;
     }
 
-    public void initilize(String sql, TypeOuterClass.Database database, EngineOptions engineOptions) throws UnsupportedHybridSeException {
+    public void initilize(String sql, TypeOuterClass.Database database, EngineOptions engineOptions)
+            throws UnsupportedHybridSeException {
         options = engineOptions;
         catalog = new SimpleCatalog();
         session = new BatchRunSession();

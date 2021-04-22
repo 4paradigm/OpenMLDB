@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,8 +34,7 @@ public class SerializableByteBuffer implements Serializable {
 
     static private final int MAGIC_END_TAG = 42;
 
-    public SerializableByteBuffer() {
-    }
+    public SerializableByteBuffer() {}
 
     public SerializableByteBuffer(ByteBuffer buffer) {
         this.buffer = buffer;
@@ -53,8 +52,8 @@ public class SerializableByteBuffer implements Serializable {
      * Serialization method to save the ByteBuffer.
      *
      * @serialData The length of the ByteBuffer type ID (int),
-     * followed by ByteBuffer isDirect flag (boolean)
-     * followed by buffer array
+     *             followed by ByteBuffer isDirect flag (boolean)
+     *             followed by buffer array
      */
     private void writeObject(java.io.ObjectOutputStream out) throws IOException {
         if (buffer == null) {
@@ -106,10 +105,9 @@ public class SerializableByteBuffer implements Serializable {
         try {
             wrappedIStream.readFully(bytes, 0, capacity);
         } catch (IOException e) {
-            throw new IOException("Byte buffer stream corrupt, " +
-                    "expect buffer bytes: " + capacity, e);
+            throw new IOException("Byte buffer stream corrupt, " + "expect buffer bytes: " + capacity, e);
         }
-        if (!buffer.hasArray()) {  // maybe direct
+        if (!buffer.hasArray()) { // maybe direct
             buffer.put(bytes, 0, capacity);
             buffer.rewind();
         }

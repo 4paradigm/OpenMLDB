@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -45,8 +45,7 @@ public class LibraryLoader {
         System.out.print("DYLD_LIBRARY_PATH=");
         System.out.println(System.getenv("DYLD_LIBRARY_PATH"));
 
-        boolean isPath = libraryPath.endsWith(".so") ||
-                libraryPath.endsWith(".dylib");
+        boolean isPath = libraryPath.endsWith(".so") || libraryPath.endsWith(".dylib");
         if (!isPath) {
             // try load from environment
             try {
@@ -104,7 +103,7 @@ public class LibraryLoader {
     /**
      * Extract library in resource into filesystem
      *
-     * @param path   Local resource path
+     * @param path Local resource path
      * @param isTemp If extract to template file
      * @return
      * @throws IOException
@@ -115,7 +114,7 @@ public class LibraryLoader {
             logger.info("Found {} in local resource", path);
             File localFile;
             if (isTemp) {
-                String suffix = path.replace("/", "-");  // do not make temp directory
+                String suffix = path.replace("/", "-"); // do not make temp directory
                 localFile = File.createTempFile("temp-", suffix);
             } else {
                 localFile = new File("./", path);
