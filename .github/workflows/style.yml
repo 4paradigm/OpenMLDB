@@ -55,10 +55,10 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Run check style
-        uses: dbelyaev/action-checkstyle@master
+        uses: nikitasavinov/checkstyle-action@0.3.1
         with:
-          github_token: ${{ secrets.github_token }}
-          reporter: github-pr-review
-          level: warning
-          workdir: java
-          checkstyle_config: style_checks.xml
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: 'github-pr-review'
+          tool_name: 'checkstyle'
+          level: 'warning'
+          checkstyle_config: 'java/style_checks.xml'
