@@ -1,3 +1,5 @@
+**Description**:
+
 {% if exists("brief") %}{{brief}}
 {% endif -%}
 
@@ -64,7 +66,9 @@
 {% endif -%}
 
 {% if exists("since") %}
-**Since**: {% if length(since) == 1 %}{{first(since)}}{% else %}
+**Since**:
+{% if length(since) == 1 %}{{first(since)}}
+{% else %}
 
 {% for item in since %}  * {{item}}
 {% endfor %}{% endif %}

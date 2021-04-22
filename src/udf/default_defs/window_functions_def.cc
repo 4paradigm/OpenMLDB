@@ -128,7 +128,7 @@ void DefaultUdfLibrary::InitWindowFunctions() {
                            nullptr);
         })
         .doc(
-            R"(Returns the value of expr from the first row of the window frame.)");
+            R"(@brief Returns the value of expr from the first row of the window frame.)");
 }
 
 }  // namespace udf

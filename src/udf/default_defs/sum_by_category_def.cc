@@ -212,7 +212,7 @@ struct TopKSumCateWhereDef {
 void DefaultUdfLibrary::InitSumByCateUdafs() {
     RegisterUdafTemplate<SumCateDef>("sum_cate")
         .doc(R"(
-            Compute sum of values grouped by category key and output string.
+            @brief Compute sum of values grouped by category key and output string.
             Each group is represented as 'K:V' and separated by comma in outputs
             and are sorted by key in ascend order.
 
@@ -220,6 +220,7 @@ void DefaultUdfLibrary::InitSumByCateUdafs() {
             @param catagory  Specify catagory column to group by.
 
             Example:
+
             value|catagory
             --|--
             0|x
@@ -236,7 +237,7 @@ void DefaultUdfLibrary::InitSumByCateUdafs() {
 
     RegisterUdafTemplate<SumCateWhereDef>("sum_cate_where")
         .doc(R"(
-            Compute sum of values matching specified condition grouped by
+            @brief Compute sum of values matching specified condition grouped by
     category key and output string. Each group is represented as 'K:V' and
     separated by comma in outputs and are sorted by key in ascend order.
 
@@ -245,6 +246,7 @@ void DefaultUdfLibrary::InitSumByCateUdafs() {
             @param condition  Specify condition column.
 
             Example:
+
             value|condition|catagory
             --|--|--
             0|true|x
@@ -262,7 +264,7 @@ void DefaultUdfLibrary::InitSumByCateUdafs() {
 
     RegisterUdafTemplate<TopKSumCateWhereDef>("top_n_key_sum_cate_where")
         .doc(R"(
-            Compute sum of values matching specified condition grouped by
+            @brief Compute sum of values matching specified condition grouped by
     category key. Output string for top N keys in descend order. Each group is
     represented as 'K:V' and separated by comma.
 
@@ -272,6 +274,7 @@ void DefaultUdfLibrary::InitSumByCateUdafs() {
             @param n  Fetch top n keys.
 
             Example:
+
             value|condition|catagory
             --|--|--
             0|true|x

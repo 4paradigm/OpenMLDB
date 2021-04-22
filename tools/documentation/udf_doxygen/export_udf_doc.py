@@ -105,8 +105,6 @@ def make_header():
 	with open(fake_header, "w") as header_file:
 		for name in sorted(udf_defs.keys()):
 			content = "/**\n"
-
-			content += "@par Description\n"
 			items = udf_defs[name]
 			# print("Found %d registries for \"%s\"" % (len(items), name))
 			for item in items:
@@ -114,7 +112,7 @@ def make_header():
 				if doc.strip() != "":
 					content += process_doc(doc)
 					break;
-			content += "\n\n@par Supported Types\n"
+			content += "\n\n\*\*Supported Types**:\n"
 			sig_set = dict()
 			sig_list = []
 			for item in items:

@@ -223,6 +223,7 @@ void DefaultUdfLibrary::InitMinByCateUdafs() {
             @param catagory  Specify catagory column to group by.
 
             Example:
+
             value|catagory
             --|--
             0|x
@@ -248,6 +249,7 @@ void DefaultUdfLibrary::InitMinByCateUdafs() {
             @param condition  Specify condition column.
 
             Example:
+
             value|condition|catagory
             --|--|--
             0|true|x
@@ -276,6 +278,7 @@ void DefaultUdfLibrary::InitMinByCateUdafs() {
             @param n  Fetch top n keys.
 
             Example:
+
             value|condition|catagory
             --|--|--
             0|true|x

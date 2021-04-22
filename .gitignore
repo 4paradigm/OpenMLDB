@@ -47,3 +47,6 @@ tools/documentation/java_api/doxybook2_home
 tools/documentation/java_api/html
 tools/documentation/java_api/xml
 tools/documentation/java_api/java
+tools/documentation/udf_doxygen/udf
+tools/documentation/udf_doxygen/doxybook2_home
+tools/documentation/udf_doxygen/xml

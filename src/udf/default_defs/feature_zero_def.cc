@@ -554,7 +554,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
         .update("fz_window_split_update", FZStringOpsDef::UpdateSplit)
         .output("fz_window_split_output", FZStringOpsDef::OutputList)
         .doc(R"(
-            Used by feature zero, for each string value from specified 
+            @brief Used by feature zero, for each string value from specified
             column of window, split by delimeter and add segment
             to output list. Null values are skipped.)");
 
@@ -564,7 +564,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
         .args<Nullable<StringRef>, StringRef>(
             reinterpret_cast<void*>(&FZStringOpsDef::SingleSplit))
         .doc(R"(
-            Used by feature zero, split string to list by delimeter. 
+            @brief Used by feature zero, split string to list by delimeter.
             Null values are skipped.)");
 
     RegisterUdaf("fz_window_split_by_key")
@@ -575,7 +575,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
                 FZStringOpsDef::UpdateSplitByKey)
         .output("fz_window_split_by_key_output", FZStringOpsDef::OutputList)
         .doc(R"(
-            Used by feature zero, for each string value from specified 
+            @brief Used by feature zero, for each string value from specified
             column of window, split by delimeter and then split each segment 
             as kv pair, then add each key to output list. Null and 
             illegal segments are skipped.)");
@@ -587,7 +587,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
         .args<Nullable<StringRef>, StringRef, StringRef>(
             reinterpret_cast<void*>(FZStringOpsDef::SingleSplitByKey))
         .doc(R"(
-            Used by feature zero, split string by delimeter and then 
+            @brief Used by feature zero, split string by delimeter and then
             split each segment as kv pair, then add each 
             key to output list. Null and illegal segments are skipped.)");
 
@@ -599,7 +599,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
                 FZStringOpsDef::UpdateSplitByValue)
         .output("fz_window_split_by_value_output", FZStringOpsDef::OutputList)
         .doc(R"(
-            Used by feature zero, for each string value from specified
+            @brief Used by feature zero, for each string value from specified
             column of window, split by delimeter and then split each segment 
             as kv pair, then add each value to output list. Null and 
             illegal segments are skipped.)");
@@ -611,7 +611,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
         .args<Nullable<StringRef>, StringRef, StringRef>(
             reinterpret_cast<void*>(FZStringOpsDef::SingleSplitByValue))
         .doc(R"(
-            Used by feature zero, split string by delimeter and then 
+            @brief Used by feature zero, split string by delimeter and then
             split each segment as kv pair, then add each
             value to output list. Null and illegal segments are skipped.)");
 
@@ -620,12 +620,12 @@ void DefaultUdfLibrary::InitFeatureZero() {
         .args<ListRef<StringRef>, StringRef>(FZStringOpsDef::StringJoin);
 
     RegisterUdafTemplate<FZTop1Ratio>("fz_top1_ratio")
-        .doc("Compute the top1 key's ratio")
+        .doc("@brief Compute the top1 key's ratio")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
 
     RegisterUdafTemplate<FZTopNFrequency>("fz_topn_frequency")
-        .doc("Return the topN keys sorted by their frequency")
+        .doc("@brief Return the topN keys sorted by their frequency")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
 }
