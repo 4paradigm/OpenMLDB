@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,13 +18,21 @@ package com._4paradigm.hybridse.sdk;
 
 import com._4paradigm.hybridse.base.BaseStatus;
 import com._4paradigm.hybridse.type.TypeOuterClass;
-import com._4paradigm.hybridse.vm.*;
+import com._4paradigm.hybridse.vm.CompileInfo;
+import com._4paradigm.hybridse.vm.Engine;
+import com._4paradigm.hybridse.vm.EngineOptions;
+import com._4paradigm.hybridse.vm.PhysicalOpNode;
+import com._4paradigm.hybridse.vm.RequestRunSession;
+import com._4paradigm.hybridse.vm.SimpleCatalog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * SQL Engine in request mode.
+ */
 public class RequestEngine implements AutoCloseable {
 
-    private static final Logger logger = LoggerFactory.getLogger(SQLEngine.class);
+    private static final Logger logger = LoggerFactory.getLogger(SqlEngine.class);
 
     private SimpleCatalog catalog;
     private EngineOptions options;
@@ -34,6 +42,13 @@ public class RequestEngine implements AutoCloseable {
     private PhysicalOpNode plan;
 
 
+    /**
+     * Construct RequestEngine with given sql and database.
+     *
+     * @param sql query the sql string
+     * @param database query on the database
+     * @throws UnsupportedHybridSeException throw when query unsupported or has syntax error
+     */
     public RequestEngine(String sql, TypeOuterClass.Database database) throws UnsupportedHybridSeException {
         options = new EngineOptions();
         options.set_keep_ir(true);
@@ -54,12 +69,18 @@ public class RequestEngine implements AutoCloseable {
         plan = compileInfo.GetPhysicalPlan();
     }
 
+    /**
+     * Get physical plan.
+     */
     public PhysicalOpNode getPlan() {
         return plan;
     }
 
+    /**
+     * Close the request engine.
+     */
     @Override
-    synchronized public void close() throws Exception {
+    public synchronized void close() {
         engine.delete();
         engine = null;
 

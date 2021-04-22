@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,6 +16,11 @@
 
 package com._4paradigm.hybridse.sdk;
 
+/**
+ * The general exception class throw when query unsupported sql.
+ *
+ * <p>This includes, but is not limited to, SQL syntax error, Non-support Plan and so on.</p>
+ */
 public class UnsupportedHybridSeException extends Exception {
 
     private String message;

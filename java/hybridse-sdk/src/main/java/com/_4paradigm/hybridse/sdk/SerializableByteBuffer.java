@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,23 +23,38 @@ import java.nio.ByteBuffer;
 
 
 /**
- * By default, ByteBuffer instances are not serializable, tihs class implemented
+ * Serializable ByteBuffer.
+ *
+ * <p>By default, ByteBuffer instances are not serializable, tihs class implemented
  * serializable wrapper for byte buffer to communicate serialize buffer content.
  */
 public class SerializableByteBuffer implements Serializable {
 
-    transient private ByteBuffer buffer;
+    private transient ByteBuffer buffer;
 
-    static private final int MAGIC_END_TAG = 42;
+    private static final int MAGIC_END_TAG = 42;
 
     public SerializableByteBuffer() {}
-    public SerializableByteBuffer(ByteBuffer buffer) { this.buffer = buffer; }
 
+    public SerializableByteBuffer(ByteBuffer buffer) {
+        this.buffer = buffer;
+    }
+
+    /**
+     * Return ByteBuffer.
+     */
     public ByteBuffer getBuffer() {
         return buffer;
     }
 
 
+    /**
+     * Serialization method to save the ByteBuffer.
+     *
+     * @serialData The length of the ByteBuffer type ID (int),
+     *             followed by ByteBuffer isDirect flag (boolean)
+     *             followed by buffer array
+     */
     private void writeObject(java.io.ObjectOutputStream out) throws IOException {
         if (buffer == null) {
             throw new IOException("No backed buffer");
@@ -60,15 +75,21 @@ public class SerializableByteBuffer implements Serializable {
     }
 
 
+    /**
+     * Serialization method to load the ByteBuffer.
+     *
+     * @throws IOException throw when fail to read by DataInputStream
+     * @throws ClassNotFoundException throw when class not found
+     */
     private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
 
         // object stream is backed by block stream, thus read bytes
         // operations should be buffered to ensure exact bytes are read
-        DataInputStream wrappedIStream = new DataInputStream(in);
+        DataInputStream wrappedInStream = new DataInputStream(in);
 
-        int capacity = wrappedIStream.readInt();
-        boolean isDirect = wrappedIStream.readBoolean();
+        int capacity = wrappedInStream.readInt();
+        boolean isDirect = wrappedInStream.readBoolean();
         if (isDirect) {
             buffer = ByteBuffer.allocateDirect(capacity);
         } else {
@@ -82,16 +103,15 @@ public class SerializableByteBuffer implements Serializable {
         }
 
         try {
-            wrappedIStream.readFully(bytes, 0, capacity);
+            wrappedInStream.readFully(bytes, 0, capacity);
         } catch (IOException e) {
-            throw new IOException("Byte buffer stream corrupt, " +
-                    "expect buffer bytes: " + capacity, e);
+            throw new IOException("Byte buffer stream corrupt, " + "expect buffer bytes: " + capacity, e);
         }
-        if (!buffer.hasArray()) {  // maybe direct
+        if (!buffer.hasArray()) { // maybe direct
             buffer.put(bytes, 0, capacity);
             buffer.rewind();
         }
-        int endTag = wrappedIStream.readInt();
+        int endTag = wrappedInStream.readInt();
         if (endTag != MAGIC_END_TAG) {
             throw new IOException("Byte buffer stream corrupt");
         }

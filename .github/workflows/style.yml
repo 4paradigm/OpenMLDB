@@ -27,7 +27,7 @@ jobs:
           pattern: "*.sh"
           exclude: "./.git/*"
   cpplint:
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
 
@@ -53,9 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
       - name: Run check style
-        uses: nikitasavinov/checkstyle-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-review
-          tool_name: checkstyle
+        run: |
+          make javalint

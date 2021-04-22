@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,26 +16,35 @@
 
 package com._4paradigm.hybridse;
 
-import org.apache.commons.io.IOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import org.apache.commons.io.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-
+/**
+ * This class is used to load the shared library from within the jar.
+ * The shared library is extracted to a temp folder and loaded from there.
+ */
 public class LibraryLoader {
 
     private static final Logger logger = LoggerFactory.getLogger(LibraryLoader.class.getName());
 
-    synchronized public static void loadLibrary(String libraryPath) {
+    /**
+     * Firstly attempts to load the native library specified by the libraryPath.
+     * If that fails then it falls back to extracting the library from the classpath.
+     *
+     * @param libraryPath library path
+     */
+    public static synchronized void loadLibrary(String libraryPath) {
         logger.info("Try to load the library {}", libraryPath);
+        System.out.print("DYLD_LIBRARY_PATH=");
+        System.out.println(System.getenv("DYLD_LIBRARY_PATH"));
 
-        boolean isPath = libraryPath.endsWith(".so") ||
-                libraryPath.endsWith(".dylib");
+        boolean isPath = libraryPath.endsWith(".so") || libraryPath.endsWith(".dylib");
         if (!isPath) {
             // try load from environment
             try {
@@ -85,12 +94,18 @@ public class LibraryLoader {
             }
         } catch (IOException | UnsatisfiedLinkError e) {
             logger.error(String.format("Error while load %s from local resource", libraryPath), e);
+            e.printStackTrace();
             throw new UnsatisfiedLinkError(String.format("Fail to load library %s", libraryPath));
         }
     }
 
     /**
-     * Extract library in resource into filesystem
+     * Extract library in resource into filesystem.
+     *
+     * @param path Local resource path
+     * @param isTemp If extract to template file
+     * @return Return the absolute path of resource
+     * @throws IOException throw when IO Exception
      */
     public static String extractResource(String path, boolean isTemp) throws IOException {
         InputStream inputStream = LibraryLoader.class.getClassLoader().getResourceAsStream(path);
@@ -98,7 +113,7 @@ public class LibraryLoader {
             logger.info("Found {} in local resource", path);
             File localFile;
             if (isTemp) {
-                String suffix = path.replace("/", "-");  // do not make temp directory
+                String suffix = path.replace("/", "-"); // do not make temp directory
                 localFile = File.createTempFile("temp-", suffix);
             } else {
                 localFile = new File("./", path);

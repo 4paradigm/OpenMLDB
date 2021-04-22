@@ -11,7 +11,8 @@ tools
 │   └── gen_intermediate_cicd_artifacts.sh      # pack compile result
 ├── documentation/
 │   ├── export_udf_doc.sh        # export udf documentations
-│   └── udf_doxygen/
+│   └── c++_api/             # generate c++ api documentation
+│   └── java_api/                # generate java api documentation
 ├── clang_format.sh              # format code
 ├── init_env.profile.sh          # init running environment
 ├── get_deps_for_sdk.sh          # install required dependencies
@@ -70,6 +71,50 @@ java sdk 编译测试
 
 生成 udf 文档
 
+#### documentation/c++_api
+Generate c++ api documentation
+
+1. Configure Doxyfile
+
+Configure project name
+```
+PROJECT_NAME           = "HybridSE-C++"
+```
+
+Configure headers directory or file
+```
+INPUT                  = ../../../include/vm
+```
+
+
+2. Run doxybook2 script
+```shell
+cd documentation/c++_api
+sh doxybook2.sh
+```
+
+#### documentation/java_api
+Generate java api documentation
+
+1. Configure Doxyfile
+
+Configure project name
+```
+PROJECT_NAME           = "HybridSE-Java"
+```
+
+Configure headers directory or file
+```
+INPUT                  = ../../../java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk
+```
+
+2. Run doxybook2 script
+```shell
+cd documentation/java_api
+sh doxybook2.sh
+```
+生成 udf 文档
+
 ### 3. 集成测试&性能测试
 
 #### micro_bench.sh
@@ -83,4 +128,3 @@ java sdk 编译测试
 #### gen_auto_case.sh
 
 生成自动化的SQL Case
-

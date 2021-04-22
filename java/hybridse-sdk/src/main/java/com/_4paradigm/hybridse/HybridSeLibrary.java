@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,17 +19,27 @@ package com._4paradigm.hybridse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Library loader for hybridse jsdk core.
+ */
 public class HybridSeLibrary {
     private static final Logger logger = LoggerFactory.getLogger(HybridSeLibrary.class.getName());
-    static private final String HybridSE_JSDK_CORE_NAME = "hybridse_jsdk_core";
-    static private boolean initialized = false;
+    private static final String HybridSE_JSDK_CORE_NAME = "hybridse_jsdk_core";
+    private static boolean initialized = false;
 
-    static synchronized public void initCore() {
+    /**
+     * Load hybridse jsdk core if it hasn't loaded before.
+     */
+    public static synchronized void initCore() {
         if (initialized) {
             return;
         }
         LibraryLoader.loadLibrary(HybridSE_JSDK_CORE_NAME);
         initialized = true;
+    }
+
+    static synchronized boolean isInitialized() {
+        return initialized;
     }
 
 }
