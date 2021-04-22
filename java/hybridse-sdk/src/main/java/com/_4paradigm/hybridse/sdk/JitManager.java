@@ -50,7 +50,7 @@ public class JitManager {
     /**
      * Return JIT specified by tag.
      */
-    public static synchronized HybridSeJitWrapper getJIT(String tag) {
+    public static synchronized HybridSeJitWrapper getJit(String tag) {
         if (!jits.containsKey(tag)) {
             HybridSeJitWrapper jit = HybridSeJitWrapper.Create(getJitOptions());
             if (jit == null) {
@@ -71,13 +71,13 @@ public class JitManager {
                 return options;
             }
             prop.load(input);
-            String enableMCJIT = prop.getProperty("fesql.jit.enable_mcjit");
-            if (enableMCJIT != null && enableMCJIT.toLowerCase().equals("true")) {
+            String enableMcJit = prop.getProperty("fesql.jit.enable_mcjit");
+            if (enableMcJit != null && enableMcJit.toLowerCase().equals("true")) {
                 logger.info("Try enable llvm legacy mcjit support");
                 options.set_enable_mcjit(true);
             }
-            String enableVTune = prop.getProperty("fesql.jit.enable_vtune");
-            if (enableVTune != null && enableVTune.toLowerCase().equals("true")) {
+            String enableVtune = prop.getProperty("fesql.jit.enable_vtune");
+            if (enableVtune != null && enableVtune.toLowerCase().equals("true")) {
                 logger.info("Try enable intel jit events support");
                 options.set_enable_vtune(true);
             }
@@ -102,7 +102,7 @@ public class JitManager {
     }
 
     private static synchronized void initModule(String tag, ByteBuffer moduleBuffer) {
-        HybridSeJitWrapper jit = getJIT(tag);
+        HybridSeJitWrapper jit = getJit(tag);
         if (!moduleBuffer.isDirect()) {
             throw new RuntimeException("JIT must use direct buffer");
         }
@@ -118,7 +118,7 @@ public class JitManager {
      * @param tag tag specified a jit
      * @param moduleBuffer ByteBuffer used to initialize native module
      */
-    public static synchronized void initJITModule(String tag, ByteBuffer moduleBuffer) {
+    public static synchronized void initJitModule(String tag, ByteBuffer moduleBuffer) {
 
         // ensure worker native
         HybridSeLibrary.initCore();

@@ -31,9 +31,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Implementation of HybridSE SQL simple engine that compiled queries with given sql and database.
  */
-public class SQLEngine implements AutoCloseable {
+public class SqlEngine implements AutoCloseable {
 
-    private static final Logger logger = LoggerFactory.getLogger(SQLEngine.class);
+    private static final Logger logger = LoggerFactory.getLogger(SqlEngine.class);
 
     private SimpleCatalog catalog;
     private EngineOptions options;
@@ -47,7 +47,7 @@ public class SQLEngine implements AutoCloseable {
      *
      * @throws UnsupportedHybridSeException throws exception when fail to compile queries
      */
-    public SQLEngine(String sql, TypeOuterClass.Database database) throws UnsupportedHybridSeException {
+    public SqlEngine(String sql, TypeOuterClass.Database database) throws UnsupportedHybridSeException {
         // Create the default engine options
         this.initilize(sql, database, createDefaultEngineOptions());
     }
@@ -57,7 +57,7 @@ public class SQLEngine implements AutoCloseable {
      *
      * @throws UnsupportedHybridSeException throws exception when fail to compile queries
      */
-    public SQLEngine(String sql, TypeOuterClass.Database database, EngineOptions engineOptions)
+    public SqlEngine(String sql, TypeOuterClass.Database database, EngineOptions engineOptions)
             throws UnsupportedHybridSeException {
         this.initilize(sql, database, engineOptions);
     }
@@ -115,7 +115,7 @@ public class SQLEngine implements AutoCloseable {
     /**
      * Return compile IR result as ByteBuffer.
      */
-    public ByteBuffer getIRBuffer() {
+    public ByteBuffer getIrBuffer() {
         long size = compileInfo.GetIRSize();
         ByteBuffer buffer = ByteBuffer.allocateDirect(Long.valueOf(size).intValue());
         compileInfo.GetIRBuffer(buffer);

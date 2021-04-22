@@ -7,7 +7,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public class SQLEngineTest {
+public class SqlEngineTest {
 
     static {
         // Ensure native initialized
@@ -42,7 +42,7 @@ public class SQLEngineTest {
                         .setType(TypeOuterClass.Type.kVarchar).build());
         db.addTables(tbl.build());
         try {
-            SQLEngine engine = new SQLEngine(sql, db.build());
+            SqlEngine engine = new SqlEngine(sql, db.build());
             Assert.assertNotNull(engine.getPlan());
         } catch (UnsupportedHybridSeException e) {
             e.printStackTrace();

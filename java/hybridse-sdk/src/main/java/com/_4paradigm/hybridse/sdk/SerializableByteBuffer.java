@@ -78,18 +78,18 @@ public class SerializableByteBuffer implements Serializable {
     /**
      * Serialization method to load the ByteBuffer.
      *
-     * @throws IOException
-     * @throws ClassNotFoundException
+     * @throws IOException throw when fail to read by DataInputStream
+     * @throws ClassNotFoundException throw when class not found
      */
     private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
 
         // object stream is backed by block stream, thus read bytes
         // operations should be buffered to ensure exact bytes are read
-        DataInputStream wrappedIStream = new DataInputStream(in);
+        DataInputStream wrappedInStream = new DataInputStream(in);
 
-        int capacity = wrappedIStream.readInt();
-        boolean isDirect = wrappedIStream.readBoolean();
+        int capacity = wrappedInStream.readInt();
+        boolean isDirect = wrappedInStream.readBoolean();
         if (isDirect) {
             buffer = ByteBuffer.allocateDirect(capacity);
         } else {
@@ -103,7 +103,7 @@ public class SerializableByteBuffer implements Serializable {
         }
 
         try {
-            wrappedIStream.readFully(bytes, 0, capacity);
+            wrappedInStream.readFully(bytes, 0, capacity);
         } catch (IOException e) {
             throw new IOException("Byte buffer stream corrupt, " + "expect buffer bytes: " + capacity, e);
         }
@@ -111,7 +111,7 @@ public class SerializableByteBuffer implements Serializable {
             buffer.put(bytes, 0, capacity);
             buffer.rewind();
         }
-        int endTag = wrappedIStream.readInt();
+        int endTag = wrappedInStream.readInt();
         if (endTag != MAGIC_END_TAG) {
             throw new IOException("Byte buffer stream corrupt");
         }

@@ -100,11 +100,11 @@ public class LibraryLoader {
     }
 
     /**
-     * Extract library in resource into filesystem
+     * Extract library in resource into filesystem.
      *
      * @param path Local resource path
      * @param isTemp If extract to template file
-     * @return
+     * @return Return the absolute path of resource
      * @throws IOException throw when IO Exception
      */
     public static String extractResource(String path, boolean isTemp) throws IOException {
