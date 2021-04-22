@@ -6,7 +6,7 @@ lint: cpplint shlint javalint pylint
 format: javafmt shfmt cppfmt pyfmt configfmt
 
 javafmt:
-	@cd java && mvn -pl hybrid-common spotless:apply
+	@cd java && mvn -pl hybridse-sdk spotless:apply
 
 shfmt:
 	@if command -v shfmt; then\
@@ -74,7 +74,7 @@ shlint:
 	fi
 
 javalint:
-	@cd java && mvn -pl hybridse-common -Dplugin.violationSeverity=warning checkstyle:check
+	@cd java && mvn -pl hybridse-sdk -Dplugin.violationSeverity=error checkstyle:check
 
 pylint:
 	@if command -v pylint; then \

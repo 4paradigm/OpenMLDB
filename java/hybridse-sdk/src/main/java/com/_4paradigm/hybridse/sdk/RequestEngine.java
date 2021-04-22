@@ -23,7 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * SQL Engine in request mode
+ * SQL Engine in request mode.
  */
 public class RequestEngine implements AutoCloseable {
 
@@ -38,7 +38,7 @@ public class RequestEngine implements AutoCloseable {
 
 
     /**
-     * Construct RequestEngine with given sql and database
+     * Construct RequestEngine with given sql and database.
      *
      * @param sql
      * @param database
@@ -72,7 +72,7 @@ public class RequestEngine implements AutoCloseable {
     }
 
     /**
-     * Close the request engine
+     * Close the request engine.
      *
      * @throws Exception
      */
