@@ -27,7 +27,7 @@ import java.io.InputStream;
 import java.net.URL;
 
 /**
- * @brief This class is used to load the shared library from within the jar.
+ * This class is used to load the shared library from within the jar.
  * The shared library is extracted to a temp folder and loaded from there.
  */
 public class LibraryLoader {
@@ -37,10 +37,13 @@ public class LibraryLoader {
     /**
      * Firstly attempts to load the native library specified by the libraryPath.
      * If that fails then it falls back to extracting the library from the classpath.
+     *
      * @param libraryPath
      */
     synchronized public static void loadLibrary(String libraryPath) {
         logger.info("Try to load the library {}", libraryPath);
+        System.out.print("DYLD_LIBRARY_PATH=");
+        System.out.println(System.getenv("DYLD_LIBRARY_PATH"));
 
         boolean isPath = libraryPath.endsWith(".so") ||
                 libraryPath.endsWith(".dylib");
@@ -93,13 +96,15 @@ public class LibraryLoader {
             }
         } catch (IOException | UnsatisfiedLinkError e) {
             logger.error(String.format("Error while load %s from local resource", libraryPath), e);
+            e.printStackTrace();
             throw new UnsatisfiedLinkError(String.format("Fail to load library %s", libraryPath));
         }
     }
 
     /**
      * Extract library in resource into filesystem
-     * @param path Local resource path
+     *
+     * @param path   Local resource path
      * @param isTemp If extract to template file
      * @return
      * @throws IOException

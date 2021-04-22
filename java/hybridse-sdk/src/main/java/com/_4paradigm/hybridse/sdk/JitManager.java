@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 /**
- * @brief JIT manager provides a set of API to access jit, configure JitOptions and init llvm module
+ * JIT manager provides a set of API to access jit, configure JitOptions and init llvm module
  */
 public class JitManager {
 
@@ -48,7 +48,7 @@ public class JitManager {
      * Return JIT specified by tag
      */
     synchronized static public HybridSeJitWrapper getJIT(String tag) {
-        if (! jits.containsKey(tag)) {
+        if (!jits.containsKey(tag)) {
             HybridSeJitWrapper jit = HybridSeJitWrapper.Create(getJitOptions());
             if (jit == null) {
                 throw new RuntimeException("Fail to create native jit");
@@ -101,7 +101,7 @@ public class JitManager {
 
     synchronized static private void initModule(String tag, ByteBuffer moduleBuffer) {
         HybridSeJitWrapper jit = getJIT(tag);
-        if (! moduleBuffer.isDirect()) {
+        if (!moduleBuffer.isDirect()) {
             throw new RuntimeException("JIT must use direct buffer");
         }
         if (!jit.AddModuleFromBuffer(moduleBuffer)) {
@@ -112,7 +112,8 @@ public class JitManager {
 
     /**
      * Init llvm module specified by tag. Init native module with module byte buffer.
-     * @param tag tag specified a jit
+     *
+     * @param tag          tag specified a jit
      * @param moduleBuffer ByteBuffer used to initialize native module
      */
     synchronized static public void initJITModule(String tag, ByteBuffer moduleBuffer) {
@@ -129,6 +130,7 @@ public class JitManager {
 
     /**
      * Remove native module specified by tag
+     *
      * @param tag
      */
     synchronized static public void removeModule(String tag) {

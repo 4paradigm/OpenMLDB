@@ -19,17 +19,27 @@ package com._4paradigm.hybridse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Library loader for hybridse jsdk core
+ */
 public class HybridSeLibrary {
     private static final Logger logger = LoggerFactory.getLogger(HybridSeLibrary.class.getName());
     static private final String HybridSE_JSDK_CORE_NAME = "hybridse_jsdk_core";
     static private boolean initialized = false;
 
+    /**
+     * Load hybridse jsdk core if it hasn't loaded before
+     */
     static synchronized public void initCore() {
         if (initialized) {
             return;
         }
         LibraryLoader.loadLibrary(HybridSE_JSDK_CORE_NAME);
         initialized = true;
+    }
+
+    static synchronized boolean isInitialized() {
+        return initialized;
     }
 
 }

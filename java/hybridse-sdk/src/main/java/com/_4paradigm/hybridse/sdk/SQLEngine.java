@@ -21,10 +21,11 @@ import com._4paradigm.hybridse.type.TypeOuterClass;
 import com._4paradigm.hybridse.vm.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.nio.ByteBuffer;
 
 /**
- * @brief Implementation of HybridSE SQL simple engine that compiled queries with given sql and database
+ * Implementation of HybridSE SQL simple engine that compiled queries with given sql and database
  */
 public class SQLEngine implements AutoCloseable {
 
@@ -39,14 +40,17 @@ public class SQLEngine implements AutoCloseable {
 
     /**
      * Construct SQL engine for specific sql and database
+     *
      * @throws UnsupportedHybridSeException throws exception when fail to compile queries
      */
     public SQLEngine(String sql, TypeOuterClass.Database database) throws UnsupportedHybridSeException {
         // Create the default engine options
         this.initilize(sql, database, createDefaultEngineOptions());
     }
+
     /**
      * Construct SQL engine for specific sql, database and EngineOptions
+     *
      * @throws UnsupportedHybridSeException throws exception when fail to compile queries
      */
     public SQLEngine(String sql, TypeOuterClass.Database database, EngineOptions engineOptions) throws UnsupportedHybridSeException {
@@ -55,10 +59,11 @@ public class SQLEngine implements AutoCloseable {
 
     /**
      * Create default engine option
-     *
+     * <p>
      * - Enable store ir results into SQL context
      * - Only compile SQL
      * - Disable performance sensitive mode.
+     *
      * @return
      */
     public static EngineOptions createDefaultEngineOptions() {
@@ -78,7 +83,7 @@ public class SQLEngine implements AutoCloseable {
 
         BaseStatus status = new BaseStatus();
         boolean ok = engine.Get(sql, database.getName(), session, status);
-        if (! (ok && status.getMsg().equals("ok"))) {
+        if (!(ok && status.getMsg().equals("ok"))) {
             throw new UnsupportedHybridSeException("SQL parse error: " + status.getMsg() + "\n" + status.getTrace());
         }
         status.delete();
@@ -95,6 +100,7 @@ public class SQLEngine implements AutoCloseable {
 
     /**
      * Return compile IR result as ByteBuffer
+     *
      * @return
      */
     public ByteBuffer getIRBuffer() {

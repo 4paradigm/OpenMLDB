@@ -39,6 +39,7 @@ public class RequestEngine implements AutoCloseable {
 
     /**
      * Construct RequestEngine with given sql and database
+     *
      * @param sql
      * @param database
      * @throws UnsupportedHybridSeException
@@ -72,6 +73,7 @@ public class RequestEngine implements AutoCloseable {
 
     /**
      * Close the request engine
+     *
      * @throws Exception
      */
     @Override

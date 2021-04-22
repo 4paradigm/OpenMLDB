@@ -17,7 +17,6 @@
 set -eE
 # goto toplevel directory
 cd "$(dirname "$0")"
-DOC_DIR=$(pwd)
 
 if [[ -d "xml" ]]; then
   rm -rf "xml"
