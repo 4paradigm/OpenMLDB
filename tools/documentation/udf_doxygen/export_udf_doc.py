@@ -73,7 +73,6 @@ def merge_arith_types(signature_set):
 					signature_set.pop(key)
 				arg_types[idx] = merge_ty
 				new_key = ", ".join(arg_types)
-				print(new_key, signature_set)
 				signature_set[new_key] = arg_types
 				return True
 		return False
@@ -102,6 +101,29 @@ def make_header():
 		os.makedirs(DOXYGEN_DIR + "/udfs")
 	fake_header = os.path.join(DOXYGEN_DIR + "/udfs/udfs.h")
 
+	types_map = {
+        "bool" : "`bool`",
+		"int16" : "`int16`",
+		"int32" : "`int32`",
+		"int64" : "`int64`",
+		"float" : "`float`",
+		"double" : "`double`",
+		"timestamp" : "`timestamp`",
+		"date" : "`date`",
+		"row" : "`row`",
+		"string" : "`string`",
+		"list_bool" : "`list<bool>`",
+		"list_number" : "`list<number>`",
+		"list_timestamp" : "`list<timestamp>`",
+		"list_date" : "`list<date>`",
+		"list_row" : "`list<row>`",
+		"list_int16" : "`list<int16>`",
+		"list_int32" : "`list<int32>`",
+		"list_int64" : "`list<int64>`",
+		"list_float" : "`list<float>`",
+		"list_double" : "`list<double>`",
+		"list_string" : "`list<string>`",
+	}
 	with open(fake_header, "w") as header_file:
 		for name in sorted(udf_defs.keys()):
 			content = "/**\n"
@@ -122,6 +144,10 @@ def make_header():
 					if is_variadic:
 						arg_types.append("...")
 					return_type = sig["return_type"]
+					for i in range(len(arg_types)):
+						print("arg_types[i]: " + arg_types[i])
+						if arg_types[i] in types_map:
+							arg_types[i] = types_map[arg_types[i]]
 					key = ", ".join(arg_types)
 					if key not in sig_set:
 						sig_set[key] = arg_types
@@ -131,6 +157,7 @@ def make_header():
 
 			sig_list = sorted([_ for _ in sig_set])
 			for sig in sig_list:
+				print("sig: " + sig)
 				content += "- [" + sig + "]\n"
 
 			content += "\n*/\n"
