@@ -27,7 +27,7 @@ jobs:
           pattern: "*.sh"
           exclude: "./.git/*"
   cpplint:
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
 
@@ -59,4 +59,5 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-review
           tool_name: checkstyle
-          checkstyle_config: ./java/style_checks.xml
+          workdir: java
+          checkstyle_config: style_checks.xml
