@@ -51,8 +51,8 @@ def process_doc(doc):
 
 
 def merge_arith_types(signature_set):
-	arith_types = frozenset(["int16", "int32", "int64", "float", "double"])
-	arith_list_types = frozenset(["list_int16", "list_int32", "list_int64", "list_float", "list_double"])
+	arith_types = frozenset(["`int16`", "`int32`", "`int64`", "`float`", "`double`"])
+	arith_list_types = frozenset(["`list<int16>`", "`list<int32>`", "`list<int64>`", "`list<float>`", "`list<double>`"])
 	found = True
 
 	def __find_and_merge(arg_types, idx, list_ty, merge_ty):
@@ -82,10 +82,10 @@ def merge_arith_types(signature_set):
 		for key in signature_set:
 			arg_types = [_ for _ in signature_set[key]]
 			for i in range(len(arg_types)):
-				if __find_and_merge(arg_types, i, arith_types, "number"):
+				if __find_and_merge(arg_types, i, arith_types, "`number`"):
 					found = True
 					break
-				elif __find_and_merge(arg_types, i, arith_list_types, "list_number"):
+				elif __find_and_merge(arg_types, i, arith_list_types, "`list<number>`"):
 					found = True
 					break
 			if found: break
