@@ -24,15 +24,15 @@ import java.nio.ByteBuffer;
 
 /**
  * Serializable ByteBuffer.
- * <p>
- * By default, ByteBuffer instances are not serializable, tihs class implemented
+ *
+ * <p>By default, ByteBuffer instances are not serializable, tihs class implemented
  * serializable wrapper for byte buffer to communicate serialize buffer content.
  */
 public class SerializableByteBuffer implements Serializable {
 
-    transient private ByteBuffer buffer;
+    private transient ByteBuffer buffer;
 
-    static private final int MAGIC_END_TAG = 42;
+    private static final int MAGIC_END_TAG = 42;
 
     public SerializableByteBuffer() {}
 

@@ -16,15 +16,14 @@
 
 package com._4paradigm.hybridse;
 
-import org.apache.commons.io.IOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import org.apache.commons.io.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class is used to load the shared library from within the jar.
@@ -38,9 +37,9 @@ public class LibraryLoader {
      * Firstly attempts to load the native library specified by the libraryPath.
      * If that fails then it falls back to extracting the library from the classpath.
      *
-     * @param libraryPath
+     * @param libraryPath library path
      */
-    synchronized public static void loadLibrary(String libraryPath) {
+    public static synchronized void loadLibrary(String libraryPath) {
         logger.info("Try to load the library {}", libraryPath);
         System.out.print("DYLD_LIBRARY_PATH=");
         System.out.println(System.getenv("DYLD_LIBRARY_PATH"));
@@ -106,7 +105,7 @@ public class LibraryLoader {
      * @param path Local resource path
      * @param isTemp If extract to template file
      * @return
-     * @throws IOException
+     * @throws IOException throw when IO Exception
      */
     public static String extractResource(String path, boolean isTemp) throws IOException {
         InputStream inputStream = LibraryLoader.class.getClassLoader().getResourceAsStream(path);

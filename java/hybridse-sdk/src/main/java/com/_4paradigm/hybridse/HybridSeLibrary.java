@@ -20,17 +20,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Library loader for hybridse jsdk core
+ * Library loader for hybridse jsdk core.
  */
 public class HybridSeLibrary {
     private static final Logger logger = LoggerFactory.getLogger(HybridSeLibrary.class.getName());
-    static private final String HybridSE_JSDK_CORE_NAME = "hybridse_jsdk_core";
-    static private boolean initialized = false;
+    private static final String HybridSE_JSDK_CORE_NAME = "hybridse_jsdk_core";
+    private static boolean initialized = false;
 
     /**
-     * Load hybridse jsdk core if it hasn't loaded before
+     * Load hybridse jsdk core if it hasn't loaded before.
      */
-    static synchronized public void initCore() {
+    public static synchronized void initCore() {
         if (initialized) {
             return;
         }

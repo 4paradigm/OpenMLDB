@@ -18,7 +18,12 @@ package com._4paradigm.hybridse.sdk;
 
 import com._4paradigm.hybridse.base.BaseStatus;
 import com._4paradigm.hybridse.type.TypeOuterClass;
-import com._4paradigm.hybridse.vm.*;
+import com._4paradigm.hybridse.vm.CompileInfo;
+import com._4paradigm.hybridse.vm.Engine;
+import com._4paradigm.hybridse.vm.EngineOptions;
+import com._4paradigm.hybridse.vm.PhysicalOpNode;
+import com._4paradigm.hybridse.vm.RequestRunSession;
+import com._4paradigm.hybridse.vm.SimpleCatalog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,9 +45,9 @@ public class RequestEngine implements AutoCloseable {
     /**
      * Construct RequestEngine with given sql and database.
      *
-     * @param sql
-     * @param database
-     * @throws UnsupportedHybridSeException
+     * @param sql query the sql string
+     * @param database query on the database
+     * @throws UnsupportedHybridSeException throw when query unsupported or has syntax error
      */
     public RequestEngine(String sql, TypeOuterClass.Database database) throws UnsupportedHybridSeException {
         options = new EngineOptions();
@@ -65,7 +70,7 @@ public class RequestEngine implements AutoCloseable {
     }
 
     /**
-     * Get physical plan
+     * Get physical plan.
      */
     public PhysicalOpNode getPlan() {
         return plan;
@@ -73,11 +78,9 @@ public class RequestEngine implements AutoCloseable {
 
     /**
      * Close the request engine.
-     *
-     * @throws Exception
      */
     @Override
-    synchronized public void close() throws Exception {
+    public synchronized void close() {
         engine.delete();
         engine = null;
 

@@ -20,20 +20,23 @@ import com._4paradigm.hybridse.HybridSeLibrary;
 import com._4paradigm.hybridse.vm.Engine;
 import com._4paradigm.hybridse.vm.HybridSeJitWrapper;
 import com._4paradigm.hybridse.vm.JitOptions;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * JIT manager provides a set of API to access jit, configure JitOptions and init llvm module.
  */
 public class JitManager {
 
-    static private Logger logger = LoggerFactory.getLogger(JitManager.class);
+    private static Logger logger = LoggerFactory.getLogger(JitManager.class);
 
     static {
         HybridSeLibrary.initCore();
@@ -41,13 +44,13 @@ public class JitManager {
     }
 
     // One jit currently only take one llvm module, since symbol may duplicate
-    static private Map<String, HybridSeJitWrapper> jits = new HashMap<>();
-    static private Set<String> initializedModuleTags = new HashSet<>();
+    private static Map<String, HybridSeJitWrapper> jits = new HashMap<>();
+    private static Set<String> initializedModuleTags = new HashSet<>();
 
     /**
      * Return JIT specified by tag.
      */
-    synchronized static public HybridSeJitWrapper getJIT(String tag) {
+    public static synchronized HybridSeJitWrapper getJIT(String tag) {
         if (!jits.containsKey(tag)) {
             HybridSeJitWrapper jit = HybridSeJitWrapper.Create(getJitOptions());
             if (jit == null) {
@@ -60,7 +63,7 @@ public class JitManager {
         return jits.get(tag);
     }
 
-    static private JitOptions getJitOptions() {
+    private static JitOptions getJitOptions() {
         JitOptions options = new JitOptions();
         try (InputStream input = JitManager.class.getClassLoader().getResourceAsStream("jit.properties")) {
             Properties prop = new Properties(System.getProperties());
@@ -94,11 +97,11 @@ public class JitManager {
         return options;
     }
 
-    synchronized static private boolean hasModule(String tag) {
+    private static synchronized boolean hasModule(String tag) {
         return initializedModuleTags.contains(tag);
     }
 
-    synchronized static private void initModule(String tag, ByteBuffer moduleBuffer) {
+    private static synchronized void initModule(String tag, ByteBuffer moduleBuffer) {
         HybridSeJitWrapper jit = getJIT(tag);
         if (!moduleBuffer.isDirect()) {
             throw new RuntimeException("JIT must use direct buffer");
@@ -115,7 +118,7 @@ public class JitManager {
      * @param tag tag specified a jit
      * @param moduleBuffer ByteBuffer used to initialize native module
      */
-    synchronized static public void initJITModule(String tag, ByteBuffer moduleBuffer) {
+    public static synchronized void initJITModule(String tag, ByteBuffer moduleBuffer) {
 
         // ensure worker native
         HybridSeLibrary.initCore();
@@ -130,9 +133,9 @@ public class JitManager {
     /**
      * Remove native module specified by tag.
      *
-     * @param tag
+     * @param tag module tag
      */
-    synchronized static public void removeModule(String tag) {
+    public static synchronized void removeModule(String tag) {
         initializedModuleTags.remove(tag);
         HybridSeJitWrapper jit = jits.remove(tag);
         if (jit != null) {
@@ -144,7 +147,7 @@ public class JitManager {
     /**
      * Clear native modules and jits.
      */
-    synchronized static public void clear() {
+    public static synchronized void clear() {
         initializedModuleTags.clear();
         for (Map.Entry<String, HybridSeJitWrapper> entry : jits.entrySet()) {
             HybridSeJitWrapper.DeleteJit(entry.getValue());

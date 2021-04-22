@@ -18,14 +18,18 @@ package com._4paradigm.hybridse.sdk;
 
 import com._4paradigm.hybridse.base.BaseStatus;
 import com._4paradigm.hybridse.type.TypeOuterClass;
-import com._4paradigm.hybridse.vm.*;
+import com._4paradigm.hybridse.vm.BatchRunSession;
+import com._4paradigm.hybridse.vm.CompileInfo;
+import com._4paradigm.hybridse.vm.Engine;
+import com._4paradigm.hybridse.vm.EngineOptions;
+import com._4paradigm.hybridse.vm.PhysicalOpNode;
+import com._4paradigm.hybridse.vm.SimpleCatalog;
+import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
-
 /**
- * Implementation of HybridSE SQL simple engine that compiled queries with given sql and database
+ * Implementation of HybridSE SQL simple engine that compiled queries with given sql and database.
  */
 public class SQLEngine implements AutoCloseable {
 
@@ -39,7 +43,7 @@ public class SQLEngine implements AutoCloseable {
     private PhysicalOpNode plan;
 
     /**
-     * Construct SQL engine for specific sql and database
+     * Construct SQL engine for specific sql and database.
      *
      * @throws UnsupportedHybridSeException throws exception when fail to compile queries
      */
@@ -49,7 +53,7 @@ public class SQLEngine implements AutoCloseable {
     }
 
     /**
-     * Construct SQL engine for specific sql, database and EngineOptions
+     * Construct SQL engine for specific sql, database and EngineOptions.
      *
      * @throws UnsupportedHybridSeException throws exception when fail to compile queries
      */
@@ -59,13 +63,13 @@ public class SQLEngine implements AutoCloseable {
     }
 
     /**
-     * Create default engine option
-     * <p>
-     * - Enable store ir results into SQL context
+     * Create default engine option.
+     * 
+     * <p>- Enable store ir results into SQL context
      * - Only compile SQL
      * - Disable performance sensitive mode.
      *
-     * @return
+     * @return Return default engine option
      */
     public static EngineOptions createDefaultEngineOptions() {
         EngineOptions engineOptions = new EngineOptions();
@@ -75,6 +79,14 @@ public class SQLEngine implements AutoCloseable {
         return engineOptions;
     }
 
+    /**
+     * Initialize engine with given sql, database and specified engine options.
+     *
+     * @param sql query sql string
+     * @param database query on the database
+     * @param engineOptions query engine options
+     * @throws UnsupportedHybridSeException throw when query unsupported or has syntax error
+     */
     public void initilize(String sql, TypeOuterClass.Database database, EngineOptions engineOptions)
             throws UnsupportedHybridSeException {
         options = engineOptions;
@@ -94,16 +106,14 @@ public class SQLEngine implements AutoCloseable {
     }
 
     /**
-     * Return physical plan
+     * Return physical plan.
      */
     public PhysicalOpNode getPlan() {
         return plan;
     }
 
     /**
-     * Return compile IR result as ByteBuffer
-     *
-     * @return
+     * Return compile IR result as ByteBuffer.
      */
     public ByteBuffer getIRBuffer() {
         long size = compileInfo.GetIRSize();
@@ -114,7 +124,7 @@ public class SQLEngine implements AutoCloseable {
     }
 
     @Override
-    synchronized public void close() throws Exception {
+     public synchronized void close() throws Exception {
         engine.delete();
         engine = null;
 
