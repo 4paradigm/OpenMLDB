@@ -74,7 +74,7 @@ shlint:
 	fi
 
 javalint:
-	@cd java && mvn -pl hybridse-sdk -Dplugin.violationSeverity=error checkstyle:check
+	@cd java && mvn -pl hybridse-sdk -Dplugin.violationSeverity=warning checkstyle:check
 
 pylint:
 	@if command -v pylint; then \

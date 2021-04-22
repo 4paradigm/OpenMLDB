@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 /**
- * JIT manager provides a set of API to access jit, configure JitOptions and init llvm module
+ * JIT manager provides a set of API to access jit, configure JitOptions and init llvm module.
  */
 public class JitManager {
 
@@ -45,7 +45,7 @@ public class JitManager {
     static private Set<String> initializedModuleTags = new HashSet<>();
 
     /**
-     * Return JIT specified by tag
+     * Return JIT specified by tag.
      */
     synchronized static public HybridSeJitWrapper getJIT(String tag) {
         if (!jits.containsKey(tag)) {
@@ -128,7 +128,7 @@ public class JitManager {
     }
 
     /**
-     * Remove native module specified by tag
+     * Remove native module specified by tag.
      *
      * @param tag
      */
@@ -142,7 +142,7 @@ public class JitManager {
     }
 
     /**
-     * Clear native modules and jits
+     * Clear native modules and jits.
      */
     synchronized static public void clear() {
         initializedModuleTags.clear();
