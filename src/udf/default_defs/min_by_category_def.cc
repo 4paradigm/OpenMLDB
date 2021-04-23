@@ -215,7 +215,7 @@ struct TopKMinCateWhereDef {
 void DefaultUdfLibrary::InitMinByCateUdafs() {
     RegisterUdafTemplate<MinCateDef>("min_cate")
         .doc(R"(
-            Compute minimum of values grouped by category key and output string.
+            @brief Compute minimum of values grouped by category key and output string.
             Each group is represented as 'K:V' and separated by comma in outputs
             and are sorted by key in ascend order.
 
@@ -240,7 +240,7 @@ void DefaultUdfLibrary::InitMinByCateUdafs() {
 
     RegisterUdafTemplate<MinCateWhereDef>("min_cate_where")
         .doc(R"(
-            Compute minimum of values matching specified condition grouped by
+            @brief Compute minimum of values matching specified condition grouped by
     category key and output string. Each group is represented as 'K:V' and
     separated by comma in outputs and are sorted by key in ascend order.
 
@@ -268,7 +268,7 @@ void DefaultUdfLibrary::InitMinByCateUdafs() {
 
     RegisterUdafTemplate<TopKMinCateWhereDef>("top_n_key_min_cate_where")
         .doc(R"(
-            Compute minimum of values matching specified condition grouped by
+            @brief Compute minimum of values matching specified condition grouped by
     category key. Output string for top N keys in descend order. Each group is
     represented as 'K:V' and separated by comma.
 
