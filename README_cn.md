@@ -68,7 +68,7 @@ mkdir -p build && cd build && cmake ../ && make -j5 fedb
 
 ![Benchmark](images/benchmark.png)
 
-测试结果表明FEDB比SingleStore和SAP HANA快了一到两个数量级。
+测试结果表明FEDB比SingleStore和SAP HANA快了一到两个数量级。更多测试结果请参考[VLDB'21 paper](http://vldb.org/pvldb/vol14/p799-chen.pdf)。
 
 ## 未来规划
 

@@ -70,7 +70,7 @@ The server spec is as follows:
 
 ![Benchmark](images/benchmark.png)
 
-The benchmark result shows that FEDB can be one to two orders of magnitude faster than SingleStore and SAP HANA.
+The benchmark result shows that FEDB can be one to two orders of magnitude faster than SingleStore and SAP HANA. Please check our [VLDB'21 paper](http://vldb.org/pvldb/vol14/p799-chen.pdf) for more benchmarks.
 
 ## Roadmap
 
