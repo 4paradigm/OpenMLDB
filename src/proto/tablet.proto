@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import "type.proto";
 import "common.proto";
 import "sql_procedure.proto";
 package fedb.api;
@@ -23,11 +24,6 @@ option cc_generic_services = true;
 enum TableMode {
     kTableLeader = 1;
     kTableFollower = 2;
-}
-
-enum CompressType {
-    kNoCompress = 0;
-    kSnappy = 1;
 }
 
 enum TableState {
@@ -330,7 +326,7 @@ message TableMeta {
     optional uint64 term = 10 [default = 0];
     optional bytes schema = 11 [deprecated = true];
     repeated string dimensions = 12 [deprecated = true];
-    optional CompressType compress_type = 13;
+    optional fedb.type.CompressType compress_type = 13;
     optional uint32 key_entry_max_height = 14;
     repeated fedb.common.ColumnDesc column_desc = 15;
     repeated fedb.common.ColumnKey column_key = 16;
@@ -519,7 +515,7 @@ message TableStatus {
     optional uint64 record_idx_byte_size = 14;
     optional uint64 record_pk_cnt = 15;
     optional TTLType ttl_type = 16 [default = kAbsoluteTime, deprecated = true];
-    optional CompressType compress_type = 17;
+    optional fedb.type.CompressType compress_type = 17;
     optional uint32 skiplist_height = 18;
     optional bytes schema = 19;
     optional TTLDesc ttl_desc = 20;

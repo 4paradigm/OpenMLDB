@@ -1400,7 +1400,7 @@ int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector
     const ::fedb::api::TableMeta& table_meta = table->GetTableMeta();
     std::string buff;
     fedb::base::Slice data;
-    if (table->GetCompressType() == fedb::api::kSnappy) {
+    if (table->GetCompressType() == fedb::type::kSnappy) {
         snappy::Uncompress(entry.value().data(), entry.value().size(), &buff);
         data.reset(buff.data(), buff.size());
     } else {

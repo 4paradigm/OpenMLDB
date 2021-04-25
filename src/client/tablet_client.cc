@@ -67,7 +67,7 @@ bool TabletClient::CreateTable(
     const std::vector<::fedb::codec::ColumnDesc>& columns,
     const ::fedb::api::TTLType& type, bool leader,
     const std::vector<std::string>& endpoints, uint64_t term,
-    const ::fedb::api::CompressType compress_type) {
+    const ::fedb::type::CompressType compress_type) {
     std::string schema;
     ::fedb::codec::SchemaCodec codec;
     bool codec_ok = codec.Encode(columns, schema);
@@ -244,7 +244,7 @@ bool TabletClient::CreateTable(const std::string& name, uint32_t tid,
                                const std::vector<std::string>& endpoints,
                                const ::fedb::api::TTLType& type,
                                uint32_t seg_cnt, uint64_t term,
-                               const ::fedb::api::CompressType compress_type) {
+                               const ::fedb::type::CompressType compress_type) {
     ::fedb::api::CreateTableRequest request;
     if (type == ::fedb::api::kLatestTime) {
         if (lat_ttl > FLAGS_latest_ttl_max) {

@@ -90,7 +90,7 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
     bool ret =
         client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
                            ::fedb::api::TTLType::kAbsoluteTime, 16, 0,
-                           ::fedb::api::CompressType::kNoCompress);
+                           ::fedb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
 
     std::string end_point = "127.0.0.1:18530";
@@ -131,7 +131,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     bool ret =
         client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
                            ::fedb::api::TTLType::kAbsoluteTime, 16, 0,
-                           ::fedb::api::CompressType::kNoCompress);
+                           ::fedb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     ret = client.Put(tid, pid, "testkey", cur_time, "value1");
@@ -164,7 +164,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     client1.Init();
     ret = client1.CreateTable("table1", tid, pid, 14400, 0, false, endpoints,
                               ::fedb::api::TTLType::kAbsoluteTime, 16, 0,
-                              ::fedb::api::CompressType::kNoCompress);
+                              ::fedb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
     client.AddReplica(tid, pid, follower_point);
     sleep(3);

@@ -368,7 +368,7 @@ __attribute__((unused)) static void ShowTableRows(
     const ::fedb::api::TableMeta& table_info, ::fedb::cmd::SDKIterator* it) {
     ::fedb::codec::SDKCodec codec(table_info);
     bool is_compress =
-        table_info.compress_type() == ::fedb::api::CompressType::kSnappy
+        table_info.compress_type() == ::fedb::type::CompressType::kSnappy
             ? true
             : false;
     ShowTableRows(is_compress, &codec, it);
@@ -378,13 +378,13 @@ __attribute__((unused)) static void ShowTableRows(
     const ::fedb::nameserver::TableInfo& table_info,
     ::fedb::cmd::SDKIterator* it) {
     ::fedb::codec::SDKCodec codec(table_info);
-    bool is_compress = table_info.compress_type() == ::fedb::nameserver::kSnappy ? true : false;
+    bool is_compress = table_info.compress_type() == ::fedb::type::CompressType::kSnappy ? true : false;
     ShowTableRows(is_compress, &codec, it);
 }
 
 __attribute__((unused)) static void ShowTableRows(
     const std::string& key, ::fedb::cmd::SDKIterator* it,
-    const ::fedb::nameserver::CompressType compress_type) {
+    const ::fedb::type::CompressType compress_type) {
     ::baidu::common::TPrinter tp(4, FLAGS_max_col_display_length);
     std::vector<std::string> row;
     row.push_back("#");
@@ -395,7 +395,7 @@ __attribute__((unused)) static void ShowTableRows(
     uint32_t index = 1;
     while (it->Valid()) {
         std::string value = it->GetValue().ToString();
-        if (compress_type == ::fedb::nameserver::kSnappy) {
+        if (compress_type == ::fedb::type::CompressType::kSnappy) {
             std::string uncompressed;
             ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
             value = uncompressed;
@@ -506,7 +506,7 @@ __attribute__((unused)) static void PrintTableInfo(
                     row.push_back("no");
                 }
                 if (value.has_compress_type()) {
-                    row.push_back(::fedb::nameserver::CompressType_Name(
+                    row.push_back(::fedb::type::CompressType_Name(
                         value.compress_type()));
                 } else {
                     row.push_back("kNoCompress");
@@ -612,7 +612,7 @@ __attribute__((unused)) static void PrintTableStatus(
                     table_status.record_byte_size() +
                     table_status.record_idx_byte_size()));
         row.push_back(
-            ::fedb::api::CompressType_Name(table_status.compress_type()));
+            ::fedb::type::CompressType_Name(table_status.compress_type()));
         row.push_back(std::to_string(table_status.skiplist_height()));
         tp.AddRow(row);
     }
@@ -647,7 +647,7 @@ __attribute__((unused)) static void PrintTableInformation(
     std::string replica_num = std::to_string(table.replica_num());
     std::string partition_num = std::to_string(table.partition_num());
     std::string compress_type =
-        ::fedb::nameserver::CompressType_Name(table.compress_type());
+        ::fedb::type::CompressType_Name(table.compress_type());
     uint64_t record_cnt = 0;
     uint64_t memused = 0;
     uint64_t diskused = 0;
