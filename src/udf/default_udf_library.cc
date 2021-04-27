@@ -438,22 +438,68 @@ struct TopKDef {
 void DefaultUdfLibrary::InitStringUdf() {
     RegisterExternalTemplate<v1::ToString>("string")
         .args_in<int16_t, int32_t, int64_t, float, double>()
-        .return_by_arg(true);
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Return string converted from numeric expression
+
+            Example:
+
+            @code{.sql}
+                select string(123);
+                -- output "123"
+
+                select string(1.23);
+                -- output "1.23"
+            @endcode
+            @since 0.1.0)");
 
     RegisterExternal("string")
         .args<bool>(static_cast<void (*)(bool, codec::StringRef*)>(
-            udf::v1::bool_to_string))
-        .return_by_arg(true);
+                        udf::v1::bool_to_string))
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Return string converted from bool expression
+
+            Example:
+
+            @code{.sql}
+                select string(true);
+                -- output "true"
+
+                select string(false);
+                -- output "false"
+            @endcode
+            @since 0.1.0)");
     RegisterExternal("string")
         .args<Timestamp>(
             static_cast<void (*)(codec::Timestamp*, codec::StringRef*)>(
                 udf::v1::timestamp_to_string))
-        .return_by_arg(true);
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Return string converted from timestamp expression
+
+            Example:
+
+            @code{.sql}
+                select string(timestamp(1590115420000));
+                -- output "2020-05-22 10:43:40"
+            @endcode
+            @since 0.1.0)");
 
     RegisterExternal("string")
         .args<Date>(static_cast<void (*)(codec::Date*, codec::StringRef*)>(
-            udf::v1::date_to_string))
-        .return_by_arg(true);
+                        udf::v1::date_to_string))
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Return string converted from timestamp expression
+
+            Example:
+
+            @code{.sql}
+                select string(timestamp(1590115420000));
+                -- output "2020-05-22 10:43:40"
+            @endcode
+            @since 0.1.0)");
 
     RegisterCodeGenUdf("concat").variadic_args<>(
         /* infer */
@@ -469,7 +515,18 @@ void DefaultUdfLibrary::InitStringUdf() {
            NativeValue* out) {
             codegen::StringIRBuilder string_ir_builder(ctx->GetModule());
             return string_ir_builder.Concat(ctx->GetCurrentBlock(), args, out);
-        });
+        })
+        .doc(R"(
+            @brief This function returns a string resulting from the joining of two or more string values in an end-to-end manner.
+            (To add a separating value during joining, see concat_ws.)
+
+            Example:
+
+            @code{.sql}
+                select concat("1", 2, 3, 4, 5.6, 7.8, Timestamp(1590115420000L));
+                -- output "12345.67.82020-05-22 10:43:40"
+            @endcode
+            @since 0.1.0)");
 
     RegisterCodeGenUdf("concat_ws")
         .variadic_args<AnyArg>(
@@ -488,7 +545,18 @@ void DefaultUdfLibrary::InitStringUdf() {
 
                 return string_ir_builder.ConcatWS(ctx->GetCurrentBlock(), arg,
                                                   args, out);
-            });
+            })
+            .doc(R"(
+                @brief Returns a string resulting from the joining of two or more string value in an end-to-end manner.
+                It separates those concatenated string values with the delimiter specified in the first function argument.
+
+                Example:
+
+                @code{.sql}
+                    select concat("-", "1", 2, 3, 4, 5.6, 7.8, Timestamp(1590115420000L));
+                    -- output "1-2-3-4-5.6-7.8-2020-05-22 10:43:40"
+                @endcode
+                @since 0.1.0)");
 
     RegisterExternal("substring")
         .args<StringRef, int32_t>(
@@ -496,14 +564,19 @@ void DefaultUdfLibrary::InitStringUdf() {
                                  codec::StringRef*)>(udf::v1::sub_string))
         .return_by_arg(true)
         .doc(R"(
-            Return a substring from string `str` starting at position `pos `.
+            @brief Return a substring from string `str` starting at position `pos `.
 
-            example:
+            Note: This function equals the `substr()` function.
+
+            Example:
+
             @code{.sql}
 
                 select substr("hello world", 2);
                 -- output "llo world"
 
+                select substring("hello world", 2);
+                -- output "llo world"
             @endcode
 
             @param str
@@ -512,8 +585,7 @@ void DefaultUdfLibrary::InitStringUdf() {
             - If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
             - If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
 
-            @since 2.0.0.0
-            )");
+            @since 0.1.0)");
 
     RegisterExternal("substring")
         .args<StringRef, int32_t, int32_t>(
@@ -521,7 +593,10 @@ void DefaultUdfLibrary::InitStringUdf() {
                                  codec::StringRef*)>(udf::v1::sub_string))
         .return_by_arg(true)
         .doc(R"(
-            Return a substring `len` characters long from string str, starting at position `pos`.
+            @brief Return a substring `len` characters long from string str, starting at position `pos`.
+            Alias function: `substr`
+
+            Example:
 
             @code{.sql}
 
@@ -538,8 +613,7 @@ void DefaultUdfLibrary::InitStringUdf() {
 
             @param len length of substring. If len is less than 1, the result is the empty string.
 
-            @since 2.0.0.0
-        )");
+            @since 0.1.0)");
 
     RegisterAlias("substr", "substring");
 
@@ -548,9 +622,10 @@ void DefaultUdfLibrary::InitStringUdf() {
             static_cast<int32_t (*)(codec::StringRef*, codec::StringRef*)>(
                 udf::v1::strcmp))
         .doc(R"(
-            Returns 0 if the strings are the same, -1 if the first argument is smaller than the second according to the current sort order, and 1 otherwise.
+            @brief Returns 0 if the strings are the same, -1 if the first argument is smaller than the second according to the current sort order, and 1 otherwise.
 
-            example
+            Example:
+
             @code{.sql}
 
                 select strcmp("text", "text1");
@@ -561,26 +636,46 @@ void DefaultUdfLibrary::InitStringUdf() {
                 -- output 0
 
             @endcode
-            @since 2.0.0.0
-        )");
+
+            @since 0.1.0)");
     RegisterExternal("date_format")
         .args<Timestamp, StringRef>(
             static_cast<void (*)(codec::Timestamp*, codec::StringRef*,
                                  codec::StringRef*)>(udf::v1::date_format))
-        .return_by_arg(true);
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Formats the datetime value according to the format string.
+
+            Example:
+
+            @code{.sql}
+                select date_format(timestamp(1590115420000),"%Y-%m-%d %H:%M:%S");
+                --output "2020-05-22 10:43:40"
+            @endcode)");
     RegisterExternal("date_format")
         .args<Date, StringRef>(
             static_cast<void (*)(codec::Date*, codec::StringRef*,
                                  codec::StringRef*)>(udf::v1::date_format))
-        .return_by_arg(true);
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Formats the date value according to the format string.
+
+            Example:
+
+            @code{.sql}
+                select date_format(date(1590115420000),"%Y-%m-%d");
+                --output "2020-05-22"
+            @endcode)");
 }
 
 void DefaultUdfLibrary::IniMathUdf() {
     RegisterExternal("log")
         .doc(R"(
-            log(base, expr)
+            @brief log(base, expr)
             If called with one parameter, this function returns the natural logarithm of expr.
             If called with two parameters, this function returns the logarithm of expr to the base.
+
+            Example:
 
             @code{.sql}
 
@@ -592,9 +687,10 @@ void DefaultUdfLibrary::IniMathUdf() {
             @endcode
 
             @param base
+
             @param expr
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args<float>(static_cast<float (*)(float)>(log))
         .args<double>(static_cast<double (*)(double)>(log));
     RegisterExprUdf("log").args<AnyArg>(
@@ -625,7 +721,9 @@ void DefaultUdfLibrary::IniMathUdf() {
 
     RegisterExternal("ln")
         .doc(R"(
-            Return the natural logarithm of expr.
+            @brief Return the natural logarithm of expr.
+
+            Example:
 
             @code{.sql}
 
@@ -636,7 +734,7 @@ void DefaultUdfLibrary::IniMathUdf() {
 
             @param expr
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args<float>(static_cast<float (*)(float)>(log))
         .args<double>(static_cast<double (*)(double)>(log));
     RegisterExprUdf("ln").args<AnyArg>(
@@ -653,7 +751,9 @@ void DefaultUdfLibrary::IniMathUdf() {
 
     RegisterExternal("log2")
         .doc(R"(
-            Return the base-2 logarithm of expr.
+            @brief Return the base-2 logarithm of expr.
+
+            Example:
 
             @code{.sql}
 
@@ -664,7 +764,7 @@ void DefaultUdfLibrary::IniMathUdf() {
 
             @param expr
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args<float>(static_cast<float (*)(float)>(log2))
         .args<double>(static_cast<double (*)(double)>(log2));
     RegisterExprUdf("log2").args<AnyArg>(
@@ -681,7 +781,9 @@ void DefaultUdfLibrary::IniMathUdf() {
 
     RegisterExternal("log10")
         .doc(R"(
-            Return the base-10 logarithm of expr.
+            @brief Return the base-10 logarithm of expr.
+
+            Example:
 
             @code{.sql}
 
@@ -692,7 +794,7 @@ void DefaultUdfLibrary::IniMathUdf() {
 
             @param expr
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args<float>(static_cast<float (*)(float)>(log10))
         .args<double>(static_cast<double (*)(double)>(log10));
     RegisterExprUdf("log10").args<AnyArg>(
@@ -709,7 +811,9 @@ void DefaultUdfLibrary::IniMathUdf() {
 
     RegisterExternalTemplate<v1::Abs>("abs")
         .doc(R"(
-            Return the absolute value of expr.
+            @brief Return the absolute value of expr.
+
+            Example:
 
             @code{.sql}
 
@@ -720,7 +824,7 @@ void DefaultUdfLibrary::IniMathUdf() {
 
             @param expr
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args_in<int64_t, double>();
     RegisterExternalTemplate<v1::Abs32>("abs").args_in<int16_t, int32_t>();
     RegisterExprUdf("abs").args<AnyArg>(
@@ -737,7 +841,9 @@ void DefaultUdfLibrary::IniMathUdf() {
 
     RegisterExternalTemplate<v1::Ceil>("ceil")
         .doc(R"(
-            Return the smallest integer value not less than the expr
+            @brief Return the smallest integer value not less than the expr
+
+            Example:
 
             @code{.sql}
 
@@ -748,7 +854,7 @@ void DefaultUdfLibrary::IniMathUdf() {
 
             @param expr
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args_in<int16_t, int32_t, int64_t>();
     RegisterExternal("ceil").args<double>(
         static_cast<double (*)(double)>(ceil));
@@ -768,7 +874,7 @@ void DefaultUdfLibrary::IniMathUdf() {
 
     RegisterExternalTemplate<v1::Exp>("exp")
         .doc(R"(
-            Return the value of e (the base of natural logarithms) raised to the power of expr.
+            @brief Return the value of e (the base of natural logarithms) raised to the power of expr.
 
             @code{.sql}
 
@@ -779,13 +885,15 @@ void DefaultUdfLibrary::IniMathUdf() {
 
             @param expr
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("exp").args<float>(static_cast<float (*)(float)>(expf));
 
     RegisterExternalTemplate<v1::Floor>("floor")
         .doc(R"(
-            Return the largest integer value not less than the expr
+            @brief Return the largest integer value not less than the expr
+
+            Example:
 
             @code{.sql}
 
@@ -796,7 +904,7 @@ void DefaultUdfLibrary::IniMathUdf() {
 
             @param expr
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args_in<int16_t, int32_t, int64_t>();
     RegisterExternal("floor").args<double>(
         static_cast<double (*)(double)>(floor));
@@ -814,8 +922,9 @@ void DefaultUdfLibrary::IniMathUdf() {
 
     RegisterExternalTemplate<v1::Pow>("pow")
         .doc(R"(
-            pow(expr1, expr2)
-            Return the value of expr1 to the power of expr2.
+            @brief Return the value of expr1 to the power of expr2.
+
+            Example:
 
             @code{.sql}
 
@@ -827,7 +936,7 @@ void DefaultUdfLibrary::IniMathUdf() {
             @param expr1
             @param expr2
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("pow").args<float, float>(
         static_cast<float (*)(float, float)>(powf));
@@ -852,8 +961,10 @@ void DefaultUdfLibrary::IniMathUdf() {
 
     RegisterExternalTemplate<v1::Round>("round")
         .doc(R"(
-            Return the nearest integer value to expr (in floating-point format), 
+            @brief Return the nearest integer value to expr (in floating-point format),
             rounding halfway cases away from zero, regardless of the current rounding mode.
+
+            Example:
 
             @code{.sql}
 
@@ -864,7 +975,7 @@ void DefaultUdfLibrary::IniMathUdf() {
 
             @param expr
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args_in<int64_t, double>();
     RegisterExternalTemplate<v1::Round32>("round").args_in<int16_t, int32_t>();
     RegisterExprUdf("round").args<AnyArg>(
@@ -881,7 +992,9 @@ void DefaultUdfLibrary::IniMathUdf() {
 
     RegisterExternalTemplate<v1::Sqrt>("sqrt")
         .doc(R"(
-            Return square root of expr.
+            @brief Return square root of expr.
+
+            Example:
 
             @code{.sql}
 
@@ -892,13 +1005,15 @@ void DefaultUdfLibrary::IniMathUdf() {
 
             @param expr: It is a single argument in radians.
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("sqrt").args<float>(static_cast<float (*)(float)>(sqrtf));
 
     RegisterExternalTemplate<v1::Truncate>("truncate")
         .doc(R"(
-            Return the nearest integer that is not greater in magnitude than the expr.
+            @brief Return the nearest integer that is not greater in magnitude than the expr.
+
+            Example:
 
             @code{.sql}
 
@@ -909,7 +1024,7 @@ void DefaultUdfLibrary::IniMathUdf() {
 
             @param expr
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args_in<int64_t, double>();
     RegisterExternalTemplate<v1::Truncate32>("truncate")
         .args_in<int16_t, int32_t>();
@@ -929,7 +1044,9 @@ void DefaultUdfLibrary::IniMathUdf() {
 void DefaultUdfLibrary::InitTrigonometricUdf() {
     RegisterExternalTemplate<v1::Acos>("acos")
         .doc(R"(
-            Return the arc cosine of expr.
+            @brief Return the arc cosine of expr.
+
+            Example:
 
             @code{.sql}
 
@@ -940,13 +1057,15 @@ void DefaultUdfLibrary::InitTrigonometricUdf() {
 
             @param expr
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("acos").args<float>(static_cast<float (*)(float)>(acosf));
 
     RegisterExternalTemplate<v1::Asin>("asin")
         .doc(R"(
-            Return the arc sine of expr.
+            @brief Return the arc sine of expr.
+
+            Example:
 
             @code{.sql}
 
@@ -957,15 +1076,17 @@ void DefaultUdfLibrary::InitTrigonometricUdf() {
 
             @param expr
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("asin").args<float>(static_cast<float (*)(float)>(asinf));
 
     RegisterExternalTemplate<v1::Atan>("atan")
         .doc(R"(
-            atan(Y, X)
+            @brief Return the arc tangent of expr
             If called with one parameter, this function returns the arc tangent of expr.
             If called with two parameters X and Y, this function returns the arc tangent of Y / X.
+
+            Example:
 
             @code{.sql}
 
@@ -980,7 +1101,7 @@ void DefaultUdfLibrary::InitTrigonometricUdf() {
             @param X
             @param Y
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("atan").args<float>(static_cast<float (*)(float)>(atanf));
 
@@ -1008,8 +1129,9 @@ void DefaultUdfLibrary::InitTrigonometricUdf() {
 
     RegisterExternalTemplate<v1::Atan2>("atan2")
         .doc(R"(
-            atan2(Y, X)
-            Return the arc tangent of Y / X..
+            @brief Return the arc tangent of Y / X..
+
+            Example:
 
             @code{.sql}
 
@@ -1021,7 +1143,7 @@ void DefaultUdfLibrary::InitTrigonometricUdf() {
             @param X
             @param Y
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("atan2").args<float, float>(
         static_cast<float (*)(float, float)>(atan2f));
@@ -1045,7 +1167,9 @@ void DefaultUdfLibrary::InitTrigonometricUdf() {
 
     RegisterExternalTemplate<v1::Cos>("cos")
         .doc(R"(
-            Return the cosine of expr.
+            @brief Return the cosine of expr.
+
+            Example:
 
             @code{.sql}
 
@@ -1058,13 +1182,15 @@ void DefaultUdfLibrary::InitTrigonometricUdf() {
 
             - The value returned by cos() is always in the range: -1 to 1.
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("cos").args<float>(static_cast<float (*)(float)>(cosf));
 
     RegisterExternalTemplate<v1::Cot>("cot")
         .doc(R"(
-            Return the cotangent of expr.
+            @brief Return the cotangent of expr.
+
+            Example:
 
             @code{.sql}
 
@@ -1075,14 +1201,16 @@ void DefaultUdfLibrary::InitTrigonometricUdf() {
 
             @param expr
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("cot").args<float>(
         static_cast<float (*)(float)>(v1::Cotf));
 
     RegisterExternalTemplate<v1::Sin>("sin")
         .doc(R"(
-            Return the sine of expr.
+            @brief Return the sine of expr.
+
+            Example:
 
             @code{.sql}
 
@@ -1095,13 +1223,15 @@ void DefaultUdfLibrary::InitTrigonometricUdf() {
 
             - The value returned by sin() is always in the range: -1 to 1.
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("sin").args<float>(static_cast<float (*)(float)>(sinf));
 
     RegisterExternalTemplate<v1::Tan>("tan")
         .doc(R"(
-            Return the tangent of expr.
+            @brief Return the tangent of expr.
+
+            Example:
 
             @code{.sql}
 
@@ -1112,7 +1242,7 @@ void DefaultUdfLibrary::InitTrigonometricUdf() {
 
             @param expr: It is a single argument in radians.
 
-            @since 2.0.0.0)")
+            @since 0.1.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("tan").args<float>(static_cast<float (*)(float)>(tanf));
 }
@@ -1124,8 +1254,11 @@ void DefaultUdfLibrary::InitUtilityUdf() {
                                                           node::kFnOpIsNull);
         })
         .doc(R"(
-            Check if input value is null, return bool.
-            @param input  Input value)");
+            @brief  Check if input value is null, return bool.
+
+            @param input  Input value
+
+            @since 0.1.0)");
 
     RegisterAlias("isnull", "is_null");
 
@@ -1146,14 +1279,19 @@ void DefaultUdfLibrary::InitUtilityUdf() {
                 nm->MakeUnaryExprNode(input, node::kFnOpNonNull));
         })
         .doc(R"(
-            If input is not null, return input value; else return default value.
+            @brief If input is not null, return input value; else return default value.
+
+            Example:
+
             @code{.sql}
                 SELECT if_null("hello", "default"), if_null(NULL, "default");
                 -- output ["hello", "default"]
             @endcode
 
             @param input    Input value
-            @param default  Default value if input is null)");
+            @param default  Default value if input is null
+
+            @since 0.1.0)");
 
     RegisterAlias("ifnull", "if_null");
 }
@@ -1164,56 +1302,148 @@ void DefaultUdfLibrary::InitTypeUdf() {
             static_cast<void (*)(StringRef*, double*, bool*)>(
                 v1::string_to_double)))
         .return_by_arg(true)
-        .returns<Nullable<double>>();
+        .returns<Nullable<double>>()
+        .doc(R"(
+            @brief Cast string expression to double
+
+            Example:
+
+            @code{.sql}
+                select double("1.23");
+                -- output 1.23
+            @endcode
+            @since 0.1.0)");
     RegisterExternal("float")
         .args<codec::StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, float*, bool*)>(
                 v1::string_to_float)))
         .return_by_arg(true)
-        .returns<Nullable<float>>();
+        .returns<Nullable<float>>()
+        .doc(R"(
+            @brief Cast string expression to float
+
+            Example:
+
+            @code{.sql}
+                select float("1.23");
+                -- output 1.23
+            @endcode
+            @since 0.1.0)");
     RegisterExternal("int32")
         .args<codec::StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, int32_t*, bool*)>(
                 v1::string_to_int)))
         .return_by_arg(true)
-        .returns<Nullable<int32_t>>();
+        .returns<Nullable<int32_t>>()
+        .doc(R"(
+            @brief Cast string expression to int32
+
+            Example:
+
+            @code{.sql}
+                select int32("12345");
+                -- output 12345
+            @endcode
+            @since 0.1.0)");
     RegisterExternal("int64")
         .args<codec::StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, int64_t*, bool*)>(
                 v1::string_to_bigint)))
         .return_by_arg(true)
-        .returns<Nullable<int64_t>>();
+        .returns<Nullable<int64_t>>()
+        .doc(R"(
+            @brief Cast string expression to int64
+
+            Example:
+
+            @code{.sql}
+                select int64("1590115420000");
+                -- output 1590115420000
+            @endcode
+            @since 0.1.0
+        )");
     RegisterExternal("int16")
         .args<codec::StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, int16_t*, bool*)>(
                 v1::string_to_smallint)))
         .return_by_arg(true)
-        .returns<Nullable<int16_t>>();
+        .returns<Nullable<int16_t>>()
+        .doc(R"(
+            @brief Cast string expression to int16
+
+            Example:
+
+            @code{.sql}
+                select int16("123");
+                -- output 123
+            @endcode
+            @since 0.1.0
+        )");
     RegisterExternal("bool")
         .args<codec::StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, bool*, bool*)>(
                 v1::string_to_bool)))
         .return_by_arg(true)
-        .returns<Nullable<bool>>();
+        .returns<Nullable<bool>>()
+        .doc(R"(
+            @brief Cast string expression to bool
+
+            Example:
+
+            @code{.sql}
+                select bool("true");
+                -- output true
+            @endcode
+            @since 0.1.0
+        )");
 
     RegisterExternal("date")
         .args<codec::Timestamp>(reinterpret_cast<void*>(
             static_cast<void (*)(Timestamp*, Date*, bool*)>(
                 v1::timestamp_to_date)))
         .return_by_arg(true)
-        .returns<Nullable<Date>>();
+        .returns<Nullable<Date>>()
+        .doc(R"(
+            @brief Cast timestamp or string expression to date
+
+            Example:
+
+            @code{.sql}
+                select date(timestamp(1590115420000));
+                -- output 2020-05-22
+                select date("2020-05-22");
+                -- output 2020-05-22
+            @endcode
+            @since 0.1.0)");
     RegisterExternal("date")
         .args<codec::StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, Date*, bool*)>(
                 v1::string_to_date)))
         .return_by_arg(true)
         .returns<Nullable<Date>>();
+
     RegisterExternal("timestamp")
         .args<codec::Date>(reinterpret_cast<void*>(
             static_cast<void (*)(Date*, Timestamp*, bool*)>(
                 v1::date_to_timestamp)))
         .return_by_arg(true)
-        .returns<Nullable<Timestamp>>();
+        .returns<Nullable<Timestamp>>()
+        .doc(R"(
+            @brief Cast int64, date or string expression to timestamp
+
+            Example:
+
+            @code{.sql}
+                select timestamp(1590115420000);
+                -- output 2020-05-22 10:43:40
+
+                select date("2020-05-22");
+                -- output 2020-05-22 00:00:00
+
+                select timestamp("2020-05-22 10:43:40");
+                -- output 2020-05-22 10:43:40
+            @endcode
+            @since 0.1.0)");
     RegisterExternal("timestamp")
         .args<codec::StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, Timestamp*, bool*)>(
@@ -1225,7 +1455,17 @@ void DefaultUdfLibrary::InitTypeUdf() {
 void DefaultUdfLibrary::InitDateUdf() {
     RegisterExternal("year")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::year))
-        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::year));
+        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::year))
+        .doc(R"(
+            @brief Return the year part of a timestamp or date
+
+            Example:
+            @code{.sql}
+                select year(timestamp(1590115420000));
+                -- output 2020
+            @endcode
+            @since 0.1.0
+        )");
 
     RegisterCodeGenUdf("year")
         .args<Date>(
@@ -1244,7 +1484,17 @@ void DefaultUdfLibrary::InitDateUdf() {
 
     RegisterExternal("month")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::month))
-        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::month));
+        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::month))
+        .doc(R"(
+            @brief Return the month part of a timestamp or date
+
+            Example:
+            @code{.sql}
+                select month(timestamp(1590115420000));
+                -- output 5
+            @endcode
+            @since 0.1.0
+        )");
 
     RegisterCodeGenUdf("month")
         .args<Date>(
@@ -1263,10 +1513,24 @@ void DefaultUdfLibrary::InitDateUdf() {
 
     RegisterExternal("dayofmonth")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::dayofmonth))
-        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::dayofmonth));
+        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::dayofmonth))
+        .doc(R"(
+            @brief Return the day of the month for a timestamp or date.
 
-    RegisterCodeGenUdf("dayofmonth")
-        .args<Date>(
+            Note: This function equals the `day()` function.
+
+            Example:
+            @code{.sql}
+                select dayofmonth(timestamp(1590115420000));
+                -- output 22
+
+                select day(timestamp(1590115420000));
+                -- output 22
+            @endcode
+            @since 0.1.0
+        )");
+
+    RegisterCodeGenUdf("dayofmonth").args<Date>(
             [](CodeGenContext* ctx, NativeValue date, NativeValue* out) {
                 codegen::DateIRBuilder date_ir_builder(ctx->GetModule());
                 ::llvm::Value* ret = nullptr;
@@ -1285,37 +1549,121 @@ void DefaultUdfLibrary::InitDateUdf() {
     RegisterExternal("dayofweek")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::dayofweek))
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::dayofweek))
-        .args<Date>(static_cast<int32_t (*)(Date*)>(v1::dayofweek));
+        .args<Date>(static_cast<int32_t (*)(Date*)>(v1::dayofweek))
+        .doc(R"(
+            @brief Return the day of week for a timestamp or date.
+
+            Note: This function equals the `week()` function.
+
+            Example:
+            @code{.sql}
+                select dayofweek(timestamp(1590115420000));
+                -- output 6
+            @endcode
+            @since 0.1.0
+        )");
 
     RegisterExternal("weekofyear")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::weekofyear))
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::weekofyear))
-        .args<Date>(static_cast<int32_t (*)(Date*)>(v1::weekofyear));
+        .args<Date>(static_cast<int32_t (*)(Date*)>(v1::weekofyear))
+        .doc(R"(
+            @brief Return the week of year for a timestamp or date.
+
+            Example:
+            @code{.sql}
+                select weekofyear(timestamp(1590115420000));
+                -- output 21
+                select week(timestamp(1590115420000));
+                -- output 21
+            @endcode
+            @since 0.1.0
+        )");
 
     RegisterAlias("week", "weekofyear");
 
     RegisterExternalTemplate<v1::IncOne>("inc")
-        .args_in<int16_t, int32_t, int64_t, float, double>();
+        .args_in<int16_t, int32_t, int64_t, float, double>()
+        .doc(R"(
+            @brief Return expression + 1
+
+            Example:
+            @code{.sql}
+                select inc(1);
+                -- output 2
+            @endcode
+            @since 0.1.0
+        )");
 
     RegisterCodeGenUdfTemplate<BuildGetHourUdf>("hour")
         .args_in<int64_t, Timestamp>()
-        .returns<int32_t>();
+        .returns<int32_t>()
+        .doc(R"(
+            @brief Return the hour for a timestamp
+
+            Example:
+            @code{.sql}
+                select hour(timestamp(1590115420000));
+                -- output 10
+            @endcode
+            @since 0.1.0
+        )");
 
     RegisterCodeGenUdfTemplate<BuildGetMinuteUdf>("minute")
         .args_in<int64_t, Timestamp>()
-        .returns<int32_t>();
+        .returns<int32_t>()
+        .doc(R"(
+            @brief Return the minute for a timestamp
+
+            Example:
+            @code{.sql}
+                select minute(timestamp(1590115420000));
+                -- output 43
+            @endcode
+            @since 0.1.0
+        )");
 
     RegisterCodeGenUdfTemplate<BuildGetSecondUdf>("second")
         .args_in<int64_t, Timestamp>()
-        .returns<int32_t>();
+        .returns<int32_t>()
+        .doc(R"(
+            @brief Return the second for a timestamp
+
+            Example:
+            @code{.sql}
+                select second(timestamp(1590115420000));
+                -- output 40
+            @endcode
+            @since 0.1.0
+        )");
 
     RegisterExprUdf("identity")
+        .doc(R"(
+            @brief Return value
+
+            Example:
+            @code{.sql}
+                select identity(1);
+                -- output 1
+            @endcode
+            @since 0.1.0
+        )")
         .args<AnyArg>([](UdfResolveContext* ctx, ExprNode* x) { return x; });
 
     RegisterExprUdf("add").args<AnyArg, AnyArg>([](UdfResolveContext* ctx,
                                                    ExprNode* x, ExprNode* y) {
         return ctx->node_manager()->MakeBinaryExprNode(x, y, node::kFnOpAdd);
-    });
+        })
+        .doc(R"(
+            @brief Compute sum of two arguments
+
+            Example:
+
+            @code{.sql}
+                select add(1, 2);
+                -- output 3
+            @endcode
+            @since 0.1.0)");
 
     RegisterCodeGenUdf("make_tuple")
         .variadic_args<>(
@@ -1356,7 +1704,26 @@ void DefaultUdfLibrary::Init() {
 
 void DefaultUdfLibrary::InitUdaf() {
     RegisterUdafTemplate<SumUdafDef>("sum")
-        .doc("Compute sum of values")
+        .doc(R"(
+            @brief Compute sum of values.
+
+            @param value  Specify value column to aggregate on.
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT sum(value) OVER w;
+                -- output 10
+            @endcode
+
+        )")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp>();
 
     RegisterExprUdf("minimum").args<AnyArg, AnyArg>(
@@ -1364,64 +1731,290 @@ void DefaultUdfLibrary::InitUdaf() {
             auto nm = ctx->node_manager();
             auto cond = nm->MakeBinaryExprNode(x, y, node::kFnOpLt);
             return nm->MakeCondExpr(cond, x, y);
-        });
+        })
+        .doc(R"(
+            @brief Compute minimum of two arguments
+
+            @since 0.1.0
+        )");
 
     RegisterExprUdf("maximum").args<AnyArg, AnyArg>(
         [](UdfResolveContext* ctx, ExprNode* x, ExprNode* y) {
             auto nm = ctx->node_manager();
             auto cond = nm->MakeBinaryExprNode(x, y, node::kFnOpGt);
             return nm->MakeCondExpr(cond, x, y);
-        });
+        })
+        .doc(R"(
+            @brief Compute maximum of two arguments
+
+            @since 0.1.0
+        )");
 
     RegisterUdafTemplate<MinUdafDef>("min")
-        .doc("Compute min of values")
+        .doc(R"(
+            @brief Compute minimum of values.
+
+            @param value  Specify value column to aggregate on.
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT min(value) OVER w;
+                -- output 0
+            @endcode
+            @since 0.1.0
+        )")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
                  StringRef>();
 
     RegisterUdafTemplate<MaxUdafDef>("max")
-        .doc("Compute max of values")
+        .doc(R"(
+            @brief Compute maximum of values.
+
+            @param value  Specify value column to aggregate on.
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT max(value) OVER w;
+                -- output 4
+            @endcode
+            @since 0.1.0
+        )")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
                  StringRef>();
 
     RegisterUdafTemplate<CountUdafDef>("count")
-        .doc("Compute count of values")
+        .doc(R"(
+            @brief Compute number of values.
+
+            @param value  Specify value column to aggregate on.
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT count(value) OVER w;
+                -- output 5
+            @endcode
+            @since 0.1.0
+        )")
         .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp,
                  Date, StringRef, LiteralTypedRow<>>();
 
+
     RegisterUdafTemplate<AvgUdafDef>("avg")
-        .doc("Compute average of values")
+        .doc(R"(
+            @brief Compute average of values.
+
+            @param value  Specify value column to aggregate on.
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT avg(value) OVER w;
+                -- output 2
+            @endcode
+            @since 0.1.0
+        )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
     RegisterUdafTemplate<DistinctCountDef>("distinct_count")
-        .doc("Compute distinct number of values")
+        .doc(R"(
+            @brief Compute number of distinct values.
+
+            @param value  Specify value column to aggregate on.
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |0|
+            |2|
+            |2|
+            |4|
+            @code{.sql}
+                SELECT distinct_count(value) OVER w;
+                -- output 3
+            @endcode
+            @since 0.1.0
+        )")
         .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp,
                  Date, StringRef>();
 
     RegisterUdafTemplate<SumWhereDef>("sum_where")
-        .doc("Compute sum of values match specified condition")
+        .doc(R"(
+            @brief Compute sum of values match specified condition
+
+            @param value  Specify value column to aggregate on.
+            @param condition  Specify condition column.
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT sum_where(value, value > 2) OVER w;
+                -- output 7
+            @endcode
+            @since 0.1.0
+        )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
     RegisterUdafTemplate<CountWhereDef>("count_where")
-        .doc("Compute number of values match specified condition")
+        .doc(R"(
+            @brief Compute number of values match specified condition
+
+            @param value  Specify value column to aggregate on.
+            @param condition  Specify condition column.
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT count_where(value, value > 2) OVER w;
+                -- output 2
+            @endcode
+            @since 0.1.0
+        )")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
                  StringRef>();
 
     RegisterUdafTemplate<AvgWhereDef>("avg_where")
-        .doc("Compute average of values match specified condition")
+        .doc(R"(
+            @brief Compute average of values match specified condition
+
+            @param value  Specify value column to aggregate on.
+            @param condition  Specify condition column.
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT avg_where(value, value > 2) OVER w;
+                -- output 3.5
+            @endcode
+            @since 0.1.0
+        )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
     RegisterUdafTemplate<MinWhereDef>("min_where")
-        .doc("Compute minimum of values match specified condition")
+        .doc(R"(
+            @brief Compute minimum of values match specified condition
+
+            @param value  Specify value column to aggregate on.
+            @param condition  Specify condition column.
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT min_where(value, value > 2) OVER w;
+                -- output 3
+            @endcode
+            @since 0.1.0
+        )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
     RegisterUdafTemplate<MaxWhereDef>("max_where")
-        .doc("Compute maximum of values match specified condition")
+        .doc(R"(
+            @brief Compute maximum of values match specified condition
+
+            @param value Specify value column to aggregate on.
+            @param condition  Specify condition column.
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT max_where(value, value <= 2) OVER w;
+                -- output 2
+            @endcode
+            @since 0.1.0
+        )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
+
     RegisterUdafTemplate<TopKDef>("top")
-        .doc(
-            "Compute top k of values and output string separated by comma. "
-            "The outputs are sorted in desc order")
+        .doc(R"(
+            @brief Compute top k of values and output string separated by comma.
+            The outputs are sorted in desc order
+
+            @param value  Specify value column to aggregate on.
+            @param k  Fetch top n keys.
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT top(value, 3) OVER w;
+                -- output "2,3,4"
+            @endcode
+            @since 0.1.0
+        )")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
 

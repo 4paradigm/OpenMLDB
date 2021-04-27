@@ -98,6 +98,25 @@ node::ExprNode* BuildAt(UdfResolveContext* ctx, ExprNode* input, ExprNode* idx,
 template <typename V>
 void RegisterBaseListAt(UdfLibrary* lib) {
     lib->RegisterExternal("at")
+        .doc(R"(
+            @brief Returns the value of expression from the offset-th row of the ordered partition.
+
+            @param offset The number of rows forward from the current row from which to obtain the value.
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT at(value, 3) OVER w;
+                -- output 3
+            @endcode
+        )")
         .args<codec::ListRef<V>, int64_t>(reinterpret_cast<void*>(AtList<V>))
         .return_by_arg(true)
         .template returns<Nullable<V>>();
@@ -128,7 +147,9 @@ void DefaultUdfLibrary::InitWindowFunctions() {
                            nullptr);
         })
         .doc(
-            R"(Returns the value of expr from the first row of the window frame.)");
+            R"(@brief Returns the value of expr from the first row of the window frame.
+
+        @since 0.1.0)");
 }
 
 }  // namespace udf

@@ -214,7 +214,7 @@ struct TopKMaxCateWhereDef {
 void DefaultUdfLibrary::initMaxByCateUdaFs() {
     RegisterUdafTemplate<MaxCateDef>("max_cate")
         .doc(R"(
-            Compute maximum of values grouped by category key and output string.
+            @brief Compute maximum of values grouped by category key and output string.
             Each group is represented as 'K:V' and separated by comma in outputs
             and are sorted by key in ascend order.
 
@@ -222,6 +222,7 @@ void DefaultUdfLibrary::initMaxByCateUdaFs() {
             @param catagory  Specify catagory column to group by.
 
             Example:
+
             value|catagory
             --|--
             0|x
@@ -238,7 +239,7 @@ void DefaultUdfLibrary::initMaxByCateUdaFs() {
 
     RegisterUdafTemplate<MaxCateWhereDef>("max_cate_where")
         .doc(R"(
-            Compute maximum of values matching specified condition grouped by
+            @brief Compute maximum of values matching specified condition grouped by
     category key and output string. Each group is represented as 'K:V' and
     separated by comma in outputs and are sorted by key in ascend order.
 
@@ -247,6 +248,7 @@ void DefaultUdfLibrary::initMaxByCateUdaFs() {
             @param condition  Specify condition column.
 
             Example:
+
             value|condition|catagory
             --|--|--
             0|true|x
@@ -264,7 +266,7 @@ void DefaultUdfLibrary::initMaxByCateUdaFs() {
 
     RegisterUdafTemplate<TopKMaxCateWhereDef>("top_n_key_max_cate_where")
         .doc(R"(
-            Compute maximum of values matching specified condition grouped by
+            @brief Compute maximum of values matching specified condition grouped by
     category key. Output string for top N keys in descend order. Each group is
     represented as 'K:V' and separated by comma.
 
@@ -274,6 +276,7 @@ void DefaultUdfLibrary::initMaxByCateUdaFs() {
             @param n  Fetch top n keys.
 
             Example:
+
             value|condition|catagory
             --|--|--
             0|true|x

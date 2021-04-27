@@ -224,7 +224,7 @@ struct TopKAvgCateWhereDef {
 void DefaultUdfLibrary::InitAvgByCateUdafs() {
     RegisterUdafTemplate<AvgCateDef>("avg_cate")
         .doc(R"(
-            Compute average of values grouped by category key and output string.
+            @brief Compute average of values grouped by category key and output string.
             Each group is represented as 'K:V' and separated by comma in outputs
             and are sorted by key in ascend order.
 
@@ -232,6 +232,7 @@ void DefaultUdfLibrary::InitAvgByCateUdafs() {
             @param catagory  Specify catagory column to group by.
 
             Example:
+
             value|catagory
             --|--
             0|x
@@ -248,7 +249,7 @@ void DefaultUdfLibrary::InitAvgByCateUdafs() {
 
     RegisterUdafTemplate<AvgCateWhereDef>("avg_cate_where")
         .doc(R"(
-            Compute average of values matching specified condition grouped by
+            @brief Compute average of values matching specified condition grouped by
     category key and output string. Each group is represented as 'K:V' and
     separated by comma in outputs and are sorted by key in ascend order.
 
@@ -257,6 +258,7 @@ void DefaultUdfLibrary::InitAvgByCateUdafs() {
             @param condition  Specify condition column.
 
             Example:
+
             value|condition|catagory
             --|--|--
             0|true|x
@@ -264,7 +266,6 @@ void DefaultUdfLibrary::InitAvgByCateUdafs() {
             2|false|x
             3|true|y
             4|true|x
-
             @code{.sql}
                 SELECT avg_cate_where(catagory, value, condition) OVER w;
                 -- output "x:2,y:3"
@@ -274,7 +275,7 @@ void DefaultUdfLibrary::InitAvgByCateUdafs() {
 
     RegisterUdafTemplate<TopKAvgCateWhereDef>("top_n_key_avg_cate_where")
         .doc(R"(
-            Compute average of values matching specified condition grouped by
+            @brief Compute average of values matching specified condition grouped by
     category key. Output string for top N keys in descend order. Each group is
     represented as 'K:V' and separated by comma.
 
@@ -284,6 +285,7 @@ void DefaultUdfLibrary::InitAvgByCateUdafs() {
             @param n  Fetch top n keys.
 
             Example:
+
             value|condition|catagory
             --|--|--
             0|true|x
