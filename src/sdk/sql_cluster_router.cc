@@ -633,6 +633,13 @@ bool SQLClusterRouter::CreateDB(const std::string& db,
     if (status == NULL) {
         return false;
     }
+    // We use hybridse parser to check db name, to ensure syntactic consistency.
+    if (db.empty() || !CheckSQLSyntax("CREATE DATABASE `" + db + "`;")) {
+        status->msg = "db name(" + db + ") is invalid";
+        status->code = -2;
+        LOG(WARNING) << status->msg;
+        return false;
+    }
 
     auto ns_ptr = cluster_sdk_->GetNsClient();
     if (!ns_ptr) {
@@ -641,12 +648,7 @@ bool SQLClusterRouter::CreateDB(const std::string& db,
         status->code = -1;
         return false;
     }
-    if (db.empty()) {
-        LOG(WARNING) << "db is empty";
-        status->msg = "db is emtpy";
-        status->code = -2;
-        return false;
-    }
+
     std::string err;
     bool ok = ns_ptr->CreateDatabase(db, err);
     if (!ok) {
@@ -660,6 +662,13 @@ bool SQLClusterRouter::CreateDB(const std::string& db,
 
 bool SQLClusterRouter::DropDB(const std::string& db,
                               hybridse::sdk::Status* status) {
+    if (db.empty() || !CheckSQLSyntax("DROP DATABASE `" + db + "`;")) {
+        status->msg = "db name(" + db + ") is invalid";
+        status->code = -2;
+        LOG(WARNING) << status->msg;
+        return false;
+    }
+
     auto ns_ptr = cluster_sdk_->GetNsClient();
     if (!ns_ptr) {
         LOG(WARNING) << "no nameserver exist";
@@ -1296,6 +1305,18 @@ bool SQLClusterRouter::CheckParameter(const RtidbSchema& parameter,
                 << ", but " << fedb::type::DataType_Name(parameter.Get(i).data_type());
             return false;
         }
+    }
+    return true;
+}
+
+bool SQLClusterRouter::CheckSQLSyntax(const std::string& sql) {
+    hybridse::node::NodeManager node_manager;
+    hybridse::base::Status sql_status;
+    hybridse::node::NodePointVector parser_trees;
+    hybridse::plan::PlanAPI::CreateSyntaxTreeFromScript(sql, parser_trees, &node_manager, sql_status);
+    if (0 != sql_status.code) {
+        LOG(WARNING) << sql_status.str();
+        return false;
     }
     return true;
 }
