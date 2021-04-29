@@ -5,7 +5,7 @@
 >
 
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com._4paradigm.hybridse</groupId>
+    <groupId>com.4paradigm.hybridsql</groupId>
     <artifactId>hybridse-java</artifactId>
     <version>0.1.2</version>
     <modules>
