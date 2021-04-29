@@ -4,7 +4,7 @@
 
 	<parent>
 		<artifactId>hybridse-java</artifactId>
-		<groupId>com.4paradigm.hybridsql</groupId>
+		<groupId>com.4paradigm.hybridse</groupId>
         <version>0.1.2</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
@@ -44,7 +44,7 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>com.4paradigm.hybridsql</groupId>
+			<groupId>com.4paradigm.hybridse</groupId>
 			<artifactId>hybridse-proto</artifactId>
 			<version>${project.parent.version}</version>
 		</dependency>
