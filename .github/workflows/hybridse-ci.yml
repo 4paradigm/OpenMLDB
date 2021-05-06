@@ -127,11 +127,13 @@ jobs:
         run: |
           ./tools/compile_and_coverage.sh
 
-      # - name: coverage report
-      #   uses: romeovs/lcov-reporter-action@master
-      #   with:
-      #     github-token: ${{ secrets.GITHUB_TOKEN }}
-      #     lcov-file: ./build/coverage.info
+      - name: Upload Coverage Report
+        uses: codecov/codecov-action@v1
+        with:
+          files: build/coverage.info
+          name: coverage
+          fail_ci_if_error: true
+          verbose: true
 
       # - name: benchmark
       #   run: |
