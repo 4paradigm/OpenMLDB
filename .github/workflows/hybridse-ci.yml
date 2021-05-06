@@ -27,26 +27,26 @@ jobs:
         run: |
           ./tools/hybridse_core_test.sh
 
-      - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
+      - name: Upload Cpp UT Results
         if: always()
+        uses: actions/upload-artifact@v2
         with:
-          files: build/*.xml
-          check_name: Cpp Test Report
-          comment_title: Cpp Test Report
+          name: cpp-ut-result-${{ github.sha }}
+          path: |
+            build/*.xml
 
       - name: Java SDK Test
         run: |
           cd java/
           mvn -U clean compile test
 
-      - name: Publish Java Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
+      - name: Upload Java UT Results
         if: always()
+        uses: actions/upload-artifact@v2
         with:
-          files: java/hybridse-sdk/target/**/TEST-*.xml
-          check_name: Java Test Report
-          comment_title: Java Test Report
+          name: java-ut-result-${{ github.sha }}
+          path: |
+            java/hybridse-sdk/target/**/TEST-*.xml
 
       - name: Create Archive
         if: ${{ github.event_name == 'push' }}
@@ -75,6 +75,42 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  publish-test-results:
+    runs-on: ubuntu-latest
+    needs: build
+    # the action will only run on 4paradigm/HybridSE's context, not for fork repo or dependabot
+    if: >
+      always() && github.event_name == 'push' || (
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.sender.login != 'dependabot[bot]' )
+    steps:
+      - name: Download Cpp Artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: cpp-ut-result-${{ github.sha }}
+          path: cpp-ut-result
+
+      - name: Publish Cpp UT Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: cpp-ut-result/**/*.xml
+          check_name: Cpp Test Report
+          comment_title: Cpp Test Report
+
+      - name: Download Java Artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: java-ut-result-${{ github.sha }}
+          path: java-ut-result
+
+      - name: Publish Java UT Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: java-ut-result/**/*.xml
+          check_name: Java Test Report
+          comment_title: Java Test Report
+
+
   coverage:
     runs-on: ubuntu-latest
     container:
@@ -102,9 +138,3 @@ jobs:
       # cost too much time
       # bash tools/micro_bench.sh | tee micro_bench_report.txt
       # bash tools/gen_micro_bench_compare.sh
-
-      - name: Cleanup
-        if: always()
-        run: |
-          git clean -dfx
-          git submodule foreach 'rm -rf $displaypath'
