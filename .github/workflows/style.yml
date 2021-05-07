@@ -57,3 +57,16 @@ jobs:
       - name: Run check style
         run: |
           make javalint
+
+  hadolint:
+    name: hadolint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: hadolint
+      uses: reviewdog/action-hadolint@v1
+      with:
+        github_token: ${{ secrets.github_token }}
+        level: info
+        filter_mode: diff_context
+        reporter: github-pr-review # Default is github-pr-check

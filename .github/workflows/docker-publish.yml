@@ -1,0 +1,70 @@
+name: Docker
+
+on:
+  push:
+    branches:
+      - main
+
+    tags:
+      - docker-*
+
+  # Run tests for any PRs.
+  pull_request:
+    paths:
+      - docker/Dockerfile
+      - docker/**/*.sh
+
+env:
+  IMAGE_NAME: hybridsql
+
+jobs:
+  # Push image to GitHub Packages.
+  # See also https://docs.docker.com/docker-hub/builds/
+  build-and-publish:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build image
+        working-directory: docker
+        run: |
+          if [[ ${{ github.ref }} == "refs/heads/main" ]]; then
+            git diff --name-only HEAD HEAD~1 -- | grep --regexp "^docker/\(.+/\)*\(Dockerfile\|.*\.sh\)\$" || \
+                                                                 # no file change to docker folder
+                                                                 exit 0
+          fi
+          docker build --no-cache . --file Dockerfile --tag $IMAGE_NAME
+
+      - name: Push image
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          if [[ ${{ github.ref }} == "refs/heads/main" ]]; then
+            git diff --name-only HEAD HEAD~1 -- | grep --regexp "^docker/\(.+/\)*\(Dockerfile\|.*\.sh\)\$" || \
+                                                                 # no file change to docker folder
+                                                                 exit 0
+          fi
+
+          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
+
+          # Change all uppercase to lowercase
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          # Strip "docker" prefix from tag name
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^docker-//')
+
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "main" ] && VERSION=latest
+
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+          echo "COMMIT=${{ github.sha }}"
+
+          echo "${{ secrets.CR_PAT }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
+
+          docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+          docker push $IMAGE_ID:$VERSION
