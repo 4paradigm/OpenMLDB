@@ -56,18 +56,18 @@ jobs:
             fi
           done
 
-      - name: Publish Cpp UT Results
+      - name: Publish Linux UT Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           commit: ${{ github.event.workflow_run.head_sha }}
-          files: artifacts/cpp-ut-result-*/**/*.xml
-          check_name: Cpp Test Report
-          comment_title: Cpp Test Report
+          files: artifacts/linux-ut-result-*/**/*.xml
+          check_name: Linux Test Report
+          comment_title: Linux Test Report
 
-      - name: Publish Java UT Results
+      - name: Publish Mac UT Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           commit: ${{ github.event.workflow_run.head_sha }}
-          files: artifacts/java-ut-result-*/**/*.xml
-          check_name: Java Test Report
-          comment_title: Java Test Report
+          files: artifacts/macos-ut-result-*/**/*.xml
+          check_name: Mac Test Report
+          comment_title: Mac Test Report

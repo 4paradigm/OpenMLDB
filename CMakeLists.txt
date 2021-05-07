@@ -40,11 +40,11 @@ project(hybridse)
 
 set(HYBRIDSE_VERSION_MAJOR 0)
 set(HYBRIDSE_VERSION_MINOR 1)
-set(HYBRIDSE_VERSION_BUG 1)
+set(HYBRIDSE_VERSION_BUG 3)
 
 option(TESTING_ENABLE "Enable Test" ON)
 option(CORE_TESTING_ENABLE "Enable Core Test" ON)
-option(EXAMPLES_TESTING_ENABLE "Enable Examples Test" OFF)
+option(EXAMPLES_TESTING_ENABLE "Enable Examples Test" ON)
 option(BENCHMARK_ENABLE "Enable Benchmark" OFF)
 option(COVERAGE_ENABLE "Enable Coverage" OFF)
 option(PYSDK_ENABLE "Enable pysdk" ON)
@@ -78,6 +78,9 @@ endif ()
 
 find_package(Threads)
 
+
+set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
+find_package(Boost COMPONENTS filesystem date_time regex REQUIRED)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
     set(COMMON_LIBS boost_date_time boost_filesystem boost_regex leveldb protobuf glog gflags unwind z snappy ssl crypto dl)
@@ -98,7 +101,6 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(BRPC_LIBS brpc ${COMMON_LIBS})
 endif ()
 
-set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
 configure_file(
         "${PROJECT_SOURCE_DIR}/src/version.h.in"
         "${PROJECT_SOURCE_DIR}/src/hybridse_version.h"
@@ -133,9 +135,9 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     # add_definitions(-Wno-defaulted-function-deleted)
 endif ()
 
-set(boost_libs boost_graph)
 find_package(yaml-cpp REQUIRED)
 set(yaml_libs yaml-cpp)
+
 add_definitions('-g')
 add_definitions('-std=c++14')
 add_definitions(${LLVM_DEFINITIONS})
