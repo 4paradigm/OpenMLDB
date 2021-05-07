@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "sdk/sql_router.h"
 
 #include <sched.h>
@@ -26,22 +25,20 @@
 
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
-#include "common/timer.h"
+#include "case/sql_case.h"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
+#include "common/timer.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
 #include "vm/catalog.h"
-#include "case/sql_case.h"
 
 namespace fedb {
 namespace sdk {
 
-typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>
-    RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>
-    RtiDBIndex;
+typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey> RtiDBIndex;
 
 ::fedb::sdk::MiniCluster* mc_;
 
@@ -63,10 +60,10 @@ TEST_F(SQLRouterTest, bad_zk) {
     sql_opt.zk_path = "/path";
     sql_opt.session_timeout = 10;
     auto router = NewClusterSQLRouter(sql_opt);
-    ASSERT_TRUE(router ==nullptr);
+    ASSERT_TRUE(router == nullptr);
 }
 
-TEST_F(SQLRouterTest, empty_db_test) {
+TEST_F(SQLRouterTest, db_name_test) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
@@ -74,6 +71,14 @@ TEST_F(SQLRouterTest, empty_db_test) {
     ASSERT_TRUE(router != nullptr);
     ::hybridse::sdk::Status status;
     ASSERT_FALSE(router->CreateDB("", &status));
+
+    std::string db = "123456";
+    ASSERT_TRUE(router->CreateDB(db, &status)) << db << ": " << status.msg;
+    ASSERT_TRUE(router->DropDB(db, &status)) << db << ": " << status.msg;
+    // SQL_IDENTIFIER: [^`/\\.\n]+, so use '/' in name is not allowed
+    db = "1/2";
+    ASSERT_FALSE(router->CreateDB(db, &status) && status.code == -2) << db << ": " << status.msg;
+    ASSERT_FALSE(router->DropDB(db, &status) && status.code == -2) << db << ": " << status.msg;
 }
 
 TEST_F(SQLRouterTest, db_api_test) {
@@ -321,8 +326,7 @@ TEST_F(SQLRouterTest, test_sql_insert_with_column_list) {
     ASSERT_TRUE(router->RefreshCatalog());
 
     // normal insert
-    std::string insert1 =
-        "insert into " + name + "(col3, col4) values('hello', 1000);";
+    std::string insert1 = "insert into " + name + "(col3, col4) values('hello', 1000);";
     ok = router->ExecuteInsert(db, insert1, &status);
     ASSERT_TRUE(ok);
 
@@ -337,16 +341,13 @@ TEST_F(SQLRouterTest, test_sql_insert_with_column_list) {
     ASSERT_FALSE(ok);
 
     // duplicate col4
-    std::string insert4 =
-        "insert into " + name + "(col4, col4) values(1000, 1000);";
+    std::string insert4 = "insert into " + name + "(col4, col4) values(1000, 1000);";
     ok = router->ExecuteInsert(db, insert4, &status);
     ASSERT_FALSE(ok);
 
     // normal placeholder insert
-    std::string insert5 =
-        "insert into " + name + "(col2, col3, col4) values(?, 'hello', ?);";
-    std::shared_ptr<SQLInsertRow> r5 =
-        router->GetInsertRow(db, insert5, &status);
+    std::string insert5 = "insert into " + name + "(col2, col3, col4) values(?, 'hello', ?);";
+    std::shared_ptr<SQLInsertRow> r5 = router->GetInsertRow(db, insert5, &status);
     ASSERT_TRUE(r5->Init(0));
     ASSERT_TRUE(r5->AppendInt32(123));
     ASSERT_TRUE(r5->AppendInt64(1001));
@@ -401,8 +402,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_date_column_key) {
     ASSERT_TRUE(router->RefreshCatalog());
 
     std::string insert1 = "insert into " + name + " values(?, ?, ?);";
-    std::shared_ptr<SQLInsertRow> r1 =
-        router->GetInsertRow(db, insert1, &status);
+    std::shared_ptr<SQLInsertRow> r1 = router->GetInsertRow(db, insert1, &status);
     ASSERT_FALSE(r1 == nullptr);
     ASSERT_TRUE(r1->Init(0));
     ASSERT_TRUE(r1->AppendInt32(123));
@@ -454,8 +454,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_1) {
     ASSERT_TRUE(router->RefreshCatalog());
 
     std::string insert1 = "insert into " + name + " values(?, ?, ?, ?);";
-    std::shared_ptr<SQLInsertRow> r1 =
-        router->GetInsertRow(db, insert1, &status);
+    std::shared_ptr<SQLInsertRow> r1 = router->GetInsertRow(db, insert1, &status);
     ASSERT_FALSE(r1 == nullptr);
     ASSERT_TRUE(r1->Init(5));
     ASSERT_TRUE(r1->AppendInt32(123));
@@ -466,8 +465,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_1) {
     ASSERT_TRUE(ok);
 
     std::string insert2 = "insert into " + name + " values(?, ?, 'hello', ?);";
-    std::shared_ptr<SQLInsertRow> r2 =
-        router->GetInsertRow(db, insert2, &status);
+    std::shared_ptr<SQLInsertRow> r2 = router->GetInsertRow(db, insert2, &status);
     ASSERT_FALSE(r2 == nullptr);
     ASSERT_TRUE(r2->Init(0));
     ASSERT_TRUE(r2->AppendInt32(456));
@@ -476,8 +474,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_1) {
     ok = router->ExecuteInsert(db, insert2, r2, &status);
     ASSERT_TRUE(ok);
     std::string insert3 = "insert into " + name + " values(?, 987, ?, ?);";
-    std::shared_ptr<SQLInsertRow> r3 =
-        router->GetInsertRow(db, insert3, &status);
+    std::shared_ptr<SQLInsertRow> r3 = router->GetInsertRow(db, insert3, &status);
     ASSERT_FALSE(r3 == nullptr);
     ASSERT_TRUE(r3->Init(5));
     ASSERT_TRUE(r3->AppendInt32(789));
@@ -487,8 +484,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_1) {
     ASSERT_TRUE(ok);
 
     std::string insert4 = "insert into " + name + " values(?, 0,'hello', ?);";
-    std::shared_ptr<SQLInsertRow> r4 =
-        router->GetInsertRow(db, insert4, &status);
+    std::shared_ptr<SQLInsertRow> r4 = router->GetInsertRow(db, insert4, &status);
     ASSERT_FALSE(r4 == nullptr);
     ASSERT_TRUE(r4->Init(0));
     ASSERT_TRUE(r4->AppendInt32(1));
@@ -539,23 +535,21 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_2) {
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
-      std::string name = "test" + GenRand();
+    std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
-    std::string ddl =
-        "create table " + name +
-        "("
-        "col1 string NOT NULL, col2 bigint NOT NULL, col3 date NOT NULL, col4 "
-        "int NOT NULL, index(key=(col1, col4), ts=col2));";
+    std::string ddl = "create table " + name +
+                      "("
+                      "col1 string NOT NULL, col2 bigint NOT NULL, col3 date NOT NULL, col4 "
+                      "int NOT NULL, index(key=(col1, col4), ts=col2));";
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
 
     std::string insert1 = "insert into " + name + " values(?, ?, ?, ?);";
-    std::shared_ptr<SQLInsertRow> r1 =
-        router->GetInsertRow(db, insert1, &status);
+    std::shared_ptr<SQLInsertRow> r1 = router->GetInsertRow(db, insert1, &status);
     ASSERT_TRUE(r1->Init(5));
     ASSERT_TRUE(r1->AppendString("hello"));
     ASSERT_TRUE(r1->AppendInt64(1000));
@@ -565,8 +559,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_2) {
     ASSERT_TRUE(ok);
 
     std::string insert2 = "insert into " + name + " values('hello', ?, ?, ?);";
-    std::shared_ptr<SQLInsertRow> r2 =
-        router->GetInsertRow(db, insert2, &status);
+    std::shared_ptr<SQLInsertRow> r2 = router->GetInsertRow(db, insert2, &status);
     ASSERT_TRUE(r2->Init(0));
     ASSERT_TRUE(r2->AppendInt64(1001));
     ASSERT_TRUE(r2->AppendDate(2020, 7, 20));
@@ -575,8 +568,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_2) {
     ASSERT_TRUE(ok);
 
     std::string insert3 = "insert into " + name + " values(?, ?, ?, 789);";
-    std::shared_ptr<SQLInsertRow> r3 =
-        router->GetInsertRow(db, insert3, &status);
+    std::shared_ptr<SQLInsertRow> r3 = router->GetInsertRow(db, insert3, &status);
     ASSERT_TRUE(r3->Init(5));
     ASSERT_TRUE(r3->AppendString("hello"));
     ASSERT_TRUE(r3->AppendInt64(1002));
@@ -584,23 +576,19 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_2) {
     ok = router->ExecuteInsert(db, insert3, r3, &status);
     ASSERT_TRUE(ok);
 
-    std::string insert4 =
-        "insert into " + name + " values('hello', ?, ?, 000);";
-    std::shared_ptr<SQLInsertRow> r4 =
-        router->GetInsertRow(db, insert4, &status);
+    std::string insert4 = "insert into " + name + " values('hello', ?, ?, 000);";
+    std::shared_ptr<SQLInsertRow> r4 = router->GetInsertRow(db, insert4, &status);
     ASSERT_TRUE(r4->Init(0));
     ASSERT_TRUE(r4->AppendInt64(1003));
     ASSERT_TRUE(r4->AppendDate(2020, 7, 22));
     ok = router->ExecuteInsert(db, insert4, r4, &status);
     ASSERT_TRUE(ok);
 
-    std::string insert5 =
-        "insert into " + name + " values('hello', 1004, '2020-07-31', 001);";
+    std::string insert5 = "insert into " + name + " values('hello', 1004, '2020-07-31', 001);";
     ok = router->ExecuteInsert(db, insert5, &status);
     ASSERT_TRUE(ok);
 
-    std::string insert6 =
-        "insert into " + name + " values('hello', 1004, '2020-07-31', ?);";
+    std::string insert6 = "insert into " + name + " values('hello', 1004, '2020-07-31', ?);";
     ok = router->ExecuteInsert(db, insert6, &status);
     ASSERT_FALSE(ok);
 
@@ -676,21 +664,18 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
     ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
-    std::string ddl =
-        "create table " + name +
-        "("
-        "col1 string NOT NULL, col2 bigint NOT NULL, col3 date NOT NULL, col4 "
-        "int, col5 smallint, col6 float, col7 double,"
-        "index(key=col1, ts=col2));";
+    std::string ddl = "create table " + name +
+                      "("
+                      "col1 string NOT NULL, col2 bigint NOT NULL, col3 date NOT NULL, col4 "
+                      "int, col5 smallint, col6 float, col7 double,"
+                      "index(key=col1, ts=col2));";
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
 
     // test null
-    std::string insert1 =
-        "insert into " + name + " values(?, ?, ?, ?, ?, ?, ?);";
-    std::shared_ptr<SQLInsertRow> r1 =
-        router->GetInsertRow(db, insert1, &status);
+    std::string insert1 = "insert into " + name + " values(?, ?, ?, ?, ?, ?, ?);";
+    std::shared_ptr<SQLInsertRow> r1 = router->GetInsertRow(db, insert1, &status);
 
     // test schema
     std::shared_ptr<hybridse::sdk::Schema> schema = r1->GetSchema();
@@ -721,11 +706,8 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
     ASSERT_TRUE(ok);
 
     // test int convert and float convert
-    std::string insert2 =
-        "insert into " + name +
-        " value('hello', ?, '2020-02-29', NULL, 123, 2.33, NULL);";
-    std::shared_ptr<SQLInsertRow> r2 =
-        router->GetInsertRow(db, insert2, &status);
+    std::string insert2 = "insert into " + name + " value('hello', ?, '2020-02-29', NULL, 123, 2.33, NULL);";
+    std::shared_ptr<SQLInsertRow> r2 = router->GetInsertRow(db, insert2, &status);
     ASSERT_EQ(status.code, 0);
     ASSERT_TRUE(r2->Init(0));
     ASSERT_TRUE(r2->AppendInt64(1001));
@@ -733,11 +715,8 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
     ASSERT_TRUE(ok);
 
     // test int to float
-    std::string insert3 =
-        "insert into " + name +
-        " value('hello', ?, '2020-12-31', NULL, NULL, 123, 123);";
-    std::shared_ptr<SQLInsertRow> r3 =
-        router->GetInsertRow(db, insert3, &status);
+    std::string insert3 = "insert into " + name + " value('hello', ?, '2020-12-31', NULL, NULL, 123, 123);";
+    std::shared_ptr<SQLInsertRow> r3 = router->GetInsertRow(db, insert3, &status);
     ASSERT_EQ(status.code, 0);
     ASSERT_TRUE(r3->Init(0));
     ASSERT_TRUE(r3->AppendInt64(1002));
@@ -745,11 +724,8 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
     ASSERT_TRUE(ok);
 
     // test float to int
-    std::string insert4 =
-        "insert into " + name +
-        " value('hello', ?, '2020-02-29', 2.33, 2.33, 123, 123);";
-    std::shared_ptr<SQLInsertRow> r4 =
-        router->GetInsertRow(db, insert4, &status);
+    std::string insert4 = "insert into " + name + " value('hello', ?, '2020-02-29', 2.33, 2.33, 123, 123);";
+    std::shared_ptr<SQLInsertRow> r4 = router->GetInsertRow(db, insert4, &status);
     ASSERT_EQ(status.code, 1);
 
     int32_t year;
@@ -832,17 +808,14 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     ASSERT_EQ(1, rs->Size());
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ("hello", rs->GetStringUnsafe(0));
-    std::string sql_window_batch =
-        "select sum(col2) over w from " + name + " window w as (partition by " +
-        name + ".col1 order by " + name +
-        ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
+    std::string sql_window_batch = "select sum(col2) over w from " + name + " window w as (partition by " + name +
+                                   ".col1 order by " + name + ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
     rs = router->ExecuteSQL(db, sql_window_batch, &status);
     ASSERT_EQ(1, rs->Size());
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ(1590, rs->GetInt64Unsafe(0));
     {
-        std::shared_ptr<SQLRequestRow> row =
-            router->GetRequestRow(db, sql_window_batch, &status);
+        std::shared_ptr<SQLRequestRow> row = router->GetRequestRow(db, sql_window_batch, &status);
         ASSERT_TRUE(row != nullptr);
         ASSERT_EQ(2, row->GetSchema()->GetColumnCnt());
         ASSERT_TRUE(row->Init(5));
@@ -850,10 +823,9 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
         ASSERT_TRUE(row->AppendInt64(100));
         ASSERT_TRUE(row->Build());
 
-        std::string sql_window_request =
-            "select sum(col2)  over w as sum_col2 from " + name +
-            " window w as (partition by " + name + ".col1 order by " + name +
-            ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
+        std::string sql_window_request = "select sum(col2)  over w as sum_col2 from " + name +
+                                         " window w as (partition by " + name + ".col1 order by " + name +
+                                         ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
 
         rs = router->ExecuteSQL(db, sql_window_request, row, &status);
         ASSERT_TRUE(rs != nullptr);
@@ -862,8 +834,7 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
         ASSERT_EQ(100, rs->GetInt64Unsafe(0));
     }
     {
-        std::shared_ptr<SQLRequestRow> row =
-            router->GetRequestRow(db, sql_window_batch, &status);
+        std::shared_ptr<SQLRequestRow> row = router->GetRequestRow(db, sql_window_batch, &status);
         ASSERT_TRUE(row != nullptr);
         ASSERT_EQ(2, row->GetSchema()->GetColumnCnt());
         ASSERT_TRUE(row->Init(5));
@@ -871,10 +842,9 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
         ASSERT_TRUE(row->AppendInt64(100));
         ASSERT_TRUE(row->Build());
 
-        std::string sql_window_request =
-            "select sum(col2)  over w as sum_col2 from " + name +
-            " window w as (partition by " + name + ".col1 order by " + name +
-            ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
+        std::string sql_window_request = "select sum(col2)  over w as sum_col2 from " + name +
+                                         " window w as (partition by " + name + ".col1 order by " + name +
+                                         ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
 
         rs = router->ExecuteSQL(db, sql_window_request, row, &status);
         ASSERT_TRUE(rs != nullptr);
@@ -907,8 +877,7 @@ TEST_F(SQLRouterTest, smoke_explain_on_sql) {
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
-    std::string insert = "insert into " + name +
-                         " values('hello', 1591174600000l, '2020-06-03');";
+    std::string insert = "insert into " + name + " values('hello', 1591174600000l, '2020-06-03');";
     ok = router->ExecuteInsert(db, insert, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -940,8 +909,7 @@ TEST_F(SQLRouterTest, smoke_not_null) {
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
-    std::string insert =
-        "insert into " + name + " values('hello', 1591174600000l, null);";
+    std::string insert = "insert into " + name + " values('hello', 1591174600000l, null);";
     ok = router->ExecuteInsert(db, insert, &status);
     ASSERT_FALSE(ok);
 
@@ -970,8 +938,7 @@ TEST_F(SQLRouterTest, smoketimestamptest_on_sql) {
     ASSERT_TRUE(ok);
 
     ASSERT_TRUE(router->RefreshCatalog());
-    std::string insert = "insert into " + name +
-                         " values('hello', 1591174600000l, '2020-06-03');";
+    std::string insert = "insert into " + name + " values('hello', 1591174600000l, '2020-06-03');";
     ok = router->ExecuteInsert(db, insert, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
