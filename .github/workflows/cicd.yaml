@@ -38,3 +38,65 @@ jobs:
         run: |
           source /etc/profile.d/enable-rh.sh
           git clean -dfx
+
+  sql_sdk_test:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.1.1
+    steps:
+      - uses: actions/checkout@v1
+      - name: uncompress_thirdparty
+        run: |
+          cd /depends && tar -zxf thirdparty.tar.gz && cd -
+      - name: build
+        run: |
+          bash steps/init_env.sh
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_sdk_test && cd ../
+      - name: run sql_sdk_test
+        run: |
+          bash steps/sql_sdk_c_ut.sh 0 sql_sdk_test
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        with:
+          files: reports/*.xml
+          comment_title: Test Report
+          report_individual_runs: true
+          check_run_annotations: all tests, skipped tests
+      - name: cleanup
+        if: always()
+        run: |
+          source /etc/profile.d/enable-rh.sh
+          git clean -dfx
+
+  sql_cluster_test:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.1.1
+    steps:
+      - uses: actions/checkout@v1
+      - name: uncompress_thirdparty
+        run: |
+          cd /depends && tar -zxf thirdparty.tar.gz && cd -
+      - name: build
+        run: |
+          bash steps/init_env.sh
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_cluster_test && cd ../
+      - name: run sql_sdk_test
+        run: |
+          bash steps/sql_sdk_c_ut.sh 0 sql_cluster_test
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        with:
+          files: reports/*.xml
+          comment_title: Test Report
+          report_individual_runs: true
+          check_run_annotations: all tests, skipped tests
+      - name: cleanup
+        if: always()
+        run: |
+          source /etc/profile.d/enable-rh.sh
+          git clean -dfx
