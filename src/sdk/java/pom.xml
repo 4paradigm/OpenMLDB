@@ -23,8 +23,8 @@
     </licenses>
     <developers>
         <developer>
-            <id>jingchen2222</id>
-            <name>Chen22</name>
+            <id>dl239</id>
+            <name>jeremy</name>
             <email>denglong@4paradigm.com</email>
             <url>https://github.com/dl239</url>
             <organization>4Paradigm</organization>
@@ -181,6 +181,3 @@
         </plugins>
     </reporting>
 </project>
-
- </project>
-
