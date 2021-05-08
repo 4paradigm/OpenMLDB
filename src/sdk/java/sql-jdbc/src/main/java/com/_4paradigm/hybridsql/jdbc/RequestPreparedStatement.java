@@ -15,6 +15,7 @@
  */
 
 package com._4paradigm.hybridsql.jdbc;
+import com._4paradigm.hybridsql.*;
 
 import java.io.InputStream;
 import java.io.Reader;
