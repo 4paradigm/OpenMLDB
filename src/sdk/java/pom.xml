@@ -32,14 +32,13 @@
         </developer>
     </developers>
     <scm>
-        <connection>scm:git@github.com:4paradigm/HybridSE.git</connection>
-        <developerConnection>scm:git:ssh://git@github.com:4paradigm/HybridSE.git</developerConnection>
+        <connection>scm:git@github.com:4paradigm/fedb.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com:4paradigm/fedb.git</developerConnection>
         <tag>HEAD</tag>
-        <url>https://github.com/4paradigm/HybridSE</url>
+        <url>https://github.com/4paradigm/fedb</url>
     </scm>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <hybridse.version>0.1.0-SNAPSHOT</hybridse.version>
     </properties>
     <build>
         <pluginManagement>
