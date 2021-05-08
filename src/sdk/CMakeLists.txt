@@ -46,140 +46,140 @@ endif()
 set(SDK_LIBS fedb_sdk fedb_catalog client zk_client fedb_flags fedb_codec fedb_proto base hybridse_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS})
 
 if(SQL_PYSDK_ENABLE)
-	find_package(Python3 COMPONENTS Interpreter Development)
-	set_property(SOURCE sql_router_sdk.i PROPERTY CPLUSPLUS ON)
-	if (APPLE)
-		set_property(SOURCE sql_router_sdk.i PROPERTY COMPILE_OPTIONS -python)
-	else ()
-		set_property(SOURCE sql_router_sdk.i PROPERTY COMPILE_OPTIONS -py3)
-	endif ()
-	set(UseSWIG_TARGET_NAME_PREFERENCE STANDARD)
-	swig_add_library(sql_router_sdk
-			TYPE SHARED
-			LANGUAGE python
-			OUTPUT_DIR ${CMAKE_BINARY_DIR}/sql_pysdk/fedb
-			SOURCES sql_router_sdk.i)
-	target_include_directories(sql_router_sdk PRIVATE ${Python3_INCLUDE_DIRS})
-	target_link_libraries(sql_router_sdk ${SDK_LIBS})
+    find_package(Python3 COMPONENTS Interpreter Development)
+    set_property(SOURCE sql_router_sdk.i PROPERTY CPLUSPLUS ON)
+    if (APPLE)
+        set_property(SOURCE sql_router_sdk.i PROPERTY COMPILE_OPTIONS -python)
+    else ()
+        set_property(SOURCE sql_router_sdk.i PROPERTY COMPILE_OPTIONS -py3)
+    endif ()
+    set(UseSWIG_TARGET_NAME_PREFERENCE STANDARD)
+    swig_add_library(sql_router_sdk
+            TYPE SHARED
+            LANGUAGE python
+            OUTPUT_DIR ${CMAKE_BINARY_DIR}/sql_pysdk/fedb
+            SOURCES sql_router_sdk.i)
+    target_include_directories(sql_router_sdk PRIVATE ${Python3_INCLUDE_DIRS})
+    target_link_libraries(sql_router_sdk ${SDK_LIBS})
     if(APPLE)
       set_target_properties(sql_router_sdk PROPERTIES
                SUFFIX ".so")
       set_property(TARGET sql_router_sdk APPEND PROPERTY
         LINK_FLAGS "-flat_namespace -undefined suppress")
         add_custom_command(OUTPUT
-		setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "from setuptools import find_packages, setup" > setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.dist import Distribution" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "class BinaryDistribution(Distribution):" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  def is_pure(self):" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "    return False" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  def has_ext_modules(self):" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "    return True" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.command.install import install" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "class InstallPlatlib(install):" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "    def finalize_options(self):" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "        install.finalize_options(self)" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "        self.install_lib=self.install_platlib" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "setup(" >> setup.py
+        setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "from setuptools import find_packages, setup" > setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.dist import Distribution" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "class BinaryDistribution(Distribution):" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  def is_pure(self):" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "    return False" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  def has_ext_modules(self):" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "    return True" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.command.install import install" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "class InstallPlatlib(install):" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "    def finalize_options(self):" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "        install.finalize_options(self)" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "        self.install_lib=self.install_platlib" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "setup(" >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  name='fedb'," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  version='${RTIDB_VERSION_MAJOR}.${RTIDB_VERSION_MEDIUM}.${RTIDB_VERSION_MINOR}.${RTIDB_VERSION_BUG}'," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  author='4pd'," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  url='4paradigm.com'," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  distclass=BinaryDistribution," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  cmdclass={'install': InstallPlatlib}," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  packages=find_packages()," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  package_data={" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  'fedb':['$<TARGET_FILE_NAME:sql_router_sdk>']," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  }," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  include_package_data=True," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  classifiers=[" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  version='${RTIDB_VERSION_MAJOR}.${RTIDB_VERSION_MEDIUM}.${RTIDB_VERSION_MINOR}.${RTIDB_VERSION_BUG}'," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  author='4pd'," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  url='4paradigm.com'," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  distclass=BinaryDistribution," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  cmdclass={'install': InstallPlatlib}," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  packages=find_packages()," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  package_data={" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  'fedb':['$<TARGET_FILE_NAME:sql_router_sdk>']," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  }," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  include_package_data=True," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  classifiers=[" >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  'Operating System :: MacOS'," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  'Programming Language :: Python'" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  ]," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo ")" >> setup.py
-		COMMENT "Generate setup.py at build time (to use generator expression)"
-		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
-		VERBATIM)
+        COMMAND ${CMAKE_COMMAND} -E echo "  'Programming Language :: Python'" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  ]," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo ")" >> setup.py
+        COMMENT "Generate setup.py at build time (to use generator expression)"
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
+        VERBATIM)
     else()
         add_custom_command(OUTPUT
-		setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "from setuptools import find_packages, setup" > setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.dist import Distribution" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "class BinaryDistribution(Distribution):" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  def is_pure(self):" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "    return False" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  def has_ext_modules(self):" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "    return True" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.command.install import install" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "class InstallPlatlib(install):" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "    def finalize_options(self):" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "        install.finalize_options(self)" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "        self.install_lib=self.install_platlib" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "setup(" >> setup.py
+        setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "from setuptools import find_packages, setup" > setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.dist import Distribution" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "class BinaryDistribution(Distribution):" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  def is_pure(self):" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "    return False" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  def has_ext_modules(self):" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "    return True" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.command.install import install" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "class InstallPlatlib(install):" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "    def finalize_options(self):" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "        install.finalize_options(self)" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "        self.install_lib=self.install_platlib" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "setup(" >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  name='fedb'," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  version='${RTIDB_VERSION_MAJOR}.${RTIDB_VERSION_MEDIUM}.${RTIDB_VERSION_MINOR}.${RTIDB_VERSION_BUG}'," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  author='4pd'," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  url='4paradigm.com'," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  distclass=BinaryDistribution," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  cmdclass={'install': InstallPlatlib}," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  packages=find_packages()," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  package_data={" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  'fedb':['$<TARGET_FILE_NAME:sql_router_sdk>']," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  }," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  include_package_data=True," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  classifiers=[" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  'Operating System :: POSIX :: Linux'," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  'Programming Language :: Python'" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  ]," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo ")" >> setup.py
-		COMMENT "Generate setup.py at build time (to use generator expression)"
-		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
-		VERBATIM)
+        COMMAND ${CMAKE_COMMAND} -E echo "  version='${RTIDB_VERSION_MAJOR}.${RTIDB_VERSION_MEDIUM}.${RTIDB_VERSION_MINOR}.${RTIDB_VERSION_BUG}'," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  author='4pd'," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  url='4paradigm.com'," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  distclass=BinaryDistribution," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  cmdclass={'install': InstallPlatlib}," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  packages=find_packages()," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  package_data={" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  'fedb':['$<TARGET_FILE_NAME:sql_router_sdk>']," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  }," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  include_package_data=True," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  classifiers=[" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  'Operating System :: POSIX :: Linux'," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  'Programming Language :: Python'" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  ]," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo ")" >> setup.py
+        COMMENT "Generate setup.py at build time (to use generator expression)"
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
+        VERBATIM)
     endif()
 
-	# Find if python module MODULE_NAME is available,
-	# if not install it to the Python user install directory.
-	function(search_python_module MODULE_NAME)
-		execute_process(
-			COMMAND ${Python3_EXECUTABLE} -c "import ${MODULE_NAME}; print(${MODULE_NAME}.__version__)"
-			RESULT_VARIABLE _RESULT
-			OUTPUT_VARIABLE MODULE_VERSION
-			ERROR_QUIET
-			OUTPUT_STRIP_TRAILING_WHITESPACE
-			)
-		if(${_RESULT} STREQUAL "0")
-			message(STATUS "Found python module: ${MODULE_NAME} (found version \"${MODULE_VERSION}\")")
-		else()
-			message(WARNING "Can't find python module \"${MODULE_NAME}\", user install it using pip...")
-			execute_process(
-				COMMAND ${Python3_EXECUTABLE} -m pip install --upgrade --user ${MODULE_NAME}
-				OUTPUT_STRIP_TRAILING_WHITESPACE
-				)
-		endif()
-	endfunction()
-	# Look for required python modules
-	search_python_module(setuptools)
-	search_python_module(wheel)
+    # Find if python module MODULE_NAME is available,
+    # if not install it to the Python user install directory.
+    function(search_python_module MODULE_NAME)
+        execute_process(
+            COMMAND ${Python3_EXECUTABLE} -c "import ${MODULE_NAME}; print(${MODULE_NAME}.__version__)"
+            RESULT_VARIABLE _RESULT
+            OUTPUT_VARIABLE MODULE_VERSION
+            ERROR_QUIET
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            )
+        if(${_RESULT} STREQUAL "0")
+            message(STATUS "Found python module: ${MODULE_NAME} (found version \"${MODULE_VERSION}\")")
+        else()
+            message(WARNING "Can't find python module \"${MODULE_NAME}\", user install it using pip...")
+            execute_process(
+                COMMAND ${Python3_EXECUTABLE} -m pip install --upgrade --user ${MODULE_NAME}
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                )
+        endif()
+    endfunction()
+    # Look for required python modules
+    search_python_module(setuptools)
+    search_python_module(wheel)
 
-	add_custom_target(sql_pysdk_package ALL
-		DEPENDS setup.py
+    add_custom_target(sql_pysdk_package ALL
+        DEPENDS setup.py
         COMMAND ${CMAKE_COMMAND} -E remove_directory dist
-		COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/fedb/__init__.py fedb/__init__.py
-		COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/fedb/driver.py fedb/driver.py
-		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/sql_pysdk/fedb
-		COMMAND ${Python3_EXECUTABLE} setup.py bdist_wheel
-		BYPRODUCTS
-		  python/fedb
+        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/fedb/__init__.py fedb/__init__.py
+        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/fedb/driver.py fedb/driver.py
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/sql_pysdk/fedb
+        COMMAND ${Python3_EXECUTABLE} setup.py bdist_wheel
+        BYPRODUCTS
+          python/fedb
           python/build
           python/dist
-		  python/fedb.egg-info
-		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
+          python/fedb.egg-info
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
     )
 
     add_custom_target(sqlalchemy_fedb DEPENDS sql_router_sdk
@@ -202,40 +202,40 @@ if(SQL_PYSDK_ENABLE)
 endif()
 
 if(SQL_JAVASDK_ENABLE)
-	set(JAVA_HOME ${PROJECT_SOURCE_DIR}/thirdparty/jdk1.8.0_141)
-	set_property(SOURCE sql_router_sdk.i PROPERTY CPLUSPLUS ON)
-	find_package(Java COMPONENTS Development REQUIRED)
-	message(STATUS "Found Java: ${Java_JAVA_EXECUTABLE} (found version \"${Java_VERSION_STRING}\")")
-	find_package(JNI REQUIRED)
-	message(STATUS "Found JNI: ${JNI_FOUND}")
-	# Find maven
-	find_program(MAVEN_EXECUTABLE mvn)
-	set_property(SOURCE sql_router_sdk.i PROPERTY COMPILE_OPTIONS -package com._4paradigm.sql)
-	swig_add_library(sql_jsdk
-			TYPE SHARED
-			LANGUAGE java
-            OUTPUT_DIR ${PROJECT_SOURCE_DIR}/src/sdk/java/sql-native/src/main/java/com/_4paradigm/sql/
-			SOURCES sql_router_sdk.i)
-	target_include_directories(sql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
-	target_compile_options(sql_jsdk PRIVATE -w)
+    set(JAVA_HOME ${PROJECT_SOURCE_DIR}/thirdparty/jdk1.8.0_141)
+    set_property(SOURCE sql_router_sdk.i PROPERTY CPLUSPLUS ON)
+    find_package(Java COMPONENTS Development REQUIRED)
+    message(STATUS "Found Java: ${Java_JAVA_EXECUTABLE} (found version \"${Java_VERSION_STRING}\")")
+    find_package(JNI REQUIRED)
+    message(STATUS "Found JNI: ${JNI_FOUND}")
+    # Find maven
+    find_program(MAVEN_EXECUTABLE mvn)
+    set_property(SOURCE sql_router_sdk.i PROPERTY COMPILE_OPTIONS -package com._4paradigm.hybridsql)
+    swig_add_library(sql_jsdk
+            TYPE SHARED
+            LANGUAGE java
+            OUTPUT_DIR ${PROJECT_SOURCE_DIR}/src/sdk/java/sql-native/src/main/java/com/_4paradigm/hybridsql/
+            SOURCES sql_router_sdk.i)
+    target_include_directories(sql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
+    target_compile_options(sql_jsdk PRIVATE -w)
     target_link_libraries(sql_jsdk PRIVATE ${SDK_LIBS} boost_filesystem)
 
-	if(APPLE)
-	  set_target_properties(sql_jsdk PROPERTIES
-			   SUFFIX ".dylib")
-	  set_property(TARGET sql_jsdk APPEND PROPERTY
-		LINK_FLAGS "-flat_namespace -undefined suppress")
-	endif()
+    if(APPLE)
+      set_target_properties(sql_jsdk PROPERTIES
+               SUFFIX ".dylib")
+      set_property(TARGET sql_jsdk APPEND PROPERTY
+        LINK_FLAGS "-flat_namespace -undefined suppress")
+    endif()
 
     add_custom_command(OUTPUT
           cp_sql_resource
           COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_SOURCE_DIR}/src/sdk/java/sql-native/src/main/resources
           COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_jsdk> ${PROJECT_SOURCE_DIR}/src/sdk/java/sql-native/src/main/resources/)
-	add_custom_target(sql_javasdk_package ALL
-	  DEPENDS
+    add_custom_target(sql_javasdk_package ALL
+      DEPENDS
         sql_jsdk
         cp_sql_resource
-		COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true
+        COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src/sdk/java
-	)
+    )
 endif()
