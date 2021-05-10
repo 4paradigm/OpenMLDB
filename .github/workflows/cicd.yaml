@@ -55,7 +55,7 @@ jobs:
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_sdk_test && cd ../
       - name: run sql_sdk_test
         run: |
-          bash steps/sql_sdk_c_ut.sh 0 sql_sdk_test
+          bash steps/ut.sh sql_sdk_test 0
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         if: always()
@@ -86,7 +86,7 @@ jobs:
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_cluster_test && cd ../
       - name: run sql_sdk_test
         run: |
-          bash steps/sql_sdk_c_ut.sh 0 sql_cluster_test
+          bash steps/ut.sh sql_cluster_test 0
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         if: always()
