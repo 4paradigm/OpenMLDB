@@ -14,16 +14,12 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridsql.sdk.impl;
+package com._4paradigm.hybridsql.fedb.sdk.impl;
 
-import com._4paradigm.hybridsql.*;
-
-import com._4paradigm.hybridsql.common.LibraryLoader;
-import com._4paradigm.hybridsql.jdbc.CallablePreparedStatement;
-import com._4paradigm.hybridsql.jdbc.SQLResultSet;
-import com._4paradigm.hybridsql.sdk.ProcedureInfo;
-import com._4paradigm.hybridsql.sdk.Schema;
-import com._4paradigm.hybridsql.sdk.*;
+import com._4paradigm.hybridsql.fedb.common.LibraryLoader;
+import com._4paradigm.hybridsql.fedb.sdk.*;
+import com._4paradigm.hybridsql.fedb.jdbc.CallablePreparedStatement;
+import com._4paradigm.hybridsql.fedb.jdbc.SQLResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

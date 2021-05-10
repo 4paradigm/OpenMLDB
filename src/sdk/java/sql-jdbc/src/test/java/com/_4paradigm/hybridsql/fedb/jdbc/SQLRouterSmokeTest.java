@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridsql.jdbc;
+package com._4paradigm.hybridsql.fedb.jdbc;
 
-import com._4paradigm.hybridsql.*;
-import com._4paradigm.hybridsql.sdk.SdkOption;
-import com._4paradigm.hybridsql.sdk.SqlExecutor;
-import com._4paradigm.hybridsql.sdk.impl.SqlClusterExecutor;
+import com._4paradigm.hybridsql.fedb.sdk.SdkOption;
+import com._4paradigm.hybridsql.fedb.sdk.SqlExecutor;
+import com._4paradigm.hybridsql.fedb.sdk.impl.SqlClusterExecutor;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

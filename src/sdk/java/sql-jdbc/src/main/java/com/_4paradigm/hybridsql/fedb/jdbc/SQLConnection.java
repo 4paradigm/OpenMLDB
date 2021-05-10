@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridsql.jdbc;
+package com._4paradigm.hybridsql.fedb.jdbc;
 
 import java.sql.*;
 import java.util.Map;

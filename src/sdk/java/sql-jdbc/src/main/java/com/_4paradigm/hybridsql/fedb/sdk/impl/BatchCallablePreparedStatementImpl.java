@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridsql.sdk.impl;
+package com._4paradigm.hybridsql.fedb.sdk.impl;
 
-import com._4paradigm.hybridsql.*;
-
-import com._4paradigm.hybridsql.jdbc.CallablePreparedStatement;
-import com._4paradigm.hybridsql.jdbc.SQLResultSet;
+import com._4paradigm.hybridsql.fedb.jdbc.CallablePreparedStatement;
+import com._4paradigm.hybridsql.fedb.jdbc.SQLResultSet;
+import com._4paradigm.hybridsql.fedb.sdk.QueryFuture;
 
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
@@ -62,7 +61,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
     }
 
     @Override
-    public com._4paradigm.hybridsql.sdk.QueryFuture executeQueryAsync(long timeOut, TimeUnit unit) throws SQLException {
+    public QueryFuture executeQueryAsync(long timeOut, TimeUnit unit) throws SQLException {
         checkClosed();
         Status status = new Status();
         QueryFuture queryFuture = router.CallSQLBatchRequestProcedure(db, spName, unit.toMillis(timeOut), currentRowBatch, status);
@@ -75,7 +74,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
             throw new SQLException("call procedure fail, msg: " + msg);
         }
         status.delete();
-        return new com._4paradigm.hybridsql.sdk.QueryFuture(queryFuture);
+        return new QueryFuture(queryFuture);
     }
 
     @Override

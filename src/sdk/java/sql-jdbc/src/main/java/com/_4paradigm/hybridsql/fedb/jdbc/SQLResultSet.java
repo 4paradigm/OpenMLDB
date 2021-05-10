@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridsql.jdbc;
+package com._4paradigm.hybridsql.fedb.jdbc;
 
 import com._4paradigm.hybridsql.DataType;
 import com._4paradigm.hybridsql.QueryFuture;

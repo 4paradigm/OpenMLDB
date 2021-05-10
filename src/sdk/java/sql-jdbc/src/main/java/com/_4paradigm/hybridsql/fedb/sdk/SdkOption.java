@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridsql.sdk;
+package com._4paradigm.hybridsql.fedb.sdk;
 
 public class SdkOption {
     private String zkCluster;

@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridsql.sdk.impl;
+package com._4paradigm.hybridsql.fedb.sdk.impl;
 
 import com._4paradigm.hybridsql.SQLRouter;
 import com._4paradigm.hybridsql.Status;
-import com._4paradigm.hybridsql.jdbc.RequestPreparedStatement;
+import com._4paradigm.hybridsql.fedb.jdbc.RequestPreparedStatement;
 
 import java.sql.SQLException;
 import java.util.ArrayList;

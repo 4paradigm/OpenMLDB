@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridsql.jdbc;
+package com._4paradigm.hybridsql.fedb.jdbc;
 
 import com._4paradigm.hybridsql.SQLRouter;
 import com._4paradigm.hybridsql.Status;
+import com._4paradigm.hybridsql.fedb.sdk.QueryFuture;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -76,7 +77,7 @@ public class CallablePreparedStatement extends RequestPreparedStatement {
         }
     }
 
-    public com._4paradigm.hybridsql.sdk.QueryFuture executeQueryAsync(long timeOut, TimeUnit unit) throws SQLException {
+    public QueryFuture executeQueryAsync(long timeOut, TimeUnit unit) throws SQLException {
         throw new SQLException("current do not support this method");
     }
 }

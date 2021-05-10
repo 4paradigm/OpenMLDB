@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridsql.sdk;
+package com._4paradigm.hybridsql.fedb.sdk;
 
-import com._4paradigm.hybridsql.*;
-
-import com._4paradigm.hybridsql.jdbc.CallablePreparedStatement;
+import com._4paradigm.hybridsql.fedb.jdbc.CallablePreparedStatement;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;

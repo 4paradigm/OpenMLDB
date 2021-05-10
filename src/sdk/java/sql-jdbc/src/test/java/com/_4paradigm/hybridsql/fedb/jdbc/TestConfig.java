@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridsql.jdbc;
+package com._4paradigm.hybridsql.fedb.jdbc;
 
 public class TestConfig {
     public static String ZK_CLUSTER="127.0.0.1:6181";

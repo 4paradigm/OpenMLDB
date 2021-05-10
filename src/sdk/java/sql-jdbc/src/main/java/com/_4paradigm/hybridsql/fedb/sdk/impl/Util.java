@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridsql.sdk.impl;
+package com._4paradigm.hybridsql.fedb.sdk.impl;
 
 import java.sql.SQLException;
 import java.sql.Types;

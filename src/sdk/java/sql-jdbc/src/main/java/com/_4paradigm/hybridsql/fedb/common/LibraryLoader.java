@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridsql.common;
+package com._4paradigm.hybridsql.fedb.common;
 
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;

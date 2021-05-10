@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.hybridsql.jdbc;
+package com._4paradigm.hybridsql.fedb.jdbc;
 
 import com._4paradigm.hybridsql.DataType;
 import com._4paradigm.hybridsql.Schema;
@@ -22,19 +22,13 @@ import com._4paradigm.hybridsql.Schema;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.List;
 
-public class SQLInsertMetaData implements ResultSetMetaData {
+public class SQLResultSetMetaData implements ResultSetMetaData {
 
-    private List<DataType> schema;
-    private Schema realSchema;
-    private List<Integer> idx;
-    public SQLInsertMetaData(List<DataType> schema,
-                             Schema realSchema,
-                             List<Integer> idx) {
+    private Schema schema;
+
+    public SQLResultSetMetaData(Schema schema) {
         this.schema = schema;
-        this.realSchema = realSchema;
-        this.idx = idx;
     }
 
     private void checkSchemaNull() throws SQLException {
@@ -47,7 +41,7 @@ public class SQLInsertMetaData implements ResultSetMetaData {
         if (i <= 0) {
             throw new SQLException("index underflow");
         }
-        if (i > schema.size()) {
+        if (i > schema.GetColumnCnt()) {
             throw new SQLException("index overflow");
         }
     }
@@ -84,7 +78,7 @@ public class SQLInsertMetaData implements ResultSetMetaData {
     @Override
     public int getColumnCount() throws SQLException {
         checkSchemaNull();
-        return schema.size();
+        return schema.GetColumnCnt();
     }
 
     @Override
@@ -114,8 +108,7 @@ public class SQLInsertMetaData implements ResultSetMetaData {
     @Override
     public int isNullable(int i) throws SQLException {
         check(i);
-        int index = idx.get(i - 1);
-        if (realSchema.IsColumnNotNull(index)) {
+        if (schema.IsColumnNotNull(i - 1)) {
             return columnNoNulls;
         } else {
             return columnNullable;
@@ -143,8 +136,7 @@ public class SQLInsertMetaData implements ResultSetMetaData {
     @Override
     public String getColumnName(int i) throws SQLException {
         check(i);
-        int index = idx.get(i - 1);
-        return realSchema.GetColumnName(index);
+        return schema.GetColumnName(i - 1);
     }
 
     @Override
@@ -180,7 +172,7 @@ public class SQLInsertMetaData implements ResultSetMetaData {
     @Override
     public int getColumnType(int i) throws SQLException {
         check(i);
-        DataType dataType = schema.get(i - 1);
+        DataType dataType = schema.GetColumnType(i - 1);
         return type2SqlType(dataType);
     }
 
