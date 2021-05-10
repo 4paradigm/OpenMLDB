@@ -16,6 +16,8 @@
 
 package com._4paradigm.hybridsql.fedb.jdbc;
 
+import com._4paradigm.hybridsql.fedb.*;
+
 import com._4paradigm.hybridsql.fedb.sdk.SdkOption;
 import com._4paradigm.hybridsql.fedb.sdk.SqlExecutor;
 import com._4paradigm.hybridsql.fedb.sdk.impl.SqlClusterExecutor;

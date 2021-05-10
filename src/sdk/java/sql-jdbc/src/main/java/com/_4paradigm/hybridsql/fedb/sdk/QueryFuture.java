@@ -16,7 +16,7 @@
 
 package com._4paradigm.hybridsql.fedb.sdk;
 
-import com._4paradigm.hybridsql.Status;
+import com._4paradigm.hybridsql.fedb.Status;
 import com._4paradigm.hybridsql.fedb.jdbc.SQLResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,9 +28,9 @@ import java.util.concurrent.TimeoutException;
 
 public class QueryFuture implements Future<java.sql.ResultSet>{
     private static final Logger logger = LoggerFactory.getLogger(QueryFuture.class);
-    com._4paradigm.hybridsql.QueryFuture queryFuture;
+    com._4paradigm.hybridsql.fedb.QueryFuture queryFuture;
 
-    public QueryFuture(com._4paradigm.hybridsql.QueryFuture queryFuture) {
+    public QueryFuture(com._4paradigm.hybridsql.fedb.QueryFuture queryFuture) {
         this.queryFuture = queryFuture;
     }
 
@@ -54,7 +54,7 @@ public class QueryFuture implements Future<java.sql.ResultSet>{
     @Override
     public java.sql.ResultSet get() throws InterruptedException, ExecutionException {
         Status status = new Status();
-        com._4paradigm.hybridsql.ResultSet resultSet = queryFuture.GetResultSet(status);
+        com._4paradigm.hybridsql.fedb.ResultSet resultSet = queryFuture.GetResultSet(status);
         if (status.getCode() != 0 || resultSet == null) {
             String msg = status.getMsg();
             status.delete();

@@ -16,8 +16,8 @@
 
 package com._4paradigm.hybridsql.fedb.jdbc;
 
-import com._4paradigm.hybridsql.DataType;
-import com._4paradigm.hybridsql.Schema;
+import com._4paradigm.hybridsql.fedb.DataType;
+import com._4paradigm.hybridsql.fedb.Schema;
 
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;

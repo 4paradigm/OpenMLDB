@@ -16,10 +16,13 @@
 
 package com._4paradigm.hybridsql.fedb.sdk.impl;
 
+import com._4paradigm.hybridsql.fedb.*;
 import com._4paradigm.hybridsql.fedb.common.LibraryLoader;
 import com._4paradigm.hybridsql.fedb.sdk.*;
 import com._4paradigm.hybridsql.fedb.jdbc.CallablePreparedStatement;
 import com._4paradigm.hybridsql.fedb.jdbc.SQLResultSet;
+import com._4paradigm.hybridsql.fedb.sdk.ProcedureInfo;
+import com._4paradigm.hybridsql.fedb.sdk.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -203,7 +206,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         status.delete();
         status = null;
         List<Column> columnList = new ArrayList<>();
-        com._4paradigm.hybridsql.Schema schema = explain.GetInputSchema();
+        com._4paradigm.hybridsql.fedb.Schema schema = explain.GetInputSchema();
         for (int i = 0; i < schema.GetColumnCnt(); i++) {
             Column column = new Column();
             column.setColumnName(schema.GetColumnName(i));
@@ -220,7 +223,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     @Override
     public ProcedureInfo showProcedure(String dbName, String proName) throws SQLException {
         Status status = new Status();
-        com._4paradigm.hybridsql.ProcedureInfo procedureInfo = sqlRouter.ShowProcedure(dbName, proName, status);
+        com._4paradigm.hybridsql.fedb.ProcedureInfo procedureInfo = sqlRouter.ShowProcedure(dbName, proName, status);
         if (procedureInfo == null || status.getCode() != 0) {
             String msg = status.getMsg();
             status.delete();

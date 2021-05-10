@@ -16,10 +16,10 @@
 
 package com._4paradigm.hybridsql.fedb.sdk.impl;
 
-import com._4paradigm.hybridsql.ColumnIndicesSet;
-import com._4paradigm.hybridsql.SQLRequestRowBatch;
-import com._4paradigm.hybridsql.SQLRouter;
-import com._4paradigm.hybridsql.Status;
+import com._4paradigm.hybridsql.fedb.ColumnIndicesSet;
+import com._4paradigm.hybridsql.fedb.SQLRequestRowBatch;
+import com._4paradigm.hybridsql.fedb.SQLRouter;
+import com._4paradigm.hybridsql.fedb.Status;
 import com._4paradigm.hybridsql.fedb.jdbc.SQLResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +51,7 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
     public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
         Status status = new Status();
-        com._4paradigm.hybridsql.ResultSet resultSet = router.ExecuteSQLBatchRequest(
+        com._4paradigm.hybridsql.fedb.ResultSet resultSet = router.ExecuteSQLBatchRequest(
                 db, currentSql, currentRowBatch, status);
         if (resultSet == null || status.getCode() != 0) {
             String msg = status.getMsg();

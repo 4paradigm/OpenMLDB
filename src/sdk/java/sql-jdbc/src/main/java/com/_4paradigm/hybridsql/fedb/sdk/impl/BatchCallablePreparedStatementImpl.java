@@ -16,9 +16,10 @@
 
 package com._4paradigm.hybridsql.fedb.sdk.impl;
 
+import com._4paradigm.hybridsql.fedb.*;
+
 import com._4paradigm.hybridsql.fedb.jdbc.CallablePreparedStatement;
 import com._4paradigm.hybridsql.fedb.jdbc.SQLResultSet;
-import com._4paradigm.hybridsql.fedb.sdk.QueryFuture;
 
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
@@ -42,7 +43,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
     public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
         Status status = new Status();
-        com._4paradigm.hybridsql.ResultSet resultSet = router.ExecuteSQLBatchRequest(
+        com._4paradigm.hybridsql.fedb.ResultSet resultSet = router.ExecuteSQLBatchRequest(
                 db, currentSql, currentRowBatch, status);
         if (status.getCode() != 0 || resultSet == null) {
             String msg = status.getMsg();
@@ -61,7 +62,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
     }
 
     @Override
-    public QueryFuture executeQueryAsync(long timeOut, TimeUnit unit) throws SQLException {
+    public com._4paradigm.hybridsql.fedb.sdk.QueryFuture executeQueryAsync(long timeOut, TimeUnit unit) throws SQLException {
         checkClosed();
         Status status = new Status();
         QueryFuture queryFuture = router.CallSQLBatchRequestProcedure(db, spName, unit.toMillis(timeOut), currentRowBatch, status);
@@ -74,7 +75,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
             throw new SQLException("call procedure fail, msg: " + msg);
         }
         status.delete();
-        return new QueryFuture(queryFuture);
+        return new com._4paradigm.hybridsql.fedb.sdk.QueryFuture(queryFuture);
     }
 
     @Override

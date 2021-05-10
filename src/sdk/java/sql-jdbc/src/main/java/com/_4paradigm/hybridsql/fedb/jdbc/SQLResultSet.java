@@ -16,9 +16,9 @@
 
 package com._4paradigm.hybridsql.fedb.jdbc;
 
-import com._4paradigm.hybridsql.DataType;
-import com._4paradigm.hybridsql.QueryFuture;
-import com._4paradigm.hybridsql.Schema;
+import com._4paradigm.hybridsql.fedb.DataType;
+import com._4paradigm.hybridsql.fedb.QueryFuture;
+import com._4paradigm.hybridsql.fedb.Schema;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -29,20 +29,20 @@ import java.util.Calendar;
 import java.util.Map;
 
 public class SQLResultSet implements ResultSet {
-    private com._4paradigm.hybridsql.ResultSet resultSet;
+    private com._4paradigm.hybridsql.fedb.ResultSet resultSet;
     private boolean closed = false;
     private int rowNum = 0;
     private QueryFuture queryFuture;
     private Schema schema;
 
-    public SQLResultSet(com._4paradigm.hybridsql.ResultSet resultSet) {
+    public SQLResultSet(com._4paradigm.hybridsql.fedb.ResultSet resultSet) {
         this.resultSet = resultSet;
         if (resultSet != null) {
             this.schema = resultSet.GetSchema();
         }
     }
 
-    public SQLResultSet(com._4paradigm.hybridsql.ResultSet resultSet, QueryFuture future) {
+    public SQLResultSet(com._4paradigm.hybridsql.fedb.ResultSet resultSet, QueryFuture future) {
         this.resultSet = resultSet;
         this.queryFuture = future;
         if (resultSet != null) {
@@ -208,7 +208,7 @@ public class SQLResultSet implements ResultSet {
         if (this.resultSet.IsNULL(i - 1)) {
             return null;
         }
-        com._4paradigm.hybridsql.Date date = this.resultSet.GetStructDateUnsafe(i - 1);
+        com._4paradigm.hybridsql.fedb.Date date = this.resultSet.GetStructDateUnsafe(i - 1);
         return new Date(date.getYear() - 1900, date.getMonth() - 1, date.getDay());
     }
 

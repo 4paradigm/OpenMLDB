@@ -16,8 +16,8 @@
 
 package com._4paradigm.hybridsql.fedb.sdk.impl;
 
-import com._4paradigm.hybridsql.SQLRouter;
-import com._4paradigm.hybridsql.Status;
+import com._4paradigm.hybridsql.fedb.SQLRouter;
+import com._4paradigm.hybridsql.fedb.Status;
 import com._4paradigm.hybridsql.fedb.jdbc.RequestPreparedStatement;
 
 import java.sql.SQLException;
