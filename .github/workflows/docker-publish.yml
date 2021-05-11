@@ -26,14 +26,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Build image
         working-directory: docker
         run: |
           if [[ ${{ github.ref }} == "refs/heads/main" ]]; then
-            git diff --name-only HEAD HEAD~1 -- | grep --regexp "^docker/\(.+/\)*\(Dockerfile\|.*\.sh\)\$" || \
-                                                                 # no file change to docker folder
-                                                                 exit 0
+            git diff --name-only HEAD~1 HEAD -- | grep --regexp "^docker/\(.+/\)*\(Dockerfile\|.*\.sh\)\$" || exit 0
           fi
           docker build --no-cache . --file Dockerfile --tag $IMAGE_NAME
 
@@ -41,9 +41,7 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         run: |
           if [[ ${{ github.ref }} == "refs/heads/main" ]]; then
-            git diff --name-only HEAD HEAD~1 -- | grep --regexp "^docker/\(.+/\)*\(Dockerfile\|.*\.sh\)\$" || \
-                                                                 # no file change to docker folder
-                                                                 exit 0
+            git diff --name-only HEAD~1 HEAD -- | grep --regexp "^docker/\(.+/\)*\(Dockerfile\|.*\.sh\)\$" || exit 0
           fi
 
           IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME

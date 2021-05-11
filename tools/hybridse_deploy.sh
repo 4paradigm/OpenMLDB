@@ -25,7 +25,7 @@ GREEN='\033[0;32m'
 NC='\033[0m'
 
 if [[ -z $HYBRIDSE_VERSION ]]; then
-    HYBRIDSE_VERSION="SNAPSHOT-$(date +%Y-%m-%d)"
+    HYBRIDSE_VERSION="SNAPSHOT-$(git rev-parse --short HEAD)"
 fi
 
 OS=${OS:-linux}

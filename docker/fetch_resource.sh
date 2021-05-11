@@ -85,7 +85,7 @@ fetch https://github.com/protocolbuffers/protobuf/releases/download/v2.6.1/proto
 fetch https://releases.llvm.org/9.0.0/llvm-9.0.0.src.tar.xz llvm-9.0.0.src.tar.xz
 
 # boost
-fetch https://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.gz boost_1_69_0.tar.gz
+fetch https://boostorg.jfrog.io/artifactory/main/release/1.69.0/source/boost_1_69_0.tar.gz boost_1_69_0.tar.gz
 
 # google benchmark
 fetch https://github.com/google/benchmark/archive/v1.5.0.tar.gz v1.5.0.tar.gz

@@ -6,7 +6,7 @@
 	<parent>
 		<artifactId>hybridse-java</artifactId>
 		<groupId>com.4paradigm.hybridse</groupId>
-                <version>0.1.3</version>
+        <version>0.1.3-SNAPSHOT</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<modelVersion>4.0.0</modelVersion>
@@ -22,19 +22,19 @@
 				<activeByDefault>true</activeByDefault>
 			</activation>
 			<properties>
-				<versionFromProfile>${project.parent.version}</versionFromProfile>
+                <versionFromProfile>${project.version.base}${project.version.suffix}</versionFromProfile>
 			</properties>
 		</profile>
 		<profile>
 			<id>macos</id>
 			<properties>
-				<versionFromProfile>${project.parent.version}-macos</versionFromProfile>
+                <versionFromProfile>${project.version.base}-macos${project.version.suffix}</versionFromProfile>
 			</properties>
 		</profile>
 		<profile>
 			<id>allinone</id>
 			<properties>
-				<versionFromProfile>${project.parent.version}-allinone</versionFromProfile>
+                <versionFromProfile>${project.version.base}-allinone${project.version.suffix}</versionFromProfile>
 			</properties>
 		</profile>
 	</profiles>
@@ -92,7 +92,7 @@
         <dependency>
             <groupId>com.4paradigm.hybridse</groupId>
             <artifactId>hybridse-proto</artifactId>
-            <version>0.1.3</version>
+            <version>${project.parent.version}</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>

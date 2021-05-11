@@ -63,9 +63,9 @@ if [ ! -f gtest_succ ]; then
 	tar xzf googletest-release-1.10.0.tar.gz
 
 	pushd googletest-release-1.10.0
-	cmake -DCMAKE_INSTALL_PREFIX="$DEPS_PREFIX" -DCMAKE_CXX_FLAGS=-fPIC
-	make "-j$(nproc)"
-	make install
+	cmake -H. -Bbuild -DCMAKE_INSTALL_PREFIX="$DEPS_PREFIX" -DCMAKE_CXX_FLAGS=-fPIC
+	cmake --build build -- "-j$(nproc)"
+    cmake --build build --target install
 	popd
 
 	touch gtest_succ
@@ -123,9 +123,9 @@ if [ -f "gflags_succ" ]; then
 else
 	tar zxf gflags-2.2.0.tar.gz
 	pushd gflags-2.2.0
-	cmake -DCMAKE_INSTALL_PREFIX="$DEPS_PREFIX" -DGFLAGS_NAMESPACE=google -DCMAKE_CXX_FLAGS=-fPIC
-	make "-j$(nproc)"
-	make install
+	cmake -H. -Bbuild -DCMAKE_INSTALL_PREFIX="$DEPS_PREFIX" -DGFLAGS_NAMESPACE=google -DCMAKE_CXX_FLAGS=-fPIC
+	cmake --build build -- "-j$(nproc)"
+    cmake --build build --target install
 	popd
 
 	touch gflags_succ

@@ -31,9 +31,9 @@ docker build .
 | ---- | ----    |  ----    | ---- | ---- | ----  |
 | cmake | 3.19.7 | /usr/local | cmake.org | build dependency | build system tool |
 | devtoolset-7 | 7.1 | /opt/rh/devtoolset-7 | [devtoolset-7](https://www.softwarecollections.org/en/scls/rhscl/devtoolset-7/) | build dependency | toolchain |
-| sclo-git212 | 1.0 | /opt/rh/sclo-git212 | [sclo-git212](https://www.softwarecollections.org/en/scls/sclo/sclo-git212/) | - | version control |
+| sclo-git218 | 1.0 | /opt/rh/sclo-git218 | [sclo-git212](https://www.softwarecollections.org/en/scls/sclo/sclo-git212/) | - | version control |
 | python | 2.7 | /opt/rh | [python](python.org) | build dependency | tool |
-| python3 | 3.6.12 | /depends/thirdparty | [python](python.org) | build dependency | tool |
+| python3 | 3.8 | /opt/rh | [python](python.org) | build dependency | tool |
 | openssl | 1.1.0 | /depends/thirdparty | [openssl](https://github.com/openssl/openssl) | dependency | lib |
 | llvm | 9.0.0 | /depends/thirdparty | [llvm](https://llvm.org/) | dependency | lib |
 | boost | 1.69.0 | /depends/thirdparty | [boost](https://www.boost.org) | dependency | lib |
