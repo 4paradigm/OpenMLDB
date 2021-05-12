@@ -71,6 +71,7 @@ jobs:
         run: |
           mvn --batch-mode deploy
         env:
+          MAVEN_OPTS: -Duser.home=/github/home
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
 
@@ -221,6 +222,7 @@ jobs:
         run: |
           mvn --batch-mode deploy -P allinone
         env:
+          MAVEN_OPTS: -Duser.home=/github/home
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
 
