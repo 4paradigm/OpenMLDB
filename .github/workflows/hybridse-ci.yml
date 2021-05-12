@@ -66,7 +66,7 @@ jobs:
           name: lib-artifacts
 
       - name: Publish Java Library
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.ref == 'refs/heads/main' }}
         working-directory: java
         run: |
           mvn --batch-mode deploy
@@ -158,10 +158,11 @@ jobs:
           name: lib-artifacts
 
       - name: Publish Java Library
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.ref == 'refs/heads/main' }}
         working-directory: java
         run: |
-          mvn --batch-mode deploy -P macos
+          mvn --batch-mode -pl hybridse-native -P macos deploy
+          mvn --batch-mode -pl hybridse-sdk -P macos deploy
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
@@ -190,7 +191,7 @@ jobs:
       image: ghcr.io/4paradigm/hybridsql:latest
     needs: ["macos-build"]
     if: >
-      success() && github.event_name == 'push'
+      success() && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v2
         with:
@@ -220,7 +221,8 @@ jobs:
       - name: Publish Java Library
         working-directory: java
         run: |
-          mvn --batch-mode deploy -P allinone
+          mvn --batch-mode -P allinone -pl hybridse-native deploy
+          mvn --batch-mode -P allinone -pl hybridse-sdk deploy
         env:
           MAVEN_OPTS: -Duser.home=/github/home
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
