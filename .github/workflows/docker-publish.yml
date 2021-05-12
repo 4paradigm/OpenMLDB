@@ -62,7 +62,7 @@ jobs:
           echo VERSION=$VERSION
           echo "COMMIT=${{ github.sha }}"
 
-          echo "${{ secrets.CR_PAT }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
+          echo "${{ secrets.CR_PAT }}" | docker login https://ghcr.io -u ${{ secrets.CR_USER }} --password-stdin
 
           docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
           docker push $IMAGE_ID:$VERSION
