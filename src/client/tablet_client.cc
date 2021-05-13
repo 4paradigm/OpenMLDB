@@ -61,66 +61,6 @@ std::string TabletClient::GetEndpoint() { return endpoint_; }
 
 const std::string& TabletClient::GetRealEndpoint() const { return real_endpoint_; }
 
-/*bool TabletClient::CreateTable(
-    const std::string& name, uint32_t tid, uint32_t pid, uint64_t abs_ttl,
-    uint64_t lat_ttl, uint32_t seg_cnt,
-    const std::vector<::fedb::codec::ColumnDesc>& columns,
-    const ::fedb::type::TTLType& type, bool leader,
-    const std::vector<std::string>& endpoints, uint64_t term,
-    const ::fedb::type::CompressType compress_type) {
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
-    table_meta->set_name(name);
-    table_meta->set_tid(tid);
-    table_meta->set_pid(pid);
-    if (type == ::rtidb::api::kLatestTime) {
-        if (lat_ttl > FLAGS_latest_ttl_max) {
-            return false;
-        }
-    } else if (type == ::rtidb::api::TTLType::kAbsoluteTime) {
-        if (abs_ttl > FLAGS_absolute_ttl_max) {
-            return false;
-        }
-    } else {
-        if (lat_ttl > FLAGS_latest_ttl_max ||
-            abs_ttl > FLAGS_absolute_ttl_max) {
-            return false;
-        }
-    }
-    table_meta->set_seg_cnt(seg_cnt);
-    table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-    table_meta->set_compress_type(compress_type);
-    if (leader) {
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        table_meta->set_term(term);
-        for (size_t i = 0; i < endpoints.size(); i++) {
-            table_meta->add_replicas(endpoints[i]);
-        }
-    } else {
-        table_meta->set_mode(::fedb::api::TableMode::kTableFollower);
-    }
-    for (const auto& col : columns) {
-        ::fedb::common::ColumnDesc* column_desc = request.add_column_desc();
-        column_desc->set_name(col.name);
-        column_desc->set_type(col.name);
-    }
-    ::fedb::common::ColumnKey* index = request.add_column_key();
-    index->set_index_name(columns[0].name);
-    index->add_col_name(columns[0].name);
-    ::fedb::common::TTLSt* ttl = index->mutable_ttl();
-    ttl->set_abs_ttl(abs_ttl);
-    ttl->set_lat_ttl(lat_ttl);
-    ttl->set_ttl_type(type);
-    ::fedb::api::CreateTableResponse response;
-    bool ok =
-        client_.SendRequest(&::fedb::api::TabletServer_Stub::CreateTable,
-                            &request, &response, FLAGS_request_timeout_ms * 2, 1);
-    if (ok && response.code() == 0) {
-        return true;
-    }
-    return false;
-}*/
-
 bool TabletClient::Query(const std::string& db, const std::string& sql,
                          const std::string& row, brpc::Controller* cntl,
                          fedb::api::QueryResponse* response,

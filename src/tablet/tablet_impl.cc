@@ -241,6 +241,31 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
     ::fedb::common::TTLSt ttl(request->ttl());
     uint64_t abs_ttl = ttl.abs_ttl();
     uint64_t lat_ttl = ttl.lat_ttl();
+    if (request->index_name().empty()) {
+        for (const auto& index : table->GetAllIndex()) {
+            if (index->GetTTLType() != ::fedb::storage::TTLSt::ConvertTTLType(ttl.ttl_type())) {
+                response->set_code(::fedb::base::ReturnCode::kTtlTypeMismatch);
+                response->set_msg("ttl type mismatch");
+                PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", request->tid(), request->pid());
+                return;
+            }
+        }
+    } else {
+        auto index = table->GetIndex(request->index_name());
+        if (!index) {
+            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u",
+                    request->index_name().c_str(),request->tid(), request->pid());
+            response->set_code(::fedb::base::ReturnCode::kIdxNameNotFound);
+            response->set_msg("idx name not found");
+            return;
+        }
+        if (index->GetTTLType() != ::fedb::storage::TTLSt::ConvertTTLType(ttl.ttl_type())) {
+            response->set_code(::fedb::base::ReturnCode::kTtlTypeMismatch);
+            response->set_msg("ttl type mismatch");
+            PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", request->tid(), request->pid());
+            return;
+        }
+    }
     if (abs_ttl > FLAGS_absolute_ttl_max || lat_ttl > FLAGS_latest_ttl_max) {
         response->set_code(
             ::fedb::base::ReturnCode::kTtlIsGreaterThanConfValue);
@@ -255,7 +280,6 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
               FLAGS_absolute_ttl_max, FLAGS_latest_ttl_max);
         return;
     }
-    ttl.set_abs_ttl(ttl.abs_ttl() * 60 * 1000);
     ::fedb::storage::TTLSt ttl_st(ttl);
     table->SetTTL(::fedb::storage::UpdateTTLMeta(ttl_st, request->index_name()));
     PDLOG(INFO,
@@ -525,13 +549,13 @@ void TabletImpl::Get(RpcController* controller,
         }
         query_its[idx].table = table;
     }
-    const ::fedb::api::TableMeta& table_meta = query_its.begin()->table->GetTableMeta();
+    auto table_meta = query_its.begin()->table->GetTableMeta();
     const std::map<int32_t, std::shared_ptr<Schema>> vers_schema = query_its.begin()->table->GetAllVersionSchema();
     CombineIterator combine_it(std::move(query_its), request->ts(), request->type(), expired_value);
     combine_it.SeekToFirst();
     std::string* value = response->mutable_value();
     uint64_t ts = 0;
-    int32_t code = GetIndex(request, table_meta, vers_schema, &combine_it, value, &ts);
+    int32_t code = GetIndex(request, *table_meta, vers_schema, &combine_it, value, &ts);
     response->set_ts(ts);
     response->set_code(code);
     uint64_t end_time = ::baidu::common::timer::get_micros();
@@ -588,10 +612,10 @@ void TabletImpl::Put(RpcController* controller,
         << " request dimension size " << request->dimensions_size()
         << " request time " << request->time();
     if ((!request->has_format_version() &&
-                table->GetTableMeta().format_version() == 1) ||
+                table->GetTableMeta()->format_version() == 1) ||
             (request->has_format_version() &&
              request->format_version() !=
-             table->GetTableMeta().format_version())) {
+             table->GetTableMeta()->format_version())) {
         response->set_code(::fedb::base::ReturnCode::kPutBadFormat);
         response->set_msg("put bad format");
         done->Run();
@@ -717,15 +741,14 @@ int TabletImpl::CheckTableMeta(const fedb::api::TableMeta* table_meta,
         msg = "tid is zero";
         return -1;
     }
-    std::map<std::string, std::string> column_map;
-    std::set<std::string> ts_set;
+    std::map<std::string, ::fedb::type::DataType> column_map;
     if (table_meta->column_desc_size() > 0) {
         for (const auto& column_desc : table_meta->column_desc()) {
             if (column_map.find(column_desc.name()) != column_map.end()) {
                 msg = "has repeated column name " + column_desc.name();
                 return -1;
             }
-            column_map.insert(std::make_pair(column_desc.name(), column_desc.type()));
+            column_map.insert(std::make_pair(column_desc.name(), column_desc.data_type()));
         }
     }
     std::set<std::string> index_set;
@@ -744,22 +767,18 @@ int TabletImpl::CheckTableMeta(const fedb::api::TableMeta* table_meta,
                     msg = "not found column name " + column_name;
                     return -1;
                 }
-                if ((iter->second == "float") || (iter->second == "double")) {
-                    msg =
-                        "float or double column can not be index" + column_name;
+                if (iter->second == ::fedb::type::kFloat || iter->second == ::fedb::type::kDouble) {
+                    msg = "float or double column can not be index" + column_name;
                     return -1;
                 }
             }
             if (!has_col) {
                 auto iter = column_map.find(column_key.index_name());
                 if (iter == column_map.end()) {
-                    msg =
-                        "index must member of columns when column key col name "
-                        "is empty";
+                    msg = "index must member of columns when column key col name is empty";
                     return -1;
                 } else {
-                    if ((iter->second == "float") ||
-                        (iter->second == "double")) {
+                    if (iter->second == ::fedb::type::kFloat || iter->second == ::fedb::type::kDouble) {
                         msg = "indxe name column type can not float or column";
                         return -1;
                     }
@@ -1221,20 +1240,20 @@ void TabletImpl::Scan(RpcController* controller,
         }
         query_its[idx].table = table;
     }
-    const ::fedb::api::TableMeta& table_meta = query_its.begin()->table->GetTableMeta();
+    auto table_meta = query_its.begin()->table->GetTableMeta();
     const std::map<int32_t, std::shared_ptr<Schema>> vers_schema = query_its.begin()->table->GetAllVersionSchema();
     CombineIterator combine_it(std::move(query_its), request->st(), request->st_type(), expired_value);
     uint32_t count = 0;
     int32_t code = 0;
     if (!request->has_use_attachment() || !request->use_attachment()) {
         std::string* pairs = response->mutable_pairs();
-        code = ScanIndex(request, table_meta, vers_schema, &combine_it, pairs, &count);
+        code = ScanIndex(request, *table_meta, vers_schema, &combine_it, pairs, &count);
         response->set_code(code);
         response->set_count(count);
     } else {
         brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
         butil::IOBuf& buf = cntl->response_attachment();
-        code = ScanIndex(request, table_meta, vers_schema, &combine_it, &buf, &count);
+        code = ScanIndex(request, *table_meta, vers_schema, &combine_it, &buf, &count);
         response->set_code(code);
         response->set_count(count);
         response->set_buf_size(buf.size());
@@ -2252,7 +2271,7 @@ void TabletImpl::GetTableSchema(
     }
     response->set_code(::fedb::base::ReturnCode::kOk);
     response->set_msg("ok");
-    response->mutable_table_meta()->CopyFrom(table->GetTableMeta());
+    response->mutable_table_meta()->CopyFrom(*table->GetTableMeta());
 }
 
 void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
@@ -2276,8 +2295,7 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         uint32_t pid = pit->first;
         std::shared_ptr<Table> table = pit->second;
         // judge if field exists
-        ::fedb::api::TableMeta table_meta;
-        table_meta.CopyFrom(table->GetTableMeta());
+        ::fedb::api::TableMeta table_meta(*table->GetTableMeta());
         if (request->has_column_desc()) {
             const auto& col = request->column_desc();
             if (table->CheckFieldExist(col.name())) {
@@ -3209,7 +3227,7 @@ int32_t TabletImpl::DeleteTableInternal(
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            engine_->ClearCacheLocked(table->GetTableMeta().db());
+            engine_->ClearCacheLocked(table->GetTableMeta()->db());
             tables_[tid].erase(pid);
             replicators_[tid].erase(pid);
             snapshots_[tid].erase(pid);
@@ -4528,7 +4546,7 @@ void TabletImpl::DeleteIndex(RpcController* controller,
     }
     std::string db_path =
         root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
-    WriteTableMeta(db_path, &table->GetTableMeta());
+    WriteTableMeta(db_path, table->GetTableMeta().get());
     PDLOG(INFO, "delete index %s success. tid %u pid %u",
           request->idx_name().c_str(), tid, pid);
     response->set_code(::fedb::base::ReturnCode::kOk);
@@ -5117,7 +5135,7 @@ void TabletImpl::AddIndex(RpcController* controller,
         response->set_msg("table db path is not exist");
         return;
     }
-    if (WriteTableMeta(db_path, &(table->GetTableMeta())) < 0) {
+    if (WriteTableMeta(db_path, table->GetTableMeta().get()) < 0) {
         PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
         response->set_code(::fedb::base::ReturnCode::kWriteDataFailed);
         response->set_msg("write data failed");

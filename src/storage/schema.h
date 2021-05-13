@@ -65,7 +65,7 @@ struct TTLSt {
         }
     }
 
-    ::fedb::type::TTLType GetTabletTTLType() const {
+    ::fedb::type::TTLType GetProtoTTLType() const {
         switch (ttl_type) {
             case TTLType::kAbsoluteTime:
                 return ::fedb::type::TTLType::kAbsoluteTime;
@@ -130,9 +130,9 @@ struct TTLSt {
             case TTLType::kLatestTime:
                 return std::to_string(lat_ttl);
             case TTLType::kAbsAndLat:
-                return std::to_string(abs_ttl) + "min&&" + std::to_string(lat_ttl);
+                return std::to_string(abs_ttl / (60 * 1000)) + "min&&" + std::to_string(lat_ttl);
             case TTLType::kAbsOrLat:
-                return std::to_string(abs_ttl) + "min||" + std::to_string(lat_ttl);
+                return std::to_string(abs_ttl / (60 * 1000)) + "min||" + std::to_string(lat_ttl);
             default:
                 return "invalid ttl_type";
         }
@@ -212,6 +212,7 @@ class IndexDef {
     std::shared_ptr<TTLSt> GetTTL() const;
     inline void SetInnerPos(int32_t inner_pos) { inner_pos_ = inner_pos; }
     inline uint32_t GetInnerPos() const { return inner_pos_; }
+    ::fedb::common::ColumnKey GenColumnKey();
 
  private:
     std::string name_;

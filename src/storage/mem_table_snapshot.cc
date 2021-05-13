@@ -830,12 +830,13 @@ int MemTableSnapshot::ExtractIndexData(
 
 
     std::map<std::string, uint32_t> column_desc_map;
-    for (uint32_t i = 0; table->GetTableMeta().column_desc_size(); ++i) {
-        column_desc_map.insert(std::make_pair(table->GetTableMeta().column_desc(i).name(), i));
+    auto table_meta = table->GetTableMeta();
+    for (int32_t i = 0; i < table_meta->column_desc_size(); ++i) {
+        column_desc_map.insert(std::make_pair(table_meta->column_desc(i).name(), i));
     }
-    uint32_t base_size = table->GetTableMeta().column_desc_size();
-    for (uint32_t i = 0; table->GetTableMeta().added_column_desc_size(); ++i) {
-        column_desc_map.insert(std::make_pair(table->GetTableMeta().added_column_desc(i).name(), i + base_size));
+    uint32_t base_size = table_meta->column_desc_size();
+    for (int32_t i = 0; i < table_meta->added_column_desc_size(); ++i) {
+        column_desc_map.insert(std::make_pair(table_meta->added_column_desc(i).name(), i + base_size));
     }
     std::vector<uint32_t> index_cols;
     uint32_t max_idx = 0;
@@ -1239,16 +1240,17 @@ bool MemTableSnapshot::DumpIndexData(
         return false;
     }
     std::map<std::string, uint32_t> column_desc_map;
-    for (uint32_t i = 0; table->GetTableMeta().column_desc_size(); ++i) {
-        column_desc_map.insert(std::make_pair(table->GetTableMeta().column_desc(i).name(), i));
+    auto table_meta = table->GetTableMeta();
+    for (int32_t i = 0; i < table_meta->column_desc_size(); ++i) {
+        column_desc_map.insert(std::make_pair(table_meta->column_desc(i).name(), i));
     }
-    uint32_t base_size = table->GetTableMeta().column_desc_size();
-    for (uint32_t i = 0; table->GetTableMeta().added_column_desc_size(); ++i) {
-        column_desc_map.insert(std::make_pair(table->GetTableMeta().added_column_desc(i).name(), i + base_size));
+    uint32_t base_size = table_meta->column_desc_size();
+    for (int32_t i = 0; i < table_meta->added_column_desc_size(); ++i) {
+        column_desc_map.insert(std::make_pair(table_meta->added_column_desc(i).name(), i + base_size));
     }
     std::vector<std::vector<uint32_t>> index_cols;
     uint32_t max_idx = 0;
-    for (const auto& ck : table->GetTableMeta().column_key()) {
+    for (const auto& ck : table_meta->column_key()) {
         std::vector<uint32_t> cols;
         if (ck.flag()) {
             continue;

@@ -55,6 +55,26 @@ void TableColumn::AddColumn(std::shared_ptr<ColumnDef> column_def) {
     column_map_.insert(std::make_pair(column_def->GetName(), column_def));
 }
 
+::fedb::common::ColumnKey IndexDef::GenColumnKey() {
+    ::fedb::common::ColumnKey column_key;
+    column_key.set_index_name(name_);
+    if (!IsReady()) {
+        column_key.set_flag(1);
+    }
+    for (const auto& col : columns_) {
+        column_key.add_col_name(col.GetName());
+    }
+    if (ts_column_) {
+        column_key.set_ts_name(ts_column_->GetName());
+    }
+    auto index_ttl = GetTTL();
+    auto ttl = column_key.mutable_ttl();
+    ttl->set_ttl_type(index_ttl->GetProtoTTLType());
+    ttl->set_abs_ttl(index_ttl->abs_ttl / (60 * 1000));
+    ttl->set_lat_ttl(index_ttl->lat_ttl);
+    return column_key;
+}
+
 IndexDef::IndexDef(const std::string& name, uint32_t id) : name_(name), index_id_(id), inner_pos_(0),
      status_(IndexStatus::kReady),
      type_(::fedb::type::IndexType::kTimeSerise), columns_(), ttl_st_(), ts_column_(nullptr) {}
@@ -198,11 +218,10 @@ int TableIndex::ParseFromMeta(const ::fedb::api::TableMeta& table_meta, std::map
                 index->SetTsColumn(col_map[ts_name]);
             }
             if (column_key.has_ttl()) {
-                ::fedb::common::TTLSt cur_ttl(column_key.ttl());
-                cur_ttl.set_abs_ttl(column_key.ttl().abs_ttl() * 60 * 1000);
-                index->SetTTL(::fedb::storage::TTLSt(cur_ttl));
+                index->SetTTL(::fedb::storage::TTLSt(column_key.ttl()));
             }
             if (AddIndex(index) < 0) {
+                DLOG(WARNING) << "add index failed";
                 return -1;
             }
             key_idx++;
@@ -212,6 +231,7 @@ int TableIndex::ParseFromMeta(const ::fedb::api::TableMeta& table_meta, std::map
     if (indexs_->empty()) {
         auto index = std::make_shared<IndexDef>("idx0", 0);
         if (AddIndex(index) < 0) {
+            DLOG(WARNING) << "add index failed";
             return -1;
         }
         LOG(INFO) << "no index specified with default. tid " << tid << ", pid " << pid;

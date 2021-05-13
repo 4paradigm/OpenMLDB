@@ -55,10 +55,10 @@ Table::Table(const std::string &name,
         idx_map.emplace(kv.second, kv.first);
     }
     for (const auto& kv : idx_map) {
-        ::fedb::common::ColumnDesc* column_desc = table_meta_.add_column_desc();
+        ::fedb::common::ColumnDesc* column_desc = table_meta_->add_column_desc();
         column_desc->set_name(kv.second);
         column_desc->set_data_type(::fedb::type::kString);
-        ::fedb::common::ColumnKey* index = table_meta_.add_column_key();
+        ::fedb::common::ColumnKey* index = table_meta_->add_column_key();
         index->set_index_name(kv.second);
         index->add_col_name(kv.second);
         ::fedb::common::TTLSt* cur_ttl = index->mutable_ttl();
@@ -66,23 +66,23 @@ Table::Table(const std::string &name,
     }
 }
 
-void Table::AddVersionSchema() {
+void Table::AddVersionSchema(const ::fedb::api::TableMeta& table_meta) {
     auto new_versions = std::make_shared<std::map<int32_t, std::shared_ptr<Schema>>>();
-    new_versions->insert(std::make_pair(1, std::make_shared<Schema>(table_meta_.column_desc())));
-    for (const auto& ver : table_meta_.schema_versions()) {
-        int remain_size = ver.field_count() - table_meta_.column_desc_size();
+    new_versions->insert(std::make_pair(1, std::make_shared<Schema>(table_meta.column_desc())));
+    for (const auto& ver : table_meta.schema_versions()) {
+        int remain_size = ver.field_count() - table_meta.column_desc_size();
         if (remain_size < 0)  {
             LOG(INFO) << "do not need add ver " << ver.id() << " because remain size less than 0";
             continue;
         }
-        if (remain_size > table_meta_.added_column_desc_size()) {
+        if (remain_size > table_meta.added_column_desc_size()) {
             LOG(INFO) << "skip add ver " << ver.id() << " because remain size great than added column deisc size";
             continue;
         }
-        std::shared_ptr<Schema> new_schema = std::make_shared<Schema>(table_meta_.column_desc());
+        std::shared_ptr<Schema> new_schema = std::make_shared<Schema>(table_meta.column_desc());
         for (int i = 0; i < remain_size; i++) {
             fedb::common::ColumnDesc* col = new_schema->Add();
-            col->CopyFrom(table_meta_.added_column_desc(i));
+            col->CopyFrom(table_meta.added_column_desc(i));
         }
         new_versions->insert(std::make_pair(ver.id(), new_schema));
     }
@@ -90,19 +90,22 @@ void Table::AddVersionSchema() {
 }
 
 void Table::SetTableMeta(::fedb::api::TableMeta& table_meta) { // NOLINT
-    table_meta_.CopyFrom(table_meta);
-    AddVersionSchema();
+    auto cur_table_meta = std::make_shared<::fedb::api::TableMeta>(table_meta);
+    std::atomic_store_explicit(&table_meta_, cur_table_meta, std::memory_order_release);
+    AddVersionSchema(table_meta);
 }
 
 int Table::InitColumnDesc() {
     ts_mapping_.clear();
-    if (table_index_.ParseFromMeta(table_meta_, &ts_mapping_) < 0) {
+    if (table_index_.ParseFromMeta(*table_meta_, &ts_mapping_) < 0) {
+        DLOG(WARNING) << "parse meta failed";
         return -1;
     }
-    if (table_meta_.column_key_size() == 0) {
+    if (table_meta_->column_key_size() == 0) {
+        DLOG(WARNING) << "no index";
         return -1;
     }
-    AddVersionSchema();
+    AddVersionSchema(*table_meta_);
     return 0;
 }
 void Table::SetTTL(const ::fedb::storage::UpdateTTLMeta& ttl_meta) {
@@ -135,37 +138,48 @@ void Table::UpdateTTL() {
             if (!ttl_meta.index_name.empty()) {
                 if (index->GetName() == ttl_meta.index_name) {
                     index->SetTTL(ttl_meta.ttl);
+                    LOG(INFO) << "Update index " << index->GetName() << " ttl " << ttl_meta.ttl.ToString();
                 }
             } else {
                 index->SetTTL(ttl_meta.ttl);
+                LOG(INFO) << "Update index " << index->GetName() << " ttl " << ttl_meta.ttl.ToString();
             }
         }
     }
+    auto table_meta = std::atomic_load_explicit(&table_meta_, std::memory_order_acquire);
+    auto new_table_meta = std::make_shared<::fedb::api::TableMeta>(*table_meta);
+    new_table_meta->clear_column_key();
+    for (auto& index : indexs) {
+        auto column_key = new_table_meta->add_column_key();
+        column_key->CopyFrom(index->GenColumnKey());
+    }
+    std::atomic_store_explicit(&table_meta_, new_table_meta, std::memory_order_release);
 }
 
 bool Table::InitFromMeta() {
-    if (table_meta_.has_mode() &&
-        table_meta_.mode() != ::fedb::api::TableMode::kTableLeader) {
+    if (table_meta_->has_mode() &&
+        table_meta_->mode() != ::fedb::api::TableMode::kTableLeader) {
         is_leader_ = false;
     }
     if (InitColumnDesc() < 0) {
         PDLOG(WARNING, "init column desc failed, tid %u pid %u", id_, pid_);
         return false;
     }
-    if (table_meta_.has_compress_type()) {
-        compress_type_ = table_meta_.compress_type();
+    if (table_meta_->has_compress_type()) {
+        compress_type_ = table_meta_->compress_type();
     }
     return true;
 }
 
 bool Table::CheckFieldExist(const std::string& name) {
-    for (const auto& column : table_meta_.column_desc()) {
+    auto table_meta = std::atomic_load_explicit(&table_meta_, std::memory_order_acquire);
+    for (const auto& column : table_meta->column_desc()) {
         if (column.name() == name) {
             LOG(WARNING) << "field name[" << name << "] repeated in tablet!";
             return true;
         }
     }
-    for (const auto& col : table_meta_.added_column_desc()) {
+    for (const auto& col : table_meta->added_column_desc()) {
         if (col.name() == name) {
             LOG(WARNING) << "field name[" << name << "] repeated in tablet!";
             return true;

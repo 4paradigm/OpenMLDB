@@ -50,7 +50,6 @@ TestArgs *PrepareTable(const std::string &tname) {
     meta.set_tid(1);
     meta.set_pid(0);
     meta.set_seg_cnt(8);
-    meta.set_ttl(0);
     meta.set_mode(::fedb::api::TableMode::kTableLeader);
     RtiDBSchema *schema = meta.mutable_column_desc();
     auto col1 = schema->Add();
@@ -64,7 +63,7 @@ TestArgs *PrepareTable(const std::string &tname) {
     auto key1 = index->Add();
     key1->set_index_name("index0");
     key1->add_col_name("col1");
-    key1->add_ts_name("col2");
+    key1->set_ts_name("col2");
     args->idx_name = "index0";
 
     ::fedb::storage::MemTable *table = new ::fedb::storage::MemTable(meta);
@@ -98,7 +97,6 @@ TestArgs *PrepareMultiPartitionTable(const std::string &tname,
     meta.set_tid(1);
     meta.set_pid(0);
     meta.set_seg_cnt(8);
-    meta.set_ttl(0);
     meta.set_mode(::fedb::api::TableMode::kTableLeader);
     RtiDBSchema *schema = meta.mutable_column_desc();
     auto col1 = schema->Add();
@@ -112,7 +110,7 @@ TestArgs *PrepareMultiPartitionTable(const std::string &tname,
     auto key1 = index->Add();
     key1->set_index_name("index0");
     key1->add_col_name("col1");
-    key1->add_ts_name("col2");
+    key1->set_ts_name("col2");
     args->idx_name = "index0";
     for (int i = 0; i < partition_num; i++) {
         meta.add_table_partition();
