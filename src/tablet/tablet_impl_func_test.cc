@@ -47,6 +47,7 @@ namespace fedb {
 namespace tablet {
 
 using ::fedb::api::TableStatus;
+using ::fedb::codec::SchemaCodec;
 
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
@@ -59,47 +60,20 @@ void CreateBaseTable(::fedb::storage::Table*& table,  // NOLINT
     table_meta.set_name("table");
     table_meta.set_tid(1);
     table_meta.set_pid(0);
-    table_meta.set_ttl(ttl);
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::fedb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
-    table_meta.set_ttl_type(ttl_type);
 
-    ::fedb::common::ColumnDesc* desc = table_meta.add_column_desc();
-    desc->set_name("card");
-    desc->set_type("string");
-    desc->set_add_ts_idx(true);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::fedb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::fedb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "price", ::fedb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::fedb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::fedb::type::kBigInt);
 
-    desc = table_meta.add_column_desc();
-    desc->set_name("mcc");
-    desc->set_type("string");
-    desc->set_add_ts_idx(true);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "card", "card", "ts1", ttl_type, ttl, ttl);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "card1", "card", "ts2", ttl_type, ttl, ttl);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "card", "ts1", ttl_type, ttl, ttl);
 
-    desc = table_meta.add_column_desc();
-    desc->set_name("price");
-    desc->set_type("int64");
-    desc->set_add_ts_idx(false);
-
-    desc = table_meta.add_column_desc();
-    desc->set_name("ts1");
-    desc->set_type("int64");
-    desc->set_add_ts_idx(false);
-    desc->set_is_ts_col(true);
-
-    desc = table_meta.add_column_desc();
-    desc->set_name("ts2");
-    desc->set_type("int64");
-    desc->set_add_ts_idx(false);
-    desc->set_is_ts_col(true);
-    desc->set_ttl(ttl);
-
-    ::fedb::common::ColumnKey* column_key = table_meta.add_column_key();
-    column_key->set_index_name("card");
-    column_key->add_ts_name("ts1");
-    column_key->add_ts_name("ts2");
-    column_key = table_meta.add_column_key();
-    column_key->set_index_name("mcc");
-    column_key->add_ts_name("ts1");
     table = new ::fedb::storage::MemTable(table_meta);
     table->Init();
     for (int i = 0; i < 1000; i++) {
@@ -345,7 +319,7 @@ TEST_F(TabletFuncTest, GetLatestIndex_ts1_iterator) {
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
     ::fedb::storage::TableIterator* it =
-        table->NewIterator(0, 1, "card0", *query_its[0].ticket);
+        table->NewIterator(1, 1, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetLatestIndexAssert(&query_its);
@@ -384,7 +358,7 @@ TEST_F(TabletFuncTest, GetTimeIndex_ts1_iterator) {
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
     ::fedb::storage::TableIterator* it =
-        table->NewIterator(0, 1, "card0", *query_its[0].ticket);
+        table->NewIterator(1, 1, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetTimeIndexAssert(&query_its, base_ts, base_ts - 100);

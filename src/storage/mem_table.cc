@@ -61,7 +61,7 @@ MemTable::MemTable(const ::fedb::api::TableMeta& table_meta)
     segment_released_ = false;
     record_byte_size_ = 0;
     diskused_ = 0;
-    table_meta_= std::make_shared<::fedb::api::TableMeta>(table_meta);
+    table_meta_ = std::make_shared<::fedb::api::TableMeta>(table_meta);
 }
 
 MemTable::~MemTable() {

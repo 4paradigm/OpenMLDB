@@ -2341,7 +2341,7 @@ int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
                                            ? FLAGS_absolute_ttl_max
                                            : FLAGS_latest_ttl_max;
                     uint64_t ttl = column_key.ttl().abs_ttl() > FLAGS_absolute_ttl_max ? column_key.ttl().abs_ttl()
-                                                                                            : column_key.ttl().lat_ttl();
+                                    : column_key.ttl().lat_ttl();
                     PDLOG(WARNING,
                           "ttl is greater than conf value. ttl[%lu] ttl_type[%s] "
                           "max ttl[%u]",
@@ -2485,7 +2485,6 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
 }
 
 int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::fedb::nameserver::TableInfo> table_info, bool is_leader,
-                                        const std::vector<::fedb::codec::ColumnDesc>& columns,
                                         std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term) {
     ::fedb::type::CompressType compress_type = ::fedb::type::CompressType::kNoCompress;
     if (table_info->compress_type() == ::fedb::type::kSnappy) {
@@ -4013,14 +4012,6 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         }
         cur_term = term_;
     }
-    std::vector<::fedb::codec::ColumnDesc> columns;
-    if (::fedb::codec::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
-        response->set_code(::fedb::base::ReturnCode::kConvertColumnDescFailed);
-        response->set_msg("convert column desc failed");
-        PDLOG(WARNING, "convert table column desc failed. name[%s] tid[%u]", table_info->name().c_str(), tid);
-        return;
-    }
-
     if (request->has_zone_info() && request->has_task_info() && request->task_info().IsInitialized()) {
         std::shared_ptr<::fedb::api::TaskInfo> task_ptr;
         {
@@ -4039,12 +4030,12 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
                   ::fedb::api::TaskStatus_Name(task_ptr->status()).c_str());
         }
         task_thread_pool_.AddTask(boost::bind(&NameServerImpl::CreateTableInternel, this, *response, table_info,
-                                              columns, cur_term, tid, task_ptr));
+                                              cur_term, tid, task_ptr));
         response->set_code(::fedb::base::ReturnCode::kOk);
         response->set_msg("ok");
     } else {
         std::shared_ptr<::fedb::api::TaskInfo> task_ptr;
-        CreateTableInternel(*response, table_info, columns, cur_term, tid, task_ptr);
+        CreateTableInternel(*response, table_info, cur_term, tid, task_ptr);
         response->set_code(response->code());
         response->set_msg(response->msg());
     }
@@ -4073,12 +4064,12 @@ bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {
 }
 void NameServerImpl::CreateTableInternel(GeneralResponse& response,
                                          std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
-                                         const std::vector<::fedb::codec::ColumnDesc>& columns, uint64_t cur_term,
+                                         uint64_t cur_term,
                                          uint32_t tid, std::shared_ptr<::fedb::api::TaskInfo> task_ptr) {
     std::map<uint32_t, std::vector<std::string>> endpoint_map;
     do {
-        if (CreateTableOnTablet(table_info, false, columns, endpoint_map, cur_term) < 0 ||
-            CreateTableOnTablet(table_info, true, columns, endpoint_map, cur_term) < 0) {
+        if (CreateTableOnTablet(table_info, false, endpoint_map, cur_term) < 0 ||
+            CreateTableOnTablet(table_info, true, endpoint_map, cur_term) < 0) {
             response.set_code(::fedb::base::ReturnCode::kCreateTableFailedOnTablet);
             response.set_msg("create table failed on tablet");
             PDLOG(WARNING, "create table failed. name[%s] tid[%u]", table_info->name().c_str(), tid);
@@ -6346,7 +6337,7 @@ int NameServerImpl::CreateReAddReplicaNoSendTask(std::shared_ptr<OPData> op_data
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateLoadTableTask(endpoint, op_index, ::fedb::api::OPType::kReAddReplicaNoSendOP, name, tid, pid, 
+    task = CreateLoadTableTask(endpoint, op_index, ::fedb::api::OPType::kReAddReplicaNoSendOP, name, tid, pid,
                                seg_cnt, false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
@@ -7971,8 +7962,8 @@ void NameServerImpl::UpdateTTL(RpcController* controller, const ::fedb::nameserv
         const TablePartition& table_partition = table->table_partition(i);
         for (int32_t j = 0; j < table_partition.partition_meta_size(); j++) {
             const PartitionMeta& meta = table_partition.partition_meta(j);
-            all_ok = all_ok && UpdateTTLOnTablet(meta.endpoint(), table->tid(), table_partition.pid(), request->index_name(),
-                    request->ttl_desc());
+            all_ok = all_ok && UpdateTTLOnTablet(meta.endpoint(), table->tid(), table_partition.pid(),
+                    request->index_name(), request->ttl_desc());
         }
     }
     if (!all_ok) {
@@ -7981,7 +7972,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller, const ::fedb::nameserv
         return;
     }
     TableInfo table_info;
-    // TODO (denglong) set ttl
+    // TODO(denglong): set ttl
     std::lock_guard<std::mutex> lock(mu_);
     table_info.CopyFrom(*table);
     // update zookeeper

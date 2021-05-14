@@ -1192,7 +1192,6 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts,
     ::fedb::cmd::PrintSchema(tables[0].column_desc(), tables[0].added_column_desc());
     printf("\n#ColumnKey\n");
     ::fedb::cmd::PrintColumnKey(tables[0].column_key());
-
 }
 
 void HandleNSDelete(const std::vector<std::string>& parts,
@@ -4635,7 +4634,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
         ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
         value = uncompressed;
     }
-    // TODO (denglong)
+    // TODO(denglong): display schema
     /*std::string schema = table_meta.schema();
     std::vector<::fedb::codec::ColumnDesc> raw;
     ::fedb::codec::SchemaCodec codec;

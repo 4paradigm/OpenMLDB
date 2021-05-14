@@ -40,6 +40,7 @@ Table::Table(const std::string &name,
       compress_type_(compress_type),
       version_schema_(),
       update_ttl_(std::make_shared<std::vector<::fedb::storage::UpdateTTLMeta>>()) {
+    table_meta_ = std::make_shared<::fedb::api::TableMeta>();
     ::fedb::common::TTLSt ttl_st;
     ttl_st.set_ttl_type(ttl_type);
     if (ttl_type == ::fedb::type::TTLType::kAbsoluteTime) {

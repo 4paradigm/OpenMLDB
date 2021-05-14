@@ -254,7 +254,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
         auto index = table->GetIndex(request->index_name());
         if (!index) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u",
-                    request->index_name().c_str(),request->tid(), request->pid());
+                    request->index_name().c_str(), request->tid(), request->pid());
             response->set_code(::fedb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
             return;

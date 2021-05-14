@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include <vector>
 #include <memory>
+#include <boost/algorithm/string.hpp>
 
 #include "base/status.h"
 #include "codec/codec.h"
@@ -102,6 +103,27 @@ struct ColumnDesc {
 
 class SchemaCodec {
  public:
+    static void SetColumnDesc(::fedb::common::ColumnDesc* desc, const std::string& name, ::fedb::type::DataType type) {
+        desc->set_name(name);
+        desc->set_data_type(type);
+    }
+
+    static void SetIndex(::fedb::common::ColumnKey* index, const std::string& name, const std::string& col_name,
+            const std::string& ts_name, ::fedb::type::TTLType ttl_type, uint64_t abs_ttl, uint64_t lat_ttl) {
+        index->set_index_name(name);
+        std::vector<std::string> parts;
+        boost::split(parts, col_name, boost::is_any_of("|"));
+        for (const auto& col : parts) {
+            index->add_col_name(col);
+        }
+        if (!ts_name.empty()) {
+            index->set_ts_name(ts_name);
+        }
+        auto ttl = index->mutable_ttl();
+        ttl->set_ttl_type(ttl_type);
+        ttl->set_abs_ttl(abs_ttl);
+        ttl->set_lat_ttl(lat_ttl);
+    }
 
     static ::fedb::codec::ColType ConvertType(const std::string& raw_type) {
         ::fedb::codec::ColType type;

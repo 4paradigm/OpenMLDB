@@ -176,7 +176,6 @@ class NameServerImpl : public NameServer {
     void CreateTableInternel(
         GeneralResponse& response,  // NOLINT
         std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
-        const std::vector<::fedb::codec::ColumnDesc>& columns,
         uint64_t cur_term, uint32_t tid,
         std::shared_ptr<::fedb::api::TaskInfo> task_ptr);
 
@@ -383,7 +382,7 @@ class NameServerImpl : public NameServer {
 
     int CreateTableOnTablet(
         std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
-        bool is_leader, const std::vector<::fedb::codec::ColumnDesc>& columns,
+        bool is_leader,
         std::map<uint32_t, std::vector<std::string>>& endpoint_map,  // NOLINT
         uint64_t term);
 

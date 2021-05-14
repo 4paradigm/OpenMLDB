@@ -61,8 +61,19 @@ TEST_F(TabletImplMemTest, TestMem) {
         table_meta->set_name("t0");
         table_meta->set_tid(1);
         table_meta->set_pid(1);
-        // 1 minutes
-        table_meta->set_ttl(0);
+        auto column_desc = table_meta->add_column_desc();
+        column_desc->set_name("idx0");
+        column_desc->set_data_type(::fedb::type::kString);
+        auto column_desc1 = table_meta->add_column_desc();
+        column_desc1->set_name("value");
+        column_desc1->set_data_type(::fedb::type::kString);
+        auto column_key = table_meta->add_column_key();
+        column_key->set_index_name("idx0");
+        column_key->add_col_name("idx0");
+        ::fedb::common::TTLSt* ttl_st = column_key->mutable_ttl();
+        ttl_st->set_abs_ttl(0);
+        ttl_st->set_lat_ttl(0);
+        ttl_st->set_ttl_type(::fedb::type::kAbsoluteTime);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet->CreateTable(NULL, &request, &response, &closure);

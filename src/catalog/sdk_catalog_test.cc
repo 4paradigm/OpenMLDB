@@ -49,7 +49,7 @@ TestArgs* PrepareTable(const std::string& tname, const std::string& db) {
     auto key1 = index->Add();
     key1->set_index_name("index0");
     key1->add_col_name("col1");
-    key1->add_ts_name("col2");
+    key1->set_ts_name("col2");
     return args;
 }
 

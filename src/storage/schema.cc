@@ -234,6 +234,7 @@ int TableIndex::ParseFromMeta(const ::fedb::api::TableMeta& table_meta, std::map
             DLOG(WARNING) << "add index failed";
             return -1;
         }
+        index->SetTTL(TTLSt());
         LOG(INFO) << "no index specified with default. tid " << tid << ", pid " << pid;
     }
     FillIndexVal(table_meta, ts_mapping->size());

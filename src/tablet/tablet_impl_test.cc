@@ -61,6 +61,7 @@ namespace tablet {
 using ::fedb::api::TableStatus;
 using Schema =
     ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>;
+using ::fedb::codec::SchemaCodec;
 
 uint32_t counter = 10;
 static const ::fedb::base::DefaultComparator scmp;
@@ -180,23 +181,6 @@ int GetTTL(TabletImpl& tablet, uint32_t tid, uint32_t pid, const std::string& in
         }
     }
     return -1;
-}
-
-void AddIndex(::fedb::common::ColumnKey* index, const std::string& index_name, const std::string& col_name,
-        const std::string& ts_name, ::fedb::type::TTLType ttl_type, uint64_t abs_ttl, uint64_t lat_ttl) {
-    index->set_index_name(index_name);
-    std::vector<std::string> parts;
-    boost::split(parts, col_name, boost::is_any_of("|"));
-    for (const auto& col : parts) {
-        index->add_col_name(col);
-    }
-    if (!ts_name.empty()) {
-        index->set_ts_name(ts_name);
-    }
-    auto ttl = index->mutable_ttl();
-    ttl->set_ttl_type(ttl_type);
-    ttl->set_abs_ttl(abs_ttl);
-    ttl->set_lat_ttl(lat_ttl);
 }
 
 TEST_F(TabletImplTest, Count_Latest_Table) {
@@ -1024,7 +1008,7 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
         column = table_meta->add_column_desc();
         column->set_name("apprv_cde");
         column->set_data_type(::fedb::type::kInt);
-        AddIndex(table_meta->add_column_key(), "card", "card", "", ::fedb::type::kAbsoluteTime, 0, 0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::fedb::type::kAbsoluteTime, 0, 0);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -1060,8 +1044,8 @@ TEST_F(TabletImplTest, MultiGet) {
     column = table_meta->add_column_desc();
     column->set_name("apprv_cde");
     column->set_data_type(::fedb::type::kInt);
-    AddIndex(table_meta->add_column_key(), "card", "card", "", ::fedb::type::kAbsoluteTime, 0, 0);
-    AddIndex(table_meta->add_column_key(), "amt", "amt", "", ::fedb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::fedb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "amt", "amt", "", ::fedb::type::kAbsoluteTime, 0, 0);
     ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -1470,9 +1454,9 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
     desc = table_meta->add_column_desc();
     desc->set_name("ts2");
     desc->set_data_type(::fedb::type::kBigInt);
-    AddIndex(table_meta->add_column_key(), "card", "card", "ts1", ::fedb::type::kAbsoluteTime, 5, 0);
-    AddIndex(table_meta->add_column_key(), "card1", "card", "ts2", ::fedb::type::kAbsoluteTime, 5, 0);
-    AddIndex(table_meta->add_column_key(), "mcc", "mcc", "ts2", ::fedb::type::kAbsoluteTime, 5, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "ts1", ::fedb::type::kAbsoluteTime, 5, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "card1", "card", "ts2", ::fedb::type::kAbsoluteTime, 5, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "mcc", "mcc", "ts2", ::fedb::type::kAbsoluteTime, 5, 0);
     ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -2155,8 +2139,8 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
             table_meta->add_column_desc();
         column_desc2->set_name("mcc");
         column_desc2->set_type("string");
-        AddIndex(table_meta->add_column_key(), "card", "card", "", ::fedb::type::TTLType::kAbsoluteTime, 0, 0);
-        AddIndex(table_meta->add_column_key(), "mcc", "mcc", "", ::fedb::type::TTLType::kAbsoluteTime, 0, 0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::fedb::type::kAbsoluteTime, 0, 0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "mcc", "mcc", "", ::fedb::type::kAbsoluteTime, 0, 0);
 
         table_meta->add_replicas("127.0.0.1:9527");
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
@@ -3680,12 +3664,12 @@ TEST_F(TabletImplTest, AbsAndLat) {
         desc = table_meta->add_column_desc();
         desc->set_name("ts6");
         desc->set_data_type(::fedb::type::kBigInt);
-        AddIndex(table_meta->add_column_key(), "index0", "test", "ts1", ::fedb::type::kAbsAndLat, 100, 10);
-        AddIndex(table_meta->add_column_key(), "index1", "test", "ts2", ::fedb::type::kAbsAndLat, 50, 8);
-        AddIndex(table_meta->add_column_key(), "index2", "test", "ts3", ::fedb::type::kAbsAndLat, 70, 5);
-        AddIndex(table_meta->add_column_key(), "index3", "test", "ts4", ::fedb::type::kAbsAndLat, 0, 5);
-        AddIndex(table_meta->add_column_key(), "index4", "test", "ts5", ::fedb::type::kAbsAndLat, 50, 0);
-        AddIndex(table_meta->add_column_key(), "index5", "test", "ts6", ::fedb::type::kAbsAndLat, 0, 0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index0", "test", "ts1", ::fedb::type::kAbsAndLat, 100, 10);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index1", "test", "ts2", ::fedb::type::kAbsAndLat, 50, 8);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index2", "test", "ts3", ::fedb::type::kAbsAndLat, 70, 5);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index3", "test", "ts4", ::fedb::type::kAbsAndLat, 0, 5);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index4", "test", "ts5", ::fedb::type::kAbsAndLat, 50, 0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index5", "test", "ts6", ::fedb::type::kAbsAndLat, 0, 0);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -4578,12 +4562,12 @@ TEST_F(TabletImplTest, AbsOrLat) {
         desc->set_name("ts6");
         desc->set_data_type(::fedb::type::kBigInt);
 
-        AddIndex(table_meta->add_column_key(), "ts1", "test", "ts1", ::fedb::type::kAbsOrLat, 100, 10);
-        AddIndex(table_meta->add_column_key(), "ts2", "test", "ts2", ::fedb::type::kAbsOrLat, 50, 8);
-        AddIndex(table_meta->add_column_key(), "ts3", "test", "ts3", ::fedb::type::kAbsOrLat, 70, 6);
-        AddIndex(table_meta->add_column_key(), "ts4", "test", "ts4", ::fedb::type::kAbsOrLat, 0, 5);
-        AddIndex(table_meta->add_column_key(), "ts5", "test", "ts5", ::fedb::type::kAbsOrLat, 50, 0);
-        AddIndex(table_meta->add_column_key(), "ts6", "test", "ts6", ::fedb::type::kAbsOrLat, 0, 0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts1", "test", "ts1", ::fedb::type::kAbsOrLat, 100, 10);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts2", "test", "ts2", ::fedb::type::kAbsOrLat, 50, 8);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts3", "test", "ts3", ::fedb::type::kAbsOrLat, 70, 6);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts4", "test", "ts4", ::fedb::type::kAbsOrLat, 0, 5);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts5", "test", "ts5", ::fedb::type::kAbsOrLat, 50, 0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts6", "test", "ts6", ::fedb::type::kAbsOrLat, 0, 0);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -5498,8 +5482,8 @@ TEST_F(TabletImplTest, DumpIndex) {
     desc = table_meta->add_column_desc();
     desc->set_name("ts2");
     desc->set_data_type(::fedb::type::kBigInt);
-    AddIndex(table_meta->add_column_key(), "index1", "card", "ts1", ::fedb::type::kAbsoluteTime, 0, 0);
-    AddIndex(table_meta->add_column_key(), "index2", "card", "ts2", ::fedb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "index1", "card", "ts1", ::fedb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "index2", "card", "ts2", ::fedb::type::kAbsoluteTime, 0, 0);
 
     table_meta->set_name("t0");
     table_meta->set_tid(id);
