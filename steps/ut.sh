@@ -25,18 +25,33 @@ cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh start && cd $WORK_DIR
 sleep 5
 TMPFILE="code.tmp"
 echo 0 > $TMPFILE
-ls  build/bin/ | grep test | grep -v "sql_sdk_test\|sql_cluster_test"| grep -v grep | while read line
-do 
-    ./build/bin/$line --gtest_output=xml:./reports/$line.xml 2>/tmp/${line}.${USER}.log 1>&2
+if [ $# -eq 0 ];
+then
+    ls  build/bin/ | grep test | grep -v "sql_sdk_test\|sql_cluster_test"| grep -v grep | while read line
+    do 
+        ./build/bin/$line --gtest_output=xml:./reports/$line.xml 2>/tmp/${line}.${USER}.log 1>&2
+        RET=$?
+        echo "$line result code is: $RET"
+        if [ $RET -ne 0 ];then 
+            cat /tmp/${line}.${USER}.log
+            echo $RET > $TMPFILE
+        else
+            rm -f /tmp/${line}.${USER}.log
+        fi 
+    done
+else    
+    CASE_NAME=$1
+    CASE_LEVEL=$2
+    ROOT_DIR=`pwd`
+    echo "WORK_DIR: ${ROOT_DIR}"
+    echo "sql c++ sdk test : case_level ${CASE_LEVEL}, case_file ${CASE_NAME}"
+    GLOG_minloglevel=2 HYBRIDSE_LEVEL=${CASE_LEVEL} YMAL_CASE_BASE_DIR=${ROOT_DIR} ./build/bin/${CASE_NAME} --gtest_output=xml:./reports/$line.xml
     RET=$?
     echo "$line result code is: $RET"
-    if [ $RET -ne 0 ];then 
-        cat /tmp/${line}.${USER}.log
+    if [ $RET -ne 0 ];then
         echo $RET > $TMPFILE
-    else
-        rm -f /tmp/${line}.${USER}.log
-    fi 
-done
+    fi
+fi
 code=`cat $TMPFILE`
 echo "code result: $code"
 rm $TMPFILE
