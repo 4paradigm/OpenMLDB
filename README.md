@@ -1,15 +1,15 @@
 
 ![](images/fedb_black.png)
 
-- [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)
+- [**Slack Channel**](https://join.slack.com/t/hybridsql-ws/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)
 - [**Discussions**](https://github.com/4paradigm/fedb/discussions)
 - [**中文README**](README_cn.md)
 
 ## Introduction
 
-FEDB is a NewSQL database optimised for realtime inference and decisioning applications. These applications put real-time features extracted from multiple time windows through a pre-trained model to evaluate new data to support decision making. Existing in-memory databases cost hundreds or even thousands of milliseconds so they cannot meet the requirements of inference and decisioning applications. 
+FEDB is a NewSQL database optimised for online inferencing and decision making applications. These applications feed a pre-trained model with real-time features extracted from multiple time series windows for evaluating new data to support decision making. Existing in-memory databases cost hundreds or even thousands of milliseconds so they cannot meet the requirements of online inferencing and decisioning applications.
 
-FEDB use a double-layered skiplist as the core data structure to store all the data in memory and optimize sql compilation to improve the execution performance.
+FEDB uses a double-layer skiplist as the core data structure. With all the data in memory and extreme compilation optimization of SQL, FEDB significantly reduces execution latency.
 
 - __High Performance__
 
@@ -17,11 +17,11 @@ FEDB use a double-layered skiplist as the core data structure to store all the d
 
 - __SQL Compatible__
 
-   FEDB is compatible with most of ANSI SQL syntax. You can implement your aplications with sqlalchemy or JDBC.
+   FEDB is compatible with most of ANSI SQL syntax. You can implement your applications with SQLAlchemy or JDBC.
 
 - __Online-offline Consistency__
 
-   Machine learning applications developed by FEDB can be launched simply and ensure online and offline consistency, which greatly reduces the cost.
+   Machine learning applications powered by FEDB can be launched easily and ensure online and offline consistency, greatly reducing the cost of landing machine learning scenarios.
 
 - __High Availability__
 
@@ -66,11 +66,11 @@ The server spec is as follows:
 |Memory|384 GB|
 |OS|CentOS-7 with kernel 5.1.9-1.el7|
 
-### Benchmark Result
+### Benchmark Results
 
 ![Benchmark](images/benchmark.png)
 
-The benchmark result shows that FEDB can be one to two orders of magnitude faster than SingleStore and SAP HANA.
+The benchmark result shows that FEDB can be one to two orders of magnitude faster than SingleStore and SAP HANA. Please check our [VLDB'21 paper](http://vldb.org/pvldb/vol14/p799-chen.pdf) for more benchmarks.
 
 ## Roadmap
 

@@ -7,7 +7,7 @@
 
 ## 介绍
 
-FEDB是一个面向在线推理和决策应用的NewSQL数据库。这些应用通过预先训练好的模型从多个时间窗口中提取实时特征用于在线预估和决策。用现有的数据库耗时在几百毫秒甚至到妙级别不能满足在线推理和决策的实时性要求。FEDB使用双层跳表的内存数据结构和对SQL进行极致地编译优化能够大幅降低延时。
+FEDB是一个面向在线推理和决策应用的NewSQL数据库。这些应用通过预先训练好的模型从多个时间窗口中提取实时特征用于在线预估和决策。用现有的数据库耗时在几百毫秒甚至到秒级别不能满足在线推理和决策的实时性要求。FEDB使用双层跳表的内存数据结构和对SQL进行极致地编译优化能够大幅降低延时。
 
 - __高性能__
 
@@ -68,7 +68,7 @@ mkdir -p build && cd build && cmake ../ && make -j5 fedb
 
 ![Benchmark](images/benchmark.png)
 
-测试结果表明FEDB比SingleStore和SAP HANA快了一到两个数量级。
+测试结果表明FEDB比SingleStore和SAP HANA快了一到两个数量级。更多测试结果请参考[VLDB'21 paper](http://vldb.org/pvldb/vol14/p799-chen.pdf)。
 
 ## 未来规划
 
