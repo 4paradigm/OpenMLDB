@@ -7954,6 +7954,10 @@ void NameServerImpl::UpdateTTL(RpcController* controller, const ::fedb::nameserv
         response->set_msg("table is not exist");
         return;
     }
+    std::string index_name;
+    if (request->has_index_name()) {
+        index_name = request->index_name();
+    }
     bool all_ok = true;
     for (int32_t i = 0; i < table->table_partition_size(); i++) {
         if (!all_ok) {
@@ -7963,7 +7967,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller, const ::fedb::nameserv
         for (int32_t j = 0; j < table_partition.partition_meta_size(); j++) {
             const PartitionMeta& meta = table_partition.partition_meta(j);
             all_ok = all_ok && UpdateTTLOnTablet(meta.endpoint(), table->tid(), table_partition.pid(),
-                    request->index_name(), request->ttl_desc());
+                    index_name, request->ttl_desc());
         }
     }
     if (!all_ok) {
@@ -7972,16 +7976,29 @@ void NameServerImpl::UpdateTTL(RpcController* controller, const ::fedb::nameserv
         return;
     }
     TableInfo table_info;
-    // TODO(denglong): set ttl
-    std::lock_guard<std::mutex> lock(mu_);
-    table_info.CopyFrom(*table);
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        table_info.CopyFrom(*table);
+    }
+    auto column_keys = table_info.mutable_column_key();
+    for (auto & column_key : *column_keys) {
+        if (index_name.empty()) {
+            column_key.mutable_ttl()->CopyFrom(request->ttl_desc());
+        } else if (column_key.index_name() == index_name) {
+            column_key.mutable_ttl()->CopyFrom(request->ttl_desc());
+            break;
+        }
+    }
     // update zookeeper
     if (!UpdateZkTableNodeWithoutNotify(&table_info)) {
         response->set_code(::fedb::base::ReturnCode::kSetZkFailed);
         response->set_msg("set zk failed");
         return;
     }
-    table->CopyFrom(table_info);
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        table->CopyFrom(table_info);
+    }
     response->set_code(::fedb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
