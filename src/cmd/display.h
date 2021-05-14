@@ -243,9 +243,7 @@ __attribute__((unused)) static void PrintTableInfo(
     row.push_back("pid");
     row.push_back("endpoint");
     row.push_back("role");
-    row.push_back("ttl");
     row.push_back("is_alive");
-    row.push_back("compress_type");
     row.push_back("offset");
     row.push_back("record_cnt");
     row.push_back("memused");
@@ -299,12 +297,6 @@ __attribute__((unused)) static void PrintTableInfo(
                     row.push_back("yes");
                 } else {
                     row.push_back("no");
-                }
-                if (value.has_compress_type()) {
-                    row.push_back(::fedb::type::CompressType_Name(
-                        value.compress_type()));
-                } else {
-                    row.push_back("kNoCompress");
                 }
                 if (value.table_partition(idx)
                         .partition_meta(meta_idx)
@@ -425,18 +417,8 @@ __attribute__((unused)) static void PrintTableInformation(
     row.push_back(partition_num);
     tp.AddRow(row);
     row.clear();
-    row.push_back("ttl");
-    row.push_back(::fedb::storage::TTLSt(ttl_st).ToString());
-    tp.AddRow(row);
-    row.clear();
-    row.push_back("ttl_type");
-    row.push_back(::fedb::type::TTLType_Name(ttl_st.ttl_type()));
-    tp.AddRow(row);
-    row.clear();
     row.push_back("compress_type");
     row.push_back(compress_type);
-    tp.AddRow(row);
-    row.clear();
     tp.AddRow(row);
     row.clear();
     row.push_back("record_cnt");
