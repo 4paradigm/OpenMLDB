@@ -47,6 +47,23 @@ using ::fedb::zk::ZkClient;
 namespace fedb {
 namespace nameserver {
 
+void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::fedb::type::TTLType ttl_type,
+        ::fedb::nameserver::TableInfo* table_meta) {
+    auto column_desc = table_meta->add_column_desc();
+    column_desc->set_name("idx0");
+    column_desc->set_data_type(::fedb::type::kString);
+    auto column_desc1 = table_meta->add_column_desc();
+    column_desc1->set_name("value");
+    column_desc1->set_data_type(::fedb::type::kString);
+    auto column_key = table_meta->add_column_key();
+    column_key->set_index_name("idx0");
+    column_key->add_col_name("idx0");
+    ::fedb::common::TTLSt* ttl_st = column_key->mutable_ttl();
+    ttl_st->set_abs_ttl(abs_ttl);
+    ttl_st->set_lat_ttl(lat_ttl);
+    ttl_st->set_ttl_type(ttl_type);
+}
+
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
@@ -151,6 +168,7 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
         table_info->set_db(db);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
+        AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
         PartitionMeta* meta = partion->add_partition_meta();
         meta->set_endpoint("127.0.0.1:9931");
         meta->set_is_leader(true);
@@ -415,6 +433,7 @@ void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
         GeneralResponse response;
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
+        AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
         PartitionMeta* meta = partion->add_partition_meta();

@@ -22,6 +22,7 @@
 #include "base/fe_status.h"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
+#include "codec/schema_codec.h"
 #include "gtest/gtest.h"
 #include "proto/fe_common.pb.h"
 #include "storage/mem_table.h"
@@ -30,6 +31,8 @@
 
 namespace fedb {
 namespace catalog {
+
+using ::fedb::codec::SchemaCodec;
 
 class TabletCatalogTest : public ::testing::Test {};
 
@@ -51,19 +54,9 @@ TestArgs *PrepareTable(const std::string &tname) {
     meta.set_pid(0);
     meta.set_seg_cnt(8);
     meta.set_mode(::fedb::api::TableMode::kTableLeader);
-    RtiDBSchema *schema = meta.mutable_column_desc();
-    auto col1 = schema->Add();
-    col1->set_name("col1");
-    col1->set_data_type(::fedb::type::kVarchar);
-    auto col2 = schema->Add();
-    col2->set_name("col2");
-    col2->set_data_type(::fedb::type::kBigInt);
-
-    RtiDBIndex *index = meta.mutable_column_key();
-    auto key1 = index->Add();
-    key1->set_index_name("index0");
-    key1->add_col_name("col1");
-    key1->set_ts_name("col2");
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "col1", ::fedb::type::kString);
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "col2", ::fedb::type::kBigInt);
+    SchemaCodec::SetIndex(meta.add_column_key(), "index0", "col1", "col2", ::fedb::type::kAbsoluteTime, 0, 0);
     args->idx_name = "index0";
 
     ::fedb::storage::MemTable *table = new ::fedb::storage::MemTable(meta);
@@ -98,19 +91,9 @@ TestArgs *PrepareMultiPartitionTable(const std::string &tname,
     meta.set_pid(0);
     meta.set_seg_cnt(8);
     meta.set_mode(::fedb::api::TableMode::kTableLeader);
-    RtiDBSchema *schema = meta.mutable_column_desc();
-    auto col1 = schema->Add();
-    col1->set_name("col1");
-    col1->set_data_type(::fedb::type::kVarchar);
-    auto col2 = schema->Add();
-    col2->set_name("col2");
-    col2->set_data_type(::fedb::type::kBigInt);
-
-    RtiDBIndex *index = meta.mutable_column_key();
-    auto key1 = index->Add();
-    key1->set_index_name("index0");
-    key1->add_col_name("col1");
-    key1->set_ts_name("col2");
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "col1", ::fedb::type::kString);
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "col2", ::fedb::type::kBigInt);
+    SchemaCodec::SetIndex(meta.add_column_key(), "index0", "col1", "col2", ::fedb::type::kAbsoluteTime, 0, 0);
     args->idx_name = "index0";
     for (int i = 0; i < partition_num; i++) {
         meta.add_table_partition();
