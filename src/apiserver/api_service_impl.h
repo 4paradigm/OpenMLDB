@@ -22,13 +22,10 @@
 #include <utility>
 #include <vector>
 
-#include "interface_provider.h"
+#include "apiserver/interface_provider.h"
 #include "json2pb/rapidjson.h"  // rapidjson's DOM-style API
 #include "proto/http.pb.h"
 #include "sdk/sql_cluster_router.h"
-
-DECLARE_string(zk_cluster);
-DECLARE_string(zk_root_path);
 
 namespace fedb {
 namespace http {
@@ -82,7 +79,7 @@ struct Column {
 };
 
 template <typename Archiver>
-Archiver& operator&(Archiver& ar, const Column& s) {
+Archiver& operator&(Archiver& ar, const Column& s) {  // NOLINT
     ar.StartObject();
     ar.Member(s.name.c_str()) & hybridse::sdk::DataTypeName(s.type);
     return ar.EndObject();
@@ -95,7 +92,7 @@ struct PutResp {
 };
 
 template <typename Archiver>
-Archiver& operator&(Archiver& ar, const PutResp& s) {
+Archiver& operator&(Archiver& ar, const PutResp& s) {  // NOLINT
     ar.StartObject();
     ar.Member("code") & s.code;
     ar.Member("msg") & s.msg;
@@ -114,7 +111,7 @@ struct ExecSPResp {
 };
 
 template <typename Archiver, typename Type>
-void WriteArray(Archiver& ar, const std::string& name, const std::vector<Type>& vec) {
+void WriteArray(Archiver& ar, const std::string& name, const std::vector<Type>& vec) {  // NOLINT
     ar.Member(name.c_str());
     size_t count = vec.size();
     ar.StartArray();
@@ -125,7 +122,8 @@ void WriteArray(Archiver& ar, const std::string& name, const std::vector<Type>& 
 }
 
 template <typename Archiver>
-void WriteValue(Archiver& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, const SimpleSchema& schema, int i) {
+void WriteValue(Archiver& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, const SimpleSchema& schema,  // NOLINT
+                int i) {
     if (rs->IsNULL(i)) {
         if (!schema[i].is_null) {
             LOG(ERROR) << "Value in " << schema[i].name << " is null but it can't be null";
@@ -179,7 +177,7 @@ void WriteValue(Archiver& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, cons
 }
 
 template <typename Archiver>
-Archiver& operator&(Archiver& ar, const ExecSPResp& s) {
+Archiver& operator&(Archiver& ar, const ExecSPResp& s) {  // NOLINT
     ar.StartObject();
     ar.Member("code") & s.code;
     ar.Member("msg") & s.msg;
@@ -242,7 +240,7 @@ struct GetSPResp {
 };
 
 template <typename Archiver>
-Archiver& operator&(Archiver& ar, const GetSPResp& s) {
+Archiver& operator&(Archiver& ar, const GetSPResp& s) {  // NOLINT
     ar.StartObject();
     ar.Member("code") & s.code;
     ar.Member("msg") & s.msg;

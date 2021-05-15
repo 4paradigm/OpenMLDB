@@ -21,8 +21,7 @@
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
-#include "api_service_impl.h"
-#include "json2pb/json_to_pb.h"
+#include "apiserver/api_service_impl.h"
 #include "json2pb/rapidjson.h"
 #include "sdk/mini_cluster.h"
 

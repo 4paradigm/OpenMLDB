@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_APISERVER_JSON_WRITER_H
-#define SRC_APISERVER_JSON_WRITER_H
+#ifndef SRC_APISERVER_JSON_WRITER_H_
+#define SRC_APISERVER_JSON_WRITER_H_
 
 #include <cstddef>
 #include <string>
@@ -66,4 +66,4 @@ class JsonWriter {
 }  // namespace http
 }  // namespace fedb
 
-#endif  // SRC_APISERVER_JSON_WRITER_H
+#endif  // SRC_APISERVER_JSON_WRITER_H_

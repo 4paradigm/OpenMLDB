@@ -28,9 +28,9 @@
 #include <utility>
 #include <vector>
 
+#include "apiserver/json_writer.h"
 #include "brpc/http_method.h"  // HttpMethod
 #include "butil/iobuf.h"       // IOBuf
-#include "json_writer.h"
 #include "proto/http.pb.h"
 
 namespace fedb {
@@ -70,7 +70,7 @@ class PathPart {
 
 class PathParameter : public PathPart {
  public:
-    PathParameter(std::string id);
+    explicit PathParameter(std::string id);
 
     std::string getValue() const override;
     PathType getType() const override;
@@ -84,7 +84,7 @@ class PathParameter : public PathPart {
 
 class PathString : public PathPart {
  public:
-    PathString(std::string value);
+    explicit PathString(std::string value);
 
     std::string getValue() const override;
     PathType getType() const override;
@@ -115,7 +115,7 @@ class InterfaceProvider {
     InterfaceProvider(InterfaceProvider const&) = delete;
 
     typedef std::unordered_map<std::string, std::string> Params;
-    using func = void(const Params& params, const butil::IOBuf& req_body, JsonWriter& writer);
+    using func = void(const Params& params, const butil::IOBuf& req_body, JsonWriter& writer);  // NOLINT
     /**
      *  Registers a new get request handler.
      *
@@ -144,7 +144,7 @@ class InterfaceProvider {
     InterfaceProvider& post(std::string const& path, std::function<func> callback);
 
     bool handle(const std::string& path, const brpc::HttpMethod& method, const butil::IOBuf& req_body,
-                JsonWriter& writer);
+                JsonWriter& writer);  // NOLINT
 
  private:
     struct BuiltRequest {
@@ -174,26 +174,12 @@ struct GeneralError {
 };
 
 template <typename Archiver>
-Archiver& operator&(Archiver& ar, GeneralError& s) {
+Archiver& operator&(Archiver& ar, GeneralError& s) {  // NOLINT
     ar.StartObject();
     ar.Member("code") & s.code;
     ar.Member("msg") & s.msg;
     return ar.EndObject();
 }
-// static void AddOK(JsonWriter& writer) {
-//     writer.Key("code");
-//     writer.AddInt(0);
-//     writer.Key("msg");
-//     writer.String("ok");
-// }
-//
-// static void EndWithErr(butil::rapidjson::Writer<butil::rapidjson::StringBuffer>& writer, const char* msg) {
-//     writer.StartObject();  // start in where?
-//     writer.Key("code");
-//     writer.AddInt(-1);
-//     writer.Key("msg");
-//     writer.String(msg);
-//     writer.EndObject();
-// }
+
 }  // namespace http
 }  // namespace fedb

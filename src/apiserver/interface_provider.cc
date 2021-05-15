@@ -22,10 +22,11 @@
 
 #include "apiserver/interface_provider.h"
 
-#include <boost/algorithm/string/split.hpp>
 #include <deque>
-#include <regex>
+#include <regex>  // NOLINT
 #include <stdexcept>
+
+#include "boost/algorithm/string/split.hpp"
 
 namespace fedb {
 namespace http {
