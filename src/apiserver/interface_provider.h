@@ -105,7 +105,7 @@ class ReducedUrlParser {
     static Url parse(std::string const& urlString);
 
  private:
-    static void parseQuery(std::string const& query, Url& url);
+    static void parseQuery(std::string const& query, Url* url);
 };
 
 class InterfaceProvider {

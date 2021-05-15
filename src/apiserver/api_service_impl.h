@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef SRC_APISERVER_API_SERVER_IMPL_H_
-#define SRC_APISERVER_API_SERVER_IMPL_H_
+#ifndef SRC_APISERVER_API_SERVICE_IMPL_H_
+#define SRC_APISERVER_API_SERVICE_IMPL_H_
 
+#include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include "interface_provider.h"
 #include "json2pb/rapidjson.h"  // rapidjson's DOM-style API
@@ -79,7 +82,7 @@ struct Column {
 };
 
 template <typename Archiver>
-Archiver& operator&(Archiver& ar, Column& s) {
+Archiver& operator&(Archiver& ar, const Column& s) {
     ar.StartObject();
     ar.Member(s.name.c_str()) & hybridse::sdk::DataTypeName(s.type);
     return ar.EndObject();
@@ -92,7 +95,7 @@ struct PutResp {
 };
 
 template <typename Archiver>
-Archiver& operator&(Archiver& ar, PutResp& s) {
+Archiver& operator&(Archiver& ar, const PutResp& s) {
     ar.StartObject();
     ar.Member("code") & s.code;
     ar.Member("msg") & s.msg;
@@ -111,7 +114,7 @@ struct ExecSPResp {
 };
 
 template <typename Archiver, typename Type>
-void WriteArray(Archiver& ar, const std::string& name, std::vector<Type>& vec) {
+void WriteArray(Archiver& ar, const std::string& name, const std::vector<Type>& vec) {
     ar.Member(name.c_str());
     size_t count = vec.size();
     ar.StartArray();
@@ -122,58 +125,49 @@ void WriteArray(Archiver& ar, const std::string& name, std::vector<Type>& vec) {
 }
 
 template <typename Archiver>
-void WriteValue(Archiver& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, SimpleSchema& schema, int i) {
+void WriteValue(Archiver& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, const SimpleSchema& schema, int i) {
     if (rs->IsNULL(i)) {
         if (!schema[i].is_null) {
-            LOG(ERROR) << "mismatch";
+            LOG(ERROR) << "Value in " << schema[i].name << " is null but it can't be null";
         }
         ar.SetNull();
         return;
     }
     switch (schema[i].type) {
         case hybridse::sdk::kTypeInt32: {
-            auto v = rs->GetInt32Unsafe(i);
-            ar& v;
+            ar & rs->GetInt32Unsafe(i);
             break;
         }
         case hybridse::sdk::kTypeInt64: {
-            auto v = rs->GetInt64Unsafe(i);
-            ar& v;
+            ar & rs->GetInt64Unsafe(i);
             break;
         }
         case hybridse::sdk::kTypeInt16: {
-            auto v = static_cast<int>(rs->GetInt16Unsafe(i));
-            ar& v;
+            ar& static_cast<int>(rs->GetInt16Unsafe(i));
             break;
         }
         case hybridse::sdk::kTypeFloat: {
-            auto v = static_cast<double>(rs->GetFloatUnsafe(i));
-            ar& v;
+            ar& static_cast<double>(rs->GetFloatUnsafe(i));
             break;
         }
         case hybridse::sdk::kTypeDouble: {
-            auto v = rs->GetDoubleUnsafe(i);
-            ar& v;
+            ar & rs->GetDoubleUnsafe(i);
             break;
         }
         case hybridse::sdk::kTypeString: {
-            auto v = rs->GetStringUnsafe(i);
-            ar& v;
+            ar & rs->GetStringUnsafe(i);
             break;
         }
         case hybridse::sdk::kTypeTimestamp: {
-            auto v = rs->GetTimeUnsafe(i);
-            ar& v;
+            ar & rs->GetTimeUnsafe(i);
             break;
         }
         case hybridse::sdk::kTypeDate: {
-            auto v = rs->GetDateUnsafe(i);
-            ar& v;
+            ar & rs->GetDateUnsafe(i);
             break;
         }
         case hybridse::sdk::kTypeBool: {
-            auto v = rs->GetBoolUnsafe(i);
-            ar& v;
+            ar & rs->GetBoolUnsafe(i);
             break;
         }
         default: {
@@ -185,7 +179,7 @@ void WriteValue(Archiver& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, Simp
 }
 
 template <typename Archiver>
-Archiver& operator&(Archiver& ar, ExecSPResp& s) {
+Archiver& operator&(Archiver& ar, const ExecSPResp& s) {
     ar.StartObject();
     ar.Member("code") & s.code;
     ar.Member("msg") & s.msg;
@@ -207,7 +201,6 @@ Archiver& operator&(Archiver& ar, ExecSPResp& s) {
             if (schema[i].is_constant) {
                 continue;
             }
-            LOG(INFO) << "get value in " << schema[i].name;
             WriteValue(ar, rs, schema, i);
         }
         ar.EndArray();  // one row end
@@ -221,7 +214,6 @@ Archiver& operator&(Archiver& ar, ExecSPResp& s) {
         ar.StartArray();
         for (decltype(schema.size()) i = 0; i < schema.size(); i++) {
             if (schema[i].is_constant) {
-                LOG(INFO) << "get value in " << schema[i].name;
                 WriteValue(ar, rs, schema, i);
             }
         }
@@ -250,7 +242,7 @@ struct GetSPResp {
 };
 
 template <typename Archiver>
-Archiver& operator&(Archiver& ar, GetSPResp& s) {
+Archiver& operator&(Archiver& ar, const GetSPResp& s) {
     ar.StartObject();
     ar.Member("code") & s.code;
     ar.Member("msg") & s.msg;
@@ -276,4 +268,4 @@ Archiver& operator&(Archiver& ar, GetSPResp& s) {
 }  // namespace http
 }  // namespace fedb
 
-#endif  // SRC_APISERVER_API_SERVER_IMPL_H_
+#endif  // SRC_APISERVER_API_SERVICE_IMPL_H_

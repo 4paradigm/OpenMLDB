@@ -39,6 +39,7 @@
 #include "nameserver/name_server_impl.h"
 #include "tablet/tablet_impl.h"
 #endif
+#include "apiserver/api_service_impl.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
@@ -50,16 +51,15 @@
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
+#include "common/timer.h"
+#include "common/tprinter.h"
+#include "config.h"  // NOLINT
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
-#include "common/timer.h"
-#include "common/tprinter.h"
-#include "version.h"   // NOLINT
-#include "config.h" // NOLINT
+#include "version.h"  // NOLINT
 #include "vm/engine.h"
-#include "apiserver/api_server_impl.h"
 
 using Schema = ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>;
 using TabletClient = fedb::client::TabletClient;
@@ -5702,7 +5702,7 @@ int main(int argc, char* argv[]) {
         StartNsClient();
     } else if (FLAGS_role == "sql_client") {
         ::fedb::cmd::HandleCli();
-    } else if(FLAGS_role == "apiserver") {
+    } else if (FLAGS_role == "apiserver") {
         StartAPIServer();
 #if defined(__linux__) || defined(__mac_tablet__)
     } else if (FLAGS_role == "tablet") {

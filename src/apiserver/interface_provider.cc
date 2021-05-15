@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "interface_provider.h"
+#include "apiserver/interface_provider.h"
 
 #include <boost/algorithm/string/split.hpp>
 #include <deque>
@@ -60,14 +60,15 @@ PathString::PathString(std::string value) : value_(value) {}
 std::string PathString::getValue() const { return value_; }
 
 PathType PathString::getType() const { return PathType::STRING; }
-void ReducedUrlParser::parseQuery(std::string const& query, Url& url) {
+
+void ReducedUrlParser::parseQuery(std::string const& query, Url* url) {
     std::regex rgx(R"((\w+=(?:[\w-])+)(?:(?:&|;)(\w+=(?:[\w-])+))*)");
     std::smatch match;
 
     if (std::regex_match(query, match, rgx)) {
         for (auto i = std::begin(match) + 1; i < std::end(match); ++i) {
             auto pos = i->str().find_first_of('=');
-            url.query[i->str().substr(pos + 1)] = i->str().substr(0, pos);
+            url->query[i->str().substr(pos + 1)] = i->str().substr(0, pos);
         }
     }
 }
@@ -77,23 +78,25 @@ Url ReducedUrlParser::parse(std::string const& urlString) {
     url.url = urlString;
 
     // regex for extracting path, query, fragment
-    // (?:(?:(\/(?:(?:[a-zA-Z0-9]|[-_~!$&']|[()]|[*+,;=:@])+(?:\/(?:[a-zA-Z0-9]|[-_~!$&']|[()]|[*+,;=:@])+)*)?)|\/)?(?:(\?(?:\w+=(?:[\w-])+)(?:(?:&|;)(?:\w+=(?:[\w-])+))*))?(?:(#(?:\w|\d|=|\(|\)|\\|\/|:|,|&|\?)+))?)
+    // (?:(?:(\/(?:(?:[a-zA-Z0-9]|[-_~!$&']|[()]|[*+,;=:@])+(?:\/(?:[a-zA-Z0-9]|[-_~!$&']|[()]|[*+,;=:@])+)*)?)|\/)?
+    // (?:(\?(?:\w+=(?:[\w-])+)(?:(?:&|;)(?:\w+=(?:[\w-])+))*))?(?:(#(?:\w|\d|=|\(|\)|\\|\/|:|,|&|\?)+))?)
     std::regex rgx(
         R"((?:(?:(\/(?:(?:[a-zA-Z0-9]|[-_~!$&']|[()]|[*+,;=:@])+(?:\/(?:[a-zA-Z0-9]|[-_~!$&']|[()]|[*+,;=:@])+)*)?)|\/)?(?:(\?(?:\w+=(?:[\w-])+)(?:(?:&|;)(?:\w+=(?:[\w-])+))*))?(?:(#(?:\w|\d|=|\(|\)|\\|\/|:|,|&|\?)+))?))");
     std::smatch match;
 
     if (std::regex_match(urlString, match, rgx)) {
         for (auto i = std::begin(match) + 1; i < std::end(match); ++i) {
-            if (i->str().front() == '/')
+            if (i->str().front() == '/') {
                 url.path = i->str();
-            else if (i->str().front() == '?')
-                ReducedUrlParser::parseQuery(i->str().substr(1, i->str().length() - 1), url);
-            else if (i->str().front() == '#')
+            } else if (i->str().front() == '?') {
+                ReducedUrlParser::parseQuery(i->str().substr(1, i->str().length() - 1), &url);
+            } else if (i->str().front() == '#') {
                 url.fragment = i->str().substr(1, i->str().length() - 1);
+            }
         }
-    } else
+    } else {
         throw std::invalid_argument("Not a valid sub url");
-
+    }
     return url;
 }
 

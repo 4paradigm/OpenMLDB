@@ -21,7 +21,7 @@
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
-#include "api_server_impl.h"
+#include "api_service_impl.h"
 #include "json2pb/json_to_pb.h"
 #include "json2pb/rapidjson.h"
 #include "sdk/mini_cluster.h"
@@ -114,7 +114,7 @@ TEST_F(APIServerTest, json_format) {
 }
 )")
             .HasParseError()) {
-        LOG(FATAL) << "";
+        ASSERT_TRUE(false) << "json parse failed with code " << document.GetParseError();
     }
 
     hybridse::sdk::Status status;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "json_writer.h"
+#include "apiserver/json_writer.h"
 
 #include "json2pb/rapidjson.h"  // rapidjson's DOM-style API
 
@@ -27,7 +27,7 @@ using butil::rapidjson::SizeType;
 using butil::rapidjson::StringBuffer;
 using butil::rapidjson::Writer;
 
-// TODO PrettyWriter is easy to read, but for transport, we should use Writer. How about template?
+// TODO(hw): PrettyWriter is easy to read, but for transport, we should use Writer. How about template?
 #define WRITER reinterpret_cast<PrettyWriter<StringBuffer>*>(mWriter)
 #define STREAM reinterpret_cast<StringBuffer*>(mStream)
 
@@ -74,27 +74,27 @@ JsonWriter& JsonWriter::EndArray() {
     return *this;
 }
 
-JsonWriter& JsonWriter::operator&(bool& b) {
+JsonWriter& JsonWriter::operator&(const bool& b) {
     WRITER->Bool(b);
     return *this;
 }
 
-JsonWriter& JsonWriter::operator&(unsigned& u) {
+JsonWriter& JsonWriter::operator&(const unsigned& u) {
     WRITER->AddUint(u);
     return *this;
 }
 
-JsonWriter& JsonWriter::operator&(int& i) {
+JsonWriter& JsonWriter::operator&(const int& i) {
     WRITER->AddInt(i);
     return *this;
 }
 
-JsonWriter& JsonWriter::operator&(int64_t & i) {
+JsonWriter& JsonWriter::operator&(const int64_t& i) {
     WRITER->AddInt64(i);
     return *this;
 }
 
-JsonWriter& JsonWriter::operator&(double& d) {
+JsonWriter& JsonWriter::operator&(const double& d) {
     WRITER->Double(d);
     return *this;
 }

@@ -14,13 +14,15 @@
  * limitations under the License.
  */
 
-#include "api_server_impl.h"
+#include "apiserver/api_service_impl.h"
 
 #include <memory>
+#include <set>
+#include <string>
 
+#include "apiserver/interface_provider.h"
+#include "apiserver/json_writer.h"
 #include "brpc/server.h"
-#include "interface_provider.h"
-#include "json_writer.h"
 
 namespace fedb {
 namespace http {
@@ -55,10 +57,10 @@ void APIServiceImpl::Process(google::protobuf::RpcController* cntl_base, const H
     brpc::ClosureGuard done_guard(done);
     auto* cntl = dynamic_cast<brpc::Controller*>(cntl_base);
 
-    // The unresolved path has no slashes at the beginning, it's not good for url parsing
+    // The unresolved path has no slashes at the beginning(guaranteed by brpc), it's not good for url parsing
     auto unresolved_path = "/" + cntl->http_request().unresolved_path();
     auto method = cntl->http_request().method();
-    LOG(INFO) << "unresolved path: " << unresolved_path << ", method: " << HttpMethod2Str(method);
+    DLOG(INFO) << "unresolved path: " << unresolved_path << ", method: " << HttpMethod2Str(method);
     const butil::IOBuf& req_body = cntl->request_attachment();
 
     JsonWriter writer;
@@ -74,7 +76,7 @@ bool APIServiceImpl::Json2SQLRequestRow(const butil::rapidjson::Value& input,
     int non_common_idx = 0, common_idx = 0;
 
     for (decltype(sch->GetColumnCnt()) i = 0; i < sch->GetColumnCnt(); ++i) {
-        // TODO no need to append common cols
+        // TODO(hw): no need to append common cols
         if (sch->IsConstant(i)) {
             AppendJsonValue(common_cols_v[common_idx], row->GetSchema()->GetColumnType(i), row);
             common_idx++;
@@ -92,7 +94,7 @@ bool APIServiceImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse:
             row->AppendBool(v.GetBool());
             break;
         case hybridse::sdk::kTypeInt16:
-            row->AppendInt16(v.GetInt());  // TODO cast
+            row->AppendInt16(v.GetInt());  // TODO(hw): cast
             break;
         case hybridse::sdk::kTypeInt32:
             row->AppendInt32(v.GetInt());
@@ -101,14 +103,13 @@ bool APIServiceImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse:
             row->AppendInt64(v.GetInt64());
             break;
         case hybridse::sdk::kTypeFloat:
-            row->AppendFloat(v.GetDouble());  // TODO cast
+            row->AppendFloat(v.GetDouble());  // TODO(hw): cast
             break;
         case hybridse::sdk::kTypeDouble:
             row->AppendDouble(v.GetDouble());
             break;
         case hybridse::sdk::kTypeString:
-            LOG(INFO) << v.GetString() << " len " << v.GetStringLength();
-            row->Init(v.GetStringLength());  // TODO cast
+            row->Init(v.GetStringLength());  // TODO(hw): cast
             row->AppendString(v.GetString());
             break;
         case hybridse::sdk::kTypeDate:
@@ -131,7 +132,7 @@ void APIServiceImpl::RegisterPut() {
         auto db_it = param.find("db_name");
         auto table_it = param.find("table_name");
         if (db_it == param.end() || table_it == param.end()) {
-            writer& err.Set("invalid path");
+            writer& err.Set("Invalid path");
             return;
         }
         auto db = db_it->second;
@@ -140,14 +141,14 @@ void APIServiceImpl::RegisterPut() {
         // json2doc, then generate an insert sql
         Document document;
         if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
-            writer& err.Set("json parse failed");
+            writer& err.Set("Json parse failed");
             return;
         }
 
         const auto& value = document["value"];
         // value should be array, and multi put is not supported now
         if (!value.IsArray() || value.Empty() || value.Size() > 1) {
-            writer& err.Set("invalid value in body");
+            writer& err.Set("Invalid value in body");
             return;
         }
         const auto& arr = value[0];
@@ -175,7 +176,7 @@ void APIServiceImpl::RegisterExecSP() {
         auto db_it = param.find("db_name");
         auto sp_it = param.find("sp_name");
         if (db_it == param.end() || sp_it == param.end()) {
-            writer& err.Set("invalid path");
+            writer& err.Set("Invalid path");
             return;
         }
         auto db = db_it->second;
@@ -183,17 +184,17 @@ void APIServiceImpl::RegisterExecSP() {
 
         Document document;
         if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
-            writer& err.Set("parse2json failed");
+            writer& err.Set("Json parse failed");
             return;
         }
         auto common_cols_v = document.FindMember("common_cols");
         if (common_cols_v == document.MemberEnd()) {
-            writer& err.Set("no common_cols");
+            writer& err.Set("No member common_cols");
             return;
         }
         auto input = document.FindMember("input");
         if (input == document.MemberEnd() || !input->value.IsArray()) {
-            writer& err.Set("invalid input");
+            writer& err.Set("Invalid input");
             return;
         }
         const auto& rows = input->value;
@@ -220,13 +221,13 @@ void APIServiceImpl::RegisterExecSP() {
         std::set<std::string> col_set;
         for (decltype(rows.Size()) i = 0; i < rows.Size(); ++i) {
             if (!rows[i].IsArray()) {
-                writer& err.Set("invalid input data row");
+                writer& err.Set("Invalid input data row");
                 return;
             }
             auto row = std::make_shared<sdk::SQLRequestRow>(input_schema, col_set);
 
             if (!Json2SQLRequestRow(rows[i], common_cols_v->value, row)) {
-                writer& err.Set("translate to request row failed");
+                writer& err.Set("Translate to request row failed");
                 return;
             }
             row->Build();
@@ -256,45 +257,45 @@ void APIServiceImpl::RegisterExecSP() {
 }
 
 void APIServiceImpl::RegisterGetSP() {
-    provider_.get("/db/:db_name/procedure/:sp_name",
-                  [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
-                      auto err = GeneralError();
-                      auto db_it = param.find("db_name");
-                      auto sp_it = param.find("sp_name");
-                      if (db_it == param.end() || sp_it == param.end()) {
-                          writer& err.Set("invalid path");
-                          return;
-                      }
-                      auto db = db_it->second;
-                      auto sp = sp_it->second;
+    provider_.get("/db/:db_name/procedure/:sp_name", [this](const InterfaceProvider::Params& param,
+                                                            const butil::IOBuf& req_body, JsonWriter& writer) {
+        auto err = GeneralError();
+        auto db_it = param.find("db_name");
+        auto sp_it = param.find("sp_name");
+        if (db_it == param.end() || sp_it == param.end()) {
+            writer& err.Set("Invalid path");
+            return;
+        }
+        auto db = db_it->second;
+        auto sp = sp_it->second;
 
-                      hybridse::sdk::Status status;
-                      auto sp_info = sql_router_->ShowProcedure(db, sp, &status);
-                      if (!sp_info) {
-                          writer& err.Set(status.msg);
-                          return;
-                      }
+        hybridse::sdk::Status status;
+        auto sp_info = sql_router_->ShowProcedure(db, sp, &status);
+        if (!sp_info) {
+            writer& err.Set(status.msg);
+            return;
+        }
 
-                      GetSPResp resp;
-                      resp.data.name = sp_info->GetSpName();
-                      resp.data.procedure = sp_info->GetSql();
-                      auto& input_schema = sp_info->GetInputSchema();
-                      resp.data.input_schema = TransToSimpleSchema(&input_schema);
-                      std::for_each(resp.data.input_schema.begin(), resp.data.input_schema.end(), [&resp](const Column& c) {
-                          if (c.is_constant) {
-                              resp.data.input_common_cols.emplace_back(c.name);
-                          }
-                      });
-                      auto& output_schema = sp_info->GetOutputSchema();
-                      resp.data.output_schema = TransToSimpleSchema(&output_schema);
-                      std::for_each(resp.data.output_schema.begin(), resp.data.output_schema.end(), [&resp](const Column& c) {
-                          if (c.is_constant) {
-                              resp.data.output_common_cols.emplace_back(c.name);
-                          }
-                      });
-                      resp.data.tables = sp_info->GetTables();
-                      writer& resp;
-                  });
+        GetSPResp resp;
+        resp.data.name = sp_info->GetSpName();
+        resp.data.procedure = sp_info->GetSql();
+        auto& input_schema = sp_info->GetInputSchema();
+        resp.data.input_schema = TransToSimpleSchema(&input_schema);
+        std::for_each(resp.data.input_schema.begin(), resp.data.input_schema.end(), [&resp](const Column& c) {
+            if (c.is_constant) {
+                resp.data.input_common_cols.emplace_back(c.name);
+            }
+        });
+        auto& output_schema = sp_info->GetOutputSchema();
+        resp.data.output_schema = TransToSimpleSchema(&output_schema);
+        std::for_each(resp.data.output_schema.begin(), resp.data.output_schema.end(), [&resp](const Column& c) {
+            if (c.is_constant) {
+                resp.data.output_common_cols.emplace_back(c.name);
+            }
+        });
+        resp.data.tables = sp_info->GetTables();
+        writer& resp;
+    });
 }
 }  // namespace http
 }  // namespace fedb

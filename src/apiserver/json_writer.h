@@ -43,11 +43,11 @@ class JsonWriter {
     JsonWriter& StartArray(size_t* size = nullptr);  // JsonReader needs size
     JsonWriter& EndArray();
 
-    JsonWriter& operator&(bool& b);
-    JsonWriter& operator&(unsigned& u);
-    JsonWriter& operator&(int& i);
-    JsonWriter& operator&(int64_t& i);
-    JsonWriter& operator&(double& d);
+    JsonWriter& operator&(const bool& b);
+    JsonWriter& operator&(const unsigned& u);
+    JsonWriter& operator&(const int& i);
+    JsonWriter& operator&(const int64_t& i);
+    JsonWriter& operator&(const double& d);
     JsonWriter& operator&(const std::string& s);
     JsonWriter& SetNull();
 
