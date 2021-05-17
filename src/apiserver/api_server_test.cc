@@ -160,7 +160,21 @@ TEST_F(APIServerTest, put) {
     hybridse::sdk::Status status;
     EXPECT_TRUE(cluster_remote_->ExecuteDDL(db_, ddl, &status)) << status.msg;
     ASSERT_TRUE(cluster_remote_->RefreshCatalog());
-    std::map<uint32_t, std::vector<std::string>> key_map;
+
+    // put to invalid table
+    brpc::Controller cntl;
+    cntl.http_request().set_method(brpc::HTTP_METHOD_PUT);
+    cntl.http_request().uri() = "http://127.0.0.1:8010/db/" + db_ + "/table/invalid_table";
+    cntl.request_attachment().append(R"({"value":[[-1]]})");
+    http_channel_.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+    ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+    PutResp resp;
+    JsonReader reader(cntl.response_attachment().to_string().c_str());
+    reader& resp;
+    ASSERT_EQ(-1, resp.code);
+    LOG(INFO) << "put to invalid table, resp: " << resp.msg;
+
+    // put to valid table
     for (int i = 0; i < 10; i++) {
         std::string key = "value" + std::to_string(i);
 
@@ -181,15 +195,13 @@ TEST_F(APIServerTest, put) {
             "}");
         http_channel_.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
-        butil::rapidjson::Document document;
-        if (document.Parse(cntl.response_attachment().to_string().c_str()).HasParseError()) {
-            ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
-                               << ", raw resp: " << cntl.response_attachment().to_string();
-        }
-
-        ASSERT_EQ(0, document["code"].GetInt());
-        ASSERT_STREQ("ok", document["msg"].GetString());
+        PutResp resp;
+        JsonReader reader(cntl.response_attachment().to_string().c_str());
+        reader& resp;
+        ASSERT_EQ(0, resp.code);
+        ASSERT_STREQ("ok", resp.msg.c_str());
     }
+
     ASSERT_TRUE(cluster_remote_->ExecuteDDL(db_, "drop table " + table + ";", &status)) << status.msg;
 }
 

@@ -21,7 +21,7 @@
 #include <string>
 
 #include "apiserver/interface_provider.h"
-#include "apiserver/json_writer.h"
+#include "apiserver/json_helper.h"
 #include "brpc/server.h"
 
 namespace fedb {
@@ -90,35 +90,51 @@ bool APIServiceImpl::Json2SQLRequestRow(const butil::rapidjson::Value& input,
 bool APIServiceImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type,
                                      std::shared_ptr<fedb::sdk::SQLRequestRow> row) {
     switch (type) {
-        case hybridse::sdk::kTypeBool:
+        case hybridse::sdk::kTypeBool: {
             row->AppendBool(v.GetBool());
             break;
-        case hybridse::sdk::kTypeInt16:
-            row->AppendInt16(v.GetInt());  // TODO(hw): cast
+        }
+        case hybridse::sdk::kTypeInt16: {
+            row->AppendInt16(boost::lexical_cast<int16_t>(v.GetInt()));
             break;
-        case hybridse::sdk::kTypeInt32:
+        }
+        case hybridse::sdk::kTypeInt32: {
             row->AppendInt32(v.GetInt());
             break;
-        case hybridse::sdk::kTypeInt64:
+        }
+        case hybridse::sdk::kTypeInt64: {
             row->AppendInt64(v.GetInt64());
             break;
-        case hybridse::sdk::kTypeFloat:
-            row->AppendFloat(v.GetDouble());  // TODO(hw): cast
+        }
+        case hybridse::sdk::kTypeFloat: {
+            row->AppendFloat(boost::lexical_cast<float>(v.GetDouble()));
             break;
-        case hybridse::sdk::kTypeDouble:
+        }
+        case hybridse::sdk::kTypeDouble: {
             row->AppendDouble(v.GetDouble());
             break;
-        case hybridse::sdk::kTypeString:
-            row->Init(v.GetStringLength());  // TODO(hw): cast
+        }
+        case hybridse::sdk::kTypeString: {
+            row->Init(boost::lexical_cast<int32_t>(v.GetStringLength()));
             row->AppendString(v.GetString());
             break;
-        case hybridse::sdk::kTypeDate:
-            LOG(INFO) << v.GetString() << " convert not supported";
-            row->AppendDate(0);
+        }
+        case hybridse::sdk::kTypeDate: {
+            std::vector<std::string> parts;
+            ::fedb::base::SplitString(v.GetString(), "-", parts);
+            if (parts.size() != 3) {
+                return false;
+            }
+            auto year = boost::lexical_cast<int32_t>(parts[0]);
+            auto mon = boost::lexical_cast<int32_t>(parts[1]);
+            auto day = boost::lexical_cast<int32_t>(parts[2]);
+            row->AppendDate(year, mon, day);
             break;
-        case hybridse::sdk::kTypeTimestamp:
+        }
+        case hybridse::sdk::kTypeTimestamp: {
             row->AppendTimestamp(v.GetInt64());
             break;
+        }
         default:
             return false;
     }

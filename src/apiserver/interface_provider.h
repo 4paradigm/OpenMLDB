@@ -23,12 +23,13 @@
 #pragma once
 #include <functional>
 #include <memory>
+#include <regex>  // NOLINT
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "apiserver/json_writer.h"
+#include "apiserver/json_helper.h"
 #include "brpc/http_method.h"  // HttpMethod
 #include "butil/iobuf.h"       // IOBuf
 #include "proto/http.pb.h"
@@ -102,10 +103,13 @@ class ReducedUrlParser {
     /**
      *  parses a urlString to an url object.
      */
-    static Url parse(std::string const& urlString);
+    bool parse(std::string const& urlString, Url* url);
 
  private:
-    static void parseQuery(std::string const& query, Url* url);
+    void parseQuery(std::string const& query, Url* url);
+    std::regex reg_{
+        R"((?:(?:(\/(?:(?:[a-zA-Z0-9]|[-_~!$&']|[()]|[*+,;=:@])+(?:\/(?:[a-zA-Z0-9]|[-_~!$&']|[()]|[*+,;=:@])+)*)?)|\/)?(?:(\?(?:\w+=(?:[\w-])+)(?:(?:&|;)(?:\w+=(?:[\w-])+))*))?(?:(#(?:\w|\d|=|\(|\)|\\|\/|:|,|&|\?)+))?))"};
+    std::regex query_reg_{R"((\w+=(?:[\w-])+)(?:(?:&|;)(\w+=(?:[\w-])+))*)"};
 };
 
 class InterfaceProvider {
@@ -156,9 +160,10 @@ class InterfaceProvider {
     std::unordered_map<std::string, std::string> extractParameters(const Url& received, const Url& registered);
 
  private:
-    void registerRequest(brpc::HttpMethod, const std::string& url, std::function<func>&& callback);
+    void registerRequest(brpc::HttpMethod, const std::string& path, std::function<func>&& callback);
 
  private:
+    ReducedUrlParser parser_;
     std::unordered_map<int, std::vector<BuiltRequest>> requests_;
 };
 

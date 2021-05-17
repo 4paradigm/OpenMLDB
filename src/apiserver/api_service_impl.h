@@ -79,7 +79,11 @@ struct Column {
 };
 
 template <typename Archiver>
-Archiver& operator&(Archiver& ar, const Column& s) {  // NOLINT
+Archiver& operator&(Archiver& ar, Column& s) {  // NOLINT
+    if (ar.IsReader) {
+        LOG(WARNING) << "unsupported now, reason: the format is '{name}:{type}', we can't read the variable name.";
+        return ar;
+    }
     ar.StartObject();
     ar.Member(s.name.c_str()) & hybridse::sdk::DataTypeName(s.type);
     return ar.EndObject();
@@ -92,7 +96,7 @@ struct PutResp {
 };
 
 template <typename Archiver>
-Archiver& operator&(Archiver& ar, const PutResp& s) {  // NOLINT
+Archiver& operator&(Archiver& ar, PutResp& s) {  // NOLINT
     ar.StartObject();
     ar.Member("code") & s.code;
     ar.Member("msg") & s.msg;
@@ -111,7 +115,7 @@ struct ExecSPResp {
 };
 
 template <typename Archiver, typename Type>
-void WriteArray(Archiver& ar, const std::string& name, const std::vector<Type>& vec) {  // NOLINT
+void WriteArray(Archiver& ar, const std::string& name, std::vector<Type>& vec) {  // NOLINT
     ar.Member(name.c_str());
     size_t count = vec.size();
     ar.StartArray();
@@ -122,7 +126,7 @@ void WriteArray(Archiver& ar, const std::string& name, const std::vector<Type>& 
 }
 
 template <typename Archiver>
-void WriteValue(Archiver& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, const SimpleSchema& schema,  // NOLINT
+void WriteValue(Archiver& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, SimpleSchema& schema,  // NOLINT
                 int i) {
     if (rs->IsNULL(i)) {
         if (!schema[i].is_null) {
@@ -177,7 +181,13 @@ void WriteValue(Archiver& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, cons
 }
 
 template <typename Archiver>
-Archiver& operator&(Archiver& ar, const ExecSPResp& s) {  // NOLINT
+Archiver& operator&(Archiver& ar, ExecSPResp& s) {  // NOLINT
+    if (ar.IsReader) {
+        LOG(WARNING) << "unsupported now, reason: we decode the result in ResultSet here, the result won't be stored "
+                        "in anywhere.";
+        return ar;
+    }
+
     ar.StartObject();
     ar.Member("code") & s.code;
     ar.Member("msg") & s.msg;
@@ -240,7 +250,12 @@ struct GetSPResp {
 };
 
 template <typename Archiver>
-Archiver& operator&(Archiver& ar, const GetSPResp& s) {  // NOLINT
+Archiver& operator&(Archiver& ar, GetSPResp& s) {  // NOLINT
+    if (ar.IsReader) {
+        LOG(WARNING) << "unsupported now, reason: Column doesn't support json reading.";
+        return ar;
+    }
+
     ar.StartObject();
     ar.Member("code") & s.code;
     ar.Member("msg") & s.msg;

@@ -5667,8 +5667,11 @@ void StartNsClient() {
 
 void StartAPIServer() {
     SetupLog();
-    std::string real_endpoint;
-    GetRealEndpoint(&real_endpoint);
+    std::string real_endpoint = FLAGS_endpoint;
+    if (real_endpoint.empty()) {
+        GetRealEndpoint(&real_endpoint);
+    }
+
     auto api_service = std::make_unique<::fedb::http::APIServiceImpl>();
     ::fedb::sdk::ClusterOptions cluster_options;
     cluster_options.zk_cluster = FLAGS_zk_cluster;
@@ -5702,8 +5705,6 @@ int main(int argc, char* argv[]) {
         StartNsClient();
     } else if (FLAGS_role == "sql_client") {
         ::fedb::cmd::HandleCli();
-    } else if (FLAGS_role == "apiserver") {
-        StartAPIServer();
 #if defined(__linux__) || defined(__mac_tablet__)
     } else if (FLAGS_role == "tablet") {
         StartTablet();
@@ -5711,6 +5712,8 @@ int main(int argc, char* argv[]) {
         StartClient();
     } else if (FLAGS_role == "nameserver") {
         StartNameServer();
+    } else if (FLAGS_role == "apiserver") {
+        StartAPIServer();
 #endif
     } else {
         std::cout << "Start failed! FLAGS_role must be tablet, client, "
