@@ -384,7 +384,7 @@ cases:
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
       index(key=(c4),ts=c4));
     expect:
-      success: false
+      success: true
   - id: 37
     desc: create col with __prefix
     tags: ["TODO", "@chenjing create with __prefix"]

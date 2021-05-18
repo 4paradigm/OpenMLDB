@@ -28,7 +28,7 @@ TEST_F(MemTableIteratorTest, smoketest) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10,
-                                   ::fedb::api::TTLType::kAbsoluteTime);
+                                   ::fedb::type::TTLType::kAbsoluteTime);
     std::string key = "test";
     std::string value = "test";
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;

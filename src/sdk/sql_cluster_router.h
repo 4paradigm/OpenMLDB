@@ -43,7 +43,7 @@ typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>
 static std::shared_ptr<::hybridse::sdk::Schema> ConvertToSchema(
     std::shared_ptr<::fedb::nameserver::TableInfo> table_info) {
     ::hybridse::vm::Schema schema;
-    for (const auto& column_desc : table_info->column_desc_v1()) {
+    for (const auto& column_desc : table_info->column_desc()) {
         ::hybridse::type::ColumnDef* column_def = schema.Add();
         column_def->set_name(column_desc.name());
         column_def->set_is_not_null(column_desc.not_null());

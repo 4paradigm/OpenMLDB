@@ -50,7 +50,7 @@ class Table {
     Table(const std::string& name,
           uint32_t id, uint32_t pid, uint64_t ttl, bool is_leader,
           uint64_t ttl_offset, const std::map<std::string, uint32_t>& mapping,
-          ::fedb::api::TTLType ttl_type,
+          ::fedb::type::TTLType ttl_type,
           ::fedb::type::CompressType compress_type);
     virtual ~Table() {}
     virtual bool Init() = 0;
@@ -108,9 +108,10 @@ class Table {
     virtual uint64_t GetExpireTime(const TTLSt& ttl_st) = 0;
 
     inline std::string GetName() const { return name_; }
-    inline std::string GetDB() const {
-        if (table_meta_.has_db()) {
-            return table_meta_.db();
+    inline std::string GetDB() {
+        auto table_meta = GetTableMeta();
+        if (table_meta->has_db()) {
+            return table_meta->db();
         }
         return "";
     }
@@ -149,9 +150,11 @@ class Table {
         return compress_type_;
     }
 
-    void AddVersionSchema();
+    void AddVersionSchema(const ::fedb::api::TableMeta& table_meta);
 
-    const ::fedb::api::TableMeta& GetTableMeta() const { return table_meta_; }
+    std::shared_ptr<::fedb::api::TableMeta> GetTableMeta() {
+        return std::atomic_load_explicit(&table_meta_, std::memory_order_relaxed);
+    }
 
     void SetTableMeta(::fedb::api::TableMeta& table_meta); // NOLINT
 
@@ -196,14 +199,6 @@ class Table {
         return ts_mapping_;
     }
 
-    TTLSt GetTTL() {
-        auto index = GetIndex(0);
-        if (index) {
-            return *(index->GetTTL());
-        }
-        return TTLSt(table_meta_.ttl_desc());
-    }
-
     void SetTTL(const ::fedb::storage::UpdateTTLMeta& ttl_meta);
 
     inline void SetMakeSnapshotTime(int64_t time) {
@@ -229,7 +224,7 @@ class Table {
     std::map<std::string, uint8_t> ts_mapping_;
     TableIndex table_index_;
     ::fedb::type::CompressType compress_type_;
-    ::fedb::api::TableMeta table_meta_;
+    std::shared_ptr<::fedb::api::TableMeta> table_meta_;
     int64_t last_make_snapshot_time_;
     std::shared_ptr<std::map<int32_t, std::shared_ptr<Schema>>> version_schema_;
     std::shared_ptr<std::vector<::fedb::storage::UpdateTTLMeta>> update_ttl_;

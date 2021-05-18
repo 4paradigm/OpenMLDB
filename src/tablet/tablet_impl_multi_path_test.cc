@@ -46,6 +46,9 @@ DECLARE_int32(binlog_delete_interval);
 
 namespace fedb {
 namespace tablet {
+
+using ::fedb::codec::SchemaCodec;
+
 class MockClosure : public ::google::protobuf::Closure {
  public:
     MockClosure() {}
@@ -60,47 +63,43 @@ inline std::string GenRand() {
 }
 
 void CreateBaseTablet(::fedb::tablet::TabletImpl& tablet,  // NOLINT
-                      const ::fedb::api::TTLType& ttl_type, uint64_t ttl,
+                      const ::fedb::type::TTLType& ttl_type, uint64_t ttl,
                       uint64_t start_ts, uint32_t tid, uint32_t pid) {
     ::fedb::api::CreateTableRequest crequest;
     ::fedb::api::TableMeta* table_meta = crequest.mutable_table_meta();
+    ::fedb::common::TTLSt ttl_st;
+    ttl_st.set_abs_ttl(ttl);
+    ttl_st.set_lat_ttl(ttl);
+    ttl_st.set_ttl_type(ttl_type);
     table_meta->set_name("table");
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
-    table_meta->set_ttl(ttl);
     table_meta->set_seg_cnt(8);
     table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
     table_meta->set_key_entry_max_height(8);
-    table_meta->set_ttl_type(ttl_type);
     ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
     desc->set_name("card");
-    desc->set_type("string");
-    desc->set_add_ts_idx(true);
+    desc->set_data_type(::fedb::type::kString);
     desc = table_meta->add_column_desc();
     desc->set_name("mcc");
-    desc->set_type("string");
-    desc->set_add_ts_idx(true);
+    desc->set_data_type(::fedb::type::kString);
     desc = table_meta->add_column_desc();
     desc->set_name("price");
-    desc->set_type("int64");
-    desc->set_add_ts_idx(false);
+    desc->set_data_type(::fedb::type::kBigInt);
     desc = table_meta->add_column_desc();
     desc->set_name("ts1");
-    desc->set_type("int64");
-    desc->set_add_ts_idx(false);
-    desc->set_is_ts_col(true);
+    desc->set_data_type(::fedb::type::kBigInt);
     desc = table_meta->add_column_desc();
     desc->set_name("ts2");
-    desc->set_type("int64");
-    desc->set_add_ts_idx(false);
-    desc->set_is_ts_col(true);
-    desc->set_ttl(ttl);
+    desc->set_data_type(::fedb::type::kBigInt);
     ::fedb::common::ColumnKey* column_key = table_meta->add_column_key();
     column_key->set_index_name("card");
-    column_key->add_ts_name("ts1");
+    column_key->set_ts_name("ts1");
+    column_key->mutable_ttl()->CopyFrom(ttl_st);
     column_key = table_meta->add_column_key();
     column_key->set_index_name("mcc");
-    column_key->add_ts_name("ts2");
+    column_key->set_ts_name("ts2");
+    column_key->mutable_ttl()->CopyFrom(ttl_st);
     ::fedb::api::CreateTableResponse cresponse;
     MockClosure closure;
     tablet.CreateTable(NULL, &crequest, &cresponse, &closure);
@@ -171,18 +170,29 @@ void CreateBaseTablet(::fedb::tablet::TabletImpl& tablet,  // NOLINT
 
 void CreateTableWithoutDBRootPath(
     ::fedb::tablet::TabletImpl& tablet,  // NOLINT
-    const ::fedb::api::TTLType& ttl_type, uint64_t ttl, uint64_t start_ts,
+    const ::fedb::type::TTLType& ttl_type, uint64_t ttl, uint64_t start_ts,
     uint32_t tid, uint32_t pid) {
     ::fedb::api::CreateTableRequest crequest;
     ::fedb::api::TableMeta* table_meta = crequest.mutable_table_meta();
     table_meta->set_name("table");
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
-    table_meta->set_ttl(ttl);
     table_meta->set_seg_cnt(8);
     table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
     table_meta->set_key_entry_max_height(8);
-    table_meta->set_ttl_type(ttl_type);
+    auto column_desc = table_meta->add_column_desc();
+    column_desc->set_name("idx0");
+    column_desc->set_data_type(::fedb::type::kString);
+    auto column_desc1 = table_meta->add_column_desc();
+    column_desc1->set_name("value");
+    column_desc1->set_data_type(::fedb::type::kString);
+    auto column_key = table_meta->add_column_key();
+    column_key->set_index_name("idx0");
+    column_key->add_col_name("idx0");
+    ::fedb::common::TTLSt* ttl_st = column_key->mutable_ttl();
+    ttl_st->set_abs_ttl(ttl);
+    ttl_st->set_lat_ttl(ttl);
+    ttl_st->set_ttl_type(ttl_type);
     ::fedb::api::CreateTableResponse cresponse;
     MockClosure closure;
     tablet.CreateTable(NULL, &crequest, &cresponse, &closure);
@@ -191,7 +201,7 @@ void CreateTableWithoutDBRootPath(
 
 // create table use advance ttl
 void CreateAdvanceTablet(::fedb::tablet::TabletImpl& tablet,  // NOLINT
-                         const ::fedb::api::TTLType& ttl_type,
+                         const ::fedb::type::TTLType& ttl_type,
                          uint64_t abs_ttl, uint64_t lat_ttl, uint64_t start_ts,
                          uint32_t tid, uint32_t pid,
                          uint64_t col_abs_ttl, uint64_t col_lat_ttl) {
@@ -200,43 +210,38 @@ void CreateAdvanceTablet(::fedb::tablet::TabletImpl& tablet,  // NOLINT
     table_meta->set_name("table");
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
-    ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-    ttl_desc->set_abs_ttl(abs_ttl);
-    ttl_desc->set_lat_ttl(lat_ttl);
-    ttl_desc->set_ttl_type(ttl_type);
     table_meta->set_seg_cnt(8);
     table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
     table_meta->set_key_entry_max_height(8);
     ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
     desc->set_name("card");
-    desc->set_type("string");
-    desc->set_add_ts_idx(true);
+    desc->set_data_type(::fedb::type::kString);
     desc = table_meta->add_column_desc();
     desc->set_name("mcc");
-    desc->set_type("string");
-    desc->set_add_ts_idx(true);
+    desc->set_data_type(::fedb::type::kString);
     desc = table_meta->add_column_desc();
     desc->set_name("price");
-    desc->set_type("int64");
-    desc->set_add_ts_idx(false);
+    desc->set_data_type(::fedb::type::kBigInt);
     desc = table_meta->add_column_desc();
     desc->set_name("ts1");
-    desc->set_type("int64");
-    desc->set_add_ts_idx(false);
-    desc->set_is_ts_col(true);
+    desc->set_data_type(::fedb::type::kBigInt);
     desc = table_meta->add_column_desc();
     desc->set_name("ts2");
-    desc->set_type("int64");
-    desc->set_add_ts_idx(false);
-    desc->set_is_ts_col(true);
-    desc->set_abs_ttl(col_abs_ttl);
-    desc->set_lat_ttl(col_lat_ttl);
-    ::fedb::common::ColumnKey* column_key = table_meta->add_column_key();
+    desc->set_data_type(::fedb::type::kBigInt);
+    auto column_key = table_meta->add_column_key();
     column_key->set_index_name("card");
-    column_key->add_ts_name("ts1");
+    column_key->set_ts_name("ts1");
+    auto ttl = column_key->mutable_ttl();
+    ttl->set_abs_ttl(abs_ttl);
+    ttl->set_lat_ttl(lat_ttl);
+    ttl->set_ttl_type(ttl_type);
     column_key = table_meta->add_column_key();
     column_key->set_index_name("mcc");
-    column_key->add_ts_name("ts2");
+    column_key->set_ts_name("ts2");
+    ttl = column_key->mutable_ttl();
+    ttl->set_abs_ttl(col_abs_ttl);
+    ttl->set_lat_ttl(col_lat_ttl);
+    ttl->set_ttl_type(ttl_type);
     ::fedb::api::CreateTableResponse cresponse;
     MockClosure closure;
     tablet.CreateTable(NULL, &crequest, &cresponse, &closure);
@@ -285,7 +290,7 @@ void CreateAdvanceTablet(::fedb::tablet::TabletImpl& tablet,  // NOLINT
             MockClosure closure;
             tablet.Get(NULL, &request, &response, &closure);
             if (time <= expire_time_ts1 &&
-                ttl_type == ::fedb::api::TTLType::kAbsOrLat) {
+                ttl_type == ::fedb::type::TTLType::kAbsOrLat) {
                 ASSERT_EQ(307, response.code());
             } else {
                 ++count1;
@@ -306,7 +311,7 @@ void CreateAdvanceTablet(::fedb::tablet::TabletImpl& tablet,  // NOLINT
             MockClosure closure;
             tablet.Get(NULL, &request, &response, &closure);
             if (time <= expire_time_ts2 &&
-                ttl_type == ::fedb::api::TTLType::kAbsOrLat) {
+                ttl_type == ::fedb::type::TTLType::kAbsOrLat) {
                 ASSERT_EQ(307, response.code());
             } else {
                 ++count2;
@@ -336,13 +341,13 @@ TEST_F(TabletMultiPathTest, CreateWithoutDBPath) {
     ::fedb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     CreateTableWithoutDBRootPath(tablet_impl,
-                                 ::fedb::api::TTLType::kAbsoluteTime, 0, 1000,
+                                 ::fedb::type::TTLType::kAbsoluteTime, 0, 1000,
                                  100, 0);
     CreateTableWithoutDBRootPath(tablet_impl,
-                                 ::fedb::api::TTLType::kAbsoluteTime, 0, 1000,
+                                 ::fedb::type::TTLType::kAbsoluteTime, 0, 1000,
                                  101, 0);
     CreateTableWithoutDBRootPath(tablet_impl,
-                                 ::fedb::api::TTLType::kAbsoluteTime, 0, 1000,
+                                 ::fedb::type::TTLType::kAbsoluteTime, 0, 1000,
                                  102, 0);
     FLAGS_db_root_path = old_db_path;
 }
@@ -351,7 +356,7 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_absolute) {
     ::fedb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
-        CreateBaseTablet(tablet_impl, ::fedb::api::TTLType::kAbsoluteTime, 0,
+        CreateBaseTablet(tablet_impl, ::fedb::type::TTLType::kAbsoluteTime, 0,
                          1000, i + 1, i % 10);
     }
 }
@@ -360,7 +365,7 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_latest) {
     ::fedb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     for (uint32_t i = 100; i < 200; i++) {
-        CreateBaseTablet(tablet_impl, ::fedb::api::TTLType::kLatestTime, 10,
+        CreateBaseTablet(tablet_impl, ::fedb::type::TTLType::kLatestTime, 10,
                          1000, i + 1, i % 10);
     }
 }
@@ -369,7 +374,7 @@ TEST_F(TabletMultiPathTest, HDD_Test_read_write) {
     ::fedb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
-        CreateBaseTablet(tablet_impl, ::fedb::api::TTLType::kLatestTime, 10,
+        CreateBaseTablet(tablet_impl, ::fedb::type::TTLType::kLatestTime, 10,
                          1000, i + 1, i % 10);
     }
 }
@@ -378,7 +383,7 @@ TEST_F(TabletMultiPathTest, SSD_Test_read_write) {
     ::fedb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
-        CreateBaseTablet(tablet_impl, ::fedb::api::TTLType::kLatestTime, 10,
+        CreateBaseTablet(tablet_impl, ::fedb::type::TTLType::kLatestTime, 10,
                          1000, i + 1, i % 10);
     }
 }
@@ -388,7 +393,7 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_abs_and_lat) {
     tablet_impl.Init("");
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     for (uint32_t i = 20; i < 30; i++) {
-        CreateAdvanceTablet(tablet_impl, ::fedb::api::TTLType::kAbsAndLat,
+        CreateAdvanceTablet(tablet_impl, ::fedb::type::TTLType::kAbsAndLat,
                             2000, 500, now - 3000 * (60 * 1000) - 1000, i + 1,
                             i % 10, 3000, 500);
     }
@@ -399,7 +404,7 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_abs_or_lat) {
     tablet_impl.Init("");
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     for (uint32_t i = 30; i < 40; i++) {
-        CreateAdvanceTablet(tablet_impl, ::fedb::api::TTLType::kAbsOrLat, 2000,
+        CreateAdvanceTablet(tablet_impl, ::fedb::type::TTLType::kAbsOrLat, 2000,
                             500, now - 3000 * (60 * 1000) - 1000, i + 1, i % 10,
                             1000, 500);
     }

@@ -53,18 +53,11 @@ SQLInsertRow::SQLInsertRow(
       schema_(schema),
       default_map_(default_map),
       default_string_length_(default_string_length),
-      rb_(table_info->column_desc_v1()),
+      rb_(table_info->column_desc()),
       val_(), str_size_(0) {
     std::map<std::string, uint32_t> column_name_map;
-    uint32_t index_cnt = 0;
-    for (int idx = 0; idx < table_info_->column_desc_v1_size(); idx++) {
-        if (table_info_->column_desc_v1(idx).is_ts_col()) {
-            ts_set_.insert(idx);
-        } else if (table_info_->column_desc_v1(idx).add_ts_idx()) {
-            index_map_[index_cnt++].push_back(idx);
-            raw_dimensions_[idx] = hybridse::codec::NONETOKEN;
-        }
-        column_name_map.emplace(table_info_->column_desc_v1(idx).name(), idx);
+    for (int idx = 0; idx < table_info_->column_desc_size(); idx++) {
+        column_name_map.emplace(table_info_->column_desc(idx).name(), idx);
     }
     if (table_info_->column_key_size() > 0) {
         index_map_.clear();
@@ -75,8 +68,8 @@ SQLInsertRow::SQLInsertRow(
                 raw_dimensions_[column_name_map[column]] =
                     hybridse::codec::NONETOKEN;
             }
-            for (const auto& ts_col : table_info_->column_key(idx).ts_name()) {
-                ts_set_.insert(column_name_map[ts_col]);
+            if (!table_info_->column_key(idx).ts_name().empty()) {
+                ts_set_.insert(column_name_map[table_info_->column_key(idx).ts_name()]);
             }
         }
     }
@@ -141,7 +134,7 @@ bool SQLInsertRow::MakeDefault() {
         if (it->second->IsNull()) {
             return AppendNULL();
         }
-        switch (table_info_->column_desc_v1(rb_.GetAppendPos()).data_type()) {
+        switch (table_info_->column_desc(rb_.GetAppendPos()).data_type()) {
             case fedb::type::kBool:
                 return AppendBool(it->second->GetInt());
             case fedb::type::kSmallInt:

@@ -48,7 +48,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     table_info.set_name(name);
     table_info.set_db(db);
     table_info.set_partition_num(1);
-    RtiDBSchema* schema = table_info.mutable_column_desc_v1();
+    RtiDBSchema* schema = table_info.mutable_column_desc();
     auto col1 = schema->Add();
     col1->set_name("col1");
     col1->set_data_type(::fedb::type::kVarchar);
@@ -57,32 +57,28 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     col2->set_name("col2");
     col2->set_data_type(::fedb::type::kBigInt);
     col2->set_type("int64");
-    col2->set_is_ts_col(true);
     auto col3 = schema->Add();
     col3->set_name("col3");
     col3->set_data_type(::fedb::type::kBigInt);
     col3->set_type("int64");
-    col3->set_is_ts_col(false);
     auto col4 = schema->Add();
     col4->set_name("col4");
     col4->set_data_type(::fedb::type::kBigInt);
     col4->set_type("int64");
-    col4->set_is_ts_col(false);
     auto col5 = schema->Add();
     col5->set_name("col5");
     col5->set_data_type(::fedb::type::kBigInt);
     col5->set_type("int64");
-    col5->set_is_ts_col(false);
 
     RtiDBIndex* index = table_info.mutable_column_key();
     auto key1 = index->Add();
     key1->set_index_name("index0");
     key1->add_col_name("col1");
-    key1->add_ts_name("col2");
+    key1->set_ts_name("col2");
     ok = ns_client->CreateTable(table_info, error);
 
     ::hybridse::vm::Schema fe_schema;
-    ::fedb::catalog::SchemaAdapter::ConvertSchema(table_info.column_desc_v1(), &fe_schema);
+    ::fedb::catalog::SchemaAdapter::ConvertSchema(table_info.column_desc(), &fe_schema);
     ::hybridse::codec::RowBuilder rb(fe_schema);
     std::string pk = "pk1";
     uint64_t ts = 1589780888000l;

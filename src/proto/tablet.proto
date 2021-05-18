@@ -39,21 +39,6 @@ enum TabletState {
     kTabletHealthy = 10;
 }
 
-enum TTLType {
-    kAbsoluteTime = 1;
-    kRelativeTime = 2;
-    // keep the latest record
-    kLatestTime = 3;
-    kAbsAndLat = 4;
-    kAbsOrLat = 5;
-}
-
-message TTLDesc {
-    optional TTLType ttl_type = 1 [default = kAbsoluteTime];
-    optional uint64 abs_ttl = 2 [default=0];
-    optional uint64 lat_ttl = 3 [default=0];
-}
-
 enum GetType {
     kSubKeyEq = 1;
     kSubKeyLt = 2;
@@ -314,29 +299,21 @@ message TableMeta {
     optional int32 tid = 1;
     optional string name = 2;
     optional int32 pid = 3;
-    // time to live for every row
-    optional uint64 ttl = 4 [default = 0, deprecated = true];
-    optional int32 seg_cnt = 5;
-    optional TTLType ttl_type = 6 [default = kAbsoluteTime, deprecated = true];
+    optional int32 seg_cnt = 4;
     // the slave endpoints
-    repeated string replicas = 7;
-    optional TableMode mode = 8;
-    optional bool wal = 9; // unused
-    // term for change role
-    optional uint64 term = 10 [default = 0];
-    optional bytes schema = 11 [deprecated = true];
-    repeated string dimensions = 12 [deprecated = true];
-    optional fedb.type.CompressType compress_type = 13;
-    optional uint32 key_entry_max_height = 14;
-    repeated fedb.common.ColumnDesc column_desc = 15;
-    repeated fedb.common.ColumnKey column_key = 16;
-    repeated fedb.common.ColumnDesc added_column_desc = 17;
-    optional TTLDesc ttl_desc = 18;
+    repeated string replicas = 5;
+    optional TableMode mode = 6;
+    optional uint64 term = 7 [default = 0];
+    optional fedb.type.CompressType compress_type = 8;
+    optional uint32 key_entry_max_height = 9;
+    repeated fedb.common.ColumnDesc column_desc = 10;
+    repeated fedb.common.ColumnKey column_key = 11;
+    repeated fedb.common.ColumnDesc added_column_desc = 12;
     // format_version 0 , the legacy format 1 ,the new one
-    optional uint32 format_version = 19 [default = 0];
-    optional string db = 20 [default = ""];
-    repeated common.VersionPair schema_versions = 21;
-    repeated common.TablePartition table_partition = 22;
+    optional uint32 format_version = 13 [default = 0];
+    optional string db = 14 [default = ""];
+    repeated common.VersionPair schema_versions = 15;
+    repeated common.TablePartition table_partition = 16;
 }
 
 message CreateTableRequest {
@@ -345,9 +322,8 @@ message CreateTableRequest {
 message UpdateTableMetaForAddFieldRequest {
     optional uint32 tid = 1;
     optional fedb.common.ColumnDesc column_desc = 2;
-    optional string schema = 3;
-    repeated fedb.common.ColumnDesc column_descs = 4;
-    optional fedb.common.VersionPair version_pair = 5;
+    repeated fedb.common.ColumnDesc column_descs = 3;
+    optional fedb.common.VersionPair version_pair = 4;
 }
 
 message CreateTableResponse {
@@ -385,17 +361,14 @@ message SetExpireRequest {
 message GetTableSchemaResponse {
     optional int32 code = 1;
     optional string msg = 2;
-    optional bytes schema = 3;
-    optional TableMeta table_meta = 4;
+    optional TableMeta table_meta = 3;
 }
 
 message UpdateTTLRequest {
     optional int32 tid = 1;
     optional int32 pid = 2;
-    optional TTLType type = 3 [default = kAbsoluteTime, deprecated = true];
-    optional uint64 value = 4 [default = 0, deprecated = true];
-    optional string ts_name = 5;
-    optional TTLDesc ttl_desc = 6;
+    optional fedb.common.TTLSt ttl = 3;
+    optional string index_name = 5;
 }
 
 message UpdateTTLResponse {
@@ -504,7 +477,6 @@ message TableStatus {
     optional uint64 offset = 3;
     optional TableMode mode = 4;
     optional TableState state = 5;
-    optional uint64 ttl = 6 [default = 0, deprecated = true];
     optional bool is_expire = 7;
     optional int64 time_offset = 8;
     optional uint64 record_cnt = 9;
@@ -514,12 +486,9 @@ message TableStatus {
     optional uint64 record_byte_size = 13;
     optional uint64 record_idx_byte_size = 14;
     optional uint64 record_pk_cnt = 15;
-    optional TTLType ttl_type = 16 [default = kAbsoluteTime, deprecated = true];
     optional fedb.type.CompressType compress_type = 17;
     optional uint32 skiplist_height = 18;
-    optional bytes schema = 19;
-    optional TTLDesc ttl_desc = 20;
-    optional uint64 diskused = 21 [default = 0];
+    optional uint64 diskused = 19 [default = 0];
 }
 
 message GetTableStatusResponse {

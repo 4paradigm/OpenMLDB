@@ -27,6 +27,7 @@
 #include "base/file_util.h"
 #include "base/strings.h"
 #include "base/glog_wapper.h"
+#include "codec/schema_codec.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
 #include "log/log_writer.h"
@@ -47,6 +48,8 @@ class WritableFile;
 namespace storage {
 
 static const ::fedb::base::DefaultComparator scmp;
+
+using ::fedb::codec::SchemaCodec;
 
 class SnapshotTest : public ::testing::Test {
  public:
@@ -124,7 +127,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 4, 3, 8, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime);
+        "test", 4, 3, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset_value = 0;
     int ret = snapshot.MakeSnapshot(table, offset_value, 0);
@@ -249,7 +252,7 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 4, 4, 8, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime);
+        "test", 4, 4, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     MemTableSnapshot snapshot(4, 4, log_part, FLAGS_db_root_path);
     snapshot.Init();
@@ -322,7 +325,7 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 3, 3, 8, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime);
+        "test", 3, 3, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     MemTableSnapshot snapshot(3, 3, log_part, FLAGS_db_root_path);
     snapshot.Init();
@@ -437,7 +440,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 3, 2, 8, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime);
+        "test", 3, 2, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(3, 2, log_part, FLAGS_db_root_path);
@@ -575,15 +578,10 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
     table_meta->set_tid(4);
     table_meta->set_pid(2);
     table_meta->set_seg_cnt(8);
-    table_meta->set_ttl(0);
-    ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
-    desc->set_name("card");
-    desc->set_type("string");
-    desc->set_add_ts_idx(true);
-    desc = table_meta->add_column_desc();
-    desc->set_name("merchant");
-    desc->set_type("string");
-    desc->set_add_ts_idx(true);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::fedb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "merchant", ::fedb::type::kString);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::fedb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "merchant", "merchant", "", ::fedb::type::kAbsoluteTime, 0, 0);
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(*table_meta);
     table->Init();
     table->DeleteIndex("merchant");
@@ -695,7 +693,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     mapping.insert(std::make_pair("idx0", 0));
 
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 2, 2, 8, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime);
+        "test", 2, 2, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(2, 2, log_part, FLAGS_db_root_path);
@@ -728,7 +726,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "tx_log", 1, 1, 8, mapping, 2, ::fedb::api::TTLType::kAbsoluteTime);
+        "tx_log", 1, 1, 8, mapping, 2, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -877,15 +875,10 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
     table_meta->set_tid(4);
     table_meta->set_pid(2);
     table_meta->set_seg_cnt(8);
-    table_meta->set_ttl(2);
-    ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
-    desc->set_name("card");
-    desc->set_type("string");
-    desc->set_add_ts_idx(true);
-    desc = table_meta->add_column_desc();
-    desc->set_name("merchant");
-    desc->set_type("string");
-    desc->set_add_ts_idx(true);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::fedb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "merchant", ::fedb::type::kString);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::fedb::type::kAbsoluteTime, 2, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "merchant", "merchant", "", ::fedb::type::kAbsoluteTime, 2, 0);
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(*table_meta);
     table->Init();
     uint64_t offset = 0;
@@ -1022,27 +1015,11 @@ TEST_F(SnapshotTest, MakeSnapshotAbsOrLat) {
     table_meta->set_tid(10);
     table_meta->set_pid(0);
     table_meta->set_seg_cnt(8);
-    ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-    ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
-    ttl_desc->set_abs_ttl(0);
-    ttl_desc->set_lat_ttl(1);
-
-    ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
-    desc->set_name("card");
-    desc->set_type("string");
-    desc = table_meta->add_column_desc();
-    desc->set_name("merchant");
-    desc->set_type("string");
-    desc = table_meta->add_column_desc();
-    desc->set_name("ts");
-    desc->set_type("timestamp");
-    desc = table_meta->add_column_desc();
-    desc->set_name("date");
-    desc->set_type("string");
-    ::fedb::common::ColumnKey* ck = table_meta->add_column_key();
-    ck->set_index_name("index1");
-    ck->add_col_name("card");
-    ck->add_col_name("merchant");
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::fedb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "merchant", ::fedb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts", ::fedb::type::kTimestamp);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "date", ::fedb::type::kString);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "index1", "card|merchant", "", ::fedb::type::kAbsOrLat, 0, 1);
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(*table_meta);
     table->Init();
 
@@ -1102,7 +1079,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "tx_log", 5, 1, 8, mapping, 4, ::fedb::api::TTLType::kLatestTime);
+        "tx_log", 5, 1, 8, mapping, 4, ::fedb::type::TTLType::kLatestTime);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -1307,7 +1284,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", tid, 0, 8, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime);
+        "test", tid, 0, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     MemTableSnapshot snapshot(tid, 0, log_part, FLAGS_db_root_path);
     snapshot.Init();
@@ -1384,9 +1361,12 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
         ::fedb::api::Dimension* dim = entry.add_dimensions();
         dim->set_key("card0");
         dim->set_idx(0);
-        ::fedb::api::Dimension* dim1 = entry.add_dimensions();
-        dim1->set_key("mcc0");
-        dim1->set_idx(1);
+        dim = entry.add_dimensions();
+        dim->set_key("card0");
+        dim->set_idx(1);
+        dim = entry.add_dimensions();
+        dim->set_key("mcc0");
+        dim->set_idx(2);
         ::fedb::api::TSDimension* ts_dim = entry.add_ts_dimensions();
         ts_dim->set_ts(1122);
         ts_dim->set_idx(0);
@@ -1406,32 +1386,15 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     table_meta.set_name("test");
     table_meta.set_tid(2);
     table_meta.set_pid(2);
-    table_meta.set_ttl(0);
     table_meta.set_seg_cnt(8);
-    ::fedb::common::ColumnDesc* column_desc1 = table_meta.add_column_desc();
-    column_desc1->set_name("card");
-    column_desc1->set_type("string");
-    ::fedb::common::ColumnDesc* column_desc2 = table_meta.add_column_desc();
-    column_desc2->set_name("mcc");
-    column_desc2->set_type("string");
-    ::fedb::common::ColumnDesc* column_desc3 = table_meta.add_column_desc();
-    column_desc3->set_name("amt");
-    column_desc3->set_type("double");
-    ::fedb::common::ColumnDesc* column_desc4 = table_meta.add_column_desc();
-    column_desc4->set_name("ts1");
-    column_desc4->set_type("int64");
-    column_desc4->set_is_ts_col(true);
-    ::fedb::common::ColumnDesc* column_desc5 = table_meta.add_column_desc();
-    column_desc5->set_name("ts2");
-    column_desc5->set_type("int64");
-    column_desc5->set_is_ts_col(true);
-    ::fedb::common::ColumnKey* column_key1 = table_meta.add_column_key();
-    column_key1->set_index_name("card");
-    column_key1->add_ts_name("ts1");
-    column_key1->add_ts_name("ts2");
-    ::fedb::common::ColumnKey* column_key2 = table_meta.add_column_key();
-    column_key2->set_index_name("mcc");
-    column_key2->add_ts_name("ts1");
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::fedb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::fedb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "amt", ::fedb::type::kDouble);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::fedb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::fedb::type::kBigInt);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "card", "card", "ts1", ::fedb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "card1", "card", "ts2", ::fedb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "mcc", "ts1", ::fedb::type::kAbsoluteTime, 0, 0);
     table_meta.set_mode(::fedb::api::TableMode::kTableLeader);
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(table_meta);
     table->Init();
@@ -1444,7 +1407,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(1u, offset);
     Ticket ticket;
-    TableIterator* it = table->NewIterator(0, 0, "card0", ticket);
+    TableIterator* it = table->NewIterator(0, "card0", ticket);
     it->Seek(1122);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1122, (int64_t)it->GetKey());
@@ -1453,7 +1416,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     it->Next();
     ASSERT_FALSE(it->Valid());
     delete it;
-    it = table->NewIterator(0, 1, "card0", ticket);
+    it = table->NewIterator(1, "card0", ticket);
     it->Seek(2233);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(2233, (int64_t)it->GetKey());
@@ -1462,7 +1425,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     it->Next();
     ASSERT_FALSE(it->Valid());
     delete it;
-    it = table->NewIterator(1, 0, "mcc0", ticket);
+    it = table->NewIterator(2, "mcc0", ticket);
     it->Seek(1122);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1122, (int64_t)it->GetKey());
@@ -1471,7 +1434,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     it->Next();
     ASSERT_FALSE(it->Valid());
     delete it;
-    it = table->NewIterator(0, 0, "mcc0", ticket);
+    it = table->NewIterator(0, "mcc0", ticket);
     it->Seek(1122);
     ASSERT_FALSE(it->Valid());
     delete it;
@@ -1484,7 +1447,7 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "tx_log", 1, 10, 8, mapping, 2, ::fedb::api::TTLType::kAbsoluteTime);
+        "tx_log", 1, 10, 8, mapping, 2, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -1677,7 +1640,7 @@ TEST_F(SnapshotTest, Recover_large_snapshot) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 100, 0, 8, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime);
+        "test", 100, 0, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset_value = 0;
     int ret = snapshot.MakeSnapshot(table, offset_value, 0);
@@ -1743,7 +1706,7 @@ TEST_F(SnapshotTest, Recover_large_snapshot_and_binlog) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 100, 0, 8, mapping, 0, ::fedb::api::TTLType::kAbsoluteTime);
+        "test", 100, 0, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset_value = 0;
     int ret = snapshot.MakeSnapshot(table, offset_value, 0);

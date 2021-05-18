@@ -34,7 +34,7 @@ bool SDKTableHandler::Init() {
         LOG(WARNING) << "bad format version " << meta_.format_version();
         return false;
     }
-    bool ok = SchemaAdapter::ConvertSchema(meta_.column_desc_v1(), &schema_);
+    bool ok = SchemaAdapter::ConvertSchema(meta_.column_desc(), &schema_);
     if (!ok) {
         LOG(WARNING) << "fail to covert schema to sql schema";
         return false;

@@ -68,7 +68,7 @@ class SchemaAdapter {
             for (int32_t k = 0; k < sql_key.first_keys_size(); k++) {
                 index->add_col_name(sql_key.first_keys(k));
             }
-            index->add_ts_name(sql_key.second_key());
+            index->set_ts_name(sql_key.second_key());
             ts_cols.insert(sql_key.second_key());
         }
 
@@ -77,9 +77,6 @@ class SchemaAdapter {
             auto fedb_column = schema_output->Add();
             if (!ConvertType(sql_column, fedb_column)) {
                 return false;
-            }
-            if (ts_cols.find(sql_column.name()) != ts_cols.cend()) {
-                fedb_column->set_is_ts_col(true);
             }
         }
         return true;
@@ -93,37 +90,30 @@ class SchemaAdapter {
         }
         for (int32_t i = 0; i < index.size(); i++) {
             const ::fedb::common::ColumnKey& key = index.Get(i);
-            int ts_name_pos = 0;
-            do {
-                ::hybridse::type::IndexDef* index = output->Add();
-                index->set_name(key.index_name());
-                index->mutable_first_keys()->CopyFrom(key.col_name());
-                if (key.ts_name_size() > 0) {
-                    index->set_second_key(key.ts_name(ts_name_pos));
-                    index->set_ts_offset(ts_name_pos);
-                    if (ts_name_pos > 0) {
-                        index->set_name(key.index_name() + std::to_string(ts_name_pos));
-                    }
-                    ts_name_pos++;
+            ::hybridse::type::IndexDef* index = output->Add();
+            index->set_name(key.index_name());
+            index->mutable_first_keys()->CopyFrom(key.col_name());
+            if (key.has_ts_name() && !key.ts_name().empty()) {
+                index->set_second_key(key.ts_name());
+                index->set_ts_offset(0);
+            }
+            if (key.has_ttl()) {
+                auto ttl_type = key.ttl().ttl_type();
+                auto it = TTL_TYPE_MAP.find(ttl_type);
+                if (it == TTL_TYPE_MAP.end()) {
+                    LOG(WARNING) << "not found " <<  ::fedb::type::TTLType_Name(ttl_type);
+                    return false;
                 }
-                if (key.has_ttl()) {
-                    auto ttl_type = key.ttl().ttl_type();
-                    auto it = TTL_TYPE_MAP.find(ttl_type);
-                    if (it == TTL_TYPE_MAP.end()) {
-                        LOG(WARNING) << "not found " <<  ::fedb::type::TTLType_Name(ttl_type);
-                        return false;
-                    }
-                    index->set_ttl_type(it->second);
-                    if (ttl_type == ::fedb::type::kAbsAndLat || ttl_type == ::fedb::type::kAbsOrLat) {
-                        index->add_ttl(key.ttl().abs_ttl());
-                        index->add_ttl(key.ttl().lat_ttl());
-                    } else if (ttl_type == ::fedb::type::kAbsoluteTime) {
-                        index->add_ttl(key.ttl().abs_ttl());
-                    } else {
-                        index->add_ttl(key.ttl().lat_ttl());
-                    }
+                index->set_ttl_type(it->second);
+                if (ttl_type == ::fedb::type::kAbsAndLat || ttl_type == ::fedb::type::kAbsOrLat) {
+                    index->add_ttl(key.ttl().abs_ttl());
+                    index->add_ttl(key.ttl().lat_ttl());
+                } else if (ttl_type == ::fedb::type::kAbsoluteTime) {
+                    index->add_ttl(key.ttl().abs_ttl());
+                } else {
+                    index->add_ttl(key.ttl().lat_ttl());
                 }
-            } while (ts_name_pos > 0 && ts_name_pos < key.ts_name_size());
+            }
         }
         return true;
     }

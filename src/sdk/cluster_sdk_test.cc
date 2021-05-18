@@ -28,6 +28,7 @@
 #include "base/glog_wapper.h"
 #include "brpc/server.h"
 #include "client/ns_client.h"
+#include "codec/schema_codec.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "nameserver/name_server_impl.h"
@@ -40,6 +41,8 @@
 
 namespace fedb {
 namespace sdk {
+
+using ::fedb::codec::SchemaCodec;
 
 typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>
     RtiDBSchema;
@@ -94,21 +97,9 @@ TEST_F(ClusterSDKTest, smoketest) {
     ASSERT_TRUE(ok);
     table_info.set_name(name);
     table_info.set_db(db);
-    RtiDBSchema* schema = table_info.mutable_column_desc_v1();
-    auto col1 = schema->Add();
-    col1->set_name("col1");
-    col1->set_data_type(::fedb::type::kVarchar);
-    col1->set_type("string");
-    auto col2 = schema->Add();
-    col2->set_name("col2");
-    col2->set_data_type(::fedb::type::kBigInt);
-    col2->set_type("int64");
-    col2->set_is_ts_col(true);
-    RtiDBIndex* index = table_info.mutable_column_key();
-    auto key1 = index->Add();
-    key1->set_index_name("index0");
-    key1->add_col_name("col1");
-    key1->add_ts_name("col2");
+    SchemaCodec::SetColumnDesc(table_info.add_column_desc(), "col1", ::fedb::type::kString);
+    SchemaCodec::SetColumnDesc(table_info.add_column_desc(), "col2", ::fedb::type::kBigInt);
+    SchemaCodec::SetIndex(table_info.add_column_key(), "index0", "col1", "col2", ::fedb::type::kAbsoluteTime, 0, 0);
     ok = ns_client->CreateTable(table_info, error);
     ASSERT_TRUE(ok);
     sleep(5);

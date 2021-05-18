@@ -40,7 +40,7 @@ namespace storage {
 static const uint32_t SEED = 0xe17a1465;
 
 MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t seg_cnt,
-                   const std::map<std::string, uint32_t>& mapping, uint64_t ttl, ::fedb::api::TTLType ttl_type)
+                   const std::map<std::string, uint32_t>& mapping, uint64_t ttl, ::fedb::type::TTLType ttl_type)
     : Table(name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping, ttl_type,
             ::fedb::type::CompressType::kNoCompress),
       seg_cnt_(seg_cnt),
@@ -52,7 +52,7 @@ MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t 
 
 MemTable::MemTable(const ::fedb::api::TableMeta& table_meta)
     : Table(table_meta.name(), table_meta.tid(), table_meta.pid(), 0, true, 60 * 1000,
-            std::map<std::string, uint32_t>(), ::fedb::api::TTLType::kAbsoluteTime,
+            std::map<std::string, uint32_t>(), ::fedb::type::TTLType::kAbsoluteTime,
             ::fedb::type::CompressType::kNoCompress),
       segments_(MAX_INDEX_NUM, NULL) {
     seg_cnt_ = 8;
@@ -61,7 +61,7 @@ MemTable::MemTable(const ::fedb::api::TableMeta& table_meta)
     segment_released_ = false;
     record_byte_size_ = 0;
     diskused_ = 0;
-    table_meta_.CopyFrom(table_meta);
+    table_meta_ = std::make_shared<::fedb::api::TableMeta>(table_meta);
 }
 
 MemTable::~MemTable() {
@@ -86,13 +86,13 @@ bool MemTable::Init() {
     if (!InitFromMeta()) {
         return false;
     }
-    if (table_meta_.seg_cnt() > 0) {
-        seg_cnt_ = table_meta_.seg_cnt();
+    if (table_meta_->seg_cnt() > 0) {
+        seg_cnt_ = table_meta_->seg_cnt();
     }
     uint32_t global_key_entry_max_height = 0;
-    if (table_meta_.has_key_entry_max_height() && table_meta_.key_entry_max_height() <= FLAGS_skiplist_max_height &&
-        table_meta_.key_entry_max_height() > 0) {
-        global_key_entry_max_height = table_meta_.key_entry_max_height();
+    if (table_meta_->has_key_entry_max_height() && table_meta_->key_entry_max_height() <= FLAGS_skiplist_max_height &&
+        table_meta_->key_entry_max_height() > 0) {
+        global_key_entry_max_height = table_meta_->key_entry_max_height();
     }
     auto inner_indexs = table_index_.GetAllInnerIndex();
     for (uint32_t i = 0; i < inner_indexs->size(); i++) {
@@ -643,27 +643,25 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
 
 bool MemTable::AddIndex(const ::fedb::common::ColumnKey& column_key) {
     // TODO(denglong): support ttl type and merge index
+    auto table_meta = GetTableMeta();
+    auto new_table_meta = std::make_shared<::fedb::api::TableMeta>(*table_meta);
     std::shared_ptr<IndexDef> index_def = GetIndex(column_key.index_name());
     if (index_def) {
         if (index_def->GetStatus() != IndexStatus::kDeleted) {
             PDLOG(WARNING, "index %s is exist. tid %u pid %u", column_key.index_name().c_str(), id_, pid_);
             return false;
         }
-        table_meta_.mutable_column_key(index_def->GetId())->CopyFrom(column_key);
+        new_table_meta->mutable_column_key(index_def->GetId())->CopyFrom(column_key);
     } else {
-        ::fedb::common::ColumnKey* added_column_key = table_meta_.add_column_key();
+        ::fedb::common::ColumnKey* added_column_key = new_table_meta->add_column_key();
         added_column_key->CopyFrom(column_key);
     }
     if (!index_def) {
         std::vector<uint32_t> ts_vec;
-        for (int idx = 0; idx < column_key.ts_name_size(); idx++) {
-            auto ts_iter = ts_mapping_.find(column_key.ts_name(idx));
+        if (!column_key.ts_name().empty()) {
+            auto ts_iter = ts_mapping_.find(column_key.ts_name());
             if (ts_iter == ts_mapping_.end()) {
-                PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", column_key.ts_name(idx).c_str(), id_, pid_);
-                return false;
-            }
-            if (std::find(ts_vec.begin(), ts_vec.end(), ts_iter->second) != ts_vec.end()) {
-                PDLOG(WARNING, "has repeated ts_name[%s]. tid %u pid %u", column_key.ts_name(idx).c_str(), id_, pid_);
+                PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", column_key.ts_name().c_str(), id_, pid_);
                 return false;
             }
             ts_vec.push_back(ts_iter->second);
@@ -689,47 +687,24 @@ bool MemTable::AddIndex(const ::fedb::common::ColumnKey& column_key) {
             return false;
         }
         segments_[inner_id] = seg_arr;
-        if (column_key.ts_name_size() > 0) {
-            auto ts_col = std::make_shared<ColumnDef>(column_key.ts_name(0), 0,
-                    ::fedb::type::kTimestamp, true, ts_mapping_[column_key.ts_name(0)]);
+        if (!column_key.ts_name().empty()) {
+            auto ts_col = std::make_shared<ColumnDef>(column_key.ts_name(), 0,
+                    ::fedb::type::kTimestamp, true, ts_mapping_[column_key.ts_name()]);
             index_def->SetTsColumn(ts_col);
-            auto index_vec = table_index_.GetAllIndex();
-            bool has_set_ttl = false;
-            for (const auto& index : index_vec) {
-                auto ts_col = index->GetTsColumn();
-                if (ts_col && ts_col->GetName() == column_key.ts_name(0)) {
-                    index_def->SetTTL(*(index->GetTTL()));
-                    has_set_ttl = true;
-                    break;
-                }
-            }
-            if (!has_set_ttl) {
-                PDLOG(WARNING, "has not set ttl. tid %u pid %u", id_, pid_);
-                return false;
-            }
+        }
+        if (column_key.has_ttl()) {
+            index_def->SetTTL(::fedb::storage::TTLSt(column_key.ttl()));
         } else {
-            const auto& table_meta = GetTableMeta();
-            if (table_meta.has_ttl_desc()) {
-                index_def->SetTTL(::fedb::storage::TTLSt(table_meta.ttl_desc()));
-            } else {
-                uint64_t abs_ttl = 0;
-                uint64_t lat_ttl = 0;
-                if (table_meta.ttl_type() == ::fedb::api::TTLType::kAbsoluteTime) {
-                    abs_ttl = table_meta.ttl() * 60 * 1000;
-                } else {
-                    lat_ttl = table_meta.ttl();
-                }
-                index_def->SetTTL(::fedb::storage::TTLSt(abs_ttl, lat_ttl,
-                            TTLSt::ConvertTTLType(table_meta.ttl_type())));
-            }
+            index_def->SetTTL(*(table_index_.GetIndex(0)->GetTTL()));
         }
         index_def->SetInnerPos(inner_id);
         std::vector<std::shared_ptr<IndexDef>> index_vec = { index_def };
         auto inner_index_st = std::make_shared<InnerIndexSt>(inner_id, index_vec);
         table_index_.AddInnerIndex(inner_index_st);
-        table_index_.SetInnerIndexPos(table_meta_.column_key_size() - 1, inner_id);
+        table_index_.SetInnerIndexPos(new_table_meta->column_key_size() - 1, inner_id);
     }
     index_def->SetStatus(IndexStatus::kReady);
+    std::atomic_store_explicit(&table_meta_, new_table_meta, std::memory_order_release);
     return true;
 }
 
@@ -747,9 +722,12 @@ bool MemTable::DeleteIndex(std::string idx_name) {
         PDLOG(WARNING, "index %s can't delete. tid %u pid %u", idx_name.c_str(), id_, pid_);
         return false;
     }
-    if (index_def->GetId() < (uint32_t)table_meta_.column_key_size()) {
-        table_meta_.mutable_column_key(index_def->GetId())->set_flag(1);
+    auto table_meta = GetTableMeta();
+    auto new_table_meta = std::make_shared<::fedb::api::TableMeta>(*table_meta);
+    if (index_def->GetId() < (uint32_t)table_meta->column_key_size()) {
+        new_table_meta->mutable_column_key(index_def->GetId())->set_flag(1);
     }
+    std::atomic_store_explicit(&table_meta_, new_table_meta, std::memory_order_release);
     index_def->SetStatus(IndexStatus::kWaiting);
     return true;
 }

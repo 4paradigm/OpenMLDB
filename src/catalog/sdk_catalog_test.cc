@@ -38,7 +38,7 @@ TestArgs* PrepareTable(const std::string& tname, const std::string& db) {
     args->meta.set_name(tname);
     args->meta.set_format_version(1);
     args->meta.set_db(db);
-    RtiDBSchema* schema = args->meta.mutable_column_desc_v1();
+    RtiDBSchema* schema = args->meta.mutable_column_desc();
     auto col1 = schema->Add();
     col1->set_name("col1");
     col1->set_data_type(::fedb::type::kVarchar);
@@ -49,7 +49,7 @@ TestArgs* PrepareTable(const std::string& tname, const std::string& db) {
     auto key1 = index->Add();
     key1->set_index_name("index0");
     key1->add_col_name("col1");
-    key1->add_ts_name("col2");
+    key1->set_ts_name("col2");
     return args;
 }
 
