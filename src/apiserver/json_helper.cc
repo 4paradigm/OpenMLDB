@@ -45,18 +45,18 @@ struct JsonReaderStackItem {
 
 typedef std::stack<JsonReaderStackItem> JsonReaderStack;
 
-#define DOCUMENT reinterpret_cast<Document*>(mDocument_)
-#define STACK (reinterpret_cast<JsonReaderStack*>(mStack_))
+#define DOCUMENT reinterpret_cast<Document*>(document_)
+#define STACK (reinterpret_cast<JsonReaderStack*>(stack_))
 #define TOP (STACK->top())
 #define CURRENT (*TOP.value)
 
-JsonReader::JsonReader(const char* json) : mDocument_(), mStack_(), mError_(false) {
-    mDocument_ = new Document;
+JsonReader::JsonReader(const char* json) : document_(), stack_(), error_(false) {
+    document_ = new Document;
     DOCUMENT->Parse(json);
     if (DOCUMENT->HasParseError()) {
-        mError_ = true;
+        error_ = true;
     } else {
-        mStack_ = new JsonReaderStack;
+        stack_ = new JsonReaderStack;
         STACK->push(JsonReaderStackItem(DOCUMENT, JsonReaderStackItem::BeforeStart));
     }
 }
@@ -68,50 +68,50 @@ JsonReader::~JsonReader() {
 
 // Archive concept
 JsonReader& JsonReader::StartObject() {
-    if (!mError_) {
+    if (!error_) {
         if (CURRENT.IsObject() && TOP.state == JsonReaderStackItem::BeforeStart) {
             TOP.state = JsonReaderStackItem::Started;
         } else {
-            mError_ = true;
+            error_ = true;
         }
     }
     return *this;
 }
 
 JsonReader& JsonReader::EndObject() {
-    if (!mError_) {
+    if (!error_) {
         if (CURRENT.IsObject() && TOP.state == JsonReaderStackItem::Started) {
             Next();
         } else {
-            mError_ = true;
+            error_ = true;
         }
     }
     return *this;
 }
 
 JsonReader& JsonReader::Member(const char* name) {
-    if (!mError_) {
+    if (!error_) {
         if (CURRENT.IsObject() && TOP.state == JsonReaderStackItem::Started) {
             Value::ConstMemberIterator memberItr = CURRENT.FindMember(name);
             if (memberItr != CURRENT.MemberEnd()) {
                 STACK->push(JsonReaderStackItem(&memberItr->value, JsonReaderStackItem::BeforeStart));
             } else {
-                mError_ = true;
+                error_ = true;
             }
         } else {
-            mError_ = true;
+            error_ = true;
         }
     }
     return *this;
 }
 
 bool JsonReader::HasMember(const char* name) const {
-    if (!mError_ && CURRENT.IsObject() && TOP.state == JsonReaderStackItem::Started) return CURRENT.HasMember(name);
+    if (!error_ && CURRENT.IsObject() && TOP.state == JsonReaderStackItem::Started) return CURRENT.HasMember(name);
     return false;
 }
 
 JsonReader& JsonReader::StartArray(size_t* size) {
-    if (!mError_) {
+    if (!error_) {
         if (CURRENT.IsArray() && TOP.state == JsonReaderStackItem::BeforeStart) {
             TOP.state = JsonReaderStackItem::Started;
             if (size) *size = CURRENT.Size();
@@ -123,78 +123,78 @@ JsonReader& JsonReader::StartArray(size_t* size) {
                 TOP.state = JsonReaderStackItem::Closed;
             }
         } else {
-            mError_ = true;
+            error_ = true;
         }
     }
     return *this;
 }
 
 JsonReader& JsonReader::EndArray() {
-    if (!mError_) {
+    if (!error_) {
         if (CURRENT.IsArray() && TOP.state == JsonReaderStackItem::Closed) {
             Next();
         } else {
-            mError_ = true;
+            error_ = true;
         }
     }
     return *this;
 }
 
 JsonReader& JsonReader::operator&(bool& b) {  // NOLINT
-    if (!mError_) {
+    if (!error_) {
         if (CURRENT.IsBool()) {
             b = CURRENT.GetBool();
             Next();
         } else {
-            mError_ = true;
+            error_ = true;
         }
     }
     return *this;
 }
 
 JsonReader& JsonReader::operator&(unsigned& u) {  // NOLINT
-    if (!mError_) {
+    if (!error_) {
         if (CURRENT.IsUint()) {
             u = CURRENT.GetUint();
             Next();
         } else {
-            mError_ = true;
+            error_ = true;
         }
     }
     return *this;
 }
 
 JsonReader& JsonReader::operator&(int& i) {  // NOLINT
-    if (!mError_) {
+    if (!error_) {
         if (CURRENT.IsInt()) {
             i = CURRENT.GetInt();
             Next();
         } else {
-            mError_ = true;
+            error_ = true;
         }
     }
     return *this;
 }
 
 JsonReader& JsonReader::operator&(double& d) {  // NOLINT
-    if (!mError_) {
+    if (!error_) {
         if (CURRENT.IsNumber()) {
             d = CURRENT.GetDouble();
             Next();
         } else {
-            mError_ = true;
+            error_ = true;
         }
     }
     return *this;
 }
 
 JsonReader& JsonReader::operator&(std::string& s) {  // NOLINT
-    if (!mError_) {
+    if (!error_) {
         if (CURRENT.IsString()) {
             s = CURRENT.GetString();
             Next();
         } else {
-            mError_ = true;
+            error_ = true;
         }
     }
     return *this;
@@ -202,13 +202,16 @@ JsonReader& JsonReader::operator&(std::string& s) {  // NOLINT
 
 JsonReader& JsonReader::SetNull() {
     // This function is for JsonWriter only.
-    mError_ = true;
+    error_ = true;
     return *this;
 }
 
 void JsonReader::Next() {
-    if (!mError_) {
-        assert(!STACK->empty());
+    if (!error_) {
+        // assert(!STACK->empty());
+        if (STACK->empty()) {
+            return;
+        }
         STACK->pop();
 
         if (!STACK->empty() && CURRENT.IsArray()) {
@@ -220,7 +223,7 @@ void JsonReader::Next() {
                     TOP.state = JsonReaderStackItem::Closed;
                 }
             } else {
-                mError_ = true;
+                error_ = true;
             }
         }
     }
@@ -234,12 +237,12 @@ void JsonReader::Next() {
 ////////////////////////////////////////////////////////////////////////////////
 // JsonWriter
 // We use Writer instead of PrettyWriter for performance reasons
-#define WRITER (reinterpret_cast<Writer<StringBuffer>*>(mWriter_))
-#define STREAM (reinterpret_cast<StringBuffer*>(mStream_))
+#define WRITER (reinterpret_cast<Writer<StringBuffer>*>(writer_))
+#define STREAM (reinterpret_cast<StringBuffer*>(stream_))
 
-JsonWriter::JsonWriter() {  // : mWriter_(), mStream_()
-    mStream_ = new StringBuffer;
-    mWriter_ = new Writer<StringBuffer>(*STREAM);
+JsonWriter::JsonWriter() {  // : writer_(), stream_()
+    stream_ = new StringBuffer;
+    writer_ = new Writer<StringBuffer>(*STREAM);
 }
 
 JsonWriter::~JsonWriter() {
@@ -265,8 +268,8 @@ JsonWriter& JsonWriter::Member(const char* name) {
 }
 
 bool JsonWriter::HasMember(const char*) const {
-    // This function is for JsonReader only.
-    assert(false);
+    // This function is for JsonReader only. But we shouldn't assert.
+    // assert(false);
     return false;
 }
 

@@ -46,13 +46,14 @@ class APIServiceImpl : public APIService {
                  google::protobuf::Closure* done) override;
 
  private:
-    static bool Json2SQLRequestRow(const butil::rapidjson::Value& input, const butil::rapidjson::Value& common_cols_v,
-                                   std::shared_ptr<fedb::sdk::SQLRequestRow> row);
-    static bool AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type,
-                                std::shared_ptr<fedb::sdk::SQLRequestRow> row);
     void RegisterPut();
     void RegisterExecSP();
     void RegisterGetSP();
+
+    static bool Json2SQLRequestRow(const butil::rapidjson::Value& input, const butil::rapidjson::Value& common_cols_v,
+                                   std::shared_ptr<fedb::sdk::SQLRequestRow> row);
+    template <typename T>
+    static bool AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, T row);
 
     static SimpleSchema TransToSimpleSchema(const hybridse::sdk::Schema* schema) {
         SimpleSchema ss;
@@ -60,7 +61,7 @@ class APIServiceImpl : public APIService {
             ss.emplace_back(schema->GetColumnName(i), schema->GetColumnType(i), schema->IsConstant(i),
                             schema->IsColumnNotNull(i));
         }
-        return std::move(ss);
+        return ss;
     }
 
  private:

@@ -27,8 +27,16 @@ namespace http {
 \class Archiver
 \brief Archiver concept
 Archiver can be a reader or writer for serialization or deserialization respectively.
+Usage:
+    You can use "JsonReader >> obj" to read from json string, and use "JsonWriter << obj" to write to buffer which the
+json writer holds.
+    When you want to support read/write a new struct, implement this function below. Then you can use `>>` & `<<`.
+    `template <typename Archiver>
+    Archiver& operator&(Archiver& ar, NewStruct& s) {}`
 
-Ref https://github.com/Tencent/rapidjson/blob/915218878afb3a60f343a80451723d023273081c/example/archiver/archiver.h
+Ref
+https://github.com/Tencent/rapidjson/blob/915218878afb3a60f343a80451723d023273081c/example/archiver/archiver.h
+
  **/
 
 /// Represents a JSON reader which implements Archiver concept.
@@ -46,7 +54,7 @@ class JsonReader {
 
     // Archive concept
 
-    operator bool() const { return !mError_; }
+    operator bool() const { return !error_; }
 
     JsonReader& StartObject();
     JsonReader& Member(const char* name);
@@ -74,9 +82,9 @@ class JsonReader {
     void Next();
 
     // PIMPL
-    void* mDocument_;  ///< DOM result of parsing.
-    void* mStack_;      ///< Stack for iterating the DOM
-    bool mError_;       ///< Whether an error has occurred.
+    void* document_;  ///< DOM result of parsing.
+    void* stack_;     ///< Stack for iterating the DOM
+    bool error_;      ///< Whether an error has occurred.
 };
 
 class JsonWriter {
@@ -115,9 +123,18 @@ class JsonWriter {
 
  private:
     // PIMPL idiom
-    void* mWriter_;  ///< JSON writer.
-    void* mStream_;  ///< Stream buffer.
+    void* writer_;  ///< JSON writer.
+    void* stream_;  ///< Stream buffer.
 };
+
+template <typename T>
+JsonReader& operator>>(JsonReader& ar, T& s) {
+    return ar & s;
+}
+template <typename T>
+JsonWriter& operator<<(JsonWriter& ar, T& s) {
+    return ar & s;
+}
 
 }  // namespace http
 }  // namespace fedb

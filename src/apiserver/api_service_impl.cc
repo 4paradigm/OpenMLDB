@@ -73,51 +73,71 @@ bool APIServiceImpl::Json2SQLRequestRow(const butil::rapidjson::Value& input,
                                         const butil::rapidjson::Value& common_cols_v,
                                         std::shared_ptr<fedb::sdk::SQLRequestRow> row) {
     auto sch = row->GetSchema();
-    int non_common_idx = 0, common_idx = 0;
 
+    // scan all strings to init the total string length
+    decltype(input.Size()) str_len_sum = 0;
+    int non_common_idx = 0, common_idx = 0;
+    for (decltype(sch->GetColumnCnt()) i = 0; i < sch->GetColumnCnt(); ++i) {
+        if (sch->GetColumnType(i) != hybridse::sdk::kTypeString) {
+            continue;
+        }
+        if (sch->IsConstant(i)) {
+            if (common_idx >= common_cols_v.Size()) {
+                return false;
+            }
+            str_len_sum += common_cols_v[common_idx].GetStringLength();
+            ++common_idx;
+        } else {
+            if (non_common_idx >= input.Size()) {
+                return false;
+            }
+            str_len_sum += input[non_common_idx].GetStringLength();
+            ++non_common_idx;
+        }
+    }
+    row->Init(static_cast<int32_t>(str_len_sum));
+
+    non_common_idx = 0, common_idx = 0;
     for (decltype(sch->GetColumnCnt()) i = 0; i < sch->GetColumnCnt(); ++i) {
         // TODO(hw): no need to append common cols
         if (sch->IsConstant(i)) {
-            AppendJsonValue(common_cols_v[common_idx], row->GetSchema()->GetColumnType(i), row);
-            common_idx++;
+            if (!AppendJsonValue(common_cols_v[common_idx], row->GetSchema()->GetColumnType(i), row)) {
+                return false;
+            }
+            ++common_idx;
         } else {
-            AppendJsonValue(input[non_common_idx], row->GetSchema()->GetColumnType(i), row);
-            non_common_idx++;
+            if (!AppendJsonValue(input[non_common_idx], row->GetSchema()->GetColumnType(i), row)) {
+                return false;
+            }
+            ++non_common_idx;
         }
     }
     return true;
 }
-bool APIServiceImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type,
-                                     std::shared_ptr<fedb::sdk::SQLRequestRow> row) {
+
+template <typename T>
+bool APIServiceImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, T row) {
     switch (type) {
         case hybridse::sdk::kTypeBool: {
-            row->AppendBool(v.GetBool());
-            break;
+            return row->AppendBool(v.GetBool());
         }
         case hybridse::sdk::kTypeInt16: {
-            row->AppendInt16(boost::lexical_cast<int16_t>(v.GetInt()));
-            break;
+            return row->AppendInt16(boost::lexical_cast<int16_t>(v.GetInt()));
         }
         case hybridse::sdk::kTypeInt32: {
-            row->AppendInt32(v.GetInt());
-            break;
+            return row->AppendInt32(v.GetInt());
         }
         case hybridse::sdk::kTypeInt64: {
-            row->AppendInt64(v.GetInt64());
-            break;
+            return row->AppendInt64(v.GetInt64());
         }
         case hybridse::sdk::kTypeFloat: {
-            row->AppendFloat(boost::lexical_cast<float>(v.GetDouble()));
-            break;
+            return row->AppendFloat(boost::lexical_cast<float>(v.GetDouble()));
         }
         case hybridse::sdk::kTypeDouble: {
-            row->AppendDouble(v.GetDouble());
-            break;
+            return row->AppendDouble(v.GetDouble());
         }
         case hybridse::sdk::kTypeString: {
-            row->Init(boost::lexical_cast<int32_t>(v.GetStringLength()));
-            row->AppendString(v.GetString());
-            break;
+            return row->AppendString(v.GetString(), v.GetStringLength());
         }
         case hybridse::sdk::kTypeDate: {
             std::vector<std::string> parts;
@@ -128,71 +148,94 @@ bool APIServiceImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse:
             auto year = boost::lexical_cast<int32_t>(parts[0]);
             auto mon = boost::lexical_cast<int32_t>(parts[1]);
             auto day = boost::lexical_cast<int32_t>(parts[2]);
-            row->AppendDate(year, mon, day);
-            break;
+            return row->AppendDate(year, mon, day);
         }
         case hybridse::sdk::kTypeTimestamp: {
-            row->AppendTimestamp(v.GetInt64());
-            break;
+            return row->AppendTimestamp(v.GetInt64());
         }
         default:
             return false;
     }
-    return true;
 }
 
 void APIServiceImpl::RegisterPut() {
-    provider_.put("/db/:db_name/table/:table_name", [this](const InterfaceProvider::Params& param,
-                                                           const butil::IOBuf& req_body, JsonWriter& writer) {
-        auto err = GeneralError();
-        auto db_it = param.find("db_name");
-        auto table_it = param.find("table_name");
-        if (db_it == param.end() || table_it == param.end()) {
-            writer& err.Set("Invalid path");
-            return;
-        }
-        auto db = db_it->second;
-        auto table = table_it->second;
+    provider_.put("/dbs/:db_name/tables/:table_name",
+                  [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
+                      auto err = GeneralError();
+                      auto db_it = param.find("db_name");
+                      auto table_it = param.find("table_name");
+                      if (db_it == param.end() || table_it == param.end()) {
+                          writer << err.Set("Invalid path");
+                          return;
+                      }
+                      auto db = db_it->second;
+                      auto table = table_it->second;
 
-        // json2doc, then generate an insert sql
-        Document document;
-        if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
-            writer& err.Set("Json parse failed");
-            return;
-        }
+                      // json2doc, then generate an insert sql
+                      Document document;
+                      if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
+                          writer << err.Set("Json parse failed");
+                          return;
+                      }
 
-        const auto& value = document["value"];
-        // value should be array, and multi put is not supported now
-        if (!value.IsArray() || value.Empty() || value.Size() > 1) {
-            writer& err.Set("Invalid value in body");
-            return;
-        }
-        const auto& arr = value[0];
-        StringBuffer buffer;
-        Writer<StringBuffer> sql_writer(buffer);
-        arr.Accept(sql_writer);
-        std::string line(buffer.GetString());
-        std::string insert_sql = "insert into " + table + " values(" + line.substr(1, line.length() - 2) + ");";
+                      const auto& value = document["value"];
+                      // value should be array, and multi put is not supported now
+                      if (!value.IsArray() || value.Empty() || value.Size() > 1 || !value[0].IsArray()) {
+                          writer << err.Set("Invalid value in body");
+                          return;
+                      }
+                      const auto& arr = value[0];
+                      std::string holders;
+                      for (int i = 0; i < arr.Size(); ++i) {
+                          holders += ((i == 0) ? "?" : ",?");
+                      }
+                      hybridse::sdk::Status status;
+                      std::string insert_placeholder = "insert into " + table + " values(" + holders + ");";
+                      auto row = sql_router_->GetInsertRow(db, insert_placeholder, &status);
+                      if (!row) {
+                          writer << err.Set(status.msg);
+                          return;
+                      }
+                      auto schema = row->GetSchema();
+                      if (schema->GetColumnCnt() != arr.Size()) {
+                          writer << err.Set("column size != schema size");
+                          return;
+                      }
 
-        hybridse::sdk::Status status;
-        auto ok = sql_router_->ExecuteInsert(db, insert_sql, &status);
-        if (ok) {
-            PutResp resp;
-            writer& resp;
-        } else {
-            writer& err.Set(status.msg);
-        }
-    });
+                      // scan all strings , calc the sum, to init SQLInsertRow's string length
+                      decltype(arr.Size()) str_len_sum = 0;
+                      for (int i = 0; i < arr.Size(); ++i) {
+                          if (schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
+                              str_len_sum += arr[i].GetStringLength();
+                          }
+                      }
+                      row->Init(static_cast<int>(str_len_sum));
+
+                      for (int i = 0; i < arr.Size(); ++i) {
+                          if (!AppendJsonValue(arr[i], schema->GetColumnType(i), row)) {
+                              writer << err.Set("Translate to insert row failed");
+                              return;
+                          }
+                      }
+
+                      auto ok = sql_router_->ExecuteInsert(db, insert_placeholder, row, &status);
+                      if (ok) {
+                          PutResp resp;
+                          writer << resp;
+                      } else {
+                          writer << err.Set(status.msg);
+                      }
+                  });
 }
 
 void APIServiceImpl::RegisterExecSP() {
-    provider_.post("/db/:db_name/procedure/:sp_name", [this](const InterfaceProvider::Params& param,
-                                                             const butil::IOBuf& req_body, JsonWriter& writer) {
+    provider_.post("/dbs/:db_name/procedures/:sp_name", [this](const InterfaceProvider::Params& param,
+                                                               const butil::IOBuf& req_body, JsonWriter& writer) {
         auto err = GeneralError();
         auto db_it = param.find("db_name");
         auto sp_it = param.find("sp_name");
         if (db_it == param.end() || sp_it == param.end()) {
-            writer& err.Set("Invalid path");
+            writer << err.Set("Invalid path");
             return;
         }
         auto db = db_it->second;
@@ -200,17 +243,17 @@ void APIServiceImpl::RegisterExecSP() {
 
         Document document;
         if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
-            writer& err.Set("Json parse failed");
+            writer << err.Set("Json parse failed");
             return;
         }
         auto common_cols_v = document.FindMember("common_cols");
         if (common_cols_v == document.MemberEnd()) {
-            writer& err.Set("No member common_cols");
+            writer << err.Set("No member common_cols");
             return;
         }
         auto input = document.FindMember("input");
         if (input == document.MemberEnd() || !input->value.IsArray()) {
-            writer& err.Set("Invalid input");
+            writer << err.Set("Invalid input");
             return;
         }
         const auto& rows = input->value;
@@ -220,7 +263,7 @@ void APIServiceImpl::RegisterExecSP() {
         // GetRequestRowByProcedure can't do that.
         auto sp_info = sql_router_->ShowProcedure(db, sp, &status);
         if (!sp_info) {
-            writer& err.Set(status.msg);
+            writer << err.Set(status.msg);
             return;
         }
 
@@ -237,13 +280,13 @@ void APIServiceImpl::RegisterExecSP() {
         std::set<std::string> col_set;
         for (decltype(rows.Size()) i = 0; i < rows.Size(); ++i) {
             if (!rows[i].IsArray()) {
-                writer& err.Set("Invalid input data row");
+                writer << err.Set("Invalid input data row");
                 return;
             }
             auto row = std::make_shared<sdk::SQLRequestRow>(input_schema, col_set);
 
             if (!Json2SQLRequestRow(rows[i], common_cols_v->value, row)) {
-                writer& err.Set("Translate to request row failed");
+                writer << err.Set("Translate to request row failed");
                 return;
             }
             row->Build();
@@ -252,7 +295,7 @@ void APIServiceImpl::RegisterExecSP() {
 
         auto rs = sql_router_->CallSQLBatchRequestProcedure(db, sp, row_batch, &status);
         if (!rs) {
-            writer& err.Set(status.msg);
+            writer << err.Set(status.msg);
             return;
         }
 
@@ -268,18 +311,18 @@ void APIServiceImpl::RegisterExecSP() {
         }
 
         resp.data.rs = rs;
-        writer& resp;
+        writer << resp;
     });
 }
 
 void APIServiceImpl::RegisterGetSP() {
-    provider_.get("/db/:db_name/procedure/:sp_name", [this](const InterfaceProvider::Params& param,
-                                                            const butil::IOBuf& req_body, JsonWriter& writer) {
+    provider_.get("/dbs/:db_name/procedures/:sp_name", [this](const InterfaceProvider::Params& param,
+                                                              const butil::IOBuf& req_body, JsonWriter& writer) {
         auto err = GeneralError();
         auto db_it = param.find("db_name");
         auto sp_it = param.find("sp_name");
         if (db_it == param.end() || sp_it == param.end()) {
-            writer& err.Set("Invalid path");
+            writer << err.Set("Invalid path");
             return;
         }
         auto db = db_it->second;
@@ -288,7 +331,7 @@ void APIServiceImpl::RegisterGetSP() {
         hybridse::sdk::Status status;
         auto sp_info = sql_router_->ShowProcedure(db, sp, &status);
         if (!sp_info) {
-            writer& err.Set(status.msg);
+            writer << err.Set(status.msg);
             return;
         }
 
@@ -310,7 +353,7 @@ void APIServiceImpl::RegisterGetSP() {
             }
         });
         resp.data.tables = sp_info->GetTables();
-        writer& resp;
+        writer << resp;
     });
 }
 }  // namespace http

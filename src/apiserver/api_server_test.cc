@@ -156,6 +156,7 @@ TEST_F(APIServerTest, put) {
                       "field4 date, "
                       "field5 bigint, "
                       "field6 bool,"
+                      "field7 string,"
                       "index(key=field1, ts=field2));";
     hybridse::sdk::Status status;
     EXPECT_TRUE(cluster_remote_->ExecuteDDL(db_, ddl, &status)) << status.msg;
@@ -164,44 +165,48 @@ TEST_F(APIServerTest, put) {
     // put to invalid table
     brpc::Controller cntl;
     cntl.http_request().set_method(brpc::HTTP_METHOD_PUT);
-    cntl.http_request().uri() = "http://127.0.0.1:8010/db/" + db_ + "/table/invalid_table";
+    cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + db_ + "/tables/invalid_table";
     cntl.request_attachment().append(R"({"value":[[-1]]})");
     http_channel_.CallMethod(NULL, &cntl, NULL, NULL, NULL);
     ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
     PutResp resp;
     JsonReader reader(cntl.response_attachment().to_string().c_str());
-    reader& resp;
+    reader >> resp;
     ASSERT_EQ(-1, resp.code);
     LOG(INFO) << "put to invalid table, resp: " << resp.msg;
 
     // put to valid table
-    for (int i = 0; i < 10; i++) {
-        std::string key = "value" + std::to_string(i);
+    int insert_cnt = 10;
+    for (int i = 0; i < insert_cnt; i++) {
+        std::string key = "k" + std::to_string(i);
 
         brpc::Controller cntl;
         cntl.http_request().set_method(brpc::HTTP_METHOD_PUT);
-        cntl.http_request().uri() = "http://127.0.0.1:8010/db/" + db_ + "/table/" + table;
-        cntl.request_attachment().append(
-            "{\n"
-            "    \"value\": [[\n"
-            "        \"value1\",\n"
-            "        111,\n"
-            "        1.4,\n"
-            "        \"2021-04-27\",\n"
-            "        1620471840256,\n"
-            "        true\n"
-            "    ]]\n"
-            "\n"
-            "}");
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + db_ + "/tables/" + table;
+        cntl.request_attachment().append("{\"value\": [[\"" + key +
+                                         "\", 111, 1.4,  \"2021-04-27\",  \"1620471840256\", true, \"more str\"]]}");
         http_channel_.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
         PutResp resp;
         JsonReader reader(cntl.response_attachment().to_string().c_str());
-        reader& resp;
-        ASSERT_EQ(0, resp.code);
+        reader >> resp;
+        ASSERT_EQ(0, resp.code) << resp.msg;
         ASSERT_STREQ("ok", resp.msg.c_str());
     }
 
+    // Check data
+    std::string select_all = "select * from " + table + ";";
+    auto rs = cluster_remote_->ExecuteSQL(db_, select_all, &status);
+    ASSERT_TRUE(rs) << "fail to execute sql";
+    ASSERT_EQ(insert_cnt, rs->Size());
+
+    if (rs->Next()) {
+        // just peek one
+        LOG(INFO) << rs->GetRowString();
+        int64_t ts;
+        ASSERT_TRUE(rs->GetTime(1, &ts));
+        ASSERT_EQ(111, ts);
+    }
     ASSERT_TRUE(cluster_remote_->ExecuteDDL(db_, "drop table " + table + ";", &status)) << status.msg;
 }
 
@@ -239,7 +244,7 @@ TEST_F(APIServerTest, procedure) {
 
     // show procedure
     brpc::Controller show_cntl;  // default is GET
-    show_cntl.http_request().uri() = "http://127.0.0.1:8010/db/" + db_ + "/procedure/" + sp_name;
+    show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + db_ + "/procedures/" + sp_name;
     http_channel_.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
     ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
     LOG(INFO) << "get sp resp: " << show_cntl.response_attachment();
@@ -257,7 +262,7 @@ TEST_F(APIServerTest, procedure) {
     // call procedure
     brpc::Controller cntl;
     cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
-    cntl.http_request().uri() = "http://127.0.0.1:8010/db/" + db_ + "/procedure/" + sp_name;
+    cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + db_ + "/procedures/" + sp_name;
     cntl.request_attachment().append(R"(
 {
     "common_cols":["bb", 23, 1590738994000],

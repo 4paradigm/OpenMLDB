@@ -159,7 +159,7 @@ bool InterfaceProvider::handle(const std::string& path, const brpc::HttpMethod& 
     Url url;
 
     if (!parser_.parse(path, &url)) {
-        writer& err.Set("invalid url");
+        writer << err.Set("invalid url");
         return false;
     }
 
@@ -168,11 +168,11 @@ bool InterfaceProvider::handle(const std::string& path, const brpc::HttpMethod& 
     // is there any request matching the request type?
     if (requestList == std::end(requests_)) {
         if (strncmp(HttpMethod2Str(method), "UNKNOWN", 7) != 0) {
-            writer& err.Set("unsupported method");
+            writer << err.Set("unsupported method");
             return false;
         }
 
-        writer& err.Set("invalid method");
+        writer << err.Set("invalid method");
         return false;
     }
 
@@ -181,7 +181,7 @@ bool InterfaceProvider::handle(const std::string& path, const brpc::HttpMethod& 
                                 [&, this](BuiltRequest const& request) { return matching(url, request.url); });
 
     if (request == std::end(requestList->second)) {
-        writer& err.Set("no match method");
+        writer << err.Set("no match method");
         return false;
     }
 
