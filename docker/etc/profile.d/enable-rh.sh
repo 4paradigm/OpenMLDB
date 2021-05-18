@@ -1,5 +1,5 @@
-if [ -d '/opt/rh/devtoolset-7' ] ; then
-    source /opt/rh/devtoolset-7/enable
+if [ -d '/opt/rh/devtoolset-8' ] ; then
+    source /opt/rh/devtoolset-8/enable
 fi
 
 if [ -d '/opt/rh/rh-python38' ]; then

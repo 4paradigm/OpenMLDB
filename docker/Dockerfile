@@ -13,54 +13,33 @@
 # limitations under the License.
 
 
-FROM centos:7 AS base
+FROM centos:7
 
 LABEL org.opencontainers.image.source https://github.com/4paradigm/HybridSE
 
 # hadolint ignore=DL3031
-RUN yum update -y && yum install -y centos-release-scl epel-release && yum clean all
+RUN yum update -y && yum install -y centos-release-scl epel-release && \
+    yum install -y devtoolset-8 rh-git218 devtoolset-8-libasan-devel flex doxygen \
+    java-1.8.0-openjdk-devel rh-python38-python-devel rh-python38-python-wheel && \
+    curl -SLo lcov-1.15-1.noarch.rpm https://github.com/linux-test-project/lcov/releases/download/v1.15/lcov-1.15-1.noarch.rpm && \
+    yum localinstall -y lcov-1.15-1.noarch.rpm && \
+    yum clean all && rm lcov-1.15-1.noarch.rpm
 
-RUN yum install -y devtoolset-7 rh-git218 devtoolset-7-libasan-devel flex \
-    autoconf automake unzip bc expect libtool \
-    java-1.8.0-openjdk-devel lcov rh-python38-python-devel && \
-    yum clean all
+COPY --chown=root:root etc/profile.d/*.sh /etc/profile.d/
 
-COPY --chown=root:root etc/profile.d/enable-rh.sh /etc/profile.d/
+ADD https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.3.1/thirdparty-2021-05-17.tar.gz /depends/thirdparty.tar.gz
 
-FROM base AS builder
+RUN curl -SLo apache-maven-3.6.3-bin.tar.gz https://mirrors.ocf.berkeley.edu/apache/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz && \
+    curl -SLo cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz && \
+    tar xzf apache-maven-3.6.3-bin.tar.gz -C /usr/local --strip-components=1 && \
+    tar xzf cmake.tar.gz -C /usr/local --strip-components=1 && \
+    curl -SLo thirdsrc.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.3.1/thirdsrc-2021-05-17.tar.gz && \
+    mkdir -p /depends/thirdsrc && \
+    tar xzf thirdsrc.tar.gz -C /depends/thirdsrc --strip-components=1 && \
+    rm ./*.tar.gz
 
-RUN yum install -y gettext byacc xz tcl cppunit-devel && \
-    yum clean all
-
-WORKDIR /depends
-
-COPY --chown=root:root *.sh ./
-
-RUN bash fetch_resource.sh
-
-RUN bash install_deps.sh
-
-RUN tar cvzf thirdparty.tar.gz thirdparty/
-
-FROM base
-
-COPY etc/profile.d/enable-thirdparty.sh /etc/profile.d/
-COPY --from=builder /usr/local/ /usr/local/
-
-WORKDIR /depends/thirdsrc
-COPY --from=builder /depends/thirdsrc/scala-2.12.8.rpm ./
-RUN rpm -i scala-2.12.8.rpm && rm ./*.rpm
-
-# use compressed in order to reduce image size
-# hadolint ignore=DL3010
-COPY --from=builder /depends/thirdparty.tar.gz /depends/
-COPY --from=builder /depends/thirdsrc/zookeeper-3.4.14/ /depends/thirdsrc/zookeeper-3.4.14/
-COPY --from=builder /opt/maven/ /opt/maven/
-
-RUN yum install -y rh-python38-python-wheel && yum clean all
-
-ENV PATH=/opt/rh/rh-git218/root/usr/bin:/opt/rh/rh-python38/root/usr/local/bin:/opt/rh/rh-python38/root/usr/bin:/opt/rh/devtoolset-7/root/usr/bin:/opt/maven/bin:/depends/thirdparty/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ENV LD_LIBRARY_PATH=/opt/rh/httpd24/root/usr/lib64:/opt/rh/rh-python38/root/usr/lib64:/opt/rh/devtoolset-7/root/usr/lib64:/opt/rh/devtoolset-7/root/usr/lib:/opt/rh/devtoolset-7/root/usr/lib64/dyninst
+ENV PATH=/opt/rh/rh-git218/root/usr/bin:/opt/rh/rh-python38/root/usr/local/bin:/opt/rh/rh-python38/root/usr/bin:/opt/rh/devtoolset-8/root/usr/bin:/depends/thirdparty/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ENV LD_LIBRARY_PATH=/opt/rh/httpd24/root/usr/lib64:/opt/rh/rh-python38/root/usr/lib64:/opt/rh/devtoolset-8/root/usr/lib64:/opt/rh/devtoolset-8/root/usr/lib:/opt/rh/devtoolset-8/root/usr/lib64/dyninst
 ENV LANG=en_US.UTF-8
 
 WORKDIR /root

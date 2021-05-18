@@ -37,6 +37,14 @@ jobs:
           fi
           docker build --no-cache . --file Dockerfile --tag $IMAGE_NAME
 
+      - name: Login to GitHub Container Registry
+        if: ${{ github.event_name == 'push' }}
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Push image
         if: ${{ github.event_name == 'push' }}
         run: |
@@ -61,8 +69,6 @@ jobs:
           echo IMAGE_ID=$IMAGE_ID
           echo VERSION=$VERSION
           echo "COMMIT=${{ github.sha }}"
-
-          echo "${{ secrets.CR_PAT }}" | docker login https://ghcr.io -u ${{ secrets.CR_USER }} --password-stdin
 
           docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
           docker push $IMAGE_ID:$VERSION
