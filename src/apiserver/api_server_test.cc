@@ -184,7 +184,7 @@ TEST_F(APIServerTest, put) {
         cntl.http_request().set_method(brpc::HTTP_METHOD_PUT);
         cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + db_ + "/tables/" + table;
         cntl.request_attachment().append("{\"value\": [[\"" + key +
-                                         "\", 111, 1.4,  \"2021-04-27\",  \"1620471840256\", true, \"more str\"]]}");
+                                         "\", 111, 1.4,  \"2021-04-27\", 1620471840256, true, \"more str\"]]}");
         http_channel_.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
         PutResp resp;
@@ -203,9 +203,12 @@ TEST_F(APIServerTest, put) {
     if (rs->Next()) {
         // just peek one
         LOG(INFO) << rs->GetRowString();
-        int64_t ts;
-        ASSERT_TRUE(rs->GetTime(1, &ts));
-        ASSERT_EQ(111, ts);
+        int64_t res;
+        ASSERT_TRUE(rs->GetTime(1, &res));
+        ASSERT_EQ(111, res);
+
+        ASSERT_TRUE(rs->GetInt64(4, &res));
+        ASSERT_EQ(1620471840256, res);
     }
     ASSERT_TRUE(cluster_remote_->ExecuteDDL(db_, "drop table " + table + ";", &status)) << status.msg;
 }
