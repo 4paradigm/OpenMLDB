@@ -892,12 +892,11 @@ void HandleNSClientAddIndex(const std::vector<std::string>& parts,
                 column_key.add_col_name(type_pair[0]);
                 fedb::common::ColumnDesc col_desc;
                 col_desc.set_name(type_pair[0]);
-                auto type = fedb::codec::SchemaCodec::ConvertType(type_pair[1]);
-                if (type == fedb::codec::ColType::kUnknown) {
+                auto it = ::fedb::codec::DATA_TYPE_MAP.find(type_pair[1]);
+                if (it == ::fedb::codec::DATA_TYPE_MAP.end()) {
                     std::cerr << col_name << " type " << type_pair[0] << " invalid\n";
                     return;
                 }
-                auto it = ::fedb::codec::DATA_TYPE_MAP.find(type_pair[1]);
                 col_desc.set_data_type(it->second);
                 cols.push_back(std::move(col_desc));
             } else {

@@ -17,6 +17,7 @@
 
 #include "codec/sdk_codec.h"
 
+#include <set>
 #include <string>
 #include <utility>
 
@@ -82,7 +83,7 @@ void SDKCodec::ParseColumnDesc(const Schema& column_desc) {
 
 void SDKCodec::ParseTsCol() {
     std::set<uint32_t> ts_set;
-    for (const auto& index: index_) {
+    for (const auto& index : index_) {
         if (index.has_ts_name()) {
             auto iter = schema_idx_map_.find(index.ts_name());
             if (iter != schema_idx_map_.end()) {
