@@ -7,7 +7,7 @@ jobs:
   cpp_ut:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.1.1
+      image: ghcr.io/4paradigm/hybridsql:0.2.0
     steps:
       - uses: actions/checkout@v1
       - name: uncompress_thirdparty
@@ -25,14 +25,13 @@ jobs:
 #        if: always()
 #        run: |
 #          bash steps/sql_sdk_c_ut.sh 0 sql_sdk_test
-      - name: upload Unit Test Results
+      - name: upload unit test results
         if: always()
         uses: actions/upload-artifact@v2
         with:
           name: linux-ut-result-cpp-${{ github.sha }}
           path: |
             reports/*.xml
-
       - name: cleanup
         if: always()
         run: |
@@ -42,7 +41,7 @@ jobs:
   sql_sdk_test:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.1.1
+      image: ghcr.io/4paradigm/hybridsql:0.2.0
     steps:
       - uses: actions/checkout@v1
       - name: uncompress_thirdparty
@@ -56,11 +55,11 @@ jobs:
       - name: run sql_sdk_test
         run: |
           bash steps/ut.sh sql_sdk_test 0
-      - name: upload Unit Test Results
+      - name: upload unit test results
         if: always()
         uses: actions/upload-artifact@v2
         with:
-          name: linux-ut-result-cpp-${{ github.sha }} # the same name?
+          name: linux-ut-result-cpp-sdk-${{ github.sha }} # the same name?
           path: |
             reports/*.xml
       - name: cleanup
@@ -72,7 +71,7 @@ jobs:
   sql_cluster_test:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/centos6_gcc7_hybridsql:0.1.1
+      image: ghcr.io/4paradigm/hybridsql:0.2.0
     steps:
       - uses: actions/checkout@v1
       - name: uncompress_thirdparty
@@ -86,11 +85,11 @@ jobs:
       - name: run sql_sdk_test
         run: |
           bash steps/ut.sh sql_cluster_test 0
-      - name: upload Unit Test Results
+      - name: upload unit test results
         if: always()
         uses: actions/upload-artifact@v2
         with:
-          name: linux-ut-result-cpp-${{ github.sha }}
+          name: linux-ut-result-cpp-cluster-${{ github.sha }}
           path: |
             reports/*.xml
       - name: cleanup
@@ -117,4 +116,3 @@ jobs:
           files: linux-ut-result-*/**/*.xml
           check_name: Linux Test Report
           comment_title: Linux Test Report
-          
