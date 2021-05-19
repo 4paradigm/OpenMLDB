@@ -551,16 +551,6 @@ bool NameServerImpl::CompareTableInfo(const std::vector<::fedb::nameserver::Tabl
             }
             return false;
         }
-        if (table.ttl() != table_info->ttl()) {
-            PDLOG(WARNING, "table [%s] ttl not equal, remote [%d] local [%d]", table.name().c_str(), table.ttl(),
-                  table_info->ttl());
-            return false;
-        }
-        if (table.ttl_type() != table_info->ttl_type()) {
-            PDLOG(WARNING, "table [%s] ttl type not equal, remote [%s] local [%s]", table.name().c_str(),
-                  table.ttl_type().c_str(), table_info->ttl_type().c_str());
-            return false;
-        }
         if (table.table_partition_size() != table_info->table_partition_size()) {
             PDLOG(WARNING, "table [%s] partition num not equal, remote [%d] local [%d]", table.name().c_str(),
                   table.table_partition_size(), table_info->table_partition_size());
@@ -598,19 +588,19 @@ bool NameServerImpl::CompareTableInfo(const std::vector<::fedb::nameserver::Tabl
                 }
             }
         }
-        if (table.column_desc_v1_size() != table_info->column_desc_v1_size()) {
+        if (table.column_desc_size() != table_info->column_desc_size()) {
             PDLOG(WARNING, "table [%s] column desc v1 size not equal", table.name().c_str());
             return false;
         }
         {
             std::map<std::string, std::string> tmp_map;
-            for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
-                std::string name = table_info->column_desc_v1(i).name();
+            for (int i = 0; i < table_info->column_desc_size(); i++) {
+                std::string name = table_info->column_desc(i).name();
                 std::string value;
-                table_info->column_desc_v1(i).SerializeToString(&value);
+                table_info->column_desc(i).SerializeToString(&value);
                 tmp_map.insert(std::make_pair(name, value));
             }
-            for (auto& column_v1 : table.column_desc_v1()) {
+            for (auto& column_v1 : table.column_desc()) {
                 auto iter = tmp_map.find(column_v1.name());
                 if (iter == tmp_map.end()) {
                     PDLOG(WARNING,
@@ -2308,98 +2298,62 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller, const MakeSnapsho
           request->name().c_str(), request->pid());
 }
 
-void NameServerImpl::AddDataType(std::shared_ptr<TableInfo> table_info) {
-    for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
-        auto desc = table_info->mutable_column_desc_v1(i);
-        if (desc->has_data_type()) {
-            continue;
-        }
-        auto type = fedb::codec::DATA_TYPE_MAP.find(desc->type());
-        if (type != fedb::codec::DATA_TYPE_MAP.end()) {
-            desc->set_data_type(type->second);
-        }
-    }
-    for (int i = 0; i < table_info->added_column_desc_size(); i++) {
-        auto desc = table_info->mutable_added_column_desc(i);
-        if (desc->has_data_type()) {
-            continue;
-        }
-        auto type = fedb::codec::DATA_TYPE_MAP.find(desc->type());
-        if (type != fedb::codec::DATA_TYPE_MAP.end()) {
-            desc->set_data_type(type->second);
-        }
-    }
-}
-
 int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
     bool has_index = false;
     std::map<std::string, std::string> column_map;
-    if (table_info.column_desc_v1_size() > 0) {
-        for (const auto& column_desc : table_info.column_desc_v1()) {
-            if (column_desc.add_ts_idx()) {
-                has_index = true;
-            }
-            if (column_desc.add_ts_idx() && ((column_desc.type() == "float") || (column_desc.type() == "double"))) {
-                PDLOG(WARNING,
-                      "float or double type column can not be index, column "
-                      "is: %s",
-                      column_desc.name().c_str());
-                return -1;
-            }
+    if (table_info.column_desc_size() > 0) {
+        for (const auto& column_desc : table_info.column_desc()) {
             column_map.insert(std::make_pair(column_desc.name(), column_desc.type()));
         }
-        if (table_info.column_key_size() > 0) {
-            has_index = true;
-            for (const auto& column_key : table_info.column_key()) {
-                bool has_iter = false;
-                for (const auto& column_name : column_key.col_name()) {
-                    has_iter = true;
-                    auto iter = column_map.find(column_name);
-                    if ((iter != column_map.end() && ((iter->second == "float") || (iter->second == "double")))) {
-                        PDLOG(WARNING,
-                              "float or double type column can not be index, "
-                              "column is: %s",
-                              column_key.index_name().c_str());
-                        return -1;
-                    }
-                }
-                if (!has_iter) {
-                    auto iter = column_map.find(column_key.index_name());
-                    if (iter == column_map.end()) {
-                        PDLOG(WARNING,
-                              "index must member of columns when column key "
-                              "col name is empty");
-                        return -1;
-                    }
-                    if ((iter->second == "float") || (iter->second == "double")) {
-                        PDLOG(WARNING, "float or double column can not be index");
-                        return -1;
-                    }
+    }
+    if (table_info.column_key_size() > 0) {
+        has_index = true;
+        for (const auto& column_key : table_info.column_key()) {
+            bool has_iter = false;
+            for (const auto& column_name : column_key.col_name()) {
+                has_iter = true;
+                auto iter = column_map.find(column_name);
+                if ((iter != column_map.end() && ((iter->second == "float") || (iter->second == "double")))) {
+                    PDLOG(WARNING,
+                          "float or double type column can not be index, "
+                          "column is: %s",
+                          column_key.index_name().c_str());
+                    return -1;
                 }
             }
-        }
-        if (!has_index) {
-            PDLOG(WARNING, "no index in table_meta");
-            return -1;
-        }
-    } else if (table_info.column_desc_size() > 0) {
-        for (const auto& column_desc : table_info.column_desc()) {
-            if (column_desc.add_ts_idx()) {
-                has_index = true;
+            if (!has_iter) {
+                auto iter = column_map.find(column_key.index_name());
+                if (iter == column_map.end()) {
+                    PDLOG(WARNING,
+                          "index must member of columns when column key "
+                          "col name is empty");
+                    return -1;
+                }
+                if ((iter->second == "float") || (iter->second == "double")) {
+                    PDLOG(WARNING, "float or double column can not be index");
+                    return -1;
+                }
             }
-            if (column_desc.add_ts_idx() && ((column_desc.type() == "float") || (column_desc.type() == "double"))) {
-                PDLOG(WARNING,
-                      "float or double type column can not be index, column "
-                      "is: %s",
-                      column_desc.name().c_str());
-                return -1;
+            if (column_key.has_ttl()) {
+                if ((column_key.ttl().abs_ttl() > FLAGS_absolute_ttl_max) ||
+                    (column_key.ttl().lat_ttl() > FLAGS_latest_ttl_max)) {
+                    uint32_t max_ttl = column_key.ttl().ttl_type() == ::fedb::type::TTLType::kAbsoluteTime
+                                           ? FLAGS_absolute_ttl_max
+                                           : FLAGS_latest_ttl_max;
+                    uint64_t ttl = column_key.ttl().abs_ttl() > FLAGS_absolute_ttl_max ? column_key.ttl().abs_ttl()
+                                    : column_key.ttl().lat_ttl();
+                    PDLOG(WARNING,
+                          "ttl is greater than conf value. ttl[%lu] ttl_type[%s] "
+                          "max ttl[%u]",
+                          ttl, ::fedb::type::TTLType_Name(column_key.ttl().ttl_type()).c_str(), max_ttl);
+                    return -1;
+                }
             }
-            column_map.emplace(column_desc.name(), column_desc.type());
         }
-        if (!has_index) {
-            PDLOG(WARNING, "no index in table_meta");
-            return -1;
-        }
+    }
+    if (!has_index) {
+        PDLOG(WARNING, "no index in table_meta");
+        return -1;
     }
 
     std::set<std::string> partition_keys;
@@ -2415,37 +2369,11 @@ int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
         }
         partition_keys.insert(partition_column);
     }
-
-    if (table_info.has_ttl_desc()) {
-        if ((table_info.ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) ||
-            (table_info.ttl_desc().lat_ttl() > FLAGS_latest_ttl_max)) {
-            uint32_t max_ttl = table_info.ttl_desc().ttl_type() == ::fedb::api::TTLType::kAbsoluteTime
-                                   ? FLAGS_absolute_ttl_max
-                                   : FLAGS_latest_ttl_max;
-            uint64_t ttl = table_info.ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max ? table_info.ttl_desc().abs_ttl()
-                                                                                    : table_info.ttl_desc().lat_ttl();
-            PDLOG(WARNING,
-                  "ttl is greater than conf value. ttl[%lu] ttl_type[%s] "
-                  "max ttl[%u]",
-                  ttl, ::fedb::api::TTLType_Name(table_info.ttl_desc().ttl_type()).c_str(), max_ttl);
-            return -1;
-        }
-    } else if (table_info.has_ttl()) {
-        if ((table_info.ttl_type() == "kAbsoluteTime" && table_info.ttl() > FLAGS_absolute_ttl_max) ||
-            (table_info.ttl_type() == "kLatestTime" && table_info.ttl() > FLAGS_latest_ttl_max)) {
-            uint32_t max_ttl = table_info.ttl_type() == "kAbsoluteTime" ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
-            PDLOG(WARNING,
-                  "ttl is greater than conf value. ttl[%lu] ttl_type[%s] "
-                  "max ttl[%u]",
-                  table_info.ttl(), table_info.ttl_type().c_str(), max_ttl);
-            return -1;
-        }
-    }
     return 0;
 }
 
 int NameServerImpl::FillColumnKey(TableInfo& table_info) {
-    if (table_info.column_desc_v1_size() == 0) {
+    if (table_info.column_desc_size() == 0) {
         return 0;
     } else if (table_info.column_key_size() > 0) {
         for (int idx = 0; idx < table_info.column_key_size(); idx++) {
@@ -2455,26 +2383,6 @@ int NameServerImpl::FillColumnKey(TableInfo& table_info) {
             }
         }
         return 0;
-    }
-    std::vector<std::string> ts_vec;
-    std::vector<std::string> index_vec;
-    for (const auto& column_desc : table_info.column_desc_v1()) {
-        if (column_desc.is_ts_col()) {
-            ts_vec.push_back(column_desc.name());
-        }
-        if (column_desc.add_ts_idx()) {
-            index_vec.push_back(column_desc.name());
-        }
-    }
-    if (ts_vec.size() > 1) {
-        return -1;
-    }
-    for (const auto& index : index_vec) {
-        ::fedb::common::ColumnKey* column_key = table_info.add_column_key();
-        column_key->set_index_name(index);
-        if (!ts_vec.empty()) {
-            column_key->add_ts_name(ts_vec[0]);
-        }
     }
     return 0;
 }
@@ -2577,56 +2485,24 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
 }
 
 int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::fedb::nameserver::TableInfo> table_info, bool is_leader,
-                                        const std::vector<::fedb::codec::ColumnDesc>& columns,
                                         std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term) {
-    ::fedb::api::TTLType ttl_type = ::fedb::api::TTLType::kAbsoluteTime;
-    if (!table_info->has_ttl_desc()) {
-        if (table_info->ttl_type() == "kLatestTime") {
-            ttl_type = ::fedb::api::TTLType::kLatestTime;
-        } else if (table_info->ttl_type() == "kAbsOrLat") {
-            ttl_type = ::fedb::api::TTLType::kAbsOrLat;
-        } else if (table_info->ttl_type() == "kAbsAndLat") {
-            ttl_type = ::fedb::api::TTLType::kAbsAndLat;
-        } else if (table_info->ttl_type() != "kAbsoluteTime") {
-            return -1;
-        }
-    } else {
-        ttl_type = table_info->ttl_desc().ttl_type();
-    }
     ::fedb::type::CompressType compress_type = ::fedb::type::CompressType::kNoCompress;
     if (table_info->compress_type() == ::fedb::type::kSnappy) {
         compress_type = ::fedb::type::CompressType::kSnappy;
     }
     ::fedb::api::TableMeta table_meta;
-    std::string schema;
-    for (uint32_t i = 0; i < columns.size(); i++) {
-        if (columns[i].add_ts_idx) {
-            table_meta.add_dimensions(columns[i].name);
-        }
-    }
-    ::fedb::codec::SchemaCodec codec;
-    bool codec_ok = codec.Encode(columns, schema);
-    if (!codec_ok) {
-        return -1;
-    }
     table_meta.set_db(table_info->db());
     table_meta.set_name(table_info->name());
     table_meta.set_tid(table_info->tid());
-    table_meta.set_ttl(table_info->ttl());
     table_meta.set_seg_cnt(table_info->seg_cnt());
-    table_meta.set_schema(schema);
-    table_meta.set_ttl_type(ttl_type);
     table_meta.set_compress_type(compress_type);
     table_meta.set_format_version(table_info->format_version());
-    if (table_info->has_ttl_desc()) {
-        table_meta.mutable_ttl_desc()->CopyFrom(table_info->ttl_desc());
-    }
     if (table_info->has_key_entry_max_height()) {
         table_meta.set_key_entry_max_height(table_info->key_entry_max_height());
     }
-    for (int idx = 0; idx < table_info->column_desc_v1_size(); idx++) {
+    for (int idx = 0; idx < table_info->column_desc_size(); idx++) {
         ::fedb::common::ColumnDesc* column_desc = table_meta.add_column_desc();
-        column_desc->CopyFrom(table_info->column_desc_v1(idx));
+        column_desc->CopyFrom(table_info->column_desc(idx));
     }
     for (int idx = 0; idx < table_info->column_key_size(); idx++) {
         ::fedb::common::ColumnKey* column_key = table_meta.add_column_key();
@@ -3513,15 +3389,7 @@ bool NameServerImpl::AddFieldToTablet(const std::vector<fedb::common::ColumnDesc
         ::fedb::codec::ColumnDesc column;
         column.name = col.name();
         column.type = fedb::codec::SchemaCodec::ConvertType(col.type());
-        column.add_ts_idx = false;
-        column.is_ts_col = false;
         columns.push_back(column);
-    }
-    std::string schema;
-    ::fedb::codec::SchemaCodec codec;
-    if (!codec.Encode(columns, schema)) {
-        LOG(WARNING) << "Fail to encode schema form columns in table " << name;
-        return false;
     }
     int32_t version_id = 1;
     if (table_info->schema_versions_size() > 0) {
@@ -3541,7 +3409,7 @@ bool NameServerImpl::AddFieldToTablet(const std::vector<fedb::common::ColumnDesc
     std::string msg;
     std::vector<fedb::common::ColumnDesc> new_cols;
     for (auto it = tablet_client_map.begin(); it != tablet_client_map.end(); it++) {
-        if (!it->second->UpdateTableMetaForAddField(tid, cols, *new_pair, schema, msg)) {
+        if (!it->second->UpdateTableMetaForAddField(tid, cols, *new_pair, msg)) {
             LOG(WARNING) << "update table_meta on endpoint[" << it->first << "for add table field failed! err: " << msg;
             return false;
         }
@@ -3582,8 +3450,8 @@ void NameServerImpl::AddTableField(RpcController* controller, const AddTableFiel
         }
         // judge if field exists in table_info
         const std::string& col_name = request->column_desc().name();
-        if (table_info->column_desc_v1_size() > 0) {
-            for (const auto& column : table_info->column_desc_v1()) {
+        if (table_info->column_desc_size() > 0) {
+            for (const auto& column : table_info->column_desc()) {
                 if (column.name() == col_name) {
                     response->set_code(ReturnCode::kFieldNameRepeatedInTableInfo);
                     response->set_msg("field name repeated in table_info!");
@@ -4091,7 +3959,6 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
             return;
         }
     }
-    AddDataType(table_info);
     if (CheckTableMeta(*table_info) < 0) {
         response->set_code(::fedb::base::ReturnCode::kInvalidParameter);
         response->set_msg("check TableMeta failed");
@@ -4145,14 +4012,6 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         }
         cur_term = term_;
     }
-    std::vector<::fedb::codec::ColumnDesc> columns;
-    if (::fedb::codec::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
-        response->set_code(::fedb::base::ReturnCode::kConvertColumnDescFailed);
-        response->set_msg("convert column desc failed");
-        PDLOG(WARNING, "convert table column desc failed. name[%s] tid[%u]", table_info->name().c_str(), tid);
-        return;
-    }
-
     if (request->has_zone_info() && request->has_task_info() && request->task_info().IsInitialized()) {
         std::shared_ptr<::fedb::api::TaskInfo> task_ptr;
         {
@@ -4171,12 +4030,12 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
                   ::fedb::api::TaskStatus_Name(task_ptr->status()).c_str());
         }
         task_thread_pool_.AddTask(boost::bind(&NameServerImpl::CreateTableInternel, this, *response, table_info,
-                                              columns, cur_term, tid, task_ptr));
+                                              cur_term, tid, task_ptr));
         response->set_code(::fedb::base::ReturnCode::kOk);
         response->set_msg("ok");
     } else {
         std::shared_ptr<::fedb::api::TaskInfo> task_ptr;
-        CreateTableInternel(*response, table_info, columns, cur_term, tid, task_ptr);
+        CreateTableInternel(*response, table_info, cur_term, tid, task_ptr);
         response->set_code(response->code());
         response->set_msg(response->msg());
     }
@@ -4205,12 +4064,12 @@ bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {
 }
 void NameServerImpl::CreateTableInternel(GeneralResponse& response,
                                          std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
-                                         const std::vector<::fedb::codec::ColumnDesc>& columns, uint64_t cur_term,
+                                         uint64_t cur_term,
                                          uint32_t tid, std::shared_ptr<::fedb::api::TaskInfo> task_ptr) {
     std::map<uint32_t, std::vector<std::string>> endpoint_map;
     do {
-        if (CreateTableOnTablet(table_info, false, columns, endpoint_map, cur_term) < 0 ||
-            CreateTableOnTablet(table_info, true, columns, endpoint_map, cur_term) < 0) {
+        if (CreateTableOnTablet(table_info, false, endpoint_map, cur_term) < 0 ||
+            CreateTableOnTablet(table_info, true, endpoint_map, cur_term) < 0) {
             response.set_code(::fedb::base::ReturnCode::kCreateTableFailedOnTablet);
             response.set_msg("create table failed on tablet");
             PDLOG(WARNING, "create table failed. name[%s] tid[%u]", table_info->name().c_str(), tid);
@@ -4743,7 +4602,6 @@ int NameServerImpl::CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data) {
     }
     uint32_t tid = table_info->tid();
     uint32_t pid = request.pid();
-    uint64_t ttl = table_info->ttl();
     uint32_t seg_cnt = table_info->seg_cnt();
     std::string leader_endpoint;
     if (GetLeader(table_info, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
@@ -4766,7 +4624,7 @@ int NameServerImpl::CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(request.endpoint(), op_index, ::fedb::api::OPType::kAddReplicaOP, request.name(), tid,
-                               pid, ttl, seg_cnt, false);
+                               pid, seg_cnt, false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -5017,7 +4875,7 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(des_endpoint, op_index, ::fedb::api::OPType::kMigrateOP, name, tid, pid,
-                               table_info->ttl(), table_info->seg_cnt(), false);
+                               table_info->seg_cnt(), false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u] endpoint[%s]", tid, pid, des_endpoint.c_str());
         return -1;
@@ -5523,18 +5381,6 @@ void NameServerImpl::UpdateTableStatusFun(
     for (const auto& kv : table_info_map) {
         uint32_t tid = kv.second->tid();
         std::string first_index_col;
-        for (int idx = 0; idx < kv.second->column_desc_size(); idx++) {
-            if (kv.second->column_desc(idx).add_ts_idx()) {
-                first_index_col = kv.second->column_desc(idx).name();
-                break;
-            }
-        }
-        for (int idx = 0; idx < kv.second->column_desc_v1_size(); idx++) {
-            if (kv.second->column_desc_v1(idx).add_ts_idx()) {
-                first_index_col = kv.second->column_desc_v1(idx).name();
-                break;
-            }
-        }
         if (kv.second->column_key_size() > 0) {
             first_index_col = kv.second->column_key(0).index_name();
         }
@@ -6232,7 +6078,6 @@ int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     uint32_t tid = table_info->tid();
-    uint64_t ttl = table_info->ttl();
     uint32_t seg_cnt = table_info->seg_cnt();
     std::string leader_endpoint;
     if (GetLeader(table_info, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
@@ -6254,7 +6099,7 @@ int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateLoadTableTask(endpoint, op_index, ::fedb::api::OPType::kReAddReplicaOP, name, tid, pid, ttl, seg_cnt,
+    task = CreateLoadTableTask(endpoint, op_index, ::fedb::api::OPType::kReAddReplicaOP, name, tid, pid, seg_cnt,
                                false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
@@ -6350,7 +6195,6 @@ int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_da
         return -1;
     }
     uint32_t tid = table_info->tid();
-    uint64_t ttl = table_info->ttl();
     uint32_t seg_cnt = table_info->seg_cnt();
     std::string leader_endpoint;
     if (GetLeader(table_info, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
@@ -6378,7 +6222,7 @@ int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_da
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateLoadTableTask(endpoint, op_index, ::fedb::api::OPType::kReAddReplicaWithDropOP, name, tid, pid, ttl,
+    task = CreateLoadTableTask(endpoint, op_index, ::fedb::api::OPType::kReAddReplicaWithDropOP, name, tid, pid,
                                seg_cnt, false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
@@ -6479,7 +6323,6 @@ int NameServerImpl::CreateReAddReplicaNoSendTask(std::shared_ptr<OPData> op_data
         return -1;
     }
     uint32_t tid = table_info->tid();
-    uint64_t ttl = table_info->ttl();
     uint32_t seg_cnt = table_info->seg_cnt();
     std::string leader_endpoint;
     if (GetLeader(table_info, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
@@ -6494,7 +6337,7 @@ int NameServerImpl::CreateReAddReplicaNoSendTask(std::shared_ptr<OPData> op_data
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateLoadTableTask(endpoint, op_index, ::fedb::api::OPType::kReAddReplicaNoSendOP, name, tid, pid, ttl,
+    task = CreateLoadTableTask(endpoint, op_index, ::fedb::api::OPType::kReAddReplicaNoSendOP, name, tid, pid,
                                seg_cnt, false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
@@ -6857,11 +6700,10 @@ int NameServerImpl::CreateReLoadTableTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     uint32_t tid = table_info->tid();
-    uint64_t ttl = table_info->ttl();
     uint32_t seg_cnt = table_info->seg_cnt();
     std::shared_ptr<Task> task =
         CreateLoadTableTask(endpoint, op_data->op_info_.op_id(), ::fedb::api::OPType::kReLoadTableOP, name, tid, pid,
-                            ttl, seg_cnt, true);
+                            seg_cnt, true);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -7149,7 +6991,7 @@ std::shared_ptr<Task> NameServerImpl::CreateTableRemoteTask(const ::fedb::namese
 
 std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& endpoint, uint64_t op_index,
                                                           ::fedb::api::OPType op_type, const std::string& name,
-                                                          uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt,
+                                                          uint32_t tid, uint32_t pid, uint32_t seg_cnt,
                                                           bool is_leader) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::fedb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
@@ -7166,7 +7008,6 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& end
     table_meta.set_name(name);
     table_meta.set_tid(tid);
     table_meta.set_pid(pid);
-    table_meta.set_ttl(ttl);
     table_meta.set_seg_cnt(seg_cnt);
     if (is_leader) {
         table_meta.set_mode(::fedb::api::TableMode::kTableLeader);
@@ -8113,50 +7954,10 @@ void NameServerImpl::UpdateTTL(RpcController* controller, const ::fedb::nameserv
         response->set_msg("table is not exist");
         return;
     }
-    // validation
-    ::fedb::api::TTLType old_ttl_type = ::fedb::api::TTLType::kAbsoluteTime;
-    ::fedb::api::TTLType new_ttl_type = ::fedb::api::TTLType::kAbsoluteTime;
-    uint64_t abs_ttl = request->value();
-    uint64_t lat_ttl = 0;
-    if (table->has_ttl_desc()) {
-        old_ttl_type = table->ttl_desc().ttl_type();
-    } else if (table->ttl_type() == "kLatestTime") {
-        old_ttl_type = ::fedb::api::TTLType::kLatestTime;
+    std::string index_name;
+    if (request->has_index_name()) {
+        index_name = request->index_name();
     }
-    if (request->has_ttl_desc()) {
-        new_ttl_type = request->ttl_desc().ttl_type();
-        abs_ttl = request->ttl_desc().abs_ttl();
-        lat_ttl = request->ttl_desc().lat_ttl();
-    } else if (request->ttl_type() == "kLatestTime") {
-        new_ttl_type = ::fedb::api::TTLType::kLatestTime;
-        abs_ttl = 0;
-        lat_ttl = request->value();
-    }
-    if (old_ttl_type != new_ttl_type) {
-        PDLOG(WARNING, "table ttl type mismatch, expect %s but %s", ::fedb::api::TTLType_Name(old_ttl_type).c_str(),
-              ::fedb::api::TTLType_Name(new_ttl_type).c_str());
-        response->set_code(::fedb::base::ReturnCode::kTtlTypeMismatch);
-        response->set_msg("ttl type mismatch");
-        return;
-    }
-    std::string ts_name;
-    if (request->has_ts_name() && request->ts_name().size() > 0) {
-        ts_name = request->ts_name();
-        bool has_found = false;
-        for (int i = 0; i < table->column_desc_v1_size(); i++) {
-            if (table->column_desc_v1(i).is_ts_col() && table->column_desc_v1(i).name() == ts_name) {
-                has_found = true;
-                break;
-            }
-        }
-        if (!has_found) {
-            PDLOG(WARNING, "ts name %s not found in table %s", ts_name.c_str(), request->name().c_str());
-            response->set_code(::fedb::base::ReturnCode::kTsNameNotFound);
-            response->set_msg("ts name not found");
-            return;
-        }
-    }
-    // update the tablet
     bool all_ok = true;
     for (int32_t i = 0; i < table->table_partition_size(); i++) {
         if (!all_ok) {
@@ -8165,8 +7966,8 @@ void NameServerImpl::UpdateTTL(RpcController* controller, const ::fedb::nameserv
         const TablePartition& table_partition = table->table_partition(i);
         for (int32_t j = 0; j < table_partition.partition_meta_size(); j++) {
             const PartitionMeta& meta = table_partition.partition_meta(j);
-            all_ok = all_ok && UpdateTTLOnTablet(meta.endpoint(), table->tid(), table_partition.pid(), new_ttl_type,
-                                                 abs_ttl, lat_ttl, ts_name);
+            all_ok = all_ok && UpdateTTLOnTablet(meta.endpoint(), table->tid(), table_partition.pid(),
+                    index_name, request->ttl_desc());
         }
     }
     if (!all_ok) {
@@ -8175,22 +7976,17 @@ void NameServerImpl::UpdateTTL(RpcController* controller, const ::fedb::nameserv
         return;
     }
     TableInfo table_info;
-    std::lock_guard<std::mutex> lock(mu_);
-    table_info.CopyFrom(*table);
-    if (ts_name.empty()) {
-        table_info.set_ttl(request->value());
-        ::fedb::api::TTLDesc* ttl_desc = table_info.mutable_ttl_desc();
-        ttl_desc->set_abs_ttl(abs_ttl);
-        ttl_desc->set_lat_ttl(lat_ttl);
-        ttl_desc->set_ttl_type(new_ttl_type);
-    } else {
-        for (int i = 0; i < table_info.column_desc_v1_size(); i++) {
-            if (table_info.column_desc_v1(i).is_ts_col() && table_info.column_desc_v1(i).name() == ts_name) {
-                ::fedb::common::ColumnDesc* column_desc = table_info.mutable_column_desc_v1(i);
-                column_desc->set_ttl(request->value());
-                column_desc->set_abs_ttl(abs_ttl);
-                column_desc->set_lat_ttl(lat_ttl);
-            }
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        table_info.CopyFrom(*table);
+    }
+    auto column_keys = table_info.mutable_column_key();
+    for (auto & column_key : *column_keys) {
+        if (index_name.empty()) {
+            column_key.mutable_ttl()->CopyFrom(request->ttl_desc());
+        } else if (column_key.index_name() == index_name) {
+            column_key.mutable_ttl()->CopyFrom(request->ttl_desc());
+            break;
         }
     }
     // update zookeeper
@@ -8199,7 +7995,10 @@ void NameServerImpl::UpdateTTL(RpcController* controller, const ::fedb::nameserv
         response->set_msg("set zk failed");
         return;
     }
-    table->CopyFrom(table_info);
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        table->CopyFrom(table_info);
+    }
     response->set_code(::fedb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
@@ -8341,8 +8140,7 @@ std::shared_ptr<TabletInfo> NameServerImpl::GetHealthTabletInfoNoLock(const std:
 }
 
 bool NameServerImpl::UpdateTTLOnTablet(const std::string& endpoint, int32_t tid, int32_t pid,
-                                       const ::fedb::api::TTLType& type, uint64_t abs_ttl, uint64_t lat_ttl,
-                                       const std::string& ts_name) {
+                                       const std::string& index_name, const ::fedb::common::TTLSt& ttl) {
     std::shared_ptr<TabletInfo> tablet = GetTabletInfo(endpoint);
     if (!tablet) {
         PDLOG(WARNING, "tablet with endpoint %s is not found", endpoint.c_str());
@@ -8353,17 +8151,17 @@ bool NameServerImpl::UpdateTTLOnTablet(const std::string& endpoint, int32_t tid,
         PDLOG(WARNING, "tablet with endpoint %s has not client", endpoint.c_str());
         return false;
     }
-    bool ok = tablet->client_->UpdateTTL(tid, pid, type, abs_ttl, lat_ttl, ts_name);
+    bool ok = tablet->client_->UpdateTTL(tid, pid, ttl.ttl_type(), ttl.abs_ttl(), ttl.lat_ttl(), index_name);
     if (!ok) {
         PDLOG(WARNING,
               "fail to update ttl with tid %d, pid %d, abs_ttl %lu, lat_ttl "
               "%lu, endpoint %s",
-              tid, pid, abs_ttl, lat_ttl, endpoint.c_str());
+              tid, pid, ttl.abs_ttl(), ttl.lat_ttl(), endpoint.c_str());
     } else {
         PDLOG(INFO,
               "update ttl with tid %d pid %d abs_ttl %lu, lat_ttl %lu endpoint "
               "%s ok",
-              tid, pid, abs_ttl, lat_ttl, endpoint.c_str());
+              tid, pid, ttl.abs_ttl(), ttl.lat_ttl(), endpoint.c_str());
     }
     return ok;
 }
@@ -9335,27 +9133,28 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
         return;
     }
     std::map<std::string, ::fedb::common::ColumnDesc> col_map;
-    std::map<std::string, ::fedb::common::ColumnDesc> ts_map;
-    for (const auto& column_desc : table_info->column_desc_v1()) {
-        if (column_desc.is_ts_col()) {
-            ts_map.insert(std::make_pair(column_desc.name(), column_desc));
-        } else {
-            col_map.insert(std::make_pair(column_desc.name(), column_desc));
+    std::set<std::string> ts_set;
+    for (const auto& column_desc : table_info->column_desc()) {
+        col_map.insert(std::make_pair(column_desc.name(), column_desc));
+    }
+    for (const auto& column_key : table_info->column_key()) {
+        if (column_key.has_ts_name() && !column_key.ts_name().empty()) {
+            ts_set.insert(column_key.ts_name());
         }
     }
     for (const auto& col : table_info->added_column_desc()) {
         col_map.insert(std::make_pair(col.name(), col));
     }
-    for (const auto& ts_name : request->column_key().ts_name()) {
-        auto it = ts_map.find(ts_name);
-        if (it == ts_map.end()) {
+    if (!request->column_key().ts_name().empty()) {
+        auto it = ts_set.find(request->column_key().ts_name());
+        if (it == ts_set.end()) {
             response->set_code(ReturnCode::kWrongColumnKey);
             response->set_msg("wrong column key!");
-            LOG(WARNING) << " ts " << ts_name << " not exist, table " << name;
+            LOG(WARNING) << " ts " << request->column_key().ts_name() << " not exist, table " << name;
             return;
         }
     }
-    if (request->column_key().ts_name().empty() && !ts_map.empty()) {
+    if (request->column_key().ts_name().empty() && !ts_set.empty()) {
         response->set_code(ReturnCode::kWrongColumnKey);
         response->set_msg("wrong column key!");
         LOG(WARNING) << "column key " << index_name << " should contain ts_col, table " << name;

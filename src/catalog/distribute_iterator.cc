@@ -70,7 +70,7 @@ const ::hybridse::codec::Row& FullTableIterator::GetValue() {
 DistributeWindowIterator::DistributeWindowIterator(std::shared_ptr<Tables> tables, uint32_t index)
     : tables_(tables), index_(index), cur_pid_(0), pid_num_(1), it_() {
     if (tables && !tables->empty()) {
-        pid_num_ = tables->begin()->second->GetTableMeta().table_partition_size();
+        pid_num_ = tables->begin()->second->GetTableMeta()->table_partition_size();
     }
 }
 

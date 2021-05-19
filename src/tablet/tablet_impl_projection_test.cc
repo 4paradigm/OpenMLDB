@@ -70,7 +70,7 @@ struct TestArgs {
     void* out_ptr;
     uint32_t out_size;
     Schema output_schema;
-    api::TTLDesc ttl_desc;
+    ::fedb::common::TTLSt ttl_desc;
     TestArgs()
         : schema(),
           plist(),
@@ -104,9 +104,6 @@ std::vector<TestArgs*> GenCommonCase() {
         common::ColumnDesc* column2 = testargs->schema.Add();
         column2->set_name("col2");
         column2->set_data_type(type::kBigInt);
-        column2->set_lat_ttl(0);
-        column2->set_is_ts_col(true);
-        column2->set_type("int64");
 
         common::ColumnDesc* column3 = testargs->schema.Add();
         column3->set_name("col3");
@@ -118,7 +115,11 @@ std::vector<TestArgs*> GenCommonCase() {
 
         testargs->ckey.set_index_name("col1");
         testargs->ckey.add_col_name("col1");
-        testargs->ckey.add_ts_name("col2");
+        testargs->ckey.set_ts_name("col2");
+        auto ttl = testargs->ckey.mutable_ttl();
+        ttl->set_abs_ttl(0);
+        ttl->set_lat_ttl(0);
+        ttl->set_ttl_type(::fedb::type::kAbsoluteTime);
 
         testargs->pk = "hello";
         testargs->ts = 1000l;
@@ -158,8 +159,6 @@ std::vector<TestArgs*> GenCommonCase() {
         common::ColumnDesc* column3 = testargs->schema.Add();
         column3->set_name("col3");
         column3->set_data_type(type::kBigInt);
-        column3->set_lat_ttl(0);
-        column3->set_is_ts_col(true);
         column3->set_type("int64");
         common::ColumnDesc* column4 = testargs->schema.Add();
         column4->set_name("col4");
@@ -167,7 +166,11 @@ std::vector<TestArgs*> GenCommonCase() {
 
         testargs->ckey.set_index_name("col4");
         testargs->ckey.add_col_name("col4");
-        testargs->ckey.add_ts_name("col3");
+        testargs->ckey.set_ts_name("col3");
+        auto ttl = testargs->ckey.mutable_ttl();
+        ttl->set_abs_ttl(0);
+        ttl->set_lat_ttl(0);
+        ttl->set_ttl_type(::fedb::type::kAbsoluteTime);
 
         testargs->pk = "hello";
         testargs->ts = 1000l;
@@ -214,8 +217,6 @@ std::vector<TestArgs*> GenCommonCase() {
         common::ColumnDesc* column3 = testargs->schema.Add();
         column3->set_name("col3");
         column3->set_data_type(type::kBigInt);
-        column3->set_lat_ttl(0);
-        column3->set_is_ts_col(true);
         column3->set_type("int64");
 
         common::ColumnDesc* column4 = testargs->schema.Add();
@@ -224,7 +225,11 @@ std::vector<TestArgs*> GenCommonCase() {
 
         testargs->ckey.set_index_name("col4");
         testargs->ckey.add_col_name("col4");
-        testargs->ckey.add_ts_name("col3");
+        testargs->ckey.set_ts_name("col3");
+        auto ttl = testargs->ckey.mutable_ttl();
+        ttl->set_abs_ttl(0);
+        ttl->set_lat_ttl(0);
+        ttl->set_ttl_type(::fedb::type::kAbsoluteTime);
 
         testargs->pk = "hello";
         testargs->ts = 1000l;
@@ -279,8 +284,6 @@ std::vector<TestArgs*> GenCommonCase() {
         common::ColumnDesc* column3 = testargs->schema.Add();
         column3->set_name("col3");
         column3->set_data_type(type::kBigInt);
-        column3->set_lat_ttl(0);
-        column3->set_is_ts_col(true);
         column3->set_type("int64");
 
         common::ColumnDesc* column4 = testargs->schema.Add();
@@ -289,7 +292,11 @@ std::vector<TestArgs*> GenCommonCase() {
 
         testargs->ckey.set_index_name("col4");
         testargs->ckey.add_col_name("col4");
-        testargs->ckey.add_ts_name("col3");
+        testargs->ckey.set_ts_name("col3");
+        auto ttl = testargs->ckey.mutable_ttl();
+        ttl->set_abs_ttl(0);
+        ttl->set_lat_ttl(0);
+        ttl->set_ttl_type(::fedb::type::kAbsoluteTime);
 
         testargs->pk = "hello";
         testargs->ts = 1000l;
@@ -344,13 +351,15 @@ std::vector<TestArgs*> GenCommonCase() {
         common::ColumnDesc* column3 = testargs->schema.Add();
         column3->set_name("col3");
         column3->set_data_type(type::kBigInt);
-        column3->set_lat_ttl(0);
-        column3->set_is_ts_col(true);
         column3->set_type("int64");
 
         testargs->ckey.set_index_name("col4");
         testargs->ckey.add_col_name("col4");
-        testargs->ckey.add_ts_name("col3");
+        testargs->ckey.set_ts_name("col3");
+        auto ttl = testargs->ckey.mutable_ttl();
+        ttl->set_abs_ttl(0);
+        ttl->set_lat_ttl(0);
+        ttl->set_ttl_type(::fedb::type::kAbsoluteTime);
         testargs->pk = "hello";
         testargs->ts = 1000l;
 
@@ -508,7 +517,6 @@ TEST_P(TabletProjectTest, get_case) {
         table_meta->set_name(name);
         table_meta->set_tid(tid);
         table_meta->set_pid(0);
-        table_meta->set_ttl(0);
         table_meta->set_seg_cnt(8);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         table_meta->set_key_entry_max_height(8);
@@ -576,7 +584,6 @@ TEST_P(TabletProjectTest, sql_case) {
         table_meta->set_name(name);
         table_meta->set_tid(tid);
         table_meta->set_pid(0);
-        table_meta->set_ttl(0);
         table_meta->set_seg_cnt(8);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         table_meta->set_key_entry_max_height(8);
@@ -636,7 +643,6 @@ TEST_P(TabletProjectTest, scan_case) {
         table_meta->set_name(name);
         table_meta->set_tid(tid);
         table_meta->set_pid(0);
-        table_meta->set_ttl(0);
         table_meta->set_seg_cnt(8);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         table_meta->set_key_entry_max_height(8);

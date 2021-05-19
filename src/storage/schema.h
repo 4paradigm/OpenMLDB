@@ -45,43 +45,9 @@ enum TTLType {
 struct TTLSt {
     TTLSt() : abs_ttl(0), lat_ttl(0), ttl_type(::fedb::storage::TTLType::kAbsoluteTime) {}
     TTLSt(uint64_t abs, uint64_t lat, ::fedb::storage::TTLType type) : abs_ttl(abs), lat_ttl(lat), ttl_type(type) {}
-    explicit TTLSt(const ::fedb::api::TTLDesc& ttl_desc) : abs_ttl(ttl_desc.abs_ttl() * 60 * 1000),
-        lat_ttl(ttl_desc.lat_ttl()) {
-        ttl_type = ConvertTTLType(ttl_desc.ttl_type());
-    }
 
     explicit TTLSt(const ::fedb::common::TTLSt& ttl) : abs_ttl(ttl.abs_ttl() * 60 * 1000), lat_ttl(ttl.lat_ttl()) {
         ttl_type = ConvertTTLType(ttl.ttl_type());
-    }
-
-    static TTLType ConvertTTLType(::fedb::api::TTLType type) {
-        switch (type) {
-            case ::fedb::api::TTLType::kAbsoluteTime:
-                return TTLType::kAbsoluteTime;
-            case ::fedb::api::TTLType::kLatestTime:
-                return TTLType::kLatestTime;
-            case ::fedb::api::TTLType::kAbsAndLat:
-                return TTLType::kAbsAndLat;
-            case ::fedb::api::TTLType::kAbsOrLat:
-                return TTLType::kAbsOrLat;
-            default:
-                return TTLType::kAbsoluteTime;
-        }
-    }
-
-    ::fedb::api::TTLType GetTabletTTLType() const {
-        switch (ttl_type) {
-            case TTLType::kAbsoluteTime:
-                return ::fedb::api::TTLType::kAbsoluteTime;
-            case TTLType::kLatestTime:
-                return ::fedb::api::TTLType::kLatestTime;
-            case TTLType::kAbsAndLat:
-                return ::fedb::api::TTLType::kAbsAndLat;
-            case TTLType::kAbsOrLat:
-                return ::fedb::api::TTLType::kAbsOrLat;
-            default:
-                return ::fedb::api::TTLType::kAbsoluteTime;
-        }
     }
 
     static TTLType ConvertTTLType(::fedb::type::TTLType type) {
@@ -96,6 +62,21 @@ struct TTLSt {
                 return TTLType::kAbsOrLat;
             default:
                 return TTLType::kAbsoluteTime;
+        }
+    }
+
+    ::fedb::type::TTLType GetProtoTTLType() const {
+        switch (ttl_type) {
+            case TTLType::kAbsoluteTime:
+                return ::fedb::type::TTLType::kAbsoluteTime;
+            case TTLType::kLatestTime:
+                return ::fedb::type::TTLType::kLatestTime;
+            case TTLType::kAbsAndLat:
+                return ::fedb::type::TTLType::kAbsAndLat;
+            case TTLType::kAbsOrLat:
+                return ::fedb::type::TTLType::kAbsOrLat;
+            default:
+                return ::fedb::type::TTLType::kAbsoluteTime;
         }
     }
 
@@ -149,9 +130,9 @@ struct TTLSt {
             case TTLType::kLatestTime:
                 return std::to_string(lat_ttl);
             case TTLType::kAbsAndLat:
-                return std::to_string(abs_ttl) + "min&&" + std::to_string(lat_ttl);
+                return std::to_string(abs_ttl / (60 * 1000)) + "min&&" + std::to_string(lat_ttl);
             case TTLType::kAbsOrLat:
-                return std::to_string(abs_ttl) + "min||" + std::to_string(lat_ttl);
+                return std::to_string(abs_ttl / (60 * 1000)) + "min||" + std::to_string(lat_ttl);
             default:
                 return "invalid ttl_type";
         }
@@ -163,12 +144,9 @@ struct TTLSt {
 };
 
 struct UpdateTTLMeta {
-    explicit UpdateTTLMeta(const TTLSt& new_ttl) : ttl(new_ttl), ts_idx(-1), index_name() {}
-    UpdateTTLMeta(const TTLSt& new_ttl, int32_t idx) : ttl(new_ttl), ts_idx(idx), index_name() {}
-    UpdateTTLMeta(const TTLSt& new_ttl, const std::string& name) : ttl(new_ttl),
-        ts_idx(-1), index_name(name) {}
+    explicit UpdateTTLMeta(const TTLSt& new_ttl) : ttl(new_ttl), index_name() {}
+    UpdateTTLMeta(const TTLSt& new_ttl, const std::string& name) : ttl(new_ttl), index_name(name) {}
     TTLSt ttl;
-    int32_t ts_idx;
     std::string index_name;
 };
 
@@ -234,6 +212,7 @@ class IndexDef {
     std::shared_ptr<TTLSt> GetTTL() const;
     inline void SetInnerPos(int32_t inner_pos) { inner_pos_ = inner_pos; }
     inline uint32_t GetInnerPos() const { return inner_pos_; }
+    ::fedb::common::ColumnKey GenColumnKey();
 
  private:
     std::string name_;
@@ -294,12 +273,10 @@ class TableIndex {
     void AddInnerIndex(const std::shared_ptr<InnerIndexSt>& inner_index);
 
  private:
-    int AddMultiTsIndex(uint32_t pos, const std::shared_ptr<IndexDef>& index);
     void FillIndexVal(const ::fedb::api::TableMeta& table_meta, uint32_t ts_num);
 
  private:
     std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
-    std::shared_ptr<std::vector<std::vector<std::shared_ptr<IndexDef>>>> multi_ts_indexs_;
     std::shared_ptr<std::vector<std::shared_ptr<InnerIndexSt>>> inner_indexs_;
     std::vector<std::shared_ptr<std::atomic<int32_t>>> column_key_2_inner_index_;
     std::shared_ptr<IndexDef> pk_index_;

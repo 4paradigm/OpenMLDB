@@ -32,33 +32,8 @@ SDKCodec::SDKCodec(const ::fedb::nameserver::TableInfo& table_info)
       modify_times_(0),
       version_schema_(),
       last_ver_(1) {
-    if (table_info.column_desc_v1_size() > 0) {
-        ParseColumnDesc(table_info.column_desc_v1());
-    } else {
-        base_schema_size_ = table_info.column_desc_size();
-        for (uint32_t idx = 0; idx < (uint32_t)table_info.column_desc_size(); idx++) {
-            const auto& cur_column_desc = table_info.column_desc(idx);
-            if (format_version_ == 1) {
-                auto col = schema_.Add();
-                col->set_name(cur_column_desc.name());
-                auto iter = DATA_TYPE_MAP.find(cur_column_desc.type());
-                if (iter != DATA_TYPE_MAP.end()) {
-                    col->set_data_type(iter->second);
-                }
-            }
-            schema_idx_map_.emplace(cur_column_desc.name(), idx);
-            ::fedb::codec::ColumnDesc column_desc;
-            ::fedb::codec::ColType type = SchemaCodec::ConvertType(cur_column_desc.type());
-            column_desc.type = type;
-            column_desc.name = cur_column_desc.name();
-            column_desc.add_ts_idx = cur_column_desc.add_ts_idx();
-            old_schema_.push_back(std::move(column_desc));
-            if (cur_column_desc.add_ts_idx() && table_info.column_key_size() == 0) {
-                auto col_key = index_.Add();
-                col_key->set_index_name(cur_column_desc.name());
-                col_key->add_col_name(cur_column_desc.name());
-            }
-        }
+    if (table_info.column_desc_size() > 0) {
+        ParseColumnDesc(table_info.column_desc());
     }
     if (table_info.column_key_size() > 0) {
         index_.Clear();
@@ -82,21 +57,6 @@ SDKCodec::SDKCodec(const ::fedb::api::TableMeta& table_info)
       last_ver_(1) {
     if (table_info.column_desc_size() > 0) {
         ParseColumnDesc(table_info.column_desc());
-    } else if (!table_info.schema().empty()) {
-        ::fedb::codec::SchemaCodec scodec;
-        scodec.Decode(table_info.schema(), old_schema_);
-        for (uint32_t idx = 0; idx < old_schema_.size(); idx++) {
-            schema_idx_map_.emplace(old_schema_[idx].name, idx);
-            if (old_schema_[idx].add_ts_idx) {
-                auto col_key = index_.Add();
-                col_key->set_index_name(old_schema_[idx].name);
-                col_key->add_col_name(old_schema_[idx].name);
-            }
-            if (old_schema_[idx].is_ts_col) {
-                ts_idx_.push_back(idx);
-            }
-        }
-        base_schema_size_ = old_schema_.size();
     }
     if (table_info.column_key_size() > 0) {
         index_.Clear();
@@ -115,22 +75,12 @@ void SDKCodec::ParseColumnDesc(const Schema& column_desc) {
     for (uint32_t idx = 0; idx < (uint32_t)column_desc.size(); idx++) {
         const auto& cur_column_desc = column_desc.Get(idx);
         schema_idx_map_.emplace(cur_column_desc.name(), idx);
-        if (cur_column_desc.is_ts_col()) {
-            ts_idx_.push_back(idx);
-        }
         if (format_version_ == 0) {
             ::fedb::codec::ColumnDesc column_desc;
             ::fedb::codec::ColType type = SchemaCodec::ConvertType(cur_column_desc.type());
             column_desc.type = type;
             column_desc.name = cur_column_desc.name();
-            column_desc.add_ts_idx = cur_column_desc.add_ts_idx();
-            column_desc.is_ts_col = cur_column_desc.is_ts_col();
             old_schema_.push_back(std::move(column_desc));
-        }
-        if (cur_column_desc.add_ts_idx()) {
-            auto col_key = index_.Add();
-            col_key->set_index_name(cur_column_desc.name());
-            col_key->add_col_name(cur_column_desc.name());
         }
     }
 }
@@ -154,8 +104,6 @@ void SDKCodec::ParseAddedColumnDesc(const Schema& column_desc) {
         ::fedb::codec::ColType type = SchemaCodec::ConvertType(cur_column_desc.type());
         column_desc.type = type;
         column_desc.name = cur_column_desc.name();
-        column_desc.add_ts_idx = cur_column_desc.add_ts_idx();
-        column_desc.is_ts_col = cur_column_desc.is_ts_col();
         old_schema_.push_back(std::move(column_desc));
     }
     modify_times_ = column_desc.size();

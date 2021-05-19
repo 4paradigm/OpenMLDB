@@ -62,24 +62,15 @@ class TabletClient {
     bool CreateTable(const std::string& name, uint32_t tid, uint32_t pid,
                      uint64_t abs_ttl, uint64_t lat_ttl, bool leader,
                      const std::vector<std::string>& endpoints,
-                     const ::fedb::api::TTLType& type, uint32_t seg_cnt,
+                     const ::fedb::type::TTLType& type, uint32_t seg_cnt,
                      uint64_t term,
                      const ::fedb::type::CompressType compress_type);
-
-    bool CreateTable(const std::string& name, uint32_t tid, uint32_t pid,
-                     uint64_t abs_ttl, uint64_t lat_ttl, uint32_t seg_cnt,
-                     const std::vector<::fedb::codec::ColumnDesc>& columns,
-                     const ::fedb::api::TTLType& type, bool leader,
-                     const std::vector<std::string>& endpoints,
-                     uint64_t term = 0,
-                     const ::fedb::type::CompressType compress_type =
-                         ::fedb::type::CompressType::kNoCompress);
 
     bool CreateTable(const ::fedb::api::TableMeta& table_meta);
 
     bool UpdateTableMetaForAddField(
         uint32_t tid, const std::vector<fedb::common::ColumnDesc>& cols,
-        const fedb::common::VersionPair& pair, const std::string& schema,
+        const fedb::common::VersionPair& pair,
         std::string& msg);  // NOLINT
 
     bool Query(const std::string& db, const std::string& sql,
@@ -235,8 +226,8 @@ class TabletClient {
         const std::vector<::fedb::common::EndpointAndTid>* et = nullptr);
 
     bool UpdateTTL(uint32_t tid, uint32_t pid,
-                   const ::fedb::api::TTLType& type, uint64_t abs_ttl,
-                   uint64_t lat_ttl, const std::string& ts_name);
+                   const ::fedb::type::TTLType& type, uint64_t abs_ttl,
+                   uint64_t lat_ttl, const std::string& index_name);
     bool SetMaxConcurrency(const std::string& key, int32_t max_concurrency);
 
     bool DeleteBinlog(uint32_t tid, uint32_t pid);

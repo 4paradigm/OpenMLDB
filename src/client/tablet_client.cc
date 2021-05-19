@@ -61,76 +61,6 @@ std::string TabletClient::GetEndpoint() { return endpoint_; }
 
 const std::string& TabletClient::GetRealEndpoint() const { return real_endpoint_; }
 
-bool TabletClient::CreateTable(
-    const std::string& name, uint32_t tid, uint32_t pid, uint64_t abs_ttl,
-    uint64_t lat_ttl, uint32_t seg_cnt,
-    const std::vector<::fedb::codec::ColumnDesc>& columns,
-    const ::fedb::api::TTLType& type, bool leader,
-    const std::vector<std::string>& endpoints, uint64_t term,
-    const ::fedb::type::CompressType compress_type) {
-    std::string schema;
-    ::fedb::codec::SchemaCodec codec;
-    bool codec_ok = codec.Encode(columns, schema);
-    if (!codec_ok) {
-        return false;
-    }
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
-    for (uint32_t i = 0; i < columns.size(); i++) {
-        if (columns[i].add_ts_idx) {
-            table_meta->add_dimensions(columns[i].name);
-        }
-    }
-    table_meta->set_name(name);
-    table_meta->set_tid(tid);
-    table_meta->set_pid(pid);
-    if (type == ::fedb::api::kLatestTime) {
-        if (lat_ttl > FLAGS_latest_ttl_max) {
-            return false;
-        }
-    } else if (type == ::fedb::api::TTLType::kAbsoluteTime) {
-        if (abs_ttl > FLAGS_absolute_ttl_max) {
-            return false;
-        }
-    } else {
-        if (lat_ttl > FLAGS_latest_ttl_max ||
-            abs_ttl > FLAGS_absolute_ttl_max) {
-            return false;
-        }
-    }
-    table_meta->set_seg_cnt(seg_cnt);
-    table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-    table_meta->set_schema(schema);
-    table_meta->set_ttl_type(type);
-    ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-    ttl_desc->set_ttl_type(type);
-    ttl_desc->set_abs_ttl(abs_ttl);
-    ttl_desc->set_lat_ttl(lat_ttl);
-    if (type == ::fedb::api::TTLType::kAbsoluteTime) {
-        table_meta->set_ttl(abs_ttl);
-    } else {
-        table_meta->set_ttl(lat_ttl);
-    }
-    table_meta->set_compress_type(compress_type);
-    if (leader) {
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        table_meta->set_term(term);
-        for (size_t i = 0; i < endpoints.size(); i++) {
-            table_meta->add_replicas(endpoints[i]);
-        }
-    } else {
-        table_meta->set_mode(::fedb::api::TableMode::kTableFollower);
-    }
-    ::fedb::api::CreateTableResponse response;
-    bool ok =
-        client_.SendRequest(&::fedb::api::TabletServer_Stub::CreateTable,
-                            &request, &response, FLAGS_request_timeout_ms * 2, 1);
-    if (ok && response.code() == 0) {
-        return true;
-    }
-    return false;
-}
-
 bool TabletClient::Query(const std::string& db, const std::string& sql,
                          const std::string& row, brpc::Controller* cntl,
                          fedb::api::QueryResponse* response,
@@ -242,15 +172,15 @@ bool TabletClient::CreateTable(const std::string& name, uint32_t tid,
                                uint32_t pid, uint64_t abs_ttl, uint64_t lat_ttl,
                                bool leader,
                                const std::vector<std::string>& endpoints,
-                               const ::fedb::api::TTLType& type,
+                               const ::fedb::type::TTLType& type,
                                uint32_t seg_cnt, uint64_t term,
                                const ::fedb::type::CompressType compress_type) {
     ::fedb::api::CreateTableRequest request;
-    if (type == ::fedb::api::kLatestTime) {
+    if (type == ::fedb::type::kLatestTime) {
         if (lat_ttl > FLAGS_latest_ttl_max) {
             return false;
         }
-    } else if (type == ::fedb::api::TTLType::kAbsoluteTime) {
+    } else if (type == ::fedb::type::TTLType::kAbsoluteTime) {
         if (abs_ttl > FLAGS_absolute_ttl_max) {
             return false;
         }
@@ -264,10 +194,6 @@ bool TabletClient::CreateTable(const std::string& name, uint32_t tid,
     table_meta->set_name(name);
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
-    ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-    ttl_desc->set_ttl_type(type);
-    ttl_desc->set_abs_ttl(abs_ttl);
-    ttl_desc->set_lat_ttl(lat_ttl);
     table_meta->set_compress_type(compress_type);
     table_meta->set_seg_cnt(seg_cnt);
     if (leader) {
@@ -279,6 +205,16 @@ bool TabletClient::CreateTable(const std::string& name, uint32_t tid,
     for (size_t i = 0; i < endpoints.size(); i++) {
         table_meta->add_replicas(endpoints[i]);
     }
+    ::fedb::common::ColumnDesc* column_desc = table_meta->add_column_desc();
+    column_desc->set_name("idx0");
+    column_desc->set_data_type(::fedb::type::kString);
+    ::fedb::common::ColumnKey* index = table_meta->add_column_key();
+    index->set_index_name("idx0");
+    index->add_col_name("idx0");
+    ::fedb::common::TTLSt* ttl = index->mutable_ttl();
+    ttl->set_abs_ttl(abs_ttl);
+    ttl->set_lat_ttl(lat_ttl);
+    ttl->set_ttl_type(type);
     // table_meta->set_ttl_type(type);
     ::fedb::api::CreateTableResponse response;
     bool ok =
@@ -306,7 +242,7 @@ bool TabletClient::CreateTable(const ::fedb::api::TableMeta& table_meta) {
 
 bool TabletClient::UpdateTableMetaForAddField(
     uint32_t tid, const std::vector<fedb::common::ColumnDesc>& cols,
-    const fedb::common::VersionPair& pair, const std::string& schema, std::string& msg) {
+    const fedb::common::VersionPair& pair, std::string& msg) {
     ::fedb::api::UpdateTableMetaForAddFieldRequest request;
     ::fedb::api::GeneralResponse response;
     request.set_tid(tid);
@@ -314,7 +250,6 @@ bool TabletClient::UpdateTableMetaForAddField(
         ::fedb::common::ColumnDesc* column_desc_ptr = request.add_column_descs();
         column_desc_ptr->CopyFrom(col);
     }
-    request.set_schema(schema);
     fedb::common::VersionPair* new_pair = request.mutable_version_pair();
     new_pair->CopyFrom(pair);
     bool ok = client_.SendRequest(
@@ -534,7 +469,6 @@ bool TabletClient::LoadTable(const std::string& name, uint32_t tid,
     table_meta.set_name(name);
     table_meta.set_tid(tid);
     table_meta.set_pid(pid);
-    table_meta.set_ttl(ttl);
     table_meta.set_seg_cnt(seg_cnt);
     if (leader) {
         table_meta.set_mode(::fedb::api::TableMode::kTableLeader);
@@ -645,24 +579,18 @@ bool TabletClient::GetTaskStatus(::fedb::api::TaskStatusResponse& response) {
 }
 
 bool TabletClient::UpdateTTL(uint32_t tid, uint32_t pid,
-                             const ::fedb::api::TTLType& type,
+                             const ::fedb::type::TTLType& type,
                              uint64_t abs_ttl, uint64_t lat_ttl,
-                             const std::string& ts_name) {
+                             const std::string& index_name) {
     ::fedb::api::UpdateTTLRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
-    request.set_type(type);
-    if (type == ::fedb::api::TTLType::kLatestTime) {
-        request.set_value(lat_ttl);
-    } else {
-        request.set_value(abs_ttl);
-    }
-    ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+    ::fedb::common::TTLSt* ttl_desc = request.mutable_ttl();
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
     ttl_desc->set_lat_ttl(lat_ttl);
-    if (!ts_name.empty()) {
-        request.set_ts_name(ts_name);
+    if (!index_name.empty()) {
+        request.set_index_name(index_name);
     }
     ::fedb::api::UpdateTTLResponse response;
     bool ret = client_.SendRequest(
@@ -856,9 +784,6 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
         table_meta.CopyFrom(response.table_meta());
-        if (response.has_schema() && response.schema().size() == 0) {
-            table_meta.set_schema(response.schema());
-        }
         return true;
     }
     return false;

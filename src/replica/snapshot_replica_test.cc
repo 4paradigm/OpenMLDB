@@ -89,7 +89,7 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
     std::vector<std::string> endpoints;
     bool ret =
         client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
-                           ::fedb::api::TTLType::kAbsoluteTime, 16, 0,
+                           ::fedb::type::TTLType::kAbsoluteTime, 16, 0,
                            ::fedb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
 
@@ -130,7 +130,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     std::vector<std::string> endpoints;
     bool ret =
         client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
-                           ::fedb::api::TTLType::kAbsoluteTime, 16, 0,
+                           ::fedb::type::TTLType::kAbsoluteTime, 16, 0,
                            ::fedb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
@@ -163,7 +163,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     ::fedb::client::TabletClient client1(follower_point, "");
     client1.Init();
     ret = client1.CreateTable("table1", tid, pid, 14400, 0, false, endpoints,
-                              ::fedb::api::TTLType::kAbsoluteTime, 16, 0,
+                              ::fedb::type::TTLType::kAbsoluteTime, 16, 0,
                               ::fedb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
     client.AddReplica(tid, pid, follower_point);
@@ -232,32 +232,38 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
     table_meta.set_name("test");
     table_meta.set_tid(tid);
     table_meta.set_pid(pid);
-    table_meta.set_ttl(0);
     table_meta.set_seg_cnt(8);
     ::fedb::common::ColumnDesc* column_desc1 = table_meta.add_column_desc();
     column_desc1->set_name("card");
-    column_desc1->set_type("string");
+    column_desc1->set_data_type(::fedb::type::kString);
     ::fedb::common::ColumnDesc* column_desc2 = table_meta.add_column_desc();
     column_desc2->set_name("mcc");
-    column_desc2->set_type("string");
+    column_desc2->set_data_type(::fedb::type::kString);
     ::fedb::common::ColumnDesc* column_desc3 = table_meta.add_column_desc();
     column_desc3->set_name("amt");
-    column_desc3->set_type("double");
+    column_desc3->set_data_type(::fedb::type::kDouble);
     ::fedb::common::ColumnDesc* column_desc4 = table_meta.add_column_desc();
     column_desc4->set_name("ts1");
-    column_desc4->set_type("int64");
-    column_desc4->set_is_ts_col(true);
+    column_desc4->set_data_type(::fedb::type::kBigInt);
     ::fedb::common::ColumnDesc* column_desc5 = table_meta.add_column_desc();
     column_desc5->set_name("ts2");
-    column_desc5->set_type("int64");
-    column_desc5->set_is_ts_col(true);
-    ::fedb::common::ColumnKey* column_key1 = table_meta.add_column_key();
+    column_desc5->set_data_type(::fedb::type::kBigInt);
+    auto column_key1 = table_meta.add_column_key();
     column_key1->set_index_name("card");
-    column_key1->add_ts_name("ts1");
-    column_key1->add_ts_name("ts2");
-    ::fedb::common::ColumnKey* column_key2 = table_meta.add_column_key();
-    column_key2->set_index_name("mcc");
-    column_key2->add_ts_name("ts1");
+    column_key1->set_ts_name("ts1");
+    auto ttl = column_key1->mutable_ttl();
+    ttl->set_abs_ttl(0);
+    auto column_key2 = table_meta.add_column_key();
+    column_key2->set_index_name("card1");
+    column_key2->add_col_name("card");
+    column_key2->set_ts_name("ts2");
+    ttl = column_key2->mutable_ttl();
+    ttl->set_abs_ttl(0);
+    auto column_key3 = table_meta.add_column_key();
+    column_key3->set_index_name("mcc");
+    column_key3->set_ts_name("ts1");
+    ttl = column_key3->mutable_ttl();
+    ttl->set_abs_ttl(0);
     table_meta.set_mode(::fedb::api::TableMode::kTableLeader);
     bool ret = client.CreateTable(table_meta);
     ASSERT_TRUE(ret);
@@ -296,8 +302,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
     sr.set_tid(tid);
     sr.set_pid(pid);
     sr.set_pk("card0");
-    sr.set_idx_name("card");
-    sr.set_ts_name("ts2");
+    sr.set_idx_name("card1");
     sr.set_st(cur_time + 1);
     sr.set_et(0);
     ::fedb::api::ScanResponse srp;

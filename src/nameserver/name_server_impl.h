@@ -176,7 +176,6 @@ class NameServerImpl : public NameServer {
     void CreateTableInternel(
         GeneralResponse& response,  // NOLINT
         std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
-        const std::vector<::fedb::codec::ColumnDesc>& columns,
         uint64_t cur_term, uint32_t tid,
         std::shared_ptr<::fedb::api::TaskInfo> task_ptr);
 
@@ -383,7 +382,7 @@ class NameServerImpl : public NameServer {
 
     int CreateTableOnTablet(
         std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
-        bool is_leader, const std::vector<::fedb::codec::ColumnDesc>& columns,
+        bool is_leader,
         std::map<uint32_t, std::vector<std::string>>& endpoint_map,  // NOLINT
         uint64_t term);
 
@@ -558,7 +557,7 @@ class NameServerImpl : public NameServer {
     std::shared_ptr<Task> CreateLoadTableTask(
         const std::string& endpoint, uint64_t op_index,
         ::fedb::api::OPType op_type, const std::string& name, uint32_t tid,
-        uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader);
+        uint32_t pid, uint32_t seg_cnt, bool is_leader);
 
     std::shared_ptr<Task> CreateLoadTableRemoteTask(
         const std::string& alias, const std::string& name,
@@ -853,9 +852,8 @@ class NameServerImpl : public NameServer {
 
     // update ttl for partition
     bool UpdateTTLOnTablet(const std::string& endpoint, int32_t tid,
-                           int32_t pid, const ::fedb::api::TTLType& type,
-                           uint64_t abs_ttl, uint64_t lat_ttl,
-                           const std::string& ts_name);
+                           int32_t pid, const std::string& index_name,
+                           const ::fedb::common::TTLSt& ttl);
 
     void CheckSyncExistTable(
         const std::string& alias,

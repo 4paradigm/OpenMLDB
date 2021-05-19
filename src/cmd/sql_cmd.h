@@ -352,7 +352,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
             }
             ::hybridse::vm::Schema output_schema;
             ::fedb::catalog::SchemaAdapter::ConvertSchema(
-                table->column_desc_v1(), &output_schema);
+                table->column_desc(), &output_schema);
             PrintTableSchema(std::cout, output_schema);
             ::hybridse::vm::IndexList index_list;
             ::fedb::catalog::SchemaAdapter::ConvertIndex(table->column_key(), &index_list);
@@ -523,7 +523,7 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
     for (const auto &key : create_index_node->index_->GetKey()) {
         column_key.add_col_name(key);
     }
-    column_key.add_ts_name(create_index_node->index_->GetTs());
+    column_key.set_ts_name(create_index_node->index_->GetTs());
 
     std::string error;
     auto ns = cs->GetNsClient();

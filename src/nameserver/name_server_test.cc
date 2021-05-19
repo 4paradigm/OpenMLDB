@@ -59,6 +59,23 @@ inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
 
+void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::fedb::type::TTLType ttl_type,
+        ::fedb::nameserver::TableInfo* table_meta) {
+    auto column_desc = table_meta->add_column_desc();
+    column_desc->set_name("idx0");
+    column_desc->set_data_type(::fedb::type::kString);
+    auto column_desc1 = table_meta->add_column_desc();
+    column_desc1->set_name("value");
+    column_desc1->set_data_type(::fedb::type::kString);
+    auto column_key = table_meta->add_column_key();
+    column_key->set_index_name("idx0");
+    column_key->add_col_name("idx0");
+    ::fedb::common::TTLSt* ttl_st = column_key->mutable_ttl();
+    ttl_st->set_abs_ttl(abs_ttl);
+    ttl_st->set_lat_ttl(lat_ttl);
+    ttl_st->set_ttl_type(ttl_type);
+}
+
 class MockClosure : public ::google::protobuf::Closure {
  public:
     MockClosure() {}
@@ -154,6 +171,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     std::string name = "test" + GenRand();
     table_info->set_name(name);
     TablePartition* partion = table_info->add_table_partition();
+    AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
     partion->set_pid(0);
     PartitionMeta* meta = partion->add_partition_meta();
     meta->set_endpoint("127.0.0.1:9530");
@@ -413,6 +431,7 @@ TEST_F(NameServerImplTest, CreateTable) {
     TablePartition* partion1 = table_info->add_table_partition();
     partion1->set_pid(2);
     PartitionMeta* meta1 = partion1->add_partition_meta();
+    AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
     meta1->set_endpoint("127.0.0.1:9531");
     meta1->set_is_leader(true);
     ok = name_server_client.SendRequest(
@@ -527,6 +546,7 @@ TEST_F(NameServerImplTest, Offline) {
     PartitionMeta* meta2 = partion2->add_partition_meta();
     meta2->set_endpoint("127.0.0.1:9534");
     meta2->set_is_leader(true);
+    AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
     ok = name_server_client.SendRequest(
         &::fedb::nameserver::NameServer_Stub::CreateTable, &request, &response,
         FLAGS_request_timeout_ms, 1);
@@ -613,6 +633,7 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     TableInfo* table_info = request.mutable_table_info();
     std::string name = "test" + GenRand();
     table_info->set_name(name);
+    AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
     TablePartition* partion = table_info->add_table_partition();
     partion->set_pid(1);
     PartitionMeta* meta = partion->add_partition_meta();
@@ -922,8 +943,7 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
     table_info->set_name(name);
     table_info->set_partition_num(1);
     table_info->set_replica_num(1);
-    table_info->set_ttl(0);
-    table_info->set_ttl_type("kAbsoluteTime");
+    AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
     f2_ns1->CreateTable(NULL, &create_table_request, &general_response,
                         &closure);
     ASSERT_EQ(0, general_response.code());
@@ -1097,8 +1117,7 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     table_info->set_name(name);
     table_info->set_partition_num(1);
     table_info->set_replica_num(1);
-    table_info->set_ttl(0);
-    table_info->set_ttl_type("kAbsoluteTime");
+    AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
 
     m1_ns1->CreateTable(NULL, &create_table_request, &general_response,
                         &closure);
@@ -1237,8 +1256,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
         table_info->set_name(name);
         table_info->set_partition_num(1);
         table_info->set_replica_num(2);
-        table_info->set_ttl(0);
-        table_info->set_ttl_type("kAbsoluteTime");
+        AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
         f2_ns1->CreateTable(NULL, &create_table_request, &general_response,
                             &closure);
         ASSERT_EQ(0, general_response.code());
@@ -1291,6 +1309,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     string name = "test" + GenRand();
     TableInfo* table_info = create_table_request.mutable_table_info();
     table_info->set_name(name);
+    AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
     TablePartition* partition = table_info->add_table_partition();
     partition->set_pid(0);
     PartitionMeta* meta1 = partition->add_partition_meta();
@@ -1299,10 +1318,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     PartitionMeta* meta2 = partition->add_partition_meta();
     meta2->set_is_leader(false);
     meta2->set_endpoint(m1_t2_ep);
-    table_info->set_ttl(0);
-    table_info->set_ttl_type("kAbsoluteTime");
-    m1_ns1->CreateTable(NULL, &create_table_request, &general_response,
-                        &closure);
+    m1_ns1->CreateTable(NULL, &create_table_request, &general_response, &closure);
     ASSERT_EQ(0, general_response.code());
     general_response.Clear();
 
@@ -1530,6 +1546,7 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         std::string name = "test" + GenRand();
         table_info->set_name(name);
         table_info->set_db(db_name);
+        AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(0);
         PartitionMeta* meta = partion->add_partition_meta();
@@ -1540,10 +1557,6 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         meta = partion->add_partition_meta();
         meta->set_endpoint("127.0.0.1:9536");
         meta->set_is_leader(true);
-        ::fedb::common::ColumnDesc* desc = table_info->add_column_desc_v1();
-        desc->set_name("col1");
-        desc->set_type("string");
-        desc->set_add_ts_idx(true);
         bool ok = name_server_client.SendRequest(
             &::fedb::nameserver::NameServer_Stub::CreateTable, &request, &response,
             FLAGS_request_timeout_ms, 1);
@@ -1572,6 +1585,7 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         std::string name = "test" + GenRand();
         table_info->set_name(name);
         table_info->set_db(db_name);
+        AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(0);
         PartitionMeta* meta = partion->add_partition_meta();
@@ -1582,10 +1596,6 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         meta = partion->add_partition_meta();
         meta->set_endpoint("127.0.0.1:9536");
         meta->set_is_leader(true);
-        ::fedb::common::ColumnDesc* desc = table_info->add_column_desc_v1();
-        desc->set_name("col1");
-        desc->set_type("string");
-        desc->set_add_ts_idx(true);
         bool ok = name_server_client.SendRequest(
             &::fedb::nameserver::NameServer_Stub::CreateTable, &request, &response,
             FLAGS_request_timeout_ms, 1);

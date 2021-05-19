@@ -32,6 +32,7 @@
 #include "boost/lexical_cast.hpp"
 #include "codec/codec.h"
 #include "codec/flat_array.h"
+#include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
@@ -60,6 +61,7 @@ namespace tablet {
 using ::fedb::api::TableStatus;
 using Schema =
     ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>;
+using ::fedb::codec::SchemaCodec;
 
 uint32_t counter = 10;
 static const ::fedb::base::DefaultComparator scmp;
@@ -106,87 +108,6 @@ bool RollWLogFile(::fedb::storage::WriteHandle** wh,
     return true;
 }
 
-int MultiDimensionEncode(
-    const std::vector<::fedb::codec::ColumnDesc>& colum_desc,
-    const std::vector<std::string>& input,
-    std::vector<std::pair<std::string, uint32_t>>& dimensions,  // NOLINT
-    std::string& buffer) {                                      // NOLINT
-    uint32_t cnt = input.size();
-    if (cnt != colum_desc.size()) {
-        std::cout << "Input value mismatch schema" << std::endl;
-        return -1;
-    }
-    ::fedb::codec::FlatArrayCodec codec(&buffer, (uint8_t)cnt);
-    uint32_t idx_cnt = 0;
-    for (uint32_t i = 0; i < input.size(); i++) {
-        if (colum_desc[i].add_ts_idx) {
-            dimensions.push_back(std::make_pair(input[i], idx_cnt));
-            idx_cnt++;
-        }
-        bool codec_ok = false;
-        if (colum_desc[i].type == ::fedb::codec::ColType::kInt32) {
-            codec_ok = codec.Append(boost::lexical_cast<int32_t>(input[i]));
-        } else if (colum_desc[i].type == ::fedb::codec::ColType::kInt64) {
-            codec_ok = codec.Append(boost::lexical_cast<int64_t>(input[i]));
-        } else if (colum_desc[i].type == ::fedb::codec::ColType::kUInt32) {
-            codec_ok = codec.Append(boost::lexical_cast<uint32_t>(input[i]));
-        } else if (colum_desc[i].type == ::fedb::codec::ColType::kUInt64) {
-            codec_ok = codec.Append(boost::lexical_cast<uint64_t>(input[i]));
-        } else if (colum_desc[i].type == ::fedb::codec::ColType::kFloat) {
-            codec_ok = codec.Append(boost::lexical_cast<float>(input[i]));
-        } else if (colum_desc[i].type == ::fedb::codec::ColType::kDouble) {
-            codec_ok = codec.Append(boost::lexical_cast<double>(input[i]));
-        } else if (colum_desc[i].type == ::fedb::codec::ColType::kString) {
-            codec_ok = codec.Append(input[i]);
-        }
-        if (!codec_ok) {
-            std::cout << "Failed invalid value " << input[i] << std::endl;
-            return -1;
-        }
-    }
-    codec.Build();
-    return 0;
-}
-
-void MultiDimensionDecode(const std::string& value,
-                          std::vector<std::string>& output,  // NOLINT
-                          uint16_t column_num) {
-    fedb::codec::FlatArrayIterator fit(value.c_str(), value.size(),
-                                        column_num);
-    while (fit.Valid()) {
-        std::string col;
-        if (fit.GetType() == ::fedb::codec::ColType::kString) {
-            fit.GetString(&col);
-        } else if (fit.GetType() == ::fedb::codec::ColType::kInt32) {
-            int32_t int32_col = 0;
-            fit.GetInt32(&int32_col);
-            col = boost::lexical_cast<std::string>(int32_col);
-        } else if (fit.GetType() == ::fedb::codec::ColType::kInt64) {
-            int64_t int64_col = 0;
-            fit.GetInt64(&int64_col);
-            col = boost::lexical_cast<std::string>(int64_col);
-        } else if (fit.GetType() == ::fedb::codec::ColType::kUInt32) {
-            uint32_t uint32_col = 0;
-            fit.GetUInt32(&uint32_col);
-            col = boost::lexical_cast<std::string>(uint32_col);
-        } else if (fit.GetType() == ::fedb::codec::ColType::kUInt64) {
-            uint64_t uint64_col = 0;
-            fit.GetUInt64(&uint64_col);
-            col = boost::lexical_cast<std::string>(uint64_col);
-        } else if (fit.GetType() == ::fedb::codec::ColType::kDouble) {
-            double double_col = 0.0;
-            fit.GetDouble(&double_col);
-            col = boost::lexical_cast<std::string>(double_col);
-        } else if (fit.GetType() == ::fedb::codec::ColType::kFloat) {
-            float float_col = 0.0f;
-            fit.GetFloat(&float_col);
-            col = boost::lexical_cast<std::string>(float_col);
-        }
-        fit.Next();
-        output.push_back(col);
-    }
-}
-
 void PrepareLatestTableData(TabletImpl& tablet, int32_t tid,  // NOLINT
                             int32_t pid) {
     for (int32_t i = 0; i < 100; i++) {
@@ -216,6 +137,52 @@ void PrepareLatestTableData(TabletImpl& tablet, int32_t tid,  // NOLINT
     }
 }
 
+void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::fedb::type::TTLType ttl_type,
+        ::fedb::api::TableMeta* table_meta) {
+    auto column_desc = table_meta->add_column_desc();
+    column_desc->set_name("idx0");
+    column_desc->set_data_type(::fedb::type::kString);
+    auto column_desc1 = table_meta->add_column_desc();
+    column_desc1->set_name("value");
+    column_desc1->set_data_type(::fedb::type::kString);
+    auto column_key = table_meta->add_column_key();
+    column_key->set_index_name("idx0");
+    column_key->add_col_name("idx0");
+    ::fedb::common::TTLSt* ttl_st = column_key->mutable_ttl();
+    ttl_st->set_abs_ttl(abs_ttl);
+    ttl_st->set_lat_ttl(lat_ttl);
+    ttl_st->set_ttl_type(ttl_type);
+}
+
+void PackDefaultDimension(const std::string& key, ::fedb::api::PutRequest* request) {
+    auto dimension = request->add_dimensions();
+    dimension->set_key(key);
+    dimension->set_idx(0);
+}
+
+int GetTTL(TabletImpl& tablet, uint32_t tid, uint32_t pid, const std::string& index_name, // NOLINT
+        ::fedb::common::TTLSt* ttl) {
+    ::fedb::api::GetTableSchemaRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    ::fedb::api::GetTableSchemaResponse response;
+    MockClosure closure;
+    tablet.GetTableSchema(NULL, &request, &response, &closure);
+    if (response.code() != 0) {
+        return response.code();
+    }
+    for (const auto& index : response.table_meta().column_key()) {
+        if (index_name.empty() || index.index_name() == index_name) {
+            if (index.has_ttl()) {
+                ttl->CopyFrom(index.ttl());
+                return 0;
+            }
+            break;
+        }
+    }
+    return -1;
+}
+
 TEST_F(TabletImplTest, Count_Latest_Table) {
     TabletImpl tablet;
     tablet.Init("");
@@ -228,9 +195,8 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_ttl(0);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kLatestTime, table_meta);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -363,9 +329,8 @@ TEST_F(TabletImplTest, Count_Time_Table) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_ttl(0);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -498,9 +463,8 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_ttl(5);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        AddDefaultSchema(0, 5, ::fedb::type::TTLType::kLatestTime, table_meta);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -574,9 +538,8 @@ TEST_F(TabletImplTest, Get) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_wal(true);
-        table_meta->set_ttl(1);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        AddDefaultSchema(1, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -598,7 +561,7 @@ TEST_F(TabletImplTest, Get) {
     // put/get expired key
     {
         ::fedb::api::PutRequest prequest;
-        prequest.set_pk("test0");
+        PackDefaultDimension("test0", &prequest);
         prequest.set_time(now - 2 * 60 * 1000);
         prequest.set_value("value0");
         prequest.set_tid(id);
@@ -611,9 +574,11 @@ TEST_F(TabletImplTest, Get) {
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test0");
+        request.set_idx_name("idx0");
         request.set_ts(0);
         ::fedb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
+        printf("response key:%s \n", response.key().c_str());
         ASSERT_EQ(109, response.code());
     }
     // put some key
@@ -704,9 +669,8 @@ TEST_F(TabletImplTest, Get) {
         table_meta->set_name("t1");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_ttl(5);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        AddDefaultSchema(0, 5, ::fedb::type::TTLType::kLatestTime, table_meta);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -765,10 +729,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_wal(true);
-        table_meta->set_ttl(100);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        AddDefaultSchema(100, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -779,8 +741,9 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(0);
         request.set_pid(0);
-        request.set_type(::fedb::api::TTLType::kAbsoluteTime);
-        request.set_value(0);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
+        ttl->set_abs_ttl(0);
         ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
@@ -791,8 +754,9 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::fedb::api::TTLType::kAbsoluteTime);
-        request.set_value(60 * 24 * 365 * 30 * 2);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
+        ttl->set_abs_ttl(60 * 24 * 365 * 30 * 2);
         ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
@@ -803,8 +767,10 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::fedb::api::kLatestTime);
-        request.set_value(0);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::TTLType::kLatestTime);
+        ttl->set_abs_ttl(0);
+        ttl->set_lat_ttl(0);
         ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
@@ -835,7 +801,6 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
     ::fedb::api::UpdateTTLRequest request;
     request.set_tid(id);
     request.set_pid(0);
-    request.set_type(::fedb::api::TTLType::kAbsoluteTime);
     ::fedb::api::UpdateTTLResponse response;
     // ExecuteGcRequest
     ::fedb::api::ExecuteGcRequest request_execute;
@@ -847,7 +812,9 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
     ::fedb::api::GetTableStatusResponse gres;
     // ttl update to zero
     {
-        request.set_value(0);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
+        ttl->set_abs_ttl(0);
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -856,17 +823,9 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ASSERT_EQ(0, gresponse.code());
         ASSERT_EQ("test9", gresponse.value());
 
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        bool checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(100, (int64_t)ts.ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ::fedb::common::TTLSt cur_ttl;
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(100, cur_ttl.abs_ttl());
         tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure);
         sleep(3);
 
@@ -874,22 +833,14 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         tablet.Get(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(0, gresponse.code());
 
-        gres.Clear();
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(0, (int64_t)(ts.ttl()));
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(0, cur_ttl.abs_ttl());
     }
     // ttl update from zero to no zero
     {
-        request.set_value(50);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
+        ttl->set_abs_ttl(50);
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -898,40 +849,23 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ASSERT_EQ(0, gresponse.code());
         ASSERT_EQ("test9", gresponse.value());
 
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        bool checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(0, (signed)ts.ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ::fedb::common::TTLSt cur_ttl;
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(0, cur_ttl.abs_ttl());
+
         tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure);
         sleep(3);
 
         gresponse.Clear();
         tablet.Get(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(109, gresponse.code());
-
-        gres.Clear();
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(50, (signed)ts.ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(50, cur_ttl.abs_ttl());
     }
     // update from 50 to 100
     {
-        request.set_value(100);
+        auto ttl = request.mutable_ttl();
+        ttl->set_abs_ttl(100);
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -939,17 +873,9 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         tablet.Get(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(109, gresponse.code());
 
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        bool checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(50, (signed)ts.ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ::fedb::common::TTLSt cur_ttl;
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(50, cur_ttl.abs_ttl());
         prequest.set_time(now - 10 * 60 * 1000);
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
@@ -961,18 +887,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         tablet.Get(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(0, gresponse.code());
 
-        gres.Clear();
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(100, (signed)ts.ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(100, cur_ttl.abs_ttl());
     }
     FLAGS_gc_interval = old_gc_interval;
 }
@@ -991,9 +907,7 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_wal(true);
-        table_meta->set_ttl(1);
-        table_meta->set_ttl_type(::fedb::api::kLatestTime);
+        AddDefaultSchema(0, 1, ::fedb::type::TTLType::kLatestTime, table_meta);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
@@ -1005,8 +919,9 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(0);
         request.set_pid(0);
-        request.set_type(::fedb::api::kLatestTime);
-        request.set_value(0);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::kLatestTime);
+        ttl->set_lat_ttl(0);
         ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
@@ -1017,8 +932,9 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::fedb::api::kLatestTime);
-        request.set_value(20000);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::kLatestTime);
+        ttl->set_lat_ttl(20000);
         ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
@@ -1029,8 +945,9 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::fedb::api::TTLType::kAbsoluteTime);
-        request.set_value(0);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::kAbsoluteTime);
+        ttl->set_abs_ttl(0);
         ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
@@ -1041,26 +958,17 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::fedb::api::kLatestTime);
-        request.set_value(2);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::kLatestTime);
+        ttl->set_lat_ttl(2);
         ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         sleep(70);
-        ::fedb::api::GetTableStatusRequest gr;
-        ::fedb::api::GetTableStatusResponse gres;
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        bool checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(2, (signed)ts.ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ::fedb::common::TTLSt cur_ttl;
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(2, cur_ttl.lat_ttl());
     }
     FLAGS_gc_interval = old_gc_interval;
 }
@@ -1075,53 +983,32 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_wal(true);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-
-        // get schema
-        ::fedb::api::GetTableSchemaRequest request0;
-        request0.set_tid(id);
-        request0.set_pid(1);
-        ::fedb::api::GetTableSchemaResponse response0;
-        tablet.GetTableSchema(NULL, &request0, &response0, &closure);
-        ASSERT_EQ("", response0.schema());
+        ASSERT_EQ(131, response.code());
     }
     {
-        std::vector<::fedb::codec::ColumnDesc> columns;
-        ::fedb::codec::ColumnDesc desc1;
-        desc1.type = ::fedb::codec::ColType::kString;
-        desc1.name = "card";
-        desc1.add_ts_idx = true;
-        columns.push_back(desc1);
-
-        ::fedb::codec::ColumnDesc desc2;
-        desc2.type = ::fedb::codec::ColType::kDouble;
-        desc2.name = "amt";
-        desc2.add_ts_idx = false;
-        columns.push_back(desc2);
-
-        ::fedb::codec::ColumnDesc desc3;
-        desc3.type = ::fedb::codec::ColType::kInt32;
-        desc3.name = "apprv_cde";
-        desc3.add_ts_idx = false;
-        columns.push_back(desc3);
-
-        ::fedb::codec::SchemaCodec codec;
-        std::string buffer;
-        codec.Encode(columns, buffer);
         uint32_t id = counter++;
         ::fedb::api::CreateTableRequest request;
         ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_wal(true);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        table_meta->set_schema(buffer);
+        auto column = table_meta->add_column_desc();
+        column->set_name("card");
+        column->set_data_type(::fedb::type::kString);
+
+        column = table_meta->add_column_desc();
+        column->set_name("amt");
+        column->set_data_type(::fedb::type::kDouble);
+
+        column = table_meta->add_column_desc();
+        column->set_name("apprv_cde");
+        column->set_data_type(::fedb::type::kInt);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::fedb::type::kAbsoluteTime, 0, 0);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -1132,17 +1019,7 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
         request0.set_pid(1);
         ::fedb::api::GetTableSchemaResponse response0;
         tablet.GetTableSchema(NULL, &request0, &response0, &closure);
-        ASSERT_TRUE(response0.schema().size() != 0);  // NOLINT
-
-        std::vector<::fedb::codec::ColumnDesc> ncolumns;
-        codec.Decode(response0.schema(), ncolumns);
-        ASSERT_EQ(3, (signed)ncolumns.size());
-        ASSERT_EQ(::fedb::codec::ColType::kString, ncolumns[0].type);
-        ASSERT_EQ("card", ncolumns[0].name);
-        ASSERT_EQ(::fedb::codec::ColType::kDouble, ncolumns[1].type);
-        ASSERT_EQ("amt", ncolumns[1].name);
-        ASSERT_EQ(::fedb::codec::ColType::kInt32, ncolumns[2].type);
-        ASSERT_EQ("apprv_cde", ncolumns[2].name);
+        ASSERT_EQ(3, response0.table_meta().column_desc_size());
     }
 }
 
@@ -1150,41 +1027,25 @@ TEST_F(TabletImplTest, MultiGet) {
     TabletImpl tablet;
     tablet.Init("");
     uint32_t id = counter++;
-    std::vector<::fedb::codec::ColumnDesc> columns;
-    ::fedb::codec::ColumnDesc desc1;
-    desc1.type = ::fedb::codec::ColType::kString;
-    desc1.name = "pk";
-    desc1.add_ts_idx = true;
-    columns.push_back(desc1);
-
-    ::fedb::codec::ColumnDesc desc2;
-    desc2.type = ::fedb::codec::ColType::kString;
-    desc2.name = "amt";
-    desc2.add_ts_idx = true;
-    columns.push_back(desc2);
-
-    ::fedb::codec::ColumnDesc desc3;
-    desc3.type = ::fedb::codec::ColType::kInt32;
-    desc3.name = "apprv_cde";
-    desc3.add_ts_idx = false;
-    columns.push_back(desc3);
-
-    ::fedb::codec::SchemaCodec codec;
-    std::string buffer;
-    codec.Encode(columns, buffer);
     ::fedb::api::CreateTableRequest request;
     ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    table_meta->set_ttl(0);
     table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-    table_meta->set_schema(buffer);
-    for (uint32_t i = 0; i < columns.size(); i++) {
-        if (columns[i].add_ts_idx) {
-            table_meta->add_dimensions(columns[i].name);
-        }
-    }
+    auto column = table_meta->add_column_desc();
+    column->set_name("card");
+    column->set_data_type(::fedb::type::kString);
+
+    column = table_meta->add_column_desc();
+    column->set_name("amt");
+    column->set_data_type(::fedb::type::kString);
+
+    column = table_meta->add_column_desc();
+    column->set_name("apprv_cde");
+    column->set_data_type(::fedb::type::kInt);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::fedb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "amt", "amt", "", ::fedb::type::kAbsoluteTime, 0, 0);
     ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -1197,18 +1058,18 @@ TEST_F(TabletImplTest, MultiGet) {
         input.push_back("abcd" + std::to_string(i));
         input.push_back("1212" + std::to_string(i));
         std::string value;
-        std::vector<std::pair<std::string, uint32_t>> dimensions;
-        MultiDimensionEncode(columns, input, dimensions, value);
+        ::fedb::codec::RowCodec::EncodeRow(input, table_meta->column_desc(), 1, value);
         ::fedb::api::PutRequest request;
         request.set_time(1100);
         request.set_value(value);
         request.set_tid(id);
         request.set_pid(1);
-        for (size_t i = 0; i < dimensions.size(); i++) {
-            ::fedb::api::Dimension* d = request.add_dimensions();
-            d->set_key(dimensions[i].first);
-            d->set_idx(dimensions[i].second);
-        }
+        ::fedb::api::Dimension* d = request.add_dimensions();
+        d->set_key("test" + std::to_string(i));
+        d->set_idx(0);
+        d = request.add_dimensions();
+        d->set_key("abcd" + std::to_string(i));
+        d->set_idx(1);
         ::fedb::api::PutResponse response;
         MockClosure closure;
         tablet.Put(NULL, &request, &response, &closure);
@@ -1228,7 +1089,7 @@ TEST_F(TabletImplTest, MultiGet) {
     ASSERT_EQ(1100, (signed)get_response.ts());
     std::string value(get_response.value());
     std::vector<std::string> vec;
-    MultiDimensionDecode(value, vec, columns.size());
+    ::fedb::codec::RowCodec::DecodeRow(table_meta->column_desc(), ::fedb::base::Slice(value), vec);
     ASSERT_EQ(3, (signed)vec.size());
     ASSERT_STREQ("test2", vec[0].c_str());
     ASSERT_STREQ("abcd2", vec[1].c_str());
@@ -1272,60 +1133,18 @@ TEST_F(TabletImplTest, MultiGet) {
     ASSERT_EQ(108, scan_response.code());
 }
 
-TEST_F(TabletImplTest, TTL) {
-    uint32_t id = counter++;
-    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
-    TabletImpl tablet;
-    tablet.Init("");
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
-    table_meta->set_name("t0");
-    table_meta->set_tid(id);
-    table_meta->set_pid(1);
-    table_meta->set_wal(true);
-    table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-    // 1 minutes
-    table_meta->set_ttl(1);
-    ::fedb::api::CreateTableResponse response;
-    MockClosure closure;
-    tablet.CreateTable(NULL, &request, &response, &closure);
-    ASSERT_EQ(0, response.code());
-    {
-        ::fedb::api::PutRequest prequest;
-        prequest.set_pk("test1");
-        prequest.set_time(now);
-        prequest.set_value("test1");
-        prequest.set_tid(id);
-        prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
-        tablet.Put(NULL, &prequest, &presponse, &closure);
-        ASSERT_EQ(0, presponse.code());
-    }
-    {
-        ::fedb::api::PutRequest prequest;
-        prequest.set_pk("test1");
-        prequest.set_time(now - 2 * 60 * 1000);
-        prequest.set_value("test2");
-        prequest.set_tid(id);
-        prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
-        tablet.Put(NULL, &prequest, &presponse, &closure);
-        ASSERT_EQ(0, presponse.code());
-    }
-}
-
 TEST_F(TabletImplTest, CreateTable) {
     uint32_t id = counter++;
     TabletImpl tablet;
     tablet.Init("");
+    ::fedb::common::TTLSt ttl_st;
     {
         ::fedb::api::CreateTableRequest request;
         ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_wal(true);
-        table_meta->set_ttl(0);
+        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kLatestTime, table_meta);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -1349,42 +1168,12 @@ TEST_F(TabletImplTest, CreateTable) {
         ::fedb::api::CreateTableRequest request;
         ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
-        table_meta->set_ttl(0);
+        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(129, response.code());
     }
-}
-
-TEST_F(TabletImplTest, Put) {
-    TabletImpl tablet;
-    uint32_t id = counter++;
-    tablet.Init("");
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
-    table_meta->set_name("t0");
-    table_meta->set_tid(id);
-    table_meta->set_pid(1);
-    table_meta->set_ttl(0);
-    ::fedb::api::CreateTableResponse response;
-    MockClosure closure;
-    tablet.CreateTable(NULL, &request, &response, &closure);
-    ASSERT_EQ(0, response.code());
-
-    ::fedb::api::PutRequest prequest;
-    prequest.set_pk("test1");
-    prequest.set_time(9527);
-    prequest.set_value("test0");
-    prequest.set_tid(2);
-    prequest.set_pid(2);
-    ::fedb::api::PutResponse presponse;
-    tablet.Put(NULL, &prequest, &presponse, &closure);
-    ASSERT_EQ(100, presponse.code());
-    prequest.set_tid(id);
-    prequest.set_pid(1);
-    tablet.Put(NULL, &prequest, &presponse, &closure);
-    ASSERT_EQ(0, presponse.code());
 }
 
 TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
@@ -1396,7 +1185,7 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    table_meta->set_ttl(0);
+    AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
     ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -1469,8 +1258,7 @@ TEST_F(TabletImplTest, Scan_with_latestN) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    table_meta->set_ttl(0);
-    table_meta->set_ttl_type(::fedb::api::kLatestTime);
+    AddDefaultSchema(0, 0, ::fedb::type::TTLType::kLatestTime, table_meta);
     ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -1518,7 +1306,7 @@ TEST_F(TabletImplTest, Traverse) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    table_meta->set_ttl(0);
+    AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
     ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -1565,8 +1353,8 @@ TEST_F(TabletImplTest, TraverseTTL) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    table_meta->set_ttl(5);
     table_meta->set_seg_cnt(1);
+    AddDefaultSchema(5, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
     ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -1650,37 +1438,25 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    table_meta->set_ttl(5);
     table_meta->set_seg_cnt(1);
     ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
     desc->set_name("card");
-    desc->set_type("string");
-    desc->set_add_ts_idx(true);
+    desc->set_data_type(::fedb::type::kString);
     desc = table_meta->add_column_desc();
     desc->set_name("mcc");
-    desc->set_type("string");
-    desc->set_add_ts_idx(true);
+    desc->set_data_type(::fedb::type::kString);
     desc = table_meta->add_column_desc();
     desc->set_name("price");
-    desc->set_type("int64");
-    desc->set_add_ts_idx(false);
+    desc->set_data_type(::fedb::type::kBigInt);
     desc = table_meta->add_column_desc();
     desc->set_name("ts1");
-    desc->set_type("int64");
-    desc->set_add_ts_idx(false);
-    desc->set_is_ts_col(true);
+    desc->set_data_type(::fedb::type::kBigInt);
     desc = table_meta->add_column_desc();
     desc->set_name("ts2");
-    desc->set_type("int64");
-    desc->set_add_ts_idx(false);
-    desc->set_is_ts_col(true);
-    ::fedb::common::ColumnKey* column_key = table_meta->add_column_key();
-    column_key->set_index_name("card");
-    column_key->add_ts_name("ts1");
-    column_key->add_ts_name("ts2");
-    column_key = table_meta->add_column_key();
-    column_key->set_index_name("mcc");
-    column_key->add_ts_name("ts2");
+    desc->set_data_type(::fedb::type::kBigInt);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "ts1", ::fedb::type::kAbsoluteTime, 5, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "card1", "card", "ts2", ::fedb::type::kAbsoluteTime, 5, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "mcc", "mcc", "ts2", ::fedb::type::kAbsoluteTime, 5, 0);
     ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -1697,6 +1473,9 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
             dim->set_key("card" + std::to_string(key_base + i));
             dim = prequest.add_dimensions();
             dim->set_idx(1);
+            dim->set_key("card" + std::to_string(key_base + i));
+            dim = prequest.add_dimensions();
+            dim->set_idx(2);
             dim->set_key("mcc" + std::to_string(key_base + i));
             ::fedb::api::TSDimension* ts = prequest.add_ts_dimensions();
             ts->set_idx(0);
@@ -1723,6 +1502,9 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
             dim->set_key("card" + std::to_string(key_base + i));
             dim = prequest.add_dimensions();
             dim->set_idx(1);
+            dim->set_key("card" + std::to_string(key_base + i));
+            dim = prequest.add_dimensions();
+            dim->set_idx(2);
             dim->set_key("mcc" + std::to_string(key_base + i));
             ::fedb::api::TSDimension* ts = prequest.add_ts_dimensions();
             ts->set_idx(0);
@@ -1766,6 +1548,7 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
 
     sr.clear_pk();
     sr.clear_ts();
+    sr.set_idx_name("card1");
     sr.set_ts_name("ts2");
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
@@ -1821,8 +1604,7 @@ TEST_F(TabletImplTest, Scan_with_limit) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    table_meta->set_ttl(0);
-    table_meta->set_wal(true);
+    AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
     ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -1883,8 +1665,7 @@ TEST_F(TabletImplTest, Scan) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    table_meta->set_ttl(0);
-    table_meta->set_wal(true);
+    AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
     ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -1959,8 +1740,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_ttl(3);
-        table_meta->set_ttl_type(::fedb::api::kLatestTime);
+        AddDefaultSchema(0, 3, ::fedb::type::TTLType::kLatestTime, table_meta);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -2025,8 +1805,9 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(1);
-        request.set_type(::fedb::api::kLatestTime);
-        request.set_value(2);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::kLatestTime);
+        ttl->set_lat_ttl(2);
         ::fedb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2064,8 +1845,9 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(1);
-        request.set_type(::fedb::api::kLatestTime);
-        request.set_value(3);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::kLatestTime);
+        ttl->set_lat_ttl(3);
         ::fedb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2096,8 +1878,7 @@ TEST_F(TabletImplTest, GC) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    table_meta->set_ttl(1);
-    table_meta->set_wal(true);
+    AddDefaultSchema(3, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
     ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -2144,7 +1925,7 @@ TEST_F(TabletImplTest, DropTable) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    table_meta->set_ttl(1);
+    AddDefaultSchema(1, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
     table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
     ::fedb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -2191,7 +1972,7 @@ TEST_F(TabletImplTest, DropTableNoRecycle) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    table_meta->set_ttl(1);
+    AddDefaultSchema(1, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
     table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
     ::fedb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -2233,8 +2014,7 @@ TEST_F(TabletImplTest, Recover) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_ttl(0);
-        table_meta->set_seg_cnt(128);
+        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_term(1024);
         table_meta->add_replicas("127.0.0.1:9527");
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
@@ -2318,7 +2098,6 @@ TEST_F(TabletImplTest, Recover) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_ttl(0);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::GeneralResponse response;
         tablet.LoadTable(NULL, &request, &response, &closure);
@@ -2349,7 +2128,6 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_ttl(0);
         table_meta->set_seg_cnt(8);
         table_meta->set_term(1024);
 
@@ -2357,12 +2135,12 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
             table_meta->add_column_desc();
         column_desc1->set_name("card");
         column_desc1->set_type("string");
-        column_desc1->set_add_ts_idx(true);
         ::fedb::common::ColumnDesc* column_desc2 =
             table_meta->add_column_desc();
         column_desc2->set_name("mcc");
         column_desc2->set_type("string");
-        column_desc2->set_add_ts_idx(true);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::fedb::type::kAbsoluteTime, 0, 0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "mcc", "mcc", "", ::fedb::type::kAbsoluteTime, 0, 0);
 
         table_meta->add_replicas("127.0.0.1:9527");
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
@@ -2406,7 +2184,6 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_ttl(0);
         ::fedb::api::GeneralResponse response;
         MockClosure closure;
         tablet.LoadTable(NULL, &request, &response, &closure);
@@ -2510,7 +2287,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         table_meta->set_name("t0");
         table_meta->set_tid(tid);
         table_meta->set_pid(0);
-        table_meta->set_ttl(0);
+        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::GeneralResponse response;
         MockClosure closure;
@@ -2599,8 +2376,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         // 3 minutes
-        table_meta->set_ttl(3);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
+        AddDefaultSchema(3, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2669,8 +2445,9 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(1);
-        request.set_type(::fedb::api::TTLType::kAbsoluteTime);
-        request.set_value(1);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
+        ttl->set_abs_ttl(1);
         ::fedb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2709,7 +2486,7 @@ TEST_F(TabletImplTest, DropTableFollower) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    table_meta->set_ttl(1);
+    AddDefaultSchema(1, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
     table_meta->set_mode(::fedb::api::TableMode::kTableFollower);
     table_meta->add_replicas("127.0.0.1:9527");
     ::fedb::api::CreateTableResponse response;
@@ -2749,9 +2526,7 @@ TEST_F(TabletImplTest, TestGetType) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    table_meta->set_ttl(4);
-    table_meta->set_wal(true);
-    table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+    AddDefaultSchema(0, 4, ::fedb::type::TTLType::kLatestTime, table_meta);
     ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -2892,7 +2667,7 @@ TEST_F(TabletImplTest, Snapshot) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    table_meta->set_ttl(0);
+    AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
     ::fedb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -2941,10 +2716,8 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Default) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_ttl(0);
         table_meta->set_mode(::fedb::api::kTableLeader);
-        table_meta->set_wal(true);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kLatestTime, table_meta);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2971,10 +2744,8 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Specify) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_ttl(0);
         table_meta->set_mode(::fedb::api::kTableLeader);
-        table_meta->set_wal(true);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kLatestTime, table_meta);
         table_meta->set_key_entry_max_height(2);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -3002,10 +2773,8 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Default) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_ttl(0);
+        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_mode(::fedb::api::kTableLeader);
-        table_meta->set_wal(true);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -3032,10 +2801,8 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Specify) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_ttl(0);
         table_meta->set_mode(::fedb::api::kTableLeader);
-        table_meta->set_wal(true);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
+        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_key_entry_max_height(8);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -3052,73 +2819,6 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Specify) {
     }
 }
 
-TEST_F(TabletImplTest, CreateTableAbsoluteTest_TTlDesc) {
-    uint32_t id = counter++;
-    MockClosure closure;
-    TabletImpl tablet;
-    tablet.Init("");
-    {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
-        table_meta->set_name("t0");
-        table_meta->set_tid(id);
-        table_meta->set_pid(1);
-        table_meta->set_mode(::fedb::api::kTableLeader);
-        table_meta->set_wal(true);
-        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
-        ttl_desc->set_abs_ttl(10);
-        ::fedb::api::CreateTableResponse response;
-        tablet.CreateTable(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-    }
-    // get table status
-    {
-        ::fedb::api::GetTableStatusRequest request;
-        ::fedb::api::GetTableStatusResponse response;
-        tablet.GetTableStatus(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-        const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
-        ASSERT_EQ(0, (signed)ts.ttl_desc().lat_ttl());
-        ASSERT_EQ(::fedb::api::TTLType::kAbsoluteTime,
-                  ts.ttl_desc().ttl_type());
-    }
-}
-
-TEST_F(TabletImplTest, CreateTableLatestTest_TTlDesc) {
-    uint32_t id = counter++;
-    MockClosure closure;
-    TabletImpl tablet;
-    tablet.Init("");
-    {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
-        table_meta->set_name("t0");
-        table_meta->set_tid(id);
-        table_meta->set_pid(1);
-        table_meta->set_mode(::fedb::api::kTableLeader);
-        table_meta->set_wal(true);
-        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kLatestTime);
-        ttl_desc->set_lat_ttl(10);
-        ::fedb::api::CreateTableResponse response;
-        tablet.CreateTable(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-    }
-    // get table status
-    {
-        ::fedb::api::GetTableStatusRequest request;
-        ::fedb::api::GetTableStatusResponse response;
-        tablet.GetTableStatus(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-        const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(0, (signed)ts.ttl_desc().abs_ttl());
-        ASSERT_EQ(10, (signed)ts.ttl_desc().lat_ttl());
-        ASSERT_EQ(::fedb::api::TTLType::kLatestTime, ts.ttl_desc().ttl_type());
-    }
-}
-
 TEST_F(TabletImplTest, CreateTableAbsAndLatTest) {
     uint32_t id = counter++;
     MockClosure closure;
@@ -3131,25 +2831,18 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest) {
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_mode(::fedb::api::kTableLeader);
-        table_meta->set_wal(true);
-        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
-        ttl_desc->set_abs_ttl(10);
-        ttl_desc->set_lat_ttl(20);
+        AddDefaultSchema(10, 20, ::fedb::type::TTLType::kAbsAndLat, table_meta);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::fedb::api::GetTableStatusRequest request;
-        ::fedb::api::GetTableStatusResponse response;
-        tablet.GetTableStatus(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-        const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
-        ASSERT_EQ(20, (signed)ts.ttl_desc().lat_ttl());
-        ASSERT_EQ(::fedb::api::TTLType::kAbsAndLat, ts.ttl_desc().ttl_type());
+        ::fedb::common::TTLSt cur_ttl;
+        ASSERT_EQ(0, GetTTL(tablet, id, 1, "", &cur_ttl));
+        ASSERT_EQ(10, cur_ttl.abs_ttl());
+        ASSERT_EQ(20, cur_ttl.lat_ttl());
+        ASSERT_EQ(::fedb::type::TTLType::kAbsAndLat, cur_ttl.ttl_type());
     }
 }
 
@@ -3165,25 +2858,18 @@ TEST_F(TabletImplTest, CreateTableAbsAndOrTest) {
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_mode(::fedb::api::kTableLeader);
-        table_meta->set_wal(true);
-        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
-        ttl_desc->set_abs_ttl(10);
-        ttl_desc->set_lat_ttl(20);
+        AddDefaultSchema(10, 20, ::fedb::type::TTLType::kAbsOrLat, table_meta);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::fedb::api::GetTableStatusRequest request;
-        ::fedb::api::GetTableStatusResponse response;
-        tablet.GetTableStatus(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-        const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
-        ASSERT_EQ(20, (signed)ts.ttl_desc().lat_ttl());
-        ASSERT_EQ(::fedb::api::TTLType::kAbsOrLat, ts.ttl_desc().ttl_type());
+        ::fedb::common::TTLSt cur_ttl;
+        ASSERT_EQ(0, GetTTL(tablet, id, 1, "", &cur_ttl));
+        ASSERT_EQ(10, cur_ttl.abs_ttl());
+        ASSERT_EQ(20, cur_ttl.lat_ttl());
+        ASSERT_EQ(::fedb::type::TTLType::kAbsOrLat, cur_ttl.ttl_type());
     }
 }
 
@@ -3198,10 +2884,8 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest_Specify) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_ttl(0);
         table_meta->set_mode(::fedb::api::kTableLeader);
-        table_meta->set_wal(true);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
+        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_key_entry_max_height(8);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -3233,9 +2917,8 @@ TEST_F(TabletImplTest, GetTermPair) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_ttl(0);
+        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_mode(::fedb::api::kTableLeader);
-        table_meta->set_wal(true);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -3310,8 +2993,7 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_wal(true);
-        table_meta->set_ttl(1);
+        AddDefaultSchema(1, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
@@ -3406,11 +3088,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_wal(true);
-        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
-        ttl_desc->set_abs_ttl(100);
-        ttl_desc->set_lat_ttl(50);
+        AddDefaultSchema(100, 50, ::fedb::type::TTLType::kAbsAndLat, table_meta);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
@@ -3422,10 +3100,10 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(0);
         request.set_pid(0);
-        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
-        ttl_desc->set_abs_ttl(10);
-        ttl_desc->set_lat_ttl(5);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
+        ttl->set_abs_ttl(10);
+        ttl->set_lat_ttl(5);
         ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
@@ -3436,10 +3114,10 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
-        ttl_desc->set_abs_ttl(60 * 24 * 365 * 30 * 2);
-        ttl_desc->set_lat_ttl(5);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
+        ttl->set_abs_ttl(60 * 24 * 365 * 30 * 2);
+        ttl->set_lat_ttl(5);
         ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
@@ -3450,10 +3128,10 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
-        ttl_desc->set_abs_ttl(30);
-        ttl_desc->set_lat_ttl(20000);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
+        ttl->set_abs_ttl(30);
+        ttl->set_lat_ttl(20000);
         ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
@@ -3464,10 +3142,10 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kLatestTime);
-        ttl_desc->set_abs_ttl(10);
-        ttl_desc->set_lat_ttl(5);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::TTLType::kLatestTime);
+        ttl->set_abs_ttl(10);
+        ttl->set_lat_ttl(5);
         ::fedb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
@@ -3523,10 +3201,10 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
-        ttl_desc->set_abs_ttl(0);
-        ttl_desc->set_lat_ttl(0);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
+        ttl->set_abs_ttl(0);
+        ttl->set_lat_ttl(0);
         ::fedb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -3536,18 +3214,10 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(0, gresponse.code());
         ASSERT_EQ("test9", gresponse.value());
 
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        bool checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(100, (signed)ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(50, (signed)ts.ttl_desc().lat_ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ::fedb::common::TTLSt cur_ttl;
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(100, (signed)cur_ttl.abs_ttl());
+        ASSERT_EQ(50, (signed)cur_ttl.lat_ttl());
         tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure);
         sleep(3);
 
@@ -3555,27 +3225,17 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         tablet.Get(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(0, gresponse.code());
 
-        gres.Clear();
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(0, (signed)ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(0, (signed)ts.ttl_desc().lat_ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(0, (signed)cur_ttl.abs_ttl());
+        ASSERT_EQ(0, (signed)cur_ttl.lat_ttl());
     }
     // ttl update from zero to no zero
     {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
+        auto ttl_desc = request.mutable_ttl();
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(50);
         ttl_desc->set_lat_ttl(1);
         ::fedb::api::UpdateTTLResponse response;
@@ -3587,18 +3247,10 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(0, gresponse.code());
         ASSERT_EQ("test9", gresponse.value());
 
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        bool checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(0, (signed)ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(0, (signed)ts.ttl_desc().lat_ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ::fedb::common::TTLSt cur_ttl;
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(0, (signed)cur_ttl.abs_ttl());
+        ASSERT_EQ(0, (signed)cur_ttl.lat_ttl());
         tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure);
         sleep(3);
 
@@ -3607,29 +3259,19 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(0, gresponse.code());
         ASSERT_EQ("test9", gresponse.value());
 
-        gres.Clear();
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(50, (signed)ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(1, (signed)ts.ttl_desc().lat_ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(50, (signed)cur_ttl.abs_ttl());
+        ASSERT_EQ(1, (signed)cur_ttl.lat_ttl());
     }
     // update from 50 to 100
     {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
-        ttl_desc->set_abs_ttl(100);
-        ttl_desc->set_lat_ttl(2);
+        auto ttl = request.mutable_ttl();
+        ttl->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
+        ttl->set_abs_ttl(100);
+        ttl->set_lat_ttl(2);
         ::fedb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -3639,18 +3281,11 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(0, gresponse.code());
         ASSERT_EQ("test9", gresponse.value());
 
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        bool checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(50, (signed)ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(1, (signed)ts.ttl_desc().lat_ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ::fedb::common::TTLSt cur_ttl;
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(50, (signed)cur_ttl.abs_ttl());
+        ASSERT_EQ(1, (signed)cur_ttl.lat_ttl());
+
         prequest.set_time(now - 10 * 60 * 1000);
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
@@ -3662,19 +3297,9 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         tablet.Get(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(0, gresponse.code());
 
-        gres.Clear();
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(100, (signed)ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(2, (signed)ts.ttl_desc().lat_ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(100, (signed)cur_ttl.abs_ttl());
+        ASSERT_EQ(2, (signed)cur_ttl.lat_ttl());
     }
     FLAGS_gc_interval = old_gc_interval;
 }
@@ -3693,11 +3318,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_wal(true);
-        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
-        ttl_desc->set_abs_ttl(100);
-        ttl_desc->set_lat_ttl(50);
+        AddDefaultSchema(100, 50, ::fedb::type::TTLType::kAbsOrLat, table_meta);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
@@ -3709,8 +3330,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(0);
         request.set_pid(0);
-        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
+        auto ttl_desc = request.mutable_ttl();
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(5);
         ::fedb::api::UpdateTTLResponse response;
@@ -3723,8 +3344,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
+        auto ttl_desc = request.mutable_ttl();
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(60 * 24 * 365 * 30 * 2);
         ttl_desc->set_lat_ttl(5);
         ::fedb::api::UpdateTTLResponse response;
@@ -3737,8 +3358,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
+        auto ttl_desc = request.mutable_ttl();
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(30);
         ttl_desc->set_lat_ttl(20000);
         ::fedb::api::UpdateTTLResponse response;
@@ -3751,8 +3372,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        auto ttl_desc = request.mutable_ttl();
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kLatestTime);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(5);
         ::fedb::api::UpdateTTLResponse response;
@@ -3809,8 +3430,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
+        auto ttl_desc = request.mutable_ttl();
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(0);
         ttl_desc->set_lat_ttl(0);
         ::fedb::api::UpdateTTLResponse response;
@@ -3822,18 +3443,11 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(0, gresponse.code());
         ASSERT_EQ("test9", gresponse.value());
 
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        bool checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(100, (signed)ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(50, (signed)ts.ttl_desc().lat_ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ::fedb::common::TTLSt cur_ttl;
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(100, (signed)cur_ttl.abs_ttl());
+        ASSERT_EQ(50, (signed)cur_ttl.lat_ttl());
+
         tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure);
         sleep(3);
 
@@ -3841,27 +3455,17 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         tablet.Get(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(0, gresponse.code());
 
-        gres.Clear();
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(0, (signed)ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(0, (signed)ts.ttl_desc().lat_ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(0, (signed)cur_ttl.abs_ttl());
+        ASSERT_EQ(0, (signed)cur_ttl.lat_ttl());
     }
     // ttl update from zero to no zero
     {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
+        auto ttl_desc = request.mutable_ttl();
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(1);
         ::fedb::api::UpdateTTLResponse response;
@@ -3873,18 +3477,11 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(0, gresponse.code());
         ASSERT_EQ("test9", gresponse.value());
 
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        bool checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(0, (signed)ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(0, (signed)ts.ttl_desc().lat_ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ::fedb::common::TTLSt cur_ttl;
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(0, (signed)cur_ttl.abs_ttl());
+        ASSERT_EQ(0, (signed)cur_ttl.lat_ttl());
+
         tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure);
         sleep(3);
 
@@ -3892,27 +3489,17 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         tablet.Get(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(109, gresponse.code());
 
-        gres.Clear();
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(1, (signed)ts.ttl_desc().lat_ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(10, (signed)cur_ttl.abs_ttl());
+        ASSERT_EQ(1, (signed)cur_ttl.lat_ttl());
     }
     // update from 10 to 100
     {
         ::fedb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        ::fedb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
+        auto ttl_desc = request.mutable_ttl();
+        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(100);
         ttl_desc->set_lat_ttl(2);
         ::fedb::api::UpdateTTLResponse response;
@@ -3923,18 +3510,12 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         tablet.Get(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(109, gresponse.code());
 
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        bool checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(1, (signed)ts.ttl_desc().lat_ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+
+        ::fedb::common::TTLSt cur_ttl;
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(10, (signed)cur_ttl.abs_ttl());
+        ASSERT_EQ(1, (signed)cur_ttl.lat_ttl());
+
         prequest.set_time(now - 10 * 60 * 1000);
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
@@ -3946,19 +3527,9 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         tablet.Get(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(0, gresponse.code());
 
-        gres.Clear();
-        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
-        ASSERT_EQ(0, gres.code());
-        checked = false;
-        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
-            const ::fedb::api::TableStatus& ts = gres.all_table_status(i);
-            if (ts.tid() == id) {
-                ASSERT_EQ(100, (signed)ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(2, (signed)ts.ttl_desc().lat_ttl());
-                checked = true;
-            }
-        }
-        ASSERT_TRUE(checked);
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(100, (signed)cur_ttl.abs_ttl());
+        ASSERT_EQ(2, (signed)cur_ttl.lat_ttl());
     }
     FLAGS_gc_interval = old_gc_interval;
 }
@@ -3974,11 +3545,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_wal(true);
-        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
-        ttl_desc->set_abs_ttl(0);
-        ttl_desc->set_lat_ttl(0);
+        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsAndLat, table_meta);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -4076,63 +3643,33 @@ TEST_F(TabletImplTest, AbsAndLat) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
-        ttl_desc->set_abs_ttl(100);
-        ttl_desc->set_lat_ttl(10);
         ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
         desc->set_name("test");
-        desc->set_type("string");
-        desc->set_add_ts_idx(true);
-        desc->set_is_ts_col(false);
+        desc->set_data_type(::fedb::type::kString);
         desc = table_meta->add_column_desc();
         desc->set_name("ts1");
-        desc->set_type("int64");
-        desc->set_add_ts_idx(false);
-        desc->set_is_ts_col(true);
+        desc->set_data_type(::fedb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts2");
-        desc->set_type("int64");
-        desc->set_add_ts_idx(false);
-        desc->set_is_ts_col(true);
-        desc->set_abs_ttl(50);
-        desc->set_lat_ttl(8);
+        desc->set_data_type(::fedb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts3");
-        desc->set_type("int64");
-        desc->set_add_ts_idx(false);
-        desc->set_is_ts_col(true);
-        desc->set_abs_ttl(70);
-        desc->set_lat_ttl(5);
+        desc->set_data_type(::fedb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts4");
-        desc->set_type("int64");
-        desc->set_add_ts_idx(false);
-        desc->set_is_ts_col(true);
-        desc->set_abs_ttl(0);
-        desc->set_lat_ttl(5);
+        desc->set_data_type(::fedb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts5");
-        desc->set_type("int64");
-        desc->set_add_ts_idx(false);
-        desc->set_is_ts_col(true);
-        desc->set_abs_ttl(50);
-        desc->set_lat_ttl(0);
+        desc->set_data_type(::fedb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts6");
-        desc->set_type("int64");
-        desc->set_add_ts_idx(false);
-        desc->set_is_ts_col(true);
-        desc->set_abs_ttl(0);
-        desc->set_lat_ttl(0);
-        ::fedb::common::ColumnKey* column_key = table_meta->add_column_key();
-        column_key->set_index_name("test");
-        column_key->add_ts_name("ts1");
-        column_key->add_ts_name("ts2");
-        column_key->add_ts_name("ts3");
-        column_key->add_ts_name("ts4");
-        column_key->add_ts_name("ts5");
-        column_key->add_ts_name("ts6");
+        desc->set_data_type(::fedb::type::kBigInt);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index0", "test", "ts1", ::fedb::type::kAbsAndLat, 100, 10);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index1", "test", "ts2", ::fedb::type::kAbsAndLat, 50, 8);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index2", "test", "ts3", ::fedb::type::kAbsAndLat, 70, 5);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index3", "test", "ts4", ::fedb::type::kAbsAndLat, 0, 5);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index4", "test", "ts5", ::fedb::type::kAbsAndLat, 50, 0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index5", "test", "ts6", ::fedb::type::kAbsAndLat, 0, 0);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -4176,7 +3713,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
-        sr.set_ts_name("ts1");
+        sr.set_idx_name("index0");
         ::fedb::api::TraverseResponse* srp =
             new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
@@ -4189,7 +3726,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("index1");
         ::fedb::api::TraverseResponse* srp =
             new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
@@ -4202,7 +3739,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("index2");
         ::fedb::api::TraverseResponse* srp =
             new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
@@ -4215,7 +3752,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
-        sr.set_ts_name("ts4");
+        sr.set_idx_name("index3");
         ::fedb::api::TraverseResponse* srp =
             new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
@@ -4228,7 +3765,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
-        sr.set_ts_name("ts5");
+        sr.set_idx_name("index4");
         ::fedb::api::TraverseResponse* srp =
             new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
@@ -4241,7 +3778,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
-        sr.set_ts_name("ts6");
+        sr.set_idx_name("index5");
         ::fedb::api::TraverseResponse* srp =
             new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
@@ -4263,7 +3800,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000 + 100);
-        sr.set_ts_name("ts1");
+        sr.set_idx_name("index0");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -4273,7 +3810,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now);
         cr.set_et(now - 100 * 60 * 1000 + 100);
-        cr.set_ts_name("ts1");
+        cr.set_idx_name("index0");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -4288,7 +3825,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 60 * 60 * 1000 + 100);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("index1");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -4298,7 +3835,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now);
         cr.set_et(now - 60 * 60 * 1000 + 100);
-        cr.set_ts_name("ts2");
+        cr.set_idx_name("index1");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -4313,7 +3850,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 60 * 60 * 1000 + 100);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("index2");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -4323,7 +3860,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now);
         cr.set_et(now - 60 * 60 * 1000 + 100);
-        cr.set_ts_name("ts3");
+        cr.set_idx_name("index2");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -4338,7 +3875,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("index2");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -4348,7 +3885,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
-        cr.set_ts_name("ts3");
+        cr.set_idx_name("index2");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -4363,7 +3900,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 50 * 60 * 1000 + 100);
         sr.set_et(now - 70 * 60 * 1000 + 100);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("index1");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -4373,7 +3910,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now - 50 * 60 * 1000 + 100);
         cr.set_et(now - 70 * 60 * 1000 + 100);
-        cr.set_ts_name("ts2");
+        cr.set_idx_name("index1");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -4388,7 +3925,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 50 * 60 * 1000 + 100);
         sr.set_et(now - 70 * 60 * 1000 + 100);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("index2");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -4398,7 +3935,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now - 50 * 60 * 1000 + 100);
         cr.set_et(now - 70 * 60 * 1000 + 100);
-        cr.set_ts_name("ts3");
+        cr.set_idx_name("index2");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -4413,7 +3950,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 90 * 60 * 1000 + 100);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("index1");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -4423,7 +3960,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 90 * 60 * 1000 + 100);
-        cr.set_ts_name("ts2");
+        cr.set_idx_name("index1");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -4438,7 +3975,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("index2");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -4448,7 +3985,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
-        cr.set_ts_name("ts3");
+        cr.set_idx_name("index2");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -4463,7 +4000,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 80 * 60 * 1000 + 100);
         sr.set_et(now - 100 * 60 * 1000 + 100);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("index2");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -4473,7 +4010,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now - 80 * 60 * 1000 + 100);
         cr.set_et(now - 100 * 60 * 1000 + 100);
-        cr.set_ts_name("ts3");
+        cr.set_idx_name("index2");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -4489,7 +4026,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000 + 100);
-        sr.set_ts_name("ts4");
+        sr.set_idx_name("index3");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -4499,7 +4036,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now);
         cr.set_et(now - 40 * 60 * 1000 + 100);
-        cr.set_ts_name("ts4");
+        cr.set_idx_name("index3");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -4515,7 +4052,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
-        sr.set_ts_name("ts4");
+        sr.set_idx_name("index3");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -4525,7 +4062,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
-        cr.set_ts_name("ts4");
+        cr.set_idx_name("index3");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -4541,7 +4078,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
-        sr.set_ts_name("ts4");
+        sr.set_idx_name("index3");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -4551,7 +4088,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
-        cr.set_ts_name("ts4");
+        cr.set_idx_name("index3");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -4567,7 +4104,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000 + 100);
-        sr.set_ts_name("ts5");
+        sr.set_idx_name("index4");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -4577,7 +4114,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now);
         cr.set_et(now - 40 * 60 * 1000 + 100);
-        cr.set_ts_name("ts5");
+        cr.set_idx_name("index4");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -4593,7 +4130,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
-        sr.set_ts_name("ts5");
+        sr.set_idx_name("index4");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -4603,7 +4140,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
-        cr.set_ts_name("ts5");
+        cr.set_idx_name("index4");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -4619,7 +4156,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
-        sr.set_ts_name("ts5");
+        sr.set_idx_name("index4");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -4629,7 +4166,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
-        cr.set_ts_name("ts5");
+        cr.set_idx_name("index4");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -4645,7 +4182,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
-        sr.set_ts_name("ts6");
+        sr.set_idx_name("index5");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -4655,7 +4192,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
-        cr.set_ts_name("ts6");
+        cr.set_idx_name("index5");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -4672,7 +4209,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 80 * 60 * 1000 + 100);
-        gr.set_ts_name("ts1");
+        gr.set_idx_name("index0");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(0, grp.code());
     }
@@ -4683,7 +4220,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 70 * 60 * 1000 + 100);
-        gr.set_ts_name("ts2");
+        gr.set_idx_name("index1");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(0, grp.code());
     }
@@ -4694,7 +4231,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 60 * 60 * 1000 + 100);
-        gr.set_ts_name("ts3");
+        gr.set_idx_name("index2");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(0, grp.code());
     }
@@ -4705,7 +4242,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 90 * 60 * 1000 + 100);
-        gr.set_ts_name("ts3");
+        gr.set_idx_name("index2");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(109, grp.code());
     }
@@ -4717,7 +4254,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 10 * 60 * 1000 + 100);
-        gr.set_ts_name("ts4");
+        gr.set_idx_name("index3");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(0, grp.code());
     }
@@ -4729,7 +4266,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 80 * 60 * 1000 + 100);
-        gr.set_ts_name("ts4");
+        gr.set_idx_name("index3");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(0, grp.code());
     }
@@ -4741,7 +4278,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 10 * 60 * 1000 + 100);
-        gr.set_ts_name("ts5");
+        gr.set_idx_name("index4");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(0, grp.code());
     }
@@ -4753,7 +4290,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 80 * 60 * 1000 + 100);
-        gr.set_ts_name("ts5");
+        gr.set_idx_name("index4");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(0, grp.code());
     }
@@ -4765,7 +4302,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 10 * 60 * 1000 + 100);
-        gr.set_ts_name("ts6");
+        gr.set_idx_name("index5");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(0, grp.code());
     }
@@ -4776,7 +4313,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 50 * 60 * 1000);
-        sr.set_ts_name("ts1");
+        sr.set_idx_name("index0");
         sr.set_atleast(10);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -4790,7 +4327,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 50 * 60 * 1000);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("index1");
         sr.set_atleast(10);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -4803,7 +4340,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 50 * 60 * 1000);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("index2");
         sr.set_atleast(10);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -4817,7 +4354,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts1");
+        sr.set_idx_name("index0");
         sr.set_atleast(5);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -4830,7 +4367,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("index1");
         sr.set_atleast(10);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -4843,7 +4380,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("index2");
         sr.set_atleast(10);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -4857,7 +4394,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts1");
+        sr.set_idx_name("index0");
         sr.set_atleast(5);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -4870,7 +4407,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("index1");
         sr.set_atleast(5);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -4883,7 +4420,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("index2");
         sr.set_atleast(5);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -4897,7 +4434,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts1");
+        sr.set_idx_name("index0");
         sr.set_atleast(5);
         sr.set_limit(6);
         sr.set_et_type(::fedb::api::kSubKeyGe);
@@ -4911,7 +4448,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("index1");
         sr.set_atleast(5);
         sr.set_limit(6);
         sr.set_et_type(::fedb::api::kSubKeyGe);
@@ -4925,7 +4462,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("index2");
         sr.set_atleast(5);
         sr.set_limit(6);
         sr.set_et_type(::fedb::api::kSubKeyGe);
@@ -4940,7 +4477,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts1");
+        sr.set_idx_name("index0");
         sr.set_atleast(9);
         sr.set_limit(9);
         sr.set_et_type(::fedb::api::kSubKeyGe);
@@ -4954,7 +4491,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("index1");
         sr.set_atleast(9);
         sr.set_limit(9);
         sr.set_et_type(::fedb::api::kSubKeyGe);
@@ -4968,7 +4505,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("index2");
         sr.set_atleast(9);
         sr.set_limit(9);
         sr.set_et_type(::fedb::api::kSubKeyGe);
@@ -4982,7 +4519,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 30 * 60 * 1000);
         sr.set_et(now - 50 * 60 * 1000);
-        sr.set_ts_name("ts1");
+        sr.set_idx_name("index0");
         sr.set_limit(7);
         sr.set_atleast(5);
         sr.set_et_type(::fedb::api::kSubKeyGe);
@@ -5003,64 +4540,34 @@ TEST_F(TabletImplTest, AbsOrLat) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        ::fedb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
-        ttl_desc->set_abs_ttl(100);
-        ttl_desc->set_lat_ttl(10);
         ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
         desc->set_name("test");
-        desc->set_type("string");
-        desc->set_add_ts_idx(true);
-        desc->set_is_ts_col(false);
+        desc->set_data_type(::fedb::type::kString);
         desc = table_meta->add_column_desc();
         desc->set_name("ts1");
-        desc->set_type("int64");
-        desc->set_add_ts_idx(false);
-        desc->set_is_ts_col(true);
+        desc->set_data_type(::fedb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts2");
-        desc->set_type("int64");
-        desc->set_add_ts_idx(false);
-        desc->set_is_ts_col(true);
-        desc->set_abs_ttl(50);
-        desc->set_lat_ttl(8);
+        desc->set_data_type(::fedb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts3");
-        desc->set_type("int64");
-        desc->set_add_ts_idx(false);
-        desc->set_is_ts_col(true);
-        desc->set_abs_ttl(70);
-        desc->set_lat_ttl(6);
+        desc->set_data_type(::fedb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts4");
-        desc->set_type("int64");
-        desc->set_add_ts_idx(false);
-        desc->set_is_ts_col(true);
-        desc->set_abs_ttl(0);
-        desc->set_lat_ttl(5);
+        desc->set_data_type(::fedb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts5");
-        desc->set_type("int64");
-        desc->set_add_ts_idx(false);
-        desc->set_is_ts_col(true);
-        desc->set_abs_ttl(50);
-        desc->set_lat_ttl(0);
+        desc->set_data_type(::fedb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts6");
-        desc->set_type("int64");
-        desc->set_add_ts_idx(false);
-        desc->set_is_ts_col(true);
-        desc->set_abs_ttl(0);
-        desc->set_lat_ttl(0);
+        desc->set_data_type(::fedb::type::kBigInt);
 
-        ::fedb::common::ColumnKey* column_key = table_meta->add_column_key();
-        column_key->set_index_name("test");
-        column_key->add_ts_name("ts1");
-        column_key->add_ts_name("ts2");
-        column_key->add_ts_name("ts3");
-        column_key->add_ts_name("ts4");
-        column_key->add_ts_name("ts5");
-        column_key->add_ts_name("ts6");
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts1", "test", "ts1", ::fedb::type::kAbsOrLat, 100, 10);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts2", "test", "ts2", ::fedb::type::kAbsOrLat, 50, 8);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts3", "test", "ts3", ::fedb::type::kAbsOrLat, 70, 6);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts4", "test", "ts4", ::fedb::type::kAbsOrLat, 0, 5);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts5", "test", "ts5", ::fedb::type::kAbsOrLat, 50, 0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts6", "test", "ts6", ::fedb::type::kAbsOrLat, 0, 0);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -5102,7 +4609,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
-        sr.set_ts_name("ts1");
+        sr.set_idx_name("ts1");
         ::fedb::api::TraverseResponse* srp =
             new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
@@ -5114,7 +4621,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("ts2");
         ::fedb::api::TraverseResponse* srp =
             new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
@@ -5126,7 +4633,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("ts3");
         ::fedb::api::TraverseResponse* srp =
             new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
@@ -5139,7 +4646,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
-        sr.set_ts_name("ts4");
+        sr.set_idx_name("ts4");
         ::fedb::api::TraverseResponse* srp =
             new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
@@ -5152,7 +4659,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
-        sr.set_ts_name("ts5");
+        sr.set_idx_name("ts5");
         ::fedb::api::TraverseResponse* srp =
             new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
@@ -5165,7 +4672,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
-        sr.set_ts_name("ts6");
+        sr.set_idx_name("ts6");
         ::fedb::api::TraverseResponse* srp =
             new ::fedb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
@@ -5188,7 +4695,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000 + 100);
-        sr.set_ts_name("ts1");
+        sr.set_idx_name("ts1");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -5198,7 +4705,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now);
         cr.set_et(now - 100 * 60 * 1000 + 100);
-        cr.set_ts_name("ts1");
+        cr.set_idx_name("ts1");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -5213,7 +4720,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 60 * 60 * 1000 + 100);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("ts2");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -5223,7 +4730,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now);
         cr.set_et(now - 60 * 60 * 1000 + 100);
-        cr.set_ts_name("ts2");
+        cr.set_idx_name("ts2");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -5238,7 +4745,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 70 * 60 * 1000 + 100);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("ts3");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -5248,7 +4755,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now);
         cr.set_et(now - 70 * 60 * 1000 + 100);
-        cr.set_ts_name("ts3");
+        cr.set_idx_name("ts3");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -5263,7 +4770,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("ts3");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -5273,7 +4780,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
-        cr.set_ts_name("ts3");
+        cr.set_idx_name("ts3");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -5288,7 +4795,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("ts2");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
@@ -5298,7 +4805,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
-        cr.set_ts_name("ts2");
+        cr.set_idx_name("ts2");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(307, crp.code());
@@ -5313,7 +4820,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 70 * 60 * 1000 + 100);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("ts3");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -5323,7 +4830,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 70 * 60 * 1000 + 100);
-        cr.set_ts_name("ts3");
+        cr.set_idx_name("ts3");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -5338,7 +4845,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 90 * 60 * 1000 + 100);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("ts2");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
@@ -5348,7 +4855,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 90 * 60 * 1000 + 100);
-        cr.set_ts_name("ts2");
+        cr.set_idx_name("ts2");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(307, crp.code());
@@ -5363,7 +4870,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("ts3");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -5373,7 +4880,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
-        cr.set_ts_name("ts3");
+        cr.set_idx_name("ts3");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -5388,7 +4895,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 80 * 60 * 1000 + 100);
         sr.set_et(now - 100 * 60 * 1000 + 100);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("ts3");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
@@ -5398,7 +4905,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now - 80 * 60 * 1000 + 100);
         cr.set_et(now - 100 * 60 * 1000 + 100);
-        cr.set_ts_name("ts3");
+        cr.set_idx_name("ts3");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(307, crp.code());
@@ -5414,7 +4921,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000 + 100);
-        sr.set_ts_name("ts4");
+        sr.set_idx_name("ts4");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -5424,7 +4931,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now);
         cr.set_et(now - 40 * 60 * 1000 + 100);
-        cr.set_ts_name("ts4");
+        cr.set_idx_name("ts4");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -5440,7 +4947,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
-        sr.set_ts_name("ts4");
+        sr.set_idx_name("ts4");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -5450,7 +4957,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
-        cr.set_ts_name("ts4");
+        cr.set_idx_name("ts4");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -5466,7 +4973,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
-        sr.set_ts_name("ts4");
+        sr.set_idx_name("ts4");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -5476,7 +4983,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
-        cr.set_ts_name("ts4");
+        cr.set_idx_name("ts4");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -5492,7 +4999,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000 + 100);
-        sr.set_ts_name("ts5");
+        sr.set_idx_name("ts5");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -5502,7 +5009,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now);
         cr.set_et(now - 40 * 60 * 1000 + 100);
-        cr.set_ts_name("ts5");
+        cr.set_idx_name("ts5");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -5518,7 +5025,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
-        sr.set_ts_name("ts5");
+        sr.set_idx_name("ts5");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -5528,7 +5035,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
-        cr.set_ts_name("ts5");
+        cr.set_idx_name("ts5");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -5544,7 +5051,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
-        sr.set_ts_name("ts5");
+        sr.set_idx_name("ts5");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
@@ -5554,7 +5061,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
-        cr.set_ts_name("ts5");
+        cr.set_idx_name("ts5");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(307, crp.code());
@@ -5570,7 +5077,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
-        sr.set_ts_name("ts6");
+        sr.set_idx_name("ts6");
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
@@ -5580,7 +5087,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_key("test" + std::to_string(i));
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
-        cr.set_ts_name("ts6");
+        cr.set_idx_name("ts6");
         cr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
@@ -5597,7 +5104,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 80 * 60 * 1000 + 100);
-        gr.set_ts_name("ts1");
+        gr.set_idx_name("ts1");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(0, grp.code());
     }
@@ -5608,7 +5115,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 70 * 60 * 1000 + 100);
-        gr.set_ts_name("ts2");
+        gr.set_idx_name("ts2");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(307, grp.code());
     }
@@ -5619,7 +5126,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 60 * 60 * 1000 + 100);
-        gr.set_ts_name("ts3");
+        gr.set_idx_name("ts3");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(109, grp.code());
     }
@@ -5630,7 +5137,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 90 * 60 * 1000 + 100);
-        gr.set_ts_name("ts3");
+        gr.set_idx_name("ts3");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(307, grp.code());
     }
@@ -5642,7 +5149,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 10 * 60 * 1000 + 100);
-        gr.set_ts_name("ts4");
+        gr.set_idx_name("ts4");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(0, grp.code());
     }
@@ -5654,7 +5161,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 80 * 60 * 1000 + 100);
-        gr.set_ts_name("ts4");
+        gr.set_idx_name("ts4");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(109, grp.code());
     }
@@ -5666,7 +5173,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 10 * 60 * 1000 + 100);
-        gr.set_ts_name("ts5");
+        gr.set_idx_name("ts5");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(0, grp.code());
     }
@@ -5678,7 +5185,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 80 * 60 * 1000 + 100);
-        gr.set_ts_name("ts5");
+        gr.set_idx_name("ts5");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(307, grp.code());
     }
@@ -5690,7 +5197,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         gr.set_pid(0);
         gr.set_key("test" + std::to_string(i));
         gr.set_ts(now - 10 * 60 * 1000 + 100);
-        gr.set_ts_name("ts6");
+        gr.set_idx_name("ts6");
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(0, grp.code());
     }
@@ -5701,7 +5208,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000);
-        sr.set_ts_name("ts1");
+        sr.set_idx_name("ts1");
         sr.set_atleast(10);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -5715,7 +5222,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("ts2");
         sr.set_atleast(10);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -5728,7 +5235,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("ts3");
         sr.set_atleast(10);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -5742,7 +5249,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts1");
+        sr.set_idx_name("ts1");
         sr.set_atleast(5);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -5755,7 +5262,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("ts2");
         sr.set_atleast(10);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -5768,7 +5275,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("ts3");
         sr.set_atleast(10);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -5782,7 +5289,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts1");
+        sr.set_idx_name("ts1");
         sr.set_atleast(5);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -5795,7 +5302,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("ts2");
         sr.set_atleast(5);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -5808,7 +5315,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("ts3");
         sr.set_atleast(5);
         sr.set_et_type(::fedb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -5822,7 +5329,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts1");
+        sr.set_idx_name("ts1");
         sr.set_atleast(3);
         sr.set_limit(4);
         sr.set_et_type(::fedb::api::kSubKeyGe);
@@ -5836,7 +5343,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("ts2");
         sr.set_atleast(3);
         sr.set_limit(4);
         sr.set_et_type(::fedb::api::kSubKeyGe);
@@ -5850,7 +5357,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("ts3");
         sr.set_atleast(3);
         sr.set_limit(4);
         sr.set_et_type(::fedb::api::kSubKeyGe);
@@ -5865,7 +5372,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts1");
+        sr.set_idx_name("ts1");
         sr.set_atleast(9);
         sr.set_limit(9);
         sr.set_et_type(::fedb::api::kSubKeyGe);
@@ -5879,7 +5386,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts2");
+        sr.set_idx_name("ts2");
         sr.set_atleast(9);
         sr.set_limit(9);
         sr.set_et_type(::fedb::api::kSubKeyGe);
@@ -5893,7 +5400,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
-        sr.set_ts_name("ts3");
+        sr.set_idx_name("ts3");
         sr.set_atleast(9);
         sr.set_limit(9);
         sr.set_et_type(::fedb::api::kSubKeyGe);
@@ -5962,39 +5469,22 @@ TEST_F(TabletImplTest, DumpIndex) {
     ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
     ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
     desc->set_name("card");
-    desc->set_type("string");
-    desc->set_add_ts_idx(true);
+    desc->set_data_type(::fedb::type::kString);
     desc = table_meta->add_column_desc();
     desc->set_name("mcc");
-    desc->set_type("string");
-    desc->set_add_ts_idx(true);
+    desc->set_data_type(::fedb::type::kString);
     desc = table_meta->add_column_desc();
     desc->set_name("price");
-    desc->set_type("int64");
-    desc->set_add_ts_idx(false);
+    desc->set_data_type(::fedb::type::kBigInt);
     desc = table_meta->add_column_desc();
     desc->set_name("ts1");
-    desc->set_type("int64");
-    desc->set_add_ts_idx(false);
-    desc->set_is_ts_col(true);
+    desc->set_data_type(::fedb::type::kBigInt);
     desc = table_meta->add_column_desc();
     desc->set_name("ts2");
-    desc->set_type("int64");
-    desc->set_add_ts_idx(false);
-    desc->set_is_ts_col(true);
-    ::fedb::common::ColumnKey* column_key = table_meta->add_column_key();
-    column_key->set_index_name("card");
-    column_key->add_col_name("card");
-    column_key->add_ts_name("ts1");
-    column_key->add_ts_name("ts2");
+    desc->set_data_type(::fedb::type::kBigInt);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "index1", "card", "ts1", ::fedb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "index2", "card", "ts2", ::fedb::type::kAbsoluteTime, 0, 0);
 
-    std::vector<::fedb::codec::ColumnDesc> columns;
-    ::fedb::codec::SchemaCodec::ConvertColumnDesc(table_meta->column_desc(),
-                                                   columns);
-    ::fedb::codec::SchemaCodec codec;
-    std::string buffer;
-    codec.Encode(columns, buffer);
-    table_meta->set_schema(buffer);
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
@@ -6010,8 +5500,7 @@ TEST_F(TabletImplTest, DumpIndex) {
         input.push_back(std::to_string(i + 100));
         input.push_back(std::to_string(i + 10000));
         std::string value;
-        std::vector<std::pair<std::string, uint32_t>> dimensions;
-        MultiDimensionEncode(columns, input, dimensions, value);
+        ::fedb::codec::RowCodec::EncodeRow(input, table_meta->column_desc(), 1, value);
         ::fedb::api::PutRequest request;
         request.set_value(value);
         request.set_tid(id);
@@ -6046,8 +5535,7 @@ TEST_F(TabletImplTest, DumpIndex) {
         input.push_back(std::to_string(i + 200));
         input.push_back(std::to_string(i + 20000));
         std::string value;
-        std::vector<std::pair<std::string, uint32_t>> dimensions;
-        MultiDimensionEncode(columns, input, dimensions, value);
+        ::fedb::codec::RowCodec::EncodeRow(input, table_meta->column_desc(), 1, value);
         ::fedb::api::PutRequest request;
         request.set_value(value);
         request.set_tid(id);
@@ -6067,17 +5555,16 @@ TEST_F(TabletImplTest, DumpIndex) {
         ASSERT_EQ(0, response.code());
     }
     {
-        column_key = table_meta->add_column_key();
-        column_key->set_index_name("card|mcc");
-        column_key->add_col_name("card");
-        column_key->add_col_name("mcc");
-        column_key->add_ts_name("ts2");
         ::fedb::api::DumpIndexDataRequest dump_request;
         dump_request.set_tid(id);
         dump_request.set_pid(1);
         dump_request.set_partition_num(8);
         dump_request.set_idx(1);
-        dump_request.mutable_column_key()->CopyFrom(*column_key);
+        auto column_key = dump_request.mutable_column_key();
+        column_key->set_index_name("card|mcc");
+        column_key->add_col_name("card");
+        column_key->add_col_name("mcc");
+        column_key->set_ts_name("ts2");
         ::fedb::api::GeneralResponse dump_response;
         tablet.DumpIndexData(NULL, &dump_request, &dump_response, &closure);
         ASSERT_EQ(0, dump_response.code());
@@ -6096,8 +5583,7 @@ TEST_F(TabletImplTest, SendIndexData) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_ttl(0);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kLatestTime, table_meta);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;
@@ -6110,8 +5596,7 @@ TEST_F(TabletImplTest, SendIndexData) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_ttl(0);
-        table_meta->set_ttl_type(::fedb::api::TTLType::kLatestTime);
+        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kLatestTime, table_meta);
         table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
         ::fedb::api::CreateTableResponse response;
         MockClosure closure;

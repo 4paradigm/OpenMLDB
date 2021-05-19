@@ -87,7 +87,7 @@ TEST_F(BinlogTest, DeleteBinlog) {
     std::vector<std::string> endpoints;
     bool ret =
         client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
-                           ::fedb::api::TTLType::kAbsoluteTime, 16, 0,
+                           ::fedb::type::TTLType::kAbsoluteTime, 16, 0,
                            ::fedb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
 

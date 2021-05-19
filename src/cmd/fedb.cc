@@ -509,40 +509,40 @@ void HandleNSClientSetTTL(const std::vector<std::string>& parts,
         std::cout << "bad setttl format, eg settl t1 absolute 10" << std::endl;
         return;
     }
-    std::string ts_name;
+    std::string index_name;
     try {
         std::string err;
         uint64_t abs_ttl = 0;
         uint64_t lat_ttl = 0;
-        ::fedb::api::TTLType type = ::fedb::api::kLatestTime;
+        ::fedb::type::TTLType type = ::fedb::type::kLatestTime;
         if (parts[2] == "absolute") {
-            type = ::fedb::api::TTLType::kAbsoluteTime;
+            type = ::fedb::type::TTLType::kAbsoluteTime;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[3]);
             if (parts.size() == 5) {
-                ts_name = parts[4];
+                index_name = parts[4];
             }
         } else if (parts[2] == "absandlat") {
-            type = ::fedb::api::TTLType::kAbsAndLat;
+            type = ::fedb::type::TTLType::kAbsAndLat;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[3]);
             lat_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             if (parts.size() == 6) {
-                ts_name = parts[5];
+                index_name = parts[5];
             }
         } else if (parts[2] == "absorlat") {
-            type = ::fedb::api::TTLType::kAbsOrLat;
+            type = ::fedb::type::TTLType::kAbsOrLat;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[3]);
             lat_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             if (parts.size() == 6) {
-                ts_name = parts[5];
+                index_name = parts[5];
             }
         } else {
             lat_ttl = boost::lexical_cast<uint64_t>(parts[3]);
             if (parts.size() == 5) {
-                ts_name = parts[4];
+                index_name = parts[4];
             }
         }
         bool ok =
-            client->UpdateTTL(parts[1], type, abs_ttl, lat_ttl, ts_name, err);
+            client->UpdateTTL(parts[1], type, abs_ttl, lat_ttl, index_name, err);
         if (ok) {
             std::cout << "Set ttl ok !" << std::endl;
         } else {
@@ -909,11 +909,7 @@ void HandleNSClientAddIndex(const std::vector<std::string>& parts,
         column_key.add_col_name(parts[2]);
     }
     if (parts.size() > 4) {
-        std::vector<std::string> ts_vec;
-        ::fedb::base::SplitString(parts[4], ",", ts_vec);
-        for (const auto& ts_name : ts_vec) {
-            column_key.add_ts_name(ts_name);
-        }
+        column_key.set_ts_name(parts[4]);
     }
     std::string msg;
     bool ret = false;
@@ -1192,41 +1188,10 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts,
         printf("table %s is not exist\n", name.c_str());
         return;
     }
-    if (tables[0].column_desc_v1_size() > 0) {
-        if (tables[0].added_column_desc_size() == 0) {
-            ::fedb::cmd::PrintSchema(tables[0].column_desc_v1());
-        } else {
-            ::fedb::cmd::PrintSchema(tables[0]);
-        }
-        printf("\n#ColumnKey\n");
-        ::fedb::api::TTLType ttl_type;
-        uint64_t abs_ttl = 0;
-        uint64_t lat_ttl = 0;
-        if (tables[0].has_ttl_desc()) {
-            ttl_type = tables[0].ttl_desc().ttl_type();
-            abs_ttl = tables[0].ttl_desc().abs_ttl();
-            lat_ttl = tables[0].ttl_desc().lat_ttl();
-        } else {
-            if (tables[0].ttl_type() == "kAbsoluteTime") {
-                ttl_type = ::fedb::api::kAbsoluteTime;
-                abs_ttl = tables[0].ttl();
-            } else {
-                ttl_type = ::fedb::api::kLatestTime;
-                lat_ttl = tables[0].ttl();
-            }
-        }
-        ::fedb::storage::TTLSt ttl_st(abs_ttl, lat_ttl, ::fedb::storage::TTLSt::ConvertTTLType(ttl_type));
-        ::fedb::cmd::PrintColumnKey(ttl_st, tables[0].column_desc_v1(), tables[0].column_key());
 
-    } else if (tables[0].column_desc_size() > 0) {
-        if (tables[0].added_column_desc_size() == 0) {
-            ::fedb::cmd::PrintSchema(tables[0].column_desc());
-        } else {
-            ::fedb::cmd::PrintSchema(tables[0]);
-        }
-    } else {
-        printf("table %s has not schema\n", name.c_str());
-    }
+    ::fedb::cmd::PrintSchema(tables[0].column_desc(), tables[0].added_column_desc());
+    printf("\n#ColumnKey\n");
+    ::fedb::cmd::PrintColumnKey(tables[0].column_key());
 }
 
 void HandleNSDelete(const std::vector<std::string>& parts,
@@ -1265,26 +1230,10 @@ void HandleNSDelete(const std::vector<std::string>& parts,
         }
         std::string idx_name;
         if (parts.size() > 3) {
-            if (tables[0].column_key_size() > 0) {
-                for (int idx = 0; idx < tables[0].column_key_size(); idx++) {
-                    if (tables[0].column_key(idx).index_name() == parts[3]) {
-                        idx_name = parts[3];
-                        break;
-                    }
-                }
-            } else {
-                std::vector<::fedb::codec::ColumnDesc> columns;
-                if (::fedb::codec::SchemaCodec::ConvertColumnDesc(
-                        tables[0], columns) < 0) {
-                    std::cout << "convert table column desc failed"
-                              << std::endl;
-                    return;
-                }
-                for (uint32_t i = 0; i < columns.size(); i++) {
-                    if (columns[i].add_ts_idx && columns[i].name == parts[3]) {
-                        idx_name = parts[3];
-                        break;
-                    }
+            for (int idx = 0; idx < tables[0].column_key_size(); idx++) {
+                if (tables[0].column_key(idx).index_name() == parts[3]) {
+                    idx_name = parts[3];
+                    break;
                 }
             }
             if (idx_name.empty()) {
@@ -1623,7 +1572,7 @@ void HandleNSGet(const std::vector<std::string>& parts,
         return;
     }
     ::fedb::codec::SDKCodec codec(tables[0]);
-    bool no_schema = tables[0].column_desc_v1_size() == 0 && tables[0].column_desc_size() == 0;
+    bool no_schema = tables[0].column_desc_size() == 0 && tables[0].column_desc_size() == 0;
     if (no_schema) {
         std::string value;
         uint64_t ts = 0;
@@ -1810,7 +1759,7 @@ void HandleNSScan(const std::vector<std::string>& parts,
         std::cout << "failed to scan. error msg: " << msg << std::endl;
         return;
     }
-    bool no_schema = tables[0].column_desc_v1_size() == 0 && tables[0].column_desc_size() == 0;
+    bool no_schema = tables[0].column_desc_size() == 0 && tables[0].column_desc_size() == 0;
     if (no_schema) {
         std::shared_ptr<::fedb::base::KvIterator> it;
         if (is_pair_format) {
@@ -2079,7 +2028,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
     uint32_t tid = tables[0].tid();
     ::fedb::codec::SDKCodec codec(tables[0]);
     bool has_ts_col = codec.HasTSCol();
-    bool no_schema = tables[0].column_desc_v1_size() == 0 && tables[0].column_desc_size() == 0;
+    bool no_schema = tables[0].column_desc_size() == 0 && tables[0].column_desc_size() == 0;
     std::vector<std::string> row;
     uint64_t max_size = 0;
     if (no_schema) {
@@ -2264,14 +2213,15 @@ void HandleShowReplicaCluster(const std::vector<std::string>& parts,
     }
     tp.Print(true);
 }
+
 bool HasIsTsCol(
-    const google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>&
+    const google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>&
         list) {
     if (list.empty()) {
         return false;
     }
     for (auto it = list.begin(); it != list.end(); it++) {
-        if (it->has_is_ts_col() && it->is_ts_col()) {
+        if (it->has_ttl()) {
             return true;
         }
     }
@@ -2312,83 +2262,31 @@ void HandleNSPut(const std::vector<std::string>& parts, ::fedb::client::NsClient
         std::cout << "put failed! table " << parts[1] << " is not exist\n";
         return;
     }
-    uint32_t tid = tables[0].tid();
-    if (tables[0].column_desc_v1_size() > 0) {
-        uint64_t ts = 0;
-        uint32_t start_index = 0;
-        if (!HasIsTsCol(tables[0].column_desc_v1())) {
-            try {
-                ts = boost::lexical_cast<uint64_t>(parts[2]);
-            } catch (std::exception const& e) {
-                std::cout << "Invalid args. ts " << parts[2] << " should be unsigned int\n";
-                return;
-            }
-            start_index = 3;
-        } else {
-            start_index = 2;
-        }
-        int base_size = tables[0].column_desc_v1().size();
-        int add_size = tables[0].added_column_desc().size();
-        int in_size = parts.size();
-        int modify_index = in_size - start_index - base_size;
-        if (modify_index - add_size > 0 || modify_index < 0) {
-            printf("put format error! input value does not match the schema\n");
-            return;
-        }
-        std::vector<std::string> input_value(parts.begin() + start_index, parts.end());
-        auto ret = PutSchemaData(tables[0], ts, input_value);
-        if (ret.code < 0) {
-            std::cout << ret.msg << "\n";
-        }
-    } else if (tables[0].column_desc_size() > 0) {
-        uint64_t ts = 0;
+    uint64_t ts = 0;
+    uint32_t start_index = 0;
+    if (!HasIsTsCol(tables[0].column_key())) {
         try {
             ts = boost::lexical_cast<uint64_t>(parts[2]);
         } catch (std::exception const& e) {
             std::cout << "Invalid args. ts " << parts[2] << " should be unsigned int\n";
             return;
         }
-        int base_size = tables[0].column_desc_size();
-        int add_size = tables[0].added_column_desc_size();
-        int modify_index = parts.size() - 3 - base_size;
-        if (modify_index - add_size > 0 || modify_index < 0) {
-            printf("put format error! input value does not match the schema\n");
-            return;
-        }
-        std::vector<std::string> input_value(parts.begin() + 3, parts.end());
-        auto ret = PutSchemaData(tables[0], ts, input_value);
-        if (ret.code < 0) {
-            printf("%s\n", ret.msg.c_str());
-        }
+        start_index = 3;
     } else {
-        std::string pk = parts[2];
-        uint64_t ts = 0;
-        try {
-            ts = boost::lexical_cast<uint64_t>(parts[3]);
-        } catch (std::exception const& e) {
-            printf("Invalid args. ts %s should be unsigned int\n",
-                   parts[3].c_str());
-            return;
-        }
-        uint32_t pid = (uint32_t)(::fedb::base::hash64(pk) %
-                                  tables[0].table_partition_size());
-        std::shared_ptr<::fedb::client::TabletClient> tablet_client =
-            GetTabletClient(tables[0], pid, msg);
-        if (!tablet_client) {
-            std::cout << "Failed to put. error msg: " << msg << std::endl;
-            return;
-        }
-        std::string value = parts[4];
-        if (tables[0].compress_type() == ::fedb::type::CompressType::kSnappy) {
-            std::string compressed;
-            ::snappy::Compress(value.c_str(), value.length(), &compressed);
-            value = compressed;
-        }
-        if (tablet_client->Put(tid, pid, pk, ts, value)) {
-            std::cout << "Put ok" << std::endl;
-        } else {
-            std::cout << "Put failed" << std::endl;
-        }
+        start_index = 2;
+    }
+    int base_size = tables[0].column_desc().size();
+    int add_size = tables[0].added_column_desc().size();
+    int in_size = parts.size();
+    int modify_index = in_size - start_index - base_size;
+    if (modify_index - add_size > 0 || modify_index < 0) {
+        printf("put format error! input value does not match the schema\n");
+        return;
+    }
+    std::vector<std::string> input_value(parts.begin() + start_index, parts.end());
+    auto result = PutSchemaData(tables[0], ts, input_value);
+    if (result.code < 0) {
+        std::cout << result.msg << "\n";
     }
 }
 
@@ -2509,20 +2407,11 @@ int SetTablePartition(
 }
 
 int SetColumnDesc(const ::fedb::client::TableInfo& table_info,
-                  const std::set<std::string>& type_set,
                   ::fedb::nameserver::TableInfo& ns_table_info) {  // NOLINT
-    std::map<std::string, std::string> name_map;
+    std::map<std::string, ::fedb::type::DataType> name_map;
     std::set<std::string> index_set;
     std::set<std::string> ts_col_set;
     for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
-        std::string cur_type = table_info.column_desc(idx).type();
-        std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(),
-                       ::tolower);
-        if (type_set.find(cur_type) == type_set.end()) {
-            printf("type %s is invalid\n",
-                    table_info.column_desc(idx).type().c_str());
-            return -1;
-        }
         if (table_info.column_desc(idx).name() == "" ||
             name_map.find(table_info.column_desc(idx).name()) !=
                 name_map.end()) {
@@ -2530,134 +2419,79 @@ int SetColumnDesc(const ::fedb::client::TableInfo& table_info,
                    table_info.column_desc(idx).name().c_str());
             return -1;
         }
-        if (table_info.column_desc(idx).add_ts_idx() &&
-            ((cur_type == "float") || (cur_type == "double"))) {
-            printf("float or double column can not be index: %s\n",
-                   cur_type.c_str());
-            return -1;
-        }
-        if (table_info.column_desc(idx).add_ts_idx()) {
-            index_set.insert(table_info.column_desc(idx).name());
-        }
-        if (table_info.column_desc(idx).is_ts_col()) {
-            if (table_info.column_desc(idx).add_ts_idx()) {
-                printf("index column cannot be ts column\n");
-                return -1;
-            }
-            if (cur_type != "timestamp" && cur_type != "int64" &&
-                cur_type != "uint64") {
-                printf("ts column type should be int64, uint64 or timestamp\n");
-                return -1;
-            }
-            if (table_info.column_desc(idx).has_ttl()) {
-                if (ns_table_info.ttl_type() == "kAbsoluteTime") {
-                    if (table_info.column_desc(idx).ttl() >
-                        FLAGS_absolute_ttl_max) {
-                        printf("the max ttl is %u\n", FLAGS_absolute_ttl_max);
-                        return -1;
-                    }
-                } else {
-                    if (table_info.column_desc(idx).ttl() >
-                        FLAGS_latest_ttl_max) {
-                        printf("the max ttl is %u\n", FLAGS_latest_ttl_max);
-                        return -1;
-                    }
-                }
-            }
-            ts_col_set.insert(table_info.column_desc(idx).name());
-        }
-        name_map.insert(
-            std::make_pair(table_info.column_desc(idx).name(), cur_type));
+        name_map.insert(std::make_pair(table_info.column_desc(idx).name(), table_info.column_desc(idx).data_type()));
         ::fedb::common::ColumnDesc* column_desc =
-            ns_table_info.add_column_desc_v1();
+            ns_table_info.add_column_desc();
         column_desc->CopyFrom(table_info.column_desc(idx));
-        const auto& tp_iter = ::fedb::codec::DATA_TYPE_MAP.find(cur_type);
-        if (tp_iter == ::fedb::codec::DATA_TYPE_MAP.end()) {
-            printf("fail to find data type with type %s \n", cur_type.c_str());
-            return -1;
-        }
-        column_desc->set_data_type(tp_iter->second);
     }
-    if (table_info.column_key_size() == 0) {
-        if (ts_col_set.size() > 1) {
-            printf(
-                "column_key should be set when has two or more ts columns\n");
-            return -1;
 
-        } else if (ts_col_set.empty()) {
-            // convert to old version
-            for (const auto& column_desc : ns_table_info.column_desc_v1()) {
-                ::fedb::nameserver::ColumnDesc* cur_column_desc =
-                    ns_table_info.add_column_desc();
-                cur_column_desc->set_name(column_desc.name());
-                cur_column_desc->set_type(column_desc.type());
-                cur_column_desc->set_add_ts_idx(column_desc.add_ts_idx());
-            }
-            ns_table_info.clear_column_desc_v1();
+    // set column_key
+    index_set.clear();
+    std::set<std::string> key_set;
+    for (int idx = 0; idx < table_info.column_key_size(); idx++) {
+        if (!table_info.column_key(idx).has_index_name() ||
+            table_info.column_key(idx).index_name().size() == 0) {
+            printf("not set index_name in column_key\n");
+            return -1;
         }
-    } else {
-        index_set.clear();
-        std::set<std::string> key_set;
-        for (int idx = 0; idx < table_info.column_key_size(); idx++) {
-            if (!table_info.column_key(idx).has_index_name() ||
-                table_info.column_key(idx).index_name().size() == 0) {
-                printf("not set index_name in column_key\n");
-                return -1;
-            }
-            if (index_set.find(table_info.column_key(idx).index_name()) !=
-                index_set.end()) {
-                printf("duplicate index_name %s\n",
-                       table_info.column_key(idx).index_name().c_str());
-                return -1;
-            }
-            index_set.insert(table_info.column_key(idx).index_name());
-            std::string cur_key;
-            if (table_info.column_key(idx).col_name_size() > 0) {
-                for (const auto& name : table_info.column_key(idx).col_name()) {
-                    auto iter = name_map.find(name);
-                    if (iter == name_map.end()) {
-                        printf("column :%s is not member of columns\n",
-                               name.c_str());
-                        return -1;
-                    }
-                    if ((iter->second == "float") ||
-                        (iter->second == "double")) {
-                        printf("float or double column can not be index\n");
-                        return -1;
-                    }
-                    if (cur_key.empty()) {
-                        cur_key = name;
-                    } else {
-                        cur_key += "|" + name;
-                    }
-                }
-            } else {
-                cur_key = table_info.column_key(idx).index_name();
-            }
-            if (key_set.find(cur_key) != key_set.end()) {
-                printf("duplicate column_key\n");
-                return -1;
-            }
-            key_set.insert(cur_key);
-            for (const auto& ts_name : table_info.column_key(idx).ts_name()) {
-                if (ts_col_set.find(ts_name) == ts_col_set.end()) {
-                    printf("invalid ts_name %s\n", ts_name.c_str());
+        if (index_set.find(table_info.column_key(idx).index_name()) !=
+            index_set.end()) {
+            printf("duplicate index_name %s\n",
+                   table_info.column_key(idx).index_name().c_str());
+            return -1;
+        }
+        index_set.insert(table_info.column_key(idx).index_name());
+        std::string cur_key;
+        if (table_info.column_key(idx).col_name_size() > 0) {
+            for (const auto& name : table_info.column_key(idx).col_name()) {
+                auto iter = name_map.find(name);
+                if (iter == name_map.end()) {
+                    printf("column :%s is not member of columns\n",
+                           name.c_str());
                     return -1;
                 }
+                if (iter->second == ::fedb::type::kFloat || iter->second == ::fedb::type::kDouble) {
+                    printf("float or double column can not be index\n");
+                    return -1;
+                }
+                if (cur_key.empty()) {
+                    cur_key = name;
+                } else {
+                    cur_key += "|" + name;
+                }
             }
-            ::fedb::common::ColumnKey* column_key =
-                ns_table_info.add_column_key();
-            column_key->CopyFrom(table_info.column_key(idx));
+        } else {
+            cur_key = table_info.column_key(idx).index_name();
         }
+        if (key_set.find(cur_key) != key_set.end()) {
+            printf("duplicate column_key\n");
+            return -1;
+        }
+        key_set.insert(cur_key);
+        if (!table_info.column_key(idx).ts_name().empty()) {
+            const auto& ts_name = table_info.column_key(idx).ts_name();
+            auto iter = name_map.find(ts_name);
+            if (iter == name_map.end()) {
+                printf("invalid ts_name %s\n", ts_name.c_str());
+                return -1;
+            }
+            if (iter->second != ::fedb::type::kBigInt && iter->second != ::fedb::type::kTimestamp) {
+                printf("invalid ts type ts_name %s\n", ts_name.c_str());
+                return -1;
+            }
+        }
+        ::fedb::common::ColumnKey* column_key = ns_table_info.add_column_key();
+        column_key->CopyFrom(table_info.column_key(idx));
     }
-    if (index_set.empty() && table_info.column_desc_size() > 0) {
+
+    if (index_set.empty()) {
         std::cout << "no index" << std::endl;
         return -1;
     }
     return 0;
 }
 
-int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
+int GenTableInfo(const std::string& path,
                  ::fedb::nameserver::TableInfo& ns_table_info) {  // NOLINT
     ::fedb::client::TableInfo table_info;
     int fd = open(path.c_str(), O_RDONLY);
@@ -2673,53 +2507,6 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     }
 
     ns_table_info.set_name(table_info.name());
-    std::string ttl_type = table_info.ttl_type();
-    std::transform(ttl_type.begin(), ttl_type.end(), ttl_type.begin(),
-                   ::tolower);
-    uint64_t abs_ttl = table_info.has_ttl_desc()
-                           ? table_info.ttl_desc().abs_ttl()
-                           : table_info.ttl();
-    uint64_t lat_ttl = table_info.has_ttl_desc()
-                           ? table_info.ttl_desc().lat_ttl()
-                           : table_info.ttl();
-    ::fedb::api::TTLDesc* ttl_desc = ns_table_info.mutable_ttl_desc();
-    ttl_desc->set_abs_ttl(abs_ttl);
-    ttl_desc->set_lat_ttl(lat_ttl);
-    if (table_info.has_ttl_desc()) {
-        if (ttl_type == "kabsolutetime") {
-            ns_table_info.set_ttl_type("kAbsoluteTime");
-            ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
-        } else if (ttl_type == "klatesttime" || ttl_type == "latest") {
-            ns_table_info.set_ttl_type("kLatestTime");
-            ttl_desc->set_ttl_type(::fedb::api::TTLType::kLatestTime);
-        } else if (ttl_type == "kabsandlat") {
-            ns_table_info.set_ttl_type("kAbsAndlLat");
-            ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
-        } else if (ttl_type == "kabsorlat") {
-            ns_table_info.set_ttl_type("kAbsOrLat");
-            ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
-        } else {
-            printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
-            return -1;
-        }
-    } else {
-        if (ttl_type == "kabsolutetime") {
-            ns_table_info.set_ttl_type("kAbsoluteTime");
-            ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
-        } else if (ttl_type == "klatesttime" || ttl_type == "latest") {
-            ns_table_info.set_ttl_type("kLatestTime");
-            ttl_desc->set_ttl_type(::fedb::api::TTLType::kLatestTime);
-        } else {
-            printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
-            return -1;
-        }
-    }
-    if (ttl_desc->ttl_type() == ::fedb::api::TTLType::kAbsoluteTime) {
-        ttl_desc->set_lat_ttl(0);
-    } else if (ttl_desc->ttl_type() == ::fedb::api::TTLType::kLatestTime) {
-        ttl_desc->set_abs_ttl(0);
-    }
-    ns_table_info.set_ttl(table_info.ttl());
     std::string compress_type = table_info.compress_type();
     std::transform(compress_type.begin(), compress_type.end(),
                    compress_type.begin(), ::tolower);
@@ -2755,7 +2542,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     if (SetTablePartition(table_info, ns_table_info) < 0) {
         return -1;
     }
-    if (SetColumnDesc(table_info, type_set, ns_table_info) < 0) {
+    if (SetColumnDesc(table_info, ns_table_info) < 0) {
         return -1;
     }
 
@@ -2782,61 +2569,46 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
     type_set.insert("uint16");
     ::fedb::nameserver::TableInfo ns_table_info;
     if (parts.size() == 2) {
-        if (GenTableInfo(parts[1], type_set, ns_table_info) < 0) {
+        if (GenTableInfo(parts[1], ns_table_info) < 0) {
             return;
         }
     } else if (parts.size() > 4) {
         ns_table_info.set_name(parts[1]);
-        ::fedb::api::TTLDesc* ttl_desc = ns_table_info.mutable_ttl_desc();
+        ::fedb::common::TTLSt ttl_desc;
         try {
             std::vector<std::string> vec;
             ::fedb::base::SplitString(parts[2], ":", vec);
             if (vec.size() == 2) {
                 if ((vec[0] == "latest" || vec[0] == "kLatestTime")) {
-                    ttl_desc->set_ttl_type(::fedb::api::TTLType::kLatestTime);
-                    ttl_desc->set_lat_ttl(
-                        boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
-                    ttl_desc->set_abs_ttl(0);
-                    ns_table_info.set_ttl_type("kLatestTime");
-                } else if ((vec[0] == "absolute" ||
-                            vec[0] == "kAbsoluteTime")) {
-                    ttl_desc->set_ttl_type(
-                        ::fedb::api::TTLType::kAbsoluteTime);
-                    ttl_desc->set_lat_ttl(0);
-                    ttl_desc->set_abs_ttl(
-                        boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
-                    ns_table_info.set_ttl_type("kAbsoluteTime");
+                    ttl_desc.set_ttl_type(::fedb::type::TTLType::kLatestTime);
+                    ttl_desc.set_lat_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
+                    ttl_desc.set_abs_ttl(0);
+                } else if ((vec[0] == "absolute" || vec[0] == "kAbsoluteTime")) {
+                    ttl_desc.set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
+                    ttl_desc.set_lat_ttl(0);
+                    ttl_desc.set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
                 } else {
                     std::cout << "invalid ttl type" << std::endl;
                     return;
                 }
             } else if (vec.size() == 3) {
                 if ((vec[0] == "absandlat" || vec[0] == "kAbsAndLat")) {
-                    ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsAndLat);
-                    ttl_desc->set_abs_ttl(
-                        boost::lexical_cast<uint64_t>(vec[vec.size() - 2]));
-                    ttl_desc->set_lat_ttl(
-                        boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
-                    ns_table_info.set_ttl_type("kAbsAndLat");
+                    ttl_desc.set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
+                    ttl_desc.set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 2]));
+                    ttl_desc.set_lat_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
                 } else if ((vec[0] == "absorlat" || vec[0] == "kAbsOrLat")) {
-                    ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsOrLat);
-                    ttl_desc->set_abs_ttl(
-                        boost::lexical_cast<uint64_t>(vec[vec.size() - 2]));
-                    ttl_desc->set_lat_ttl(
-                        boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
-                    ns_table_info.set_ttl_type("kAbsOrLat");
+                    ttl_desc.set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
+                    ttl_desc.set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 2]));
+                    ttl_desc.set_lat_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
                 } else {
                     std::cout << "invalid ttl type" << std::endl;
                     return;
                 }
             } else {
-                ttl_desc->set_ttl_type(::fedb::api::TTLType::kAbsoluteTime);
-                ttl_desc->set_lat_ttl(0);
-                ttl_desc->set_abs_ttl(
-                    boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
+                ttl_desc.set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
+                ttl_desc.set_lat_ttl(0);
+                ttl_desc.set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
             }
-            ns_table_info.set_ttl(
-                boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
             uint32_t partition_num = boost::lexical_cast<uint32_t>(parts[3]);
             if (partition_num == 0) {
                 std::cout << "partition_num should be large than zero"
@@ -2855,7 +2627,6 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
             std::cout << "Invalid args. pid should be uint32_t" << std::endl;
             return;
         }
-        bool has_index = false;
         std::set<std::string> name_set;
         for (uint32_t i = 5; i < parts.size(); i++) {
             std::vector<std::string> kv;
@@ -2877,10 +2648,8 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
                 return;
             }
             name_set.insert(kv[0]);
-            ::fedb::nameserver::ColumnDesc* column_desc =
-                ns_table_info.add_column_desc();
+            ::fedb::common::ColumnDesc* column_desc = ns_table_info.add_column_desc();
             column_desc->set_name(kv[0]);
-            column_desc->set_add_ts_idx(false);
             column_desc->set_type(cur_type);
 
             if (kv.size() > 2 && kv[2] == "index") {
@@ -2888,11 +2657,14 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
                     printf("float or double column can not be index\n");
                     return;
                 }
-                column_desc->set_add_ts_idx(true);
-                has_index = true;
+                ::fedb::common::ColumnKey* column_key = ns_table_info.add_column_key();
+                column_key->set_index_name(kv[0]);
+                column_key->add_col_name(kv[0]);
+                ::fedb::common::TTLSt* ttl = column_key->mutable_ttl();
+                ttl->CopyFrom(ttl_desc);
             }
         }
-        if (parts.size() > 5 && !has_index) {
+        if (parts.size() > 5 && ns_table_info.column_key_size() == 0) {
             std::cout << "create failed! schema has no index" << std::endl;
             return;
         }
@@ -2901,34 +2673,6 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
                      "name ttl partition_num replica_num [name:type:index ...]"
                   << std::endl;
         return;
-    }
-    if (ns_table_info.has_ttl_desc()) {
-        if (ns_table_info.ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) {
-            std::cout << "Create failed. The max num of AbsoluteTime ttl is "
-                      << FLAGS_absolute_ttl_max << std::endl;
-            return;
-        }
-        if (ns_table_info.ttl_desc().lat_ttl() > FLAGS_latest_ttl_max) {
-            std::cout << "Create failed. The max num of latest LatestTime is "
-                      << FLAGS_latest_ttl_max << std::endl;
-            return;
-        }
-    } else {
-        if (ns_table_info.ttl_type() == "kAbsoluteTime") {
-            if (ns_table_info.ttl() > FLAGS_absolute_ttl_max) {
-                std::cout
-                    << "Create failed. The max num of AbsoluteTime ttl is "
-                    << FLAGS_absolute_ttl_max << std::endl;
-                return;
-            }
-        } else {
-            if (ns_table_info.ttl() > FLAGS_latest_ttl_max) {
-                std::cout
-                    << "Create failed. The max num of latest LatestTime is "
-                    << FLAGS_latest_ttl_max << std::endl;
-                return;
-            }
-        }
     }
     ns_table_info.set_db(client->GetDb());
     std::string msg;
@@ -3540,54 +3284,54 @@ void HandleClientDeleteIndex(const std::vector<std::string>& parts,
 void HandleClientSetTTL(const std::vector<std::string>& parts,
                         ::fedb::client::TabletClient* client) {
     if (parts.size() < 5) {
-        std::cout << "Bad setttl format, eg setttl tid pid type ttl [ts_name]"
+        std::cout << "Bad setttl format, eg setttl tid pid type ttl [index_name]"
                   << std::endl;
         return;
     }
-    std::string ts_name;
+    std::string index_name;
     try {
         uint64_t abs_ttl = 0;
         uint64_t lat_ttl = 0;
-        ::fedb::api::TTLType type = ::fedb::api::kLatestTime;
+        ::fedb::type::TTLType type = ::fedb::type::kLatestTime;
         if (parts[3] == "absolute") {
-            type = ::fedb::api::TTLType::kAbsoluteTime;
+            type = ::fedb::type::TTLType::kAbsoluteTime;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             if (parts.size() == 6) {
-                ts_name = parts[5];
+                index_name = parts[5];
             } else if (parts.size() > 6) {
                 std::cout
-                    << "Bad setttl format, eg setttl tid pid type ttl [ts_name]"
+                    << "Bad setttl format, eg setttl tid pid type ttl [index_name]"
                     << std::endl;
                 return;
             }
         } else if (parts[3] == "absandlat") {
-            type = ::fedb::api::TTLType::kAbsAndLat;
+            type = ::fedb::type::TTLType::kAbsAndLat;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             lat_ttl = boost::lexical_cast<uint64_t>(parts[5]);
             if (parts.size() == 7) {
-                ts_name = parts[6];
+                index_name = parts[6];
             }
         } else if (parts[3] == "absorlat") {
-            type = ::fedb::api::TTLType::kAbsOrLat;
+            type = ::fedb::type::TTLType::kAbsOrLat;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             lat_ttl = boost::lexical_cast<uint64_t>(parts[5]);
             if (parts.size() == 7) {
-                ts_name = parts[6];
+                index_name = parts[6];
             }
         } else if (parts[3] == "latest") {
             lat_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             if (parts.size() == 6) {
-                ts_name = parts[5];
+                index_name = parts[5];
             } else if (parts.size() > 6) {
                 std::cout
-                    << "Bad setttl format, eg setttl tid pid type ttl [ts_name]"
+                    << "Bad setttl format, eg setttl tid pid type ttl [index_name]"
                     << std::endl;
                 return;
             }
         }
         bool ok = client->UpdateTTL(boost::lexical_cast<uint32_t>(parts[1]),
                                     boost::lexical_cast<uint32_t>(parts[2]),
-                                    type, abs_ttl, lat_ttl, ts_name);
+                                    type, abs_ttl, lat_ttl, index_name);
         if (ok) {
             std::cout << "Set ttl ok !" << std::endl;
         } else {
@@ -3751,14 +3495,14 @@ void HandleClientCreateTable(const std::vector<std::string>& parts,
     try {
         int64_t abs_ttl = 0;
         int64_t lat_ttl = 0;
-        ::fedb::api::TTLType type = ::fedb::api::TTLType::kAbsoluteTime;
+        ::fedb::type::TTLType type = ::fedb::type::TTLType::kAbsoluteTime;
         if (parts.size() > 4) {
             std::vector<std::string> vec;
             ::fedb::base::SplitString(parts[4], ":", vec);
             abs_ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
             if (vec.size() > 1) {
                 if (vec[0] == "latest") {
-                    type = ::fedb::api::TTLType::kLatestTime;
+                    type = ::fedb::type::TTLType::kLatestTime;
                     lat_ttl = abs_ttl;
                     abs_ttl = 0;
                     if (lat_ttl > FLAGS_latest_ttl_max) {
@@ -4393,7 +4137,7 @@ void HandleClientPreview(const std::vector<std::string>& parts,
         std::cout << "Fail to get table status" << std::endl;
         return;
     }
-    std::string schema = table_status.schema();
+    /*std::string schema = table_status.schema();
     std::vector<::fedb::codec::ColumnDesc> columns;
     if (!schema.empty()) {
         ::fedb::codec::SchemaCodec codec;
@@ -4469,7 +4213,7 @@ void HandleClientPreview(const std::vector<std::string>& parts,
         it->Next();
     }
     delete it;
-    tp.Print(true);
+    tp.Print(true);*/
 }
 
 // the input format like scan tid pid pk st et
@@ -4593,129 +4337,6 @@ void HandleClientBenchmark(::fedb::client::TabletClient* client) {
     std::cout << "Percentile:Start benchmark Scan 1000 records key size:400"
               << std::endl;
     HandleClientBenchmarkScan(1, 1, times, 4, client);
-}
-
-void HandleClientSCreateTable(const std::vector<std::string>& parts,
-                              ::fedb::client::TabletClient* client) {
-    if (parts.size() < 8) {
-        std::cout << "Bad create format, input like screate <name> <tid> <pid> "
-                     "<ttl> <seg_cnt> <is_leader> <schema>"
-                  << std::endl;
-        return;
-    }
-    std::set<std::string> type_set;
-    type_set.insert("int32");
-    type_set.insert("uint32");
-    type_set.insert("int64");
-    type_set.insert("uint64");
-    type_set.insert("float");
-    type_set.insert("double");
-    type_set.insert("string");
-    type_set.insert("bool");
-    type_set.insert("timestamp");
-    type_set.insert("date");
-    type_set.insert("int16");
-    type_set.insert("uint16");
-    try {
-        int64_t abs_ttl = 0;
-        int64_t lat_ttl = 0;
-        ::fedb::api::TTLType type = ::fedb::api::TTLType::kAbsoluteTime;
-        std::vector<std::string> vec;
-        ::fedb::base::SplitString(parts[4], ":", vec);
-        abs_ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
-        if (vec.size() > 1) {
-            if (vec[0] == "latest") {
-                type = ::fedb::api::TTLType::kLatestTime;
-                lat_ttl = abs_ttl;
-                abs_ttl = 0;
-                if (lat_ttl > FLAGS_latest_ttl_max) {
-                    std::cout
-                        << "Create failed. The max num of latest LatestTime is "
-                        << FLAGS_latest_ttl_max << std::endl;
-                    return;
-                }
-            } else {
-                std::cout << "invalid ttl type " << std::endl;
-                return;
-            }
-        } else {
-            if (abs_ttl > FLAGS_absolute_ttl_max) {
-                std::cout
-                    << "Create failed. The max num of AbsoluteTime ttl is "
-                    << FLAGS_absolute_ttl_max << std::endl;
-                return;
-            }
-        }
-        if (abs_ttl < 0 || lat_ttl < 0) {
-            std::cout << "invalid ttl which should be equal or greater than 0"
-                      << std::endl;
-            return;
-        }
-        uint32_t seg_cnt = boost::lexical_cast<uint32_t>(parts[5]);
-        bool leader = true;
-        if (parts[6].compare("false") != 0 && parts[6].compare("true") != 0) {
-            std::cout
-                << "create failed! is_leader parameter should be true or false"
-                << std::endl;
-            return;
-        }
-        if (parts[6].compare("false") == 0) {
-            leader = false;
-        }
-        std::vector<::fedb::codec::ColumnDesc> columns;
-        // check duplicate column
-        std::set<std::string> used_column_names;
-        bool has_index = false;
-        for (uint32_t i = 7; i < parts.size(); i++) {
-            std::vector<std::string> kv;
-            ::fedb::base::SplitString(parts[i], ":", kv);
-            if (kv.size() < 2) {
-                std::cout << "create failed! schema format is illegal"
-                          << std::endl;
-                return;
-            }
-            if (used_column_names.find(kv[0]) != used_column_names.end()) {
-                std::cout << "Duplicated column " << kv[0] << std::endl;
-                return;
-            }
-            std::string cur_type = kv[1];
-            std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(),
-                           ::tolower);
-            if (type_set.find(cur_type) == type_set.end()) {
-                printf("type %s is invalid\n", kv[1].c_str());
-                return;
-            }
-            used_column_names.insert(kv[0]);
-            ::fedb::codec::ColumnDesc desc;
-            desc.add_ts_idx = false;
-            if (kv.size() > 2 && kv[2] == "index") {
-                if ((cur_type == "float") || (cur_type == "double")) {
-                    printf("float or double column can not be index\n");
-                    return;
-                }
-                desc.add_ts_idx = true;
-                has_index = true;
-            }
-            desc.type = fedb::codec::SchemaCodec::ConvertType(cur_type);
-            desc.name = kv[0];
-            columns.push_back(desc);
-        }
-        if (!has_index) {
-            std::cout << "create failed! schema has no index" << std::endl;
-            return;
-        }
-        bool ok = client->CreateTable(
-            parts[1], boost::lexical_cast<uint32_t>(parts[2]),
-            boost::lexical_cast<uint32_t>(parts[3]), abs_ttl, lat_ttl, seg_cnt,
-            columns, type, leader, std::vector<std::string>());
-        if (!ok) {
-            std::cout << "Fail to create table" << std::endl;
-        } else {
-            std::cout << "Create table ok" << std::endl;
-        }
-    } catch (std::exception const& e) {
-        std::cout << "Invalid args " << e.what() << std::endl;
-    }
 }
 
 void HandleClientGetFollower(const std::vector<std::string>& parts,
@@ -4885,12 +4506,10 @@ void HandleClientShowSchema(const std::vector<std::string>& parts,
         return;
     }
     ::fedb::api::TableMeta table_meta;
-    std::string schema;
     try {
         bool ok = client->GetTableSchema(
             boost::lexical_cast<uint32_t>(parts[1]),
             boost::lexical_cast<uint32_t>(parts[2]), table_meta);
-        schema = table_meta.schema();
         if (!ok) {
             std::cout << "ShowSchema failed" << std::endl;
             return;
@@ -4900,50 +4519,12 @@ void HandleClientShowSchema(const std::vector<std::string>& parts,
         return;
     }
     if (table_meta.column_desc_size() > 0) {
-        if (table_meta.added_column_desc_size() == 0) {
-            ::fedb::cmd::PrintSchema(table_meta.column_desc());
-        } else {
-            ::fedb::cmd::PrintSchema(schema, true);
-        }
+        ::fedb::cmd::PrintSchema(table_meta.column_desc(), table_meta.added_column_desc());
         printf("\n#ColumnKey\n");
-        ::fedb::api::TTLType ttl_type;
-        uint64_t abs_ttl = 0;
-        uint64_t lat_ttl = 0;
-        if (table_meta.has_ttl_desc()) {
-            ttl_type = table_meta.ttl_desc().ttl_type();
-            abs_ttl = table_meta.ttl_desc().abs_ttl();
-            lat_ttl = table_meta.ttl_desc().lat_ttl();
-        } else {
-            if (table_meta.ttl_type() == ::fedb::api::kAbsoluteTime) {
-                ttl_type = ::fedb::api::kAbsoluteTime;
-                abs_ttl = table_meta.ttl();
-            } else {
-                ttl_type = ::fedb::api::kLatestTime;
-                lat_ttl = table_meta.ttl();
-            }
-        }
-        ::fedb::storage::TTLSt ttl_st(abs_ttl, lat_ttl, ::fedb::storage::TTLSt::ConvertTTLType(ttl_type));
-        ::fedb::cmd::PrintColumnKey(ttl_st, table_meta.column_desc(), table_meta.column_key());
-    } else if (!schema.empty()) {
-        ::fedb::cmd::PrintSchema(schema);
+        ::fedb::cmd::PrintColumnKey(table_meta.column_key());
     } else {
         std::cout << "No schema for table" << std::endl;
     }
-}
-
-uint32_t GetDimensionIndex(
-    const std::vector<::fedb::codec::ColumnDesc>& columns,
-    const std::string& dname) {
-    uint32_t dindex = 0;
-    for (uint32_t i = 0; i < columns.size(); i++) {
-        if (columns[i].name == dname) {
-            return dindex;
-        }
-        if (columns[i].add_ts_idx) {
-            dindex++;
-        }
-    }
-    return 0;
 }
 
 void HandleClientSGet(const std::vector<std::string>& parts,
@@ -5053,7 +4634,8 @@ void HandleClientSGet(const std::vector<std::string>& parts,
         ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
         value = uncompressed;
     }
-    std::string schema = table_meta.schema();
+    // TODO(denglong): display schema
+    /*std::string schema = table_meta.schema();
     std::vector<::fedb::codec::ColumnDesc> raw;
     ::fedb::codec::SchemaCodec codec;
     codec.Decode(schema, raw);
@@ -5077,7 +4659,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
             ::fedb::base::Slice(value), &row);
     }
     tp.AddRow(row);
-    tp.Print(true);
+    tp.Print(true);*/
 }
 
 void HandleClientSScan(const std::vector<std::string>& parts,
@@ -5365,8 +4947,6 @@ void StartClient() {
             HandleClientGet(parts, &client);
         } else if (parts[0] == "sget") {
             HandleClientSGet(parts, &client);
-        } else if (parts[0] == "screate") {
-            HandleClientSCreateTable(parts, &client);
         } else if (parts[0] == "scan") {
             HandleClientScan(parts, &client);
         } else if (parts[0] == "sscan") {
