@@ -38,10 +38,9 @@ message VersionPair {
 
 message ColumnDesc {
     required string name = 1;
-    optional string type = 2;
-    optional fedb.type.DataType data_type = 3;
-    optional bool not_null = 4 [default = false];
-    optional bool is_constant = 5 [default = false];
+    optional fedb.type.DataType data_type = 2;
+    optional bool not_null = 3 [default = false];
+    optional bool is_constant = 4 [default = false];
 }
 
 message TTLSt {

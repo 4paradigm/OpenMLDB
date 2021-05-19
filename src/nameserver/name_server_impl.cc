@@ -2299,24 +2299,21 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller, const MakeSnapsho
 }
 
 int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
-    bool has_index = false;
-    std::map<std::string, std::string> column_map;
+    std::map<std::string, ::fedb::type::DataType> column_map;
     if (table_info.column_desc_size() > 0) {
         for (const auto& column_desc : table_info.column_desc()) {
-            column_map.insert(std::make_pair(column_desc.name(), column_desc.type()));
+            column_map.insert(std::make_pair(column_desc.name(), column_desc.data_type()));
         }
     }
     if (table_info.column_key_size() > 0) {
-        has_index = true;
         for (const auto& column_key : table_info.column_key()) {
             bool has_iter = false;
             for (const auto& column_name : column_key.col_name()) {
                 has_iter = true;
                 auto iter = column_map.find(column_name);
-                if ((iter != column_map.end() && ((iter->second == "float") || (iter->second == "double")))) {
-                    PDLOG(WARNING,
-                          "float or double type column can not be index, "
-                          "column is: %s",
+                if ((iter != column_map.end() && ((iter->second == ::fedb::type::kFloat) ||
+                                (iter->second == ::fedb::type::kDouble)))) {
+                    PDLOG(WARNING, "float or double type column can not be index, column is: %s",
                           column_key.index_name().c_str());
                     return -1;
                 }
@@ -2324,12 +2321,10 @@ int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
             if (!has_iter) {
                 auto iter = column_map.find(column_key.index_name());
                 if (iter == column_map.end()) {
-                    PDLOG(WARNING,
-                          "index must member of columns when column key "
-                          "col name is empty");
+                    PDLOG(WARNING, "index must member of columns when column key col name is empty");
                     return -1;
                 }
-                if ((iter->second == "float") || (iter->second == "double")) {
+                if (iter->second == ::fedb::type::kFloat || iter->second == ::fedb::type::kDouble) {
                     PDLOG(WARNING, "float or double column can not be index");
                     return -1;
                 }
@@ -2350,8 +2345,7 @@ int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
                 }
             }
         }
-    }
-    if (!has_index) {
+    } else {
         PDLOG(WARNING, "no index in table_meta");
         return -1;
     }
@@ -3371,26 +3365,6 @@ bool NameServerImpl::AddFieldToTablet(const std::vector<fedb::common::ColumnDesc
         }
     }
     const std::string& name = table_info->name();
-    // update tableMeta.schema
-    std::vector<::fedb::codec::ColumnDesc> columns;
-    if (table_info->added_column_desc_size() > 0) {
-        if (::fedb::codec::SchemaCodec::ConvertColumnDesc(*table_info, columns, table_info->added_column_desc_size()) <
-            0) {
-            LOG(WARNING) << "convert table " << name << " column desc failed";
-            return false;
-        }
-    } else {
-        if (::fedb::codec::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
-            LOG(WARNING) << "convert table " << name << " column desc failed";
-            return false;
-        }
-    }
-    for (const auto& col : cols) {
-        ::fedb::codec::ColumnDesc column;
-        column.name = col.name();
-        column.type = fedb::codec::SchemaCodec::ConvertType(col.type());
-        columns.push_back(column);
-    }
     int32_t version_id = 1;
     if (table_info->schema_versions_size() > 0) {
         int32_t versions_size = table_info->schema_versions_size();
@@ -3401,9 +3375,10 @@ bool NameServerImpl::AddFieldToTablet(const std::vector<fedb::common::ColumnDesc
         LOG(WARNING) << "reach max version " <<  UINT8_MAX << " table " << name;
         return false;
     }
+    uint32_t field_count = table_info->column_desc_size() + table_info->added_column_desc_size();
     version_id++;
     new_pair->set_id(version_id);
-    new_pair->set_field_count(columns.size());
+    new_pair->set_field_count(field_count);
 
     uint32_t tid = table_info->tid();
     std::string msg;
@@ -3414,7 +3389,7 @@ bool NameServerImpl::AddFieldToTablet(const std::vector<fedb::common::ColumnDesc
             return false;
         }
         LOG(INFO) << "update table_meta on endpoint[" << it->first << "] for add table field success! version is "
-                  << version_id << " columns size is " << columns.size() << " for table " << table_info->name();
+                  << version_id << " columns size is " << field_count << " for table " << table_info->name();
     }
     return true;
 }
@@ -9162,10 +9137,11 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
     }
     std::map<std::string, fedb::common::ColumnDesc> request_cols;
     for (const auto& col : request->cols()) {
-        if (col.type() == "float" || col.type() == "double") {
+        if (col.data_type() == ::fedb::type::kFloat || col.data_type() == ::fedb::type::kDouble) {
             response->set_code(ReturnCode::kWrongColumnKey);
             response->set_msg("index col type cannot float or double");
-            LOG(WARNING) << col.name() << " type is " << col.type() << " it is not allow be index col";
+            LOG(WARNING) << col.name() << " type is " << ::fedb::type::DataType_Name(col.data_type())
+                << " it is not allow be index col";
             return;
         }
         request_cols.insert(std::make_pair(col.name(), col));
@@ -9187,7 +9163,7 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
                     add_cols.push_back(tit->second);
                 }
             }
-        } else if (it->second.type() == "float" || it->second.type() == "double") {
+        } else if (it->second.data_type() == ::fedb::type::kFloat || it->second.data_type() == ::fedb::type::kDouble) {
             response->set_code(ReturnCode::kWrongColumnKey);
             response->set_msg("wrong column key!");
             LOG(WARNING) << "column_desc " << col_name << " has wrong type or not exist, table " << name;

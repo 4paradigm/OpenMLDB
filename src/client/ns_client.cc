@@ -1186,49 +1186,31 @@ bool NsClient::TransformToTableDef(
                     std::make_pair(column_def->GetColumnName(), column_desc));
                 switch (column_def->GetColumnType()) {
                     case hybridse::node::kBool:
-                        column_desc->set_data_type(
-                            fedb::type::DataType::kBool);
-                        column_desc->set_type("bool");
+                        column_desc->set_data_type(fedb::type::DataType::kBool);
                         break;
                     case hybridse::node::kInt16:
-                        column_desc->set_data_type(
-                            fedb::type::DataType::kSmallInt);
-                        column_desc->set_type("int16");
+                        column_desc->set_data_type(fedb::type::DataType::kSmallInt);
                         break;
                     case hybridse::node::kInt32:
                         column_desc->set_data_type(fedb::type::DataType::kInt);
-                        column_desc->set_type("int32");
                         break;
                     case hybridse::node::kInt64:
-                        column_desc->set_data_type(
-                            fedb::type::DataType::kBigInt);
-                        column_desc->set_type("int64");
+                        column_desc->set_data_type(fedb::type::DataType::kBigInt);
                         break;
                     case hybridse::node::kFloat:
-                        column_desc->set_data_type(
-                            fedb::type::DataType::kFloat);
-                        column_desc->set_type("float");
+                        column_desc->set_data_type(fedb::type::DataType::kFloat);
                         break;
                     case hybridse::node::kDouble:
-                        column_desc->set_data_type(
-                            fedb::type::DataType::kDouble);
-                        column_desc->set_type("double");
+                        column_desc->set_data_type(fedb::type::DataType::kDouble);
                         break;
-                    case hybridse::node::kTimestamp: {
-                        column_desc->set_data_type(
-                            fedb::type::DataType::kTimestamp);
-                        column_desc->set_type("timestamp");
+                    case hybridse::node::kTimestamp:
+                        column_desc->set_data_type(fedb::type::DataType::kTimestamp);
                         break;
-                    }
                     case hybridse::node::kVarchar:
-                        column_desc->set_data_type(
-                            fedb::type::DataType::kVarchar);
-                        column_desc->set_type("string");
+                        column_desc->set_data_type(fedb::type::DataType::kVarchar);
                         break;
                     case hybridse::node::kDate:
-                        column_desc->set_data_type(
-                            fedb::type::DataType::kDate);
-                        column_desc->set_type("date");
+                        column_desc->set_data_type(fedb::type::DataType::kDate);
                         break;
                     default: {
                         status->msg = "CREATE common: column type " +

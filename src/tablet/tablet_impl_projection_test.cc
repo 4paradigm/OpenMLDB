@@ -159,7 +159,6 @@ std::vector<TestArgs*> GenCommonCase() {
         common::ColumnDesc* column3 = testargs->schema.Add();
         column3->set_name("col3");
         column3->set_data_type(type::kBigInt);
-        column3->set_type("int64");
         common::ColumnDesc* column4 = testargs->schema.Add();
         column4->set_name("col4");
         column4->set_data_type(type::kVarchar);
@@ -217,7 +216,6 @@ std::vector<TestArgs*> GenCommonCase() {
         common::ColumnDesc* column3 = testargs->schema.Add();
         column3->set_name("col3");
         column3->set_data_type(type::kBigInt);
-        column3->set_type("int64");
 
         common::ColumnDesc* column4 = testargs->schema.Add();
         column4->set_name("col4");
@@ -284,7 +282,6 @@ std::vector<TestArgs*> GenCommonCase() {
         common::ColumnDesc* column3 = testargs->schema.Add();
         column3->set_name("col3");
         column3->set_data_type(type::kBigInt);
-        column3->set_type("int64");
 
         common::ColumnDesc* column4 = testargs->schema.Add();
         column4->set_name("col4");
@@ -351,7 +348,6 @@ std::vector<TestArgs*> GenCommonCase() {
         common::ColumnDesc* column3 = testargs->schema.Add();
         column3->set_name("col3");
         column3->set_data_type(type::kBigInt);
-        column3->set_type("int64");
 
         testargs->ckey.set_index_name("col4");
         testargs->ckey.add_col_name("col4");
