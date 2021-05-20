@@ -68,11 +68,11 @@ class SDKCodec {
     void ParseColumnDesc(const Schema& column_desc);
     void ParseAddedColumnDesc(const Schema& column_desc);
     void ParseSchemaVer(const VerSchema& ver_schema, const Schema& add_schema);
+    void ParseTsCol();
 
  private:
     Schema schema_;
     Index index_;
-    std::vector<::fedb::codec::ColumnDesc> old_schema_;
     std::map<std::string, uint32_t> schema_idx_map_;
     std::vector<uint32_t> ts_idx_;
     std::vector<uint32_t> partition_col_idx_;

@@ -65,7 +65,12 @@ __attribute__((unused)) static void PrintSchema(
         row.clear();
         row.push_back(std::to_string(idx));
         row.push_back(column_desc.name());
-        row.push_back(column_desc.type());
+        auto iter = ::fedb::codec::DATA_TYPE_STR_MAP.find(column_desc.data_type());
+        if (iter != ::fedb::codec::DATA_TYPE_STR_MAP.end()) {
+            row.push_back(iter->second);
+        } else {
+            row.push_back("-");
+        }
         tp.AddRow(row);
         idx++;
     }
@@ -86,7 +91,12 @@ __attribute__((unused)) static void PrintSchema(
         row.clear();
         row.push_back(std::to_string(idx));
         row.push_back(column_desc.name());
-        row.push_back(column_desc.type());
+        auto iter = ::fedb::codec::DATA_TYPE_STR_MAP.find(column_desc.data_type());
+        if (iter != ::fedb::codec::DATA_TYPE_STR_MAP.end()) {
+            row.push_back(iter->second);
+        } else {
+            row.push_back("-");
+        }
         tp.AddRow(row);
         idx++;
     }
@@ -94,7 +104,12 @@ __attribute__((unused)) static void PrintSchema(
         row.clear();
         row.push_back(std::to_string(idx));
         row.push_back(column_desc.name());
-        row.push_back(column_desc.type());
+        auto iter = ::fedb::codec::DATA_TYPE_STR_MAP.find(column_desc.data_type());
+        if (iter != ::fedb::codec::DATA_TYPE_STR_MAP.end()) {
+            row.push_back(iter->second);
+        } else {
+            row.push_back("-");
+        }
         tp.AddRow(row);
         idx++;
     }

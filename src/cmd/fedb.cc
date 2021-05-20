@@ -892,13 +892,11 @@ void HandleNSClientAddIndex(const std::vector<std::string>& parts,
                 column_key.add_col_name(type_pair[0]);
                 fedb::common::ColumnDesc col_desc;
                 col_desc.set_name(type_pair[0]);
-                auto type = fedb::codec::SchemaCodec::ConvertType(type_pair[1]);
-                if (type == fedb::codec::ColType::kUnknown) {
+                auto it = ::fedb::codec::DATA_TYPE_MAP.find(type_pair[1]);
+                if (it == ::fedb::codec::DATA_TYPE_MAP.end()) {
                     std::cerr << col_name << " type " << type_pair[0] << " invalid\n";
                     return;
                 }
-                auto it = fedb::codec::DATA_TYPE_MAP.find(type_pair[1]);
-                col_desc.set_type(type_pair[1]);
                 col_desc.set_data_type(it->second);
                 cols.push_back(std::move(col_desc));
             } else {
@@ -2111,20 +2109,8 @@ void HandleNSAddTableField(const std::vector<std::string>& parts,
                   << std::endl;
         return;
     }
-    std::set<std::string> type_set;
-    type_set.insert("int32");
-    type_set.insert("uint32");
-    type_set.insert("int64");
-    type_set.insert("uint64");
-    type_set.insert("float");
-    type_set.insert("double");
-    type_set.insert("string");
-    type_set.insert("bool");
-    type_set.insert("timestamp");
-    type_set.insert("date");
-    type_set.insert("int16");
-    type_set.insert("uint16");
-    if (type_set.find(parts[3]) == type_set.end()) {
+    auto iter = ::fedb::codec::DATA_TYPE_MAP.find(parts[3]);
+    if (iter == ::fedb::codec::DATA_TYPE_MAP.end()) {
         printf("type %s is invalid\n", parts[3].c_str());
         return;
     }
@@ -2143,7 +2129,7 @@ void HandleNSAddTableField(const std::vector<std::string>& parts,
     }
     ::fedb::common::ColumnDesc column_desc;
     column_desc.set_name(parts[2]);
-    column_desc.set_type(parts[3]);
+    column_desc.set_data_type(iter->second);
     if (!client->AddTableField(parts[1], column_desc, msg)) {
         std::cout << "Fail to add table field. error msg: " << msg << std::endl;
         return;
@@ -2554,19 +2540,6 @@ int GenTableInfo(const std::string& path,
 
 void HandleNSCreateTable(const std::vector<std::string>& parts,
                          ::fedb::client::NsClient* client) {
-    std::set<std::string> type_set;
-    type_set.insert("int32");
-    type_set.insert("uint32");
-    type_set.insert("int64");
-    type_set.insert("uint64");
-    type_set.insert("float");
-    type_set.insert("double");
-    type_set.insert("string");
-    type_set.insert("bool");
-    type_set.insert("timestamp");
-    type_set.insert("date");
-    type_set.insert("int16");
-    type_set.insert("uint16");
     ::fedb::nameserver::TableInfo ns_table_info;
     if (parts.size() == 2) {
         if (GenTableInfo(parts[1], ns_table_info) < 0) {
@@ -2643,14 +2616,15 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
             std::string cur_type = kv[1];
             std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(),
                            ::tolower);
-            if (type_set.find(cur_type) == type_set.end()) {
+            auto type_iter = ::fedb::codec::DATA_TYPE_MAP.find(cur_type);
+            if (type_iter == ::fedb::codec::DATA_TYPE_MAP.end()) {
                 printf("type %s is invalid\n", kv[1].c_str());
                 return;
             }
             name_set.insert(kv[0]);
             ::fedb::common::ColumnDesc* column_desc = ns_table_info.add_column_desc();
             column_desc->set_name(kv[0]);
-            column_desc->set_type(cur_type);
+            column_desc->set_data_type(type_iter->second);
 
             if (kv.size() > 2 && kv[2] == "index") {
                 if ((cur_type == "float") || (cur_type == "double")) {

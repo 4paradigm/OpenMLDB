@@ -52,23 +52,18 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     auto col1 = schema->Add();
     col1->set_name("col1");
     col1->set_data_type(::fedb::type::kVarchar);
-    col1->set_type("string");
     auto col2 = schema->Add();
     col2->set_name("col2");
     col2->set_data_type(::fedb::type::kBigInt);
-    col2->set_type("int64");
     auto col3 = schema->Add();
     col3->set_name("col3");
     col3->set_data_type(::fedb::type::kBigInt);
-    col3->set_type("int64");
     auto col4 = schema->Add();
     col4->set_name("col4");
     col4->set_data_type(::fedb::type::kBigInt);
-    col4->set_type("int64");
     auto col5 = schema->Add();
     col5->set_name("col5");
     col5->set_data_type(::fedb::type::kBigInt);
-    col5->set_type("int64");
 
     RtiDBIndex* index = table_info.mutable_column_key();
     auto key1 = index->Add();
