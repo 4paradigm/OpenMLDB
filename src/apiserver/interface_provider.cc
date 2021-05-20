@@ -63,7 +63,7 @@ std::string PathString::getValue() const { return value_; }
 PathType PathString::getType() const { return PathType::STRING; }
 
 void ReducedUrlParser::parseQuery(std::string const& query, Url* url) {
-    const static std::regex query_reg{R"((\w+=(?:[\w-])+)(?:(?:&|;)(\w+=(?:[\w-])+))*)"};
+    static const std::regex query_reg{R"((\w+=(?:[\w-])+)(?:(?:&|;)(\w+=(?:[\w-])+))*)"};
     std::smatch match;
     if (std::regex_match(query, match, query_reg)) {
         for (auto i = std::begin(match) + 1; i < std::end(match); ++i) {
@@ -74,7 +74,7 @@ void ReducedUrlParser::parseQuery(std::string const& query, Url* url) {
 }
 
 bool ReducedUrlParser::parse(std::string const& urlString, Url* url) {
-    const static std::regex reg{
+    static const std::regex reg{
         R"((?:(?:(\/(?:(?:[a-zA-Z0-9]|[-_~!$&']|[()]|[*+,;=:@])+(?:\/(?:[a-zA-Z0-9]|[-_~!$&']|[()]|[*+,;=:@])+)*)?)|\/)?(?:(\?(?:\w+=(?:[\w-])+)(?:(?:&|;)(?:\w+=(?:[\w-])+))*))?(?:(#(?:\w|\d|=|\(|\)|\\|\/|:|,|&|\?)+))?))"};
 
     url->url = urlString;
