@@ -149,7 +149,7 @@ TEST_F(APIServerTest, json_format) {
 TEST_F(APIServerTest, put) {
     // create table
     std::string table = "put";
-    std::string ddl = "create table " + table +
+    std::string ddl = "create table if not exists " + table +
                       "(field1 string, "
                       "field2 timestamp, "
                       "field3 double, "
@@ -157,9 +157,10 @@ TEST_F(APIServerTest, put) {
                       "field5 bigint, "
                       "field6 bool,"
                       "field7 string,"
+                      "field8 bigint,"
                       "index(key=field1, ts=field2));";
     hybridse::sdk::Status status;
-    EXPECT_TRUE(cluster_remote_->ExecuteDDL(db_, ddl, &status)) << status.msg;
+    ASSERT_TRUE(cluster_remote_->ExecuteDDL(db_, ddl, &status)) << status.msg;
     ASSERT_TRUE(cluster_remote_->RefreshCatalog());
 
     // put to invalid table
@@ -184,7 +185,7 @@ TEST_F(APIServerTest, put) {
         cntl.http_request().set_method(brpc::HTTP_METHOD_PUT);
         cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + db_ + "/tables/" + table;
         cntl.request_attachment().append("{\"value\": [[\"" + key +
-                                         "\", 111, 1.4,  \"2021-04-27\", 1620471840256, true, \"more str\"]]}");
+                                         "\", 111, 1.4,  \"2021-04-27\", 1620471840256, true, \"more str\", null]]}");
         http_channel_.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
         PutResp resp;

@@ -69,14 +69,14 @@ void APIServiceImpl::Process(google::protobuf::RpcController* cntl_base, const H
     cntl->response_attachment().append(writer.GetString());
 }
 
-bool APIServiceImpl::Json2SQLRequestRow(const butil::rapidjson::Value& input,
+bool APIServiceImpl::Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
                                         const butil::rapidjson::Value& common_cols_v,
                                         std::shared_ptr<fedb::sdk::SQLRequestRow> row) {
     auto sch = row->GetSchema();
 
     // scan all strings to init the total string length
-    decltype(input.Size()) str_len_sum = 0;
-    int non_common_idx = 0, common_idx = 0;
+    decltype(common_cols_v.Size()) str_len_sum = 0;
+    decltype(common_cols_v.Size()) non_common_idx = 0, common_idx = 0;
     for (decltype(sch->GetColumnCnt()) i = 0; i < sch->GetColumnCnt(); ++i) {
         if (sch->GetColumnType(i) != hybridse::sdk::kTypeString) {
             continue;
@@ -88,10 +88,10 @@ bool APIServiceImpl::Json2SQLRequestRow(const butil::rapidjson::Value& input,
             str_len_sum += common_cols_v[common_idx].GetStringLength();
             ++common_idx;
         } else {
-            if (non_common_idx >= input.Size()) {
+            if (non_common_idx >= non_common_cols_v.Size()) {
                 return false;
             }
-            str_len_sum += input[non_common_idx].GetStringLength();
+            str_len_sum += non_common_cols_v[non_common_idx].GetStringLength();
             ++non_common_idx;
         }
     }
@@ -101,12 +101,13 @@ bool APIServiceImpl::Json2SQLRequestRow(const butil::rapidjson::Value& input,
     for (decltype(sch->GetColumnCnt()) i = 0; i < sch->GetColumnCnt(); ++i) {
         // TODO(hw): no need to append common cols
         if (sch->IsConstant(i)) {
-            if (!AppendJsonValue(common_cols_v[common_idx], row->GetSchema()->GetColumnType(i), row)) {
+            if (!AppendJsonValue(common_cols_v[common_idx], sch->GetColumnType(i), sch->IsColumnNotNull(i), row)) {
                 return false;
             }
             ++common_idx;
         } else {
-            if (!AppendJsonValue(input[non_common_idx], row->GetSchema()->GetColumnType(i), row)) {
+            if (!AppendJsonValue(non_common_cols_v[non_common_idx], sch->GetColumnType(i), sch->IsColumnNotNull(i),
+                                 row)) {
                 return false;
             }
             ++non_common_idx;
@@ -116,7 +117,16 @@ bool APIServiceImpl::Json2SQLRequestRow(const butil::rapidjson::Value& input,
 }
 
 template <typename T>
-bool APIServiceImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, T row) {
+bool APIServiceImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, bool is_not_null,
+                                     T row) {
+    // check if null
+    if (v.IsNull()) {
+        if (is_not_null) {
+            return false;
+        }
+        return row->AppendNULL();
+    }
+
     switch (type) {
         case hybridse::sdk::kTypeBool: {
             return row->AppendBool(v.GetBool());
@@ -181,12 +191,12 @@ void APIServiceImpl::RegisterPut() {
                       const auto& value = document["value"];
                       // value should be array, and multi put is not supported now
                       if (!value.IsArray() || value.Empty() || value.Size() > 1 || !value[0].IsArray()) {
-                          writer << err.Set("Invalid value in body");
+                          writer << err.Set("Invalid value in body, only support to put one row");
                           return;
                       }
                       const auto& arr = value[0];
                       std::string holders;
-                      for (int i = 0; i < arr.Size(); ++i) {
+                      for (decltype(arr.Size()) i = 0; i < arr.Size(); ++i) {
                           holders += ((i == 0) ? "?" : ",?");
                       }
                       hybridse::sdk::Status status;
@@ -197,22 +207,23 @@ void APIServiceImpl::RegisterPut() {
                           return;
                       }
                       auto schema = row->GetSchema();
-                      if (schema->GetColumnCnt() != arr.Size()) {
+                      auto cnt = schema->GetColumnCnt();
+                      if (cnt != static_cast<int>(arr.Size())) {
                           writer << err.Set("column size != schema size");
                           return;
                       }
 
                       // scan all strings , calc the sum, to init SQLInsertRow's string length
                       decltype(arr.Size()) str_len_sum = 0;
-                      for (int i = 0; i < arr.Size(); ++i) {
+                      for (int i = 0; i < cnt; ++i) {
                           if (schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
                               str_len_sum += arr[i].GetStringLength();
                           }
                       }
                       row->Init(static_cast<int>(str_len_sum));
 
-                      for (int i = 0; i < arr.Size(); ++i) {
-                          if (!AppendJsonValue(arr[i], schema->GetColumnType(i), row)) {
+                      for (int i = 0; i < cnt; ++i) {
+                          if (!AppendJsonValue(arr[i], schema->GetColumnType(i), schema->IsColumnNotNull(i), row)) {
                               writer << err.Set("Translate to insert row failed");
                               return;
                           }

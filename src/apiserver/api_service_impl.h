@@ -50,10 +50,12 @@ class APIServiceImpl : public APIService {
     void RegisterExecSP();
     void RegisterGetSP();
 
-    static bool Json2SQLRequestRow(const butil::rapidjson::Value& input, const butil::rapidjson::Value& common_cols_v,
+    static bool Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
+                                   const butil::rapidjson::Value& common_cols_v,
                                    std::shared_ptr<fedb::sdk::SQLRequestRow> row);
     template <typename T>
-    static bool AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, T row);
+    static bool AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, bool is_not_null,
+                                T row);
 
     static SimpleSchema TransToSimpleSchema(const hybridse::sdk::Schema* schema) {
         SimpleSchema ss;
