@@ -103,13 +103,10 @@ class ReducedUrlParser {
     /**
      *  parses a urlString to an url object.
      */
-    bool parse(std::string const& urlString, Url* url);
+    static bool parse(std::string const& urlString, Url* url);
 
  private:
-    void parseQuery(std::string const& query, Url* url);
-    std::regex reg_{
-        R"((?:(?:(\/(?:(?:[a-zA-Z0-9]|[-_~!$&']|[()]|[*+,;=:@])+(?:\/(?:[a-zA-Z0-9]|[-_~!$&']|[()]|[*+,;=:@])+)*)?)|\/)?(?:(\?(?:\w+=(?:[\w-])+)(?:(?:&|;)(?:\w+=(?:[\w-])+))*))?(?:(#(?:\w|\d|=|\(|\)|\\|\/|:|,|&|\?)+))?))"};
-    std::regex query_reg_{R"((\w+=(?:[\w-])+)(?:(?:&|;)(\w+=(?:[\w-])+))*)"};
+    static void parseQuery(std::string const& query, Url* url);
 };
 
 class InterfaceProvider {
@@ -157,13 +154,12 @@ class InterfaceProvider {
     };
 
     static bool matching(const Url& received, const Url& registered);
-    std::unordered_map<std::string, std::string> extractParameters(const Url& received, const Url& registered);
+    static std::unordered_map<std::string, std::string> extractParameters(const Url& received, const Url& registered);
 
  private:
     void registerRequest(brpc::HttpMethod, const std::string& path, std::function<func>&& callback);
 
  private:
-    ReducedUrlParser parser_;
     std::unordered_map<int, std::vector<BuiltRequest>> requests_;
 };
 

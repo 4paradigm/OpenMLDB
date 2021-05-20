@@ -23,7 +23,6 @@
 #include "apiserver/interface_provider.h"
 
 #include <deque>
-#include <stdexcept>
 
 #include "boost/algorithm/string/split.hpp"
 #include "glog/logging.h"
@@ -32,21 +31,22 @@ namespace fedb {
 namespace http {
 
 std::vector<std::unique_ptr<PathPart>> Url::parsePath(bool disableIds) const {
-    std::deque<std::string> splitted;
-    boost::algorithm::split(splitted, path, [](char c) { return c == '/'; });
-    splitted.pop_front();
+    std::deque<std::string> split_res;
+    boost::algorithm::split(split_res, path, [](char c) { return c == '/'; });
+    split_res.pop_front();
 
     std::vector<std::unique_ptr<PathPart>> splitPath;
-    for (auto const& i : splitted) {
-        if (!disableIds && i.front() == ':')
+    for (auto const& i : split_res) {
+        if (!disableIds && i.front() == ':') {
             splitPath.emplace_back(new PathParameter(i.substr(1, i.length() - 1)));
-        else
+        } else {
             splitPath.emplace_back(new PathString(i));
+        }
     }
     return splitPath;
 }
 
-PathParameter::PathParameter(std::string id) : value_(), id_(id) {}
+PathParameter::PathParameter(std::string id) : value_(), id_(std::move(id)) {}
 
 std::string PathParameter::getValue() const { return value_; }
 
@@ -56,15 +56,16 @@ void PathParameter::setValue(std::string const& value) { value_ = value; }
 
 PathType PathParameter::getType() const { return PathType::PARAMETER; }
 
-PathString::PathString(std::string value) : value_(value) {}
+PathString::PathString(std::string value) : value_(std::move(value)) {}
 
 std::string PathString::getValue() const { return value_; }
 
 PathType PathString::getType() const { return PathType::STRING; }
 
 void ReducedUrlParser::parseQuery(std::string const& query, Url* url) {
+    const static std::regex query_reg{R"((\w+=(?:[\w-])+)(?:(?:&|;)(\w+=(?:[\w-])+))*)"};
     std::smatch match;
-    if (std::regex_match(query, match, query_reg_)) {
+    if (std::regex_match(query, match, query_reg)) {
         for (auto i = std::begin(match) + 1; i < std::end(match); ++i) {
             auto pos = i->str().find_first_of('=');
             url->query[i->str().substr(pos + 1)] = i->str().substr(0, pos);
@@ -73,11 +74,14 @@ void ReducedUrlParser::parseQuery(std::string const& query, Url* url) {
 }
 
 bool ReducedUrlParser::parse(std::string const& urlString, Url* url) {
+    const static std::regex reg{
+        R"((?:(?:(\/(?:(?:[a-zA-Z0-9]|[-_~!$&']|[()]|[*+,;=:@])+(?:\/(?:[a-zA-Z0-9]|[-_~!$&']|[()]|[*+,;=:@])+)*)?)|\/)?(?:(\?(?:\w+=(?:[\w-])+)(?:(?:&|;)(?:\w+=(?:[\w-])+))*))?(?:(#(?:\w|\d|=|\(|\)|\\|\/|:|,|&|\?)+))?))"};
+
     url->url = urlString;
 
     // regex for extracting path, query, fragment
     std::smatch match;
-    if (!std::regex_match(urlString, match, reg_)) {
+    if (!std::regex_match(urlString, match, reg)) {
         return false;
     }
     for (auto i = std::begin(match) + 1; i < std::end(match); ++i) {
@@ -145,7 +149,7 @@ std::unordered_map<std::string, std::string> InterfaceProvider::extractParameter
 
 void InterfaceProvider::registerRequest(brpc::HttpMethod type, std::string const& url, std::function<func>&& callback) {
     Url parsed;
-    if (!parser_.parse(url, &parsed)) {
+    if (!ReducedUrlParser::parse(url, &parsed)) {
         LOG(ERROR) << "Fail to parse url " << url;
         return;
     }
@@ -158,7 +162,7 @@ bool InterfaceProvider::handle(const std::string& path, const brpc::HttpMethod& 
     auto err = GeneralError();
     Url url;
 
-    if (!parser_.parse(path, &url)) {
+    if (!ReducedUrlParser::parse(path, &url)) {
         writer << err.Set("invalid url");
         return false;
     }
