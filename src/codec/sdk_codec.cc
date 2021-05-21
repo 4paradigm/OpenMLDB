@@ -17,6 +17,7 @@
 
 #include "codec/sdk_codec.h"
 
+#include <set>
 #include <string>
 #include <utility>
 
@@ -42,6 +43,7 @@ SDKCodec::SDKCodec(const ::fedb::nameserver::TableInfo& table_info)
     const Schema& add_schema = table_info.added_column_desc();
     ParseSchemaVer(table_info.schema_versions(), add_schema);
     ParseAddedColumnDesc(add_schema);
+    ParseTsCol();
     for (const auto& name : table_info.partition_key()) {
         auto iter = schema_idx_map_.find(name);
         if (iter != schema_idx_map_.end()) {
@@ -65,6 +67,7 @@ SDKCodec::SDKCodec(const ::fedb::api::TableMeta& table_info)
     const Schema& add_schema = table_info.added_column_desc();
     ParseSchemaVer(table_info.schema_versions(), add_schema);
     ParseAddedColumnDesc(table_info.added_column_desc());
+    ParseTsCol();
 }
 
 void SDKCodec::ParseColumnDesc(const Schema& column_desc) {
@@ -75,13 +78,21 @@ void SDKCodec::ParseColumnDesc(const Schema& column_desc) {
     for (uint32_t idx = 0; idx < (uint32_t)column_desc.size(); idx++) {
         const auto& cur_column_desc = column_desc.Get(idx);
         schema_idx_map_.emplace(cur_column_desc.name(), idx);
-        if (format_version_ == 0) {
-            ::fedb::codec::ColumnDesc column_desc;
-            ::fedb::codec::ColType type = SchemaCodec::ConvertType(cur_column_desc.type());
-            column_desc.type = type;
-            column_desc.name = cur_column_desc.name();
-            old_schema_.push_back(std::move(column_desc));
+    }
+}
+
+void SDKCodec::ParseTsCol() {
+    std::set<uint32_t> ts_set;
+    for (const auto& index : index_) {
+        if (index.has_ts_name()) {
+            auto iter = schema_idx_map_.find(index.ts_name());
+            if (iter != schema_idx_map_.end()) {
+                ts_set.insert(iter->second);
+            }
         }
+    }
+    for (const auto& idx : ts_set) {
+        ts_idx_.push_back(idx);
     }
 }
 
@@ -95,16 +106,6 @@ void SDKCodec::ParseAddedColumnDesc(const Schema& column_desc) {
             idx++;
         }
         return;
-    }
-    uint32_t idx = old_schema_.size();
-    for (const auto& cur_column_desc : column_desc) {
-        schema_idx_map_.emplace(cur_column_desc.name(), idx);
-        idx++;
-        ::fedb::codec::ColumnDesc column_desc;
-        ::fedb::codec::ColType type = SchemaCodec::ConvertType(cur_column_desc.type());
-        column_desc.type = type;
-        column_desc.name = cur_column_desc.name();
-        old_schema_.push_back(std::move(column_desc));
     }
     modify_times_ = column_desc.size();
 }
@@ -222,8 +223,7 @@ int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data,
             continue;
         }
         try {
-            ts_dimensions->push_back(
-                boost::lexical_cast<uint64_t>(raw_data[idx]));
+            ts_dimensions->push_back(boost::lexical_cast<uint64_t>(raw_data[idx]));
         } catch (std::exception const& e) {
             ts_dimensions->push_back(default_ts);
         }
@@ -237,8 +237,7 @@ int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data,
             return -1;
         }
         try {
-            ts_dimensions->push_back(
-                boost::lexical_cast<uint64_t>(raw_data[idx]));
+            ts_dimensions->push_back(boost::lexical_cast<uint64_t>(raw_data[idx]));
         } catch (std::exception const& e) {
             return -1;
         }
@@ -248,13 +247,8 @@ int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data,
 
 int SDKCodec::EncodeRow(const std::vector<std::string>& raw_data,
                         std::string* row) {
-    if (format_version_ == 1) {
-        auto ret = RowCodec::EncodeRow(raw_data, schema_, last_ver_, *row);
-        return ret.code;
-    } else {
-        auto ret = RowCodec::EncodeRow(raw_data, old_schema_, modify_times_, row);
-        return ret.code;
-    }
+    auto ret = RowCodec::EncodeRow(raw_data, schema_, last_ver_, *row);
+    return ret.code;
 }
 
 int SDKCodec::DecodeRow(const std::string& row, std::vector<std::string>* value) {
@@ -280,14 +274,8 @@ int SDKCodec::DecodeRow(const std::string& row, std::vector<std::string>* value)
 
 std::vector<std::string> SDKCodec::GetColNames() {
     std::vector<std::string> cols;
-    if (format_version_ == 1) {
-        for (const auto& column_desc : schema_) {
-            cols.push_back(column_desc.name());
-        }
-    } else {
-        for (const auto& column_desc : old_schema_) {
-            cols.push_back(column_desc.name);
-        }
+    for (const auto& column_desc : schema_) {
+        cols.push_back(column_desc.name());
     }
     return cols;
 }

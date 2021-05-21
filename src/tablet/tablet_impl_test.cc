@@ -2134,11 +2134,10 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
         ::fedb::common::ColumnDesc* column_desc1 =
             table_meta->add_column_desc();
         column_desc1->set_name("card");
-        column_desc1->set_type("string");
-        ::fedb::common::ColumnDesc* column_desc2 =
-            table_meta->add_column_desc();
+        column_desc1->set_data_type(::fedb::type::kString);
+        ::fedb::common::ColumnDesc* column_desc2 = table_meta->add_column_desc();
         column_desc2->set_name("mcc");
-        column_desc2->set_type("string");
+        column_desc2->set_data_type(::fedb::type::kString);
         SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::fedb::type::kAbsoluteTime, 0, 0);
         SchemaCodec::SetIndex(table_meta->add_column_key(), "mcc", "mcc", "", ::fedb::type::kAbsoluteTime, 0, 0);
 

@@ -157,14 +157,6 @@ class SchemaCodec {
         return type;
     }
 
-    static fedb::type::DataType ConvertStrType(const std::string& type) {
-        auto it = DATA_TYPE_MAP.find(type);
-        if (it != DATA_TYPE_MAP.end()) {
-            return it->second;
-        }
-        return fedb::type::kString;
-    }
-
     static hybridse::type::Type ConvertType(fedb::type::DataType type) {
         switch (type) {
             case fedb::type::kBool: return hybridse::type::kBool;
@@ -179,91 +171,6 @@ class SchemaCodec {
             case fedb::type::kString: return hybridse::type::kVarchar;
             default: return hybridse::type::kNull;
         }
-    }
-
-    static int ConvertColumnDesc(
-        const ::fedb::nameserver::TableInfo& table_info,
-        std::vector<ColumnDesc>& columns) {  // NOLINT
-        return ConvertColumnDesc(table_info, columns, 0);
-    }
-
-    static int ConvertColumnDesc(
-        const ::fedb::nameserver::TableInfo& table_info,
-        std::vector<ColumnDesc>& columns, int modify_index) {  // NOLINT
-        columns.clear();
-        if (modify_index > 0) {
-            return ConvertColumnDesc(table_info.column_desc(), columns,
-                                     table_info.added_column_desc());
-        }
-        return ConvertColumnDesc(table_info.column_desc(), columns);
-    }
-
-    static int ConvertColumnDesc(const Schema& column_desc_field,
-                                 std::vector<ColumnDesc>& columns,  // NOLINT
-                                 const Schema& added_column_field) {
-        columns.clear();
-        for (const auto& cur_column_desc : column_desc_field) {
-            ::fedb::codec::ColType type = ConvertType(cur_column_desc.type());
-            if (type == ::fedb::codec::ColType::kUnknown) {
-                return -1;
-            }
-            ColumnDesc column_desc;
-            column_desc.type = type;
-            column_desc.name = cur_column_desc.name();
-            columns.push_back(column_desc);
-        }
-        if (!added_column_field.empty()) {
-            for (int idx = 0; idx < added_column_field.size(); idx++) {
-                ::fedb::codec::ColType type =
-                    ConvertType(added_column_field.Get(idx).type());
-                if (type == ::fedb::codec::ColType::kUnknown) {
-                    return -1;
-                }
-                ColumnDesc column_desc;
-                column_desc.type = type;
-                column_desc.name = added_column_field.Get(idx).name();
-                columns.push_back(column_desc);
-            }
-        }
-        return 0;
-    }
-
-    static int ConvertColumnDesc(const Schema& column_desc_field,
-                                 std::vector<ColumnDesc>& columns) {  // NOLINT
-        Schema added_column_field;
-        return ConvertColumnDesc(column_desc_field, columns,
-                                 added_column_field);
-    }
-
-    static int ConvertColumnDesc(const Schema& column_desc_field,
-                                 Schema& columns,  // NOLINT
-                                 const Schema& added_column_field) {
-        columns.Clear();
-        for (const auto& cur_column_desc : column_desc_field) {
-            fedb::common::ColumnDesc* column_desc = columns.Add();
-            column_desc->CopyFrom(cur_column_desc);
-            if (!cur_column_desc.has_data_type()) {
-                auto iter = DATA_TYPE_MAP.find(cur_column_desc.type());
-                if (iter == DATA_TYPE_MAP.end()) {
-                    return -1;
-                } else {
-                    column_desc->set_data_type(iter->second);
-                }
-            }
-        }
-        for (const auto& cur_column_desc : added_column_field) {
-            fedb::common::ColumnDesc* column_desc = columns.Add();
-            column_desc->CopyFrom(cur_column_desc);
-            if (!cur_column_desc.has_data_type()) {
-                auto iter = DATA_TYPE_MAP.find(cur_column_desc.type());
-                if (iter == DATA_TYPE_MAP.end()) {
-                    return -1;
-                } else {
-                    column_desc->set_data_type(iter->second);
-                }
-            }
-        }
-        return 0;
     }
 
     static void GetSchemaData(
@@ -306,58 +213,6 @@ class SchemaCodec {
         rm.code = 0;
         rm.msg = "ok";
         return rm;
-    }
-
-    static bool AddTypeToColumnDesc(
-            std::shared_ptr<::fedb::nameserver::TableInfo> table_info) {
-        for (int i = 0; i < table_info->column_desc_size(); i++) {
-            ::fedb::common::ColumnDesc* col_desc =
-                table_info->mutable_column_desc(i);
-            ::fedb::type::DataType data_type = col_desc->data_type();
-            switch (data_type) {
-                case fedb::type::kBool: {
-                    col_desc->set_type("bool");
-                    break;
-                }
-                case fedb::type::kSmallInt: {
-                    col_desc->set_type("int16");
-                    break;
-                }
-                case fedb::type::kInt: {
-                    col_desc->set_type("int32");
-                    break;
-                }
-                case fedb::type::kBigInt: {
-                    col_desc->set_type("int64");
-                    break;
-                }
-                case fedb::type::kDate: {
-                    col_desc->set_type("date");
-                    break;
-                }
-                case fedb::type::kTimestamp: {
-                    col_desc->set_type("timestamp");
-                    break;
-                }
-                case fedb::type::kFloat: {
-                    col_desc->set_type("float");
-                    break;
-                }
-                case fedb::type::kDouble: {
-                    col_desc->set_type("double");
-                    break;
-                }
-                case fedb::type::kVarchar:
-                case fedb::type::kString: {
-                    col_desc->set_type("string");
-                    break;
-                }
-                default: {
-                    return false;
-                }
-            }
-        }
-        return true;
     }
 
  private:
