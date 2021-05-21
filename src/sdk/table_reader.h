@@ -28,7 +28,6 @@ namespace fedb {
 namespace sdk {
 
 struct ScanOption {
-    std::string ts_name;
     std::string idx_name;
     uint32_t limit = 0;
     uint32_t at_least = 0;
