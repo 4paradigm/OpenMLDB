@@ -169,74 +169,76 @@ bool APIServiceImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse:
 }
 
 void APIServiceImpl::RegisterPut() {
-    provider_.put("/dbs/:db_name/tables/:table_name",
-                  [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
-                      auto err = GeneralError();
-                      auto db_it = param.find("db_name");
-                      auto table_it = param.find("table_name");
-                      if (db_it == param.end() || table_it == param.end()) {
-                          writer << err.Set("Invalid path");
-                          return;
-                      }
-                      auto db = db_it->second;
-                      auto table = table_it->second;
+    provider_.put("/dbs/:db_name/tables/:table_name", [this](const InterfaceProvider::Params& param,
+                                                             const butil::IOBuf& req_body, JsonWriter& writer) {
+        auto err = GeneralError();
+        auto db_it = param.find("db_name");
+        auto table_it = param.find("table_name");
+        if (db_it == param.end() || table_it == param.end()) {
+            writer << err.Set("Invalid path");
+            return;
+        }
+        auto db = db_it->second;
+        auto table = table_it->second;
 
-                      // json2doc, then generate an insert sql
-                      Document document;
-                      if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
-                          writer << err.Set("Json parse failed");
-                          return;
-                      }
+        // json2doc, then generate an insert sql
+        Document document;
+        if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
+            DLOG(INFO) << "rapidjson doc parse [" << req_body.to_string().c_str() << "] failed, code "
+                       << document.GetParseError() << ", offset " << document.GetErrorOffset();
+            writer << err.Set("Json parse failed, error code: " + std::to_string(document.GetParseError()));
+            return;
+        }
 
-                      const auto& value = document["value"];
-                      // value should be array, and multi put is not supported now
-                      if (!value.IsArray() || value.Empty() || value.Size() > 1 || !value[0].IsArray()) {
-                          writer << err.Set("Invalid value in body, only support to put one row");
-                          return;
-                      }
-                      const auto& arr = value[0];
-                      std::string holders;
-                      for (decltype(arr.Size()) i = 0; i < arr.Size(); ++i) {
-                          holders += ((i == 0) ? "?" : ",?");
-                      }
-                      hybridse::sdk::Status status;
-                      std::string insert_placeholder = "insert into " + table + " values(" + holders + ");";
-                      auto row = sql_router_->GetInsertRow(db, insert_placeholder, &status);
-                      if (!row) {
-                          writer << err.Set(status.msg);
-                          return;
-                      }
-                      auto schema = row->GetSchema();
-                      auto cnt = schema->GetColumnCnt();
-                      if (cnt != static_cast<int>(arr.Size())) {
-                          writer << err.Set("column size != schema size");
-                          return;
-                      }
+        const auto& value = document["value"];
+        // value should be array, and multi put is not supported now
+        if (!value.IsArray() || value.Empty() || value.Size() > 1 || !value[0].IsArray()) {
+            writer << err.Set("Invalid value in body, only support to put one row");
+            return;
+        }
+        const auto& arr = value[0];
+        std::string holders;
+        for (decltype(arr.Size()) i = 0; i < arr.Size(); ++i) {
+            holders += ((i == 0) ? "?" : ",?");
+        }
+        hybridse::sdk::Status status;
+        std::string insert_placeholder = "insert into " + table + " values(" + holders + ");";
+        auto row = sql_router_->GetInsertRow(db, insert_placeholder, &status);
+        if (!row) {
+            writer << err.Set(status.msg);
+            return;
+        }
+        auto schema = row->GetSchema();
+        auto cnt = schema->GetColumnCnt();
+        if (cnt != static_cast<int>(arr.Size())) {
+            writer << err.Set("column size != schema size");
+            return;
+        }
 
-                      // scan all strings , calc the sum, to init SQLInsertRow's string length
-                      decltype(arr.Size()) str_len_sum = 0;
-                      for (int i = 0; i < cnt; ++i) {
-                          if (schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
-                              str_len_sum += arr[i].GetStringLength();
-                          }
-                      }
-                      row->Init(static_cast<int>(str_len_sum));
+        // scan all strings , calc the sum, to init SQLInsertRow's string length
+        decltype(arr.Size()) str_len_sum = 0;
+        for (int i = 0; i < cnt; ++i) {
+            if (schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
+                str_len_sum += arr[i].GetStringLength();
+            }
+        }
+        row->Init(static_cast<int>(str_len_sum));
 
-                      for (int i = 0; i < cnt; ++i) {
-                          if (!AppendJsonValue(arr[i], schema->GetColumnType(i), schema->IsColumnNotNull(i), row)) {
-                              writer << err.Set("Translate to insert row failed");
-                              return;
-                          }
-                      }
+        for (int i = 0; i < cnt; ++i) {
+            if (!AppendJsonValue(arr[i], schema->GetColumnType(i), schema->IsColumnNotNull(i), row)) {
+                writer << err.Set("Translate to insert row failed");
+                return;
+            }
+        }
 
-                      auto ok = sql_router_->ExecuteInsert(db, insert_placeholder, row, &status);
-                      if (ok) {
-                          PutResp resp;
-                          writer << resp;
-                      } else {
-                          writer << err.Set(status.msg);
-                      }
-                  });
+        auto ok = sql_router_->ExecuteInsert(db, insert_placeholder, row, &status);
+        if (ok) {
+            PutResp resp;
+            writer << resp;
+        } else {
+            writer << err.Set(status.msg);
+        }
+    });
 }
 
 void APIServiceImpl::RegisterExecSP() {
