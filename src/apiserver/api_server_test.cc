@@ -262,6 +262,40 @@ TEST_F(APIServerTest, valid_put) {
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table " + table + ";", &status)) << status.msg;
 }
 
+TEST_F(APIServerTest, put_case1) {
+    const auto env = APIServerTestEnv::Instance();
+
+    // create table
+    std::string table = "put";
+    std::string ddl = "create table if not exists " + table +
+                      "(c1 string, "
+                      "c3 int, "
+                      "c7 timestamp, "
+                      "index(key=(c1), ts=c7));";
+    hybridse::sdk::Status status;
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << status.msg;
+    ASSERT_TRUE(env->cluster_remote->RefreshCatalog());
+
+    brpc::Controller cntl;
+    cntl.http_request().set_method(brpc::HTTP_METHOD_PUT);
+    cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/tables/" + table;
+    cntl.request_attachment().append(R"(
+{
+"value": [
+    ["", 111, 1620471840256]
+]
+})");
+    env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+    ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+    LOG(INFO) << cntl.response_attachment().to_string();
+    PutResp resp;
+    JsonReader reader(cntl.response_attachment().to_string().c_str());
+    reader >> resp;
+    ASSERT_EQ(0, resp.code) << resp.msg;
+    ASSERT_STREQ("ok", resp.msg.c_str());
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table " + table + ";", &status)) << status.msg;
+}
+
 TEST_F(APIServerTest, procedure) {
     const auto env = APIServerTestEnv::Instance();
 
@@ -313,30 +347,60 @@ TEST_F(APIServerTest, procedure) {
     ASSERT_EQ(7, document["data"]["input_schema"].Size());
     ASSERT_EQ(3, document["data"]["input_common_cols"].Size());
 
-    // call procedure
-    brpc::Controller cntl;
-    cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
-    cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/procedures/" + sp_name;
-    cntl.request_attachment().append(R"(
+    // call procedure, need schema
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/procedures/" + sp_name;
+        cntl.request_attachment().append(R"(
 {
     "common_cols":["bb", 23, 1590738994000],
     "input": [[123, 5.1, 6.1, "2021-08-01"],[234, 5.2, 6.2, "2021-08-02"]],
     "need_schema": true
 })");
-    env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
-    ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
 
-    LOG(INFO) << "exec procedure resp:\n" << cntl.response_attachment().to_string();
+        LOG(INFO) << "exec procedure resp:\n" << cntl.response_attachment().to_string();
 
-    // check resp data
-    if (document.Parse(cntl.response_attachment().to_string().c_str()).HasParseError()) {
-        ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
-                           << ", raw resp: " << cntl.response_attachment().to_string();
+        // check resp data
+        if (document.Parse(cntl.response_attachment().to_string().c_str()).HasParseError()) {
+            ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                               << ", raw resp: " << cntl.response_attachment().to_string();
+        }
+        ASSERT_EQ(0, document["code"].GetInt());
+        ASSERT_STREQ("ok", document["msg"].GetString());
+        ASSERT_EQ(2, document["data"]["data"].Size());
+        ASSERT_EQ(2, document["data"]["common_cols_data"].Size());
     }
-    ASSERT_EQ(0, document["code"].GetInt());
-    ASSERT_STREQ("ok", document["msg"].GetString());
-    ASSERT_EQ(2, document["data"]["data"].Size());
-    ASSERT_EQ(2, document["data"]["common_cols_data"].Size());
+
+    // call procedure, without schema
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/procedures/" + sp_name;
+        cntl.request_attachment().append(R"(
+{
+    "common_cols":["bb", 23, 1590738994000],
+    "input": [[123, 5.1, 6.1, "2021-08-01"],[234, 5.2, 6.2, "2021-08-02"]],
+    "need_schema": false
+})");
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+
+        LOG(INFO) << "exec procedure resp:\n" << cntl.response_attachment().to_string();
+
+        // check resp data
+        if (document.Parse(cntl.response_attachment().to_string().c_str()).HasParseError()) {
+            ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                               << ", raw resp: " << cntl.response_attachment().to_string();
+        }
+        ASSERT_EQ(0, document["code"].GetInt());
+        ASSERT_STREQ("ok", document["msg"].GetString());
+        ASSERT_TRUE(document["data"].FindMember("schema") == document["data"].MemberEnd());
+        ASSERT_EQ(2, document["data"]["data"].Size());
+        ASSERT_EQ(2, document["data"]["common_cols_data"].Size());
+    }
 
     // drop procedure
     std::string drop_sp_sql = "drop procedure " + sp_name + ";";

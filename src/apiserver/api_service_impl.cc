@@ -21,7 +21,6 @@
 #include <string>
 
 #include "apiserver/interface_provider.h"
-#include "apiserver/json_helper.h"
 #include "brpc/server.h"
 
 namespace fedb {
@@ -82,15 +81,9 @@ bool APIServiceImpl::Json2SQLRequestRow(const butil::rapidjson::Value& non_commo
             continue;
         }
         if (sch->IsConstant(i)) {
-            if (common_idx >= common_cols_v.Size()) {
-                return false;
-            }
             str_len_sum += common_cols_v[common_idx].GetStringLength();
             ++common_idx;
         } else {
-            if (non_common_idx >= non_common_cols_v.Size()) {
-                return false;
-            }
             str_len_sum += non_common_cols_v[non_common_idx].GetStringLength();
             ++non_common_idx;
         }
@@ -99,7 +92,6 @@ bool APIServiceImpl::Json2SQLRequestRow(const butil::rapidjson::Value& non_commo
 
     non_common_idx = 0, common_idx = 0;
     for (decltype(sch->GetColumnCnt()) i = 0; i < sch->GetColumnCnt(); ++i) {
-        // TODO(hw): no need to append common cols
         if (sch->IsConstant(i)) {
             if (!AppendJsonValue(common_cols_v[common_idx], sch->GetColumnType(i), sch->IsColumnNotNull(i), row)) {
                 return false;
@@ -259,13 +251,21 @@ void APIServiceImpl::RegisterExecSP() {
             writer << err.Set("Json parse failed");
             return;
         }
-        auto common_cols_v = document.FindMember("common_cols");
-        if (common_cols_v == document.MemberEnd()) {
-            writer << err.Set("No member common_cols");
-            return;
+
+        auto common_cols = document.FindMember("common_cols");
+        butil::rapidjson::Value common_cols_v;
+        if (common_cols != document.MemberEnd()) {
+            common_cols_v = common_cols->value;  // move
+            if (!common_cols_v.IsArray()) {
+                writer << err.Set("common_cols is not array");
+                return;
+            }
+        } else {
+            common_cols_v.SetArray();  // If there's no common cols, no need to add this field in request
         }
+
         auto input = document.FindMember("input");
-        if (input == document.MemberEnd() || !input->value.IsArray()) {
+        if (input == document.MemberEnd() || !input->value.IsArray() || input->value.Empty()) {
             writer << err.Set("Invalid input");
             return;
         }
@@ -284,21 +284,32 @@ void APIServiceImpl::RegisterExecSP() {
         // Hard copy, and RequestRow needs shared schema
         auto input_schema = std::make_shared<::hybridse::sdk::SchemaImpl>(schema_impl.GetSchema());
         auto common_column_indices = std::make_shared<fedb::sdk::ColumnIndicesSet>(input_schema);
+        decltype(common_cols_v.Size()) expected_common_size = 0;
         for (int i = 0; i < input_schema->GetColumnCnt(); ++i) {
             if (input_schema->IsConstant(i)) {
                 common_column_indices->AddCommonColumnIdx(i);
+                ++expected_common_size;
             }
         }
+
+        if (common_cols_v.Size() != expected_common_size) {
+            writer << err.Set("Invalid common cols size");
+            return;
+        }
+        auto expected_input_size = input_schema->GetColumnCnt() - expected_common_size;
+
+        // TODO(hw): SQLRequestRowBatch should add common & non-common cols directly
         auto row_batch = std::make_shared<sdk::SQLRequestRowBatch>(input_schema, common_column_indices);
         std::set<std::string> col_set;
         for (decltype(rows.Size()) i = 0; i < rows.Size(); ++i) {
-            if (!rows[i].IsArray()) {
+            if (!rows[i].IsArray() || rows[i].Size() != expected_input_size) {
                 writer << err.Set("Invalid input data row");
                 return;
             }
             auto row = std::make_shared<sdk::SQLRequestRow>(input_schema, col_set);
 
-            if (!Json2SQLRequestRow(rows[i], common_cols_v->value, row)) {
+            // sizes have been checked
+            if (!Json2SQLRequestRow(rows[i], common_cols_v, row)) {
                 writer << err.Set("Translate to request row failed");
                 return;
             }
@@ -313,61 +324,192 @@ void APIServiceImpl::RegisterExecSP() {
         }
 
         ExecSPResp resp;
-
-        // use output schema to encode data
-        auto& output_schema = sp_info->GetOutputSchema();
-        auto output_simple_schema = TransToSimpleSchema(&output_schema);
-
+        // output schema in sp_info is needed for encoding data, so we need a bool in ExecSPResp to know whether to
+        // print schema
+        resp.sp_info = sp_info;
         if (document.HasMember("need_schema") && document["need_schema"].IsBool() &&
             document["need_schema"].GetBool()) {
-            resp.data.schema = output_simple_schema;
+            resp.need_schema = true;
         }
-
-        resp.data.rs = rs;
+        resp.rs = rs;
         writer << resp;
     });
 }
 
 void APIServiceImpl::RegisterGetSP() {
-    provider_.get("/dbs/:db_name/procedures/:sp_name", [this](const InterfaceProvider::Params& param,
-                                                              const butil::IOBuf& req_body, JsonWriter& writer) {
-        auto err = GeneralError();
-        auto db_it = param.find("db_name");
-        auto sp_it = param.find("sp_name");
-        if (db_it == param.end() || sp_it == param.end()) {
-            writer << err.Set("Invalid path");
-            return;
-        }
-        auto db = db_it->second;
-        auto sp = sp_it->second;
+    provider_.get("/dbs/:db_name/procedures/:sp_name",
+                  [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
+                      auto err = GeneralError();
+                      auto db_it = param.find("db_name");
+                      auto sp_it = param.find("sp_name");
+                      if (db_it == param.end() || sp_it == param.end()) {
+                          writer << err.Set("Invalid path");
+                          return;
+                      }
+                      auto db = db_it->second;
+                      auto sp = sp_it->second;
 
-        hybridse::sdk::Status status;
-        auto sp_info = sql_router_->ShowProcedure(db, sp, &status);
-        if (!sp_info) {
-            writer << err.Set(status.msg);
-            return;
-        }
+                      hybridse::sdk::Status status;
+                      auto sp_info = sql_router_->ShowProcedure(db, sp, &status);
+                      if (!sp_info) {
+                          writer << err.Set(status.msg);
+                          return;
+                      }
 
-        GetSPResp resp;
-        resp.data.name = sp_info->GetSpName();
-        resp.data.procedure = sp_info->GetSql();
-        auto& input_schema = sp_info->GetInputSchema();
-        resp.data.input_schema = TransToSimpleSchema(&input_schema);
-        std::for_each(resp.data.input_schema.begin(), resp.data.input_schema.end(), [&resp](const Column& c) {
-            if (c.is_constant) {
-                resp.data.input_common_cols.emplace_back(c.name);
+                      GetSPResp resp;
+                      resp.sp_info = sp_info;
+                      writer << resp;
+                  });
+}
+
+void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema, bool only_const) {
+    ar.Member(name.c_str());
+    ar.StartArray();
+    for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
+        if (only_const && !schema.IsConstant(i)) {
+            continue;
+        }
+        LOG(INFO) << "write schema" << schema.GetColumnName(i);
+        ar.StartObject();
+        ar.Member("name") & schema.GetColumnName(i);
+        ar.Member("type") & DataTypeName(schema.GetColumnType(i));
+        ar.EndObject();
+    }
+
+    ar.EndArray();
+}
+
+void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, int i) {  // NOLINT
+    auto schema = rs->GetSchema();
+    if (rs->IsNULL(i)) {
+        if (schema->IsColumnNotNull(i)) {
+            LOG(ERROR) << "Value in " << schema->GetColumnName(i) << " is null but it can't be null";
+        }
+        ar.SetNull();
+        return;
+    }
+    switch (schema->GetColumnType(i)) {
+        case hybridse::sdk::kTypeInt32: {
+            ar & rs->GetInt32Unsafe(i);
+            break;
+        }
+        case hybridse::sdk::kTypeInt64: {
+            ar & rs->GetInt64Unsafe(i);
+            break;
+        }
+        case hybridse::sdk::kTypeInt16: {
+            ar& static_cast<int>(rs->GetInt16Unsafe(i));
+            break;
+        }
+        case hybridse::sdk::kTypeFloat: {
+            ar& static_cast<double>(rs->GetFloatUnsafe(i));
+            break;
+        }
+        case hybridse::sdk::kTypeDouble: {
+            ar & rs->GetDoubleUnsafe(i);
+            break;
+        }
+        case hybridse::sdk::kTypeString: {
+            ar & rs->GetStringUnsafe(i);
+            break;
+        }
+        case hybridse::sdk::kTypeTimestamp: {
+            ar & rs->GetTimeUnsafe(i);
+            break;
+        }
+        case hybridse::sdk::kTypeDate: {
+            ar & rs->GetDateUnsafe(i); // TODO write date, not int
+            break;
+        }
+        case hybridse::sdk::kTypeBool: {
+            ar & rs->GetBoolUnsafe(i);
+            break;
+        }
+        default: {
+            LOG(ERROR) << "Invalid Column Type";
+            ar & "err";
+            break;
+        }
+    }
+}
+
+// ExecSPResp reading is unsupported now, cuz we decode ResultSet with Schema here, it's irreversible
+JsonWriter& operator&(JsonWriter& ar, ExecSPResp& s) {
+    ar.StartObject();
+    ar.Member("code") & s.code;
+    ar.Member("msg") & s.msg;
+
+    ar.Member("data");  // start data
+    ar.StartObject();
+
+    // data-schema
+    auto& schema = s.sp_info->GetOutputSchema();
+    if (s.need_schema) {
+        WriteSchema(ar, "schema", schema, false);
+    }
+
+    // data-data: non common cols data
+    ar.Member("data");
+    ar.StartArray();
+    auto& rs = s.rs;
+    rs->Reset();
+    while (rs->Next()) {
+        ar.StartArray();
+        for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
+            if (!schema.IsConstant(i)) {
+                WriteValue(ar, rs, i);
             }
-        });
-        auto& output_schema = sp_info->GetOutputSchema();
-        resp.data.output_schema = TransToSimpleSchema(&output_schema);
-        std::for_each(resp.data.output_schema.begin(), resp.data.output_schema.end(), [&resp](const Column& c) {
-            if (c.is_constant) {
-                resp.data.output_common_cols.emplace_back(c.name);
+        }
+        ar.EndArray();  // one row end
+    }
+    ar.EndArray();
+
+    // data-common_cols_data
+    ar.Member("common_cols_data");
+    rs->Reset();
+    if (rs->Next()) {
+        ar.StartArray();
+        for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
+            if (schema.IsConstant(i)) {
+                WriteValue(ar, rs, i);
             }
-        });
-        resp.data.tables = sp_info->GetTables();
-        writer << resp;
-    });
+        }
+        ar.EndArray();  // one row end
+    }
+
+    ar.EndObject();  // end data
+
+    return ar.EndObject();
+}
+
+JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info) {
+    ar.StartObject();
+    ar.Member("name") & sp_info->GetSpName();
+    ar.Member("procedure") & sp_info->GetSql();
+
+    WriteSchema(ar, "input_schema", sp_info->GetInputSchema(), false);
+    WriteSchema(ar, "input_common_cols", sp_info->GetInputSchema(), true);
+    WriteSchema(ar, "output_schema", sp_info->GetInputSchema(), false);
+    WriteSchema(ar, "output_common_cols", sp_info->GetInputSchema(), true);
+
+    ar.Member("tables");
+    auto tables = sp_info->GetTables();
+    ar.StartArray();
+    for (auto& table : tables) {
+        ar& table;
+    }
+    ar.EndArray();
+
+    return ar.EndObject();
+}
+
+// ExecSPResp reading is unsupported now, cuz we decode sp_info here, it's irreversible
+JsonWriter& operator&(JsonWriter& ar, GetSPResp& s) {
+    ar.StartObject();
+    ar.Member("code") & s.code;
+    ar.Member("msg") & s.msg;
+    ar.Member("data") & s.sp_info;
+    return ar.EndObject();
 }
 }  // namespace http
 }  // namespace fedb
