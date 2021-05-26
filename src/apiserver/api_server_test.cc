@@ -35,7 +35,7 @@ class APIServerTestEnv : public testing::Environment {
         return instance;
     }
     virtual void SetUp() {
-        std::cout << "Environment SetUp!\n" << std::endl;
+        std::cout << "Environment SetUp!" << std::endl;
         ::hybridse::vm::Engine::InitializeGlobalLLVM();
         FLAGS_zk_session_timeout = 100000;
 
@@ -83,7 +83,7 @@ class APIServerTestEnv : public testing::Environment {
     }
 
     virtual void TearDown() {
-        std::cout << "Environment TearDown!\n" << std::endl;
+        std::cout << "Environment TearDown!" << std::endl;
         hybridse::sdk::Status status;
         EXPECT_TRUE(cluster_remote->DropDB(db, &status));
         server.Stop(0);
@@ -114,19 +114,11 @@ TEST_F(APIServerTest, json_format) {
 
     // Check the format of put request
     if (document
-            .Parse(R"(
-{
-    "value": [[
-        "value1",
-        111,
-        1.4,
-        "2021-04-27",
-        1620471840256,
-        true,
-        null
-    ]]
-}
-)")
+            .Parse(R"({
+    "value": [
+        ["value1", 111, 1.4, "2021-04-27", 1620471840256, true, null]
+    ]
+    })")
             .HasParseError()) {
         ASSERT_TRUE(false) << "json parse failed with code " << document.GetParseError();
     }
@@ -276,23 +268,81 @@ TEST_F(APIServerTest, put_case1) {
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << status.msg;
     ASSERT_TRUE(env->cluster_remote->RefreshCatalog());
 
-    brpc::Controller cntl;
-    cntl.http_request().set_method(brpc::HTTP_METHOD_PUT);
-    cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/tables/" + table;
-    cntl.request_attachment().append(R"(
-{
-"value": [
-    ["", 111, 1620471840256]
-]
-})");
-    env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
-    ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
-    LOG(INFO) << cntl.response_attachment().to_string();
-    PutResp resp;
-    JsonReader reader(cntl.response_attachment().to_string().c_str());
-    reader >> resp;
-    ASSERT_EQ(0, resp.code) << resp.msg;
-    ASSERT_STREQ("ok", resp.msg.c_str());
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_PUT);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/tables/" + table;
+        cntl.request_attachment().append(R"({
+        "value": [
+            ["", 111, 1620471840256]
+        ]
+        })");
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+        LOG(INFO) << cntl.response_attachment().to_string();
+        PutResp resp;
+        JsonReader reader(cntl.response_attachment().to_string().c_str());
+        reader >> resp;
+        ASSERT_EQ(0, resp.code) << resp.msg;
+        ASSERT_STREQ("ok", resp.msg.c_str());
+    }
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_PUT);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/tables/" + table;
+        cntl.request_attachment().append(R"({
+        "value": [
+            ["drop table test1;", 111, 1620471840256]
+        ]
+        })");
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+        LOG(INFO) << cntl.response_attachment().to_string();
+        PutResp resp;
+        JsonReader reader(cntl.response_attachment().to_string().c_str());
+        reader >> resp;
+        ASSERT_EQ(0, resp.code) << resp.msg;
+        ASSERT_STREQ("ok", resp.msg.c_str());
+    }
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_PUT);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/tables/" + table;
+        // Invalid timestamp
+        cntl.request_attachment().append(R"({
+        "value": [
+            ["drop table test1;", 111, "2020-05-01"]
+        ]
+        })");
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+        LOG(INFO) << cntl.response_attachment().to_string();
+        PutResp resp;
+        JsonReader reader(cntl.response_attachment().to_string().c_str());
+        reader >> resp;
+        ASSERT_EQ(-1, resp.code);
+        LOG(INFO) << resp.msg;
+    }
+
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_PUT);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/tables/" + table;
+        cntl.request_attachment().append(R"({
+        "value": [
+            ["中文", 111, 1620471840256]
+        ]
+        })");
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+        LOG(INFO) << cntl.response_attachment().to_string();
+        PutResp resp;
+        JsonReader reader(cntl.response_attachment().to_string().c_str());
+        reader >> resp;
+        ASSERT_EQ(0, resp.code) << resp.msg;
+        ASSERT_STREQ("ok", resp.msg.c_str());
+    }
+
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table " + table + ";", &status)) << status.msg;
 }
 
@@ -352,12 +402,11 @@ TEST_F(APIServerTest, procedure) {
         brpc::Controller cntl;
         cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
         cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/procedures/" + sp_name;
-        cntl.request_attachment().append(R"(
-{
-    "common_cols":["bb", 23, 1590738994000],
-    "input": [[123, 5.1, 6.1, "2021-08-01"],[234, 5.2, 6.2, "2021-08-02"]],
-    "need_schema": true
-})");
+        cntl.request_attachment().append(R"({
+        "common_cols":["bb", 23, 1590738994000],
+        "input": [[123, 5.1, 6.1, "2021-08-01"],[234, 5.2, 6.2, "2021-08-02"]],
+        "need_schema": true
+    })");
         env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
 
@@ -379,12 +428,11 @@ TEST_F(APIServerTest, procedure) {
         brpc::Controller cntl;
         cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
         cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/procedures/" + sp_name;
-        cntl.request_attachment().append(R"(
-{
-    "common_cols":["bb", 23, 1590738994000],
-    "input": [[123, 5.1, 6.1, "2021-08-01"],[234, 5.2, 6.2, "2021-08-02"]],
-    "need_schema": false
-})");
+        cntl.request_attachment().append(R"({
+        "common_cols":["bb", 23, 1590738994000],
+        "input": [[123, 5.1, 6.1, "2021-08-01"],[234, 5.2, 6.2, "2021-08-02"]],
+        "need_schema": false
+    })");
         env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
 
@@ -402,7 +450,7 @@ TEST_F(APIServerTest, procedure) {
         ASSERT_EQ(2, document["data"]["common_cols_data"].Size());
     }
 
-    // drop procedure
+    // drop procedure and table
     std::string drop_sp_sql = "drop procedure " + sp_name + ";";
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, drop_sp_sql, &status));
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table trans;", &status));

@@ -114,9 +114,10 @@ struct ExecSPResp {
     std::shared_ptr<hybridse::sdk::ResultSet> rs;
 };
 
-void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema, bool only_const);
+void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema,  // NOLINT
+                 bool only_const);
 
-void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, int i);
+void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, int i);  // NOLINT
 
 // ExecSPResp reading is unsupported now, cuz we decode ResultSet with Schema here, it's irreversible
 JsonWriter& operator&(JsonWriter& ar, ExecSPResp& s);  // NOLINT
@@ -128,7 +129,7 @@ struct GetSPResp {
     std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info;
 };
 
-JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info);
+JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info);  // NOLINT
 
 // ExecSPResp reading is unsupported now, cuz we decode sp_info here, it's irreversible
 JsonWriter& operator&(JsonWriter& ar, GetSPResp& s);  // NOLINT

@@ -121,27 +121,51 @@ bool APIServiceImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse:
 
     switch (type) {
         case hybridse::sdk::kTypeBool: {
+            if (!v.IsBool()) {
+                return false;
+            }
             return row->AppendBool(v.GetBool());
         }
         case hybridse::sdk::kTypeInt16: {
+            if (!v.IsInt()) {
+                return false;
+            }
             return row->AppendInt16(boost::lexical_cast<int16_t>(v.GetInt()));
         }
         case hybridse::sdk::kTypeInt32: {
+            if (!v.IsInt()) {
+                return false;
+            }
             return row->AppendInt32(v.GetInt());
         }
         case hybridse::sdk::kTypeInt64: {
+            if (!v.IsInt64()) {
+                return false;
+            }
             return row->AppendInt64(v.GetInt64());
         }
         case hybridse::sdk::kTypeFloat: {
+            if (!v.IsDouble()) {
+                return false;
+            }
             return row->AppendFloat(boost::lexical_cast<float>(v.GetDouble()));
         }
         case hybridse::sdk::kTypeDouble: {
+            if (!v.IsDouble()) {
+                return false;
+            }
             return row->AppendDouble(v.GetDouble());
         }
         case hybridse::sdk::kTypeString: {
+            if (!v.IsString()) {
+                return false;
+            }
             return row->AppendString(v.GetString(), v.GetStringLength());
         }
         case hybridse::sdk::kTypeDate: {
+            if (!v.IsString()) {
+                return false;
+            }
             std::vector<std::string> parts;
             ::fedb::base::SplitString(v.GetString(), "-", parts);
             if (parts.size() != 3) {
@@ -153,6 +177,9 @@ bool APIServiceImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse:
             return row->AppendDate(year, mon, day);
         }
         case hybridse::sdk::kTypeTimestamp: {
+            if (!v.IsInt64()) {
+                return false;
+            }
             return row->AppendTimestamp(v.GetInt64());
         }
         default:
@@ -362,14 +389,14 @@ void APIServiceImpl::RegisterGetSP() {
                   });
 }
 
-void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema, bool only_const) {
+void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema,  // NOLINT
+                 bool only_const) {
     ar.Member(name.c_str());
     ar.StartArray();
     for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
         if (only_const && !schema.IsConstant(i)) {
             continue;
         }
-        LOG(INFO) << "write schema" << schema.GetColumnName(i);
         ar.StartObject();
         ar.Member("name") & schema.GetColumnName(i);
         ar.Member("type") & DataTypeName(schema.GetColumnType(i));
@@ -390,51 +417,73 @@ void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, in
     }
     switch (schema->GetColumnType(i)) {
         case hybridse::sdk::kTypeInt32: {
-            ar & rs->GetInt32Unsafe(i);
+            int32_t value = 0;
+            rs->GetInt32(i, &value);
+            ar& value;
             break;
         }
         case hybridse::sdk::kTypeInt64: {
-            ar & rs->GetInt64Unsafe(i);
+            int64_t value = 0;
+            rs->GetInt64(i, &value);
+            ar& value;
             break;
         }
         case hybridse::sdk::kTypeInt16: {
-            ar& static_cast<int>(rs->GetInt16Unsafe(i));
+            int16_t value = 0;
+            rs->GetInt16(i, &value);
+            ar& static_cast<int>(value);
             break;
         }
         case hybridse::sdk::kTypeFloat: {
-            ar& static_cast<double>(rs->GetFloatUnsafe(i));
+            float value = 0;
+            rs->GetFloat(i, &value);
+            ar& static_cast<double>(value);
             break;
         }
         case hybridse::sdk::kTypeDouble: {
-            ar & rs->GetDoubleUnsafe(i);
+            double value = 0;
+            rs->GetDouble(i, &value);
+            ar& value;
             break;
         }
         case hybridse::sdk::kTypeString: {
-            ar & rs->GetStringUnsafe(i);
+            std::string val;
+            rs->GetString(i, &val);
+            ar& val;
             break;
         }
         case hybridse::sdk::kTypeTimestamp: {
-            ar & rs->GetTimeUnsafe(i);
+            int64_t ts = 0;
+            rs->GetTime(i, &ts);
+            ar& ts;
             break;
         }
         case hybridse::sdk::kTypeDate: {
-            ar & rs->GetDateUnsafe(i); // TODO write date, not int
+            int32_t year = 0;
+            int32_t month = 0;
+            int32_t day = 0;
+            std::stringstream ss;
+            rs->GetDate(i, &year, &month, &day);
+            ss << year << "-" << month << "-" << day;
+            ar& ss.str();
             break;
         }
         case hybridse::sdk::kTypeBool: {
-            ar & rs->GetBoolUnsafe(i);
+            bool value = false;
+            rs->GetBool(i, &value);
+            ar&(value ? "true" : "false");
             break;
         }
         default: {
             LOG(ERROR) << "Invalid Column Type";
-            ar & "err";
+            ar & "NA";
             break;
         }
     }
 }
 
 // ExecSPResp reading is unsupported now, cuz we decode ResultSet with Schema here, it's irreversible
-JsonWriter& operator&(JsonWriter& ar, ExecSPResp& s) {
+JsonWriter& operator&(JsonWriter& ar, ExecSPResp& s) {  // NOLINT
     ar.StartObject();
     ar.Member("code") & s.code;
     ar.Member("msg") & s.msg;
@@ -482,7 +531,7 @@ JsonWriter& operator&(JsonWriter& ar, ExecSPResp& s) {
     return ar.EndObject();
 }
 
-JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info) {
+JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info) {  // NOLINT
     ar.StartObject();
     ar.Member("name") & sp_info->GetSpName();
     ar.Member("procedure") & sp_info->GetSql();
@@ -504,7 +553,7 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ProcedureIn
 }
 
 // ExecSPResp reading is unsupported now, cuz we decode sp_info here, it's irreversible
-JsonWriter& operator&(JsonWriter& ar, GetSPResp& s) {
+JsonWriter& operator&(JsonWriter& ar, GetSPResp& s) {  // NOLINT
     ar.StartObject();
     ar.Member("code") & s.code;
     ar.Member("msg") & s.msg;
