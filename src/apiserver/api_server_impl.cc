@@ -52,7 +52,7 @@ bool APIServerImpl::Init(const sdk::ClusterOptions& options) {
 }
 
 void APIServerImpl::Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
-                             google::protobuf::Closure* done) {
+                            google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
     auto* cntl = dynamic_cast<brpc::Controller*>(cntl_base);
 
@@ -69,8 +69,8 @@ void APIServerImpl::Process(google::protobuf::RpcController* cntl_base, const Ht
 }
 
 bool APIServerImpl::Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
-                                        const butil::rapidjson::Value& common_cols_v,
-                                        std::shared_ptr<fedb::sdk::SQLRequestRow> row) {
+                                       const butil::rapidjson::Value& common_cols_v,
+                                       std::shared_ptr<fedb::sdk::SQLRequestRow> row) {
     auto sch = row->GetSchema();
 
     // scan all strings to init the total string length
@@ -110,7 +110,7 @@ bool APIServerImpl::Json2SQLRequestRow(const butil::rapidjson::Value& non_common
 
 template <typename T>
 bool APIServerImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, bool is_not_null,
-                                     T row) {
+                                    T row) {
     // check if null
     if (v.IsNull()) {
         if (is_not_null) {
@@ -394,13 +394,18 @@ void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::S
     ar.Member(name.c_str());
     ar.StartArray();
     for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
-        if (only_const && !schema.IsConstant(i)) {
-            continue;
+        if (only_const) {
+            if (!schema.IsConstant(i)) {
+                continue;
+            }
+            // Only print name, no type
+            ar& schema.GetColumnName(i);
+        } else {
+            ar.StartObject();
+            ar.Member("name") & schema.GetColumnName(i);
+            ar.Member("type") & DataTypeName(schema.GetColumnType(i));
+            ar.EndObject();
         }
-        ar.StartObject();
-        ar.Member("name") & schema.GetColumnName(i);
-        ar.Member("type") & DataTypeName(schema.GetColumnType(i));
-        ar.EndObject();
     }
 
     ar.EndArray();
@@ -538,8 +543,8 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ProcedureIn
 
     WriteSchema(ar, "input_schema", sp_info->GetInputSchema(), false);
     WriteSchema(ar, "input_common_cols", sp_info->GetInputSchema(), true);
-    WriteSchema(ar, "output_schema", sp_info->GetInputSchema(), false);
-    WriteSchema(ar, "output_common_cols", sp_info->GetInputSchema(), true);
+    WriteSchema(ar, "output_schema", sp_info->GetOutputSchema(), false);
+    WriteSchema(ar, "output_common_cols", sp_info->GetOutputSchema(), true);
 
     ar.Member("tables");
     auto tables = sp_info->GetTables();

@@ -413,6 +413,8 @@ TEST_F(APIServerTest, procedure) {
     ASSERT_STREQ("ok", document["msg"].GetString());
     ASSERT_EQ(7, document["data"]["input_schema"].Size());
     ASSERT_EQ(3, document["data"]["input_common_cols"].Size());
+    ASSERT_EQ(3, document["data"]["output_schema"].Size());
+    ASSERT_EQ(2, document["data"]["output_common_cols"].Size());
 
     // call procedure, need schema
     {

@@ -39,7 +39,7 @@
 #include "nameserver/name_server_impl.h"
 #include "tablet/tablet_impl.h"
 #endif
-#include "apiserver/api_service_impl.h"
+#include "apiserver/api_server_impl.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
@@ -5672,7 +5672,7 @@ void StartAPIServer() {
         GetRealEndpoint(&real_endpoint);
     }
 
-    auto api_service = std::make_unique<::fedb::http::APIServiceImpl>();
+    auto api_service = std::make_unique<::fedb::http::APIServerImpl>();
     ::fedb::sdk::ClusterOptions cluster_options;
     cluster_options.zk_cluster = FLAGS_zk_cluster;
     cluster_options.zk_path = FLAGS_zk_root_path;

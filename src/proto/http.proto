@@ -5,6 +5,6 @@ option cc_generic_services = true;
 message HttpRequest {};
 message HttpResponse {};
 
-service APIService {
+service APIServer {
   rpc Process(HttpRequest) returns (HttpResponse);
 };
