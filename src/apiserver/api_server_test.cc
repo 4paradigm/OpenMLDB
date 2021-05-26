@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-#include <brpc/channel.h>
-#include <brpc/restful.h>
-#include <brpc/server.h>
-#include <butil/logging.h>
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
-
-#include "apiserver/api_service_impl.h"
+#include "apiserver/api_server_impl.h"
+#include "brpc/channel.h"
+#include "brpc/restful.h"
+#include "brpc/server.h"
+#include "butil/logging.h"
+#include "gflags/gflags.h"
+#include "gtest/gtest.h"
 #include "json2pb/rapidjson.h"
 #include "sdk/mini_cluster.h"
 
@@ -42,7 +41,7 @@ class APIServerTestEnv : public testing::Environment {
         mc.reset(new sdk::MiniCluster(6181));
         ASSERT_TRUE(mc->SetUp()) << "Fail to set up mini cluster";
 
-        queue_svc.reset(new APIServiceImpl);
+        queue_svc.reset(new APIServerImpl);
         sdk::ClusterOptions cluster_options;
         cluster_options.zk_cluster = mc->GetZkCluster();
         cluster_options.zk_path = mc->GetZkPath();
@@ -93,7 +92,7 @@ class APIServerTestEnv : public testing::Environment {
 
     std::string db;
     std::shared_ptr<sdk::MiniCluster> mc;
-    std::shared_ptr<APIServiceImpl> queue_svc;
+    std::shared_ptr<APIServerImpl> queue_svc;
     brpc::Server server;
     brpc::Channel http_channel;
     std::shared_ptr<sdk::SQLRouter> cluster_remote;
@@ -321,7 +320,6 @@ TEST_F(APIServerTest, put_case1) {
         JsonReader reader(cntl.response_attachment().to_string().c_str());
         reader >> resp;
         ASSERT_EQ(-1, resp.code);
-        LOG(INFO) << resp.msg;
     }
 
     {
@@ -331,6 +329,25 @@ TEST_F(APIServerTest, put_case1) {
         cntl.request_attachment().append(R"({
         "value": [
             ["中文", 111, 1620471840256]
+        ]
+        })");
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+        LOG(INFO) << cntl.response_attachment().to_string();
+        PutResp resp;
+        JsonReader reader(cntl.response_attachment().to_string().c_str());
+        reader >> resp;
+        ASSERT_EQ(0, resp.code) << resp.msg;
+        ASSERT_STREQ("ok", resp.msg.c_str());
+    }
+
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_PUT);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/tables/" + table;
+        cntl.request_attachment().append(R"({
+        "value": [
+            [null, 111, 1620471840256]
         ]
         })");
         env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);

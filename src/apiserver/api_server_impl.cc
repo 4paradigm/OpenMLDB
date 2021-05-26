@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "apiserver/api_service_impl.h"
+#include "apiserver/api_server_impl.h"
 
 #include <memory>
 #include <set>
@@ -26,9 +26,9 @@
 namespace fedb {
 namespace http {
 
-APIServiceImpl::~APIServiceImpl() = default;
+APIServerImpl::~APIServerImpl() = default;
 
-bool APIServiceImpl::Init(const sdk::ClusterOptions& options) {
+bool APIServerImpl::Init(const sdk::ClusterOptions& options) {
     // If cluster sdk is needed, use ptr, don't own it. SQLClusterRouter owns it.
     auto cluster_sdk = new ::fedb::sdk::ClusterSDK(options);
     bool ok = cluster_sdk->Init();
@@ -51,7 +51,7 @@ bool APIServiceImpl::Init(const sdk::ClusterOptions& options) {
     return true;
 }
 
-void APIServiceImpl::Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
+void APIServerImpl::Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
                              google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
     auto* cntl = dynamic_cast<brpc::Controller*>(cntl_base);
@@ -68,7 +68,7 @@ void APIServiceImpl::Process(google::protobuf::RpcController* cntl_base, const H
     cntl->response_attachment().append(writer.GetString());
 }
 
-bool APIServiceImpl::Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
+bool APIServerImpl::Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
                                         const butil::rapidjson::Value& common_cols_v,
                                         std::shared_ptr<fedb::sdk::SQLRequestRow> row) {
     auto sch = row->GetSchema();
@@ -109,7 +109,7 @@ bool APIServiceImpl::Json2SQLRequestRow(const butil::rapidjson::Value& non_commo
 }
 
 template <typename T>
-bool APIServiceImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, bool is_not_null,
+bool APIServerImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, bool is_not_null,
                                      T row) {
     // check if null
     if (v.IsNull()) {
@@ -187,7 +187,7 @@ bool APIServiceImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse:
     }
 }
 
-void APIServiceImpl::RegisterPut() {
+void APIServerImpl::RegisterPut() {
     provider_.put("/dbs/:db_name/tables/:table_name", [this](const InterfaceProvider::Params& param,
                                                              const butil::IOBuf& req_body, JsonWriter& writer) {
         auto err = GeneralError();
@@ -260,7 +260,7 @@ void APIServiceImpl::RegisterPut() {
     });
 }
 
-void APIServiceImpl::RegisterExecSP() {
+void APIServerImpl::RegisterExecSP() {
     provider_.post("/dbs/:db_name/procedures/:sp_name", [this](const InterfaceProvider::Params& param,
                                                                const butil::IOBuf& req_body, JsonWriter& writer) {
         auto err = GeneralError();
@@ -363,7 +363,7 @@ void APIServiceImpl::RegisterExecSP() {
     });
 }
 
-void APIServiceImpl::RegisterGetSP() {
+void APIServerImpl::RegisterGetSP() {
     provider_.get("/dbs/:db_name/procedures/:sp_name",
                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
                       auto err = GeneralError();

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_APISERVER_API_SERVICE_IMPL_H_
-#define SRC_APISERVER_API_SERVICE_IMPL_H_
+#ifndef SRC_APISERVER_API_SERVER_IMPL_H_
+#define SRC_APISERVER_API_SERVER_IMPL_H_
 
 #include <memory>
 #include <string>
@@ -38,10 +38,10 @@ using butil::rapidjson::Writer;
 struct Column;
 typedef std::vector<Column> SimpleSchema;
 
-class APIServiceImpl : public APIService {
+class APIServerImpl : public APIServer {
  public:
-    APIServiceImpl() = default;
-    ~APIServiceImpl() override;
+    APIServerImpl() = default;
+    ~APIServerImpl() override;
     bool Init(const sdk::ClusterOptions& options);
     void Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
                  google::protobuf::Closure* done) override;
@@ -137,4 +137,4 @@ JsonWriter& operator&(JsonWriter& ar, GetSPResp& s);  // NOLINT
 }  // namespace http
 }  // namespace fedb
 
-#endif  // SRC_APISERVER_API_SERVICE_IMPL_H_
+#endif  // SRC_APISERVER_API_SERVER_IMPL_H_
