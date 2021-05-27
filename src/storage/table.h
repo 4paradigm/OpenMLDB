@@ -87,17 +87,9 @@ class Table {
     virtual TableIterator* NewIterator(uint32_t index, const std::string& pk,
                                        Ticket& ticket) = 0;  // NOLINT
 
-    virtual TableIterator* NewIterator(uint32_t index, int32_t ts_idx,
-                                       const std::string& pk,
-                                       Ticket& ticket) = 0;  // NOLINT
-
     virtual TableIterator* NewTraverseIterator(uint32_t index) = 0;
-    virtual TableIterator* NewTraverseIterator(uint32_t index,
-                                               uint32_t ts_idx) = 0;
 
     virtual ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t index) = 0;
-    virtual ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t index,
-                                                           uint32_t ts_idx) = 0;
 
     virtual void SchedGc() = 0;
 

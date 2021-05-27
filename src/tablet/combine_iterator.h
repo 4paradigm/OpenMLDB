@@ -89,8 +89,7 @@ __attribute__((unused)) static bool Seek(::fedb::storage::TableIterator* it,
 }
 
 __attribute__((unused)) static int GetIterator(
-    std::shared_ptr<::fedb::storage::Table> table, const std::string& pk,
-    int index, int ts_index,
+    std::shared_ptr<::fedb::storage::Table> table, const std::string& pk, int index,
     std::shared_ptr<::fedb::storage::TableIterator>* it,
     std::shared_ptr<::fedb::storage::Ticket>* ticket) {
     if (it == NULL || ticket == NULL) {
@@ -100,11 +99,7 @@ __attribute__((unused)) static int GetIterator(
         *ticket = std::make_shared<::fedb::storage::Ticket>();
     }
     ::fedb::storage::TableIterator* cur_it = NULL;
-    if (ts_index >= 0) {
-        cur_it = table->NewIterator(index, ts_index, pk, *(ticket->get()));
-    } else {
-        cur_it = table->NewIterator(index, pk, *(ticket->get()));
-    }
+    cur_it = table->NewIterator(index, pk, *(ticket->get()));
     if (cur_it == NULL) {
         return -1;
     }

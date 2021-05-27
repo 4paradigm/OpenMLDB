@@ -135,9 +135,6 @@ std::shared_ptr<fedb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std::str
     if (so.limit > 0) {
         request.set_limit(so.limit);
     }
-    if (!so.ts_name.empty()) {
-        request.set_ts_name(so.ts_name);
-    }
     if (!so.idx_name.empty()) {
         request.set_idx_name(so.idx_name);
     }
@@ -188,9 +185,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> TableReaderImpl::Scan(const std::strin
     }
     if (so.limit > 0) {
         request.set_limit(so.limit);
-    }
-    if (!so.ts_name.empty()) {
-        request.set_ts_name(so.ts_name);
     }
     if (!so.idx_name.empty()) {
         request.set_idx_name(so.idx_name);
