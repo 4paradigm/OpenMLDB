@@ -710,9 +710,6 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     if (!idx_name.empty()) {
         request.set_idx_name(idx_name);
     }
-    if (!ts_name.empty()) {
-        request.set_ts_name(ts_name);
-    }
     request.set_limit(limit);
     ::fedb::api::ScanResponse* response = new ::fedb::api::ScanResponse();
     bool ok =
@@ -1035,9 +1032,6 @@ bool TabletClient::Count(uint32_t tid, uint32_t pid, const std::string& pk,
     if (!idx_name.empty()) {
         request.set_idx_name(idx_name);
     }
-    if (!ts_name.empty()) {
-        request.set_ts_name(ts_name);
-    }
     bool ok =
         client_.SendRequest(&::fedb::api::TabletServer_Stub::Count, &request,
                             &response, FLAGS_request_timeout_ms, 1);
@@ -1069,9 +1063,6 @@ bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk,
     request.set_ts(time);
     if (!idx_name.empty()) {
         request.set_idx_name(idx_name);
-    }
-    if (!ts_name.empty()) {
-        request.set_ts_name(ts_name);
     }
     bool ok =
         client_.SendRequest(&::fedb::api::TabletServer_Stub::Get, &request,

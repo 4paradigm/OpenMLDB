@@ -18,6 +18,7 @@ jobs:
           bash steps/init_env.sh
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) && cd ../
+          rm -rf /depends/thirdparty/*
       - name: run cpp
         run: |
           bash steps/ut.sh

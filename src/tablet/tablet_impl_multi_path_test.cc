@@ -137,7 +137,6 @@ void CreateBaseTablet(::fedb::tablet::TabletImpl& tablet,  // NOLINT
             request.set_key(k1);
             request.set_ts(time);
             request.set_idx_name("card");
-            request.set_ts_name("ts1");
             ::fedb::api::GetResponse response;
             MockClosure closure;
             tablet.Get(NULL, &request, &response, &closure);
@@ -152,7 +151,6 @@ void CreateBaseTablet(::fedb::tablet::TabletImpl& tablet,  // NOLINT
             request.set_key(k2);
             request.set_ts(time);
             request.set_idx_name("mcc");
-            request.set_ts_name("ts2");
             ::fedb::api::GetResponse response;
             MockClosure closure;
             tablet.Get(NULL, &request, &response, &closure);
@@ -285,7 +283,6 @@ void CreateAdvanceTablet(::fedb::tablet::TabletImpl& tablet,  // NOLINT
             request.set_key(k1);
             request.set_ts(time);
             request.set_idx_name("card");
-            request.set_ts_name("ts1");
             ::fedb::api::GetResponse response;
             MockClosure closure;
             tablet.Get(NULL, &request, &response, &closure);
@@ -306,7 +303,6 @@ void CreateAdvanceTablet(::fedb::tablet::TabletImpl& tablet,  // NOLINT
             request.set_key(k2);
             request.set_ts(time);
             request.set_idx_name("mcc");
-            request.set_ts_name("ts2");
             ::fedb::api::GetResponse response;
             MockClosure closure;
             tablet.Get(NULL, &request, &response, &closure);

@@ -605,7 +605,7 @@ TEST_F(TableTest, TableIteratorTS) {
         std::string value = "value" + std::to_string(i);
         table.Put(request.dimensions(), request.ts_dimensions(), value);
     }
-    TableIterator* it = table.NewTraverseIterator(0, 0);
+    TableIterator* it = table.NewTraverseIterator(0);
     it->SeekToFirst();
     int count = 0;
     while (it->Valid()) {
@@ -700,7 +700,7 @@ TEST_F(TableTest, TraverseIteratorCount) {
         std::string value = "value" + std::to_string(i);
         table.Put(request.dimensions(), request.ts_dimensions(), value);
     }
-    TableIterator* it = table.NewTraverseIterator(0, 0);
+    TableIterator* it = table.NewTraverseIterator(0);
     it->SeekToFirst();
     int count = 0;
     while (it->Valid()) {
@@ -711,7 +711,7 @@ TEST_F(TableTest, TraverseIteratorCount) {
     ASSERT_EQ(1100, (int64_t)it->GetCount());
     delete it;
 
-    it = table.NewTraverseIterator(1, 1);
+    it = table.NewTraverseIterator(1);
     it->SeekToFirst();
     count = 0;
     while (it->Valid()) {

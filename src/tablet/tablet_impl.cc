@@ -503,44 +503,26 @@ void TabletImpl::Get(RpcController* controller,
             response->set_msg("table is loading");
             return;
         }
-        uint32_t index = 0;
-        int ts_index = -1;
-        if (request->has_ts_name() && request->ts_name().size() > 0) {
-            auto iter = table->GetTSMapping().find(request->ts_name());
-            if (iter == table->GetTSMapping().end()) {
-                PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u",
-                      request->ts_name().c_str(), tid, pid);
-                response->set_code(::fedb::base::ReturnCode::kTsNameNotFound);
-                response->set_msg("ts name not found");
-                return;
-            }
-            ts_index = iter->second;
-        }
         std::string index_name;
         if (request->has_idx_name() && request->idx_name().size() > 0) {
             index_name = request->idx_name();
         } else {
             index_name = table->GetPkIndex()->GetName();
         }
-        std::shared_ptr<IndexDef> index_def;
-        if (ts_index >= 0) {
-            index_def = table->GetIndex(index_name, ts_index);
-        } else {
-            index_def = table->GetIndex(index_name);
-        }
+        auto index_def = table->GetIndex(index_name);
         if (!index_def || !index_def->IsReady()) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", index_name.c_str(), tid, pid);
             response->set_code(::fedb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
             return;
         }
-        index = index_def->GetId();
+        uint32_t index = index_def->GetId();
         if (!ttl) {
             ttl = index_def->GetTTL();
             expired_value = *ttl;
             expired_value.abs_ttl = table->GetExpireTime(expired_value);
         }
-        GetIterator(table, request->key(), index, ts_index, &query_its[idx].it,
+        GetIterator(table, request->key(), index, &query_its[idx].it,
                     &query_its[idx].ticket);
         if (!query_its[idx].it) {
             response->set_code(::fedb::base::ReturnCode::kTsNameNotFound);
@@ -1195,18 +1177,6 @@ void TabletImpl::Scan(RpcController* controller,
             return;
         }
         uint32_t index = 0;
-        int ts_index = -1;
-        if (request->has_ts_name() && !request->ts_name().empty()) {
-            auto iter = table->GetTSMapping().find(request->ts_name());
-            if (iter == table->GetTSMapping().end()) {
-                PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u",
-                      request->ts_name().c_str(), tid, pid);
-                response->set_code(::fedb::base::ReturnCode::kTsNameNotFound);
-                response->set_msg("ts name not found");
-                return;
-            }
-            ts_index = iter->second;
-        }
         std::string index_name;
         if (request->has_idx_name() && !request->idx_name().empty()) {
             index_name = request->idx_name();
@@ -1214,11 +1184,7 @@ void TabletImpl::Scan(RpcController* controller,
             index_name = table->GetPkIndex()->GetName();
         }
         std::shared_ptr<IndexDef> index_def;
-        if (ts_index >= 0) {
-            index_def = table->GetIndex(index_name, ts_index);
-        } else {
             index_def = table->GetIndex(index_name);
-        }
         if (!index_def || !index_def->IsReady()) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", index_name.c_str(), tid, pid);
             response->set_code(::fedb::base::ReturnCode::kIdxNameNotFound);
@@ -1231,7 +1197,7 @@ void TabletImpl::Scan(RpcController* controller,
             expired_value = *ttl;
             expired_value.abs_ttl = table->GetExpireTime(expired_value);
         }
-        GetIterator(table, request->pk(), index, ts_index, &query_its[idx].it,
+        GetIterator(table, request->pk(), index, &query_its[idx].it,
                     &query_its[idx].ticket);
         if (!query_its[idx].it) {
             response->set_code(::fedb::base::ReturnCode::kTsNameNotFound);
@@ -1313,18 +1279,6 @@ void TabletImpl::Count(RpcController* controller,
         return;
     }
     uint32_t index = 0;
-    int ts_index = -1;
-    if (request->has_ts_name() && request->ts_name().size() > 0) {
-        auto iter = table->GetTSMapping().find(request->ts_name());
-        if (iter == table->GetTSMapping().end()) {
-            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u",
-                  request->ts_name().c_str(), request->tid(), request->pid());
-            response->set_code(::fedb::base::ReturnCode::kTsNameNotFound);
-            response->set_msg("ts name not found");
-            return;
-        }
-        ts_index = iter->second;
-    }
     ::fedb::storage::TTLSt ttl;
     std::shared_ptr<IndexDef> index_def;
     std::string index_name;
@@ -1333,11 +1287,7 @@ void TabletImpl::Count(RpcController* controller,
     } else {
         index_name = table->GetPkIndex()->GetName();
     }
-    if (ts_index >= 0) {
-        index_def = table->GetIndex(index_name, ts_index);
-    } else {
-        index_def = table->GetIndex(index_name);
-    }
+    index_def = table->GetIndex(index_name);
     if (!index_def || !index_def->IsReady()) {
         PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u",
               request->idx_name().c_str(), request->tid(), request->pid());
@@ -1351,15 +1301,8 @@ void TabletImpl::Count(RpcController* controller,
         MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
         if (mem_table != NULL) {
             uint64_t count = 0;
-            if (ts_index >= 0) {
-                if (mem_table->GetCount(index, ts_index, request->key(),
-                                        count) < 0) {
-                    count = 0;
-                }
-            } else {
-                if (mem_table->GetCount(index, request->key(), count) < 0) {
-                    count = 0;
-                }
+            if (mem_table->GetCount(index, request->key(), count) < 0) {
+                count = 0;
             }
             response->set_code(::fedb::base::ReturnCode::kOk);
             response->set_msg("ok");
@@ -1368,12 +1311,7 @@ void TabletImpl::Count(RpcController* controller,
         }
     }
     ::fedb::storage::Ticket ticket;
-    ::fedb::storage::TableIterator* it = NULL;
-    if (ts_index >= 0) {
-        it = table->NewIterator(index, ts_index, request->key(), ticket);
-    } else {
-        it = table->NewIterator(index, request->key(), ticket);
-    }
+    ::fedb::storage::TableIterator* it = table->NewIterator(index, request->key(), ticket);
     if (it == NULL) {
         response->set_code(::fedb::base::ReturnCode::kTsNameNotFound);
         response->set_msg("ts name not found");
@@ -1433,45 +1371,24 @@ void TabletImpl::Traverse(RpcController* controller,
         return;
     }
     uint32_t index = 0;
-    int ts_index = -1;
     std::string index_name;
     if (request->has_idx_name() && !request->idx_name().empty()) {
         index_name = request->idx_name();
     } else {
         index_name = table->GetPkIndex()->GetName();
     }
-    if (request->has_ts_name() && request->ts_name().size() > 0) {
-        auto iter = table->GetTSMapping().find(request->ts_name());
-        if (iter == table->GetTSMapping().end()) {
-            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u",
-                    request->ts_name().c_str(), request->tid(),
-                    request->pid());
-            response->set_code(::fedb::base::ReturnCode::kTsNameNotFound);
-            response->set_msg("ts name not found");
-            return;
-        }
-        ts_index = iter->second;
-    }
     std::shared_ptr<IndexDef> index_def;
-    if (ts_index >= 0) {
-        index_def = table->GetIndex(index_name, ts_index);
-    } else {
-        index_def = table->GetIndex(index_name);
-    }
+    index_def = table->GetIndex(index_name);
     if (!index_def || !index_def->IsReady()) {
-        PDLOG(WARNING, "idx name %s ts_index %d not found in table. tid %u, pid %u",
-                index_name.c_str(), ts_index, request->tid(), request->pid());
+        PDLOG(WARNING, "idx name %s not found in table. tid %u, pid %u",
+                index_name.c_str(), request->tid(), request->pid());
         response->set_code(::fedb::base::ReturnCode::kIdxNameNotFound);
         response->set_msg("idx name not found");
         return;
     }
     index = index_def->GetId();
     ::fedb::storage::TableIterator* it = NULL;
-    if (ts_index >= 0) {
-        it = table->NewTraverseIterator(index, ts_index);
-    } else {
-        it = table->NewTraverseIterator(index);
-    }
+    it = table->NewTraverseIterator(index);
     if (it == NULL) {
         response->set_code(::fedb::base::ReturnCode::kTsNameNotFound);
         response->set_msg("ts name not found, when create iterator");
