@@ -35,9 +35,11 @@ using butil::rapidjson::Document;
 using butil::rapidjson::StringBuffer;
 using butil::rapidjson::Writer;
 
-struct Column;
-typedef std::vector<Column> SimpleSchema;
-
+// APIServer is a service for brpc::Server. The entire implement is `StartAPIServer()` in src/cmd/fedb.cc
+// Every request is handled by `Process()`, we will choose the right method of the request by `InterfaceProvider`.
+// InterfaceProvider's url parser supports to parse urls like "/a/:arg1/b/:arg2/:arg3", but doesn't support wildcards.
+// Methods should be registered in `InterfaceProvider` in the init phase.
+// Both input and output are json data. We use rapidjson to handle it.
 class APIServerImpl : public APIServer {
  public:
     APIServerImpl() = default;
@@ -58,38 +60,10 @@ class APIServerImpl : public APIServer {
     static bool AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, bool is_not_null,
                                 T row);
 
-    static SimpleSchema TransToSimpleSchema(const hybridse::sdk::Schema* schema) {
-        SimpleSchema ss;
-        for (int i = 0; i < schema->GetColumnCnt(); ++i) {
-            ss.emplace_back(schema->GetColumnName(i), schema->GetColumnType(i), schema->IsConstant(i),
-                            schema->IsColumnNotNull(i));
-        }
-        return ss;
-    }
-
  private:
     std::unique_ptr<sdk::SQLRouter> sql_router_;
     InterfaceProvider provider_;
 };
-
-struct Column {
-    std::string name;
-    hybridse::sdk::DataType type = hybridse::sdk::kTypeUnknow;
-    bool is_constant = false;
-    bool is_null = false;
-    Column() = default;
-    Column(std::string n, hybridse::sdk::DataType t) : name(std::move(n)), type(t) {}
-    Column(std::string n, hybridse::sdk::DataType t, bool c, bool is_null)
-        : name(std::move(n)), type(t), is_constant(c), is_null(is_null) {}
-};
-
-template <typename Archiver>
-Archiver& operator&(Archiver& ar, Column& s) {  // NOLINT
-    ar.StartObject();
-    ar.Member("name") & s.name;
-    ar.Member("type") & s.type;
-    return ar.EndObject();
-}
 
 struct PutResp {
     PutResp() = default;
