@@ -38,23 +38,23 @@ done
 
 "$HAS_COMPONENT" == false || { echo "No component named $COMPONENT in [$COMPONENTS]"; exit 1; }
 
-FEDBPIDFILE="./bin/$COMPONENT.pid"
-mkdir -p "$(dirname "$FEDBPIDFILE")"
-LOGDIR=$(grep log_dir ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
-[ -n "$LOGDIR" ] || { echo "Invalid log dir"; exit 1; }
-mkdir -p "$LOGDIR"
+FEDB_PID_FILE="./bin/$COMPONENT.pid"
+mkdir -p "$(dirname "$FEDB_PID_FILE")"
+LOG_DIR=$(grep log_dir ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
+[ -n "$LOG_DIR" ] || { echo "Invalid log dir"; exit 1; }
+mkdir -p "$LOG_DIR"
 case $OP in
     start)
         echo "Starting $COMPONENT ... "
-        if [ -f "$FEDBPIDFILE" ]; then
-            if kill -0 "$(cat "$FEDBPIDFILE")" > /dev/null 2>&1; then
-                echo tablet already running as process "$(cat "$FEDBPIDFILE")".
+        if [ -f "$FEDB_PID_FILE" ]; then
+            if kill -0 "$(cat "$FEDB_PID_FILE")" > /dev/null 2>&1; then
+                echo tablet already running as process "$(cat "$FEDB_PID_FILE")".
                 exit 0
             fi
         fi
 
         # Ref https://github.com/tj/mon
-        if ./bin/mon "./bin/boot.sh $COMPONENT" -d -s 10 -l "$LOGDIR"/fedb_mon.log -m "$FEDBPIDFILE";
+        if ./bin/mon "./bin/boot.sh $COMPONENT" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$FEDB_PID_FILE";
         then
             sleep 1
             echo STARTED
@@ -65,12 +65,12 @@ case $OP in
         ;;
     stop)
         echo "Stopping $COMPONENT ... "
-        if [ ! -f "$FEDBPIDFILE" ]
+        if [ ! -f "$FEDB_PID_FILE" ]
         then
-             echo "no tablet to stop (could not find file $FEDBPIDFILE)"
+             echo "no tablet to stop (could not find file $FEDB_PID_FILE)"
         else
-            kill "$(cat "$FEDBPIDFILE")"
-            rm "$FEDBPIDFILE"
+            kill "$(cat "$FEDB_PID_FILE")"
+            rm "$FEDB_PID_FILE"
             echo STOPPED
         fi
         ;;
