@@ -1,3 +1,6 @@
+#! /bin/sh
+# boot.sh
+#
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#! /bin/sh
-#
-# boot.sh
+COMPONENT=$1
+
 ulimit -c unlimited
 ulimit -n 655360
-./bin/fedb --flagfile=./conf/tablet.flags --enable_status_service=true
+./bin/fedb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true

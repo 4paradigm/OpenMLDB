@@ -36,7 +36,7 @@ function(compile_lib LIB_NAME DIR DEPEND_FILE_LIST)
 endfunction(compile_lib)
 
 function(compile_test DIR)
-    set(TEST_LIBS nameserver tablet fedb_sdk fedb_catalog client zk_client replica base storage fedb_codec fedb_proto log common zookeeper_mt tcmalloc_minimal
+    set(TEST_LIBS apiserver nameserver tablet fedb_sdk fedb_catalog client zk_client replica base storage fedb_codec fedb_proto log common zookeeper_mt tcmalloc_minimal
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${BRPC_LIBS})
@@ -63,6 +63,7 @@ compile_proto(common ${PROJECT_SOURCE_DIR})
 compile_proto(tablet ${PROJECT_SOURCE_DIR})
 compile_proto(name_server ${PROJECT_SOURCE_DIR})
 compile_proto(sql_procedure ${PROJECT_SOURCE_DIR})
+compile_proto(http ${PROJECT_SOURCE_DIR})
 
 compile_lib(fedb_codec codec "")
 compile_lib(fedb_catalog catalog "")
@@ -75,12 +76,13 @@ compile_lib(storage storage "")
 compile_lib(replica replica "")
 compile_lib(log log "flags.cc")
 compile_lib(fedb_sdk sdk "")
+compile_lib(apiserver apiserver "")
 
-add_library(fedb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc)
+add_library(fedb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc proto/http.pb.cc)
 
 add_library(fedb_flags flags.cc)
 
-set(BIN_LIBS nameserver tablet fedb_sdk fedb_catalog client zk_client replica base storage fedb_codec fedb_proto log common zookeeper_mt tcmalloc_minimal
+set(BIN_LIBS apiserver nameserver tablet fedb_sdk fedb_catalog client zk_client replica base storage fedb_codec fedb_proto log common zookeeper_mt tcmalloc_minimal
 ${VM_LIBS}
 ${LLVM_LIBS}
 ${BRPC_LIBS})
@@ -95,6 +97,7 @@ if(TESTING_ENABLE)
     compile_test(replica)
     compile_test(catalog)
     compile_test(log)
+    compile_test(apiserver)
 endif()
 
 add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:fedb_proto>)
