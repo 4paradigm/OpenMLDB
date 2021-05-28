@@ -25,6 +25,7 @@
 #include <csignal>
 #include <iostream>
 #include <random>
+#include <memory>
 
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
@@ -38,6 +39,7 @@
 #include "nameserver/name_server_impl.h"
 #include "tablet/tablet_impl.h"
 #endif
+#include "apiserver/api_server_impl.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
@@ -49,14 +51,14 @@
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
+#include "common/timer.h"
+#include "common/tprinter.h"
+#include "config.h"  // NOLINT
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
-#include "common/timer.h"
-#include "common/tprinter.h"
-#include "version.h"   // NOLINT
-#include "config.h" // NOLINT
+#include "version.h"  // NOLINT
 #include "vm/engine.h"
 
 using Schema = ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>;
@@ -70,7 +72,7 @@ DECLARE_int32(thread_pool_size);
 DECLARE_int32(put_concurrency_limit);
 DECLARE_int32(scan_concurrency_limit);
 DECLARE_int32(get_concurrency_limit);
-DEFINE_string(role, "tablet | nameserver | client | ns_client | sql_client",
+DEFINE_string(role, "tablet | nameserver | client | ns_client | sql_client | apiserver",
               "Set the fedb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
@@ -5217,6 +5219,39 @@ void StartNsClient() {
     }
 }
 
+void StartAPIServer() {
+    SetupLog();
+    std::string real_endpoint = FLAGS_endpoint;
+    if (real_endpoint.empty()) {
+        GetRealEndpoint(&real_endpoint);
+    }
+
+    auto api_service = std::make_unique<::fedb::http::APIServerImpl>();
+    ::fedb::sdk::ClusterOptions cluster_options;
+    cluster_options.zk_cluster = FLAGS_zk_cluster;
+    cluster_options.zk_path = FLAGS_zk_root_path;
+    if (!api_service->Init(cluster_options)) {
+        PDLOG(WARNING, "Fail to init");
+        exit(1);
+    }
+
+    brpc::ServerOptions options;
+    options.num_threads = FLAGS_thread_pool_size;
+    brpc::Server server;
+    if (server.AddService(api_service.get(), brpc::SERVER_DOESNT_OWN_SERVICE, "/* => Process") != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+
+    if (server.Start(real_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    PDLOG(INFO, "start apiserver on endpoint %s with version %s", real_endpoint.c_str(), FEDB_VERSION.c_str());
+    server.set_version(FEDB_VERSION.c_str());
+    server.RunUntilAskedToQuit();
+}
+
 int main(int argc, char* argv[]) {
     ::google::SetVersionString(FEDB_VERSION.c_str());
     ::google::ParseCommandLineFlags(&argc, &argv, true);
@@ -5231,10 +5266,12 @@ int main(int argc, char* argv[]) {
         StartClient();
     } else if (FLAGS_role == "nameserver") {
         StartNameServer();
+    } else if (FLAGS_role == "apiserver") {
+        StartAPIServer();
 #endif
     } else {
         std::cout << "Start failed! FLAGS_role must be tablet, client, "
-                     "nameserver, ns_client"
+                     "nameserver, ns_client, apiserver"
                   << std::endl;
     }
     return 0;
