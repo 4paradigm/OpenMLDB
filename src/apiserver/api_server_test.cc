@@ -475,6 +475,47 @@ TEST_F(APIServerTest, procedure) {
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table trans;", &status));
 }
 
+TEST_F(APIServerTest, getDBs) {
+    const auto env = APIServerTestEnv::Instance();
+    brpc::Controller show_cntl;  // default is GET
+    show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs";
+    env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
+    ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
+    LOG(INFO) << "get dbs: " << show_cntl.response_attachment();
+}
+
+TEST_F(APIServerTest, getTables) {
+    const auto env = APIServerTestEnv::Instance();
+
+    // create table
+    std::vector<std::string> tables = {"apple", "pear", "banana"};
+    hybridse::sdk::Status status;
+    for (auto table: tables) {
+        std::string ddl =
+        "create table " + table + "(c1 string,\n"
+                "                   c3 int,\n"
+                "                   c4 bigint,\n"
+                "                   c5 float,\n"
+                "                   c6 double,\n"
+                "                   c7 timestamp,\n"
+                "                   c8 date,\n"
+                "                   index(key=c1, ts=c7));";
+        ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << "fail to create table";
+        ASSERT_TRUE(env->cluster_remote->RefreshCatalog());
+    }
+    for (auto table: tables) {
+        brpc::Controller show_cntl;  // default is GET
+        show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/api_server_test/tables/" + table;
+        env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
+        LOG(INFO) << "get tables: " << show_cntl.response_attachment();
+    }
+    for (auto table: tables) {
+        env->cluster_remote->ExecuteDDL(env->db, "drop table " + table + ";", &status);
+        ASSERT_TRUE(env->cluster_remote->RefreshCatalog());
+    }
+}
+
 }  // namespace http
 }  // namespace fedb
 

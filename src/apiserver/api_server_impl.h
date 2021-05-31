@@ -52,6 +52,8 @@ class APIServerImpl : public APIServer {
     void RegisterPut();
     void RegisterExecSP();
     void RegisterGetSP();
+    void RegisterGetDB();
+    void RegisterGetTable();
 
     static bool Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
                                    const butil::rapidjson::Value& common_cols_v,
@@ -63,6 +65,8 @@ class APIServerImpl : public APIServer {
  private:
     std::unique_ptr<sdk::SQLRouter> sql_router_;
     InterfaceProvider provider_;
+    // TODO: Since sql_router_ needs a general pointer, I cannot find a proper kind of small pointer to use here. 
+    ::fedb::sdk::ClusterSDK* cluster_sdk_;
 };
 
 struct PutResp {
@@ -107,6 +111,8 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ProcedureIn
 
 // ExecSPResp reading is unsupported now, cuz we decode sp_info here, it's irreversible
 JsonWriter& operator&(JsonWriter& ar, GetSPResp& s);  // NOLINT
+
+JsonWriter& operator&(JsonWriter& ar, ::fedb::nameserver::TableInfo& info);
 
 }  // namespace http
 }  // namespace fedb

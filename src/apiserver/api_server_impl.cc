@@ -30,14 +30,14 @@ APIServerImpl::~APIServerImpl() = default;
 
 bool APIServerImpl::Init(const sdk::ClusterOptions& options) {
     // If cluster sdk is needed, use ptr, don't own it. SQLClusterRouter owns it.
-    auto cluster_sdk = new ::fedb::sdk::ClusterSDK(options);
-    bool ok = cluster_sdk->Init();
+    cluster_sdk_ = new ::fedb::sdk::ClusterSDK(options);
+    bool ok = cluster_sdk_->Init();
     if (!ok) {
         LOG(ERROR) << "Fail to connect to db";
         return false;
     }
 
-    auto router = std::make_unique<::fedb::sdk::SQLClusterRouter>(cluster_sdk);
+    auto router = std::make_unique<::fedb::sdk::SQLClusterRouter>(cluster_sdk_);
     if (!router->Init()) {
         LOG(ERROR) << "Fail to connect to db";
         return false;
@@ -47,6 +47,8 @@ bool APIServerImpl::Init(const sdk::ClusterOptions& options) {
     RegisterPut();
     RegisterExecSP();
     RegisterGetSP();
+    RegisterGetDB();
+    RegisterGetTable();
 
     return true;
 }
@@ -389,6 +391,56 @@ void APIServerImpl::RegisterGetSP() {
                   });
 }
 
+void APIServerImpl::RegisterGetDB() {
+    provider_.get("/dbs", [this](const InterfaceProvider::Params& param, 
+                                                             const butil::IOBuf& req_body, JsonWriter& writer){
+        auto err = GeneralError();
+        std::vector<std::string> dbs;
+        hybridse::sdk::Status status;
+        auto ok = sql_router_->ShowDB(&dbs, &status);
+        if (!ok) {
+            writer << err.Set(status.msg);
+            return;
+        }
+        writer.StartObject();
+        writer.Member("dbs");
+        writer.StartArray();
+        for (auto db: dbs) {
+            writer & db;
+        }
+        writer.EndArray();
+        writer.EndObject();
+    });
+}
+
+void APIServerImpl::RegisterGetTable() {
+    provider_.get("/dbs/:db_name/tables/:table_name", [this](const InterfaceProvider::Params& param, 
+                                                             const butil::IOBuf& req_body, JsonWriter& writer){
+        auto err = GeneralError();
+        auto db_it = param.find("db_name");
+        auto table_it = param.find("table_name");
+        if (db_it == param.end()) {
+            writer << err.Set("Invalid path");
+            return;
+        }
+        auto db = db_it->second;
+        writer.StartObject();
+        writer.StartArray();
+        if (table_it == param.end()) {
+            auto tables = cluster_sdk_->GetTables(db);
+            for (std::shared_ptr<::fedb::nameserver::TableInfo> table: tables) {
+                writer << table;
+            }
+        } else {
+            auto table = table_it->second;
+            auto table_info = cluster_sdk_->GetTableInfo(db, table);
+            writer << table_info;
+        }
+        writer.EndArray();
+        writer.EndObject();
+    });
+}
+
 void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema,  // NOLINT
                  bool only_const) {
     ar.Member(name.c_str());
@@ -565,5 +617,52 @@ JsonWriter& operator&(JsonWriter& ar, GetSPResp& s) {  // NOLINT
     ar.Member("data") & s.sp_info;
     return ar.EndObject();
 }
+
+JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableInfo> info) {
+    ar.StartObject();
+    if (info->has_name()) {
+        ar.Member("name") & info->name();
+    }
+    if (info->has_seg_cnt()) {
+        ar.Member("seg_cnt") & info->seg_cnt();
+    }
+    ar.Member("table_partition_size") & info->table_partition_size();
+    if (info->has_tid()) {
+        ar.Member("tid") & info->tid();
+    }
+    if (info->has_partition_num()) {
+        ar.Member("partition_num") & info->partition_num();
+    }
+    if (info->has_replica_num()) {
+        ar.Member("replica_num") & info->replica_num();
+    }
+    if (info->has_compress_type()) {
+        if (info->compress_type() == ::fedb::type::CompressType::kNoCompress) {
+            ar.Member("compress_type") & "kNoCompress";
+        } else {
+            ar.Member("compress_type") & "kSnappy";
+        }
+    }
+    if (info->has_key_entry_max_height()) {
+        ar.Member("key_entry_max_height") & info->key_entry_max_height();
+    }
+    // TODO: column_desc, column_key, added_column_desc
+    if (info->has_format_version()) {
+        ar.Member("format_version") & info->format_version();
+    }
+    if (info->has_db()) {
+        ar.Member("db") & info->db();
+    }
+    ar.Member("partition_key");
+    ar.StartArray();
+    for (auto key: info->partition_key()){
+        ar & key;
+    }
+    ar.EndArray();
+    // TODO: version pair
+    ar.EndObject();
+    return ar.EndObject();
+}
+
 }  // namespace http
 }  // namespace fedb
