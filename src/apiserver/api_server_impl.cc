@@ -653,7 +653,7 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableI
     if (info->has_key_entry_max_height()) {
         ar.Member("key_entry_max_height") & info->key_entry_max_height();
     }
-    // TODO: column_desc, column_key, added_column_desc
+    // TODO(zhihao zhao): column_desc, column_key, added_column_desc
     if (info->has_format_version()) {
         ar.Member("format_version") & info->format_version();
     }
@@ -666,7 +666,7 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableI
         ar & key;
     }
     ar.EndArray();
-    // TODO: version pair
+    // TODO(zhihao zhao): version pair
     ar.EndObject();
     return ar.EndObject();
 }
