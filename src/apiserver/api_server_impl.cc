@@ -414,30 +414,37 @@ void APIServerImpl::RegisterGetDB() {
 }
 
 void APIServerImpl::RegisterGetTable() {
-    provider_.get("/dbs/:db_name/tables/:table_name", [this](const InterfaceProvider::Params& param, 
+    provider_.get("/dbs/:db_name/tables", [this](const InterfaceProvider::Params& param, 
                                                              const butil::IOBuf& req_body, JsonWriter& writer){
         auto err = GeneralError();
         auto db_it = param.find("db_name");
-        auto table_it = param.find("table_name");
         if (db_it == param.end()) {
             writer << err.Set("Invalid path");
             return;
         }
         auto db = db_it->second;
+        auto tables = cluster_sdk_->GetTables(db);
         writer.StartObject();
         writer.StartArray();
-        if (table_it == param.end()) {
-            auto tables = cluster_sdk_->GetTables(db);
-            for (std::shared_ptr<::fedb::nameserver::TableInfo> table: tables) {
-                writer << table;
-            }
-        } else {
-            auto table = table_it->second;
-            auto table_info = cluster_sdk_->GetTableInfo(db, table);
-            writer << table_info;
+        for (std::shared_ptr<::fedb::nameserver::TableInfo> table: tables) {
+            writer << table;
         }
         writer.EndArray();
         writer.EndObject();
+    });
+    provider_.get("/dbs/:db_name/tables/:table_name", [this](const InterfaceProvider::Params& param, 
+                                                             const butil::IOBuf& req_body, JsonWriter& writer){
+        auto err = GeneralError();
+        auto db_it = param.find("db_name");
+        auto table_it = param.find("table_name");
+        if (db_it == param.end() || table_it == param.end()) {
+            writer << err.Set("Invalid path");
+            return;
+        }
+        auto db = db_it->second;
+        auto table = table_it->second;
+        auto table_info = cluster_sdk_->GetTableInfo(db, table);
+        writer << table_info;
     });
 }
 

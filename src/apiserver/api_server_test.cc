@@ -503,6 +503,11 @@ TEST_F(APIServerTest, getTables) {
         ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << "fail to create table";
         ASSERT_TRUE(env->cluster_remote->RefreshCatalog());
     }
+    brpc::Controller show_cntl;  // default is GET
+    show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/api_server_test/tables";
+    env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
+    ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
+    LOG(INFO) << "get tables: " << show_cntl.response_attachment();
     for (auto table: tables) {
         brpc::Controller show_cntl;  // default is GET
         show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/api_server_test/tables/" + table;
