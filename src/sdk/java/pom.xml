@@ -39,6 +39,8 @@
     </scm>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.version.base>2.2.0</project.version.base>
+        <project.version.suffix></project.version.suffix>
     </properties>
     <build>
         <pluginManagement>
