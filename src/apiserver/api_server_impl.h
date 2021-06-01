@@ -114,6 +114,8 @@ JsonWriter& operator&(JsonWriter& ar, GetSPResp& s);  // NOLINT
 
 JsonWriter& operator&(JsonWriter& ar, const ::google::protobuf::RepeatedPtrField< ::fedb::common::ColumnDesc >& column_desc);
 
+JsonWriter& operator&(JsonWriter& ar, const ::google::protobuf::RepeatedPtrField< ::fedb::common::ColumnKey >& column_key);
+
 JsonWriter& operator&(JsonWriter& ar, ::fedb::nameserver::TableInfo& info);
 
 }  // namespace http

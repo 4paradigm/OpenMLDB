@@ -405,7 +405,7 @@ void APIServerImpl::RegisterGetDB() {
         writer.StartObject();
         writer.Member("dbs");
         writer.StartArray();
-        for (auto db: dbs) {
+        for (auto db : dbs) {
             writer & db;
         }
         writer.EndArray();
@@ -426,7 +426,7 @@ void APIServerImpl::RegisterGetTable() {
         auto tables = cluster_sdk_->GetTables(db);
         writer.StartObject();
         writer.StartArray();
-        for (std::shared_ptr<::fedb::nameserver::TableInfo> table: tables) {
+        for (std::shared_ptr<::fedb::nameserver::TableInfo> table : tables) {
             writer << table;
         }
         writer.EndArray();
@@ -679,6 +679,21 @@ JsonWriter& operator&(JsonWriter& ar, const ::google::protobuf::RepeatedPtrField
     return ar.EndArray();
 }
 
+JsonWriter& operator&(JsonWriter& ar, const ::google::protobuf::RepeatedPtrField< ::fedb::common::VersionPair >& schema_versions){
+    ar.StartArray();
+    for (auto version : schema_versions) {
+        ar.StartObject();
+        if (version.has_id()) {
+            ar.Member("id") & version.id();
+        }
+        if (version.has_field_count()){
+            ar.Member("field_count") & version.field_count();
+        }
+        ar.EndObject();
+    }
+    return ar.EndArray();
+}
+
 JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableInfo> info) {
     ar.StartObject();
     if (info->has_name()) {
@@ -722,11 +737,13 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableI
     }
     ar.Member("partition_key");
     ar.StartArray();
-    for (auto key: info->partition_key()){
+    for (auto key : info->partition_key()){
         ar & key;
     }
     ar.EndArray();
-    // TODO(zhihao zhao): version pair
+    
+    ar.Member("schema_versions") & info->schema_versions();
+
     ar.EndObject();
     return ar.EndObject();
 }
