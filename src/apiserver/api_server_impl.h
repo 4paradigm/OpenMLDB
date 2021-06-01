@@ -65,7 +65,7 @@ class APIServerImpl : public APIServer {
  private:
     std::unique_ptr<sdk::SQLRouter> sql_router_;
     InterfaceProvider provider_;
-    // TODO(zhihao zhao): Since sql_router_ needs a general pointer, I cannot find a proper kind of small pointer to use here. 
+    // cluster_sdk_ is not owned by this class. 
     ::fedb::sdk::ClusterSDK* cluster_sdk_;
 };
 

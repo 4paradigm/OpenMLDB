@@ -722,7 +722,7 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableI
     if (info->has_key_entry_max_height()) {
         ar.Member("key_entry_max_height") & info->key_entry_max_height();
     }
-    // TODO(zhihao zhao): column_desc, column_key, added_column_desc
+    
     ar.Member("column_desc") & info->column_desc();
 
     ar.Member("column_key") & info->column_key();
