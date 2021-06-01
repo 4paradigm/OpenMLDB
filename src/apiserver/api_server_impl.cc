@@ -625,6 +625,60 @@ JsonWriter& operator&(JsonWriter& ar, GetSPResp& s) {  // NOLINT
     return ar.EndObject();
 }
 
+JsonWriter& operator& (JsonWriter& ar, const ::google::protobuf::RepeatedPtrField< ::fedb::common::ColumnDesc >& column_desc) {
+    ar.StartArray();
+    for (auto column : column_desc) {
+        ar.StartObject();
+        if (column.has_name()) {
+            ar.Member("name") & column.name();
+        }
+        if (column.has_data_type()) {
+            ar.Member("data_type") & ::fedb::type::DataType_Name(column.data_type());
+        }
+        if (column.has_not_null()) {
+            if (column.not_null()) {
+                ar.Member("not_null") & "true";
+            } else {
+                ar.Member("not_null") & "false";
+            }
+        }
+        if (column.has_is_constant()) {
+            if (column.is_constant()) {
+                ar.Member("is_constant") & "true";
+            } else {
+                ar.Member("is_constant") & "false";
+            }
+        }
+        ar.EndObject();
+    }
+    return ar.EndArray();
+}
+
+JsonWriter& operator&(JsonWriter& ar, const ::google::protobuf::RepeatedPtrField< ::fedb::common::ColumnKey >& column_key) {
+    ar.StartArray();
+    for (auto key : column_key) {
+        ar.StartObject();
+        if (key.has_index_name()) {
+            ar.Member("index_name") & key.index_name();
+        }
+        ar.Member("col_name");
+        ar.StartArray();
+        for (auto col : key.col_name()) {
+            ar & col;
+        }
+        ar.EndArray();
+        if (key.has_ts_name()) {
+            ar.Member("ts_name") & key.ts_name();
+        }
+        if (key.has_flag()) {
+            ar.Member("flag") & key.flag();
+        }
+        // TODO(Zhihao Zhao): ttl
+        ar.EndObject();
+    }
+    return ar.EndArray();
+}
+
 JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableInfo> info) {
     ar.StartObject();
     if (info->has_name()) {
@@ -654,6 +708,12 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableI
         ar.Member("key_entry_max_height") & info->key_entry_max_height();
     }
     // TODO(zhihao zhao): column_desc, column_key, added_column_desc
+    ar.Member("column_desc") & info->column_desc();
+
+    ar.Member("column_key") & info->column_key();
+
+    ar.Member("added_column_desc") & info->added_column_desc();
+
     if (info->has_format_version()) {
         ar.Member("format_version") & info->format_version();
     }
