@@ -26,42 +26,20 @@ then
     # unpack thirdparty first time
     pushd /depends
     if [[ ! -d thirdparty && -r thirdparty.tar.gz ]]; then
-        tar xzf thirdparty.tar.gz
+        mkdir -p thirdparty
+        tar xzf thirdparty.tar.gz -C thirdparty --strip-components=1
+        curl -SL -o libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0-beta4/libzetasql-0.2.0-beta4-linux-x86_64.tar.gz
+        tar xzf libzetasql.tar.gz -C  thirdparty --strip-components 1
+        rm libzetasql.tar.gz
+
     fi
     popd
 
     ln -sf /depends/thirdparty thirdparty
 
-    # TODO: delete the 'source' code. Those code is just a double-ensure that rh tools are enabled.
-    #  It is specific to docker development environment and therefore should ensured by docker image.
-    if [ -r /opt/rh/devtoolset-7/enable ]; then
-        # shellcheck disable=SC1091
-        source /opt/rh/devtoolset-7/enable
-    fi
-    if [ -r /opt/rh/sclo-git212/enable ]; then
-        # shellcheck disable=SC1091
-        source /opt/rh/sclo-git212/enable
-    fi
-    if [ -r /opt/rh/rh-git218/enable ]; then
-        # shellcheck disable=SC1091
-        source /opt/rh/rh-git218/enable
-    fi
-    if [ -r /opt/rh/python27/enable ]; then
-        # shellcheck disable=SC1091
-        source /opt/rh/python27/enable
-    fi
-    if [ -r /opt/rh/rh-python38/enable ]; then
-        # shellcheck disable=SC1091
-        source /opt/rh/rh-python38/enable
-    fi
-
     if [ -r /etc/profile.d/enable-thirdparty.sh ]; then
         # shellcheck disable=SC1091
         source /etc/profile.d/enable-thirdparty.sh
-    else
-        # backward configure for old environment
-        export JAVA_HOME=${PWD}/thirdparty/jdk1.8.0_141
-        export PATH=${PWD}/thirdparty/bin:$JAVA_HOME/bin:${PWD}/thirdparty/apache-maven-3.6.3/bin:$PATH
     fi
 else
     # shellcheck disable=SC1090

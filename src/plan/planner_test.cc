@@ -28,23 +28,7 @@ using hybridse::node::PlanNode;
 using hybridse::node::SqlNode;
 using hybridse::node::SqlNodeList;
 using hybridse::sqlcase::SqlCase;
-
-std::vector<SqlCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SqlCase> &cases);  // NOLINT
-
-void InitCases(std::string yaml_path, std::vector<SqlCase> &cases) {  // NOLINT
-    if (!SqlCase::CreateSqlCasesFromYaml(
-            hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases,
-            std::vector<std::string>(
-                {"logical-plan-unsupport", "parser-unsupport"}))) {
-        FAIL();
-    }
-}
-std::vector<SqlCase> InitCases(std::string yaml_path) {
-    std::vector<SqlCase> cases;
-    InitCases(yaml_path, cases);
-    return cases;
-}
+const std::vector<std::string> FILTERS({"logical-plan-unsupport", "parser-unsupport"});
 class PlannerTest : public ::testing::TestWithParam<SqlCase> {
  public:
     PlannerTest() {
@@ -64,59 +48,59 @@ class PlannerTest : public ::testing::TestWithParam<SqlCase> {
 
 INSTANTIATE_TEST_CASE_P(
     SqlSimpleQueryParse, PlannerTest,
-    testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlRenameQueryParse, PlannerTest,
-    testing::ValuesIn(InitCases("cases/plan/rename_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/rename_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlWindowQueryParse, PlannerTest,
-    testing::ValuesIn(InitCases("cases/plan/window_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlDistinctParse, PlannerTest,
-    testing::ValuesIn(InitCases("cases/plan/distinct_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/distinct_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlWhereParse, PlannerTest,
-    testing::ValuesIn(InitCases("cases/plan/where_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/where_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlGroupParse, PlannerTest,
-    testing::ValuesIn(InitCases("cases/plan/group_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/group_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlHavingParse, PlannerTest,
-    testing::ValuesIn(InitCases("cases/plan/having_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/having_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlOrderParse, PlannerTest,
-    testing::ValuesIn(InitCases("cases/plan/order_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/order_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlJoinParse, PlannerTest,
-    testing::ValuesIn(InitCases("cases/plan/join_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlUnionParse, PlannerTest,
-    testing::ValuesIn(InitCases("cases/plan/union_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/union_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlSubQueryParse, PlannerTest,
-    testing::ValuesIn(InitCases("cases/plan/sub_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/sub_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(UdfParse, PlannerTest,
-                        testing::ValuesIn(InitCases("cases/plan/udf.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/plan/udf.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(SQLCreate, PlannerTest,
-                        testing::ValuesIn(InitCases("cases/plan/create.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(SQLInsert, PlannerTest,
-                        testing::ValuesIn(InitCases("cases/plan/insert.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/plan/insert.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(SQLCmdParserTest, PlannerTest,
-                        testing::ValuesIn(InitCases("cases/plan/cmd.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/plan/cmd.yaml", FILTERS)));
 TEST_P(PlannerTest, PlannerSucessTest) {
     std::string sqlstr = GetParam().sql_str();
     std::cout << sqlstr << std::endl;
@@ -1728,10 +1712,11 @@ class PlannerErrorTest : public ::testing::TestWithParam<SqlCase> {
 };
 INSTANTIATE_TEST_CASE_P(
     SqlErrorQuery, PlannerErrorTest,
-    testing::ValuesIn(InitCases("cases/plan/error_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/error_query.yaml", FILTERS)));
+
 INSTANTIATE_TEST_CASE_P(
     SqlErrorRequestQuery, PlannerErrorTest,
-    testing::ValuesIn(InitCases("cases/plan/error_request_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/error_request_query.yaml", FILTERS)));
 TEST_P(PlannerErrorTest, ClusterRequestModePlanErrorTest) {
     auto sql_case = GetParam();
     std::string sqlstr = sql_case.sql_str();

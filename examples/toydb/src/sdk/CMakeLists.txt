@@ -44,7 +44,9 @@ if (TESTING_ENABLE AND EXAMPLES_TESTING_ENABLE)
         get_filename_component(TEST_TARGET_DIR ${RELATIVE_TEST_PATH} DIRECTORY)
         get_filename_component(TEST_TARGET_NAME ${RELATIVE_TEST_PATH} NAME_WE)
         set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR})
-        add_executable(${TEST_TARGET_NAME} ${TEST_SCRIPT})
+        add_executable(${TEST_TARGET_NAME} ${TEST_SCRIPT}
+                ${PROJECT_SOURCE_DIR}/src/testing/test_base.cc
+                ${PROJECT_SOURCE_DIR}/src/testing/engine_test_base.cc)
 
         add_test(${TEST_TARGET_NAME}
             ${TEST_TARGET_NAME}

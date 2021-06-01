@@ -42,7 +42,7 @@
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/sql_compiler.h"
-#include "vm/test_base.h"
+#include "testing/test_base.h"
 #include "vm/transform.h"
 
 using namespace llvm;       // NOLINT
@@ -54,24 +54,9 @@ namespace hybridse {
 namespace vm {
 
 using hybridse::sqlcase::SqlCase;
-std::vector<SqlCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SqlCase>& cases);  // NOLINT
-
-void InitCases(std::string yaml_path, std::vector<SqlCase>& cases) {  // NOLINT
-    if (!SqlCase::CreateSqlCasesFromYaml(
-            hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases,
-            std::vector<std::string>({"physical-plan-unsupport",
-                                      "plan-unsupport", "parser-unsupport",
-                                      "request-unsupport"}))) {
-        FAIL();
-    }
-}
-
-std::vector<SqlCase> InitCases(std::string yaml_path) {
-    std::vector<SqlCase> cases;
-    InitCases(yaml_path, cases);
-    return cases;
-}
+const std::vector<std::string> FILTERS({"physical-plan-unsupport",
+                                        "plan-unsupport", "parser-unsupport",
+                                        "request-unsupport"});
 class TransformRequestModeTest : public ::testing::TestWithParam<SqlCase> {
  public:
     TransformRequestModeTest() {}
@@ -129,38 +114,38 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
 }
 INSTANTIATE_TEST_CASE_P(
     SqlSimpleQueryParse, TransformRequestModeTest,
-    testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
 INSTANTIATE_TEST_CASE_P(
     SqlWindowQueryParse, TransformRequestModeTest,
-    testing::ValuesIn(InitCases("cases/plan/window_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 
 // INSTANTIATE_TEST_CASE_P(
 //    SqlWherePlan, TransformRequestModeTest,
-//    testing::ValuesIn(InitCases("cases/plan/where_query.yaml")));
+//    testing::ValuesIn(sqlcase::InitCases("cases/plan/where_query.yaml", FILTERS)));
 
 // INSTANTIATE_TEST_CASE_P(
 //   SqlGroupPlan, TransformRequestModeTest,
-//    testing::ValuesIn(InitCases("cases/plan/group_query.yaml")));
+//    testing::ValuesIn(sqlcase::InitCases("cases/plan/group_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlHavingPlan, TransformRequestModeTest,
-    testing::ValuesIn(InitCases("cases/plan/having_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/having_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlOrderPlan, TransformRequestModeTest,
-    testing::ValuesIn(InitCases("cases/plan/order_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/order_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlJoinPlan, TransformRequestModeTest,
-    testing::ValuesIn(InitCases("cases/plan/join_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlDistinctPlan, TransformRequestModeTest,
-    testing::ValuesIn(InitCases("cases/plan/distinct_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/distinct_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlSubQueryPlan, TransformRequestModeTest,
-    testing::ValuesIn(InitCases("cases/plan/sub_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/sub_query.yaml", FILTERS)));
 
 void CheckTransformPhysicalPlan(const SqlCase& sql_case,
                                 bool is_cluster_optimized,

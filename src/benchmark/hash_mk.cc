@@ -16,7 +16,8 @@
 
 #include "base/fe_hash.h"
 #include "benchmark/benchmark.h"
-
+namespace hybridse {
+namespace bm {
 static void BM_HashFunction(benchmark::State& state) {  // NOLINT
     for (auto _ : state) {
         int32_t i = -1;
@@ -27,3 +28,5 @@ static void BM_HashFunction(benchmark::State& state) {  // NOLINT
 
 BENCHMARK(BM_HashFunction);
 BENCHMARK_MAIN();
+}  // namespace bm
+}  // namespace hybridse

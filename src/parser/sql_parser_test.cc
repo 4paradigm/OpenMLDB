@@ -27,20 +27,6 @@ using hybridse::node::NodeManager;
 using hybridse::node::NodePointVector;
 using hybridse::node::SqlNode;
 using hybridse::sqlcase::SqlCase;
-std::vector<SqlCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SqlCase> &cases);  // NOLINT
-
-void InitCases(std::string yaml_path, std::vector<SqlCase> &cases) {  // NOLINT
-    if (!SqlCase::CreateSqlCasesFromYaml(
-            hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases)) {
-        FAIL();
-    }
-}
-std::vector<SqlCase> InitCases(std::string yaml_path) {
-    std::vector<SqlCase> cases;
-    InitCases(yaml_path, cases);
-    return cases;
-}
 class SqlParserTest : public ::testing::TestWithParam<SqlCase> {
  public:
     SqlParserTest() {
@@ -71,63 +57,63 @@ class SqlParserTest : public ::testing::TestWithParam<SqlCase> {
 
 INSTANTIATE_TEST_SUITE_P(
     SqlSimpleQueryParse, SqlParserTest,
-    testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")),
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml")),
     SqlParserTest::PrintToStringParamName());
 
 INSTANTIATE_TEST_SUITE_P(
     SqlRenameQueryParse, SqlParserTest,
-    testing::ValuesIn(InitCases("cases/plan/rename_query.yaml")),
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/rename_query.yaml")),
     SqlParserTest::PrintToStringParamName());
 
 INSTANTIATE_TEST_SUITE_P(
     SqlWindowQueryParse, SqlParserTest,
-    testing::ValuesIn(InitCases("cases/plan/window_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     SqlDistinctParse, SqlParserTest,
-    testing::ValuesIn(InitCases("cases/plan/distinct_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/distinct_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     SqlWhereParse, SqlParserTest,
-    testing::ValuesIn(InitCases("cases/plan/where_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/where_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     SqlGroupParse, SqlParserTest,
-    testing::ValuesIn(InitCases("cases/plan/group_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/group_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     SqlHavingParse, SqlParserTest,
-    testing::ValuesIn(InitCases("cases/plan/having_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/having_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     SqlOrderParse, SqlParserTest,
-    testing::ValuesIn(InitCases("cases/plan/order_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/order_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     SqlJoinParse, SqlParserTest,
-    testing::ValuesIn(InitCases("cases/plan/join_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     SqlUnionParse, SqlParserTest,
-    testing::ValuesIn(InitCases("cases/plan/union_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/union_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     SqlSubQueryParse, SqlParserTest,
-    testing::ValuesIn(InitCases("cases/plan/sub_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/sub_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(UdfParse, SqlParserTest,
-                         testing::ValuesIn(InitCases("cases/plan/udf.yaml")));
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/udf.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     SqlCreate, SqlParserTest,
-    testing::ValuesIn(InitCases("cases/plan/create.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     SqlInsert, SqlParserTest,
-    testing::ValuesIn(InitCases("cases/plan/insert.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/insert.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(SqlCmdParserTest, SqlParserTest,
-                         testing::ValuesIn(InitCases("cases/plan/cmd.yaml")));
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/cmd.yaml")));
 
 TEST_P(SqlParserTest, Parser_Select_Expr_List) {
     auto sql_case = GetParam();

@@ -36,7 +36,8 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "vm/simple_catalog.h"
-#include "vm/test_base.h"
+#include "testing/test_base.h"
+#include "testing/engine_test_base.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -47,41 +48,27 @@ namespace hybridse {
 namespace vm {
 
 using hybridse::sqlcase::SqlCase;
-std::vector<SqlCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SqlCase>& cases);  // NOLINT
+const std::vector<std::string> FILTERS({"physical-plan-unsupport", "plan-unsupport", "parser-unsupport"});
 
-void InitCases(std::string yaml_path, std::vector<SqlCase>& cases) {  // NOLINT
-    if (!SqlCase::CreateSqlCasesFromYaml(
-            hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases,
-            std::vector<std::string>({"physical-plan-unsupport",
-                                      "plan-unsupport", "parser-unsupport"}))) {
-        FAIL();
-    }
-}
-std::vector<SqlCase> InitCases(std::string yaml_path) {
-    std::vector<SqlCase> cases;
-    InitCases(yaml_path, cases);
-    return cases;
-}
 class SqlCompilerTest : public ::testing::TestWithParam<SqlCase> {};
 INSTANTIATE_TEST_CASE_P(
     SqlSimpleQueryParse, SqlCompilerTest,
-    testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
 INSTANTIATE_TEST_CASE_P(
     SqlWindowQueryParse, SqlCompilerTest,
-    testing::ValuesIn(InitCases("cases/plan/window_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlWherePlan, SqlCompilerTest,
-    testing::ValuesIn(InitCases("cases/plan/where_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/where_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlGroupPlan, SqlCompilerTest,
-    testing::ValuesIn(InitCases("cases/plan/group_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/group_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlJoinPlan, SqlCompilerTest,
-    testing::ValuesIn(InitCases("cases/plan/join_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 
 void CompilerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
                    EngineMode engine_mode,

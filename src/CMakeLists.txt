@@ -61,14 +61,23 @@ if (LLVM_EXT_ENABLE)
 endif()
 
 add_library(hybridse_flags STATIC ${CMAKE_SOURCE_DIR}/src/flags.cc)
-
+target_link_libraries(hybridse_flags gflags)
 # hybridse core library
-add_library(hybridse_core STATIC ${SRC_FILE_LIST} ${PROJECT_SOURCE_DIR}/src/flags.cc  $<TARGET_OBJECTS:hybridse_proto> $<TARGET_OBJECTS:hybridse_parser> case/case_data_mock.cc vm/engine_test_base.cc vm/test_base.cc)
+add_library(hybridse_core STATIC ${SRC_FILE_LIST} $<TARGET_OBJECTS:hybridse_proto> $<TARGET_OBJECTS:hybridse_parser> case/case_data_mock.cc)
 target_link_libraries(hybridse_core
     ${yaml_libs} ${LLVM_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} hybridse_flags)
-
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+	add_library(hybridse_core_shared SHARED ${SRC_FILE_LIST} $<TARGET_OBJECTS:hybridse_proto> $<TARGET_OBJECTS:hybridse_parser> case/case_data_mock.cc)
+	target_link_libraries(hybridse_core_shared
+            ${yaml_libs} ${LLVM_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} hybridse_flags)
+	set(HYBRIDSE_CORE_LIBS hybridse_core_shared)
+else()
+	set(HYBRIDSE_CORE_LIBS hybridse_core)
+endif()
+add_subdirectory(testing)
 # hybridse core unittests
 if (TESTING_ENABLE AND CORE_TESTING_ENABLE)
+
 	get_property(TEST_FILE_LIST_STR GLOBAL PROPERTY PROP_TEST_SRC_FILE_LIST)
 	string(REPLACE " " ";" TEST_FILE_LIST ${TEST_FILE_LIST_STR})
 	set(TEST_CPP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -77,15 +86,20 @@ if (TESTING_ENABLE AND CORE_TESTING_ENABLE)
 	    get_filename_component(TEST_TARGET_DIR ${RELATIVE_TEST_PATH} DIRECTORY)
 	    get_filename_component(TEST_TARGET_NAME ${RELATIVE_TEST_PATH} NAME_WE)
 	    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR})
-		add_executable(${TEST_TARGET_NAME} ${TEST_SCRIPT})
+		if (${TEST_TARGET_NAME} STREQUAL "zetasql_parser_test")
+			add_executable(${TEST_TARGET_NAME} ${TEST_SCRIPT})
+			target_link_libraries(${TEST_TARGET_NAME} gtest
+					${ZETASQL_LIBS} ${GTEST_LIBRARIES} )
+		else()
+			add_executable(${TEST_TARGET_NAME} ${TEST_SCRIPT} testing/engine_test_base.cc testing/test_base.cc)
+			target_link_libraries(${TEST_TARGET_NAME} gtest ${HYBRIDSE_CORE_LIBS} hybridse_flags
+			${yaml_libs} ${BRPC_LIBS})
+		endif()
+        add_test(${TEST_TARGET_NAME}
+				${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
+				--gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
 
-		add_test(${TEST_TARGET_NAME}
-			${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
-			--gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
-
-            target_link_options(${TEST_TARGET_NAME} PRIVATE -rdynamic)
-	    target_link_libraries(${TEST_TARGET_NAME} gtest hybridse_core hybridse_flags
-                ${yaml_libs} ${BRPC_LIBS})
+		target_link_options(${TEST_TARGET_NAME} PRIVATE -rdynamic)
     	list(APPEND test_list ${TEST_TARGET_NAME})
 	endforeach()
 	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

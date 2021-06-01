@@ -1512,7 +1512,24 @@ std::string FindSqlCaseBaseDirPath() {
     }
     return std::string();
 }
+void InitCases(std::string yaml_path, std::vector<SqlCase>& cases) {  // NOLINT
+    SqlCase::CreateSqlCasesFromYaml(hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases);
+}
+std::vector<SqlCase> InitCases(std::string yaml_path) {
+    std::vector<SqlCase> cases;
+    InitCases(yaml_path, cases);
+    return cases;
+}
+std::vector<SqlCase> InitCases(std::string yaml_path, std::vector<std::string> filters) {
+    std::vector<SqlCase> cases;
+    InitCases(yaml_path, cases, filters);
+    return cases;
+}
 
+void InitCases(std::string yaml_path, std::vector<SqlCase>& cases,  // NOLINT
+               const std::vector<std::string>& filters) {
+    !SqlCase::CreateSqlCasesFromYaml(hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases, filters);
+}
 bool SqlCase::BuildCreateSpSqlFromInput(int32_t input_idx,
                                         const std::string& select_sql,
                                         const std::set<size_t>& common_idx,

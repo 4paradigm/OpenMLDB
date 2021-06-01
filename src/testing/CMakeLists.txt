@@ -1,4 +1,3 @@
-#!/bin/bash
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,26 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -eE
+include_directories(${INCLUDE_DIRECTORIES}
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_BINARY_DIR}/src)
 
-# goto toplevel directory
-pushd "$(dirname "$0")/.."
-HYRBIDSE_DIR=$(pwd)
-
-# shellcheck disable=SC1091
-source tools/init_env.profile.sh
-
-if uname -a | grep -q Darwin; then
-	# in case coreutils not install on mac
-	alias nproc='sysctl -n hw.logicalcpu'
-fi
-
-mkdir -p build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j"$(nproc)"
-./src/base/fe_slice_test
-./src/base/hash_test
-SQL_CASE_BASE_DIR=${HYRBIDSE_DIR} make -j"$(nproc)" test
-
-popd
+add_library(hybridse_test_base STATIC engine_test_base.cc test_base.cc)
+target_link_libraries(hybridse_test_base ${HYBRIDSE_CORE_LIBS}
+        ${yaml_libs} ${LLVM_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} hybridse_flags)

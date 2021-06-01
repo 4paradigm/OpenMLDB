@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_VM_TEST_BASE_H_
-#define SRC_VM_TEST_BASE_H_
+#ifndef SRC_TESTING_TEST_BASE_H_
+#define SRC_TESTING_TEST_BASE_H_
 
 #include <memory>
 #include <sstream>
@@ -63,4 +63,4 @@ void PrintSchema(const Schema& schema);
 }  // namespace vm
 }  // namespace hybridse
 
-#endif  // SRC_VM_TEST_BASE_H_
+#endif  // SRC_TESTING_TEST_BASE_H_

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+syntax = "proto2";
 package hybridse.type;
 option cc_generic_services = false;
 option java_package = "com._4paradigm.hybridse.type";

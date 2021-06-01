@@ -17,7 +17,7 @@
 #include "vm/mem_catalog.h"
 #include "gtest/gtest.h"
 #include "vm/catalog_wrapper.h"
-#include "vm/test_base.h"
+#include "testing/test_base.h"
 
 namespace hybridse {
 namespace vm {

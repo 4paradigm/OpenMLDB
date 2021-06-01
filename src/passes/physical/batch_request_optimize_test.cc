@@ -16,7 +16,7 @@
 
 #include "passes/physical/batch_request_optimize.h"
 #include "gtest/gtest.h"
-#include "vm/engine_test_base.h"
+#include "testing/engine_test_base.h"
 #include "vm/sql_compiler.h"
 
 namespace hybridse {
@@ -29,100 +29,100 @@ class BatchRequestOptimizeTest : public ::testing::TestWithParam<SqlCase> {
 
 INSTANTIATE_TEST_CASE_P(
     BatchRequestTestFzTest, BatchRequestOptimizeTest,
-    testing::ValuesIn(InitCases("/cases/query/fz_sql.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/query/fz_sql.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestSimpleQuery, BatchRequestOptimizeTest,
-    testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/query/simple_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestConstQuery, BatchRequestOptimizeTest,
-    testing::ValuesIn(InitCases("/cases/query/const_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/query/const_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestUdfQuery, BatchRequestOptimizeTest,
-    testing::ValuesIn(InitCases("/cases/query/udf_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/query/udf_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestOperatorQuery, BatchRequestOptimizeTest,
-    testing::ValuesIn(InitCases("/cases/query/operator_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/query/operator_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestUdafQuery, BatchRequestOptimizeTest,
-    testing::ValuesIn(InitCases("/cases/query/udaf_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/query/udaf_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestExtreamQuery, BatchRequestOptimizeTest,
-    testing::ValuesIn(InitCases("/cases/query/extream_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/query/extream_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestLastJoinQuery, BatchRequestOptimizeTest,
-    testing::ValuesIn(InitCases("/cases/query/last_join_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/query/last_join_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestLastJoinWindowQuery, BatchRequestOptimizeTest,
-    testing::ValuesIn(InitCases("/cases/query/last_join_window_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/query/last_join_window_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestRequestLastJoinWindowQuery, BatchRequestOptimizeTest,
-    testing::ValuesIn(InitCases("/cases/query/last_join_window_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/query/last_join_window_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestWindowQuery, BatchRequestOptimizeTest,
-    testing::ValuesIn(InitCases("/cases/query/window_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/query/window_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestWindowWithUnionQuery, BatchRequestOptimizeTest,
-    testing::ValuesIn(InitCases("/cases/query/window_with_union_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/query/window_with_union_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestBatchGroupQuery, BatchRequestOptimizeTest,
-    testing::ValuesIn(InitCases("/cases/query/group_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/query/group_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestTestWindowRowQuery, BatchRequestOptimizeTest,
     testing::ValuesIn(
-        InitCases("/cases/integration/v1/window/test_window_row.yaml")));
+        sqlcase::InitCases("/cases/integration/v1/window/test_window_row.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestTestWindowRowsRangeQuery, BatchRequestOptimizeTest,
     testing::ValuesIn(
-        InitCases("/cases/integration/v1/window/test_window_row_range.yaml")));
+        sqlcase::InitCases("/cases/integration/v1/window/test_window_row_range.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineTestWindowUnion, BatchRequestOptimizeTest,
     testing::ValuesIn(
-        InitCases("/cases/integration/v1/window/test_window_union.yaml")));
+        sqlcase::InitCases("/cases/integration/v1/window/test_window_union.yaml")));
 INSTANTIATE_TEST_CASE_P(BatchRequestTestLast_Join, BatchRequestOptimizeTest,
-                        testing::ValuesIn(InitCases(
+                        testing::ValuesIn(sqlcase::InitCases(
                             "/cases/integration/v1/join/test_last_join.yaml")));
 INSTANTIATE_TEST_CASE_P(BatchRequestTestLastJoin, BatchRequestOptimizeTest,
-                        testing::ValuesIn(InitCases(
+                        testing::ValuesIn(sqlcase::InitCases(
                             "/cases/integration/v1/join/test_lastjoin.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineTestSelectSample, BatchRequestOptimizeTest,
     testing::ValuesIn(
-        InitCases("/cases/integration/v1/select/test_select_sample.yaml")));
+        sqlcase::InitCases("/cases/integration/v1/select/test_select_sample.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestTestSubSelect, BatchRequestOptimizeTest,
     testing::ValuesIn(
-        InitCases("/cases/integration/v1/select/test_sub_select.yaml")));
+        sqlcase::InitCases("/cases/integration/v1/select/test_sub_select.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineTestUdfFunction, BatchRequestOptimizeTest,
     testing::ValuesIn(
-        InitCases("/cases/integration/v1/function/test_udf_function.yaml")));
+        sqlcase::InitCases("/cases/integration/v1/function/test_udf_function.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineTestUdafFunction, BatchRequestOptimizeTest,
     testing::ValuesIn(
-        InitCases("/cases/integration/v1/function/test_udaf_function.yaml")));
+        sqlcase::InitCases("/cases/integration/v1/function/test_udaf_function.yaml")));
 INSTANTIATE_TEST_CASE_P(BatchRequestTestWhere, BatchRequestOptimizeTest,
-                        testing::ValuesIn(InitCases(
+                        testing::ValuesIn(sqlcase::InitCases(
                             "/cases/integration/v1/select/test_where.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestTestFzFunction, BatchRequestOptimizeTest,
     testing::ValuesIn(
-        InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
+        sqlcase::InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestTestFzSqlFunction, BatchRequestOptimizeTest,
-    testing::ValuesIn(InitCases("/cases/integration/v1/test_fz_sql.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/integration/v1/test_fz_sql.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestTestClusterWindowAndLastJoin, BatchRequestOptimizeTest,
     testing::ValuesIn(
-        InitCases("/cases/integration/cluster/window_and_lastjoin.yaml")));
+        sqlcase::InitCases("/cases/integration/cluster/window_and_lastjoin.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestTestClusterWindowRow, BatchRequestOptimizeTest,
     testing::ValuesIn(
-        InitCases("/cases/integration/cluster/test_window_row.yaml")));
+        sqlcase::InitCases("/cases/integration/cluster/test_window_row.yaml")));
 INSTANTIATE_TEST_CASE_P(
     BatchRequestTestClusterWindowRowRange, BatchRequestOptimizeTest,
     testing::ValuesIn(
-        InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
+        sqlcase::InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
 
 void CheckOptimizePlan(const SqlCase& sql_case_org,
                        const std::set<size_t> common_column_indices,

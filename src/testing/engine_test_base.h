@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_VM_ENGINE_TEST_BASE_H_
-#define SRC_VM_ENGINE_TEST_BASE_H_
+#ifndef SRC_TESTING_ENGINE_TEST_BASE_H_
+#define SRC_TESTING_ENGINE_TEST_BASE_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,7 +51,7 @@
 #include "plan/planner.h"
 #include "sys/time.h"
 #include "vm/engine.h"
-#include "vm/test_base.h"
+#include "testing/test_base.h"
 #define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_CNT 20
 
@@ -73,8 +73,6 @@ using hybridse::common::kSqlError;
 using hybridse::sqlcase::SqlCase;
 enum EngineRunMode { RUNBATCH, RUNONE };
 
-std::vector<SqlCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SqlCase>& cases);  // NOLINT
 
 bool IsNaN(float x);
 bool IsNaN(double x);
@@ -431,4 +429,4 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
 
 }  // namespace vm
 }  // namespace hybridse
-#endif  // SRC_VM_ENGINE_TEST_BASE_H_
+#endif  // SRC_TESTING_ENGINE_TEST_BASE_H_

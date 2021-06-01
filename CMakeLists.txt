@@ -57,7 +57,15 @@ if (CMAKE_BUILD_TYPE STREQUAL "")
 endif ()
 message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+if(UNIX AND NOT APPLE AND NOT DEFINED SWIG_DIR)
+    # TODO: swig 4.0.1 compiled is not portable, check 'swig -swiglib'
+    set(SWIG_DIR ${CMAKE_SOURCE_DIR}/thirdparty/share/swig/4.0.1)
+endif()
 
 # llvm dependency
 if (NOT DEFINED LLVM_DIR)
@@ -83,7 +91,7 @@ set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
 find_package(Boost COMPONENTS filesystem date_time regex REQUIRED)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
-    set(COMMON_LIBS boost_date_time boost_filesystem boost_regex leveldb protobuf glog gflags unwind z snappy ssl crypto dl)
+    set(COMMON_LIBS boost_date_time boost_filesystem boost_regex leveldb protobuf glog unwind z snappy ssl crypto dl)
     set(BRPC_LIBS brpc ${COMMON_LIBS})
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB
@@ -97,7 +105,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
             "-Wl,-U,_ProfilerStart"
             "-Wl,-U,_ProfilerStop")
-    set(COMMON_LIBS boost_date_time boost_filesystem boost_regex leveldb protobuf glog gflags z snappy ssl crypto dl)
+    set(COMMON_LIBS boost_date_time boost_filesystem boost_regex leveldb protobuf glog  z snappy ssl crypto dl)
     set(BRPC_LIBS brpc ${COMMON_LIBS})
 endif ()
 
@@ -120,10 +128,12 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_definitions('-Wall')
     add_definitions('-fexceptions')
     add_definitions(-Wno-unused-function)
+    add_definitions(-Wno-register)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     add_definitions('-Wall')
     add_definitions('-fexceptions')
     add_definitions(-Wreorder)
+    add_definitions(-Wno-register)
     add_definitions(-Wno-unused-private-field)
     add_definitions(-Wno-unused-function)
     add_definitions(-Wno-overloaded-virtual)
@@ -139,7 +149,6 @@ find_package(yaml-cpp REQUIRED)
 set(yaml_libs yaml-cpp)
 
 add_definitions('-g')
-add_definitions('-std=c++14')
 add_definitions(${LLVM_DEFINITIONS})
 find_package(SWIG REQUIRED)
 include(UseSWIG)
@@ -149,6 +158,59 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib64)
 
+
+set(absl_ROOT "${PROJECT_SOURCE_DIR}/thirdparty")
+find_package(absl REQUIRED)
+
+set(GTEST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty")
+find_package(GTest 1.10 EXACT REQUIRED)
+
+set(Protobuf_USE_STATIC_LIBS ON)
+set(Protobuf_ROOT "${PROJECT_SOURCE_DIR}/thirdparty")
+find_package(Protobuf 3.6 EXACT REQUIRED)
+list(
+        APPEND
+        ABSL_LIBS
+        absl::algorithm
+        absl::base
+        absl::cord
+        absl::debugging
+        absl::flat_hash_map
+        absl::flags
+        absl::flags_parse
+        absl::memory
+        absl::meta
+        absl::numeric
+        absl::random_random
+        absl::strings
+        absl::strings_internal
+        absl::synchronization
+        absl::time
+        absl::status
+        absl::utility)
+
+list(APPEND ICU_LIBS icui18n icuio icuuc icudata)
+list(APPEND file_based_test_driver_LIBS
+        alternations
+        test_case_options
+        test_case_outputs
+        file_based_test_driver
+        test_case_mode
+        logging
+        path
+        status
+        unified_diff_oss
+        ret_check
+        )
+set(ZETASQL_LIBS zetasql
+    re2
+    ${ICU_LIBS}
+    ${Protobuf_LIBRARIES}
+    ${ABSL_LIBS}
+    date_proto
+    timeofday_proto
+    latlng_proto
+    )
 if (PYSDK_ENABLE)
     set(Python_ADDITIONAL_VERSIONS "3.8;3.7;3.6;3.5;2.7" CACHE STRING "Python to use for binding")
     find_package(PythonInterp REQUIRED)
@@ -162,7 +224,6 @@ endif ()
 # Find java
 
 if (JAVASDK_ENABLE)
-    set(JAVA_HOME ${PROJECT_SOURCE_DIR}/thirdparty/jdk1.8.0_141)
     find_package(Java COMPONENTS Development REQUIRED)
     message(STATUS "Found Java: ${Java_JAVA_EXECUTABLE} (found version \"${Java_VERSION_STRING}\")")
 

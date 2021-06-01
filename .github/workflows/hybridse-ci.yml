@@ -12,7 +12,7 @@ jobs:
   linux-build:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:latest
+      image: ghcr.io/4paradigm/hybridsql:0.3.0
     env:
       OS: linux
       ARCH: x86_64
@@ -32,6 +32,10 @@ jobs:
       - name: Build Core
         run: |
           ./tools/hybridse_build.sh
+
+      - name: Zetasql parser test
+        run: |
+          ./tools/zetasql_parser_test.sh
 
       - name: Core Test
         run: |
@@ -115,8 +119,6 @@ jobs:
       - name: Install thirdparty
         run: |
           brew install swig
-          brew install gflags
-          brew install glog
           brew install coreutils
           brew install yaml-cpp
           sh tools/install_thirdparty_mac.sh
@@ -124,6 +126,10 @@ jobs:
       - name: Build Core
         run: |
           ./tools/hybridse_build.sh
+
+      - name: Zetasql parser test
+        run: |
+          ./tools/zetasql_parser_test.sh
 
       - name: Core Test
         run: |
@@ -188,7 +194,7 @@ jobs:
   java-allinone-deploy:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:latest
+      image: ghcr.io/4paradigm/hybridsql:0.3.0
     needs: ["macos-build"]
     if: >
       success() && github.ref == 'refs/heads/main'
@@ -284,7 +290,7 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:latest
+      image: ghcr.io/4paradigm/hybridsql:0.3.0
 
     steps:
       - uses: actions/checkout@v2

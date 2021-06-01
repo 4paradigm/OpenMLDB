@@ -42,7 +42,7 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "sys/time.h"
 #include "vm/engine.h"
-#include "vm/test_base.h"
+#include "testing/test_base.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)

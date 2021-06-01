@@ -38,4 +38,3 @@ ADD_CUSTOM_TARGET(run_gen_parser DEPENDS ${SQL_AST_LEXER_GEN}
 add_library(hybridse_parser OBJECT ${SQL_AST_LEXER_GEN} ${SQL_AST_PARSER_GEN})
 add_dependencies(hybridse_parser run_gen_parser)
 
-

@@ -36,20 +36,6 @@ DECLARE_bool(enable_keep_alive);
 namespace hybridse {
 namespace sdk {
 using hybridse::sqlcase::SqlCase;
-std::vector<SqlCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SqlCase> &cases);  // NOLINT
-
-void InitCases(std::string yaml_path, std::vector<SqlCase> &cases) {  // NOLINT
-    if (!SqlCase::CreateSqlCasesFromYaml(
-            hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases)) {
-        FAIL();
-    }
-}
-std::vector<SqlCase> InitCases(std::string yaml_path) {
-    std::vector<SqlCase> cases;
-    InitCases(yaml_path, cases);
-    return cases;
-}
 class MockClosure : public ::google::protobuf::Closure {
  public:
     MockClosure() {}
@@ -677,7 +663,7 @@ void CheckRows(const vm::Schema &schema, const std::string &order_col,
 }
 INSTANTIATE_TEST_CASE_P(
     SdkInsert, DBMSSdkTest,
-    testing::ValuesIn(InitCases("/cases/insert/simple_insert.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/insert/simple_insert.yaml")));
 
 TEST_P(DBMSSdkTest, ExecuteQueryTest) {
     auto sql_case = GetParam();

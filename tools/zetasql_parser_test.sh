@@ -29,10 +29,10 @@ fi
 
 mkdir -p build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j"$(nproc)"
+cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=ON
+make zetasql_parser_test -j"$(nproc)"
+make fe_slice_test -j"$(nproc)"
+./src/parser/zetasql_parser_test
 ./src/base/fe_slice_test
-./src/base/hash_test
-SQL_CASE_BASE_DIR=${HYRBIDSE_DIR} make -j"$(nproc)" test
 
 popd

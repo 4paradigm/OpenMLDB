@@ -27,7 +27,7 @@
 #include "case/sql_case.h"
 #include "glog/logging.h"
 #include "tablet/tablet_catalog.h"
-#include "vm/engine_test_base.h"
+#include "testing/engine_test_base.h"
 namespace hybridse {
 namespace vm {
 std::shared_ptr<tablet::TabletCatalog> BuildToydbCatalog();

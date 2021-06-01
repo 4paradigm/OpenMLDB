@@ -41,7 +41,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#include <cstddef>
+#include <stddef.h>
 #endif
 
 namespace hybridse {

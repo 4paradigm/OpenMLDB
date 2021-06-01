@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "vm/test_base.h"
+#include "testing/test_base.h"
 #include "plan/plan_api.h"
 namespace hybridse {
 namespace vm {

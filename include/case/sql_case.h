@@ -308,6 +308,11 @@ class SqlCase {
 };
 std::string FindSqlCaseBaseDirPath();
 
+std::vector<SqlCase> InitCases(std::string yaml_path);
+std::vector<SqlCase> InitCases(std::string yaml_path, std::vector<std::string> filters);
+void InitCases(std::string yaml_path, std::vector<SqlCase>& cases);  // NOLINT
+void InitCases(std::string yaml_path, std::vector<SqlCase>& cases, // NOLINT
+               const std::vector<std::string>& filters);
 }  // namespace sqlcase
 }  // namespace hybridse
 #endif  // INCLUDE_CASE_SQL_CASE_H_

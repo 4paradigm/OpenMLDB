@@ -45,7 +45,7 @@
 #include "udf/udf.h"
 #include "vm/simple_catalog.h"
 #include "vm/sql_compiler.h"
-#include "vm/test_base.h"
+#include "testing/test_base.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -58,25 +58,10 @@ namespace vm {
 using hybridse::passes::ConditionOptimized;
 using hybridse::passes::ExprPair;
 using hybridse::sqlcase::SqlCase;
+const std::vector<std::string> FILTERS({"physical-plan-unsupport",
+                                        "logical-plan-unsupport",
+                                        "parser-unsupport"});
 
-std::vector<SqlCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SqlCase>& cases);  // NOLINT
-
-void InitCases(std::string yaml_path, std::vector<SqlCase>& cases) {  // NOLINT
-    if (!SqlCase::CreateSqlCasesFromYaml(
-            hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases,
-            std::vector<std::string>({"physical-plan-unsupport",
-                                      "logical-plan-unsupport",
-                                      "parser-unsupport"}))) {
-        FAIL();
-    }
-}
-
-std::vector<SqlCase> InitCases(std::string yaml_path) {
-    std::vector<SqlCase> cases;
-    InitCases(yaml_path, cases);
-    return cases;
-}
 class TransformTest : public ::testing::TestWithParam<SqlCase> {
  public:
     TransformTest() {}
@@ -85,41 +70,41 @@ class TransformTest : public ::testing::TestWithParam<SqlCase> {
 };
 INSTANTIATE_TEST_CASE_P(
     SqlSimpleQueryParse, TransformTest,
-    testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
 INSTANTIATE_TEST_CASE_P(
     SqlReanmeQueryParse, TransformTest,
-    testing::ValuesIn(InitCases("cases/plan/rename_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/rename_query.yaml", FILTERS)));
 INSTANTIATE_TEST_CASE_P(
     SqlWindowQueryParse, TransformTest,
-    testing::ValuesIn(InitCases("cases/plan/window_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlWherePlan, TransformTest,
-    testing::ValuesIn(InitCases("cases/plan/where_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/where_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlGroupPlan, TransformTest,
-    testing::ValuesIn(InitCases("cases/plan/group_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/group_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlHavingPlan, TransformTest,
-    testing::ValuesIn(InitCases("cases/plan/having_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/having_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlOrderPlan, TransformTest,
-    testing::ValuesIn(InitCases("cases/plan/order_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/order_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlJoinPlan, TransformTest,
-    testing::ValuesIn(InitCases("cases/plan/join_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlDistinctPlan, TransformTest,
-    testing::ValuesIn(InitCases("cases/plan/distinct_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/distinct_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_CASE_P(
     SqlSubQueryPlan, TransformTest,
-    testing::ValuesIn(InitCases("cases/plan/sub_query.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/sub_query.yaml", FILTERS)));
 
 TEST_P(TransformTest, transform_physical_plan) {
     std::string sqlstr = GetParam().sql_str();

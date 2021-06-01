@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+syntax = "proto2";
 import "fe_type.proto";
 import "fe_common.proto";
 import "plan.proto";
