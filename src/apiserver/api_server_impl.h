@@ -116,7 +116,7 @@ JsonWriter& operator&(JsonWriter& ar, const ::google::protobuf::RepeatedPtrField
 
 JsonWriter& operator&(JsonWriter& ar, const ::google::protobuf::RepeatedPtrField< ::fedb::common::ColumnKey >& column_key);
 
-JsonWriter& operator&(JsonWriter& ar, ::fedb::nameserver::TableInfo& info);
+JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableInfo> info);
 
 }  // namespace http
 }  // namespace fedb

@@ -477,17 +477,44 @@ TEST_F(APIServerTest, procedure) {
 
 TEST_F(APIServerTest, getDBs) {
     const auto env = APIServerTestEnv::Instance();
+    std::vector<std::string> db_names = {"api_server_test", "monkey", "shark", "zebra"};
+    hybridse::sdk::Status status;
+    for (size_t i = 1; i < db_names.size(); i++) {
+        env->cluster_remote->DropDB(db_names[i], &status);
+        env->cluster_remote->CreateDB(db_names[i], &status);   
+    }
     brpc::Controller show_cntl;  // default is GET
     show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs";
     env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
     ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
-    LOG(INFO) << "get dbs: " << show_cntl.response_attachment();
+    butil::rapidjson::Document document;
+    if (document.Parse(show_cntl.response_attachment().to_string().c_str()).HasParseError()) {
+        ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                            << ", raw resp: " << show_cntl.response_attachment().to_string();
+    }
+    ASSERT_TRUE(document.HasMember("dbs"));
+    ASSERT_TRUE(document["dbs"].IsArray());
+    ASSERT_EQ(document["dbs"].Size(), db_names.size());
+    std::vector<std::string> result;
+    for (size_t i = 0; i < document["dbs"].Size(); i++) {
+        result.push_back(document["dbs"][i].GetString());
+    }
+    sort(result.begin(), result.end());
+    for (size_t i = 0; i < document["dbs"].Size(); i++) {
+        ASSERT_EQ(result[i], db_names[i]); 
+    }
 }
 
 TEST_F(APIServerTest, getTables) {
+    // TODO(Zhihao Zhao): Check the response.
     const auto env = APIServerTestEnv::Instance();
-
-    // create table
+    {
+        brpc::Controller show_cntl;  // default is GET
+        show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/api_server_test/tables";
+        env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
+        LOG(INFO) << "get tables: " << show_cntl.response_attachment();
+    }
     std::vector<std::string> tables = {"apple", "pear", "banana"};
     hybridse::sdk::Status status;
     for (auto table: tables) {
@@ -503,14 +530,23 @@ TEST_F(APIServerTest, getTables) {
         ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << "fail to create table";
         ASSERT_TRUE(env->cluster_remote->RefreshCatalog());
     }
-    brpc::Controller show_cntl;  // default is GET
-    show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/api_server_test/tables";
-    env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
-    ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
-    LOG(INFO) << "get tables: " << show_cntl.response_attachment();
+    {
+        brpc::Controller show_cntl;  // default is GET
+        show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/api_server_test/tables";
+        env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
+        LOG(INFO) << "get tables: " << show_cntl.response_attachment();
+    }
     for (auto table: tables) {
         brpc::Controller show_cntl;  // default is GET
         show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/api_server_test/tables/" + table;
+        env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
+        LOG(INFO) << "get tables: " << show_cntl.response_attachment();
+    }
+    {
+        brpc::Controller show_cntl;  // default is GET
+        show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/api_server_test/tables/not_exist";
         env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
         ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
         LOG(INFO) << "get tables: " << show_cntl.response_attachment();

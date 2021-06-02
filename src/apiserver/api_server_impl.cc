@@ -425,6 +425,9 @@ void APIServerImpl::RegisterGetTable() {
         auto db = db_it->second;
         auto tables = cluster_sdk_->GetTables(db);
         writer.StartObject();
+        writer.Member("code") & 0;
+        writer.Member("msg") & "ok";
+        writer.Member("tables");
         writer.StartArray();
         for (std::shared_ptr<::fedb::nameserver::TableInfo> table : tables) {
             writer << table;
@@ -444,7 +447,16 @@ void APIServerImpl::RegisterGetTable() {
         auto db = db_it->second;
         auto table = table_it->second;
         auto table_info = cluster_sdk_->GetTableInfo(db, table);
-        writer << table_info;
+        writer.StartObject();
+        writer.Member("code") & 0;
+        if (table_info == nullptr) {
+            LOG(INFO) << "Not found";
+            writer.Member("msg") & std::string("Table not found");
+        } else {
+            writer.Member("msg") & std::string("ok");
+            writer.Member("table") & table_info;
+        }
+        writer.EndObject();
     });
 }
 
@@ -636,18 +648,10 @@ JsonWriter& operator& (JsonWriter& ar, const ::google::protobuf::RepeatedPtrFiel
             ar.Member("data_type") & ::fedb::type::DataType_Name(column.data_type());
         }
         if (column.has_not_null()) {
-            if (column.not_null()) {
-                ar.Member("not_null") & "true";
-            } else {
-                ar.Member("not_null") & "false";
-            }
+            ar.Member("not_null") & column.not_null();
         }
         if (column.has_is_constant()) {
-            if (column.is_constant()) {
-                ar.Member("is_constant") & "true";
-            } else {
-                ar.Member("is_constant") & "false";
-            }
+            ar.Member("is_constant") & column.is_constant();
         }
         ar.EndObject();
     }
