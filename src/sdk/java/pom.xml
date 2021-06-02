@@ -5,7 +5,7 @@
 
     <groupId>com.4paradigm.hybridsql</groupId>
     <artifactId>fedb-sdk</artifactId>
-    <version>2.2.0</version>
+    <version>2.2.2</version>
     <modules>
            <module>sql-jdbc</module>
            <module>sql-native</module>
@@ -39,7 +39,7 @@
     </scm>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.version.base>2.2.0</project.version.base>
+        <project.version.base>2.2.2</project.version.base>
         <project.version.suffix></project.version.suffix>
     </properties>
     <build>
@@ -142,9 +142,28 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.sonatype.plugins</groupId>
+                <artifactId>nexus-staging-maven-plugin</artifactId>
+                <version>1.6.7</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <serverId>ossrh</serverId>
+                    <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
+                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+            </plugin>
+        </plugins>
     </build>
-  <pluginRepositories>
-  </pluginRepositories>
 
   <distributionManagement>
     <snapshotRepository>
