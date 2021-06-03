@@ -52,7 +52,6 @@ class ClusterSDK {
     bool Init();
 
     bool Refresh();
-    bool RefreshNotify();
 
     inline uint64_t GetClusterVersion() {
         return cluster_version_.load(std::memory_order_relaxed);
