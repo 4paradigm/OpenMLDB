@@ -17,7 +17,7 @@ jobs:
         run: |
           bash steps/init_env.sh
           mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) && cd ../
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) api_server_test && cd ../
           rm -rf /depends/thirdparty/*
       - name: run cpp
         run: |
@@ -39,69 +39,70 @@ jobs:
           source /etc/profile.d/enable-rh.sh
           git clean -dfx
 
-  sql_sdk_test:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/hybridsql:0.2.0
-    steps:
-      - uses: actions/checkout@v1
-      - name: uncompress_thirdparty
-        run: |
-          cd /depends && tar -zxf thirdparty.tar.gz && cd -
-      - name: build
-        run: |
-          bash steps/init_env.sh
-          mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_sdk_test && cd ../
-      - name: run sql_sdk_test
-        run: |
-          bash steps/ut.sh sql_sdk_test 0
-      - name: upload unit test results
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: linux-ut-result-cpp-sdk-${{ github.sha }} # the same name?
-          path: |
-            reports/*.xml
-      - name: cleanup
-        if: always()
-        run: |
-          source /etc/profile.d/enable-rh.sh
-          git clean -dfx
-
-  sql_cluster_test:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/hybridsql:0.2.0
-    steps:
-      - uses: actions/checkout@v1
-      - name: uncompress_thirdparty
-        run: |
-          cd /depends && tar -zxf thirdparty.tar.gz && cd -
-      - name: build
-        run: |
-          bash steps/init_env.sh
-          mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_cluster_test && cd ../
-      - name: run sql_sdk_test
-        run: |
-          bash steps/ut.sh sql_cluster_test 0
-      - name: upload unit test results
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: linux-ut-result-cpp-cluster-${{ github.sha }}
-          path: |
-            reports/*.xml
-      - name: cleanup
-        if: always()
-        run: |
-          source /etc/profile.d/enable-rh.sh
-          git clean -dfx
+          #  sql_sdk_test:
+          #    runs-on: ubuntu-latest
+          #    container:
+          #      image: ghcr.io/4paradigm/hybridsql:0.2.0
+          #    steps:
+          #      - uses: actions/checkout@v1
+          #      - name: uncompress_thirdparty
+          #        run: |
+          #          cd /depends && tar -zxf thirdparty.tar.gz && cd -
+          #      - name: build
+          #        run: |
+          #          bash steps/init_env.sh
+          #          mkdir -p build
+          #          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_sdk_test && cd ../
+          #      - name: run sql_sdk_test
+          #        run: |
+          #          bash steps/ut.sh sql_sdk_test 0
+          #      - name: upload unit test results
+          #        if: always()
+          #        uses: actions/upload-artifact@v2
+          #        with:
+          #          name: linux-ut-result-cpp-sdk-${{ github.sha }} # the same name?
+          #          path: |
+          #            reports/*.xml
+          #      - name: cleanup
+          #        if: always()
+          #        run: |
+          #          source /etc/profile.d/enable-rh.sh
+          #          git clean -dfx
+          #
+          #  sql_cluster_test:
+          #    runs-on: ubuntu-latest
+          #    container:
+          #      image: ghcr.io/4paradigm/hybridsql:0.2.0
+          #    steps:
+          #      - uses: actions/checkout@v1
+          #      - name: uncompress_thirdparty
+          #        run: |
+          #          cd /depends && tar -zxf thirdparty.tar.gz && cd -
+          #      - name: build
+          #        run: |
+          #          bash steps/init_env.sh
+          #          mkdir -p build
+          #          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_cluster_test && cd ../
+          #      - name: run sql_sdk_test
+          #        run: |
+          #          bash steps/ut.sh sql_cluster_test 0
+          #      - name: upload unit test results
+          #        if: always()
+          #        uses: actions/upload-artifact@v2
+          #        with:
+          #          name: linux-ut-result-cpp-cluster-${{ github.sha }}
+          #          path: |
+          #            reports/*.xml
+          #      - name: cleanup
+          #        if: always()
+          #        run: |
+          #          source /etc/profile.d/enable-rh.sh
+          #          git clean -dfx
 
   publish-test-results:
     runs-on: ubuntu-latest
-    needs: ["cpp_ut", "sql_sdk_test", "sql_cluster_test"]
+    #needs: ["cpp_ut", "sql_sdk_test", "sql_cluster_test"]
+    needs: ["cpp_ut"]
     # the action will only run on 4paradigm/fedb's context, not for fork repo or dependabot
     if: >
       always() && github.event_name == 'push' || (

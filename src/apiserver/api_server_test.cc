@@ -84,7 +84,7 @@ class APIServerTestEnv : public testing::Environment {
     virtual void TearDown() {
         std::cout << "Environment TearDown!" << std::endl;
         hybridse::sdk::Status status;
-        EXPECT_TRUE(cluster_remote->DropDB(db, &status));
+        cluster_remote->DropDB(db, &status);
         server.Stop(0);
         server.Join();
         mc->Close();
