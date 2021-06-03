@@ -303,6 +303,11 @@ JsonWriter& JsonWriter::operator&(const int64_t& i) {
     return *this;
 }
 
+JsonWriter& JsonWriter::operator&(const uint64_t& i) {
+    WRITER->AddUint64(i);
+    return *this;
+}
+
 JsonWriter& JsonWriter::operator&(const double& d) {
     WRITER->Double(d);
     return *this;

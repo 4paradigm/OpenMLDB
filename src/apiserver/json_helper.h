@@ -111,6 +111,7 @@ class JsonWriter {
     JsonWriter& operator&(const unsigned& u);
     JsonWriter& operator&(const int& i);
     JsonWriter& operator&(const int64_t& i);
+    JsonWriter& operator&(const uint64_t& i);
     JsonWriter& operator&(const double& d);
     JsonWriter& operator&(const std::string& s);
     JsonWriter& SetNull();

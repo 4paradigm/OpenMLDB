@@ -513,9 +513,18 @@ TEST_F(APIServerTest, getTables) {
         show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/api_server_test/tables";
         env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
         ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
-        LOG(INFO) << "get tables: " << show_cntl.response_attachment();
+        butil::rapidjson::Document document;
+        if (document.Parse(show_cntl.response_attachment().to_string().c_str()).HasParseError()) {
+            ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                                << ", raw resp: " << show_cntl.response_attachment().to_string();
+        }
+        ASSERT_TRUE(document.HasMember("msg"));
+        ASSERT_STREQ("ok", document["msg"].GetString());
+        ASSERT_TRUE(document.HasMember("tables"));
+        ASSERT_TRUE(document["tables"].IsArray());
+        ASSERT_EQ(0, document["tables"].Size());
     }
-    std::vector<std::string> tables = {"apple", "pear", "banana"};
+    std::vector<std::string> tables = {"apple", "banana", "pear"};
     hybridse::sdk::Status status;
     for (auto table: tables) {
         std::string ddl =
@@ -535,21 +544,54 @@ TEST_F(APIServerTest, getTables) {
         show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/api_server_test/tables";
         env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
         ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
-        LOG(INFO) << "get tables: " << show_cntl.response_attachment();
+        butil::rapidjson::Document document;
+        if (document.Parse(show_cntl.response_attachment().to_string().c_str()).HasParseError()) {
+            ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                                << ", raw resp: " << show_cntl.response_attachment().to_string();
+        }
+        ASSERT_TRUE(document.HasMember("msg"));
+        ASSERT_STREQ("ok", document["msg"].GetString());
+        ASSERT_TRUE(document.HasMember("tables"));
+        ASSERT_TRUE(document["tables"].IsArray());
+        ASSERT_EQ(tables.size(), document["tables"].Size());
+        std::vector<std::string> result;
+        for (size_t i = 0; i < document["tables"].Size(); i++) {
+            ASSERT_TRUE(document["tables"][i].HasMember("name"));
+            result.push_back(document["tables"][i]["name"].GetString());
+        }
+        sort(result.begin(), result.end());
+        for (size_t i = 0; i < document["tables"].Size(); i++) {
+            ASSERT_EQ(result[i], tables[i]); 
+        }
     }
     for (auto table: tables) {
         brpc::Controller show_cntl;  // default is GET
         show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/api_server_test/tables/" + table;
         env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
         ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
-        LOG(INFO) << "get tables: " << show_cntl.response_attachment();
+        butil::rapidjson::Document document;
+        if (document.Parse(show_cntl.response_attachment().to_string().c_str()).HasParseError()) {
+            ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                                << ", raw resp: " << show_cntl.response_attachment().to_string();
+        }
+        ASSERT_TRUE(document.HasMember("msg"));
+        ASSERT_STREQ("ok", document["msg"].GetString());
+        ASSERT_TRUE(document.HasMember("table"));
+        ASSERT_TRUE(document["table"].HasMember("name"));
+        ASSERT_EQ(table, std::string(document["table"]["name"].GetString()));
     }
     {
         brpc::Controller show_cntl;  // default is GET
         show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/api_server_test/tables/not_exist";
         env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
         ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
-        LOG(INFO) << "get tables: " << show_cntl.response_attachment();
+        butil::rapidjson::Document document;
+        if (document.Parse(show_cntl.response_attachment().to_string().c_str()).HasParseError()) {
+            ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                                << ", raw resp: " << show_cntl.response_attachment().to_string();
+        }
+        ASSERT_TRUE(document.HasMember("msg"));
+        ASSERT_STREQ("Table not found", document["msg"].GetString());
     }
     for (auto table: tables) {
         env->cluster_remote->ExecuteDDL(env->db, "drop table " + table + ";", &status);

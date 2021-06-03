@@ -426,7 +426,7 @@ void APIServerImpl::RegisterGetTable() {
         auto tables = cluster_sdk_->GetTables(db);
         writer.StartObject();
         writer.Member("code") & 0;
-        writer.Member("msg") & "ok";
+        writer.Member("msg") & std::string("ok");
         writer.Member("tables");
         writer.StartArray();
         for (std::shared_ptr<::fedb::nameserver::TableInfo> table : tables) {
@@ -450,7 +450,6 @@ void APIServerImpl::RegisterGetTable() {
         writer.StartObject();
         writer.Member("code") & 0;
         if (table_info == nullptr) {
-            LOG(INFO) << "Not found";
             writer.Member("msg") & std::string("Table not found");
         } else {
             writer.Member("msg") & std::string("ok");
@@ -677,7 +676,22 @@ JsonWriter& operator&(JsonWriter& ar, const ::google::protobuf::RepeatedPtrField
         if (key.has_flag()) {
             ar.Member("flag") & key.flag();
         }
-        // TODO(Zhihao Zhao): ttl
+
+        if (key.has_ttl()) {
+            ar.Member("ttl");
+            auto& ttl = key.ttl();
+            ar.StartObject();
+            if (ttl.has_ttl_type()) {
+                ar.Member("ttl_type") & ::fedb::type::TTLType_Name(ttl.ttl_type());
+            }
+            if (ttl.has_abs_ttl()) {
+                ar.Member("abs_ttl") & ttl.abs_ttl();
+            }
+            if (ttl.has_lat_ttl()) {
+                ar.Member("lat_ttl") & ttl.lat_ttl();
+            }
+            ar.EndObject();
+        }
         ar.EndObject();
     }
     return ar.EndArray();
@@ -748,7 +762,7 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableI
     
     ar.Member("schema_versions") & info->schema_versions();
 
-    ar.EndObject();
+    // ar.EndObject();
     return ar.EndObject();
 }
 
