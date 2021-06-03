@@ -96,13 +96,21 @@ bool ClusterSDK::Init() {
     return true;
 }
 
-bool ClusterSDK::Refresh() { return InitCatalog(); }
+bool ClusterSDK::Refresh() {
+    LOG(INFO) << "refresh";
+    return InitCatalog();
+}
+
+bool ClusterSDK::RefreshNotify() {
+    LOG(INFO) << "refresh notify";
+    return InitCatalog();
+}
 
 void ClusterSDK::WatchNotify() {
     LOG(INFO) << "start to watch table notify";
     session_id_ = zk_client_->GetSessionTerm();
     zk_client_->CancelWatchItem(notify_path_);
-    zk_client_->WatchItem(notify_path_, boost::bind(&ClusterSDK::Refresh, this));
+    zk_client_->WatchItem(notify_path_, boost::bind(&ClusterSDK::RefreshNotify, this));
 }
 
 bool ClusterSDK::CreateNsClient() {
@@ -156,7 +164,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
             LOG(WARNING) << "fail to parse table proto with " << value;
             continue;
         }
-        DLOG(INFO) << "parse table " << table_info->name() << " ok";
+        LOG(INFO) << "parse table " << table_info->name() << " ok";
         if (table_info->format_version() != 1) {
             continue;
         }
@@ -169,7 +177,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         } else {
             it->second.insert(std::make_pair(table_info->name(), table_info));
         }
-        DLOG(INFO) << "load table info with name " << table_info->name() << " in db " << table_info->db();
+        LOG(INFO) << "load table info with name " << table_info->name() << " in db " << table_info->db();
     }
 
     Procedures db_sp_map;
