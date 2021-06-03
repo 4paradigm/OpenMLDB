@@ -317,8 +317,7 @@ bool SQLClusterRouter::GetInsertInfo(
     }
     *table_info = cluster_sdk_->GetTableInfo(db, insert_stmt->table_name_);
     if (!(*table_info)) {
-        status->msg =
-            "table with name " + insert_stmt->table_name_ + " does not exist";
+        status->msg = "table with name " + insert_stmt->table_name_ + " in db " + db + " does not exist";
         LOG(WARNING) << status->msg;
         return false;
     }
@@ -1043,11 +1042,7 @@ bool SQLClusterRouter::GetSQLPlan(const std::string& sql,
 }
 
 bool SQLClusterRouter::RefreshCatalog() {
-    bool ok = cluster_sdk_->Refresh();
-    if (ok) {
-        cluster_sdk_->GetEngine()->UpdateCatalog(cluster_sdk_->GetCatalog());
-    }
-    return ok;
+    return cluster_sdk_->Refresh();
 }
 
 std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(
