@@ -392,71 +392,71 @@ void APIServerImpl::RegisterGetSP() {
 }
 
 void APIServerImpl::RegisterGetDB() {
-    provider_.get("/dbs", [this](const InterfaceProvider::Params& param, 
-                                                             const butil::IOBuf& req_body, JsonWriter& writer){
-        auto err = GeneralError();
-        std::vector<std::string> dbs;
-        hybridse::sdk::Status status;
-        auto ok = sql_router_->ShowDB(&dbs, &status);
-        if (!ok) {
-            writer << err.Set(status.msg);
-            return;
-        }
-        writer.StartObject();
-        writer.Member("dbs");
-        writer.StartArray();
-        for (auto db : dbs) {
-            writer & db;
-        }
-        writer.EndArray();
-        writer.EndObject();
-    });
+    provider_.get("/dbs",
+                  [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
+                      auto err = GeneralError();
+                      std::vector<std::string> dbs;
+                      hybridse::sdk::Status status;
+                      auto ok = sql_router_->ShowDB(&dbs, &status);
+                      if (!ok) {
+                          writer << err.Set(status.msg);
+                          return;
+                      }
+                      writer.StartObject();
+                      writer.Member("dbs");
+                      writer.StartArray();
+                      for (auto db : dbs) {
+                          writer& db;
+                      }
+                      writer.EndArray();
+                      writer.EndObject();
+                  });
 }
 
 void APIServerImpl::RegisterGetTable() {
-    provider_.get("/dbs/:db_name/tables", [this](const InterfaceProvider::Params& param, 
-                                                             const butil::IOBuf& req_body, JsonWriter& writer){
-        auto err = GeneralError();
-        auto db_it = param.find("db_name");
-        if (db_it == param.end()) {
-            writer << err.Set("Invalid path");
-            return;
-        }
-        auto db = db_it->second;
-        auto tables = cluster_sdk_->GetTables(db);
-        writer.StartObject();
-        writer.Member("code") & 0;
-        writer.Member("msg") & std::string("ok");
-        writer.Member("tables");
-        writer.StartArray();
-        for (std::shared_ptr<::fedb::nameserver::TableInfo> table : tables) {
-            writer << table;
-        }
-        writer.EndArray();
-        writer.EndObject();
-    });
-    provider_.get("/dbs/:db_name/tables/:table_name", [this](const InterfaceProvider::Params& param, 
-                                                             const butil::IOBuf& req_body, JsonWriter& writer){
-        auto err = GeneralError();
-        auto db_it = param.find("db_name");
-        auto table_it = param.find("table_name");
-        if (db_it == param.end() || table_it == param.end()) {
-            writer << err.Set("Invalid path");
-            return;
-        }
-        auto db = db_it->second;
-        auto table = table_it->second;
-        auto table_info = cluster_sdk_->GetTableInfo(db, table);
-        writer.StartObject();
-        writer.Member("code") & 0;
-        if (table_info == nullptr) {
-            writer.Member("msg") & std::string("Table not found");
-        } else {
-            writer.Member("msg") & std::string("ok");
-            writer.Member("table") & table_info;
-        }
-        writer.EndObject();
-    });
+    provider_.get("/dbs/:db_name/tables",
+                  [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
+                      auto err = GeneralError();
+                      auto db_it = param.find("db_name");
+                      if (db_it == param.end()) {
+                          writer << err.Set("Invalid path");
+                          return;
+                      }
+                      auto db = db_it->second;
+                      auto tables = cluster_sdk_->GetTables(db);
+                      writer.StartObject();
+                      writer.Member("code") & 0;
+                      writer.Member("msg") & std::string("ok");
+                      writer.Member("tables");
+                      writer.StartArray();
+                      for (std::shared_ptr<::fedb::nameserver::TableInfo> table : tables) {
+                          writer << table;
+                      }
+                      writer.EndArray();
+                      writer.EndObject();
+                  });
+    provider_.get("/dbs/:db_name/tables/:table_name",
+                  [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
+                      auto err = GeneralError();
+                      auto db_it = param.find("db_name");
+                      auto table_it = param.find("table_name");
+                      if (db_it == param.end() || table_it == param.end()) {
+                          writer << err.Set("Invalid path");
+                          return;
+                      }
+                      auto db = db_it->second;
+                      auto table = table_it->second;
+                      auto table_info = cluster_sdk_->GetTableInfo(db, table);
+                      writer.StartObject();
+                      writer.Member("code") & 0;
+                      if (table_info == nullptr) {
+                          writer.Member("msg") & std::string("Table not found");
+                      } else {
+                          writer.Member("msg") & std::string("ok");
+                          writer.Member("table") & table_info;
+                      }
+                      writer.EndObject();
+                  });
 }
 
 void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema,  // NOLINT
@@ -636,7 +636,8 @@ JsonWriter& operator&(JsonWriter& ar, GetSPResp& s) {  // NOLINT
     return ar.EndObject();
 }
 
-JsonWriter& operator& (JsonWriter& ar, const ::google::protobuf::RepeatedPtrField< ::fedb::common::ColumnDesc >& column_desc) {
+JsonWriter& operator&(JsonWriter& ar,
+                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>& column_desc) {
     ar.StartArray();
     for (auto column : column_desc) {
         ar.StartObject();
@@ -657,7 +658,8 @@ JsonWriter& operator& (JsonWriter& ar, const ::google::protobuf::RepeatedPtrFiel
     return ar.EndArray();
 }
 
-JsonWriter& operator&(JsonWriter& ar, const ::google::protobuf::RepeatedPtrField< ::fedb::common::ColumnKey >& column_key) {
+JsonWriter& operator&(JsonWriter& ar,
+                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>& column_key) {
     ar.StartArray();
     for (auto key : column_key) {
         ar.StartObject();
@@ -667,7 +669,7 @@ JsonWriter& operator&(JsonWriter& ar, const ::google::protobuf::RepeatedPtrField
         ar.Member("col_name");
         ar.StartArray();
         for (auto col : key.col_name()) {
-            ar & col;
+            ar& col;
         }
         ar.EndArray();
         if (key.has_ts_name()) {
@@ -697,14 +699,15 @@ JsonWriter& operator&(JsonWriter& ar, const ::google::protobuf::RepeatedPtrField
     return ar.EndArray();
 }
 
-JsonWriter& operator&(JsonWriter& ar, const ::google::protobuf::RepeatedPtrField< ::fedb::common::VersionPair >& schema_versions){
+JsonWriter& operator&(JsonWriter& ar,
+                      const ::google::protobuf::RepeatedPtrField<::fedb::common::VersionPair>& schema_versions) {
     ar.StartArray();
     for (auto version : schema_versions) {
         ar.StartObject();
         if (version.has_id()) {
             ar.Member("id") & version.id();
         }
-        if (version.has_field_count()){
+        if (version.has_field_count()) {
             ar.Member("field_count") & version.field_count();
         }
         ar.EndObject();
@@ -740,7 +743,7 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableI
     if (info->has_key_entry_max_height()) {
         ar.Member("key_entry_max_height") & info->key_entry_max_height();
     }
-    
+
     ar.Member("column_desc") & info->column_desc();
 
     ar.Member("column_key") & info->column_key();
@@ -755,11 +758,11 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableI
     }
     ar.Member("partition_key");
     ar.StartArray();
-    for (auto key : info->partition_key()){
-        ar & key;
+    for (auto key : info->partition_key()) {
+        ar& key;
     }
     ar.EndArray();
-    
+
     ar.Member("schema_versions") & info->schema_versions();
 
     // ar.EndObject();

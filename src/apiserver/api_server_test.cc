@@ -481,7 +481,7 @@ TEST_F(APIServerTest, getDBs) {
     hybridse::sdk::Status status;
     for (size_t i = 1; i < db_names.size(); i++) {
         env->cluster_remote->DropDB(db_names[i], &status);
-        env->cluster_remote->CreateDB(db_names[i], &status);   
+        env->cluster_remote->CreateDB(db_names[i], &status);
     }
     brpc::Controller show_cntl;  // default is GET
     show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs";
@@ -490,7 +490,7 @@ TEST_F(APIServerTest, getDBs) {
     butil::rapidjson::Document document;
     if (document.Parse(show_cntl.response_attachment().to_string().c_str()).HasParseError()) {
         ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
-                            << ", raw resp: " << show_cntl.response_attachment().to_string();
+                           << ", raw resp: " << show_cntl.response_attachment().to_string();
     }
     ASSERT_TRUE(document.HasMember("dbs"));
     ASSERT_TRUE(document["dbs"].IsArray());
@@ -501,7 +501,7 @@ TEST_F(APIServerTest, getDBs) {
     }
     sort(result.begin(), result.end());
     for (size_t i = 0; i < document["dbs"].Size(); i++) {
-        ASSERT_EQ(result[i], db_names[i]); 
+        ASSERT_EQ(result[i], db_names[i]);
     }
 }
 
@@ -516,7 +516,7 @@ TEST_F(APIServerTest, getTables) {
         butil::rapidjson::Document document;
         if (document.Parse(show_cntl.response_attachment().to_string().c_str()).HasParseError()) {
             ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
-                                << ", raw resp: " << show_cntl.response_attachment().to_string();
+                               << ", raw resp: " << show_cntl.response_attachment().to_string();
         }
         ASSERT_TRUE(document.HasMember("msg"));
         ASSERT_STREQ("ok", document["msg"].GetString());
@@ -526,16 +526,16 @@ TEST_F(APIServerTest, getTables) {
     }
     std::vector<std::string> tables = {"apple", "banana", "pear"};
     hybridse::sdk::Status status;
-    for (auto table: tables) {
-        std::string ddl =
-        "create table " + table + "(c1 string,\n"
-                "                   c3 int,\n"
-                "                   c4 bigint,\n"
-                "                   c5 float,\n"
-                "                   c6 double,\n"
-                "                   c7 timestamp,\n"
-                "                   c8 date,\n"
-                "                   index(key=c1, ts=c7));";
+    for (auto table : tables) {
+        std::string ddl = "create table " + table +
+                          "(c1 string,\n"
+                          "                   c3 int,\n"
+                          "                   c4 bigint,\n"
+                          "                   c5 float,\n"
+                          "                   c6 double,\n"
+                          "                   c7 timestamp,\n"
+                          "                   c8 date,\n"
+                          "                   index(key=c1, ts=c7));";
         ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << "fail to create table";
         ASSERT_TRUE(env->cluster_remote->RefreshCatalog());
     }
@@ -547,7 +547,7 @@ TEST_F(APIServerTest, getTables) {
         butil::rapidjson::Document document;
         if (document.Parse(show_cntl.response_attachment().to_string().c_str()).HasParseError()) {
             ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
-                                << ", raw resp: " << show_cntl.response_attachment().to_string();
+                               << ", raw resp: " << show_cntl.response_attachment().to_string();
         }
         ASSERT_TRUE(document.HasMember("msg"));
         ASSERT_STREQ("ok", document["msg"].GetString());
@@ -561,10 +561,10 @@ TEST_F(APIServerTest, getTables) {
         }
         sort(result.begin(), result.end());
         for (size_t i = 0; i < document["tables"].Size(); i++) {
-            ASSERT_EQ(result[i], tables[i]); 
+            ASSERT_EQ(result[i], tables[i]);
         }
     }
-    for (auto table: tables) {
+    for (auto table : tables) {
         brpc::Controller show_cntl;  // default is GET
         show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/api_server_test/tables/" + table;
         env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
@@ -572,7 +572,7 @@ TEST_F(APIServerTest, getTables) {
         butil::rapidjson::Document document;
         if (document.Parse(show_cntl.response_attachment().to_string().c_str()).HasParseError()) {
             ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
-                                << ", raw resp: " << show_cntl.response_attachment().to_string();
+                               << ", raw resp: " << show_cntl.response_attachment().to_string();
         }
         ASSERT_TRUE(document.HasMember("msg"));
         ASSERT_STREQ("ok", document["msg"].GetString());
@@ -588,12 +588,12 @@ TEST_F(APIServerTest, getTables) {
         butil::rapidjson::Document document;
         if (document.Parse(show_cntl.response_attachment().to_string().c_str()).HasParseError()) {
             ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
-                                << ", raw resp: " << show_cntl.response_attachment().to_string();
+                               << ", raw resp: " << show_cntl.response_attachment().to_string();
         }
         ASSERT_TRUE(document.HasMember("msg"));
         ASSERT_STREQ("Table not found", document["msg"].GetString());
     }
-    for (auto table: tables) {
+    for (auto table : tables) {
         env->cluster_remote->ExecuteDDL(env->db, "drop table " + table + ";", &status);
         ASSERT_TRUE(env->cluster_remote->RefreshCatalog());
     }
