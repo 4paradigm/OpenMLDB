@@ -1008,6 +1008,19 @@ TEST_F(SqlCaseTest, ExtractYamlWithDebugSqlCase) {
         ASSERT_EQ(sql_case.db(), "test_zw");
     }
 }
+
+TEST_F(SqlCaseTest, InitCasesTest) {
+    std::string case_path = "/cases/yaml/demo.yaml";
+    {
+        std::vector<SqlCase> cases = InitCases(case_path);
+        ASSERT_EQ(5u, cases.size());
+    }
+    {
+        std::vector<SqlCase> cases = InitCases(case_path, std::vector<std::string>({"request"}));
+        ASSERT_EQ(4u, cases.size());
+    }
+}
+
 }  // namespace sqlcase
 }  // namespace hybridse
 

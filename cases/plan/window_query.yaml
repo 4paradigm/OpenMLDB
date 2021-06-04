@@ -28,8 +28,18 @@ cases:
     sql: |
       SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
       WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
-  - id: 3
+  - id: 3-1
+    desc: 单行+单window
+    mode: zetasql-unsupport
+    sql: |
+      SELECT col2, col5, sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
+      sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
+      sum(col5) OVER w1 as w1_col5_sum, col1,
+      col6 as col6 FROM t1
+      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+  - id: 3-2
     desc: 单行+单window+自定义聚合函数
+    mode: zetasql-unsupport
     sql: |
       %%fun
       def test_sum(col:list<int>):int
@@ -44,8 +54,24 @@ cases:
       sum(col5) OVER w1 as w1_col5_sum, col1,
       col6 as col6 FROM t1
       WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
-  - id: 4
+  - id: 4-1
+    desc: 单行+两window
+    sql: |
+      SELECT col2, col0, col5, sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
+      sum(col4) OVER w2 as w2_col4_sum, sum(col2) OVER w2 as w2_col2_sum, sum(col5) OVER w2 as w2_col5_sum,
+      col1, col6 as col6 FROM t1 WINDOW
+      w1 AS (PARTITION BY col2 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+  - id: 4-2
+    desc: 单行+两window, 窗口表达式在前面
+    sql: |
+      SELECT sum(col2) OVER w2 as w2_col2_sum, sum(col4) OVER w2 as w2_col4_sum, sum(col5) OVER w2 as w2_col5_sum,
+      sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum, col0, col2, col5, col1, col6 as col6 FROM t1 WINDOW
+      w1 AS (PARTITION BY col2 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+  - id: 4-3
     desc: 单行+两window+自定义聚合函数
+    mode: zetasql-unsupport
     sql: |
       %%fun
       def test_sum(col:list<int>):int
@@ -60,23 +86,19 @@ cases:
       col1, col6 as col6 FROM t1 WINDOW
       w1 AS (PARTITION BY col2 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW),
       w2 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
-  - id: 4
-    desc: 单行+两window+自定义聚合函数,窗口表达式在前面
+
+  - id: 5-1
+    desc: 单行+三个window+w1和w2命中索引
     sql: |
-      %%fun
-      def test_sum(col:list<int>):int
-          result = 0
-          for x in col
-              result += x
-          return result
-      end
-      %%sql
-      SELECT sum(col2) OVER w2 as w2_col2_sum, sum(col4) OVER w2 as w2_col4_sum, sum(col5) OVER w2 as w2_col5_sum,
-      test_sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum, col0, col2, col5, col1, col6 as col6 FROM t1 WINDOW
+      SELECT col2, col0, col5, sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
+      sum(col4) OVER w3 as w3_col4_sum, sum(col2) OVER w2 as w2_col2_sum, sum(col5) OVER w2 as w2_col5_sum,
+      col1, col6 as col6 FROM t1 WINDOW
       w1 AS (PARTITION BY col2 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW),
-      w2 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
-  - id: 5
+      w2 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW),
+      w3 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+  - id: 5-2
     desc: 单行+三个window+自定义聚合函数,w1和w2命中索引
+    mode: zetasql-unsupport
     sql: |
       %%fun
       def test_sum(col:list<int>):int
@@ -118,12 +140,14 @@ cases:
       WINDOW w1 AS (UNION t2,t3 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW INSTANCE_NOT_IN_WINDOW) limit 10;
   - id: 10
     desc: 单行+单window with union 子查询
+    mode: zetasql-unsupport
     sql: |
       SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
       WINDOW w1 AS (UNION (select c0 as col0, 0 as col1, c2 as col2, 0.0f as col3, 0.0 as col4, 99999l as col5, "NA" as col6 from tb)
       PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
   - id: 11
     desc: 单行+单window with union 两个子查询
+    mode: zetasql-unsupport
     sql: |
       SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
       WINDOW w1 AS
@@ -137,6 +161,7 @@ cases:
       WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW) limit 10;
   - id: 13
     desc: window with union, 主表副表都基于子查询
+    mode: zetasql-unsupport
     sql: |
       SELECT col2, col5, sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
       sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
@@ -211,21 +236,25 @@ cases:
 
   - id: 25-1
     desc: window ROWS_RANGE, -1000ms 至当前时刻 EXCLUDE CURRENT_TIME
+    mode: zetasql-unsupport
     sql: |
       SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
       WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1000 OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME) limit 10;
   - id: 25-2
     desc: window ROWS, 前1000条到当前条 EXCLUDE CURRENT_TIME
+    mode: zetasql-unsupport
     sql: |
       SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
       WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME) limit 10;
   - id: 25-3
     desc: window ROWS_RANGE, -1000ms 到当前条 EXCLUDE CURRENT_TIME
+    mode: zetasql-unsupport
     sql: |
       SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
       WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1000 OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME) limit 10;
   - id: 25-4
     desc: window RANGE, -1s至当前时刻 EXCLUDE CURRENT_TIME
+    mode: zetasql-unsupport
     sql: |
       SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
       WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1s OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME) limit 10;
@@ -240,6 +269,7 @@ cases:
       WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME) limit 10;
   - id: 25-6
     desc: window ROWS_RANGE with MAXSIZE EXCLUDE CURRENT_TIME
+    mode: zetasql-unsupport
     sql: |
       SELECT
       sum(col2) OVER w1 as w1_col2_sum
@@ -247,6 +277,7 @@ cases:
       WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d OPEN PRECEDING AND CURRENT ROW MAXSIZE 5 EXCLUDE CURRENT_TIME) limit 10;
   - id: 25-7
     desc: window ROWS and ROWS_RANGE with MAXSIZE EXCLUDE CURRENT_TIME
+    mode: zetasql-unsupport
     sql: |
       SELECT
       sum(col2) OVER w1 as w1_col2_sum,

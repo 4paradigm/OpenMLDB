@@ -112,6 +112,8 @@ if (BENCHMARK_ENABLE)
 add_subdirectory(benchmark)
 endif()
 
+add_subdirectory(planv2)
+
 # udf exporter
 add_executable(export_udf_info cmd/export_udf_info.cc)
 target_link_libraries(export_udf_info hybridse_core)

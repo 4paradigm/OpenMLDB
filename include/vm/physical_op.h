@@ -190,7 +190,7 @@ class Sort : public FnComponent {
     const node::OrderByNode *orders() const { return orders_; }
     void set_orders(const node::OrderByNode *orders) { orders_ = orders; }
     const bool is_asc() const {
-        return nullptr == orders_ ? true : orders_->is_asc_;
+        return nullptr == orders_ ? true : orders_->is_asc();
     }
     const bool ValidSort() const { return nullptr != orders_; }
     const std::string ToString() const {

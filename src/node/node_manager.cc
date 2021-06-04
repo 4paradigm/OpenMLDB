@@ -338,7 +338,25 @@ SqlNode *NodeManager::MakeFrameNode(FrameType frame_type,
 
 OrderByNode *NodeManager::MakeOrderByNode(const ExprListNode *order,
                                           const bool is_asc) {
-    OrderByNode *node_ptr = new OrderByNode(order, is_asc);
+    std::vector<bool> is_asc_list;
+    if (nullptr != order) {
+        for (size_t i = 0; i < order->GetChildNum(); i++) {
+            is_asc_list.push_back(is_asc);
+        }
+    }
+    OrderByNode *node_ptr = new OrderByNode(order, is_asc_list, is_asc);
+    return RegisterNode(node_ptr);
+}
+OrderByNode *NodeManager::MakeOrderByNode(const ExprListNode *order,
+                                          const std::vector<bool>& is_asc_list) {
+    bool is_asc = true;
+    for (bool flag : is_asc_list) {
+        if (!flag) {
+            is_asc = false;
+            break;
+        }
+    }
+    OrderByNode *node_ptr = new OrderByNode(order, is_asc_list, is_asc);
     return RegisterNode(node_ptr);
 }
 
@@ -562,11 +580,6 @@ UnaryExpr *NodeManager::MakeUnaryExprNode(ExprNode *left, FnOperator op) {
     ::hybridse::node::UnaryExpr *uexpr = new ::hybridse::node::UnaryExpr(op);
     uexpr->AddChild(left);
     return RegisterNode(uexpr);
-}
-
-SqlNode *NodeManager::MakeNameNode(const std::string &name) {
-    SqlNode *node_ptr = new NameNode(name);
-    return RegisterNode(node_ptr);
 }
 
 SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,

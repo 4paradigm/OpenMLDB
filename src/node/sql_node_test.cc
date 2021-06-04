@@ -118,6 +118,52 @@ TEST_F(SqlNodeTest, MakeConstNodeFloatTest) {
     ASSERT_EQ(1.234f, node_ptr->GetFloat());
 }
 
+TEST_F(SqlNodeTest, MakeConstNodeTTLTypeTest) {
+    // TODO(chenjing): assign DataType::kTTL to TTLType
+    auto node = node_manager_->MakeConstNode(static_cast<int64_t>(10),
+                                             node::TTLType::kLatest);
+    ASSERT_EQ(node::DataType::kInt64, node->GetDataType());
+    ASSERT_EQ(10L, node->GetAsInt64());
+    ASSERT_EQ(node::TTLType::kLatest, node->GetTTLType());
+}
+TEST_F(SqlNodeTest, TimeIntervalConstGetMillisTest) {
+    {
+        ConstNode *node_ptr = dynamic_cast<ConstNode *>(
+            node_manager_->MakeConstNode(1, node::DataType::kSecond));
+        ASSERT_EQ(hybridse::node::kSecond, node_ptr->GetDataType());
+        ASSERT_EQ(1000L, node_ptr->GetMillis());
+    }
+    {
+        ConstNode *node_ptr =
+            dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(1.234f));
+        std::cout << *node_ptr << std::endl;
+        ASSERT_EQ(hybridse::node::kFloat, node_ptr->GetDataType());
+        ASSERT_EQ(-1, node_ptr->GetMillis());
+    }
+}
+TEST_F(SqlNodeTest, StringConstGetAsDateTest) {
+    {
+        ConstNode *node_ptr = dynamic_cast<ConstNode *>(
+            node_manager_->MakeConstNode("2021-05-01"));
+        ASSERT_EQ(hybridse::node::kVarchar, node_ptr->GetDataType());
+        int year = 0;
+        int month = 0;
+        int day = 0;
+        ASSERT_TRUE(node_ptr->GetAsDate(&year, &month, &day));
+        ASSERT_EQ(2021, year);
+        ASSERT_EQ(5, month);
+        ASSERT_EQ(1, day);
+    }
+    {
+        ConstNode *node_ptr =
+            dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(""));
+        ASSERT_EQ(hybridse::node::kVarchar, node_ptr->GetDataType());
+        int year = 0;
+        int month = 0;
+        int day = 0;
+        ASSERT_FALSE(node_ptr->GetAsDate(&year, &month, &day));
+    }
+}
 TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
     int64_t val = 86400000L;
 
@@ -253,7 +299,27 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     ASSERT_EQ(dynamic_cast<ConstNode *>(value[3])->GetDataType(),
               hybridse::node::kPlaceholder);
 }
-
+TEST_F(SqlNodeTest, AllNodeTest) {
+    {
+        auto all_node = node_manager_->MakeAllNode("t1", "db");
+        ASSERT_EQ("db", all_node->GetDBName());
+        ASSERT_EQ("t1", all_node->GetRelationName());
+    }
+}
+TEST_F(SqlNodeTest, NullFrameHistoryStartEndTest) {
+    {
+        FrameNode *frame_null = dynamic_cast<FrameNode *>(
+            node_manager_->MakeFrameNode(kFrameRowsRange, nullptr));
+        ASSERT_EQ(INT64_MIN, frame_null->GetHistoryRangeStart());
+        ASSERT_EQ(0, frame_null->GetHistoryRangeEnd());
+    }
+    {
+        FrameNode *frame_null = dynamic_cast<FrameNode *>(
+            node_manager_->MakeFrameNode(kFrameRows, nullptr));
+        ASSERT_EQ(INT64_MIN, frame_null->GetHistoryRowsStart());
+        ASSERT_EQ(INT64_MIN, frame_null->GetHistoryRowsEnd());
+    }
+}
 TEST_F(SqlNodeTest, FrameHistoryStartEndTest) {
     // RowsRange between preceding 1d and current
     {
@@ -629,6 +695,22 @@ TEST_F(SqlNodeTest, ColumnOfExpressionTest) {
         ASSERT_EQ(0, columns.size());
     }
 }
+
+TEST_F(SqlNodeTest, IndexVersionNodeTest) {
+    {
+        auto node = dynamic_cast<IndexVersionNode *>(
+            node_manager_->MakeIndexVersionNode("col1"));
+        ASSERT_EQ("col1", node->GetColumnName());
+        ASSERT_EQ(1, node->GetCount());
+    }
+    {
+        auto node = dynamic_cast<IndexVersionNode *>(
+            node_manager_->MakeIndexVersionNode("col1", 3));
+        ASSERT_EQ("col1", node->GetColumnName());
+        ASSERT_EQ(3, node->GetCount());
+    }
+}
+
 }  // namespace node
 }  // namespace hybridse
 

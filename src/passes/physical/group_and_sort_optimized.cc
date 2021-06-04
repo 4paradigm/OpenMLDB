@@ -269,7 +269,7 @@ bool GroupAndSortOptimized::KeysOptimized(
             if (nullptr != sort && nullptr != sort->orders_) {
                 sort->set_orders(dynamic_cast<node::OrderByNode*>(
                     node_manager_->MakeOrderByNode(nullptr,
-                                                   sort->orders_->is_asc_)));
+                                                   sort->orders_->is_asc())));
             }
             *new_in = partition_op;
             return true;
@@ -605,7 +605,7 @@ bool GroupAndSortOptimized::TransformOrderExpr(
             }
         }
         *output = dynamic_cast<node::OrderByNode*>(
-            node_manager_->MakeOrderByNode(expr_list, order->is_asc_));
+            node_manager_->MakeOrderByNode(expr_list, order->is_asc()));
         return true;
     } else {
         return false;
