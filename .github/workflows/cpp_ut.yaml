@@ -1,0 +1,40 @@
+name: cicd
+on: [pull_request]
+env:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+jobs:
+  cpp_ut:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.2.0
+    steps:
+      - uses: actions/checkout@v1
+      - name: uncompress_thirdparty
+        run: |
+          cd /depends && tar -zxf thirdparty.tar.gz && cd -
+      - name: build
+        run: |
+          bash steps/init_env.sh
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) && cd ../
+          rm -rf /depends/thirdparty/*
+      - name: run cpp
+        run: |
+          bash steps/ut.sh
+#      - name: run sql_sdk_test
+#        if: always()
+#        run: |
+#          bash steps/sql_sdk_c_ut.sh 0 sql_sdk_test
+      - name: upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: linux-ut-result-cpp-${{ github.sha }}
+          path: |
+            reports/*.xml
+      - name: cleanup
+        if: always()
+        run: |
+          source /etc/profile.d/enable-rh.sh
+          git clean -dfx
