@@ -9,7 +9,7 @@
 
 # Introduction
 
-HybridSE (Hybrid SQL Engine) is an LLVM-based, hybrid-execution and high-performance SQL engine. It can provide fast and consistent execution on heterogeneous SQL data systems, e.g., OLAD database, HTAP system, SparkSQL, and Flink Stream SQL.
+HybridSE (Hybrid SQL Engine) is a LLVM-based, hybrid-execution and high-performance SQL engine. It can provide fast and consistent execution on heterogeneous SQL data systems, e.g., OLAD database, HTAP system, SparkSQL, and Flink Stream SQL.
 
 ![image-hybridse](images/HybridSE.png)
 
