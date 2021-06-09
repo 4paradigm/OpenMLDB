@@ -33,8 +33,21 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             *output = node_manager->MakeAllNode("");
             return base::Status::OK();
         }
+        case zetasql::AST_DOT_STAR: {
+            auto dot_start_expression = ast_expression->GetAsOrDie<zetasql::ASTDotStar>();
+            CHECK_STATUS(ConvertDotStart(dot_start_expression, node_manager, output));
+            return base::Status::OK();
+        }
         case zetasql::AST_IDENTIFIER: {
             *output = node_manager->MakeExprIdNode(ast_expression->GetAsOrDie<zetasql::ASTIdentifier>()->GetAsString());
+            return base::Status::OK();
+        }
+        case zetasql::AST_EXPRESSION_SUBQUERY: {
+            auto expression_subquery = ast_expression->GetAsOrDie<zetasql::ASTExpressionSubquery>();
+            node::QueryNode* subquery = nullptr;
+
+            CHECK_STATUS(ConvertQueryNode(expression_subquery->query(), node_manager, &subquery))
+            *output = node_manager->MakeQueryExprNode(subquery);
             return base::Status::OK();
         }
         case zetasql::AST_PATH_EXPRESSION: {
@@ -151,19 +164,12 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             auto* and_expression = ast_expression->GetAsOrDie<zetasql::ASTAndExpr>();
             node::ExprNode* lhs = nullptr;
             CHECK_STATUS(ConvertExprNode(and_expression->conjuncts(0), node_manager, &lhs))
-            if (nullptr == lhs) {
-                status.msg = "Invalid AND expression";
-                status.code = common::kSqlError;
-                return status;
-            }
+            CHECK_TRUE(nullptr != lhs, common::kSqlError, "Invalid AND expression")
+
             for (size_t i = 1; i < and_expression->conjuncts().size(); i++) {
                 node::ExprNode* rhs = nullptr;
                 CHECK_STATUS(ConvertExprNode(and_expression->conjuncts(i), node_manager, &rhs))
-                if (nullptr == rhs) {
-                    status.msg = "Invalid AND expression";
-                    status.code = common::kSqlError;
-                    return status;
-                }
+                CHECK_TRUE(nullptr != rhs, common::kSqlError, "Invalid AND expression")
                 lhs = node_manager->MakeBinaryExprNode(lhs, rhs, node::FnOperator::kFnOpAnd);
             }
             *output = lhs;
@@ -175,22 +181,26 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             auto* or_expression = ast_expression->GetAsOrDie<zetasql::ASTOrExpr>();
             node::ExprNode* lhs = nullptr;
             CHECK_STATUS(ConvertExprNode(or_expression->disjuncts()[0], node_manager, &lhs))
-            if (nullptr == lhs) {
-                status.msg = "Invalid OR expression";
-                status.code = common::kSqlError;
-                return status;
-            }
+            CHECK_TRUE(nullptr != lhs, common::kSqlError, "Invalid OR expression")
             for (size_t i = 1; i < or_expression->disjuncts().size(); i++) {
                 node::ExprNode* rhs = nullptr;
                 CHECK_STATUS(ConvertExprNode(or_expression->disjuncts()[i], node_manager, &rhs))
-                if (nullptr == rhs) {
-                    status.msg = "Invalid OR expression";
-                    status.code = common::kSqlError;
-                    return status;
-                }
+                CHECK_TRUE(nullptr != rhs, common::kSqlError, "Invalid OR expression")
                 lhs = node_manager->MakeBinaryExprNode(lhs, rhs, node::FnOperator::kFnOpOr);
             }
             *output = lhs;
+            return base::Status();
+        }
+        case zetasql::AST_BETWEEN_EXPRESSION: {
+            auto* between_expression = ast_expression->GetAsOrDie<zetasql::ASTBetweenExpression>();
+            node::ExprNode* expr = nullptr;
+            node::ExprNode* low = nullptr;
+            node::ExprNode* high = nullptr;
+            CHECK_STATUS(ConvertExprNode(between_expression->lhs(), node_manager, &expr))
+            CHECK_STATUS(ConvertExprNode(between_expression->low(), node_manager, &low))
+            CHECK_STATUS(ConvertExprNode(between_expression->high(), node_manager, &high))
+            *output =  node_manager->MakeBetweenExpr(expr, low, high, between_expression->is_not());
+
             return base::Status();
         }
         case zetasql::AST_FUNCTION_CALL: {
@@ -204,7 +214,6 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
         }
         case zetasql::AST_ANALYTIC_FUNCTION_CALL: {
             auto* analytic_function_call = ast_expression->GetAsOrDie<zetasql::ASTAnalyticFunctionCall>();
-
 
             node::ExprNode* function_call = nullptr;
             node::WindowDefNode* over_winodw = nullptr;
@@ -220,18 +229,34 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
         case zetasql::AST_INT_LITERAL: {
             const zetasql::ASTIntLiteral* literal = ast_expression->GetAsOrDie<zetasql::ASTIntLiteral>();
             int64_t int_value;
-            hybridse::codec::StringRef str(literal->image().data());
             bool is_null;
-            hybridse::udf::v1::string_to_bigint(&str, &int_value, &is_null);
-            if (is_null) {
-                status.msg = "Invalid floating point literal: " + std::string(literal->image());
+
+            if (literal->is_hex()) {
+                status.msg = "Un-support hex integer literal: " + std::string(literal->image());
                 status.code = common::kSqlError;
                 return status;
-            }
-            if (int_value <= INT_MAX && int_value >= INT_MIN) {
-                *output = node_manager->MakeConstNode(static_cast<int>(int_value));
-            } else {
+            } else if (literal->is_long()) {
+                hybridse::codec::StringRef str(std::string(literal->image().substr(0, literal->image().size() - 1)));
+                hybridse::udf::v1::string_to_bigint(&str, &int_value, &is_null);
+                if (is_null) {
+                    status.msg = "Invalid long integer literal: " + std::string(literal->image());
+                    status.code = common::kSqlError;
+                    return status;
+                }
                 *output = node_manager->MakeConstNode(int_value);
+            } else {
+                hybridse::codec::StringRef str(literal->image().data());
+                hybridse::udf::v1::string_to_bigint(&str, &int_value, &is_null);
+                if (is_null) {
+                    status.msg = "Invalid integer literal: " + std::string(literal->image());
+                    status.code = common::kSqlError;
+                    return status;
+                }
+                if (int_value <= INT_MAX && int_value >= INT_MIN) {
+                    *output = node_manager->MakeConstNode(static_cast<int>(int_value));
+                } else {
+                    *output = node_manager->MakeConstNode(int_value);
+                }
             }
             return base::Status::OK();
         }
@@ -258,16 +283,29 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
         }
         case zetasql::AST_FLOAT_LITERAL: {
             const zetasql::ASTFloatLiteral* literal = ast_expression->GetAsOrDie<zetasql::ASTFloatLiteral>();
-            double double_value;
-            hybridse::codec::StringRef str(literal->image().data());
+
             bool is_null;
-            hybridse::udf::v1::string_to_double(&str, &double_value, &is_null);
-            if (is_null) {
-                status.msg = "Invalid floating point literal: " + std::string(literal->image());
-                status.code = common::kSqlError;
-                return status;
+            if (literal->is_float32()) {
+                float float_value = 0.0;
+                hybridse::codec::StringRef str(std::string(literal->image().substr(0, literal->image().size() - 1)));
+                hybridse::udf::v1::string_to_float(&str, &float_value, &is_null);
+                if (is_null) {
+                    status.msg = "Invalid float literal: " + std::string(literal->image());
+                    status.code = common::kSqlError;
+                    return status;
+                }
+                *output = node_manager->MakeConstNode(float_value);
+            } else {
+                double double_value = 0.0;
+                hybridse::codec::StringRef str(literal->image().data());
+                hybridse::udf::v1::string_to_double(&str, &double_value, &is_null);
+                if (is_null) {
+                    status.msg = "Invalid double literal: " + std::string(literal->image());
+                    status.code = common::kSqlError;
+                    return status;
+                }
+                *output = node_manager->MakeConstNode(double_value);
             }
-            *output = node_manager->MakeConstNode(double_value);
             return base::Status::OK();
         }
         case zetasql::AST_INTERVAL_LITERAL: {
@@ -297,11 +335,16 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                     interval_unit = node::DataType::kDay;
                     break;
                 }
+                default: {
+                    status.msg = "Invalid interval literal: " + std::string(literal->image());
+                    status.code = common::kSqlError;
+                    return status;
+                }
             }
             bool is_null;
             hybridse::udf::v1::string_to_bigint(&str, &interval_value, &is_null);
             if (is_null) {
-                status.msg = "Invalid floating point literal: " + std::string(literal->image());
+                status.msg = "Invalid interval literal: " + std::string(literal->image());
                 status.code = common::kSqlError;
                 return status;
             }
@@ -352,7 +395,41 @@ base::Status ConvertOrderBy(const zetasql::ASTOrderBy* order_by, node::NodeManag
     *output = node_manager->MakeOrderByNode(ordering_expressions, is_asc_list);
     return base::Status::OK();
 }
-
+base::Status ConvertDotStart(const zetasql::ASTDotStar* dot_start_expression, node::NodeManager* node_manager,
+                             node::ExprNode** output) {
+    base::Status status;
+    if (nullptr == dot_start_expression) {
+        *output = nullptr;
+        return base::Status::OK();
+    }
+    if (nullptr == dot_start_expression->expr()) {
+        *output = node_manager->MakeAllNode("");
+        return base::Status::OK();
+    }
+    switch (dot_start_expression->expr()->node_kind()) {
+        case zetasql::AST_PATH_EXPRESSION: {
+            auto path_expression = dot_start_expression->expr()->GetAsOrDie<zetasql::ASTPathExpression>();
+            int num_names = path_expression->num_names();
+            if (1 == num_names) {
+                *output = node_manager->MakeAllNode(path_expression->first_name()->GetAsString(), "");
+            } else if (2 == num_names) {
+                *output = node_manager->MakeAllNode(path_expression->name(0)->GetAsString(),
+                                                    path_expression->name(1)->GetAsString());
+            } else {
+                status.code = common::kSqlError;
+                status.msg = "Invalid column path expression " + path_expression->ToIdentifierPathString();
+                return status;
+            }
+            break;
+        }
+        default: {
+            status.code = common::kSqlError;
+            status.msg = "Un-support dot star expression " + dot_start_expression->expr()->GetNodeKindString();
+            return status;
+        }
+    }
+    return base::Status::OK();
+}
 base::Status ConvertExprNodeList(const absl::Span<const zetasql::ASTExpression* const>& expression_list,
                                  node::NodeManager* node_manager, node::ExprListNode** output) {
     if (expression_list.empty()) {
@@ -375,8 +452,7 @@ base::Status ConvertFrameBound(const zetasql::ASTWindowFrameExpr* window_frame_e
         return base::Status::OK();
     }
     base::Status status;
-    node::ExprNode* expr;
-    CHECK_STATUS(ConvertExprNode(window_frame_expr->expression(), node_manager, &expr));
+    node::ExprNode* expr = nullptr;
     node::BoundType bound_type = node::BoundType::kCurrent;
     switch (window_frame_expr->boundary_type()) {
         case zetasql::ASTWindowFrameExpr::BoundaryType::CURRENT_ROW: {
@@ -384,7 +460,8 @@ base::Status ConvertFrameBound(const zetasql::ASTWindowFrameExpr* window_frame_e
             break;
         }
         case zetasql::ASTWindowFrameExpr::BoundaryType::OFFSET_PRECEDING: {
-            bound_type = node::BoundType::kPreceding;
+            bound_type =
+                window_frame_expr->is_open_boundary() ? node::BoundType::kOpenPreceding : node::BoundType::kPreceding;
             break;
         }
         case zetasql::ASTWindowFrameExpr::BoundaryType::UNBOUNDED_PRECEDING: {
@@ -392,7 +469,8 @@ base::Status ConvertFrameBound(const zetasql::ASTWindowFrameExpr* window_frame_e
             break;
         }
         case zetasql::ASTWindowFrameExpr::BoundaryType::OFFSET_FOLLOWING: {
-            bound_type = node::BoundType::kFollowing;
+            bound_type =
+                window_frame_expr->is_open_boundary() ? node::BoundType::kOpenFollowing : node::BoundType::kFollowing;
             break;
         }
         case zetasql::ASTWindowFrameExpr::BoundaryType::UNBOUNDED_FOLLOWING: {
@@ -405,7 +483,7 @@ base::Status ConvertFrameBound(const zetasql::ASTWindowFrameExpr* window_frame_e
             return status;
         }
     }
-
+    CHECK_STATUS(ConvertExprNode(window_frame_expr->expression(), node_manager, &expr));
     if (nullptr == expr) {
         *output = dynamic_cast<node::FrameBound*>(node_manager->MakeFrameBound(bound_type));
     } else {
@@ -485,6 +563,14 @@ base::Status ConvertWindowSpecification(const zetasql::ASTWindowSpecification* w
     bool exclude_current_time = window_spec->is_exclude_current_time();
     node::SqlNodeList* union_tables = nullptr;
 
+    if (nullptr != window_spec->union_table_references()) {
+        union_tables = node_manager->MakeNodeList();
+        for (auto table_reference : window_spec->union_table_references()->table_references()) {
+            node::TableRefNode* union_table = nullptr;
+            CHECK_STATUS(ConvertTableExpressionNode(table_reference, node_manager, &union_table))
+            union_tables->PushBack(union_table);
+        }
+    }
     *output = dynamic_cast<node::WindowDefNode*>(node_manager->MakeWindowDefNode(
         union_tables, partition_by, order_by, frame_node, exclude_current_time, instance_is_not_in_window));
     if (nullptr != window_spec->base_window_name()) {
@@ -520,19 +606,18 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
         case zetasql::AST_TABLE_PATH_EXPRESSION: {
             auto table_path_expression = root->GetAsOrDie<zetasql::ASTTablePathExpression>();
 
-            CHECK_TRUE(nullptr == table_path_expression->pivot_clause(), common::kSqlError,
-                       "Un-support pivot clause")
+            CHECK_TRUE(nullptr == table_path_expression->pivot_clause(), common::kSqlError, "Un-support pivot clause")
             CHECK_TRUE(nullptr == table_path_expression->unpivot_clause(), common::kSqlError,
                        "Un-support unpivot clause")
-            CHECK_TRUE(nullptr == table_path_expression->for_system_time(), common::kSqlError,
-                       "Un-support system time")
+            CHECK_TRUE(nullptr == table_path_expression->for_system_time(), common::kSqlError, "Un-support system time")
             CHECK_TRUE(nullptr == table_path_expression->with_offset(), common::kSqlError,
                        "Un-support scan WITH OFFSET")
             CHECK_TRUE(nullptr == table_path_expression->sample_clause(), common::kSqlError,
                        "Un-support tablesample clause")
-            CHECK_TRUE(nullptr == table_path_expression->hint(), common::kSqlError,
-                       "Un-support hint")
+            CHECK_TRUE(nullptr == table_path_expression->hint(), common::kSqlError, "Un-support hint")
 
+            CHECK_TRUE(table_path_expression->path_expr()->num_names() <= 2, common::kSqlError,
+                       "Invalid table path expression ", table_path_expression->path_expr()->ToIdentifierPathString());
             std::string alias_name =
                 nullptr != table_path_expression->alias() ? table_path_expression->alias()->GetAsString() : "";
             *output =
@@ -541,15 +626,12 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
         }
         case zetasql::AST_JOIN: {
             auto join = root->GetAsOrDie<zetasql::ASTJoin>();
-            CHECK_TRUE(nullptr == join->hint(), common::kSqlError,
-                       "Un-support hint with join")
+            CHECK_TRUE(nullptr == join->hint(), common::kSqlError, "Un-support hint with join")
 
             CHECK_TRUE(zetasql::ASTJoin::JoinHint::NO_JOIN_HINT == join->join_hint(), common::kSqlError,
                        "Un-support join hint with join ", join->GetSQLForJoinHint())
-            CHECK_TRUE(nullptr == join->using_clause(), common::kSqlError,
-                       "Un-support USING clause with join ")
-            CHECK_TRUE(false == join->natural(), common::kSqlError,
-                       "Un-support natural with join ")
+            CHECK_TRUE(nullptr == join->using_clause(), common::kSqlError, "Un-support USING clause with join ")
+            CHECK_TRUE(false == join->natural(), common::kSqlError, "Un-support natural with join ")
             node::TableRefNode* left = nullptr;
             node::TableRefNode* right = nullptr;
             node::OrderByNode* order_by = nullptr;
@@ -595,18 +677,14 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
             }
             break;
         }
-            //        case zetasql::AST_TABLE_SUBQUERY: {
-            //            const node::QueryRefNode *sub_query_node = dynamic_cast<const node::QueryRefNode *>(root);
-            //            if (!CreateQueryPlan(sub_query_node->query_, &plan_node, status)) {
-            //                return false;
-            //            }
-            //            if (!sub_query_node->alias_table_name_.empty()) {
-            //                *output = node_manager_->MakeRenamePlanNode(plan_node, sub_query_node->alias_table_name_);
-            //            } else {
-            //                *output = plan_node;
-            //            }
-            //            break;
-            //        }
+        case zetasql::AST_TABLE_SUBQUERY: {
+            auto table_subquery = root->GetAsOrDie<zetasql::ASTTableSubquery>();
+            std::string alias_name = nullptr == table_subquery->alias() ? "" : table_subquery->alias()->GetAsString();
+            node::QueryNode* subquery = nullptr;
+            CHECK_STATUS(ConvertQueryNode(table_subquery->subquery(), node_manager, &subquery))
+            *output = node_manager->MakeQueryRefNode(subquery, alias_name);
+            break;
+        }
         default: {
             status.msg = "fail to convert table expression, unrecognized type " + root->GetNodeKindString();
             status.code = common::kPlanError;
@@ -647,6 +725,36 @@ base::Status ConvertWindowClause(const zetasql::ASTWindowClause* window_clause, 
     }
     return base::Status::OK();
 }
+base::Status ConvertLimitOffsetNode(const zetasql::ASTLimitOffset* limit_offset, node::NodeManager* node_manager,
+                                    node::SqlNode ** output) {
+    base::Status status;
+    if (nullptr == limit_offset) {
+        *output = nullptr;
+        return base::Status::OK();
+    }
+
+    CHECK_TRUE(nullptr == limit_offset->offset(), common::kSqlError, "Un-support OFFSET")
+    CHECK_TRUE(nullptr != limit_offset->limit(), common::kSqlError, "Un-support LIMIT with null expression")
+
+    node::ExprNode* limit = nullptr;
+    CHECK_STATUS(ConvertExprNode(limit_offset->limit(), node_manager, &limit))
+    CHECK_TRUE(node::kExprPrimary == limit->GetExprType(), common::kSqlError, "Un-support LIMIT with expression type ",
+               limit_offset->GetNodeKindString())
+    node::ConstNode* value = dynamic_cast<node::ConstNode*>(limit);
+    switch (value->GetDataType()) {
+        case node::kInt16:
+        case node::kInt32:
+        case node::kInt64: {
+            *output = node_manager->MakeLimitNode(value->GetAsInt64());
+            return base::Status::OK();
+        }
+        default: {
+            status.code = common::kSqlError;
+            status.msg = "Un-support LIMIT with expression type " + limit_offset->GetNodeKindString();
+            return status;
+        }
+    }
+}
 base::Status ConvertQueryNode(const zetasql::ASTQuery* root, node::NodeManager* node_manager,
                               node::QueryNode** output) {
     base::Status status;
@@ -655,6 +763,10 @@ base::Status ConvertQueryNode(const zetasql::ASTQuery* root, node::NodeManager* 
         return base::Status::OK();
     }
     const zetasql::ASTQueryExpression* query_expression = root->query_expr();
+    node::OrderByNode* order_by = nullptr;
+    CHECK_STATUS(ConvertOrderBy(root->order_by(), node_manager, &order_by));
+    node::SqlNode* limit = nullptr;
+    CHECK_STATUS(ConvertLimitOffsetNode(root->limit_offset(), node_manager, &limit));
     switch (query_expression->node_kind()) {
         case zetasql::AST_SELECT: {
             auto select_query = query_expression->GetAsOrNull<zetasql::ASTSelect>();
@@ -664,11 +776,7 @@ base::Status ConvertQueryNode(const zetasql::ASTQuery* root, node::NodeManager* 
             node::ExprNode* where_expr = nullptr;
             node::ExprListNode* group_expr_list = nullptr;
             node::ExprNode* having_expr = nullptr;
-            // TODO(chenjing): handle order expression in table reference
-            node::ExprNode* order_expr_list = nullptr;
             node::SqlNodeList* window_list_ptr = nullptr;
-            // TODO(chenjing): handle order expression in table reference
-            node::SqlNode* limit_ptr = nullptr;
             node::TableRefNode* table_ref_node = nullptr;
             CHECK_STATUS(ConvertSelectList(select_query->select_list(), node_manager, &select_list_ptr));
             if (nullptr != select_query->from_clause()) {
@@ -694,9 +802,9 @@ base::Status ConvertQueryNode(const zetasql::ASTQuery* root, node::NodeManager* 
             if (nullptr != select_query->window_clause()) {
                 CHECK_STATUS(ConvertWindowClause(select_query->window_clause(), node_manager, &window_list_ptr))
             }
-            *output = node_manager->MakeSelectQueryNode(is_distinct, select_list_ptr, tableref_list_ptr, where_expr,
-                                                        group_expr_list, having_expr, order_expr_list, window_list_ptr,
-                                                        limit_ptr);
+            *output =
+                node_manager->MakeSelectQueryNode(is_distinct, select_list_ptr, tableref_list_ptr, where_expr,
+                                                  group_expr_list, having_expr, order_by, window_list_ptr, limit);
             return base::Status::OK();
         }
         default: {

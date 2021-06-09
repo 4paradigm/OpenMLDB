@@ -189,7 +189,7 @@ class NodeManager {
                            ExprNode *right);
 
     BetweenExpr *MakeBetweenExpr(ExprNode *expr, ExprNode *left,
-                                 ExprNode *right);
+                                 ExprNode *right, const bool is_not_between);
     BinaryExpr *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
                                    FnOperator op);
     UnaryExpr *MakeUnaryExprNode(ExprNode *left, FnOperator op);

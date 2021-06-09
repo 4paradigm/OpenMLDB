@@ -1691,7 +1691,11 @@ sql_expr:
      }
      | sql_expr BETWEEN sql_expr AND sql_expr
      {
-     	$$ = node_manager->MakeBetweenExpr($1, $3, $5);
+     	$$ = node_manager->MakeBetweenExpr($1, $3, $5, false);
+     }
+     | sql_expr NOT BETWEEN sql_expr AND sql_expr
+     {
+      	$$ = node_manager->MakeBetweenExpr($1, $4, $6, true);
      }
      | sql_case_when_expr
      {

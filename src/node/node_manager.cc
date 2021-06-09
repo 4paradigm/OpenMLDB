@@ -1142,9 +1142,10 @@ ProjectNode *NodeManager::MakeRowProjectNode(const int32_t pos,
     return MakeProjectNode(pos, name, false, expression, nullptr);
 }
 
-BetweenExpr *NodeManager::MakeBetweenExpr(ExprNode *expr, ExprNode *left,
-                                          ExprNode *right) {
-    return RegisterNode(new BetweenExpr(expr, left, right));
+BetweenExpr *NodeManager::MakeBetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right, const bool is_not) {
+    BetweenExpr *node = new BetweenExpr(expr, left, right);
+    node->set_is_not_between(is_not);
+    return RegisterNode(node);
 }
 ExprNode *NodeManager::MakeAndExpr(ExprListNode *expr_list) {
     if (node::ExprListNullOrEmpty(expr_list)) {

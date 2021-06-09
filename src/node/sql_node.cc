@@ -1717,11 +1717,11 @@ void BetweenExpr::Print(std::ostream &output,
 }
 const std::string BetweenExpr::GetExprString() const {
     std::string str = "";
-    str.append(ExprString(expr_))
-        .append(" between ")
-        .append(ExprString(left_))
-        .append(" and ")
-        .append(ExprString(right_));
+    str.append(ExprString(expr_));
+    if (is_not_between_) {
+        str.append(" not ");
+    }
+    str.append(" between ").append(ExprString(left_)).append(" and ").append(ExprString(right_));
     return str;
 }
 bool BetweenExpr::Equals(const ExprNode *node) const {
@@ -1729,8 +1729,8 @@ bool BetweenExpr::Equals(const ExprNode *node) const {
         return false;
     }
     const BetweenExpr *that = dynamic_cast<const BetweenExpr *>(node);
-    return ExprEquals(expr_, that->expr_) && ExprEquals(left_, that->left_) &&
-           ExprEquals(right_, that->right_);
+    return is_not_between_ == that->is_not_between_ && ExprEquals(expr_, that->expr_) &&
+           ExprEquals(left_, that->left_) && ExprEquals(right_, that->right_);
 }
 
 std::string FnDefNode::GetFlatString() const {

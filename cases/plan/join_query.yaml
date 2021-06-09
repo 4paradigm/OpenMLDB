@@ -35,9 +35,13 @@ cases:
   - id: 6
     desc: LastJoin有不等式条件
     sql: SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 order by t2.col5 on t1.col1 = t2.col2 and t2.col5 >= t1.col5;
-  - id: 7
+  - id: 7-1
     desc: LastJoin有between条件
     sql: SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 order by t2.col5 on t1.col1 = t2.col1 and t2.std_ts between t1.std_ts - 30d and t1.std_ts - 1d;
+    mode: physical-plan-unsupport, runner-unsupport
+  - id: 7-2
+    desc: LastJoin有not between条件
+    sql: SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 order by t2.col5 on t1.col1 = t2.col1 and t2.std_ts not between t1.std_ts - 30d and t1.std_ts - 1d;
     mode: physical-plan-unsupport, runner-unsupport
   - id: 8-1
     desc: LastJoin无ORDER BY

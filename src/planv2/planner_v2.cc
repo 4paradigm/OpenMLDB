@@ -15,20 +15,20 @@
  */
 
 #include "planv2/planner_v2.h"
+#include <algorithm>
 #include <map>
 #include <random>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
-#include <algorithm>
 #include "planv2/ast_node_converter.h"
 #include "proto/fe_common.pb.h"
 
 namespace hybridse {
 namespace plan {
 int SimplePlannerV2::CreateASTScriptPlan(const zetasql::ASTScript *script, PlanNodeList &plan_trees,
-                                    Status &status) {  // NOLINT (runtime/references)
+                                         Status &status) {  // NOLINT (runtime/references)
     if (nullptr == script) {
         status.msg = "fail to create plan tree: ASTScript is null";
         status.code = common::kPlanError;
@@ -61,21 +61,18 @@ int SimplePlannerV2::CreateASTScriptPlan(const zetasql::ASTScript *script, PlanN
                     LOG(WARNING) << status;
                     return status.code;
                 }
-                //
-                //                if (!is_batch_mode_) {
-                //                    // return false if Primary path check fail
-                //                    ::hybridse::node::PlanNode *primary_node;
-                //                    if (!ValidatePrimaryPath(query_plan, &primary_node,
-                //                                             status)) {
-                //                        DLOG(INFO) << "primay check fail, logical plan:\n"
-                //                                   << *query_plan;
-                //                        return status.code;
-                //                    }
-                //                    dynamic_cast<node::TablePlanNode *>(primary_node)
-                //                        ->SetIsPrimary(true);
-                //                    DLOG(INFO) << "plan after primary check:\n" << *query_plan;
-                //                }
-                //
+
+                if (!is_batch_mode_) {
+                    // return false if Primary path check fail
+                    ::hybridse::node::PlanNode *primary_node;
+                    if (!ValidatePrimaryPath(query_plan, &primary_node, status)) {
+                        DLOG(INFO) << "primay check fail, logical plan:\n" << *query_plan;
+                        return status.code;
+                    }
+                    dynamic_cast<node::TablePlanNode *>(primary_node)->SetIsPrimary(true);
+                    DLOG(INFO) << "plan after primary check:\n" << *query_plan;
+                }
+
                 plan_trees.push_back(query_plan);
                 break;
             }
@@ -150,7 +147,7 @@ base::Status SimplePlannerV2::CreateASTQueryPlan(const zetasql::ASTQuery *root, 
         LOG(WARNING) << status;
         return status;
     }
-    node::QueryNode* query_node = nullptr;
+    node::QueryNode *query_node = nullptr;
     CHECK_STATUS(ConvertQueryNode(root, node_manager_, &query_node))
     std::cout << *query_node << std::endl;
     if (CreateQueryPlan(query_node, plan_tree, status)) {

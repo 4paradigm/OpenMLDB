@@ -125,7 +125,7 @@ cases:
   - id: 34
     desc: SELECT 常量表达式
     mode: request-unsupport
-    sql: SELECT 1+2;
+    sql: SELECT 1+2, 1.0f + 2.0f, 1L + 2L, 9999999999999L, 9999999999999;
   - id: 35
     desc: SELECT 常量函数表达式
     mode: request-unsupport

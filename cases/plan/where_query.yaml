@@ -43,14 +43,14 @@ cases:
     sql: SELECT COL1 FROM t1 where COL1 not like 10;
     mode: physical-plan-unsupport
   - id: 9
+    mode: physical-plan-unsupport, zetasql-unsupport
     desc: SELECT 过滤条件in整数元组
     sql: SELECT COL1 FROM t1 where COL2 in (1, 2, 3, 4, 5);
-    mode: physical-plan-unsupport
   - id: 10
+    mode: physical-plan-unsupport, zetasql-unsupport
     desc: SELECT 过滤条件in字符串元组
     sql: SELECT COL1 FROM t1 where COL1 in ("abc", "xyz", "test");
-    mode: physical-plan-unsupport
   - id: 11
+    mode: physical-plan-unsupport, zetasql-unsupport
     desc: SELECT 过滤条件NOT IN证书元组
     sql: SELECT COL1 FROM t1 where COL1 not in (1,2,3,4,5);
-    mode: physical-plan-unsupport

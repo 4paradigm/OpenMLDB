@@ -16,9 +16,17 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 add_library(hybridse_planner_v2 STATIC
         planner_v2.cc ast_node_converter.cc)
 target_link_libraries(hybridse_planner_v2 ${ZETASQL_LIBS} hybridse_core glog)
+
+
+add_executable(ast_node_converter_test ast_node_converter_test.cc)
+target_link_libraries(ast_node_converter_test gtest hybridse_planner_v2 hybridse_core glog
+        ${ZETASQL_LIBS} ${GTEST_LIBRARIES})
+add_test(ast_node_converter_test ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ast_node_converter_test --gtest_output=xml:${CMAKE_BINARY_DIR}/ast_node_converter_test.xml)
+list(APPEND test_list planner_v2_test)
 
 add_executable(planner_v2_test planner_v2_test.cc)
 target_link_libraries(planner_v2_test gtest hybridse_planner_v2 hybridse_core glog

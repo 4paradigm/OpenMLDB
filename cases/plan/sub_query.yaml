@@ -23,7 +23,7 @@ cases:
     sql: SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from t1 group by col2 ) limit 10;
   - id: 3
     desc: 复杂子查询
-    mode: physical-plan-unsupport, request-unsupport
+    mode: physical-plan-unsupport, request-unsupport, zetasql-unsupport
     sql: |
       select * from
           (select * from stu where grade = 7) s

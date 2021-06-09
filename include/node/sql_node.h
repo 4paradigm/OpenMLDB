@@ -1493,16 +1493,18 @@ class GetFieldExpr : public ExprNode {
 class BetweenExpr : public ExprNode {
  public:
     BetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right)
-        : ExprNode(kExprBetween), expr_(expr), left_(left), right_(right) {}
+        : ExprNode(kExprBetween), expr_(expr), left_(left), right_(right), is_not_between_(false) {}
     ~BetweenExpr() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *node) const;
     BetweenExpr *ShadowCopy(NodeManager *) const override;
-
+    void set_is_not_between(const bool flag) { is_not_between_ = flag; }
+    const bool is_not_between() const { return is_not_between_; }
     ExprNode *expr_;
     ExprNode *left_;
     ExprNode *right_;
+    bool is_not_between_;
 };
 class ResTarget : public SqlNode {
  public:
