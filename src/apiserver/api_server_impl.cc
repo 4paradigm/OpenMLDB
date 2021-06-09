@@ -731,11 +731,7 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableI
         ar.Member("replica_num") & info->replica_num();
     }
     if (info->has_compress_type()) {
-        if (info->compress_type() == ::fedb::type::CompressType::kNoCompress) {
-            ar.Member("compress_type") & "kNoCompress";
-        } else {
-            ar.Member("compress_type") & "kSnappy";
-        }
+        ar.Member("compress_type") & ::fedb::type::CompressType_Name(info->compress_type());
     }
     if (info->has_key_entry_max_height()) {
         ar.Member("key_entry_max_height") & info->key_entry_max_height();
