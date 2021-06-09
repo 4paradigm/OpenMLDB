@@ -21,7 +21,7 @@ cd "$(dirname "$0")/.."
 
 HYRBIDSE_DIR=$(pwd)
 
-source tools/init_env.profile.sh
+./tools/init_env.profile.sh
 
 if uname -a | grep -q Darwin; then
     # in case coreutils not install on mac

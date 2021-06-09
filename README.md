@@ -2,6 +2,7 @@
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/4paradigm/HybridSE?style=flat-square)](https://github.com/4paradigm/HybridSE/releases/latest)
 [![GitHub milestones](https://img.shields.io/github/milestones/open/4paradigm/hybridse?style=flat-square)](https://github.com/4paradigm/HybridSE/milestones)
 [![GitHub](https://img.shields.io/github/license/4paradigm/HybridSE?style=flat-square)](https://github.com/4paradigm/HybridSE/blob/main/LICENSE)
+[![codecov](https://codecov.io/gh/4paradigm/HybridSE/branch/main/graph/badge.svg?token=J7WQPMM9IY)](https://codecov.io/gh/4paradigm/HybridSE)
 
 - [**Slack Channel**](https://join.slack.com/t/hybridsql-ws/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)
 - [**Discussions**](https://github.com/4paradigm/HybridSE/discussions)
@@ -56,12 +57,12 @@ HybridSE has following characteristic:
 ## Prepare Code & Docker
 
 ```bash
-git clone https://github.com/4paradigm/HybridSE.git
+git clone --recursive https://github.com/4paradigm/HybridSE.git
 cd HybridSE
-docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/hybridsql:latest
+docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/hybridsql:0.3.0
 cd /HybridSE
 # init enviroment before build
-source tools/init_env.profile.sh
+./tools/init_env.profile.sh
 ```
 
 It is recommended using the docker image listed above for faster start and avoid dependency hole. You may checkout [HybridSQL-docker](https://github.com/4paradigm/HybridSQL-docker/blob/main/README.md) for complete dependency.

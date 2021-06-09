@@ -21,8 +21,8 @@ set -eE
 # goto toplevel directory
 cd "$(dirname "$0")/.."
 HYRBIDSE_DIR=$(pwd)
-# shellcheck disable=SC1091
-source tools/init_env.profile.sh
+
+./tools/init_env.profile.sh
 
 
 if uname -a | grep -q Darwin; then

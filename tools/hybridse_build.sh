@@ -18,7 +18,7 @@ set -eE
 # goto toplevel directory
 cd "$(dirname "$0")/.."
 
-source tools/init_env.profile.sh
+./tools/init_env.profile.sh
 
 
 if uname -a | grep -q Darwin; then

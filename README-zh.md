@@ -2,6 +2,7 @@
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/4paradigm/HybridSE?style=flat-square)](https://github.com/4paradigm/HybridSE/releases/latest)
 [![GitHub milestones](https://img.shields.io/github/milestones/open/4paradigm/hybridse?style=flat-square)](https://github.com/4paradigm/HybridSE/milestones)
 [![GitHub](https://img.shields.io/github/license/4paradigm/HybridSE?style=flat-square)](https://github.com/4paradigm/HybridSE/blob/main/LICENSE)
+[![codecov](https://codecov.io/gh/4paradigm/HybridSE/branch/main/graph/badge.svg?token=J7WQPMM9IY)](https://codecov.io/gh/4paradigm/HybridSE)
 
 - [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7LAF6AY)
 - [**Discussions**](https://github.com/4paradigm/HybridSE/discussions)
@@ -43,12 +44,12 @@ HybridSE是一个模块化的SQL编译器和执行器，提供了SQL语法校验
 ## 准备开发环境
 
 ```bash
-git clone https://github.com/4paradigm/HybridSE.git
+git clone --recursive https://github.com/4paradigm/HybridSE.git
 cd HybridSE
-docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/hybridsql:latest
+docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/hybridsql:0.3.0
 cd /HybridSE
 # init enviroment before build
-source tools/init_env.profile.sh
+./tools/init_env.profile.sh
 ```
 
 建议开发者使用我们提供的镜像编译和安装库。若需要使用自己的开发环境，请确保相关依赖库正确安装。编译环境和依赖库可参考 [HybridSQL-docker](https://github.com/4paradigm/HybridSQL-docker/blob/main/README.md)

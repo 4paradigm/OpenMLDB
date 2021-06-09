@@ -31,16 +31,10 @@ then
         curl -SL -o libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0-beta7/libzetasql-0.2.0-beta7-linux-x86_64.tar.gz
         tar xzf libzetasql.tar.gz -C  thirdparty --strip-components 1
         rm libzetasql.tar.gz
-
     fi
     popd
 
     ln -sf /depends/thirdparty thirdparty
-
-    if [ -r /etc/profile.d/enable-thirdparty.sh ]; then
-        # shellcheck disable=SC1091
-        source /etc/profile.d/enable-thirdparty.sh
-    fi
 else
     # shellcheck disable=SC1090
     source ~/.bash_profile
