@@ -403,6 +403,8 @@ void APIServerImpl::RegisterGetDB() {
                           return;
                       }
                       writer.StartObject();
+                      writer.Member("code") & 0;
+                      writer.Member("msg") & std::string("ok");
                       writer.Member("dbs");
                       writer.StartArray();
                       for (auto db : dbs) {
