@@ -37,19 +37,19 @@ bool APIServerImpl::Init(const sdk::ClusterOptions& options) {
         return false;
     }
 
-    auto router = std::make_unique<::fedb::sdk::SQLClusterRouter>(cluster_sdk_);
+    auto router = std::make_shared<::fedb::sdk::SQLClusterRouter>(cluster_sdk);
     if (!router->Init()) {
         LOG(ERROR) << "Fail to connect to db";
         return false;
     }
-    sql_router_ = std::move(router);
+    return Init(router);
+}
 
+bool APIServerImpl::Init(std::shared_ptr<sdk::SQLRouter> router) {
+    sql_router_ = router;
     RegisterPut();
     RegisterExecSP();
     RegisterGetSP();
-    RegisterGetDB();
-    RegisterGetTable();
-
     return true;
 }
 

@@ -45,6 +45,7 @@ class APIServerImpl : public APIServer {
     APIServerImpl() = default;
     ~APIServerImpl() override;
     bool Init(const sdk::ClusterOptions& options);
+    bool Init(std::shared_ptr<sdk::SQLRouter> router);
     void Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
                  google::protobuf::Closure* done) override;
 
@@ -63,7 +64,7 @@ class APIServerImpl : public APIServer {
                                 T row);
 
  private:
-    std::unique_ptr<sdk::SQLRouter> sql_router_;
+    std::shared_ptr<sdk::SQLRouter> sql_router_;
     InterfaceProvider provider_;
     // cluster_sdk_ is not owned by this class.
     ::fedb::sdk::ClusterSDK* cluster_sdk_;
