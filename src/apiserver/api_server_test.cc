@@ -41,11 +41,15 @@ class APIServerTestEnv : public testing::Environment {
         mc.reset(new sdk::MiniCluster(6181));
         ASSERT_TRUE(mc->SetUp()) << "Fail to set up mini cluster";
 
+        sdk::SQLRouterOptions sql_opt;
+        sql_opt.session_timeout = 30000;
+        sql_opt.zk_cluster = mc->GetZkCluster();
+        sql_opt.zk_path = mc->GetZkPath();
+        //        sql_opt.enable_debug = true;
+        cluster_remote = sdk::NewClusterSQLRouter(sql_opt);
+
         queue_svc.reset(new APIServerImpl);
-        sdk::ClusterOptions cluster_options;
-        cluster_options.zk_cluster = mc->GetZkCluster();
-        cluster_options.zk_path = mc->GetZkPath();
-        ASSERT_TRUE(queue_svc->Init(cluster_options));
+        ASSERT_TRUE(queue_svc->Init(cluster_remote));
 
         // Http server set up
         ASSERT_TRUE(server.AddService(queue_svc.get(), brpc::SERVER_DOESNT_OWN_SERVICE, "/* => Process") == 0)
@@ -57,12 +61,6 @@ class APIServerTestEnv : public testing::Environment {
         // options.idle_timeout_sec = FLAGS_idle_timeout_s;
         ASSERT_TRUE(server.Start(api_server_port, &server_options) == 0) << "Fail to start HttpServer";
 
-        sdk::SQLRouterOptions sql_opt;
-        sql_opt.session_timeout = 30000;
-        sql_opt.zk_cluster = mc->GetZkCluster();
-        sql_opt.zk_path = mc->GetZkPath();
-        //        sql_opt.enable_debug = true;
-        cluster_remote = sdk::NewClusterSQLRouter(sql_opt);
         hybridse::sdk::Status status;
         ASSERT_TRUE(cluster_remote != nullptr);
 
@@ -84,7 +82,7 @@ class APIServerTestEnv : public testing::Environment {
     virtual void TearDown() {
         std::cout << "Environment TearDown!" << std::endl;
         hybridse::sdk::Status status;
-        EXPECT_TRUE(cluster_remote->DropDB(db, &status));
+        cluster_remote->DropDB(db, &status);
         server.Stop(0);
         server.Join();
         mc->Close();
