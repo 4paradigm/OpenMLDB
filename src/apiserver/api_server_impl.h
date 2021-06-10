@@ -45,7 +45,7 @@ class APIServerImpl : public APIServer {
     APIServerImpl() = default;
     ~APIServerImpl() override;
     bool Init(const sdk::ClusterOptions& options);
-    bool Init(std::shared_ptr<sdk::SQLRouter> router);
+    bool Init(::fedb::sdk::ClusterSDK* cluster);
     void Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
                  google::protobuf::Closure* done) override;
 

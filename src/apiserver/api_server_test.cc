@@ -41,15 +41,21 @@ class APIServerTestEnv : public testing::Environment {
         mc.reset(new sdk::MiniCluster(6181));
         ASSERT_TRUE(mc->SetUp()) << "Fail to set up mini cluster";
 
+        sdk::ClusterOptions cluster_options;
+        cluster_options.zk_cluster = mc->GetZkCluster();
+        cluster_options.zk_path = mc->GetZkPath();
+        // Owned by queue_svc
+        cluster_sdk = new ::fedb::sdk::ClusterSDK(cluster_options);
+        ASSERT_TRUE(cluster_sdk->Init())  << "Fail to connect to db";
+        queue_svc.reset(new APIServerImpl);
+        ASSERT_TRUE(queue_svc->Init(cluster_sdk));
+
         sdk::SQLRouterOptions sql_opt;
         sql_opt.session_timeout = 30000;
         sql_opt.zk_cluster = mc->GetZkCluster();
         sql_opt.zk_path = mc->GetZkPath();
-        //        sql_opt.enable_debug = true;
+        // sql_opt.enable_debug = true;
         cluster_remote = sdk::NewClusterSQLRouter(sql_opt);
-
-        queue_svc.reset(new APIServerImpl);
-        ASSERT_TRUE(queue_svc->Init(cluster_remote));
 
         // Http server set up
         ASSERT_TRUE(server.AddService(queue_svc.get(), brpc::SERVER_DOESNT_OWN_SERVICE, "/* => Process") == 0)
@@ -89,6 +95,7 @@ class APIServerTestEnv : public testing::Environment {
     }
 
     std::string db;
+    ::fedb::sdk::ClusterSDK* cluster_sdk;
     std::shared_ptr<sdk::MiniCluster> mc;
     std::shared_ptr<APIServerImpl> queue_svc;
     brpc::Server server;
@@ -212,7 +219,7 @@ TEST_F(APIServerTest, valid_put) {
                       "index(key=field1, ts=field2));";
     hybridse::sdk::Status status;
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << status.msg;
-    ASSERT_TRUE(env->cluster_remote->RefreshCatalog());
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
 
     int insert_cnt = 10;
     for (int i = 0; i < insert_cnt; i++) {
@@ -263,7 +270,7 @@ TEST_F(APIServerTest, put_case1) {
                       "index(key=(c1), ts=c7));";
     hybridse::sdk::Status status;
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << status.msg;
-    ASSERT_TRUE(env->cluster_remote->RefreshCatalog());
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
 
     {
         brpc::Controller cntl;
@@ -376,10 +383,10 @@ TEST_F(APIServerTest, procedure) {
         "                   index(key=c1, ts=c7));";
     hybridse::sdk::Status status;
     env->cluster_remote->ExecuteDDL(env->db, "drop table trans;", &status);
-    ASSERT_TRUE(env->cluster_remote->RefreshCatalog());
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << "fail to create table";
 
-    ASSERT_TRUE(env->cluster_remote->RefreshCatalog());
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
     // insert
     std::string insert_sql = "insert into trans values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
     ASSERT_TRUE(env->cluster_remote->ExecuteInsert(env->db, insert_sql, &status));
@@ -393,7 +400,7 @@ TEST_F(APIServerTest, procedure) {
         " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, const c7 timestamp, c8 date" + ")" +
         " begin " + sql + " end;";
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, sp_ddl, &status)) << "fail to create procedure";
-    ASSERT_TRUE(env->cluster_remote->RefreshCatalog());
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
 
     // show procedure
     brpc::Controller show_cntl;  // default is GET
@@ -556,7 +563,7 @@ TEST_F(APIServerTest, getTables) {
                           "                   c8 date,\n"
                           "                   index(key=c1, ts=c7));";
         ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << "fail to create table";
-        ASSERT_TRUE(env->cluster_remote->RefreshCatalog());
+        ASSERT_TRUE(env->cluster_sdk->Refresh());
     }
     {
         brpc::Controller show_cntl;  // default is GET
@@ -614,7 +621,7 @@ TEST_F(APIServerTest, getTables) {
     }
     for (auto table : tables) {
         env->cluster_remote->ExecuteDDL(env->db, "drop table " + table + ";", &status);
-        ASSERT_TRUE(env->cluster_remote->RefreshCatalog());
+        ASSERT_TRUE(env->cluster_sdk->Refresh());
     }
 }
 

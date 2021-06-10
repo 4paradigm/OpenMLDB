@@ -30,26 +30,28 @@ APIServerImpl::~APIServerImpl() = default;
 
 bool APIServerImpl::Init(const sdk::ClusterOptions& options) {
     // If cluster sdk is needed, use ptr, don't own it. SQLClusterRouter owns it.
-    cluster_sdk_ = new ::fedb::sdk::ClusterSDK(options);
-    bool ok = cluster_sdk_->Init();
+    auto cluster_sdk = new ::fedb::sdk::ClusterSDK(options);
+    bool ok = cluster_sdk->Init();
     if (!ok) {
         LOG(ERROR) << "Fail to connect to db";
         return false;
     }
+    return Init(cluster_sdk);
+}
 
-    auto router = std::make_shared<::fedb::sdk::SQLClusterRouter>(cluster_sdk);
+bool APIServerImpl::Init(::fedb::sdk::ClusterSDK* cluster) {
+    cluster_sdk_ = cluster;
+    auto router = std::make_shared<::fedb::sdk::SQLClusterRouter>(cluster_sdk_);
     if (!router->Init()) {
         LOG(ERROR) << "Fail to connect to db";
         return false;
     }
-    return Init(router);
-}
-
-bool APIServerImpl::Init(std::shared_ptr<sdk::SQLRouter> router) {
-    sql_router_ = router;
+    sql_router_ = std::move(router);
     RegisterPut();
     RegisterExecSP();
     RegisterGetSP();
+    RegisterGetDB();
+    RegisterGetTable();
     return true;
 }
 
