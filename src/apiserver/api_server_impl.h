@@ -114,12 +114,12 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ProcedureIn
 JsonWriter& operator&(JsonWriter& ar, GetSPResp& s);  // NOLINT
 
 JsonWriter& operator&(JsonWriter& ar,
-                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>& column_desc);
+                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>& column_desc);  // NOLINT
 
 JsonWriter& operator&(JsonWriter& ar,
-                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>& column_key);
+                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>& column_key);  // NOLINT
 
-JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableInfo> info);
+JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableInfo> info);  // NOLINT
 
 }  // namespace http
 }  // namespace fedb
