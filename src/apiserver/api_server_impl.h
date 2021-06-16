@@ -113,11 +113,11 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ProcedureIn
 // ExecSPResp reading is unsupported now, cuz we decode sp_info here, it's irreversible
 JsonWriter& operator&(JsonWriter& ar, GetSPResp& s);  // NOLINT
 
-JsonWriter& operator&(JsonWriter& ar,
-                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>& column_desc);  // NOLINT
+JsonWriter& operator&(JsonWriter& ar,  // NOLINT
+                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>& column_desc);
 
-JsonWriter& operator&(JsonWriter& ar,
-                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>& column_key);  // NOLINT
+JsonWriter& operator&(JsonWriter& ar,   // NOLINT
+                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>& column_key); 
 
 JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableInfo> info);  // NOLINT
 
