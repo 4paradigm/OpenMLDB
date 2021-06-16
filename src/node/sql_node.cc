@@ -15,9 +15,15 @@
  */
 
 #include "node/sql_node.h"
+
 #include <numeric>
+#include <string>
+#include <unordered_map>
 #include <utility>
+
+#include "boost/algorithm/string/case_conv.hpp"
 #include "glog/logging.h"
+#include "node/node_enum.h"
 #include "node/node_manager.h"
 #include "udf/udf_library.h"
 
@@ -26,6 +32,13 @@ namespace node {
 
 using base::Status;
 using common::kTypeError;
+
+static const std::unordered_map<std::string, DataType const> type_map = {
+    {"bool", kBool},     {"in1", kBool},       {"i16", kInt16},           {"int16", kInt16},   {"smallint", kInt16},
+    {"i32", kInt32},     {"int32", kInt32},    {"int", kInt32},           {"integer", kInt32}, {"i64", kInt64},
+    {"int64", kInt64},   {"bigint", kInt64},   {"string", kVarchar},      {"float32", kFloat}, {"float", kFloat},
+    {"double", kDouble}, {"float64", kDouble}, {"timestamp", kTimestamp}, {"date", kDate},
+};
 
 bool SqlEquals(const SqlNode *left, const SqlNode *right) {
     return left == right ? true : nullptr == left ? false : left->Equals(right);
@@ -46,9 +59,8 @@ bool TypeEquals(const TypeNode *left, const TypeNode *right) {
     }
     return left == right || left->Equals(right);
 }
-void PrintSqlNode(std::ostream &output, const std::string &org_tab,
-                  const SqlNode *node_ptr, const std::string &item_name,
-                  bool last_child) {
+void PrintSqlNode(std::ostream &output, const std::string &org_tab, const SqlNode *node_ptr,
+                  const std::string &item_name, bool last_child) {
     output << org_tab << SPACE_ST << item_name << ":";
 
     if (nullptr == node_ptr) {
@@ -61,8 +73,7 @@ void PrintSqlNode(std::ostream &output, const std::string &org_tab,
         node_ptr->Print(output, org_tab + OR_INDENT);
     }
 }
-void PrintSqlVector(std::ostream &output, const std::string &tab,
-                    const std::vector<FnNode *> &vec,
+void PrintSqlVector(std::ostream &output, const std::string &tab, const std::vector<FnNode *> &vec,
                     const std::string &vector_name, bool last_item) {
     if (0 == vec.size()) {
         output << tab << SPACE_ST << vector_name << ": []";
@@ -78,8 +89,7 @@ void PrintSqlVector(std::ostream &output, const std::string &tab,
     }
     PrintSqlNode(output, space, vec[i], "" + std::to_string(i), true);
 }
-void PrintSqlVector(std::ostream &output, const std::string &tab,
-                    const std::vector<ExprNode *> &vec,
+void PrintSqlVector(std::ostream &output, const std::string &tab, const std::vector<ExprNode *> &vec,
                     const std::string &vector_name, bool last_item) {
     if (0 == vec.size()) {
         output << tab << SPACE_ST << vector_name << ": []";
@@ -97,27 +107,7 @@ void PrintSqlVector(std::ostream &output, const std::string &tab,
 }
 
 void PrintSqlVector(std::ostream &output, const std::string &tab,
-                    const std::vector<std::pair<std::string, DataType>> &vec,
-                    const std::string &vector_name, bool last_item) {
-    if (0 == vec.size()) {
-        output << tab << SPACE_ST << vector_name << ": []";
-        return;
-    }
-    output << tab << SPACE_ST << vector_name << "[list]: \n";
-    const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
-    int count = vec.size();
-    int i = 0;
-    for (i = 0; i < count - 1; ++i) {
-        PrintValue(output, space, DataTypeName(vec[i].second),
-                   "" + vec[i].first, false);
-        output << "\n";
-    }
-    PrintValue(output, space, DataTypeName(vec[i].second), "" + vec[i].first,
-               true);
-}
-
-void PrintSqlVector(std::ostream &output, const std::string &tab,
-                    const NodePointVector &vec, const std::string &vector_name,
+                    const std::vector<std::pair<std::string, DataType>> &vec, const std::string &vector_name,
                     bool last_item) {
     if (0 == vec.size()) {
         output << tab << SPACE_ST << vector_name << ": []";
@@ -128,17 +118,31 @@ void PrintSqlVector(std::ostream &output, const std::string &tab,
     int count = vec.size();
     int i = 0;
     for (i = 0; i < count - 1; ++i) {
+        PrintValue(output, space, DataTypeName(vec[i].second), "" + vec[i].first, false);
+        output << "\n";
+    }
+    PrintValue(output, space, DataTypeName(vec[i].second), "" + vec[i].first, true);
+}
+
+void PrintSqlVector(std::ostream &output, const std::string &tab, const NodePointVector &vec,
+                    const std::string &vector_name, bool last_item) {
+    if (0 == vec.size()) {
+        output << tab << SPACE_ST << vector_name << ": []";
+        return;
+    }
+    output << tab << SPACE_ST << vector_name << "[list]: \n";
+    const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
+    int count = vec.size();
+    int i = 0;
+    for (i = 0; i < count - 1; ++i) {
         PrintSqlNode(output, space, vec[i], "" + std::to_string(i), false);
         output << "\n";
     }
     PrintSqlNode(output, space, vec[i], "" + std::to_string(i), true);
 }
 
-void SelectQueryNode::PrintSqlNodeList(std::ostream &output,
-                                       const std::string &tab,
-                                       SqlNodeList *list,
-                                       const std::string &name,
-                                       bool last_item) const {
+void SelectQueryNode::PrintSqlNodeList(std::ostream &output, const std::string &tab, SqlNodeList *list,
+                                       const std::string &name, bool last_item) const {
     if (nullptr == list) {
         output << tab << SPACE_ST << name << ": []";
         return;
@@ -146,14 +150,12 @@ void SelectQueryNode::PrintSqlNodeList(std::ostream &output,
     PrintSqlVector(output, tab, list->GetList(), name, last_item);
 }
 
-void PrintValue(std::ostream &output, const std::string &org_tab,
-                const std::string &value, const std::string &item_name,
-                bool last_child) {
+void PrintValue(std::ostream &output, const std::string &org_tab, const std::string &value,
+                const std::string &item_name, bool last_child) {
     output << org_tab << SPACE_ST << item_name << ": " << value;
 }
 
-void PrintValue(std::ostream &output, const std::string &org_tab,
-                const std::vector<std::string> &vec,
+void PrintValue(std::ostream &output, const std::string &org_tab, const std::vector<std::string> &vec,
                 const std::string &item_name, bool last_child) {
     std::string value = "";
     for (auto item : vec) {
@@ -230,8 +232,7 @@ bool AllNode::Equals(const ExprNode *node) const {
         return false;
     }
     const AllNode *that = dynamic_cast<const AllNode *>(node);
-    return this->relation_name_ == that->relation_name_ &&
-           ExprNode::Equals(node);
+    return this->relation_name_ == that->relation_name_ && ExprNode::Equals(node);
 }
 
 void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -288,13 +289,10 @@ bool ConstNode::Equals(const ExprNode *node) const {
         return false;
     }
     const ConstNode *that = dynamic_cast<const ConstNode *>(node);
-    return this->data_type_ == that->data_type_ &&
-           GetExprString() == that->GetExprString() && ExprNode::Equals(node);
+    return this->data_type_ == that->data_type_ && GetExprString() == that->GetExprString() && ExprNode::Equals(node);
 }
 
-ConstNode *ConstNode::CastFrom(ExprNode *node) {
-    return dynamic_cast<ConstNode *>(node);
-}
+ConstNode *ConstNode::CastFrom(ExprNode *node) { return dynamic_cast<ConstNode *>(node); }
 
 void LimitNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
@@ -327,26 +325,18 @@ bool TableNode::Equals(const SqlNode *node) const {
     return this->org_table_name_ == that->org_table_name_;
 }
 
-void ColumnIdNode::Print(std::ostream &output,
-                         const std::string &org_tab) const {
+void ColumnIdNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, std::to_string(this->GetColumnID()), "column_id",
-               false);
+    PrintValue(output, tab, std::to_string(this->GetColumnID()), "column_id", false);
 }
 
-ColumnIdNode *ColumnIdNode::CastFrom(ExprNode *node) {
-    return dynamic_cast<ColumnIdNode *>(node);
-}
+ColumnIdNode *ColumnIdNode::CastFrom(ExprNode *node) { return dynamic_cast<ColumnIdNode *>(node); }
 
-const std::string ColumnIdNode::GenerateExpressionName() const {
-    return "#" + std::to_string(this->GetColumnID());
-}
+const std::string ColumnIdNode::GenerateExpressionName() const { return "#" + std::to_string(this->GetColumnID()); }
 
-const std::string ColumnIdNode::GetExprString() const {
-    return "#" + std::to_string(this->GetColumnID());
-}
+const std::string ColumnIdNode::GetExprString() const { return "#" + std::to_string(this->GetColumnID()); }
 
 bool ColumnIdNode::Equals(const ExprNode *node) const {
     if (this == node) {
@@ -359,22 +349,17 @@ bool ColumnIdNode::Equals(const ExprNode *node) const {
     return this->GetColumnID() == that->GetColumnID();
 }
 
-void ColumnRefNode::Print(std::ostream &output,
-                          const std::string &org_tab) const {
+void ColumnRefNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(
-        output, tab,
-        db_name_.empty() ? relation_name_ : db_name_ + "." + relation_name_,
-        "relation_name", false);
+    PrintValue(output, tab, db_name_.empty() ? relation_name_ : db_name_ + "." + relation_name_, "relation_name",
+               false);
     output << "\n";
     PrintValue(output, tab, column_name_, "column_name", true);
 }
 
-ColumnRefNode *ColumnRefNode::CastFrom(ExprNode *node) {
-    return dynamic_cast<ColumnRefNode *>(node);
-}
+ColumnRefNode *ColumnRefNode::CastFrom(ExprNode *node) { return dynamic_cast<ColumnRefNode *>(node); }
 
 const std::string ColumnRefNode::GenerateExpressionName() const {
     std::string str = "";
@@ -397,22 +382,19 @@ bool ColumnRefNode::Equals(const ExprNode *node) const {
         return false;
     }
     const ColumnRefNode *that = dynamic_cast<const ColumnRefNode *>(node);
-    return this->relation_name_ == that->relation_name_ &&
-           this->column_name_ == that->column_name_ && ExprNode::Equals(node);
+    return this->relation_name_ == that->relation_name_ && this->column_name_ == that->column_name_ &&
+           ExprNode::Equals(node);
 }
 
-void GetFieldExpr::Print(std::ostream &output,
-                         const std::string &org_tab) const {
+void GetFieldExpr::Print(std::ostream &output, const std::string &org_tab) const {
     auto input = GetChild(0);
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintSqlNode(output, tab, input, "input", true);
     output << "\n";
-    if (input->GetOutputType() != nullptr &&
-        input->GetOutputType()->base() == kTuple) {
-        PrintValue(output, tab, std::to_string(column_id_), "field_index",
-                   true);
+    if (input->GetOutputType() != nullptr && input->GetOutputType()->base() == kTuple) {
+        PrintValue(output, tab, std::to_string(column_id_), "field_index", true);
     } else {
         PrintValue(output, tab, std::to_string(column_id_), "column_id", true);
         output << "\n";
@@ -442,13 +424,11 @@ bool GetFieldExpr::Equals(const ExprNode *node) const {
         return false;
     }
     auto that = dynamic_cast<const GetFieldExpr *>(node);
-    return this->GetRow()->Equals(that->GetRow()) &&
-           this->column_id_ == that->column_id_ &&
+    return this->GetRow()->Equals(that->GetRow()) && this->column_id_ == that->column_id_ &&
            this->column_name_ == that->column_name_ && ExprNode::Equals(node);
 }
 
-void OrderByNode::Print(std::ostream &output,
-                        const std::string &org_tab) const {
+void OrderByNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
 
@@ -487,12 +467,10 @@ void FrameNode::Print(std::ostream &output, const std::string &org_tab) const {
     }
     if (0 != frame_maxsize_) {
         output << "\n";
-        PrintValue(output, tab, std::to_string(frame_maxsize_), "frame_maxsize",
-                   false);
+        PrintValue(output, tab, std::to_string(frame_maxsize_), "frame_maxsize", false);
     }
 }
-void FrameExtent::Print(std::ostream &output,
-                        const std::string &org_tab) const {
+void FrameExtent::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -513,18 +491,15 @@ bool FrameExtent::Equals(const SqlNode *node) const {
         return false;
     }
     const FrameExtent *that = dynamic_cast<const FrameExtent *>(node);
-    return SqlEquals(this->start_, that->start_) &&
-           SqlEquals(this->end_, that->end_);
+    return SqlEquals(this->start_, that->start_) && SqlEquals(this->end_, that->end_);
 }
 bool FrameNode::Equals(const SqlNode *node) const {
     if (!SqlNode::Equals(node)) {
         return false;
     }
     const FrameNode *that = dynamic_cast<const FrameNode *>(node);
-    return this->frame_type_ == that->frame_type_ &&
-           SqlEquals(this->frame_range_, that->frame_range_) &&
-           SqlEquals(this->frame_rows_, that->frame_rows_) &&
-           (this->frame_maxsize_ == that->frame_maxsize_);
+    return this->frame_type_ == that->frame_type_ && SqlEquals(this->frame_range_, that->frame_range_) &&
+           SqlEquals(this->frame_rows_, that->frame_rows_) && (this->frame_maxsize_ == that->frame_maxsize_);
 }
 
 const std::string FrameNode::GetExprString() const {
@@ -541,8 +516,7 @@ const std::string FrameNode::GetExprString() const {
     }
     return str;
 }
-bool FrameNode::CanMergeWith(const FrameNode *that,
-                             const bool enbale_merge_with_maxsize) const {
+bool FrameNode::CanMergeWith(const FrameNode *that, const bool enbale_merge_with_maxsize) const {
     if (Equals(that)) {
         return true;
     }
@@ -555,8 +529,7 @@ bool FrameNode::CanMergeWith(const FrameNode *that,
     // RowsRange-like frames with frame_maxsize can't be merged when
     if (this->IsRowsRangeLikeFrame() && that->IsRowsRangeLikeFrame()) {
         // frame_maxsize_ > 0 and enbale_merge_with_maxsize=false
-        if (!enbale_merge_with_maxsize &&
-            (this->frame_maxsize() > 0 || that->frame_maxsize_ > 0)) {
+        if (!enbale_merge_with_maxsize && (this->frame_maxsize() > 0 || that->frame_maxsize_ > 0)) {
             return false;
         }
         // with different frame_maxsize can't be merged
@@ -566,18 +539,15 @@ bool FrameNode::CanMergeWith(const FrameNode *that,
     }
 
     // RowsRange-like pure history frames Can't be Merged with Rows Frame
-    if (this->IsRowsRangeLikeFrame() && this->IsPureHistoryFrame() &&
-        kFrameRows == that->frame_type_) {
+    if (this->IsRowsRangeLikeFrame() && this->IsPureHistoryFrame() && kFrameRows == that->frame_type_) {
         return false;
     }
-    if (that->IsRowsRangeLikeFrame() && that->IsPureHistoryFrame() &&
-        kFrameRows == this->frame_type_) {
+    if (that->IsRowsRangeLikeFrame() && that->IsPureHistoryFrame() && kFrameRows == this->frame_type_) {
         return false;
     }
 
     // Handle RowsRange-like frame with MAXSIZE  and RowsFrame
-    if (this->IsRowsRangeLikeMaxSizeFrame() &&
-        kFrameRows == that->frame_type_) {
+    if (this->IsRowsRangeLikeMaxSizeFrame() && kFrameRows == that->frame_type_) {
         // Pure History RowRangeLike Frame with maxsize can't be merged with
         // Rows frame
         if (this->IsPureHistoryFrame()) {
@@ -590,8 +560,7 @@ bool FrameNode::CanMergeWith(const FrameNode *that,
             return false;
         }
     }
-    if (that->IsRowsRangeLikeMaxSizeFrame() &&
-        kFrameRows == this->frame_type_) {
+    if (that->IsRowsRangeLikeMaxSizeFrame() && kFrameRows == this->frame_type_) {
         // Pure History RowRangeLike Frame with maxsize can't be merged with
         // Rows frame
         if (that->IsPureHistoryFrame()) {
@@ -610,8 +579,7 @@ bool FrameNode::CanMergeWith(const FrameNode *that,
     }
     return true;
 }
-void CastExprNode::Print(std::ostream &output,
-                         const std::string &org_tab) const {
+void CastExprNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     output << "\n";
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -632,15 +600,11 @@ bool CastExprNode::Equals(const ExprNode *node) const {
         return false;
     }
     const CastExprNode *that = dynamic_cast<const CastExprNode *>(node);
-    return this->cast_type_ == that->cast_type_ &&
-           ExprEquals(expr(), that->expr());
+    return this->cast_type_ == that->cast_type_ && ExprEquals(expr(), that->expr());
 }
-CastExprNode *CastExprNode::CastFrom(ExprNode *node) {
-    return dynamic_cast<CastExprNode *>(node);
-}
+CastExprNode *CastExprNode::CastFrom(ExprNode *node) { return dynamic_cast<CastExprNode *>(node); }
 
-void WhenExprNode::Print(std::ostream &output,
-                         const std::string &org_tab) const {
+void WhenExprNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -650,11 +614,7 @@ void WhenExprNode::Print(std::ostream &output,
 }
 const std::string WhenExprNode::GetExprString() const {
     std::string str = "";
-    str.append("when ")
-        .append(ExprString(when_expr()))
-        .append(" ")
-        .append("then ")
-        .append(ExprString(then_expr()));
+    str.append("when ").append(ExprString(when_expr())).append(" ").append("then ").append(ExprString(then_expr()));
     return str;
 }
 bool WhenExprNode::Equals(const ExprNode *node) const {
@@ -665,11 +625,9 @@ bool WhenExprNode::Equals(const ExprNode *node) const {
         return false;
     }
     const WhenExprNode *that = dynamic_cast<const WhenExprNode *>(node);
-    return ExprEquals(when_expr(), that->when_expr()) &&
-           ExprEquals(then_expr(), that->then_expr());
+    return ExprEquals(when_expr(), that->when_expr()) && ExprEquals(then_expr(), that->then_expr());
 }
-void CaseWhenExprNode::Print(std::ostream &output,
-                             const std::string &org_tab) const {
+void CaseWhenExprNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -694,12 +652,10 @@ bool CaseWhenExprNode::Equals(const ExprNode *node) const {
         return false;
     }
     const CaseWhenExprNode *that = dynamic_cast<const CaseWhenExprNode *>(node);
-    return ExprEquals(when_expr_list(), that->when_expr_list()) &&
-           ExprEquals(else_expr(), that->else_expr());
+    return ExprEquals(when_expr_list(), that->when_expr_list()) && ExprEquals(else_expr(), that->else_expr());
 }
 
-void CallExprNode::Print(std::ostream &output,
-                         const std::string &org_tab) const {
+void CallExprNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     output << "\n";
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -709,8 +665,7 @@ void CallExprNode::Print(std::ostream &output,
     for (auto child : children_) {
         output << "\n";
         bool is_last_arg = i == children_.size() - 1;
-        PrintSqlNode(output, tab, child, "arg[" + std::to_string(i++) + "]",
-                     is_last_arg);
+        PrintSqlNode(output, tab, child, "arg[" + std::to_string(i++) + "]", is_last_arg);
     }
     if (has_over) {
         output << "\n";
@@ -752,20 +707,18 @@ bool CallExprNode::Equals(const ExprNode *node) const {
         }
     }
     const CallExprNode *that = dynamic_cast<const CallExprNode *>(node);
-    return FnDefEquals(this->GetFnDef(), that->GetFnDef()) &&
-           SqlEquals(this->over_, that->over_) && ExprNode::Equals(node);
+    return FnDefEquals(this->GetFnDef(), that->GetFnDef()) && SqlEquals(this->over_, that->over_) &&
+           ExprNode::Equals(node);
 }
 
-void WindowDefNode::Print(std::ostream &output,
-                          const std::string &org_tab) const {
+void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab;
     output << "\n";
     PrintValue(output, tab, window_name_, "window_name", false);
     if (nullptr != union_tables_) {
         output << "\n";
-        PrintSqlVector(output, tab, union_tables_->GetList(), "union_tables",
-                       false);
+        PrintSqlVector(output, tab, union_tables_->GetList(), "union_tables", false);
     }
     if (exclude_current_time_) {
         output << "\n";
@@ -785,8 +738,7 @@ void WindowDefNode::Print(std::ostream &output,
     PrintSqlNode(output, tab, frame_ptr_, "frame", true);
 }
 
-bool WindowDefNode::CanMergeWith(
-    const WindowDefNode *that, const bool enable_window_maxsize_merged) const {
+bool WindowDefNode::CanMergeWith(const WindowDefNode *that, const bool enable_window_maxsize_merged) const {
     if (nullptr == that) {
         return false;
     }
@@ -795,25 +747,19 @@ bool WindowDefNode::CanMergeWith(
     }
     return SqlListEquals(this->union_tables_, that->union_tables_) &&
            this->exclude_current_time_ == that->exclude_current_time_ &&
-           this->instance_not_in_window_ == that->instance_not_in_window_ &&
-           ExprEquals(this->orders_, that->orders_) &&
-           ExprEquals(this->partitions_, that->partitions_) &&
-           nullptr != frame_ptr_ &&
-           this->frame_ptr_->CanMergeWith(that->frame_ptr_,
-                                          enable_window_maxsize_merged);
+           this->instance_not_in_window_ == that->instance_not_in_window_ && ExprEquals(this->orders_, that->orders_) &&
+           ExprEquals(this->partitions_, that->partitions_) && nullptr != frame_ptr_ &&
+           this->frame_ptr_->CanMergeWith(that->frame_ptr_, enable_window_maxsize_merged);
 }
 bool WindowDefNode::Equals(const SqlNode *node) const {
     if (!SqlNode::Equals(node)) {
         return false;
     }
     const WindowDefNode *that = dynamic_cast<const WindowDefNode *>(node);
-    return this->window_name_ == that->window_name_ &&
-           this->exclude_current_time_ == that->exclude_current_time_ &&
+    return this->window_name_ == that->window_name_ && this->exclude_current_time_ == that->exclude_current_time_ &&
            this->instance_not_in_window_ == that->instance_not_in_window_ &&
-           SqlListEquals(this->union_tables_, that->union_tables_) &&
-           ExprEquals(this->orders_, that->orders_) &&
-           ExprEquals(this->partitions_, that->partitions_) &&
-           SqlEquals(this->frame_ptr_, that->frame_ptr_);
+           SqlListEquals(this->union_tables_, that->union_tables_) && ExprEquals(this->orders_, that->orders_) &&
+           ExprEquals(this->partitions_, that->partitions_) && SqlEquals(this->frame_ptr_, that->frame_ptr_);
 }
 
 void ResTarget::Print(std::ostream &output, const std::string &org_tab) const {
@@ -832,14 +778,12 @@ bool ResTarget::Equals(const SqlNode *node) const {
     return this->name_ == that->name_ && ExprEquals(this->val_, that->val_);
 }
 
-void SelectQueryNode::Print(std::ostream &output,
-                            const std::string &org_tab) const {
+void SelectQueryNode::Print(std::ostream &output, const std::string &org_tab) const {
     QueryNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     bool last_child = false;
-    PrintValue(output, tab, distinct_opt_ ? "true" : "false", "distinct_opt",
-               last_child);
+    PrintValue(output, tab, distinct_opt_ ? "true" : "false", "distinct_opt", last_child);
     output << "\n";
     PrintSqlNode(output, tab, where_clause_ptr_, "where_expr", last_child);
     output << "\n";
@@ -863,8 +807,7 @@ bool SelectQueryNode::Equals(const SqlNode *node) const {
         return false;
     }
     const SelectQueryNode *that = dynamic_cast<const SelectQueryNode *>(node);
-    return this->distinct_opt_ == that->distinct_opt_ &&
-           SqlListEquals(this->select_list_, that->select_list_) &&
+    return this->distinct_opt_ == that->distinct_opt_ && SqlListEquals(this->select_list_, that->select_list_) &&
            SqlListEquals(this->tableref_list_, that->tableref_list_) &&
            SqlListEquals(this->window_list_, that->window_list_) &&
            SqlEquals(this->where_clause_ptr_, that->where_clause_ptr_) &&
@@ -996,8 +939,57 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
         case kLambdaDef:
             output = "kLambdaDef";
             break;
-        default:
-            output = "unknown";
+        case kPartitionMeta:
+            output = "kPartitionMeta";
+            break;
+        case kCreateIndexStmt:
+            output = "kCreateIndexStmt";
+            break;
+        case kInsertStmt:
+            output = "kInsertStmt";
+            break;
+        case kWindowFunc:
+            output = "kWindowFunc";
+            break;
+        case kIndexKey:
+            output = "kIndexKey";
+            break;
+        case kIndexTs:
+            output = "kIndexTs";
+            break;
+        case kIndexTTLType:
+            output = "kIndexTTLType";
+            break;
+        case kIndexTTL:
+            output = "kIndexTTL";
+            break;
+        case kIndexVersion:
+            output = "kIndexVersion";
+            break;
+        case kReplicaNum:
+            output = "kReplicaNum";
+            break;
+        case kPartitionNum:
+            output = "kPartitionNum";
+            break;
+        case kFn:
+            output = "kFn";
+            break;
+        case kFnParaList:
+            output = "kFnParaList";
+            break;
+        case kCreateSpStmt:
+            output = "kCreateSpStmt";
+            break;
+        case kDistributions:
+            output = "kDistributions";
+            break;
+        case kInputParameter:
+            output = "kInputParameter";
+            break;
+        case kUnknow:
+            output = "kUnknow";
+            break;
     }
     return output;
 }
@@ -1011,9 +1003,8 @@ std::ostream &operator<<(std::ostream &output, const SqlNodeList &thiz) {
     return output;
 }
 
-void FillSqlNodeList2NodeVector(
-    SqlNodeList *node_list_ptr,
-    std::vector<SqlNode *> &node_list  // NOLINT (runtime/references)
+void FillSqlNodeList2NodeVector(SqlNodeList *node_list_ptr,
+                                std::vector<SqlNode *> &node_list  // NOLINT (runtime/references)
 ) {
     if (nullptr != node_list_ptr) {
         for (auto item : node_list_ptr->GetList()) {
@@ -1021,8 +1012,7 @@ void FillSqlNodeList2NodeVector(
         }
     }
 }
-void ColumnOfExpression(const ExprNode *node_ptr,
-                        std::vector<const node::ExprNode *> *columns) {
+void ColumnOfExpression(const ExprNode *node_ptr, std::vector<const node::ExprNode *> *columns) {
     if (nullptr == columns || nullptr == node_ptr) {
         return;
     }
@@ -1031,13 +1021,11 @@ void ColumnOfExpression(const ExprNode *node_ptr,
             return;
         }
         case kExprColumnRef: {
-            columns->push_back(
-                dynamic_cast<const node::ColumnRefNode *>(node_ptr));
+            columns->push_back(dynamic_cast<const node::ColumnRefNode *>(node_ptr));
             return;
         }
         case kExprColumnId: {
-            columns->push_back(
-                dynamic_cast<const node::ColumnIdNode *>(node_ptr));
+            columns->push_back(dynamic_cast<const node::ColumnIdNode *>(node_ptr));
             return;
         }
         default: {
@@ -1048,8 +1036,8 @@ void ColumnOfExpression(const ExprNode *node_ptr,
     }
 }
 
-bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
-                        ExprNode *node_ptr, const WindowDefNode **output) {
+bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows, ExprNode *node_ptr,
+                        const WindowDefNode **output) {
     // try to resolved window ptr from expression like: call(args...) over
     // window
     if (kExprCall == node_ptr->GetExprType()) {
@@ -1060,9 +1048,8 @@ bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
             } else {
                 auto iter = windows.find(func_node_ptr->GetOver()->GetName());
                 if (iter == windows.cend()) {
-                    LOG(WARNING)
-                        << "Fail to resolved window from expression: "
-                        << func_node_ptr->GetOver()->GetName() << " undefined";
+                    LOG(WARNING) << "Fail to resolved window from expression: " << func_node_ptr->GetOver()->GetName()
+                                 << " undefined";
                     return false;
                 }
                 *output = iter->second;
@@ -1090,18 +1077,13 @@ bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
     }
     return true;
 }
-std::string ExprString(const ExprNode *expr) {
-    return nullptr == expr ? std::string() : expr->GetExprString();
-}
+std::string ExprString(const ExprNode *expr) { return nullptr == expr ? std::string() : expr->GetExprString(); }
 const bool IsNullPrimary(const ExprNode *expr) {
-    return nullptr != expr &&
-           expr->expr_type_ == hybridse::node::kExprPrimary &&
+    return nullptr != expr && expr->expr_type_ == hybridse::node::kExprPrimary &&
            dynamic_cast<const node::ConstNode *>(expr)->IsNull();
 }
 
-bool ExprListNullOrEmpty(const ExprListNode *expr) {
-    return nullptr == expr || expr->IsEmpty();
-}
+bool ExprListNullOrEmpty(const ExprListNode *expr) { return nullptr == expr || expr->IsEmpty(); }
 bool ExprIsSimple(const ExprNode *expr) {
     if (nullptr == expr) {
         return false;
@@ -1144,8 +1126,7 @@ bool ExprIsConst(const ExprNode *expr) {
                     expr_list.push_back(call_expr->GetOver()->GetOrders());
                 }
                 if (nullptr != call_expr->GetOver()->GetPartitions()) {
-                    for (auto expr :
-                         call_expr->GetOver()->GetPartitions()->children_) {
+                    for (auto expr : call_expr->GetOver()->GetPartitions()->children_) {
                         expr_list.push_back(expr);
                     }
                 }
@@ -1180,18 +1161,18 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintValue(output, tab, table_name_, "table", false);
     output << "\n";
-    PrintValue(output, tab, std::to_string(op_if_not_exist_), "IF NOT EXIST",
-               false);
+    PrintValue(output, tab, std::to_string(op_if_not_exist_), "IF NOT EXIST", false);
     output << "\n";
     PrintSqlVector(output, tab, column_desc_list_, "column_desc_list", false);
     output << "\n";
     PrintValue(output, tab, std::to_string(replica_num_), "replica_num", false);
     output << "\n";
+    PrintValue(output, tab, std::to_string(partition_num_), "partition_num", false);
+    output << "\n";
     PrintSqlVector(output, tab, distribution_list_, "distribution_list", true);
 }
 
-void ColumnDefNode::Print(std::ostream &output,
-                          const std::string &org_tab) const {
+void ColumnDefNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -1202,8 +1183,7 @@ void ColumnDefNode::Print(std::ostream &output,
     PrintValue(output, tab, std::to_string(op_not_null_), "NOT NULL", false);
 }
 
-void ColumnIndexNode::Print(std::ostream &output,
-                            const std::string &org_tab) const {
+void ColumnIndexNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -1221,8 +1201,7 @@ void ColumnIndexNode::Print(std::ostream &output,
     output << "\n";
     PrintValue(output, tab, version_, "version_column", false);
     output << "\n";
-    PrintValue(output, tab, std::to_string(version_count_), "version_count",
-               true);
+    PrintValue(output, tab, std::to_string(version_count_), "version_count", true);
 }
 void CmdNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
@@ -1232,8 +1211,7 @@ void CmdNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintValue(output, tab, args_, "args", true);
 }
-void CreateIndexNode::Print(std::ostream &output,
-                            const std::string &org_tab) const {
+void CreateIndexNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -1243,13 +1221,11 @@ void CreateIndexNode::Print(std::ostream &output,
     output << "\n";
     PrintSqlNode(output, tab, index_, "index", true);
 }
-void ExplainNode::Print(std::ostream &output,
-                        const std::string &org_tab) const {
+void ExplainNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, ExplainTypeName(explain_type_), "explain_type",
-               false);
+    PrintValue(output, tab, ExplainTypeName(explain_type_), "explain_type", false);
     output << "\n";
     PrintSqlNode(output, tab, query_, "query", true);
 }
@@ -1307,9 +1283,7 @@ const std::string UnaryExpr::GetExprString() const {
         str.append("(").append(children_[0]->GetExprString()).append(")");
         return str;
     }
-    str.append(ExprOpTypeName(op_))
-        .append(" ")
-        .append(children_[0]->GetExprString());
+    str.append(ExprOpTypeName(op_)).append(" ").append(children_[0]->GetExprString());
     return str;
 }
 bool UnaryExpr::Equals(const ExprNode *node) const {
@@ -1333,9 +1307,7 @@ void ExprIdNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintValue(output, tab, GetExprString(), "var", true);
 }
-const std::string ExprIdNode::GetExprString() const {
-    return "%" + std::to_string(id_) + "(" + name_ + ")";
-}
+const std::string ExprIdNode::GetExprString() const { return "%" + std::to_string(id_) + "(" + name_ + ")"; }
 bool ExprIdNode::Equals(const ExprNode *node) const {
     if (this == node) {
         return true;
@@ -1351,15 +1323,12 @@ void ExprNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << org_tab << SPACE_ST << "expr[" << ExprTypeName(expr_type_) << "]";
 }
 const std::string ExprNode::GetExprString() const { return ""; }
-const std::string ExprNode::GenerateExpressionName() const {
-    return GetExprString();
-}
+const std::string ExprNode::GenerateExpressionName() const { return GetExprString(); }
 bool ExprNode::Equals(const ExprNode *that) const {
     if (this == that) {
         return true;
     }
-    if (nullptr == that || expr_type_ != that->expr_type_ ||
-        children_.size() != that->children_.size()) {
+    if (nullptr == that || expr_type_ != that->expr_type_ || children_.size() != that->children_.size()) {
         return false;
     }
 
@@ -1375,8 +1344,7 @@ bool ExprNode::Equals(const ExprNode *that) const {
     return true;
 }
 
-void ExprListNode::Print(std::ostream &output,
-                         const std::string &org_tab) const {
+void ExprListNode::Print(std::ostream &output, const std::string &org_tab) const {
     if (children_.empty()) {
         return;
     }
@@ -1413,8 +1381,7 @@ void FnParaNode::Print(std::ostream &output, const std::string &org_tab) const {
 
     PrintSqlNode(output, tab, GetParaType(), GetName(), true);
 }
-void FnNodeFnHeander::Print(std::ostream &output,
-                            const std::string &org_tab) const {
+void FnNodeFnHeander::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -1422,35 +1389,30 @@ void FnNodeFnHeander::Print(std::ostream &output,
     output << "\n";
     PrintSqlNode(output, tab, ret_type_, "return_type", true);
     output << "\n";
-    PrintSqlNode(output, tab, reinterpret_cast<const SqlNode *>(parameters_),
-                 "parameters", true);
+    PrintSqlNode(output, tab, reinterpret_cast<const SqlNode *>(parameters_), "parameters", true);
 }
 
 const std::string FnNodeFnHeander::GeIRFunctionName() const {
     std::string fn_name = name_;
     if (!parameters_->children.empty()) {
         for (node::SqlNode *node : parameters_->children) {
-            node::FnParaNode *para_node =
-                dynamic_cast<node::FnParaNode *>(node);
+            node::FnParaNode *para_node = dynamic_cast<node::FnParaNode *>(node);
 
             switch (para_node->GetParaType()->base_) {
                 case hybridse::node::kList:
                 case hybridse::node::kIterator:
                 case hybridse::node::kMap:
-                    fn_name.append(".").append(
-                        para_node->GetParaType()->GetName());
+                    fn_name.append(".").append(para_node->GetParaType()->GetName());
                     break;
                 default: {
-                    fn_name.append(".").append(
-                        para_node->GetParaType()->GetName());
+                    fn_name.append(".").append(para_node->GetParaType()->GetName());
                 }
             }
         }
     }
     return fn_name;
 }
-void FnNodeFnDef::Print(std::ostream &output,
-                        const std::string &org_tab) const {
+void FnNodeFnDef::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -1464,18 +1426,15 @@ void FnNodeList::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSqlVector(output, tab, children, "list", true);
 }
-void FnAssignNode::Print(std::ostream &output,
-                         const std::string &org_tab) const {
+void FnAssignNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, is_ssa_ ? "true" : "false", "ssa", false);
     output << "\n";
-    PrintSqlNode(output, tab, reinterpret_cast<const SqlNode *>(expression_),
-                 GetName(), true);
+    PrintSqlNode(output, tab, reinterpret_cast<const SqlNode *>(expression_), GetName(), true);
 }
-void FnReturnStmt::Print(std::ostream &output,
-                         const std::string &org_tab) const {
+void FnReturnStmt::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -1498,8 +1457,7 @@ void FnElseNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     output << "\n";
 }
-void FnForInNode::Print(std::ostream &output,
-                        const std::string &org_tab) const {
+void FnForInNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -1517,8 +1475,7 @@ void FnIfBlock::Print(std::ostream &output, const std::string &org_tab) const {
     PrintSqlNode(output, tab, block_, "block", true);
 }
 
-void FnElifBlock::Print(std::ostream &output,
-                        const std::string &org_tab) const {
+void FnElifBlock::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -1526,15 +1483,13 @@ void FnElifBlock::Print(std::ostream &output,
     output << "\n";
     PrintSqlNode(output, tab, block_, "block", true);
 }
-void FnElseBlock::Print(std::ostream &output,
-                        const std::string &org_tab) const {
+void FnElseBlock::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintSqlNode(output, tab, block_, "block", true);
 }
-void FnIfElseBlock::Print(std::ostream &output,
-                          const std::string &org_tab) const {
+void FnIfElseBlock::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -1545,8 +1500,7 @@ void FnIfElseBlock::Print(std::ostream &output,
     PrintSqlNode(output, tab, else_block_, "else", true);
 }
 
-void FnForInBlock::Print(std::ostream &output,
-                         const std::string &org_tab) const {
+void FnForInBlock::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -1579,10 +1533,8 @@ bool TypeNode::Equals(const SqlNode *node) const {
     const TypeNode *that = dynamic_cast<const TypeNode *>(node);
     return this->base_ == that->base_ &&
            std::equal(
-               this->generics_.cbegin(), this->generics_.cend(),
-               that->generics_.cbegin(),
-               [&](const hybridse::node::TypeNode *a,
-                   const hybridse::node::TypeNode *b) { return a->Equals(b); });
+               this->generics_.cbegin(), this->generics_.cend(), that->generics_.cbegin(),
+               [&](const hybridse::node::TypeNode *a, const hybridse::node::TypeNode *b) { return a->Equals(b); });
 }
 
 void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -1606,19 +1558,15 @@ bool JoinNode::Equals(const SqlNode *node) const {
         return false;
     }
     const JoinNode *that = dynamic_cast<const JoinNode *>(node);
-    return join_type_ == that->join_type_ &&
-           ExprEquals(condition_, that->condition_) &&
-           ExprEquals(this->orders_, that->orders_) &&
-           SqlEquals(this->left_, that->right_);
+    return join_type_ == that->join_type_ && ExprEquals(condition_, that->condition_) &&
+           ExprEquals(this->orders_, that->orders_) && SqlEquals(this->left_, that->right_);
 }
 
-void UnionQueryNode::Print(std::ostream &output,
-                           const std::string &org_tab) const {
+void UnionQueryNode::Print(std::ostream &output, const std::string &org_tab) const {
     QueryNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, is_all_ ? "ALL UNION" : "DISTINCT UNION",
-               "union_type", false);
+    PrintValue(output, tab, is_all_ ? "ALL UNION" : "DISTINCT UNION", "union_type", false);
     output << "\n";
     PrintSqlNode(output, tab, left_, "left", false);
     output << "\n";
@@ -1629,8 +1577,7 @@ bool UnionQueryNode::Equals(const SqlNode *node) const {
         return false;
     }
     const UnionQueryNode *that = dynamic_cast<const UnionQueryNode *>(node);
-    return this->is_all_ && that->is_all_ &&
-           SqlEquals(this->left_, that->right_);
+    return this->is_all_ && that->is_all_ && SqlEquals(this->left_, that->right_);
 }
 void QueryExpr::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
@@ -1650,8 +1597,7 @@ bool QueryExpr::Equals(const ExprNode *node) const {
 }
 const std::string QueryExpr::GetExprString() const { return "query expr"; }
 
-void TableRefNode::Print(std::ostream &output,
-                         const std::string &org_tab) const {
+void TableRefNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     output << ": " << TableRefTypeName(ref_type_);
 }
@@ -1661,12 +1607,10 @@ bool TableRefNode::Equals(const SqlNode *node) const {
     }
 
     const TableRefNode *that = dynamic_cast<const TableRefNode *>(node);
-    return this->ref_type_ == that->ref_type_ &&
-           this->alias_table_name_ == that->alias_table_name_;
+    return this->ref_type_ == that->ref_type_ && this->alias_table_name_ == that->alias_table_name_;
 }
 
-void QueryRefNode::Print(std::ostream &output,
-                         const std::string &org_tab) const {
+void QueryRefNode::Print(std::ostream &output, const std::string &org_tab) const {
     TableRefNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -1700,12 +1644,10 @@ bool FrameBound::Equals(const SqlNode *node) const {
         return false;
     }
     const FrameBound *that = dynamic_cast<const FrameBound *>(node);
-    return this->bound_type_ == that->bound_type_ &&
-           this->offset_ == that->offset_;
+    return this->bound_type_ == that->bound_type_ && this->offset_ == that->offset_;
 }
 
-void BetweenExpr::Print(std::ostream &output,
-                        const std::string &org_tab) const {
+void BetweenExpr::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -1761,8 +1703,7 @@ bool FnDefNode::IsListReturn(ExprAnalysisContext *ctx) const {
     return GetReturnType() != nullptr && GetReturnType()->base() == kList;
 }
 
-bool ExternalFnDefNode::RequireListAt(ExprAnalysisContext *ctx,
-                                      size_t index) const {
+bool ExternalFnDefNode::RequireListAt(ExprAnalysisContext *ctx, size_t index) const {
     if (IsResolved()) {
         return index < GetArgSize() && GetArgType(index)->base() == kList;
     } else {
@@ -1777,8 +1718,7 @@ bool ExternalFnDefNode::IsListReturn(ExprAnalysisContext *ctx) const {
     }
 }
 
-void ExternalFnDefNode::Print(std::ostream &output,
-                              const std::string &org_tab) const {
+void ExternalFnDefNode::Print(std::ostream &output, const std::string &org_tab) const {
     if (!IsResolved()) {
         output << org_tab << "[Unresolved](" << function_name_ << ")";
     } else {
@@ -1817,29 +1757,22 @@ bool ExternalFnDefNode::Equals(const SqlNode *node) const {
     return other != nullptr && other->function_name() == function_name();
 }
 
-Status ExternalFnDefNode::Validate(
-    const std::vector<const TypeNode *> &actual_types) const {
+Status ExternalFnDefNode::Validate(const std::vector<const TypeNode *> &actual_types) const {
     size_t actual_arg_num = actual_types.size();
-    CHECK_TRUE(actual_arg_num >= arg_types_.size(), kTypeError, function_name(),
-               " take at least ", arg_types_.size(), " arguments, but get ",
-               actual_arg_num);
+    CHECK_TRUE(actual_arg_num >= arg_types_.size(), kTypeError, function_name(), " take at least ", arg_types_.size(),
+               " arguments, but get ", actual_arg_num);
     if (arg_types_.size() < actual_arg_num) {
-        CHECK_TRUE(variadic_pos_ >= 0 &&
-                       static_cast<size_t>(variadic_pos_) == arg_types_.size(),
-                   kTypeError, function_name(), " take explicit ",
-                   arg_types_.size(), " arguments, but get ", actual_arg_num);
+        CHECK_TRUE(variadic_pos_ >= 0 && static_cast<size_t>(variadic_pos_) == arg_types_.size(), kTypeError,
+                   function_name(), " take explicit ", arg_types_.size(), " arguments, but get ", actual_arg_num);
     }
     for (size_t i = 0; i < arg_types_.size(); ++i) {
         auto actual_ty = actual_types[i];
         if (actual_ty == nullptr) {
             continue;
         }
-        CHECK_TRUE(arg_types_[i] != nullptr, kTypeError, i,
-                   "th argument is not inferred");
-        CHECK_TRUE(arg_types_[i]->Equals(actual_ty), kTypeError,
-                   function_name(), "'s ", i,
-                   "th actual argument mismatch: get ", actual_ty->GetName(),
-                   " but expect ", arg_types_[i]->GetName());
+        CHECK_TRUE(arg_types_[i] != nullptr, kTypeError, i, "th argument is not inferred");
+        CHECK_TRUE(arg_types_[i]->Equals(actual_ty), kTypeError, function_name(), "'s ", i,
+                   "th actual argument mismatch: get ", actual_ty->GetName(), " but expect ", arg_types_[i]->GetName());
     }
     return Status::OK();
 }
@@ -1855,15 +1788,13 @@ bool UdfDefNode::Equals(const SqlNode *node) const {
     return other != nullptr && def_->Equals(other->def_);
 }
 
-void UdfByCodeGenDefNode::Print(std::ostream &output,
-                                const std::string &tab) const {
+void UdfByCodeGenDefNode::Print(std::ostream &output, const std::string &tab) const {
     output << tab << "[kCodeGenFnDef] " << name_;
 }
 
 bool UdfByCodeGenDefNode::Equals(const SqlNode *node) const {
     auto other = dynamic_cast<const UdfByCodeGenDefNode *>(node);
-    return other != nullptr && name_ == other->name_ &&
-           gen_impl_ == other->gen_impl_;
+    return other != nullptr && name_ == other->name_ && gen_impl_ == other->gen_impl_;
 }
 
 void LambdaNode::Print(std::ostream &output, const std::string &tab) const {
@@ -1900,123 +1831,96 @@ bool LambdaNode::Equals(const SqlNode *node) const {
     return ExprEquals(this->body(), other->body());
 }
 
-Status LambdaNode::Validate(
-    const std::vector<const TypeNode *> &actual_types) const {
-    CHECK_TRUE(actual_types.size() == GetArgSize(), kTypeError,
-               "Lambda expect ", GetArgSize(), " arguments but get ",
+Status LambdaNode::Validate(const std::vector<const TypeNode *> &actual_types) const {
+    CHECK_TRUE(actual_types.size() == GetArgSize(), kTypeError, "Lambda expect ", GetArgSize(), " arguments but get ",
                actual_types.size());
     for (size_t i = 0; i < GetArgSize(); ++i) {
         CHECK_TRUE(GetArgType(i) != nullptr, kTypeError);
         if (actual_types[i] == nullptr) {
             continue;
         }
-        CHECK_TRUE(GetArgType(i)->Equals(actual_types[i]), kTypeError,
-                   "Lambda's", i, "th argument type should be ",
-                   GetArgType(i)->GetName(), ", but get ",
-                   actual_types[i]->GetName());
+        CHECK_TRUE(GetArgType(i)->Equals(actual_types[i]), kTypeError, "Lambda's", i, "th argument type should be ",
+                   GetArgType(i)->GetName(), ", but get ", actual_types[i]->GetName());
     }
     return Status::OK();
 }
 
 const TypeNode *UdafDefNode::GetElementType(size_t i) const {
-    if (i > arg_types_.size() || arg_types_[i] == nullptr ||
-        arg_types_[i]->generics_.size() < 1) {
+    if (i > arg_types_.size() || arg_types_[i] == nullptr || arg_types_[i]->generics_.size() < 1) {
         return nullptr;
     }
     return arg_types_[i]->generics_[0];
 }
 
 bool UdafDefNode::IsElementNullable(size_t i) const {
-    if (i > arg_types_.size() || arg_types_[i] == nullptr ||
-        arg_types_[i]->generics_.size() < 1) {
+    if (i > arg_types_.size() || arg_types_[i] == nullptr || arg_types_[i]->generics_.size() < 1) {
         return false;
     }
     return arg_types_[i]->generics_nullable_[0];
 }
 
-Status UdafDefNode::Validate(
-    const std::vector<const TypeNode *> &arg_types) const {
+Status UdafDefNode::Validate(const std::vector<const TypeNode *> &arg_types) const {
     // check non-null fields
     CHECK_TRUE(update_func() != nullptr, kTypeError, "update func is null");
     for (auto ty : arg_types_) {
-        CHECK_TRUE(ty != nullptr && ty->base() == kList, kTypeError,
-                   "udaf's argument type must be list");
+        CHECK_TRUE(ty != nullptr && ty->base() == kList, kTypeError, "udaf's argument type must be list");
     }
     // init check
-    CHECK_TRUE(GetStateType() != nullptr, kTypeError,
-               "State type not inferred");
+    CHECK_TRUE(GetStateType() != nullptr, kTypeError, "State type not inferred");
     if (init_expr() == nullptr) {
-        CHECK_TRUE(arg_types_.size() == 1, kTypeError,
-                   "Only support single input if init not set");
+        CHECK_TRUE(arg_types_.size() == 1, kTypeError, "Only support single input if init not set");
     } else {
         CHECK_TRUE(init_expr()->GetOutputType() != nullptr, kTypeError)
-        CHECK_TRUE(init_expr()->GetOutputType()->Equals(GetStateType()),
-                   kTypeError, "Init type expect to be ",
-                   GetStateType()->GetName(), ", but get ",
-                   init_expr()->GetOutputType()->GetName());
+        CHECK_TRUE(init_expr()->GetOutputType()->Equals(GetStateType()), kTypeError, "Init type expect to be ",
+                   GetStateType()->GetName(), ", but get ", init_expr()->GetOutputType()->GetName());
     }
     // update check
-    CHECK_TRUE(update_func()->GetArgSize() == 1 + arg_types_.size(), kTypeError,
-               "Update should take ", 1 + arg_types_.size(), ", get ",
-               update_func()->GetArgSize());
+    CHECK_TRUE(update_func()->GetArgSize() == 1 + arg_types_.size(), kTypeError, "Update should take ",
+               1 + arg_types_.size(), ", get ", update_func()->GetArgSize());
     for (size_t i = 0; i < arg_types_.size() + 1; ++i) {
         auto arg_type = update_func()->GetArgType(i);
-        CHECK_TRUE(arg_type != nullptr, kTypeError, i,
-                   "th update argument type is not inferred");
+        CHECK_TRUE(arg_type != nullptr, kTypeError, i, "th update argument type is not inferred");
         if (i == 0) {
-            CHECK_TRUE(arg_type->Equals(GetStateType()), kTypeError,
-                       "Update's first argument type should be ",
-                       GetStateType()->GetName(), ", but get ",
-                       arg_type->GetName());
+            CHECK_TRUE(arg_type->Equals(GetStateType()), kTypeError, "Update's first argument type should be ",
+                       GetStateType()->GetName(), ", but get ", arg_type->GetName());
         } else {
-            CHECK_TRUE(arg_type->Equals(GetElementType(i - 1)), kTypeError,
-                       "Update's ", i, "th argument type should be ",
-                       GetElementType(i - 1), ", but get ",
-                       arg_type->GetName());
+            CHECK_TRUE(arg_type->Equals(GetElementType(i - 1)), kTypeError, "Update's ", i,
+                       "th argument type should be ", GetElementType(i - 1), ", but get ", arg_type->GetName());
         }
     }
     // merge check
     if (merge_func() != nullptr) {
-        CHECK_TRUE(merge_func()->GetArgSize() == 2, kTypeError,
-                   "Merge should take 2 arguments, but get ",
+        CHECK_TRUE(merge_func()->GetArgSize() == 2, kTypeError, "Merge should take 2 arguments, but get ",
                    merge_func()->GetArgSize());
         CHECK_TRUE(merge_func()->GetArgType(0) != nullptr, kTypeError);
-        CHECK_TRUE(merge_func()->GetArgType(0)->Equals(GetStateType()),
-                   kTypeError, "Merge's 0th argument type should be ",
-                   GetStateType()->GetName(), ", but get ",
+        CHECK_TRUE(merge_func()->GetArgType(0)->Equals(GetStateType()), kTypeError,
+                   "Merge's 0th argument type should be ", GetStateType()->GetName(), ", but get ",
                    merge_func()->GetArgType(0)->GetName());
         CHECK_TRUE(merge_func()->GetArgType(1) != nullptr, kTypeError);
-        CHECK_TRUE(merge_func()->GetArgType(1)->Equals(GetStateType()),
-                   kTypeError, "Merge's 1th argument type should be ",
-                   GetStateType(), ", but get ",
+        CHECK_TRUE(merge_func()->GetArgType(1)->Equals(GetStateType()), kTypeError,
+                   "Merge's 1th argument type should be ", GetStateType(), ", but get ",
                    merge_func()->GetArgType(1)->GetName());
         CHECK_TRUE(merge_func()->GetReturnType() != nullptr, kTypeError);
-        CHECK_TRUE(merge_func()->GetReturnType()->Equals(GetStateType()),
-                   kTypeError, "Merge's return type should be ", GetStateType(),
-                   ", but get ", merge_func()->GetReturnType()->GetName());
+        CHECK_TRUE(merge_func()->GetReturnType()->Equals(GetStateType()), kTypeError, "Merge's return type should be ",
+                   GetStateType(), ", but get ", merge_func()->GetReturnType()->GetName());
     }
     // output check
     if (output_func() != nullptr) {
-        CHECK_TRUE(output_func()->GetArgSize() == 1, kTypeError,
-                   "Output should take 1 arguments, but get ",
+        CHECK_TRUE(output_func()->GetArgSize() == 1, kTypeError, "Output should take 1 arguments, but get ",
                    output_func()->GetArgSize());
         CHECK_TRUE(output_func()->GetArgType(0) != nullptr, kTypeError);
-        CHECK_TRUE(output_func()->GetArgType(0)->Equals(GetStateType()),
-                   kTypeError, "Output's 0th argument type should be ",
-                   GetStateType(), ", but get ",
+        CHECK_TRUE(output_func()->GetArgType(0)->Equals(GetStateType()), kTypeError,
+                   "Output's 0th argument type should be ", GetStateType(), ", but get ",
                    output_func()->GetArgType(0)->GetName());
         CHECK_TRUE(output_func()->GetReturnType() != nullptr, kTypeError);
     }
     // actual args check
-    CHECK_TRUE(arg_types.size() == arg_types_.size(), kTypeError, GetName(),
-               " expect ", arg_types_.size(), " inputs, but get ",
-               arg_types.size());
+    CHECK_TRUE(arg_types.size() == arg_types_.size(), kTypeError, GetName(), " expect ", arg_types_.size(),
+               " inputs, but get ", arg_types.size());
     for (size_t i = 0; i < arg_types.size(); ++i) {
         if (arg_types[i] != nullptr) {
-            CHECK_TRUE(arg_types_[i]->Equals(arg_types[i]), kTypeError,
-                       GetName(), "'s ", i, "th argument expect ",
-                       arg_types_[i]->GetName(), ", but get ",
-                       arg_types[i]->GetName());
+            CHECK_TRUE(arg_types_[i]->Equals(arg_types[i]), kTypeError, GetName(), "'s ", i, "th argument expect ",
+                       arg_types_[i]->GetName(), ", but get ", arg_types[i]->GetName());
         }
     }
     return Status::OK();
@@ -2024,14 +1928,11 @@ Status UdafDefNode::Validate(
 
 bool UdafDefNode::Equals(const SqlNode *node) const {
     auto other = dynamic_cast<const UdafDefNode *>(node);
-    return other != nullptr && init_expr_->Equals(other->init_expr()) &&
-           update_->Equals(other->update_) &&
-           FnDefEquals(merge_, other->merge_) &&
-           FnDefEquals(output_, other->output_);
+    return other != nullptr && init_expr_->Equals(other->init_expr()) && update_->Equals(other->update_) &&
+           FnDefEquals(merge_, other->merge_) && FnDefEquals(output_, other->output_);
 }
 
-void UdafDefNode::Print(std::ostream &output,
-                        const std::string &org_tab) const {
+void UdafDefNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << org_tab << "[kUdafFDef] " << name_;
     output << "(";
     for (size_t i = 0; i < GetArgSize(); ++i) {
@@ -2080,10 +1981,8 @@ const std::string CondExpr::GetExprString() const {
 
 bool CondExpr::Equals(const ExprNode *node) const {
     auto other = dynamic_cast<const CondExpr *>(node);
-    return other != nullptr &&
-           ExprEquals(other->GetCondition(), this->GetCondition()) &&
-           ExprEquals(other->GetLeft(), this->GetLeft()) &&
-           ExprEquals(other->GetRight(), this->GetRight());
+    return other != nullptr && ExprEquals(other->GetCondition(), this->GetCondition()) &&
+           ExprEquals(other->GetLeft(), this->GetLeft()) && ExprEquals(other->GetRight(), this->GetRight());
 }
 
 ExprNode *CondExpr::GetCondition() const {
@@ -2110,8 +2009,7 @@ ExprNode *CondExpr::GetRight() const {
     }
 }
 
-void PartitionMetaNode::Print(std::ostream &output,
-                              const std::string &org_tab) const {
+void PartitionMetaNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -2120,47 +2018,39 @@ void PartitionMetaNode::Print(std::ostream &output,
     PrintValue(output, tab, RoleTypeName(role_type_), "role_type", true);
 }
 
-void ReplicaNumNode::Print(std::ostream &output,
-                           const std::string &org_tab) const {
+void ReplicaNumNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, std::to_string(replica_num_), "replica_num", true);
 }
 
-void PartitionNumNode::Print(std::ostream &output,
-                             const std::string &org_tab) const {
+void PartitionNumNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, std::to_string(partition_num_), "partition_num",
-               true);
+    PrintValue(output, tab, std::to_string(partition_num_), "partition_num", true);
 }
 
-void DistributionsNode::Print(std::ostream &output,
-                              const std::string &org_tab) const {
+void DistributionsNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintSqlVector(output, tab, distribution_list_->GetList(),
-                   "distribution_list", true);
+    PrintSqlVector(output, tab, distribution_list_->GetList(), "distribution_list", true);
 }
 
-void CreateSpStmt::Print(std::ostream &output,
-                         const std::string &org_tab) const {
+void CreateSpStmt::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, sp_name_, "sp_name", false);
     output << "\n";
-    PrintSqlVector(output, tab, input_parameter_list_, "input_parameter_list",
-                   false);
+    PrintSqlVector(output, tab, input_parameter_list_, "input_parameter_list", false);
     output << "\n";
     PrintSqlVector(output, tab, inner_node_list_, "inner_node_list", true);
 }
 
-void InputParameterNode::Print(std::ostream &output,
-                               const std::string &org_tab) const {
+void InputParameterNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -2169,6 +2059,17 @@ void InputParameterNode::Print(std::ostream &output,
     PrintValue(output, tab, DataTypeName(column_type_), "column_type", false);
     output << "\n";
     PrintValue(output, tab, std::to_string(is_constant_), "is_constant", true);
+}
+
+Status StringToDataType(const std::string identifier, DataType* type) {
+    const auto lower_identifier = boost::to_lower_copy(identifier);
+    auto it = type_map.find(lower_identifier);
+    if (it == type_map.end()) {
+        return Status(common::kTypeError, "unknow DataType identifier: " + identifier);
+    }
+
+    *type = it->second;
+    return Status::OK();
 }
 
 }  // namespace node

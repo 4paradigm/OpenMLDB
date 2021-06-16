@@ -18,6 +18,7 @@
 #define INCLUDE_NODE_SQL_NODE_H_
 
 #include <glog/logging.h>
+#include <boost/algorithm/string/predicate.hpp>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -325,11 +326,24 @@ inline const std::string DataTypeName(const DataType &type) {
             return "opaque";
         case hybridse::node::kTuple:
             return "tuple";
+        case hybridse::node::kDay:
+            return "day";
+        case hybridse::node::kInt8Ptr:
+            return "int8ptr";
         default:
             return "unknown";
     }
     return "";
 }
+
+/**
+ * Convert string to corresponding DataType. e.g. "i32" => kInt32
+ *
+ * \param identifier: string to match
+ * \param type: output type
+ * \return: Status
+ */
+Status StringToDataType(const std::string identifier, DataType* type);
 
 inline const std::string FnNodeName(const SqlNodeType &type) {
     switch (type) {

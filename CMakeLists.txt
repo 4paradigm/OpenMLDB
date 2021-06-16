@@ -52,6 +52,10 @@ option(JAVASDK_ENABLE "Enable javasdk" ON)
 option(EXAMPLES_ENABLE "Enable examples" OFF)
 option(LLVM_EXT_ENABLE "Enable llvm ext sources" OFF)
 
+if (NOT DEFINED CMAKE_PREFIX_PATH)
+    set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/thirdparty)
+endif()
+
 if (CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif ()
@@ -69,7 +73,7 @@ endif()
 
 # llvm dependency
 if (NOT DEFINED LLVM_DIR)
-    set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
+    set(LLVM_DIR "${CMAKE_PREFIX_PATH}/lib/cmake/llvm")
 endif ()
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -87,7 +91,7 @@ endif ()
 find_package(Threads)
 
 
-set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
+set(BOOST_ROOT "${CMAKE_PREFIX_PATH}")
 find_package(Boost COMPONENTS filesystem date_time regex REQUIRED)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
@@ -153,20 +157,17 @@ add_definitions(${LLVM_DEFINITIONS})
 find_package(SWIG REQUIRED)
 include(UseSWIG)
 
-include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
+include_directories(${CMAKE_PREFIX_PATH}/include)
 include_directories(${PROJECT_SOURCE_DIR}/include)
-link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
-link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib64)
+link_directories(${CMAKE_PREFIX_PATH}/lib)
+link_directories(${CMAKE_PREFIX_PATH}/lib64)
 
 
-set(absl_ROOT "${PROJECT_SOURCE_DIR}/thirdparty")
 find_package(absl REQUIRED)
 
-set(GTEST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty")
 find_package(GTest 1.10 EXACT REQUIRED)
 
 set(Protobuf_USE_STATIC_LIBS ON)
-set(Protobuf_ROOT "${PROJECT_SOURCE_DIR}/thirdparty")
 find_package(Protobuf 3.6 EXACT REQUIRED)
 list(
         APPEND

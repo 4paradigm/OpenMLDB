@@ -61,7 +61,6 @@ cases:
     desc: SELECT 算术表达式/
     sql: SELECT COL1 / COL2 as col12 FROM t1;
   - id: 16
-    mode: zetasql-unsupport
     desc: SELECT 算术表达式%
     sql: SELECT COL1 % COL2 as col12 FROM t1;
   - id: 17
@@ -86,22 +85,27 @@ cases:
   - id: 23
     desc: SELECT Bool表达式不等于
     sql: SELECT COL1 != COL2 as col12 FROM t1;
-  - id: 24
-    desc: SELECT 逻辑关系表达式AND
+  - id: 24-1
+    desc: SELECT 逻辑关系表达式 '&&'
     mode: zetasql-unsupport
     sql: SELECT COL1 >= COL2 && COL1 != COL2 as col12 FROM t1;
+  - id: 24-2
+    desc: SELECT 逻辑关系表达式 AND
+    sql: SELECT COL1 >= COL2 AND COL1 != COL2 as col12 FROM t1;
   - id: 25
     desc: SELECT 逻辑关系表达式AND2
     sql: SELECT COL1 >= COL2 and COL1 != COL2 and COL1 > COL2 as col12 FROM t1;
-  - id: 26
-    desc: SELECT 逻辑关系表达式OR
+  - id: 26-1
+    desc: SELECT 逻辑关系表达式 '||'
     mode: zetasql-unsupport
     sql: SELECT COL1 >= COL2 || COL1 != COL2 as col12 FROM t1;
+  - id: 26-2
+    desc: SELECT 逻辑关系表达式 OR
+    sql: SELECT COL1 >= COL2 OR COL1 != COL2 as col12 FROM t1;
   - id: 27
     desc: SELECT 逻辑关系表达式OR2
     sql: SELECT COL1 >= COL2 OR COL1 != COL2 OR COL1 = COL2 as col12 FROM t1;
   - id: 28
-    mode: zetasql-unsupport
     desc: SELECT 逻辑关系表达式非
     sql: SELECT !(COL1 >= COL2 or COL1 != COL2) as col12 FROM t1;
   - id: 29
@@ -115,11 +119,9 @@ cases:
     desc: SELECT Bool表达式不等于<>
     sql: SELECT COL1 <> COL2 as col12 FROM t1;
   - id: 32
-    mode: zetasql-unsupport
     desc: SELECT 算术表达式DIV
     sql: SELECT COL1 DIV COL2 as col12 FROM t1;
   - id: 33
-    mode: zetasql-unsupport
     desc: SELECT 算术表达式MOD
     sql: SELECT COL1 MOD COL2 as col12 FROM t1;
   - id: 34

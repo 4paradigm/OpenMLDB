@@ -26,8 +26,8 @@ pushd "${CICD_RUNNER_THIRDSRC_PATH}"
 wget -nv --show-progress https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.3.1/thirdparty-2021-05-27-drawin-x86_64.tar.gz
 tar xzf thirdparty-2021-05-27-drawin-x86_64.tar.gz -C  "${CICD_RUNNER_THIRDPARTY_PATH}" --strip-components 1
 # download and install libzetasql
-wget -nv --show-progress -O libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0-beta7/libzetasql-0.2.0-beta7-darwin-x86_64.tar.gz
-tar xzf libzetasql.tar.gz -C  "${CICD_RUNNER_THIRDPARTY_PATH}" --strip-components 1
+wget -nv --show-progress https://github.com/jingchen2222/zetasql/releases/download/v0.2.0-beta9/libzetasql-0.2.0-beta9-darwin-x86_64.tar.gz
+tar xzf libzetasql-0.2.0-beta9-darwin-x86_64.tar.gz -C  "${CICD_RUNNER_THIRDPARTY_PATH}" --strip-components 1
 echo "list files under ${CICD_RUNNER_THIRDPARTY_PATH}"
 
 if [ -f "bison_succ" ]; then

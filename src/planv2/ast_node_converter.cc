@@ -14,8 +14,15 @@
  * limitations under the License.
  */
 #include "planv2/ast_node_converter.h"
+
 #include <string>
 #include <vector>
+#include "absl/strings/str_cat.h"
+#include "base/fe_status.h"
+#include "node/sql_node.h"
+#include "udf/udf.h"
+#include "zetasql/parser/ast_node_kind.h"
+#include "zetasql/parser/parse_tree_manual.h"
 
 namespace hybridse {
 namespace plan {
@@ -119,8 +126,16 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                     op = node::FnOperator::kFnOpFDiv;
                     break;
                 }
+                case zetasql::ASTBinaryExpression::Op::IDIVIDE: {
+                    op = node::FnOperator::kFnOpDiv;
+                    break;
+                }
                 case zetasql::ASTBinaryExpression::Op::LIKE: {
                     op = node::FnOperator::kFnOpLike;
+                    break;
+                }
+                case zetasql::ASTBinaryExpression::Op::MOD: {
+                    op = node::FnOperator::kFnOpMod;
                     break;
                 }
                 default: {
@@ -199,7 +214,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             CHECK_STATUS(ConvertExprNode(between_expression->lhs(), node_manager, &expr))
             CHECK_STATUS(ConvertExprNode(between_expression->low(), node_manager, &low))
             CHECK_STATUS(ConvertExprNode(between_expression->high(), node_manager, &high))
-            *output =  node_manager->MakeBetweenExpr(expr, low, high, between_expression->is_not());
+            *output = node_manager->MakeBetweenExpr(expr, low, high, between_expression->is_not());
 
             return base::Status();
         }
@@ -228,35 +243,16 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
         }
         case zetasql::AST_INT_LITERAL: {
             const zetasql::ASTIntLiteral* literal = ast_expression->GetAsOrDie<zetasql::ASTIntLiteral>();
-            int64_t int_value;
-            bool is_null;
+            CHECK_TRUE(!literal->is_hex(), common::kSqlError, "Un-support hex integer literal: ", literal->image());
 
-            if (literal->is_hex()) {
-                status.msg = "Un-support hex integer literal: " + std::string(literal->image());
-                status.code = common::kSqlError;
-                return status;
-            } else if (literal->is_long()) {
-                hybridse::codec::StringRef str(std::string(literal->image().substr(0, literal->image().size() - 1)));
-                hybridse::udf::v1::string_to_bigint(&str, &int_value, &is_null);
-                if (is_null) {
-                    status.msg = "Invalid long integer literal: " + std::string(literal->image());
-                    status.code = common::kSqlError;
-                    return status;
-                }
-                *output = node_manager->MakeConstNode(int_value);
+            int64_t int_value;
+            CHECK_STATUS(ASTIntLiteralToNum(ast_expression, &int_value),
+                         "Invalid integer literal: ", literal->image());
+
+            if (int_value <= INT_MAX && int_value >= INT_MIN) {
+                *output = node_manager->MakeConstNode(static_cast<int>(int_value));
             } else {
-                hybridse::codec::StringRef str(literal->image().data());
-                hybridse::udf::v1::string_to_bigint(&str, &int_value, &is_null);
-                if (is_null) {
-                    status.msg = "Invalid integer literal: " + std::string(literal->image());
-                    status.code = common::kSqlError;
-                    return status;
-                }
-                if (int_value <= INT_MAX && int_value >= INT_MIN) {
-                    *output = node_manager->MakeConstNode(static_cast<int>(int_value));
-                } else {
-                    *output = node_manager->MakeConstNode(int_value);
-                }
+                *output = node_manager->MakeConstNode(int_value);
             }
             return base::Status::OK();
         }
@@ -309,45 +305,11 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             return base::Status::OK();
         }
         case zetasql::AST_INTERVAL_LITERAL: {
-            const zetasql::ASTIntervalLiteral* literal = ast_expression->GetAsOrDie<zetasql::ASTIntervalLiteral>();
             int64_t interval_value;
-            node::DataType interval_unit = node::DataType::kSecond;
-            size_t image_len = literal->image().size();
-            hybridse::codec::StringRef str(std::string(literal->image().substr(0, image_len - 1)));
-            switch (literal->image().data()[image_len - 1]) {
-                case 'h':
-                case 'H': {
-                    interval_unit = node::DataType::kHour;
-                    break;
-                }
-                case 's':
-                case 'S': {
-                    interval_unit = node::DataType::kSecond;
-                    break;
-                }
-                case 'm':
-                case 'M': {
-                    interval_unit = node::DataType::kMinute;
-                    break;
-                }
-                case 'd':
-                case 'D': {
-                    interval_unit = node::DataType::kDay;
-                    break;
-                }
-                default: {
-                    status.msg = "Invalid interval literal: " + std::string(literal->image());
-                    status.code = common::kSqlError;
-                    return status;
-                }
-            }
-            bool is_null;
-            hybridse::udf::v1::string_to_bigint(&str, &interval_value, &is_null);
-            if (is_null) {
-                status.msg = "Invalid interval literal: " + std::string(literal->image());
-                status.code = common::kSqlError;
-                return status;
-            }
+            node::DataType interval_unit;
+            CHECK_STATUS(
+                ASTIntervalLIteralToNum(ast_expression, &interval_value, &interval_unit),
+                "Invalid interval literal: ", ast_expression->GetAsOrDie<zetasql::ASTIntervalLiteral>()->image());
             *output = node_manager->MakeConstNode(interval_value, interval_unit);
             return base::Status::OK();
         }
@@ -726,7 +688,7 @@ base::Status ConvertWindowClause(const zetasql::ASTWindowClause* window_clause, 
     return base::Status::OK();
 }
 base::Status ConvertLimitOffsetNode(const zetasql::ASTLimitOffset* limit_offset, node::NodeManager* node_manager,
-                                    node::SqlNode ** output) {
+                                    node::SqlNode** output) {
     base::Status status;
     if (nullptr == limit_offset) {
         *output = nullptr;
@@ -802,9 +764,8 @@ base::Status ConvertQueryNode(const zetasql::ASTQuery* root, node::NodeManager* 
             if (nullptr != select_query->window_clause()) {
                 CHECK_STATUS(ConvertWindowClause(select_query->window_clause(), node_manager, &window_list_ptr))
             }
-            *output =
-                node_manager->MakeSelectQueryNode(is_distinct, select_list_ptr, tableref_list_ptr, where_expr,
-                                                  group_expr_list, having_expr, order_by, window_list_ptr, limit);
+            *output = node_manager->MakeSelectQueryNode(is_distinct, select_list_ptr, tableref_list_ptr, where_expr,
+                                                        group_expr_list, having_expr, order_by, window_list_ptr, limit);
             return base::Status::OK();
         }
         default: {
@@ -816,5 +777,385 @@ base::Status ConvertQueryNode(const zetasql::ASTQuery* root, node::NodeManager* 
     }
     return base::Status::OK();
 }
+
+// ASTCreateTableStatement
+//   (table_name, ASTTableElementList, ASTOptionsList, not_exist, _)
+//     -> (ASTTableElementList -> SqlNodeList)
+//     -> (ASTOptionsList -> SqlNodeList)
+//     -> CreateStmt
+base::Status ConvertCreateTableNode(const zetasql::ASTCreateTableStatement* ast_create_stmt,
+                                    node::NodeManager* node_manager, node::CreateStmt** output) {
+    CHECK_TRUE(ast_create_stmt != nullptr, common::kOk, "ASTCreateTableStatement is null");
+
+    bool if_not_exist = ast_create_stmt->is_if_not_exists();
+    std::string table_name;
+    CHECK_STATUS(AstPathExpressionToString(ast_create_stmt->name(), &table_name));
+
+    auto column_list = ast_create_stmt->table_element_list();
+    node::SqlNodeList* column_desc_list = nullptr;
+
+    if (column_list != nullptr) {
+        column_desc_list = node_manager->MakeNodeList();
+        for (auto ele : column_list->elements()) {
+            node::SqlNode* column = nullptr;
+            CHECK_STATUS(ConvertTableElement(ele, node_manager, &column));
+            column_desc_list->PushBack(column);
+        }
+    }
+
+    const auto ast_option_list = ast_create_stmt->options_list();
+    node::SqlNodeList* option_list = nullptr;
+
+    if (ast_option_list != nullptr) {
+        option_list = node_manager->MakeNodeList();
+        for (const auto entry : ast_option_list->options_entries()) {
+            node::SqlNode* node = nullptr;
+            CHECK_STATUS(ConvertTableOption(entry, node_manager, &node));
+            if (node != nullptr) {
+                // NOTE: unhandled option will return OK, but node is not set
+                option_list->PushBack(node);
+            }
+        }
+    }
+
+    *output = static_cast<node::CreateStmt*>(
+        node_manager->MakeCreateTableNode(if_not_exist, table_name, column_desc_list, option_list));
+
+    return base::Status::OK();
+}
+
+// case element
+//   ASTColumnDefinition -> case element.schema
+//         ASSTSimpleColumnSchema -> ColumnDeefNode
+//         otherwise              -> not implemented
+//   ASTIndexDefinition  -> ColumnIndexNode
+//   otherwise           -> not implemented
+base::Status ConvertTableElement(const zetasql::ASTTableElement* element, node::NodeManager* node_manager,
+                                 node::SqlNode** node) {
+    base::Status status;
+
+    switch (element->node_kind()) {
+        case zetasql::AST_COLUMN_DEFINITION: {
+            auto column_def = element->GetAsOrNull<zetasql::ASTColumnDefinition>();
+            CHECK_TRUE(column_def != nullptr, common::kPlanError, "not an ASTColumnDefinition");
+
+            auto not_null_columns = column_def->schema()->FindAttributes<zetasql::ASTNotNullColumnAttribute>(
+                zetasql::AST_NOT_NULL_COLUMN_ATTRIBUTE);
+            bool not_null = !not_null_columns.empty();
+
+            const std::string name = column_def->name()->GetAsString();
+
+            auto kind = column_def->schema()->node_kind();
+            switch (kind) {
+                case zetasql::AST_SIMPLE_COLUMN_SCHEMA: {
+                    // only simple column schema is supported
+                    auto simple_column_schema = column_def->schema()->GetAsOrNull<zetasql::ASTSimpleColumnSchema>();
+                    CHECK_TRUE(simple_column_schema != nullptr, common::kPlanError, "not and ASTSimpleColumnSchema");
+
+                    const auto type_name = simple_column_schema->type_name()->ToIdentifierPathString();
+                    node::DataType type;
+                    CHECK_STATUS(node::StringToDataType(type_name, &type));
+
+                    *node = node_manager->MakeColumnDescNode(name, type, not_null);
+                    return base::Status::OK();
+                }
+                default: {
+                    return base::Status(common::kPlanError, absl::StrCat("unsupported column schema type: ",
+                                                                         zetasql::ASTNode::NodeKindToString(kind)));
+                }
+            }
+            break;
+        }
+        case zetasql::AST_INDEX_DEFINITION: {
+            auto ast_index_node = element->GetAsOrNull<zetasql::ASTIndexDefinition>();
+            node::ColumnIndexNode* index_node = nullptr;
+            CHECK_STATUS(ConvertColumnIndexNode(ast_index_node, node_manager, &index_node));
+            *node = index_node;
+            return base::Status::OK();
+        }
+        default: {
+            return base::Status(common::kPlanError,
+                                absl::StrCat("unsupported table column elemnt: ", element->GetNodeKindString()));
+        }
+    }
+}
+
+// ASTIndexDefinition node
+//   map ConvertIndexOption node.option_list
+base::Status ConvertColumnIndexNode(const zetasql::ASTIndexDefinition* ast_def_node, node::NodeManager* node_manager,
+                                    node::ColumnIndexNode** output) {
+    node::SqlNodeList* index_node_list = node_manager->MakeNodeList();
+    for (const auto option : ast_def_node->options_list()->options_entries()) {
+        node::SqlNode* node = nullptr;
+        CHECK_STATUS(ConvertIndexOption(option, node_manager, &node));
+        if (node != nullptr) {
+            // NOTE: unhandled option will return OK, but node is not set
+            index_node_list->PushBack(node);
+        }
+    }
+    *output = static_cast<node::ColumnIndexNode*>(node_manager->MakeColumnIndexNode(index_node_list));
+    return base::Status::OK();
+}
+
+// case entry->name()
+//   "key"      -> IndexKeyNode
+//   "ts"       -> IndexTsNode
+//   "ttl"      -> IndexTTLNode
+//   "ttl_type" -> IndexTTLTypeNode
+//   "version"  -> IndexVersionNode
+base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::NodeManager* node_manager,
+                                node::SqlNode** output) {
+    auto name = entry->name()->GetAsString();
+    boost::to_lower(name);
+    if (boost::equals("key", name)) {
+        switch (entry->value()->node_kind()) {
+            case zetasql::AST_PATH_EXPRESSION: {
+                std::string column_name;
+                CHECK_STATUS(AstPathExpressionToString(entry->value(), &column_name));
+                *output = node_manager->MakeIndexKeyNode(column_name);
+
+                return base::Status::OK();
+            }
+            case zetasql::AST_STRUCT_CONSTRUCTOR_WITH_PARENS: {
+                auto ast_struct_expr = entry->value()->GetAsOrNull<zetasql::ASTStructConstructorWithParens>();
+                CHECK_TRUE(ast_struct_expr != nullptr, common::kPlanError, "not a ASTStructConstructorWithParens");
+
+                CHECK_TRUE(!ast_struct_expr->field_expressions().empty(), common::kPlanError,
+                           "index key list is empty");
+
+                int field_expr_len = ast_struct_expr->field_expressions().size();
+                std::string key_str;
+                CHECK_STATUS(AstPathExpressionToString(ast_struct_expr->field_expression(0), &key_str));
+
+                node::IndexKeyNode* index_keys =
+                    dynamic_cast<node::IndexKeyNode*>(node_manager->MakeIndexKeyNode(key_str));
+
+                for (int i = 1; i < field_expr_len; ++i) {
+                    std::string key;
+                    CHECK_STATUS(AstPathExpressionToString(ast_struct_expr->field_expression(i), &key));
+                    index_keys->AddKey(key);
+                }
+                *output = index_keys;
+
+                return base::Status::OK();
+            }
+            default: {
+                return base::Status(common::kPlanError, absl::StrCat("unsupported key option value, type: ",
+                                                                     entry->value()->GetNodeKindString()));
+            }
+        }
+    } else if (boost::equals("ts", name)) {
+        std::string column_name;
+        CHECK_STATUS(AstPathExpressionToString(entry->value(), &column_name));
+        *output = node_manager->MakeIndexTsNode(column_name);
+        return base::Status::OK();
+    } else if (boost::equals("ttl", name)) {
+        // case entry->value()
+        //   ASTIntervalLiteral                  -> [ConstNode(kDay | kHour | kMinute)]
+        //   ASTIntLiteral                       -> [ConstNode(kLatest)]
+        //   (ASTIntervalLiteral, ASTIntLiteral) -> [ConstNode(kDay | kHour | kMinute), ConstNode)]
+        auto ttl_list = node_manager->MakeExprList();
+        switch (entry->value()->node_kind()) {
+            case zetasql::AST_INTERVAL_LITERAL: {
+                int64_t value;
+                node::DataType unit;
+                CHECK_STATUS(ASTIntervalLIteralToNum(entry->value(), &value, &unit));
+                auto node = node_manager->MakeConstNode(value, unit);
+                ttl_list->PushBack(node);
+                break;
+            }
+            case zetasql::AST_INT_LITERAL: {
+                int64_t value;
+                CHECK_STATUS(ASTIntLiteralToNum(entry->value(), &value));
+                auto node = node_manager->MakeConstNode(value, node::kLatest);
+                ttl_list->PushBack(node);
+                break;
+            }
+            case zetasql::AST_STRUCT_CONSTRUCTOR_WITH_PARENS: {
+                const auto struct_parens = entry->value()->GetAsOrNull<zetasql::ASTStructConstructorWithParens>();
+                CHECK_TRUE(struct_parens != nullptr, common::kPlanError, "not an ASTStructConstructorWithParens");
+                CHECK_TRUE(struct_parens->field_expressions().size() == 2, common::kPlanError,
+                           "ASTStructConstructorWithParens size != 2");
+
+                int64_t value = 0;
+                node::DataType unit;
+                CHECK_STATUS(ASTIntervalLIteralToNum(struct_parens->field_expression(0), &value, &unit));
+
+                auto node = node_manager->MakeConstNode(value, unit);
+                ttl_list->PushBack(node);
+
+                value = 0;
+                CHECK_STATUS(ASTIntLiteralToNum(struct_parens->field_expression(1), &value));
+                ttl_list->PushBack(node_manager->MakeConstNode(value, node::kLatest));
+                break;
+            }
+            default: {
+                return base::Status(common::kPlanError,
+                                    "unsupported ast expression type: ", entry->value()->GetNodeKindString());
+            }
+        }
+
+        *output = node_manager->MakeIndexTTLNode(ttl_list);
+        return base::Status::OK();
+    } else if (boost::equals("ttl_type", name)) {
+        std::string ttl_type;
+        CHECK_STATUS(AstPathExpressionToString(entry->value(), &ttl_type));
+        *output = node_manager->MakeIndexTTLTypeNode(ttl_type);
+        return base::Status::OK();
+    } else if (boost::equals("version", name)) {
+        switch (entry->value()->node_kind()) {
+            case zetasql::AST_PATH_EXPRESSION: {
+                std::string version;
+                CHECK_STATUS(AstPathExpressionToString(entry->value(), &version));
+                *output = node_manager->MakeIndexVersionNode(version);
+                return base::Status::OK();
+            }
+            case zetasql::AST_STRUCT_CONSTRUCTOR_WITH_PARENS: {
+                // value is ( column_name, int_literal ), int_literal can be int or long number
+                std::string column_name;
+                const auto parens_struct = entry->value()->GetAsOrNull<zetasql::ASTStructConstructorWithParens>();
+                CHECK_TRUE(parens_struct != nullptr, common::kPlanError, "not an ASTStructConstructorWithParens");
+                CHECK_TRUE(
+                    parens_struct->field_expressions().size() == 2, common::kPlanError,
+                    "ASTStructConstructorWithParens has expression size = ", parens_struct->field_expressions().size());
+
+                CHECK_STATUS(AstPathExpressionToString(parens_struct->field_expression(0), &column_name));
+                int64_t val;
+                CHECK_STATUS(ASTIntLiteralToNum(parens_struct->field_expression(1), &val))
+
+                *output = node_manager->MakeIndexVersionNode(column_name, static_cast<int>(val));
+                return base::Status::OK();
+            }
+            default: {
+                return base::Status(common::kPlanError, absl::StrCat("unsupported node kind for index version: ",
+                                                                     entry->value()->GetNodeKindString()));
+            }
+        }
+    }
+
+    return base::Status(common::kOk, absl::StrCat("index option ignored: ", name));
+}
+
+// case entry
+//   ("partitionnum", int) -> PartitionNumNode(int)
+//   ("replicanum", int)   -> ReplicaNumNode(int)
+//   ("distribution", [ (string, [string] ) ] ) ->
+base::Status ConvertTableOption(const zetasql::ASTOptionsEntry* entry, node::NodeManager* node_manager,
+                                node::SqlNode** output) {
+    auto identifier = entry->name()->GetAsString();
+    boost::to_lower(identifier);
+    if (boost::equals("partitionnum", identifier)) {
+        int64_t value = 0;
+        CHECK_STATUS(ASTIntLiteralToNum(entry->value(), &value));
+        *output = node_manager->MakePartitionNumNode(value);
+    } else if (boost::equals("replicanum", identifier)) {
+        int64_t value = 0;
+        CHECK_STATUS(ASTIntLiteralToNum(entry->value(), &value));
+        *output = node_manager->MakeReplicaNumNode(value);
+    } else if (boost::equals("distribution", identifier)) {
+        node::SqlNodeList* distribution_list = node_manager->MakeNodeList();
+        const auto arry_expr = entry->value()->GetAsOrNull<zetasql::ASTArrayConstructor>();
+        CHECK_TRUE(arry_expr != nullptr, common::kPlanError, "distribution not and ASTArrayConstructor");
+        for (const auto e : arry_expr->elements()) {
+            const auto ele = e->GetAsOrNull<zetasql::ASTStructConstructorWithParens>();
+            CHECK_TRUE(ele != nullptr, common::kPlanError,
+                       "distribution element is not ASTStructConstructorWithParens");
+            CHECK_TRUE(ele->field_expressions().size() == 2, common::kPlanError, "distribution element has size != 2");
+
+            std::string leader;
+            CHECK_STATUS(AstStringLiteralToString(ele->field_expression(0), &leader));
+            distribution_list->PushBack(node_manager->MakePartitionMetaNode(node::RoleType::kLeader, leader));
+            // FIXME: distribution_list not constructed correctly
+
+            std::vector<std::string> followers;
+            const auto follower_list = ele->field_expression(1)->GetAsOrNull<zetasql::ASTArrayConstructor>();
+            for (const auto fo_node : follower_list->elements()) {
+                std::string follower;
+                CHECK_STATUS(AstStringLiteralToString(fo_node, &follower));
+                followers.push_back(follower);
+            }
+            distribution_list->PushBack(node_manager->MakePartitionMetaNode(node::RoleType::kFollower,
+                                                                            followers.empty() ? "" : followers.back()));
+        }
+        *output = node_manager->MakeDistributionsNode(distribution_list);
+    } else {
+        return base::Status(common::kOk, "create table option ignored");
+    }
+
+    return base::Status::OK();
+}
+
+// transform zetasql::ASTPathExpression into string
+base::Status AstStringLiteralToString(const zetasql::ASTExpression* ast_expr, std::string* str) {
+    auto string_literal = ast_expr->GetAsOrNull<zetasql::ASTStringLiteral>();
+    CHECK_TRUE(string_literal != nullptr, common::kPlanError, "not an ASTStringLiteral");
+
+    *str = string_literal->string_value();
+    return base::Status::OK();
+}
+
+// transform zetasql::ASTPathExpression into string
+base::Status AstPathExpressionToString(const zetasql::ASTExpression* ast_expr, std::string* str) {
+    auto path_expr = ast_expr->GetAsOrNull<zetasql::ASTPathExpression>();
+    CHECK_TRUE(path_expr != nullptr, common::kPlanError, "not an ASTPathExpression");
+
+    *str = path_expr->ToIdentifierPathString();
+    return base::Status::OK();
+}
+
+// {integer literal} -> number
+// {long literal}(l|L) -> number
+// {hex literal} -> number
+base::Status ASTIntLiteralToNum(const zetasql::ASTExpression* ast_expr, int64_t* val) {
+    const auto int_literal = ast_expr->GetAsOrNull<zetasql::ASTIntLiteral>();
+    CHECK_TRUE(int_literal != nullptr, common::kPlanError, "not an ASTIntLiteral");
+    bool is_null = false;
+    if (int_literal->is_long()) {
+        const int size = int_literal->image().size();
+        codec::StringRef str_ref(std::string(int_literal->image().substr(0, size - 1)));
+        udf::v1::string_to_bigint(&str_ref, val, &is_null);
+    } else {
+        codec::StringRef str_ref(std::string(int_literal->image()));
+        udf::v1::string_to_bigint(&str_ref, val, &is_null);
+    }
+    CHECK_TRUE(!is_null, common::kTypeError, "Invalid int literal: ", int_literal->image());
+    return base::Status::OK();
+}
+
+// transform zetasql::ASTIntervalLiteral into (number, unit)
+base::Status ASTIntervalLIteralToNum(const zetasql::ASTExpression* ast_expr, int64_t* val, node::DataType* unit) {
+    const auto interval_literal = ast_expr->GetAsOrNull<zetasql::ASTIntervalLiteral>();
+    CHECK_TRUE(interval_literal != nullptr, common::kPlanError, "not an ASTIntervalLiteral");
+
+    switch (interval_literal->image().back()) {
+        case 'd':
+        case 'D':
+            *unit = node::kDay;
+            break;
+        case 'h':
+        case 'H':
+            *unit = node::kHour;
+            break;
+        case 'm':
+        case 'M':
+            *unit = node::kMinute;
+            break;
+        case 's':
+        case 'S':
+            *unit = node::DataType::kSecond;
+            break;
+        default:
+            return base::Status(common::kTypeError, "unknown interval unit");
+    }
+    bool is_null = false;
+    const int size = interval_literal->image().size();
+    codec::StringRef str_ref(std::string(interval_literal->image().substr(0, size - 1)));
+    udf::v1::string_to_bigint(&str_ref, val, &is_null);
+
+    CHECK_TRUE(!is_null, common::kTypeError, "Invalid interval literal: ", interval_literal->image());
+
+    return base::Status::OK();
+}
+
 }  // namespace plan
 }  // namespace hybridse

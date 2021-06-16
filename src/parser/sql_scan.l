@@ -175,7 +175,7 @@ EXIT	{ return EXIT; }
 EXPLAIN	{ return EXPLAIN; }
 EXCLUDE { return EXCLUDE; }
 FETCH	{ return FETCH; }
-FLOAT32|FLOAT?	{ return FLOAT; }
+FLOAT32|FLOAT	{ return FLOAT; }
 FOLLOWING   {return FOLLOWING;  }
 FOR	{ return FOR; }
 FORCE	{ return FORCE; }

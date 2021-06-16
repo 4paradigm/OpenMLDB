@@ -40,12 +40,10 @@ namespace hybridse {
 namespace udf {
 namespace v1 {
 using hybridse::base::ConstIterator;
-using hybridse::codec::ColumnImpl;
 using hybridse::codec::IteratorRef;
 using hybridse::codec::ListRef;
 using hybridse::codec::ListV;
 using hybridse::codec::Row;
-using hybridse::codec::StringColumnImpl;
 using hybridse::codec::StringRef;
 // TODO(chenjing): 时区统一配置
 const int32_t TZ = 8;
@@ -371,7 +369,7 @@ void string_to_bigint(codec::StringRef *str, int64_t *out, bool *is_null_ptr) {
         std::string str_obj = str->ToString();
         const char *c_str = str_obj.c_str();
         char *end;
-        *out = strtoll(c_str, &end, 10);
+        *out = strtoll(c_str, &end, 0);
         if (end < c_str + str->size_) {
             *out = 0;
             *is_null_ptr = true;

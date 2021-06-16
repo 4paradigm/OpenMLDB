@@ -28,7 +28,7 @@ add_custom_command(OUTPUT ${SQL_AST_LEXER_GEN}
         )
 
 add_custom_command(OUTPUT ${SQL_AST_PARSER_GEN}
-        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/bison ${PROJECT_SOURCE_DIR}/src/parser/sql_parser.y
+        COMMAND ${CMAKE_PREFIX_PATH}/bin/bison ${PROJECT_SOURCE_DIR}/src/parser/sql_parser.y
         DEPENDS ${PROJECT_SOURCE_DIR}/src/parser/sql_parser.y
         )
 

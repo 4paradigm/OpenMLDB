@@ -36,8 +36,6 @@ using base::Status;
 using node::NodePointVector;
 using node::PlanNode;
 using node::PlanNodeList;
-using node::SqlNode;
-using zetasql::ASTStatementList;
 
 class SimplePlannerV2 : public SimplePlanner {
  public:

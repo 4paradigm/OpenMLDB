@@ -6,7 +6,7 @@
 	<parent>
         <artifactId>hybridse-java</artifactId>
         <groupId>com.4paradigm.hybridse</groupId>
-        <version>0.1.3</version>
+        <version>0.1.4-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>

@@ -15,6 +15,8 @@
  */
 #ifndef SRC_PLANV2_AST_NODE_CONVERTER_H_
 #define SRC_PLANV2_AST_NODE_CONVERTER_H_
+#include <string>
+
 #include "node/node_manager.h"
 #include "udf/udf.h"
 #include "zetasql/parser/parser.h"
@@ -37,7 +39,7 @@ base::Status ConvertFrameNode(const zetasql::ASTWindowFrame* window_frame, node:
 base::Status ConvertWindowDefinition(const zetasql::ASTWindowDefinition* window_definition,
                                      node::NodeManager* node_manager, node::WindowDefNode** output);
 base::Status ConvertWindowSpecification(const zetasql::ASTWindowSpecification* window_spec,
-                                     node::NodeManager* node_manager, node::WindowDefNode** output);
+                                        node::NodeManager* node_manager, node::WindowDefNode** output);
 base::Status ConvertWindowClause(const zetasql::ASTWindowClause* window_clause, node::NodeManager* node_manager,
                                  node::SqlNodeList** output);
 base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root, node::NodeManager* node_manager,
@@ -45,9 +47,33 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
 base::Status ConvertSelectList(const zetasql::ASTSelectList* select_list, node::NodeManager* node_manager,
                                node::SqlNodeList** output);
 base::Status ConvertLimitOffsetNode(const zetasql::ASTLimitOffset* limit_offset, node::NodeManager* node_manager,
-                                    node::SqlNode ** output);
-base::Status ConvertQueryNode(const zetasql::ASTQuery* root, node::NodeManager* node_manager,
-                              node::QueryNode** output);
+                                    node::SqlNode** output);
+
+base::Status ConvertQueryNode(const zetasql::ASTQuery* root, node::NodeManager* node_manager, node::QueryNode** output);
+
+/// transform zetasql::ASTCreateStatement into CreateStmt
+base::Status ConvertCreateTableNode(const zetasql::ASTCreateTableStatement* ast_create_stmt,
+                                    node::NodeManager* node_manager, node::CreateStmt** output);
+
+/// transform zetasql::ASTTableElement into corresponding SqlNode
+base::Status ConvertTableElement(const zetasql::ASTTableElement* ast_table_element, node::NodeManager* node_manager,
+                                 node::SqlNode** node);
+
+/// transform zetasql::ASTIndexDefinition into ColumnIndexNode
+base::Status ConvertColumnIndexNode(const zetasql::ASTIndexDefinition* ast_def_node, node::NodeManager* node_manager,
+                                    node::ColumnIndexNode** output);
+
+base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::NodeManager* node_manager,
+                                node::SqlNode** output);
+
+base::Status ConvertTableOption(const zetasql::ASTOptionsEntry* entry, node::NodeManager* node_manager,
+                                node::SqlNode** output);
+
+// utility function
+base::Status AstStringLiteralToString(const zetasql::ASTExpression* ast_expr, std::string* str);
+base::Status AstPathExpressionToString(const zetasql::ASTExpression* ast_expr, std::string* str);
+base::Status ASTIntLiteralToNum(const zetasql::ASTExpression* ast_expr, int64_t* val);
+base::Status ASTIntervalLIteralToNum(const zetasql::ASTExpression* ast_expr, int64_t* val, node::DataType* unit);
 
 }  // namespace plan
 }  // namespace hybridse
