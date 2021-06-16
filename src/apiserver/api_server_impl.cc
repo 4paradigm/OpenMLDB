@@ -643,7 +643,7 @@ JsonWriter& operator&(JsonWriter& ar, GetSPResp& s) {  // NOLINT
     return ar.EndObject();
 }
 
-JsonWriter& operator&(JsonWriter& ar,
+JsonWriter& operator&(JsonWriter& ar,  // NOLINT
                       const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>& column_desc) {
     ar.StartArray();
     for (auto column : column_desc) {
