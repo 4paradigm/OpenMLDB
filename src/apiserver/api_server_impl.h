@@ -116,8 +116,8 @@ JsonWriter& operator&(JsonWriter& ar, GetSPResp& s);  // NOLINT
 JsonWriter& operator&(JsonWriter& ar,  // NOLINT
                       const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>& column_desc);
 
-JsonWriter& operator&(JsonWriter& ar,   // NOLINT
-                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>& column_key); 
+JsonWriter& operator&(JsonWriter& ar,  // NOLINT
+                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>& column_key);
 
 JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableInfo> info);  // NOLINT
 
