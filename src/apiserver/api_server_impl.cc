@@ -455,6 +455,9 @@ void APIServerImpl::RegisterGetTable() {
                       writer.Member("code") & 0;
                       if (table_info == nullptr) {
                           writer.Member("msg") & std::string("Table not found");
+                          writer.Member("table");
+                          writer.StartObject();
+                          writer.EndObject();
                       } else {
                           writer.Member("msg") & std::string("ok");
                           writer.Member("table") & table_info;
@@ -662,7 +665,7 @@ JsonWriter& operator&(JsonWriter& ar,
     return ar.EndArray();
 }
 
-JsonWriter& operator&(JsonWriter& ar,
+JsonWriter& operator&(JsonWriter& ar,  // NOLINT
                       const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>& column_key) {
     ar.StartArray();
     for (auto key : column_key) {
@@ -703,7 +706,7 @@ JsonWriter& operator&(JsonWriter& ar,
     return ar.EndArray();
 }
 
-JsonWriter& operator&(JsonWriter& ar,
+JsonWriter& operator&(JsonWriter& ar,  // NOLINT
                       const ::google::protobuf::RepeatedPtrField<::fedb::common::VersionPair>& schema_versions) {
     ar.StartArray();
     for (auto version : schema_versions) {
@@ -719,7 +722,7 @@ JsonWriter& operator&(JsonWriter& ar,
     return ar.EndArray();
 }
 
-JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableInfo> info) {
+JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableInfo> info) {  // NOLINT
     ar.StartObject();
     if (info->has_name()) {
         ar.Member("name") & info->name();

@@ -619,6 +619,19 @@ TEST_F(APIServerTest, getTables) {
         ASSERT_TRUE(document.HasMember("msg"));
         ASSERT_STREQ("Table not found", document["msg"].GetString());
     }
+    {
+        brpc::Controller show_cntl;  // default is GET
+        show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/db_not_exist/tables/apple";
+        env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
+        butil::rapidjson::Document document;
+        if (document.Parse(show_cntl.response_attachment().to_string().c_str()).HasParseError()) {
+            ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                               << ", raw resp: " << show_cntl.response_attachment().to_string();
+        }
+        ASSERT_TRUE(document.HasMember("msg"));
+        ASSERT_STREQ("Table not found", document["msg"].GetString());
+    }
     for (auto table : tables) {
         env->cluster_remote->ExecuteDDL(env->db, "drop table " + table + ";", &status);
         ASSERT_TRUE(env->cluster_sdk->Refresh());
