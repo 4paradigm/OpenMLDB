@@ -40,6 +40,7 @@ bool APIServerImpl::Init(const sdk::ClusterOptions& options) {
 }
 
 bool APIServerImpl::Init(::fedb::sdk::ClusterSDK* cluster) {
+    // If cluster sdk is needed, use ptr, don't own it. SQLClusterRouter owns it.
     cluster_sdk_ = cluster;
     auto router = std::make_shared<::fedb::sdk::SQLClusterRouter>(cluster_sdk_);
     if (!router->Init()) {
@@ -418,6 +419,7 @@ void APIServerImpl::RegisterGetDB() {
 }
 
 void APIServerImpl::RegisterGetTable() {
+    // show all of the tables
     provider_.get("/dbs/:db_name/tables",
                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
                       auto err = GeneralError();
@@ -439,6 +441,7 @@ void APIServerImpl::RegisterGetTable() {
                       writer.EndArray();
                       writer.EndObject();
                   });
+    // show a certain table
     provider_.get("/dbs/:db_name/tables/:table_name",
                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
                       auto err = GeneralError();
@@ -453,6 +456,7 @@ void APIServerImpl::RegisterGetTable() {
                       auto table_info = cluster_sdk_->GetTableInfo(db, table);
                       writer.StartObject();
                       writer.Member("code") & 0;
+                      // if there is no such db or such table, table_info will be nullptr
                       if (table_info == nullptr) {
                           writer.Member("msg") & std::string("Table not found");
                           writer.Member("table");
@@ -768,7 +772,6 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableI
 
     ar.Member("schema_versions") & info->schema_versions();
 
-    // ar.EndObject();
     return ar.EndObject();
 }
 
