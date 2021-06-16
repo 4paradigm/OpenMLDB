@@ -185,17 +185,9 @@ class MemTable : public Table {
     TableIterator* NewIterator(uint32_t index, const std::string& pk,
                                Ticket& ticket) override;
 
-    TableIterator* NewIterator(uint32_t index, int32_t ts_idx,
-                               const std::string& pk, Ticket& ticket) override;
-
     TableIterator* NewTraverseIterator(uint32_t index) override;
 
-    TableIterator* NewTraverseIterator(uint32_t index,
-                                       uint32_t ts_idx) override;
-
     ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t index);
-    ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t index,
-                                                   uint32_t ts_idx);
 
     // release all memory allocated
     uint64_t Release();
@@ -203,8 +195,6 @@ class MemTable : public Table {
     void SchedGc() override;
 
     int GetCount(uint32_t index, const std::string& pk,
-                 uint64_t& count);  // NOLINT
-    int GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk,
                  uint64_t& count);  // NOLINT
 
     uint64_t GetRecordIdxCnt();
@@ -254,7 +244,7 @@ class MemTable : public Table {
  private:
     bool CheckAbsolute(const TTLSt& ttl, uint64_t ts);
 
-    bool CheckLatest(uint32_t index_id, int32_t ts_idx, const std::string& key, uint64_t ts);
+    bool CheckLatest(uint32_t index_id, const std::string& key, uint64_t ts);
 
  private:
     uint32_t seg_cnt_;

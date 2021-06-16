@@ -1549,7 +1549,6 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
     sr.clear_pk();
     sr.clear_ts();
     sr.set_idx_name("card1");
-    sr.set_ts_name("ts2");
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(15, (signed)srp->count());
@@ -1573,7 +1572,6 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
     sr.clear_pk();
     sr.clear_ts();
     sr.set_idx_name("mcc");
-    sr.set_ts_name("ts2");
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(34, (signed)srp->count());
