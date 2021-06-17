@@ -40,7 +40,7 @@ project(hybridse)
 
 set(HYBRIDSE_VERSION_MAJOR 0)
 set(HYBRIDSE_VERSION_MINOR 1)
-set(HYBRIDSE_VERSION_BUG 3)
+set(HYBRIDSE_VERSION_BUG 4)
 
 option(TESTING_ENABLE "Enable Test" ON)
 option(CORE_TESTING_ENABLE "Enable Core Test" ON)

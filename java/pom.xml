@@ -45,7 +45,7 @@
         <plugin.violationSeverity>error</plugin.violationSeverity>
         <spotless-maven-plugin.version>2.9.0</spotless-maven-plugin.version>
         <eclipse.jdt.version>4.13.0</eclipse.jdt.version>
-        <project.version.base>0.1.3</project.version.base>
+        <project.version.base>0.1.4</project.version.base>
         <project.version.suffix>SNAPSHOT</project.version.suffix>
     </properties>
     <build>
