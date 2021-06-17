@@ -390,14 +390,9 @@ uint64_t MemTable::GetExpireTime(const TTLSt& ttl_st) {
     return cur_time - ttl_st.abs_ttl;
 }
 
-bool MemTable::CheckLatest(uint32_t index_id, int32_t ts_idx, const std::string& key, uint64_t ts) {
+bool MemTable::CheckLatest(uint32_t index_id, const std::string& key, uint64_t ts) {
     ::fedb::storage::Ticket ticket;
-    ::fedb::storage::TableIterator* it = nullptr;
-    if (ts_idx >= 0) {
-        it = NewIterator(index_id, ts_idx, key, ticket);
-    } else {
-        it = NewIterator(index_id, key, ticket);
-    }
+    ::fedb::storage::TableIterator* it = NewIterator(index_id, key, ticket);
     it->SeekToLast();
     if (it->Valid()) {
         if (ts >= it->GetKey()) {
@@ -468,16 +463,16 @@ bool MemTable::IsExpire(const LogEntry& entry) {
             uint32_t index_id = index_def->GetId();
             switch (ttl_type) {
                 case ::fedb::storage::TTLType::kLatestTime:
-                    is_expire = CheckLatest(index_id, ts_idx, kv.second, ts);
+                    is_expire = CheckLatest(index_id, kv.second, ts);
                     break;
                 case ::fedb::storage::TTLType::kAbsoluteTime:
                     is_expire = CheckAbsolute(*ttl, ts);
                     break;
                 case ::fedb::storage::TTLType::kAbsOrLat:
-                    is_expire = CheckAbsolute(*ttl, ts) || CheckLatest(index_id, ts_idx, kv.second, ts);
+                    is_expire = CheckAbsolute(*ttl, ts) || CheckLatest(index_id, kv.second, ts);
                     break;
                 case ::fedb::storage::TTLType::kAbsAndLat:
-                    is_expire = CheckAbsolute(*ttl, ts) && CheckLatest(index_id, ts_idx, kv.second, ts);
+                    is_expire = CheckAbsolute(*ttl, ts) && CheckLatest(index_id, kv.second, ts);
                     break;
                 default:
                     return true;
@@ -509,22 +504,6 @@ int MemTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
     return segment->GetCount(spk, count);
 }
 
-int MemTable::GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk, uint64_t& count) {
-    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index, ts_idx);
-    if (!index_def || !index_def->IsReady()) {
-        PDLOG(WARNING, "index %u not found, tid %u pid %u", index, id_, pid_);
-        return -1;
-    }
-    uint32_t seg_idx = 0;
-    if (seg_cnt_ > 1) {
-        seg_idx = ::fedb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
-    }
-    Slice spk(pk);
-    uint32_t real_idx = index_def->GetInnerPos();
-    Segment* segment = segments_[real_idx][seg_idx];
-    return segment->GetCount(spk, ts_idx, count);
-}
-
 TableIterator* MemTable::NewIterator(const std::string& pk, Ticket& ticket) { return NewIterator(0, pk, ticket); }
 
 TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
@@ -542,25 +521,9 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
     Segment* segment = segments_[real_idx][seg_idx];
     auto ts_col = index_def->GetTsColumn();
     if (ts_col) {
-        return NewIterator(index, ts_col->GetTsIdx(), pk, ticket);
+        return segment->NewIterator(spk, ts_col->GetTsIdx(), ticket);
     }
     return segment->NewIterator(spk, ticket);
-}
-
-TableIterator* MemTable::NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) {
-    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index, ts_idx);
-    if (!index_def || !index_def->IsReady()) {
-        PDLOG(WARNING, "index %u ts_idx %d not found in table, tid %u pid %u", index, ts_idx, id_, pid_);
-        return NULL;
-    }
-    uint32_t seg_idx = 0;
-    if (seg_cnt_ > 1) {
-        seg_idx = ::fedb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
-    }
-    Slice spk(pk);
-    uint32_t real_idx = index_def->GetInnerPos();
-    Segment* segment = segments_[real_idx][seg_idx];
-    return segment->NewIterator(spk, ts_idx, ticket);
 }
 
 uint64_t MemTable::GetRecordIdxByteSize() {
@@ -734,28 +697,6 @@ bool MemTable::DeleteIndex(std::string idx_name) {
 
 ::hybridse::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index) {
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index);
-    if (index_def && index_def->IsReady()) {
-        auto ts_col = index_def->GetTsColumn();
-        if (ts_col) {
-            return NewWindowIterator(index, ts_col->GetTsIdx());
-        }
-    }
-    uint64_t expire_time = 0;
-    uint64_t expire_cnt = 0;
-    auto ttl = index_def->GetTTL();
-    if (enable_gc_.load(std::memory_order_relaxed)) {
-        expire_time = GetExpireTime(*ttl);
-        expire_cnt = ttl->lat_ttl;
-    }
-    uint32_t real_idx = index_def->GetInnerPos();
-    return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
-}
-
-::hybridse::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index, uint32_t ts_index) {
-    if (ts_index < 0) {
-        return NULL;
-    }
-    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index, ts_index);
     if (!index_def || !index_def->IsReady()) {
         LOG(WARNING) << "index" << index << "  not found. tid " << id_ << " pid " << pid_;
         return NULL;
@@ -768,7 +709,12 @@ bool MemTable::DeleteIndex(std::string idx_name) {
         expire_cnt = ttl->lat_ttl;
     }
     uint32_t real_idx = index_def->GetInnerPos();
-    return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, ts_index);
+    auto ts_col = index_def->GetTsColumn();
+    uint32_t ts_idx = 0;
+    if (ts_col) {
+        ts_idx = ts_col->GetTsIdx();
+    }
+    return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, ts_idx);
 }
 
 TableIterator* MemTable::NewTraverseIterator(uint32_t index) {
@@ -777,40 +723,20 @@ TableIterator* MemTable::NewTraverseIterator(uint32_t index) {
         PDLOG(WARNING, "index %u not found. tid %u pid %u", index, id_, pid_);
         return NULL;
     }
+    uint64_t expire_time = 0;
+    uint64_t expire_cnt = 0;
+    auto ttl = index_def->GetTTL();
+    if (enable_gc_.load(std::memory_order_relaxed)) {
+        expire_time = GetExpireTime(*ttl);
+        expire_cnt = ttl->lat_ttl;
+    }
+    uint32_t real_idx = index_def->GetInnerPos();
     auto ts_col = index_def->GetTsColumn();
     if (ts_col) {
-        return NewTraverseIterator(index, ts_col->GetTsIdx());
+        return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type,
+                    expire_time, expire_cnt, ts_col->GetTsIdx());
     }
-    uint64_t expire_time = 0;
-    uint64_t expire_cnt = 0;
-    auto ttl = index_def->GetTTL();
-    if (enable_gc_.load(std::memory_order_relaxed)) {
-        expire_time = GetExpireTime(*ttl);
-        expire_cnt = ttl->lat_ttl;
-    }
-    uint32_t real_idx = index_def->GetInnerPos();
     return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
-}
-
-TableIterator* MemTable::NewTraverseIterator(uint32_t index, uint32_t ts_index) {
-    if (ts_index < 0) {
-        return NULL;
-    }
-    std::shared_ptr<IndexDef> index_def = GetIndex(index, ts_index);
-    if (!index_def || !index_def->IsReady()) {
-        PDLOG(WARNING, "index %u ts_index %u not found. tid %u pid %u", index, ts_index, id_, pid_);
-        return NULL;
-    }
-    uint64_t expire_time = 0;
-    uint64_t expire_cnt = 0;
-    auto ttl = index_def->GetTTL();
-    if (enable_gc_.load(std::memory_order_relaxed)) {
-        expire_time = GetExpireTime(*ttl);
-        expire_cnt = ttl->lat_ttl;
-    }
-    uint32_t real_idx = index_def->GetInnerPos();
-    return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type,
-                expire_time, expire_cnt, ts_index);
 }
 
 MemTableKeyIterator::MemTableKeyIterator(Segment** segments, uint32_t seg_cnt, ::fedb::storage::TTLType ttl_type,

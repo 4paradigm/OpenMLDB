@@ -307,7 +307,7 @@ TEST_F(TabletFuncTest, GetLatestIndex_ts0_iterator) {
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
     ::fedb::storage::TableIterator* it =
-        table->NewIterator(0, 0, "card0", *query_its[0].ticket);
+        table->NewIterator(0, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetLatestIndexAssert(&query_its);
@@ -319,7 +319,7 @@ TEST_F(TabletFuncTest, GetLatestIndex_ts1_iterator) {
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
     ::fedb::storage::TableIterator* it =
-        table->NewIterator(1, 1, "card0", *query_its[0].ticket);
+        table->NewIterator(1, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetLatestIndexAssert(&query_its);
@@ -345,7 +345,7 @@ TEST_F(TabletFuncTest, GetTimeIndex_ts0_iterator) {
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
     ::fedb::storage::TableIterator* it =
-        table->NewIterator(0, 0, "card0", *query_its[0].ticket);
+        table->NewIterator(0, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetTimeIndexAssert(&query_its, base_ts, base_ts - 100);
@@ -358,7 +358,7 @@ TEST_F(TabletFuncTest, GetTimeIndex_ts1_iterator) {
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::fedb::storage::Ticket>();
     ::fedb::storage::TableIterator* it =
-        table->NewIterator(1, 1, "card0", *query_its[0].ticket);
+        table->NewIterator(1, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetTimeIndexAssert(&query_its, base_ts, base_ts - 100);
