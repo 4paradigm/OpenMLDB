@@ -3,7 +3,7 @@
 
 - [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)
 - [**Discussions**](https://github.com/4paradigm/OpenMLDB/discussions)
-- [**README中文**](./README_cn.md)
+- [**中文README**](./README_cn.md)
 
 ## Introduction
 
