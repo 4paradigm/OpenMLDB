@@ -1,100 +1,114 @@
 
-![](images/fedb_black.png)
+<div align=center><img src="./images/openmldb_logo.png"/></div>
 
 - [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)
-- [**Discussions**](https://github.com/4paradigm/fedb/discussions)
-- [**English version**](README.md)
+- [**Discussions**](https://github.com/4paradigm/OpenMLDB/discussions)
+- [**README in English**](./README.md)
 
 ## 介绍
 
-FEDB是一个面向在线推理和决策应用的NewSQL数据库。这些应用通过预先训练好的模型从多个时间窗口中提取实时特征用于在线预估和决策。用现有的数据库耗时在几百毫秒甚至到秒级别不能满足在线推理和决策的实时性要求。FEDB使用双层跳表的内存数据结构和对SQL进行极致地编译优化能够大幅降低延时。
+OpenMLDB是面向ML应用开发的RMCP(Real-time/Massive-parallel Consistent Processing)数据库。
 
-- __高性能__
+标准的ML应用开发流程，必然包括基于大数据的离线特征计算阶段，以及模型上线后的实时特征计算阶段，RMCP数据库同时支持在线实时预估和离线大规模并行计算，保证存储和计算的一致性，满足ML应用开发的全流程需求。OpenMLDB基于LLVM优化，支持ANSI SQL与针对AI优化的SQL语法，批处理模式比主流MPP系统快6倍以上，实时预估性能比主流内存数据库快8倍以上，统一的计算存储引擎保证特征一致性，从而解决机器学习技术落地门槛高的问题，让更多的开发者能快速上线大规模机器学习技术。
 
-    FEDB比SingleStore和SAP HANA快一到两个数量级。
+<div align=center><img src="./images/openmldb_architecture.png"/></div>
 
-- __SQL兼容__
+## 系统特性
 
-    兼容大部分ANSI SQL语法，有python和java client。其中java client支持大部分JDBC接口。
+* **高性能**
+    OpenMLDB基于C++和LLVM实现了原生SQL编译器，内置了数十种物理计划和表达式优化过程，可针对不同硬件环境动态生成二进制码，内存结构针对特征存储优化。最终特征存储空间和成本比同类产品可降低9倍，在线实时特征计算性能提升9倍，离线批处理计算性能比同类产品也提升6倍以上。
 
-- __在线离线一致性__
+* **一致性**
 
-    使用FEDB开发的机器学习应用可以一键上线，并且保证在线离线一致性，大大降低了机器学习场景的落地成本。
+    OpenMLDB首先保证在线和离线特征计算一致性，科学家使用OpenMLDB建模生成的特征，可规避特征穿越等问题，上线后使用相同LLVM IR进行编译优化，保证与在线特征计算逻辑一致。其次保证数据存储一致性，数据从离线到在线进行实时同步，用户不需要为离线和在线管理不同数据源，也避免数据不一致对特征和模型带来的影响。
 
-- __支持分布式，易扩展__
+* **高可用**
 
-    支持故障自动切换，支持横向扩展。
+    OpenMLDB的大规模并行计算服务和数据库存储服务，都支持多节点都分布式高可用特性，可以自动Failover和动态扩缩容，避免单点故障。
 
-注:目前还处于unstable状态并且有许多功能待补齐，不能运用于生产环境。
+* **SQL支持**
 
-### 架构
+    OpenMLDB支持用户友好SQL接口，兼容大部分ANSI SQL语法以及针对AI场景拓展了新的SQL特性。以时序特征抽取为例，支持标准SQL的Over Window语法，还针对AI场景需求进行拓展，支持基于样本表滑窗的Window Union语法，实时计算引擎支持基于当前行的Request Mode窗口聚合计算。
 
-[参考这里](https://github.com/4paradigm/HybridSQL-docs/blob/main/fedb/architecture/architecture.md)
+* **AI优化**
 
-## 快速开始
+    OpenMLDB以面向ML应用开发优化为目标，架构设计以及实现上都针对AI进行大量优化。在存储方面以高效的数据结构存储特征数据，无论是内存利用率还是实时查询效率都比同类型产品高数倍，而计算方面提供了机器学习场景常用的特殊拼表操作以及特征抽取相关UDF/UDAF支持，基本满足生产环境下机器学习特征抽取和上线的应用需求。
 
-### 在Linux平台构建
+* **低门槛**
 
-```
-docker pull 4pdosc/centos6_gcc7_hybridsql:0.1.1
-git clone https://github.com/4paradigm/fedb.git
-cd fedb
-docker run -v `pwd`:/fedb -it 4pdosc/centos6_gcc7_hybridsql:0.1.1
-cd /fedb
-sh steps/init_env.sh
-mkdir -p build && cd build && cmake ../ && make -j5 fedb
-```
-
-### 典型应用场景
-
-* [出租车线路耗时预测](https://github.com/4paradigm/DemoApps/tree/main/predict-taxi-trip-duration) 
-* 在线交易系统健康检测和预警
-* 在线交易反欺诈
+    OpenMLDB使用门槛与普通数据库接近，无论是建模科学家还是应用开发者都可以使用熟悉的SQL进行开发，并且同时支持ML应用落地所必须的离线大数据批处理服务以及在线特征计算服务，使用一个数据库产品就可以低成本实现AI落地闭环。
 
 ## 性能测试
 
-在AI场景中大部分实时特征是时序相关的需要通过多个时间窗口计算。我们用常见的求TopN作为测试场景。
+与主流在线数据库产品相比，在不同的数据规模以及计算复杂度下，OpenMLDB的实时请求性能都比其他方案有数倍甚至数十倍的提升。
 
-### 测试环境
-机器配置:
+![Online Benchmark](./images/online_benchmark.png)
 
-|配置项|值|
-|---|----|
-|CPU型号|Intel Xeon Platinum 8280L|
-|内存|384 GB|
-|操作系统|CentOS-7 with kernel 5.1.9-1.el7|
+在大数据批处理模式下，使用OpenMLDB进行特征抽取，相比业界最流行的Spark社区版，离线性能在窗口数据倾斜优化下有数倍提升，大大降低离线计算的TCO。
 
-### 测试结果
+![Offline Benchmark](./images/offline_benchmark.png)
 
-![Benchmark](images/benchmark.png)
+## 快速开始
 
-测试结果表明FEDB比SingleStore和SAP HANA快了一到两个数量级。更多测试结果请参考[VLDB'21 paper](http://vldb.org/pvldb/vol14/p799-chen.pdf)。
+使用OpenMLDB快速开发和上线ML应用，以Kaggle比赛Predict Taxi Tour Duration项目为例。
 
-## 未来规划
+```bash
+# 启动docker镜像
+docker run -it 4pdosc/openmldb:1.0.0 bash
 
-### ANSI SQL兼容
+# 初始化环境
+sh init.sh
 
-FEDB目前已经兼容主流DDL、DML语法，并逐步增强ANSI SQL语法的兼容性。
+# 导入行程历史数据到OpenMLDB
+python3 import.py
 
-* [2021H1] 完善Window的标准语法，支持Where, Group By, Join等操作
-* [2021H1&H2]针对AI场景扩展特有的语法特性和UDAF函数
+# 使用行程数据进行模型训练
+sh train.sh
 
-### 功能/性能提升
+# 使用训练的模型搭建链接OpenMLDB的实时推理HTTP服务
+sh start_predict_server.sh
 
-为了满足实时推理与决策场景的高性能需求，FEDB选择内存作为存储引擎介质，而目前业界使用内存存储引擎都存在内存碎片和重启恢复效率问题，FEDB计划对内存分配算法进行优化降低碎片问题以及引入[PMEM](https://www.intel.com/content/www/us/en/architecture-and-technology/optane-dc-persistent-memory.html)(Intel Optane DC Persistent Memory Module)存储介质提升数据恢复效率，具体计划如下：
+# 通过http请求发送一个推理请求
+python3 predict.py
+```
 
-* [2021H1]支持新内存分配策略，降低内存碎片问题
-* [2021H2]实验支持PMEM存储引擎
+## 项目状态与规划
 
-### 生态构建
-FEDB有java/python client，java client支持JDBC接口的大部分功能。未来会对接到大数据生态，让Flink/Kafka/Spark与FEDB更方便集成。
+### 项目状态
 
-* [2021H1&H2]支持Flink/Kafka/Spark connector
+* SQL编译器和优化器[完成]
+    * 支持基础ANSI SQL语法解析[完成]
+    * 支持物理计划和表达式优化[完成]
+    * 支持计算函数代码生成[完成]
+* 前端编程接口[开发中]
+    * 支持标准JDBC协议[完成]
+    * 支持C++、Python SDK[完成]
+    * 支持RESTful API[开发中]
+* 在线离线计算引擎[完成]
+    * 在线数据库计算引擎[完成]
+    * 离线批处理计算引擎[完成]
+* 统一存储引擎[开发中]
+    * 分布式高性能内存存储[完成]
+    * 在线离线数据一致性同步[开发中]
 
+### 项目规划
 
-## 反馈和参与
-* bug、疑惑、修改欢迎提在[Github Issues](https://github.com/4paradigm/fedb/issues/new)
-* 想了解更多或者有想法可以参与到[slack](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)交流
+* SQL兼容
+    * 完善ANSI SQL支持，执行引擎支持GroupBy等语法[2021H2]
+    * 针对AI场景扩展特有的语法特性和UDAF函数[2021H2]
+* 性能优化
+    * 面向批式数据处理和在线数据处理场景的逻辑和物理计划优化[2021H2]
+    * 支持高性能分布式执行计划生成和代码生成[2021H2]
+    * 更多经典SQL表达式优化过程支持[2022H1]
+    * 离线计算引擎集成针对机器学习场景的Native LastJoin优化过程[2021H2]
+    * 存储引擎使用面向时序优化的内存分配和回收策略，能大幅减少内存碎片[2022H1]
+* 生态集成
+    * 适配多种行编码格式和列编码格式，兼容Apache Arrow格式和生态[2021H2]
+    * 适配流式等主流开源SQL计算框架，如优化FlinkSQL执行引擎等[2022H1]
+    * 支持主流编程语言接口，包括C++, Java, Python, Go, Rust SDK等[2021H2]
+    * 支持PMEM等新型存储硬件[2022H1]
+    * 存储引擎兼容Flink、Kafka、Spark connector[2022H1]
 
 ## 许可证
-Apache License 2.0
+
+[Apache License 2.0](./LICENSE)

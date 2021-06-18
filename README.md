@@ -1,6 +1,114 @@
-## OpenMLDB
-## Feedback and Getting involved
-* Report bugs, ask questions or give suggestions by [Github Issues](https://github.com/4paradigm/fedb/issues/new).
-* Cannot find what you are looking for? Have a question or idea? Please post your questions or comments on our [slack](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W).
+
+<div align=center><img src="./images/openmldb_logo.png"/></div>
+
+- [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)
+- [**Discussions**](https://github.com/4paradigm/OpenMLDB/discussions)
+- [**中文README**](./README_cn.md)
+
+## Introduction
+
+OpenMLDB is the RMCP(Real-time/Massive-parallel Consistent Processing) database for ML development.
+
+Developmenting a ML application includes the offline big-data processing and online feature execution. RMCP databse supports online process and massive-parallel processing at the same time. It ensures the consistency of data and computing to meet the requirements of ML development. OpenMLDB is the high-performance RMCP database which is based on LLVM optimization and supports ANSI SQL for AI. The performance of batch process is 6x times better than mainstream MPP framework. The performance of real-time process is 8x times better thant the mainstream memory databases. OpenMLDB relis on the unified computing and storage engines to ensure the consistency which highly reduce the cost of AI landing and help more developers to deploy machine applications at scale.
+
+<div align=center><img src="./images/openmldb_architecture.png"/></div>
+
+## Features
+
+* **High Performance**
+    OpenMLDB implement the native SQL compiler with C++ and LLVM. It contains tens of optimization passes for physical plans and expressions. It can generate optmized binary code for different hardware and optmize the memory layout for feature storage. The storage and cost for features can be 9x times lower than the similar databases. The performance of real-time execution can be 9x times better and the performance of batch processing can be 6x times better.
+
+* **Consistency**
+
+    OpenMLDB ensures the consistency for online and offline. Data scientists can use OpenMLDB for feature extration which will avoid crossing data. The online and offline computation are consistent because of using the same LLVM IR for complication. To encure the consistency of storage, OpenMLDB will synchronize data for offline and online. Users do not need to manage multiple data sources for online and offline which may avoid the inconsistency from features or data.
+
+* **High Availability**
+
+    OpenMLDB supports distributed massive-parallel processing and database storage. It supports automatical failover and dynamic capacity to avoid the single point of failure.
+
+* **SQL Support**
+
+    OpenMLDB supports user-friendly SQL interface which is compatible with most ANSI SQL and extends syntax for AI secenarios. Take the time serial features as example, OpenMLDB not only supports the syntax of Over Window but also support the new syntax for sliding window with instance table and real-time window aggregation with current row data.
+
+* **AI Optimization**
+
+    OpenMLDB is designed for optimizing AI scenarios. For storage we design the efficient data struct to storage features which gets better the utilization of space and performance than the similar products. For computation we provides the usual methods for table join and the UDF/UDAF for most machine learning scenarios.
+
+* **Easy To Use**
+
+    OpenMLDB is easy to use just like other standalone database. Not only data scientists but also application developers can use SQL to develop the machine learning applications which includes massive-parallel processing and real-time feature extraction. With this database it is easy for AI landing with lowest cost.
+
+## Performance
+
+Comparing with the mainstream databases, OpenMLDB achieves better performance for different size of data and computational complexity.
+
+![Online Benchmark](./images/online_benchmark.png)
+
+Comparing with the popular Spark computation framework, using OpenMLDB for batch data process can achieve better performance and lower TCO especially with optimization for skew window data.
+
+![Offline Benchmark](./images/offline_benchmark.png)
+
+## QuickStart
+
+Take Predict Taxi Tour Duration as example, we can use OpenMLDB to develop and deploy ML applications easily.
+
+```bash
+# Start docker image
+docker run -it 4pdosc/openmldb:1.0.0 bash
+ 
+# Initilize the environment
+sh init.sh
+ 
+# Import the data to OpenMLDB
+python3 import.py
+ 
+# Run feature extraction and model training
+sh train.sh
+ 
+# Start HTTP serevice for inference with OpenMLDB
+sh start_predict_server.sh
+ 
+# Run inference with HTTP request
+python3 predict.py
+```
+
+## Status and Roadmap
+
+### Status of Project
+
+* SQL compiler and optimizer[Complete]
+    * Support ANSI SQL compiler[Complete]
+    * Support optimizing physical plans and expressions[Complete]
+    * Support code generation for functions[Complete]
+* Front-end programming interfaces[In Process]
+    * Support JDBC protocol[Complete]
+    * Support C++、Python SDK[Complete]
+    * Support RESTful API[In Process]
+* Online/offline computaion engine[Complete]
+    * Support online database computaion engine[Complete]
+    * Support offline batch process computaion engine[Complete]
+* Unified storage engine[In Process]
+    * Support distributed memory storage[完成]
+    * Support synchronization for online and offline data[In Process]
+
+### Roadmap
+
+* SQL Compatibility
+    * Support more `Window` types and `Where`, `GroupBy` with complex expressions[2021H2]
+    * Support more SQL syntax and UDF/UDAF functions for AI scenarios[2021H2]
+* Performance Improvement
+    * Logical and physical plan optimization for batch mode and request mode data processing[2021H2]
+    * High-performance, distributed execution plan generation and codegen[2021H2]
+    * More classic SQL expression pass support[2022H1]
+    * Integrate the optimization passes for Native LastJoin which is used in AI scenarios[2021H2]
+    * Provide a new strategy of memory allocation to reduce memory fragmentation[2022H1]
+* Ecosystem Integration
+    * Adapt to various encoding format in row and column, be compatible with Apache Arrow[2021H2]
+    * Adapt to open source SQL compute framework like FlinkSQL[2022H1]
+    * Support popular programing languages，including C++, Java, Python, Go, Rust etc[2021H2]
+    * Support PMEM-based storage engine[2022H1]
+    * Support Flink/Kafka/Spark connector[2022H1]
+
 ## License
-Apache License 2.0
+
+[Apache License 2.0](./LICENSE)
