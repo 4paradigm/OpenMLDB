@@ -11,7 +11,7 @@ OpenMLDB是面向ML应用开发的RMCP(Real-time/Massive-parallel Consistent Pro
 
 标准的ML应用开发流程，必然包括基于大数据的离线特征计算阶段，以及模型上线后的实时特征计算阶段，RMCP数据库同时支持在线实时预估和离线大规模并行计算，保证存储和计算的一致性，满足ML应用开发的全流程需求。OpenMLDB基于LLVM优化，支持ANSI SQL与针对AI优化的SQL语法，批处理模式比主流MPP系统快6倍以上，实时预估性能比主流内存数据库快8倍以上，统一的计算存储引擎保证特征一致性，从而解决机器学习技术落地门槛高的问题，让更多的开发者能快速上线大规模机器学习技术。
 
-![Architecture](./images/openmldb_architecture.png)
+<div align=center><img src="./images/openmldb_architecture.png"/></div>
 
 ## 系统特性
 
