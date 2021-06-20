@@ -7,9 +7,7 @@
 
 ## Introduction
 
-OpenMLDB is the RMCP(Real-time/Massive-parallel Consistent Processing) database for ML development.
-
-Developmenting a ML application includes the offline big-data processing and online feature execution. RMCP databse supports online process and massive-parallel processing at the same time. It ensures the consistency of data and computing to meet the requirements of ML development. OpenMLDB is the high-performance RMCP database which is based on LLVM optimization and supports ANSI SQL for AI. The performance of batch process is 6x times better than mainstream MPP framework. The performance of real-time process is 8x times better thant the mainstream memory databases. OpenMLDB relis on the unified computing and storage engines to ensure the consistency which highly reduce the cost of AI landing and help more developers to deploy machine applications at scale.
+OpenMLDB is an open-source database designed and optimized to enable data correctness & efficiency for machine learning driven applications. Besides the 10x faster ML application landing experience, OpenMLDB provides the unified computing & storage engines to reduce the complexity and cost of development and operation.
 
 <div align=center><img src="./images/openmldb_architecture.png"/></div>
 
