@@ -1,9 +1,7 @@
 
 <div align=center><img src="./images/openmldb_logo.png"/></div>
 
-- [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W)
-- [**Discussions**](https://github.com/4paradigm/OpenMLDB/discussions)
-- [**中文README**](./README_cn.md)
+- [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W) [**Discussions**](https://github.com/4paradigm/OpenMLDB/discussions)  [**中文README**](./README_cn.md)
 
 ## Introduction
 
