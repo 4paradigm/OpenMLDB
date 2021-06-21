@@ -1,9 +1,13 @@
 
 <div align=center><img src="./images/openmldb_logo.png"/></div>
 
-- [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W) 
-- [**Discussions**](https://github.com/4paradigm/OpenMLDB/discussions)  
-- [**中文README**](./README_cn.md)
+[![build status](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml/badge.svg)](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml)
+[![docker pulls](https://img.shields.io/docker/pulls/4pdosc/openmldb.svg)](https://hub.docker.com/r/4pdosc/openmldb)
+[![slack](https://img.shields.io/badge/Slack-Join%20Slack-blue)](https://join.slack.com/t/hybridsql-ws/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)
+[![discuss](https://img.shields.io/badge/Discuss-Ask%20Questions-blue)](https://github.com/4paradigm/OpenMLDB/discussions)
+
+English version|[中文版](README_cn.md)
+
 
 ## What is OpenMLDB 
 
