@@ -45,7 +45,7 @@ class APIServerImpl : public APIServer {
     APIServerImpl() = default;
     ~APIServerImpl() override;
     bool Init(const sdk::ClusterOptions& options);
-    bool Init(std::shared_ptr<sdk::SQLRouter> router);
+    bool Init(::fedb::sdk::ClusterSDK* cluster);
     void Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
                  google::protobuf::Closure* done) override;
 
@@ -53,6 +53,8 @@ class APIServerImpl : public APIServer {
     void RegisterPut();
     void RegisterExecSP();
     void RegisterGetSP();
+    void RegisterGetDB();
+    void RegisterGetTable();
 
     static bool Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
                                    const butil::rapidjson::Value& common_cols_v,
@@ -64,6 +66,8 @@ class APIServerImpl : public APIServer {
  private:
     std::shared_ptr<sdk::SQLRouter> sql_router_;
     InterfaceProvider provider_;
+    // cluster_sdk_ is not owned by this class.
+    ::fedb::sdk::ClusterSDK* cluster_sdk_;
 };
 
 struct PutResp {
@@ -108,6 +112,14 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ProcedureIn
 
 // ExecSPResp reading is unsupported now, cuz we decode sp_info here, it's irreversible
 JsonWriter& operator&(JsonWriter& ar, GetSPResp& s);  // NOLINT
+
+JsonWriter& operator&(JsonWriter& ar,  // NOLINT
+                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>& column_desc);
+
+JsonWriter& operator&(JsonWriter& ar,  // NOLINT
+                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>& column_key);
+
+JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableInfo> info);  // NOLINT
 
 }  // namespace http
 }  // namespace fedb
