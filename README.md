@@ -11,13 +11,13 @@ OpenMLDB is an open-source database designed and optimized to enable data correc
 
 ## Features
 
-* **High Performance**
-
-    OpenMLDB implements the native SQL compiler with C++ and LLVM. It contains tens of optimization passes for physical plans and expressions. It can generate optmized binary code for different hardware and optmize the memory layout for feature storage. The storage and cost for features can be 9x times lower than the similar databases. The performance of real-time execution can be 9x times better and the performance of batch processing can be 6x times better.
-
 * **Consistency**
 
     OpenMLDB ensures the consistency for online and offline. Data scientists can use OpenMLDB for feature extration which will avoid crossing data. The online and offline computation are consistent because of using the same LLVM IR for complication. To encure the consistency of storage, OpenMLDB will synchronize data for offline and online. Users do not need to manage multiple data sources for online and offline, which may avoid the inconsistency from features or data.
+    
+* **High Performance**
+
+    OpenMLDB implements the native SQL compiler with C++ and LLVM. It contains tens of optimization passes for physical plans and expressions. It can generate optmized binary code for different hardware and optmize the memory layout for feature storage. The storage and cost for features can be 9x times lower than the similar databases. The performance of real-time execution can be 9x times better and the performance of batch processing can be 6x times better.
 
 * **High Availability**
 
