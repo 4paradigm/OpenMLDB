@@ -46,7 +46,7 @@ class APIServerTestEnv : public testing::Environment {
         cluster_options.zk_path = mc->GetZkPath();
         // Owned by queue_svc
         cluster_sdk = new ::fedb::sdk::ClusterSDK(cluster_options);
-        ASSERT_TRUE(cluster_sdk->Init())  << "Fail to connect to db";
+        ASSERT_TRUE(cluster_sdk->Init()) << "Fail to connect to db";
         queue_svc.reset(new APIServerImpl);
         ASSERT_TRUE(queue_svc->Init(cluster_sdk));
 
@@ -491,7 +491,7 @@ TEST_F(APIServerTest, getDBs) {
         butil::rapidjson::Document document;
         if (document.Parse(show_cntl.response_attachment().to_string().c_str()).HasParseError()) {
             ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
-                            << ", raw resp: " << show_cntl.response_attachment().to_string();
+                               << ", raw resp: " << show_cntl.response_attachment().to_string();
         }
         ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
         ASSERT_TRUE(document.HasMember("msg"));
@@ -514,7 +514,7 @@ TEST_F(APIServerTest, getDBs) {
         butil::rapidjson::Document document;
         if (document.Parse(show_cntl.response_attachment().to_string().c_str()).HasParseError()) {
             ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
-                            << ", raw resp: " << show_cntl.response_attachment().to_string();
+                               << ", raw resp: " << show_cntl.response_attachment().to_string();
         }
         ASSERT_TRUE(document.HasMember("msg"));
         ASSERT_STREQ("ok", document["msg"].GetString());
