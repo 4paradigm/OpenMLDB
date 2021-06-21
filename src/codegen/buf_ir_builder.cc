@@ -25,6 +25,8 @@
 #include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
 
+DECLARE_bool(enable_spark_unsaferow_format);
+
 namespace hybridse {
 namespace codegen {
 
@@ -258,22 +260,33 @@ BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(
       block_(block) {
     str_field_start_offset_ = codec::GetStartOffset(schema_->size());
     for (int32_t idx = 0; idx < schema_->size(); idx++) {
-        const ::hybridse::type::ColumnDef& column = schema_->Get(idx);
-        if (column.type() == ::hybridse::type::kVarchar) {
-            offset_vec_.push_back(str_field_cnt_);
-            str_field_cnt_++;
-        } else {
-            auto TYPE_SIZE_MAP = codec::GetTypeSizeMap();
-            auto it = TYPE_SIZE_MAP.find(column.type());
-            if (it == TYPE_SIZE_MAP.end()) {
-                LOG(WARNING) << ::hybridse::type::Type_Name(column.type())
-                             << " is not supported";
-            } else {
-                offset_vec_.push_back(str_field_start_offset_);
-                DLOG(INFO) << "idx " << idx << " offset "
-                           << str_field_start_offset_;
-                str_field_start_offset_ += it->second;
+        // Support Spark UnsafeRow format where all fields will take up 8 bytes
+        if (FLAGS_enable_spark_unsaferow_format) {
+            offset_vec_.push_back(str_field_start_offset_);
+            str_field_start_offset_ += 8;
+            const ::hybridse::type::ColumnDef& column = schema_->Get(idx);
+            if (column.type() == ::hybridse::type::kVarchar) {
+                str_field_cnt_++;
             }
+        } else {
+            const ::hybridse::type::ColumnDef& column = schema_->Get(idx);
+            if (column.type() == ::hybridse::type::kVarchar) {
+                offset_vec_.push_back(str_field_cnt_);
+                str_field_cnt_++;
+            } else {
+                auto TYPE_SIZE_MAP = codec::GetTypeSizeMap();
+                auto it = TYPE_SIZE_MAP.find(column.type());
+                if (it == TYPE_SIZE_MAP.end()) {
+                    LOG(WARNING) << ::hybridse::type::Type_Name(column.type())
+                                << " is not supported";
+                } else {
+                    offset_vec_.push_back(str_field_start_offset_);
+                    DLOG(INFO) << "idx " << idx << " offset "
+                            << str_field_start_offset_;
+                    str_field_start_offset_ += it->second;
+                }
+            }
+
         }
     }
 }
@@ -499,12 +512,23 @@ bool BufNativeEncoderIRBuilder::AppendString(
         size_ty,    // str_field_offset
         size_ty,    // str_addr_space
         size_ty);   // str_body_offset
-    *output = builder.CreateCall(
-        callee,
-        ::llvm::ArrayRef<::llvm::Value*>{
-            i8_ptr, buf_size, val_field_idx, data_ptr, fe_str_size, is_null,
-            builder.getInt32(str_field_start_offset_),
-            builder.getInt32(str_field_idx), str_addr_space, str_body_offset});
+
+    if (FLAGS_enable_spark_unsaferow_format) {
+        *output = builder.CreateCall(
+            callee,
+            ::llvm::ArrayRef<::llvm::Value*>{
+                i8_ptr, buf_size, val_field_idx, data_ptr, fe_str_size, is_null,
+                // Notice that we pass nullbitmap size as str_field_start_offset
+                builder.getInt32(codec::BitMapSize(schema_->size())),
+                builder.getInt32(str_field_idx), str_addr_space, str_body_offset});
+    } else {
+        *output = builder.CreateCall(
+            callee,
+            ::llvm::ArrayRef<::llvm::Value*>{
+                i8_ptr, buf_size, val_field_idx, data_ptr, fe_str_size, is_null,
+                builder.getInt32(str_field_start_offset_),
+                builder.getInt32(str_field_idx), str_addr_space, str_body_offset});
+    }
     return true;
 }
 

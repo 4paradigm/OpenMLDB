@@ -46,6 +46,8 @@
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 
+DECLARE_bool(enable_spark_unsaferow_format);
+
 ExitOnError ExitOnErr;
 
 struct TestString {
@@ -589,6 +591,52 @@ TEST_F(BufIRBuilderTest, native_test_load_string_col) {
     BuildWindowFromResource("cases/resource/codegen_t1_five_row.yaml", table,
                             rows, &ptr);
     RunColCase<int32_t>(5, table, ::hybridse::type::kVarchar, "col6", ptr);
+    free(ptr);
+}
+
+TEST_F(BufIRBuilderTest, spark_unsaferow_native_test_load_string) {
+    FLAGS_enable_spark_unsaferow_format = true;
+
+    int8_t* ptr = NULL;
+    uint32_t size = 0;
+    type::TableDef table;
+    BuildT1Buf(table, &ptr, &size);
+
+    codec::StringRef result;
+    bool is_null;
+    LoadValue(&result, &is_null, table, ::hybridse::type::kVarchar, "col6", ptr, size);
+    ASSERT_EQ(is_null, false);
+
+    free(ptr);
+}
+TEST_F(BufIRBuilderTest, spark_unsaferow_native_test_load_int64_col) {
+    FLAGS_enable_spark_unsaferow_format = true;
+
+    int8_t* ptr = NULL;
+    std::vector<Row> rows;
+    type::TableDef table;
+    BuildWindowFromResource("cases/resource/codegen_t1_five_row.yaml", table,
+                            rows, &ptr);
+    RunColCase<int64_t>(64 * 5, table, ::hybridse::type::kInt64, "col5", ptr);
+    free(ptr);
+}
+TEST_F(BufIRBuilderTest, spark_unsaferow_encode_ir_builder) {
+    FLAGS_enable_spark_unsaferow_format = true;
+
+    int8_t* ptr = NULL;
+    type::TableDef table;
+    RunEncode(table, &ptr);
+    bool ok = ptr != NULL;
+    ASSERT_TRUE(ok);
+
+    codec::RowView row_view(table.columns());
+    row_view.Reset(ptr);
+
+    ASSERT_EQ(32, row_view.GetInt32Unsafe(0));
+    ASSERT_EQ(16, row_view.GetInt16Unsafe(1));
+    ASSERT_EQ(32.1f, row_view.GetFloatUnsafe(2));
+    ASSERT_EQ(64.1, row_view.GetDoubleUnsafe(3));
+    ASSERT_EQ(64, row_view.GetInt64Unsafe(4));
     free(ptr);
 }
 

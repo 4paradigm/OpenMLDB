@@ -27,9 +27,10 @@ namespace codec {
 
 const uint32_t BitMapSize(uint32_t size) {
     if (FLAGS_enable_spark_unsaferow_format) {
-        return 8;
+        // For UnsafeRow opt, the nullbit set increases by 8 bytes
+        return ((size >> 6) + !!(size&0x7f)) * 8;
     } else {
-        return ((size) >> 3) + !!((size)&0x07);
+        return (size >> 3) + !!(size&0x07);
     }
 }
 
@@ -448,7 +449,7 @@ std::string RowView::GetStringUnsafe(uint32_t idx) {
     }
     const char* val;
     uint32_t length;
-    v1::GetStrFieldUnsafe(row_, field_offset, next_str_field_offset,
+    v1::GetStrFieldUnsafe(row_, idx, field_offset, next_str_field_offset,
                           str_field_start_offset_, str_addr_length_, &val,
                           &length);
     return std::string(val, length);
@@ -845,7 +846,7 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx, const char** val,
     if (offset_vec_.at(idx) < string_field_cnt_ - 1) {
         next_str_field_offset = field_offset + 1;
     }
-    return v1::GetStrFieldUnsafe(row, field_offset, next_str_field_offset,
+    return v1::GetStrFieldUnsafe(row, idx, field_offset, next_str_field_offset,
                                  str_field_start_offset_, GetAddrLength(size),
                                  val, length);
 }
@@ -871,7 +872,7 @@ int32_t RowView::GetString(uint32_t idx, const char** val, uint32_t* length) {
     if (offset_vec_.at(idx) < string_field_cnt_ - 1) {
         next_str_field_offset = field_offset + 1;
     }
-    return v1::GetStrFieldUnsafe(row_, field_offset, next_str_field_offset,
+    return v1::GetStrFieldUnsafe(row_, idx, field_offset, next_str_field_offset,
                                  str_field_start_offset_, str_addr_length_, val,
                                  length);
 }
@@ -941,8 +942,15 @@ bool RowFormat::GetStringColumnInfo(size_t idx, StringColInfo* res) const {
     DLOG(INFO) << "get string with offset " << offset << " next offset "
                << next_offset << " str_field_start_offset "
                << str_field_start_offset_ << " for col " << base_col_info.name;
-    *res = StringColInfo(base_col_info.name, ty, col_idx, offset, next_offset,
-                         str_field_start_offset_);
+
+    if (FLAGS_enable_spark_unsaferow_format) {
+        // Notice that we pass the nullbitmap size as str_field_start_offset
+        *res = StringColInfo(base_col_info.name, ty, col_idx, offset, next_offset,
+                            BitMapSize(schema_->size()));
+    } else {
+        *res = StringColInfo(base_col_info.name, ty, col_idx, offset, next_offset,
+                            str_field_start_offset_);
+    }
     return true;
 }
 

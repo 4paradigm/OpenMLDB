@@ -19,6 +19,8 @@
 #include <vector>
 #include "gtest/gtest.h"
 
+DECLARE_bool(enable_spark_unsaferow_format);
+
 namespace hybridse {
 namespace codec {
 
@@ -649,6 +651,61 @@ TEST_F(CodecTest, RowFormatOffsetLongHeaderTest) {
         ASSERT_EQ(50u, str_info.str_start_offset);
     }
 }
+TEST_F(CodecTest, SparkUnsaferowBitMapSizeTest) {
+    FLAGS_enable_spark_unsaferow_format = false;
+    ASSERT_EQ(BitMapSize(3), 1);
+    ASSERT_EQ(BitMapSize(8), 1);
+    ASSERT_EQ(BitMapSize(9), 2);
+    ASSERT_EQ(BitMapSize(20), 3);
+    ASSERT_EQ(BitMapSize(65), 9);
+
+    FLAGS_enable_spark_unsaferow_format = true;
+    ASSERT_EQ(BitMapSize(3), 8);
+    ASSERT_EQ(BitMapSize(8), 8);
+    ASSERT_EQ(BitMapSize(9), 8);
+    ASSERT_EQ(BitMapSize(20), 8);
+    ASSERT_EQ(BitMapSize(65), 16);
+}
+TEST_F(CodecTest, SparkUnsaferowRowFormatTest) {
+    FLAGS_enable_spark_unsaferow_format = true;
+
+    std::vector<int> num_vec = {10, 20, 50, 100, 1000};
+    for (auto col_num : num_vec) {
+        ::hybridse::type::TableDef def;
+        for (int i = 0; i < col_num; i++) {
+            ::hybridse::type::ColumnDef* col = def.add_columns();
+            col->set_name("col" + std::to_string(i));
+            if (i % 3 == 0) {
+                col->set_type(::hybridse::type::kVarchar);
+            } else if (i % 3 == 1) {
+                col->set_type(::hybridse::type::kInt64);
+            } else if (i % 3 == 2) {
+                col->set_type(::hybridse::type::kDouble);
+            }
+        }
+
+        RowFormat decoder(&def.columns());
+        for (int i = 0; i < col_num; i++) {
+            if (i % 3 == 0) {
+                const codec::ColInfo* info = decoder.GetColumnInfo(i);
+                ASSERT_TRUE(info != nullptr);
+                ASSERT_EQ(::hybridse::type::kVarchar, info->type);
+
+                codec::StringColInfo str_info;
+                ASSERT_TRUE(decoder.GetStringColumnInfo(i, &str_info));
+            } else if (i % 3 == 1) {
+                const codec::ColInfo* info = decoder.GetColumnInfo(i);
+                ASSERT_TRUE(info != nullptr);
+                ASSERT_EQ(::hybridse::type::kInt64, info->type);
+            } else if (i % 3 == 2) {
+                const codec::ColInfo* info = decoder.GetColumnInfo(i);
+                ASSERT_TRUE(info != nullptr);
+                ASSERT_EQ(::hybridse::type::kDouble, info->type);
+            }
+        }
+    }
+}
+
 }  // namespace codec
 }  // namespace hybridse
 

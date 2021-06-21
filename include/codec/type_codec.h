@@ -24,6 +24,7 @@
 #include "base/fe_hash.h"
 #include "base/mem_pool.h"
 #include "glog/logging.h"
+
 namespace hybridse {
 namespace codec {
 static const uint32_t SEED = 0xe17a1465;
@@ -217,23 +218,8 @@ static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
 
 // calc the total row size with primary_size, str field count and str_size
-inline uint32_t CalcTotalLength(uint32_t primary_size, uint32_t str_field_cnt,
-                                uint32_t str_size, uint32_t* str_addr_space) {
-    uint32_t total_size = primary_size + str_size;
-    if (total_size + str_field_cnt <= UINT8_MAX) {
-        *str_addr_space = 1;
-        return total_size + str_field_cnt;
-    } else if (total_size + str_field_cnt * 2 <= UINT16_MAX) {
-        *str_addr_space = 2;
-        return total_size + str_field_cnt * 2;
-    } else if (total_size + str_field_cnt * 3 <= 1 << 24) {
-        *str_addr_space = 3;
-        return total_size + str_field_cnt * 3;
-    } else {
-        *str_addr_space = 4;
-        return total_size + str_field_cnt * 4;
-    }
-}
+uint32_t CalcTotalLength(uint32_t primary_size, uint32_t str_field_cnt,
+                         uint32_t str_size, uint32_t* str_addr_space);
 
 inline void AppendNullBit(int8_t* buf_ptr, uint32_t col_idx, int8_t is_null) {
     int8_t* ptr = buf_ptr + HEADER_LENGTH + (col_idx >> 3);
@@ -432,7 +418,8 @@ inline double GetDoubleField(const int8_t* row, uint32_t idx, uint32_t offset,
 }
 
 // native get string field method
-int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t str_field_offset,
+int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t col_idx,
+                          uint32_t str_field_offset,
                           uint32_t next_str_field_offset,
                           uint32_t str_start_offset, uint32_t addr_space,
                           const char** data, uint32_t* size);

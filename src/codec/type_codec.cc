@@ -24,12 +24,40 @@
 #include "glog/logging.h"
 #include "proto/fe_type.pb.h"
 
+DECLARE_bool(enable_spark_unsaferow_format);
+
 namespace hybridse {
 namespace codec {
 namespace v1 {
 
 using hybridse::codec::ListV;
 using hybridse::codec::Row;
+
+uint32_t CalcTotalLength(uint32_t primary_size, uint32_t str_field_cnt,
+                         uint32_t str_size, uint32_t* str_addr_space) {
+    uint32_t total_size = primary_size + str_size;
+
+    // Support Spark UnsafeRow format where string field will take up 8 bytes
+    if (FLAGS_enable_spark_unsaferow_format) {
+        // Make sure each string column takes up 8 bytes
+        *str_addr_space = 8;
+        return total_size + str_field_cnt * 8;
+    }
+
+    if (total_size + str_field_cnt <= UINT8_MAX) {
+        *str_addr_space = 1;
+        return total_size + str_field_cnt;
+    } else if (total_size + str_field_cnt * 2 <= UINT16_MAX) {
+        *str_addr_space = 2;
+        return total_size + str_field_cnt * 2;
+    } else if (total_size + str_field_cnt * 3 <= 1 << 24) {
+        *str_addr_space = 3;
+        return total_size + str_field_cnt * 3;
+    } else {
+        *str_addr_space = 4;
+        return total_size + str_field_cnt * 4;
+    }
+}
 
 int32_t GetStrField(const int8_t* row, uint32_t idx, uint32_t str_field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
@@ -42,16 +70,33 @@ int32_t GetStrField(const int8_t* row, uint32_t idx, uint32_t str_field_offset,
         return 0;
     } else {
         *is_null = false;
-        return GetStrFieldUnsafe(row, str_field_offset, next_str_field_offset,
+        return GetStrFieldUnsafe(row, idx, str_field_offset, next_str_field_offset,
                                  str_start_offset, addr_space, data, size);
     }
 }
 
-int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t field_offset,
+int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t col_idx,
+                          uint32_t field_offset,
                           uint32_t next_str_field_offset,
                           uint32_t str_start_offset, uint32_t addr_space,
                           const char** data, uint32_t* size) {
     if (row == NULL || data == NULL || size == NULL) return -1;
+
+    // Support Spark UnsafeRow format
+    if (FLAGS_enable_spark_unsaferow_format) {
+        // For UnsafeRow opt, str_start_offset is the nullbitmap size
+        const uint32_t bitmap_size = str_start_offset;
+        const int8_t* row_with_col_offset = row + HEADER_LENGTH + bitmap_size + col_idx * 8;
+
+        // For Spark UnsafeRow, the first 32 bits is for length and the last
+        // 32 bits is for offset.
+        *size = *(reinterpret_cast<const uint32_t*>(row_with_col_offset));
+        uint32_t str_value_offset = *(reinterpret_cast<const uint32_t*>(row_with_col_offset + 4)) + HEADER_LENGTH;
+        *data = reinterpret_cast<const char*>(row + str_value_offset);
+
+        return 0;
+    }
+
     const int8_t* row_with_offset = row + str_start_offset;
     uint32_t str_offset = 0;
     uint32_t next_str_offset = 0;
@@ -143,6 +188,24 @@ int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, uint32_t col_idx,
                      int8_t* val, uint32_t size, int8_t is_null,
                      uint32_t str_start_offset, uint32_t str_field_offset,
                      uint32_t str_addr_space, uint32_t str_body_offset) {
+
+    if (FLAGS_enable_spark_unsaferow_format) {
+        // TODO(chenjing): Refactor to support multiple codec instead of reusing the variable
+        // For UnsafeRow opt, str_start_offset is the nullbitmap size
+        const uint32_t bitmap_size = str_start_offset;
+        const uint32_t str_col_offset = HEADER_LENGTH + bitmap_size + col_idx * 8;
+
+        *(reinterpret_cast<uint32_t*>(buf_ptr + str_col_offset)) = size; // set size
+        // Notice that the offset in UnsafeRow should start without HybridSE header
+        *(reinterpret_cast<uint32_t*>(buf_ptr + str_col_offset + 4)) = str_body_offset - HEADER_LENGTH; // set offset
+
+        if (size != 0) {
+            memcpy(reinterpret_cast<char*>(buf_ptr + str_body_offset), val, size);
+        }
+
+        return str_body_offset + size;
+    }
+
     if (is_null) {
         AppendNullBit(buf_ptr, col_idx, true);
         size_t str_addr_length = GetAddrLength(buf_size);

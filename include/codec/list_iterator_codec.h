@@ -125,7 +125,7 @@ class StringColumnImpl : public ColumnImpl<StringRef> {
         int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
         StringRef value;
         const char *buffer;
-        v1::GetStrFieldUnsafe(row.buf(row_idx_), str_field_offset_,
+        v1::GetStrFieldUnsafe(row.buf(row_idx_), col_idx_, str_field_offset_,
                               next_str_field_offset_, str_start_offset_,
                               addr_space, &buffer, &(value.size_));
         value.data_ = buffer;
@@ -142,7 +142,7 @@ class StringColumnImpl : public ColumnImpl<StringRef> {
             int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
             StringRef value;
             const char *buffer;
-            v1::GetStrFieldUnsafe(buf, str_field_offset_,
+            v1::GetStrFieldUnsafe(buf, col_idx_, str_field_offset_,
                                   next_str_field_offset_, str_start_offset_,
                                   addr_space, &buffer, &(value.size_));
             value.data_ = buffer;
