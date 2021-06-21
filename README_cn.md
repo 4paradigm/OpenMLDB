@@ -7,7 +7,7 @@
 
 ## 介绍
 
-OpenMLDB 是一个面向机器学习应用提供正确、高效数据供给的开源数据库， 除了提供 10x 的机器学习数据开发效率提升，OpenMLDB 也提供了统一的计算与存储引擎减少开发运维的复杂性与拥有成本。 
+OpenMLDB是一个面向机器学习应用提供正确、高效数据供给的开源数据库。除了提供 10x 的机器学习数据开发效率提升，OpenMLDB也提供了统一的计算与存储引擎减少开发运维的复杂性与拥有成本。 
 
 
 <div align=center><img src="./images/openmldb_architecture.png"/></div>
@@ -23,11 +23,11 @@ OpenMLDB 是一个面向机器学习应用提供正确、高效数据供给的�
 
 * **高可用**
 
-    OpenMLDB的大规模并行计算服务和数据库存储服务，都支持多节点都分布式高可用特性，可以自动Failover和动态扩缩容，避免单点故障。
+    OpenMLDB的大规模并行计算服务和数据库存储服务，都支持多节点分布式高可用特性，可以自动Failover避免单点故障。
 
 * **SQL支持**
 
-    OpenMLDB支持用户友好SQL接口，兼容大部分ANSI SQL语法以及针对AI场景拓展了新的SQL特性。以时序特征抽取为例，支持标准SQL的Over Window语法，还针对AI场景需求进行拓展，支持基于样本表滑窗的Window Union语法，实时计算引擎支持基于当前行的Request Mode窗口聚合计算。
+    OpenMLDB支持用户友好的SQL接口，兼容大部分ANSI SQL语法以及针对AI场景拓展了新的SQL特性。以时序特征抽取为例，支持标准SQL的Over Window语法，还针对AI场景需求进行拓展，支持基于样本表滑窗的Window Union语法，实时计算引擎支持基于当前行的Request Mode窗口聚合计算。
 
 * **AI优化**
 
@@ -53,7 +53,7 @@ OpenMLDB 是一个面向机器学习应用提供正确、高效数据供给的�
 
 ```bash
 # 启动docker镜像
-docker run -it 4pdosc/openmldb:1.0.0 bash
+docker run -it 4pdosc/openmldb:0.1.0 bash
 
 # 初始化环境
 sh init.sh

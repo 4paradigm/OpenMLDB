@@ -14,23 +14,24 @@ OpenMLDB is an open-source database designed and optimized to enable data correc
 ## Features
 
 * **High Performance**
-    OpenMLDB implement the native SQL compiler with C++ and LLVM. It contains tens of optimization passes for physical plans and expressions. It can generate optmized binary code for different hardware and optmize the memory layout for feature storage. The storage and cost for features can be 9x times lower than the similar databases. The performance of real-time execution can be 9x times better and the performance of batch processing can be 6x times better.
+
+    OpenMLDB implements the native SQL compiler with C++ and LLVM. It contains tens of optimization passes for physical plans and expressions. It can generate optmized binary code for different hardware and optmize the memory layout for feature storage. The storage and cost for features can be 9x times lower than the similar databases. The performance of real-time execution can be 9x times better and the performance of batch processing can be 6x times better.
 
 * **Consistency**
 
-    OpenMLDB ensures the consistency for online and offline. Data scientists can use OpenMLDB for feature extration which will avoid crossing data. The online and offline computation are consistent because of using the same LLVM IR for complication. To encure the consistency of storage, OpenMLDB will synchronize data for offline and online. Users do not need to manage multiple data sources for online and offline which may avoid the inconsistency from features or data.
+    OpenMLDB ensures the consistency for online and offline. Data scientists can use OpenMLDB for feature extration which will avoid crossing data. The online and offline computation are consistent because of using the same LLVM IR for complication. To encure the consistency of storage, OpenMLDB will synchronize data for offline and online. Users do not need to manage multiple data sources for online and offline, which may avoid the inconsistency from features or data.
 
 * **High Availability**
 
-    OpenMLDB supports distributed massive-parallel processing and database storage. It supports automatical failover and dynamic capacity to avoid the single point of failure.
+    OpenMLDB supports distributed massive-parallel processing and database storage. It supports automatical failover to avoid the single point of failure.
 
 * **SQL Support**
 
-    OpenMLDB supports user-friendly SQL interface which is compatible with most ANSI SQL and extends syntax for AI secenarios. Take the time serial features as example, OpenMLDB not only supports the syntax of Over Window but also support the new syntax for sliding window with instance table and real-time window aggregation with current row data.
+    OpenMLDB supports user-friendly SQL interface which is compatible with most ANSI SQL and extends syntax for AI secenarios. Take the time serial features as example, OpenMLDB not only supports the syntax of Over Window but also supports the new syntax for sliding window with instance table and real-time window aggregation with current row data.
 
 * **AI Optimization**
 
-    OpenMLDB is designed for optimizing AI scenarios. For storage we design the efficient data struct to storage features which gets better the utilization of space and performance than the similar products. For computation we provides the usual methods for table join and the UDF/UDAF for most machine learning scenarios.
+    OpenMLDB is designed for optimizing AI scenarios. For storage we design the efficient data struct to storage features which gets better the utilization of space and performance than the similar products. For computation we provide the usual methods for table join and the UDF/UDAF for most machine learning scenarios.
 
 * **Easy To Use**
 
@@ -52,7 +53,7 @@ Take Predict Taxi Tour Duration as example, we can use OpenMLDB to develop and d
 
 ```bash
 # Start docker image
-docker run -it 4pdosc/openmldb:1.0.0 bash
+docker run -it 4pdosc/openmldb:0.1.0 bash
  
 # Initilize the environment
 sh init.sh
@@ -86,7 +87,7 @@ python3 predict.py
     * Support online database computaion engine[Complete]
     * Support offline batch process computaion engine[Complete]
 * Unified storage engine[In Process]
-    * Support distributed memory storage[完成]
+    * Support distributed memory storage[Complete]
     * Support synchronization for online and offline data[In Process]
 
 ### Roadmap
