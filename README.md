@@ -69,11 +69,14 @@ sh start_predict_server.sh
 python3 predict.py
 ```
 
+## Architecture 
+
+<div align=center><img src="./images/openmldb_architecture.png"/></div>
+
 ## Status and Roadmap
 
 ### Status of Project
 
-<div align=center><img src="./images/openmldb_architecture.png"/></div>
 
 * SQL compiler and optimizer[Complete]
     * Support ANSI SQL compiler[Complete]
