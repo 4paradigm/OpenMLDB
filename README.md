@@ -1,13 +1,13 @@
 
 <div align=center><img src="./images/openmldb_logo.png"/></div>
 
-- [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W) [**Discussions**](https://github.com/4paradigm/OpenMLDB/discussions)  [**中文README**](./README_cn.md)
+- [**Slack Channel**](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W) 
+- [**Discussions**](https://github.com/4paradigm/OpenMLDB/discussions)  
+- [**中文README**](./README_cn.md)
 
 ## Introduction
 
 OpenMLDB is an open-source database designed and optimized to enable data correctness & efficiency for machine learning driven applications. Besides the 10x faster ML application landing experience, OpenMLDB provides the unified computing & storage engines to reduce the complexity and cost of development and operation.
-
-<div align=center><img src="./images/openmldb_architecture.png"/></div>
 
 ## Features
 
@@ -72,6 +72,8 @@ python3 predict.py
 ## Status and Roadmap
 
 ### Status of Project
+
+<div align=center><img src="./images/openmldb_architecture.png"/></div>
 
 * SQL compiler and optimizer[Complete]
     * Support ANSI SQL compiler[Complete]
