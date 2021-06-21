@@ -24,7 +24,8 @@ import org.slf4j.LoggerFactory;
  */
 public class HybridSeLibrary {
     private static final Logger logger = LoggerFactory.getLogger(HybridSeLibrary.class.getName());
-    private static final String HybridSE_JSDK_CORE_NAME = "hybridse_jsdk_core";
+    private static final String DEFAULT_HYBRIDSE_JSDK_CORE_NAME = "hybridse_jsdk_core";
+
     private static boolean initialized = false;
 
     /**
@@ -34,7 +35,18 @@ public class HybridSeLibrary {
         if (initialized) {
             return;
         }
-        LibraryLoader.loadLibrary(HybridSE_JSDK_CORE_NAME);
+        LibraryLoader.loadLibrary(DEFAULT_HYBRIDSE_JSDK_CORE_NAME);
+        initialized = true;
+    }
+
+    /**
+     * Load hybridse jsdk core if it hasn't loaded before.
+     */
+    public static synchronized void initCore(String jsdkCoreLibraryPath) {
+        if (initialized) {
+            return;
+        }
+        LibraryLoader.loadLibrary(jsdkCoreLibraryPath);
         initialized = true;
     }
 
