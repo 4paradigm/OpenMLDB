@@ -10,7 +10,7 @@
 OpenMLDB is an open-source database designed and optimized to enable data correctness & efficiency for machine learning driven applications. Besides the 10x faster ML application landing experience, OpenMLDB provides the unified computing & storage engines to reduce the complexity and cost of development and operation.
 
 ## Who Uses OpenMLDB 
-OpenMLDB is used in production to serve machine learning scenarios in many leading companies. The landed application includes content recommender system, ads CTR prediction, AIOps, anti-money laundering, anti-fraud recognition, intelligent marketing, etc. 
+OpenMLDB is used in production to serve machine learning scenarios in many leading companies, with more than 120 industry landed use cases includeing content recommender system, ads CTR prediction, AIOps, anti-money laundering, anti-fraud recognition, intelligent marketing, etc. 
 
 ## Features
 
