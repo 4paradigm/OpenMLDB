@@ -5,7 +5,7 @@
 - [**Discussions**](https://github.com/4paradigm/OpenMLDB/discussions)  
 - [**中文README**](./README_cn.md)
 
-## What is OpenMLDB ? 
+## What is OpenMLDB 
 
 OpenMLDB is an open-source database designed and optimized to enable data correctness & efficiency for machine learning driven applications. Besides the 10x faster ML application landing experience, OpenMLDB provides the unified computing & storage engines to reduce the complexity and cost of development and operation.
 
