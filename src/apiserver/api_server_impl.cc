@@ -438,14 +438,14 @@ void APIServerImpl::RegisterGetTable() {
                       auto db = db_it->second;
                       bool db_ok = std::find(dbs.begin(), dbs.end(), db) != dbs.end();
                       if (!db_ok) {
-                            writer.StartObject();
-                            writer.Member("code") & -1;
-                            writer.Member("msg") & std::string("DB not found");
-                            writer.Member("tables");
-                            writer.StartArray();
-                            writer.EndArray();
-                            writer.EndObject();
-                            return;
+                          writer.StartObject();
+                          writer.Member("code") & -1;
+                          writer.Member("msg") & std::string("DB not found");
+                          writer.Member("tables");
+                          writer.StartArray();
+                          writer.EndArray();
+                          writer.EndObject();
+                          return;
                       }
                       auto tables = cluster_sdk_->GetTables(db);
                       writer.StartObject();
@@ -476,17 +476,17 @@ void APIServerImpl::RegisterGetTable() {
                           writer << err.Set(status.msg);
                           return;
                       }
-                      auto db = db_it->second;  
+                      auto db = db_it->second;
                       bool db_ok = std::find(dbs.begin(), dbs.end(), db) != dbs.end();
                       if (!db_ok) {
-                            writer.StartObject();
-                            writer.Member("code") & -1;
-                            writer.Member("msg") & std::string("DB not found");
-                            writer.Member("table");
-                            writer.StartObject();
-                            writer.EndObject();
-                            writer.EndObject();
-                            return;
+                          writer.StartObject();
+                          writer.Member("code") & -1;
+                          writer.Member("msg") & std::string("DB not found");
+                          writer.Member("table");
+                          writer.StartObject();
+                          writer.EndObject();
+                          writer.EndObject();
+                          return;
                       }
                       auto table = table_it->second;
                       auto table_info = cluster_sdk_->GetTableInfo(db, table);
@@ -507,13 +507,13 @@ void APIServerImpl::RegisterGetTable() {
                   });
 }
 
-std::string APIServerImpl::InnerTypeTransform(const std::string& s){
+std::string APIServerImpl::InnerTypeTransform(const std::string& s) {
     std::string out = s;
     if (out.size() > 0 && out.at(0) == 'k') {
         out.erase(out.begin());
     }
-    std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c){ return std::tolower(c); });
-    return out; 
+    std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) { return std::tolower(c); });
+    return out;
 }
 
 void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema,  // NOLINT
@@ -741,8 +741,7 @@ JsonWriter& operator&(JsonWriter& ar,  // NOLINT
             auto& ttl = key.ttl();
             ar.StartObject();
             if (ttl.has_ttl_type()) {
-                switch (ttl.ttl_type())
-                {
+                switch (ttl.ttl_type()) {
                     case ::fedb::type::TTLType::kAbsoluteTime:
                         ar.Member("ttl_type") & std::string("absolute");
                         break;
@@ -807,7 +806,8 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableI
         ar.Member("replica_num") & info->replica_num();
     }
     if (info->has_compress_type()) {
-        ar.Member("compress_type") & APIServerImpl::InnerTypeTransform(::fedb::type::CompressType_Name(info->compress_type()));
+        ar.Member("compress_type") &
+            APIServerImpl::InnerTypeTransform(::fedb::type::CompressType_Name(info->compress_type()));
     }
     if (info->has_key_entry_max_height()) {
         ar.Member("key_entry_max_height") & info->key_entry_max_height();
