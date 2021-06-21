@@ -26,7 +26,7 @@ OpenMLDB is used in production to serve machine learning scenarios in many leadi
 
     OpenMLDB supports distributed massive-parallel processing and database storage. It supports automatical failover to avoid the single point of failure.
 
-* **SQL Support**
+* **ANSI SQL Support**
 
     OpenMLDB supports user-friendly SQL interface which is compatible with most ANSI SQL and extends syntax for AI secenarios. Take the time serial features as example, OpenMLDB not only supports the syntax of Over Window but also supports the new syntax for sliding window with instance table and real-time window aggregation with current row data.
 
