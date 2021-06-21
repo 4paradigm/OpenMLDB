@@ -1212,7 +1212,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const hybridse::node::NodePointV
                     col_desc->set_data_type(rtidb_type);
                     col_desc->set_is_constant(input_ptr->GetIsConstant());
                 } else {
-                    *msg = "fail to execute script with unSupport type" +
+                    *msg = "fail to execute script with unsupported type" +
                         hybridse::node::NameOfSqlNodeType(input->GetType());
                     return false;
                 }
@@ -1275,7 +1275,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const hybridse::node::NodePointV
             break;
         }
         default: {
-            *msg = "fail to execute script with unSupport type " +
+            *msg = "fail to execute script with unsupported type " +
                               hybridse::node::NameOfPlanNodeType(plan->GetType());
             return false;
         }
