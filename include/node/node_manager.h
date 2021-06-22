@@ -290,6 +290,10 @@ class NodeManager {
         const std::string &sp_name, const NodePointVector &input_parameter_list,
         const PlanNodeList &inner_plan_node_list);
 
+    SqlNode *MakeCreateProcedureNode(const std::string &sp_name,
+                                              SqlNodeList *input_parameter_list,
+                                              SqlNodeList *inner_node_list);
+
     CmdPlanNode *MakeCmdPlanNode(const CmdNode *node);
 
     InsertPlanNode *MakeInsertPlanNode(const InsertStmt *node);

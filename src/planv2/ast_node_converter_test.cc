@@ -303,7 +303,7 @@ TEST_F(ASTNodeConverterTest, ConvertFrameNodeTest) {
     }
 }
 
-TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeTest) {
+TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
     node::NodeManager node_manager;
     {
         const std::string sql =
@@ -382,6 +382,187 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeTest) {
     }
 }
 
+TEST_F(ASTNodeConverterTest, ConvertCreateProcedureOKTest) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string& sql) -> void {
+        std::unique_ptr<zetasql::ParserOutput> parser_output;
+        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+        const auto* statement = parser_output->statement();
+        ASSERT_TRUE(statement->Is<zetasql::ASTCreateProcedureStatement>());
+
+        const auto create_sp = statement->GetAsOrDie<zetasql::ASTCreateProcedureStatement>();
+        node::CreateSpStmt* stmt;
+        auto s = ConvertCreateProcedureNode(create_sp, &node_manager, &stmt);
+        EXPECT_EQ(common::kOk, s.code);
+    };
+
+    const std::string sql1 = R"sql(
+        CREATE OR REPLACE TEMP PROCEDURE IF NOT EXISTS procedure_name()
+        OPTIONS()
+        BEGIN
+        END;
+        )sql";
+
+    // valid statement with multiple arguments
+    const std::string sql2 = R"sql(
+    CREATE PROCEDURE procedure_name(
+      param_a string,
+      param_b int32
+      )
+    BEGIN
+    END;
+    )sql";
+
+    // with select query
+    const std::string sql3 = R"sql(
+        CREATE PROCEDURE procedure_name()
+        BEGIN
+          SELECT 1;
+        END;
+    )sql";
+
+    // with select union query
+    const std::string sql4 = R"sql(
+        CREATE PROCEDURE procedure_name(
+            param_a i16,
+            param_b timestamp,
+            param_c date,
+            param_d double
+        )
+        BEGIN
+          SELECT 1 UNION ALL SELECT 2;
+        END;
+    )sql";
+    const std::string sql5 = R"sql(
+        CREATE PROCEDURE procedure_name(
+            param_a i64,
+            param_b timestamp,
+            param_c smallint,
+            param_d double
+        )
+        BEGIN
+          SELECT 1 UNION DISTINCT SELECT 2 UNION DISTINCT SELECT 3;
+        END;
+    )sql";
+
+    expect_converted(sql1);
+    expect_converted(sql2);
+    expect_converted(sql3);
+    expect_converted(sql4);
+    expect_converted(sql5);
+}
+
+TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
+    node::NodeManager node_manager;
+
+    auto expect_converted = [&](const std::string& sql, const int code, const std::string& msg) {
+        std::unique_ptr<zetasql::ParserOutput> parser_output;
+        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+        const auto* statement = parser_output->statement();
+        ASSERT_TRUE(statement->Is<zetasql::ASTCreateProcedureStatement>());
+
+        const auto create_sp = statement->GetAsOrDie<zetasql::ASTCreateProcedureStatement>();
+        node::CreateSpStmt* stmt;
+        auto s = ConvertCreateProcedureNode(create_sp, &node_manager, &stmt);
+        EXPECT_EQ(code, s.code);
+        EXPECT_TRUE(boost::contains(s.trace, msg)) << s.trace;
+    };
+
+    // unsupported param type
+    expect_converted(R"sql(
+        CREATE PROCEDURE procedure_name(
+            param_a i64,
+            param_b timestamp,
+            param_c smallint,
+            param_d ANY TYPE
+        )
+        BEGIN
+          SELECT 1 UNION DISTINCT SELECT 2 UNION DISTINCT SELECT 3;
+        END;
+        )sql",
+                     common::kSqlError, "Un-support templated_parameter or tvf_schema type");
+
+    // unknown param type
+    expect_converted(R"sql(
+        CREATE PROCEDURE procedure_name(
+            param_a i64,
+            param_b timestamp,
+            param_c smallint,
+            param_d unknown_type
+        )
+        BEGIN
+          SELECT 1 UNION DISTINCT SELECT 2 UNION DISTINCT SELECT 3;
+        END;
+        )sql",
+                     common::kTypeError, "unknow DataType identifier: unknown_type");
+
+    // unsupport param type
+    expect_converted(R"sql(
+        CREATE PROCEDURE procedure_name(
+            param_c bigint,
+            param_d ARRAY <int>
+        )
+        BEGIN
+          SELECT 1 UNION DISTINCT SELECT 2;
+        END;
+        )sql",
+                     common::kSqlError, "Un-support parameter type: ArrayType");
+
+    // unsupport set operation
+    expect_converted(R"sql(
+        CREATE PROCEDURE procedure_name(
+            param_c bigint,
+            param_d string
+        )
+        BEGIN
+          SELECT 1 EXCEPT DISTINCT SELECT 2;
+        END;
+        )sql",
+                     common::kSqlError, "Un-support set operation: EXCEPT DISTINCT");
+
+    // unsupport statement type
+    expect_converted(R"sql(
+        CREATE PROCEDURE procedure_name()
+        BEGIN
+          DECLARE ABC INTERVAL;
+        END;
+    )sql",
+                     common::kSqlError, "Un-support statement type inside ASTBeginEndBlock: VariableDeclaration");
+    expect_converted(R"sql(
+        CREATE PROCEDURE procedure_name()
+        BEGIN
+            BEGIN select 1; END;
+        END;
+    )sql",
+                     common::kSqlError, "Un-support statement type inside ASTBeginEndBlock: BeginEndBlock");
+    expect_converted(R"sql(
+        CREATE PROCEDURE procedure_name()
+        BEGIN
+            select 1;
+            select 2;
+        END;
+    )sql",
+                     common::kSqlError, "Un-support multiple statements inside ASTBeginEndBlock");
+}
+
+TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string& sql, const int code, const std::string& msg) {
+        std::unique_ptr<zetasql::ParserOutput> parser_output;
+        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+        const auto* statement = parser_output->statement();
+
+        node::SqlNode* stmt;
+        auto s = ConvertStmt(statement, &node_manager, &stmt);
+        EXPECT_EQ(code, s.code);
+        EXPECT_STREQ(msg.c_str(), s.msg.c_str()) << s.msg << s.trace;
+    };
+
+    expect_converted(R"sql(
+        ALTER TABLE foo ALTER COLUMN bar SET DATA TYPE STRING;
+    )sql", common::kSqlError, "Un-support statement type: AlterTableStatement");
+}
+
 TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
     node::NodeManager node_manager;
     {
@@ -428,8 +609,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
     }
     {
         // not supported index key option value type
-        const std::string sql =
-            "create table t (a int64, index(key=['a'])) ";
+        const std::string sql = "create table t (a int64, index(key=['a'])) ";
 
         std::unique_ptr<zetasql::ParserOutput> parser_output;
         ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
@@ -443,8 +623,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
     }
     {
         // not supported index ttl option value type
-        const std::string sql =
-            "create table t (a int64, index(ttl=['12'])) ";
+        const std::string sql = "create table t (a int64, index(ttl=['12'])) ";
 
         std::unique_ptr<zetasql::ParserOutput> parser_output;
         ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
@@ -458,8 +637,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
     }
     {
         // not supported index version option value type
-        const std::string sql =
-            "create table t (a int64, index(version=['nonon'])) ";
+        const std::string sql = "create table t (a int64, index(version=['nonon'])) ";
 
         std::unique_ptr<zetasql::ParserOutput> parser_output;
         ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));

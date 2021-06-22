@@ -25,10 +25,10 @@ namespace plan {
 
 using hybridse::node::NodeManager;
 using hybridse::node::PlanNode;
-using hybridse::node::SqlNode;
-using hybridse::node::SqlNodeList;
 using hybridse::sqlcase::SqlCase;
-const std::vector<std::string> FILTERS({"logical-plan-unsupport", "parser-unsupport"});
+
+const std::vector<std::string> FILTERS({"logical-plan-unsupport", "parser-unsupport", "planner-unsupport"});
+
 class PlannerTest : public ::testing::TestWithParam<SqlCase> {
  public:
     PlannerTest() {

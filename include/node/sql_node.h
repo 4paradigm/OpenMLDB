@@ -650,6 +650,8 @@ class SelectQueryNode : public QueryNode {
 
     void SetLimit(SqlNode *limit) { limit_ptr_ = limit; }
 
+    void SetOrder(OrderByNode* order) { order_clause_ptr_ = order; }
+
     int GetDistinctOpt() const { return distinct_opt_; }
     // Print
     void Print(std::ostream &output, const std::string &org_tab) const;

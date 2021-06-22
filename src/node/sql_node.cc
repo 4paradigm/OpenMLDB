@@ -130,7 +130,7 @@ void PrintSqlVector(std::ostream &output, const std::string &tab, const NodePoin
         output << tab << SPACE_ST << vector_name << ": []";
         return;
     }
-    output << tab << SPACE_ST << vector_name << "[list]: \n";
+    output << tab << SPACE_ST << vector_name << "[list]:\n";
     const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
     int count = vec.size();
     int i = 0;
@@ -152,7 +152,8 @@ void SelectQueryNode::PrintSqlNodeList(std::ostream &output, const std::string &
 
 void PrintValue(std::ostream &output, const std::string &org_tab, const std::string &value,
                 const std::string &item_name, bool last_child) {
-    output << org_tab << SPACE_ST << item_name << ": " << value;
+    output << org_tab << SPACE_ST << item_name << ": " <<
+        (value.empty() ? "<nil>" : value);
 }
 
 void PrintValue(std::ostream &output, const std::string &org_tab, const std::vector<std::string> &vec,

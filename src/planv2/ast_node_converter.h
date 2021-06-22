@@ -25,6 +25,9 @@ namespace hybridse {
 namespace plan {
 base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node::NodeManager* node_manager,
                              node::ExprNode** output);
+
+base::Status ConvertStmt(const zetasql::ASTStatement* stmt, node::NodeManager* node_manager, node::SqlNode** output);
+
 base::Status ConvertOrderBy(const zetasql::ASTOrderBy* order_by, node::NodeManager* node_manager,
                             node::OrderByNode** output);
 
@@ -51,9 +54,21 @@ base::Status ConvertLimitOffsetNode(const zetasql::ASTLimitOffset* limit_offset,
 
 base::Status ConvertQueryNode(const zetasql::ASTQuery* root, node::NodeManager* node_manager, node::QueryNode** output);
 
+base::Status ConvertQueryExpr(const zetasql::ASTQueryExpression* query_expr, node::NodeManager* node_manager,
+                              node::QueryNode** output);
+
 /// transform zetasql::ASTCreateStatement into CreateStmt
 base::Status ConvertCreateTableNode(const zetasql::ASTCreateTableStatement* ast_create_stmt,
                                     node::NodeManager* node_manager, node::CreateStmt** output);
+
+base::Status ConvertCreateProcedureNode(const zetasql::ASTCreateProcedureStatement* ast_create_sp_stmt,
+                                        node::NodeManager* node_manager, node::CreateSpStmt** output);
+
+base::Status ConvertParamter(const zetasql::ASTFunctionParameter* params, node::NodeManager* node_manager,
+                              node::SqlNode** output);
+
+base::Status ConvertProcedureBody(const zetasql::ASTScript* body, node::NodeManager* node_manager,
+                                  node::SqlNodeList** output);
 
 /// transform zetasql::ASTTableElement into corresponding SqlNode
 base::Status ConvertTableElement(const zetasql::ASTTableElement* ast_table_element, node::NodeManager* node_manager,

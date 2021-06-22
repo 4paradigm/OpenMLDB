@@ -15,6 +15,7 @@
  */
 
 #include "case/sql_case.h"
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -1012,6 +1013,14 @@ bool SqlCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
     if (schema_data["count"]) {
         expect->count_ = schema_data["count"].as<int64_t>();
         boost::trim(expect->data_);
+    }
+
+    if (schema_data["node_tree_str"]) {
+        auto tree = schema_data["node_tree_str"].as<std::string>();
+        boost::trim(tree);
+        if (!tree.empty()) {
+            expect->node_tree_str_ = std::make_optional(tree);
+        }
     }
 
     YAML::Node rows_node;

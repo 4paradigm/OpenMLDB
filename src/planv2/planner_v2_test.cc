@@ -20,6 +20,7 @@
 #include <vector>
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
+#include "planv2/ast_node_converter.h"
 #include "zetasql/base/testing/status_matchers.h"
 #include "zetasql/parser/parser.h"
 #include "zetasql/public/error_helpers.h"
@@ -135,6 +136,56 @@ TEST_P(PlannerV2Test, PlannerClusterOptTest) {
         LOG(INFO) << "statement : " << *tree << std::endl;
     }
 }
+
+class Planv2StmtTest : public ::testing::TestWithParam<sqlcase::SqlCase> {
+ public:
+    Planv2StmtTest() { manager_ = new node::NodeManager(); }
+    ~Planv2StmtTest() { delete manager_; }
+
+ protected:
+    node::NodeManager* manager_;
+};
+
+// expect tree string equal for converted CreateStmt
+TEST_P(Planv2StmtTest, SqlNodeTreeEqual) {
+    auto& sql = GetParam().sql_str();
+
+    std::unique_ptr<zetasql::ParserOutput> parser_output;
+    ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+    const auto* statement = parser_output->statement();
+
+    node::SqlNode* output;
+    base::Status status;
+    // TODO(aceforeverd): use SimplePlannerV2::CreatePlanTree instead
+    switch (statement->node_kind()) {
+        case zetasql::AST_CREATE_TABLE_STATEMENT: {
+            const auto ast_create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
+            node::CreateStmt* create_stmt = nullptr;
+            status = ConvertCreateTableNode(ast_create_stmt, manager_, &create_stmt);
+            output = create_stmt;
+            break;
+        }
+        case zetasql::AST_CREATE_PROCEDURE_STATEMENT: {
+            const auto create_sp = statement->GetAsOrDie<zetasql::ASTCreateProcedureStatement>();
+            node::CreateSpStmt* stmt;
+            auto s = ConvertCreateProcedureNode(create_sp, manager_, &stmt);
+            output = stmt;
+            break;
+        }
+        default: {
+            ASSERT_TRUE(false) << "test unsupported for " << statement->GetNodeKindString();
+        }
+    }
+
+    EXPECT_EQ(common::kOk, status.code) << status.msg << status.trace;
+
+    if (GetParam().expect().node_tree_str_.has_value()) {
+        EXPECT_EQ(GetParam().expect().node_tree_str_.value(), output->GetTreeString());
+    }
+}
+
+INSTANTIATE_TEST_CASE_P(PlannerV2Test, Planv2StmtTest,
+                        testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml", FILTERS)));
 
 class PlannerV2ErrorTest : public ::testing::TestWithParam<SqlCase> {
  public:

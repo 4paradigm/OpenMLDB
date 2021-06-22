@@ -93,6 +93,7 @@ cases:
       );
   - id: 8
     desc: Create 指定副本数
+    mode : 'zetasql-unsupport'
     sql: |
       create table test(
           column1 int NOT NULL,
@@ -103,6 +104,7 @@ cases:
           index(key=column1, ts=column2)) replicanum=2;
   - id: 9
     desc: Create 指定副本数与节点分布
+    mode : 'zetasql-unsupport'
     sql: |
       create table test(
           column1 int NOT NULL,
@@ -140,3 +142,432 @@ cases:
           column4 string NOT NULL,
           column5 int NOT NULL,
           index(key=column1, ts=column2, ttl=(10d,100), ttl_type=absandlat));
+  - id: 13
+    desc: Create table statement (typical 1)
+    mode: 'planner-unsupport'
+    tags: ['TODO']
+    sql: |
+        create table t1 (a int, b string, index(key=(a, b), dump='12', ts=column2, ttl=1d, ttl_type=absolute, version=(column5, 3)))
+        options (replicanum = 3, partitionnum = 3, ignored_option = 'abc',
+            distribution = [ ('leader1', ['fo1', 'fo2']), ('leader2', ['fo1', 'fo2']) ]
+        );
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: t1
+          +-IF NOT EXIST: 0
+          +-column_desc_list[list]:
+          |  +-0:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: a
+          |  |    +-column_type: int32
+          |  |    +-NOT NULL: 0
+          |  +-1:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: b
+          |  |    +-column_type: string
+          |  |    +-NOT NULL: 0
+          |  +-2:
+          |    +-node[kColumnIndex]
+          |      +-keys: ab
+          |      +-ts_col: column2
+          |      +-abs_ttl: 86400000
+          |      +-lat_ttl: -2
+          |      +-ttl_type: absolute
+          |      +-version_column: column5
+          |      +-version_count: 3
+          +-replica_num: 3
+          +-partition_num: 3
+          +-distribution_list[list]:
+            +-0:
+            |  +-node[kPartitionMeta]
+            |    +-endpoint: leader1
+            |    +-role_type: leader
+            +-1:
+            |  +-node[kPartitionMeta]
+            |    +-endpoint: fo2
+            |    +-role_type: follower
+            +-2:
+            |  +-node[kPartitionMeta]
+            |    +-endpoint: leader2
+            |    +-role_type: leader
+            +-3:
+              +-node[kPartitionMeta]
+                +-endpoint: fo2
+                +-role_type: follower
+  - id: 14
+    desc: Create table statement (typical 2)
+    tags: ['TODO', 'fix distribution_list']
+    mode: 'planner-unsupport'
+    sql: |
+        create table if not exists t2 (a i16, b float32, index(key=a, ignored_key='seb', ts=b, ttl=(1h, 1800),
+        ttl_type=latest, version=a ) ) options (replicanum = 2, partitionnum = 5, ignored_option = 'abc',
+        distribution = [ ('leader1', ['fo1', 'fo2']), ('leader2', ['fo1', 'fo2'])] )
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: t2
+          +-IF NOT EXIST: 1
+          +-column_desc_list[list]:
+          |  +-0:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: a
+          |  |    +-column_type: int16
+          |  |    +-NOT NULL: 0
+          |  +-1:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: b
+          |  |    +-column_type: float
+          |  |    +-NOT NULL: 0
+          |  +-2:
+          |    +-node[kColumnIndex]
+          |      +-keys: a
+          |      +-ts_col: b
+          |      +-abs_ttl: 3600000
+          |      +-lat_ttl: 1800
+          |      +-ttl_type: latest
+          |      +-version_column: a
+          |      +-version_count: 1
+          +-replica_num: 2
+          +-partition_num: 5
+          +-distribution_list[list]:
+            +-0:
+            |  +-node[kPartitionMeta]
+            |    +-endpoint: leader1
+            |    +-role_type: leader
+            +-1:
+            |  +-node[kPartitionMeta]
+            |    +-endpoint: fo2
+            |    +-role_type: follower
+            +-2:
+            |  +-node[kPartitionMeta]
+            |    +-endpoint: leader2
+            |    +-role_type: leader
+            +-3:
+              +-node[kPartitionMeta]
+                +-endpoint: fo2
+                +-role_type: follower
+
+  - id: 15
+    desc: Create table statement (typical 3)
+    tags: ['TODO', 'fix distribution_list']
+    mode: 'planner-unsupport'
+    sql: |
+      create table if not exists t3 (a int32, b timestamp, index(key=a, ignored_key='seb', ts=b, ttl=1800,
+      ttl_type=absorlat, version=a ) ) options (replicanum = 4, partitionnum = 5, ignored_option = 'abc',
+      distribution = [ ('leader1', ['fo1', 'fo2']), ('leader2', ['fo1', 'fo2']) ])
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: t3
+          +-IF NOT EXIST: 1
+          +-column_desc_list[list]:
+          |  +-0:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: a
+          |  |    +-column_type: int32
+          |  |    +-NOT NULL: 0
+          |  +-1:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: b
+          |  |    +-column_type: timestamp
+          |  |    +-NOT NULL: 0
+          |  +-2:
+          |    +-node[kColumnIndex]
+          |      +-keys: a
+          |      +-ts_col: b
+          |      +-abs_ttl: -2
+          |      +-lat_ttl: 1800
+          |      +-ttl_type: absorlat
+          |      +-version_column: a
+          |      +-version_count: 1
+          +-replica_num: 4
+          +-partition_num: 5
+          +-distribution_list[list]:
+            +-0:
+            |  +-node[kPartitionMeta]
+            |    +-endpoint: leader1
+            |    +-role_type: leader
+            +-1:
+            |  +-node[kPartitionMeta]
+            |    +-endpoint: fo2
+            |    +-role_type: follower
+            +-2:
+            |  +-node[kPartitionMeta]
+            |    +-endpoint: leader2
+            |    +-role_type: leader
+            +-3:
+              +-node[kPartitionMeta]
+                +-endpoint: fo2
+                +-role_type: follower
+
+  - id: 16
+    desc: empty create table statement
+    mode: 'planner-unsupport'
+    sql: |
+        create table t4
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: t4
+          +-IF NOT EXIST: 0
+          +-column_desc_list: []
+          +-replica_num: 1
+          +-partition_num: 1
+          +-distribution_list: []
+
+  - id: 17_create_procedure
+    desc: create procedure, everything empty
+    mode: 'planner-unsupport'
+    sql: |
+        CREATE OR REPLACE TEMP PROCEDURE IF NOT EXISTS procedure_name()
+        OPTIONS()
+        BEGIN
+        END;
+    expect:
+      node_tree_str: |
+        +-node[kCreateSpStmt]
+          +-sp_name: procedure_name
+          +-input_parameter_list: []
+          +-inner_node_list: []
+
+  - id: 18_create_procedure
+    desc: create procedure, multiple parameters
+    mode: 'planner-unsupport'
+    sql: |
+      CREATE PROCEDURE procedure_name(
+        param_a string,
+        const param_b int32
+        )
+      BEGIN
+      END;
+    expect:
+      node_tree_str: |
+        +-node[kCreateSpStmt]
+          +-sp_name: procedure_name
+          +-input_parameter_list[list]:
+          |  +-0:
+          |  |  +-node[kInputParameter]
+          |  |    +-column_name: param_a
+          |  |    +-column_type: string
+          |  |    +-is_constant: 0
+          |  +-1:
+          |    +-node[kInputParameter]
+          |      +-column_name: param_b
+          |      +-column_type: int32
+          |      +-is_constant: 1
+          +-inner_node_list: []
+
+  - id: 19_create_procedure
+    desc: create procedure, select query body
+    mode: 'planner-unsupport'
+    sql: |
+        CREATE PROCEDURE procedure_name()
+        BEGIN
+          SELECT 1;
+        END;
+    expect:
+      node_tree_str: |
+        +-node[kCreateSpStmt]
+          +-sp_name: procedure_name
+          +-input_parameter_list: []
+          +-inner_node_list[list]:
+            +-0:
+              +-node[kQuery]: kQuerySelect
+                +-distinct_opt: false
+                +-where_expr: null
+                +-group_expr_list: null
+                +-having_expr: null
+                +-order_expr_list: null
+                +-limit: null
+                +-select_list[list]:
+                |  +-0:
+                |    +-node[kResTarget]
+                |      +-val:
+                |      |  +-expr[primary]
+                |      |    +-value: 1
+                |      |    +-type: int32
+                |      +-name: <nil>
+                +-tableref_list: []
+                +-window_list: []
+
+  - id: 20_create_procedure
+    desc: create procedure, parameters and union all query
+    mode: 'planner-unsupport'
+    sql: |
+        CREATE PROCEDURE procedure_name(
+            param_a i16,
+            param_b timestamp,
+            param_c date,
+            param_d double
+        )
+        BEGIN
+          SELECT 1 UNION ALL SELECT 2;
+        END;
+    expect:
+      node_tree_str: |
+        +-node[kCreateSpStmt]
+          +-sp_name: procedure_name
+          +-input_parameter_list[list]:
+          |  +-0:
+          |  |  +-node[kInputParameter]
+          |  |    +-column_name: param_a
+          |  |    +-column_type: int16
+          |  |    +-is_constant: 0
+          |  +-1:
+          |  |  +-node[kInputParameter]
+          |  |    +-column_name: param_b
+          |  |    +-column_type: timestamp
+          |  |    +-is_constant: 0
+          |  +-2:
+          |  |  +-node[kInputParameter]
+          |  |    +-column_name: param_c
+          |  |    +-column_type: date
+          |  |    +-is_constant: 0
+          |  +-3:
+          |    +-node[kInputParameter]
+          |      +-column_name: param_d
+          |      +-column_type: double
+          |      +-is_constant: 0
+          +-inner_node_list[list]:
+            +-0:
+              +-node[kQuery]: kQueryUnion
+                +-union_type: ALL UNION
+                +-left:
+                |  +-node[kQuery]: kQuerySelect
+                |    +-distinct_opt: false
+                |    +-where_expr: null
+                |    +-group_expr_list: null
+                |    +-having_expr: null
+                |    +-order_expr_list: null
+                |    +-limit: null
+                |    +-select_list[list]:
+                |    |  +-0:
+                |    |    +-node[kResTarget]
+                |    |      +-val:
+                |    |      |  +-expr[primary]
+                |    |      |    +-value: 1
+                |    |      |    +-type: int32
+                |    |      +-name: <nil>
+                |    +-tableref_list: []
+                |    +-window_list: []
+                +-right:
+                  +-node[kQuery]: kQuerySelect
+                    +-distinct_opt: false
+                    +-where_expr: null
+                    +-group_expr_list: null
+                    +-having_expr: null
+                    +-order_expr_list: null
+                    +-limit: null
+                    +-select_list[list]:
+                    |  +-0:
+                    |    +-node[kResTarget]
+                    |      +-val:
+                    |      |  +-expr[primary]
+                    |      |    +-value: 2
+                    |      |    +-type: int32
+                    |      +-name: <nil>
+                    +-tableref_list: []
+                    +-window_list: []
+
+  - id: 21_create_procedure
+    desc: create procedure, parameters and union distinct query
+    mode: 'planner-unsupport'
+    sql: |
+        CREATE PROCEDURE procedure_name(
+            param_a i64,
+            param_b timestamp,
+            param_c smallint,
+            param_d double
+        )
+        BEGIN
+          SELECT 1 UNION DISTINCT SELECT 2 UNION DISTINCT SELECT 3;
+        END;
+    expect:
+      node_tree_str: |
+        +-node[kCreateSpStmt]
+          +-sp_name: procedure_name
+          +-input_parameter_list[list]:
+          |  +-0:
+          |  |  +-node[kInputParameter]
+          |  |    +-column_name: param_a
+          |  |    +-column_type: int64
+          |  |    +-is_constant: 0
+          |  +-1:
+          |  |  +-node[kInputParameter]
+          |  |    +-column_name: param_b
+          |  |    +-column_type: timestamp
+          |  |    +-is_constant: 0
+          |  +-2:
+          |  |  +-node[kInputParameter]
+          |  |    +-column_name: param_c
+          |  |    +-column_type: int16
+          |  |    +-is_constant: 0
+          |  +-3:
+          |    +-node[kInputParameter]
+          |      +-column_name: param_d
+          |      +-column_type: double
+          |      +-is_constant: 0
+          +-inner_node_list[list]:
+            +-0:
+              +-node[kQuery]: kQueryUnion
+                +-union_type: DISTINCT UNION
+                +-left:
+                |  +-node[kQuery]: kQueryUnion
+                |    +-union_type: DISTINCT UNION
+                |    +-left:
+                |    |  +-node[kQuery]: kQuerySelect
+                |    |    +-distinct_opt: false
+                |    |    +-where_expr: null
+                |    |    +-group_expr_list: null
+                |    |    +-having_expr: null
+                |    |    +-order_expr_list: null
+                |    |    +-limit: null
+                |    |    +-select_list[list]:
+                |    |    |  +-0:
+                |    |    |    +-node[kResTarget]
+                |    |    |      +-val:
+                |    |    |      |  +-expr[primary]
+                |    |    |      |    +-value: 1
+                |    |    |      |    +-type: int32
+                |    |    |      +-name: <nil>
+                |    |    +-tableref_list: []
+                |    |    +-window_list: []
+                |    +-right:
+                |      +-node[kQuery]: kQuerySelect
+                |        +-distinct_opt: false
+                |        +-where_expr: null
+                |        +-group_expr_list: null
+                |        +-having_expr: null
+                |        +-order_expr_list: null
+                |        +-limit: null
+                |        +-select_list[list]:
+                |        |  +-0:
+                |        |    +-node[kResTarget]
+                |        |      +-val:
+                |        |      |  +-expr[primary]
+                |        |      |    +-value: 2
+                |        |      |    +-type: int32
+                |        |      +-name: <nil>
+                |        +-tableref_list: []
+                |        +-window_list: []
+                +-right:
+                  +-node[kQuery]: kQuerySelect
+                    +-distinct_opt: false
+                    +-where_expr: null
+                    +-group_expr_list: null
+                    +-having_expr: null
+                    +-order_expr_list: null
+                    +-limit: null
+                    +-select_list[list]:
+                    |  +-0:
+                    |    +-node[kResTarget]
+                    |      +-val:
+                    |      |  +-expr[primary]
+                    |      |    +-value: 3
+                    |      |    +-type: int32
+                    |      +-name: <nil>
+                    +-tableref_list: []
+                    +-window_list: []
+
+

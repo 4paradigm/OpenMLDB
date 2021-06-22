@@ -106,7 +106,7 @@ INSTANTIATE_TEST_SUITE_P(UdfParse, SqlParserTest,
 
 INSTANTIATE_TEST_SUITE_P(
     SqlCreate, SqlParserTest,
-    testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml", {"planner-unsupport"})));
 
 INSTANTIATE_TEST_SUITE_P(
     SqlInsert, SqlParserTest,
