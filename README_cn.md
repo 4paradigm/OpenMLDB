@@ -79,7 +79,7 @@ python3 predict.py
 
 ## 系统架构
 
-<div align=center><img src="./images/openmldb_architecture.png"/></div>
+<div align=center><img src="./images/openmldb_architecture.jpg"/></div>
 
 ## 项目状态与规划
 
