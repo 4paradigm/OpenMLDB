@@ -36,20 +36,23 @@ bool APIServerImpl::Init(const sdk::ClusterOptions& options) {
         LOG(ERROR) << "Fail to connect to db";
         return false;
     }
+    return Init(cluster_sdk);
+}
 
-    auto router = std::make_shared<::fedb::sdk::SQLClusterRouter>(cluster_sdk);
+bool APIServerImpl::Init(::fedb::sdk::ClusterSDK* cluster) {
+    // If cluster sdk is needed, use ptr, don't own it. SQLClusterRouter owns it.
+    cluster_sdk_ = cluster;
+    auto router = std::make_shared<::fedb::sdk::SQLClusterRouter>(cluster_sdk_);
     if (!router->Init()) {
         LOG(ERROR) << "Fail to connect to db";
         return false;
     }
-    return Init(router);
-}
-
-bool APIServerImpl::Init(std::shared_ptr<sdk::SQLRouter> router) {
-    sql_router_ = router;
+    sql_router_ = std::move(router);
     RegisterPut();
     RegisterExecSP();
     RegisterGetSP();
+    RegisterGetDB();
+    RegisterGetTable();
     return true;
 }
 
@@ -391,6 +394,82 @@ void APIServerImpl::RegisterGetSP() {
                   });
 }
 
+void APIServerImpl::RegisterGetDB() {
+    provider_.get("/dbs",
+                  [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
+                      auto err = GeneralError();
+                      std::vector<std::string> dbs;
+                      hybridse::sdk::Status status;
+                      auto ok = sql_router_->ShowDB(&dbs, &status);
+                      if (!ok) {
+                          writer << err.Set(status.msg);
+                          return;
+                      }
+                      writer.StartObject();
+                      writer.Member("code") & 0;
+                      writer.Member("msg") & std::string("ok");
+                      writer.Member("dbs");
+                      writer.StartArray();
+                      for (auto db : dbs) {
+                          writer& db;
+                      }
+                      writer.EndArray();
+                      writer.EndObject();
+                  });
+}
+
+void APIServerImpl::RegisterGetTable() {
+    // show all of the tables
+    provider_.get("/dbs/:db_name/tables",
+                  [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
+                      auto err = GeneralError();
+                      auto db_it = param.find("db_name");
+                      if (db_it == param.end()) {
+                          writer << err.Set("Invalid path");
+                          return;
+                      }
+                      auto db = db_it->second;
+                      auto tables = cluster_sdk_->GetTables(db);
+                      writer.StartObject();
+                      writer.Member("code") & 0;
+                      writer.Member("msg") & std::string("ok");
+                      writer.Member("tables");
+                      writer.StartArray();
+                      for (std::shared_ptr<::fedb::nameserver::TableInfo> table : tables) {
+                          writer << table;
+                      }
+                      writer.EndArray();
+                      writer.EndObject();
+                  });
+    // show a certain table
+    provider_.get("/dbs/:db_name/tables/:table_name",
+                  [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
+                      auto err = GeneralError();
+                      auto db_it = param.find("db_name");
+                      auto table_it = param.find("table_name");
+                      if (db_it == param.end() || table_it == param.end()) {
+                          writer << err.Set("Invalid path");
+                          return;
+                      }
+                      auto db = db_it->second;
+                      auto table = table_it->second;
+                      auto table_info = cluster_sdk_->GetTableInfo(db, table);
+                      writer.StartObject();
+                      writer.Member("code") & 0;
+                      // if there is no such db or such table, table_info will be nullptr
+                      if (table_info == nullptr) {
+                          writer.Member("msg") & std::string("Table not found");
+                          writer.Member("table");
+                          writer.StartObject();
+                          writer.EndObject();
+                      } else {
+                          writer.Member("msg") & std::string("ok");
+                          writer.Member("table") & table_info;
+                      }
+                      writer.EndObject();
+                  });
+}
+
 void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema,  // NOLINT
                  bool only_const) {
     ar.Member(name.c_str());
@@ -567,5 +646,134 @@ JsonWriter& operator&(JsonWriter& ar, GetSPResp& s) {  // NOLINT
     ar.Member("data") & s.sp_info;
     return ar.EndObject();
 }
+
+JsonWriter& operator&(JsonWriter& ar,  // NOLINT
+                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>& column_desc) {
+    ar.StartArray();
+    for (auto column : column_desc) {
+        ar.StartObject();
+        if (column.has_name()) {
+            ar.Member("name") & column.name();
+        }
+        if (column.has_data_type()) {
+            ar.Member("data_type") & ::fedb::type::DataType_Name(column.data_type());
+        }
+        if (column.has_not_null()) {
+            ar.Member("not_null") & column.not_null();
+        }
+        if (column.has_is_constant()) {
+            ar.Member("is_constant") & column.is_constant();
+        }
+        ar.EndObject();
+    }
+    return ar.EndArray();
+}
+
+JsonWriter& operator&(JsonWriter& ar,  // NOLINT
+                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>& column_key) {
+    ar.StartArray();
+    for (auto key : column_key) {
+        ar.StartObject();
+        if (key.has_index_name()) {
+            ar.Member("index_name") & key.index_name();
+        }
+        ar.Member("col_name");
+        ar.StartArray();
+        for (auto col : key.col_name()) {
+            ar& col;
+        }
+        ar.EndArray();
+        if (key.has_ts_name()) {
+            ar.Member("ts_name") & key.ts_name();
+        }
+        if (key.has_flag()) {
+            ar.Member("flag") & key.flag();
+        }
+
+        if (key.has_ttl()) {
+            ar.Member("ttl");
+            auto& ttl = key.ttl();
+            ar.StartObject();
+            if (ttl.has_ttl_type()) {
+                ar.Member("ttl_type") & ::fedb::type::TTLType_Name(ttl.ttl_type());
+            }
+            if (ttl.has_abs_ttl()) {
+                ar.Member("abs_ttl") & ttl.abs_ttl();
+            }
+            if (ttl.has_lat_ttl()) {
+                ar.Member("lat_ttl") & ttl.lat_ttl();
+            }
+            ar.EndObject();
+        }
+        ar.EndObject();
+    }
+    return ar.EndArray();
+}
+
+JsonWriter& operator&(JsonWriter& ar,  // NOLINT
+                      const ::google::protobuf::RepeatedPtrField<::fedb::common::VersionPair>& schema_versions) {
+    ar.StartArray();
+    for (auto version : schema_versions) {
+        ar.StartObject();
+        if (version.has_id()) {
+            ar.Member("id") & version.id();
+        }
+        if (version.has_field_count()) {
+            ar.Member("field_count") & version.field_count();
+        }
+        ar.EndObject();
+    }
+    return ar.EndArray();
+}
+
+JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableInfo> info) {  // NOLINT
+    ar.StartObject();
+    if (info->has_name()) {
+        ar.Member("name") & info->name();
+    }
+    if (info->has_seg_cnt()) {
+        ar.Member("seg_cnt") & info->seg_cnt();
+    }
+    ar.Member("table_partition_size") & info->table_partition_size();
+    if (info->has_tid()) {
+        ar.Member("tid") & info->tid();
+    }
+    if (info->has_partition_num()) {
+        ar.Member("partition_num") & info->partition_num();
+    }
+    if (info->has_replica_num()) {
+        ar.Member("replica_num") & info->replica_num();
+    }
+    if (info->has_compress_type()) {
+        ar.Member("compress_type") & ::fedb::type::CompressType_Name(info->compress_type());
+    }
+    if (info->has_key_entry_max_height()) {
+        ar.Member("key_entry_max_height") & info->key_entry_max_height();
+    }
+
+    ar.Member("column_desc") & info->column_desc();
+
+    ar.Member("column_key") & info->column_key();
+
+    ar.Member("added_column_desc") & info->added_column_desc();
+
+    if (info->has_format_version()) {
+        ar.Member("format_version") & info->format_version();
+    }
+    if (info->has_db()) {
+        ar.Member("db") & info->db();
+    }
+    ar.Member("partition_key");
+    ar.StartArray();
+    for (auto key : info->partition_key()) {
+        ar& key;
+    }
+    ar.EndArray();
+
+    ar.Member("schema_versions") & info->schema_versions();
+
+    return ar.EndObject();
+}
+
 }  // namespace http
 }  // namespace fedb
