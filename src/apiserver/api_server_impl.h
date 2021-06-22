@@ -21,6 +21,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <algorithm>
 
 #include "apiserver/interface_provider.h"
 #include "apiserver/json_helper.h"
