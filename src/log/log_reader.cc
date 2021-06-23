@@ -35,13 +35,13 @@
 #include "base/endianconv.h"
 
 
-using ::fedb::base::Status;
+using ::openmldb::base::Status;
 
 DECLARE_bool(binlog_enable_crc);
 DECLARE_int32(binlog_name_length);
 DECLARE_string(snapshot_compression);
 
-namespace fedb {
+namespace openmldb {
 namespace log {
 
 Reader::Reporter::~Reporter() {}
@@ -489,23 +489,23 @@ uint64_t LogReader::GetLastRecordEndOffset() {
     return reader_->LastRecordEndOffset();
 }
 
-::fedb::base::Status LogReader::ReadNextRecord(::fedb::base::Slice* record,
+::openmldb::base::Status LogReader::ReadNextRecord(::openmldb::base::Slice* record,
                                                 std::string* buffer) {
     // first read record
     if (sf_ == NULL) {
         if (RollRLogFile() < 0) {
             PDLOG(WARNING, "fail to roll read log");
-            return ::fedb::base::Status::WaitRecord();
+            return ::openmldb::base::Status::WaitRecord();
         }
     }
-    ::fedb::base::Status status = reader_->ReadRecord(record, buffer);
+    ::openmldb::base::Status status = reader_->ReadRecord(record, buffer);
     if (status.IsEof()) {
         PDLOG(INFO, "reach the end of file. index %d", log_part_index_);
         if (RollRLogFile() < 0) {
             // reache the latest log part
             return status;
         }
-        return ::fedb::base::Status::Eof();
+        return ::openmldb::base::Status::Eof();
     }
     return status;
 }
@@ -577,7 +577,7 @@ int LogReader::RollRLogFile() {
         // open a new log part file
         std::string full_path =
             log_path_ + "/" +
-            ::fedb::base::FormatToString(index, FLAGS_binlog_name_length) +
+            ::openmldb::base::FormatToString(index, FLAGS_binlog_name_length) +
             ".log";
         if (OpenSeqFile(full_path) != 0) {
             return -1;
@@ -605,9 +605,9 @@ int LogReader::OpenSeqFile(const std::string& path) {
         sf_ = NULL;
     }
     PDLOG(INFO, "open log file %s", path.c_str());
-    sf_ = ::fedb::log::NewSeqFile(path, fd);
+    sf_ = ::openmldb::log::NewSeqFile(path, fd);
     return 0;
 }
 
 }  // namespace log
-}  // namespace fedb
+}  // namespace openmldb

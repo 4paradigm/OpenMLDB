@@ -20,7 +20,7 @@
 
 #include <string>
 
-namespace fedb {
+namespace openmldb {
 
 namespace base {
 class Status;
@@ -52,6 +52,6 @@ class WritableFile {
 WritableFile* NewWritableFile(const std::string& fname, FILE* f);
 
 }  // namespace log
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_LOG_WRITABLE_FILE_H_

@@ -23,7 +23,7 @@
 
 using ::baidu::common::ThreadPool;
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 class CountDownLatchTest : public ::testing::Test {
@@ -63,7 +63,7 @@ TEST_F(CountDownLatchTest, MultiIsDone) {
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

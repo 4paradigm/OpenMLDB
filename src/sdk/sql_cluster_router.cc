@@ -35,7 +35,7 @@
 
 DECLARE_int32(request_timeout_ms);
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 using hybridse::plan::PlanAPI;
 class ExplainInfoImpl : public ExplainInfo {
@@ -76,7 +76,7 @@ class ExplainInfoImpl : public ExplainInfo {
 
 class QueryFutureImpl : public QueryFuture {
  public:
-    explicit QueryFutureImpl(fedb::RpcCallback<fedb::api::QueryResponse>* callback)
+    explicit QueryFutureImpl(openmldb::RpcCallback<openmldb::api::QueryResponse>* callback)
         : callback_(callback) {
             if (callback_) {
                 callback_->Ref();
@@ -103,7 +103,7 @@ class QueryFutureImpl : public QueryFuture {
             status->msg = "request error, " + callback_->GetController()->ErrorText();
             return nullptr;
         }
-        if (callback_->GetResponse()->code() != ::fedb::base::kOk) {
+        if (callback_->GetResponse()->code() != ::openmldb::base::kOk) {
             status->code = callback_->GetResponse()->code();
             status->msg = "request error, " + callback_->GetResponse()->msg();
             return nullptr;
@@ -120,13 +120,13 @@ class QueryFutureImpl : public QueryFuture {
     }
 
  private:
-    fedb::RpcCallback<fedb::api::QueryResponse>* callback_;
+    openmldb::RpcCallback<openmldb::api::QueryResponse>* callback_;
 };
 
 class BatchQueryFutureImpl : public QueryFuture {
  public:
     explicit BatchQueryFutureImpl(
-            fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback)
+            openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback)
         : callback_(callback) {
             if (callback_) {
                 callback_->Ref();
@@ -154,8 +154,8 @@ class BatchQueryFutureImpl : public QueryFuture {
             status->msg = "request error. " + callback_->GetController()->ErrorText();
             return nullptr;
         }
-        std::shared_ptr<::fedb::sdk::SQLBatchRequestResultSet> rs =
-            std::make_shared<fedb::sdk::SQLBatchRequestResultSet>(
+        std::shared_ptr<::openmldb::sdk::SQLBatchRequestResultSet> rs =
+            std::make_shared<openmldb::sdk::SQLBatchRequestResultSet>(
                     callback_->GetResponse(), callback_->GetController());
         bool ok = rs->Init();
         if (!ok) {
@@ -171,7 +171,7 @@ class BatchQueryFutureImpl : public QueryFuture {
     }
 
  private:
-    fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback_;
+    openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback_;
 };
 
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
@@ -269,7 +269,7 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
             cache->table_info, cache->column_schema, cache->default_map,
             cache->str_length);
     }
-    std::shared_ptr<::fedb::nameserver::TableInfo> table_info;
+    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
     uint32_t str_length = 0;
     if (!GetInsertInfo(db, sql, status, &table_info, &default_map,
@@ -286,7 +286,7 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
 
 bool SQLClusterRouter::GetInsertInfo(
     const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status,
-    std::shared_ptr<::fedb::nameserver::TableInfo>* table_info,
+    std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info,
     DefaultValueMap* default_map, uint32_t* str_length) {
     if (status == NULL || table_info == NULL || default_map == NULL ||
         str_length == NULL) {
@@ -357,17 +357,17 @@ bool SQLClusterRouter::GetInsertInfo(
 }
 
 std::shared_ptr<hybridse::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
-    const hybridse::node::ConstNode& node, fedb::type::DataType column_type) {
+    const hybridse::node::ConstNode& node, openmldb::type::DataType column_type) {
     hybridse::node::DataType node_type = node.GetDataType();
     switch (column_type) {
-        case fedb::type::kBool:
+        case openmldb::type::kBool:
             if (node_type == hybridse::node::kInt32) {
                 return std::make_shared<hybridse::node::ConstNode>(node.GetBool());
             } else if (node_type == hybridse::node::kBool) {
                 return std::make_shared<hybridse::node::ConstNode>(node);
             }
             break;
-        case fedb::type::kSmallInt:
+        case openmldb::type::kSmallInt:
             if (node_type == hybridse::node::kInt16) {
                 return std::make_shared<hybridse::node::ConstNode>(node);
             } else if (node_type == hybridse::node::kInt32) {
@@ -375,7 +375,7 @@ std::shared_ptr<hybridse::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                     node.GetAsInt16());
             }
             break;
-        case fedb::type::kInt:
+        case openmldb::type::kInt:
             if (node_type == hybridse::node::kInt16) {
                 return std::make_shared<hybridse::node::ConstNode>(
                     node.GetAsInt32());
@@ -385,7 +385,7 @@ std::shared_ptr<hybridse::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 return std::make_shared<hybridse::node::ConstNode>(node.GetAsInt32());
             }
             break;
-        case fedb::type::kBigInt:
+        case openmldb::type::kBigInt:
             if (node_type == hybridse::node::kInt16 ||
                 node_type == hybridse::node::kInt32) {
                 return std::make_shared<hybridse::node::ConstNode>(
@@ -394,7 +394,7 @@ std::shared_ptr<hybridse::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 return std::make_shared<hybridse::node::ConstNode>(node);
             }
             break;
-        case fedb::type::kFloat:
+        case openmldb::type::kFloat:
             if (node_type == hybridse::node::kDouble ||
                 node_type == hybridse::node::kInt32 ||
                 node_type == hybridse::node::kInt16) {
@@ -404,7 +404,7 @@ std::shared_ptr<hybridse::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 return std::make_shared<hybridse::node::ConstNode>(node);
             }
             break;
-        case fedb::type::kDouble:
+        case openmldb::type::kDouble:
             if (node_type == hybridse::node::kFloat ||
                 node_type == hybridse::node::kInt32 ||
                 node_type == hybridse::node::kInt16) {
@@ -414,7 +414,7 @@ std::shared_ptr<hybridse::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 return std::make_shared<hybridse::node::ConstNode>(node);
             }
             break;
-        case fedb::type::kDate:
+        case openmldb::type::kDate:
             if (node_type == hybridse::node::kVarchar) {
                 int32_t year;
                 int32_t month;
@@ -433,7 +433,7 @@ std::shared_ptr<hybridse::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 return std::make_shared<hybridse::node::ConstNode>(node);
             }
             break;
-        case fedb::type::kTimestamp:
+        case openmldb::type::kTimestamp:
             if (node_type == hybridse::node::kInt16 ||
                 node_type == hybridse::node::kInt32 ||
                 node_type == hybridse::node::kTimestamp) {
@@ -443,8 +443,8 @@ std::shared_ptr<hybridse::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 return std::make_shared<hybridse::node::ConstNode>(node);
             }
             break;
-        case fedb::type::kVarchar:
-        case fedb::type::kString:
+        case openmldb::type::kVarchar:
+        case openmldb::type::kString:
             if (node_type == hybridse::node::kVarchar) {
                 return std::make_shared<hybridse::node::ConstNode>(node);
             }
@@ -456,7 +456,7 @@ std::shared_ptr<hybridse::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
 }
 
 DefaultValueMap SQLClusterRouter::GetDefaultMap(
-    std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
+    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
     const std::map<uint32_t, uint32_t>& column_map,
     ::hybridse::node::ExprListNode* row, uint32_t* str_length) {
     if (row == NULL || str_length == NULL) {
@@ -510,8 +510,8 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
             }
             default_map->insert(std::make_pair(idx, val));
             if (!primary->IsNull() &&
-                (column.data_type() == ::fedb::type::kVarchar ||
-                 column.data_type() == ::fedb::type::kString)) {
+                (column.data_type() == ::openmldb::type::kVarchar ||
+                 column.data_type() == ::openmldb::type::kString)) {
                 *str_length += strlen(primary->GetStr());
             }
         }
@@ -521,7 +521,7 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
 
 std::shared_ptr<SQLCache> SQLClusterRouter::GetCache(
     const std::string& db, const std::string& sql) {
-    std::lock_guard<::fedb::base::SpinMutex> lock(mu_);
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = input_lru_cache_.find(db);
     if (it != input_lru_cache_.end()) {
         auto value = it->second.get(sql);
@@ -534,10 +534,10 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetCache(
 
 void SQLClusterRouter::SetCache(const std::string& db, const std::string& sql,
                                 std::shared_ptr<SQLCache> router_cache) {
-    std::lock_guard<::fedb::base::SpinMutex> lock(mu_);
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = input_lru_cache_.find(db);
     if (it == input_lru_cache_.end()) {
-        boost::compute::detail::lru_cache<std::string, std::shared_ptr<::fedb::sdk::SQLCache>>
+        boost::compute::detail::lru_cache<std::string, std::shared_ptr<::openmldb::sdk::SQLCache>>
             sql_cache(options_.max_sql_cache_size);
         input_lru_cache_.insert(std::make_pair(db, sql_cache));
         it = input_lru_cache_.find(db);
@@ -556,7 +556,7 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(
             cache->table_info, cache->column_schema, cache->default_map,
             cache->str_length);
     }
-    std::shared_ptr<::fedb::nameserver::TableInfo> table_info;
+    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
     uint32_t str_length = 0;
     if (!GetInsertInfo(db, sql, status, &table_info, &default_map,
@@ -682,9 +682,9 @@ bool SQLClusterRouter::DropDB(const std::string& db,
     return true;
 }
 
-std::shared_ptr<::fedb::client::TabletClient> SQLClusterRouter::GetTabletClient(
+std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletClient(
     const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row) {
-    std::shared_ptr<::fedb::catalog::TabletAccessor> tablet;
+    std::shared_ptr<::openmldb::catalog::TabletAccessor> tablet;
     auto cache = GetCache(db, sql);
     if (!cache) {
         ::hybridse::vm::ExplainOutput explain;
@@ -697,7 +697,7 @@ std::shared_ptr<::fedb::client::TabletClient> SQLClusterRouter::GetTabletClient(
                 auto table_info = cluster_sdk_->GetTableInfo(db, explain.router.GetMainTable());
                 ::hybridse::vm::Schema raw_schema;
                 if (table_info &&
-                        ::fedb::catalog::SchemaAdapter::ConvertSchema(table_info->column_desc(), &raw_schema)) {
+                        ::openmldb::catalog::SchemaAdapter::ConvertSchema(table_info->column_desc(), &raw_schema)) {
                     schema = std::make_shared<::hybridse::sdk::SchemaImpl>(raw_schema);
                 }
             }
@@ -726,7 +726,7 @@ std::shared_ptr<::fedb::client::TabletClient> SQLClusterRouter::GetTabletClient(
     }
     if (!tablet) {
         LOG(WARNING) << "fail to get tablet";
-        return std::shared_ptr<::fedb::client::TabletClient>();
+        return std::shared_ptr<::openmldb::client::TabletClient>();
     }
     return tablet->GetClient();
 }
@@ -736,7 +736,7 @@ std::shared_ptr<TableReader> SQLClusterRouter::GetTableReader() {
     return reader;
 }
 
-std::shared_ptr<fedb::client::TabletClient> SQLClusterRouter::GetTablet(
+std::shared_ptr<openmldb::client::TabletClient> SQLClusterRouter::GetTablet(
         const std::string& db, const std::string& sp_name, hybridse::sdk::Status* status) {
     if (status == nullptr) return nullptr;
     std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info =
@@ -804,7 +804,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     }
     auto cntl = std::make_shared<::brpc::Controller>();
     cntl->set_timeout_ms(options_.request_timeout);
-    auto response = std::make_shared<::fedb::api::QueryResponse>();
+    auto response = std::make_shared<::openmldb::api::QueryResponse>();
     auto client = GetTabletClient(db, sql, row);
     if (!client) {
         status->msg = "not tablet found";
@@ -815,7 +815,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         status->msg = "request server error, msg: " + response->msg();
         return std::shared_ptr<::hybridse::sdk::ResultSet>();
     }
-    if (response->code() != ::fedb::base::kOk) {
+    if (response->code() != ::openmldb::base::kOk) {
         status->code = response->code();
         status->msg = "request error, " + response->msg();
         return std::shared_ptr<::hybridse::sdk::ResultSet>();
@@ -830,7 +830,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     ::hybridse::sdk::Status* status) {
     auto cntl = std::make_shared<::brpc::Controller>();
     cntl->set_timeout_ms(options_.request_timeout);
-    auto response = std::make_shared<::fedb::api::QueryResponse>();
+    auto response = std::make_shared<::openmldb::api::QueryResponse>();
     auto client = GetTabletClient(db, sql, std::shared_ptr<SQLRequestRow>());
     if (!client) {
         DLOG(INFO) << "no tablet avilable for sql " << sql;
@@ -854,7 +854,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchReque
     }
     auto cntl = std::make_shared<::brpc::Controller>();
     cntl->set_timeout_ms(options_.request_timeout);
-    auto response = std::make_shared<::fedb::api::SQLBatchRequestQueryResponse>();
+    auto response = std::make_shared<::openmldb::api::SQLBatchRequestQueryResponse>();
     auto client = GetTabletClient(db, sql, std::shared_ptr<SQLRequestRow>());
     if (!client) {
         status->code = -1;
@@ -868,12 +868,12 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchReque
         status->msg = "request server error " + response->msg();
         return nullptr;
     }
-    if (response->code() != ::fedb::base::kOk) {
+    if (response->code() != ::openmldb::base::kOk) {
         status->code = -1;
         status->msg = response->msg();
         return nullptr;
     }
-    auto rs = std::make_shared<fedb::sdk::SQLBatchRequestResultSet>(response, cntl);
+    auto rs = std::make_shared<openmldb::sdk::SQLBatchRequestResultSet>(response, cntl);
     if (!rs->Init()) {
         status->code = -1;
         status->msg = "batch request result set init fail";
@@ -886,7 +886,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
                                      const std::string& sql,
                                      ::hybridse::sdk::Status* status) {
     if (status == NULL) return false;
-    std::shared_ptr<::fedb::nameserver::TableInfo> table_info;
+    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
     uint32_t str_length = 0;
     if (!GetInsertInfo(db, sql, status, &table_info, &default_map,
@@ -896,7 +896,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
         return false;
     }
     std::shared_ptr<SQLInsertRow> row = std::make_shared<SQLInsertRow>(
-        table_info, ::fedb::sdk::ConvertToSchema(table_info), default_map,
+        table_info, ::openmldb::sdk::ConvertToSchema(table_info), default_map,
         str_length);
     if (!row) {
         status->msg = "fail to parse row from sql " + sql;
@@ -913,7 +913,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
         LOG(WARNING) << status->msg;
         return false;
     }
-    std::vector<std::shared_ptr<::fedb::catalog::TabletAccessor>> tablets;
+    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
     bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
     if (!ret || tablets.empty()) {
         status->msg = "fail to get table " + table_info->name() + " tablet";
@@ -924,7 +924,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
 }
 
 bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>& row,
-        const std::vector<std::shared_ptr<::fedb::catalog::TabletAccessor>>& tablets,
+        const std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>& tablets,
         ::hybridse::sdk::Status* status) {
     if (status == nullptr) {
         return false;
@@ -976,9 +976,9 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     }
     std::shared_ptr<SQLCache> cache = GetCache(db, sql);
     if (cache) {
-        std::shared_ptr<::fedb::nameserver::TableInfo> table_info =
+        std::shared_ptr<::openmldb::nameserver::TableInfo> table_info =
             cache->table_info;
-        std::vector<std::shared_ptr<::fedb::catalog::TabletAccessor>> tablets;
+        std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
         bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
         if (!ret || tablets.empty()) {
             status->msg = "fail to get table " + table_info->name() + " tablet";
@@ -1009,8 +1009,8 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     }
     std::shared_ptr<SQLCache> cache = GetCache(db, sql);
     if (cache) {
-        std::shared_ptr<::fedb::nameserver::TableInfo> table_info = cache->table_info;
-        std::vector<std::shared_ptr<::fedb::catalog::TabletAccessor>> tablets;
+        std::shared_ptr<::openmldb::nameserver::TableInfo> table_info = cache->table_info;
+        std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
         bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
         if (!ret || tablets.empty()) {
             status->msg = "fail to get table " + table_info->name() + " tablet";
@@ -1084,7 +1084,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(
     }
 
     auto cntl = std::make_shared<::brpc::Controller>();
-    auto response = std::make_shared<::fedb::api::QueryResponse>();
+    auto response = std::make_shared<::openmldb::api::QueryResponse>();
     bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(),
                              options_.enable_debug, options_.request_timeout);
     if (!ok) {
@@ -1093,7 +1093,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(
         LOG(WARNING) << status->msg;
         return nullptr;
     }
-    if (response->code() != ::fedb::base::kOk) {
+    if (response->code() != ::openmldb::base::kOk) {
         status->code = -1;
         status->msg = response->msg();
         LOG(WARNING) << status->msg;
@@ -1115,7 +1115,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestP
     }
 
     auto cntl = std::make_shared<::brpc::Controller>();
-    auto response = std::make_shared<::fedb::api::SQLBatchRequestQueryResponse>();
+    auto response = std::make_shared<::openmldb::api::SQLBatchRequestQueryResponse>();
     bool ok = tablet->CallSQLBatchRequestProcedure(
             db, sp_name, row_batch, cntl.get(), response.get(),
             options_.enable_debug, options_.request_timeout);
@@ -1124,12 +1124,12 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestP
         status->msg = "request server error, msg: " + response->msg();
         return nullptr;
     }
-    if (response->code() != ::fedb::base::kOk) {
+    if (response->code() != ::openmldb::base::kOk) {
         status->code = -1;
         status->msg = response->msg();
         return nullptr;
     }
-    auto rs = std::make_shared<::fedb::sdk::SQLBatchRequestResultSet>(response, cntl);
+    auto rs = std::make_shared<::openmldb::sdk::SQLBatchRequestResultSet>(response, cntl);
     if (!rs->Init()) {
         status->code = -1;
         status->msg = "resuletSetSQL init failed";
@@ -1156,7 +1156,7 @@ std::shared_ptr<hybridse::sdk::ProcedureInfo> SQLClusterRouter::ShowProcedure(
 
 bool SQLClusterRouter::HandleSQLCreateProcedure(const hybridse::node::NodePointVector& parser_trees,
         const std::string& db, const std::string& sql,
-        std::shared_ptr<::fedb::client::NsClient> ns_ptr,
+        std::shared_ptr<::openmldb::client::NsClient> ns_ptr,
         hybridse::node::NodeManager* node_manager, std::string* msg) {
     if (node_manager == nullptr || msg == nullptr) {
         return false;
@@ -1183,7 +1183,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const hybridse::node::NodePointV
                 return false;
             }
             // construct sp_info
-            fedb::api::ProcedureInfo sp_info;
+            openmldb::api::ProcedureInfo sp_info;
             sp_info.set_db_name(db);
             sp_info.set_sp_name(create_sp->GetSpName());
             sp_info.set_sql(sql);
@@ -1200,10 +1200,10 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const hybridse::node::NodePointV
                         *msg = "cast InputParameterNode failed";
                         return false;
                     }
-                    fedb::common::ColumnDesc* col_desc = schema->Add();
+                    openmldb::common::ColumnDesc* col_desc = schema->Add();
                     col_desc->set_name(input_ptr->GetColumnName());
-                    fedb::type::DataType rtidb_type;
-                    bool ok = ::fedb::catalog::SchemaAdapter::ConvertType(input_ptr->GetColumnType(),
+                    openmldb::type::DataType rtidb_type;
+                    bool ok = ::openmldb::catalog::SchemaAdapter::ConvertType(input_ptr->GetColumnType(),
                             &rtidb_type);
                     if (!ok) {
                         *msg = "convert type failed";
@@ -1239,7 +1239,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const hybridse::node::NodePointV
                 return false;
             }
             RtidbSchema rtidb_input_schema;
-            if (!fedb::catalog::SchemaAdapter::ConvertSchema(explain_output.input_schema, &rtidb_input_schema)) {
+            if (!openmldb::catalog::SchemaAdapter::ConvertSchema(explain_output.input_schema, &rtidb_input_schema)) {
                 *msg = "convert input schema failed";
                 return false;
             }
@@ -1250,7 +1250,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const hybridse::node::NodePointV
             sp_info.mutable_input_schema()->CopyFrom(*schema);
             // get output schema, and fill sp_info
             RtidbSchema rtidb_output_schema;
-            if (!fedb::catalog::SchemaAdapter::ConvertSchema(explain_output.output_schema, &rtidb_output_schema)) {
+            if (!openmldb::catalog::SchemaAdapter::ConvertSchema(explain_output.output_schema, &rtidb_output_schema)) {
                 *msg = "convert output schema failed";
                 return false;
             }
@@ -1296,8 +1296,8 @@ bool SQLClusterRouter::CheckParameter(const RtidbSchema& parameter,
         }
         if (parameter.Get(i).data_type() != input_schema.Get(i).data_type()) {
             LOG(WARNING) << "check column type failed, expect "
-                << fedb::type::DataType_Name(input_schema.Get(i).data_type())
-                << ", but " << fedb::type::DataType_Name(parameter.Get(i).data_type());
+                << openmldb::type::DataType_Name(input_schema.Get(i).data_type())
+                << ", but " << openmldb::type::DataType_Name(parameter.Get(i).data_type());
             return false;
         }
     }
@@ -1334,43 +1334,43 @@ std::shared_ptr<hybridse::sdk::ProcedureInfo> SQLClusterRouter::ShowProcedure(
     return cluster_sdk_->GetProcedureInfo(db, sp_name, msg);
 }
 
-std::shared_ptr<fedb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
+std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
     const std::string& db, const std::string& sp_name, int64_t timeout_ms,
     std::shared_ptr<SQLRequestRow> row, hybridse::sdk::Status* status) {
     if (!row || !status) {
-        return std::shared_ptr<fedb::sdk::QueryFuture>();
+        return std::shared_ptr<openmldb::sdk::QueryFuture>();
     }
     if (!row->OK()) {
         status->code = -1;
         status->msg = "make sure the request row is built before execute sql";
         LOG(WARNING) << "make sure the request row is built before execute sql";
-        return std::shared_ptr<fedb::sdk::QueryFuture>();
+        return std::shared_ptr<openmldb::sdk::QueryFuture>();
     }
     auto tablet = GetTablet(db, sp_name, status);
     if (!tablet) {
-        return std::shared_ptr<fedb::sdk::QueryFuture>();
+        return std::shared_ptr<openmldb::sdk::QueryFuture>();
     }
 
-    std::shared_ptr<fedb::api::QueryResponse> response =
-        std::make_shared<fedb::api::QueryResponse>();
+    std::shared_ptr<openmldb::api::QueryResponse> response =
+        std::make_shared<openmldb::api::QueryResponse>();
     std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
-    fedb::RpcCallback<fedb::api::QueryResponse>* callback =
-            new fedb::RpcCallback<fedb::api::QueryResponse>(response, cntl);
+    openmldb::RpcCallback<openmldb::api::QueryResponse>* callback =
+            new openmldb::RpcCallback<openmldb::api::QueryResponse>(response, cntl);
 
-    std::shared_ptr<fedb::sdk::QueryFutureImpl> future =
-        std::make_shared<fedb::sdk::QueryFutureImpl>(callback);
+    std::shared_ptr<openmldb::sdk::QueryFutureImpl> future =
+        std::make_shared<openmldb::sdk::QueryFutureImpl>(callback);
     bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), timeout_ms,
             options_.enable_debug, callback);
     if (!ok) {
         status->code = -1;
         status->msg = "request server error, msg: " + response->msg();
         LOG(WARNING) << status->msg;
-        return std::shared_ptr<fedb::sdk::QueryFuture>();
+        return std::shared_ptr<openmldb::sdk::QueryFuture>();
     }
     return future;
 }
 
-std::shared_ptr<fedb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestProcedure(
+std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
         std::shared_ptr<SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status) {
     if (!row_batch || !status) {
@@ -1382,12 +1382,12 @@ std::shared_ptr<fedb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestPro
     }
 
     std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
-    auto response = std::make_shared<fedb::api::SQLBatchRequestQueryResponse>();
-    fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback =
-           new fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>(response, cntl);
+    auto response = std::make_shared<openmldb::api::SQLBatchRequestQueryResponse>();
+    openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback =
+           new openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>(response, cntl);
 
-    std::shared_ptr<fedb::sdk::BatchQueryFutureImpl> future =
-        std::make_shared<fedb::sdk::BatchQueryFutureImpl>(callback);
+    std::shared_ptr<openmldb::sdk::BatchQueryFutureImpl> future =
+        std::make_shared<openmldb::sdk::BatchQueryFutureImpl>(callback);
     bool ok = tablet->CallSQLBatchRequestProcedure(
             db, sp_name, row_batch, options_.enable_debug, timeout_ms, callback);
     if (!ok) {
@@ -1400,4 +1400,4 @@ std::shared_ptr<fedb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestPro
 }
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb

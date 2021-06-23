@@ -22,7 +22,7 @@
 #include <cstdint>
 #include <mutex> // NOLINT
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 template <class T>
@@ -78,6 +78,6 @@ class RingQueue {
 };
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_BASE_RINGQUEUE_H_

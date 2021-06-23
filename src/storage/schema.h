@@ -29,7 +29,7 @@
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 
-namespace fedb {
+namespace openmldb {
 namespace storage {
 
 static constexpr uint32_t MAX_INDEX_NUM = 200;
@@ -43,40 +43,40 @@ enum TTLType {
 };
 
 struct TTLSt {
-    TTLSt() : abs_ttl(0), lat_ttl(0), ttl_type(::fedb::storage::TTLType::kAbsoluteTime) {}
-    TTLSt(uint64_t abs, uint64_t lat, ::fedb::storage::TTLType type) : abs_ttl(abs), lat_ttl(lat), ttl_type(type) {}
+    TTLSt() : abs_ttl(0), lat_ttl(0), ttl_type(::openmldb::storage::TTLType::kAbsoluteTime) {}
+    TTLSt(uint64_t abs, uint64_t lat, ::openmldb::storage::TTLType type) : abs_ttl(abs), lat_ttl(lat), ttl_type(type) {}
 
-    explicit TTLSt(const ::fedb::common::TTLSt& ttl) : abs_ttl(ttl.abs_ttl() * 60 * 1000), lat_ttl(ttl.lat_ttl()) {
+    explicit TTLSt(const ::openmldb::common::TTLSt& ttl) : abs_ttl(ttl.abs_ttl() * 60 * 1000), lat_ttl(ttl.lat_ttl()) {
         ttl_type = ConvertTTLType(ttl.ttl_type());
     }
 
-    static TTLType ConvertTTLType(::fedb::type::TTLType type) {
+    static TTLType ConvertTTLType(::openmldb::type::TTLType type) {
         switch (type) {
-            case ::fedb::type::TTLType::kAbsoluteTime:
+            case ::openmldb::type::TTLType::kAbsoluteTime:
                 return TTLType::kAbsoluteTime;
-            case ::fedb::type::TTLType::kLatestTime:
+            case ::openmldb::type::TTLType::kLatestTime:
                 return TTLType::kLatestTime;
-            case ::fedb::type::TTLType::kAbsAndLat:
+            case ::openmldb::type::TTLType::kAbsAndLat:
                 return TTLType::kAbsAndLat;
-            case ::fedb::type::TTLType::kAbsOrLat:
+            case ::openmldb::type::TTLType::kAbsOrLat:
                 return TTLType::kAbsOrLat;
             default:
                 return TTLType::kAbsoluteTime;
         }
     }
 
-    ::fedb::type::TTLType GetProtoTTLType() const {
+    ::openmldb::type::TTLType GetProtoTTLType() const {
         switch (ttl_type) {
             case TTLType::kAbsoluteTime:
-                return ::fedb::type::TTLType::kAbsoluteTime;
+                return ::openmldb::type::TTLType::kAbsoluteTime;
             case TTLType::kLatestTime:
-                return ::fedb::type::TTLType::kLatestTime;
+                return ::openmldb::type::TTLType::kLatestTime;
             case TTLType::kAbsAndLat:
-                return ::fedb::type::TTLType::kAbsAndLat;
+                return ::openmldb::type::TTLType::kAbsAndLat;
             case TTLType::kAbsOrLat:
-                return ::fedb::type::TTLType::kAbsOrLat;
+                return ::openmldb::type::TTLType::kAbsOrLat;
             default:
-                return ::fedb::type::TTLType::kAbsoluteTime;
+                return ::openmldb::type::TTLType::kAbsoluteTime;
         }
     }
 
@@ -154,17 +154,17 @@ enum class IndexStatus { kReady = 0, kWaiting, kDeleting, kDeleted };
 
 class ColumnDef {
  public:
-    ColumnDef(const std::string& name, uint32_t id, ::fedb::type::DataType type, bool not_null);
-    ColumnDef(const std::string& name, uint32_t id, ::fedb::type::DataType type, bool not_null, int ts_idx);
+    ColumnDef(const std::string& name, uint32_t id, ::openmldb::type::DataType type, bool not_null);
+    ColumnDef(const std::string& name, uint32_t id, ::openmldb::type::DataType type, bool not_null, int ts_idx);
     inline uint32_t GetId() const { return id_; }
     inline const std::string& GetName() const { return name_; }
-    inline ::fedb::type::DataType GetType() const { return type_; }
+    inline ::openmldb::type::DataType GetType() const { return type_; }
     inline bool NotNull() const { return not_null_; }
     void SetTsIdx(int32_t ts_idx) { ts_idx_ = ts_idx; }
     inline int32_t GetTsIdx() const { return ts_idx_; }
 
-    static bool CheckTsType(::fedb::type::DataType type) {
-        if (type == ::fedb::type::kBigInt || type == ::fedb::type::kTimestamp) {
+    static bool CheckTsType(::openmldb::type::DataType type) {
+        if (type == ::openmldb::type::kBigInt || type == ::openmldb::type::kTimestamp) {
             return true;
         }
         return false;
@@ -173,7 +173,7 @@ class ColumnDef {
  private:
     std::string name_;
     uint32_t id_;
-    ::fedb::type::DataType type_;
+    ::openmldb::type::DataType type_;
     bool not_null_;
     int32_t ts_idx_;
 };
@@ -196,7 +196,7 @@ class IndexDef {
  public:
     IndexDef(const std::string& name, uint32_t id);
     IndexDef(const std::string& name, uint32_t id, IndexStatus stauts);
-    IndexDef(const std::string& name, uint32_t id, const IndexStatus& stauts, ::fedb::type::IndexType type,
+    IndexDef(const std::string& name, uint32_t id, const IndexStatus& stauts, ::openmldb::type::IndexType type,
              const std::vector<ColumnDef>& column_idx_map);
     const std::string& GetName() const { return name_; }
     inline const std::shared_ptr<ColumnDef>& GetTsColumn() const { return ts_column_; }
@@ -205,21 +205,21 @@ class IndexDef {
     inline uint32_t GetId() const { return index_id_; }
     void SetStatus(IndexStatus status) { status_.store(status, std::memory_order_release); }
     IndexStatus GetStatus() const { return status_.load(std::memory_order_acquire); }
-    inline ::fedb::type::IndexType GetType() { return type_; }
+    inline ::openmldb::type::IndexType GetType() { return type_; }
     inline const std::vector<ColumnDef>& GetColumns() { return columns_; }
     void SetTTL(const TTLSt& ttl);
     TTLType GetTTLType() const;
     std::shared_ptr<TTLSt> GetTTL() const;
     inline void SetInnerPos(int32_t inner_pos) { inner_pos_ = inner_pos; }
     inline uint32_t GetInnerPos() const { return inner_pos_; }
-    ::fedb::common::ColumnKey GenColumnKey();
+    ::openmldb::common::ColumnKey GenColumnKey();
 
  private:
     std::string name_;
     uint32_t index_id_;
     uint32_t inner_pos_;
     std::atomic<IndexStatus> status_;
-    ::fedb::type::IndexType type_;
+    ::openmldb::type::IndexType type_;
     std::vector<ColumnDef> columns_;
     std::shared_ptr<TTLSt> ttl_st_;
     std::shared_ptr<ColumnDef> ts_column_;
@@ -251,7 +251,7 @@ bool ColumnDefSortFunc(const ColumnDef& cd_a, const ColumnDef& cd_b);
 class TableIndex {
  public:
     TableIndex();
-    int ParseFromMeta(const ::fedb::api::TableMeta& table_meta, std::map<std::string, uint8_t>* ts_mapping);
+    int ParseFromMeta(const ::openmldb::api::TableMeta& table_meta, std::map<std::string, uint8_t>* ts_mapping);
     void ReSet();
     std::shared_ptr<IndexDef> GetIndex(uint32_t idx);
     std::shared_ptr<IndexDef> GetIndex(const std::string& name);
@@ -273,7 +273,7 @@ class TableIndex {
     void AddInnerIndex(const std::shared_ptr<InnerIndexSt>& inner_index);
 
  private:
-    void FillIndexVal(const ::fedb::api::TableMeta& table_meta, uint32_t ts_num);
+    void FillIndexVal(const ::openmldb::api::TableMeta& table_meta, uint32_t ts_num);
 
  private:
     std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
@@ -288,8 +288,8 @@ class TableIndex {
 class PartitionSt {
  public:
     PartitionSt() = default;
-    explicit PartitionSt(const ::fedb::nameserver::TablePartition& partitions);
-    explicit PartitionSt(const ::fedb::common::TablePartition& partitions);
+    explicit PartitionSt(const ::openmldb::nameserver::TablePartition& partitions);
+    explicit PartitionSt(const ::openmldb::common::TablePartition& partitions);
 
     inline const std::string& GetLeader() const { return leader_; }
     inline const std::vector<std::string>& GetFollower() const { return follower_; }
@@ -307,9 +307,9 @@ class TableSt {
  public:
     TableSt() : name_(), db_(), tid_(0), pid_num_(0), partitions_() {}
 
-    explicit TableSt(const ::fedb::nameserver::TableInfo& table_info);
+    explicit TableSt(const ::openmldb::nameserver::TableInfo& table_info);
 
-    explicit TableSt(const ::fedb::api::TableMeta& meta);
+    explicit TableSt(const ::openmldb::api::TableMeta& meta);
 
     inline const std::string& GetName() const { return name_; }
 
@@ -333,11 +333,11 @@ class TableSt {
 
     inline uint32_t GetPartitionNum() const { return pid_num_; }
 
-    inline const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>& GetColumns() const {
+    inline const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>& GetColumns() const {
         return column_desc_;
     }
 
-    inline const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>& GetColumnKey() const {
+    inline const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& GetColumnKey() const {
         return column_key_;
     }
 
@@ -346,10 +346,10 @@ class TableSt {
     std::string db_;
     uint32_t tid_;
     uint32_t pid_num_;
-    ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc> column_desc_;
-    ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey> column_key_;
+    ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> column_desc_;
+    ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> column_key_;
     std::shared_ptr<std::vector<PartitionSt>> partitions_;
 };
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb

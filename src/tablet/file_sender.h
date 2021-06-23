@@ -22,7 +22,7 @@
 #include <string>
 #include "proto/tablet.pb.h"
 
-namespace fedb {
+namespace openmldb {
 namespace tablet {
 
 class FileSender {
@@ -51,8 +51,8 @@ class FileSender {
     uint32_t max_try_time_;
     uint64_t limit_time_;
     brpc::Channel* channel_;
-    ::fedb::api::TabletServer_Stub* stub_;
+    ::openmldb::api::TabletServer_Stub* stub_;
 };
 
 }  // namespace tablet
-}  // namespace fedb
+}  // namespace openmldb

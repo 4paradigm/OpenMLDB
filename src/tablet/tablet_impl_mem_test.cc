@@ -29,7 +29,7 @@
 
 DECLARE_string(db_root_path);
 
-namespace fedb {
+namespace openmldb {
 namespace tablet {
 
 inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
@@ -56,38 +56,38 @@ TEST_F(TabletImplMemTest, TestMem) {
     tablet->Init("");
     // create table
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(1);
         table_meta->set_pid(1);
         auto column_desc = table_meta->add_column_desc();
         column_desc->set_name("idx0");
-        column_desc->set_data_type(::fedb::type::kString);
+        column_desc->set_data_type(::openmldb::type::kString);
         auto column_desc1 = table_meta->add_column_desc();
         column_desc1->set_name("value");
-        column_desc1->set_data_type(::fedb::type::kString);
+        column_desc1->set_data_type(::openmldb::type::kString);
         auto column_key = table_meta->add_column_key();
         column_key->set_index_name("idx0");
         column_key->add_col_name("idx0");
-        ::fedb::common::TTLSt* ttl_st = column_key->mutable_ttl();
+        ::openmldb::common::TTLSt* ttl_st = column_key->mutable_ttl();
         ttl_st->set_abs_ttl(0);
         ttl_st->set_lat_ttl(0);
-        ttl_st->set_ttl_type(::fedb::type::kAbsoluteTime);
-        ::fedb::api::CreateTableResponse response;
+        ttl_st->set_ttl_type(::openmldb::type::kAbsoluteTime);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet->CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // put once
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9527);
         prequest.set_value("test2");
         prequest.set_tid(1);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet->Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
         prequest.set_time(0);
@@ -97,36 +97,36 @@ TEST_F(TabletImplMemTest, TestMem) {
     //
     {
         for (uint32_t i = 0; i < 100; i++) {
-            ::fedb::api::PutRequest prequest;
+            ::openmldb::api::PutRequest prequest;
             prequest.set_pk("test3");
             prequest.set_time(i + 1);
             prequest.set_value("test2");
             prequest.set_tid(1);
             prequest.set_pid(1);
-            ::fedb::api::PutResponse presponse;
+            ::openmldb::api::PutResponse presponse;
             tablet->Put(NULL, &prequest, &presponse, &closure);
             ASSERT_EQ(0, presponse.code());
         }
     }
     // scan
     {
-        ::fedb::api::ScanRequest sr;
+        ::openmldb::api::ScanRequest sr;
         sr.set_tid(1);
         sr.set_pid(1);
         sr.set_pk("test3");
         sr.set_st(10000);
         sr.set_et(0);
-        ::fedb::api::ScanResponse srp;
+        ::openmldb::api::ScanResponse srp;
         tablet->Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(100, (int32_t)srp.count());
     }
 
     // drop table
     {
-        ::fedb::api::DropTableRequest dr;
+        ::openmldb::api::DropTableRequest dr;
         dr.set_tid(1);
         dr.set_pid(1);
-        ::fedb::api::DropTableResponse drs;
+        ::openmldb::api::DropTableResponse drs;
         tablet->DropTable(NULL, &dr, &drs, &closure);
         ASSERT_EQ(0, drs.code());
     }
@@ -137,13 +137,13 @@ TEST_F(TabletImplMemTest, TestMem) {
 }
 
 }  // namespace tablet
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::fedb::base::SetLogLevel(INFO);
-    FLAGS_db_root_path = "/tmp/" + ::fedb::tablet::GenRand();
+    ::openmldb::base::SetLogLevel(INFO);
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
     return RUN_ALL_TESTS();
 }

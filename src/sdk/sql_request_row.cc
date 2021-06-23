@@ -23,7 +23,7 @@
 #include <unordered_map>
 #include "glog/logging.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
 #define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
@@ -472,4 +472,4 @@ bool SQLRequestRowBatch::AddRow(std::shared_ptr<SQLRequestRow> row) {
 }
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb

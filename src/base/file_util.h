@@ -30,7 +30,7 @@
 #include "base/glog_wapper.h" // NOLINT
 
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 static constexpr uint32_t BOLCK_SIZE = 4 * 1024;
@@ -297,6 +297,6 @@ __attribute__((unused)) static bool CopyFile(const std::string& src_file,
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_BASE_FILE_UTIL_H_

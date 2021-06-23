@@ -27,7 +27,7 @@ extern "C" {
 
 
 
-namespace fedb {
+namespace openmldb {
 namespace zk {
 
 static bool call_invoked = false;
@@ -151,7 +151,7 @@ TEST_F(ZkClientTest, ZkNodeChange) {
 }
 
 }  // namespace zk
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     srand(time(NULL));

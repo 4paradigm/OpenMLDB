@@ -19,7 +19,7 @@
 #include "storage/mem_table.h"
 #include "common/timer.h"
 
-namespace fedb {
+namespace openmldb {
 namespace storage {
 
 class MemTableIteratorTest : public ::testing::Test {};
@@ -28,7 +28,7 @@ TEST_F(MemTableIteratorTest, smoketest) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10,
-                                   ::fedb::type::TTLType::kAbsoluteTime);
+                                   ::openmldb::type::TTLType::kAbsoluteTime);
     std::string key = "test";
     std::string value = "test";
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
@@ -51,7 +51,7 @@ TEST_F(MemTableIteratorTest, smoketest) {
 }
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

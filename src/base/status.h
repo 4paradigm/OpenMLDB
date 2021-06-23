@@ -21,7 +21,7 @@
 #include <string>
 #include "base/slice.h"
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 struct ResultMsg {
@@ -275,6 +275,6 @@ enum ReturnCode {
 };
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_BASE_STATUS_H_

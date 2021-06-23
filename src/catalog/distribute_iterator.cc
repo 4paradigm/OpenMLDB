@@ -17,7 +17,7 @@
 
 #include "catalog/distribute_iterator.h"
 
-namespace fedb {
+namespace openmldb {
 namespace catalog {
 
 FullTableIterator::FullTableIterator(std::shared_ptr<Tables> tables) :
@@ -82,7 +82,7 @@ void DistributeWindowIterator::Seek(const std::string& key) {
         return;
     }
     if (pid_num_ > 0) {
-        cur_pid_ = (uint32_t)(::fedb::base::hash64(key) % pid_num_);
+        cur_pid_ = (uint32_t)(::openmldb::base::hash64(key) % pid_num_);
     }
     auto iter = tables_->find(cur_pid_);
     if (iter != tables_->end()) {
@@ -148,4 +148,4 @@ std::unique_ptr<::hybridse::codec::RowIterator> DistributeWindowIterator::GetVal
 const ::hybridse::codec::Row DistributeWindowIterator::GetKey() { return it_->GetKey(); }
 
 }  // namespace catalog
-}  // namespace fedb
+}  // namespace openmldb

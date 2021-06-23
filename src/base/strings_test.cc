@@ -18,7 +18,7 @@
 #include "base/strings.h"
 #include "gtest/gtest.h"
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 class StringsTest : public ::testing::Test {
@@ -66,7 +66,7 @@ TEST_F(StringsTest, getNowTimeInSecond) {
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

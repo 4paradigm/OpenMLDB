@@ -22,7 +22,7 @@
 
 #include "gtest/gtest.h"
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 class GlogWapperTest : public ::testing::Test {
@@ -32,9 +32,9 @@ class GlogWapperTest : public ::testing::Test {
 };
 
 TEST_F(GlogWapperTest, Log) {
-    ::fedb::base::SetLogLevel(DEBUG);
+    ::openmldb::base::SetLogLevel(DEBUG);
     std::string path = "hello";
-    ::fedb::base::SetLogFile(path);
+    ::openmldb::base::SetLogFile(path);
     PDLOG(INFO, "hello %d %f", 290, 3.1);
     std::string s = "word";
     PDLOG(INFO, "hello %s", s);
@@ -46,7 +46,7 @@ TEST_F(GlogWapperTest, Log) {
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

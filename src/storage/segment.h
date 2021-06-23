@@ -30,13 +30,13 @@
 #include "storage/schema.h"
 #include "storage/ticket.h"
 
-namespace fedb {
+namespace openmldb {
 namespace storage {
 
-typedef google::protobuf::RepeatedPtrField<::fedb::api::TSDimension>
+typedef google::protobuf::RepeatedPtrField<::openmldb::api::TSDimension>
     TSDimensions;
 
-using ::fedb::base::Slice;
+using ::openmldb::base::Slice;
 
 class Segment;
 class Ticket;
@@ -72,7 +72,7 @@ struct TimeComparator {
 };
 
 static const TimeComparator tcmp;
-typedef ::fedb::base::Skiplist<uint64_t, DataBlock*, TimeComparator>
+typedef ::openmldb::base::Skiplist<uint64_t, DataBlock*, TimeComparator>
     TimeEntries;
 
 class MemTableIterator : public TableIterator {
@@ -82,7 +82,7 @@ class MemTableIterator : public TableIterator {
     void Seek(const uint64_t time) override;
     bool Valid() override;
     void Next() override;
-    fedb::base::Slice GetValue() const override;
+    openmldb::base::Slice GetValue() const override;
     uint64_t GetKey() const override;
     void SeekToFirst() override;
     void SeekToLast() override;
@@ -133,15 +133,15 @@ class KeyEntry {
 };
 
 struct SliceComparator {
-    int operator()(const ::fedb::base::Slice& a,
-                   const ::fedb::base::Slice& b) const {
+    int operator()(const ::openmldb::base::Slice& a,
+                   const ::openmldb::base::Slice& b) const {
         return a.compare(b);
     }
 };
 
-typedef ::fedb::base::Skiplist<::fedb::base::Slice, void*, SliceComparator>
+typedef ::openmldb::base::Skiplist<::openmldb::base::Slice, void*, SliceComparator>
     KeyEntries;
-typedef ::fedb::base::Skiplist<uint64_t, ::fedb::base::Node<Slice, void*>*,
+typedef ::openmldb::base::Skiplist<uint64_t, ::openmldb::base::Node<Slice, void*>*,
                                 TimeComparator>
     KeyEntryNodeList;
 
@@ -245,16 +245,16 @@ class Segment {
                          uint64_t& gc_record_byte_size);  // NOLINT
 
  private:
-    void FreeList(::fedb::base::Node<uint64_t, DataBlock*>* node,
+    void FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node,
                   uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,  // NOLINT
                   uint64_t& gc_record_byte_size);                 // NOLINT
     void SplitList(KeyEntry* entry, uint64_t ts,
-                   ::fedb::base::Node<uint64_t, DataBlock*>** node);
+                   ::openmldb::base::Node<uint64_t, DataBlock*>** node);
 
     void GcEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt,  // NOLINT
                          uint64_t& gc_record_cnt,                 // NOLINT
                          uint64_t& gc_record_byte_size);          // NOLINT
-    void FreeEntry(::fedb::base::Node<Slice, void*>* entry_node,
+    void FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node,
                    uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,  // NOLINT
                    uint64_t& gc_record_byte_size);                 // NOLINT
 
@@ -276,5 +276,5 @@ class Segment {
 };
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_STORAGE_SEGMENT_H_

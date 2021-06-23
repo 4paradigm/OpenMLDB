@@ -55,16 +55,16 @@ DECLARE_string(recycle_bin_root_path);
 DECLARE_string(endpoint);
 DECLARE_uint32(recycle_ttl);
 
-namespace fedb {
+namespace openmldb {
 namespace tablet {
 
-using ::fedb::api::TableStatus;
+using ::openmldb::api::TableStatus;
 using Schema =
-    ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>;
-using ::fedb::codec::SchemaCodec;
+    ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
+using ::openmldb::codec::SchemaCodec;
 
 uint32_t counter = 10;
-static const ::fedb::base::DefaultComparator scmp;
+static const ::openmldb::base::DefaultComparator scmp;
 
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
@@ -83,8 +83,8 @@ class TabletImplTest : public ::testing::Test {
     ~TabletImplTest() {}
 };
 
-bool RollWLogFile(::fedb::storage::WriteHandle** wh,
-                  ::fedb::storage::LogParts* logs, const std::string& log_path,
+bool RollWLogFile(::openmldb::storage::WriteHandle** wh,
+                  ::openmldb::storage::LogParts* logs, const std::string& log_path,
                   uint32_t& binlog_index, uint64_t offset,  // NOLINT
                   bool append_end = true) {
     if (*wh != NULL) {
@@ -94,8 +94,8 @@ bool RollWLogFile(::fedb::storage::WriteHandle** wh,
         delete *wh;
         *wh = NULL;
     }
-    std::string name = ::fedb::base::FormatToString(binlog_index, 8) + ".log";
-    ::fedb::base::MkdirRecur(log_path);
+    std::string name = ::openmldb::base::FormatToString(binlog_index, 8) + ".log";
+    ::openmldb::base::MkdirRecur(log_path);
     std::string full_path = log_path + "/" + name;
     FILE* fd = fopen(full_path.c_str(), "ab+");
     if (fd == NULL) {
@@ -103,7 +103,7 @@ bool RollWLogFile(::fedb::storage::WriteHandle** wh,
         return false;
     }
     logs->Insert(binlog_index, offset);
-    *wh = new ::fedb::storage::WriteHandle("off", name, fd);
+    *wh = new ::openmldb::storage::WriteHandle("off", name, fd);
     binlog_index++;
     return true;
 }
@@ -111,61 +111,61 @@ bool RollWLogFile(::fedb::storage::WriteHandle** wh,
 void PrepareLatestTableData(TabletImpl& tablet, int32_t tid,  // NOLINT
                             int32_t pid) {
     for (int32_t i = 0; i < 100; i++) {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk(boost::lexical_cast<std::string>(i % 10));
         prequest.set_time(i + 1);
         prequest.set_value(boost::lexical_cast<std::string>(i));
         prequest.set_tid(tid);
         prequest.set_pid(pid);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         MockClosure closure;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
 
     for (int32_t i = 0; i < 100; i++) {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("10");
         prequest.set_time(i % 10 + 1);
         prequest.set_value(boost::lexical_cast<std::string>(i));
         prequest.set_tid(tid);
         prequest.set_pid(pid);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         MockClosure closure;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
 }
 
-void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::fedb::type::TTLType ttl_type,
-        ::fedb::api::TableMeta* table_meta) {
+void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::openmldb::type::TTLType ttl_type,
+        ::openmldb::api::TableMeta* table_meta) {
     auto column_desc = table_meta->add_column_desc();
     column_desc->set_name("idx0");
-    column_desc->set_data_type(::fedb::type::kString);
+    column_desc->set_data_type(::openmldb::type::kString);
     auto column_desc1 = table_meta->add_column_desc();
     column_desc1->set_name("value");
-    column_desc1->set_data_type(::fedb::type::kString);
+    column_desc1->set_data_type(::openmldb::type::kString);
     auto column_key = table_meta->add_column_key();
     column_key->set_index_name("idx0");
     column_key->add_col_name("idx0");
-    ::fedb::common::TTLSt* ttl_st = column_key->mutable_ttl();
+    ::openmldb::common::TTLSt* ttl_st = column_key->mutable_ttl();
     ttl_st->set_abs_ttl(abs_ttl);
     ttl_st->set_lat_ttl(lat_ttl);
     ttl_st->set_ttl_type(ttl_type);
 }
 
-void PackDefaultDimension(const std::string& key, ::fedb::api::PutRequest* request) {
+void PackDefaultDimension(const std::string& key, ::openmldb::api::PutRequest* request) {
     auto dimension = request->add_dimensions();
     dimension->set_key(key);
     dimension->set_idx(0);
 }
 
 int GetTTL(TabletImpl& tablet, uint32_t tid, uint32_t pid, const std::string& index_name, // NOLINT
-        ::fedb::common::TTLSt* ttl) {
-    ::fedb::api::GetTableSchemaRequest request;
+        ::openmldb::common::TTLSt* ttl) {
+    ::openmldb::api::GetTableSchemaRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
-    ::fedb::api::GetTableSchemaResponse response;
+    ::openmldb::api::GetTableSchemaResponse response;
     MockClosure closure;
     tablet.GetTableSchema(NULL, &request, &response, &closure);
     if (response.code() != 0) {
@@ -190,14 +190,14 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
     MockClosure closure;
     uint32_t id = counter++;
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kLatestTime, table_meta);
-        ::fedb::api::CreateTableResponse response;
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kLatestTime, table_meta);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -206,11 +206,11 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
     {
         //
-        ::fedb::api::CountRequest request;
+        ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
-        ::fedb::api::CountResponse response;
+        ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(10u, response.count());
@@ -218,12 +218,12 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
     {
         //
-        ::fedb::api::CountRequest request;
+        ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_filter_expired_data(true);
-        ::fedb::api::CountResponse response;
+        ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(10u, response.count());
@@ -231,12 +231,12 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
     {
         //
-        ::fedb::api::CountRequest request;
+        ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("10");
         request.set_filter_expired_data(true);
-        ::fedb::api::CountResponse response;
+        ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(100u, response.count());
@@ -244,13 +244,13 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
     {
         //
-        ::fedb::api::CountRequest request;
+        ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("10");
         request.set_filter_expired_data(true);
         request.set_enable_remove_duplicated_record(true);
-        ::fedb::api::CountResponse response;
+        ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(10u, response.count());
@@ -258,12 +258,12 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
     {
         // default
-        ::fedb::api::CountRequest request;
+        ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_filter_expired_data(true);
-        ::fedb::api::CountResponse response;
+        ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(10u, response.count());
@@ -271,14 +271,14 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
     {
         // default st et type
-        ::fedb::api::CountRequest request;
+        ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_st(91);
         request.set_et(81);
         request.set_filter_expired_data(true);
-        ::fedb::api::CountResponse response;
+        ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1u, response.count());
@@ -286,15 +286,15 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
     {
         // st type=le et type=ge
-        ::fedb::api::CountRequest request;
+        ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_st(91);
         request.set_et(81);
-        request.set_et_type(::fedb::api::GetType::kSubKeyGe);
+        request.set_et_type(::openmldb::api::GetType::kSubKeyGe);
         request.set_filter_expired_data(true);
-        ::fedb::api::CountResponse response;
+        ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(2u, response.count());
@@ -302,15 +302,15 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
     {
         // st type=le et type=ge
-        ::fedb::api::CountRequest request;
+        ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_st(90);
         request.set_et(81);
-        request.set_et_type(::fedb::api::GetType::kSubKeyGe);
+        request.set_et_type(::openmldb::api::GetType::kSubKeyGe);
         request.set_filter_expired_data(true);
-        ::fedb::api::CountResponse response;
+        ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1u, response.count());
@@ -324,14 +324,14 @@ TEST_F(TabletImplTest, Count_Time_Table) {
     MockClosure closure;
     uint32_t id = counter++;
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-        ::fedb::api::CreateTableResponse response;
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -340,11 +340,11 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
     {
         //
-        ::fedb::api::CountRequest request;
+        ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
-        ::fedb::api::CountResponse response;
+        ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(10, (int32_t)response.count());
@@ -352,12 +352,12 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
     {
         //
-        ::fedb::api::CountRequest request;
+        ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_filter_expired_data(true);
-        ::fedb::api::CountResponse response;
+        ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(10, (int64_t)(response.count()));
@@ -365,12 +365,12 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
     {
         //
-        ::fedb::api::CountRequest request;
+        ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("10");
         request.set_filter_expired_data(true);
-        ::fedb::api::CountResponse response;
+        ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(100, (signed)response.count());
@@ -378,13 +378,13 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
     {
         //
-        ::fedb::api::CountRequest request;
+        ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("10");
         request.set_filter_expired_data(true);
         request.set_enable_remove_duplicated_record(true);
-        ::fedb::api::CountResponse response;
+        ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(10, (signed)response.count());
@@ -392,12 +392,12 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
     {
         // default
-        ::fedb::api::CountRequest request;
+        ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_filter_expired_data(true);
-        ::fedb::api::CountResponse response;
+        ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(10, (signed)response.count());
@@ -405,14 +405,14 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
     {
         // default st et type
-        ::fedb::api::CountRequest request;
+        ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_st(91);
         request.set_et(81);
         request.set_filter_expired_data(true);
-        ::fedb::api::CountResponse response;
+        ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, (signed)response.count());
@@ -420,15 +420,15 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
     {
         // st type=le et type=ge
-        ::fedb::api::CountRequest request;
+        ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_st(91);
         request.set_et(81);
-        request.set_et_type(::fedb::api::GetType::kSubKeyGe);
+        request.set_et_type(::openmldb::api::GetType::kSubKeyGe);
         request.set_filter_expired_data(true);
-        ::fedb::api::CountResponse response;
+        ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(2, (signed)response.count());
@@ -436,15 +436,15 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
     {
         // st type=le et type=ge
-        ::fedb::api::CountRequest request;
+        ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_key("0");
         request.set_st(90);
         request.set_et(81);
-        request.set_et_type(::fedb::api::GetType::kSubKeyGe);
+        request.set_et_type(::openmldb::api::GetType::kSubKeyGe);
         request.set_filter_expired_data(true);
-        ::fedb::api::CountResponse response;
+        ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, (signed)response.count());
@@ -458,14 +458,14 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
     MockClosure closure;
     uint32_t id = counter++;
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        AddDefaultSchema(0, 5, ::fedb::type::TTLType::kLatestTime, table_meta);
-        ::fedb::api::CreateTableResponse response;
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        AddDefaultSchema(0, 5, ::openmldb::type::TTLType::kLatestTime, table_meta);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -475,17 +475,17 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
     // scan with default type
     {
         std::string key = "1";
-        ::fedb::api::ScanRequest sr;
+        ::openmldb::api::ScanRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_pk(key);
         sr.set_st(92);
         sr.set_et(90);
-        ::fedb::api::ScanResponse srp;
+        ::openmldb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(1, (signed)srp.count());
-        ::fedb::base::KvIterator* kv_it = new ::fedb::base::KvIterator(&srp);
+        ::openmldb::base::KvIterator* kv_it = new ::openmldb::base::KvIterator(&srp);
         ASSERT_TRUE(kv_it->Valid());
         ASSERT_EQ(92l, (signed)kv_it->GetKey());
         ASSERT_STREQ("91", kv_it->GetValue().ToString().c_str());
@@ -495,18 +495,18 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
 
     // scan with default et ge
     {
-        ::fedb::api::ScanRequest sr;
+        ::openmldb::api::ScanRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_pk("1");
         sr.set_st(92);
         sr.set_et(0);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
-        ::fedb::api::ScanResponse srp;
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
+        ::openmldb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
-        ::fedb::base::KvIterator* kv_it = new ::fedb::base::KvIterator(&srp);
+        ::openmldb::base::KvIterator* kv_it = new ::openmldb::base::KvIterator(&srp);
         ASSERT_TRUE(kv_it->Valid());
         ASSERT_EQ(92l, (signed)kv_it->GetKey());
         ASSERT_STREQ("91", kv_it->GetValue().ToString().c_str());
@@ -520,12 +520,12 @@ TEST_F(TabletImplTest, Get) {
     tablet.Init("");
     // table not found
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(1);
         request.set_pid(0);
         request.set_key("test");
         request.set_ts(0);
-        ::fedb::api::GetResponse response;
+        ::openmldb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(100, response.code());
@@ -533,14 +533,14 @@ TEST_F(TabletImplTest, Get) {
     // create table
     uint32_t id = counter++;
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        AddDefaultSchema(1, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-        ::fedb::api::CreateTableResponse response;
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        AddDefaultSchema(1, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -548,60 +548,60 @@ TEST_F(TabletImplTest, Get) {
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     // key not found
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(now);
-        ::fedb::api::GetResponse response;
+        ::openmldb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(109, response.code());
     }
     // put/get expired key
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         PackDefaultDimension("test0", &prequest);
         prequest.set_time(now - 2 * 60 * 1000);
         prequest.set_value("value0");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         MockClosure closure;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test0");
         request.set_idx_name("idx0");
         request.set_ts(0);
-        ::fedb::api::GetResponse response;
+        ::openmldb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
         printf("response key:%s \n", response.key().c_str());
         ASSERT_EQ(109, response.code());
     }
     // put some key
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test");
         prequest.set_time(now);
         prequest.set_value("test10");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         MockClosure closure;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test");
         prequest.set_time(now - 2);
         prequest.set_value("test9");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         MockClosure closure;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
@@ -611,12 +611,12 @@ TEST_F(TabletImplTest, Get) {
         ASSERT_EQ(0, presponse.code());
     }
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(now - 2);
-        ::fedb::api::GetResponse response;
+        ::openmldb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -627,23 +627,23 @@ TEST_F(TabletImplTest, Get) {
         ASSERT_EQ("test10", response.value());
     }
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(now - 1);
-        ::fedb::api::GetResponse response;
+        ::openmldb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(109, response.code());
     }
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(now - 2);
-        ::fedb::api::GetResponse response;
+        ::openmldb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -651,12 +651,12 @@ TEST_F(TabletImplTest, Get) {
     }
     {
         // get expired key
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(now - 120 * 1000);
-        ::fedb::api::GetResponse response;
+        ::openmldb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(307, response.code());
@@ -664,39 +664,39 @@ TEST_F(TabletImplTest, Get) {
     // create latest ttl table
     id = counter++;
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t1");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        AddDefaultSchema(0, 5, ::fedb::type::TTLType::kLatestTime, table_meta);
-        ::fedb::api::CreateTableResponse response;
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        AddDefaultSchema(0, 5, ::openmldb::type::TTLType::kLatestTime, table_meta);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     int num = 10;
     while (num) {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test");
         prequest.set_time(num);
         prequest.set_value("test" + std::to_string(num));
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         MockClosure closure;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
         num--;
     }
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(5);
-        ::fedb::api::GetResponse response;
+        ::openmldb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_NE(0, response.code());
@@ -724,96 +724,96 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
     // create table
     uint32_t id = counter++;
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        AddDefaultSchema(100, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-        ::fedb::api::CreateTableResponse response;
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        AddDefaultSchema(100, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // table not exist
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(0);
         request.set_pid(0);
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
+        ttl->set_ttl_type(::openmldb::type::TTLType::kAbsoluteTime);
         ttl->set_abs_ttl(0);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(100, response.code());
     }
     // bigger than max ttl
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
+        ttl->set_ttl_type(::openmldb::type::TTLType::kAbsoluteTime);
         ttl->set_abs_ttl(60 * 24 * 365 * 30 * 2);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(132, response.code());
     }
     // ttl type mismatch
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::TTLType::kLatestTime);
+        ttl->set_ttl_type(::openmldb::type::TTLType::kLatestTime);
         ttl->set_abs_ttl(0);
         ttl->set_lat_ttl(0);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(112, response.code());
     }
     // normal case
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
-    ::fedb::api::PutRequest prequest;
+    ::openmldb::api::PutRequest prequest;
     prequest.set_pk("test");
     prequest.set_time(now - 60 * 60 * 1000);
     prequest.set_value("test9");
     prequest.set_tid(id);
     prequest.set_pid(0);
-    ::fedb::api::PutResponse presponse;
+    ::openmldb::api::PutResponse presponse;
     MockClosure closure;
     tablet.Put(NULL, &prequest, &presponse, &closure);
     ASSERT_EQ(0, presponse.code());
-    ::fedb::api::GetRequest grequest;
+    ::openmldb::api::GetRequest grequest;
     grequest.set_tid(id);
     grequest.set_pid(0);
     grequest.set_key("test");
     grequest.set_ts(0);
-    ::fedb::api::GetResponse gresponse;
+    ::openmldb::api::GetResponse gresponse;
     tablet.Get(NULL, &grequest, &gresponse, &closure);
     ASSERT_EQ(0, gresponse.code());
     ASSERT_EQ("test9", gresponse.value());
     // UpdateTTLRequest
-    ::fedb::api::UpdateTTLRequest request;
+    ::openmldb::api::UpdateTTLRequest request;
     request.set_tid(id);
     request.set_pid(0);
-    ::fedb::api::UpdateTTLResponse response;
+    ::openmldb::api::UpdateTTLResponse response;
     // ExecuteGcRequest
-    ::fedb::api::ExecuteGcRequest request_execute;
-    ::fedb::api::GeneralResponse response_execute;
+    ::openmldb::api::ExecuteGcRequest request_execute;
+    ::openmldb::api::GeneralResponse response_execute;
     request_execute.set_tid(id);
     request_execute.set_pid(0);
     // etTableStatusRequest
-    ::fedb::api::GetTableStatusRequest gr;
-    ::fedb::api::GetTableStatusResponse gres;
+    ::openmldb::api::GetTableStatusRequest gr;
+    ::openmldb::api::GetTableStatusResponse gres;
     // ttl update to zero
     {
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
+        ttl->set_ttl_type(::openmldb::type::TTLType::kAbsoluteTime);
         ttl->set_abs_ttl(0);
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -823,7 +823,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ASSERT_EQ(0, gresponse.code());
         ASSERT_EQ("test9", gresponse.value());
 
-        ::fedb::common::TTLSt cur_ttl;
+        ::openmldb::common::TTLSt cur_ttl;
         ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
         ASSERT_EQ(100, cur_ttl.abs_ttl());
         tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure);
@@ -839,7 +839,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
     // ttl update from zero to no zero
     {
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
+        ttl->set_ttl_type(::openmldb::type::TTLType::kAbsoluteTime);
         ttl->set_abs_ttl(50);
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -849,7 +849,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ASSERT_EQ(0, gresponse.code());
         ASSERT_EQ("test9", gresponse.value());
 
-        ::fedb::common::TTLSt cur_ttl;
+        ::openmldb::common::TTLSt cur_ttl;
         ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
         ASSERT_EQ(0, cur_ttl.abs_ttl());
 
@@ -873,7 +873,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         tablet.Get(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(109, gresponse.code());
 
-        ::fedb::common::TTLSt cur_ttl;
+        ::openmldb::common::TTLSt cur_ttl;
         ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
         ASSERT_EQ(50, cur_ttl.abs_ttl());
         prequest.set_time(now - 10 * 60 * 1000);
@@ -902,71 +902,71 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
     // create table
     uint32_t id = counter++;
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        AddDefaultSchema(0, 1, ::fedb::type::TTLType::kLatestTime, table_meta);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        ::fedb::api::CreateTableResponse response;
+        AddDefaultSchema(0, 1, ::openmldb::type::TTLType::kLatestTime, table_meta);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // table not exist
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(0);
         request.set_pid(0);
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::kLatestTime);
+        ttl->set_ttl_type(::openmldb::type::kLatestTime);
         ttl->set_lat_ttl(0);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(100, response.code());
     }
     // reach the max ttl
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::kLatestTime);
+        ttl->set_ttl_type(::openmldb::type::kLatestTime);
         ttl->set_lat_ttl(20000);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(132, response.code());
     }
     // ttl type mismatch
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::kAbsoluteTime);
+        ttl->set_ttl_type(::openmldb::type::kAbsoluteTime);
         ttl->set_abs_ttl(0);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(112, response.code());
     }
     // normal case
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::kLatestTime);
+        ttl->set_ttl_type(::openmldb::type::kLatestTime);
         ttl->set_lat_ttl(2);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         sleep(70);
-        ::fedb::common::TTLSt cur_ttl;
+        ::openmldb::common::TTLSt cur_ttl;
         ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
         ASSERT_EQ(2, cur_ttl.lat_ttl());
     }
@@ -978,46 +978,46 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
     tablet.Init("");
     {
         uint32_t id = counter++;
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        ::fedb::api::CreateTableResponse response;
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(131, response.code());
     }
     {
         uint32_t id = counter++;
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         auto column = table_meta->add_column_desc();
         column->set_name("card");
-        column->set_data_type(::fedb::type::kString);
+        column->set_data_type(::openmldb::type::kString);
 
         column = table_meta->add_column_desc();
         column->set_name("amt");
-        column->set_data_type(::fedb::type::kDouble);
+        column->set_data_type(::openmldb::type::kDouble);
 
         column = table_meta->add_column_desc();
         column->set_name("apprv_cde");
-        column->set_data_type(::fedb::type::kInt);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::fedb::type::kAbsoluteTime, 0, 0);
-        ::fedb::api::CreateTableResponse response;
+        column->set_data_type(::openmldb::type::kInt);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::openmldb::type::kAbsoluteTime, 0, 0);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
-        ::fedb::api::GetTableSchemaRequest request0;
+        ::openmldb::api::GetTableSchemaRequest request0;
         request0.set_tid(id);
         request0.set_pid(1);
-        ::fedb::api::GetTableSchemaResponse response0;
+        ::openmldb::api::GetTableSchemaResponse response0;
         tablet.GetTableSchema(NULL, &request0, &response0, &closure);
         ASSERT_EQ(3, response0.table_meta().column_desc_size());
     }
@@ -1027,26 +1027,26 @@ TEST_F(TabletImplTest, MultiGet) {
     TabletImpl tablet;
     tablet.Init("");
     uint32_t id = counter++;
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+    table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
     auto column = table_meta->add_column_desc();
     column->set_name("card");
-    column->set_data_type(::fedb::type::kString);
+    column->set_data_type(::openmldb::type::kString);
 
     column = table_meta->add_column_desc();
     column->set_name("amt");
-    column->set_data_type(::fedb::type::kString);
+    column->set_data_type(::openmldb::type::kString);
 
     column = table_meta->add_column_desc();
     column->set_name("apprv_cde");
-    column->set_data_type(::fedb::type::kInt);
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::fedb::type::kAbsoluteTime, 0, 0);
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "amt", "amt", "", ::fedb::type::kAbsoluteTime, 0, 0);
-    ::fedb::api::CreateTableResponse response;
+    column->set_data_type(::openmldb::type::kInt);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::openmldb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "amt", "amt", "", ::openmldb::type::kAbsoluteTime, 0, 0);
+    ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
@@ -1058,26 +1058,26 @@ TEST_F(TabletImplTest, MultiGet) {
         input.push_back("abcd" + std::to_string(i));
         input.push_back("1212" + std::to_string(i));
         std::string value;
-        ::fedb::codec::RowCodec::EncodeRow(input, table_meta->column_desc(), 1, value);
-        ::fedb::api::PutRequest request;
+        ::openmldb::codec::RowCodec::EncodeRow(input, table_meta->column_desc(), 1, value);
+        ::openmldb::api::PutRequest request;
         request.set_time(1100);
         request.set_value(value);
         request.set_tid(id);
         request.set_pid(1);
-        ::fedb::api::Dimension* d = request.add_dimensions();
+        ::openmldb::api::Dimension* d = request.add_dimensions();
         d->set_key("test" + std::to_string(i));
         d->set_idx(0);
         d = request.add_dimensions();
         d->set_key("abcd" + std::to_string(i));
         d->set_idx(1);
-        ::fedb::api::PutResponse response;
+        ::openmldb::api::PutResponse response;
         MockClosure closure;
         tablet.Put(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get
-    ::fedb::api::GetRequest get_request;
-    ::fedb::api::GetResponse get_response;
+    ::openmldb::api::GetRequest get_request;
+    ::openmldb::api::GetResponse get_response;
     get_request.set_tid(id);
     get_request.set_pid(1);
     get_request.set_key("abcd2");
@@ -1089,15 +1089,15 @@ TEST_F(TabletImplTest, MultiGet) {
     ASSERT_EQ(1100, (signed)get_response.ts());
     std::string value(get_response.value());
     std::vector<std::string> vec;
-    ::fedb::codec::RowCodec::DecodeRow(table_meta->column_desc(), ::fedb::base::Slice(value), vec);
+    ::openmldb::codec::RowCodec::DecodeRow(table_meta->column_desc(), ::openmldb::base::Slice(value), vec);
     ASSERT_EQ(3, (signed)vec.size());
     ASSERT_STREQ("test2", vec[0].c_str());
     ASSERT_STREQ("abcd2", vec[1].c_str());
     ASSERT_STREQ("12122", vec[2].c_str());
 
     // delete index
-    ::fedb::api::DeleteIndexRequest deleteindex_request;
-    ::fedb::api::GeneralResponse deleteindex_response;
+    ::openmldb::api::DeleteIndexRequest deleteindex_request;
+    ::openmldb::api::GeneralResponse deleteindex_response;
     // delete first index should fail
     deleteindex_request.set_idx_name("pk");
     deleteindex_request.set_tid(id);
@@ -1122,8 +1122,8 @@ TEST_F(TabletImplTest, MultiGet) {
     ASSERT_EQ(108, get_response.code());
 
     // scan index not found
-    ::fedb::api::ScanRequest scan_request;
-    ::fedb::api::ScanResponse scan_response;
+    ::openmldb::api::ScanRequest scan_request;
+    ::openmldb::api::ScanResponse scan_response;
     scan_request.set_tid(id);
     scan_request.set_pid(1);
     scan_request.set_pk("abcd2");
@@ -1137,15 +1137,15 @@ TEST_F(TabletImplTest, CreateTable) {
     uint32_t id = counter++;
     TabletImpl tablet;
     tablet.Init("");
-    ::fedb::common::TTLSt ttl_st;
+    ::openmldb::common::TTLSt ttl_st;
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kLatestTime, table_meta);
-        ::fedb::api::CreateTableResponse response;
+        AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kLatestTime, table_meta);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -1155,7 +1155,7 @@ TEST_F(TabletImplTest, CreateTable) {
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
         fileInput.SetCloseOnDelete(true);
-        ::fedb::api::TableMeta table_meta_test;
+        ::openmldb::api::TableMeta table_meta_test;
         google::protobuf::TextFormat::Parse(&fileInput, &table_meta_test);
         ASSERT_EQ(table_meta_test.tid(), (signed)id);
         ASSERT_STREQ(table_meta_test.name().c_str(), "t0");
@@ -1165,11 +1165,11 @@ TEST_F(TabletImplTest, CreateTable) {
         ASSERT_EQ(129, response.code());
     }
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
-        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-        ::fedb::api::CreateTableResponse response;
+        AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(129, response.code());
@@ -1180,70 +1180,70 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-    ::fedb::api::CreateTableResponse response;
+    AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+    ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9527);
         prequest.set_value("testx");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
 
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9528);
         prequest.set_value("testx");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9528);
         prequest.set_value("testx");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
 
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9529);
         prequest.set_value("testx");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    ::fedb::api::ScanRequest sr;
+    ::openmldb::api::ScanRequest sr;
     sr.set_tid(id);
     sr.set_pid(1);
     sr.set_pk("test1");
     sr.set_st(9530);
     sr.set_et(0);
     sr.set_enable_remove_duplicated_record(true);
-    ::fedb::api::ScanResponse srp;
+    ::openmldb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(3, (signed)srp.count());
@@ -1253,40 +1253,40 @@ TEST_F(TabletImplTest, Scan_with_latestN) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    AddDefaultSchema(0, 0, ::fedb::type::TTLType::kLatestTime, table_meta);
-    ::fedb::api::CreateTableResponse response;
+    AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kLatestTime, table_meta);
+    ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     for (int ts = 9527; ts < 9540; ts++) {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(ts);
         prequest.set_value("test" + std::to_string(ts));
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    ::fedb::api::ScanRequest sr;
+    ::openmldb::api::ScanRequest sr;
     sr.set_tid(id);
     sr.set_pid(1);
     sr.set_pk("test1");
     sr.set_st(0);
     sr.set_et(0);
     sr.set_limit(2);
-    ::fedb::api::ScanResponse srp;
+    ::openmldb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(2, (signed)srp.count());
-    ::fedb::base::KvIterator* kv_it =
-        new ::fedb::base::KvIterator(&srp, false);
+    ::openmldb::base::KvIterator* kv_it =
+        new ::openmldb::base::KvIterator(&srp, false);
     ASSERT_EQ(9539, (signed)kv_it->GetKey());
     ASSERT_STREQ("test9539", kv_it->GetValue().ToString().c_str());
     kv_it->Next();
@@ -1301,36 +1301,36 @@ TEST_F(TabletImplTest, Traverse) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-    ::fedb::api::CreateTableResponse response;
+    AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+    ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     for (int ts = 9527; ts < 9540; ts++) {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(ts);
         prequest.set_value("test" + std::to_string(ts));
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    ::fedb::api::TraverseRequest sr;
+    ::openmldb::api::TraverseRequest sr;
     sr.set_tid(id);
     sr.set_pid(1);
     sr.set_limit(100);
-    ::fedb::api::TraverseResponse* srp = new ::fedb::api::TraverseResponse();
+    ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(13, (signed)srp->count());
-    ::fedb::base::KvIterator* kv_it = new ::fedb::base::KvIterator(srp);
+    ::openmldb::base::KvIterator* kv_it = new ::openmldb::base::KvIterator(srp);
     for (int cnt = 0; cnt < 13; cnt++) {
         uint64_t cur_ts = 9539 - cnt;
         ASSERT_EQ(cur_ts, kv_it->GetKey());
@@ -1348,14 +1348,14 @@ TEST_F(TabletImplTest, TraverseTTL) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_seg_cnt(1);
-    AddDefaultSchema(5, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-    ::fedb::api::CreateTableResponse response;
+    AddDefaultSchema(5, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+    ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
@@ -1363,34 +1363,34 @@ TEST_F(TabletImplTest, TraverseTTL) {
     uint64_t key_base = 10000;
     for (int i = 0; i < 100; i++) {
         uint64_t ts = cur_time - 10 * 60 * 1000 + i;
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test" + std::to_string(key_base + i));
         prequest.set_time(ts);
         prequest.set_value("test" + std::to_string(ts));
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     key_base = 21000;
     for (int i = 0; i < 60; i++) {
         uint64_t ts = cur_time + i;
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test" + std::to_string(key_base + i));
         prequest.set_time(ts);
         prequest.set_value("test" + std::to_string(ts));
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    ::fedb::api::TraverseRequest sr;
+    ::openmldb::api::TraverseRequest sr;
     sr.set_tid(id);
     sr.set_pid(1);
     sr.set_limit(100);
-    ::fedb::api::TraverseResponse* srp = new ::fedb::api::TraverseResponse();
+    ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(0, (signed)srp->count());
@@ -1433,31 +1433,31 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_seg_cnt(1);
-    ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
+    ::openmldb::common::ColumnDesc* desc = table_meta->add_column_desc();
     desc->set_name("card");
-    desc->set_data_type(::fedb::type::kString);
+    desc->set_data_type(::openmldb::type::kString);
     desc = table_meta->add_column_desc();
     desc->set_name("mcc");
-    desc->set_data_type(::fedb::type::kString);
+    desc->set_data_type(::openmldb::type::kString);
     desc = table_meta->add_column_desc();
     desc->set_name("price");
-    desc->set_data_type(::fedb::type::kBigInt);
+    desc->set_data_type(::openmldb::type::kBigInt);
     desc = table_meta->add_column_desc();
     desc->set_name("ts1");
-    desc->set_data_type(::fedb::type::kBigInt);
+    desc->set_data_type(::openmldb::type::kBigInt);
     desc = table_meta->add_column_desc();
     desc->set_name("ts2");
-    desc->set_data_type(::fedb::type::kBigInt);
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "ts1", ::fedb::type::kAbsoluteTime, 5, 0);
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "card1", "card", "ts2", ::fedb::type::kAbsoluteTime, 5, 0);
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "mcc", "mcc", "ts2", ::fedb::type::kAbsoluteTime, 5, 0);
-    ::fedb::api::CreateTableResponse response;
+    desc->set_data_type(::openmldb::type::kBigInt);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "ts1", ::openmldb::type::kAbsoluteTime, 5, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "card1", "card", "ts2", ::openmldb::type::kAbsoluteTime, 5, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "mcc", "mcc", "ts2", ::openmldb::type::kAbsoluteTime, 5, 0);
+    ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
@@ -1467,8 +1467,8 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
         for (int idx = 0; idx < 2; idx++) {
             uint64_t ts_value = cur_time - 10 * 60 * 1000 - idx;
             uint64_t ts1_value = cur_time - idx;
-            ::fedb::api::PutRequest prequest;
-            ::fedb::api::Dimension* dim = prequest.add_dimensions();
+            ::openmldb::api::PutRequest prequest;
+            ::openmldb::api::Dimension* dim = prequest.add_dimensions();
             dim->set_idx(0);
             dim->set_key("card" + std::to_string(key_base + i));
             dim = prequest.add_dimensions();
@@ -1477,7 +1477,7 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
             dim = prequest.add_dimensions();
             dim->set_idx(2);
             dim->set_key("mcc" + std::to_string(key_base + i));
-            ::fedb::api::TSDimension* ts = prequest.add_ts_dimensions();
+            ::openmldb::api::TSDimension* ts = prequest.add_ts_dimensions();
             ts->set_idx(0);
             ts->set_ts(ts_value);
             ts = prequest.add_ts_dimensions();
@@ -1486,7 +1486,7 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
             std::string value = "value" + std::to_string(i);
             prequest.set_tid(id);
             prequest.set_pid(1);
-            ::fedb::api::PutResponse presponse;
+            ::openmldb::api::PutResponse presponse;
             tablet.Put(NULL, &prequest, &presponse, &closure);
             ASSERT_EQ(0, presponse.code());
         }
@@ -1496,8 +1496,8 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
         for (int idx = 0; idx < 2; idx++) {
             uint64_t ts1_value = cur_time - 10 * 60 * 1000 - idx;
             uint64_t ts_value = cur_time - idx;
-            ::fedb::api::PutRequest prequest;
-            ::fedb::api::Dimension* dim = prequest.add_dimensions();
+            ::openmldb::api::PutRequest prequest;
+            ::openmldb::api::Dimension* dim = prequest.add_dimensions();
             dim->set_idx(0);
             dim->set_key("card" + std::to_string(key_base + i));
             dim = prequest.add_dimensions();
@@ -1506,7 +1506,7 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
             dim = prequest.add_dimensions();
             dim->set_idx(2);
             dim->set_key("mcc" + std::to_string(key_base + i));
-            ::fedb::api::TSDimension* ts = prequest.add_ts_dimensions();
+            ::openmldb::api::TSDimension* ts = prequest.add_ts_dimensions();
             ts->set_idx(0);
             ts->set_ts(ts_value);
             ts = prequest.add_ts_dimensions();
@@ -1515,17 +1515,17 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
             std::string value = "value" + std::to_string(i);
             prequest.set_tid(id);
             prequest.set_pid(1);
-            ::fedb::api::PutResponse presponse;
+            ::openmldb::api::PutResponse presponse;
             tablet.Put(NULL, &prequest, &presponse, &closure);
             ASSERT_EQ(0, presponse.code());
         }
     }
-    ::fedb::api::TraverseRequest sr;
+    ::openmldb::api::TraverseRequest sr;
     sr.set_tid(id);
     sr.set_pid(1);
     sr.set_idx_name("card");
     sr.set_limit(100);
-    ::fedb::api::TraverseResponse* srp = new ::fedb::api::TraverseResponse();
+    ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(14, (signed)srp->count());
@@ -1597,58 +1597,58 @@ TEST_F(TabletImplTest, Scan_with_limit) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-    ::fedb::api::CreateTableResponse response;
+    AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+    ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9527);
         prequest.set_value("test0");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9528);
         prequest.set_value("test0");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
 
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9529);
         prequest.set_value("test0");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    ::fedb::api::ScanRequest sr;
+    ::openmldb::api::ScanRequest sr;
     sr.set_tid(id);
     sr.set_pid(1);
     sr.set_pk("test1");
     sr.set_st(9530);
     sr.set_et(9526);
     sr.set_limit(2);
-    ::fedb::api::ScanResponse srp;
+    ::openmldb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(2, (signed)srp.count());
@@ -1658,23 +1658,23 @@ TEST_F(TabletImplTest, Scan) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-    ::fedb::api::CreateTableResponse response;
+    AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+    ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
-    ::fedb::api::ScanRequest sr;
+    ::openmldb::api::ScanRequest sr;
     sr.set_tid(2);
     sr.set_pk("test1");
     sr.set_st(9528);
     sr.set_et(9527);
     sr.set_limit(10);
-    ::fedb::api::ScanResponse srp;
+    ::openmldb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, (signed)srp.pairs().size());
     ASSERT_EQ(100, srp.code());
@@ -1686,12 +1686,12 @@ TEST_F(TabletImplTest, Scan) {
     ASSERT_EQ(0, (signed)srp.count());
 
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9527);
         prequest.set_value("test0");
         prequest.set_tid(2);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
 
         ASSERT_EQ(100, presponse.code());
@@ -1702,12 +1702,12 @@ TEST_F(TabletImplTest, Scan) {
         ASSERT_EQ(0, presponse.code());
     }
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9528);
         prequest.set_value("test0");
         prequest.set_tid(2);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
 
         ASSERT_EQ(100, presponse.code());
@@ -1733,26 +1733,26 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
     MockClosure closure;
     // create a latest table
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        AddDefaultSchema(0, 3, ::fedb::type::TTLType::kLatestTime, table_meta);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        ::fedb::api::CreateTableResponse response;
+        AddDefaultSchema(0, 3, ::openmldb::type::TTLType::kLatestTime, table_meta);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        ::openmldb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
 
     // version 1
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_value("test1");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         prequest.set_time(1);
         tablet.Put(NULL, &prequest, &presponse, &closure);
@@ -1760,12 +1760,12 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
 
     // version 2
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_value("test2");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         prequest.set_time(2);
         tablet.Put(NULL, &prequest, &presponse, &closure);
@@ -1773,12 +1773,12 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
 
     // version 3
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_value("test3");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         prequest.set_time(3);
         tablet.Put(NULL, &prequest, &presponse, &closure);
@@ -1786,12 +1786,12 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
 
     // get version 1
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test1");
         request.set_ts(1);
-        ::fedb::api::GetResponse response;
+        ::openmldb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, (signed)response.ts());
@@ -1800,25 +1800,25 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
 
     // update ttl
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(1);
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::kLatestTime);
+        ttl->set_ttl_type(::openmldb::type::kLatestTime);
         ttl->set_lat_ttl(2);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
 
     // get version 1 again
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test1");
         request.set_ts(1);
-        ::fedb::api::GetResponse response;
+        ::openmldb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
@@ -1828,37 +1828,37 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
 
     // get version 1 again
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test1");
         request.set_ts(1);
-        ::fedb::api::GetResponse response;
+        ::openmldb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(109, response.code());
         ASSERT_EQ("key not found", response.msg());
     }
     // revert ttl
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(1);
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::kLatestTime);
+        ttl->set_ttl_type(::openmldb::type::kLatestTime);
         ttl->set_lat_ttl(3);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
 
     // make sure that gc has clean the data
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test1");
         request.set_ts(1);
-        ::fedb::api::GetResponse response;
+        ::openmldb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(109, response.code());
         ASSERT_EQ("key not found", response.msg());
@@ -1871,36 +1871,36 @@ TEST_F(TabletImplTest, GC) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    AddDefaultSchema(3, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-    ::fedb::api::CreateTableResponse response;
+    AddDefaultSchema(3, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+    ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
 
-    ::fedb::api::PutRequest prequest;
+    ::openmldb::api::PutRequest prequest;
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
     prequest.set_tid(id);
     prequest.set_pid(1);
-    ::fedb::api::PutResponse presponse;
+    ::openmldb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse, &closure);
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     prequest.set_time(now);
     tablet.Put(NULL, &prequest, &presponse, &closure);
-    ::fedb::api::ScanRequest sr;
+    ::openmldb::api::ScanRequest sr;
     sr.set_tid(id);
     sr.set_pid(1);
     sr.set_pk("test1");
     sr.set_st(now);
     sr.set_et(9527);
     sr.set_limit(10);
-    ::fedb::api::ScanResponse srp;
+    ::openmldb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(1, (signed)srp.count());
@@ -1911,31 +1911,31 @@ TEST_F(TabletImplTest, DropTable) {
     uint32_t id = counter++;
     tablet.Init("");
     MockClosure closure;
-    ::fedb::api::DropTableRequest dr;
+    ::openmldb::api::DropTableRequest dr;
     dr.set_tid(id);
     dr.set_pid(1);
-    ::fedb::api::DropTableResponse drs;
+    ::openmldb::api::DropTableResponse drs;
     tablet.DropTable(NULL, &dr, &drs, &closure);
     ASSERT_EQ(100, drs.code());
 
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    AddDefaultSchema(1, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-    table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-    ::fedb::api::CreateTableResponse response;
+    AddDefaultSchema(1, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+    table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+    ::openmldb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
 
-    ::fedb::api::PutRequest prequest;
+    ::openmldb::api::PutRequest prequest;
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
     prequest.set_tid(id);
     prequest.set_pid(1);
-    ::fedb::api::PutResponse presponse;
+    ::openmldb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse, &closure);
     ASSERT_EQ(0, presponse.code());
     tablet.DropTable(NULL, &dr, &drs, &closure);
@@ -1953,49 +1953,49 @@ TEST_F(TabletImplTest, DropTableNoRecycle) {
     FLAGS_recycle_bin_enabled = false;
     FLAGS_db_root_path = "/tmp/gtest/db";
     FLAGS_recycle_bin_root_path = "/tmp/gtest/recycle";
-    ::fedb::base::RemoveDirRecursive("/tmp/gtest");
+    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
     MockClosure closure;
-    ::fedb::api::DropTableRequest dr;
+    ::openmldb::api::DropTableRequest dr;
     dr.set_tid(id);
     dr.set_pid(1);
-    ::fedb::api::DropTableResponse drs;
+    ::openmldb::api::DropTableResponse drs;
     tablet.DropTable(NULL, &dr, &drs, &closure);
     ASSERT_EQ(100, drs.code());
 
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    AddDefaultSchema(1, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-    table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-    ::fedb::api::CreateTableResponse response;
+    AddDefaultSchema(1, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+    table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+    ::openmldb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
 
-    ::fedb::api::PutRequest prequest;
+    ::openmldb::api::PutRequest prequest;
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
     prequest.set_tid(id);
     prequest.set_pid(1);
-    ::fedb::api::PutResponse presponse;
+    ::openmldb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse, &closure);
     ASSERT_EQ(0, presponse.code());
     tablet.DropTable(NULL, &dr, &drs, &closure);
     ASSERT_EQ(0, drs.code());
     sleep(1);
-    ::fedb::base::GetChildFileName(FLAGS_db_root_path, file_vec);
+    ::openmldb::base::GetChildFileName(FLAGS_db_root_path, file_vec);
     ASSERT_TRUE(file_vec.empty());
     file_vec.clear();
-    ::fedb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_TRUE(file_vec.empty());
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
-    ::fedb::base::RemoveDirRecursive("/tmp/gtest");
+    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
     FLAGS_recycle_bin_enabled = tmp_recycle_bin_enabled;
     FLAGS_db_root_path = tmp_db_root_path;
     FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
@@ -2007,25 +2007,25 @@ TEST_F(TabletImplTest, Recover) {
     {
         TabletImpl tablet;
         tablet.Init("");
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
+        AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_term(1024);
         table_meta->add_replicas("127.0.0.1:9527");
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        ::fedb::api::CreateTableResponse response;
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        ::openmldb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9527);
         prequest.set_value("test0");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
@@ -2033,15 +2033,15 @@ TEST_F(TabletImplTest, Recover) {
     {
         TabletImpl tablet;
         tablet.Init("");
-        ::fedb::api::LoadTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::LoadTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_seg_cnt(64);
         table_meta->add_replicas("127.0.0.1:9530");
         table_meta->add_replicas("127.0.0.1:9531");
-        ::fedb::api::GeneralResponse response;
+        ::openmldb::api::GeneralResponse response;
         tablet.LoadTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -2051,7 +2051,7 @@ TEST_F(TabletImplTest, Recover) {
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
         fileInput.SetCloseOnDelete(true);
-        ::fedb::api::TableMeta table_meta_test;
+        ::openmldb::api::TableMeta table_meta_test;
         google::protobuf::TextFormat::Parse(&fileInput, &table_meta_test);
         ASSERT_EQ(table_meta_test.seg_cnt(), 64);
         ASSERT_EQ(table_meta_test.term(), 1024lu);
@@ -2059,30 +2059,30 @@ TEST_F(TabletImplTest, Recover) {
         ASSERT_STREQ(table_meta_test.replicas(0).c_str(), "127.0.0.1:9530");
 
         sleep(1);
-        ::fedb::api::ScanRequest sr;
+        ::openmldb::api::ScanRequest sr;
         sr.set_tid(id);
         sr.set_pid(1);
         sr.set_pk("test1");
         sr.set_st(9530);
         sr.set_et(9526);
-        ::fedb::api::ScanResponse srp;
+        ::openmldb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(1, (signed)srp.count());
-        ::fedb::api::GeneralRequest grq;
+        ::openmldb::api::GeneralRequest grq;
         grq.set_tid(id);
         grq.set_pid(1);
-        ::fedb::api::GeneralResponse grp;
+        ::openmldb::api::GeneralResponse grp;
         grp.set_code(-1);
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
         ASSERT_EQ(0, grp.code());
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9528);
         prequest.set_value("test1");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
         sleep(2);
@@ -2091,23 +2091,23 @@ TEST_F(TabletImplTest, Recover) {
     {
         TabletImpl tablet;
         tablet.Init("");
-        ::fedb::api::LoadTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::LoadTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        ::fedb::api::GeneralResponse response;
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        ::openmldb::api::GeneralResponse response;
         tablet.LoadTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         sleep(1);
-        ::fedb::api::ScanRequest sr;
+        ::openmldb::api::ScanRequest sr;
         sr.set_tid(id);
         sr.set_pid(1);
         sr.set_pk("test1");
         sr.set_st(9530);
         sr.set_et(9526);
-        ::fedb::api::ScanResponse srp;
+        ::openmldb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -2117,53 +2117,53 @@ TEST_F(TabletImplTest, Recover) {
 TEST_F(TabletImplTest, LoadWithDeletedKey) {
     uint32_t id = counter++;
     MockClosure closure;
-    ::fedb::api::TableMeta table_meta_test;
+    ::openmldb::api::TableMeta table_meta_test;
     {
         TabletImpl tablet;
         tablet.Init("");
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_seg_cnt(8);
         table_meta->set_term(1024);
 
-        ::fedb::common::ColumnDesc* column_desc1 =
+        ::openmldb::common::ColumnDesc* column_desc1 =
             table_meta->add_column_desc();
         column_desc1->set_name("card");
-        column_desc1->set_data_type(::fedb::type::kString);
-        ::fedb::common::ColumnDesc* column_desc2 = table_meta->add_column_desc();
+        column_desc1->set_data_type(::openmldb::type::kString);
+        ::openmldb::common::ColumnDesc* column_desc2 = table_meta->add_column_desc();
         column_desc2->set_name("mcc");
-        column_desc2->set_data_type(::fedb::type::kString);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::fedb::type::kAbsoluteTime, 0, 0);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "mcc", "mcc", "", ::fedb::type::kAbsoluteTime, 0, 0);
+        column_desc2->set_data_type(::openmldb::type::kString);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::openmldb::type::kAbsoluteTime, 0, 0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "mcc", "mcc", "", ::openmldb::type::kAbsoluteTime, 0, 0);
 
         table_meta->add_replicas("127.0.0.1:9527");
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        ::fedb::api::CreateTableResponse response;
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         for (int i = 0; i < 5; i++) {
-            ::fedb::api::PutRequest request;
+            ::openmldb::api::PutRequest request;
             request.set_time(1100);
             request.set_value("test");
             request.set_tid(id);
             request.set_pid(1);
-            ::fedb::api::Dimension* d1 = request.add_dimensions();
+            ::openmldb::api::Dimension* d1 = request.add_dimensions();
             d1->set_idx(0);
             d1->set_key("card" + std::to_string(i));
-            ::fedb::api::Dimension* d2 = request.add_dimensions();
+            ::openmldb::api::Dimension* d2 = request.add_dimensions();
             d2->set_idx(1);
             d2->set_key("mcc" + std::to_string(i));
-            ::fedb::api::PutResponse response;
+            ::openmldb::api::PutResponse response;
             MockClosure closure;
             tablet.Put(NULL, &request, &response, &closure);
             ASSERT_EQ(0, response.code());
         }
-        ::fedb::api::DeleteIndexRequest deleteindex_request;
-        ::fedb::api::GeneralResponse deleteindex_response;
+        ::openmldb::api::DeleteIndexRequest deleteindex_request;
+        ::openmldb::api::GeneralResponse deleteindex_response;
         // delete first index should fail
         deleteindex_request.set_idx_name("mcc");
         deleteindex_request.set_tid(id);
@@ -2176,24 +2176,24 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
     {
         TabletImpl tablet;
         tablet.Init("");
-        ::fedb::api::LoadTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::LoadTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        ::fedb::api::GeneralResponse response;
+        ::openmldb::api::GeneralResponse response;
         MockClosure closure;
         tablet.LoadTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         sleep(1);
-        ::fedb::api::ScanRequest sr;
+        ::openmldb::api::ScanRequest sr;
         sr.set_tid(id);
         sr.set_pid(1);
         sr.set_pk("mcc0");
         sr.set_idx_name("mcc");
         sr.set_st(1200);
         sr.set_et(1000);
-        ::fedb::api::ScanResponse srp;
+        ::openmldb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(108, srp.code());
         sr.set_pk("card0");
@@ -2210,18 +2210,18 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
     FLAGS_binlog_delete_interval = 1000;
     FLAGS_make_snapshot_threshold_offset = 0;
     uint32_t tid = counter++;
-    ::fedb::storage::LogParts* log_part =
-        new ::fedb::storage::LogParts(12, 4, scmp);
+    ::openmldb::storage::LogParts* log_part =
+        new ::openmldb::storage::LogParts(12, 4, scmp);
     std::string binlog_dir =
         FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog/";
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
-    ::fedb::storage::WriteHandle* wh = NULL;
+    ::openmldb::storage::WriteHandle* wh = NULL;
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
     int count = 1;
     for (; count <= 10; count++) {
         offset++;
-        ::fedb::api::LogEntry entry;
+        ::openmldb::api::LogEntry entry;
         entry.set_log_index(offset);
         std::string key = "key";
         entry.set_pk(key);
@@ -2229,8 +2229,8 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         entry.set_value("value" + std::to_string(count));
         std::string buffer;
         entry.SerializeToString(&buffer);
-        ::fedb::base::Slice slice(buffer);
-        ::fedb::base::Status status = wh->Write(slice);
+        ::openmldb::base::Slice slice(buffer);
+        ::openmldb::base::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
@@ -2244,7 +2244,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
     count = 1;
     for (; count <= 20; count++) {
         offset++;
-        ::fedb::api::LogEntry entry;
+        ::openmldb::api::LogEntry entry;
         entry.set_log_index(offset);
         std::string key = "key_new";
         entry.set_pk(key);
@@ -2252,8 +2252,8 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         entry.set_value("value_new" + std::to_string(count));
         std::string buffer;
         entry.SerializeToString(&buffer);
-        ::fedb::base::Slice slice(buffer);
-        ::fedb::base::Status status = wh->Write(slice);
+        ::openmldb::base::Slice slice(buffer);
+        ::openmldb::base::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
@@ -2262,7 +2262,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
     count = 1;
     for (; count <= 30; count++) {
         offset++;
-        ::fedb::api::LogEntry entry;
+        ::openmldb::api::LogEntry entry;
         entry.set_log_index(offset);
         std::string key = "key_xxx";
         entry.set_pk(key);
@@ -2270,8 +2270,8 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         entry.set_value("value_xxx" + std::to_string(count));
         std::string buffer;
         entry.SerializeToString(&buffer);
-        ::fedb::base::Slice slice(buffer);
-        ::fedb::base::Status status = wh->Write(slice);
+        ::openmldb::base::Slice slice(buffer);
+        ::openmldb::base::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
@@ -2279,25 +2279,25 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
     {
         TabletImpl tablet;
         tablet.Init("");
-        ::fedb::api::LoadTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::LoadTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(tid);
         table_meta->set_pid(0);
-        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        ::fedb::api::GeneralResponse response;
+        AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        ::openmldb::api::GeneralResponse response;
         MockClosure closure;
         tablet.LoadTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         sleep(1);
-        ::fedb::api::ScanRequest sr;
+        ::openmldb::api::ScanRequest sr;
         sr.set_tid(tid);
         sr.set_pid(0);
         sr.set_pk("key_new");
         sr.set_st(50);
         sr.set_et(0);
-        ::fedb::api::ScanResponse srp;
+        ::openmldb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(20, (signed)srp.count());
@@ -2312,20 +2312,20 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(30, (signed)srp.count());
 
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9528);
         prequest.set_value("test1");
         prequest.set_tid(tid);
         prequest.set_pid(0);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
 
-        ::fedb::api::GeneralRequest grq;
+        ::openmldb::api::GeneralRequest grq;
         grq.set_tid(tid);
         grq.set_pid(0);
-        ::fedb::api::GeneralResponse grp;
+        ::openmldb::api::GeneralResponse grp;
         grp.set_code(-1);
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
         ASSERT_EQ(0, grp.code());
@@ -2337,7 +2337,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
         fileInput.SetCloseOnDelete(true);
-        ::fedb::api::Manifest manifest;
+        ::openmldb::api::Manifest manifest;
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
         ASSERT_EQ(61, (signed)manifest.offset());
 
@@ -2345,7 +2345,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         std::vector<std::string> vec;
         std::string binlog_path =
             FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog";
-        ::fedb::base::GetFileName(binlog_path, vec);
+        ::openmldb::base::GetFileName(binlog_path, vec);
         ASSERT_EQ(4, (signed)vec.size());
         std::sort(vec.begin(), vec.end());
         std::string file_name = binlog_path + "/00000001.log";
@@ -2367,14 +2367,14 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
     MockClosure closure;
     // create a latest table
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         // 3 minutes
-        AddDefaultSchema(3, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-        ::fedb::api::CreateTableResponse response;
+        AddDefaultSchema(3, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+        ::openmldb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
@@ -2382,13 +2382,13 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
     //
     uint64_t now1 = ::baidu::common::timer::get_micros() / 1000;
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_value("test1");
         prequest.set_tid(id);
         prequest.set_pid(1);
         prequest.set_time(now1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         prequest.set_time(1);
         tablet.Put(NULL, &prequest, &presponse, &closure);
@@ -2396,13 +2396,13 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
     // 1 minute before
     uint64_t now2 = now1 - 60 * 1000;
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_value("test2");
         prequest.set_tid(id);
         prequest.set_pid(1);
         prequest.set_time(now2);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         prequest.set_time(1);
         tablet.Put(NULL, &prequest, &presponse, &closure);
@@ -2411,13 +2411,13 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
     // 2 minute before
     uint64_t now3 = now1 - 2 * 60 * 1000;
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_value("test3");
         prequest.set_tid(id);
         prequest.set_pid(1);
         prequest.set_time(now3);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         prequest.set_time(1);
         tablet.Put(NULL, &prequest, &presponse, &closure);
@@ -2425,12 +2425,12 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
 
     // get now3
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test1");
         request.set_ts(now3);
-        ::fedb::api::GetResponse response;
+        ::openmldb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(now3, response.ts());
@@ -2439,13 +2439,13 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
 
     // update ttl
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(1);
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
+        ttl->set_ttl_type(::openmldb::type::TTLType::kAbsoluteTime);
         ttl->set_abs_ttl(1);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
@@ -2453,12 +2453,12 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
     sleep(70);
     // get now3
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test1");
         request.set_ts(now3);
-        ::fedb::api::GetResponse response;
+        ::openmldb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(307, response.code());
         ASSERT_EQ("invalid args", response.msg());
@@ -2471,31 +2471,31 @@ TEST_F(TabletImplTest, DropTableFollower) {
     TabletImpl tablet;
     tablet.Init("");
     MockClosure closure;
-    ::fedb::api::DropTableRequest dr;
+    ::openmldb::api::DropTableRequest dr;
     dr.set_tid(id);
     dr.set_pid(1);
-    ::fedb::api::DropTableResponse drs;
+    ::openmldb::api::DropTableResponse drs;
     tablet.DropTable(NULL, &dr, &drs, &closure);
     ASSERT_EQ(100, drs.code());
 
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    AddDefaultSchema(1, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-    table_meta->set_mode(::fedb::api::TableMode::kTableFollower);
+    AddDefaultSchema(1, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+    table_meta->set_mode(::openmldb::api::TableMode::kTableFollower);
     table_meta->add_replicas("127.0.0.1:9527");
-    ::fedb::api::CreateTableResponse response;
+    ::openmldb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
-    ::fedb::api::PutRequest prequest;
+    ::openmldb::api::PutRequest prequest;
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
     prequest.set_tid(id);
     prequest.set_pid(1);
-    ::fedb::api::PutResponse presponse;
+    ::openmldb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse, &closure);
     // ReadOnly
     ASSERT_EQ(103, presponse.code());
@@ -2518,74 +2518,74 @@ TEST_F(TabletImplTest, TestGetType) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    AddDefaultSchema(0, 4, ::fedb::type::TTLType::kLatestTime, table_meta);
-    ::fedb::api::CreateTableResponse response;
+    AddDefaultSchema(0, 4, ::openmldb::type::TTLType::kLatestTime, table_meta);
+    ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     // 1
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test");
         prequest.set_time(1);
         prequest.set_value("test1");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     // 2
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test");
         prequest.set_time(2);
         prequest.set_value("test2");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     // 3
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test");
         prequest.set_time(3);
         prequest.set_value("test3");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     // 6
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test");
         prequest.set_time(6);
         prequest.set_value("test6");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
     // eq
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(1);
-        request.set_type(::fedb::api::GetType::kSubKeyEq);
+        request.set_type(::openmldb::api::GetType::kSubKeyEq);
 
-        ::fedb::api::GetResponse response;
+        ::openmldb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2594,13 +2594,13 @@ TEST_F(TabletImplTest, TestGetType) {
     }
     // le
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(5);
-        request.set_type(::fedb::api::GetType::kSubKeyLe);
-        ::fedb::api::GetResponse response;
+        request.set_type(::openmldb::api::GetType::kSubKeyLe);
+        ::openmldb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2609,14 +2609,14 @@ TEST_F(TabletImplTest, TestGetType) {
     }
     // lt
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(3);
-        request.set_type(::fedb::api::GetType::kSubKeyLt);
+        request.set_type(::openmldb::api::GetType::kSubKeyLt);
 
-        ::fedb::api::GetResponse response;
+        ::openmldb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2625,13 +2625,13 @@ TEST_F(TabletImplTest, TestGetType) {
     }
     // gt
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(2);
-        request.set_type(::fedb::api::GetType::kSubKeyGt);
-        ::fedb::api::GetResponse response;
+        request.set_type(::openmldb::api::GetType::kSubKeyGt);
+        ::openmldb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2640,13 +2640,13 @@ TEST_F(TabletImplTest, TestGetType) {
     }
     // ge
     {
-        ::fedb::api::GetRequest request;
+        ::openmldb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(1);
-        request.set_type(::fedb::api::GetType::kSubKeyGe);
-        ::fedb::api::GetResponse response;
+        request.set_type(::openmldb::api::GetType::kSubKeyGe);
+        ::openmldb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -2659,24 +2659,24 @@ TEST_F(TabletImplTest, Snapshot) {
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-    ::fedb::api::CreateTableResponse response;
+    AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+    ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
 
-    ::fedb::api::PutRequest prequest;
+    ::openmldb::api::PutRequest prequest;
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
     prequest.set_tid(id);
     prequest.set_pid(2);
-    ::fedb::api::PutResponse presponse;
+    ::openmldb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse, &closure);
     ASSERT_EQ(100, presponse.code());
     prequest.set_tid(id);
@@ -2684,8 +2684,8 @@ TEST_F(TabletImplTest, Snapshot) {
     tablet.Put(NULL, &prequest, &presponse, &closure);
     ASSERT_EQ(0, presponse.code());
 
-    ::fedb::api::GeneralRequest grequest;
-    ::fedb::api::GeneralResponse gresponse;
+    ::openmldb::api::GeneralRequest grequest;
+    ::openmldb::api::GeneralResponse gresponse;
     grequest.set_tid(id);
     grequest.set_pid(1);
     tablet.PauseSnapshot(NULL, &grequest, &gresponse, &closure);
@@ -2708,21 +2708,21 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Default) {
     tablet.Init("");
     // no height specify
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_mode(::fedb::api::kTableLeader);
-        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kLatestTime, table_meta);
-        ::fedb::api::CreateTableResponse response;
+        table_meta->set_mode(::openmldb::api::kTableLeader);
+        AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kLatestTime, table_meta);
+        ::openmldb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::fedb::api::GetTableStatusRequest request;
-        ::fedb::api::GetTableStatusResponse response;
+        ::openmldb::api::GetTableStatusRequest request;
+        ::openmldb::api::GetTableStatusResponse response;
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
@@ -2736,22 +2736,22 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Specify) {
     TabletImpl tablet;
     tablet.Init("");
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_mode(::fedb::api::kTableLeader);
-        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kLatestTime, table_meta);
+        table_meta->set_mode(::openmldb::api::kTableLeader);
+        AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kLatestTime, table_meta);
         table_meta->set_key_entry_max_height(2);
-        ::fedb::api::CreateTableResponse response;
+        ::openmldb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::fedb::api::GetTableStatusRequest request;
-        ::fedb::api::GetTableStatusResponse response;
+        ::openmldb::api::GetTableStatusRequest request;
+        ::openmldb::api::GetTableStatusResponse response;
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
@@ -2765,21 +2765,21 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Default) {
     TabletImpl tablet;
     tablet.Init("");
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-        table_meta->set_mode(::fedb::api::kTableLeader);
-        ::fedb::api::CreateTableResponse response;
+        AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+        table_meta->set_mode(::openmldb::api::kTableLeader);
+        ::openmldb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::fedb::api::GetTableStatusRequest request;
-        ::fedb::api::GetTableStatusResponse response;
+        ::openmldb::api::GetTableStatusRequest request;
+        ::openmldb::api::GetTableStatusResponse response;
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
@@ -2793,22 +2793,22 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Specify) {
     TabletImpl tablet;
     tablet.Init("");
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_mode(::fedb::api::kTableLeader);
-        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
+        table_meta->set_mode(::openmldb::api::kTableLeader);
+        AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_key_entry_max_height(8);
-        ::fedb::api::CreateTableResponse response;
+        ::openmldb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::fedb::api::GetTableStatusRequest request;
-        ::fedb::api::GetTableStatusResponse response;
+        ::openmldb::api::GetTableStatusRequest request;
+        ::openmldb::api::GetTableStatusResponse response;
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
@@ -2822,24 +2822,24 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest) {
     TabletImpl tablet;
     tablet.Init("");
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_mode(::fedb::api::kTableLeader);
-        AddDefaultSchema(10, 20, ::fedb::type::TTLType::kAbsAndLat, table_meta);
-        ::fedb::api::CreateTableResponse response;
+        table_meta->set_mode(::openmldb::api::kTableLeader);
+        AddDefaultSchema(10, 20, ::openmldb::type::TTLType::kAbsAndLat, table_meta);
+        ::openmldb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::fedb::common::TTLSt cur_ttl;
+        ::openmldb::common::TTLSt cur_ttl;
         ASSERT_EQ(0, GetTTL(tablet, id, 1, "", &cur_ttl));
         ASSERT_EQ(10, cur_ttl.abs_ttl());
         ASSERT_EQ(20, cur_ttl.lat_ttl());
-        ASSERT_EQ(::fedb::type::TTLType::kAbsAndLat, cur_ttl.ttl_type());
+        ASSERT_EQ(::openmldb::type::TTLType::kAbsAndLat, cur_ttl.ttl_type());
     }
 }
 
@@ -2849,24 +2849,24 @@ TEST_F(TabletImplTest, CreateTableAbsAndOrTest) {
     TabletImpl tablet;
     tablet.Init("");
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_mode(::fedb::api::kTableLeader);
-        AddDefaultSchema(10, 20, ::fedb::type::TTLType::kAbsOrLat, table_meta);
-        ::fedb::api::CreateTableResponse response;
+        table_meta->set_mode(::openmldb::api::kTableLeader);
+        AddDefaultSchema(10, 20, ::openmldb::type::TTLType::kAbsOrLat, table_meta);
+        ::openmldb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::fedb::common::TTLSt cur_ttl;
+        ::openmldb::common::TTLSt cur_ttl;
         ASSERT_EQ(0, GetTTL(tablet, id, 1, "", &cur_ttl));
         ASSERT_EQ(10, cur_ttl.abs_ttl());
         ASSERT_EQ(20, cur_ttl.lat_ttl());
-        ASSERT_EQ(::fedb::type::TTLType::kAbsOrLat, cur_ttl.ttl_type());
+        ASSERT_EQ(::openmldb::type::TTLType::kAbsOrLat, cur_ttl.ttl_type());
     }
 }
 
@@ -2876,22 +2876,22 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest_Specify) {
     TabletImpl tablet;
     tablet.Init("");
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_mode(::fedb::api::kTableLeader);
-        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
+        table_meta->set_mode(::openmldb::api::kTableLeader);
+        AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_key_entry_max_height(8);
-        ::fedb::api::CreateTableResponse response;
+        ::openmldb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get table status
     {
-        ::fedb::api::GetTableStatusRequest request;
-        ::fedb::api::GetTableStatusResponse response;
+        ::openmldb::api::GetTableStatusRequest request;
+        ::openmldb::api::GetTableStatusResponse response;
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
@@ -2909,19 +2909,19 @@ TEST_F(TabletImplTest, GetTermPair) {
     {
         TabletImpl tablet;
         tablet.Init("");
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-        table_meta->set_mode(::fedb::api::kTableLeader);
-        ::fedb::api::CreateTableResponse response;
+        AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+        table_meta->set_mode(::openmldb::api::kTableLeader);
+        ::openmldb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
-        ::fedb::api::PutRequest prequest;
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutRequest prequest;
+        ::openmldb::api::PutResponse presponse;
         prequest.set_pk("test1");
         prequest.set_time(9527);
         prequest.set_value("test0");
@@ -2930,16 +2930,16 @@ TEST_F(TabletImplTest, GetTermPair) {
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
 
-        ::fedb::api::GeneralRequest grequest;
-        ::fedb::api::GeneralResponse gresponse;
+        ::openmldb::api::GeneralRequest grequest;
+        ::openmldb::api::GeneralResponse gresponse;
         grequest.set_tid(id);
         grequest.set_pid(1);
         tablet.MakeSnapshot(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(0, gresponse.code());
         sleep(1);
 
-        ::fedb::api::GetTermPairRequest pair_request;
-        ::fedb::api::GetTermPairResponse pair_response;
+        ::openmldb::api::GetTermPairRequest pair_request;
+        ::openmldb::api::GetTermPairResponse pair_response;
         pair_request.set_tid(id);
         pair_request.set_pid(1);
         tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
@@ -2949,8 +2949,8 @@ TEST_F(TabletImplTest, GetTermPair) {
     }
     TabletImpl tablet;
     tablet.Init("");
-    ::fedb::api::GetTermPairRequest pair_request;
-    ::fedb::api::GetTermPairResponse pair_response;
+    ::openmldb::api::GetTermPairRequest pair_request;
+    ::openmldb::api::GetTermPairResponse pair_response;
     pair_request.set_tid(id);
     pair_request.set_pid(1);
     tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
@@ -2964,7 +2964,7 @@ TEST_F(TabletImplTest, GetTermPair) {
     ASSERT_GT(fd, 0);
     google::protobuf::io::FileInputStream fileInput(fd);
     fileInput.SetCloseOnDelete(true);
-    ::fedb::api::Manifest manifest;
+    ::openmldb::api::Manifest manifest;
     google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     std::string snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) +
                                 "_1/snapshot/" + manifest.name();
@@ -2985,33 +2985,33 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
     // create table
     uint32_t id = counter++;
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        AddDefaultSchema(1, 0, ::fedb::type::TTLType::kAbsoluteTime, table_meta);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        ::fedb::api::CreateTableResponse response;
+        AddDefaultSchema(1, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9527);
         prequest.set_value("test0");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
 
     {
-        ::fedb::api::GeneralRequest grq;
+        ::openmldb::api::GeneralRequest grq;
         grq.set_tid(id);
         grq.set_pid(1);
-        ::fedb::api::GeneralResponse grp;
+        ::openmldb::api::GeneralResponse grp;
         grp.set_code(-1);
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
         ASSERT_EQ(0, grp.code());
@@ -3022,19 +3022,19 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
         fileInput.SetCloseOnDelete(true);
-        ::fedb::api::Manifest manifest;
+        ::openmldb::api::Manifest manifest;
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
         ASSERT_EQ(1, (signed)manifest.offset());
     }
     FLAGS_make_snapshot_threshold_offset = 5;
     {
-        ::fedb::api::PutRequest prequest;
+        ::openmldb::api::PutRequest prequest;
         prequest.set_pk("test2");
         prequest.set_time(9527);
         prequest.set_value("test1");
         prequest.set_tid(id);
         prequest.set_pid(1);
-        ::fedb::api::PutResponse presponse;
+        ::openmldb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
 
@@ -3046,10 +3046,10 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
 
-        ::fedb::api::GeneralRequest grq;
+        ::openmldb::api::GeneralRequest grq;
         grq.set_tid(id);
         grq.set_pid(1);
-        ::fedb::api::GeneralResponse grp;
+        ::openmldb::api::GeneralResponse grp;
         grp.set_code(-1);
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
         ASSERT_EQ(0, grp.code());
@@ -3060,7 +3060,7 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
         fileInput.SetCloseOnDelete(true);
-        ::fedb::api::Manifest manifest;
+        ::openmldb::api::Manifest manifest;
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
         ASSERT_EQ(1, (signed)manifest.offset());
         std::string snapshot_file = FLAGS_db_root_path + "/" +
@@ -3080,78 +3080,78 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
     // create table
     uint32_t id = counter++;
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        AddDefaultSchema(100, 50, ::fedb::type::TTLType::kAbsAndLat, table_meta);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        ::fedb::api::CreateTableResponse response;
+        AddDefaultSchema(100, 50, ::openmldb::type::TTLType::kAbsAndLat, table_meta);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // table not exist
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(0);
         request.set_pid(0);
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
+        ttl->set_ttl_type(::openmldb::type::TTLType::kAbsAndLat);
         ttl->set_abs_ttl(10);
         ttl->set_lat_ttl(5);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(100, response.code());
     }
     // bigger than max ttl
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
+        ttl->set_ttl_type(::openmldb::type::TTLType::kAbsAndLat);
         ttl->set_abs_ttl(60 * 24 * 365 * 30 * 2);
         ttl->set_lat_ttl(5);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(132, response.code());
     }
     // bigger than max ttl
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
+        ttl->set_ttl_type(::openmldb::type::TTLType::kAbsAndLat);
         ttl->set_abs_ttl(30);
         ttl->set_lat_ttl(20000);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(132, response.code());
     }
     // ttl type mismatch
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::TTLType::kLatestTime);
+        ttl->set_ttl_type(::openmldb::type::TTLType::kLatestTime);
         ttl->set_abs_ttl(10);
         ttl->set_lat_ttl(5);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(112, response.code());
     }
     // normal case
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
-    ::fedb::api::PutResponse presponse;
-    ::fedb::api::PutRequest prequest;
+    ::openmldb::api::PutResponse presponse;
+    ::openmldb::api::PutRequest prequest;
     {
         prequest.set_pk("test");
         prequest.set_time(now - 60 * 60 * 1000);
@@ -3174,35 +3174,35 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(0, presponse.code());
     }
     MockClosure closure;
-    ::fedb::api::GetRequest grequest;
+    ::openmldb::api::GetRequest grequest;
     grequest.set_tid(id);
     grequest.set_pid(0);
     grequest.set_key("test");
     grequest.set_ts(0);
-    ::fedb::api::GetResponse gresponse;
+    ::openmldb::api::GetResponse gresponse;
     tablet.Get(NULL, &grequest, &gresponse, &closure);
     ASSERT_EQ(0, gresponse.code());
     ASSERT_EQ("test9", gresponse.value());
     // UpdateTTLRequest
 
     // ExecuteGcRequest
-    ::fedb::api::ExecuteGcRequest request_execute;
-    ::fedb::api::GeneralResponse response_execute;
+    ::openmldb::api::ExecuteGcRequest request_execute;
+    ::openmldb::api::GeneralResponse response_execute;
     request_execute.set_tid(id);
     request_execute.set_pid(0);
     // etTableStatusRequest
-    ::fedb::api::GetTableStatusRequest gr;
-    ::fedb::api::GetTableStatusResponse gres;
+    ::openmldb::api::GetTableStatusRequest gr;
+    ::openmldb::api::GetTableStatusResponse gres;
     // ttl update to zero
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
+        ttl->set_ttl_type(::openmldb::type::TTLType::kAbsAndLat);
         ttl->set_abs_ttl(0);
         ttl->set_lat_ttl(0);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -3211,7 +3211,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(0, gresponse.code());
         ASSERT_EQ("test9", gresponse.value());
 
-        ::fedb::common::TTLSt cur_ttl;
+        ::openmldb::common::TTLSt cur_ttl;
         ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
         ASSERT_EQ(100, (signed)cur_ttl.abs_ttl());
         ASSERT_EQ(50, (signed)cur_ttl.lat_ttl());
@@ -3228,14 +3228,14 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
     }
     // ttl update from zero to no zero
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl_desc = request.mutable_ttl();
-        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
+        ttl_desc->set_ttl_type(::openmldb::type::TTLType::kAbsAndLat);
         ttl_desc->set_abs_ttl(50);
         ttl_desc->set_lat_ttl(1);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -3244,7 +3244,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(0, gresponse.code());
         ASSERT_EQ("test9", gresponse.value());
 
-        ::fedb::common::TTLSt cur_ttl;
+        ::openmldb::common::TTLSt cur_ttl;
         ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
         ASSERT_EQ(0, (signed)cur_ttl.abs_ttl());
         ASSERT_EQ(0, (signed)cur_ttl.lat_ttl());
@@ -3262,14 +3262,14 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
     }
     // update from 50 to 100
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
+        ttl->set_ttl_type(::openmldb::type::TTLType::kAbsAndLat);
         ttl->set_abs_ttl(100);
         ttl->set_lat_ttl(2);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -3278,7 +3278,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(0, gresponse.code());
         ASSERT_EQ("test9", gresponse.value());
 
-        ::fedb::common::TTLSt cur_ttl;
+        ::openmldb::common::TTLSt cur_ttl;
         ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
         ASSERT_EQ(50, (signed)cur_ttl.abs_ttl());
         ASSERT_EQ(1, (signed)cur_ttl.lat_ttl());
@@ -3310,78 +3310,78 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
     // create table
     uint32_t id = counter++;
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        AddDefaultSchema(100, 50, ::fedb::type::TTLType::kAbsOrLat, table_meta);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        ::fedb::api::CreateTableResponse response;
+        AddDefaultSchema(100, 50, ::openmldb::type::TTLType::kAbsOrLat, table_meta);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // table not exist
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(0);
         request.set_pid(0);
         auto ttl_desc = request.mutable_ttl();
-        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
+        ttl_desc->set_ttl_type(::openmldb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(5);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(100, response.code());
     }
     // bigger than max ttl
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl_desc = request.mutable_ttl();
-        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
+        ttl_desc->set_ttl_type(::openmldb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(60 * 24 * 365 * 30 * 2);
         ttl_desc->set_lat_ttl(5);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(132, response.code());
     }
     // bigger than max ttl
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl_desc = request.mutable_ttl();
-        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
+        ttl_desc->set_ttl_type(::openmldb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(30);
         ttl_desc->set_lat_ttl(20000);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(132, response.code());
     }
     // ttl type mismatch
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl_desc = request.mutable_ttl();
-        ttl_desc->set_ttl_type(::fedb::type::TTLType::kLatestTime);
+        ttl_desc->set_ttl_type(::openmldb::type::TTLType::kLatestTime);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(5);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(112, response.code());
     }
     // normal case
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
-    ::fedb::api::PutRequest prequest;
-    ::fedb::api::PutResponse presponse;
+    ::openmldb::api::PutRequest prequest;
+    ::openmldb::api::PutResponse presponse;
     {
         prequest.set_pk("test");
         prequest.set_time(now - 60 * 60 * 1000);
@@ -3403,35 +3403,35 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(0, presponse.code());
     }
 
-    ::fedb::api::GetRequest grequest;
+    ::openmldb::api::GetRequest grequest;
     grequest.set_tid(id);
     grequest.set_pid(0);
     grequest.set_key("test");
     grequest.set_ts(0);
-    ::fedb::api::GetResponse gresponse;
+    ::openmldb::api::GetResponse gresponse;
     MockClosure closure;
     tablet.Get(NULL, &grequest, &gresponse, &closure);
     ASSERT_EQ(0, gresponse.code());
     ASSERT_EQ("test9", gresponse.value());
 
     // ExecuteGcRequest
-    ::fedb::api::ExecuteGcRequest request_execute;
-    ::fedb::api::GeneralResponse response_execute;
+    ::openmldb::api::ExecuteGcRequest request_execute;
+    ::openmldb::api::GeneralResponse response_execute;
     request_execute.set_tid(id);
     request_execute.set_pid(0);
     // etTableStatusRequest
-    ::fedb::api::GetTableStatusRequest gr;
-    ::fedb::api::GetTableStatusResponse gres;
+    ::openmldb::api::GetTableStatusRequest gr;
+    ::openmldb::api::GetTableStatusResponse gres;
     // ttl update to zero
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl_desc = request.mutable_ttl();
-        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
+        ttl_desc->set_ttl_type(::openmldb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(0);
         ttl_desc->set_lat_ttl(0);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -3440,7 +3440,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(0, gresponse.code());
         ASSERT_EQ("test9", gresponse.value());
 
-        ::fedb::common::TTLSt cur_ttl;
+        ::openmldb::common::TTLSt cur_ttl;
         ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
         ASSERT_EQ(100, (signed)cur_ttl.abs_ttl());
         ASSERT_EQ(50, (signed)cur_ttl.lat_ttl());
@@ -3458,14 +3458,14 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
     }
     // ttl update from zero to no zero
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl_desc = request.mutable_ttl();
-        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
+        ttl_desc->set_ttl_type(::openmldb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(10);
         ttl_desc->set_lat_ttl(1);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -3474,7 +3474,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(0, gresponse.code());
         ASSERT_EQ("test9", gresponse.value());
 
-        ::fedb::common::TTLSt cur_ttl;
+        ::openmldb::common::TTLSt cur_ttl;
         ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
         ASSERT_EQ(0, (signed)cur_ttl.abs_ttl());
         ASSERT_EQ(0, (signed)cur_ttl.lat_ttl());
@@ -3492,14 +3492,14 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
     }
     // update from 10 to 100
     {
-        ::fedb::api::UpdateTTLRequest request;
+        ::openmldb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         auto ttl_desc = request.mutable_ttl();
-        ttl_desc->set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
+        ttl_desc->set_ttl_type(::openmldb::type::TTLType::kAbsOrLat);
         ttl_desc->set_abs_ttl(100);
         ttl_desc->set_lat_ttl(2);
-        ::fedb::api::UpdateTTLResponse response;
+        ::openmldb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
@@ -3508,7 +3508,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(109, gresponse.code());
 
 
-        ::fedb::common::TTLSt cur_ttl;
+        ::openmldb::common::TTLSt cur_ttl;
         ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
         ASSERT_EQ(10, (signed)cur_ttl.abs_ttl());
         ASSERT_EQ(1, (signed)cur_ttl.lat_ttl());
@@ -3537,20 +3537,20 @@ TEST_F(TabletImplTest, ScanAtLeast) {
     MockClosure closure;
     uint32_t id = 100;
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kAbsAndLat, table_meta);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        ::fedb::api::CreateTableResponse response;
+        AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsAndLat, table_meta);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        ::openmldb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
-    ::fedb::api::PutResponse presponse;
-    ::fedb::api::PutRequest prequest;
+    ::openmldb::api::PutResponse presponse;
+    ::openmldb::api::PutRequest prequest;
     for (int i = 0; i < 1000; ++i) {
         prequest.set_pk("test" + std::to_string(i % 10));
         prequest.set_time(now - i * 60 * 1000);
@@ -3560,8 +3560,8 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    ::fedb::api::ScanRequest sr;
-    ::fedb::api::ScanResponse srp;
+    ::openmldb::api::ScanRequest sr;
+    ::openmldb::api::ScanResponse srp;
     // test atleast more than et
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -3570,7 +3570,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         sr.set_st(now);
         sr.set_et(now - 500 * 60 * 1000);
         sr.set_atleast(80);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(80, (signed)srp.count());
@@ -3583,7 +3583,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         sr.set_st(now);
         sr.set_et(now - 700 * 60 * 1000 + 1000);
         sr.set_atleast(50);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(70, (signed)srp.count());
@@ -3597,7 +3597,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         sr.set_et(now - 700 * 60 * 1000 + 1000);
         sr.set_atleast(50);
         sr.set_limit(60);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(60, (signed)srp.count());
@@ -3610,7 +3610,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
     sr.set_et(now - 700 * 60 * 1000 + 1000);
     sr.set_atleast(70);
     sr.set_limit(60);
-    sr.set_et_type(::fedb::api::kSubKeyGe);
+    sr.set_et_type(::openmldb::api::kSubKeyGe);
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(307, srp.code());
     // test atleast more than count
@@ -3622,7 +3622,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         sr.set_et(now - 1100 * 60 * 1000);
         sr.set_atleast(120);
         sr.set_limit(0);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(100, (signed)srp.count());
@@ -3635,51 +3635,51 @@ TEST_F(TabletImplTest, AbsAndLat) {
     MockClosure closure;
     uint32_t id = 101;
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
+        ::openmldb::common::ColumnDesc* desc = table_meta->add_column_desc();
         desc->set_name("test");
-        desc->set_data_type(::fedb::type::kString);
+        desc->set_data_type(::openmldb::type::kString);
         desc = table_meta->add_column_desc();
         desc->set_name("ts1");
-        desc->set_data_type(::fedb::type::kBigInt);
+        desc->set_data_type(::openmldb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts2");
-        desc->set_data_type(::fedb::type::kBigInt);
+        desc->set_data_type(::openmldb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts3");
-        desc->set_data_type(::fedb::type::kBigInt);
+        desc->set_data_type(::openmldb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts4");
-        desc->set_data_type(::fedb::type::kBigInt);
+        desc->set_data_type(::openmldb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts5");
-        desc->set_data_type(::fedb::type::kBigInt);
+        desc->set_data_type(::openmldb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts6");
-        desc->set_data_type(::fedb::type::kBigInt);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "index0", "test", "ts1", ::fedb::type::kAbsAndLat, 100, 10);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "index1", "test", "ts2", ::fedb::type::kAbsAndLat, 50, 8);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "index2", "test", "ts3", ::fedb::type::kAbsAndLat, 70, 5);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "index3", "test", "ts4", ::fedb::type::kAbsAndLat, 0, 5);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "index4", "test", "ts5", ::fedb::type::kAbsAndLat, 50, 0);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "index5", "test", "ts6", ::fedb::type::kAbsAndLat, 0, 0);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        ::fedb::api::CreateTableResponse response;
+        desc->set_data_type(::openmldb::type::kBigInt);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index0", "test", "ts1", ::openmldb::type::kAbsAndLat, 100, 10);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index1", "test", "ts2", ::openmldb::type::kAbsAndLat, 50, 8);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index2", "test", "ts3", ::openmldb::type::kAbsAndLat, 70, 5);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index3", "test", "ts4", ::openmldb::type::kAbsAndLat, 0, 5);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index4", "test", "ts5", ::openmldb::type::kAbsAndLat, 50, 0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index5", "test", "ts6", ::openmldb::type::kAbsAndLat, 0, 0);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        ::openmldb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     for (int i = 0; i < 100; ++i) {
-        ::fedb::api::PutResponse presponse;
-        ::fedb::api::PutRequest prequest;
-        ::fedb::api::Dimension* dim = prequest.add_dimensions();
+        ::openmldb::api::PutResponse presponse;
+        ::openmldb::api::PutRequest prequest;
+        ::openmldb::api::Dimension* dim = prequest.add_dimensions();
         dim->set_idx(0);
         dim->set_key("test" + std::to_string(i % 10));
-        ::fedb::api::TSDimension* ts = prequest.add_ts_dimensions();
+        ::openmldb::api::TSDimension* ts = prequest.add_ts_dimensions();
         ts->set_idx(0);
         ts->set_ts(now - (99 - i) * 60 * 1000);
         ts = prequest.add_ts_dimensions();
@@ -3706,87 +3706,87 @@ TEST_F(TabletImplTest, AbsAndLat) {
     //// Traverse test
     // ts1 has no expire data traverse return 100
     {
-        ::fedb::api::TraverseRequest sr;
+        ::openmldb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index0");
-        ::fedb::api::TraverseResponse* srp =
-            new ::fedb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp =
+            new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
     // ts2 has 20 expire
     {
-        ::fedb::api::TraverseRequest sr;
+        ::openmldb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index1");
-        ::fedb::api::TraverseResponse* srp =
-            new ::fedb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp =
+            new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(80, (signed)srp->count());
     }
     // ts3 has 30 expire
     {
-        ::fedb::api::TraverseRequest sr;
+        ::openmldb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index2");
-        ::fedb::api::TraverseResponse* srp =
-            new ::fedb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp =
+            new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(70, (signed)srp->count());
     }
     // ts4 has no expire
     {
-        ::fedb::api::TraverseRequest sr;
+        ::openmldb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index3");
-        ::fedb::api::TraverseResponse* srp =
-            new ::fedb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp =
+            new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
     // ts5 has no expire
     {
-        ::fedb::api::TraverseRequest sr;
+        ::openmldb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index4");
-        ::fedb::api::TraverseResponse* srp =
-            new ::fedb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp =
+            new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
     // ts6 has no expire
     {
-        ::fedb::api::TraverseRequest sr;
+        ::openmldb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index5");
-        ::fedb::api::TraverseResponse* srp =
-            new ::fedb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp =
+            new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
     // //// Scan Count test
-    ::fedb::api::ScanRequest sr;
-    ::fedb::api::ScanResponse srp;
-    ::fedb::api::CountRequest cr;
-    ::fedb::api::CountResponse crp;
+    ::openmldb::api::ScanRequest sr;
+    ::openmldb::api::ScanResponse srp;
+    ::openmldb::api::CountRequest cr;
+    ::openmldb::api::CountResponse crp;
     cr.set_filter_expired_data(true);
     //     time    cnt
     // st  valid   valid
@@ -3798,7 +3798,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000 + 100);
         sr.set_idx_name("index0");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -3808,7 +3808,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now);
         cr.set_et(now - 100 * 60 * 1000 + 100);
         cr.set_idx_name("index0");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(10, (signed)crp.count());
@@ -3823,7 +3823,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 60 * 60 * 1000 + 100);
         sr.set_idx_name("index1");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -3833,7 +3833,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now);
         cr.set_et(now - 60 * 60 * 1000 + 100);
         cr.set_idx_name("index1");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(6, (signed)crp.count());
@@ -3848,7 +3848,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 60 * 60 * 1000 + 100);
         sr.set_idx_name("index2");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -3858,7 +3858,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now);
         cr.set_et(now - 60 * 60 * 1000 + 100);
         cr.set_idx_name("index2");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(6, (signed)crp.count());
@@ -3873,7 +3873,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("index2");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(7, (signed)srp.count());
@@ -3883,7 +3883,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_idx_name("index2");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(7, (signed)crp.count());
@@ -3898,7 +3898,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 50 * 60 * 1000 + 100);
         sr.set_et(now - 70 * 60 * 1000 + 100);
         sr.set_idx_name("index1");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -3908,7 +3908,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now - 50 * 60 * 1000 + 100);
         cr.set_et(now - 70 * 60 * 1000 + 100);
         cr.set_idx_name("index1");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(2, (signed)crp.count());
@@ -3923,7 +3923,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 50 * 60 * 1000 + 100);
         sr.set_et(now - 70 * 60 * 1000 + 100);
         sr.set_idx_name("index2");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -3933,7 +3933,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now - 50 * 60 * 1000 + 100);
         cr.set_et(now - 70 * 60 * 1000 + 100);
         cr.set_idx_name("index2");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(2, (signed)crp.count());
@@ -3948,7 +3948,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 90 * 60 * 1000 + 100);
         sr.set_idx_name("index1");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -3958,7 +3958,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 90 * 60 * 1000 + 100);
         cr.set_idx_name("index1");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(2, (signed)crp.count());
@@ -3973,7 +3973,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("index2");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(1, (signed)srp.count());
@@ -3983,7 +3983,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_idx_name("index2");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(1, (signed)crp.count());
@@ -3998,7 +3998,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 80 * 60 * 1000 + 100);
         sr.set_et(now - 100 * 60 * 1000 + 100);
         sr.set_idx_name("index2");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -4008,7 +4008,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now - 80 * 60 * 1000 + 100);
         cr.set_et(now - 100 * 60 * 1000 + 100);
         cr.set_idx_name("index2");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(0, (signed)crp.count());
@@ -4024,7 +4024,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000 + 100);
         sr.set_idx_name("index3");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -4034,7 +4034,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now);
         cr.set_et(now - 40 * 60 * 1000 + 100);
         cr.set_idx_name("index3");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(4, (signed)crp.count());
@@ -4050,7 +4050,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("index3");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(8, (signed)srp.count());
@@ -4060,7 +4060,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_idx_name("index3");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(8, (signed)crp.count());
@@ -4076,7 +4076,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("index3");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -4086,7 +4086,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_idx_name("index3");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(2, (signed)crp.count());
@@ -4102,7 +4102,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000 + 100);
         sr.set_idx_name("index4");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -4112,7 +4112,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now);
         cr.set_et(now - 40 * 60 * 1000 + 100);
         cr.set_idx_name("index4");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(4, (signed)crp.count());
@@ -4128,7 +4128,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("index4");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(8, (signed)srp.count());
@@ -4138,7 +4138,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_idx_name("index4");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(8, (signed)crp.count());
@@ -4154,7 +4154,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("index4");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -4164,7 +4164,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_idx_name("index4");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(2, (signed)crp.count());
@@ -4180,7 +4180,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("index5");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -4190,15 +4190,15 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_idx_name("index5");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(2, (signed)crp.count());
     }
     //// Get test
-    ::fedb::api::GetRequest gr;
-    ::fedb::api::GetResponse grp;
-    gr.set_type(::fedb::api::kSubKeyLe);
+    ::openmldb::api::GetRequest gr;
+    ::openmldb::api::GetResponse grp;
+    gr.set_type(::openmldb::api::kSubKeyLe);
     //     time    cnt
     // ts  valid   valid
     for (int i = 0; i < 10; ++i) {
@@ -4312,7 +4312,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 50 * 60 * 1000);
         sr.set_idx_name("index0");
         sr.set_atleast(10);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -4326,7 +4326,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 50 * 60 * 1000);
         sr.set_idx_name("index1");
         sr.set_atleast(10);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(8, (signed)srp.count());
@@ -4339,7 +4339,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 50 * 60 * 1000);
         sr.set_idx_name("index2");
         sr.set_atleast(10);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(7, (signed)srp.count());
@@ -4353,7 +4353,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("index0");
         sr.set_atleast(5);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -4366,7 +4366,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("index1");
         sr.set_atleast(10);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(8, (signed)srp.count());
@@ -4379,7 +4379,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("index2");
         sr.set_atleast(10);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(7, (signed)srp.count());
@@ -4393,7 +4393,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("index0");
         sr.set_atleast(5);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -4406,7 +4406,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("index1");
         sr.set_atleast(5);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(8, (signed)srp.count());
@@ -4419,7 +4419,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("index2");
         sr.set_atleast(5);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(7, (signed)srp.count());
@@ -4434,7 +4434,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_idx_name("index0");
         sr.set_atleast(5);
         sr.set_limit(6);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -4448,7 +4448,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_idx_name("index1");
         sr.set_atleast(5);
         sr.set_limit(6);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -4462,7 +4462,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_idx_name("index2");
         sr.set_atleast(5);
         sr.set_limit(6);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -4477,7 +4477,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_idx_name("index0");
         sr.set_atleast(9);
         sr.set_limit(9);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(9, (signed)srp.count());
@@ -4491,7 +4491,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_idx_name("index1");
         sr.set_atleast(9);
         sr.set_limit(9);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(8, (signed)srp.count());
@@ -4505,7 +4505,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_idx_name("index2");
         sr.set_atleast(9);
         sr.set_limit(9);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(7, (signed)srp.count());
@@ -4519,7 +4519,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_idx_name("index0");
         sr.set_limit(7);
         sr.set_atleast(5);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -4532,52 +4532,52 @@ TEST_F(TabletImplTest, AbsOrLat) {
     MockClosure closure;
     uint32_t id = 102;
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
+        ::openmldb::common::ColumnDesc* desc = table_meta->add_column_desc();
         desc->set_name("test");
-        desc->set_data_type(::fedb::type::kString);
+        desc->set_data_type(::openmldb::type::kString);
         desc = table_meta->add_column_desc();
         desc->set_name("ts1");
-        desc->set_data_type(::fedb::type::kBigInt);
+        desc->set_data_type(::openmldb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts2");
-        desc->set_data_type(::fedb::type::kBigInt);
+        desc->set_data_type(::openmldb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts3");
-        desc->set_data_type(::fedb::type::kBigInt);
+        desc->set_data_type(::openmldb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts4");
-        desc->set_data_type(::fedb::type::kBigInt);
+        desc->set_data_type(::openmldb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts5");
-        desc->set_data_type(::fedb::type::kBigInt);
+        desc->set_data_type(::openmldb::type::kBigInt);
         desc = table_meta->add_column_desc();
         desc->set_name("ts6");
-        desc->set_data_type(::fedb::type::kBigInt);
+        desc->set_data_type(::openmldb::type::kBigInt);
 
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts1", "test", "ts1", ::fedb::type::kAbsOrLat, 100, 10);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts2", "test", "ts2", ::fedb::type::kAbsOrLat, 50, 8);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts3", "test", "ts3", ::fedb::type::kAbsOrLat, 70, 6);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts4", "test", "ts4", ::fedb::type::kAbsOrLat, 0, 5);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts5", "test", "ts5", ::fedb::type::kAbsOrLat, 50, 0);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts6", "test", "ts6", ::fedb::type::kAbsOrLat, 0, 0);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        ::fedb::api::CreateTableResponse response;
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts1", "test", "ts1", ::openmldb::type::kAbsOrLat, 100, 10);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts2", "test", "ts2", ::openmldb::type::kAbsOrLat, 50, 8);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts3", "test", "ts3", ::openmldb::type::kAbsOrLat, 70, 6);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts4", "test", "ts4", ::openmldb::type::kAbsOrLat, 0, 5);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts5", "test", "ts5", ::openmldb::type::kAbsOrLat, 50, 0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "ts6", "test", "ts6", ::openmldb::type::kAbsOrLat, 0, 0);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        ::openmldb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     for (int i = 0; i < 100; ++i) {
-        ::fedb::api::PutResponse presponse;
-        ::fedb::api::PutRequest prequest;
-        ::fedb::api::Dimension* dim = prequest.add_dimensions();
+        ::openmldb::api::PutResponse presponse;
+        ::openmldb::api::PutRequest prequest;
+        ::openmldb::api::Dimension* dim = prequest.add_dimensions();
         dim->set_idx(0);
         dim->set_key("test" + std::to_string(i % 10));
-        ::fedb::api::TSDimension* ts = prequest.add_ts_dimensions();
+        ::openmldb::api::TSDimension* ts = prequest.add_ts_dimensions();
         ts->set_idx(0);
         ts->set_ts(now - (99 - i) * 60 * 1000);
         ts = prequest.add_ts_dimensions();
@@ -4602,86 +4602,86 @@ TEST_F(TabletImplTest, AbsOrLat) {
     }
 
     {
-        ::fedb::api::TraverseRequest sr;
+        ::openmldb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("ts1");
-        ::fedb::api::TraverseResponse* srp =
-            new ::fedb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp =
+            new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
     {
-        ::fedb::api::TraverseRequest sr;
+        ::openmldb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("ts2");
-        ::fedb::api::TraverseResponse* srp =
-            new ::fedb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp =
+            new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(50, (signed)srp->count());
     }
     {
-        ::fedb::api::TraverseRequest sr;
+        ::openmldb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("ts3");
-        ::fedb::api::TraverseResponse* srp =
-            new ::fedb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp =
+            new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(60, (signed)srp->count());
     }
     // ts4 has 50 expire
     {
-        ::fedb::api::TraverseRequest sr;
+        ::openmldb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("ts4");
-        ::fedb::api::TraverseResponse* srp =
-            new ::fedb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp =
+            new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(50, (signed)srp->count());
     }
     // ts5 has 50 expire
     {
-        ::fedb::api::TraverseRequest sr;
+        ::openmldb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("ts5");
-        ::fedb::api::TraverseResponse* srp =
-            new ::fedb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp =
+            new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(50, (signed)srp->count());
     }
     // ts6 has no expire
     {
-        ::fedb::api::TraverseRequest sr;
+        ::openmldb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("ts6");
-        ::fedb::api::TraverseResponse* srp =
-            new ::fedb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp =
+            new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
 
     // //// Scan Count test
-    ::fedb::api::ScanRequest sr;
-    ::fedb::api::ScanResponse srp;
-    ::fedb::api::CountRequest cr;
-    ::fedb::api::CountResponse crp;
+    ::openmldb::api::ScanRequest sr;
+    ::openmldb::api::ScanResponse srp;
+    ::openmldb::api::CountRequest cr;
+    ::openmldb::api::CountResponse crp;
     cr.set_filter_expired_data(true);
     //     time    cnt
     // st  valid   valid
@@ -4693,7 +4693,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000 + 100);
         sr.set_idx_name("ts1");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -4703,7 +4703,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now);
         cr.set_et(now - 100 * 60 * 1000 + 100);
         cr.set_idx_name("ts1");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(10, (signed)crp.count());
@@ -4718,7 +4718,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 60 * 60 * 1000 + 100);
         sr.set_idx_name("ts2");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -4728,7 +4728,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now);
         cr.set_et(now - 60 * 60 * 1000 + 100);
         cr.set_idx_name("ts2");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(5, (signed)crp.count());
@@ -4743,7 +4743,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 70 * 60 * 1000 + 100);
         sr.set_idx_name("ts3");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -4753,7 +4753,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now);
         cr.set_et(now - 70 * 60 * 1000 + 100);
         cr.set_idx_name("ts3");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(6, (signed)crp.count());
@@ -4768,7 +4768,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("ts3");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -4778,7 +4778,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_idx_name("ts3");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(6, (signed)crp.count());
@@ -4793,7 +4793,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("ts2");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -4803,7 +4803,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_idx_name("ts2");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(307, crp.code());
         ASSERT_EQ(0, (signed)crp.count());
@@ -4818,7 +4818,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 70 * 60 * 1000 + 100);
         sr.set_idx_name("ts3");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -4828,7 +4828,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 70 * 60 * 1000 + 100);
         cr.set_idx_name("ts3");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(0, (signed)crp.count());
@@ -4843,7 +4843,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 90 * 60 * 1000 + 100);
         sr.set_idx_name("ts2");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -4853,7 +4853,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 90 * 60 * 1000 + 100);
         cr.set_idx_name("ts2");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(307, crp.code());
         ASSERT_EQ(0, (signed)crp.count());
@@ -4868,7 +4868,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("ts3");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -4878,7 +4878,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_idx_name("ts3");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(0, (signed)crp.count());
@@ -4893,7 +4893,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 80 * 60 * 1000 + 100);
         sr.set_et(now - 100 * 60 * 1000 + 100);
         sr.set_idx_name("ts3");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -4903,7 +4903,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now - 80 * 60 * 1000 + 100);
         cr.set_et(now - 100 * 60 * 1000 + 100);
         cr.set_idx_name("ts3");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(307, crp.code());
         ASSERT_EQ(0, (signed)crp.count());
@@ -4919,7 +4919,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000 + 100);
         sr.set_idx_name("ts4");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -4929,7 +4929,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now);
         cr.set_et(now - 40 * 60 * 1000 + 100);
         cr.set_idx_name("ts4");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(4, (signed)crp.count());
@@ -4945,7 +4945,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("ts4");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -4955,7 +4955,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_idx_name("ts4");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(5, (signed)crp.count());
@@ -4971,7 +4971,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("ts4");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -4981,7 +4981,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_idx_name("ts4");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(0, (signed)crp.count());
@@ -4997,7 +4997,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000 + 100);
         sr.set_idx_name("ts5");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -5007,7 +5007,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now);
         cr.set_et(now - 40 * 60 * 1000 + 100);
         cr.set_idx_name("ts5");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(4, (signed)crp.count());
@@ -5023,7 +5023,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("ts5");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5033,7 +5033,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_idx_name("ts5");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(5, (signed)crp.count());
@@ -5049,7 +5049,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("ts5");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -5059,7 +5059,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_idx_name("ts5");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(307, crp.code());
         ASSERT_EQ(0, (signed)crp.count());
@@ -5075,7 +5075,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("ts6");
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -5085,15 +5085,15 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_st(now - 60 * 60 * 1000 + 100);
         cr.set_et(now - 80 * 60 * 1000 + 100);
         cr.set_idx_name("ts6");
-        cr.set_et_type(::fedb::api::kSubKeyGe);
+        cr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
         ASSERT_EQ(2, (signed)crp.count());
     }
     //// Get test
-    ::fedb::api::GetRequest gr;
-    ::fedb::api::GetResponse grp;
-    gr.set_type(::fedb::api::kSubKeyLe);
+    ::openmldb::api::GetRequest gr;
+    ::openmldb::api::GetResponse grp;
+    gr.set_type(::openmldb::api::kSubKeyLe);
     //     time    cnt
     // ts  valid   valid
     for (int i = 0; i < 10; ++i) {
@@ -5207,7 +5207,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 40 * 60 * 1000);
         sr.set_idx_name("ts1");
         sr.set_atleast(10);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -5221,7 +5221,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 40 * 60 * 1000);
         sr.set_idx_name("ts2");
         sr.set_atleast(10);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5234,7 +5234,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 40 * 60 * 1000);
         sr.set_idx_name("ts3");
         sr.set_atleast(10);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -5248,7 +5248,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("ts1");
         sr.set_atleast(5);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -5261,7 +5261,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("ts2");
         sr.set_atleast(10);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5274,7 +5274,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("ts3");
         sr.set_atleast(10);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -5288,7 +5288,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("ts1");
         sr.set_atleast(5);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -5301,7 +5301,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("ts2");
         sr.set_atleast(5);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5314,7 +5314,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("ts3");
         sr.set_atleast(5);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -5329,7 +5329,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_idx_name("ts1");
         sr.set_atleast(3);
         sr.set_limit(4);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -5343,7 +5343,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_idx_name("ts2");
         sr.set_atleast(3);
         sr.set_limit(4);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -5357,7 +5357,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_idx_name("ts3");
         sr.set_atleast(3);
         sr.set_limit(4);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -5372,7 +5372,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_idx_name("ts1");
         sr.set_atleast(9);
         sr.set_limit(9);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(9, (signed)srp.count());
@@ -5386,7 +5386,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_idx_name("ts2");
         sr.set_atleast(9);
         sr.set_limit(9);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5400,7 +5400,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_idx_name("ts3");
         sr.set_atleast(9);
         sr.set_limit(9);
-        sr.set_et_type(::fedb::api::kSubKeyGe);
+        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -5413,44 +5413,44 @@ TEST_F(TabletImplTest, DelRecycle) {
     FLAGS_recycle_ttl = 1;
     FLAGS_recycle_bin_root_path = "/tmp/gtest/recycle";
     std::string tmp_recycle_path = "/tmp/gtest/recycle";
-    ::fedb::base::RemoveDirRecursive(FLAGS_recycle_bin_root_path);
-    ::fedb::base::MkdirRecur(
+    ::openmldb::base::RemoveDirRecursive(FLAGS_recycle_bin_root_path);
+    ::openmldb::base::MkdirRecur(
         "/tmp/gtest/recycle/99_1_binlog_20191111070955/binlog/");
-    ::fedb::base::MkdirRecur(
+    ::openmldb::base::MkdirRecur(
         "/tmp/gtest/recycle/100_2_20191111115149/binlog/");
     TabletImpl tablet;
     tablet.Init("");
 
     std::vector<std::string> file_vec;
-    ::fedb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_EQ(2, (signed)file_vec.size());
     std::cout << "sleep for 30s" << std::endl;
     sleep(30);
 
-    std::string now_time = ::fedb::base::GetNowTime();
-    ::fedb::base::MkdirRecur("/tmp/gtest/recycle/99_3_" + now_time +
+    std::string now_time = ::openmldb::base::GetNowTime();
+    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/99_3_" + now_time +
                               "/binlog/");
-    ::fedb::base::MkdirRecur("/tmp/gtest/recycle/100_4_binlog_" + now_time +
+    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/100_4_binlog_" + now_time +
                               "/binlog/");
     file_vec.clear();
-    ::fedb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_EQ(4, (signed)file_vec.size());
 
     std::cout << "sleep for 35s" << std::endl;
     sleep(35);
 
     file_vec.clear();
-    ::fedb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_EQ(2, (signed)file_vec.size());
 
     std::cout << "sleep for 65s" << std::endl;
     sleep(65);
 
     file_vec.clear();
-    ::fedb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_EQ(0, (signed)file_vec.size());
 
-    ::fedb::base::RemoveDirRecursive("/tmp/gtest");
+    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
     FLAGS_recycle_ttl = tmp_recycle_ttl;
     FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
 }
@@ -5462,30 +5462,30 @@ TEST_F(TabletImplTest, DumpIndex) {
     MockClosure closure;
     TabletImpl tablet;
     tablet.Init("");
-    ::fedb::api::CreateTableRequest request;
-    ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
-    ::fedb::common::ColumnDesc* desc = table_meta->add_column_desc();
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::openmldb::common::ColumnDesc* desc = table_meta->add_column_desc();
     desc->set_name("card");
-    desc->set_data_type(::fedb::type::kString);
+    desc->set_data_type(::openmldb::type::kString);
     desc = table_meta->add_column_desc();
     desc->set_name("mcc");
-    desc->set_data_type(::fedb::type::kString);
+    desc->set_data_type(::openmldb::type::kString);
     desc = table_meta->add_column_desc();
     desc->set_name("price");
-    desc->set_data_type(::fedb::type::kBigInt);
+    desc->set_data_type(::openmldb::type::kBigInt);
     desc = table_meta->add_column_desc();
     desc->set_name("ts1");
-    desc->set_data_type(::fedb::type::kBigInt);
+    desc->set_data_type(::openmldb::type::kBigInt);
     desc = table_meta->add_column_desc();
     desc->set_name("ts2");
-    desc->set_data_type(::fedb::type::kBigInt);
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "index1", "card", "ts1", ::fedb::type::kAbsoluteTime, 0, 0);
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "index2", "card", "ts2", ::fedb::type::kAbsoluteTime, 0, 0);
+    desc->set_data_type(::openmldb::type::kBigInt);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "index1", "card", "ts1", ::openmldb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "index2", "card", "ts2", ::openmldb::type::kAbsoluteTime, 0, 0);
 
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
-    ::fedb::api::CreateTableResponse response;
+    ::openmldb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
 
@@ -5497,30 +5497,30 @@ TEST_F(TabletImplTest, DumpIndex) {
         input.push_back(std::to_string(i + 100));
         input.push_back(std::to_string(i + 10000));
         std::string value;
-        ::fedb::codec::RowCodec::EncodeRow(input, table_meta->column_desc(), 1, value);
-        ::fedb::api::PutRequest request;
+        ::openmldb::codec::RowCodec::EncodeRow(input, table_meta->column_desc(), 1, value);
+        ::openmldb::api::PutRequest request;
         request.set_value(value);
         request.set_tid(id);
         request.set_pid(1);
 
-        ::fedb::api::Dimension* d = request.add_dimensions();
+        ::openmldb::api::Dimension* d = request.add_dimensions();
         d->set_key(input[0]);
         d->set_idx(0);
-        ::fedb::api::TSDimension* tsd = request.add_ts_dimensions();
+        ::openmldb::api::TSDimension* tsd = request.add_ts_dimensions();
         tsd->set_ts(i + 100);
         tsd->set_idx(0);
         tsd = request.add_ts_dimensions();
         tsd->set_ts(i + 10000);
         tsd->set_idx(1);
-        ::fedb::api::PutResponse response;
+        ::openmldb::api::PutResponse response;
         MockClosure closure;
         tablet.Put(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
-    ::fedb::api::GeneralRequest grq;
+    ::openmldb::api::GeneralRequest grq;
     grq.set_tid(id);
     grq.set_pid(1);
-    ::fedb::api::GeneralResponse grp;
+    ::openmldb::api::GeneralResponse grp;
     grp.set_code(-1);
     tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
     sleep(2);
@@ -5532,27 +5532,27 @@ TEST_F(TabletImplTest, DumpIndex) {
         input.push_back(std::to_string(i + 200));
         input.push_back(std::to_string(i + 20000));
         std::string value;
-        ::fedb::codec::RowCodec::EncodeRow(input, table_meta->column_desc(), 1, value);
-        ::fedb::api::PutRequest request;
+        ::openmldb::codec::RowCodec::EncodeRow(input, table_meta->column_desc(), 1, value);
+        ::openmldb::api::PutRequest request;
         request.set_value(value);
         request.set_tid(id);
         request.set_pid(1);
-        ::fedb::api::Dimension* d = request.add_dimensions();
+        ::openmldb::api::Dimension* d = request.add_dimensions();
         d->set_key(input[0]);
         d->set_idx(0);
-        ::fedb::api::TSDimension* tsd = request.add_ts_dimensions();
+        ::openmldb::api::TSDimension* tsd = request.add_ts_dimensions();
         tsd->set_ts(i + 100);
         tsd->set_idx(0);
         tsd = request.add_ts_dimensions();
         tsd->set_ts(i + 10000);
         tsd->set_idx(1);
-        ::fedb::api::PutResponse response;
+        ::openmldb::api::PutResponse response;
         MockClosure closure;
         tablet.Put(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     {
-        ::fedb::api::DumpIndexDataRequest dump_request;
+        ::openmldb::api::DumpIndexDataRequest dump_request;
         dump_request.set_tid(id);
         dump_request.set_pid(1);
         dump_request.set_partition_num(8);
@@ -5562,7 +5562,7 @@ TEST_F(TabletImplTest, DumpIndex) {
         column_key->add_col_name("card");
         column_key->add_col_name("mcc");
         column_key->set_ts_name("ts2");
-        ::fedb::api::GeneralResponse dump_response;
+        ::openmldb::api::GeneralResponse dump_response;
         tablet.DumpIndexData(NULL, &dump_request, &dump_response, &closure);
         ASSERT_EQ(0, dump_response.code());
     }
@@ -5575,34 +5575,34 @@ TEST_F(TabletImplTest, SendIndexData) {
     MockClosure closure;
     uint32_t id = counter++;
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kLatestTime, table_meta);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        ::fedb::api::CreateTableResponse response;
+        AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kLatestTime, table_meta);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        AddDefaultSchema(0, 0, ::fedb::type::TTLType::kLatestTime, table_meta);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
-        ::fedb::api::CreateTableResponse response;
+        AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kLatestTime, table_meta);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     std::string index_file_path =
         FLAGS_db_root_path + "/" + std::to_string(id) + "_0/index/";
-    ::fedb::base::MkdirRecur(index_file_path);
+    ::openmldb::base::MkdirRecur(index_file_path);
     std::string index_file = index_file_path + "0_1_index.data";
     FILE* f = fopen(index_file.c_str(), "w+");
     ASSERT_TRUE(f != NULL);
@@ -5611,34 +5611,34 @@ TEST_F(TabletImplTest, SendIndexData) {
     }
     fclose(f);
     uint64_t src_size = 0;
-    ::fedb::base::GetFileSize(index_file, src_size);
-    ::fedb::api::SendIndexDataRequest request;
+    ::openmldb::base::GetFileSize(index_file, src_size);
+    ::openmldb::api::SendIndexDataRequest request;
     request.set_tid(id);
     request.set_pid(0);
-    ::fedb::api::SendIndexDataRequest_EndpointPair* pair = request.add_pairs();
+    ::openmldb::api::SendIndexDataRequest_EndpointPair* pair = request.add_pairs();
     pair->set_pid(1);
     pair->set_endpoint(FLAGS_endpoint);
-    ::fedb::api::GeneralResponse response;
+    ::openmldb::api::GeneralResponse response;
     tablet.SendIndexData(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     sleep(2);
     std::string des_index_file = FLAGS_db_root_path + "/" + std::to_string(id) +
                                  "_1/index/0_1_index.data";
     uint64_t des_size = 0;
-    ::fedb::base::GetFileSize(des_index_file, des_size);
-    ASSERT_TRUE(::fedb::base::IsExists(des_index_file));
+    ::openmldb::base::GetFileSize(des_index_file, des_size);
+    ASSERT_TRUE(::openmldb::base::IsExists(des_index_file));
     ASSERT_EQ(src_size, des_size);
-    ::fedb::base::RemoveDirRecursive(FLAGS_db_root_path);
+    ::openmldb::base::RemoveDirRecursive(FLAGS_db_root_path);
 }
 
 }  // namespace tablet
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::fedb::base::SetLogLevel(INFO);
+    ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_db_root_path = "/tmp/" + ::fedb::tablet::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
     return RUN_ALL_TESTS();
 }

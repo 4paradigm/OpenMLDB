@@ -24,7 +24,7 @@
 
 #include <string>
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 class Slice {
@@ -161,5 +161,5 @@ inline int Slice::compare(const Slice& b) const {
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_BASE_SLICE_H_

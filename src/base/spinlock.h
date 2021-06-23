@@ -32,7 +32,7 @@
 #include <atomic>
 #include <thread> // NOLINT
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 inline void AsmVolatilePause() {
@@ -78,4 +78,4 @@ class SpinMutex {
 };
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb

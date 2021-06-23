@@ -29,16 +29,16 @@
 #include "storage/table.h"
 #include "vm/engine.h"
 
-namespace fedb {
+namespace openmldb {
 namespace catalog {
 
-using ::fedb::codec::SchemaCodec;
+using ::openmldb::codec::SchemaCodec;
 
 class TabletCatalogTest : public ::testing::Test {};
 
 struct TestArgs {
-    std::vector<std::shared_ptr<::fedb::storage::Table>> tables;
-    std::vector<::fedb::api::TableMeta> meta;
+    std::vector<std::shared_ptr<::openmldb::storage::Table>> tables;
+    std::vector<::openmldb::api::TableMeta> meta;
     std::string row;
     std::string idx_name;
     std::string pk;
@@ -47,19 +47,19 @@ struct TestArgs {
 
 TestArgs *PrepareTable(const std::string &tname) {
     TestArgs *args = new TestArgs();
-    ::fedb::api::TableMeta meta;
+    ::openmldb::api::TableMeta meta;
     meta.set_name(tname);
     meta.set_db("db1");
     meta.set_tid(1);
     meta.set_pid(0);
     meta.set_seg_cnt(8);
-    meta.set_mode(::fedb::api::TableMode::kTableLeader);
-    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "col1", ::fedb::type::kString);
-    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "col2", ::fedb::type::kBigInt);
-    SchemaCodec::SetIndex(meta.add_column_key(), "index0", "col1", "col2", ::fedb::type::kAbsoluteTime, 0, 0);
+    meta.set_mode(::openmldb::api::TableMode::kTableLeader);
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "col1", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "col2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetIndex(meta.add_column_key(), "index0", "col1", "col2", ::openmldb::type::kAbsoluteTime, 0, 0);
     args->idx_name = "index0";
 
-    ::fedb::storage::MemTable *table = new ::fedb::storage::MemTable(meta);
+    ::openmldb::storage::MemTable *table = new ::openmldb::storage::MemTable(meta);
     table->Init();
     ::hybridse::vm::Schema fe_schema;
     SchemaAdapter::ConvertSchema(meta.column_desc(), &fe_schema);
@@ -74,7 +74,7 @@ TestArgs *PrepareTable(const std::string &tname) {
     rb.AppendInt64(1589780888000l);
     table->Put(pk, 1589780888000l, value.c_str(), value.size());
     args->ts = 1589780888000l;
-    std::shared_ptr<::fedb::storage::MemTable> mtable(table);
+    std::shared_ptr<::openmldb::storage::MemTable> mtable(table);
     args->tables.push_back(mtable);
     args->meta.push_back(meta);
     args->row = value;
@@ -84,25 +84,25 @@ TestArgs *PrepareTable(const std::string &tname) {
 TestArgs *PrepareMultiPartitionTable(const std::string &tname,
                                      int partition_num) {
     TestArgs *args = new TestArgs();
-    ::fedb::api::TableMeta meta;
+    ::openmldb::api::TableMeta meta;
     meta.set_name(tname);
     meta.set_db("db1");
     meta.set_tid(1);
     meta.set_pid(0);
     meta.set_seg_cnt(8);
-    meta.set_mode(::fedb::api::TableMode::kTableLeader);
-    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "col1", ::fedb::type::kString);
-    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "col2", ::fedb::type::kBigInt);
-    SchemaCodec::SetIndex(meta.add_column_key(), "index0", "col1", "col2", ::fedb::type::kAbsoluteTime, 0, 0);
+    meta.set_mode(::openmldb::api::TableMode::kTableLeader);
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "col1", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "col2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetIndex(meta.add_column_key(), "index0", "col1", "col2", ::openmldb::type::kAbsoluteTime, 0, 0);
     args->idx_name = "index0";
     for (int i = 0; i < partition_num; i++) {
         meta.add_table_partition();
     }
 
     for (int i = 0; i < partition_num; i++) {
-        ::fedb::api::TableMeta cur_meta(meta);
+        ::openmldb::api::TableMeta cur_meta(meta);
         cur_meta.set_pid(i);
-        auto table = std::make_shared<::fedb::storage::MemTable>(cur_meta);
+        auto table = std::make_shared<::openmldb::storage::MemTable>(cur_meta);
         table->Init();
         args->tables.push_back(table);
         args->meta.push_back(cur_meta);
@@ -116,7 +116,7 @@ TestArgs *PrepareMultiPartitionTable(const std::string &tname,
         uint32_t size = rb.CalTotalLength(pk.size());
         uint32_t pid = 0;
         if (partition_num > 0) {
-            pid = (uint32_t)(::fedb::base::hash64(pk) % partition_num);
+            pid = (uint32_t)(::openmldb::base::hash64(pk) % partition_num);
         }
         uint64_t ts = 1589780888000l;
         for (int j = 0; j < 5; j++) {
@@ -555,13 +555,13 @@ TEST_F(TabletCatalogTest, get_tablet) {
     handler->AddTable(args->tables[3]);
     handler->AddTable(args->tables[7]);
     std::string pk = "key0";
-    int pid = (uint32_t)(::fedb::base::hash64(pk) % pid_num);
+    int pid = (uint32_t)(::openmldb::base::hash64(pk) % pid_num);
     ASSERT_EQ(pid, 7);
     auto tablet = handler->GetTablet("", pk);
     auto real_tablet = std::dynamic_pointer_cast<hybridse::vm::LocalTablet>(tablet);
     ASSERT_TRUE(real_tablet != nullptr);
     pk = "key1";
-    pid = (uint32_t)(::fedb::base::hash64(pk) % pid_num);
+    pid = (uint32_t)(::openmldb::base::hash64(pk) % pid_num);
     ASSERT_EQ(pid, 6);
     tablet = handler->GetTablet("", pk);
     real_tablet = std::dynamic_pointer_cast<hybridse::vm::LocalTablet>(tablet);
@@ -570,7 +570,7 @@ TEST_F(TabletCatalogTest, get_tablet) {
 }
 
 }  // namespace catalog
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

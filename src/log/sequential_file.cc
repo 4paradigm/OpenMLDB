@@ -28,10 +28,10 @@
 #include "base/glog_wapper.h" // NOLINT
 
 
-using ::fedb::base::Slice;
-using ::fedb::base::Status;
+using ::openmldb::base::Slice;
+using ::openmldb::base::Status;
 
-namespace fedb {
+namespace openmldb {
 namespace log {
 
 class PosixSequentialFile : public SequentialFile {
@@ -98,4 +98,4 @@ SequentialFile* NewSeqFile(const std::string& fname, FILE* f) {
 }
 
 }  // namespace log
-}  // namespace fedb
+}  // namespace openmldb

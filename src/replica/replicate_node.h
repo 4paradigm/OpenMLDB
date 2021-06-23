@@ -29,12 +29,12 @@
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 
-namespace fedb {
+namespace openmldb {
 namespace replica {
 
-using ::fedb::log::LogReader;
-typedef ::fedb::base::Skiplist<uint32_t, uint64_t,
-                                ::fedb::base::DefaultComparator>
+using ::openmldb::log::LogReader;
+typedef ::openmldb::base::Skiplist<uint32_t, uint64_t,
+                                ::openmldb::base::DefaultComparator>
     LogParts;
 
 class ReplicateNode {
@@ -78,14 +78,14 @@ class ReplicateNode {
 
  private:
     LogReader log_reader_;
-    std::vector<::fedb::api::AppendEntriesRequest> cache_;
+    std::vector<::openmldb::api::AppendEntriesRequest> cache_;
     std::string endpoint_;
     uint64_t last_sync_offset_;
     bool log_matched_;
     uint32_t tid_;
     uint32_t pid_;
     std::atomic<uint64_t>* term_;
-    ::fedb::RpcClient<::fedb::api::TabletServer_Stub> rpc_client_;
+    ::openmldb::RpcClient<::openmldb::api::TabletServer_Stub> rpc_client_;
     bthread_t worker_;
     std::atomic<uint64_t>* leader_log_offset_;
     std::atomic<bool> is_running_;
@@ -98,6 +98,6 @@ class ReplicateNode {
 };
 
 }  // namespace replica
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_REPLICA_REPLICATE_NODE_H_

@@ -22,11 +22,11 @@
 #include "log/log_writer.h"
 #include "storage/table.h"
 
-typedef ::fedb::base::Skiplist<uint32_t, uint64_t,
-                                ::fedb::base::DefaultComparator>
+typedef ::openmldb::base::Skiplist<uint32_t, uint64_t,
+                                ::openmldb::base::DefaultComparator>
     LogParts;
 
-namespace fedb {
+namespace openmldb {
 namespace storage {
 
 class Binlog {
@@ -42,4 +42,4 @@ class Binlog {
 };
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb

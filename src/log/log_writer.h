@@ -28,10 +28,10 @@
 #include "log/log_format.h"
 #include "log/writable_file.h"
 
-using ::fedb::base::Slice;
-using ::fedb::base::Status;
+using ::openmldb::base::Slice;
+using ::openmldb::base::Status;
 
-namespace fedb {
+namespace openmldb {
 namespace log {
 
 class Writer {
@@ -97,17 +97,17 @@ struct WriteHandle {
     Writer* lw_;
     WriteHandle(const std::string& compress_type, const std::string& fname, FILE* fd, uint64_t dest_length = 0)
         : fd_(fd), wf_(NULL), lw_(NULL) {
-        wf_ = ::fedb::log::NewWritableFile(fname, fd);
+        wf_ = ::openmldb::log::NewWritableFile(fname, fd);
         lw_ = new Writer(compress_type, wf_, dest_length);
     }
 
-    ::fedb::base::Status Write(const ::fedb::base::Slice& slice) {
+    ::openmldb::base::Status Write(const ::openmldb::base::Slice& slice) {
         return lw_->AddRecord(slice);
     }
 
-    ::fedb::base::Status Sync() { return wf_->Sync(); }
+    ::openmldb::base::Status Sync() { return wf_->Sync(); }
 
-    ::fedb::base::Status EndLog() { return lw_->EndLog(); }
+    ::openmldb::base::Status EndLog() { return lw_->EndLog(); }
 
     uint64_t GetSize() { return wf_->GetSize(); }
 
@@ -118,6 +118,6 @@ struct WriteHandle {
 };
 
 }  // namespace log
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_LOG_LOG_WRITER_H_

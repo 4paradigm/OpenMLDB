@@ -23,9 +23,9 @@
 #include "gtest/gtest.h"
 #include "base/glog_wapper.h" // NOLINT
 
-using ::fedb::base::Slice;
+using ::openmldb::base::Slice;
 
-namespace fedb {
+namespace openmldb {
 namespace storage {
 
 class SegmentTest : public ::testing::Test {
@@ -79,7 +79,7 @@ TEST_F(SegmentTest, PutAndScan) {
     it->Seek(9530);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9529, (int64_t)it->GetKey());
-    ::fedb::base::Slice val = it->GetValue();
+    ::openmldb::base::Slice val = it->GetValue();
     std::string result(val.data(), val.size());
     ASSERT_EQ("test0", result);
     it->Next();
@@ -148,9 +148,9 @@ TEST_F(SegmentTest, GetCount) {
     std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
     Segment segment1(8, ts_idx_vec);
     Slice pk1("pk");
-    ::fedb::api::LogEntry logEntry;
+    ::openmldb::api::LogEntry logEntry;
     for (int i = 0; i < 6; i++) {
-        ::fedb::api::TSDimension* ts = logEntry.add_ts_dimensions();
+        ::openmldb::api::TSDimension* ts = logEntry.add_ts_dimensions();
         ts->set_ts(1100 + i);
         ts->set_idx(i);
     }
@@ -167,7 +167,7 @@ TEST_F(SegmentTest, GetCount) {
         if (i == 3) {
             continue;
         }
-        ::fedb::api::TSDimension* ts = logEntry.add_ts_dimensions();
+        ::openmldb::api::TSDimension* ts = logEntry.add_ts_dimensions();
         ts->set_ts(1200 + i);
         ts->set_idx(i);
     }
@@ -197,7 +197,7 @@ TEST_F(SegmentTest, Iterator) {
     ASSERT_EQ(4, size);
     it->Seek(9769);
     ASSERT_EQ(9769, (int64_t)it->GetKey());
-    ::fedb::base::Slice value = it->GetValue();
+    ::openmldb::base::Slice value = it->GetValue();
     std::string result(value.data(), value.size());
     ASSERT_EQ("test2", result);
     it->Next();
@@ -225,7 +225,7 @@ TEST_F(SegmentTest, TestGc4Head) {
     it->Seek(9769);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9769, (int64_t)it->GetKey());
-    ::fedb::base::Slice value = it->GetValue();
+    ::openmldb::base::Slice value = it->GetValue();
     std::string result(value.data(), value.size());
     ASSERT_EQ("test2", result);
     it->Next();
@@ -400,9 +400,9 @@ TEST_F(SegmentTest, PutAndGetTS) {
     std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
     Segment segment(8, ts_idx_vec);
     Slice pk("pk");
-    ::fedb::api::LogEntry logEntry;
+    ::openmldb::api::LogEntry logEntry;
     for (int i = 0; i < 6; i++) {
-        ::fedb::api::TSDimension* ts = logEntry.add_ts_dimensions();
+        ::openmldb::api::TSDimension* ts = logEntry.add_ts_dimensions();
         ts->set_ts(1100 + i);
         ts->set_idx(i);
     }
@@ -421,10 +421,10 @@ TEST_F(SegmentTest, PutAndGetTS) {
 }
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
-    ::fedb::base::SetLogLevel(INFO);
+    ::openmldb::base::SetLogLevel(INFO);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

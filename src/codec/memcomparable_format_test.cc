@@ -20,7 +20,7 @@
 #include <vector>
 #include "gtest/gtest.h"
 
-namespace fedb {
+namespace openmldb {
 namespace codec {
 
 class MemComFormatTest : public ::testing::Test {
@@ -176,7 +176,7 @@ TEST_F(MemComFormatTest, TestVarchar) {
 }
 
 }  // namespace codec
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

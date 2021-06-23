@@ -29,7 +29,7 @@ using google::FATAL;
 using google::INFO;
 using google::WARNING;
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 const int DEBUG = -1;
@@ -54,19 +54,19 @@ inline void SetLogFile(std::string path) {
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
-using ::fedb::base::DEBUG;
+using ::openmldb::base::DEBUG;
 
 #define PDLOG(level, fmt, args...)      \
     COMPACT_GOOGLE_LOG_##level.stream() \
-        << ::fedb::base::FormatArgs(fmt, ##args)
+        << ::openmldb::base::FormatArgs(fmt, ##args)
 
 #define DEBUGLOG(fmt, args...)                             \
     {                                                      \
-        if (::fedb::base::log_level == -1)                \
+        if (::openmldb::base::log_level == -1)                \
             COMPACT_GOOGLE_LOG_INFO.stream()               \
-                << ::fedb::base::FormatArgs(fmt, ##args); \
+                << ::openmldb::base::FormatArgs(fmt, ##args); \
     }                                                      \
     while (0)
 

@@ -31,7 +31,7 @@ extern "C" {
 #include "zookeeper/zookeeper.h"
 }
 
-namespace fedb {
+namespace openmldb {
 namespace zk {
 
 typedef boost::function<void(const std::vector<std::string>& endpoint)>
@@ -170,6 +170,6 @@ class ZkClient {
 };
 
 }  // namespace zk
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_ZK_ZK_CLIENT_H_

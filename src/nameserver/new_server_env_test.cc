@@ -40,9 +40,9 @@ DECLARE_int32(request_timeout_ms);
 DECLARE_bool(binlog_notify_on_put);
 DECLARE_bool(use_name);
 
-using ::fedb::zk::ZkClient;
+using ::openmldb::zk::ZkClient;
 
-namespace fedb {
+namespace openmldb {
 namespace nameserver {
 
 inline std::string GenRand() {
@@ -81,7 +81,7 @@ void StartNameServer(brpc::Server& server, const std::string& real_ep) { //NOLIN
 }
 
 void StartTablet(brpc::Server& server, const std::string& real_ep) { //NOLINT
-    ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
+    ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     bool ok = tablet->Init(real_ep);
     ASSERT_TRUE(ok);
     brpc::ServerOptions options;
@@ -98,21 +98,21 @@ void StartTablet(brpc::Server& server, const std::string& real_ep) { //NOLINT
     sleep(2);
 }
 
-void SetSdkEndpoint(::fedb::RpcClient<::fedb::nameserver::NameServer_Stub>& name_server_client, //NOLINT
+void SetSdkEndpoint(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client, //NOLINT
         const std::string& server_name, const std::string& sdk_endpoint) {
-    ::fedb::nameserver::SetSdkEndpointRequest request;
+    ::openmldb::nameserver::SetSdkEndpointRequest request;
     request.set_server_name(server_name);
     request.set_sdk_endpoint(sdk_endpoint);
-    ::fedb::nameserver::GeneralResponse response;
+    ::openmldb::nameserver::GeneralResponse response;
     bool ok = name_server_client.SendRequest(
-            &::fedb::nameserver::NameServer_Stub::SetSdkEndpoint,
+            &::openmldb::nameserver::NameServer_Stub::SetSdkEndpoint,
             &request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
 }
 
 void ShowNameServer(std::map<std::string, std::string>* map) {
-    std::shared_ptr<::fedb::zk::ZkClient> zk_client;
-    zk_client = std::make_shared<::fedb::zk::ZkClient>(
+    std::shared_ptr<::openmldb::zk::ZkClient> zk_client;
+    zk_client = std::make_shared<::openmldb::zk::ZkClient>(
             FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
     if (!zk_client->Init()) {
         ASSERT_TRUE(false);
@@ -153,14 +153,14 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     std::string ns_real_ep = "127.0.0.1:9631";
     brpc::Server ns_server;
     StartNameServer(ns_server, ns_real_ep);
-    ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub> name_server_client(ns_real_ep);
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(ns_real_ep);
     name_server_client.Init();
 
     // tablet1
     FLAGS_use_name = true;
     FLAGS_endpoint = "tb1";
     std::string tb_real_ep_1 = "127.0.0.1:9831";
-    FLAGS_db_root_path = "/tmp/" + ::fedb::nameserver::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
     brpc::Server tb_server1;
     StartTablet(tb_server1, tb_real_ep_1);
 
@@ -168,7 +168,7 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     FLAGS_use_name = true;
     FLAGS_endpoint = "tb2";
     std::string tb_real_ep_2 = "127.0.0.1:9931";
-    FLAGS_db_root_path = "/tmp/" + ::fedb::nameserver::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
     brpc::Server tb_server2;
     StartTablet(tb_server2, tb_real_ep_2);
 
@@ -185,14 +185,14 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     }
     {
         // showtablet
-        ::fedb::nameserver::ShowTabletRequest request;
-        ::fedb::nameserver::ShowTabletResponse response;
+        ::openmldb::nameserver::ShowTabletRequest request;
+        ::openmldb::nameserver::ShowTabletResponse response;
         bool ok = name_server_client.SendRequest(
-                &::fedb::nameserver::NameServer_Stub::ShowTablet,
+                &::openmldb::nameserver::NameServer_Stub::ShowTablet,
                 &request, &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
 
-        ::fedb::nameserver::TabletStatus status =
+        ::openmldb::nameserver::TabletStatus status =
             response.tablets(0);
         ASSERT_EQ("tb1", status.endpoint());
         ASSERT_EQ(tb_real_ep_1, status.real_endpoint());
@@ -214,10 +214,10 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     }
     {
         // show sdkendpoint
-        ::fedb::nameserver::ShowSdkEndpointRequest request;
-        ::fedb::nameserver::ShowSdkEndpointResponse response;
+        ::openmldb::nameserver::ShowSdkEndpointRequest request;
+        ::openmldb::nameserver::ShowSdkEndpointResponse response;
         bool ok = name_server_client.SendRequest(
-                &::fedb::nameserver::NameServer_Stub::
+                &::openmldb::nameserver::NameServer_Stub::
                 ShowSdkEndpoint, &request, &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
 
@@ -245,7 +245,7 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
     std::string ns_real_ep = "127.0.0.1:9631";
     brpc::Server ns_server;
     StartNameServer(ns_server, ns_real_ep);
-    ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub> name_server_client(ns_real_ep);
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(ns_real_ep);
     name_server_client.Init();
 
     // tablet1
@@ -253,20 +253,20 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
     FLAGS_use_name = true;
     FLAGS_endpoint = "tb1";
     std::string tb_real_ep_1 = "127.0.0.1:9831";
-    FLAGS_db_root_path = "/tmp/" + ::fedb::nameserver::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
     brpc::Server tb_server1;
     StartTablet(tb_server1, tb_real_ep_1);
-    ::fedb::RpcClient<::fedb::api::TabletServer_Stub> tb_client_1(tb_real_ep_1);
+    ::openmldb::RpcClient<::openmldb::api::TabletServer_Stub> tb_client_1(tb_real_ep_1);
     tb_client_1.Init();
 
     // tablet2
     FLAGS_use_name = true;
     FLAGS_endpoint = "tb2";
     std::string tb_real_ep_2 = "127.0.0.1:9931";
-    FLAGS_db_root_path = "/tmp/" + ::fedb::nameserver::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
     brpc::Server tb_server2;
     StartTablet(tb_server2, tb_real_ep_2);
-    ::fedb::RpcClient<::fedb::api::TabletServer_Stub> tb_client_2(tb_real_ep_2);
+    ::openmldb::RpcClient<::openmldb::api::TabletServer_Stub> tb_client_2(tb_real_ep_2);
     tb_client_2.Init();
 
     bool ok = false;
@@ -278,17 +278,17 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
         table_info->set_name(name);
         auto column_desc = table_info->add_column_desc();
         column_desc->set_name("idx0");
-        column_desc->set_data_type(::fedb::type::kString);
+        column_desc->set_data_type(::openmldb::type::kString);
         auto column_desc1 = table_info->add_column_desc();
         column_desc1->set_name("value");
-        column_desc1->set_data_type(::fedb::type::kString);
+        column_desc1->set_data_type(::openmldb::type::kString);
         auto column_key = table_info->add_column_key();
         column_key->set_index_name("idx0");
         column_key->add_col_name("idx0");
-        ::fedb::common::TTLSt* ttl_st = column_key->mutable_ttl();
+        ::openmldb::common::TTLSt* ttl_st = column_key->mutable_ttl();
         ttl_st->set_abs_ttl(0);
         ttl_st->set_lat_ttl(0);
-        ttl_st->set_ttl_type(::fedb::type::kAbsoluteTime);
+        ttl_st->set_ttl_type(::openmldb::type::kAbsoluteTime);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(0);
         PartitionMeta* meta = partion->add_partition_meta();
@@ -298,40 +298,40 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
         meta->set_endpoint("tb2");
         meta->set_is_leader(false);
         ok = name_server_client.SendRequest(
-            &::fedb::nameserver::NameServer_Stub::CreateTable, &request,
+            &::openmldb::nameserver::NameServer_Stub::CreateTable, &request,
             &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
     }
     uint32_t tid = 0;
     {
-        ::fedb::nameserver::ShowTableRequest request;
-        ::fedb::nameserver::ShowTableResponse response;
+        ::openmldb::nameserver::ShowTableRequest request;
+        ::openmldb::nameserver::ShowTableResponse response;
         request.set_name(name);
-        bool ok = name_server_client.SendRequest(&::fedb::nameserver::NameServer_Stub::ShowTable,
+        bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable,
                     &request, &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         tid = response.table_info(0).tid();
     }
     {
-        ::fedb::api::PutRequest put_request;
-        ::fedb::api::PutResponse put_response;
+        ::openmldb::api::PutRequest put_request;
+        ::openmldb::api::PutResponse put_response;
         put_request.set_pk("1");
         put_request.set_time(1);
         put_request.set_value("a");
         put_request.set_tid(tid);
         put_request.set_pid(0);
-        ok = tb_client_1.SendRequest(&::fedb::api::TabletServer_Stub::Put, &put_request,
+        ok = tb_client_1.SendRequest(&::openmldb::api::TabletServer_Stub::Put, &put_request,
                 &put_response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, put_response.code());
     }
     {
-        ::fedb::api::TraverseRequest traverse_request;
-        ::fedb::api::TraverseResponse traverse_response;
+        ::openmldb::api::TraverseRequest traverse_request;
+        ::openmldb::api::TraverseResponse traverse_response;
         traverse_request.set_pid(0);
         traverse_request.set_tid(tid);
-        ok = tb_client_1.SendRequest(&::fedb::api::TabletServer_Stub::Traverse,
+        ok = tb_client_1.SendRequest(&::openmldb::api::TabletServer_Stub::Traverse,
                 &traverse_request, &traverse_response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, traverse_response.code());
@@ -341,11 +341,11 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
     }
     sleep(3);
     {
-        ::fedb::api::TraverseRequest traverse_request;
-        ::fedb::api::TraverseResponse traverse_response;
+        ::openmldb::api::TraverseRequest traverse_request;
+        ::openmldb::api::TraverseResponse traverse_response;
         traverse_request.set_tid(tid);
         traverse_request.set_pid(0);
-        ok = tb_client_2.SendRequest(&::fedb::api::TabletServer_Stub::Traverse,
+        ok = tb_client_2.SendRequest(&::openmldb::api::TabletServer_Stub::Traverse,
                 &traverse_request, &traverse_response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, traverse_response.code());
@@ -356,13 +356,13 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
 }
 
 }  // namespace nameserver
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::fedb::base::SetLogLevel(INFO);
+    ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     return RUN_ALL_TESTS();
 }

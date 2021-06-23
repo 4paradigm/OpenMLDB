@@ -32,11 +32,11 @@
 #include "base/strings.h"
 #include "proto/common.pb.h"
 
-namespace fedb {
+namespace openmldb {
 namespace codec {
 
 using ProjectList = ::google::protobuf::RepeatedField<uint32_t>;
-using Schema = ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>;
+using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
@@ -112,7 +112,7 @@ class RowBuilder {
     inline uint32_t GetAppendPos() { return cnt_; }
 
  private:
-    bool Check(uint32_t index, ::fedb::type::DataType type);
+    bool Check(uint32_t index, ::openmldb::type::DataType type);
     inline void SetField(uint32_t index);
     inline void SetStrOffset(uint32_t str_pos);
     bool SetString(uint32_t index, const char* val, uint32_t length);
@@ -165,10 +165,10 @@ class RowView {
     }
 
     int32_t GetValue(const int8_t* row, uint32_t idx,
-                     ::fedb::type::DataType type, void* val);
+                     ::openmldb::type::DataType type, void* val);
 
     int32_t GetInteger(const int8_t* row, uint32_t idx,
-                       ::fedb::type::DataType type, int64_t* val);
+                       ::openmldb::type::DataType type, int64_t* val);
 
     int32_t GetValue(const int8_t* row, uint32_t idx, char** val,
                      uint32_t* length);
@@ -178,7 +178,7 @@ class RowView {
 
  private:
     bool Init();
-    bool CheckValid(uint32_t idx, ::fedb::type::DataType type);
+    bool CheckValid(uint32_t idx, ::openmldb::type::DataType type);
 
  private:
     uint8_t str_addr_length_;
@@ -319,6 +319,6 @@ inline std::string Int64ToString(const int64_t key) {
 }
 
 }  // namespace codec
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_CODEC_CODEC_H_

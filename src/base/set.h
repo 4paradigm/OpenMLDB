@@ -20,7 +20,7 @@
 
 #include <mutex> // NOLINT
 #include <set>
-namespace fedb {
+namespace openmldb {
 namespace base {
 // thread_safe set
 template <class T>
@@ -51,5 +51,5 @@ class set {
 };
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_BASE_SET_H_

@@ -20,36 +20,36 @@
 #include <vector>
 #include "storage/table.h"
 
-namespace fedb {
+namespace openmldb {
 namespace tablet {
 
 __attribute__((unused)) static bool SeekWithCount(
-    ::fedb::storage::TableIterator* it, const uint64_t time,
-    const ::fedb::api::GetType& type, uint32_t max_cnt, uint32_t* cnt) {
+    ::openmldb::storage::TableIterator* it, const uint64_t time,
+    const ::openmldb::api::GetType& type, uint32_t max_cnt, uint32_t* cnt) {
     if (it == NULL) {
         return false;
     }
     it->SeekToFirst();
     while (it->Valid() && (*cnt < max_cnt || max_cnt == 0)) {
         switch (type) {
-            case ::fedb::api::GetType::kSubKeyEq:
+            case ::openmldb::api::GetType::kSubKeyEq:
                 if (it->GetKey() <= time) {
                     return it->GetKey() == time;
                 }
                 break;
-            case ::fedb::api::GetType::kSubKeyLe:
+            case ::openmldb::api::GetType::kSubKeyLe:
                 if (it->GetKey() <= time) {
                     return true;
                 }
                 break;
-            case ::fedb::api::GetType::kSubKeyLt:
+            case ::openmldb::api::GetType::kSubKeyLt:
                 if (it->GetKey() < time) {
                     return true;
                 }
                 break;
-            case ::fedb::api::GetType::kSubKeyGe:
+            case ::openmldb::api::GetType::kSubKeyGe:
                 return it->GetKey() >= time;
-            case ::fedb::api::GetType::kSubKeyGt:
+            case ::openmldb::api::GetType::kSubKeyGt:
                 return it->GetKey() > time;
             default:
                 return false;
@@ -60,26 +60,26 @@ __attribute__((unused)) static bool SeekWithCount(
     return false;
 }
 
-__attribute__((unused)) static bool Seek(::fedb::storage::TableIterator* it,
+__attribute__((unused)) static bool Seek(::openmldb::storage::TableIterator* it,
                                          const uint64_t time,
-                                         const ::fedb::api::GetType& type) {
+                                         const ::openmldb::api::GetType& type) {
     if (it == NULL) {
         return false;
     }
     switch (type) {
-        case ::fedb::api::GetType::kSubKeyEq:
+        case ::openmldb::api::GetType::kSubKeyEq:
             it->Seek(time);
             return it->Valid() && it->GetKey() == time;
-        case ::fedb::api::GetType::kSubKeyLe:
+        case ::openmldb::api::GetType::kSubKeyLe:
             it->Seek(time);
             return it->Valid();
-        case ::fedb::api::GetType::kSubKeyLt:
+        case ::openmldb::api::GetType::kSubKeyLt:
             it->Seek(time - 1);
             return it->Valid();
-        case ::fedb::api::GetType::kSubKeyGe:
+        case ::openmldb::api::GetType::kSubKeyGe:
             it->SeekToFirst();
             return it->Valid() && it->GetKey() >= time;
-        case ::fedb::api::GetType::kSubKeyGt:
+        case ::openmldb::api::GetType::kSubKeyGt:
             it->SeekToFirst();
             return it->Valid() && it->GetKey() > time;
         default:
@@ -89,16 +89,16 @@ __attribute__((unused)) static bool Seek(::fedb::storage::TableIterator* it,
 }
 
 __attribute__((unused)) static int GetIterator(
-    std::shared_ptr<::fedb::storage::Table> table, const std::string& pk, int index,
-    std::shared_ptr<::fedb::storage::TableIterator>* it,
-    std::shared_ptr<::fedb::storage::Ticket>* ticket) {
+    std::shared_ptr<::openmldb::storage::Table> table, const std::string& pk, int index,
+    std::shared_ptr<::openmldb::storage::TableIterator>* it,
+    std::shared_ptr<::openmldb::storage::Ticket>* ticket) {
     if (it == NULL || ticket == NULL) {
         return -1;
     }
     if (!(*ticket)) {
-        *ticket = std::make_shared<::fedb::storage::Ticket>();
+        *ticket = std::make_shared<::openmldb::storage::Ticket>();
     }
-    ::fedb::storage::TableIterator* cur_it = NULL;
+    ::openmldb::storage::TableIterator* cur_it = NULL;
     cur_it = table->NewIterator(index, pk, *(ticket->get()));
     if (cur_it == NULL) {
         return -1;
@@ -108,23 +108,23 @@ __attribute__((unused)) static int GetIterator(
 }
 
 struct QueryIt {
-    std::shared_ptr<::fedb::storage::Table> table;
-    std::shared_ptr<::fedb::storage::TableIterator> it;
-    std::shared_ptr<::fedb::storage::Ticket> ticket;
+    std::shared_ptr<::openmldb::storage::Table> table;
+    std::shared_ptr<::openmldb::storage::TableIterator> it;
+    std::shared_ptr<::openmldb::storage::Ticket> ticket;
     uint32_t iter_pos = 0;
 };
 
 class CombineIterator {
  public:
     CombineIterator(std::vector<QueryIt> q_its, uint64_t start_time,
-                    ::fedb::api::GetType st_type, const ::fedb::storage::TTLSt& expired_value);
+                    ::openmldb::api::GetType st_type, const ::openmldb::storage::TTLSt& expired_value);
     void SeekToFirst();
     void Next();
     bool Valid();
     uint64_t GetTs();
-    fedb::base::Slice GetValue();
+    openmldb::base::Slice GetValue();
     inline uint64_t GetExpireTime() const { return expire_time_; }
-    inline ::fedb::storage::TTLType GetTTLType() const { return ttl_type_; }
+    inline ::openmldb::storage::TTLType GetTTLType() const { return ttl_type_; }
 
  private:
     void SelectIterator();
@@ -132,12 +132,12 @@ class CombineIterator {
  private:
     std::vector<QueryIt> q_its_;
     const uint64_t st_;
-    ::fedb::api::GetType st_type_;
-    ::fedb::storage::TTLType ttl_type_;
+    ::openmldb::api::GetType st_type_;
+    ::openmldb::storage::TTLType ttl_type_;
     uint64_t expire_time_;
     const uint32_t expire_cnt_;
     QueryIt* cur_qit_;
 };
 
 }  // namespace tablet
-}  // namespace fedb
+}  // namespace openmldb

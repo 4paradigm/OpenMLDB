@@ -28,7 +28,7 @@
 #include "base/glog_wapper.h" // NOLINT
 #include "base/endianconv.h"
 
-namespace fedb {
+namespace openmldb {
 namespace log {
 
 static void InitTypeCrc(uint32_t* type_crc) {
@@ -317,4 +317,4 @@ Status Writer::AppendInternal(WritableFile* wf, int32_t leftover) {
 }
 
 }  // namespace log
-}  // namespace fedb
+}  // namespace openmldb

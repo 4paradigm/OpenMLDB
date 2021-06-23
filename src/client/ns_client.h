@@ -34,7 +34,7 @@
 #include "catalog/schema_adapter.h"
 #include "node/node_manager.h"
 
-namespace fedb {
+namespace openmldb {
 namespace client {
 
 const uint32_t INVALID_PID = UINT32_MAX;
@@ -76,18 +76,18 @@ class NsClient {
 
     bool ShowTable(
         const std::string& name,
-        std::vector<::fedb::nameserver::TableInfo>& tables,  // NOLINT
+        std::vector<::openmldb::nameserver::TableInfo>& tables,  // NOLINT
         std::string& msg);                                    // NOLINT
 
     bool ShowTable(
         const std::string& name, const std::string& db, bool show_all,
-        std::vector<::fedb::nameserver::TableInfo>& tables,  // NOLINT
+        std::vector<::openmldb::nameserver::TableInfo>& tables,  // NOLINT
         std::string& msg);                                    // NOLINT
 
     bool ShowCatalogVersion(std::map<std::string, uint64_t>* version_map, std::string* msg);
 
     bool ShowAllTable(
-        std::vector<::fedb::nameserver::TableInfo>& tables,  // NOLINT
+        std::vector<::openmldb::nameserver::TableInfo>& tables,  // NOLINT
         std::string& msg);                                    // NOLINT
 
     bool MakeSnapshot(const std::string& name, uint32_t pid,
@@ -98,16 +98,16 @@ class NsClient {
                       std::string& msg);  // NOLINT
 
     bool ShowOPStatus(
-        ::fedb::nameserver::ShowOPStatusResponse& response,       // NOLINT
+        ::openmldb::nameserver::ShowOPStatusResponse& response,       // NOLINT
         const std::string& name, uint32_t pid, std::string& msg);  // NOLINT
 
     bool CancelOP(uint64_t op_id, std::string& msg);  // NOLINT
 
     bool AddTableField(const std::string& table_name,
-                       const ::fedb::common::ColumnDesc& column_desc,
+                       const ::openmldb::common::ColumnDesc& column_desc,
                        std::string& msg);  // NOLINT
 
-    bool CreateTable(const ::fedb::nameserver::TableInfo& table_info,
+    bool CreateTable(const ::openmldb::nameserver::TableInfo& table_info,
                      std::string& msg);  // NOLINT
 
     bool ExecuteSQL(const std::string& script,
@@ -129,35 +129,35 @@ class NsClient {
 
     bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
 
-    bool GetTaskStatus(::fedb::api::TaskStatusResponse& response);  // NOLINT
+    bool GetTaskStatus(::openmldb::api::TaskStatusResponse& response);  // NOLINT
 
     bool LoadTable(const std::string& name, const std::string& endpoint,
-                   uint32_t pid, const ::fedb::nameserver::ZoneInfo& zone_info,
-                   const ::fedb::api::TaskInfo& task_info);
+                   uint32_t pid, const ::openmldb::nameserver::ZoneInfo& zone_info,
+                   const ::openmldb::api::TaskInfo& task_info);
 
     bool LoadTable(const std::string& name, const std::string& db,
                    const std::string& endpoint, uint32_t pid,
-                   const ::fedb::nameserver::ZoneInfo& zone_info,
-                   const ::fedb::api::TaskInfo& task_info);
+                   const ::openmldb::nameserver::ZoneInfo& zone_info,
+                   const ::openmldb::api::TaskInfo& task_info);
 
     bool CreateRemoteTableInfo(
-        const ::fedb::nameserver::ZoneInfo& zone_info,
-        ::fedb::nameserver::TableInfo& table_info,  // NOLINT
+        const ::openmldb::nameserver::ZoneInfo& zone_info,
+        ::openmldb::nameserver::TableInfo& table_info,  // NOLINT
         std::string& msg);                           // NOLINT
 
     bool CreateRemoteTableInfoSimply(
-        const ::fedb::nameserver::ZoneInfo& zone_info,
-        ::fedb::nameserver::TableInfo& table_info,  // NOLINT
+        const ::openmldb::nameserver::ZoneInfo& zone_info,
+        ::openmldb::nameserver::TableInfo& table_info,  // NOLINT
         std::string& msg);                           // NOLINT
 
-    bool DropTableRemote(const ::fedb::api::TaskInfo& task_info,
+    bool DropTableRemote(const ::openmldb::api::TaskInfo& task_info,
                          const std::string& name, const std::string& db,
-                         const ::fedb::nameserver::ZoneInfo& zone_info,
+                         const ::openmldb::nameserver::ZoneInfo& zone_info,
                          std::string& msg);  // NOLINT
 
-    bool CreateTableRemote(const ::fedb::api::TaskInfo& task_info,
-                           const ::fedb::nameserver::TableInfo& table_info,
-                           const ::fedb::nameserver::ZoneInfo& zone_info,
+    bool CreateTableRemote(const ::openmldb::api::TaskInfo& task_info,
+                           const ::openmldb::nameserver::TableInfo& table_info,
+                           const ::openmldb::nameserver::ZoneInfo& zone_info,
                            std::string& msg);  // NOLINT
 
     bool AddReplica(const std::string& name, const std::set<uint32_t>& pid_set,
@@ -166,8 +166,8 @@ class NsClient {
     bool AddReplicaNS(const std::string& name,
                       const std::vector<std::string>& endpoint_vec,
                       uint32_t pid,
-                      const ::fedb::nameserver::ZoneInfo& zone_info,
-                      const ::fedb::api::TaskInfo& task_info);
+                      const ::openmldb::nameserver::ZoneInfo& zone_info,
+                      const ::openmldb::api::TaskInfo& task_info);
 
     bool DelReplica(const std::string& name, const std::set<uint32_t>& pid_set,
                     const std::string& endpoint, std::string& msg);  // NOLINT
@@ -202,12 +202,12 @@ class NsClient {
 
     bool SetTablePartition(
         const std::string& name,
-        const ::fedb::nameserver::TablePartition& table_partition,
+        const ::openmldb::nameserver::TablePartition& table_partition,
         std::string& msg);  // NOLINT
 
     bool GetTablePartition(
         const std::string& name, uint32_t pid,
-        ::fedb::nameserver::TablePartition& table_partition,  // NOLINT
+        ::openmldb::nameserver::TablePartition& table_partition,  // NOLINT
         std::string& msg);                                     // NOLINT
 
     bool UpdateTableAliveStatus(const std::string& endpoint,
@@ -215,7 +215,7 @@ class NsClient {
                                 uint32_t pid, bool is_alive,
                                 std::string& msg);  // NOLINT
 
-    bool UpdateTTL(const std::string& name, const ::fedb::type::TTLType& type,
+    bool UpdateTTL(const std::string& name, const ::openmldb::type::TTLType& type,
                    uint64_t abs_ttl, uint64_t lat_ttl,
                    const std::string& ts_name, std::string& msg);  // NOLINT
 
@@ -228,7 +228,7 @@ class NsClient {
                            std::string& msg);  // NOLINT
 
     bool ShowReplicaCluster(
-        std::vector<::fedb::nameserver::ClusterAddAge>& clusterinfo,  // NOLINT
+        std::vector<::openmldb::nameserver::ClusterAddAge>& clusterinfo,  // NOLINT
         std::string& msg);                                             // NOLINT
 
     bool RemoveReplicaClusterByNs(const std::string& alias,
@@ -239,11 +239,11 @@ class NsClient {
     bool RemoveReplicaCluster(const std::string& alias,
                               std::string& msg);  // NOLINT
 
-    bool SwitchMode(const ::fedb::nameserver::ServerMode mode,
+    bool SwitchMode(const ::openmldb::nameserver::ServerMode mode,
                     std::string& msg);  // NOLINT
 
     bool AddIndex(const std::string& table_name,
-                  const ::fedb::common::ColumnKey& column_key, std::vector<fedb::common::ColumnDesc>* cols,
+                  const ::openmldb::common::ColumnKey& column_key, std::vector<openmldb::common::ColumnDesc>* cols,
                   std::string& msg);  // NOLINT
 
     bool DeleteIndex(const std::string& table_name, const std::string& idx_name,
@@ -255,13 +255,13 @@ class NsClient {
     bool DropProcedure(const std::string& db_name, const std::string& sp_name,
             std::string& msg); // NOLINT
 
-    bool CreateProcedure(const ::fedb::api::ProcedureInfo& sp_info,
+    bool CreateProcedure(const ::openmldb::api::ProcedureInfo& sp_info,
             uint64_t request_timeout, std::string* msg);
 
  private:
     bool TransformToTableDef(
         ::hybridse::node::CreatePlanNode* create_node,
-        ::fedb::nameserver::TableInfo* table, hybridse::base::Status* status);
+        ::openmldb::nameserver::TableInfo* table, hybridse::base::Status* status);
 
     bool HandleSQLCmd(const hybridse::node::CmdNode* cmd_node,
                       const std::string& db, hybridse::base::Status* sql_status);
@@ -272,11 +272,11 @@ class NsClient {
 
  private:
     std::string endpoint_;
-    ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub> client_;
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> client_;
     std::string db_;
 };
 
 }  // namespace client
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_CLIENT_NS_CLIENT_H_

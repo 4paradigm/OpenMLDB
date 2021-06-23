@@ -53,12 +53,12 @@
 #define PLATFORM_IS_LITTLE_ENDIAN (__BYTE_ORDER == __LITTLE_ENDIAN)
 #endif
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 static const bool kLittleEndian = PLATFORM_IS_LITTLE_ENDIAN;
 #undef PLATFORM_IS_LITTLE_ENDIAN
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_BASE_PORT_H_

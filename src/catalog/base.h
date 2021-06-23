@@ -22,7 +22,7 @@
 #include "sdk/base.h"
 #include "sdk/base_impl.h"
 
-namespace fedb {
+namespace openmldb {
 namespace catalog {
 
 class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
@@ -68,4 +68,4 @@ class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
 };
 
 }  // namespace catalog
-}  // namespace fedb
+}  // namespace openmldb

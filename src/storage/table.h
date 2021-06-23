@@ -29,12 +29,12 @@
 #include "storage/ticket.h"
 #include "vm/catalog.h"
 
-namespace fedb {
+namespace openmldb {
 namespace storage {
 
-typedef google::protobuf::RepeatedPtrField<::fedb::api::Dimension> Dimensions;
-typedef google::protobuf::RepeatedPtrField<::fedb::api::TSDimension> TSDimensions;
-using Schema = google::protobuf::RepeatedPtrField<fedb::common::ColumnDesc>;
+typedef google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> Dimensions;
+typedef google::protobuf::RepeatedPtrField<::openmldb::api::TSDimension> TSDimensions;
+using Schema = google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
 
 enum TableStat {
     kUndefined = 0,
@@ -50,8 +50,8 @@ class Table {
     Table(const std::string& name,
           uint32_t id, uint32_t pid, uint64_t ttl, bool is_leader,
           uint64_t ttl_offset, const std::map<std::string, uint32_t>& mapping,
-          ::fedb::type::TTLType ttl_type,
-          ::fedb::type::CompressType compress_type);
+          ::openmldb::type::TTLType ttl_type,
+          ::openmldb::type::CompressType compress_type);
     virtual ~Table() {}
     virtual bool Init() = 0;
 
@@ -67,7 +67,7 @@ class Table {
                      const TSDimensions& ts_dimemsions,
                      const std::string& value) = 0;
 
-    bool Put(const ::fedb::api::LogEntry& entry) {
+    bool Put(const ::openmldb::api::LogEntry& entry) {
         if (entry.dimensions_size() > 0) {
             return entry.ts_dimensions_size() > 0
                        ? Put(entry.dimensions(), entry.ts_dimensions(),
@@ -95,7 +95,7 @@ class Table {
 
     virtual uint64_t GetRecordCnt() const = 0;
 
-    virtual bool IsExpire(const ::fedb::api::LogEntry& entry) = 0;
+    virtual bool IsExpire(const ::openmldb::api::LogEntry& entry) = 0;
 
     virtual uint64_t GetExpireTime(const TTLSt& ttl_st) = 0;
 
@@ -138,17 +138,17 @@ class Table {
 
     inline const std::string& GetSchema() { return schema_; }
 
-    inline const ::fedb::type::CompressType GetCompressType() {
+    inline const ::openmldb::type::CompressType GetCompressType() {
         return compress_type_;
     }
 
-    void AddVersionSchema(const ::fedb::api::TableMeta& table_meta);
+    void AddVersionSchema(const ::openmldb::api::TableMeta& table_meta);
 
-    std::shared_ptr<::fedb::api::TableMeta> GetTableMeta() {
+    std::shared_ptr<::openmldb::api::TableMeta> GetTableMeta() {
         return std::atomic_load_explicit(&table_meta_, std::memory_order_relaxed);
     }
 
-    void SetTableMeta(::fedb::api::TableMeta& table_meta); // NOLINT
+    void SetTableMeta(::openmldb::api::TableMeta& table_meta); // NOLINT
 
     std::shared_ptr<Schema> GetVersionSchema(int32_t ver) {
         auto versions = std::atomic_load_explicit(&version_schema_, std::memory_order_relaxed);
@@ -191,7 +191,7 @@ class Table {
         return ts_mapping_;
     }
 
-    void SetTTL(const ::fedb::storage::UpdateTTLMeta& ttl_meta);
+    void SetTTL(const ::openmldb::storage::UpdateTTLMeta& ttl_meta);
 
     inline void SetMakeSnapshotTime(int64_t time) {
         last_make_snapshot_time_ = time;
@@ -215,12 +215,12 @@ class Table {
     std::string schema_;
     std::map<std::string, uint8_t> ts_mapping_;
     TableIndex table_index_;
-    ::fedb::type::CompressType compress_type_;
-    std::shared_ptr<::fedb::api::TableMeta> table_meta_;
+    ::openmldb::type::CompressType compress_type_;
+    std::shared_ptr<::openmldb::api::TableMeta> table_meta_;
     int64_t last_make_snapshot_time_;
     std::shared_ptr<std::map<int32_t, std::shared_ptr<Schema>>> version_schema_;
-    std::shared_ptr<std::vector<::fedb::storage::UpdateTTLMeta>> update_ttl_;
+    std::shared_ptr<std::vector<::openmldb::storage::UpdateTTLMeta>> update_ttl_;
 };
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb

@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 static const char LABELS[10] = {'0', '1', '2', '3', '4',
@@ -187,5 +187,5 @@ static inline int64_t ParseTimeToSecond(const std::string& time_str,
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_BASE_STRINGS_H_

@@ -36,12 +36,12 @@ DECLARE_int32(binlog_single_file_max_size);
 DECLARE_int32(binlog_name_length);
 DECLARE_string(zk_cluster);
 
-namespace fedb {
+namespace openmldb {
 namespace replica {
 
 
 
-static const ::fedb::base::DefaultComparator scmp;
+static const ::openmldb::base::DefaultComparator scmp;
 
 LogReplicator::LogReplicator(const std::string& path,
         const std::map<std::string, std::string>& real_ep_map,
@@ -87,7 +87,7 @@ void LogReplicator::SyncToDisk() {
     std::lock_guard<std::mutex> lock(wmu_);
     if (wh_ != NULL) {
         uint64_t consumed = ::baidu::common::timer::get_micros();
-        ::fedb::base::Status status = wh_->Sync();
+        ::openmldb::base::Status status = wh_->Sync();
         if (!status.ok()) {
             PDLOG(WARNING, "fail to sync data for path %s", path_.c_str());
         }
@@ -102,7 +102,7 @@ void LogReplicator::SyncToDisk() {
 bool LogReplicator::Init() {
     logs_ = new LogParts(12, 4, scmp);
     log_path_ = path_ + "/binlog/";
-    if (!::fedb::base::MkdirRecur(log_path_)) {
+    if (!::openmldb::base::MkdirRecur(log_path_)) {
         PDLOG(WARNING, "fail to log dir %s", log_path_.c_str());
         return false;
     }
@@ -166,7 +166,7 @@ bool LogReplicator::ParseBinlogIndex(const std::string& path, uint32_t& index) {
         index = 0;
         return true;
     }
-    bool ok = ::fedb::base::IsNumber(num);
+    bool ok = ::openmldb::base::IsNumber(num);
     if (!ok) {
         PDLOG(WARNING, "fail to parse binlog index from name %s, num %s",
               name.c_str(), num.c_str());
@@ -178,7 +178,7 @@ bool LogReplicator::ParseBinlogIndex(const std::string& path, uint32_t& index) {
 
 bool LogReplicator::Recover() {
     std::vector<std::string> logs;
-    int ret = ::fedb::base::GetFileName(log_path_, logs);
+    int ret = ::openmldb::base::GetFileName(log_path_, logs);
     if (ret != 0) {
         PDLOG(WARNING, "fail to get binlog log list for tid %u pid %u",
               table_->GetId(), table_->GetPid());
@@ -203,11 +203,11 @@ bool LogReplicator::Recover() {
                   full_path.c_str(), strerror(errno));
             break;
         }
-        ::fedb::log::SequentialFile* seq_file =
-            ::fedb::log::NewSeqFile(full_path, fd);
-        ::fedb::log::Reader reader(seq_file, NULL, false, 0, false);
-        ::fedb::base::Slice record;
-        ::fedb::base::Status status = reader.ReadRecord(&record, &buffer);
+        ::openmldb::log::SequentialFile* seq_file =
+            ::openmldb::log::NewSeqFile(full_path, fd);
+        ::openmldb::log::Reader reader(seq_file, NULL, false, 0, false);
+        ::openmldb::base::Slice record;
+        ::openmldb::base::Status status = reader.ReadRecord(&record, &buffer);
         delete seq_file;
         if (!status.ok()) {
             PDLOG(WARNING, "fail to get offset from file %s",
@@ -217,7 +217,7 @@ bool LogReplicator::Recover() {
         ok = entry.ParseFromString(record.ToString());
         if (!ok) {
             PDLOG(WARNING, "fail to parse log entry %s ",
-                  ::fedb::base::DebugString(record.ToString()).c_str());
+                  ::openmldb::base::DebugString(record.ToString()).c_str());
             return false;
         }
         if (entry.log_index() <= 0) {
@@ -248,7 +248,7 @@ uint64_t LogReplicator::GetOffset() {
 
 void LogReplicator::SetSnapshotLogPartIndex(uint64_t offset) {
     snapshot_last_offset_.store(offset, std::memory_order_relaxed);
-    ::fedb::log::LogReader log_reader(logs_, log_path_, false);
+    ::openmldb::log::LogReader log_reader(logs_, log_path_, false);
     log_reader.SetOffset(offset);
     log_reader.RollRLogFile();
     int log_part_index = log_reader.GetLogIndex();
@@ -277,17 +277,17 @@ void LogReplicator::DeleteBinlog() {
     }
     DEBUGLOG("min_log_index[%d] cur binlog_index[%u]", min_log_index,
           binlog_index_.load(std::memory_order_relaxed));
-    ::fedb::base::Node<uint32_t, uint64_t>* node = NULL;
+    ::openmldb::base::Node<uint32_t, uint64_t>* node = NULL;
     {
         std::lock_guard<std::mutex> lock(wmu_);
         node = logs_->Split(min_log_index);
     }
     while (node) {
-        ::fedb::base::Node<uint32_t, uint64_t>* tmp_node = node;
+        ::openmldb::base::Node<uint32_t, uint64_t>* tmp_node = node;
         node = node->GetNextNoBarrier(0);
         std::string full_path =
             log_path_ + "/" +
-            ::fedb::base::FormatToString(tmp_node->GetKey(),
+            ::openmldb::base::FormatToString(tmp_node->GetKey(),
                                           FLAGS_binlog_name_length) +
             ".log";
         if (unlink(full_path.c_str()) < 0) {
@@ -310,7 +310,7 @@ void LogReplicator::SetLeaderTerm(uint64_t term) {
 
 bool LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
     if (entry.has_method_type() &&
-        entry.method_type() == ::fedb::api::MethodType::kDelete) {
+        entry.method_type() == ::openmldb::api::MethodType::kDelete) {
         if (entry.dimensions_size() == 0) {
             PDLOG(WARNING, "no dimesion. tid %u pid %u", table_->GetId(),
                   table_->GetPid());
@@ -323,8 +323,8 @@ bool LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
 }
 
 bool LogReplicator::AppendEntries(
-    const ::fedb::api::AppendEntriesRequest* request,
-    ::fedb::api::AppendEntriesResponse* response) {
+    const ::openmldb::api::AppendEntriesRequest* request,
+    ::openmldb::api::AppendEntriesResponse* response) {
     if (!follower_->load(std::memory_order_relaxed)) {
         if (!FLAGS_zk_cluster.empty() &&
             request->term() < term_.load(std::memory_order_relaxed)) {
@@ -378,8 +378,8 @@ bool LogReplicator::AppendEntries(
         }
         std::string buffer;
         request->entries(i).SerializeToString(&buffer);
-        ::fedb::base::Slice slice(buffer.c_str(), buffer.size());
-        ::fedb::base::Status status = wh_->Write(slice);
+        ::openmldb::base::Slice slice(buffer.c_str(), buffer.size());
+        ::openmldb::base::Status status = wh_->Write(slice);
         if (!status.ok()) {
             PDLOG(WARNING, "fail to write replication log in dir %s for %s",
                   path_.c_str(), status.ToString().c_str());
@@ -545,8 +545,8 @@ bool LogReplicator::AppendEntry(LogEntry& entry) {
     entry.set_log_index(1 + cur_offset);
     std::string buffer;
     entry.SerializeToString(&buffer);
-    ::fedb::base::Slice slice(buffer);
-    ::fedb::base::Status status = wh_->Write(slice);
+    ::openmldb::base::Slice slice(buffer);
+    ::openmldb::base::Status status = wh_->Write(slice);
     if (!status.ok()) {
         PDLOG(WARNING, "fail to write replication log in dir %s for %s",
               path_.c_str(), status.ToString().c_str());
@@ -566,7 +566,7 @@ bool LogReplicator::RollWLogFile() {
         delete wh_;
         wh_ = NULL;
     }
-    std::string name = ::fedb::base::FormatToString(
+    std::string name = ::openmldb::base::FormatToString(
                            binlog_index_.load(std::memory_order_relaxed),
                            FLAGS_binlog_name_length) +
                        ".log";
@@ -588,4 +588,4 @@ bool LogReplicator::RollWLogFile() {
 void LogReplicator::Notify() { cv_.notify_all(); }
 
 }  // namespace replica
-}  // namespace fedb
+}  // namespace openmldb

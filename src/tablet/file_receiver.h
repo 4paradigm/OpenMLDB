@@ -19,7 +19,7 @@
 
 #include <string>
 
-namespace fedb {
+namespace openmldb {
 namespace tablet {
 
 class FileReceiver {
@@ -44,4 +44,4 @@ class FileReceiver {
 };
 
 }  // namespace tablet
-}  // namespace fedb
+}  // namespace openmldb

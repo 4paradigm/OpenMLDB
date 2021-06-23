@@ -20,7 +20,7 @@
 #include <string>
 #include "base/slice.h"
 
-namespace fedb {
+namespace openmldb {
 namespace storage {
 
 class TableIterator {
@@ -31,7 +31,7 @@ class TableIterator {
     TableIterator& operator=(const TableIterator&) = delete;
     virtual bool Valid() = 0;
     virtual void Next() = 0;
-    virtual fedb::base::Slice GetValue() const = 0;
+    virtual openmldb::base::Slice GetValue() const = 0;
     virtual std::string GetPK() const { return std::string(); }
     virtual uint64_t GetKey() const = 0;
     virtual void SeekToFirst() = 0;
@@ -42,4 +42,4 @@ class TableIterator {
 };
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb

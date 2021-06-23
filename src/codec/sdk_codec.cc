@@ -24,10 +24,10 @@
 #include "base/hash.h"
 #include "codec/row_codec.h"
 
-namespace fedb {
+namespace openmldb {
 namespace codec {
 
-SDKCodec::SDKCodec(const ::fedb::nameserver::TableInfo& table_info)
+SDKCodec::SDKCodec(const ::openmldb::nameserver::TableInfo& table_info)
     : format_version_(table_info.format_version()),
       base_schema_size_(0),
       modify_times_(0),
@@ -52,7 +52,7 @@ SDKCodec::SDKCodec(const ::fedb::nameserver::TableInfo& table_info)
     }
 }
 
-SDKCodec::SDKCodec(const ::fedb::api::TableMeta& table_info)
+SDKCodec::SDKCodec(const ::openmldb::api::TableMeta& table_info)
     : format_version_(table_info.format_version()),
       base_schema_size_(0),
       modify_times_(0),
@@ -100,7 +100,7 @@ void SDKCodec::ParseAddedColumnDesc(const Schema& column_desc) {
     if (format_version_ == 1) {
         uint32_t idx = schema_.size();
         for (const auto& col : column_desc) {
-            fedb::common::ColumnDesc* new_col = schema_.Add();
+            openmldb::common::ColumnDesc* new_col = schema_.Add();
             new_col->CopyFrom(col);
             schema_idx_map_.emplace(col.name(), idx);
             idx++;
@@ -125,7 +125,7 @@ void SDKCodec::ParseSchemaVer(const VerSchema& ver_schema, const Schema& add_sch
             continue;
         }
         for (int i = 0; i < remain_size; i++) {
-            fedb::common::ColumnDesc* col = base_schema->Add();
+            openmldb::common::ColumnDesc* col = base_schema->Add();
             col->CopyFrom(add_schema.Get(i));
         }
         version_schema_.insert(std::make_pair(ver, base_schema));
@@ -163,7 +163,7 @@ int SDKCodec::EncodeDimension(
         }
         uint32_t pid = 0;
         if (pid_num > 0) {
-            pid = (uint32_t)(::fedb::base::hash64(key) % pid_num);
+            pid = (uint32_t)(::openmldb::base::hash64(key) % pid_num);
         }
         auto pair = dimensions->emplace(pid, Dimension());
         pair.first->second.emplace_back(std::move(key), dimension_idx);
@@ -204,7 +204,7 @@ int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data,
         }
         uint32_t pid = 0;
         if (pid_num > 0) {
-            pid = (uint32_t)(::fedb::base::hash64(key) % pid_num);
+            pid = (uint32_t)(::openmldb::base::hash64(key) % pid_num);
         }
         auto pair = dimensions->emplace(pid, Dimension());
         pair.first->second.emplace_back(std::move(key), dimension_idx);
@@ -218,7 +218,7 @@ int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data,
         if (idx >= raw_data.size()) {
             return -1;
         }
-        if (fedb::codec::NONETOKEN == raw_data[idx]) {
+        if (openmldb::codec::NONETOKEN == raw_data[idx]) {
             ts_dimensions->push_back(default_ts);
             continue;
         }
@@ -254,7 +254,7 @@ int SDKCodec::EncodeRow(const std::vector<std::string>& raw_data,
 int SDKCodec::DecodeRow(const std::string& row, std::vector<std::string>* value) {
     if (format_version_ == 1) {
         const int8_t* data = reinterpret_cast<const int8_t*>(row.data());
-        int32_t ver = fedb::codec::RowView::GetSchemaVersion(data);
+        int32_t ver = openmldb::codec::RowView::GetSchemaVersion(data);
         auto it = version_schema_.find(ver);
         if (it == version_schema_.end()) {
             return -1;
@@ -264,7 +264,7 @@ int SDKCodec::DecodeRow(const std::string& row, std::vector<std::string>* value)
             return -1;
         }
     } else {
-        fedb::base::Slice data(row);
+        openmldb::base::Slice data(row);
         if (!RowCodec::DecodeRow(base_schema_size_, base_schema_size_ + modify_times_, data, value)) {
             return -1;
         }
@@ -297,4 +297,4 @@ int SDKCodec::CombinePartitionKey(const std::vector<std::string>& raw_data,
 }
 
 }  // namespace codec
-}  // namespace fedb
+}  // namespace openmldb

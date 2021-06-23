@@ -25,7 +25,7 @@
 #include "sdk/base_impl.h"
 #include "sdk/codec_sdk.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
 class ResultSetBase {
@@ -77,6 +77,6 @@ class ResultSetBase {
 };
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_SDK_RESULT_SET_BASE_H_

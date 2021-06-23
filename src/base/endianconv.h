@@ -116,7 +116,7 @@
  */
 #error "Undefined or invalid BYTE_ORDER"
 #endif
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 void memrev16(void *p);
@@ -155,6 +155,6 @@ uint64_t intrev64(uint64_t v);
 #endif
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_BASE_ENDIANCONV_H_

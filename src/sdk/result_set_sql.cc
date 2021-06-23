@@ -27,7 +27,7 @@
 #include "codec/fe_schema_codec.h"
 #include "glog/logging.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
 ResultSetSQL::ResultSetSQL(const ::hybridse::vm::Schema& schema, uint32_t record_cnt, uint32_t buf_size,
@@ -44,7 +44,7 @@ bool ResultSetSQL::Init() {
 }
 
 std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
-    const std::shared_ptr<::fedb::api::QueryResponse>& response, const std::shared_ptr<brpc::Controller>& cntl,
+    const std::shared_ptr<::openmldb::api::QueryResponse>& response, const std::shared_ptr<brpc::Controller>& cntl,
     hybridse::sdk::Status* status) {
     if (!status || !response || !cntl) {
         return std::shared_ptr<ResultSet>();
@@ -56,8 +56,8 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
         status->msg = "request error, fail to decodec schema";
         return std::shared_ptr<ResultSet>();
     }
-    std::shared_ptr<::fedb::sdk::ResultSetSQL> rs =
-        std::make_shared<fedb::sdk::ResultSetSQL>(schema, response->count(), response->byte_size(), cntl);
+    std::shared_ptr<::openmldb::sdk::ResultSetSQL> rs =
+        std::make_shared<openmldb::sdk::ResultSetSQL>(schema, response->count(), response->byte_size(), cntl);
     ok = rs->Init();
     if (!ok) {
         status->code = -1;
@@ -68,22 +68,22 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
 }
 
 std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
-    const std::shared_ptr<::fedb::api::ScanResponse>& response,
+    const std::shared_ptr<::openmldb::api::ScanResponse>& response,
     const ::google::protobuf::RepeatedField<uint32_t>& projection, const std::shared_ptr<brpc::Controller>& cntl,
     std::shared_ptr<::hybridse::vm::TableHandler> table_handler, ::hybridse::sdk::Status* status) {
     if (!status || !response || !cntl) {
         return std::shared_ptr<ResultSet>();
     }
-    auto sdk_table_handler = dynamic_cast<::fedb::catalog::SDKTableHandler*>(table_handler.get());
+    auto sdk_table_handler = dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
     if (projection.size() > 0) {
         ::hybridse::vm::Schema schema;
-        bool ok = ::fedb::catalog::SchemaAdapter::SubSchema(sdk_table_handler->GetSchema(), projection, &schema);
+        bool ok = ::openmldb::catalog::SchemaAdapter::SubSchema(sdk_table_handler->GetSchema(), projection, &schema);
         if (!ok) {
             status->code = -1;
             status->msg = "fail to get sub schema";
         }
 
-        std::shared_ptr<::fedb::sdk::ResultSetSQL> rs = std::make_shared<fedb::sdk::ResultSetSQL>(
+        std::shared_ptr<::openmldb::sdk::ResultSetSQL> rs = std::make_shared<openmldb::sdk::ResultSetSQL>(
             *(sdk_table_handler->GetSchema()), response->count(), response->buf_size(), cntl);
         ok = rs->Init();
         if (!ok) {
@@ -93,7 +93,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
         }
         return rs;
     } else {
-        std::shared_ptr<::fedb::sdk::ResultSetSQL> rs = std::make_shared<fedb::sdk::ResultSetSQL>(
+        std::shared_ptr<::openmldb::sdk::ResultSetSQL> rs = std::make_shared<openmldb::sdk::ResultSetSQL>(
             *(sdk_table_handler->GetSchema()), response->count(), response->buf_size(), cntl);
         bool ok = rs->Init();
         if (!ok) {
@@ -106,4 +106,4 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
 }
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb

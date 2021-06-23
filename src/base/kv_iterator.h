@@ -25,12 +25,12 @@
 #include "base/slice.h"
 #include "proto/tablet.pb.h"
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 class KvIterator {
  public:
-    explicit KvIterator(::fedb::api::ScanResponse* response)
+    explicit KvIterator(::openmldb::api::ScanResponse* response)
         : response_(response),
           buffer_(NULL),
           tsize_(0),
@@ -45,7 +45,7 @@ class KvIterator {
         Next();
     }
 
-    explicit KvIterator(::fedb::api::TraverseResponse* response)
+    explicit KvIterator(::openmldb::api::TraverseResponse* response)
         : response_(response),
           buffer_(NULL),
           tsize_(0),
@@ -60,7 +60,7 @@ class KvIterator {
         Next();
     }
 
-    KvIterator(::fedb::api::ScanResponse* response, bool clean)
+    KvIterator(::openmldb::api::ScanResponse* response, bool clean)
         : response_(response),
           buffer_(NULL),
           tsize_(0),
@@ -75,7 +75,7 @@ class KvIterator {
         Next();
     }
 
-    KvIterator(::fedb::api::TraverseResponse* response, bool clean)
+    KvIterator(::openmldb::api::TraverseResponse* response, bool clean)
         : response_(response),
           buffer_(NULL),
           tsize_(0),
@@ -168,5 +168,5 @@ class KvIterator {
 };
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_BASE_KV_ITERATOR_H_

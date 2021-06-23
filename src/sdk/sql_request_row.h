@@ -29,7 +29,7 @@
 #include "codec/fe_row_selector.h"
 #include "sdk/base.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
 class SQLRequestRow {
@@ -143,5 +143,5 @@ class ColumnIndicesSet {
 };
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_SDK_SQL_REQUEST_ROW_H_

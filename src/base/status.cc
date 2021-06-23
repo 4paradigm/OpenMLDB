@@ -17,7 +17,7 @@
 
 #include "base/status.h"
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 const char* Status::CopyState(const char* state) {
@@ -94,4 +94,4 @@ std::string Status::ToString() const {
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb

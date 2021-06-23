@@ -25,7 +25,7 @@
 #include "proto/type.pb.h"
 #include "storage/segment.h"
 
-namespace fedb {
+namespace openmldb {
 namespace codec {
 
 class CodecBenchmarkTest : public ::testing::Test {
@@ -34,29 +34,29 @@ class CodecBenchmarkTest : public ::testing::Test {
     ~CodecBenchmarkTest() {}
 };
 
-void RunHasTs(::fedb::storage::DataBlock* db) {
-    boost::container::deque<std::pair<uint64_t, ::fedb::base::Slice>>
+void RunHasTs(::openmldb::storage::DataBlock* db) {
+    boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>>
         datas;
     uint32_t total_block_size = 0;
     for (uint32_t i = 0; i < 1000; i++) {
         datas.emplace_back(
-            1000, std::move(::fedb::base::Slice(db->data, db->size)));
+            1000, std::move(::openmldb::base::Slice(db->data, db->size)));
         total_block_size += db->size;
     }
     std::string pairs;
-    ::fedb::codec::EncodeRows(datas, total_block_size, &pairs);
+    ::openmldb::codec::EncodeRows(datas, total_block_size, &pairs);
 }
 
-void RunNoneTs(::fedb::storage::DataBlock* db) {
-    std::vector<::fedb::base::Slice> datas;
+void RunNoneTs(::openmldb::storage::DataBlock* db) {
+    std::vector<::openmldb::base::Slice> datas;
     datas.reserve(1000);
     uint32_t total_block_size = 0;
     for (uint32_t i = 0; i < 1000; i++) {
-        datas.push_back(::fedb::base::Slice(db->data, db->size));
+        datas.push_back(::openmldb::base::Slice(db->data, db->size));
         total_block_size += db->size;
     }
     std::string pairs;
-    ::fedb::codec::EncodeRows(datas, total_block_size, &pairs);
+    ::openmldb::codec::EncodeRows(datas, total_block_size, &pairs);
 }
 
 TEST_F(CodecBenchmarkTest, ProjectTest) {
@@ -109,8 +109,8 @@ TEST_F(CodecBenchmarkTest, Encode_ts_vs_none_ts) {
     for (uint32_t i = 0; i < 128; i++) {
         bd[i] = 'a';
     }
-    ::fedb::storage::DataBlock* block =
-        new ::fedb::storage::DataBlock(1, bd, 128);
+    ::openmldb::storage::DataBlock* block =
+        new ::openmldb::storage::DataBlock(1, bd, 128);
     for (uint32_t i = 0; i < 10; i++) {
         RunHasTs(block);
         RunNoneTs(block);
@@ -135,15 +135,15 @@ TEST_F(CodecBenchmarkTest, Encode_ts_vs_none_ts) {
 }
 
 TEST_F(CodecBenchmarkTest, Encode) {
-    std::vector<::fedb::storage::DataBlock*> data;
+    std::vector<::openmldb::storage::DataBlock*> data;
     char* bd = new char[400];
     for (uint32_t i = 0; i < 400; i++) {
         bd[i] = 'a';
     }
 
     for (uint32_t i = 0; i < 1000; i++) {
-        ::fedb::storage::DataBlock* block =
-            new ::fedb::storage::DataBlock(1, bd, 400);
+        ::openmldb::storage::DataBlock* block =
+            new ::openmldb::storage::DataBlock(1, bd, 400);
         data.push_back(block);
     }
 
@@ -155,7 +155,7 @@ TEST_F(CodecBenchmarkTest, Encode) {
         char buffer[400 * 1000 + 1000 * 12];
         uint32_t offset = 0;
         for (uint32_t j = 0; j < 1000; j++) {
-            ::fedb::codec::Encode(time, data[j], buffer, offset);
+            ::openmldb::codec::Encode(time, data[j], buffer, offset);
             offset += (4 + 8 + 400);
         }
     }
@@ -164,9 +164,9 @@ TEST_F(CodecBenchmarkTest, Encode) {
     uint64_t pconsumed = ::baidu::common::timer::get_micros();
 
     for (uint32_t i = 0; i < 10000; i++) {
-        ::fedb::common::KvList list;
+        ::openmldb::common::KvList list;
         for (uint32_t j = 0; j < 1000; j++) {
-            ::fedb::common::KvPair* pair = list.add_pairs();
+            ::openmldb::common::KvPair* pair = list.add_pairs();
             pair->set_time(time);
             pair->set_value(bd, 400);
         }
@@ -180,7 +180,7 @@ TEST_F(CodecBenchmarkTest, Encode) {
 }
 
 TEST_F(CodecBenchmarkTest, Decode) {
-    std::vector<::fedb::storage::DataBlock*> data;
+    std::vector<::openmldb::storage::DataBlock*> data;
     char* bd = new char[400];
 
     for (uint32_t i = 0; i < 400; i++) {
@@ -188,24 +188,24 @@ TEST_F(CodecBenchmarkTest, Decode) {
     }
 
     for (uint32_t i = 0; i < 1000; i++) {
-        ::fedb::storage::DataBlock* block =
-            new ::fedb::storage::DataBlock(1, bd, 400);
+        ::openmldb::storage::DataBlock* block =
+            new ::openmldb::storage::DataBlock(1, bd, 400);
         data.push_back(block);
     }
     char buffer[400 * 1000 + 1000 * 12];
     uint32_t offset = 0;
     uint64_t time = 9527;
     for (uint32_t j = 0; j < 1000; j++) {
-        ::fedb::codec::Encode(time, data[j], buffer, offset);
+        ::openmldb::codec::Encode(time, data[j], buffer, offset);
         offset += (4 + 8 + 400);
     }
 
-    ::fedb::api::ScanResponse response;
+    ::openmldb::api::ScanResponse response;
     response.set_pairs(buffer, 412 * 1000);
 
     uint64_t consumed = ::baidu::common::timer::get_micros();
     for (uint32_t i = 0; i < 10000; i++) {
-        ::fedb::base::KvIterator it(&response, false);
+        ::openmldb::base::KvIterator it(&response, false);
         while (it.Valid()) {
             it.Next();
             std::string value = it.GetValue().ToString();
@@ -213,9 +213,9 @@ TEST_F(CodecBenchmarkTest, Decode) {
         }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
-    ::fedb::common::KvList list;
+    ::openmldb::common::KvList list;
     for (uint32_t j = 0; j < 1000; j++) {
-        ::fedb::common::KvPair* pair = list.add_pairs();
+        ::openmldb::common::KvPair* pair = list.add_pairs();
         pair->set_time(time);
         pair->set_value(bd, 400);
     }
@@ -223,7 +223,7 @@ TEST_F(CodecBenchmarkTest, Decode) {
     list.SerializeToString(&result);
     uint64_t pconsumed = ::baidu::common::timer::get_micros();
     for (uint32_t i = 0; i < 10000; i++) {
-        ::fedb::common::KvList kv_list;
+        ::openmldb::common::KvList kv_list;
         kv_list.ParseFromString(result);
     }
 
@@ -233,7 +233,7 @@ TEST_F(CodecBenchmarkTest, Decode) {
 }
 
 }  // namespace codec
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

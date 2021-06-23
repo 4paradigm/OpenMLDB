@@ -31,12 +31,12 @@
 #include "vm/catalog.h"
 #include "catalog/base.h"
 
-namespace fedb {
+namespace openmldb {
 namespace catalog {
 
 class SDKTableHandler : public ::hybridse::vm::TableHandler {
  public:
-    SDKTableHandler(const ::fedb::nameserver::TableInfo& meta,
+    SDKTableHandler(const ::openmldb::nameserver::TableInfo& meta,
             const ClientManager& client_manager);
 
     bool Init();
@@ -98,7 +98,7 @@ class SDKTableHandler : public ::hybridse::vm::TableHandler {
     }
 
  private:
-    ::fedb::nameserver::TableInfo meta_;
+    ::openmldb::nameserver::TableInfo meta_;
     ::hybridse::vm::Schema schema_;
     std::string name_;
     std::string db_;
@@ -123,7 +123,7 @@ class SDKCatalog : public ::hybridse::vm::Catalog {
 
     ~SDKCatalog() {}
 
-    bool Init(const std::vector<::fedb::nameserver::TableInfo>& tables,
+    bool Init(const std::vector<::openmldb::nameserver::TableInfo>& tables,
             const Procedures& db_sp_map);
 
     std::shared_ptr<::hybridse::type::Database> GetDatabase(const std::string& db) override {
@@ -150,5 +150,5 @@ class SDKCatalog : public ::hybridse::vm::Catalog {
 };
 
 }  // namespace catalog
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_CATALOG_SDK_CATALOG_H_

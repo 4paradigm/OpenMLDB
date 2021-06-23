@@ -23,13 +23,13 @@
 #include "codec/schema_codec.h"
 #include "glog/logging.h"
 
-namespace fedb {
+namespace openmldb {
 namespace storage {
 
-ColumnDef::ColumnDef(const std::string& name, uint32_t id, ::fedb::type::DataType type, bool not_null)
+ColumnDef::ColumnDef(const std::string& name, uint32_t id, ::openmldb::type::DataType type, bool not_null)
     : name_(name), id_(id), type_(type), not_null_(not_null), ts_idx_(-1) {}
 
-ColumnDef::ColumnDef(const std::string& name, uint32_t id, ::fedb::type::DataType type, bool not_null, int32_t ts_idx)
+ColumnDef::ColumnDef(const std::string& name, uint32_t id, ::openmldb::type::DataType type, bool not_null, int32_t ts_idx)
     : name_(name), id_(id), type_(type), not_null_(not_null), ts_idx_(ts_idx) {}
 
 std::shared_ptr<ColumnDef> TableColumn::GetColumn(uint32_t idx) {
@@ -55,8 +55,8 @@ void TableColumn::AddColumn(std::shared_ptr<ColumnDef> column_def) {
     column_map_.insert(std::make_pair(column_def->GetName(), column_def));
 }
 
-::fedb::common::ColumnKey IndexDef::GenColumnKey() {
-    ::fedb::common::ColumnKey column_key;
+::openmldb::common::ColumnKey IndexDef::GenColumnKey() {
+    ::openmldb::common::ColumnKey column_key;
     column_key.set_index_name(name_);
     if (!IsReady()) {
         column_key.set_flag(1);
@@ -77,13 +77,13 @@ void TableColumn::AddColumn(std::shared_ptr<ColumnDef> column_def) {
 
 IndexDef::IndexDef(const std::string& name, uint32_t id) : name_(name), index_id_(id), inner_pos_(0),
      status_(IndexStatus::kReady),
-     type_(::fedb::type::IndexType::kTimeSerise), columns_(), ttl_st_(), ts_column_(nullptr) {}
+     type_(::openmldb::type::IndexType::kTimeSerise), columns_(), ttl_st_(), ts_column_(nullptr) {}
 
 IndexDef::IndexDef(const std::string& name, uint32_t id, IndexStatus status)
     : name_(name), index_id_(id), inner_pos_(0), status_(status),
-      type_(::fedb::type::IndexType::kTimeSerise), columns_(), ttl_st_(), ts_column_(nullptr) {}
+      type_(::openmldb::type::IndexType::kTimeSerise), columns_(), ttl_st_(), ts_column_(nullptr) {}
 
-IndexDef::IndexDef(const std::string& name, uint32_t id, const IndexStatus& status, ::fedb::type::IndexType type,
+IndexDef::IndexDef(const std::string& name, uint32_t id, const IndexStatus& status, ::openmldb::type::IndexType type,
                    const std::vector<ColumnDef>& columns)
     : name_(name), index_id_(id), inner_pos_(0), status_(status), type_(type), columns_(columns),
       ttl_st_(), ts_column_(nullptr) {}
@@ -105,9 +105,9 @@ TTLType IndexDef::GetTTLType() const {
 uint32_t InnerIndexSt::GetKeyEntryMaxHeight(uint32_t abs_max_height, uint32_t lat_max_height) const {
     uint32_t max_height = lat_max_height;
     for (const auto& cur_index : index_) {
-        ::fedb::storage::TTLType ttl_type = cur_index->GetTTLType();
-        if (ttl_type == ::fedb::storage::TTLType::kAbsoluteTime ||
-                ttl_type == ::fedb::storage::TTLType::kAbsAndLat) {
+        ::openmldb::storage::TTLType ttl_type = cur_index->GetTTLType();
+        if (ttl_type == ::openmldb::storage::TTLType::kAbsoluteTime ||
+                ttl_type == ::openmldb::storage::TTLType::kAbsAndLat) {
             max_height = abs_max_height;
             break;
         }
@@ -152,7 +152,7 @@ void TableIndex::ReSet() {
     std::atomic_store_explicit(&unique_col_name_vec_, new_unique_vec, std::memory_order_relaxed);
 }
 
-int TableIndex::ParseFromMeta(const ::fedb::api::TableMeta& table_meta, std::map<std::string, uint8_t>* ts_mapping) {
+int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta, std::map<std::string, uint8_t>* ts_mapping) {
     if (ts_mapping == nullptr) {
         return -1;
     }
@@ -179,7 +179,7 @@ int TableIndex::ParseFromMeta(const ::fedb::api::TableMeta& table_meta, std::map
         for (int idx = 0; idx < table_meta.column_desc_size(); idx++) {
             const auto& column_desc = table_meta.column_desc(idx);
             std::shared_ptr<ColumnDef> col;
-            ::fedb::type::DataType type = column_desc.data_type();
+            ::openmldb::type::DataType type = column_desc.data_type();
             const std::string& name = column_desc.name();
             col = std::make_shared<ColumnDef>(name, key_idx, type, true);
             col_map.emplace(name, col);
@@ -201,24 +201,24 @@ int TableIndex::ParseFromMeta(const ::fedb::api::TableMeta& table_meta, std::map
         for (int pos = 0; pos < table_meta.column_key_size(); pos++) {
             const auto& column_key =  table_meta.column_key(pos);
             std::string name = column_key.index_name();
-            ::fedb::storage::IndexStatus status;
+            ::openmldb::storage::IndexStatus status;
             if (column_key.flag()) {
-                status = ::fedb::storage::IndexStatus::kDeleted;
+                status = ::openmldb::storage::IndexStatus::kDeleted;
             } else {
-                status = ::fedb::storage::IndexStatus::kReady;
+                status = ::openmldb::storage::IndexStatus::kReady;
             }
             std::vector<ColumnDef> col_vec;
             for (const auto& cur_col_name : column_key.col_name()) {
                 col_vec.push_back(*(col_map[cur_col_name]));
             }
             auto index = std::make_shared<IndexDef>(column_key.index_name(), key_idx, status,
-                    ::fedb::type::IndexType::kTimeSerise, col_vec);
+                    ::openmldb::type::IndexType::kTimeSerise, col_vec);
             if (!column_key.ts_name().empty()) {
                 const std::string& ts_name = column_key.ts_name();
                 index->SetTsColumn(col_map[ts_name]);
             }
             if (column_key.has_ttl()) {
-                index->SetTTL(::fedb::storage::TTLSt(column_key.ttl()));
+                index->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));
             }
             if (AddIndex(index) < 0) {
                 DLOG(WARNING) << "add index failed";
@@ -247,7 +247,7 @@ int TableIndex::ParseFromMeta(const ::fedb::api::TableMeta& table_meta, std::map
     return 0;
 }
 
-void TableIndex::FillIndexVal(const ::fedb::api::TableMeta& table_meta, uint32_t ts_num) {
+void TableIndex::FillIndexVal(const ::openmldb::api::TableMeta& table_meta, uint32_t ts_num) {
     inner_indexs_->clear();
     if (table_meta.column_key_size() > 0 && ts_num > 1) {
         std::map<std::string, uint32_t> name_pos_map;
@@ -395,7 +395,7 @@ int TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
     }
     new_indexs->push_back(index_def);
     std::atomic_store_explicit(&indexs_, new_indexs, std::memory_order_relaxed);
-    if (index_def->GetType() == ::fedb::type::kPrimaryKey || index_def->GetType() == ::fedb::type::kAutoGen) {
+    if (index_def->GetType() == ::openmldb::type::kPrimaryKey || index_def->GetType() == ::openmldb::type::kAutoGen) {
         pk_index_ = index_def;
     }
 
@@ -410,7 +410,7 @@ int TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
         }
         combine_name.append(col_def.GetName());
         new_vec->push_back(col_def.GetName());
-        if (index_def->GetType() == ::fedb::type::kUnique) {
+        if (index_def->GetType() == ::openmldb::type::kUnique) {
             new_unique_vec->push_back(col_def.GetName());
         }
     }
@@ -438,7 +438,7 @@ int32_t TableIndex::GetMaxIndexId() const {
 }
 
 bool TableIndex::HasAutoGen() {
-    if (pk_index_->GetType() == ::fedb::type::kAutoGen) {
+    if (pk_index_->GetType() == ::openmldb::type::kAutoGen) {
         return true;
     }
     return false;
@@ -474,7 +474,7 @@ bool TableIndex::IsUniqueColName(const std::string& name) {
     return true;
 }
 
-PartitionSt::PartitionSt(const ::fedb::nameserver::TablePartition& partitions) : pid_(partitions.pid()) {
+PartitionSt::PartitionSt(const ::openmldb::nameserver::TablePartition& partitions) : pid_(partitions.pid()) {
     for (const auto& meta : partitions.partition_meta()) {
         if (!meta.is_alive()) {
             continue;
@@ -487,7 +487,7 @@ PartitionSt::PartitionSt(const ::fedb::nameserver::TablePartition& partitions) :
     }
 }
 
-PartitionSt::PartitionSt(const ::fedb::common::TablePartition& partitions) : pid_(partitions.pid()) {
+PartitionSt::PartitionSt(const ::openmldb::common::TablePartition& partitions) : pid_(partitions.pid()) {
     for (const auto& meta : partitions.partition_meta()) {
         if (!meta.is_alive()) {
             continue;
@@ -519,7 +519,7 @@ bool PartitionSt::operator==(const PartitionSt& partition_st) const {
     return true;
 }
 
-TableSt::TableSt(const ::fedb::nameserver::TableInfo& table_info)
+TableSt::TableSt(const ::openmldb::nameserver::TableInfo& table_info)
     : name_(table_info.name()),
       db_(table_info.db()),
       tid_(table_info.tid()),
@@ -536,7 +536,7 @@ TableSt::TableSt(const ::fedb::nameserver::TableInfo& table_info)
     }
 }
 
-TableSt::TableSt(const ::fedb::api::TableMeta& meta)
+TableSt::TableSt(const ::openmldb::api::TableMeta& meta)
     : name_(meta.name()),
       db_(meta.db()),
       tid_(meta.tid()),
@@ -566,4 +566,4 @@ bool TableSt::SetPartition(const PartitionSt& partition_st) {
 }
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb

@@ -26,14 +26,14 @@
 #include "log/log_writer.h"
 #include "proto/tablet.pb.h"
 
-using ::fedb::log::SequentialFile;
-using ::fedb::log::Reader;
-using ::fedb::base::Slice;
-using ::fedb::base::Status;
-using ::fedb::log::NewSeqFile;
-using ::fedb::base::ParseFileNameFromPath;
+using ::openmldb::log::SequentialFile;
+using ::openmldb::log::Reader;
+using ::openmldb::base::Slice;
+using ::openmldb::base::Status;
+using ::openmldb::log::NewSeqFile;
+using ::openmldb::base::ParseFileNameFromPath;
 
-namespace fedb {
+namespace openmldb {
 namespace tools {
 
 void ReadLog(const std::string& full_path) {
@@ -47,8 +47,8 @@ void ReadLog(const std::string& full_path) {
     SequentialFile* rf = NewSeqFile(full_path, fd_r);
     std::string scratch;
     bool for_snapshot = false;
-    if (full_path.find(fedb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos
-            || full_path.find(fedb::log::SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
+    if (full_path.find(openmldb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos
+            || full_path.find(openmldb::log::SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
         for_snapshot = true;
     }
     Reader reader(rf, NULL, true, 0, for_snapshot);
@@ -60,7 +60,7 @@ void ReadLog(const std::string& full_path) {
         if (!status.ok()) {
             break;
         }
-        ::fedb::api::LogEntry entry;
+        ::openmldb::api::LogEntry entry;
         entry.ParseFromString(value.ToString());
         if (entry.ts_dimensions_size() == 0) {
             my_cout << entry.ts() << std::endl;
@@ -85,13 +85,13 @@ void ReadLog(const std::string& full_path) {
 }
 
 }  // namespace tools
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     printf("--------start readlog--------\n");
     printf("--------full_path: %s\n", argv[1]);
-    fedb::tools::ReadLog(argv[1]);
+    openmldb::tools::ReadLog(argv[1]);
     printf("--------end readlog--------\n");
     return 0;
 }

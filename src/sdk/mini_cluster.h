@@ -50,7 +50,7 @@ DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_bool(auto_failover);
 DECLARE_bool(enable_distsql);
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
 constexpr int MAX_TABLET_NUM = 3;
@@ -78,8 +78,8 @@ class MiniCluster {
         sleep(1);
         LOG(INFO) << "zk cluster " << zk_cluster_ << " zk path " << zk_path_
             << " enable_distsql = " << FLAGS_enable_distsql;
-        ::fedb::nameserver::NameServerImpl* nameserver =
-            new ::fedb::nameserver::NameServerImpl();
+        ::openmldb::nameserver::NameServerImpl* nameserver =
+            new ::openmldb::nameserver::NameServerImpl();
         bool ok = nameserver->Init(zk_cluster_, zk_path_, ns_endpoint, "");
         if (!ok) {
             return false;
@@ -93,7 +93,7 @@ class MiniCluster {
             return false;
         }
         sleep(2);
-        ns_client_ = new ::fedb::client::NsClient(ns_endpoint, "");
+        ns_client_ = new ::openmldb::client::NsClient(ns_endpoint, "");
         if (ns_client_->Init() != 0) {
             LOG(WARNING) << "fail to init ns client";
             return false;
@@ -128,9 +128,9 @@ class MiniCluster {
 
     std::string GetZkPath() { return zk_path_; }
 
-    ::fedb::client::NsClient* GetNsClient() { return ns_client_; }
+    ::openmldb::client::NsClient* GetNsClient() { return ns_client_; }
 
-    ::fedb::tablet::TabletImpl* GetTablet(const std::string& endpoint) {
+    ::openmldb::tablet::TabletImpl* GetTablet(const std::string& endpoint) {
         auto iter = tablets_.find(endpoint);
         if (iter != tablets_.end()) {
             return iter->second;
@@ -138,7 +138,7 @@ class MiniCluster {
         return nullptr;
     }
 
-    ::fedb::client::TabletClient* GetTabletClient(const std::string& endpoint) {
+    ::openmldb::client::TabletClient* GetTabletClient(const std::string& endpoint) {
         auto iter = tb_clients_.find(endpoint);
         if (iter != tb_clients_.end()) {
             return iter->second;
@@ -158,7 +158,7 @@ class MiniCluster {
     bool StartTablet(brpc::Server* tb_server) {
         std::string tb_endpoint = "127.0.0.1:" + GenRand();
         tb_endpoints_.push_back(tb_endpoint);
-        ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
+        ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
         bool ok = tablet->Init(zk_cluster_, zk_path_, tb_endpoint, "");
         if (!ok) {
             return false;
@@ -177,7 +177,7 @@ class MiniCluster {
         }
         tablets_.emplace(tb_endpoint, tablet);
         sleep(2);
-        auto* client = new ::fedb::client::TabletClient(tb_endpoint, tb_endpoint);
+        auto* client = new ::openmldb::client::TabletClient(tb_endpoint, tb_endpoint);
         if (client->Init() < 0) {
             LOG(WARNING) << "fail to init client";
             return false;
@@ -193,11 +193,11 @@ class MiniCluster {
     std::vector<std::string> tb_endpoints_;
     std::string zk_cluster_;
     std::string zk_path_;
-    ::fedb::client::NsClient* ns_client_;
-    std::map<std::string, ::fedb::tablet::TabletImpl*> tablets_;
-    std::map<std::string, ::fedb::client::TabletClient*> tb_clients_;
+    ::openmldb::client::NsClient* ns_client_;
+    std::map<std::string, ::openmldb::tablet::TabletImpl*> tablets_;
+    std::map<std::string, ::openmldb::client::TabletClient*> tb_clients_;
 };
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_SDK_MINI_CLUSTER_H_

@@ -33,9 +33,9 @@ DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
 
-using ::fedb::zk::ZkClient;
+using ::openmldb::zk::ZkClient;
 
-namespace fedb {
+namespace openmldb {
 namespace tablet {
 
 uint32_t counter = 10;
@@ -88,13 +88,13 @@ TEST_F(TabletImplTest, KeepAlive) {
 }
 
 }  // namespace tablet
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::fedb::base::SetLogLevel(DEBUG);
+    ::openmldb::base::SetLogLevel(DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_db_root_path = "/tmp/" + ::fedb::tablet::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
     return RUN_ALL_TESTS();
 }

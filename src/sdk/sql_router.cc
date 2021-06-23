@@ -20,7 +20,7 @@
 #include "glog/logging.h"
 #include "sdk/sql_cluster_router.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(
@@ -34,4 +34,4 @@ std::shared_ptr<SQLRouter> NewClusterSQLRouter(
 }
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb

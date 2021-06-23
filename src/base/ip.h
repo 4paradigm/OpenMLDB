@@ -22,7 +22,7 @@
 #include <arpa/inet.h>
 #include <string>
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 bool GetLocalIp(std::string* ip) {
@@ -43,4 +43,4 @@ bool GetLocalIp(std::string* ip) {
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb

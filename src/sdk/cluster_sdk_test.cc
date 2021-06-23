@@ -39,14 +39,14 @@
 #include "sdk/mini_cluster.h"
 #include "common/timer.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
-using ::fedb::codec::SchemaCodec;
+using ::openmldb::codec::SchemaCodec;
 
-typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>
     RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>
     RtiDBIndex;
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
@@ -87,7 +87,7 @@ TEST_F(ClusterSDKTest, smoketest) {
     option.zk_path = mc_->GetZkPath();
     ClusterSDK sdk(option);
     ASSERT_TRUE(sdk.Init());
-    ::fedb::nameserver::TableInfo table_info;
+    ::openmldb::nameserver::TableInfo table_info;
     table_info.set_format_version(1);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
@@ -97,13 +97,13 @@ TEST_F(ClusterSDKTest, smoketest) {
     ASSERT_TRUE(ok);
     table_info.set_name(name);
     table_info.set_db(db);
-    SchemaCodec::SetColumnDesc(table_info.add_column_desc(), "col1", ::fedb::type::kString);
-    SchemaCodec::SetColumnDesc(table_info.add_column_desc(), "col2", ::fedb::type::kBigInt);
-    SchemaCodec::SetIndex(table_info.add_column_key(), "index0", "col1", "col2", ::fedb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetColumnDesc(table_info.add_column_desc(), "col1", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_info.add_column_desc(), "col2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetIndex(table_info.add_column_key(), "index0", "col1", "col2", ::openmldb::type::kAbsoluteTime, 0, 0);
     ok = ns_client->CreateTable(table_info, error);
     ASSERT_TRUE(ok);
     sleep(5);
-    std::vector<std::shared_ptr<::fedb::catalog::TabletAccessor>> tablet;
+    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablet;
     ok = sdk.GetTablet(db, name, &tablet);
     ASSERT_TRUE(ok);
     ASSERT_EQ(8u, tablet.size());
@@ -121,7 +121,7 @@ TEST_F(ClusterSDKTest, smoketest) {
 }
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;

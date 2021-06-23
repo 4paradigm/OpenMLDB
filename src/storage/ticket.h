@@ -21,7 +21,7 @@
 #include <vector>
 #include "storage/segment.h"
 
-namespace fedb {
+namespace openmldb {
 namespace storage {
 
 class KeyEntry;
@@ -41,6 +41,6 @@ class Ticket {
 };
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_STORAGE_TICKET_H_

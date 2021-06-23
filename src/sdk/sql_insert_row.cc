@@ -23,11 +23,11 @@
 
 #include "glog/logging.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
 SQLInsertRows::SQLInsertRows(
-    std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
+    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
     std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
     uint32_t default_str_length)
     : table_info_(table_info),
@@ -46,7 +46,7 @@ std::shared_ptr<SQLInsertRow> SQLInsertRows::NewRow() {
 }
 
 SQLInsertRow::SQLInsertRow(
-    std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
+    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
     std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
     uint32_t default_string_length)
     : table_info_(table_info),
@@ -116,7 +116,7 @@ SQLInsertRow::GetDimensions() {
             key += raw_dimensions_[idx];
         }
         if (pid_num > 0) {
-            pid = (uint32_t)(::fedb::base::hash64(key) % pid_num);
+            pid = (uint32_t)(::openmldb::base::hash64(key) % pid_num);
         }
         auto iter = dimensions_.find(pid);
         if (iter == dimensions_.end()) {
@@ -135,24 +135,24 @@ bool SQLInsertRow::MakeDefault() {
             return AppendNULL();
         }
         switch (table_info_->column_desc(rb_.GetAppendPos()).data_type()) {
-            case fedb::type::kBool:
+            case openmldb::type::kBool:
                 return AppendBool(it->second->GetInt());
-            case fedb::type::kSmallInt:
+            case openmldb::type::kSmallInt:
                 return AppendInt16(it->second->GetSmallInt());
-            case fedb::type::kInt:
+            case openmldb::type::kInt:
                 return AppendInt32(it->second->GetInt());
-            case fedb::type::kBigInt:
+            case openmldb::type::kBigInt:
                 return AppendInt64(it->second->GetLong());
-            case fedb::type::kFloat:
+            case openmldb::type::kFloat:
                 return AppendFloat(it->second->GetFloat());
-            case fedb::type::kDouble:
+            case openmldb::type::kDouble:
                 return AppendDouble(it->second->GetDouble());
-            case fedb::type::kDate:
+            case openmldb::type::kDate:
                 return AppendDate(it->second->GetInt());
-            case fedb::type::kTimestamp:
+            case openmldb::type::kTimestamp:
                 return AppendTimestamp(it->second->GetLong());
-            case fedb::type::kVarchar:
-            case fedb::type::kString:
+            case openmldb::type::kVarchar:
+            case openmldb::type::kString:
                 return AppendString(it->second->GetStr());
             default:
                 return false;
@@ -305,4 +305,4 @@ bool SQLInsertRow::Build() {
 }
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb

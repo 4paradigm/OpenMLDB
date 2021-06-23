@@ -20,7 +20,7 @@
 #include "codec/flat_array.h"
 #include "gtest/gtest.h"
 
-namespace fedb {
+namespace openmldb {
 namespace codec {
 
 class FlatArrayTest : public ::testing::Test {
@@ -90,7 +90,7 @@ TEST_F(FlatArrayTest, Encode) {
     ASSERT_TRUE(ok);
     codec.Build();
     std::cout << buffer.size() << std::endl;
-    std::cout << ::fedb::base::DebugString(buffer) << std::endl;
+    std::cout << ::openmldb::base::DebugString(buffer) << std::endl;
     ASSERT_EQ((int32_t)buffer.size(), 13);
     FlatArrayIterator it(buffer.c_str(), buffer.size(), 2);
     ASSERT_EQ(kFloat, it.GetType());
@@ -113,7 +113,7 @@ TEST_F(FlatArrayTest, Encode) {
     codec2.Append("wtz");
     codec2.Append(1.0f);
     codec2.Build();
-    std::cout << ::fedb::base::DebugString(buffer2) << std::endl;
+    std::cout << ::openmldb::base::DebugString(buffer2) << std::endl;
 }
 
 TEST_F(FlatArrayTest, Encode1) {
@@ -125,7 +125,7 @@ TEST_F(FlatArrayTest, Encode1) {
     ok = codec.Append(v);
     ASSERT_TRUE(ok);
     codec.Build();
-    std::cout << ::fedb::base::DebugString(buffer) << std::endl;
+    std::cout << ::openmldb::base::DebugString(buffer) << std::endl;
 }
 
 TEST_F(FlatArrayTest, TimestampEncode) {
@@ -139,7 +139,7 @@ TEST_F(FlatArrayTest, TimestampEncode) {
     ok = codec.AppendTimestamp(11111);
     ASSERT_TRUE(ok);
     codec.Build();
-    std::cout << ::fedb::base::DebugString(buffer) << std::endl;
+    std::cout << ::openmldb::base::DebugString(buffer) << std::endl;
 }
 
 TEST_F(FlatArrayTest, DateEncode) {
@@ -161,7 +161,7 @@ TEST_F(FlatArrayTest, DateEncode) {
     ok = codec.Append(value2);
     ASSERT_TRUE(ok);
     codec.Build();
-    std::cout << ::fedb::base::DebugString(buffer) << std::endl;
+    std::cout << ::openmldb::base::DebugString(buffer) << std::endl;
 }
 
 TEST_F(FlatArrayTest, EncodeNullEmpty) {
@@ -175,7 +175,7 @@ TEST_F(FlatArrayTest, EncodeNullEmpty) {
     ok = codec.Append(empty_str);
     ASSERT_TRUE(ok);
     codec.Build();
-    std::cout << ::fedb::base::DebugString(buffer) << std::endl;
+    std::cout << ::openmldb::base::DebugString(buffer) << std::endl;
     ASSERT_EQ((int64_t)(buffer.size()), 11);
     FlatArrayIterator it(buffer.c_str(), buffer.size(), 3);
     ASSERT_EQ(kFloat, it.GetType());
@@ -200,7 +200,7 @@ TEST_F(FlatArrayTest, EncodeNullEmpty) {
 }
 
 }  // namespace codec
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

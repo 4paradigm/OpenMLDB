@@ -30,10 +30,10 @@
 #include "codec/schema_codec.h"
 #include "storage/segment.h"
 
-namespace fedb {
+namespace openmldb {
 namespace codec {
 
-using ::fedb::storage::DataBlock;
+using ::openmldb::storage::DataBlock;
 
 class RowCodec {
  public:
@@ -42,9 +42,9 @@ class RowCodec {
         const Schema& schema) {
         int32_t str_len = 0;
         for (int i = 0; i < schema.size(); i++) {
-            const ::fedb::common::ColumnDesc& col = schema.Get(i);
-            if (col.data_type() == ::fedb::type::kVarchar ||
-                col.data_type() == ::fedb::type::kString) {
+            const ::openmldb::common::ColumnDesc& col = schema.Get(i);
+            if (col.data_type() == ::openmldb::type::kVarchar ||
+                col.data_type() == ::openmldb::type::kString) {
                 auto iter = str_map.find(col.name());
                 if (iter == str_map.end()) {
                     return -1;
@@ -69,9 +69,9 @@ class RowCodec {
         }
         int32_t str_len = 0;
         for (int i = 0; i < schema.size(); i++) {
-            const ::fedb::common::ColumnDesc& col = schema.Get(i);
-            if (col.data_type() == ::fedb::type::kVarchar ||
-                col.data_type() == ::fedb::type::kString) {
+            const ::openmldb::common::ColumnDesc& col = schema.Get(i);
+            if (col.data_type() == ::openmldb::type::kVarchar ||
+                col.data_type() == ::openmldb::type::kString) {
                 if (!col.not_null() &&
                     (input_value[i] == "null" || input_value[i] == NONETOKEN)) {
                     continue;
@@ -85,63 +85,63 @@ class RowCodec {
         return str_len;
     }
 
-    static ::fedb::base::ResultMsg EncodeRow(
+    static ::openmldb::base::ResultMsg EncodeRow(
         const std::vector<std::string> input_value, const Schema& schema, uint32_t version,
         std::string& row) {  // NOLINT
         if (input_value.empty() ||
             input_value.size() != (uint64_t)schema.size()) {
-            return ::fedb::base::ResultMsg(-1, "input error");
+            return ::openmldb::base::ResultMsg(-1, "input error");
         }
         int32_t str_len = CalStrLength(input_value, schema);
         if (str_len < 0) {
-            return ::fedb::base::ResultMsg(-1, "cal str len failed");
+            return ::openmldb::base::ResultMsg(-1, "cal str len failed");
         }
-        ::fedb::codec::RowBuilder builder(schema);
+        ::openmldb::codec::RowBuilder builder(schema);
         uint32_t size = builder.CalTotalLength(str_len);
         builder.SetSchemaVersion(version);
         row.resize(size);
         builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
         for (int i = 0; i < schema.size(); i++) {
-            const ::fedb::common::ColumnDesc& col = schema.Get(i);
+            const ::openmldb::common::ColumnDesc& col = schema.Get(i);
             if (!col.not_null() &&
                 (input_value[i] == "null" || input_value[i] == NONETOKEN)) {
                 builder.AppendNULL();
                 continue;
             } else if (input_value[i] == "null" ||
                        input_value[i] == NONETOKEN) {
-                return ::fedb::base::ResultMsg(
+                return ::openmldb::base::ResultMsg(
                     -1, col.name() + " should not be null");
             }
             if (!builder.AppendValue(input_value[i])) {
                 std::string msg =
-                    "append " + ::fedb::type::DataType_Name(col.data_type()) +
+                    "append " + ::openmldb::type::DataType_Name(col.data_type()) +
                     " error";
-                return ::fedb::base::ResultMsg(-1, msg);
+                return ::openmldb::base::ResultMsg(-1, msg);
             }
         }
-        return ::fedb::base::ResultMsg(0, "ok");
+        return ::openmldb::base::ResultMsg(0, "ok");
     }
 
-    static ::fedb::base::ResultMsg EncodeRow(
+    static ::openmldb::base::ResultMsg EncodeRow(
         const std::map<std::string, std::string>& str_map, const Schema& schema, int32_t version,
         std::string& row) {  // NOLINT
         if (str_map.empty() || str_map.size() != (uint64_t)schema.size()) {
-            return ::fedb::base::ResultMsg(-1, "input error");
+            return ::openmldb::base::ResultMsg(-1, "input error");
         }
         int32_t str_len = CalStrLength(str_map, schema);
         if (str_len < 0) {
-            return ::fedb::base::ResultMsg(-1, "cal str len error");
+            return ::openmldb::base::ResultMsg(-1, "cal str len error");
         }
-        ::fedb::codec::RowBuilder builder(schema);
+        ::openmldb::codec::RowBuilder builder(schema);
         builder.SetSchemaVersion(version);
         uint32_t size = builder.CalTotalLength(str_len);
         row.resize(size);
         builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
         for (int i = 0; i < schema.size(); i++) {
-            const ::fedb::common::ColumnDesc& col = schema.Get(i);
+            const ::openmldb::common::ColumnDesc& col = schema.Get(i);
             auto iter = str_map.find(col.name());
             if (iter == str_map.end()) {
-                return ::fedb::base::ResultMsg(-1,
+                return ::openmldb::base::ResultMsg(-1,
                                                 col.name() + " not in str_map");
             }
             if (!col.not_null() &&
@@ -149,64 +149,64 @@ class RowCodec {
                 builder.AppendNULL();
                 continue;
             } else if (iter->second == "null" || iter->second == NONETOKEN) {
-                return ::fedb::base::ResultMsg(
+                return ::openmldb::base::ResultMsg(
                     -1, col.name() + " should not be null");
             }
             if (!builder.AppendValue(iter->second)) {
                 std::string msg =
-                    "append " + ::fedb::type::DataType_Name(col.data_type()) +
+                    "append " + ::openmldb::type::DataType_Name(col.data_type()) +
                     " error";
-                return ::fedb::base::ResultMsg(-1, msg);
+                return ::openmldb::base::ResultMsg(-1, msg);
             }
         }
-        return ::fedb::base::ResultMsg(0, "ok");
+        return ::openmldb::base::ResultMsg(0, "ok");
     }
 
-    static ::fedb::base::ResultMsg EncodeRow(
+    static ::openmldb::base::ResultMsg EncodeRow(
         const std::vector<std::string>& input_value,
-        const std::vector<::fedb::codec::ColumnDesc>& columns,
+        const std::vector<::openmldb::codec::ColumnDesc>& columns,
         int modify_times, std::string* row) {
         if (input_value.size() != columns.size()) {
-            return ::fedb::base::ResultMsg(-1, "input error");
+            return ::openmldb::base::ResultMsg(-1, "input error");
         }
         uint16_t cnt = (uint16_t)input_value.size();
-        ::fedb::codec::FlatArrayCodec codec(row, cnt, modify_times);
+        ::openmldb::codec::FlatArrayCodec codec(row, cnt, modify_times);
         for (uint32_t i = 0; i < input_value.size(); i++) {
             bool codec_ok = false;
             try {
-                if (columns[i].type == ::fedb::codec::ColType::kInt32) {
+                if (columns[i].type == ::openmldb::codec::ColType::kInt32) {
                     codec_ok = codec.Append(
                         boost::lexical_cast<int32_t>(input_value[i]));
-                } else if (columns[i].type == ::fedb::codec::ColType::kInt64) {
+                } else if (columns[i].type == ::openmldb::codec::ColType::kInt64) {
                     codec_ok = codec.Append(
                         boost::lexical_cast<int64_t>(input_value[i]));
                 } else if (columns[i].type ==
-                           ::fedb::codec::ColType::kUInt32) {
+                           ::openmldb::codec::ColType::kUInt32) {
                     if (!boost::algorithm::starts_with(input_value[i], "-")) {
                         codec_ok = codec.Append(
                             boost::lexical_cast<uint32_t>(input_value[i]));
                     }
                 } else if (columns[i].type ==
-                           ::fedb::codec::ColType::kUInt64) {
+                           ::openmldb::codec::ColType::kUInt64) {
                     if (!boost::algorithm::starts_with(input_value[i], "-")) {
                         codec_ok = codec.Append(
                             boost::lexical_cast<uint64_t>(input_value[i]));
                     }
-                } else if (columns[i].type == ::fedb::codec::ColType::kFloat) {
+                } else if (columns[i].type == ::openmldb::codec::ColType::kFloat) {
                     codec_ok = codec.Append(
                         boost::lexical_cast<float>(input_value[i]));
                 } else if (columns[i].type ==
-                           ::fedb::codec::ColType::kDouble) {
+                           ::openmldb::codec::ColType::kDouble) {
                     codec_ok = codec.Append(
                         boost::lexical_cast<double>(input_value[i]));
                 } else if (columns[i].type ==
-                           ::fedb::codec::ColType::kString) {
+                           ::openmldb::codec::ColType::kString) {
                     codec_ok = codec.Append(input_value[i]);
                 } else if (columns[i].type ==
-                           ::fedb::codec::ColType::kTimestamp) {
+                           ::openmldb::codec::ColType::kTimestamp) {
                     codec_ok = codec.AppendTimestamp(
                         boost::lexical_cast<uint64_t>(input_value[i]));
-                } else if (columns[i].type == ::fedb::codec::ColType::kDate) {
+                } else if (columns[i].type == ::openmldb::codec::ColType::kDate) {
                     std::string date = input_value[i] + " 00:00:00";
                     tm tm_s;
                     time_t time;
@@ -214,20 +214,20 @@ class RowCodec {
                     strcpy(buf, date.c_str());  // NOLINT
                     char* result = strptime(buf, "%Y-%m-%d %H:%M:%S", &tm_s);
                     if (result == NULL) {
-                        return ::fedb::base::ResultMsg(-1,
+                        return ::openmldb::base::ResultMsg(-1,
                                                         "date format error");
                     }
                     tm_s.tm_isdst = -1;
                     time = mktime(&tm_s) * 1000;
                     codec_ok = codec.AppendDate(uint64_t(time));
-                } else if (columns[i].type == ::fedb::codec::ColType::kInt16) {
+                } else if (columns[i].type == ::openmldb::codec::ColType::kInt16) {
                     codec_ok = codec.Append(
                         boost::lexical_cast<int16_t>(input_value[i]));
                 } else if (columns[i].type ==
-                           ::fedb::codec::ColType::kUInt16) {
+                           ::openmldb::codec::ColType::kUInt16) {
                     codec_ok = codec.Append(
                         boost::lexical_cast<uint16_t>(input_value[i]));
-                } else if (columns[i].type == ::fedb::codec::ColType::kBool) {
+                } else if (columns[i].type == ::openmldb::codec::ColType::kBool) {
                     bool value = false;
                     std::string raw_value = input_value[i];
                     std::transform(raw_value.begin(), raw_value.end(),
@@ -237,7 +237,7 @@ class RowCodec {
                     } else if (raw_value == "false") {
                         value = false;
                     } else {
-                        return ::fedb::base::ResultMsg(-1,
+                        return ::openmldb::base::ResultMsg(-1,
                                                         "bool format error");
                     }
                     codec_ok = codec.Append(value);
@@ -245,20 +245,20 @@ class RowCodec {
                     codec_ok = codec.AppendNull();
                 }
             } catch (std::exception const& e) {
-                return ::fedb::base::ResultMsg(-1, e.what());
+                return ::openmldb::base::ResultMsg(-1, e.what());
             }
             if (!codec_ok) {
-                return ::fedb::base::ResultMsg(-1, "encode failed");
+                return ::openmldb::base::ResultMsg(-1, "encode failed");
             }
         }
         codec.Build();
-        return ::fedb::base::ResultMsg(0, "ok");
+        return ::openmldb::base::ResultMsg(0, "ok");
     }
 
     static bool DecodeRow(const Schema& schema,  // NOLINT
-                          const ::fedb::base::Slice& value,
+                          const ::openmldb::base::Slice& value,
                           std::vector<std::string>& value_vec) {  // NOLINT
-        fedb::codec::RowView rv(
+        openmldb::codec::RowView rv(
             schema, reinterpret_cast<int8_t*>(const_cast<char*>(value.data())),
             value.size());
         return DecodeRow(schema, rv, false, 0, schema.size(), &value_vec);
@@ -266,18 +266,18 @@ class RowCodec {
 
     static bool DecodeRow(const Schema& schema, const int8_t* data, int32_t size, bool replace_empty_str,
                           int start, int len, std::vector<std::string>& values) { // NOLINT
-        fedb::codec::RowView rv(schema, data, size);
+        openmldb::codec::RowView rv(schema, data, size);
         return DecodeRow(schema, rv, replace_empty_str, start, len, &values);
     }
 
     static bool DecodeRow(const Schema& schema,                   // NOLINT
-                          fedb::codec::RowView& rv,              // NOLINT
+                          openmldb::codec::RowView& rv,              // NOLINT
                           std::vector<std::string>& value_vec) {  // NOLINT
         return DecodeRow(schema, rv, false, 0, schema.size(), &value_vec);
     }
 
     static bool DecodeRow(const Schema& schema,
-                          fedb::codec::RowView& rv,  // NOLINT
+                          openmldb::codec::RowView& rv,  // NOLINT
                           bool replace_empty_str, int start, int length, std::vector<std::string>* value_vec) {
         int end = start + length;
         if (length <= 0) {
@@ -299,15 +299,15 @@ class RowCodec {
     }
 
     static bool DecodeRow(uint32_t base_schema_size,
-                          const ::fedb::base::Slice& value,
+                          const ::openmldb::base::Slice& value,
                           std::vector<std::string>* vrow) {
         return DecodeRow(base_schema_size, base_schema_size, value, vrow);
     }
 
     static bool DecodeRow(uint32_t base_schema_size, uint32_t get_row_num,
-                          const ::fedb::base::Slice& value,
+                          const ::openmldb::base::Slice& value,
                           std::vector<std::string>* vrow) {
-        fedb::codec::FlatArrayIterator fit(value.data(), value.size(), base_schema_size);
+        openmldb::codec::FlatArrayIterator fit(value.data(), value.size(), base_schema_size);
         while (get_row_num > 0) {
             std::string col;
             if (!fit.Valid()) {
@@ -318,46 +318,46 @@ class RowCodec {
             ColType type = fit.GetType();
             if (fit.IsNULL()) {
                 col = NONETOKEN;
-            } else if (type == ::fedb::codec::ColType::kString ||
-                       type == ::fedb::codec::ColType::kEmptyString) {
+            } else if (type == ::openmldb::codec::ColType::kString ||
+                       type == ::openmldb::codec::ColType::kEmptyString) {
                 fit.GetString(&col);
-            } else if (type == ::fedb::codec::ColType::kUInt16) {
+            } else if (type == ::openmldb::codec::ColType::kUInt16) {
                 uint16_t uint16_col = 0;
                 fit.GetUInt16(&uint16_col);
                 col = boost::lexical_cast<std::string>(uint16_col);
-            } else if (type == ::fedb::codec::ColType::kInt16) {
+            } else if (type == ::openmldb::codec::ColType::kInt16) {
                 int16_t int16_col = 0;
                 fit.GetInt16(&int16_col);
                 col = boost::lexical_cast<std::string>(int16_col);
-            } else if (type == ::fedb::codec::ColType::kInt32) {
+            } else if (type == ::openmldb::codec::ColType::kInt32) {
                 int32_t int32_col = 0;
                 fit.GetInt32(&int32_col);
                 col = boost::lexical_cast<std::string>(int32_col);
-            } else if (type == ::fedb::codec::ColType::kInt64) {
+            } else if (type == ::openmldb::codec::ColType::kInt64) {
                 int64_t int64_col = 0;
                 fit.GetInt64(&int64_col);
                 col = boost::lexical_cast<std::string>(int64_col);
-            } else if (type == ::fedb::codec::ColType::kUInt32) {
+            } else if (type == ::openmldb::codec::ColType::kUInt32) {
                 uint32_t uint32_col = 0;
                 fit.GetUInt32(&uint32_col);
                 col = boost::lexical_cast<std::string>(uint32_col);
-            } else if (type == ::fedb::codec::ColType::kUInt64) {
+            } else if (type == ::openmldb::codec::ColType::kUInt64) {
                 uint64_t uint64_col = 0;
                 fit.GetUInt64(&uint64_col);
                 col = boost::lexical_cast<std::string>(uint64_col);
-            } else if (type == ::fedb::codec::ColType::kDouble) {
+            } else if (type == ::openmldb::codec::ColType::kDouble) {
                 double double_col = 0.0;
                 fit.GetDouble(&double_col);
                 col = boost::lexical_cast<std::string>(double_col);
-            } else if (type == ::fedb::codec::ColType::kFloat) {
+            } else if (type == ::openmldb::codec::ColType::kFloat) {
                 float float_col = 0.0f;
                 fit.GetFloat(&float_col);
                 col = boost::lexical_cast<std::string>(float_col);
-            } else if (type == ::fedb::codec::ColType::kTimestamp) {
+            } else if (type == ::openmldb::codec::ColType::kTimestamp) {
                 uint64_t ts = 0;
                 fit.GetTimestamp(&ts);
                 col = boost::lexical_cast<std::string>(ts);
-            } else if (type == ::fedb::codec::ColType::kDate) {
+            } else if (type == ::openmldb::codec::ColType::kDate) {
                 uint64_t dt = 0;
                 fit.GetDate(&dt);
                 time_t rawtime = (time_t)dt / 1000;
@@ -365,7 +365,7 @@ class RowCodec {
                 char buf[20];
                 strftime(buf, 20, "%Y-%m-%d", timeinfo);
                 col.assign(buf);
-            } else if (type == ::fedb::codec::ColType::kBool) {
+            } else if (type == ::openmldb::codec::ColType::kBool) {
                 bool value = false;
                 fit.GetBool(&value);
                 if (value) {
@@ -384,7 +384,7 @@ class RowCodec {
 __attribute__((unused)) static bool DecodeRows(
     const std::string& data, uint32_t count, const Schema& schema,
     std::vector<std::vector<std::string>>* row_vec) {
-    fedb::codec::RowView rv(schema);
+    openmldb::codec::RowView rv(schema);
     uint32_t offset = 0;
     for (uint32_t i = 0; i < count; i++) {
         std::vector<std::string> row;
@@ -399,11 +399,11 @@ __attribute__((unused)) static bool DecodeRows(
             return false;
         }
         offset += 4 + value_size;
-        if (!fedb::codec::RowCodec::DecodeRow(schema, rv, row)) {
+        if (!openmldb::codec::RowCodec::DecodeRow(schema, rv, row)) {
             return false;
         }
         for (uint64_t i = 0; i < row.size(); i++) {
-            if (row[i] == fedb::codec::NONETOKEN) {
+            if (row[i] == openmldb::codec::NONETOKEN) {
                 row[i] = "null";
             }
         }
@@ -443,7 +443,7 @@ static inline void Encode(const DataBlock* data, char* buffer,
                           uint32_t offset) {
     return Encode(data->data, data->size, buffer, offset);
 }
-static inline int32_t EncodeRows(const std::vector<::fedb::base::Slice>& rows,
+static inline int32_t EncodeRows(const std::vector<::openmldb::base::Slice>& rows,
                                  uint32_t total_block_size, std::string* body) {
     if (body == NULL) {
         PDLOG(WARNING, "invalid output body");
@@ -457,14 +457,14 @@ static inline int32_t EncodeRows(const std::vector<::fedb::base::Slice>& rows,
     uint32_t offset = 0;
     char* rbuffer = reinterpret_cast<char*>(&((*body)[0]));
     for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
-        ::fedb::codec::Encode(lit->data(), lit->size(), rbuffer, offset);
+        ::openmldb::codec::Encode(lit->data(), lit->size(), rbuffer, offset);
         offset += (4 + lit->size());
     }
     return total_size;
 }
 
 static inline int32_t EncodeRows(
-    const boost::container::deque<std::pair<uint64_t, ::fedb::base::Slice>>&
+    const boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>>&
         rows,
     uint32_t total_block_size, std::string* pairs) {
     if (pairs == NULL) {
@@ -480,7 +480,7 @@ static inline int32_t EncodeRows(
     char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
     uint32_t offset = 0;
     for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
-        ::fedb::codec::Encode(lit->first, lit->second.data(),
+        ::openmldb::codec::Encode(lit->first, lit->second.data(),
                                lit->second.size(), rbuffer, offset);
         offset += (4 + 8 + lit->second.size());
     }
@@ -520,7 +520,7 @@ static inline void Decode(
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
     DEBUGLOG("total size %d %s", total_size,
-             ::fedb::base::DebugString(*str).c_str());
+             ::openmldb::base::DebugString(*str).c_str());
     while (total_size > 0) {
         uint32_t size = 0;
         memcpy(static_cast<void*>(&size), buffer, 4);
@@ -547,7 +547,7 @@ static inline void DecodeFull(
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
     DEBUGLOG("total size %u %s", total_size,
-             ::fedb::base::DebugString(*str).c_str());
+             ::openmldb::base::DebugString(*str).c_str());
     while (total_size > 0) {
         uint32_t size = 0;
         memcpy(static_cast<void*>(&size), buffer, 4);
@@ -580,4 +580,4 @@ static inline void DecodeFull(
 }
 
 }  // namespace codec
-}  // namespace fedb
+}  // namespace openmldb

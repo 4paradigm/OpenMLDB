@@ -31,29 +31,29 @@
 #include "proto/name_server.pb.h"
 #include "sdk/base.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
 typedef std::shared_ptr<std::map<uint32_t, std::shared_ptr<::hybridse::node::ConstNode>>> DefaultValueMap;
 
-static inline ::hybridse::sdk::DataType ConvertType(::fedb::type::DataType type) {
+static inline ::hybridse::sdk::DataType ConvertType(::openmldb::type::DataType type) {
     switch (type) {
-        case fedb::type::kBool:
+        case openmldb::type::kBool:
             return ::hybridse::sdk::kTypeBool;
-        case fedb::type::kSmallInt:
+        case openmldb::type::kSmallInt:
             return ::hybridse::sdk::kTypeInt16;
-        case fedb::type::kInt:
+        case openmldb::type::kInt:
             return ::hybridse::sdk::kTypeInt32;
-        case fedb::type::kBigInt:
+        case openmldb::type::kBigInt:
             return ::hybridse::sdk::kTypeInt64;
-        case fedb::type::kFloat:
+        case openmldb::type::kFloat:
             return ::hybridse::sdk::kTypeFloat;
-        case fedb::type::kDouble:
+        case openmldb::type::kDouble:
             return ::hybridse::sdk::kTypeDouble;
-        case fedb::type::kTimestamp:
+        case openmldb::type::kTimestamp:
             return ::hybridse::sdk::kTypeTimestamp;
-        case fedb::type::kString:
-        case fedb::type::kVarchar:
+        case openmldb::type::kString:
+        case openmldb::type::kVarchar:
             return ::hybridse::sdk::kTypeString;
         default:
             return ::hybridse::sdk::kTypeUnknow;
@@ -63,7 +63,7 @@ static inline ::hybridse::sdk::DataType ConvertType(::fedb::type::DataType type)
 class SQLInsertRow {
  public:
     explicit SQLInsertRow(
-        std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
+        std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
         std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
         uint32_t default_str_length);
     ~SQLInsertRow() = default;
@@ -112,7 +112,7 @@ class SQLInsertRow {
     }
 
  private:
-    std::shared_ptr<::fedb::nameserver::TableInfo> table_info_;
+    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info_;
     std::shared_ptr<hybridse::sdk::Schema> schema_;
     DefaultValueMap default_map_;
     uint32_t default_string_length_;
@@ -121,14 +121,14 @@ class SQLInsertRow {
     std::map<uint32_t, std::string> raw_dimensions_;
     std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions_;
     std::vector<uint64_t> ts_;
-    ::fedb::codec::RowBuilder rb_;
+    ::openmldb::codec::RowBuilder rb_;
     std::string val_;
     uint32_t str_size_;
 };
 
 class SQLInsertRows {
  public:
-    SQLInsertRows(std::shared_ptr<::fedb::nameserver::TableInfo> table_info,
+    SQLInsertRows(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                   std::shared_ptr<hybridse::sdk::Schema> schema,
                   DefaultValueMap default_map, uint32_t str_size);
     ~SQLInsertRows() = default;
@@ -142,7 +142,7 @@ class SQLInsertRows {
     }
 
  private:
-    std::shared_ptr<::fedb::nameserver::TableInfo> table_info_;
+    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info_;
     std::shared_ptr<hybridse::sdk::Schema> schema_;
     DefaultValueMap default_map_;
     uint32_t default_str_length_;
@@ -150,5 +150,5 @@ class SQLInsertRows {
 };
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_SDK_SQL_INSERT_ROW_H_

@@ -29,7 +29,7 @@
 #include "sdk/base.h"
 #include "sdk/result_set.h"
 
-namespace fedb {
+namespace openmldb {
 namespace test {
 class SQLCaseTest : public ::testing::TestWithParam<hybridse::sqlcase::SqlCase> {
  public:
@@ -71,5 +71,5 @@ class SQLCaseTest : public ::testing::TestWithParam<hybridse::sqlcase::SqlCase> 
 };
 
 }  // namespace test
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_TEST_BASE_TEST_H_

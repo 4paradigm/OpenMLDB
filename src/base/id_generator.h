@@ -23,7 +23,7 @@
 
 #include "common/timer.h"
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 class IdGenerator {
@@ -53,4 +53,4 @@ class IdGenerator {
 };
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb

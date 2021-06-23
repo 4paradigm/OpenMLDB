@@ -20,15 +20,15 @@
 
 #include "storage/segment.h"
 
-namespace fedb {
+namespace openmldb {
 namespace storage {
 
 static const uint32_t DATA_BLOCK_BYTE_SIZE = sizeof(DataBlock);
 static const uint32_t KEY_ENTRY_BYTE_SIZE = sizeof(KeyEntry);
 static const uint32_t ENTRY_NODE_SIZE =
-    sizeof(::fedb::base::Node<::fedb::base::Slice, void*>);
+    sizeof(::openmldb::base::Node<::openmldb::base::Slice, void*>);
 static const uint32_t DATA_NODE_SIZE =
-    sizeof(::fedb::base::Node<uint64_t, void*>);
+    sizeof(::openmldb::base::Node<uint64_t, void*>);
 static const uint32_t KEY_ENTRY_PTR_SIZE = sizeof(KeyEntry*);
 
 static inline uint32_t GetRecordSize(uint32_t value_size) {
@@ -57,5 +57,5 @@ static inline uint32_t GetRecordTsIdxSize(uint8_t height) {
 }
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_STORAGE_RECORD_H_

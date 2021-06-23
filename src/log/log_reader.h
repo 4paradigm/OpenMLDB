@@ -29,9 +29,9 @@
 #include "log/log_format.h"
 #include "log/sequential_file.h"
 
-using ::fedb::base::Slice;
+using ::openmldb::base::Slice;
 
-namespace fedb {
+namespace openmldb {
 
 namespace base {
 class Status;
@@ -72,7 +72,7 @@ class Reader {
     // "*scratch" as temporary storage.  The contents filled in *record
     // will only be valid until the next mutating operation on this
     // reader or the next mutation to *scratch.
-    ::fedb::base::Status ReadRecord(Slice* record, std::string* scratch);
+    ::openmldb::base::Status ReadRecord(Slice* record, std::string* scratch);
 
     // Returns the physical offset of the last record returned by ReadRecord.
     //
@@ -156,15 +156,15 @@ class Reader {
     void operator=(const Reader&);
 };
 
-typedef ::fedb::base::Skiplist<uint32_t, uint64_t,
-                                ::fedb::base::DefaultComparator>
+typedef ::openmldb::base::Skiplist<uint32_t, uint64_t,
+                                ::openmldb::base::DefaultComparator>
     LogParts;
 
 class LogReader {
  public:
     LogReader(LogParts* logs, const std::string& log_path, bool compressed);
     virtual ~LogReader();
-    ::fedb::base::Status ReadNextRecord(::fedb::base::Slice* record,
+    ::openmldb::base::Status ReadNextRecord(::openmldb::base::Slice* record,
                                          std::string* buffer);
     int RollRLogFile();
     int OpenSeqFile(const std::string& path);
@@ -188,6 +188,6 @@ class LogReader {
 };
 
 }  // namespace log
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_LOG_LOG_READER_H_

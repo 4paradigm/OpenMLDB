@@ -25,7 +25,7 @@
 #include "base/id_generator.h"
 #include "base/glog_wapper.h"
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 bool WriteTxt(const std::string& full_path,
@@ -82,4 +82,4 @@ bool GetNameFromTxt(const std::string& data_dir, std::string* name) {
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb

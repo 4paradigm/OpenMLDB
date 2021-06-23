@@ -23,7 +23,7 @@
 #include "sdk/base_impl.h"
 #include "vm/catalog.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
 class SQLRequestRowTest : public ::testing::Test {};
@@ -290,7 +290,7 @@ TEST_F(SQLRequestRowBatchTest, batch_test_all_common) {
 
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char* argv[]) {
     ::testing::InitGoogleTest(&argc, argv);

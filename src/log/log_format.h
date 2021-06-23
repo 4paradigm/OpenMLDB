@@ -24,7 +24,7 @@
 #ifndef SRC_LOG_LOG_FORMAT_H_
 #define SRC_LOG_LOG_FORMAT_H_
 
-namespace fedb {
+namespace openmldb {
 namespace log {
 
 enum RecordType {
@@ -68,6 +68,6 @@ static const std::string ZLIB_COMPRESS_SUFFIX = ".zlib";  // NOLINT
 static const std::string SNAPPY_COMPRESS_SUFFIX = ".snappy";  // NOLINT
 
 }  // namespace log
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_LOG_LOG_FORMAT_H_

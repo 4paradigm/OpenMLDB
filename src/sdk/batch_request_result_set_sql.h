@@ -30,13 +30,13 @@
 #include "sdk/base_impl.h"
 #include "sdk/result_set.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
 class SQLBatchRequestResultSet : public ::hybridse::sdk::ResultSet {
  public:
     SQLBatchRequestResultSet(
-        const std::shared_ptr<::fedb::api::SQLBatchRequestQueryResponse>& response,
+        const std::shared_ptr<::openmldb::api::SQLBatchRequestQueryResponse>& response,
         const std::shared_ptr<brpc::Controller>& cntl);
     ~SQLBatchRequestResultSet();
 
@@ -83,7 +83,7 @@ class SQLBatchRequestResultSet : public ::hybridse::sdk::ResultSet {
     bool IsValidColumnIdx(size_t index) const;
     size_t GetCommonColumnNum() const;
 
-    std::shared_ptr<::fedb::api::SQLBatchRequestQueryResponse> response_;
+    std::shared_ptr<::openmldb::api::SQLBatchRequestQueryResponse> response_;
     int32_t index_;
     uint32_t byte_size_;
     uint32_t position_;
@@ -105,5 +105,5 @@ class SQLBatchRequestResultSet : public ::hybridse::sdk::ResultSet {
 
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_SDK_BATCH_REQUEST_RESULT_SET_SQL_H_

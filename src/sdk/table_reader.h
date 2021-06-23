@@ -24,7 +24,7 @@
 
 #include "sdk/result_set.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
 struct ScanOption {
@@ -53,13 +53,13 @@ class TableReader {
                                                         const ScanOption& so,
                                                         hybridse::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<fedb::sdk::ScanFuture> AsyncScan(const std::string& db, const std::string& table,
+    virtual std::shared_ptr<openmldb::sdk::ScanFuture> AsyncScan(const std::string& db, const std::string& table,
                                                               const std::string& key, int64_t st, int64_t et,
                                                               const ScanOption& so, int64_t timeout_ms,
                                                               hybridse::sdk::Status* status) = 0;
 };
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_SDK_TABLE_READER_H_

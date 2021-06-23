@@ -25,7 +25,7 @@
 #include "proto/tablet.pb.h"
 #include "storage/segment.h"
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 class KvIteratorTest : public ::testing::Test {
@@ -35,19 +35,19 @@ class KvIteratorTest : public ::testing::Test {
 };
 
 TEST_F(KvIteratorTest, Iterator_NULL) {
-    ::fedb::api::ScanResponse* response = new ::fedb::api::ScanResponse();
+    ::openmldb::api::ScanResponse* response = new ::openmldb::api::ScanResponse();
     KvIterator kv_it(response);
     ASSERT_FALSE(kv_it.Valid());
 }
 
 TEST_F(KvIteratorTest, Iterator_ONE) {
-    ::fedb::api::ScanResponse* response = new ::fedb::api::ScanResponse();
+    ::openmldb::api::ScanResponse* response = new ::openmldb::api::ScanResponse();
     std::string* pairs = response->mutable_pairs();
     pairs->resize(17);
     char* data = reinterpret_cast<char*>(&((*pairs)[0]));
-    ::fedb::storage::DataBlock* db1 =
-        new ::fedb::storage::DataBlock(1, "hello", 5);
-    ::fedb::codec::Encode(9527, db1, data, 0);
+    ::openmldb::storage::DataBlock* db1 =
+        new ::openmldb::storage::DataBlock(1, "hello", 5);
+    ::openmldb::codec::Encode(9527, db1, data, 0);
     KvIterator kv_it(response);
     ASSERT_TRUE(kv_it.Valid());
     ASSERT_EQ(9527, (int64_t)(kv_it.GetKey()));
@@ -57,17 +57,17 @@ TEST_F(KvIteratorTest, Iterator_ONE) {
 }
 
 TEST_F(KvIteratorTest, Iterator) {
-    ::fedb::api::ScanResponse* response = new ::fedb::api::ScanResponse();
+    ::openmldb::api::ScanResponse* response = new ::openmldb::api::ScanResponse();
 
     std::string* pairs = response->mutable_pairs();
     pairs->resize(34);
     char* data = reinterpret_cast<char*>(&((*pairs)[0]));
-    ::fedb::storage::DataBlock* db1 =
-        new ::fedb::storage::DataBlock(1, "hello", 5);
-    ::fedb::storage::DataBlock* db2 =
-        new ::fedb::storage::DataBlock(1, "hell1", 5);
-    ::fedb::codec::Encode(9527, db1, data, 0);
-    ::fedb::codec::Encode(9528, db2, data, 17);
+    ::openmldb::storage::DataBlock* db1 =
+        new ::openmldb::storage::DataBlock(1, "hello", 5);
+    ::openmldb::storage::DataBlock* db2 =
+        new ::openmldb::storage::DataBlock(1, "hell1", 5);
+    ::openmldb::codec::Encode(9527, db1, data, 0);
+    ::openmldb::codec::Encode(9528, db2, data, 17);
     KvIterator kv_it(response);
     ASSERT_TRUE(kv_it.Valid());
     ASSERT_EQ(9527, (signed)kv_it.GetKey());
@@ -81,18 +81,18 @@ TEST_F(KvIteratorTest, Iterator) {
 }
 
 TEST_F(KvIteratorTest, HasPK) {
-    ::fedb::api::TraverseResponse* response =
-        new ::fedb::api::TraverseResponse();
+    ::openmldb::api::TraverseResponse* response =
+        new ::openmldb::api::TraverseResponse();
 
     std::string* pairs = response->mutable_pairs();
     pairs->resize(52);
     char* data = reinterpret_cast<char*>(&((*pairs)[0]));
-    ::fedb::storage::DataBlock* db1 =
-        new ::fedb::storage::DataBlock(1, "hello", 5);
-    ::fedb::storage::DataBlock* db2 =
-        new ::fedb::storage::DataBlock(1, "hell1", 5);
-    ::fedb::codec::EncodeFull("test1", 9527, db1, data, 0);
-    ::fedb::codec::EncodeFull("test2", 9528, db2, data, 26);
+    ::openmldb::storage::DataBlock* db1 =
+        new ::openmldb::storage::DataBlock(1, "hello", 5);
+    ::openmldb::storage::DataBlock* db2 =
+        new ::openmldb::storage::DataBlock(1, "hell1", 5);
+    ::openmldb::codec::EncodeFull("test1", 9527, db1, data, 0);
+    ::openmldb::codec::EncodeFull("test2", 9528, db2, data, 26);
     KvIterator kv_it(response);
     ASSERT_TRUE(kv_it.Valid());
     ASSERT_STREQ("test1", kv_it.GetPK().c_str());
@@ -108,7 +108,7 @@ TEST_F(KvIteratorTest, HasPK) {
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

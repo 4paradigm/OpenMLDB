@@ -36,15 +36,15 @@
 #include "storage/table.h"
 #include "common/thread_pool.h"
 
-namespace fedb {
+namespace openmldb {
 namespace replica {
 
 using ::baidu::common::ThreadPool;
-using ::fedb::api::LogEntry;
-using ::fedb::log::Reader;
-using ::fedb::log::SequentialFile;
-using ::fedb::log::WriteHandle;
-using ::fedb::storage::Table;
+using ::openmldb::api::LogEntry;
+using ::openmldb::log::Reader;
+using ::openmldb::log::SequentialFile;
+using ::openmldb::log::WriteHandle;
+using ::openmldb::storage::Table;
 
 enum ReplicatorRole { kLeaderNode = 1, kFollowerNode };
 
@@ -62,11 +62,11 @@ class LogReplicator {
     bool StartSyncing();
 
     // the slave node receives master log entries
-    bool AppendEntries(const ::fedb::api::AppendEntriesRequest* request,
-                       ::fedb::api::AppendEntriesResponse* response);
+    bool AppendEntries(const ::openmldb::api::AppendEntriesRequest* request,
+                       ::openmldb::api::AppendEntriesResponse* response);
 
     // the master node append entry
-    bool AppendEntry(::fedb::api::LogEntry& entry); // NOLINT
+    bool AppendEntry(::openmldb::api::LogEntry& entry); // NOLINT
 
     //  data to slave nodes
     void Notify();
@@ -150,6 +150,6 @@ class LogReplicator {
 };
 
 }  // namespace replica
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_REPLICA_LOG_REPLICATOR_H_

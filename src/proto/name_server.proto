@@ -18,10 +18,10 @@ import "type.proto";
 import "common.proto";
 import "tablet.proto";
 import "sql_procedure.proto";
-package fedb.nameserver;
+package openmldb.nameserver;
 
 option cc_generic_services = true;
-option java_package = "com._4paradigm.fedb.ns";
+option java_package = "com._4paradigm.openmldb.ns";
 option java_outer_classname = "NS";
 
 enum ServerMode {
@@ -68,7 +68,7 @@ message UpdateTTLRequest {
     optional string name = 1;
     optional string db = 2 [default = ""];
     optional string index_name = 3;
-    optional fedb.common.TTLSt ttl_desc = 4;
+    optional openmldb.common.TTLSt ttl_desc = 4;
 }
 
 message UpdateTTLResponse {
@@ -83,11 +83,11 @@ message TableInfo {
     optional uint32 tid = 4;
     optional uint32 partition_num = 5;
     optional uint32 replica_num = 6; // contain the leader
-    optional fedb.type.CompressType compress_type = 7 [default = kNoCompress];
+    optional openmldb.type.CompressType compress_type = 7 [default = kNoCompress];
     optional uint32 key_entry_max_height = 8;
-    repeated fedb.common.ColumnDesc column_desc = 9;
-    repeated fedb.common.ColumnKey column_key = 10;
-    repeated fedb.common.ColumnDesc added_column_desc = 11;
+    repeated openmldb.common.ColumnDesc column_desc = 9;
+    repeated openmldb.common.ColumnKey column_key = 10;
+    repeated openmldb.common.ColumnDesc added_column_desc = 11;
     optional uint32 format_version = 12 [default = 0];
     optional string db = 13 [default = ""];
     repeated string partition_key = 14;
@@ -97,13 +97,13 @@ message TableInfo {
 message CreateTableRequest {
     required TableInfo table_info = 1;
     optional ZoneInfo zone_info = 2;
-    optional fedb.api.TaskInfo task_info = 3;
+    optional openmldb.api.TaskInfo task_info = 3;
 }
 
 message DropTableRequest {
     required string name = 1;
     optional ZoneInfo zone_info = 2;
-    optional fedb.api.TaskInfo task_info = 3;
+    optional openmldb.api.TaskInfo task_info = 3;
     optional string db = 4 [default = ""];
 }
 
@@ -112,7 +112,7 @@ message LoadTableRequest {
     optional string endpoint = 2;
     optional uint32 pid = 3;
     optional ZoneInfo zone_info = 4;
-    optional fedb.api.TaskInfo task_info = 5;
+    optional openmldb.api.TaskInfo task_info = 5;
     optional string db = 6 [default = ""];
 }
 
@@ -157,7 +157,7 @@ message AddReplicaNSRequest {
     repeated uint32 pid_group = 4;
     repeated string endpoint_group = 5; //for remote
     optional ZoneInfo zone_info = 6; //for remote
-    optional fedb.api.TaskInfo task_info = 7; //for remote
+    optional openmldb.api.TaskInfo task_info = 7; //for remote
     optional string db = 8 [default = ""];
 }
 
@@ -211,7 +211,7 @@ message ShowTabletRequest {}
 
 message AddTableFieldRequest {
     optional string name = 1;
-    optional fedb.common.ColumnDesc column_desc = 2;
+    optional openmldb.common.ColumnDesc column_desc = 2;
     optional string db = 3 [default = ""];
 }
 
@@ -284,7 +284,7 @@ message ChangeLeaderData {
     optional string leader = 6;
     repeated string follower = 7;
     optional string candidate_leader = 8;
-    repeated fedb.common.EndpointAndTid remote_follower = 9;
+    repeated openmldb.common.EndpointAndTid remote_follower = 9;
     optional string db = 10 [default = ""];
 }
 
@@ -406,7 +406,7 @@ message SetSdkEndpointRequest {
 message AddIndexMeta {
     optional string name = 1;
     optional uint32 pid = 2;
-    optional fedb.common.ColumnKey column_key = 3;
+    optional openmldb.common.ColumnKey column_key = 3;
     optional uint32 idx = 4;
     optional string db = 5 [default = ""];
     optional bool skip_data = 6 [default = false];
@@ -414,9 +414,9 @@ message AddIndexMeta {
 
 message AddIndexRequest {
     optional string name = 1;
-    optional fedb.common.ColumnKey column_key = 2;
+    optional openmldb.common.ColumnKey column_key = 2;
     optional string db = 3 [default = ""];
-    repeated fedb.common.ColumnDesc cols = 4;
+    repeated openmldb.common.ColumnDesc cols = 4;
 }
 
 message DeleteIndexRequest {
@@ -454,7 +454,7 @@ message ShowSdkEndpointResponse {
 message ShowCatalogRequest {}
 
 message ShowCatalogResponse {
-    repeated fedb.common.CatalogInfo catalog = 1;
+    repeated openmldb.common.CatalogInfo catalog = 1;
     optional int32 code = 2;
     optional string msg = 3;
 }
@@ -489,8 +489,8 @@ service NameServer {
     rpc AddReplicaClusterByNs(ReplicaClusterByNsRequest) returns (AddReplicaClusterByNsResponse);
     rpc RemoveReplicaClusterByNs(ReplicaClusterByNsRequest) returns (GeneralResponse);
     rpc SwitchMode(SwitchModeRequest) returns (GeneralResponse);
-    rpc GetTaskStatus(fedb.api.TaskStatusRequest) returns (fedb.api.TaskStatusResponse);
-    rpc DeleteOPTask(fedb.api.DeleteTaskRequest) returns (fedb.api.GeneralResponse);
+    rpc GetTaskStatus(openmldb.api.TaskStatusRequest) returns (openmldb.api.TaskStatusResponse);
+    rpc DeleteOPTask(openmldb.api.DeleteTaskRequest) returns (openmldb.api.GeneralResponse);
     rpc CreateTableInfo(CreateTableInfoRequest) returns (CreateTableInfoResponse);
     rpc CreateTableInfoSimply(CreateTableInfoRequest) returns (CreateTableInfoResponse);
     rpc LoadTable(LoadTableRequest) returns (GeneralResponse);
@@ -507,6 +507,6 @@ service NameServer {
     rpc ShowCatalog(ShowCatalogRequest) returns (ShowCatalogResponse);
 
     // sql procedure interfaces
-    rpc CreateProcedure(fedb.api.CreateProcedureRequest) returns (GeneralResponse);
-    rpc DropProcedure(fedb.api.DropProcedureRequest) returns (GeneralResponse);
+    rpc CreateProcedure(openmldb.api.CreateProcedureRequest) returns (GeneralResponse);
+    rpc DropProcedure(openmldb.api.DropProcedureRequest) returns (GeneralResponse);
 }

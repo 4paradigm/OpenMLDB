@@ -39,10 +39,10 @@
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
-using ::fedb::storage::DataBlock;
-using ::fedb::storage::Table;
-using ::fedb::storage::Ticket;
-using ::fedb::tablet::TabletImpl;
+using ::openmldb::storage::DataBlock;
+using ::openmldb::storage::Table;
+using ::openmldb::storage::Ticket;
+using ::openmldb::tablet::TabletImpl;
 
 DECLARE_string(db_root_path);
 DECLARE_int32(binlog_single_file_max_size);
@@ -50,7 +50,7 @@ DECLARE_int32(binlog_delete_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_string(snapshot_compression);
 
-namespace fedb {
+namespace openmldb {
 namespace replica {
 
 class BinlogTest : public ::testing::Test {
@@ -63,7 +63,7 @@ class BinlogTest : public ::testing::Test {
 TEST_F(BinlogTest, DeleteBinlog) {
     FLAGS_binlog_single_file_max_size = 1;
     FLAGS_binlog_delete_interval = 500;
-    ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
+    ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     tablet->Init("");
     int offset = FLAGS_make_snapshot_threshold_offset;
     FLAGS_make_snapshot_threshold_offset = 0;
@@ -82,13 +82,13 @@ TEST_F(BinlogTest, DeleteBinlog) {
     uint32_t tid = 2;
     uint32_t pid = 123;
 
-    ::fedb::client::TabletClient client(leader_point, "");
+    ::openmldb::client::TabletClient client(leader_point, "");
     client.Init();
     std::vector<std::string> endpoints;
     bool ret =
         client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
-                           ::fedb::type::TTLType::kAbsoluteTime, 16, 0,
-                           ::fedb::type::CompressType::kNoCompress);
+                           ::openmldb::type::TTLType::kAbsoluteTime, 16, 0,
+                           ::openmldb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
@@ -105,14 +105,14 @@ TEST_F(BinlogTest, DeleteBinlog) {
     ASSERT_TRUE(ret);
     for (int i = 0; i < 50; i++) {
         vec.clear();
-        ::fedb::base::GetFileName(binlog_path, vec);
+        ::openmldb::base::GetFileName(binlog_path, vec);
         if (vec.size() == 1) {
             break;
         }
         sleep(2);
     }
     vec.clear();
-    ::fedb::base::GetFileName(binlog_path, vec);
+    ::openmldb::base::GetFileName(binlog_path, vec);
     ASSERT_EQ(1, (int64_t)vec.size());
     std::string file_name = binlog_path + "/00000004.log";
     ASSERT_STREQ(file_name.c_str(), vec[0].c_str());
@@ -120,14 +120,14 @@ TEST_F(BinlogTest, DeleteBinlog) {
 }
 
 }  // namespace replica
-}  // namespace fedb
+}  // namespace openmldb
 
 inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::fedb::base::SetLogLevel(DEBUG);
+    ::openmldb::base::SetLogLevel(DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     int ret = 0;
     std::vector<std::string> vec{"off", "zlib", "snappy"};

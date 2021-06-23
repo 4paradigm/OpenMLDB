@@ -29,10 +29,10 @@
 #include "proto/type.pb.h"
 #include "codec/memcomparable_format.h"
 
-namespace fedb {
+namespace openmldb {
 namespace codec {
 
-using ::fedb::type::DataType;
+using ::openmldb::type::DataType;
 /**
  *  encode part
  */
@@ -75,7 +75,7 @@ static inline bool Convert(const std::string& str, DataType data_type,
                     std::string* out) {
     try {
         switch (data_type) {
-            case ::fedb::type::kBool: {
+            case ::openmldb::type::kBool: {
                 out->resize(1);
                 char* buffer = const_cast<char*>(out->data());
                 std::string tmp = str;
@@ -90,53 +90,53 @@ static inline bool Convert(const std::string& str, DataType data_type,
                 }
                 break;
             }
-            case ::fedb::type::kSmallInt: {
+            case ::openmldb::type::kSmallInt: {
                 out->resize(2);
                 char* buffer = const_cast<char*>(out->data());
                 int16_t val = boost::lexical_cast<int16_t>(str);
                 Convert(val, buffer);
                 break;
             }
-            case ::fedb::type::kInt: {
+            case ::openmldb::type::kInt: {
                 out->resize(4);
                 char* buffer = const_cast<char*>(out->data());
                 int32_t val = boost::lexical_cast<int32_t>(str);
                 Convert(val, buffer);
                 break;
             }
-            case ::fedb::type::kBigInt:
-            case ::fedb::type::kTimestamp: {
+            case ::openmldb::type::kBigInt:
+            case ::openmldb::type::kTimestamp: {
                 out->resize(8);
                 char* buffer = const_cast<char*>(out->data());
                 int64_t val = boost::lexical_cast<int64_t>(str);
                 Convert(val, buffer);
                 break;
             }
-            case ::fedb::type::kFloat: {
+            case ::openmldb::type::kFloat: {
                 out->resize(4);
                 char* buffer = const_cast<char*>(out->data());
                 float val = boost::lexical_cast<float>(str);
                 Convert(val, buffer);
                 break;
             }
-            case ::fedb::type::kDouble: {
+            case ::openmldb::type::kDouble: {
                 out->resize(8);
                 char* buffer = const_cast<char*>(out->data());
                 double val = boost::lexical_cast<double>(str);
                 Convert(val, buffer);
                 break;
             }
-            case ::fedb::type::kVarchar:
-            case ::fedb::type::kString: {
+            case ::openmldb::type::kVarchar:
+            case ::openmldb::type::kString: {
                 *out = str;
                 break;
             }
-            case ::fedb::type::kDate: {
+            case ::openmldb::type::kDate: {
                 std::vector<std::string> parts;
-                ::fedb::base::SplitString(str, "-", parts);
+                ::openmldb::base::SplitString(str, "-", parts);
                 if (parts.size() != 3) {
                     PDLOG(WARNING, "bad data format, data type %s.",
-                            fedb::type::DataType_Name(data_type).c_str());
+                            openmldb::type::DataType_Name(data_type).c_str());
                     return false;
                 }
                 uint32_t year = boost::lexical_cast<uint32_t>(parts[0]);
@@ -155,7 +155,7 @@ static inline bool Convert(const std::string& str, DataType data_type,
             }
             default: {
                 PDLOG(WARNING, "unsupported data type %s.",
-                      fedb::type::DataType_Name(data_type).c_str());
+                      openmldb::type::DataType_Name(data_type).c_str());
                 return false;
             }
         }
@@ -197,56 +197,56 @@ static inline void GetDouble(const char* ch, void* res) {
 }
 
 __attribute__((unused)) static bool PackValue(const void *from,
-        ::fedb::type::DataType data_type,
+        ::openmldb::type::DataType data_type,
         std::string* key) {
     size_t k_size = key->size();
     int ret = 0;
     switch (data_type) {
-        case ::fedb::type::kBool: {
+        case ::openmldb::type::kBool: {
             key->resize(sizeof(int8_t) + k_size);
             char* to = const_cast<char*>(key->data()) + k_size;
             ret =
-                ::fedb::codec::PackInteger(from, sizeof(int8_t), false, to);
+                ::openmldb::codec::PackInteger(from, sizeof(int8_t), false, to);
             break;
         }
-        case ::fedb::type::kSmallInt: {
+        case ::openmldb::type::kSmallInt: {
             key->resize(sizeof(int16_t) + k_size);
             char* to = const_cast<char*>(key->data()) + k_size;
             ret =
-                ::fedb::codec::PackInteger(from, sizeof(int16_t), false, to);
+                ::openmldb::codec::PackInteger(from, sizeof(int16_t), false, to);
             break;
         }
-        case ::fedb::type::kInt:
-        case ::fedb::type::kDate: {
+        case ::openmldb::type::kInt:
+        case ::openmldb::type::kDate: {
             key->resize(sizeof(int32_t) + k_size);
             char* to = const_cast<char*>(key->data()) + k_size;
             ret =
-                ::fedb::codec::PackInteger(from, sizeof(int32_t), false, to);
+                ::openmldb::codec::PackInteger(from, sizeof(int32_t), false, to);
             break;
         }
-        case ::fedb::type::kBigInt:
-        case ::fedb::type::kTimestamp: {
+        case ::openmldb::type::kBigInt:
+        case ::openmldb::type::kTimestamp: {
             key->resize(sizeof(int64_t) + k_size);
             char* to = const_cast<char*>(key->data()) + k_size;
             ret =
-                ::fedb::codec::PackInteger(from, sizeof(int64_t), false, to);
+                ::openmldb::codec::PackInteger(from, sizeof(int64_t), false, to);
             break;
         }
-        case ::fedb::type::kFloat: {
+        case ::openmldb::type::kFloat: {
             key->resize(sizeof(float) + k_size);
             char* to = const_cast<char*>(key->data()) + k_size;
-            ret = ::fedb::codec::PackFloat(from, to);
+            ret = ::openmldb::codec::PackFloat(from, to);
             break;
         }
-        case ::fedb::type::kDouble: {
+        case ::openmldb::type::kDouble: {
             key->resize(sizeof(double) + k_size);
             char* to = const_cast<char*>(key->data()) + k_size;
-            ret = ::fedb::codec::PackDouble(from, to);
+            ret = ::openmldb::codec::PackDouble(from, to);
             break;
         }
         default: {
             PDLOG(WARNING, "unsupported data type %s.",
-                  fedb::type::DataType_Name(data_type).c_str());
+                  openmldb::type::DataType_Name(data_type).c_str());
             return false;
         }
     }
@@ -256,4 +256,4 @@ __attribute__((unused)) static bool PackValue(const void *from,
     return true;
 }
 }  // namespace codec
-}  // namespace fedb
+}  // namespace openmldb

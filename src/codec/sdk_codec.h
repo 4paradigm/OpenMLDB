@@ -26,19 +26,19 @@
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
 
-namespace fedb {
+namespace openmldb {
 namespace codec {
 
-using Index = google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>;
+using Index = google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>;
 using Dimension = std::vector<std::pair<std::string, uint32_t>>;
-using Schema = google::protobuf::RepeatedPtrField<fedb::common::ColumnDesc>;
-using VerSchema = google::protobuf::RepeatedPtrField<fedb::common::VersionPair>;
+using Schema = google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
+using VerSchema = google::protobuf::RepeatedPtrField<openmldb::common::VersionPair>;
 
 class SDKCodec {
  public:
-    explicit SDKCodec(const ::fedb::nameserver::TableInfo& table_info);
+    explicit SDKCodec(const ::openmldb::nameserver::TableInfo& table_info);
 
-    explicit SDKCodec(const ::fedb::api::TableMeta& table_info);
+    explicit SDKCodec(const ::openmldb::api::TableMeta& table_info);
 
     int EncodeDimension(const std::map<std::string, std::string>& raw_data,
                         uint32_t pid_num,
@@ -84,4 +84,4 @@ class SDKCodec {
 };
 
 }  // namespace codec
-}  // namespace fedb
+}  // namespace openmldb

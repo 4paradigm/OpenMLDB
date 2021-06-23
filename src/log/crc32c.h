@@ -24,7 +24,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-namespace fedb {
+namespace openmldb {
 namespace log {
 
 // Return the crc32c of concat(A, data[0,n-1]) where init_crc is the
@@ -54,6 +54,6 @@ inline uint32_t Unmask(uint32_t masked_crc) {
 }
 
 }  // namespace log
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_LOG_CRC32C_H_

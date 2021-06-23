@@ -18,7 +18,7 @@
 #include "base/slice.h"
 #include "gtest/gtest.h"
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 class SliceTest : public ::testing::Test {
@@ -45,7 +45,7 @@ TEST_F(SliceTest, Assign) {
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

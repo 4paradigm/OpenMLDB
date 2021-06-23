@@ -41,9 +41,9 @@ DECLARE_string(zk_root_path);
 DECLARE_bool(interactive);
 DECLARE_string(cmd);
 
-using ::fedb::catalog::TTL_TYPE_MAP;
+using ::openmldb::catalog::TTL_TYPE_MAP;
 
-namespace fedb {
+namespace openmldb {
 namespace cmd {
 using hybridse::plan::PlanAPI;
 const std::string LOGO =  // NOLINT
@@ -61,8 +61,8 @@ const std::string VERSION = std::to_string(FEDB_VERSION_MAJOR) + "." +  // NOLIN
                             FEDB_COMMIT_ID + "." + HYBRIDSE_COMMIT_ID;
 
 std::string db = "";  // NOLINT
-::fedb::sdk::ClusterSDK *cs = NULL;
-::fedb::sdk::SQLClusterRouter *sr = NULL;
+::openmldb::sdk::ClusterSDK *cs = NULL;
+::openmldb::sdk::SQLClusterRouter *sr = NULL;
 
 void PrintResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set) {
     if (!result_set || result_set->Size() == 0) {
@@ -351,11 +351,11 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
                 return;
             }
             ::hybridse::vm::Schema output_schema;
-            ::fedb::catalog::SchemaAdapter::ConvertSchema(
+            ::openmldb::catalog::SchemaAdapter::ConvertSchema(
                 table->column_desc(), &output_schema);
             PrintTableSchema(std::cout, output_schema);
             ::hybridse::vm::IndexList index_list;
-            ::fedb::catalog::SchemaAdapter::ConvertIndex(table->column_key(), &index_list);
+            ::openmldb::catalog::SchemaAdapter::ConvertIndex(table->column_key(), &index_list);
             PrintTableIndex(std::cout, index_list);
             break;
         }
@@ -518,7 +518,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
 }
 
 void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node) {
-    ::fedb::common::ColumnKey column_key;
+    ::openmldb::common::ColumnKey column_key;
     column_key.set_index_name(create_index_node->index_name_);
     for (const auto &key : create_index_node->index_->GetKey()) {
         column_key.add_col_name(key);
@@ -630,16 +630,16 @@ void HandleCli() {
         std::cout << LOGO << std::endl;
         std::cout << "v" << VERSION << std::endl;
     }
-    ::fedb::sdk::ClusterOptions copt;
+    ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = FLAGS_zk_cluster;
     copt.zk_path = FLAGS_zk_root_path;
-    cs = new ::fedb::sdk::ClusterSDK(copt);
+    cs = new ::openmldb::sdk::ClusterSDK(copt);
     bool ok = cs->Init();
     if (!ok) {
         std::cout << "Fail to connect to db" << std::endl;
         return;
     }
-    sr = new ::fedb::sdk::SQLClusterRouter(cs);
+    sr = new ::openmldb::sdk::SQLClusterRouter(cs);
     if (!sr->Init()) {
         std::cout << "Fail to connect to db" << std::endl;
         return;
@@ -656,7 +656,7 @@ void HandleCli() {
             buffer = FLAGS_cmd;
             db = FLAGS_database;
         } else {
-            char *line = ::fedb::base::linenoise(
+            char *line = ::openmldb::base::linenoise(
                 multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
             if (line == NULL) {
                 return;
@@ -664,10 +664,10 @@ void HandleCli() {
             if (line[0] != '\0' && line[0] != '/') {
                 buffer.assign(line);
                 if (!buffer.empty()) {
-                    ::fedb::base::linenoiseHistoryAdd(line);
+                    ::openmldb::base::linenoiseHistoryAdd(line);
                 }
             }
-            ::fedb::base::linenoiseFree(line);
+            ::openmldb::base::linenoiseFree(line);
             if (buffer.empty()) {
                 continue;
             }
@@ -691,6 +691,6 @@ void HandleCli() {
 }
 
 }  // namespace cmd
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_CMD_SQL_CMD_H_

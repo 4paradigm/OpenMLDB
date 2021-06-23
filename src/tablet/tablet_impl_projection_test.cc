@@ -47,7 +47,7 @@ DECLARE_int32(gc_safe_offset);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_int32(binlog_delete_interval);
 
-namespace fedb {
+namespace openmldb {
 namespace tablet {
 
 class MockClosure : public ::google::protobuf::Closure {
@@ -57,7 +57,7 @@ class MockClosure : public ::google::protobuf::Closure {
     void Run() {}
 };
 
-using ::fedb::api::TableStatus;
+using ::openmldb::api::TableStatus;
 
 struct TestArgs {
     Schema schema;
@@ -70,7 +70,7 @@ struct TestArgs {
     void* out_ptr;
     uint32_t out_size;
     Schema output_schema;
-    ::fedb::common::TTLSt ttl_desc;
+    ::openmldb::common::TTLSt ttl_desc;
     TestArgs()
         : schema(),
           plist(),
@@ -89,7 +89,7 @@ class TabletProjectTest : public ::testing::TestWithParam<TestArgs*> {
     void SetUp() { tablet_.Init(""); }
 
  public:
-    ::fedb::tablet::TabletImpl tablet_;
+    ::openmldb::tablet::TabletImpl tablet_;
 };
 
 std::vector<TestArgs*> GenCommonCase() {
@@ -119,7 +119,7 @@ std::vector<TestArgs*> GenCommonCase() {
         auto ttl = testargs->ckey.mutable_ttl();
         ttl->set_abs_ttl(0);
         ttl->set_lat_ttl(0);
-        ttl->set_ttl_type(::fedb::type::kAbsoluteTime);
+        ttl->set_ttl_type(::openmldb::type::kAbsoluteTime);
 
         testargs->pk = "hello";
         testargs->ts = 1000l;
@@ -169,7 +169,7 @@ std::vector<TestArgs*> GenCommonCase() {
         auto ttl = testargs->ckey.mutable_ttl();
         ttl->set_abs_ttl(0);
         ttl->set_lat_ttl(0);
-        ttl->set_ttl_type(::fedb::type::kAbsoluteTime);
+        ttl->set_ttl_type(::openmldb::type::kAbsoluteTime);
 
         testargs->pk = "hello";
         testargs->ts = 1000l;
@@ -227,7 +227,7 @@ std::vector<TestArgs*> GenCommonCase() {
         auto ttl = testargs->ckey.mutable_ttl();
         ttl->set_abs_ttl(0);
         ttl->set_lat_ttl(0);
-        ttl->set_ttl_type(::fedb::type::kAbsoluteTime);
+        ttl->set_ttl_type(::openmldb::type::kAbsoluteTime);
 
         testargs->pk = "hello";
         testargs->ts = 1000l;
@@ -293,7 +293,7 @@ std::vector<TestArgs*> GenCommonCase() {
         auto ttl = testargs->ckey.mutable_ttl();
         ttl->set_abs_ttl(0);
         ttl->set_lat_ttl(0);
-        ttl->set_ttl_type(::fedb::type::kAbsoluteTime);
+        ttl->set_ttl_type(::openmldb::type::kAbsoluteTime);
 
         testargs->pk = "hello";
         testargs->ts = 1000l;
@@ -355,7 +355,7 @@ std::vector<TestArgs*> GenCommonCase() {
         auto ttl = testargs->ckey.mutable_ttl();
         ttl->set_abs_ttl(0);
         ttl->set_lat_ttl(0);
-        ttl->set_ttl_type(::fedb::type::kAbsoluteTime);
+        ttl->set_ttl_type(::openmldb::type::kAbsoluteTime);
         testargs->pk = "hello";
         testargs->ts = 1000l;
 
@@ -415,7 +415,7 @@ void CompareRow(codec::RowView* left, codec::RowView* right,
         if (left->IsNULL(idx)) continue;
         int32_t ret = 0;
         switch (column.data_type()) {
-            case ::fedb::type::kBool: {
+            case ::openmldb::type::kBool: {
                 bool left_val = false;
                 bool right_val = false;
                 ret = left->GetBool(idx, &left_val);
@@ -426,7 +426,7 @@ void CompareRow(codec::RowView* left, codec::RowView* right,
                 break;
             }
 
-            case ::fedb::type::kSmallInt: {
+            case ::openmldb::type::kSmallInt: {
                 int16_t left_val = 0;
                 int16_t right_val = 0;
                 ret = left->GetInt16(idx, &left_val);
@@ -437,7 +437,7 @@ void CompareRow(codec::RowView* left, codec::RowView* right,
                 break;
             }
 
-            case ::fedb::type::kInt: {
+            case ::openmldb::type::kInt: {
                 int32_t left_val = 0;
                 int32_t right_val = 0;
                 ret = left->GetInt32(idx, &left_val);
@@ -447,8 +447,8 @@ void CompareRow(codec::RowView* left, codec::RowView* right,
                 ASSERT_EQ(left_val, right_val);
                 break;
             }
-            case ::fedb::type::kTimestamp:
-            case ::fedb::type::kBigInt: {
+            case ::openmldb::type::kTimestamp:
+            case ::openmldb::type::kBigInt: {
                 int64_t left_val = 0;
                 int64_t right_val = 0;
                 ret = left->GetInt64(idx, &left_val);
@@ -458,7 +458,7 @@ void CompareRow(codec::RowView* left, codec::RowView* right,
                 ASSERT_EQ(left_val, right_val);
                 break;
             }
-            case ::fedb::type::kFloat: {
+            case ::openmldb::type::kFloat: {
                 float left_val = 0;
                 float right_val = 0;
                 ret = left->GetFloat(idx, &left_val);
@@ -468,7 +468,7 @@ void CompareRow(codec::RowView* left, codec::RowView* right,
                 ASSERT_EQ(left_val, right_val);
                 break;
             }
-            case ::fedb::type::kDouble: {
+            case ::openmldb::type::kDouble: {
                 double left_val = 0;
                 double right_val = 0;
                 ret = left->GetDouble(idx, &left_val);
@@ -478,7 +478,7 @@ void CompareRow(codec::RowView* left, codec::RowView* right,
                 ASSERT_EQ(left_val, right_val);
                 break;
             }
-            case ::fedb::type::kVarchar: {
+            case ::openmldb::type::kVarchar: {
                 char* left_val = NULL;
                 uint32_t left_size = 0;
                 char* right_val = NULL;
@@ -503,57 +503,57 @@ void CompareRow(codec::RowView* left, codec::RowView* right,
 TEST_P(TabletProjectTest, get_case) {
     auto args = GetParam();
     // create table
-    std::string name = ::fedb::tablet::GenRand();
+    std::string name = ::openmldb::tablet::GenRand();
     int tid = rand() % 100000;  // NOLINT
     MockClosure closure;
     // create a table
     {
-        ::fedb::api::CreateTableRequest crequest;
-        ::fedb::api::TableMeta* table_meta = crequest.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest crequest;
+        ::openmldb::api::TableMeta* table_meta = crequest.mutable_table_meta();
         table_meta->set_name(name);
         table_meta->set_tid(tid);
         table_meta->set_pid(0);
         table_meta->set_seg_cnt(8);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         table_meta->set_key_entry_max_height(8);
         table_meta->set_format_version(1);
         Schema* schema = table_meta->mutable_column_desc();
         schema->CopyFrom(args->schema);
-        ::fedb::common::ColumnKey* ck = table_meta->add_column_key();
+        ::openmldb::common::ColumnKey* ck = table_meta->add_column_key();
         ck->CopyFrom(args->ckey);
-        ::fedb::api::CreateTableResponse cresponse;
+        ::openmldb::api::CreateTableResponse cresponse;
         tablet_.CreateTable(NULL, &crequest, &cresponse, &closure);
         ASSERT_EQ(0, cresponse.code());
     }
     // put a record
     {
-        ::fedb::api::PutRequest request;
+        ::openmldb::api::PutRequest request;
         request.set_tid(tid);
         request.set_pid(0);
         request.set_format_version(1);
-        ::fedb::api::Dimension* dim = request.add_dimensions();
+        ::openmldb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
         std::string key = args->pk;
         dim->set_key(key);
-        ::fedb::api::TSDimension* ts = request.add_ts_dimensions();
+        ::openmldb::api::TSDimension* ts = request.add_ts_dimensions();
         ts->set_idx(0);
         ts->set_ts(args->ts);
         request.set_value(reinterpret_cast<char*>(args->row_ptr),
                           args->row_size);
-        ::fedb::api::PutResponse response;
+        ::openmldb::api::PutResponse response;
         tablet_.Put(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // get with projectlist
     {
-        ::fedb::api::GetRequest sr;
+        ::openmldb::api::GetRequest sr;
         sr.set_tid(tid);
         sr.set_pid(0);
         sr.set_key(args->pk);
         sr.set_ts(args->ts);
         sr.set_et(0);
         sr.mutable_projection()->CopyFrom(args->plist);
-        ::fedb::api::GetResponse srp;
+        ::openmldb::api::GetResponse srp;
         tablet_.Get(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(srp.value().size(), args->out_size);
@@ -568,58 +568,58 @@ TEST_P(TabletProjectTest, get_case) {
 TEST_P(TabletProjectTest, sql_case) {
     auto args = GetParam();
     // create table
-    std::string name = "t" + ::fedb::tablet::GenRand();
+    std::string name = "t" + ::openmldb::tablet::GenRand();
     std::string db = "db" + name;
     int tid = rand() % 10000000;  // NOLINT
     MockClosure closure;
     // create a table
     {
-        ::fedb::api::CreateTableRequest crequest;
-        ::fedb::api::TableMeta* table_meta = crequest.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest crequest;
+        ::openmldb::api::TableMeta* table_meta = crequest.mutable_table_meta();
         table_meta->set_db(db);
         table_meta->set_name(name);
         table_meta->set_tid(tid);
         table_meta->set_pid(0);
         table_meta->set_seg_cnt(8);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         table_meta->set_key_entry_max_height(8);
         table_meta->set_format_version(1);
         Schema* schema = table_meta->mutable_column_desc();
         schema->CopyFrom(args->schema);
-        ::fedb::common::ColumnKey* ck = table_meta->add_column_key();
+        ::openmldb::common::ColumnKey* ck = table_meta->add_column_key();
         ck->CopyFrom(args->ckey);
-        ::fedb::api::CreateTableResponse cresponse;
+        ::openmldb::api::CreateTableResponse cresponse;
         tablet_.CreateTable(NULL, &crequest, &cresponse, &closure);
         ASSERT_EQ(0, cresponse.code());
     }
     // put a record
     {
-        ::fedb::api::PutRequest request;
+        ::openmldb::api::PutRequest request;
         request.set_tid(tid);
         request.set_pid(0);
         request.set_format_version(1);
-        ::fedb::api::Dimension* dim = request.add_dimensions();
+        ::openmldb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
         std::string key = args->pk;
         dim->set_key(key);
-        ::fedb::api::TSDimension* ts = request.add_ts_dimensions();
+        ::openmldb::api::TSDimension* ts = request.add_ts_dimensions();
         ts->set_idx(0);
         ts->set_ts(args->ts);
         request.set_value(reinterpret_cast<char*>(args->row_ptr),
                           args->row_size);
-        ::fedb::api::PutResponse response;
+        ::openmldb::api::PutResponse response;
         tablet_.Put(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
 
     {
-        ::fedb::api::QueryRequest request;
+        ::openmldb::api::QueryRequest request;
         request.set_db(db);
         std::string sql = "select col1 from " + name + ";";
         request.set_sql(sql);
         request.set_is_batch(true);
         brpc::Controller cntl;
-        ::fedb::api::QueryResponse response;
+        ::openmldb::api::QueryResponse response;
         tablet_.Query(&cntl, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, (int32_t)response.count());
@@ -629,62 +629,62 @@ TEST_P(TabletProjectTest, sql_case) {
 TEST_P(TabletProjectTest, scan_case) {
     auto args = GetParam();
     // create table
-    std::string name = ::fedb::tablet::GenRand();
+    std::string name = ::openmldb::tablet::GenRand();
     int tid = rand() % 10000000;  // NOLINT
     MockClosure closure;
     // create a table
     {
-        ::fedb::api::CreateTableRequest crequest;
-        ::fedb::api::TableMeta* table_meta = crequest.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest crequest;
+        ::openmldb::api::TableMeta* table_meta = crequest.mutable_table_meta();
         table_meta->set_name(name);
         table_meta->set_tid(tid);
         table_meta->set_pid(0);
         table_meta->set_seg_cnt(8);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         table_meta->set_key_entry_max_height(8);
         table_meta->set_format_version(1);
         Schema* schema = table_meta->mutable_column_desc();
         schema->CopyFrom(args->schema);
-        ::fedb::common::ColumnKey* ck = table_meta->add_column_key();
+        ::openmldb::common::ColumnKey* ck = table_meta->add_column_key();
         ck->CopyFrom(args->ckey);
-        ::fedb::api::CreateTableResponse cresponse;
+        ::openmldb::api::CreateTableResponse cresponse;
         tablet_.CreateTable(NULL, &crequest, &cresponse, &closure);
         ASSERT_EQ(0, cresponse.code());
     }
     // put a record
     {
-        ::fedb::api::PutRequest request;
+        ::openmldb::api::PutRequest request;
         request.set_tid(tid);
         request.set_pid(0);
         request.set_format_version(1);
-        ::fedb::api::Dimension* dim = request.add_dimensions();
+        ::openmldb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
         std::string key = args->pk;
         dim->set_key(key);
-        ::fedb::api::TSDimension* ts = request.add_ts_dimensions();
+        ::openmldb::api::TSDimension* ts = request.add_ts_dimensions();
         ts->set_idx(0);
         ts->set_ts(args->ts);
         request.set_value(reinterpret_cast<char*>(args->row_ptr),
                           args->row_size);
-        ::fedb::api::PutResponse response;
+        ::openmldb::api::PutResponse response;
         tablet_.Put(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
 
     // scan with projectlist
     {
-        ::fedb::api::ScanRequest sr;
+        ::openmldb::api::ScanRequest sr;
         sr.set_tid(tid);
         sr.set_pid(0);
         sr.set_pk(args->pk);
         sr.set_st(args->ts);
         sr.set_et(0);
         sr.mutable_projection()->CopyFrom(args->plist);
-        ::fedb::api::ScanResponse srp;
+        ::openmldb::api::ScanResponse srp;
         tablet_.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(1, (int64_t)srp.count());
-        ::fedb::base::KvIterator* kv_it = new ::fedb::base::KvIterator(&srp);
+        ::openmldb::base::KvIterator* kv_it = new ::openmldb::base::KvIterator(&srp);
         ASSERT_TRUE(kv_it->Valid());
         ASSERT_EQ(kv_it->GetValue().size(), args->out_size);
         codec::RowView left(args->output_schema);
@@ -700,13 +700,13 @@ INSTANTIATE_TEST_SUITE_P(TabletProjectPrefix, TabletProjectTest,
                         testing::ValuesIn(GenCommonCase()));
 
 }  // namespace tablet
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    std::string k1 = ::fedb::tablet::GenRand();
-    std::string k2 = ::fedb::tablet::GenRand();
+    std::string k1 = ::openmldb::tablet::GenRand();
+    std::string k2 = ::openmldb::tablet::GenRand();
     FLAGS_db_root_path = "/tmp/db" + k1 + ",/tmp/db" + k2;
     FLAGS_recycle_bin_root_path = "/tmp/recycle" + k1 + ",/tmp/recycle" + k2;
     ::hybridse::vm::Engine::InitializeGlobalLLVM();

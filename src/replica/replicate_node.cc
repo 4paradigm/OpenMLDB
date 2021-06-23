@@ -29,7 +29,7 @@ DECLARE_int32(request_timeout_ms);
 DECLARE_string(zk_cluster);
 DECLARE_uint32(go_back_max_try_cnt);
 
-namespace fedb {
+namespace openmldb {
 namespace replica {
 
 
@@ -39,8 +39,8 @@ static void* RunSyncTask(void* args) {
         PDLOG(WARNING, "input args is null");
         return NULL;
     }
-    ::fedb::replica::ReplicateNode* rn =
-        static_cast<::fedb::replica::ReplicateNode*>(args);
+    ::openmldb::replica::ReplicateNode* rn =
+        static_cast<::openmldb::replica::ReplicateNode*>(args);
     rn->MatchLogOffset();
     rn->SyncData();
     return NULL;
@@ -72,7 +72,7 @@ ReplicateNode::ReplicateNode(const std::string& point, LogParts* logs,
       rep_node_(rep_follower),
       follower_offset_(follower_offset) {
           if (!real_point.empty()) {
-              rpc_client_ = fedb::RpcClient<::fedb::api::TabletServer_Stub>(real_point);
+              rpc_client_ = openmldb::RpcClient<::openmldb::api::TabletServer_Stub>(real_point);
           }
       }
 
@@ -163,14 +163,14 @@ void ReplicateNode::SetLastSyncOffset(uint64_t offset) {
 }
 
 int ReplicateNode::MatchLogOffsetFromNode() {
-    ::fedb::api::AppendEntriesRequest request;
+    ::openmldb::api::AppendEntriesRequest request;
     request.set_tid(tid_);
     request.set_pid(pid_);
     request.set_term(term_->load(std::memory_order_relaxed));
     request.set_pre_log_index(0);
-    ::fedb::api::AppendEntriesResponse response;
+    ::openmldb::api::AppendEntriesResponse response;
     bool ret = rpc_client_.SendRequest(
-        &::fedb::api::TabletServer_Stub::AppendEntries, &request, &response,
+        &::openmldb::api::TabletServer_Stub::AppendEntries, &request, &response,
         FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (ret && response.code() == 0) {
         last_sync_offset_ = response.log_offset();
@@ -193,8 +193,8 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
               log_offset, last_sync_offset_);
         return 1;
     }
-    ::fedb::api::AppendEntriesRequest request;
-    ::fedb::api::AppendEntriesResponse response;
+    ::openmldb::api::AppendEntriesRequest request;
+    ::openmldb::api::AppendEntriesResponse response;
     uint64_t sync_log_offset = last_sync_offset_;
     bool request_from_cache = false;
     bool need_wait = false;
@@ -207,7 +207,7 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
                   endpoint_.c_str());
             return -1;
         }
-        const ::fedb::api::LogEntry& entry =
+        const ::openmldb::api::LogEntry& entry =
             request.entries(request.entries_size() - 1);
         if (entry.log_index() <= last_sync_offset_) {
             DEBUGLOG("duplicate log index from node %s cache",
@@ -229,15 +229,15 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
         batchSize = std::min(batchSize, (uint32_t)FLAGS_binlog_sync_batch_size);
         for (uint64_t i = 0; i < batchSize;) {
             std::string buffer;
-            ::fedb::base::Slice record;
-            ::fedb::base::Status status =
+            ::openmldb::base::Slice record;
+            ::openmldb::base::Status status =
                 log_reader_.ReadNextRecord(&record, &buffer);
             if (status.ok()) {
-                ::fedb::api::LogEntry* entry = request.add_entries();
+                ::openmldb::api::LogEntry* entry = request.add_entries();
                 if (!entry->ParseFromString(record.ToString())) {
                     PDLOG(WARNING,
                           "bad protobuf format %s size %ld. tid %u pid %u",
-                          ::fedb::base::DebugString(record.ToString()).c_str(),
+                          ::openmldb::base::DebugString(record.ToString()).c_str(),
                           record.ToString().size(), tid_, pid_);
                     request.mutable_entries()->RemoveLast();
                     break;
@@ -302,7 +302,7 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
     }
     if (request.entries_size() > 0) {
         bool ret = rpc_client_.SendRequest(
-            &::fedb::api::TabletServer_Stub::AppendEntries, &request,
+            &::openmldb::api::TabletServer_Stub::AppendEntries, &request,
             &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
         if (ret && response.code() == 0) {
             DEBUGLOG("sync log to node[%s] to offset %lld",
@@ -350,4 +350,4 @@ void ReplicateNode::Stop() {
 }
 
 }  // namespace replica
-}  // namespace fedb
+}  // namespace openmldb

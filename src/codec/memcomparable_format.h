@@ -39,7 +39,7 @@
 #include <string.h>
 #include <algorithm>
 
-namespace fedb {
+namespace openmldb {
 namespace codec {
 
 typedef unsigned char uchar; /* Short for unsigned char */
@@ -378,4 +378,4 @@ __attribute__((unused)) static int UnpackString(const void *src, void *dst,
 }
 
 }  // namespace codec
-}  // namespace fedb
+}  // namespace openmldb

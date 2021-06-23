@@ -25,7 +25,7 @@
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 
-namespace fedb {
+namespace openmldb {
 namespace zk {
 
 void LogEventWrapper(zhandle_t* zh, int type, int state, const char* path,
@@ -637,4 +637,4 @@ bool ZkClient::Mkdir(const std::string& path) {
 }
 
 }  // namespace zk
-}  // namespace fedb
+}  // namespace openmldb

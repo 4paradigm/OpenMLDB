@@ -33,7 +33,7 @@
 #include "boost/bind.hpp"
 #include "glog/logging.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
 ClusterSDK::ClusterSDK(const ClusterOptions& options)
@@ -44,9 +44,9 @@ ClusterSDK::ClusterSDK(const ClusterOptions& options)
       notify_path_(options.zk_path + "/table/notify"),
       zk_client_(NULL),
       mu_(),
-      client_manager_(std::make_shared<::fedb::catalog::ClientManager>()),
+      client_manager_(std::make_shared<::openmldb::catalog::ClientManager>()),
       table_to_tablets_(),
-      catalog_(new ::fedb::catalog::SDKCatalog(client_manager_)),
+      catalog_(new ::openmldb::catalog::SDKCatalog(client_manager_)),
       pool_(1),
       session_id_(0),
       rand_(0xdeadbeef),
@@ -74,7 +74,7 @@ void ClusterSDK::CheckZk() {
 }
 
 bool ClusterSDK::Init() {
-    zk_client_ = new ::fedb::zk::ZkClient(options_.zk_cluster, "", options_.session_timeout, "", options_.zk_path);
+    zk_client_ = new ::openmldb::zk::ZkClient(options_.zk_cluster, "", options_.session_timeout, "", options_.zk_path);
     bool ok = zk_client_->Init();
     if (!ok) {
         LOG(WARNING) << "fail to init zk client with zk cluster " << options_.zk_cluster << " , zk path "
@@ -125,7 +125,7 @@ bool ClusterSDK::CreateNsClient() {
     if (!GetRealEndpoint(endpoint, &real_endpoint)) {
         return false;
     }
-    auto ns_client = std::make_shared<::fedb::client::NsClient>(endpoint, real_endpoint);
+    auto ns_client = std::make_shared<::openmldb::client::NsClient>(endpoint, real_endpoint);
     int ret = ns_client->Init();
     if (ret != 0) {
         LOG(WARNING) << "fail to init ns client with endpoint " << endpoint;
@@ -139,9 +139,9 @@ bool ClusterSDK::CreateNsClient() {
 
 bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         const std::vector<std::string>& sp_datas) {
-    std::vector<::fedb::nameserver::TableInfo> tables;
-    std::map<std::string, std::map<std::string, std::shared_ptr<::fedb::nameserver::TableInfo>>> mapping;
-    auto new_catalog = std::make_shared<::fedb::catalog::SDKCatalog>(client_manager_);
+    std::vector<::openmldb::nameserver::TableInfo> tables;
+    std::map<std::string, std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>> mapping;
+    auto new_catalog = std::make_shared<::openmldb::catalog::SDKCatalog>(client_manager_);
     for (uint32_t i = 0; i < table_datas.size(); i++) {
         if (table_datas[i].empty()) continue;
         std::string value;
@@ -150,7 +150,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
             LOG(WARNING) << "fail to get table data";
             continue;
         }
-        std::shared_ptr<::fedb::nameserver::TableInfo> table_info(new ::fedb::nameserver::TableInfo());
+        std::shared_ptr<::openmldb::nameserver::TableInfo> table_info(new ::openmldb::nameserver::TableInfo());
         ok = table_info->ParseFromString(value);
         if (!ok) {
             LOG(WARNING) << "fail to parse table proto with " << value;
@@ -163,7 +163,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         tables.push_back(*(table_info.get()));
         auto it = mapping.find(table_info->db());
         if (it == mapping.end()) {
-            std::map<std::string, std::shared_ptr<::fedb::nameserver::TableInfo>> table_in_db;
+            std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>> table_in_db;
             table_in_db.insert(std::make_pair(table_info->name(), table_info));
             mapping.insert(std::make_pair(table_info->db(), table_in_db));
         } else {
@@ -184,7 +184,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         }
         std::string uncompressed;
         ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
-        ::fedb::api::ProcedureInfo sp_info_pb;
+        ::openmldb::api::ProcedureInfo sp_info_pb;
         ok = sp_info_pb.ParseFromString(uncompressed);
         if (!ok) {
             LOG(WARNING) << "fail to parse procedure proto. node: " << node << " value: "<< value;
@@ -192,7 +192,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         }
         DLOG(INFO) << "parse procedure " << sp_info_pb.sp_name() << " ok";
         // conver to ProcedureInfoImpl
-        auto sp_info = fedb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info_pb);
+        auto sp_info = openmldb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info_pb);
         if (!sp_info) {
             LOG(WARNING) << "convert procedure info failed, sp_name: "
                 << sp_info_pb.sp_name() << " db: " << sp_info_pb.db_name();
@@ -215,7 +215,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         return false;
     }
     {
-        std::lock_guard<::fedb::base::SpinMutex> lock(mu_);
+        std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
         table_to_tablets_ = mapping;
         catalog_ = new_catalog;
     }
@@ -271,29 +271,29 @@ bool ClusterSDK::InitCatalog() {
 
 uint32_t ClusterSDK::GetTableId(const std::string& db, const std::string& tname) {
     auto table_handler = GetCatalog()->GetTable(db, tname);
-    ::fedb::catalog::SDKTableHandler* sdk_table_handler =
-        dynamic_cast<::fedb::catalog::SDKTableHandler*>(table_handler.get());
+    ::openmldb::catalog::SDKTableHandler* sdk_table_handler =
+        dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
     return sdk_table_handler->GetTid();
 }
 
-std::shared_ptr<::fedb::nameserver::TableInfo> ClusterSDK::GetTableInfo(const std::string& db,
+std::shared_ptr<::openmldb::nameserver::TableInfo> ClusterSDK::GetTableInfo(const std::string& db,
                                                                          const std::string& tname) {
-    std::lock_guard<::fedb::base::SpinMutex> lock(mu_);
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = table_to_tablets_.find(db);
     if (it == table_to_tablets_.end()) {
-        return std::shared_ptr<::fedb::nameserver::TableInfo>();
+        return std::shared_ptr<::openmldb::nameserver::TableInfo>();
     }
     auto sit = it->second.find(tname);
     if (sit == it->second.end()) {
-        return std::shared_ptr<::fedb::nameserver::TableInfo>();
+        return std::shared_ptr<::openmldb::nameserver::TableInfo>();
     }
     auto table_info = sit->second;
     return table_info;
 }
 
-std::vector<std::shared_ptr<::fedb::nameserver::TableInfo>> ClusterSDK::GetTables(const std::string& db) {
-    std::lock_guard<::fedb::base::SpinMutex> lock(mu_);
-    std::vector<std::shared_ptr<::fedb::nameserver::TableInfo>> tables;
+std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> ClusterSDK::GetTables(const std::string& db) {
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
+    std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> tables;
     auto it = table_to_tablets_.find(db);
     if (it == table_to_tablets_.end()) {
         return tables;
@@ -328,14 +328,14 @@ bool ClusterSDK::GetRealEndpoint(const std::string& endpoint, std::string* real_
     return true;
 }
 
-std::shared_ptr<::fedb::catalog::TabletAccessor> ClusterSDK::GetTablet() { return GetCatalog()->GetTablet(); }
+std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet() { return GetCatalog()->GetTablet(); }
 
-std::shared_ptr<::fedb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db,
+std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db,
                                                                         const std::string& name) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
-        ::fedb::catalog::SDKTableHandler* sdk_table_handler =
-            dynamic_cast<::fedb::catalog::SDKTableHandler*>(table_handler.get());
+        ::openmldb::catalog::SDKTableHandler* sdk_table_handler =
+            dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
         if (sdk_table_handler) {
             uint32_t pid_num = sdk_table_handler->GetPartitionNum();
             uint32_t pid = 0;
@@ -345,15 +345,15 @@ std::shared_ptr<::fedb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std
             return sdk_table_handler->GetTablet(pid);
         }
     }
-    return std::shared_ptr<::fedb::catalog::TabletAccessor>();
+    return std::shared_ptr<::openmldb::catalog::TabletAccessor>();
 }
 
 bool ClusterSDK::GetTablet(const std::string& db, const std::string& name,
-                           std::vector<std::shared_ptr<::fedb::catalog::TabletAccessor>>* tablets) {
+                           std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>* tablets) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
-        ::fedb::catalog::SDKTableHandler* sdk_table_handler =
-            dynamic_cast<::fedb::catalog::SDKTableHandler*>(table_handler.get());
+        ::openmldb::catalog::SDKTableHandler* sdk_table_handler =
+            dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
         if (sdk_table_handler) {
             return sdk_table_handler->GetTablet(tablets);
         }
@@ -361,34 +361,34 @@ bool ClusterSDK::GetTablet(const std::string& db, const std::string& name,
     return false;
 }
 
-std::shared_ptr<::fedb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db, const std::string& name,
+std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db, const std::string& name,
                                                                         uint32_t pid) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
-        ::fedb::catalog::SDKTableHandler* sdk_table_handler =
-            dynamic_cast<::fedb::catalog::SDKTableHandler*>(table_handler.get());
+        ::openmldb::catalog::SDKTableHandler* sdk_table_handler =
+            dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
         if (sdk_table_handler) {
             return sdk_table_handler->GetTablet(pid);
         }
     }
-    return std::shared_ptr<::fedb::catalog::TabletAccessor>();
+    return std::shared_ptr<::openmldb::catalog::TabletAccessor>();
 }
 
-std::shared_ptr<::fedb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db, const std::string& name,
+std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db, const std::string& name,
                                                                         const std::string& pk) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
-        auto sdk_table_handler = dynamic_cast<::fedb::catalog::SDKTableHandler*>(table_handler.get());
+        auto sdk_table_handler = dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
         if (sdk_table_handler) {
             uint32_t pid_num = sdk_table_handler->GetPartitionNum();
             uint32_t pid = 0;
             if (pid_num > 0) {
-                pid = ::fedb::base::hash64(pk) % pid_num;
+                pid = ::openmldb::base::hash64(pk) % pid_num;
             }
             return sdk_table_handler->GetTablet(pid);
         }
     }
-    return std::shared_ptr<::fedb::catalog::TabletAccessor>();
+    return std::shared_ptr<::openmldb::catalog::TabletAccessor>();
 }
 
 std::shared_ptr<hybridse::sdk::ProcedureInfo> ClusterSDK::GetProcedureInfo(
@@ -401,7 +401,7 @@ std::shared_ptr<hybridse::sdk::ProcedureInfo> ClusterSDK::GetProcedureInfo(
         *msg = "db or sp_name is empty";
         return nullptr;
     } else {
-        std::lock_guard<::fedb::base::SpinMutex> lock(mu_);
+        std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
         auto sp = catalog_->GetProcedureInfo(db, sp_name);
         if (!sp) {
             *msg = sp_name + " does not exist in " + db;
@@ -418,7 +418,7 @@ std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> ClusterSDK::GetProced
         *msg = "null ptr";
         return std::move(sp_infos);
     }
-    std::lock_guard<::fedb::base::SpinMutex> lock(mu_);
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto& db_sp_map = catalog_->GetProcedures();
     for (const auto& db_kv : db_sp_map) {
         for (const auto& sp_kv : db_kv.second) {
@@ -433,4 +433,4 @@ std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> ClusterSDK::GetProced
 }
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb

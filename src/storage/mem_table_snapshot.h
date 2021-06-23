@@ -30,17 +30,17 @@
 #include "proto/tablet.pb.h"
 #include "storage/snapshot.h"
 
-using ::fedb::api::LogEntry;
-namespace fedb {
+using ::openmldb::api::LogEntry;
+namespace openmldb {
 namespace base {
 class Status;
 }
 namespace storage {
 
-using ::fedb::log::WriteHandle;
+using ::openmldb::log::WriteHandle;
 
-typedef ::fedb::base::Skiplist<uint32_t, uint64_t,
-                                ::fedb::base::DefaultComparator>
+typedef ::openmldb::base::Skiplist<uint32_t, uint64_t,
+                                ::openmldb::base::DefaultComparator>
     LogParts;
 
 // table snapshot
@@ -64,7 +64,7 @@ class MemTableSnapshot : public Snapshot {
                      uint64_t end_offset) override;
 
     int TTLSnapshot(std::shared_ptr<Table> table,
-                    const ::fedb::api::Manifest& manifest, WriteHandle* wh,
+                    const ::openmldb::api::Manifest& manifest, WriteHandle* wh,
                     uint64_t& count, uint64_t& expired_key_num,  // NOLINT
                     uint64_t& deleted_key_num);                  // NOLINT
 
@@ -74,9 +74,9 @@ class MemTableSnapshot : public Snapshot {
              std::atomic<uint64_t>* failed_cnt);
 
     int ExtractIndexFromSnapshot(
-        std::shared_ptr<Table> table, const ::fedb::api::Manifest& manifest,
+        std::shared_ptr<Table> table, const ::openmldb::api::Manifest& manifest,
         WriteHandle* wh,
-        const ::fedb::common::ColumnKey& column_key,  // NOLINT
+        const ::openmldb::common::ColumnKey& column_key,  // NOLINT
         uint32_t idx, uint32_t partition_num,
         uint32_t max_idx, const std::vector<uint32_t>& index_cols,
         uint64_t& count,                                        // NOLINT
@@ -86,33 +86,33 @@ class MemTableSnapshot : public Snapshot {
         std::shared_ptr<Table> table,
         const std::vector<std::vector<uint32_t>>& index_cols,
         uint32_t max_idx, uint32_t idx,
-        const std::vector<::fedb::log::WriteHandle*>& whs,
+        const std::vector<::openmldb::log::WriteHandle*>& whs,
         uint64_t* snapshot_offset);
 
     bool DumpBinlogIndexData(
         std::shared_ptr<Table> table,
         const std::vector<std::vector<uint32_t>>& index_cols,
         uint32_t max_idx, uint32_t idx,
-        const std::vector<::fedb::log::WriteHandle*>& whs,
+        const std::vector<::openmldb::log::WriteHandle*>& whs,
         uint64_t snapshot_offset, uint64_t collected_offset);
 
     int ExtractIndexData(std::shared_ptr<Table> table,
-                         const ::fedb::common::ColumnKey& column_key,
+                         const ::openmldb::common::ColumnKey& column_key,
                          uint32_t idx, uint32_t partition_num,
                          uint64_t& out_offset);  // NOLINT
 
     bool DumpIndexData(std::shared_ptr<Table> table,
-                       const ::fedb::common::ColumnKey& column_key,
+                       const ::openmldb::common::ColumnKey& column_key,
                        uint32_t idx,
-                       const std::vector<::fedb::log::WriteHandle*>& whs);
+                       const std::vector<::openmldb::log::WriteHandle*>& whs);
 
     bool PackNewIndexEntry(
         std::shared_ptr<Table> table,
         const std::vector<std::vector<uint32_t>>& index_cols,
         uint32_t max_idx, uint32_t idx, uint32_t partition_num,
-        ::fedb::api::LogEntry* entry, uint32_t* index_pid);
+        ::openmldb::api::LogEntry* entry, uint32_t* index_pid);
 
-    int RemoveDeletedKey(const ::fedb::api::LogEntry& entry,
+    int RemoveDeletedKey(const ::openmldb::api::LogEntry& entry,
                          const std::set<uint32_t>& deleted_index,
                          std::string* buffer);
 
@@ -125,7 +125,7 @@ class MemTableSnapshot : public Snapshot {
 
     uint64_t CollectDeletedKey(uint64_t end_offset);
 
-    int DecodeData(std::shared_ptr<Table> table, const fedb::api::LogEntry& entry,
+    int DecodeData(std::shared_ptr<Table> table, const openmldb::api::LogEntry& entry,
                    uint32_t maxIdx, std::vector<std::string>& row); // NOLINT
 
     inline bool IsCompressed(const std::string& path);
@@ -138,4 +138,4 @@ class MemTableSnapshot : public Snapshot {
 };
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb
